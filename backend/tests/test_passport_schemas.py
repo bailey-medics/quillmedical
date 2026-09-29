@@ -446,6 +446,37 @@ class TestManifestAndProfile:
 
         assert from_yaml(schemas.Profile, to_yaml(profile)) == profile
 
+    def test_a_profile_written_before_appraisal_periods_still_loads(
+        self,
+    ) -> None:
+        """No passport written before CPD date ranges existed has the
+        key. It reads as no periods, so CPD falls back to June to June."""
+        profile = from_yaml(
+            schemas.Profile,
+            "user_id: u-2\nname: Dr Sam Reeve\nregistrations: []\n",
+        )
+
+        assert profile.appraisal_periods == []
+
+    def test_a_profile_keeps_its_appraisal_periods(self) -> None:
+        profile = schemas.Profile(
+            user_id="u-2",
+            name="Dr Sam Reeve",
+            appraisal_periods=[
+                schemas.AppraisalPeriod(
+                    starts_on=date(2025, 10, 1), ends_on=date(2026, 9, 30)
+                )
+            ],
+        )
+
+        assert from_yaml(schemas.Profile, to_yaml(profile)) == profile
+
+    def test_an_appraisal_period_cannot_end_before_it_starts(self) -> None:
+        with pytest.raises(ValidationError):
+            schemas.AppraisalPeriod(
+                starts_on=date(2026, 10, 1), ends_on=date(2026, 9, 30)
+            )
+
     def test_a_specialty_needs_its_name(self) -> None:
         with pytest.raises(ValidationError):
             schemas.SpecialtyRef(id="oncology")  # type: ignore[call-arg]

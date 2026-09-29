@@ -108,6 +108,17 @@ export interface Specialty {
 }
 
 /**
+ * One of the holder's appraisal years, shown to them as a "CPD date
+ * range". Both dates are ISO `YYYY-MM-DD`, and `ends_on` is on or after
+ * `starts_on`. The backend refuses two that overlap, so an activity
+ * belongs to at most one.
+ */
+export interface AppraisalPeriod {
+  starts_on: string;
+  ends_on: string;
+}
+
+/**
  * A specialty a holder may choose, at its place in the order to offer it.
  *
  * `lead` is true when one of their organisations named it to come first.

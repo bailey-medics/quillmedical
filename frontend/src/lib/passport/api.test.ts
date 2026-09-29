@@ -27,6 +27,7 @@ import {
   createPassport,
   declineSignOff,
   fetchCertificates,
+  fetchAppraisalPeriods,
   fetchCpdYear,
   fetchInbox,
   fetchLogbook,
@@ -43,6 +44,7 @@ import {
   requestSignOff,
   searchAssessors,
   revokeAssessorMembership,
+  saveAppraisalPeriods,
   setPassportSpecialties,
   signOff,
   verifySignOff,
@@ -82,6 +84,7 @@ describe("passport paths", () => {
       "/api/passport/requests/inbox",
       "/api/passport/specialties",
       "/api/passport/{passport_id}",
+      "/api/passport/{passport_id}/appraisal-periods",
       "/api/passport/{passport_id}/assessor-invites",
       "/api/passport/{passport_id}/certificates",
       "/api/passport/{passport_id}/certificates/{name}",
@@ -137,6 +140,30 @@ describe("passport", () => {
       `/passport/${PASSPORT_ID}/specialties`,
       { specialties: ["general_surgery"] },
     );
+  });
+
+  it("fetches the holder's CPD date ranges", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce({
+      periods: [{ starts_on: "2025-10-01", ends_on: "2026-09-30" }],
+    });
+    const periods = await fetchAppraisalPeriods(PASSPORT_ID);
+    expect(api.get).toHaveBeenCalledWith(
+      `/passport/${PASSPORT_ID}/appraisal-periods`,
+    );
+    expect(periods).toEqual([
+      { starts_on: "2025-10-01", ends_on: "2026-09-30" },
+    ]);
+  });
+
+  it("replaces the holder's CPD date ranges as a whole list", async () => {
+    const periods = [{ starts_on: "2025-10-01", ends_on: "2026-09-30" }];
+    vi.mocked(api.put).mockResolvedValueOnce({ periods });
+    const saved = await saveAppraisalPeriods(PASSPORT_ID, periods);
+    expect(api.put).toHaveBeenCalledWith(
+      `/passport/${PASSPORT_ID}/appraisal-periods`,
+      { periods },
+    );
+    expect(saved).toEqual(periods);
   });
 
   it("fetches the caller's own passport", async () => {

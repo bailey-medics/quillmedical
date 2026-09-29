@@ -19,24 +19,28 @@ over those ranges, and fall back to June to June only where none is declared.
 
 ## Phase 1: Store and serve the periods
 
-- [ ] **Add `AppraisalPeriod` and a list of them to `Profile`**, in
-      `backend/app/features/passport/schemas.py`. A period is `from` and
-      `to`, both dates, with `to` on or after `from`. `Profile` gains
+- [x] **Add `AppraisalPeriod` and a list of them to `Profile`**, in
+      `backend/app/features/passport/schemas.py`. A period is `starts_on`
+      and `ends_on`, both dates, with `ends_on` on or after `starts_on`.
+      The plan first said `from` and `to`, but `from` is a Python keyword,
+      and the passport's records use no field aliases (`to_yaml` dumps
+      field names as they are), so the fields are named for what they
+      hold, as `observed_on` and `signed_on` are. `Profile` gains
       `appraisal_periods: list[AppraisalPeriod]`, defaulting to empty, so
       every `profile.yaml` written before this still validates on read, as
-      `specialties` did. The list is kept sorted by `from`. Overlapping
-      periods are refused, because an activity must belong to exactly one
-      period or its points count twice. Gaps between periods are allowed,
-      since a career break is real. Any length is allowed: a short period
-      after moving post is the case the list exists for.
+      `specialties` did. The list is kept sorted by `starts_on`.
+      Overlapping periods are refused, because an activity must belong to
+      exactly one period or its points count twice. Gaps between periods
+      are allowed, since a career break is real. Any length is allowed: a
+      short period after moving post is the case the list exists for.
 
-- [ ] **Add `GET` and `PUT /api/passport/{passport_id}/appraisal-periods`**,
+- [x] **Add `GET` and `PUT /api/passport/{passport_id}/appraisal-periods`**,
       in `backend/app/features/passport/router.py`, following the
       specialties route beside it. `GET` is for the holder (`_require_reader`)
       and returns the list. `PUT` replaces the whole list, needs
       `_require_writer` and CSRF, validates it as above, rewrites
       `profile.yaml`, and commits it to the passport's history with a
-      subject such as `update appraisal periods`. Replacing the whole list
+      subject such as `set 2 appraisal periods`. Replacing the whole list
       in one call keeps the check for overlaps in one place, and the page
       edits the list as a whole anyway. Typed response models go in
       `backend/app/schemas/passport.py`. Both routes are new, so the API
@@ -44,43 +48,25 @@ over those ranges, and fall back to June to June only where none is declared.
       route lists in `backend/tests/test_passport_api_contract.py`,
       `frontend/src/lib/passport/api.ts` and its test.
 
-- [ ] **Backend tests**, in `backend/tests/test_passport_router.py`: a holder
+- [x] **Backend tests**, in `backend/tests/test_passport_router.py`: a holder
       can set and read periods; an overlap is refused with a clear message;
-      `to` before `from` is refused; an old `profile.yaml` with no periods
-      still reads; a read-only holder cannot write; an assessor cannot read
-      another holder's periods; each change is a commit in the passport's
-      history.
+      an end before the start is refused; a read-only holder cannot write;
+      an assessor cannot read another holder's periods; each change is a
+      commit in the passport's history. That an old `profile.yaml` with no
+      periods still reads is tested beside the specialties case, in
+      `backend/tests/test_passport_schemas.py`.
 
-- [ ] **Client functions**, `fetchAppraisalPeriods` and
+- [x] **Client functions**, `fetchAppraisalPeriods` and
       `saveAppraisalPeriods`, in `frontend/src/lib/passport/api.ts`, with an
       `AppraisalPeriod` type in `types.ts`.
 
-## Phase 2: The settings card
-
-- [ ] **Rename the card and slim it down**, in
-      `frontend/src/components/passport/PassportSpecialtyCard.tsx`. The
-      title becomes "Clinician passport". The helper text "Choose one or
-      more" goes, so the field reads as just its label, "Specialities". The
-      read-only message stays, since it tells the holder why nothing can be
-      changed. Update the card and settings page tests that find the card by
-      its heading, and the story title.
-
-- [ ] **Add a "CPD date ranges" button to the card**, linking to
-      `/settings/cpd-date-ranges`. `ActionCard`'s `action` slot replaces its
-      button, so the card composes the specialities field and an
-      `IconTextButton` (or a plain `Button` if no icon fits) in a `Stack`
-      inside that slot, rather than changing `ActionCard`. The button stays
-      enabled when the passport is read-only, because the page lets a
-      read-only holder see their ranges even though it will not let them
-      change them.
-
-## Phase 3: The CPD date ranges page
+## Phase 2: The CPD date ranges page
 
 - [ ] **An `AppraisalPeriodForm` component**, in
       `frontend/src/components/passport/`, composed from `BaseCard`,
       `DateField` and `ButtonPair`: a "From" and a "To" date, with an
       `initial` prop for editing, as the other passport forms have. It
-      refuses `to` before `from` before sending, and shows the server's own
+      refuses an end before the start before sending, and shows the server's own
       message when it refuses an overlap. Stories and tests alongside, as
       every component needs.
 
@@ -105,6 +91,25 @@ over those ranges, and fall back to June to June only where none is declared.
       editing and removing each saving the whole list; an overlap refused by
       the server shown in the form; read-only disabling the buttons; the
       nested navigation link.
+
+## Phase 3: The settings card
+
+- [ ] **Rename the card and slim it down**, in
+      `frontend/src/components/passport/PassportSpecialtyCard.tsx`. The
+      title becomes "Clinician passport". The helper text "Choose one or
+      more" goes, so the field reads as just its label, "Specialities". The
+      read-only message stays, since it tells the holder why nothing can be
+      changed. Update the card and settings page tests that find the card by
+      its heading, and the story title.
+
+- [ ] **Add a "CPD date ranges" button to the card**, linking to
+      `/settings/cpd-date-ranges`. `ActionCard`'s `action` slot replaces its
+      button, so the card composes the specialities field and an
+      `IconTextButton` (or a plain `Button` if no icon fits) in a `Stack`
+      inside that slot, rather than changing `ActionCard`. The button stays
+      enabled when the passport is read-only, because the page lets a
+      read-only holder see their ranges even though it will not let them
+      change them.
 
 ## Phase 4: Total CPD over the periods
 

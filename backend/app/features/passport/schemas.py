@@ -240,6 +240,26 @@ class Manifest(PassportModel):
     created_at: date
 
 
+class AppraisalPeriod(PassportModel):
+    """One appraisal year, as the holder declared it: what CPD is totalled
+    over.
+
+    Shown to the holder as a "CPD date range". Its dates are named for the
+    day they fall on, as every other date in the record is, rather than
+    ``from`` and ``to``: ``from`` is a Python keyword, and an alias would
+    make the file and the model disagree about the field's name.
+    """
+
+    starts_on: date
+    ends_on: date
+
+    @model_validator(mode="after")
+    def _ends_after_it_starts(self) -> AppraisalPeriod:
+        if self.ends_on < self.starts_on:
+            raise ValueError("A date range cannot end before it starts.")
+        return self
+
+
 class Profile(PassportModel):
     """Who the passport belongs to.
 
@@ -258,6 +278,11 @@ class Profile(PassportModel):
     #: because every passport written before specialties existed has no
     #: such key, and ``profile.yaml`` is validated on read.
     specialties: list[SpecialtyRef] = Field(default_factory=list)
+    #: The holder's appraisal years, oldest first, which CPD is totalled
+    #: over. Empty means none declared, and CPD falls back to June to
+    #: June. Optional for the same reason ``specialties`` is: every
+    #: passport written before it has no such key.
+    appraisal_periods: list[AppraisalPeriod] = Field(default_factory=list)
 
 
 class EvidenceSnapshot(PassportModel):

@@ -36,6 +36,7 @@
 
 import { api } from "@lib/api";
 import type {
+  AppraisalPeriod,
   AssessorSearch,
   AssessorInviteAccept,
   AssessorInviteAcceptInput,
@@ -81,6 +82,7 @@ export const PASSPORT_PATHS = [
   "/passport/requests/inbox",
   "/passport/specialties",
   "/passport/{passport_id}",
+  "/passport/{passport_id}/appraisal-periods",
   "/passport/{passport_id}/assessor-invites",
   "/passport/{passport_id}/certificates",
   "/passport/{passport_id}/certificates/{name}",
@@ -147,6 +149,34 @@ export function setPassportSpecialties(
   return api.put<Passport>(`/passport/${segment(passportId)}/specialties`, {
     specialties,
   });
+}
+
+/**
+ * The holder's CPD date ranges, oldest first.
+ */
+export async function fetchAppraisalPeriods(
+  passportId: string,
+): Promise<AppraisalPeriod[]> {
+  const body = await api.get<{ periods: AppraisalPeriod[] }>(
+    `/passport/${segment(passportId)}/appraisal-periods`,
+  );
+  return body.periods;
+}
+
+/**
+ * Replaces the holder's CPD date ranges with `periods`, returning them
+ * as stored, oldest first. The whole list goes in one call so the
+ * backend can refuse an overlap in one place. An empty list clears them.
+ */
+export async function saveAppraisalPeriods(
+  passportId: string,
+  periods: AppraisalPeriod[],
+): Promise<AppraisalPeriod[]> {
+  const body = await api.put<{ periods: AppraisalPeriod[] }>(
+    `/passport/${segment(passportId)}/appraisal-periods`,
+    { periods },
+  );
+  return body.periods;
 }
 
 /**

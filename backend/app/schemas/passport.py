@@ -201,6 +201,39 @@ class PassportCreateIn(_In):
     specialties: list[CompetencyIdField] = Field(default_factory=list)
 
 
+class AppraisalPeriodIn(_In):
+    """One CPD date range, as the holder enters it."""
+
+    starts_on: date
+    ends_on: date
+
+
+class AppraisalPeriodsIn(_In):
+    """Every CPD date range, replacing the ones held.
+
+    The whole list, so a page that edits one range sends them all, and
+    the server checks they do not overlap in one place. Capped because
+    a career has tens of appraisal years, not thousands.
+    """
+
+    periods: list[AppraisalPeriodIn] = Field(
+        default_factory=list, max_length=100
+    )
+
+
+class AppraisalPeriodOut(BaseModel):
+    """One CPD date range."""
+
+    starts_on: date
+    ends_on: date
+
+
+class AppraisalPeriodsOut(BaseModel):
+    """Every CPD date range the holder has declared, oldest first."""
+
+    periods: list[AppraisalPeriodOut] = Field(default_factory=list)
+
+
 class SpecialtiesIn(_In):
     """Changing the holder's specialties. An empty list is Generic."""
 

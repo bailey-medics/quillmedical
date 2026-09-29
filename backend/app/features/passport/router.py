@@ -53,6 +53,7 @@ from fastapi import (
     Response,
     UploadFile,
 )
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -83,6 +84,9 @@ from app.organisations import (
 from app.passport_storage import get_blob_store, get_passport_store
 from app.registrations import REGISTRATION_AUTHORITIES, canonical_authority
 from app.schemas.passport import (
+    AppraisalPeriodOut,
+    AppraisalPeriodsIn,
+    AppraisalPeriodsOut,
     AssessorInviteAcceptIn,
     AssessorInviteAcceptOut,
     AssessorMatchOut,
@@ -155,6 +159,7 @@ from .models import (
     PassportSignOffRequest,
 )
 from .schemas import (
+    AppraisalPeriod,
     Attachment,
     Certificate,
     CompetencyRef,
@@ -737,6 +742,83 @@ def set_specialties(
     db.flush()
 
     return _passport_out(row, _read_profile(store, row.id))
+
+
+def _appraisal_periods_out(profile: Profile) -> AppraisalPeriodsOut:
+    """The holder's CPD date ranges on the wire, oldest first."""
+    return AppraisalPeriodsOut(
+        periods=[
+            AppraisalPeriodOut(
+                starts_on=period.starts_on, ends_on=period.ends_on
+            )
+            for period in profile.appraisal_periods
+        ]
+    )
+
+
+@passport_router.get(
+    "/{passport_id}/appraisal-periods",
+    response_model=AppraisalPeriodsOut,
+    dependencies=[_DEP_PASSPORT],
+)
+def get_appraisal_periods(
+    passport_id: str,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> AppraisalPeriodsOut:
+    """The holder's CPD date ranges, which CPD is totalled over.
+
+    The holder alone, as for the rest of the record. Readable while the
+    passport is read-only, so a holder can still see what they declared.
+    """
+    row = _require_reader(db, passport_id, user)
+
+    return _appraisal_periods_out(_read_profile(store, row.id))
+
+
+@passport_router.put(
+    "/{passport_id}/appraisal-periods",
+    response_model=AppraisalPeriodsOut,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def set_appraisal_periods(
+    passport_id: str,
+    body: AppraisalPeriodsIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> AppraisalPeriodsOut:
+    """Replace the holder's CPD date ranges.
+
+    The whole list at once: a page that edits one range sends them all,
+    and the check that none overlap happens in one place. A range that
+    ends before it starts, or two that share a day, are refused with a
+    400 saying which.
+    """
+    row = _require_writer(db, passport_id, user, store)
+
+    try:
+        periods = [
+            AppraisalPeriod(starts_on=period.starts_on, ends_on=period.ends_on)
+            for period in body.periods
+        ]
+    except ValidationError:
+        raise HTTPException(
+            400, "A date range cannot end before it starts."
+        ) from None
+
+    try:
+        commit = records.set_appraisal_periods(
+            store, row.id, _actor(user), periods
+        )
+    except records.AppraisalPeriodOverlapError as error:
+        raise HTTPException(400, str(error)) from None
+
+    row.head_commit = commit
+    db.flush()
+
+    return _appraisal_periods_out(_read_profile(store, row.id))
 
 
 @passport_router.get(
