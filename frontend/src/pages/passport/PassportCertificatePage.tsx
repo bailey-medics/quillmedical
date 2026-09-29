@@ -34,6 +34,7 @@ import StateMessage from "@/components/message-cards/StateMessage";
 import FormattedDate from "@/components/data/Date";
 import { Document } from "@/components/documents";
 import CertificateForm from "@/components/passport/CertificateForm";
+import CertificateUploader from "@/components/passport/CertificateUploader";
 import PassportRecordCard from "@/components/passport/PassportRecordCard";
 import { IconFileText } from "@/components/icons/appIcons";
 import {
@@ -42,7 +43,12 @@ import {
   fetchCertificates,
   fetchMyPassport,
 } from "@lib/passport";
-import type { Attachment, Certificate, CertificateInput } from "@lib/passport";
+import type {
+  Attachment,
+  AttachmentInput,
+  Certificate,
+  CertificateInput,
+} from "@lib/passport";
 
 /**
  * How `Document` should show an attachment. HEIC, the format iPhones
@@ -65,6 +71,11 @@ export function Component() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  // The file as it will be saved: the one on the record when editing
+  // starts, then whatever the holder uploads in its place, or nothing
+  // once they remove it. Kept apart from the certificate so cancelling
+  // leaves the record as it was.
+  const [file, setFile] = useState<AttachmentInput | null>(null);
 
   const load = useCallback(
     async (id: string) => {
@@ -99,6 +110,11 @@ export function Component() {
     };
   }, [load]);
 
+  function startEditing() {
+    setFile(certificate?.attachments[0] ?? null);
+    setEditing(true);
+  }
+
   async function handleSave(data: CertificateInput) {
     if (!passportId || !name || !certificate) return;
 
@@ -108,6 +124,9 @@ export function Component() {
         ...data,
         // Not on the form, so sent back as they were rather than cleared.
         competencies: certificate.competencies.map((c) => c.id),
+        // Always sent while editing, so the server replaces the file:
+        // an empty list removes it.
+        attachments: file ? [file] : [],
       });
       await load(passportId);
       setEditing(false);
@@ -152,13 +171,20 @@ export function Component() {
 
       {error && <ErrorState message={error} />}
 
-      {certificate && editing && (
-        <CertificateForm
-          initial={certificate}
-          onSubmit={handleSave}
-          onCancel={() => setEditing(false)}
-          isSubmitting={saving}
-        />
+      {certificate && editing && passportId && (
+        <>
+          {/* Above the form, as on the page that records a certificate:
+              dropping a file here replaces the one attached. */}
+          <CertificateUploader passportId={passportId} onUploaded={setFile} />
+          <CertificateForm
+            initial={certificate}
+            attachment={file}
+            onRemoveAttachment={() => setFile(null)}
+            onSubmit={handleSave}
+            onCancel={() => setEditing(false)}
+            isSubmitting={saving}
+          />
+        </>
       )}
 
       {certificate && !editing && (
@@ -169,7 +195,7 @@ export function Component() {
             <IconTextButton
               icon="pencil"
               label="Edit certificate"
-              onClick={() => setEditing(true)}
+              onClick={startEditing}
               disabled={!canWrite}
             />
           </Group>

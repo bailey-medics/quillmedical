@@ -2047,15 +2047,30 @@ def amend_certificate(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
 ) -> RecordResultOut:
     """Correct a certificate.
 
     The folder name does not change even when the title or date does: it
     is the handle the index refers to, and renaming would orphan every
     reference to it.
+
+    **Attachments are replaced only when the request names them.** A
+    body with an ``attachments`` field, empty or not, is the holder
+    changing the file: an empty list takes it away, and a new one
+    replaces it. A body without the field keeps what the certificate
+    has, so an older client correcting a date cannot delete the file by
+    leaving it out. Until 29 September 2026 the file could not be
+    changed at all once recorded.
     """
     row = _require_writer(db, passport_id, user, store)
     existing = _existing_certificate(store, row.id, name)
+
+    attachments = (
+        _attachments(blobs, row.id, body.attachments)
+        if "attachments" in body.model_fields_set
+        else existing.attachments
+    )
 
     certificate = Certificate(
         id=existing.id,
@@ -2065,7 +2080,7 @@ def amend_certificate(
         expires_on=body.expires_on,
         competencies=_competency_refs(body.competencies),
         description=body.description,
-        attachments=existing.attachments,
+        attachments=attachments,
     )
 
     commit = records.amend_certificate(
