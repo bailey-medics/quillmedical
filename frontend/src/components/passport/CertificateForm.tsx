@@ -22,11 +22,11 @@
  *
  * @example
  * ```tsx
- * <CertificateForm onSubmit={fileCertificate} attachment={uploaded} />
+ * <CertificateForm onSubmit={fileCertificate} attachments={[uploaded]} />
  * ```
  */
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Group, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import { DateField, TextAreaField, TextField } from "@components/form";
@@ -46,16 +46,27 @@ export interface CertificateFormProps {
   onSubmit: (data: CertificateInput) => void;
   /** Called when the holder backs out */
   onCancel?: () => void;
-  /** Evidence already uploaded, shown so the holder sees what is attached */
-  attachment?: AttachmentInput | null;
+  /**
+   * Evidence already uploaded, shown so the holder sees what is attached.
+   * A list, because a certificate may carry more than one file, and an
+   * edit that showed only the first would drop the rest on saving.
+   */
+  attachments?: AttachmentInput[];
   /** Disables submission while a request is in flight */
   isSubmitting?: boolean;
   /**
-   * Called when the holder takes the attached file off. Given only while
-   * editing, where the file already on the record can be removed; the
-   * button does not show without it.
+   * Called with a file's hash when the holder takes it off. Given only
+   * while editing, where the files already on the record can be
+   * removed; the buttons do not show without it.
    */
-  onRemoveAttachment?: () => void;
+  onRemoveAttachment?: (hash: string) => void;
+  /**
+   * An upload box to show with the file, at the foot of the form, so
+   * adding a file and removing one sit together. The page still owns
+   * the upload and its result: a failed upload must not cost the holder
+   * what they have typed.
+   */
+  uploader?: ReactNode;
   /**
    * A certificate already recorded, to correct. The form starts filled
    * in from it and says it is editing rather than recording.
@@ -66,9 +77,10 @@ export interface CertificateFormProps {
 export default function CertificateForm({
   onSubmit,
   onCancel,
-  attachment = null,
+  attachments = [],
   isSubmitting = false,
   onRemoveAttachment,
+  uploader,
   initial,
 }: CertificateFormProps) {
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -100,7 +112,7 @@ export default function CertificateForm({
       awarded_on: awardedOn,
       expires_on: expiresOn,
       description: description.trim() || null,
-      attachments: attachment ? [attachment] : [],
+      attachments,
     });
   }
 
@@ -151,8 +163,10 @@ export default function CertificateForm({
           minRows={2}
         />
 
-        {attachment && (
-          <Group justify="space-between" wrap="nowrap">
+        {uploader}
+
+        {attachments.map((attachment) => (
+          <Group key={attachment.hash} justify="space-between" wrap="nowrap">
             <Group gap="xs" wrap="nowrap">
               <Icon icon={<IconFileText />} />
               <BodyTextInline>{attachment.filename}</BodyTextInline>
@@ -161,11 +175,12 @@ export default function CertificateForm({
               <IconTextButton
                 icon="trash"
                 label="Remove file"
-                onClick={onRemoveAttachment}
+                aria-label={`Remove ${attachment.filename}`}
+                onClick={() => onRemoveAttachment(attachment.hash)}
               />
             )}
           </Group>
-        )}
+        ))}
 
         <ButtonPair
           acceptLabel={initial ? "Save changes" : "Record certificate"}

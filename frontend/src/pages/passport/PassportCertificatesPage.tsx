@@ -119,7 +119,7 @@ export function Component() {
           <CertificateForm
             onSubmit={handleSubmit}
             onCancel={() => setRecording(false)}
-            attachment={attachment}
+            attachments={attachment ? [attachment] : []}
             isSubmitting={submitting}
           />
         </>

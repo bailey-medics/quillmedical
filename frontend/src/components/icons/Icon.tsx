@@ -57,6 +57,13 @@ interface IconProps {
   container?: MantineColor;
   /** ThemeIcon variant when container is set (default: "light") */
   containerVariant?: "light" | "filled" | "outline";
+  /**
+   * Keep the wide-screen size at every width, rather than shrinking on
+   * a phone. For an icon sitting inside a control whose own height does
+   * not shrink, where a smaller icon looked like the control changing
+   * as the window narrowed.
+   */
+  fixed?: boolean;
 }
 
 /** Desktop size map (≥640px) */
@@ -100,6 +107,7 @@ export default function Icon({
   className,
   container,
   containerVariant = "light",
+  fixed = false,
 }: IconProps) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(
@@ -109,7 +117,7 @@ export default function Icon({
   );
 
   // Use desktop sizes by default (when isMobile is undefined or false)
-  const sizeMap = isMobile ? mobileSizeMap : desktopSizeMap;
+  const sizeMap = isMobile && !fixed ? mobileSizeMap : desktopSizeMap;
   const pixelSize = sizeMap[size];
 
   // Clone the icon element and pass size, colour and className props

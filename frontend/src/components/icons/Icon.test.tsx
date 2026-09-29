@@ -177,4 +177,14 @@ describe("Icon on a phone", () => {
 
     expect(screen.getByTestId("icon")).toHaveAttribute("width", "20");
   });
+
+  it("keeps a fixed icon at its wide-screen size on a phone", () => {
+    // Inside a control whose height does not shrink, a shrinking icon
+    // looked like the control changing as the window narrowed.
+    phone.value = true;
+    renderWithMantine(<Icon icon={<IconPencil data-testid="icon" />} fixed />);
+    phone.value = false;
+
+    expect(screen.getByTestId("icon")).toHaveAttribute("width", "28");
+  });
 });

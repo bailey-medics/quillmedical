@@ -71,11 +71,11 @@ export function Component() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  // The file as it will be saved: the one on the record when editing
-  // starts, then whatever the holder uploads in its place, or nothing
-  // once they remove it. Kept apart from the certificate so cancelling
-  // leaves the record as it was.
-  const [file, setFile] = useState<AttachmentInput | null>(null);
+  // The files as they will be saved: those on the record when editing
+  // starts, less any the holder removes, plus any they upload. Kept apart
+  // from the certificate so cancelling leaves the record as it was, and a
+  // list so a certificate with several files keeps every one.
+  const [files, setFiles] = useState<AttachmentInput[]>([]);
 
   const load = useCallback(
     async (id: string) => {
@@ -111,7 +111,7 @@ export function Component() {
   }, [load]);
 
   function startEditing() {
-    setFile(certificate?.attachments[0] ?? null);
+    setFiles(certificate?.attachments ?? []);
     setEditing(true);
   }
 
@@ -124,9 +124,9 @@ export function Component() {
         ...data,
         // Not on the form, so sent back as they were rather than cleared.
         competencies: certificate.competencies.map((c) => c.id),
-        // Always sent while editing, so the server replaces the file:
-        // an empty list removes it.
-        attachments: file ? [file] : [],
+        // Always sent while editing, so the server replaces the files
+        // with exactly these: an empty list removes them all.
+        attachments: files,
       });
       await load(passportId);
       setEditing(false);
@@ -172,19 +172,32 @@ export function Component() {
       {error && <ErrorState message={error} />}
 
       {certificate && editing && passportId && (
-        <>
-          {/* Above the form, as on the page that records a certificate:
-              dropping a file here replaces the one attached. */}
-          <CertificateUploader passportId={passportId} onUploaded={setFile} />
-          <CertificateForm
-            initial={certificate}
-            attachment={file}
-            onRemoveAttachment={() => setFile(null)}
-            onSubmit={handleSave}
-            onCancel={() => setEditing(false)}
-            isSubmitting={saving}
-          />
-        </>
+        <CertificateForm
+          initial={certificate}
+          attachments={files}
+          onRemoveAttachment={(hash) =>
+            setFiles((current) => current.filter((f) => f.hash !== hash))
+          }
+          // At the foot of the form, beside the files and their remove
+          // buttons, so changing them is done in one place. A file dropped
+          // here joins the others; the same file twice is kept once.
+          uploader={
+            <CertificateUploader
+              passportId={passportId}
+              adds
+              onUploaded={(stored) =>
+                setFiles((current) =>
+                  current.some((f) => f.hash === stored.hash)
+                    ? current
+                    : [...current, stored],
+                )
+              }
+            />
+          }
+          onSubmit={handleSave}
+          onCancel={() => setEditing(false)}
+          isSubmitting={saving}
+        />
       )}
 
       {certificate && !editing && (

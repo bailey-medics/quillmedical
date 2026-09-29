@@ -9,6 +9,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import CertificateForm from "./CertificateForm";
 import { certificates } from "./fixtures";
+import { StoryNote } from "@/stories/variants";
 import type { AttachmentInput } from "@lib/passport";
 
 const uploaded: AttachmentInput = {
@@ -36,7 +37,7 @@ export const Default: Story = {
 };
 
 export const WithEvidence: Story = {
-  args: { attachment: uploaded },
+  args: { attachments: [uploaded] },
 };
 
 /**
@@ -46,11 +47,12 @@ export const WithEvidence: Story = {
 export const Editing: Story = {
   args: {
     initial: certificates[0],
-    attachment: uploaded,
+    attachments: [uploaded],
     onRemoveAttachment: () => {},
+    uploader: <StoryNote>The upload box sits here, above the file.</StoryNote>,
   },
 };
 
 export const Submitting: Story = {
-  args: { attachment: uploaded, isSubmitting: true },
+  args: { attachments: [uploaded], isSubmitting: true },
 };

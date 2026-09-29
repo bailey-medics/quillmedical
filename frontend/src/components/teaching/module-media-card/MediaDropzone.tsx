@@ -11,10 +11,13 @@
  * a poor way to learn it. Two checks rather than one because a caller
  * controls this one.
  *
- * **Video is the default rather than the only option.** It was written
- * for lectures and generalised when the passport needed a target for
- * scanned certificates; both want the same box with a different
- * allow-list, and a second near-identical component would drift.
+ * **There is no default: every caller names the types it allows.** It
+ * was written for lectures and generalised when the passport needed a
+ * target for scanned certificates. A default of video made the allow-list
+ * something a new caller could forget to set and still get a working
+ * box, accepting whatever the default happened to be. Requiring it makes
+ * that a type error instead. The label is required for the same reason:
+ * a default would describe files the caller has not allowed.
  */
 
 import { Dropzone } from "@mantine/dropzone";
@@ -22,7 +25,6 @@ import { Group } from "@mantine/core";
 import Icon from "@/components/icons/Icon";
 import { IconUpload } from "@/components/icons/appIcons";
 import { BodyTextInline } from "@/components/typography";
-import { ACCEPTED_VIDEO_TYPES } from "./mediaFormat";
 import classes from "./MediaDropzone.module.css";
 
 export interface MediaDropzoneProps {
@@ -35,18 +37,18 @@ export interface MediaDropzoneProps {
   onReject?: () => void;
   /** Disables the control while another upload is in flight. */
   disabled?: boolean;
-  /** MIME types to accept. Defaults to the teaching video types. */
-  accept?: string[];
-  /** What the box says. Defaults to the video wording. */
-  label?: string;
+  /** MIME types to accept. Required: nothing is allowed by default. */
+  accept: string[];
+  /** What the box says, naming the kind of file it takes. */
+  label: string;
 }
 
 export default function MediaDropzone({
   onDrop,
   onReject,
   disabled = false,
-  accept = ACCEPTED_VIDEO_TYPES,
-  label = "Drop a video or click to browse",
+  accept,
+  label,
 }: MediaDropzoneProps) {
   return (
     <Dropzone
@@ -58,11 +60,14 @@ export default function MediaDropzone({
       disabled={disabled}
       multiple={false}
       px="sm"
-      py={4}
+      // No vertical padding: the height is set in the stylesheet to
+      // match an md button, with the label centred within it.
       className={classes.dropzone}
     >
       <Group gap="xs" justify="center" wrap="nowrap">
-        <Icon icon={<IconUpload />} />
+        {/* One size at every width: the box itself does not shrink on a
+            phone, so a shrinking icon read as the box changing. */}
+        <Icon icon={<IconUpload />} fixed className={classes.icon} />
         <BodyTextInline>{label}</BodyTextInline>
       </Group>
     </Dropzone>

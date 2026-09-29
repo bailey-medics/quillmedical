@@ -176,7 +176,7 @@ describe("PassportCertificatePage", () => {
     await user.click(
       await screen.findByRole("button", { name: "Edit certificate" }),
     );
-    await user.click(screen.getByRole("button", { name: "Remove file" }));
+    await user.click(screen.getByRole("button", { name: "Remove als.pdf" }));
     expect(screen.queryByText("als.pdf")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -205,7 +205,33 @@ describe("PassportCertificatePage", () => {
     expect(amendCertificate.mock.calls[0][2].attachments).toEqual([attached]);
   });
 
-  it("offers an upload box to replace the file", async () => {
+  it("keeps every file of a certificate that has several", async () => {
+    const user = userEvent.setup();
+    const one = {
+      hash: "sha256:ab12",
+      filename: "als.pdf",
+      size_bytes: 1024,
+      media_type: "application/pdf",
+    };
+    const two = { ...one, hash: "sha256:cd34", filename: "transcript.pdf" };
+    fetchCertificates.mockResolvedValue(
+      certificates.map((item) =>
+        item.name === opened.name ? { ...item, attachments: [one, two] } : item,
+      ),
+    );
+    amendCertificate.mockResolvedValue({ name: opened.name, commit: "abc" });
+    renderWithRouter(<PassportCertificatePage />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Edit certificate" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => expect(amendCertificate).toHaveBeenCalled());
+    expect(amendCertificate.mock.calls[0][2].attachments).toEqual([one, two]);
+  });
+
+  it("offers an upload box to add a file", async () => {
     const user = userEvent.setup();
     renderWithRouter(<PassportCertificatePage />);
 
