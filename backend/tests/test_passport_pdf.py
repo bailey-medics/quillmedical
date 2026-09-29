@@ -29,14 +29,17 @@ from pathlib import Path
 
 import pytest
 
-from app.features.passport import pdf, records, service
+from app.features.passport import paths, pdf, records, service
 from app.features.passport.commits import Actor
 from app.features.passport.schemas import (
+    AppraisalPeriod,
     Certificate,
     CpdEntry,
     LogbookEntry,
+    Profile,
     Reflection,
 )
+from app.features.passport.serialise import from_yaml
 from app.features.passport.store import LocalPassportStore
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
@@ -504,6 +507,10 @@ class TestLogbookTotals:
             assert word not in text
 
 
+def _profile(store: LocalPassportStore) -> Profile:
+    return from_yaml(Profile, store.read(PASSPORT_ID, paths.PROFILE))
+
+
 class TestCpdTotals:
     def test_points_are_summed_per_year(
         self, store: LocalPassportStore, holder: Actor
@@ -521,7 +528,60 @@ class TestCpdTotals:
                 ),
             )
 
-        story = pdf._cpd(store, PASSPORT_ID, pdf._styles())
+        story = pdf._cpd(store, PASSPORT_ID, pdf._styles(), _profile(store))
         text = " ".join(item.text for item in story if hasattr(item, "text"))
 
         assert "9 points" in text
+
+    def test_each_total_states_its_declared_range(
+        self, store: LocalPassportStore, holder: Actor
+    ) -> None:
+        for activity_on in (date(2025, 9, 4), date(2026, 2, 11)):
+            records.add_cpd_entry(
+                store,
+                PASSPORT_ID,
+                holder,
+                CpdEntry(
+                    activity_on=activity_on,
+                    title="Study day",
+                    activity_type="teaching day",
+                    points=3,
+                ),
+            )
+        records.set_appraisal_periods(
+            store,
+            PASSPORT_ID,
+            holder,
+            [
+                AppraisalPeriod(
+                    starts_on=date(2026, 1, 1), ends_on=date(2026, 12, 31)
+                )
+            ],
+        )
+
+        story = pdf._cpd(store, PASSPORT_ID, pdf._styles(), _profile(store))
+        text = " ".join(item.text for item in story if hasattr(item, "text"))
+
+        assert "1 January 2026 to 31 December 2026 – 1 activity" in text
+        assert "Outside the declared date ranges – 1 activity" in text
+        assert "by convention" not in text
+
+    def test_without_ranges_it_says_june_to_june_is_a_convention(
+        self, store: LocalPassportStore, holder: Actor
+    ) -> None:
+        records.add_cpd_entry(
+            store,
+            PASSPORT_ID,
+            holder,
+            CpdEntry(
+                activity_on=date(2026, 2, 11),
+                title="Study day",
+                activity_type="teaching day",
+            ),
+        )
+
+        story = pdf._cpd(store, PASSPORT_ID, pdf._styles(), _profile(store))
+        text = " ".join(item.text for item in story if hasattr(item, "text"))
+
+        assert "1 June 2025 to 31 May 2026" in text
+        assert "by convention" in text

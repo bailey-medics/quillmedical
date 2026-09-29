@@ -175,11 +175,18 @@ over those ranges, and fall back to June to June only where none is declared.
       "Outside your date ranges", listing those activities, shown only when
       there are any.
 
-- [ ] **The exports total CPD over the periods too**, in
-      `backend/app/features/passport/render.py` and `pdf.py`, which group by
-      calendar year today. Each section states its own range, as the
-      clinician passport plan requires of every CPD total, and activities
-      outside every period form their own final section.
+- [x] **The exports total CPD over the periods too**, in
+      `backend/app/features/passport/render.py` and `pdf.py`, which grouped
+      by calendar year. Each section states its own range, as the
+      clinician passport plan requires of every CPD total ("1 August 2025
+      to 31 July 2026"), newest first, and activities outside every period
+      form their own final section, "Outside the declared date ranges".
+      With no periods declared, the sections are June to June years and
+      the export says that is a convention, matching the CPD page. Both
+      exports group through one function, `group_cpd` in
+      `backend/app/features/passport/cpd_periods.py`, so the Markdown and
+      the PDF cannot total differently. A period with no activities is
+      left out, as an empty year was before.
 
 ## Phase 5: Accessibility journeys
 

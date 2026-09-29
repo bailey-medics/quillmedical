@@ -31,6 +31,7 @@ import pytest
 from app.features.passport import records, render, service
 from app.features.passport.commits import Actor
 from app.features.passport.schemas import (
+    AppraisalPeriod,
     Certificate,
     CompetencyRef,
     CpdEntry,
@@ -291,6 +292,66 @@ class TestCertificatesAndCpd:
         output = render.render(store, PASSPORT_ID)
 
         assert "9 points" in output
+
+    def test_cpd_is_totalled_per_declared_range(
+        self, store: LocalPassportStore, holder: Actor
+    ) -> None:
+        """Each total names its own range, and an activity in none of
+        them is still in the document."""
+        for activity_on, points in (
+            (date(2024, 3, 1), 1),
+            (date(2025, 9, 4), 3),
+            (date(2026, 2, 11), 6),
+        ):
+            records.add_cpd_entry(
+                store,
+                PASSPORT_ID,
+                holder,
+                CpdEntry(
+                    activity_on=activity_on,
+                    title=f"Activity on {activity_on.isoformat()}",
+                    activity_type="course",
+                    points=points,
+                ),
+            )
+        records.set_appraisal_periods(
+            store,
+            PASSPORT_ID,
+            holder,
+            [
+                AppraisalPeriod(
+                    starts_on=date(2025, 8, 1), ends_on=date(2026, 7, 31)
+                )
+            ],
+        )
+
+        output = render.render(store, PASSPORT_ID)
+
+        declared = output.index("### 1 August 2025 to 31 July 2026")
+        outside = output.index("### Outside the declared date ranges")
+        assert declared < outside
+        assert "2 activities, 9 points." in output
+        assert "Activity on 2024-03-01" in output[outside:]
+        assert "by convention" not in output
+
+    def test_without_ranges_cpd_runs_june_to_june_and_says_so(
+        self, store: LocalPassportStore, holder: Actor
+    ) -> None:
+        records.add_cpd_entry(
+            store,
+            PASSPORT_ID,
+            holder,
+            CpdEntry(
+                activity_on=date(2026, 2, 11),
+                title="Regional oncology study day",
+                activity_type="teaching day",
+            ),
+        )
+
+        output = render.render(store, PASSPORT_ID)
+
+        assert "### 1 June 2025 to 31 May 2026" in output
+        assert "by convention" in output
 
 
 class TestReflectionsAreExcludedByDefault:
