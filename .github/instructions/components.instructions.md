@@ -26,6 +26,7 @@ applyTo: "frontend/src/components/**"
   - Use `ButtonPair` / `ButtonPairRed` for action pairs (submit/cancel, confirm/dismiss) – they handle right-alignment on desktop and full-width stacking on mobile automatically.
   - For standalone buttons, wrap in `<Group justify="flex-end">` to right-align.
   - Page-header actions (`AddButton`, or any button or badge beside the title) go in `PageHeader`'s `action` prop, never in a hand-built `<Group justify="space-between">`. `PageHeader` keeps the action on the right, including when a narrow screen wraps it under the title, which a `space-between` group does not. Pass `actionAlign="center"` for something shorter than the title, such as a badge. Actions stay fixed-width at all viewports.
+  - A table's own action (an "Add" or "Grant" button that acts on that table) goes in `DataTableControlled`'s `action` prop, which puts it in the row with search and filter, before them. The row wraps on a narrow screen and stays right-aligned.
 
 ## Colours
 

@@ -6,7 +6,9 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Container } from "@mantine/core";
+import { Box, Container } from "@mantine/core";
+import AddButton from "@/components/button/AddButton";
+import { StoryNote } from "@/stories/variants";
 import DataTableControlled from "./DataTableControlled";
 import type { Column } from "./DataTable";
 
@@ -138,6 +140,57 @@ export const SearchOnly: Story = {
         searchFields={(d) => [d.name, d.trust, d.lead, d.status]}
         filterPredicate={() => () => true}
       />
+    </Container>
+  ),
+};
+
+/**
+ * The table's own action, in the same row as search and filter.
+ */
+export const WithAction: Story = {
+  render: () => (
+    <Container size="lg" py="md">
+      <DataTableControlled
+        data={delegates}
+        columns={columns}
+        getRowKey={(d) => d.id}
+        pageSize={10}
+        filterData={filterData}
+        filterLabel="Filter delegates"
+        filterAriaLabel="Filter delegates"
+        searchFields={(d) => [d.name, d.trust, d.lead, d.status]}
+        filterPredicate={filterPredicate}
+        action={<AddButton label="Add delegate" />}
+      />
+    </Container>
+  ),
+};
+
+/**
+ * Too narrow for the action, search and filter on one line: the row
+ * wraps, and every line stays right-aligned.
+ */
+export const WithActionNarrow: Story = {
+  render: () => (
+    <Container size="lg" py="md">
+      <Box maw={320}>
+        <DataTableControlled
+          data={delegates}
+          columns={columns}
+          getRowKey={(d) => d.id}
+          pageSize={10}
+          filterData={filterData}
+          filterLabel="Filter delegates"
+          filterAriaLabel="Filter delegates"
+          searchFields={(d) => [d.name, d.trust, d.lead, d.status]}
+          filterPredicate={filterPredicate}
+          action={<AddButton label="Grant competency" />}
+        />
+      </Box>
+      <StoryNote>
+        Constrained to 320px, as on a phone. Open the search to see the row
+        wrap.
+      </StoryNote>
     </Container>
   ),
 };

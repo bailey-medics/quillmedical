@@ -17,7 +17,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { Group, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import { BodyText, Heading } from "@/components/typography";
 import { ConfirmModal } from "@/components/confirm-modal";
@@ -175,23 +175,21 @@ export default function MemberPracticePanel({
   return (
     <Stack gap="lg">
       <BaseCard>
-        <Stack gap="md">
-          {practice.may_grant && (
-            <Group justify="flex-end">
+        <DataTableControlled<CompetencyRow>
+          data={qualified}
+          columns={qualifiedColumns}
+          getRowKey={(row) => row.id}
+          emptyMessage="They hold no competencies yet"
+          searchFields={(row) => [row.name]}
+          action={
+            practice.may_grant && (
               <AddButton
                 label="Grant competency"
                 onClick={() => setGranting(null)}
               />
-            </Group>
-          )}
-          <DataTableControlled<CompetencyRow>
-            data={qualified}
-            columns={qualifiedColumns}
-            getRowKey={(row) => row.id}
-            emptyMessage="They hold no competencies yet"
-            searchFields={(row) => [row.name]}
-          />
-        </Stack>
+            )
+          }
+        />
       </BaseCard>
 
       {withoutEffect.length > 0 && (
