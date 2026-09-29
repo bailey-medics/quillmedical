@@ -91,6 +91,7 @@ import EditSitePage from "./pages/admin/sites/EditSitePage";
 import AddStaffToSitePage from "./pages/admin/sites/AddStaffToSitePage";
 import EditOrganisationPage from "./pages/admin/organisations/EditOrganisationPage";
 import OrgFeaturesPage from "./pages/admin/organisations/OrgFeaturesPage";
+import MemberPracticePage from "./pages/admin/members/MemberPracticePage";
 import Messages from "./pages/Messages";
 import MessageThread from "./pages/MessageThread";
 import NewPatientPage from "./pages/NewPatientPage";
@@ -472,6 +473,15 @@ const routes: RouteObject[] = [
             element: <AddPatientToOrgPage />,
           },
           {
+            path: "organisations/:id/members/:userId",
+            element: (
+              <RequireCompetency competency="manage_practising_competencies">
+                <MemberPracticePage backTo="organisations" />
+              </RequireCompetency>
+            ),
+            handle: { safeForReload: true },
+          },
+          {
             // Creating a site is site administration, so it is held to
             // the same operator-only rule as the pages below, even
             // though its address sits under an organisation.
@@ -517,6 +527,15 @@ const routes: RouteObject[] = [
               {
                 path: "sites/:id/add-staff",
                 element: <AddStaffToSitePage />,
+              },
+              {
+                path: "sites/:id/members/:userId",
+                element: (
+                  <RequireCompetency competency="manage_practising_competencies">
+                    <MemberPracticePage backTo="sites" />
+                  </RequireCompetency>
+                ),
+                handle: { safeForReload: true },
               },
             ],
           },

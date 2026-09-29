@@ -636,6 +636,21 @@ describe("SideNavContent Component", () => {
       });
     });
 
+    it("names the member on a member's page, by username", async () => {
+      // One answer serves both addresses: the place, and the member there.
+      const asked = renderAt(
+        "/admin/organisations/5/members/4",
+        place({ username: "a.patel" }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("a.patel")).toBeInTheDocument();
+      });
+      expect(
+        asked.some((url) => url.endsWith("/org-units/5/members/4/practice")),
+      ).toBe(true);
+    });
+
     it("asks about nothing on the create page", async () => {
       // "new" is a page, not an org_unit.
       const asked = renderAt("/admin/sites/new", place());

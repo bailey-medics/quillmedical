@@ -100,6 +100,35 @@ export type PractisingCompetency = {
   authorised_by: number | null;
 };
 
+/** One competency somebody may practise at one org_unit. */
+export type MemberAuthorisation = {
+  /** A competency id from `shared/competency-definitions/`. */
+  competency: string;
+  /** ISO timestamp of when practice here was authorised. */
+  authorised_at: string;
+  /** A readable name for who authorised it, or null once they are deleted. */
+  authorised_by: string | null;
+};
+
+/**
+ * One member of an org_unit: what they hold, and what they may do there.
+ *
+ * `qualified` is their ceiling, true everywhere at once. `authorised` is
+ * the rows at this org_unit only, and may name something outside the
+ * ceiling, which then has no effect.
+ */
+export type MemberPractice = {
+  user_id: number;
+  username: string;
+  full_name: string;
+  org_unit_id: number;
+  org_unit_name: string;
+  qualified: string[];
+  authorised: MemberAuthorisation[];
+  /** Whether the viewer may add to this person's competencies. */
+  may_grant: boolean;
+};
+
 /** An org_unit directly inside another. */
 export type OrgUnitChild = {
   id: number;
@@ -297,6 +326,22 @@ export const orgUnits = {
   withdrawPractising: (id: number, userId: number, competency: string) =>
     api.del<StatusResponse>(
       `/org-units/${id}/practising-competencies/${userId}/${competency}`,
+    ),
+
+  /** One member's competencies, and what they may practise here. */
+  memberPractice: (id: number, userId: number) =>
+    api.get<MemberPractice>(`/org-units/${id}/members/${userId}/practice`),
+
+  /**
+   * Give a member a competency and authorise it here, in one step.
+   *
+   * The competency applies everywhere they work, not only here; the
+   * authorisation is for this org_unit alone.
+   */
+  grantAndAuthorise: (id: number, userId: number, competency: string) =>
+    api.post<StatusResponse>(
+      `/org-units/${id}/members/${userId}/grant-and-authorise`,
+      { competency },
     ),
 
   /**
