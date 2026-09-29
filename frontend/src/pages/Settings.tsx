@@ -12,6 +12,7 @@ import {
   IconBell,
   IconChartBar,
   IconDownload,
+  IconFaceId,
   IconMoon,
   IconUser,
 } from "@/components/icons/appIcons";
@@ -20,11 +21,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
 import ActionCard from "@/components/action-card";
 import PageHeader from "@/components/page-header";
-import BaseCard from "@/components/base-card/BaseCard";
 import IconTextButton from "@/components/button/IconTextButton";
 import SolidSwitch from "@/components/form/SolidSwitch";
 import { InstallAppModal } from "@/components/install-app-modal";
-import { BodyText, Heading } from "@/components/typography";
 import { api } from "@/lib/api";
 import { appFeatureFlags } from "@/lib/featureFlags";
 import { useHasFeature } from "@/lib/features";
@@ -35,7 +34,6 @@ import { useSpecialtyChoices } from "@lib/passport/useSpecialtyChoices";
 import { hasOptedOut, setOptedOut } from "@/lib/page-views/optOut";
 import { useInstallRoute } from "@lib/pwa/useInstallRoute";
 import { layoutTokens } from "@/theme";
-import classes from "./Settings.module.css";
 
 // Convert URL-safe Base64 VAPID key to Uint8Array for subscribe()
 function b64ToUint8Array(base64: string) {
@@ -246,33 +244,30 @@ export default function Settings() {
           }
         />
 
-        <BaseCard className={classes.totpCard}>
-          <Stack gap="md">
-            <Stack gap="md" className={classes.breakLongWords}>
-              <Stack gap={4}>
-                <Heading>Two-factor authentication (TOTP)</Heading>
-                <BodyText>
-                  Use an authenticator app to add a second factor to your
-                  account.
-                </BodyText>
-              </Stack>
+        <ActionCard
+          icon={<IconFaceId />}
+          title="Two-factor authentication (TOTP)"
+          subtitle="Use an authenticator app to add a second factor to your account."
+          action={
+            <Stack gap="md">
               <SolidSwitch
+                aria-label="Two-factor authentication (TOTP)"
                 checked={useTotp}
                 onChange={(e) => setUseTotp(e.currentTarget.checked)}
               />
+              <Group justify="flex-end">
+                <IconTextButton
+                  icon="settings"
+                  label="Configure TOTP"
+                  variant="filled"
+                  fullWidth
+                  disabled={!useTotp}
+                  onClick={() => navigate("/settings/totp")}
+                />
+              </Group>
             </Stack>
-            <Group justify="flex-end">
-              <IconTextButton
-                icon="settings"
-                label="Configure TOTP"
-                variant="filled"
-                fullWidth
-                disabled={!useTotp}
-                onClick={() => navigate("/settings/totp")}
-              />
-            </Group>
-          </Stack>
-        </BaseCard>
+          }
+        />
 
         {/* Last: only passport holders see it, so it follows the cards
             everybody has rather than shifting them around */}
