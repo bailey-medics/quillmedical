@@ -61,11 +61,37 @@ export function samePeriod(a: AppraisalPeriod, b: AppraisalPeriod): boolean {
 // Labels and membership, for totalling CPD over the periods
 // ---------------------------------------------------------------------------
 
-const MONTH_AND_YEAR = new Intl.DateTimeFormat("en-GB", {
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-});
+/**
+ * Three-letter month names, for the short labels a select can fit. Held
+ * here rather than asked of `Intl`, whose British short form for
+ * September is "Sept", which would stand out in a column of three.
+ */
+const SHORT_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+/** "Oct 2025". */
+function shortMonthAndYear(isoDate: string): string {
+  const { year, month } = parts(isoDate);
+  return `${SHORT_MONTHS[month - 1]} ${year}`;
+}
+
+/** "1 Oct 2025". */
+function shortDay(isoDate: string): string {
+  const { day } = parts(isoDate);
+  return `${day} ${shortMonthAndYear(isoDate)}`;
+}
 
 const DAY_MONTH_AND_YEAR = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
@@ -91,7 +117,7 @@ export function periodKey(period: AppraisalPeriod): string {
 
 /**
  * Each period's label, keyed by `periodKey`: the months it starts and
- * ends in, "October 2025 – September 2026", with the spaced en dash.
+ * ends in, shortened, "Oct 2025 – Sep 2026", with the spaced en dash.
  *
  * Where two periods would read the same, such as two short ones in one
  * month, both are given their full dates instead, so no two options in
@@ -99,7 +125,7 @@ export function periodKey(period: AppraisalPeriod): string {
  */
 export function labelPeriods(periods: AppraisalPeriod[]): Map<string, string> {
   const byMonth = (period: AppraisalPeriod) =>
-    `${MONTH_AND_YEAR.format(atUtcMidnight(period.starts_on))} – ${MONTH_AND_YEAR.format(atUtcMidnight(period.ends_on))}`;
+    `${shortMonthAndYear(period.starts_on)} – ${shortMonthAndYear(period.ends_on)}`;
 
   const counts = new Map<string, number>();
   for (const period of periods) {
@@ -113,7 +139,7 @@ export function labelPeriods(periods: AppraisalPeriod[]): Map<string, string> {
     labels.set(
       periodKey(period),
       (counts.get(label) ?? 0) > 1
-        ? `${formatDay(period.starts_on)} – ${formatDay(period.ends_on)}`
+        ? `${shortDay(period.starts_on)} – ${shortDay(period.ends_on)}`
         : label,
     );
   }
