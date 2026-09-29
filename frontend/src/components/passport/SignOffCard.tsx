@@ -38,6 +38,7 @@ import {
 } from "@/components/typography";
 import RegistrationBadge from "./RegistrationBadge";
 import type { SignOff } from "@lib/passport";
+import classes from "./SignOffCard.module.css";
 
 export interface SignOffCardProps {
   /** The sign-off to render */
@@ -80,14 +81,15 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
     comments,
     evidence,
     attachments,
-    content_hash,
     assessor_email,
   } = signOff;
 
   return (
     <BaseCard data-testid="sign-off-card">
       <Stack gap="md">
-        <Group justify="space-between" wrap="nowrap" align="flex-start">
+        {/* Aligned on baselines, so the badge's bottom meets the title's.
+            See the stylesheet. */}
+        <Group justify="space-between" wrap="nowrap" align="baseline">
           <Stack gap={2}>
             <Heading>{competency.name}</Heading>
             {level && <BodyTextInline>{level.name}</BodyTextInline>}
@@ -95,7 +97,11 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
               <BodyText c="dimmed">Asked for: {requested_level.name}</BodyText>
             )}
           </Stack>
-          <SignOffStatusBadge status={status} />
+          <div>
+            <span className={classes.badgeOnBaseline}>
+              <SignOffStatusBadge status={status} />
+            </span>
+          </div>
         </Group>
 
         <Group gap="xl" wrap="wrap" align="flex-start">
@@ -172,12 +178,9 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
           </Stack>
         )}
 
-        {content_hash && (
-          <Stack gap={2}>
-            <BodyTextBold>Content hash</BodyTextBold>
-            <BodyText c="dimmed">{content_hash}</BodyText>
-          </Stack>
-        )}
+        {/* No content hash. It is a string of hex that tells a reader
+            nothing, and checking a record against it is the verify
+            page's job, which shows it where it means something. */}
       </Stack>
     </BaseCard>
   );

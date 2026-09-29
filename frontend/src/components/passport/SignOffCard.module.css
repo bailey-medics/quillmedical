@@ -1,0 +1,23 @@
+/*
+ * The status badge sits with its bottom on the title's baseline: level
+ * with the bottom of a "w", not the bottom of a "g"'s tail.
+ *
+ * An inline block with overflow other than visible takes its bottom edge
+ * as its baseline (CSS 2.1, 10.8.1). Wrapped in one, the badge's bottom
+ * becomes the baseline its row lines up on, and the header row aligns
+ * on baselines, so the badge's bottom meets the title's. It holds at any
+ * font size, where a pixel nudge would not.
+ */
+.badgeOnBaseline {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: baseline;
+}
+
+/* The badge as a block inside the wrapper. As an inline box it sat on a
+   line of text, and the room that line keeps for letter tails ended up
+   under the badge, lifting it 2 to 3px above the title's baseline. As a
+   block there is no line, so the wrapper is exactly the badge's height. */
+.badgeOnBaseline > * {
+  display: flex;
+}

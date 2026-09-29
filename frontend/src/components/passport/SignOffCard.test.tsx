@@ -69,9 +69,12 @@ describe("SignOffCard", () => {
       ).toBeInTheDocument();
     });
 
-    it("renders the content hash, so a printed record can be checked", () => {
+    it("leaves the content hash off the card", () => {
+      // Hex that tells a reader nothing. The printed and exported record
+      // still carries it as the fingerprint, and the verify page shows it
+      // where checking a record against it is the job.
       renderWithMantine(<SignOffCard signOff={signedOff} />);
-      expect(screen.getByText("sha256:7f4e9a21bc0d")).toBeInTheDocument();
+      expect(screen.queryByText("sha256:7f4e9a21bc0d")).not.toBeInTheDocument();
     });
   });
 
