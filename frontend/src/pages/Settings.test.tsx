@@ -157,7 +157,9 @@ describe("the passport specialty card", () => {
     vi.mocked(fetchMyPassport).mockResolvedValue(detail);
     renderWithRouter(<Settings />);
 
-    expect(await screen.findByText("Passport specialty")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Passport specialities" }),
+    ).toBeInTheDocument();
   });
 
   it("offers the specialties in the order the API gives", async () => {
@@ -166,7 +168,7 @@ describe("the passport specialty card", () => {
     vi.mocked(fetchMyPassport).mockResolvedValue(detail);
     renderWithRouter(<Settings />);
 
-    await screen.findByText("Passport specialty");
+    await screen.findByRole("heading", { name: "Passport specialities" });
     await user.click(screen.getByRole("combobox"));
 
     expect(optionLabels()).toEqual([
@@ -182,7 +184,7 @@ describe("the passport specialty card", () => {
     renderWithRouter(<Settings />);
 
     expect(specialtyChoices).toHaveBeenCalledWith(false);
-    await screen.findByText("Passport specialty");
+    await screen.findByRole("heading", { name: "Passport specialities" });
     expect(specialtyChoices).toHaveBeenLastCalledWith(true);
   });
 
@@ -190,7 +192,9 @@ describe("the passport specialty card", () => {
     vi.mocked(fetchMyPassport).mockResolvedValue(detail);
     renderWithRouter(<Settings />);
 
-    const card = await screen.findByText("Passport specialty");
+    const card = await screen.findByRole("heading", {
+      name: "Passport specialities",
+    });
     const lastEverybodyCard = screen.getByText(
       "Two-factor authentication (TOTP)",
     );
@@ -207,7 +211,9 @@ describe("the passport specialty card", () => {
 
     await screen.findByText("Account");
     expect(fetchMyPassport).toHaveBeenCalled();
-    expect(screen.queryByText("Passport specialty")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Passport specialities" }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not ask for a passport the user could never reach", () => {
@@ -215,7 +221,9 @@ describe("the passport specialty card", () => {
     renderWithRouter(<Settings />);
 
     expect(fetchMyPassport).not.toHaveBeenCalled();
-    expect(screen.queryByText("Passport specialty")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Passport specialities" }),
+    ).not.toBeInTheDocument();
   });
 
   it("saves a change to Generic", async () => {
@@ -224,7 +232,7 @@ describe("the passport specialty card", () => {
     vi.mocked(setPassportSpecialties).mockResolvedValue(detail.passport);
     renderWithRouter(<Settings />);
 
-    await screen.findByText("Passport specialty");
+    await screen.findByRole("heading", { name: "Passport specialities" });
     await user.click(screen.getByRole("combobox"));
     await user.click(
       await screen.findByRole("option", {
@@ -241,7 +249,7 @@ describe("the passport specialty card", () => {
     vi.mocked(setPassportSpecialties).mockRejectedValue(new Error("network"));
     renderWithRouter(<Settings />);
 
-    await screen.findByText("Passport specialty");
+    await screen.findByRole("heading", { name: "Passport specialities" });
     await user.click(screen.getByRole("combobox"));
     await user.click(
       await screen.findByRole("option", { name: "General surgery" }),
@@ -257,7 +265,7 @@ describe("the passport specialty card", () => {
     });
     renderWithRouter(<Settings />);
 
-    await screen.findByText("Passport specialty");
+    await screen.findByRole("heading", { name: "Passport specialities" });
     expect(screen.getByRole("combobox")).toBeDisabled();
   });
 });
