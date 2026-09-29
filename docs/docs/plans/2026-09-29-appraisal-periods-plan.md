@@ -62,35 +62,57 @@ over those ranges, and fall back to June to June only where none is declared.
 
 ## Phase 2: The CPD date ranges page
 
-- [ ] **An `AppraisalPeriodForm` component**, in
+- [x] **An `AppraisalPeriodForm` component**, in
       `frontend/src/components/passport/`, composed from `BaseCard`,
       `DateField` and `ButtonPair`: a "From" and a "To" date, with an
       `initial` prop for editing, as the other passport forms have. It
-      refuses an end before the start before sending, and shows the server's own
-      message when it refuses an overlap. Stories and tests alongside, as
-      every component needs.
+      refuses an end before the start before sending, and shows the
+      server's own message, passed in as `error`, when it refuses an
+      overlap. Stories and tests alongside, as every component needs.
 
-- [ ] **The page, `CpdDateRangesPage`**, at `/settings/cpd-date-ranges`,
-      behind `RequireFeature feature="passport"` in `frontend/src/main.tsx`.
-      Laid out as the passport's section pages are: a `PageHeader` ("CPD
-      date ranges"), an `AddButton` ("Add a date range") on the right, then
-      either an empty-state message or a table. The empty state says CPD is
-      totalled June to June until a range is added. The table lists each
-      range newest first, with its from and to dates and its length in
-      months, and an `EllipsisMenu` with "Edit" and "Remove". Adding or
-      editing opens `AppraisalPeriodForm` above the table. Every change
-      saves the whole list with `saveAppraisalPeriods`. Buttons are disabled
-      when the passport is read-only, as on the other passport pages.
+- [x] **An `AppraisalPeriodTable` component** beside it, laid out as
+      `CertificateTable` is: each range newest first, with its from and to
+      dates and its length in months, and an `EllipsisMenu` with "Edit"
+      and "Remove". The plan first put the table inside the page, but
+      pages do not hold reusable UI inline, so it is a component with its
+      own stories and tests. Its actions column appears only when it is
+      given `onEdit` and `onRemove`, which is how a read-only passport gets
+      a table with nothing to press. The arithmetic (`monthsIn`,
+      `describeLength`, `newestFirst`, `samePeriod`) lives in
+      `frontend/src/lib/passport/appraisalPeriods.ts`, so the CPD page can
+      describe a range the same way in Phase 4. A range ending the day
+      before its start day a year later counts as 12 months.
 
-- [ ] **A nested "CPD date ranges" link under Settings** in the side
+- [x] **The page, `CpdDateRangesPage`**, at `/settings/cpd-date-ranges`,
+      in `frontend/src/pages/settings/`. Laid out as the passport's section
+      pages are: a `PageHeader` ("CPD date ranges"), an `AddButton` ("Add
+      a date range") on the right, then either an empty-state message or
+      the table. The empty state says CPD is totalled June to June until a
+      range is added. Adding or editing opens `AppraisalPeriodForm` above
+      the table. Every change saves the whole list with
+      `saveAppraisalPeriods`, and removing asks first in a `ConfirmModal`.
+      The add button is disabled when the passport is read-only, as on the
+      other passport pages. The route sits inside the passport's own gates
+      in `frontend/src/main.tsx`, `RequireFeature feature="passport"` and
+      `RequireCompetency competency="assess_clinician_passport"`, rather
+      than behind the feature alone as first planned, so the page and the
+      passport routes cannot disagree about who may open them.
+
+- [x] **A nested "CPD date ranges" link under Settings** in the side
       navigation while the page is open, as `.claude/rules/pages.md` asks of
-      a new page. Settings has no children today, so this adds the first,
-      in `frontend/src/components/navigation/SideNavContent.tsx`.
+      a new page. Settings had no children, so this adds the first. It is
+      in `frontend/src/components/navigation/featureNavItems.ts`, where the
+      Settings entry now lives, rather than `SideNavContent.tsx`, and is
+      offered only to a passport holder, because anyone else would be led
+      to a 404. The page comes before the settings button that opens it,
+      so each unit is whole when it lands: the button never links to a
+      page that is not there yet, and until the button arrives the page is
+      reachable only by its address.
 
-- [ ] **Page tests**: the empty state; listing ranges newest first; adding,
+- [x] **Page tests**: the empty state; listing ranges newest first; adding,
       editing and removing each saving the whole list; an overlap refused by
       the server shown in the form; read-only disabling the buttons; the
-      nested navigation link.
+      nested navigation link, in `SideNavContent.test.tsx`.
 
 ## Phase 3: The settings card
 

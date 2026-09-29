@@ -284,6 +284,14 @@ const routes: RouteObject[] = [
             lazy: () => import("./pages/passport/PassportReflectionPage"),
             handle: { safeForReload: true },
           },
+          // Under Settings in the address and the navigation, but a
+          // passport page in what it needs, so it sits inside the
+          // passport's gates.
+          {
+            path: "/settings/cpd-date-ranges",
+            lazy: () => import("./pages/settings/CpdDateRangesPage"),
+            handle: { safeForReload: true },
+          },
           {
             path: "/passport/certificates",
             lazy: () => import("./pages/passport/PassportCertificatesPage"),

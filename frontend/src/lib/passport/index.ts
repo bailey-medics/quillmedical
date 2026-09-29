@@ -99,6 +99,12 @@ export type {
   AppraisalPeriod,
 } from "./types";
 
+export {
+  describeLength,
+  monthsIn,
+  newestFirst,
+  samePeriod,
+} from "./appraisalPeriods";
 export { PASSPORT_SPECIALTIES, getPassportSpecialty } from "./specialties";
 export type { PassportSpecialtyDefinition } from "./specialties";
 export { levelsFor } from "./levels";

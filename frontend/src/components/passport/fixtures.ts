@@ -10,6 +10,7 @@
  */
 
 import type {
+  AppraisalPeriod as PassportAppraisalPeriod,
   Certificate,
   CompetencyState,
   CpdEntry,
@@ -256,6 +257,15 @@ export const emptyLogbook: Logbook = {
  * A declared appraisal period: August to July, the ordinary case for
  * somebody whose appraisal falls in the summer.
  */
+/**
+ * The holder's declared CPD date ranges: a full appraisal year, then a
+ * short one after moving post.
+ */
+export const appraisalPeriods: PassportAppraisalPeriod[] = [
+  { starts_on: "2025-08-01", ends_on: "2026-07-31" },
+  { starts_on: "2026-08-01", ends_on: "2026-11-30" },
+];
+
 export const appraisalPeriod = { from: "2025-08-01", to: "2026-07-31" };
 
 /**

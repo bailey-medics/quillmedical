@@ -71,6 +71,15 @@ function passportPageAt(pathname: string): NavItem | undefined {
 }
 
 /**
+ * Settings pages shown as a child of Settings while open. Only those
+ * with no link of their own on the settings page's cards need it, and
+ * today that is the passport's CPD date ranges.
+ */
+const PASSPORT_SETTINGS_PAGES: readonly NavItem[] = [
+  { label: "CPD date ranges", href: "/settings/cpd-date-ranges" },
+];
+
+/**
  * The feature entries this user may see, in the order they appear.
  *
  * Every hook is called unconditionally and the results combined
@@ -153,10 +162,21 @@ export function useFeatureNavItems(): NavItem[] {
     });
   }
 
+  // As under Passport: the open page only, attached by route. Offered
+  // only to a holder, because the page sits inside the passport's gates.
+  const openSettingsPage =
+    hasPassport && !assessesOnly
+      ? PASSPORT_SETTINGS_PAGES.find(
+          (item) =>
+            pathname === item.href || pathname.startsWith(`${item.href}/`),
+        )
+      : undefined;
+
   items.push({
     label: "Settings",
     href: "/settings",
     icon: "settings",
+    children: openSettingsPage ? [openSettingsPage] : undefined,
   });
 
   if (hasAdminAccess) {

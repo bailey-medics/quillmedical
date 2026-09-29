@@ -818,6 +818,43 @@ describe("SideNavContent Component", () => {
       }
     });
 
+    it("hangs CPD date ranges under Settings while it is open", async () => {
+      renderWithAuth(<SideNavContent />, "passport_holder", {
+        initialRoute: "/settings/cpd-date-ranges",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Settings")).toBeInTheDocument();
+      });
+      const child = screen.getByText("CPD date ranges").closest("a");
+      expect(child).toHaveAttribute("href", "/settings/cpd-date-ranges");
+      expect(child).toHaveAttribute("data-active", "true");
+    });
+
+    it("hangs nothing under Settings on the settings page itself", async () => {
+      renderWithAuth(<SideNavContent />, "passport_holder", {
+        initialRoute: "/settings",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Settings")).toBeInTheDocument();
+      });
+      expect(screen.queryByText("CPD date ranges")).not.toBeInTheDocument();
+    });
+
+    it("offers CPD date ranges to nobody without a passport", async () => {
+      // The page sits inside the passport's gates, so the link would
+      // lead to a 404.
+      renderWithAuth(<SideNavContent />, "passport_assessor_only", {
+        initialRoute: "/settings/cpd-date-ranges",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Settings")).toBeInTheDocument();
+      });
+      expect(screen.queryByText("CPD date ranges")).not.toBeInTheDocument();
+    });
+
     it("drops Inbox again once the holder is on their passport", async () => {
       // The passport is a destination, not a heading, so landing on it
       // should not reveal a page the person did not ask for.
