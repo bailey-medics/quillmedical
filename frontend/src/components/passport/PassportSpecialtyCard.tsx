@@ -1,12 +1,16 @@
 /**
  * PassportSpecialtyCard Component
  *
- * The settings card for changing a passport holder's specialties.
+ * The settings card for a passport holder, titled "Clinician passport":
+ * their specialties, and the way to their CPD date ranges.
  *
- * A composition of `ActionCard` and `SpecialtyField`: the card is titled,
- * and the field changes the specialty, its helper text saying what that
- * does. Only rendered for somebody who has a passport; the settings page
- * decides that.
+ * A composition of `ActionCard`, `SpecialtyField` and `ActionCardButton`.
+ * `ActionCard`'s `action` slot replaces its button, so the field and the
+ * button share that slot in a `Stack`. Only rendered for somebody who has
+ * a passport; the settings page decides that.
+ *
+ * **The button stays enabled on a read-only passport**, because the page
+ * it opens still shows the ranges, and says why they cannot be changed.
  *
  * **Changing it never leaves the question unanswered.** Clearing every
  * choice in the field is ignored rather than saved, because "no answer"
@@ -24,7 +28,9 @@
  * ```
  */
 
+import { Stack } from "@mantine/core";
 import ActionCard from "@/components/action-card";
+import ActionCardButton from "@/components/button/ActionCardButton";
 import { IconFileText } from "@/components/icons/appIcons";
 import type { SpecialtyOption } from "@lib/passport/specialties";
 import SpecialtyField from "./SpecialtyField";
@@ -52,23 +58,31 @@ export default function PassportSpecialtyCard({
   return (
     <ActionCard
       icon={<IconFileText />}
-      title="Passport specialities"
+      title="Clinician passport"
       action={
-        <SpecialtyField
-          options={options}
-          label="Specialities"
-          description={
-            disabled
-              ? "Your passport is read-only at the moment, so this cannot be changed."
-              : "Choose one or more"
-          }
-          value={value}
-          onChange={(next) => {
-            if (next !== null) onChange(next);
-          }}
-          error={error}
-          disabled={disabled}
-        />
+        <Stack gap="md">
+          <SpecialtyField
+            options={options}
+            label="Specialities"
+            // Only while it cannot be changed, to say why. Otherwise the
+            // label says enough, and the card stays slim.
+            description={
+              disabled
+                ? "Your passport is read-only at the moment, so this cannot be changed."
+                : undefined
+            }
+            value={value}
+            onChange={(next) => {
+              if (next !== null) onChange(next);
+            }}
+            error={error}
+            disabled={disabled}
+          />
+          <ActionCardButton
+            label="CPD date ranges"
+            url="/settings/cpd-date-ranges"
+          />
+        </Stack>
       }
     />
   );
