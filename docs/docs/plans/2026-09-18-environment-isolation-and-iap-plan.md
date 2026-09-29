@@ -2037,6 +2037,10 @@ GitHub starting a scheduled run late, which it does at busy times.
 
 ## Batch 10a — Claude and Mark: make `quill-medical-app` the home of everything
 
+**Done on 2026-09-29.** The state and the DNS zone live in
+`quill-medical-app`, and both old projects are deleted, recoverable until
+about 2026-10-29. What follows is written as it stood before the move.
+
 `quill-medical-production` and `quill-medical-staging` run nothing: no
 Cloud Run service, database or load balancer in either. But production still
 holds two things the live site depends on, and deleting it today would take
@@ -2158,9 +2162,16 @@ missing MX or DKIM record fails quietly, as mail that never arrives.
 - [x] **(Mark)** Change the nameservers for `quill-medical.com` at
       GoDaddy to the new set. Done on 2026-09-24; the `.com` registry
       listed `ns-cloud-e1…e4` within minutes.
-- [ ] Leave the old zone serving for at least 48 hours, until every
+- [x] Leave the old zone serving for at least 48 hours, until every
       resolver has moved. Check the site, a sent and a received email, and
       a Resend message before it goes.
+
+      Checked on 2026-09-29. The `.com` registry and Google, Cloudflare
+      and Quad9 resolvers all return the `e` set. The apex and `app`
+      resolve to the load balancer and answer `200`, and the Proton MX,
+      SPF, DMARC and three DKIM records resolve publicly, as do Resend's
+      DKIM key and the `send` MX and SPF. Mark sent a Proton email out
+      and received one back, and a Resend email from the app arrived.
 
 ### Phase 3: Forward the defensive domains
 
@@ -2300,10 +2311,20 @@ un-deferred on 2026-09-24. Still true on that date: `quill-medical.net`,
       main checkout is dead weight. Rename it rather than delete it, as a
       last copy, once a plan from that checkout reads "No changes".
 
-- [ ] **(Mark)** Delete both projects, once Phase 2's 48 hours have passed.
+- [x] **(Mark)** Delete both projects, once Phase 2's 48 hours have passed.
       Their Workload Identity pools, the dead staging zone and the old state
       bucket go with them. Google keeps a deleted project recoverable for 30
       days, which is the safety net.
+
+      Deleted by Claude at Mark's word on 2026-09-29, after Phase 2's
+      checks. Before the delete, neither project ran a Cloud Run service or
+      Cloud SQL instance. Production held only the old `quill-medical-zone`
+      and `quill-medical-terraform-state`, and staging only its dead zone.
+      Nothing in the repository outside comments named either project, and
+      the app project's IAM policy did not mention them. Both now read
+      `DELETE_REQUESTED`, and the site still answers `200` through the `e`
+      nameservers. `gcloud projects undelete <id>` reverses it until
+      about 2026-10-29.
 
 ## Batch 11 — waiting: a second environment
 
