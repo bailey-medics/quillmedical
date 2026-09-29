@@ -31,7 +31,7 @@ const groupedData = [
 ];
 
 const staffData = [
-  { value: "1", label: "Dr Corbett" },
+  { value: "1", label: "Dr Fenwick" },
   { value: "2", label: "Nurse Adams" },
   { value: "3", label: "Dr Patel" },
   { value: "4", label: "Dr Okonkwo" },
@@ -119,7 +119,7 @@ export const Disabled: Story = {
   args: {
     label: "Participants",
     data: [
-      { value: "1", label: "Dr Corbett" },
+      { value: "1", label: "Dr Fenwick" },
       { value: "2", label: "Nurse Adams" },
       { value: "3", label: "Dr Patel" },
     ],
@@ -150,7 +150,7 @@ export const DarkMode: Story = {
         <MultiSelectField
           label="Participants - disabled"
           data={[
-            { value: "1", label: "Dr Corbett" },
+            { value: "1", label: "Dr Fenwick" },
             { value: "2", label: "Nurse Adams" },
             { value: "3", label: "Dr Patel" },
           ]}

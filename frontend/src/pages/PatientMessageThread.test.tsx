@@ -88,7 +88,7 @@ const mockConversation: ConversationDetailResponse = {
       sender_id: 1,
       sender_username: "mark.bailey",
       sender_display_name: "Mark Bailey",
-      body: "I'd like to book in for Dr Corbett",
+      body: "I'd like to book in for Dr Fenwick",
       amends_id: null,
       is_amendment: false,
       created_at: "2025-01-01T10:00:00Z",
@@ -97,8 +97,8 @@ const mockConversation: ConversationDetailResponse = {
       id: 2,
       fhir_communication_id: "fhir-2",
       sender_id: 2,
-      sender_username: "dr.corbett",
-      sender_display_name: "Dr Corbett",
+      sender_username: "dr.fenwick",
+      sender_display_name: "Dr Fenwick",
       body: "Here is your personalised dietary guide",
       amends_id: null,
       is_amendment: false,
@@ -132,12 +132,12 @@ describe("PatientMessageThread", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/I'd like to book in for Dr Corbett/),
+        screen.getByText(/I'd like to book in for Dr Fenwick/),
       ).toBeInTheDocument();
     });
   });
 
-  it("renders Dr Corbett messages", async () => {
+  it("renders Dr Fenwick messages", async () => {
     renderWithRouter(<PatientMessageThread />, {
       routePath: "/patients/:id/messages/:conversationId",
       initialRoute: "/patients/test-patient/messages/1",

@@ -22,7 +22,7 @@ export const fakeLetters: ClinicalLetter[] = [
     id: "letter-1",
     title: "Gastroenterology outpatient clinic letter",
     date: "2026-03-19",
-    author: "Dr Gareth Corbett",
+    author: "Dr Rowan Fenwick",
     authorRole: "Consultant Gastroenterologist",
     status: "final",
     summary:
@@ -53,7 +53,7 @@ Plan:
 4. If symptoms fail to improve, will arrange upper GI endoscopy (OGD) for further evaluation.
 
 Kind regards,
-Dr Gareth Corbett
+Dr Rowan Fenwick
 Consultant Gastroenterologist
 Riverside Health Centre`,
   },
@@ -65,8 +65,8 @@ Riverside Health Centre`,
     authorRole: "General Practitioner",
     status: "final",
     summary:
-      "Dear Dr Corbett, I would be grateful if you could see this patient in your gastroenterology clinic at your earliest convenience. Reason for referral: Four-month history of intermittent epigastric pain, worse after meals, associated with bloating and early satiety. No weight loss, dysphagia, or gastrointestinal bleeding\u2026",
-    body: `Dear Dr Corbett,
+      "Dear Dr Fenwick, I would be grateful if you could see this patient in your gastroenterology clinic at your earliest convenience. Reason for referral: Four-month history of intermittent epigastric pain, worse after meals, associated with bloating and early satiety. No weight loss, dysphagia, or gastrointestinal bleeding\u2026",
+    body: `Dear Dr Fenwick,
 
 I would be grateful if you could see this patient in your gastroenterology clinic at your earliest convenience.
 

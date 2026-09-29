@@ -30,8 +30,8 @@ export const Default: Story = {
 };
 
 const threeParticipants = [
-  { givenName: "Dr", familyName: "Corbett", gradientIndex: 1 },
-  { givenName: "Gemma", familyName: "Lane", gradientIndex: 4 },
+  { givenName: "Dr", familyName: "Fenwick", gradientIndex: 1 },
+  { givenName: "Imogen", familyName: "Lane", gradientIndex: 4 },
   { givenName: "Dr", familyName: "Patel", gradientIndex: 8 },
 ];
 
@@ -57,8 +57,8 @@ export const Sizes: Story = {
 export const Loading: Story = {
   args: {
     participants: [
-      { givenName: "Dr", familyName: "Corbett", gradientIndex: 1 },
-      { givenName: "Gemma", familyName: "Lane", gradientIndex: 4 },
+      { givenName: "Dr", familyName: "Fenwick", gradientIndex: 1 },
+      { givenName: "Imogen", familyName: "Lane", gradientIndex: 4 },
       { givenName: "Dr", familyName: "Patel", gradientIndex: 8 },
     ],
     isLoading: true,

@@ -24,7 +24,7 @@ const mockAppointments: Appointment[] = [
     date: "2026-04-09",
     time: "10:00",
     location: "Riverside Health Centre, Room 4",
-    clinician: "Dr Gareth Corbett",
+    clinician: "Dr Rowan Fenwick",
     clinicianRole: "Consultant Gastroenterologist",
     status: "upcoming",
     notes: "Review dietary modifications.",
@@ -128,7 +128,7 @@ describe("AppointmentsList", () => {
       );
 
       expect(
-        screen.getByText("Dr Gareth Corbett — Consultant Gastroenterologist"),
+        screen.getByText("Dr Rowan Fenwick — Consultant Gastroenterologist"),
       ).toBeInTheDocument();
     });
 

@@ -56,7 +56,7 @@ export const PatientMessageThread: Story = {
       { label: patient.name, href: patientHref },
       { label: "Messages", href: `${patientHref}/messages` },
       {
-        label: "Dr Corbett, Gemma",
+        label: "Dr Fenwick, Imogen",
         href: `${patientHref}/messages/gastro-clinic`,
       },
     ],
@@ -75,7 +75,7 @@ export const PatientMessageThreadWithSearch: Story = {
       { label: patient.name, href: patientHref },
       { label: "Messages", href: `${patientHref}/messages` },
       {
-        label: "Dr Corbett, Gemma",
+        label: "Dr Fenwick, Imogen",
         href: `${patientHref}/messages/gastro-clinic`,
       },
     ],

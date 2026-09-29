@@ -12,7 +12,7 @@ export const fakeNotes: ClinicalNote[] = [
     id: "note-1",
     title: "Gastro clinic consultation",
     date: "2026-03-19",
-    author: "Dr Gareth Corbett",
+    author: "Dr Rowan Fenwick",
     authorRole: "Consultant Gastroenterologist",
     category: "consultation",
     content:
@@ -22,7 +22,7 @@ export const fakeNotes: ClinicalNote[] = [
     id: "note-2",
     title: "Telephone consultation — dietary guidance follow-up",
     date: "2026-03-20",
-    author: "Dr Gareth Corbett",
+    author: "Dr Rowan Fenwick",
     authorRole: "Consultant Gastroenterologist",
     category: "telephone",
     content:
@@ -36,7 +36,7 @@ export const fakeNotes: ClinicalNote[] = [
     authorRole: "General Practitioner",
     category: "consultation",
     content:
-      "Patient presents with 4-month history of recurrent epigastric pain. Worse post-prandially. Tried over-the-counter antacids with partial relief. No red flag symptoms elicited. Examination: abdomen soft, non-tender, no masses. Decision: refer to gastroenterology for specialist opinion. Referral letter sent to Dr Corbett's clinic at Riverside Health Centre.",
+      "Patient presents with 4-month history of recurrent epigastric pain. Worse post-prandially. Tried over-the-counter antacids with partial relief. No red flag symptoms elicited. Examination: abdomen soft, non-tender, no masses. Decision: refer to gastroenterology for specialist opinion. Referral letter sent to Dr Fenwick's clinic at Riverside Health Centre.",
   },
   {
     id: "note-4",

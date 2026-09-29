@@ -269,7 +269,7 @@ export default function MessagingTriagePayment({
               role === "clinician"
                 ? "Type /12 to offer 12 minutes, or message normally"
                 : role === "admin"
-                  ? "Type a reply or @Gareth.Corben to tag"
+                  ? "Type a reply or @Rowan.Corben to tag"
                   : "Ask your question"
             }
             value={input}

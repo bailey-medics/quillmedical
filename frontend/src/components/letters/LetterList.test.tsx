@@ -20,7 +20,7 @@ const mockLetters: LetterSummary[] = [
     id: "1",
     title: "Gastroenterology outpatient clinic letter",
     date: "2026-03-19",
-    author: "Dr Gareth Corbett",
+    author: "Dr Rowan Fenwick",
     authorRole: "Consultant Gastroenterologist",
     status: "final",
     summary: "Patient seen in clinic and referred for physiotherapy.",
@@ -29,7 +29,7 @@ const mockLetters: LetterSummary[] = [
     id: "2",
     title: "Follow-up endoscopy report",
     date: "2026-03-12",
-    author: "Dr Gareth Corbett",
+    author: "Dr Rowan Fenwick",
     authorRole: "Consultant Gastroenterologist",
     status: "draft",
     summary: "Upper GI endoscopy performed under conscious sedation.",
@@ -83,7 +83,7 @@ describe("Letters", () => {
       );
 
       expect(
-        screen.getByText("Dr Gareth Corbett — Consultant Gastroenterologist"),
+        screen.getByText("Dr Rowan Fenwick — Consultant Gastroenterologist"),
       ).toBeInTheDocument();
     });
 

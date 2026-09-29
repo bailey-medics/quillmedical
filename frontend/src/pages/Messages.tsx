@@ -79,7 +79,7 @@ export type Conversation = {
 };
 
 export type Participant = {
-  /** Name shown in the conversation header (e.g. "Dr Corbett") */
+  /** Name shown in the conversation header (e.g. "Dr Fenwick") */
   displayName: string;
   /** Given (first) name for initials and tooltip */
   givenName: string;

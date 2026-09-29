@@ -21,7 +21,7 @@ export const Default: Story = {
 export const MultiLine: Story = {
   args: {
     children:
-      "Hi Dr Corbett,\n\nI wanted to follow up on our last appointment.\n\nKind regards,\nSarah",
+      "Hi Dr Fenwick,\n\nI wanted to follow up on our last appointment.\n\nKind regards,\nSarah",
   },
 };
 

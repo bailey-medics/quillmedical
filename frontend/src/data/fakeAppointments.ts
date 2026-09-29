@@ -14,7 +14,7 @@ export const fakeAppointments: Appointment[] = [
     date: "2026-04-09",
     time: "10:00",
     location: "Riverside Health Centre, Room 4",
-    clinician: "Dr Gareth Corbett",
+    clinician: "Dr Rowan Fenwick",
     clinicianRole: "Consultant Gastroenterologist",
     status: "upcoming",
     notes:
@@ -26,7 +26,7 @@ export const fakeAppointments: Appointment[] = [
     date: "2026-03-19",
     time: "10:30",
     location: "Riverside Health Centre, Room 4",
-    clinician: "Dr Gareth Corbett",
+    clinician: "Dr Rowan Fenwick",
     clinicianRole: "Consultant Gastroenterologist",
     status: "completed",
     notes:

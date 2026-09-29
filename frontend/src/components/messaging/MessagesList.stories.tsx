@@ -32,10 +32,10 @@ const mockThreads: MessageThread[] = [
   },
   {
     id: "2",
-    displayName: "Dr Corbett, Gemma Corbett",
+    displayName: "Dr Fenwick, Imogen Fenwick",
     profiles: [
-      { givenName: "Gareth", familyName: "Corbett", gradientIndex: 5 },
-      { givenName: "Gemma", familyName: "Corbett", gradientIndex: 12 },
+      { givenName: "Rowan", familyName: "Fenwick", gradientIndex: 5 },
+      { givenName: "Imogen", familyName: "Fenwick", gradientIndex: 12 },
     ],
     lastMessage:
       "I've reviewed your case notes and endoscopy findings. Everything looks good.",
@@ -63,10 +63,10 @@ const mockThreads: MessageThread[] = [
   },
   {
     id: "5",
-    displayName: "Pharmacy, Dr Corbett",
+    displayName: "Pharmacy, Dr Fenwick",
     profiles: [
       { givenName: "Pharmacy" },
-      { givenName: "Gareth", familyName: "Corbett", gradientIndex: 5 },
+      { givenName: "Rowan", familyName: "Fenwick", gradientIndex: 5 },
     ],
     lastMessage:
       "Your repeat prescription has been sent to your nominated pharmacy.",
