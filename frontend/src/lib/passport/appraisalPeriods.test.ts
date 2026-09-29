@@ -86,7 +86,7 @@ describe("labelPeriods", () => {
   it("names each period by the months it starts and ends in", () => {
     const period = { starts_on: "2025-10-01", ends_on: "2026-09-30" };
     expect(labelPeriods([period]).get(periodKey(period))).toBe(
-      "October 2025 \u2013 September 2026",
+      "Oct 2025 \u2013 Sept 2026",
     );
   });
 
@@ -96,13 +96,11 @@ describe("labelPeriods", () => {
     const other = { starts_on: "2025-08-01", ends_on: "2026-07-31" };
     const labels = labelPeriods([first, second, other]);
 
-    expect(labels.get(periodKey(first))).toBe(
-      "1 August 2026 \u2013 10 August 2026",
-    );
+    expect(labels.get(periodKey(first))).toBe("1 Aug 2026 \u2013 10 Aug 2026");
     expect(labels.get(periodKey(second))).toBe(
-      "11 August 2026 \u2013 31 August 2026",
+      "11 Aug 2026 \u2013 31 Aug 2026",
     );
-    expect(labels.get(periodKey(other))).toBe("August 2025 \u2013 July 2026");
+    expect(labels.get(periodKey(other))).toBe("Aug 2025 \u2013 Jul 2026");
   });
 });
 

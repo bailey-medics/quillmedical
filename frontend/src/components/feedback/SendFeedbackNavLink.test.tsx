@@ -56,6 +56,38 @@ describe("SendFeedbackNavLink", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("closes the drawer when the modal's link to previous feedback is followed", async () => {
+    // On a narrow screen `onNavigate` closes the navigation drawer, which
+    // otherwise stayed open over the feedback page.
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    renderWithRouter(<SendFeedbackNavLink onNavigate={onNavigate} />);
+
+    await user.click(screen.getByText("Feedback"));
+    await user.click(
+      await screen.findByRole("link", { name: "Your previous feedback" }),
+    );
+
+    expect(onNavigate).toHaveBeenCalledOnce();
+    expect(
+      screen.queryByText("Do not include patient details."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not close the drawer just to open the modal", async () => {
+    // Closing it unmounts the drawer's contents, modal included.
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    renderWithRouter(<SendFeedbackNavLink onNavigate={onNavigate} />);
+
+    await user.click(screen.getByText("Feedback"));
+
+    expect(
+      await screen.findByText("Do not include patient details."),
+    ).toBeInTheDocument();
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
   it("hangs Your feedback beneath it on the sender's feedback page", () => {
     renderWithRouter(<SendFeedbackNavLink />, { initialRoute: "/feedback" });
 
