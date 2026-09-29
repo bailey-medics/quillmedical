@@ -196,6 +196,27 @@ describe("who is there", () => {
   });
 });
 
+describe("one member at a place", () => {
+  it("reads what they hold and may practise there", async () => {
+    mocked.get.mockResolvedValue({ user_id: 4 });
+
+    await orgUnits.memberPractice(3, 4);
+
+    expect(mocked.get).toHaveBeenCalledWith("/org-units/3/members/4/practice");
+  });
+
+  it("grants and authorises a competency in one call", async () => {
+    mocked.post.mockResolvedValue({ status: "granted_and_authorised" });
+
+    await orgUnits.grantAndAuthorise(3, 4, "certify_death");
+
+    expect(mocked.post).toHaveBeenCalledWith(
+      "/org-units/3/members/4/grant-and-authorise",
+      { competency: "certify_death" },
+    );
+  });
+});
+
 describe("what a place carries", () => {
   it("lists the features", async () => {
     mocked.get.mockResolvedValue({ features: [] });

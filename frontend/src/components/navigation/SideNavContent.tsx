@@ -120,6 +120,12 @@ export default function SideNavContent({
   const siteSubPage =
     location.pathname.match(/^\/admin\/sites\/[^/]+\/([^/]+)/)?.[1] ?? null;
 
+  // Detect one member's page at an organisation or a site
+  const memberId =
+    location.pathname.match(
+      /^\/admin\/(?:organisations|sites)\/[^/]+\/members\/(\d+)/,
+    )?.[1] ?? null;
+
   // Extract teaching sub-section from URL (centres, modules, or all-delegates)
   const teachingSectionMatch = location.pathname.match(
     /^\/admin\/teaching\/(centres|modules|all-delegates)/,
@@ -223,17 +229,33 @@ export default function SideNavContent({
         if (cancelled) return;
 
         const subPage = orgId ? orgSubPage : siteSubPage;
-        const subPageLabel = subPage ? subPageLabels[subPage] : undefined;
         const base = orgId
           ? `/admin/organisations/${placeId}`
           : `/admin/sites/${placeId}`;
 
+        // A member's page is named after the member, by username, as
+        // the Users entry names somebody. A member who cannot be read
+        // leaves the place's own link standing.
+        let subPageItem: NavItem | undefined;
+        if (subPage === "members" && memberId) {
+          const member = await orgUnits
+            .memberPractice(Number(placeId), Number(memberId))
+            .catch(() => null);
+          if (cancelled) return;
+          subPageItem = member
+            ? { label: member.username, href: `${base}/members/${memberId}` }
+            : undefined;
+        } else if (subPage && subPageLabels[subPage]) {
+          subPageItem = {
+            label: subPageLabels[subPage],
+            href: `${base}/${subPage}`,
+          };
+        }
+
         const placeItem: NavItem = {
           label: place.name || "Unknown place",
           href: base,
-          children: subPageLabel
-            ? [{ label: subPageLabel, href: `${base}/${subPage}` }]
-            : undefined,
+          children: subPageItem ? [subPageItem] : undefined,
         };
 
         // The org_unit above may be a building rather than the trust, so
@@ -262,7 +284,7 @@ export default function SideNavContent({
     return () => {
       cancelled = true;
     };
-  }, [orgId, orgSubPage, siteId, siteSubPage]);
+  }, [orgId, orgSubPage, siteId, siteSubPage, memberId]);
 
   // Fetch bank title when on teaching bank admin page
   useEffect(() => {

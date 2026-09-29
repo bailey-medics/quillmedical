@@ -90,7 +90,7 @@ to the same two facts.
 
 ## Phase 2: The member practice page
 
-- [ ] **Routes** `/admin/organisations/:id/members/:userId` and
+- [x] **Routes** `/admin/organisations/:id/members/:userId` and
       `/admin/sites/:id/members/:userId` in `frontend/src/main.tsx`, both
       rendering one `MemberPracticePage` in `pages/admin/members/`, guarded
       by `<RequireCompetency competency="manage_practising_competencies">`.
@@ -99,38 +99,53 @@ to the same two facts.
       `backTo` of `organisations` or `sites` for the back link; it never
       branches on the unit's type otherwise.
 
-- [ ] **Reusable parts live in `components/member-practice/`**, not in the
+- [x] **Reusable parts live in `components/member-practice/`**, not in the
       page: a `MemberPracticePanel` holding the three sections below, fed
       one `MemberPractice` response and the callbacks. The page is a thin
       loader around it, so organisations and sites share every line that
       draws or changes anything, and the panel gets its own story and
       test.
 
-- [ ] **Header**: the person's name, the place's name, and a link to their
+- [x] **Header**: the person's name, the place's name, and a link to their
       user page for everything else about them.
 
-- [ ] **Qualified**: every competency in their ceiling, each with a switch
+- [x] **Qualified**: every competency in their ceiling, each with a switch
       for "may practise here". Switching on authorises, switching off
       withdraws, with the existing confirm before a withdrawal because it
-      has no undo. Grouped by the catalogue file, as the user page groups
-      them, so a long ceiling stays readable.
+      has no undo. Departed from the plan: not grouped by catalogue file.
+      The generated `competencies.json` carries only `id` and
+      `display_name`, so the frontend cannot tell which file an entry came
+      from, and the user page does not group them either. Sorted by name
+      and searchable instead, which keeps a long ceiling readable without
+      changing the generator.
 
-- [ ] **Authorised but not qualified**: rows at this place beyond their
+- [x] **Authorised but not qualified**: rows at this place beyond their
       ceiling, marked as having no effect. Each offers withdraw, and grant
       when `may_grant` is true. This is how a lapsed qualification shows up
       without the row being deleted.
 
-- [ ] **Not qualified**: the rest of the catalogue, shown only when
+- [x] **Not qualified**: the rest of the catalogue, shown only when
       `may_grant` is true, each with a "Grant and authorise" action behind
       a confirm that says both things will happen and that the grant
       applies everywhere, not just here. Searchable, because the catalogue
       is long.
 
-- [ ] **Component and domain work**: a `MemberPractice` type and the two
+- [x] **Component and domain work**: a `MemberPractice` type and the two
       calls in `domains/orgUnit.ts`. Build from existing pieces (`BaseCard`,
       `DataTableControlled`, `ConfirmModal`, a Mantine `Switch`); any new
       reusable part goes in `components/` with a story and a test, and is
       shown for review before it is built, per the Storybook-first rule.
+      Built as a composition of existing components (`BaseCard`,
+      `DataTableControlled`, `SolidSwitch`, `AddButton`, `IconButton`,
+      `ConfirmModal`), so no new atomic component was needed; the panel
+      is reviewed in its pull request.
+
+- [x] **A child link in the side navigation while the page is open**,
+      found while building: `.claude/rules/pages.md` asks every new page
+      for one. `SideNavContent` names the member by username under the
+      organisation or site, as the Users entry names somebody, reading it
+      from the same `memberPractice` call. A member who cannot be read
+      leaves the place's own link standing.
 
 ## Phase 3: Wire it in and remove the card
 
