@@ -27,10 +27,13 @@
 }
 
 /* Sections */
+
+/* The burger, nudged down a pixel. It was 5px, which sat it a little
+   low in the ribbon; raised 4px on 29 September 2026. */
 .left {
   display: block;
-  margin-top: 5px;
-  margin-bottom: -5px;
+  margin-top: 1px;
+  margin-bottom: -1px;
 }
 
 .middle {
