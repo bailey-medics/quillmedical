@@ -20,6 +20,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import type { ComboboxParsedItemGroup } from "@mantine/core";
 import { SearchProvider, useSearch } from "@lib/search";
 import SearchField from "@/components/search";
@@ -65,6 +66,11 @@ export interface DataTableControlledProps<T> {
    * Useful for pages that display stats based on the visible data.
    */
   onFilteredData?: (data: T[]) => void;
+  /**
+   * Optional: a control for the table's own action, such as an "Add"
+   * button, shown in the same row as search and filter, before them.
+   */
+  action?: ReactNode;
 }
 
 function DataTableControlledInner<T>({
@@ -82,6 +88,7 @@ function DataTableControlledInner<T>({
   searchFields,
   filterPredicate,
   onFilteredData,
+  action,
 }: DataTableControlledProps<T>) {
   const [filters, setFilters] = useState<string[]>([]);
   const { query, setQuery } = useSearch();
@@ -112,6 +119,7 @@ function DataTableControlledInner<T>({
 
   const controls = (
     <>
+      {action}
       <SearchField value={query} onChange={setQuery} variant="light" />
       <FilterSelect
         data={filterData ?? []}

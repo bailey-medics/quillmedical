@@ -96,6 +96,42 @@ describe("DataTableControlled", () => {
     expect(screen.getByLabelText("Filter")).toBeInTheDocument();
   });
 
+  it("shows an action in the same row as search and filter", () => {
+    renderWithRouter(
+      <DataTableControlled
+        data={items}
+        columns={columns}
+        getRowKey={(r) => r.id}
+        searchFields={(r) => [r.name, r.category]}
+        filterPredicate={() => () => true}
+        action={<button>Add item</button>}
+      />,
+    );
+
+    const action = screen.getByRole("button", { name: "Add item" });
+    const search = screen.getByLabelText("Open search");
+    expect(action.parentElement).toBe(search.parentElement);
+    // Before the search, so the row reads action, search, filter.
+    expect(
+      action.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("shows no action when none is given", () => {
+    renderWithRouter(
+      <DataTableControlled
+        data={items}
+        columns={columns}
+        getRowKey={(r) => r.id}
+        searchFields={(r) => [r.name, r.category]}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Add item" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders filter button when filterData is provided", () => {
     const filterData = [
       {

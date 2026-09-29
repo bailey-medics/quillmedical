@@ -283,6 +283,32 @@ alone on its line, sat at the start.
       except the end-to-end test's grant step, which belongs to the wiring
       branch that owns that test.
 
+## Phase 6: A table's own action sits with its search and filter
+
+The "Grant competency" button sat on a line of its own above the table,
+with the table's search and filter on the next line down: two rows of
+controls for one table. `DataTableControlled` built its search and filter
+row itself and gave a page no way to add to it.
+
+- [x] **`DataTableControlled` gains an `action` prop**, drawn first in the
+      controls row, before search and filter. Tables without one are
+      unchanged. A new story shows it, and another at 320px shows the row
+      wrapping.
+
+- [x] **The controls row may wrap.** `DataTable` fixed the row at exactly
+      42px, so an action, an opened search (220px) and the filter would
+      overflow a phone's width. It is now at least 42px, and wraps with
+      each line still right-aligned. Wrapping was chosen over shortening
+      the button to its icon on phones, because "+" alone does not say
+      what it adds. Every table's controls row changes in the same way,
+      but only a row too wide for its screen looks any different.
+
+- [x] **The member page passes "Grant competency" as the table's
+      action**, and loses its separate button row.
+
+- [x] **The guidance names the prop**, beside the page-header line in the
+      component rules.
+
 ## Findings
 
 Things learnt while building that are not steps, but would cost time to

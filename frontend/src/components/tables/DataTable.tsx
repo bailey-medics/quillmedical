@@ -90,7 +90,12 @@ export interface DataTableProps<T> {
   pageSize?: number;
   /** Enable full controls: pagination with "Items per page" selector. */
   fullControls?: boolean;
-  /** Optional controls (search, filter) rendered above the table, right-aligned. */
+  /**
+   * Optional controls (search, filter, an action) rendered above the
+   * table, right-aligned. The row is at least 42px tall rather than
+   * exactly, so on a narrow screen the controls wrap onto a second line,
+   * still right-aligned, instead of overflowing.
+   */
   controls?: ReactNode;
   /**
    * Announced to screen readers once loaded, e.g. "3 results" after a
@@ -283,7 +288,7 @@ function DataTableView<T>({
     return (
       <Stack gap="md">
         {controls && (
-          <Group justify="flex-end" h={42} align="center">
+          <Group justify="flex-end" mih={42} align="center">
             {controls}
           </Group>
         )}
@@ -299,7 +304,7 @@ function DataTableView<T>({
     return (
       <Stack gap="md">
         {controls && (
-          <Group justify="flex-end" h={42} align="center">
+          <Group justify="flex-end" mih={42} align="center">
             {controls}
           </Group>
         )}
@@ -336,7 +341,7 @@ function DataTableView<T>({
   return (
     <Stack gap="md">
       {controls && (
-        <Group justify="flex-end" h={42} align="center">
+        <Group justify="flex-end" mih={42} align="center">
           {controls}
         </Group>
       )}
