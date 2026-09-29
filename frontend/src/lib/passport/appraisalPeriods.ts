@@ -62,9 +62,9 @@ export function samePeriod(a: AppraisalPeriod, b: AppraisalPeriod): boolean {
 // ---------------------------------------------------------------------------
 
 /**
- * Three-letter month names, for the short labels a select can fit. Held
- * here rather than asked of `Intl`, whose British short form for
- * September is "Sept", which would stand out in a column of three.
+ * Short month names, as British English writes them: three letters,
+ * except September, which is "Sept". Held here rather than asked of
+ * `Intl`, so the labels do not change with the browser's locale data.
  */
 const SHORT_MONTHS = [
   "Jan",
@@ -75,7 +75,7 @@ const SHORT_MONTHS = [
   "Jun",
   "Jul",
   "Aug",
-  "Sep",
+  "Sept",
   "Oct",
   "Nov",
   "Dec",
@@ -117,7 +117,7 @@ export function periodKey(period: AppraisalPeriod): string {
 
 /**
  * Each period's label, keyed by `periodKey`: the months it starts and
- * ends in, shortened, "Oct 2025 – Sep 2026", with the spaced en dash.
+ * ends in, shortened, "Oct 2025 – Sept 2026", with the spaced en dash.
  *
  * Where two periods would read the same, such as two short ones in one
  * month, both are given their full dates instead, so no two options in

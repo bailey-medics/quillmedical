@@ -64,6 +64,12 @@ export interface FeedbackModalProps {
    * address changes, so following the link would lead back to itself.
    */
   showYourFeedbackLinks?: boolean;
+  /**
+   * Called after either `Your feedback` link is followed, once the modal
+   * has closed. The sidebar passes its drawer-closing `onNavigate` here,
+   * so on a narrow screen the drawer does not stay open over the page.
+   */
+  onFollowYourFeedback?: () => void;
 }
 
 interface FeedbackFormValues {
@@ -92,9 +98,11 @@ function YourFeedbackLink({
 /** Inner fields – needs the Form context to reach React Hook Form. */
 function FeedbackFields({
   onClose,
+  onFollowLink,
   showLinks,
 }: {
   onClose: () => void;
+  onFollowLink: () => void;
   showLinks: boolean;
 }) {
   const { methods } = useFormContext();
@@ -139,7 +147,7 @@ function FeedbackFields({
       <FormStatusNarrow />
       <SubmitButton onCancel={onClose} cancelLabel="Cancel" />
       {showLinks && (
-        <YourFeedbackLink onClose={onClose} standalone>
+        <YourFeedbackLink onClose={onFollowLink} standalone>
           Your previous feedback
         </YourFeedbackLink>
       )}
@@ -152,6 +160,7 @@ export default function FeedbackModal({
   onClose,
   onSubmit,
   showYourFeedbackLinks = true,
+  onFollowYourFeedback,
 }: FeedbackModalProps) {
   const [sent, setSent] = useState(false);
   // Only inside a router: the links need one, and the modal should not
@@ -162,6 +171,11 @@ export default function FeedbackModal({
   const handleClose = () => {
     setSent(false);
     onClose();
+  };
+
+  const handleFollowLink = () => {
+    handleClose();
+    onFollowYourFeedback?.();
   };
 
   const handleSubmit = async (
@@ -202,7 +216,7 @@ export default function FeedbackModal({
           {showLinks && (
             <BodyText>
               We&apos;ll post the outcome in{" "}
-              <YourFeedbackLink onClose={handleClose}>
+              <YourFeedbackLink onClose={handleFollowLink}>
                 Your feedback
               </YourFeedbackLink>
               .
@@ -218,7 +232,11 @@ export default function FeedbackModal({
           submittingLabel={"Sending…"}
           blockNavigation={false}
         >
-          <FeedbackFields onClose={handleClose} showLinks={showLinks} />
+          <FeedbackFields
+            onClose={handleClose}
+            onFollowLink={handleFollowLink}
+            showLinks={showLinks}
+          />
         </Form>
       )}
     </Modal>
