@@ -32,7 +32,8 @@ paths:
   - **The thing** – what it is, and why it matters.
   - **The other thing** – same shape, one bullet each.
   ```
-  Put the label in bold, then an em dash, then the prose. Separate
+  Put the label in bold, then a spaced en dash ( – ), then the prose.
+  Never an em dash: see `CLAUDE.md`. Separate
   bullets with a blank line when each runs to more than a line or two.
 - **Decisions** (optional, include when there are non-obvious
   trade-offs): a `## Decisions` section, one bullet per decision in the
