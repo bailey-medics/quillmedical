@@ -11,8 +11,10 @@
  * year label would make an honest short period look like a poor year.
  *
  * **June to June is the fallback**, used when no period has been
- * declared. The heading says so rather than presenting a convention as
- * though it were the holder's actual cycle.
+ * declared. The table says so (`convention`) rather than presenting a
+ * convention as though it were the holder's actual cycle. With no
+ * `period` at all, the activities are those outside every declared
+ * range, and the table says that instead.
  *
  * **This is where a total is legitimate**, unlike the logbook. A logbook
  * count with a target implies the software has judged competence; a CPD
@@ -31,16 +33,7 @@ import BaseCard from "@/components/base-card/BaseCard";
 import DataTable, { type Column } from "@components/tables/DataTable";
 import FormattedDate from "@/components/data/Date";
 import { BodyText, BodyTextBold, Heading } from "@/components/typography";
-import type { CpdEntry } from "@lib/passport";
-
-/**
- * The range a total covers. Supplied by the page from the holder's
- * declared `appraisal_periods`, or omitted to fall back to June-to-June.
- */
-export interface AppraisalPeriod {
-  from: string;
-  to: string;
-}
+import type { AppraisalPeriod, CpdEntry } from "@lib/passport";
 
 const columns: Column<CpdEntry>[] = [
   {
@@ -70,8 +63,14 @@ const columns: Column<CpdEntry>[] = [
 export interface CpdTableProps {
   /** The period's activities */
   entries: CpdEntry[];
-  /** The declared appraisal period these fall in */
+  /**
+   * The range these fall in: one of the holder's declared
+   * `appraisal_periods`, or a June to June year. Omitted for the
+   * activities outside every declared range.
+   */
   period?: AppraisalPeriod;
+  /** True when `period` is a June to June year, not one they declared */
+  convention?: boolean;
   /** Called when an activity is chosen */
   onSelect?: (entry: CpdEntry) => void;
   /** Show the table's loading state */
@@ -81,6 +80,7 @@ export interface CpdTableProps {
 export default function CpdTable({
   entries,
   period,
+  convention = false,
   onSelect,
   isLoading = false,
 }: CpdTableProps) {
@@ -99,13 +99,14 @@ export default function CpdTable({
 
         {period ? (
           <BodyText c="dimmed">
-            <FormattedDate date={period.from} format="medium" /> to{" "}
-            <FormattedDate date={period.to} format="medium" />
+            <FormattedDate date={period.starts_on} format="medium" /> to{" "}
+            <FormattedDate date={period.ends_on} format="medium" />
+            {convention &&
+              ". You have not set any CPD date ranges, so this runs June to June by convention rather than on your actual appraisal year."}
           </BodyText>
         ) : (
           <BodyText c="dimmed">
-            June to June – you have not set an appraisal period, so this is a
-            convention rather than your actual cycle.
+            Activities that fall in none of your CPD date ranges.
           </BodyText>
         )}
 

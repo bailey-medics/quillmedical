@@ -26,6 +26,7 @@ export {
   fetchCertificates,
   uploadEvidence,
   fetchAppraisalPeriods,
+  fetchAllCpd,
   fetchCpdYear,
   fetchInbox,
   fetchLogbook,
@@ -101,8 +102,13 @@ export type {
 
 export {
   describeLength,
+  formatDay,
+  juneToJuneYears,
+  labelPeriods,
   monthsIn,
   newestFirst,
+  periodContains,
+  periodKey,
   samePeriod,
 } from "./appraisalPeriods";
 export { PASSPORT_SPECIALTIES, getPassportSpecialty } from "./specialties";

@@ -33,9 +33,32 @@ describe("CpdTable", () => {
     });
 
     it("names the fallback as a convention when no period is declared", () => {
+      renderWithMantine(
+        <CpdTable
+          entries={cpdEntries}
+          period={{ starts_on: "2025-06-01", ends_on: "2026-05-31" }}
+          convention
+        />,
+      );
+      expect(screen.getByText(/31 May 2026/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/runs June to June by convention/),
+      ).toBeInTheDocument();
+    });
+
+    it("does not call a declared range a convention", () => {
+      renderWithMantine(
+        <CpdTable entries={cpdEntries} period={appraisalPeriod} />,
+      );
+      expect(screen.queryByText(/by convention/)).not.toBeInTheDocument();
+    });
+
+    it("says when the activities are outside every range", () => {
       renderWithMantine(<CpdTable entries={cpdEntries} />);
       expect(
-        screen.getByText(/June to June – you have not set an appraisal period/),
+        screen.getByText(
+          "Activities that fall in none of your CPD date ranges.",
+        ),
       ).toBeInTheDocument();
     });
   });

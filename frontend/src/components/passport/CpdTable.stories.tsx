@@ -53,6 +53,15 @@ export const AShortPeriodExplainsItself: Story = {
 export const NoPeriodDeclared: Story = {
   args: {
     entries: cpdEntries,
+    period: { starts_on: "2025-06-01", ends_on: "2026-05-31" },
+    convention: true,
+  },
+};
+
+/** The activities that fall in none of the holder's date ranges. */
+export const OutsideEveryRange: Story = {
+  args: {
+    entries: cpdEntries,
   },
 };
 

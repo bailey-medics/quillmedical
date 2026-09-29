@@ -24,19 +24,10 @@ import { Heading } from "@/components/typography";
 import { IconPencil, IconTrash } from "@/components/icons/appIcons";
 import {
   describeLength,
+  formatDay,
   newestFirst,
   type AppraisalPeriod,
 } from "@lib/passport";
-
-/** "1 October 2025", for a screen reader naming the row's menu. */
-function spokenDate(isoDate: string): string {
-  return new Date(`${isoDate}T00:00:00Z`).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
 
 export interface AppraisalPeriodTableProps {
   /** The ranges, in any order */
@@ -81,7 +72,7 @@ export default function AppraisalPeriodTable({
       header: "",
       render: (period) => (
         <EllipsisMenu
-          aria-label={`Actions for the date range from ${spokenDate(period.starts_on)}`}
+          aria-label={`Actions for the date range from ${formatDay(period.starts_on)}`}
           items={[
             {
               label: "Edit",

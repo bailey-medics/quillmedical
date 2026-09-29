@@ -562,6 +562,15 @@ export function addCpdEntry(
 }
 
 /**
+ * Every CPD activity in the record, oldest first. The CPD page totals
+ * them over the holder's own date ranges, which cross calendar years,
+ * and shows those outside every range, so it needs all of them.
+ */
+export function fetchAllCpd(passportId: string): Promise<CpdEntry[]> {
+  return api.get<CpdEntry[]>(`/passport/${segment(passportId)}/cpd`);
+}
+
+/**
  * A year's CPD activities. Grouped by year because UK appraisal runs
  * annually and asks what you did this year.
  */

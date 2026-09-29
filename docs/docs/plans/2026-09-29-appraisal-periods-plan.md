@@ -139,24 +139,37 @@ over those ranges, and fall back to June to June only where none is declared.
 
 ## Phase 4: Total CPD over the periods
 
-- [ ] **The CPD page chooses a date range, not a year**, in
+- [x] **The CPD page chooses a date range, not a year**, in
       `frontend/src/pages/passport/PassportCpdPage.tsx`. The field labelled
       "Year" is renamed "Date range", and lists the declared ranges newest
       first, each shown by the months it starts and ends, for example
-      "October 2025 – October 2026", using the spaced en dash. The months
-      are those of the stored `from` and `to` dates. Where two ranges would
-      read the same, such as two short ranges in one month, both show their
-      full dates instead, so no two options look alike. With no ranges
+      "October 2025 – September 2026", using the spaced en dash. The months
+      are those of the stored `starts_on` and `ends_on` dates, so an
+      appraisal year ending the day before it began reads as ending the
+      month before. Where two ranges would read the same, such as two
+      short ranges in one month, both show their full dates instead, so no
+      two options look alike (`labelPeriods` in
+      `frontend/src/lib/passport/appraisalPeriods.ts`). With no ranges
       declared, the options are the June to June years, labelled the same
-      way, for example "June 2025 – May 2026". The chosen range is passed
-      to `CpdTable` as its `period`. The API still
-      files CPD by calendar year, so the page fetches each year the period
-      touches (a period from August 2025 to July 2026 needs both years) and
-      keeps the activities inside it. With no periods declared, the page
-      works as today, June to June. After adding an activity, the page
-      shows the period its date falls in.
+      way, for example "June 2025 – May 2026", reaching back to the oldest
+      activity and never fewer than five; `CpdTable` then says the year is
+      a convention. The page opens on the range holding today, or the
+      newest if none does. The chosen range is passed to `CpdTable` as its
+      `period`, whose own `{from, to}` type gave way to the shared
+      `AppraisalPeriod`. After adding an activity, the page shows the
+      range its date falls in.
 
-- [ ] **Activities outside every declared period stay reachable.** A gap
+      The plan first had the page fetch each calendar year a range
+      touches. That cannot find the activities outside every range, which
+      may be in any year, so instead `GET
+      /api/passport/{passport_id}/cpd` now returns every activity, oldest
+      first, and the page sorts them into ranges. The path already
+      existed for adding an activity, so the change is an added method,
+      and additive. A career of CPD is a few hundred small files, which
+      is fine to read at once; if it ever is not, the route can take a
+      date range.
+
+- [x] **Activities outside every declared period stay reachable.** A gap
       between periods, or an activity from before the first one, would
       otherwise vanish from the CPD page. The selector gains a final option,
       "Outside your date ranges", listing those activities, shown only when
