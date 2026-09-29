@@ -5,14 +5,14 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithMantine } from "@test/test-utils";
+import { renderWithRouter } from "@test/test-utils";
 import { PASSPORT_SPECIALTIES } from "@lib/passport/specialties";
 import PassportSpecialtyCard from "./PassportSpecialtyCard";
 import { GENERIC_LABEL } from "./specialtyChoice";
 
 describe("PassportSpecialtyCard", () => {
-  it("is titled, with the field's helper text and no subtitle", () => {
-    renderWithMantine(
+  it("is titled, with no helper text and no subtitle", () => {
+    renderWithRouter(
       <PassportSpecialtyCard
         options={PASSPORT_SPECIALTIES}
         value={["oncology"]}
@@ -21,9 +21,10 @@ describe("PassportSpecialtyCard", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Passport specialities" }),
+      screen.getByRole("heading", { name: "Clinician passport" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Choose one or more")).toBeInTheDocument();
+    // Removed to slim the card down: the label says enough.
+    expect(screen.queryByText("Choose one or more")).not.toBeInTheDocument();
     expect(screen.queryByText(/Nothing is hidden/)).not.toBeInTheDocument();
   });
 
@@ -36,7 +37,7 @@ describe("PassportSpecialtyCard", () => {
   }
 
   it("shows the current specialty", () => {
-    const { container } = renderWithMantine(
+    const { container } = renderWithRouter(
       <PassportSpecialtyCard
         options={PASSPORT_SPECIALTIES}
         value={["oncology"]}
@@ -48,7 +49,7 @@ describe("PassportSpecialtyCard", () => {
   });
 
   it("shows Generic when there is no specialty", () => {
-    const { container } = renderWithMantine(
+    const { container } = renderWithRouter(
       <PassportSpecialtyCard
         options={PASSPORT_SPECIALTIES}
         value={[]}
@@ -62,7 +63,7 @@ describe("PassportSpecialtyCard", () => {
   it("reports a change to Generic", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderWithMantine(
+    renderWithRouter(
       <PassportSpecialtyCard
         options={PASSPORT_SPECIALTIES}
         value={["oncology"]}
@@ -83,7 +84,7 @@ describe("PassportSpecialtyCard", () => {
     // cannot hold. Generic is how to have no specialty order.
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderWithMantine(
+    renderWithRouter(
       <PassportSpecialtyCard
         options={PASSPORT_SPECIALTIES}
         value={["oncology"]}
@@ -98,7 +99,7 @@ describe("PassportSpecialtyCard", () => {
   });
 
   it("is disabled, and says why, while the passport is read-only", () => {
-    renderWithMantine(
+    renderWithRouter(
       <PassportSpecialtyCard
         options={PASSPORT_SPECIALTIES}
         value={[]}
@@ -111,8 +112,38 @@ describe("PassportSpecialtyCard", () => {
     expect(screen.getByText(/read-only at the moment/)).toBeInTheDocument();
   });
 
+  it("links to the CPD date ranges page", () => {
+    renderWithRouter(
+      <PassportSpecialtyCard
+        options={PASSPORT_SPECIALTIES}
+        value={[]}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "CPD date ranges" }),
+    ).toHaveAttribute("href", "/settings/cpd-date-ranges");
+  });
+
+  it("keeps that link while the passport is read-only", () => {
+    // The page still shows the ranges, and says why they cannot change.
+    renderWithRouter(
+      <PassportSpecialtyCard
+        options={PASSPORT_SPECIALTIES}
+        value={[]}
+        onChange={vi.fn()}
+        disabled
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "CPD date ranges" }),
+    ).toHaveAttribute("href", "/settings/cpd-date-ranges");
+  });
+
   it("shows why a change was not saved", () => {
-    renderWithMantine(
+    renderWithRouter(
       <PassportSpecialtyCard
         options={PASSPORT_SPECIALTIES}
         value={[]}

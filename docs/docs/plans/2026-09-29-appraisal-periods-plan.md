@@ -116,21 +116,25 @@ over those ranges, and fall back to June to June only where none is declared.
 
 ## Phase 3: The settings card
 
-- [ ] **Rename the card and slim it down**, in
+- [x] **Rename the card and slim it down**, in
       `frontend/src/components/passport/PassportSpecialtyCard.tsx`. The
       title becomes "Clinician passport". The helper text "Choose one or
       more" goes, so the field reads as just its label, "Specialities". The
       read-only message stays, since it tells the holder why nothing can be
-      changed. Update the card and settings page tests that find the card by
-      its heading, and the story title.
+      changed. The card and settings page tests that find the card by its
+      heading, and the story title, are updated. The component keeps its
+      name, since renaming it would touch every import for no reader's
+      benefit. The same helper text on the passport's own create form, in
+      `PassportPage.tsx`, stays: the request was about this card.
 
-- [ ] **Add a "CPD date ranges" button to the card**, linking to
+- [x] **Add a "CPD date ranges" button to the card**, linking to
       `/settings/cpd-date-ranges`. `ActionCard`'s `action` slot replaces its
-      button, so the card composes the specialities field and an
-      `IconTextButton` (or a plain `Button` if no icon fits) in a `Stack`
-      inside that slot, rather than changing `ActionCard`. The button stays
-      enabled when the passport is read-only, because the page lets a
-      read-only holder see their ranges even though it will not let them
+      button, so the card composes the specialities field and a button in
+      a `Stack` inside that slot, rather than changing `ActionCard`. The
+      button is `ActionCardButton`, the one every other settings card
+      shows, rather than `IconTextButton`, which has no link form. It
+      stays enabled when the passport is read-only, because the page lets
+      a read-only holder see their ranges even though it will not let them
       change them.
 
 ## Phase 4: Total CPD over the periods

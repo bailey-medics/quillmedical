@@ -132,7 +132,7 @@ describe("the page-view opt-out", () => {
   });
 });
 
-describe("the passport specialty card", () => {
+describe("the clinician passport card", () => {
   const detail = {
     passport: {
       passport_id: "3f2a8c1e",
@@ -158,7 +158,7 @@ describe("the passport specialty card", () => {
     renderWithRouter(<Settings />);
 
     expect(
-      await screen.findByRole("heading", { name: "Passport specialities" }),
+      await screen.findByRole("heading", { name: "Clinician passport" }),
     ).toBeInTheDocument();
   });
 
@@ -168,7 +168,7 @@ describe("the passport specialty card", () => {
     vi.mocked(fetchMyPassport).mockResolvedValue(detail);
     renderWithRouter(<Settings />);
 
-    await screen.findByRole("heading", { name: "Passport specialities" });
+    await screen.findByRole("heading", { name: "Clinician passport" });
     await user.click(screen.getByRole("combobox"));
 
     expect(optionLabels()).toEqual([
@@ -184,7 +184,7 @@ describe("the passport specialty card", () => {
     renderWithRouter(<Settings />);
 
     expect(specialtyChoices).toHaveBeenCalledWith(false);
-    await screen.findByRole("heading", { name: "Passport specialities" });
+    await screen.findByRole("heading", { name: "Clinician passport" });
     expect(specialtyChoices).toHaveBeenLastCalledWith(true);
   });
 
@@ -193,7 +193,7 @@ describe("the passport specialty card", () => {
     renderWithRouter(<Settings />);
 
     const card = await screen.findByRole("heading", {
-      name: "Passport specialities",
+      name: "Clinician passport",
     });
     const lastEverybodyCard = screen.getByText(
       "Two-factor authentication (TOTP)",
@@ -212,7 +212,7 @@ describe("the passport specialty card", () => {
     await screen.findByText("Account");
     expect(fetchMyPassport).toHaveBeenCalled();
     expect(
-      screen.queryByRole("heading", { name: "Passport specialities" }),
+      screen.queryByRole("heading", { name: "Clinician passport" }),
     ).not.toBeInTheDocument();
   });
 
@@ -222,7 +222,7 @@ describe("the passport specialty card", () => {
 
     expect(fetchMyPassport).not.toHaveBeenCalled();
     expect(
-      screen.queryByRole("heading", { name: "Passport specialities" }),
+      screen.queryByRole("heading", { name: "Clinician passport" }),
     ).not.toBeInTheDocument();
   });
 
@@ -232,7 +232,7 @@ describe("the passport specialty card", () => {
     vi.mocked(setPassportSpecialties).mockResolvedValue(detail.passport);
     renderWithRouter(<Settings />);
 
-    await screen.findByRole("heading", { name: "Passport specialities" });
+    await screen.findByRole("heading", { name: "Clinician passport" });
     await user.click(screen.getByRole("combobox"));
     await user.click(
       await screen.findByRole("option", {
@@ -249,7 +249,7 @@ describe("the passport specialty card", () => {
     vi.mocked(setPassportSpecialties).mockRejectedValue(new Error("network"));
     renderWithRouter(<Settings />);
 
-    await screen.findByRole("heading", { name: "Passport specialities" });
+    await screen.findByRole("heading", { name: "Clinician passport" });
     await user.click(screen.getByRole("combobox"));
     await user.click(
       await screen.findByRole("option", { name: "General surgery" }),
@@ -265,7 +265,7 @@ describe("the passport specialty card", () => {
     });
     renderWithRouter(<Settings />);
 
-    await screen.findByRole("heading", { name: "Passport specialities" });
+    await screen.findByRole("heading", { name: "Clinician passport" });
     expect(screen.getByRole("combobox")).toBeDisabled();
   });
 });

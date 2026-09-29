@@ -9,7 +9,7 @@ import { PASSPORT_SPECIALTIES } from "@lib/passport/specialties";
 import PassportSpecialtyCard from "./PassportSpecialtyCard";
 
 const meta: Meta<typeof PassportSpecialtyCard> = {
-  title: "Passport/Passport specialities card",
+  title: "Passport/Clinician passport card",
   component: PassportSpecialtyCard,
   parameters: { layout: "padded" },
   // The alphabetical default, which every story starts from
