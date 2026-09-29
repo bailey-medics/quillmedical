@@ -14,6 +14,12 @@
      such as a Mantine Stack, it was otherwise stretched to full width:
      the certificate uploader and the Disabled story both showed it so. */
   align-self: flex-start;
+
+  /* In the middle of the line it sits on, not on the text baseline. It
+     is an inline box, so in a table cell it otherwise sat on the cell's
+     baseline, with the room kept for letters such as "g" beneath it, and
+     showed about 2px above the middle of the row. */
+  vertical-align: middle;
   border: none;
   border-radius: 999px;
 
@@ -25,12 +31,25 @@
 
   /* A light fill at rest, so the box is visible as something to drop
      on before the pointer finds it. Transparent, it read as plain text
-     and was easy to miss (29 September 2026). */
+     and was easy to miss (29 September 2026).
+
+     In dark mode, primary-4 (#245d8f): lighter than every navy it may
+     sit on, the card (#042340), a table's striped row (#0a2f56) and a
+     hovered row (#143f6b). It was dark-6, the same #0a2f56 as the
+     stripe, so on every other table row it vanished. */
   background: light-dark(
     var(--mantine-color-gray-2),
-    var(--mantine-color-dark-6)
+    var(--mantine-color-primary-4)
   );
   transition: background-color 150ms ease;
+}
+
+/* White label and icon on the dark mode fill. The body text grey,
+   #c9d1d9, is 4.47:1 on #245d8f, just short of the 4.5:1 WCAG AA needs,
+   and the Storybook accessibility check refused it. White is about
+   6.9:1. Light mode keeps the body text colour. */
+[data-mantine-color-scheme="dark"] .dropzone {
+  color: var(--mantine-color-white);
 }
 
 /* Never squeezed. On a very narrow screen the label cannot wrap in its
@@ -47,14 +66,13 @@
 
 /*
  * Darker than the resting fill on hover in both themes, so the
- * affordance is the same
- * gesture either way rather than lightening in one and darkening in
- * the other.
+ * affordance is the same gesture either way rather than lightening in
+ * one and darkening in the other.
  *
- * Note the dark numbers look inverted and are not: this theme overrides
- * Mantine's scale, so dark-6 (#0a2f56, the input navy) is the lightest
- * of these and dark-4 (#000d1f) the deepest. dark-5 (#042340) is the
- * card colour, so a hover in it vanished into any card the box sat on.
+ * In dark mode, dark-4 (#000d1f), the deepest navy: this theme
+ * overrides Mantine's dark scale, so the numbers do not run in order.
+ * dark-5 (#042340) is the card colour, so a hover in it vanished into
+ * any card the box sat on.
  */
 .dropzone:hover:not([data-disabled]) {
   background: light-dark(
