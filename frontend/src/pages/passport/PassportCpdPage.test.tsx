@@ -130,10 +130,10 @@ describe("PassportCpdPage", () => {
       renderWithRouter(<PassportCpdPage />);
 
       await screen.findByText(/by convention/);
-      expect(dateRangeField()).toHaveValue("June 2026 – May 2027");
+      expect(dateRangeField()).toHaveValue("Jun 2026 – May 2027");
       const labels = await optionLabels(user);
-      expect(labels[0]).toBe("June 2026 – May 2027");
-      expect(labels[1]).toBe("June 2025 – May 2026");
+      expect(labels[0]).toBe("Jun 2026 – May 2027");
+      expect(labels[1]).toBe("Jun 2025 – May 2026");
     });
 
     it("totals the chosen June to June year", async () => {
@@ -145,7 +145,7 @@ describe("PassportCpdPage", () => {
       await user.click(dateRangeField());
       await user.click(
         await screen.findByRole("option", {
-          name: "June 2025 – May 2026",
+          name: "Jun 2025 – May 2026",
         }),
       );
 
@@ -162,11 +162,11 @@ describe("PassportCpdPage", () => {
       renderWithRouter(<PassportCpdPage />);
 
       await waitFor(() =>
-        expect(dateRangeField()).toHaveValue("January 2026 – December 2026"),
+        expect(dateRangeField()).toHaveValue("Jan 2026 – Dec 2026"),
       );
       expect(await optionLabels(user)).toEqual([
-        "January 2026 – December 2026",
-        "October 2024 – August 2025",
+        "Jan 2026 – Dec 2026",
+        "Oct 2024 – Aug 2025",
       ]);
     });
 
