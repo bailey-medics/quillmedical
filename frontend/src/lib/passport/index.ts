@@ -111,6 +111,12 @@ export {
   periodKey,
   samePeriod,
 } from "./appraisalPeriods";
+export { RECORD_KIND_LABELS, collectRecords } from "./recordList";
+export type {
+  PassportRecord,
+  PassportRecordKind,
+  RecordSources,
+} from "./recordList";
 export { PASSPORT_SPECIALTIES, getPassportSpecialty } from "./specialties";
 export type { PassportSpecialtyDefinition } from "./specialties";
 export { levelsFor } from "./levels";

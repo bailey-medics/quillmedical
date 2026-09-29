@@ -20,7 +20,7 @@ import ActionCard from "@/components/action-card";
 import AddButton from "@/components/button/AddButton";
 import InboxButton from "@/components/passport/InboxButton";
 import SpecialtyField from "@/components/passport/SpecialtyField";
-import CompetencySummary from "@/components/passport/CompetencySummary";
+import PassportRecordTable from "@/components/passport/PassportRecordTable";
 import StateMessage from "@/components/message-cards/StateMessage";
 import ErrorState from "@/components/error-state/ErrorState";
 import {
@@ -33,7 +33,18 @@ import {
   IconPresentation,
 } from "@/components/icons/appIcons";
 import { layoutTokens } from "@/theme";
-import { createPassport, fetchInbox, fetchMyPassport } from "@lib/passport";
+import {
+  collectRecords,
+  createPassport,
+  fetchAllCpd,
+  fetchCertificates,
+  fetchInbox,
+  fetchMyPassport,
+  fetchReflections,
+  fetchSignOffs,
+  fetchWholeLogbook,
+} from "@lib/passport";
+import type { PassportRecord } from "@lib/passport";
 import { entitlementWarning } from "@lib/passport/entitlementWarning";
 import { useSpecialtyChoices } from "@lib/passport/useSpecialtyChoices";
 import type { PassportDetail } from "@lib/passport";
@@ -155,6 +166,10 @@ export function Component() {
   // assessor has a queue and may have no passport at all, so a failed
   // passport load must not take the count with it.
   const [waiting, setWaiting] = useState(0);
+  // Every record in the passport, newest first, once the passport is
+  // known. Null while loading; the table shows its own skeleton.
+  const [records, setRecords] = useState<PassportRecord[] | null>(null);
+  const [recordsFailed, setRecordsFailed] = useState(false);
 
   /**
    * Apply one fetch's outcome to state.
@@ -226,6 +241,46 @@ export function Component() {
       cancelled = true;
     };
   }, []);
+
+  // The records are fetched kind by kind, from the routes each section
+  // page already uses, and flattened here. The passport's own
+  // competencies name the logbook entries, which carry only an id.
+  const passportId = passport?.passport.passport_id ?? null;
+  const competencies = passport?.competencies;
+  useEffect(() => {
+    if (passportId === null) return;
+    let cancelled = false;
+
+    Promise.all([
+      fetchSignOffs(passportId),
+      fetchWholeLogbook(passportId),
+      fetchAllCpd(passportId),
+      fetchCertificates(passportId),
+      fetchReflections(passportId),
+    ])
+      .then(([signOffs, logbook, cpd, certificates, reflections]) => {
+        if (cancelled) return;
+        setRecords(
+          collectRecords({
+            signOffs,
+            logbook,
+            cpd,
+            certificates,
+            reflections,
+            competencyName: (id) =>
+              competencies?.find((competency) => competency.id === id)?.name ??
+              id,
+          }),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setRecordsFailed(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [passportId, competencies]);
 
   const handleCreate = () => {
     if (specialties === null) return;
@@ -341,12 +396,10 @@ export function Component() {
           description={warning.description}
         />
       )}
-      {/* The ways in come first, and the list of competencies after.
-          Somebody opening their passport has come to record something
-          or to chase a sign-off; what they are already competent at is
-          something they know from their own practice and rarely need
-          to look up. Putting the list on top made them scroll past
-          what they know to reach what they came for. */}
+      {/* The ways in come first, and the list of records after.
+          Somebody opening their passport has usually come to record
+          something or to chase a sign-off, so a long list on top would
+          make them scroll past it to reach what they came for. */}
       <SimpleGrid cols={twoColumns ? 2 : 1}>
         {SECTIONS.map((section) => (
           <ActionCard
@@ -360,22 +413,19 @@ export function Component() {
         ))}
       </SimpleGrid>
 
-      {/* A row opens the competency's latest sign-off, on the same page
-          the sign-offs list opens. A competency with no sign-off yet has
-          only logbook entries or certificates, so it opens the logbook. */}
-      <CompetencySummary
-        competencies={passport?.competencies ?? []}
-        onSelect={(competencyId) => {
-          const signOff = passport?.competencies.find(
-            (competency) => competency.id === competencyId,
-          )?.sign_off;
-          navigate(
-            signOff
-              ? `/passport/sign-offs/${encodeURIComponent(signOff)}`
-              : "/passport/logbook",
-          );
-        }}
-      />
+      {/* Every record, newest first, so the holder can show how busy
+          they have been and open any record from here. It replaced a
+          list of competencies, which answered "am I signed off" and
+          hid everything else; the sign-offs page answers that now. */}
+      {recordsFailed ? (
+        <ErrorState message="Your records could not be loaded. Please try again." />
+      ) : (
+        <PassportRecordTable
+          records={records ?? []}
+          isLoading={records === null}
+          onSelect={(record) => navigate(record.href)}
+        />
+      )}
     </Stack>
   );
 }

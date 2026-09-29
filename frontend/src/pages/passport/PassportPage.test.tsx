@@ -11,11 +11,23 @@ import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { PASSPORT_SPECIALTIES } from "@lib/passport/specialties";
 import { Component as PassportPage } from "./PassportPage";
-import { competencies } from "@/components/passport/fixtures";
+import {
+  certificates,
+  competencies,
+  cpdEntries,
+  logbook,
+  reflections,
+  signOffs,
+} from "@/components/passport/fixtures";
 
 const fetchMyPassport = vi.fn();
 const createPassport = vi.fn();
 const fetchInbox = vi.fn();
+const fetchSignOffs = vi.fn();
+const fetchWholeLogbook = vi.fn();
+const fetchAllCpd = vi.fn();
+const fetchCertificates = vi.fn();
+const fetchReflections = vi.fn();
 
 // The specialty order comes from the API through this hook; each test
 // sets what it returns, and useSpecialtyChoices.test.ts covers the fetch.
@@ -24,11 +36,21 @@ vi.mock("@lib/passport/useSpecialtyChoices", () => ({
   useSpecialtyChoices: (enabled: boolean) => specialtyChoices(enabled),
 }));
 
-vi.mock("@lib/passport", () => ({
-  fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
-  createPassport: (...args: unknown[]) => createPassport(...args),
-  fetchInbox: (...args: unknown[]) => fetchInbox(...args),
-}));
+vi.mock("@lib/passport", async () => {
+  const actual =
+    await vi.importActual<typeof import("@lib/passport")>("@lib/passport");
+  return {
+    ...actual,
+    fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
+    createPassport: (...args: unknown[]) => createPassport(...args),
+    fetchInbox: (...args: unknown[]) => fetchInbox(...args),
+    fetchSignOffs: (...args: unknown[]) => fetchSignOffs(...args),
+    fetchWholeLogbook: (...args: unknown[]) => fetchWholeLogbook(...args),
+    fetchAllCpd: (...args: unknown[]) => fetchAllCpd(...args),
+    fetchCertificates: (...args: unknown[]) => fetchCertificates(...args),
+    fetchReflections: (...args: unknown[]) => fetchReflections(...args),
+  };
+});
 
 const navigate = vi.fn();
 
@@ -48,7 +70,24 @@ const ONCOLOGY_FIRST = [
 
 beforeEach(() => {
   specialtyChoices.mockReturnValue(PASSPORT_SPECIALTIES);
+  fetchSignOffs.mockResolvedValue([]);
+  fetchWholeLogbook.mockResolvedValue({ competencies: [], count: 0 });
+  fetchAllCpd.mockResolvedValue([]);
+  fetchCertificates.mockResolvedValue([]);
+  fetchReflections.mockResolvedValue([]);
 });
+
+/** Every fixture record, served by the five routes the page asks. */
+function serveRecords() {
+  fetchSignOffs.mockResolvedValue(signOffs);
+  fetchWholeLogbook.mockResolvedValue({
+    competencies: [logbook],
+    count: logbook.count,
+  });
+  fetchAllCpd.mockResolvedValue(cpdEntries);
+  fetchCertificates.mockResolvedValue(certificates);
+  fetchReflections.mockResolvedValue(reflections);
+}
 
 /** What the specialty options read, top to bottom, once open. */
 function optionLabels(): string[] {
@@ -117,7 +156,7 @@ describe("PassportPage", () => {
       });
       renderWithRouter(<PassportPage />);
 
-      await screen.findByText("Perform bronchoscopy");
+      await screen.findByText("Records");
       expect(screen.queryByText(/read-only/)).not.toBeInTheDocument();
     });
 
@@ -126,47 +165,71 @@ describe("PassportPage", () => {
       fetchMyPassport.mockResolvedValue(detail);
       renderWithRouter(<PassportPage />);
 
-      await screen.findByText("Perform bronchoscopy");
+      await screen.findByText("Records");
       expect(screen.queryByText(/read-only/)).not.toBeInTheDocument();
     });
   });
 
-  it("opens a competency's latest sign-off from its row", async () => {
-    // It used to open /passport/competency/<id>, an older page that
-    // showed little and has since been removed.
-    const user = userEvent.setup();
+  it("lists every record, newest first, of every kind", async () => {
     fetchMyPassport.mockResolvedValue(detail);
+    serveRecords();
     renderWithRouter(<PassportPage />);
 
-    await user.click(
-      await screen.findByRole("button", { name: competencies[0].name }),
-    );
+    await screen.findByText("Breaking bad news");
+    const rows = screen.getAllByRole("row");
+    // The newest fixture record is the reflection of 3 June 2026.
+    expect(rows[1]).toHaveTextContent("Breaking bad news");
+    for (const type of ["Sign-off", "Logbook", "CPD", "Certificate"]) {
+      expect(screen.getAllByText(type).length).toBeGreaterThan(0);
+    }
+    expect(fetchSignOffs).toHaveBeenCalledWith("3f2a8c1e");
+    expect(fetchReflections).toHaveBeenCalledWith("3f2a8c1e");
+  });
+
+  it("opens a record's own page from its row", async () => {
+    const user = userEvent.setup();
+    fetchMyPassport.mockResolvedValue(detail);
+    serveRecords();
+    renderWithRouter(<PassportPage />);
+
+    await user.click(await screen.findByText("Breaking bad news"));
 
     expect(navigate).toHaveBeenCalledWith(
-      `/passport/sign-offs/${competencies[0].sign_off}`,
+      "/passport/reflections/2026-06-03-breaking-bad-news",
     );
   });
 
-  it("opens the logbook for a competency with no sign-off yet", async () => {
-    const user = userEvent.setup();
-    fetchMyPassport.mockResolvedValue({
-      ...detail,
-      competencies: [{ ...competencies[0], sign_off: null }],
-    });
+  it("names a logbook entry by its competency", async () => {
+    fetchMyPassport.mockResolvedValue(detail);
+    serveRecords();
     renderWithRouter(<PassportPage />);
 
-    await user.click(
-      await screen.findByRole("button", { name: competencies[0].name }),
-    );
-
-    expect(navigate).toHaveBeenCalledWith("/passport/logbook");
+    await screen.findByText("Breaking bad news");
+    const row = screen
+      .getAllByRole("row")
+      .find((candidate) => candidate.textContent?.includes("Logbook"));
+    expect(row).toHaveTextContent("Perform bronchoscopy");
   });
 
-  it("renders the holder's competencies once loaded", async () => {
+  it("no longer groups the record by competency", async () => {
+    // The list of competencies was replaced by the records table.
     fetchMyPassport.mockResolvedValue(detail);
     renderWithRouter(<PassportPage />);
 
-    expect(await screen.findByText("Perform bronchoscopy")).toBeInTheDocument();
+    await screen.findByText("Records");
+    expect(
+      screen.queryByRole("button", { name: competencies[0].name }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says so when the records cannot be loaded", async () => {
+    fetchMyPassport.mockResolvedValue(detail);
+    fetchAllCpd.mockRejectedValue(new Error("network"));
+    renderWithRouter(<PassportPage />);
+
+    expect(
+      await screen.findByText(/Your records could not be loaded/),
+    ).toBeInTheDocument();
   });
 
   it("shows the page heading before the fetch resolves", () => {
@@ -314,7 +377,7 @@ describe("PassportPage", () => {
     fetchInbox.mockRejectedValue(new Error("network"));
     renderWithRouter(<PassportPage />);
 
-    expect(await screen.findByText("Perform bronchoscopy")).toBeInTheDocument();
+    expect(await screen.findByText("Records")).toBeInTheDocument();
     expect(screen.queryByTestId("inbox-count")).not.toBeInTheDocument();
   });
 
@@ -385,7 +448,7 @@ describe("PassportPage", () => {
     );
 
     expect(createPassport).toHaveBeenCalledWith(["oncology"]);
-    expect(await screen.findByText("Perform bronchoscopy")).toBeInTheDocument();
+    expect(await screen.findByText("Records")).toBeInTheDocument();
   });
 
   it("offers the specialties in the order the API gives", async () => {
@@ -459,7 +522,7 @@ describe("PassportPage", () => {
     expect(await screen.findByText(/could not be created/)).toBeInTheDocument();
   });
 
-  it("does not render the competency list when the load failed", async () => {
+  it("does not render the records when the load failed", async () => {
     fetchMyPassport.mockRejectedValue(new Error("network"));
     renderWithRouter(<PassportPage />);
 
@@ -469,6 +532,7 @@ describe("PassportPage", () => {
       ).toBeInTheDocument();
     });
 
-    expect(screen.queryByText("Perform bronchoscopy")).not.toBeInTheDocument();
+    expect(screen.queryByText("Records")).not.toBeInTheDocument();
+    expect(fetchSignOffs).not.toHaveBeenCalled();
   });
 });

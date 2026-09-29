@@ -21,6 +21,9 @@ import type {
   SignOff,
   Verification,
 } from "@lib/passport";
+// From its own module, not the barrel: page tests mock "@lib/passport"
+// and would otherwise hide it from this file.
+import { collectRecords, type PassportRecord } from "@lib/passport/recordList";
 
 export const declaredRegistration: Registration = {
   body: "GMC",
@@ -386,3 +389,17 @@ export const reflections: Reflection[] = [
     attachments: [],
   },
 ];
+
+/**
+ * Every fixture record above as the passport page lists them: sign-offs,
+ * logbook entries, CPD, certificates and reflections, newest first.
+ */
+export const passportRecords: PassportRecord[] = collectRecords({
+  signOffs,
+  logbook: { competencies: [logbook], count: logbook.count },
+  cpd: cpdEntries,
+  certificates,
+  reflections,
+  competencyName: (id) =>
+    competencies.find((competency) => competency.id === id)?.name ?? id,
+});
