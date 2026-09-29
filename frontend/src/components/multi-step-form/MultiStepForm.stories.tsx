@@ -76,7 +76,7 @@ export const BasicThreeSteps: Story = {
               data={["Engineering", "Design", "Product"]}
               placeholder="Select department"
             />
-            <TextField label="Line manager" placeholder="e.g. Dr Corbett" />
+            <TextField label="Line manager" placeholder="e.g. Dr Fenwick" />
           </Stack>
         ),
       },

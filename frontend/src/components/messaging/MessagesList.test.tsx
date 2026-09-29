@@ -27,10 +27,10 @@ const mockThreads: MessageThread[] = [
   },
   {
     id: "2",
-    displayName: "Dr Corbett, Gemma Corbett",
+    displayName: "Dr Fenwick, Imogen Fenwick",
     profiles: [
-      { givenName: "Gareth", familyName: "Corbett", gradientIndex: 5 },
-      { givenName: "Gemma", familyName: "Corbett", gradientIndex: 12 },
+      { givenName: "Rowan", familyName: "Fenwick", gradientIndex: 5 },
+      { givenName: "Imogen", familyName: "Fenwick", gradientIndex: 12 },
     ],
     lastMessage: "I've reviewed your case notes",
     lastMessageTime: new Date(Date.now() - 86400000).toISOString(),
@@ -54,7 +54,9 @@ describe("MessagesList", () => {
       );
 
       expect(screen.getByText("Sarah Johnson")).toBeInTheDocument();
-      expect(screen.getByText("Dr Corbett, Gemma Corbett")).toBeInTheDocument();
+      expect(
+        screen.getByText("Dr Fenwick, Imogen Fenwick"),
+      ).toBeInTheDocument();
       expect(screen.getByText("Dr Patel")).toBeInTheDocument();
     });
 
@@ -80,9 +82,10 @@ describe("MessagesList", () => {
         <MessagesList threads={[mockThreads[1]]} onThreadClick={vi.fn()} />,
       );
 
-      // Both Gareth Corbett and Gemma Corbett have initials "GC"
-      const gcElements = screen.getAllByText("GC");
-      expect(gcElements).toHaveLength(2);
+      // One profile picture for each participant: Rowan Fenwick and
+      // Imogen Fenwick.
+      expect(screen.getByText("RF")).toBeInTheDocument();
+      expect(screen.getByText("IF")).toBeInTheDocument();
     });
   });
 

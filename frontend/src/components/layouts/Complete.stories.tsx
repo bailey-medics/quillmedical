@@ -112,7 +112,7 @@ export const WithMessaging: Story = {
         href: `/patients/${demoPatientsList[0].id}/messages`,
       },
       {
-        label: "Dr Corbett, Gemma",
+        label: "Dr Fenwick, Imogen",
         href: `/patients/${demoPatientsList[0].id}/messages/gastro-clinic`,
       },
     ],

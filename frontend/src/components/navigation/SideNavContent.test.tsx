@@ -445,7 +445,7 @@ describe("SideNavContent Component", () => {
             patientBase,
             { label: "Messages", href: "/patients/patient-123/messages" },
             {
-              label: "Dr Corbett, Gemma",
+              label: "Dr Fenwick, Imogen",
               href: "/patients/patient-123/messages/gastro-clinic",
             },
           ]}
@@ -459,7 +459,7 @@ describe("SideNavContent Component", () => {
         // "Messages" appears both as patient sub-page and main nav link
         const messagesLinks = screen.getAllByText("Messages");
         expect(messagesLinks.length).toBe(2);
-        expect(screen.getByText("Dr Corbett, Gemma")).toBeInTheDocument();
+        expect(screen.getByText("Dr Fenwick, Imogen")).toBeInTheDocument();
       });
     });
 

@@ -38,7 +38,7 @@ export const Required: Story = {
 export const Disabled: Story = {
   args: {
     label: "Email address",
-    value: "gemma.corbett@example.com",
+    value: "imogen.fenwick@example.com",
     disabled: true,
   },
 };
@@ -46,7 +46,7 @@ export const Disabled: Story = {
 export const WithError: Story = {
   args: {
     label: "Email address",
-    value: "gemma@@example.com",
+    value: "imogen@@example.com",
     error: "Please enter a valid email address",
   },
 };
@@ -63,14 +63,14 @@ export const DarkMode: Story = {
       <BaseCard>
         <EmailField
           label="Email address - disabled"
-          value="gemma.corbett@example.com"
+          value="imogen.fenwick@example.com"
           disabled
         />
       </BaseCard>
       <BaseCard>
         <EmailField
           {...args}
-          value="gemma@@example.com"
+          value="imogen@@example.com"
           error="Please enter a valid email address"
         />
       </BaseCard>

@@ -172,7 +172,7 @@ def seed_conversation_1(
 
 def seed_conversation_2(
     db,
-    gemma: User,
+    imogen: User,
     david: User,
     mark: User,
     patient_id: str,
@@ -198,7 +198,7 @@ def seed_conversation_2(
     )
     db.add(
         ConversationParticipant(
-            conversation_id=conv.id, user_id=gemma.id, role="participant"
+            conversation_id=conv.id, user_id=imogen.id, role="participant"
         )
     )
     db.add(
@@ -243,7 +243,7 @@ def seed_conversation_2(
         " vomiting, or any blood in your stool — please contact"
         " the clinic immediately as these would warrant further"
         " investigation.\n\n"
-        "I'll ask Gemma to schedule a follow-up review in three"
+        "I'll ask Imogen to schedule a follow-up review in three"
         " weeks so we can assess your progress with the dietary"
         " changes. Take care."
     )
@@ -252,14 +252,14 @@ def seed_conversation_2(
         (
             mark,
             _ago(days=10),
-            "Hello, I'd like to book in for Dr Corbett's gastro"
+            "Hello, I'd like to book in for Dr Fenwick's gastro"
             " clinic please. My GP referred me a couple of weeks"
             " ago.",
         ),
         (
-            gemma,
+            imogen,
             _ago(days=10) + timedelta(minutes=45),
-            "Hello, I can see your referral. Dr Corbett has"
+            "Hello, I can see your referral. Dr Fenwick has"
             " availability on Wednesday 19 March at 10:30 at Riverside"
             " Health Centre, Room 4. Would that suit you?",
         ),
@@ -269,7 +269,7 @@ def seed_conversation_2(
             "That's perfect, thank you very much!",
         ),
         (
-            gemma,
+            imogen,
             _ago(days=10) + timedelta(minutes=75),
             "Lovely, you're all booked in for the gastro clinic."
             " You'll receive a reminder closer to the date.",
@@ -277,7 +277,7 @@ def seed_conversation_2(
         (
             mark,
             _ago(days=2),
-            "Hi, I had my appointment with Dr Corbett last week"
+            "Hi, I had my appointment with Dr Fenwick last week"
             " and he was very helpful. I have a quick question"
             " though. I know this was not something covered in the"
             " appointment, but I wonder if certain foods could"
@@ -285,16 +285,16 @@ def seed_conversation_2(
             " I should be avoiding?",
         ),
         (
-            gemma,
+            imogen,
             _ago(days=2) + timedelta(minutes=30),
             "That's a clinical question so I'll need"
-            " to pass it to Dr Corbett directly. I've flagged it"
+            " to pass it to Dr Fenwick directly. I've flagged it"
             " for him and he'll respond here.",
         ),
         (
             david,
             _ago(days=2) + timedelta(hours=1),
-            "Hello, Gemma's passed your question on to me."
+            "Hello, Imogen's passed your question on to me."
             " I'm happy to put together a personalised dietary"
             " guide for you — it'll take me about 12 minutes to"
             " review your notes and write it up. As this falls"
@@ -499,15 +499,15 @@ def main() -> int:
             username="emily.williams",
             email="emily.williams@example.com",
         )
-        gemma = get_or_create_user(
+        imogen = get_or_create_user(
             db,
-            username="gemma.corbett",
-            email="gemma.corbett@example.com",
+            username="imogen.fenwick",
+            email="imogen.fenwick@example.com",
         )
         david = get_or_create_user(
             db,
-            username="david.corbett",
-            email="david.corbett@example.com",
+            username="david.fenwick",
+            email="david.fenwick@example.com",
         )
         lisa = get_or_create_user(
             db,
@@ -521,7 +521,7 @@ def main() -> int:
         )
 
         seed_conversation_1(db, emily, mark, patient_ids[0])
-        seed_conversation_2(db, gemma, david, mark, patient_ids[1])
+        seed_conversation_2(db, imogen, david, mark, patient_ids[1])
         seed_conversation_3(db, lisa, james, mark, patient_ids[2])
         seed_conversation_4(db, emily, mark, patient_ids[3])
 

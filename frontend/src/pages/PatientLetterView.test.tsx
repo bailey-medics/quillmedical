@@ -41,7 +41,7 @@ describe("PatientLetterView", () => {
     expect(
       screen.getByText("Gastroenterology outpatient clinic letter"),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/Dr Gareth Corbett/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Dr Rowan Fenwick/).length).toBeGreaterThan(0);
   });
 
   it("renders the full letter body", () => {

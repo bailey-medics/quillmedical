@@ -21,7 +21,7 @@ const mockNotes: ClinicalNote[] = [
     id: "1",
     title: "Gastro clinic consultation",
     date: "2026-03-19",
-    author: "Dr Gareth Corbett",
+    author: "Dr Rowan Fenwick",
     authorRole: "Consultant Gastroenterologist",
     category: "consultation",
     content: "Patient attended for assessment.\n\nPlan: Review in 3 weeks.",
@@ -30,7 +30,7 @@ const mockNotes: ClinicalNote[] = [
     id: "2",
     title: "Telephone follow-up",
     date: "2026-03-20",
-    author: "Dr Gareth Corbett",
+    author: "Dr Rowan Fenwick",
     authorRole: "Consultant Gastroenterologist",
     category: "telephone",
     content: "Dietary guidance provided via messaging.",
@@ -76,7 +76,7 @@ describe("NotesList", () => {
       renderWithMantine(<NotesList notes={[mockNotes[0]]} />);
 
       expect(
-        screen.getByText("Dr Gareth Corbett — Consultant Gastroenterologist"),
+        screen.getByText("Dr Rowan Fenwick — Consultant Gastroenterologist"),
       ).toBeInTheDocument();
     });
 

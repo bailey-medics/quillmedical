@@ -65,7 +65,7 @@ describe("PatientLetters", () => {
     });
 
     expect(
-      screen.getByText("Dr Gareth Corbett — Consultant Gastroenterologist"),
+      screen.getByText("Dr Rowan Fenwick — Consultant Gastroenterologist"),
     ).toBeInTheDocument();
   });
 

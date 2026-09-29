@@ -6,7 +6,7 @@ import MultiSelectField from "./MultiSelectField";
 import dropdownClasses from "./dropdownGroupLabel.module.css";
 
 const options = [
-  { value: "1", label: "Dr Corbett" },
+  { value: "1", label: "Dr Fenwick" },
   { value: "2", label: "Nurse Adams" },
 ];
 
@@ -32,7 +32,7 @@ describe("MultiSelectField", () => {
     renderWithMantine(<MultiSelectField label="Participants" data={options} />);
 
     await user.click(screen.getByRole("combobox"));
-    expect(screen.getByText("Dr Corbett")).toBeInTheDocument();
+    expect(screen.getByText("Dr Fenwick")).toBeInTheDocument();
     expect(screen.getByText("Nurse Adams")).toBeInTheDocument();
   });
 
