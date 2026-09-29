@@ -232,6 +232,44 @@ describe("FeedbackModal", () => {
       expect(onClose).toHaveBeenCalledOnce();
     });
 
+    it("reports following that link, after closing", async () => {
+      const user = userEvent.setup();
+      const onClose = vi.fn();
+      const onFollowYourFeedback = vi.fn();
+      renderWithRouter(
+        <FeedbackModal
+          opened
+          onClose={onClose}
+          onSubmit={vi.fn().mockResolvedValue({ id: 1 })}
+          onFollowYourFeedback={onFollowYourFeedback}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole("link", { name: "Your previous feedback" }),
+      );
+
+      expect(onClose).toHaveBeenCalledOnce();
+      expect(onFollowYourFeedback).toHaveBeenCalledOnce();
+    });
+
+    it("does not report Cancel as following the link", async () => {
+      const user = userEvent.setup();
+      const onFollowYourFeedback = vi.fn();
+      renderWithRouter(
+        <FeedbackModal
+          opened
+          onClose={vi.fn()}
+          onSubmit={vi.fn().mockResolvedValue({ id: 1 })}
+          onFollowYourFeedback={onFollowYourFeedback}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(onFollowYourFeedback).not.toHaveBeenCalled();
+    });
+
     it("says where the outcome will appear once sent", async () => {
       const user = userEvent.setup();
       const { onClose } = renderInRouter();
