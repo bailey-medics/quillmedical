@@ -346,6 +346,18 @@ describe("AssessmentQuestionResultsPage", () => {
     expect(screen.getByText("Test Bank")).toBeInTheDocument();
   });
 
+  it("says the table is in stored order, not the order the questions were seen", async () => {
+    (api.get as Mock).mockResolvedValue(results);
+    renderPage();
+
+    expect(
+      await screen.findByRole("heading", { name: "Questions" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/not the order in which you saw them/),
+    ).toBeInTheDocument();
+  });
+
   it("lists each question by its number", async () => {
     (api.get as Mock).mockResolvedValue(results);
     renderPage();

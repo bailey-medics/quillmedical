@@ -15,7 +15,7 @@ import TeachingLayout from "@/components/layouts/TeachingLayout";
 import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
-import { BodyText, PageHeader } from "@/components/typography";
+import { BodyText, Heading, PageHeader } from "@/components/typography";
 import { QuestionResultsTable } from "@/components/teaching/question-results-table";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -117,6 +117,17 @@ export default function AssessmentQuestionResultsPage() {
             ))}
           </Stack>
         </BaseCard>
+        {/* The table lists questions as the bank stores them. Each
+            attempt shows them in its own shuffled order, so a learner
+            reading down the table would otherwise look for the order
+            they met them in. */}
+        <Stack gap="xs">
+          <Heading>Questions</Heading>
+          <BodyText>
+            The results below are in the order the questions are stored, not the
+            order in which you saw them in the assessment.
+          </BodyText>
+        </Stack>
         <QuestionResultsTable questions={results.questions} />
       </Stack>
     </TeachingLayout>
