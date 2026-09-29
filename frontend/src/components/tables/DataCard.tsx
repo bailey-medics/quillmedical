@@ -20,6 +20,7 @@
  * ```
  */
 
+import type { ReactNode } from "react";
 import { Group, Skeleton, Stack } from "@mantine/core";
 import Divider from "@/components/divider/Divider";
 import { BodyTextInline, BodyTextBold } from "@/components/typography";
@@ -36,6 +37,12 @@ export interface DataCardProps<T> {
   onClick: (row: T) => void;
   /** Loading state — shows skeleton placeholders */
   loading?: boolean;
+  /**
+   * Full-width content beneath the fields, such as the reason an
+   * operation failed. What `DataTableWithResults` shows as a sub-row on
+   * a wide screen, it shows here on a phone.
+   */
+  footer?: ReactNode;
 }
 
 /**
@@ -49,6 +56,7 @@ export default function DataCard<T>({
   columns,
   onClick,
   loading = false,
+  footer,
 }: DataCardProps<T>) {
   if (loading) {
     return (
@@ -85,6 +93,12 @@ export default function DataCard<T>({
             </div>
           );
         })}
+        {footer && (
+          <>
+            <Divider />
+            {footer}
+          </>
+        )}
       </Stack>
     </BaseCard>
   );

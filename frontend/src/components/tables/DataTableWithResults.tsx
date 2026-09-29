@@ -24,7 +24,16 @@
 
 import { Fragment, type ReactNode } from "react";
 import LiveStatus from "@/components/live-status";
-import { Center, Skeleton, Table, useComputedColorScheme } from "@mantine/core";
+import {
+  Center,
+  Skeleton,
+  Stack,
+  Table,
+  useComputedColorScheme,
+  useMantineTheme,
+} from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
+import DataCard from "./DataCard";
 import {
   BodyText,
   BodyTextBold,
@@ -89,12 +98,32 @@ function DataTableWithResultsView<T>({
   emptyMessage = "No data found",
   loading = false,
 }: DataTableWithResultsProps<T>) {
+  const theme = useMantineTheme();
+  // Cards on a phone, as `DataTable` draws them: a table of several
+  // columns does not fit a narrow screen and scrolls sideways instead.
+  const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const colorScheme = useComputedColorScheme("light");
   const isDark = colorScheme === "dark";
 
   const stripeBg = isDark
     ? "var(--mantine-color-dark-6)"
     : "var(--mantine-color-gray-0)";
+
+  if (loading && isMobile) {
+    return (
+      <Stack gap="md">
+        {Array.from({ length: 3 }, (_, index) => (
+          <DataCard
+            key={index}
+            row={{} as T}
+            columns={columns}
+            onClick={() => {}}
+            loading
+          />
+        ))}
+      </Stack>
+    );
+  }
 
   if (loading) {
     return (
@@ -128,6 +157,23 @@ function DataTableWithResultsView<T>({
       <Center p="xl">
         <BodyText>{emptyMessage}</BodyText>
       </Center>
+    );
+  }
+
+  // The sub-row becomes the card's footer, under the fields.
+  if (isMobile) {
+    return (
+      <Stack gap="md">
+        {data.map((row) => (
+          <DataCard
+            key={getRowKey(row)}
+            row={row}
+            columns={columns}
+            onClick={onRowClick ?? (() => {})}
+            footer={getSubRow?.(row) ?? null}
+          />
+        ))}
+      </Stack>
     );
   }
 

@@ -133,4 +133,17 @@ describe("DataCard", () => {
       ).toBeGreaterThan(0);
     });
   });
+
+  it("shows a footer beneath the fields", () => {
+    renderWithMantine(
+      <DataCard
+        row={{ name: "Module B" }}
+        columns={[{ header: "Name", render: (r: { name: string }) => r.name }]}
+        onClick={() => {}}
+        footer="Version mismatch"
+      />,
+    );
+
+    expect(screen.getByText("Version mismatch")).toBeInTheDocument();
+  });
 });
