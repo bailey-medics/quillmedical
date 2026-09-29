@@ -1784,6 +1784,7 @@ test-scripts *ARGS:
     else
         run_suite .github/scripts
         run_suite .claude/hooks
+        run_suite scripts/tests
     fi
 
 
