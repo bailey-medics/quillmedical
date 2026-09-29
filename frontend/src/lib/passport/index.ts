@@ -25,6 +25,7 @@ export {
   exportPdf,
   fetchCertificates,
   uploadEvidence,
+  fetchAppraisalPeriods,
   fetchCpdYear,
   fetchInbox,
   fetchLogbook,
@@ -43,6 +44,7 @@ export {
   requestSignOff,
   searchAssessors,
   revokeAssessorMembership,
+  saveAppraisalPeriods,
   setPassportSpecialties,
   signOff,
   verifySignOff,
@@ -94,6 +96,7 @@ export type {
   Verification,
   Specialty,
   SpecialtyChoice,
+  AppraisalPeriod,
 } from "./types";
 
 export { PASSPORT_SPECIALTIES, getPassportSpecialty } from "./specialties";

@@ -83,6 +83,7 @@ EXPECTED_PATHS = {
     "/api/passport/requests/inbox",
     "/api/passport/specialties",
     "/api/passport/{passport_id}",
+    "/api/passport/{passport_id}/appraisal-periods",
     "/api/passport/{passport_id}/certificates",
     "/api/passport/{passport_id}/certificates/{name}",
     "/api/passport/{passport_id}/certificates/{name}/attachments/{blob_digest}",

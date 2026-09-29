@@ -34,6 +34,7 @@ from . import ids, index, paths, serialise
 from .commits import Actor, CommitAction
 from .commits import build as build_message
 from .schemas import (
+    AppraisalPeriod,
     Certificate,
     CpdEntry,
     LogbookEntry,
@@ -46,6 +47,14 @@ from .store import PassportHead, PassportNotFoundError, PassportStore
 
 class RecordNotFoundError(Exception):
     """No record of that kind exists under that name."""
+
+
+class AppraisalPeriodOverlapError(ValueError):
+    """Two declared appraisal periods share a day.
+
+    Refused because a CPD activity must belong to exactly one period, or
+    its points count twice. Gaps between periods are allowed.
+    """
 
 
 class _PendingView(PassportStore):
@@ -553,6 +562,74 @@ def remove_logbook_entry(
 
 
 # --- Profile --------------------------------------------------------------
+
+
+def set_appraisal_periods(
+    store: PassportStore,
+    passport_id: str,
+    actor: Actor,
+    periods: list[AppraisalPeriod],
+    *,
+    now: datetime | None = None,
+) -> str:
+    """Replace the holder's appraisal periods in ``profile.yaml``.
+
+    The whole list at once, so the check that no two overlap happens in
+    one place. Stored oldest first. A commit like any other change, so
+    the history keeps every earlier value when a period is corrected or
+    removed.
+
+    Args:
+        store: Where the passport lives.
+        passport_id: Whose passport.
+        actor: The holder.
+        periods: Every period, in any order. Empty clears them all.
+        now: For tests.
+
+    Returns:
+        The commit id.
+
+    Raises:
+        AppraisalPeriodOverlapError: If two periods share a day.
+    """
+    ordered = sorted(periods, key=lambda period: period.starts_on)
+
+    for earlier, later in zip(ordered, ordered[1:], strict=False):
+        if later.starts_on <= earlier.ends_on:
+            raise AppraisalPeriodOverlapError(
+                f"The date range starting {later.starts_on.isoformat()} "
+                f"overlaps the one starting {earlier.starts_on.isoformat()}. "
+                "Each CPD activity can only count towards one range."
+            )
+
+    profile = serialise.from_yaml(
+        Profile, store.read(passport_id, paths.PROFILE)
+    )
+    updated = profile.model_copy(update={"appraisal_periods": ordered})
+    summary = (
+        f"set {len(ordered)} appraisal period"
+        f"{'' if len(ordered) == 1 else 's'}"
+        if ordered
+        else "clear appraisal periods"
+    )
+
+    return _write(
+        store,
+        passport_id,
+        actor,
+        "amend",
+        summary,
+        {
+            paths.PROFILE: serialise.to_yaml(
+                updated,
+                comment=(
+                    "Who this passport belongs to. Regenerated when their "
+                    "details change."
+                ),
+            )
+        },
+        now=now,
+    )
 
 
 def set_specialties(

@@ -4355,3 +4355,152 @@ class TestSpecialties:
 
         assert exported.status_code == 200, exported.text
         assert "Specialty: Oncology" in exported.text
+
+
+class TestAppraisalPeriods:
+    """The holder's CPD date ranges, which CPD is totalled over."""
+
+    def _put(
+        self, client: TestClient, passport_id: str, *periods: tuple[str, str]
+    ) -> Response:
+        return client.put(
+            f"/api/passport/{passport_id}/appraisal-periods",
+            json={
+                "periods": [
+                    {"starts_on": starts, "ends_on": ends}
+                    for starts, ends in periods
+                ]
+            },
+        )
+
+    def test_a_new_passport_has_none(self, holder_client: TestClient) -> None:
+        """So CPD falls back to June to June, as it does today."""
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.get(
+            f"/api/passport/{passport_id}/appraisal-periods"
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json() == {"periods": []}
+
+    def test_the_holder_can_set_and_read_them_oldest_first(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = self._put(
+            holder_client,
+            passport_id,
+            ("2026-08-01", "2026-11-30"),
+            ("2025-08-01", "2026-07-31"),
+        )
+
+        assert response.status_code == 200, response.text
+        read = holder_client.get(
+            f"/api/passport/{passport_id}/appraisal-periods"
+        ).json()
+        assert read["periods"] == [
+            {"starts_on": "2025-08-01", "ends_on": "2026-07-31"},
+            {"starts_on": "2026-08-01", "ends_on": "2026-11-30"},
+        ]
+
+    def test_gaps_between_ranges_are_allowed(
+        self, holder_client: TestClient
+    ) -> None:
+        """A career break is real, and leaves a gap."""
+        passport_id = _create_passport(holder_client)
+
+        response = self._put(
+            holder_client,
+            passport_id,
+            ("2024-01-01", "2024-12-31"),
+            ("2026-01-01", "2026-12-31"),
+        )
+
+        assert response.status_code == 200, response.text
+
+    def test_overlapping_ranges_are_refused(
+        self, holder_client: TestClient
+    ) -> None:
+        """An activity in both would count its points twice."""
+        passport_id = _create_passport(holder_client)
+
+        response = self._put(
+            holder_client,
+            passport_id,
+            ("2025-08-01", "2026-07-31"),
+            ("2026-07-31", "2027-07-30"),
+        )
+
+        assert response.status_code == 400, response.text
+        assert "overlaps" in response.json()["detail"]
+
+    def test_a_range_that_ends_before_it_starts_is_refused(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = self._put(
+            holder_client, passport_id, ("2026-08-01", "2026-07-31")
+        )
+
+        assert response.status_code == 400, response.text
+        assert "cannot end before it starts" in response.json()["detail"]
+
+    def test_an_empty_list_clears_them(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        self._put(holder_client, passport_id, ("2025-08-01", "2026-07-31"))
+
+        response = self._put(holder_client, passport_id)
+
+        assert response.status_code == 200, response.text
+        assert response.json() == {"periods": []}
+
+    def test_each_change_is_a_commit_in_the_history(
+        self, holder_client: TestClient, passport_store: LocalPassportStore
+    ) -> None:
+        """So a corrected or removed range is never lost."""
+        passport_id = _create_passport(holder_client)
+        before = passport_store.head(passport_id)
+
+        self._put(holder_client, passport_id, ("2025-08-01", "2026-07-31"))
+
+        assert passport_store.head(passport_id) != before
+
+    def test_a_holder_whose_entitlement_lapsed_cannot_change_them(
+        self,
+        holder_client: TestClient,
+        holder: User,
+        db_session: Session,
+    ) -> None:
+        """But can still read them, like the rest of the record."""
+        passport_id = _create_passport(holder_client)
+        lapse(holder, "passport_write")
+        db_session.commit()
+
+        written = self._put(
+            holder_client, passport_id, ("2025-08-01", "2026-07-31")
+        )
+        read = holder_client.get(
+            f"/api/passport/{passport_id}/appraisal-periods"
+        )
+
+        assert written.status_code == 403, written.text
+        assert read.status_code == 200, read.text
+
+    def test_an_assessor_cannot_read_them(
+        self,
+        test_client: TestClient,
+        holder_client: TestClient,
+        assessor: User,
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = _login(test_client, "assessor").get(
+            f"/api/passport/{passport_id}/appraisal-periods"
+        )
+
+        assert response.status_code == 404
