@@ -1,9 +1,9 @@
 /**
- * Settings page – the page-view opt-out, the passport specialty card and
- * the install app card
+ * Settings page – the page-view opt-out, the passport specialty card, the
+ * install app card and the two-factor card
  *
- * The rest of Settings – notifications, two-factor, dark mode – is
- * untested here and was before these changes too.
+ * The rest of Settings – notifications, dark mode – is untested here and
+ * was before these changes too.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
@@ -325,5 +325,22 @@ describe("the install app card", () => {
     expect(
       await screen.findByText("This browser cannot install Quill"),
     ).toBeInTheDocument();
+  });
+});
+
+describe("the two-factor card", () => {
+  it("keeps configuring shut until the switch is on", async () => {
+    const user = userEvent.setup();
+    renderWithRouter(<Settings />);
+
+    const configure = screen.getByRole("button", { name: /configure totp/i });
+    // IconTextButton disables through aria-disabled, which keeps it focusable
+    expect(configure).toHaveAttribute("aria-disabled", "true");
+
+    await user.click(
+      screen.getByRole("switch", { name: /two-factor authentication/i }),
+    );
+
+    expect(configure).not.toHaveAttribute("aria-disabled", "true");
   });
 });
