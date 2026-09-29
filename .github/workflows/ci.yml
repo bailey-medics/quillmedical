@@ -255,6 +255,7 @@ jobs:
         run: |
           bash .github/scripts/ci/run-shell-tests.sh .github/scripts
           bash .github/scripts/ci/run-shell-tests.sh .claude/hooks
+          bash .github/scripts/ci/run-shell-tests.sh scripts/tests
 
 
   # ---------- Version consistency ----------

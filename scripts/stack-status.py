@@ -317,7 +317,7 @@ def best_conclusion_per_check(
         "pending": 2,
         "failing": 3,
     }
-    best: dict[str, tuple[str, str]] = {}
+    seen: dict[str, list[tuple[str, str]]] = {}
 
     for check in rollup:
         if not isinstance(check, dict):
@@ -339,9 +339,23 @@ def best_conclusion_per_check(
         else:
             kind = "pending"
 
-        previous = best.get(name)
-        if previous is None or rank[kind] > rank[previous[0]]:
-            best[name] = (kind, conclusion)
+        seen.setdefault(name, []).append((kind, conclusion))
+
+    best: dict[str, tuple[str, str]] = {}
+
+    for name, entries in seen.items():
+        # A cancelled copy beside any other copy of the same check is a
+        # superseded run: two pushes a second apart start two runs, and
+        # CI's concurrency rule cancels the older. GitHub hides that run,
+        # so counting it as a failure showed ✗ ✗ on a pull request whose
+        # real run was still going. A cancellation with nothing to replace
+        # it is still a failure, since GitHub reads a cancelled required
+        # check as one.
+        replaced = [e for e in entries if e[1] != "CANCELLED"]
+        for kind, conclusion in replaced or entries:
+            previous = best.get(name)
+            if previous is None or rank[kind] > rank[previous[0]]:
+                best[name] = (kind, conclusion)
 
     return best
 
