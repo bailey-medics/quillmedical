@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for resolve-commit.sh — the deploy pipeline's commit-resolution step.
+# Tests for resolve-commit.sh – the deploy pipeline's commit-resolution step.
 #
 # Only the pure selection/validation logic (select_ref) is unit-tested here.
 

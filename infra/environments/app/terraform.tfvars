@@ -1,4 +1,4 @@
-# environments/app/terraform.tfvars — App configuration
+# environments/app/terraform.tfvars – App configuration
 #
 # The teaching and passport product, in the project it is moving to.
 #
@@ -22,7 +22,7 @@ domain      = "quill-medical.com"
 manage_dns_zone = true
 
 db_tier     = "db-f1-micro"
-enable_fhir = false # No FHIR/EHRbase — single auth DB + Cloud Storage
+enable_fhir = false # No FHIR/EHRbase – single auth DB + Cloud Storage
 enable_ha   = false
 
 cloud_run_max_instances = 5
@@ -79,7 +79,7 @@ slack_channel_display_name = "quill-medical-cicd"
 # Whether this environment should have these alert channels at all. Static
 # config rather than a test on whether the secret holds a value: a `count`
 # must be known at plan time, and those values are read from Secret Manager.
-# Both channels are deployed, so both are true — setting either false would
+# Both channels are deployed, so both are true – setting either false would
 # destroy the channel.
 enable_sms_channel       = true
 enable_pagerduty_channel = true

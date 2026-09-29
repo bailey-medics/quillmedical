@@ -8,8 +8,8 @@ which read as a check and was not one. The route already carries
 ``_DEP_MANAGE`` at the decorator and already scopes to
 ``get_member_org_unit_ids``, so by the time this query runs both the *what*
 and the *where* are settled. What the line actually expressed was a
-display preference — do not offer staff-admin accounts as teaching
-delegates — and it did so by reading the column being retired.
+display preference – do not offer staff-admin accounts as teaching
+delegates – and it did so by reading the column being retired.
 
 Dropping it is a visible behaviour change, which is why it is pinned
 here: an administrator who is also a trainee is an ordinary case, and

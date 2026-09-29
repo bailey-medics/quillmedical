@@ -266,7 +266,7 @@ describe("the route a report carries", () => {
   });
 
   it("redacts a route that reached it with an identifier still in it", async () => {
-    // Should not happen — the pattern is rebuilt from the router's params —
+    // Should not happen – the pattern is rebuilt from the router's params –
     // but the route crosses the wire, so it gets the same backstop as every
     // other field rather than being trusted.
     setCurrentRoute("/patients/943 476 5919");

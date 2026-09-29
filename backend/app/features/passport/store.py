@@ -7,7 +7,7 @@ module's business and nobody else's.
 Four properties hold whatever the backend:
 
 **One write, one commit.** There is no way to change a passport without
-committing. A write either lands entirely — every file, one commit — or
+committing. A write either lands entirely – every file, one commit – or
 leaves the repository exactly as it was.
 
 **Rollback on failure.** If any part of a write fails, the files it had
@@ -66,14 +66,14 @@ when, and on what evidence.
 
 ## How to read it
 
-- `manifest.yaml` — what this passport is, and when it was created.
-- `profile.yaml` — whose passport it is.
-- `competencies.yaml` — every competency with evidence, and where it
+- `manifest.yaml` – what this passport is, and when it was created.
+- `profile.yaml` – whose passport it is.
+- `competencies.yaml` – every competency with evidence, and where it
   stands. This is a summary, regenerated from the directories below; if
   it ever disagrees with them, they are correct.
-- `sign-offs/` — one directory per assessment, each holding the record
+- `sign-offs/` – one directory per assessment, each holding the record
   that was signed. These never change once signed.
-- `certificates/`, `logbook/`, `reflections/`, `cpd/` — evidence the
+- `certificates/`, `logbook/`, `reflections/`, `cpd/` – evidence the
   holder recorded themselves. Nobody countersigns these, which is what
   distinguishes them from a sign-off.
 
@@ -130,7 +130,7 @@ class CleanupFailedError(StoreError):
 
     Distinct from every other error because it is the one case where the
     repository may be left in a state nobody intended. Operators need to
-    know residue exists rather than seeing a generic failure — after
+    know residue exists rather than seeing a generic failure – after
     VPR, which surfaces the same distinction.
     """
 
@@ -203,7 +203,7 @@ class LocalPassportStore(PassportStore):
     the bucket backend has to behave identically, so this is where the
     semantics are pinned.
 
-    Repositories are sharded by the passport id — ``3f/2a/3f2a8c1e…`` —
+    Repositories are sharded by the passport id – ``3f/2a/3f2a8c1e…`` –
     so no directory grows unmanageably wide, and the shard is derivable
     from the id rather than recorded anywhere.
     """
@@ -365,7 +365,7 @@ class LocalPassportStore(PassportStore):
             # host's init.defaultBranch, and this store commits to
             # refs/heads/main. Without this the commits land on a branch
             # HEAD does not follow, so the repository reads as empty
-            # while holding every record — the kind of fault that looks
+            # while holding every record – the kind of fault that looks
             # like data loss and is not.
             repository.set_head(BRANCH)
 
@@ -461,7 +461,7 @@ class LocalPassportStore(PassportStore):
 
         Returns:
             Its entries, sorted, as paths relative to the root. Empty if
-            the directory does not exist — an absent directory and an
+            the directory does not exist – an absent directory and an
             empty one mean the same thing to a caller counting records,
             and git cannot represent an empty directory anyway.
 
@@ -691,7 +691,7 @@ class LocalPassportStore(PassportStore):
         Best-effort and deliberately quiet: it runs while an exception is
         already propagating, and raising here would replace the real
         cause with a secondary failure. The commit is what matters, and
-        no commit was made — so even a partial rollback leaves a
+        no commit was made – so even a partial rollback leaves a
         repository whose history is correct.
 
         Args:

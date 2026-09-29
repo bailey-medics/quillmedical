@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for deploy-tagged.sh — the pre-deploy tagged/no-traffic revision
+# Tests for deploy-tagged.sh – the pre-deploy tagged/no-traffic revision
 # deploy, smoke test, and promote step.
 #
 # `gcloud` and `run_smoke_test` are stubbed so the deploy/lookup/promote
@@ -250,7 +250,7 @@ is_update_traffic() {
   [ "$status" -eq 0 ]
 }
 
-@test "promotion_settled rejects the stalled state — spec says LATEST, traffic still on the old revision" {
+@test "promotion_settled rejects the stalled state – spec says LATEST, traffic still on the old revision" {
   run promotion_settled "$REV" <<< "$(stalled_json)"
   [ "$status" -ne 0 ]
 }

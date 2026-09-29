@@ -230,14 +230,14 @@ def sync_question_bank(
     bank_dir:
         Path to the question bank directory.
     org_unit_id:
-        The org_unit that owns the bank — the organisation's own row in the
+        The org_unit that owns the bank – the organisation's own row in the
         tree.
     user_id:
         User triggering the sync (for audit).
     db:
         SQLAlchemy session.
     validate_only:
-        If True, run validation only — do not import items.
+        If True, run validation only – do not import items.
     image_inventory:
         Optional mapping of item directory names to sets of image
         filenames (from GCS).  Passed through to validation so
@@ -251,7 +251,7 @@ def sync_question_bank(
     Tuple of (ValidationResult, QuestionBankSync or None).
     The sync record is None when validate_only is True.
     """
-    # Step 1: Validate. One validator, shared with the merge gate — see
+    # Step 1: Validate. One validator, shared with the merge gate – see
     # app.features.teaching.tooling.
     validation = validate_assessment_dir(bank_dir, image_inventory)
 
@@ -296,7 +296,7 @@ def sync_question_bank(
         ).scalar_one_or_none()
 
         if stored is not None and version <= stored:
-            # Version hasn't bumped — only update module metadata on
+            # Version hasn't bumped – only update module metadata on
             # the existing config row, then return early.
             module_meta = _load_module_metadata(bank_dir)
             existing_config = db.execute(

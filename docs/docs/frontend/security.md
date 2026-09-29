@@ -327,7 +327,7 @@ Patient health information is never
 
 ## Payment Security
 
-**Status: Planned feature — not yet implemented.**
+**Status: Planned feature – not yet implemented.**
 
 Payment processing via Stripe is planned but not yet built. When implemented, it will follow PCI standards with no credit card details stored in our system.
 
@@ -353,13 +353,13 @@ Payment processing via Stripe is planned but not yet built. When implemented, it
 
 ### Account Recovery
 
-**Status: Planned feature — not yet implemented.**
+**Status: Planned feature – not yet implemented.**
 
 Password reset functionality is not yet available. Contact an administrator to reset your password.
 
 ### Suspicious Activity Detection
 
-**Status: Planned feature — not yet implemented.**
+**Status: Planned feature – not yet implemented.**
 
 Automatic monitoring of suspicious activity (failed logins, unusual locations) is planned but not yet built.
 

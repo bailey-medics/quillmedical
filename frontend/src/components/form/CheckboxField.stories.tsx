@@ -55,7 +55,7 @@ export const Disabled: Story = {
 };
 
 /**
- * How an assessor confirms a sign-off — the reason this component exists.
+ * How an assessor confirms a sign-off – the reason this component exists.
  */
 export const AsAnAttestation: Story = {
   render: function AsAnAttestationStory() {
@@ -74,7 +74,7 @@ export const AsAnAttestation: Story = {
           Unticked by default and never pre-ticked: the deliberate act is the
           whole point, and the API refuses a sign-off without it. This is what
           NES Turas, Kaizen and the RCP ePortfolio do for workplace-based
-          assessment — a drawn signature would look more official and prove
+          assessment – a drawn signature would look more official and prove
           less, since anyone can draw anyone&rsquo;s name.
         </StoryNote>
       </Stack>

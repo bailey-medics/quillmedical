@@ -1,4 +1,4 @@
-"""Tests for the teaching feature — validation module."""
+"""Tests for the teaching feature – validation module."""
 
 from __future__ import annotations
 

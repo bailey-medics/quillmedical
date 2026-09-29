@@ -40,7 +40,7 @@ class TestTestApiEndpointsFlag:
 
 class TestMutateBreakingResponseToggles:
     """Guards the three deliberate-mutation constants used in item 19's
-    Phase 2 scenarios — all must be False outside an active test scenario
+    Phase 2 scenarios – all must be False outside an active test scenario
     PR."""
 
     @pytest.mark.skipif(
@@ -48,7 +48,7 @@ class TestMutateBreakingResponseToggles:
         reason="Skipped during active Phase 2/3 scenario testing (mutations intentionally on)",
     )
     def test_defaults_false(self) -> None:
-        """All toggles must be False on `main` — guards against
+        """All toggles must be False on `main` – guards against
         accidentally merging a PR with a mutation left switched on.
         Skipped when any toggle is True (expected during Phase 2/3 test scenarios).
         """
@@ -83,7 +83,7 @@ class TestMutateBreakingResponseToggles:
         self,
     ) -> None:
         """With the toggle at its default, `summary` is a required
-        property of TestBreakingResponse2's schema — lets a single-field
+        property of TestBreakingResponse2's schema – lets a single-field
         breaking change be tested on a second, independent endpoint."""
         from app.test_api_endpoints import TestBreakingResponse2
 
@@ -94,7 +94,7 @@ class TestMutateBreakingResponseToggles:
 
 class TestRealAppAbsentByDefault:
     """The real app is built with the flag at its default (False) in tests,
-    matching every real deployment — the dummy routes must not exist."""
+    matching every real deployment – the dummy routes must not exist."""
 
     def test_non_breaking_api_absent(self, test_client: TestClient) -> None:
         resp = test_client.get("/api/test/non-breaking-api")

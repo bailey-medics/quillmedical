@@ -2,11 +2,11 @@
  * Counting which pages get used
  *
  * Answers "how many people visit each page of the app" and nothing else.
- * There is no funnel here, no retention curve, no per-person history — the
+ * There is no funnel here, no retention curve, no per-person history – the
  * counts are of sessions, because that is what the question needs and it is
  * considerably cheaper to justify than counting identified people.
  *
- * What leaves the browser is the **matched route pattern** — `/patients/:id`,
+ * What leaves the browser is the **matched route pattern** – `/patients/:id`,
  * never `/patients/abc123`, and never the document title. The pattern is
  * rebuilt from the router's own params by `toRoutePattern`, so an identifier
  * is removed because the router said it was one rather than because anything
@@ -59,7 +59,7 @@ export function recordPageView(pattern: string): void {
       sent += 1;
     }
   } catch (cause) {
-    // Swallowed by design, and said aloud in development only — a catch this
+    // Swallowed by design, and said aloud in development only – a catch this
     // broad hides ordinary mistakes as readily as genuine failures, which is
     // how the error reporter once sent nothing at all without saying so.
     if (import.meta.env.DEV) {

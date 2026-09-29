@@ -183,7 +183,7 @@ describe("useModuleMedia", () => {
     });
 
     expect(requests[0].headers["x-goog-resumable"]).toBe("start");
-    // The opening request carries no body — it only asks for a session.
+    // The opening request carries no body – it only asks for a session.
     expect(requests[0].body).toBeUndefined();
   });
 
@@ -210,7 +210,7 @@ describe("useModuleMedia", () => {
 
   it("fails clearly when the session URL is not returned", async () => {
     // The bucket's CORS policy has to expose Location. If it does not,
-    // the browser hides the header and the upload has nowhere to go —
+    // the browser hides the header and the upload has nowhere to go –
     // which should say so rather than appear to hang.
     stubUpload({ location: null });
     (api.get as Mock).mockResolvedValue(media);
@@ -302,7 +302,7 @@ describe("useModuleMedia", () => {
 
     const calls = (api.post as Mock).mock.calls.map((c) => c[0] as string);
     expect(calls.some((c) => c.includes("/link"))).toBe(false);
-    // A 500 is ours, not the file's, and the message says so — an
+    // A 500 is ours, not the file's, and the message says so – an
     // admin who reads "too large" starts re-exporting a video that was
     // never the problem.
     expect(result.current.error).toContain("not a problem with your file");

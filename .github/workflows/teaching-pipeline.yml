@@ -33,7 +33,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      # No lfs: true here, unlike validate and deploy — this job only opens
+      # No lfs: true here, unlike validate and deploy – this job only opens
       # a pull request and never reads the content.
       - name: Check out question bank content
         uses: actions/checkout@v7.0.1
@@ -166,7 +166,7 @@ jobs:
   # Deliberately does not re-validate. The content ruleset is enforcement =
   # active with zero bypass actors and strict required status checks, so the
   # tree reaching main is byte-identical to the one "pipeline / validate"
-  # passed on — a second run could find nothing new.
+  # passed on – a second run could find nothing new.
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -178,7 +178,7 @@ jobs:
       sync_response: ${{ steps.sync.outputs.body }}
     steps:
       # lfs: true for the same reason as validate, and with the same
-      # caveat — this job uploads the bytes to GCS, so a pointer here
+      # caveat – this job uploads the bytes to GCS, so a pointer here
       # reaches candidates as a broken image, and for a visual-diagnosis
       # bank the image is the question.
       - name: Check out question bank content
@@ -244,7 +244,7 @@ jobs:
   # -------------------------------------------------------------------
   #
   # A failed deploy leaves GCS holding content the backend has not imported,
-  # and until now nothing said so — the sync could fail and the only trace
+  # and until now nothing said so – the sync could fail and the only trace
   # was a red tick nobody was watching. Quotes the backend's response, so
   # the message names the bank that was rejected rather than sending the
   # reader to the logs.

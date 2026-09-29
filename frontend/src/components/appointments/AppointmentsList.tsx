@@ -66,7 +66,7 @@ function AppointmentCard({
         </BodyTextBold>
         <BodyText>{appointment.location}</BodyText>
         <BodyText>
-          {appointment.clinician} — {appointment.clinicianRole}
+          {appointment.clinician} – {appointment.clinicianRole}
         </BodyText>
         {appointment.notes && <BodyText>{appointment.notes}</BodyText>}
       </Stack>

@@ -1,8 +1,8 @@
 /**
- * Settings page — the page-view opt-out, the passport specialty card and
+ * Settings page – the page-view opt-out, the passport specialty card and
  * the install app card
  *
- * The rest of Settings — notifications, two-factor, dark mode — is
+ * The rest of Settings – notifications, two-factor, dark mode – is
  * untested here and was before these changes too.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -98,7 +98,7 @@ describe("the page-view opt-out", () => {
   });
 
   it("reads as off when the user has already opted out", () => {
-    // The preference is stored, so it survives a reload — which is the point
+    // The preference is stored, so it survives a reload – which is the point
     // of storing it, and the difference from the session identifier.
     setOptedOut(true);
 

@@ -16,7 +16,7 @@ import FilterModal from "./filter/FilterModal";
 import classes from "./FilterSelect.module.css";
 
 interface FilterSelectProps {
-  /** Grouped or flat option data — same format as MultiSelect */
+  /** Grouped or flat option data – same format as MultiSelect */
   data: (string | ComboboxParsedItemGroup)[];
   /** Currently selected filter values */
   value: string[];

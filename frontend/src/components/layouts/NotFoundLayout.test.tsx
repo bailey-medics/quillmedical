@@ -15,7 +15,7 @@ describe("NotFoundLayout Component", () => {
   describe("Basic rendering", () => {
     it("renders 404 title", () => {
       renderWithMantine(<NotFoundLayout />);
-      expect(screen.getByText("404 — Page not found")).toBeInTheDocument();
+      expect(screen.getByText("404 – Page not found")).toBeInTheDocument();
     });
 
     it("displays error message", () => {
@@ -34,7 +34,7 @@ describe("NotFoundLayout Component", () => {
       // It replaces the whole page, so its title is the page's only h1.
       renderWithMantine(<NotFoundLayout />);
       const heading = screen.getByRole("heading", { level: 1 });
-      expect(heading).toHaveTextContent("404 — Page not found");
+      expect(heading).toHaveTextContent("404 – Page not found");
     });
   });
 

@@ -31,7 +31,7 @@ export type User = {
   /**
    * Whether this person operates Quill itself ("superadmin") or not
    * ("standard"). Replaced the four-rung `system_permissions` column,
-   * now dropped — see docs/docs/plans/2026-09-09-platform-role-plan.md.
+   * now dropped – see docs/docs/plans/2026-09-09-platform-role-plan.md.
    */
   platform_role?: string;
   /** Features enabled on the user's primary organisation */

@@ -10,7 +10,7 @@ delete the ward.
 It mirrors ``manage_patient_membership``, which already made exactly this
 separation for patients and for the same reason.
 
-**What these tests pin is the separation itself** — that holding
+**What these tests pin is the separation itself** – that holding
 ``manage_users`` alone no longer opens these routes. Everything was
 granted both competencies in the same change, so nobody lost access at
 the switch; a test asserting the four professions still work would pass
@@ -46,7 +46,7 @@ def _user(
     """A user holding exactly the competencies named.
 
     ``base_profession`` is ``patient`` so the only staff-like
-    competencies present are the ones the test asks for — a profession
+    competencies present are the ones the test asks for – a profession
     granting extras would make it unclear which one opened the door.
     """
     user = User(

@@ -105,7 +105,7 @@ describe("ReflectionEditor", () => {
   describe("Self-declared", () => {
     it("offers no assessor to send it to", () => {
       // Nobody countersigns a reflection. The word "assessors" does
-      // appear, in the panel saying they cannot read it — so this checks
+      // appear, in the panel saying they cannot read it – so this checks
       // for the absence of a field, not of the word.
       renderEditor();
       expect(screen.queryByRole("combobox")).not.toBeInTheDocument();

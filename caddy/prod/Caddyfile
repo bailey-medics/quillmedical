@@ -1,4 +1,4 @@
-# Production Caddyfile — served inside the frontend prod container
+# Production Caddyfile – served inside the frontend prod container
 # Caddy listens on :8080 (unprivileged); the GCP Global HTTPS Load Balancer handles:
 #   - TLS termination (Google-managed certificate)
 #   - Path routing: /api/* → backend Cloud Run, /* → this container
@@ -19,14 +19,14 @@
 	# Security headers (applied to all responses)
 	# ──────────────────────────────────────────────
 	header {
-		# HSTS — tell browsers to always use HTTPS (2 years).
+		# HSTS – tell browsers to always use HTTPS (2 years).
 		# No `preload` token: it does nothing unless the domain is submitted
-		# at hstspreload.org, which it never has been — checked, and the
+		# at hstspreload.org, which it never has been – checked, and the
 		# status comes back "unknown". Claiming it read as a commitment that
 		# did not exist, and removal from a list shipped inside browsers
 		# takes months, so it should be added only alongside a submission.
 		Strict-Transport-Security "max-age=63072000; includeSubDomains"
-		# CSP — our own domain, plus GCS for the two things that cannot
+		# CSP – our own domain, plus GCS for the two things that cannot
 		# come from it.
 		#
 		# `connect-src` carries https://storage.googleapis.com because an
@@ -34,7 +34,7 @@
 		# on a signed resumable URL: a POST to open the session, then a PUT
 		# of the file to the session URL GCS hands back. Both are XHR, so
 		# both are `connect-src`, and with `'self'` alone the browser
-		# blocks them before they leave the page — reported to the admin
+		# blocks them before they leave the page – reported to the admin
 		# only as "Could not start upload", with the real reason in the
 		# console.
 		#
@@ -73,16 +73,16 @@
 	header @webmanifest Cache-Control "no-cache"
 
 	# ──────────────────────────────────────────────
-	# SPA — React app at /
+	# SPA – React app at /
 	# ──────────────────────────────────────────────
 	handle {
 		root * /srv/app
 
-		# Static assets with hashed filenames — cache aggressively (1 year)
+		# Static assets with hashed filenames – cache aggressively (1 year)
 		@hashed path_regexp \.[-a-zA-Z0-9]{8,}\.(js|css|woff2?|png|jpg|svg|ico)$
 		header @hashed Cache-Control "public, max-age=31536000, immutable"
 
-		# HTML and other non-hashed files — always revalidate
+		# HTML and other non-hashed files – always revalidate
 		@html path *.html /
 		header @html Cache-Control "no-cache"
 

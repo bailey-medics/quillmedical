@@ -49,7 +49,7 @@ export const NoFutureDates: Story = {
       />
       <StoryNote>
         A logbook entry records something that already happened, so the form
-        that uses this passes `maxDate`. The field itself imposes no such rule —
+        that uses this passes `maxDate`. The field itself imposes no such rule –
         a certificate expiry is legitimately in the future.
       </StoryNote>
     </Stack>

@@ -1,7 +1,7 @@
 """Per-item and cross-item validation.
 
 The variable per-item check subsumes the assessment-level image pass, so
-only one of them runs — otherwise a missing file is reported twice.
+only one of them runs – otherwise a missing file is reported twice.
 """
 
 from __future__ import annotations
@@ -203,7 +203,7 @@ class TestVariableItems:
         assert any("not in allowed types" in e for e in _errors(assessment))
 
     def test_options_must_be_mappings(self, tmp_path: Path) -> None:
-        """The shape the old fixtures used — plain strings — is invalid."""
+        """The shape the old fixtures used – plain strings – is invalid."""
         question = dict(VARIABLE_QUESTION)
         question["options"] = ["Normal", "Abnormal"]
         assessment = _assessment(

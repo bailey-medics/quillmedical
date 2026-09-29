@@ -41,7 +41,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "stale-incidents"
 readonly OUTPUT_DELIMITER="STALE_INCIDENTS_EOF"
 
 # Reads every incident for the project. Paginates, because a busy project can
-# return more than one page and a truncated list would silently under-report —
+# return more than one page and a truncated list would silently under-report –
 # the failure mode this script exists to prevent.
 fetch_incidents() {
   local project="$1"
@@ -109,7 +109,7 @@ hours_since() {
 
 # Renders one incident as a line for the Slack message, eg:
 #
-#   - Uptime failure (teaching) — open 124d 20h (quill-medical.com)
+#   - Uptime failure (teaching) – open 124d 20h (quill-medical.com)
 format_incident() {
   local hours="$1"
   local policy="$2"
@@ -125,9 +125,9 @@ format_incident() {
   fi
 
   if [ -n "$location" ]; then
-    echo "- ${policy} — open ${age} (${location})"
+    echo "- ${policy} – open ${age} (${location})"
   else
-    echo "- ${policy} — open ${age}"
+    echo "- ${policy} – open ${age}"
   fi
 }
 
@@ -179,7 +179,7 @@ stale_report() {
 
     # Greater than or equal, not strictly greater. Hours are whole numbers,
     # so an incident open for 23h59m counts as 23 and a threshold of 0 would
-    # otherwise never match anything under an hour old — making the whole
+    # otherwise never match anything under an hour old – making the whole
     # thing impossible to test without waiting.
     if [ "$hours" -lt "$threshold" ]; then
       continue

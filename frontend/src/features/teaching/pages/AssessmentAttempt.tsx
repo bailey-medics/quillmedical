@@ -74,7 +74,7 @@ export default function AssessmentAttempt() {
   const [viewingPrevious, setViewingPrevious] = useState(false);
   const [furthestItem, setFurthestItem] = useState<CandidateItem | null>(null);
 
-  // Initialise assessment — either create new or resume existing
+  // Initialise assessment – either create new or resume existing
   useEffect(() => {
     async function init() {
       try {
@@ -96,7 +96,7 @@ export default function AssessmentAttempt() {
           if (introPage) {
             setPhase("intro");
           } else {
-            // No intro — start immediately
+            // No intro – start immediately
             const result = await api.post<AssessmentWithFirstItem>(
               "/teaching/assessments",
               { question_bank_id: bankId },
@@ -289,11 +289,11 @@ export default function AssessmentAttempt() {
   }, [assessment, navigate]);
 
   const handleExpire = useCallback(() => {
-    // Timer expired — go to closing phase
+    // Timer expired – go to closing phase
     setPhase("closing");
   }, []);
 
-  // Track whether we've already called proceed — prevents ConfirmModal's
+  // Track whether we've already called proceed – prevents ConfirmModal's
   // automatic onClose (after onAccept) from calling reset and cancelling
   // the in-flight navigation.
   const proceededRef = useRef(false);
@@ -316,7 +316,7 @@ export default function AssessmentAttempt() {
   return (
     <TeachingLayout>
       <PageHeader title="Assessment" visuallyHidden />
-      {/* Blocker modal — warns when navigating away during active exam */}
+      {/* Blocker modal – warns when navigating away during active exam */}
       <ConfirmModal
         opened={blocker.state === "blocked"}
         onClose={handleBlockerClose}

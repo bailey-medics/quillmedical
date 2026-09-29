@@ -29,7 +29,7 @@ export default function NotFoundLayout() {
     <Container size="lg" pt="md" pb="xl">
       <Center mih="60vh">
         <Stack align="center" gap="lg">
-          <PageHeader title="404 — Page not found" />
+          <PageHeader title="404 – Page not found" />
           <BodyText c="dimmed">The page you requested does not exist.</BodyText>
           <IconTextButton
             icon="arrowLeft"

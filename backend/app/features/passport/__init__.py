@@ -1,4 +1,4 @@
-"""Clinician passport — a portable record of assessed competence.
+"""Clinician passport – a portable record of assessed competence.
 
 Deliberately docstring-only, like :mod:`app.features`. Anything imported
 here would run on every ``app.features.passport.*`` import, and the

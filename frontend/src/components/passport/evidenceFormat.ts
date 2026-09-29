@@ -2,7 +2,7 @@
  * Non-component helpers for passport evidence.
  *
  * Separate from the components themselves because a file exporting both
- * a component and a constant breaks React Fast Refresh — the same reason
+ * a component and a constant breaks React Fast Refresh – the same reason
  * `mediaFormat.ts` sits beside the media card.
  */
 

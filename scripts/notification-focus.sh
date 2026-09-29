@@ -9,7 +9,7 @@
 # Two ways, fastest first:
 #
 #   1. AXRaise through System Events, about 330ms. VS Code titles a window
-#      "<file> — <folder>", so the folder's basename finds it. Needs
+#      "<file> – <folder>", so the folder's basename finds it. Needs
 #      Accessibility permission, and finds nothing when no window holds the
 #      folder, which is the ordinary case once a worktree is closed.
 #

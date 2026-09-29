@@ -1,7 +1,7 @@
 /**
  * Gender Component
  *
- * Pure formatter — returns bare text with no wrapping element.
+ * Pure formatter – returns bare text with no wrapping element.
  * Accepts FHIR-compliant gender values from backend.
  */
 

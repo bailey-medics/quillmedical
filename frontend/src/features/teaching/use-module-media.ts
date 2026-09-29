@@ -3,7 +3,7 @@
  *
  * Upload is three steps, not one: ask the backend for a resumable URL,
  * send the bytes straight to GCS, then tell the backend what landed.
- * The middle step deliberately does not go through our API — a lecture
+ * The middle step deliberately does not go through our API – a lecture
  * is hundreds of megabytes and routing it through Cloud Run would pay
  * for the transfer twice and hold a request open throughout.
  *
@@ -44,7 +44,7 @@ export interface ModuleMediaState {
    * The page guards navigation on this. The bytes go straight to GCS
    * from an `XMLHttpRequest` held in a closure, so a full page load
    * kills the transfer part-way and the `link` call that records the
-   * asset never runs — the object is left in the bucket with nothing
+   * asset never runs – the object is left in the bucket with nothing
    * pointing at it, and the admin sees an empty row.
    */
   uploading: boolean;
@@ -85,7 +85,7 @@ function formatSize(bytes: number): string {
  * Say what actually went wrong, not merely that something did.
  *
  * A bare status code makes the admin guess, and the guess for a video
- * is usually wrong — "too large" and "wrong format" look identical as
+ * is usually wrong – "too large" and "wrong format" look identical as
  * a number. Each case here names the fault and, where the admin can
  * act on it, what to do instead.
  */
@@ -103,7 +103,7 @@ function describeUploadFailure(status: number, file: File): string {
     return "This module no longer exists, so the upload had nowhere to go.";
   }
   if (status >= 500) {
-    return `The server could not accept the upload (${status}). This is not a problem with your file — try again shortly.`;
+    return `The server could not accept the upload (${status}). This is not a problem with your file – try again shortly.`;
   }
   return `Upload failed (${status})`;
 }
@@ -112,7 +112,7 @@ function describeUploadFailure(status: number, file: File): string {
  * Open a resumable upload session and return the URL to send bytes to.
  *
  * The signed URL the backend mints is for `POST` with an
- * `x-goog-resumable: start` header — that is what *begins* a resumable
+ * `x-goog-resumable: start` header – that is what *begins* a resumable
  * upload rather than performing one. GCS answers with a session URL in
  * the `Location` header, and the bytes go there.
  *
@@ -188,7 +188,7 @@ function sendToSession(
  * Send one file to GCS.
  *
  * Two steps, not one. A local development URL is not a GCS resumable
- * URL, so it takes the single PUT it expects instead — the backend
+ * URL, so it takes the single PUT it expects instead – the backend
  * decides which by whether it handed back an absolute URL.
  */
 async function putToBucket(
@@ -215,7 +215,7 @@ async function putToBucket(
  *
  * Overridable so a test can prove the polling without waiting ten real
  * seconds. Swapping the clock for fake timers was tried first and
- * proved unreliable — the interval is registered inside an effect that
+ * proved unreliable – the interval is registered inside an effect that
  * runs after an awaited fetch, and the two did not line up.
  */
 export const MEDIA_POLL_INTERVAL_MS = 10_000;
@@ -255,7 +255,7 @@ export function useModuleMedia(
   useEffect(() => {
     // No module means nothing to fetch. Returning early rather than
     // clearing the loading flag here keeps every state change out of
-    // the effect body — a synchronous setState in an effect costs a
+    // the effect body – a synchronous setState in an effect costs a
     // second render pass, which is what `react-hooks/set-state-in-effect`
     // is there to prevent. The "no module" case is derived on the way
     // out instead.
@@ -269,7 +269,7 @@ export function useModuleMedia(
     // reports the same error on main.
     //
     // The alternative is inlining the fetch here, which would mean a
-    // second copy for the post-upload refresh to call — two copies of
+    // second copy for the post-upload refresh to call – two copies of
     // one request, and the pair that drifts apart later.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
@@ -277,7 +277,7 @@ export function useModuleMedia(
 
   // Whether bytes are still going to the bucket. Derived from the
   // progress record rather than a flag of its own, so it cannot be
-  // left set by an upload that threw — `finally` clears the key either
+  // left set by an upload that threw – `finally` clears the key either
   // way.
   const uploading = Object.keys(uploadProgress).length > 0;
 
@@ -291,7 +291,7 @@ export function useModuleMedia(
   useEffect(() => {
     // Polled only while something is actually running. The card was
     // fetched once and never again, so a progress bar would have sat at
-    // the same figure until someone reloaded — which is no better than
+    // the same figure until someone reloaded – which is no better than
     // the "No captions" line it replaces.
     //
     // Stops the moment nothing is in progress, including when a job has

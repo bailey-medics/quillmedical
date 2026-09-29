@@ -45,7 +45,7 @@ export const Default: Story = {
 export const Counts: Story = {
   render: () => (
     <VariantStack>
-      <VariantRow label="nothing waiting — no badge">
+      <VariantRow label="nothing waiting – no badge">
         <InboxButton count={0} onClick={() => {}} />
       </VariantRow>
       <VariantRow label="one">
@@ -54,7 +54,7 @@ export const Counts: Story = {
       <VariantRow label="nine">
         <InboxButton count={9} onClick={() => {}} />
       </VariantRow>
-      <VariantRow label="ten and above — capped">
+      <VariantRow label="ten and above – capped">
         <InboxButton count={42} onClick={() => {}} />
       </VariantRow>
     </VariantStack>

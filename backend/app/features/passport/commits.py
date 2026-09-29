@@ -15,7 +15,7 @@ data, so nothing in a commit message can be spoofed by feeding a
 carefully chosen name into a free-text field.
 
 **Trailer values are single-line text.** A newline in a value would let
-one trailer forge another — ``Actor-Name: Dr X\\nActor-Role: Consultant``
+one trailer forge another – ``Actor-Name: Dr X\\nActor-Role: Consultant``
 is two trailers if the newline survives. So values carrying a newline,
 a carriage return, or a leading or trailing space are refused outright
 rather than sanitised: quietly stripping a character changes what the
@@ -229,7 +229,7 @@ def build(
 def parse_trailers(message: str) -> dict[str, list[str]]:
     """Read the trailers back out of a rendered message.
 
-    For reading history — an export, an audit view — rather than for
+    For reading history – an export, an audit view – rather than for
     anything on the write path. Returns a list per key because
     ``Actor-Registration`` legitimately repeats.
 

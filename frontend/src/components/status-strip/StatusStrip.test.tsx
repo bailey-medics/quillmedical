@@ -28,7 +28,7 @@ describe("StatusStrip Component", () => {
       renderWithMantine(
         <StatusStrip variant="offline" lastSyncedAt={new Date()} />,
       );
-      expect(screen.getByText(/Offline — last synced at/)).toBeInTheDocument();
+      expect(screen.getByText(/Offline – last synced at/)).toBeInTheDocument();
     });
 
     it("renders the offline message without a timestamp", () => {
@@ -74,7 +74,7 @@ describe("StatusStrip Component", () => {
       renderWithMantine(
         <StatusStrip variant="offline" lastSyncedAt={new Date()} />,
       );
-      expect(screen.getByText(/Offline — last synced at/)).toBeInTheDocument();
+      expect(screen.getByText(/Offline – last synced at/)).toBeInTheDocument();
     });
 
     it("renders a compact badge label when multiple strips are showing", () => {

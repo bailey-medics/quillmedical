@@ -3,21 +3,21 @@
 # CLINICAL ADMINISTRATION COMPETENCY DEFINITIONS FOR QUILL MEDICAL
 #
 # Competencies for running the clinical service rather than caring for a
-# patient — administration that is patient centric, which is what
+# patient – administration that is patient centric, which is what
 # distinguishes this file from admin.yaml. Held through the same
 # mechanism as the clinical set in clinical.yaml, and deliberately kept
 # in a separate file because they are a different kind of thing.
 # Reading them interleaved makes the distinction hard to see and invites
 # the wrong judgement about risk.
 #
-# Administering a *org_unit* — the users at an organisation or site — is in
+# Administering a *org_unit* – the users at an organisation or site – is in
 # admin.yaml. The other features that gate parts of Quill have their own
 # files: teaching.yaml and passport.yaml.
 #
 # Every file in this directory is merged into one catalogue at load
 # time, so ids must be unique across the whole directory, not just
 # within a file. Which file an entry lives in carries no meaning to the
-# code — it is for the reader.
+# code – it is for the reader.
 #
 # See resolve_user_competencies() in
 # backend/app/cbac/base_professions.py for how base_profession +
@@ -39,7 +39,7 @@ competencies:
   # ==========================================================================
 
   # Which patients are cared for at the holder's organisation. It adds
-  # and removes rows in organisation_patient_member, and nothing else —
+  # and removes rows in organisation_patient_member, and nothing else –
   # it grants no access to a patient's record, which is
   # access_patient_records in clinical.yaml.
   #
@@ -48,7 +48,7 @@ competencies:
   # the two are linked through User.fhir_patient_id where the same human
   # is both. Most patients have no account, and plenty of users are not
   # patients, so one competency covering both would be authority over two
-  # unrelated populations — the same conflation this plan exists to undo,
+  # unrelated populations – the same conflation this plan exists to undo,
   # one layer down.
   #
   # Like every competency here it answers *what*, never *where*: the

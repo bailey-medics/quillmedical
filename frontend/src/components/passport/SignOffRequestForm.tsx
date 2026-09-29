@@ -12,7 +12,7 @@
  *
  * **The assessor is named by email address, not picked from a list.**
  * The consultant who observed the work is often at another trust, or
- * not on Quill at all, and that is the case this feature exists for —
+ * not on Quill at all, and that is the case this feature exists for –
  * a dropdown of existing users had no row for them, so the holder
  * could not ask. An address is what a holder knows; whether it belongs
  * to an account is Quill's problem, not theirs.
@@ -22,7 +22,7 @@
  * that varies by procedure, department and the people involved, and any
  * rule table encoding it would be wrong somewhere on the day it
  * shipped. The one rule the API enforces is that it cannot be the
- * holder themselves — the whole value of the record is a second named
+ * holder themselves – the whole value of the record is a second named
  * person accepting accountability.
  *
  * **`observed_on` is a day with no time**, and cannot be in the future:
@@ -131,8 +131,8 @@ export default function SignOffRequestForm({
   } | null>(null);
 
   // Searched on whatever was typed, not only on an address. Somebody
-  // already on Quill can be named however the holder knows them — by
-  // name, by username or by address — and only somebody Quill has
+  // already on Quill can be named however the holder knows them – by
+  // name, by username or by address – and only somebody Quill has
   // never heard of must be given as an address.
   useEffect(() => {
     if (debouncedEmail.length < 3) {
@@ -146,7 +146,7 @@ export default function SignOffRequestForm({
         if (cancelled) return;
         // One match and one only. Two people answering to "Okonkwo" is
         // not an answer, and picking the first would name whichever the
-        // database happened to return — the mistake this whole step
+        // database happened to return – the mistake this whole step
         // exists to prevent.
         const term = debouncedEmail.toLowerCase();
         const exactEmail = matches.find((m) => m.email.toLowerCase() === term);
@@ -326,7 +326,7 @@ export default function SignOffRequestForm({
                 <BodyText>{found.email}</BodyText>
                 {found.registrations.map((registration) => (
                   <BodyText key={`${registration.body}-${registration.number}`}>
-                    {registration.body} {registration.number} — stated by them,
+                    {registration.body} {registration.number} – stated by them,
                     not checked by Quill.
                   </BodyText>
                 ))}

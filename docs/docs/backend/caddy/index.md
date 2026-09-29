@@ -91,15 +91,15 @@ Caddy runs inside the frontend container on port 8080 (Cloud Run strips `cap_net
   header @webmanifest Content-Type "application/manifest+json"
   header @webmanifest Cache-Control "no-cache"
 
-  # SPA — React app
+  # SPA – React app
   handle {
     root * /srv/app
 
-    # Static assets with hashed filenames — cache aggressively (1 year)
+    # Static assets with hashed filenames – cache aggressively (1 year)
     @hashed path_regexp \.[-a-zA-Z0-9]{8,}\.(js|css|woff2?|png|jpg|svg|ico)$
     header @hashed Cache-Control "public, max-age=31536000, immutable"
 
-    # HTML and non-hashed files — always revalidate
+    # HTML and non-hashed files – always revalidate
     @html path *.html /
     header @html Cache-Control "no-cache"
 
@@ -111,11 +111,11 @@ Caddy runs inside the frontend container on port 8080 (Cloud Run strips `cap_net
 
 ### Key production features
 
-- **`admin off`** — disables the Caddy admin API (not needed in Cloud Run)
-- **Security headers** — HSTS (2 years, preload), CSP, X-Frame-Options DENY, nosniff, referrer policy, permissions policy, server header removal
-- **`/healthz`** — returns `200 ok` for Cloud Run startup/liveness probes
-- **Cache strategy** — hashed assets get 1 year immutable cache; HTML always revalidates
-- **`try_files`** — SPA fallback to `index.html` for client-side routing
+- **`admin off`** – disables the Caddy admin API (not needed in Cloud Run)
+- **Security headers** – HSTS (2 years, preload), CSP, X-Frame-Options DENY, nosniff, referrer policy, permissions policy, server header removal
+- **`/healthz`** – returns `200 ok` for Cloud Run startup/liveness probes
+- **Cache strategy** – hashed assets get 1 year immutable cache; HTML always revalidates
+- **`try_files`** – SPA fallback to `index.html` for client-side routing
 
 ## CI (`caddy/ci/Caddyfile`)
 
@@ -170,6 +170,6 @@ CORS is handled by the FastAPI backend middleware (`CORSMiddleware`), not by Cad
 
 ## Notes
 
-- FHIR and EHRbase are **not** publicly exposed in production — they run on a private VPC and are accessed only by the backend
+- FHIR and EHRbase are **not** publicly exposed in production – they run on a private VPC and are accessed only by the backend
 - Request logging is not currently configured in any Caddyfile
-- Let's Encrypt is not used — GCP manages TLS certificates at the load balancer level
+- Let's Encrypt is not used – GCP manages TLS certificates at the load balancer level

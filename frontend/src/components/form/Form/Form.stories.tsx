@@ -91,7 +91,7 @@ function InjectFlash({ flash }: { flash: FlashPayload | null }) {
 }
 
 /**
- * Success — form submits and shows a success status card
+ * Success – form submits and shows a success status card
  */
 export const SuccessSubmission: Story = {
   render: function SuccessStory() {
@@ -128,7 +128,7 @@ export const SuccessSubmission: Story = {
 };
 
 /**
- * Error — form submits and shows an error status card
+ * Error – form submits and shows an error status card
  */
 export const ErrorSubmission: Story = {
   render: function ErrorStory() {
@@ -165,7 +165,7 @@ export const ErrorSubmission: Story = {
 };
 
 /**
- * Unexpected error — handler throws instead of returning a result.
+ * Unexpected error – handler throws instead of returning a result.
  * Form catches it and shows the generic fallback message.
  */
 export const UnexpectedError: Story = {
@@ -197,7 +197,7 @@ export const UnexpectedError: Story = {
 };
 
 /**
- * Partial success — composite write with mixed outcomes
+ * Partial success – composite write with mixed outcomes
  */
 export const PartialSuccessSubmission: Story = {
   render: function PartialStory() {
@@ -235,7 +235,7 @@ export const PartialSuccessSubmission: Story = {
 };
 
 /**
- * Timeout — form submission exceeds timeout
+ * Timeout – form submission exceeds timeout
  */
 export const TimeoutSubmission: Story = {
   render: function TimeoutStory() {
@@ -271,7 +271,7 @@ export const TimeoutSubmission: Story = {
 };
 
 /**
- * Validation error — press submit with an invalid email to see the warning card
+ * Validation error – press submit with an invalid email to see the warning card
  * and inline field errors. Uses RHF validation so the onInvalid handler
  * triggers the validation_error state with amber styling.
  */
@@ -313,7 +313,7 @@ export const ValidationError: Story = {
 };
 
 /**
- * Dirty state playground — every atomic form field with disableWhenClean.
+ * Dirty state playground – every atomic form field with disableWhenClean.
  * Toggle each field to verify the Save button enables/disables correctly.
  */
 export const DirtyStatePlayground: Story = {
@@ -347,7 +347,7 @@ export const DirtyStatePlayground: Story = {
       >
         <Stack gap="md">
           <StoryNote>
-            Change any field — Save should enable. Revert all — Save should
+            Change any field – Save should enable. Revert all – Save should
             disable.
           </StoryNote>
           <FormStatus />
@@ -368,7 +368,7 @@ export const DirtyStatePlayground: Story = {
 /* RHF-registered field wrappers for the stories */
 
 /**
- * Pattern 2 — Form with confirm prop, stays on page.
+ * Pattern 2 – Form with confirm prop, stays on page.
  * Validation passes → confirm modal opens → user confirms → onSubmit fires.
  * Success is shown via FormStatus on the same page.
  */
@@ -430,7 +430,7 @@ export const ConfirmAndStay: Story = {
 };
 
 /**
- * §4 Form with confirm prop + navigate — destructive action confirmed
+ * §4 Form with confirm prop + navigate – destructive action confirmed
  * via modal, then navigates to a destination page with a flash message.
  */
 export const ConfirmThenNavigate: Story = {
@@ -493,7 +493,7 @@ export const ConfirmThenNavigate: Story = {
 };
 
 /**
- * §3 Submit and navigate — no confirm modal, the form submits and
+ * §3 Submit and navigate – no confirm modal, the form submits and
  * navigates to a destination page that picks up a flash message.
  */
 export const SubmitAndNavigate: Story = {
@@ -725,7 +725,7 @@ function RegisteredTags() {
   );
 }
 
-/** Email field wired to RHF validation — shows inline error for invalid email */
+/** Email field wired to RHF validation – shows inline error for invalid email */
 function ValidatedEmail() {
   const { methods } = useFormContext();
   const {

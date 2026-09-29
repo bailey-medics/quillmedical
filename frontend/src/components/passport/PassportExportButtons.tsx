@@ -7,7 +7,7 @@
  *
  * **The bundle is the one that matters and is deliberately listed last.**
  * A PDF is what somebody reaches for first and is the least useful of the
- * three — it is a rendering, not the record. The zip holds the canonical
+ * three – it is a rendering, not the record. The zip holds the canonical
  * files byte for byte, a `README.md` written for somebody who has never
  * seen Quill, and `VERIFY.md` explaining how to check the hashes with no
  * software at all. The wording says so rather than leaving a holder to
@@ -127,7 +127,7 @@ export default function PassportExportButtons({
 
         <FieldDescription>
           The full bundle holds the record itself, the renderings, and its whole
-          history — with a page explaining how to check it against the hashes.
+          history – with a page explaining how to check it against the hashes.
         </FieldDescription>
 
         {error && <ErrorState message={error} />}

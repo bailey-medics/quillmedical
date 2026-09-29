@@ -2,14 +2,14 @@
 
 ``access_patient_records`` used to serve two of them. Eighteen staff
 professions held it to mean *the patients I treat*; the ``patient``
-profession held the same id to mean *my own record*, with a comment —
-"Own records only (filtered by system)" — explaining that it did not mean
+profession held the same id to mean *my own record*, with a comment –
+"Own records only (filtered by system)" – explaining that it did not mean
 what it said. Two permissions under one name, which is the fault this
 plan exists to remove, one layer below ``system_permissions``.
 
 The third route had no competency at all: an ``ExternalPatientAccess``
 grant admitted the holder on its own, so revoking a competency could not
-cut that access — only deleting the row could.
+cut that access – only deleting the row could.
 
 Each route now pairs a competency saying *what* with a scope saying
 *which*:
@@ -307,7 +307,7 @@ class TestTheRoutesDoNotSubstituteForEachOther:
 
 
 class TestSomeoneWhoIsBoth:
-    """Staff who are also patients here — the ordinary case."""
+    """Staff who are also patients here – the ordinary case."""
 
     def test_a_clinician_reaches_their_own_record_and_their_patients(
         self, db_session: Session, org: OrgUnit
@@ -315,7 +315,7 @@ class TestSomeoneWhoIsBoth:
         """Both competencies, both routes, no interference between them.
 
         Nearly a third of employees who look at their own health data use
-        both systems to do it — see the plan's citation — so this is the
+        both systems to do it – see the plan's citation – so this is the
         common shape rather than an edge case.
         """
         clinician = _user(

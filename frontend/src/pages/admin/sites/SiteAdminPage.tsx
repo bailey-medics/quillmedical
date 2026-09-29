@@ -60,7 +60,7 @@ export default function SiteAdminPage() {
     // above, which now returns early and is derived at render instead; the
     // lint rule analyses one function at a time and cannot see that
     // `fetchSite` awaits before touching state, so the wrapper makes the
-    // deferral explicit — and makes the floating promise explicit with it.
+    // deferral explicit – and makes the floating promise explicit with it.
     void (async () => {
       await fetchSite();
     })();

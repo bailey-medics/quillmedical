@@ -27,7 +27,7 @@ const uploaded: AttachmentInput = {
  *
  * The date is picked from the calendar rather than typed. `DateField`
  * renders `D MMMM YYYY`, so a typed `2026-03-14` parses to nothing, the
- * value stays null and the submit button stays disabled — which shows up
+ * value stays null and the submit button stays disabled – which shows up
  * as a timeout on the click rather than a failed assertion.
  *
  * Which day is picked is deliberately not pinned: the calendar opens on

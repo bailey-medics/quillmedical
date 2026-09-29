@@ -58,21 +58,21 @@ Only teaching is deployed. Staging was shut down because an idle environment was
 
 Each environment has:
 
-- **Global HTTPS Load Balancer** — path-based routing, Cloud Armor WAF, Google-managed SSL
-- **Cloud Run** — backend (FastAPI) and frontend (React/Vite), auto-scaling
-- **Cloud SQL** — PostgreSQL for the auth database (all environments)
-- **Secret Manager** — JWT keys, database passwords, VAPID keys
-- **VPC** — private networking, no public database IPs
-- **Monitoring** — uptime checks on `/api/health` with email alerts
+- **Global HTTPS Load Balancer** – path-based routing, Cloud Armor WAF, Google-managed SSL
+- **Cloud Run** – backend (FastAPI) and frontend (React/Vite), auto-scaling
+- **Cloud SQL** – PostgreSQL for the auth database (all environments)
+- **Secret Manager** – JWT keys, database passwords, VAPID keys
+- **VPC** – private networking, no public database IPs
+- **Monitoring** – uptime checks on `/api/health` with email alerts
 
 Production and staging also have:
 
-- **Cloud SQL** — additional FHIR and EHRbase databases
-- **Compute Engine** — e2-small VM running HAPI FHIR and EHRbase via Docker
+- **Cloud SQL** – additional FHIR and EHRbase databases
+- **Compute Engine** – e2-small VM running HAPI FHIR and EHRbase via Docker
 
 Teaching additionally has:
 
-- **Cloud Storage** — image bucket for educational content (question bank YAML + images deployed by CI from `quill-question-bank` repo)
+- **Cloud Storage** – image bucket for educational content (question bank YAML + images deployed by CI from `quill-question-bank` repo)
 
 ## What has been set up
 
@@ -152,10 +152,10 @@ gcloud iam service-accounts add-iam-policy-binding \
 
 The service accounts have the following IAM roles:
 
-- `roles/editor` — manage most GCP resources
-- `roles/secretmanager.admin` — create and manage secrets
-- `roles/run.admin` — deploy Cloud Run services
-- `roles/iam.serviceAccountUser` — let Cloud Run services run as other service accounts
+- `roles/editor` – manage most GCP resources
+- `roles/secretmanager.admin` – create and manage secrets
+- `roles/run.admin` – deploy Cloud Run services
+- `roles/iam.serviceAccountUser` – let Cloud Run services run as other service accounts
 
 ### GitHub secrets (done)
 
@@ -232,11 +232,11 @@ Each project has a Docker repository in Artifact Registry:
 europe-west2-docker.pkg.dev/quill-medical-{env}/quill/
 ```
 
-Container images are pushed here by CI (not GHCR — Cloud Run only supports Artifact Registry, GCR, or Docker Hub). Image paths:
+Container images are pushed here by CI (not GHCR – Cloud Run only supports Artifact Registry, GCR, or Docker Hub). Image paths:
 
-- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/backend:main` — backend service (built from `prod` Dockerfile stage)
-- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/frontend:main` — frontend service (built from `prod` Dockerfile stage)
-- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/admin:latest` — admin CLI (built from `admin` Dockerfile stage, via `just build-admin`)
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/backend:main` – backend service (built from `prod` Dockerfile stage)
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/frontend:main` – frontend service (built from `prod` Dockerfile stage)
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/admin:latest` – admin CLI (built from `admin` Dockerfile stage, via `just build-admin`)
 
 !!! warning "Docker build targets"
 The backend Dockerfile has three stages: `dev`, `prod`, and `admin`. The `admin` stage is last, so building without `--target` produces the admin CLI image, not the web server. CI deploy workflows must always specify `target: prod`.
@@ -255,7 +255,7 @@ This required the `roles/orgpolicy.policyAdmin` role at the organisation level.
 
 ### Staging Terraform apply (done)
 
-`terraform apply` completed for the staging environment — **all resources created successfully**:
+`terraform apply` completed for the staging environment – **all resources created successfully**:
 
 - VPC, subnet, Cloud NAT, VPC connector, firewall rules
 - 3 Cloud SQL instances (auth, FHIR, EHRbase) with auto-generated passwords
@@ -273,10 +273,10 @@ Cloud Run URLs (placeholder containers, will serve real app after first CI deplo
 
 ### Teaching Terraform apply (done)
 
-`terraform apply` completed for the teaching environment — **32 resources created**:
+`terraform apply` completed for the teaching environment – **32 resources created**:
 
 - VPC, subnet, Cloud NAT, VPC connector, firewall rules
-- 1 Cloud SQL instance (auth only — no FHIR/EHRbase) with auto-generated password
+- 1 Cloud SQL instance (auth only – no FHIR/EHRbase) with auto-generated password
 - Secret Manager secrets with initial values
 - Cloud Run backend and frontend (placeholder images)
 - Artifact Registry Docker repository
@@ -309,9 +309,9 @@ Each environment has a Global HTTPS Load Balancer that sits in front of the Clou
 | Teaching    | `teaching.quill-medical.com` | `136.110.221.126` | Active (being retired) |
 | Staging     | `staging.quill-medical.com`  | `35.186.223.130`  | Shut down             |
 | Staging     | `quill-medical.com`          | `35.186.223.130`  | Active (landing page) |
-| Production  | `ehr.quill-medical.com`      | —                 | Shut down, no DNS record |
+| Production  | `ehr.quill-medical.com`      | –                 | Shut down, no DNS record |
 
-The Caddyfile no longer reverse-proxies `/api/*` to the backend — the load balancer handles all routing. Caddy now just serves static frontend files and provides a `/healthz` endpoint for health checks.
+The Caddyfile no longer reverse-proxies `/api/*` to the backend – the load balancer handles all routing. Caddy now just serves static frontend files and provides a `/healthz` endpoint for health checks.
 
 ### Domain architecture (done)
 
@@ -350,7 +350,7 @@ ns-cloud-c4.googledomains.com
 
 Each environment uses a separate Terraform workspace to isolate state:
 
-- **`app`** — the only live environment. State at
+- **`app`** – the only live environment. State at
   `gs://quill-medical-app-terraform-state/terraform/state/app.tfstate`.
 
 The `staging`, `teaching` and `production` workspaces were retired with
@@ -397,7 +397,7 @@ Workflow: `.github/workflows/deploy.yml` (same workflow, gated by GitHub Environ
 5. Create annotated CalVer git tag
 6. Slack notification
 
-Production deploys are never cancelled mid-flight. The same image bytes that were validated in teaching are promoted — no rebuild.
+Production deploys are never cancelled mid-flight. The same image bytes that were validated in teaching are promoted – no rebuild.
 
 **Note:** Production is currently offline to save costs. The promotion job is disabled (`if: false`) until re-enabled.
 
@@ -405,8 +405,8 @@ Production deploys are never cancelled mid-flight. The same image bytes that wer
 
 Workflow: `.github/workflows/terraform.yml`
 
-- **Pull requests** — runs `terraform plan` and posts the diff as a PR comment
-- **Merge to main** — runs `terraform apply` for teaching
+- **Pull requests** – runs `terraform plan` and posts the diff as a PR comment
+- **Merge to main** – runs `terraform apply` for teaching
 
 ## Environment configuration
 
@@ -470,7 +470,7 @@ If names don't match, the backend silently falls back to the Docker Compose defa
 
 ## Cloud Storage IAM
 
-The teaching GCS bucket (`quill-images-teaching`) requires an explicit IAM binding for the Cloud Run backend service account. The default compute service account (`{project-number}-compute@developer.gserviceaccount.com`) does **not** automatically inherit `storage.objects.list` permission, even though it is a project editor — legacy bucket IAM grants access to `projectEditor`/`projectViewer` principal groups, but the compute SA is not automatically a member for API-level object listing.
+The teaching GCS bucket (`quill-images-teaching`) requires an explicit IAM binding for the Cloud Run backend service account. The default compute service account (`{project-number}-compute@developer.gserviceaccount.com`) does **not** automatically inherit `storage.objects.list` permission, even though it is a project editor – legacy bucket IAM grants access to `projectEditor`/`projectViewer` principal groups, but the compute SA is not automatically a member for API-level object listing.
 
 The required binding:
 
@@ -488,17 +488,17 @@ This binding should be added to the `cloud-storage` Terraform module to avoid ma
 
 ## Security
 
-- **No public database IPs** — Cloud SQL is accessible only via VPC
-- **SSH via IAP only** — no open SSH ports, all access through Identity-Aware Proxy
-- **Secrets in Secret Manager** — never in environment variables (initial values auto-generated by Terraform)
-- **WIF authentication** — no long-lived JSON key files, short-lived tokens only
-- **Attribute condition on WIF** — only `bailey-medics/quillmedical` can authenticate (production/staging); teaching also allows `bailey-medics/quill-question-bank`
-- **Least-privilege service accounts** — each environment has its own service account
-- **Explicit GCS IAM bindings** — Cloud Run service accounts need bucket-level `roles/storage.objectViewer` even when they are project editors (see [Cloud Storage IAM](#cloud-storage-iam))
-- **Cloud Armor WAF** — rate limiting (500 req/min per IP) on all load balancers
-- **HTTPS enforced** — HTTP to HTTPS redirect on all environments, Google-managed SSL certificates
-- **Google-managed TLS** — certificates auto-provisioned and auto-renewed, no manual cert management
-- **Content Security Policy** — browser-enforced allowlists per resource type (see [CSP headers](#content-security-policy-csp-headers) below)
+- **No public database IPs** – Cloud SQL is accessible only via VPC
+- **SSH via IAP only** – no open SSH ports, all access through Identity-Aware Proxy
+- **Secrets in Secret Manager** – never in environment variables (initial values auto-generated by Terraform)
+- **WIF authentication** – no long-lived JSON key files, short-lived tokens only
+- **Attribute condition on WIF** – only `bailey-medics/quillmedical` can authenticate (production/staging); teaching also allows `bailey-medics/quill-question-bank`
+- **Least-privilege service accounts** – each environment has its own service account
+- **Explicit GCS IAM bindings** – Cloud Run service accounts need bucket-level `roles/storage.objectViewer` even when they are project editors (see [Cloud Storage IAM](#cloud-storage-iam))
+- **Cloud Armor WAF** – rate limiting (500 req/min per IP) on all load balancers
+- **HTTPS enforced** – HTTP to HTTPS redirect on all environments, Google-managed SSL certificates
+- **Google-managed TLS** – certificates auto-provisioned and auto-renewed, no manual cert management
+- **Content Security Policy** – browser-enforced allowlists per resource type (see [CSP headers](#content-security-policy-csp-headers) below)
 
 ### Content Security Policy (CSP) headers
 
@@ -523,11 +523,11 @@ frame-ancestors 'none'
 | `style-src`       | `'self' 'unsafe-inline'`                      | Mantine injects inline styles at runtime        |
 | `img-src`         | `'self' data: https://storage.googleapis.com` | GCS signed URLs for teaching images             |
 | `font-src`        | `'self'`                                      | Only first-party fonts                          |
-| `connect-src`     | `'self'`                                      | XHR/fetch — API calls go via the same-origin LB |
+| `connect-src`     | `'self'`                                      | XHR/fetch – API calls go via the same-origin LB |
 | `frame-ancestors` | `'none'`                                      | Prevents the app being embedded in an iframe    |
 
 !!! warning "Adding external image or API sources"
-If a new feature loads images from an external origin (e.g. a different CDN or FHIR server), that origin **must** be added to the relevant CSP directive in `caddy/prod/Caddyfile`. Without this, the browser silently blocks the request and images appear broken with no errors in the application logs — only a CSP violation message in the browser console.
+If a new feature loads images from an external origin (e.g. a different CDN or FHIR server), that origin **must** be added to the relevant CSP directive in `caddy/prod/Caddyfile`. Without this, the browser silently blocks the request and images appear broken with no errors in the application logs – only a CSP violation message in the browser console.
 
 ## Remaining steps
 
@@ -540,7 +540,7 @@ VAPID keys were generated and stored in Secret Manager for all three environment
 
 The public key is baked into the frontend Docker image at build time via the `VITE_VAPID_PUBLIC` build argument (set in CI workflows).
 
-The `jwt-secret` auto-generated value is fine for use — it's a strong random 64-character string.
+The `jwt-secret` auto-generated value is fine for use – it's a strong random 64-character string.
 
 Database passwords are auto-generated by Terraform and stored in Secret Manager automatically.
 
@@ -566,11 +566,11 @@ Once DNS is fully propagated and SSL certificates are provisioned, merge the `fe
 
 ### Alembic migrations run as a pre-deploy Cloud Run Job (done)
 
-Database migrations (`alembic upgrade head`) run as a separate **pre-deploy step** — a `gcloud run jobs execute --wait` call against the `quill-admin-{env}` Cloud Run Job — before the new backend/frontend revisions are deployed. This runs exactly once per deploy (no multi-instance race), gives a clean pass/fail signal separate from app boot, and blocks the deploy on failure. See the [admin tasks documentation](admin.md) and [Alembic migration safety](../backend/alembic-migration-safety.md).
+Database migrations (`alembic upgrade head`) run as a separate **pre-deploy step** – a `gcloud run jobs execute --wait` call against the `quill-admin-{env}` Cloud Run Job – before the new backend/frontend revisions are deployed. This runs exactly once per deploy (no multi-instance race), gives a clean pass/fail signal separate from app boot, and blocks the deploy on failure. See the [admin tasks documentation](admin.md) and [Alembic migration safety](../backend/alembic-migration-safety.md).
 
 ### Backend deploys via a tagged, smoke-tested revision (done)
 
-The backend deploy step (`.github/scripts/deploy/deploy-tagged.sh`) deploys the new revision under a unique traffic tag with `--no-traffic`, smoke-tests that revision's own tagged URL, and only then promotes it (`--to-latest`) to receive live traffic. Live traffic stays on the previous, healthy revision until the new one — including its migration — has proven itself, rather than cutting over immediately and finding out via the public-edge smoke test. See [Alembic migration safety](../backend/alembic-migration-safety.md#revision-specific-smoke-test).
+The backend deploy step (`.github/scripts/deploy/deploy-tagged.sh`) deploys the new revision under a unique traffic tag with `--no-traffic`, smoke-tests that revision's own tagged URL, and only then promotes it (`--to-latest`) to receive live traffic. Live traffic stays on the previous, healthy revision until the new one – including its migration – has proven itself, rather than cutting over immediately and finding out via the public-edge smoke test. See [Alembic migration safety](../backend/alembic-migration-safety.md#revision-specific-smoke-test).
 
 The promotion is issued with `--async` and verified by polling the service's own status until it is Ready with the new revision carrying all traffic, rather than relying on gcloud's built-in wait. That wait has no ceiling: on 2026-09-10 Cloud Run stalled on "Provisioning revision instances to receive traffic" and gcloud sat for 56 minutes before crashing, holding the serialised deploy queue the whole time. The poll is bounded (`PROMOTE_TIMEOUT_SECONDS`, default 300s), a stalled promotion gets one fresh attempt (`PROMOTE_ATTEMPTS`, default 2), and a failure prints the service's conditions and traffic split into the job log. The deploy jobs also carry a 30-minute `timeout-minutes` ceiling as a backstop.
 
@@ -578,7 +578,7 @@ The promotion is issued with `--async` and verified by polling the service's own
 
 Each active environment has a `quill-admin-{env}` Cloud Run Job for one-off admin tasks (creating superadmin users, updating permissions, assigning roles, running migrations). See the [admin tasks documentation](admin.md) for usage.
 
-The job is defined in the `cloud-run-job` Terraform module and uses a separate Docker image built from the `admin` target in the backend Dockerfile. The admin image is a CLI tool — it does **not** run an HTTP server.
+The job is defined in the `cloud-run-job` Terraform module and uses a separate Docker image built from the `admin` target in the backend Dockerfile. The admin image is a CLI tool – it does **not** run an HTTP server.
 
 ### Production go-live
 

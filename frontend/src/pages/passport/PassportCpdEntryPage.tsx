@@ -14,7 +14,7 @@
  *
  * Reads the year rather than the single entry, because the API files
  * CPD by year and has no route for one activity. The year is in the URL
- * alongside the filename, so a link can be followed cold — a page that
+ * alongside the filename, so a link can be followed cold – a page that
  * only worked when arrived at from the table would break on a refresh.
  *
  * Exports `Component` rather than a default, because React Router's

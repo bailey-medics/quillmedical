@@ -1,7 +1,7 @@
 """MDX validation, checked against what the parser can actually render.
 
 Validation checks what ``mdx_parser`` can render, not whether the file is
-valid MDX — nothing in Quill compiles MDX, and anything the extractors miss
+valid MDX – nothing in Quill compiles MDX, and anything the extractors miss
 vanishes from the slide with no error.
 
 ``TestSilentlyDroppedContent`` pairs each validation failure with proof
@@ -93,8 +93,8 @@ class TestSilentlyDroppedContent:
     def test_video_is_now_a_known_component(self) -> None:
         """``<Video>`` used to be refused with a forward-pointing error.
 
-        It was listed in ``NOT_YET_SUPPORTED`` because nothing read it —
-        no extractor, no ``ParsedSlide`` field, no frontend mapping — so
+        It was listed in ``NOT_YET_SUPPORTED`` because nothing read it –
+        no extractor, no ``ParsedSlide`` field, no frontend mapping – so
         content using it passed the old Node validator and rendered a
         blank slide. This is the landing that message pointed at.
         """
@@ -118,7 +118,7 @@ class TestVideoRefIsAUsableMediaKey:
 
     It is what an admin uploads against, and it travels as a path
     segment in the link and delete endpoints. A ref nothing can be
-    attached to leaves the module permanently incomplete — and because
+    attached to leaves the module permanently incomplete – and because
     the availability gate then hides it, the symptom is a module that
     has simply vanished, with the cause three steps away.
     """
@@ -160,7 +160,7 @@ class TestBothMediaTags:
     """One slide cannot carry both media forms.
 
     They share a layout and a duration field, so the renderer would show
-    one and drop the other without a word — the same class of silent
+    one and drop the other without a word – the same class of silent
     loss the rest of this module exists to catch.
     """
 
@@ -271,7 +271,7 @@ class TestParserAndValidatorAgree:
 
         for name in KNOWN_COMPONENTS:
             assert hasattr(mdx_parser, f"_extract_{name.lower()}"), (
-                f"{name} is advertised as known but has no extractor — "
+                f"{name} is advertised as known but has no extractor – "
                 "content using it would be silently dropped"
             )
 

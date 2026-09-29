@@ -61,7 +61,7 @@ describe("sanitiseErrorReport", () => {
   it("cannot redact a name, which is why the backend must not send one", () => {
     // Recorded rather than hidden. Names have no pattern, so nothing here can
     // catch them, and no tightening of these rules would change that. The
-    // defence is that the backend does not put a name in an error response —
+    // defence is that the backend does not put a name in an error response –
     // the seventeen endpoints that currently might are tracked in
     // docs/docs/plans/2026-08-31-analytics-plan.md. When that work lands and
     // this expectation is inverted, this comment goes with it.

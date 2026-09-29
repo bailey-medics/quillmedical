@@ -32,7 +32,7 @@ def setup_logging() -> None:
         handler.setFormatter(
             logging.Formatter(
                 "%(asctime)s %(levelname)-8s %(name)s "
-                "[%(request_id)s] — %(message)s",
+                "[%(request_id)s] – %(message)s",
                 datefmt="%H:%M:%S",
                 defaults={"request_id": "-"},
             )

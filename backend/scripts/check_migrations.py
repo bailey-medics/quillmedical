@@ -1,24 +1,24 @@
 """Static safety checks for Alembic migration files.
 
-Pure-stdlib (``ast``, ``pathlib``) — no database access and no import of
-the application package — so it is safe to run inside a pre-commit hook.
+Pure-stdlib (``ast``, ``pathlib``) – no database access and no import of
+the application package – so it is safe to run inside a pre-commit hook.
 
 Every ``backend/alembic/versions/*.py`` file is parsed and checked for:
 
-1. Chain integrity — exactly one base and one head; no reused
+1. Chain integrity – exactly one base and one head; no reused
    ``down_revision`` (a branch); no cycles.
-2. Non-empty description — the module docstring must carry a summary
+2. Non-empty description – the module docstring must carry a summary
    line above the Alembic boilerplate.
-3. Reversibility — a new migration's ``downgrade()`` must not be empty;
+3. Reversibility – a new migration's ``downgrade()`` must not be empty;
    an empty / ``pass``-only / missing body is a hard failure.
-4. NOT NULL trap — any ``add_column`` / ``alter_column`` that sets
+4. NOT NULL trap – any ``add_column`` / ``alter_column`` that sets
    ``nullable=False`` must also pass ``server_default=`` in the same call.
-5. Destructive ops — ``drop_column`` / ``drop_table`` / ``drop_constraint``
+5. Destructive ops – ``drop_column`` / ``drop_table`` / ``drop_constraint``
    in ``upgrade()`` require an explicit ``# migration-check:
    allow-destructive`` marker to force expand-contract deliberateness.
 
 The pre-launch history was squashed into a single compliant baseline, so
-every migration — the baseline included — is held to the full standard.
+every migration – the baseline included – is held to the full standard.
 There is no grandfathering mechanism; a migration that fails a check
 must be fixed, not exempted.
 
@@ -483,7 +483,7 @@ def report_destructive(paths: list[Path]) -> list[str]:
     """Return one line per given migration performing destructive ops.
 
     Each line is ``<filename> <revision> <op>[,<op>...]``, with files and
-    ops both sorted, so the report is stable across unrelated edits — the
+    ops both sorted, so the report is stable across unrelated edits – the
     CI job hashes these lines to decide whether the destructive-change set
     actually changed since the last notification. Files performing no
     destructive operation produce no line at all.

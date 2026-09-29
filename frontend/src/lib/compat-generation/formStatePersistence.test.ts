@@ -55,7 +55,7 @@ describe("persistFormState / restoreFormState", () => {
     expect(field?.value).toBe("");
   });
 
-  it("is a one-shot restore — the saved snapshot is cleared after use", () => {
+  it("is a one-shot restore – the saved snapshot is cleared after use", () => {
     document.body.innerHTML = `<input type="text" name="noteTitle" value="Draft" />`; // nosemgrep: js.dom.xss.innerhtml
     persistFormState("/patients/1/notes/new");
 

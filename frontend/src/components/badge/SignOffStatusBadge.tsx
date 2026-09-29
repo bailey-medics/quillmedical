@@ -38,7 +38,7 @@ type Props = {
 
 /**
  * `declined` uses outstanding rather than alert. A decline is an ordinary
- * part of the record — an assessor saying "not yet" — not an error, and
+ * part of the record – an assessor saying "not yet" – not an error, and
  * red would read as one. `superseded` is neutral because the record is
  * still valid history; it has simply been corrected by a later one.
  */

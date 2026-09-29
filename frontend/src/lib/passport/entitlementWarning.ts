@@ -59,7 +59,7 @@ export function entitlementWarning(
 
   // Read-only with no end date to count down to: somebody who has
   // never held an entitlement, or whose competency to write was
-  // withdrawn. Said plainly, because the alternative was silence — the
+  // withdrawn. Said plainly, because the alternative was silence – the
   // null below covers a response built before these fields existed as
   // well, so this case used to fall through it and leave a live "Add
   // an entry" button that refused every save.

@@ -1,7 +1,7 @@
 """Rebuilding ``competencies.yaml`` from the records beneath it.
 
 The index answers the question asked ninety-nine times out of a hundred
-— is this person signed off for this — while the directories beneath
+– is this person signed off for this – while the directories beneath
 hold the detail that only matters at a panel, an audit, or a concern.
 
 **It is derived, never authored.** Nothing writes an index entry by
@@ -168,8 +168,8 @@ def _entry(
 
     Returns:
         The entry. Where there are sign-offs the latest one supplies the
-        status, level, dates and assessor; where there are none — a
-        competency with only a logbook and certificates — the status is
+        status, level, dates and assessor; where there are none – a
+        competency with only a logbook and certificates – the status is
         ``requested`` as the nearest honest answer to "there is evidence
         here but nobody has signed anything".
     """
@@ -234,7 +234,7 @@ def build(
 
     Returns:
         The index, with competencies in id order so two rebuilds of an
-        unchanged passport produce byte-identical files — otherwise
+        unchanged passport produce byte-identical files – otherwise
         every write would show a spurious diff.
 
     Raises:
@@ -274,7 +274,7 @@ def render(index: Index) -> str:
         index: The rebuilt index.
 
     Returns:
-        YAML, with a comment saying not to edit it — the one file in a
+        YAML, with a comment saying not to edit it – the one file in a
         passport where a hand edit would be silently discarded on the
         next write, so it says so.
     """

@@ -1,4 +1,4 @@
-# modules/compute-fhir/main.tf — Compute Engine VM for FHIR + EHRbase
+# modules/compute-fhir/main.tf – Compute Engine VM for FHIR + EHRbase
 
 locals {
   zone = var.zone != "" ? var.zone : "${var.region}-a"

@@ -22,7 +22,7 @@ export default meta;
 type Story = StoryObj<typeof SearchField>;
 
 /**
- * Default dark variant — designed for dark backgrounds (e.g. TopRibbon).
+ * Default dark variant – designed for dark backgrounds (e.g. TopRibbon).
  * White magnifying glass icon on navy background, shown in a ribbon context.
  */
 export const DefaultTopRibbon: Story = {
@@ -51,7 +51,7 @@ export const DefaultTopRibbon: Story = {
 };
 
 /**
- * Light variant — designed for white/light backgrounds (e.g. DataTable controls).
+ * Light variant – designed for white/light backgrounds (e.g. DataTable controls).
  * Navy magnifying glass icon on white background.
  */
 export const DefaultTable: Story = {
@@ -71,7 +71,7 @@ export const DefaultTable: Story = {
 };
 
 /**
- * Dark mode table variant — for dark-themed table backgrounds.
+ * Dark mode table variant – for dark-themed table backgrounds.
  * White magnifying glass icon on dark background.
  */
 export const DarkModeTable: Story = {

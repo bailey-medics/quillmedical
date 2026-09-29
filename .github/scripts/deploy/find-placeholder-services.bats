@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for find-placeholder-services.sh — decides which services still run
+# Tests for find-placeholder-services.sh – decides which services still run
 # the Cloud Run placeholder and therefore need deploying regardless of what
 # the paths filter said.
 #

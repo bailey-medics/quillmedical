@@ -3,7 +3,7 @@
  *
  * The point of this page is the question the old flow never asked: what
  * does the new site sit inside? So the tests are mostly about the parent
- * — that it is offered, that it is required, and that it is what gets
+ * – that it is offered, that it is required, and that it is what gets
  * sent.
  */
 

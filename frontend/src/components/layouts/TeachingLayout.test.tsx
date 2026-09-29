@@ -1,7 +1,7 @@
 /**
  * TeachingLayout Component Tests
  *
- * Tests for the teaching layout — clinical safety boundary that
+ * Tests for the teaching layout – clinical safety boundary that
  * excludes patient context entirely. Verifies sidebar slot,
  * drawer, footer, and responsive behaviour.
  */

@@ -10,13 +10,13 @@ Hazard identification must be carried out by a **multidisciplinary group** inclu
 - Implementation/deployment staff
 - Patient representatives (where appropriate)
 
-A single individual — even the CSO — is insufficient. Multiple perspectives are required to identify the full range of potential hazards.
+A single individual – even the CSO – is insufficient. Multiple perspectives are required to identify the full range of potential hazards.
 
 ### Methods
 
 DCB 0129 Appendix B describes several formal hazard identification methods:
 
-**SWIFT (Structured What-If Technique)** — the most commonly used for health IT. A brainstorming workshop where the clinical/system workflow is broken into individual tasks. Guidewords are tested against each task to generate ideas for hazards, causes, and controls.
+**SWIFT (Structured What-If Technique)** – the most commonly used for health IT. A brainstorming workshop where the clinical/system workflow is broken into individual tasks. Guidewords are tested against each task to generate ideas for hazards, causes, and controls.
 
 Example guidewords:
 - What if the system is unavailable?
@@ -28,17 +28,17 @@ Example guidewords:
 - What if data is lost during save?
 - What if a third-party service is unavailable?
 
-**HAZID (Hazard Identification)** — systematic identification of hazards associated with defined functions.
+**HAZID (Hazard Identification)** – systematic identification of hazards associated with defined functions.
 
-**FFA (Functional Failure Analysis)** — analysis of what happens when each function fails.
+**FFA (Functional Failure Analysis)** – analysis of what happens when each function fails.
 
-**Fishbone Diagrams** — cause-and-effect analysis for specific hazards.
+**Fishbone Diagrams** – cause-and-effect analysis for specific hazards.
 
 For Quill Medical, **SWIFT workshops** are the recommended primary approach.
 
 ### Workshop Process
 
-1. Define the scope — which features or workflows are being assessed
+1. Define the scope – which features or workflows are being assessed
 2. Distribute guidewords to participants in advance
 3. Walk through each clinical/system workflow step by step
 4. At each step, apply guidewords to identify potential hazards
@@ -94,7 +94,7 @@ DCB 0129 uses a **5×5 risk estimation matrix** combining Severity and Likelihoo
 |-------|----------|-------------|
 | 1 | **Very Low** | Negligible or near-impossible likelihood of occurrence |
 | 2 | **Low** | Unlikely but possible |
-| 3 | **Medium** | Possible — could occur during normal operation |
+| 3 | **Medium** | Possible – could occur during normal operation |
 | 4 | **High** | Likely to occur |
 | 5 | **Very High** | Almost certain to occur |
 
@@ -117,7 +117,7 @@ DCB 0129 uses a **5×5 risk estimation matrix** combining Severity and Likelihoo
 | 3 | **Undesirable** | Risk is undesirable and should be reduced | Additional safeguards must be implemented; requires senior management attention |
 | 4 | **Unacceptable** | Risk is unacceptable | Must not proceed. CSO must raise with Top Management. Requires immediate action or the system must not be released. |
 
-The **ALARP (As Low As Reasonably Practicable)** principle applies throughout — risk should always be reduced where it is reasonably practicable to do so, even if the current rating is Tolerable.
+The **ALARP (As Low As Reasonably Practicable)** principle applies throughout – risk should always be reduced where it is reasonably practicable to do so, even if the current rating is Tolerable.
 
 ---
 
@@ -138,7 +138,7 @@ The Hazard Log is a **living document**. It must be:
 - Updated whenever new hazards are identified (from development, testing, incidents, or user feedback)
 - Reviewed and updated for each new release or significant change
 - Reviewed at least annually as part of a formal hazard workshop
-- Versioned — each version must be approved by the CSO
+- Versioned – each version must be approved by the CSO
 - A baseline snapshot must accompany each CSCR
 
 New controls introduced as mitigations must themselves be assessed for whether they could introduce new hazards or adversely impact the risk associated with existing hazards.
@@ -147,6 +147,6 @@ New controls introduced as mitigations must themselves be assessed for whether t
 
 Hazard Logs can be maintained in spreadsheets, but dedicated tools exist:
 
-- **SafetyLogix** (safetylogix.co.uk) — dedicated DCB 0129/0160 hazard log management tool with interactive risk matrix, collaboration features, and multiple export formats
+- **SafetyLogix** (safetylogix.co.uk) – dedicated DCB 0129/0160 hazard log management tool with interactive risk matrix, collaboration features, and multiple export formats
 - Custom spreadsheet using the NHS Digital templates as a starting point
 - Integration into existing project management tools (with appropriate structure)

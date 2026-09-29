@@ -2,7 +2,7 @@
 
 The admin route gates are moving from `system_permissions in ("admin",
 "superadmin")` to the `manage_users` competency. `has_competency` has no
-rank bypass — it reads the competency list and nothing else — so a
+rank bypass – it reads the competency list and nothing else – so a
 superadmin who holds no competencies would be refused by every gate the
 swap touches. That is the one role meant to reach everything.
 
@@ -12,7 +12,7 @@ alternative, a rank check inside each gate, would leave a rung in the
 ladder `2026-09-09-platform-role-plan.md` exists to remove.
 
 **It carries no clinical competency.** A superadmin who needs to read a
-patient record is granted that like anyone else — see "A superadmin is
+patient record is granted that like anyone else – see "A superadmin is
 not a clinician" in the plan.
 """
 
@@ -60,8 +60,8 @@ class TestItIsDeliberatelyNarrow:
     def test_it_grants_only_administrative_competencies(self):
         """Three now, all administrative, so the blast radius stays visible.
 
-        `manage_staff_membership` was split out of `manage_users` — who
-        belongs to a place, as opposed to who has an account at all — and
+        `manage_staff_membership` was split out of `manage_users` – who
+        belongs to a place, as opposed to who has an account at all – and
         granted alongside it to every profession that held it, superadmin
         included. Without it an operator could not add staff to an
         organisation, and `has_competency` has no rank bypass to fall
@@ -91,7 +91,7 @@ class TestProvisioningGrantsTheOperatorCompetencies:
 
     Note the column default: `base_profession` is NOT NULL defaulting to
     `patient`, so a superadmin provisioned without one is not competency
-    free — they are a *patient*, holding `access_patient_records` and not
+    free – they are a *patient*, holding `access_patient_records` and not
     `manage_users`. Both too much and too little, which is why fresh
     superadmins get `superadmin_profession` and promoted ones get its
     competencies added.

@@ -5,8 +5,8 @@
  *
  * The year is chosen here and passed to the API, which files entries by
  * year on disk. The declared appraisal period is not yet served by the
- * API — `appraisal_periods` is a recorded decision without an
- * implementation — so `CpdTable` falls back to naming its convention.
+ * API – `appraisal_periods` is a recorded decision without an
+ * implementation – so `CpdTable` falls back to naming its convention.
  */
 
 import { useEffect, useState } from "react";
@@ -97,7 +97,7 @@ export function Component() {
 
       // The API files an entry by its own date, which need not be the
       // year on screen. Showing that year means the new entry is in
-      // view rather than apparently lost — and when it matches, this is
+      // view rather than apparently lost – and when it matches, this is
       // simply the reload it would have been anyway.
       const filedUnder = String(new Date(data.activity_on).getFullYear());
       if (filedUnder !== year) {

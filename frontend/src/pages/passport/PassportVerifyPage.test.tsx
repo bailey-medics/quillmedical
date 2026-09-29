@@ -60,7 +60,7 @@ describe("PassportVerifyPage", () => {
 
   it("explains a refused check rather than implying the record is bad", async () => {
     // A 403 means the reader may not see it, not that the record failed
-    // verification — a distinction that matters on a printed passport.
+    // verification – a distinction that matters on a printed passport.
     verifySignOff.mockRejectedValue(new Error("forbidden"));
 
     renderWithRouter(<PassportVerifyPage />, {

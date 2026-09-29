@@ -7,7 +7,7 @@
  * **Holder-only, and the interface says so.** A reflection is not
  * readable by an assessor, an organisation admin or anyone else. Written
  * reflection can be disclosed in legal proceedings and UK doctors are
- * wary of it for good reason, so the narrower default is the safer one —
+ * wary of it for good reason, so the narrower default is the safer one –
  * and somebody deciding how frankly to write deserves to be told who can
  * read it rather than having to infer it.
  *
@@ -52,7 +52,7 @@ import type { Reflection, ReflectionInput } from "@lib/passport";
  */
 export const ANONYMISATION_DECLARATION =
   "I confirm this reflection contains nothing that could identify a " +
-  "patient — no name, no date of birth, no NHS number, no hospital " +
+  "patient – no name, no date of birth, no NHS number, no hospital " +
   "number, and no detail so unusual that it would single somebody out.";
 
 export interface ReflectionEditorProps {

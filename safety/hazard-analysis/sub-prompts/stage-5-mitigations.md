@@ -1,4 +1,4 @@
-# Stage 5 — mitigation suggestions
+# Stage 5 – mitigation suggestions
 
 ## Input
 
@@ -46,7 +46,7 @@ policies, or workflows that the deploying organisation would need to implement. 
 3. Be specific. "Improve error handling" is not useful. "Catch FHIR API 4xx responses in the patient demographics fetch and display a clear banner indicating data may be incomplete" is more useful.
 4. For testing controls, describe the scenario concretely enough that a
    developer could write the test from your description.
-5. Flag any controls that would require significant architectural changes — the Clinical Safety Officer needs to weigh effort against risk reduction.
+5. Flag any controls that would require significant architectural changes – the Clinical Safety Officer needs to weigh effort against risk reduction.
 
 ## Output format
 

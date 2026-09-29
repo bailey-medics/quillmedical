@@ -20,7 +20,7 @@
 # serves /about and not /about.html. Cloud Storage serves exactly the object
 # name asked for and has no rewriting of its own, and the load balancer in
 # front of it is a classic Application Load Balancer, on which URL rewriting is
-# not available — so the object name is the URL, and renaming is the only place
+# not available – so the object name is the URL, and renaming is the only place
 # this can be solved.
 #
 # index.html and not-found.html keep their names: the bucket's website
@@ -70,7 +70,7 @@ make_clean_urls() {
 }
 
 # The renamed pages, read back from the directory after the rename rather than
-# recomputed from *.html — by this point there are no .html pages left to find.
+# recomputed from *.html – by this point there are no .html pages left to find.
 clean_url_objects() {
   local src="$1"
   local file

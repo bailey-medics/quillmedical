@@ -12,9 +12,9 @@ import classes from "./PublicButton.module.css";
 export interface PublicButtonProps {
   /** Button label */
   children: ReactNode;
-  /** Link URL — renders as an anchor when provided */
+  /** Link URL – renders as an anchor when provided */
   href?: string;
-  /** Size variant — defaults to md */
+  /** Size variant – defaults to md */
   size?: "sm" | "md" | "lg";
   /** Disabled state */
   disabled?: boolean;

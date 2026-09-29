@@ -10,7 +10,7 @@
 # other way round: which published banks would today's validator reject?
 #
 # Reads only. It downloads the bucket's modules/ prefix and runs the
-# validator over it — no database, no sync, nothing written back. The bucket
+# validator over it – no database, no sync, nothing written back. The bucket
 # mirrors the content repository exactly, so the download is what the
 # validator already expects.
 #
@@ -32,7 +32,7 @@ main() {
     exit 1
   fi
 
-  # The output file is optional — without one the report only goes to the
+  # The output file is optional – without one the report only goes to the
   # log. But if a path was given, check it can be written now rather than
   # after downloading the bucket and validating every bank.
   if [ -n "$output" ] && ! : > "$output" 2>/dev/null; then

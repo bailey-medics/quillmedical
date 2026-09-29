@@ -31,7 +31,7 @@ class TestDefaults:
     def test_a_new_row_has_no_active_version(
         self, db_session: Session
     ) -> None:
-        """Null means nothing promoted — the bank serves nothing yet."""
+        """Null means nothing promoted – the bank serves nothing yet."""
         row = _status()
         db_session.add(row)
         db_session.commit()

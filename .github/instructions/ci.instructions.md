@@ -51,7 +51,7 @@ A merged feature branch should never be rebased again. If you try to `git rebase
 
 ## Why this works
 
-1. **All tests run in the PR context** — fast tier on every push (catch regressions), heavy tier on non-draft PRs (integration testing)
-2. **No CI on `main`** — branch protection requires the PR to be rebased onto (up to date with) main and all checks green before the merge button unlocks, so the merge commit is already fully tested and no post-merge run is needed
-3. **Clean history** — rebases prevent merge-commit proliferation; history stays linear
-4. **No rebase-after-merge surprise** — developers delete old branches, never encounter the trap
+1. **All tests run in the PR context** – fast tier on every push (catch regressions), heavy tier on non-draft PRs (integration testing)
+2. **No CI on `main`** – branch protection requires the PR to be rebased onto (up to date with) main and all checks green before the merge button unlocks, so the merge commit is already fully tested and no post-merge run is needed
+3. **Clean history** – rebases prevent merge-commit proliferation; history stays linear
+4. **No rebase-after-merge surprise** – developers delete old branches, never encounter the trap

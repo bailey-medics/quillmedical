@@ -1,4 +1,4 @@
-# modules/monitoring/main.tf — Uptime checks + alerting
+# modules/monitoring/main.tf – Uptime checks + alerting
 #
 # Creates an HTTPS uptime check on /api/health for each monitored
 # hostname, plus alert policies that fire on uptime failures and
@@ -19,7 +19,7 @@ resource "google_monitoring_notification_channel" "email" {
 #
 # Looked up rather than created. Terraform can create a webhook_token_auth
 # channel, but Slack incoming webhooks expect a body shaped like
-# {"text": "..."} while Cloud Monitoring sends its own alert JSON — a channel
+# {"text": "..."} while Cloud Monitoring sends its own alert JSON – a channel
 # built that way looks configured and delivers nothing. The native slack type
 # is the one that actually posts a readable message, and it needs an
 # auth_token obtained through Slack's OAuth consent screen, which only the
@@ -27,8 +27,8 @@ resource "google_monitoring_notification_channel" "email" {
 # obfuscated on read, so even importing it into state would show a masked
 # value and drift on every subsequent plan.
 #
-# So the channel is created once by hand — see
-# docs/docs/infrastructure/monitoring.md — and referenced here by
+# So the channel is created once by hand – see
+# docs/docs/infrastructure/monitoring.md – and referenced here by
 # display_name and type. Nothing about its lifecycle is managed by Terraform;
 # deleting or renaming it in the console silently empties this data source.
 data "google_monitoring_notification_channel" "slack" {
@@ -54,11 +54,11 @@ data "google_monitoring_notification_channel" "slack" {
 # Pub/Sub the only redundant path. An external pager sidesteps that entirely.
 #
 # service_key is the Events API v1 integration key. Google's own
-# documentation calls for v1 specifically — the channel speaks the v1 event
+# documentation calls for v1 specifically – the channel speaks the v1 event
 # format, so a v2 routing key is the wrong shape.
 # `count` is driven by static config, not by testing whether the key is
 # non-empty. The key is read from Secret Manager by a data source, so its value
-# is not knowable until apply — and any change to `module.secrets` makes
+# is not knowable until apply – and any change to `module.secrets` makes
 # Terraform reject the whole plan with "Invalid count argument". Adding one
 # unrelated secret was enough to trigger that. The flag says whether this
 # environment *should* page; the key says how.
@@ -103,7 +103,7 @@ locals {
 
   # Tier two: SMS, and nothing else.
   #
-  # Email was here as well, for redundancy — Google documents SMS as "not a
+  # Email was here as well, for redundancy – Google documents SMS as "not a
   # fully reliable notification channel type". That held while tier one was
   # email alone. Now that tier one sends Slack and email, a second email at
   # fifteen minutes repeats a channel already used and adds nothing. Each tier
@@ -122,13 +122,13 @@ resource "google_monitoring_uptime_check_config" "health" {
   for_each = toset(var.monitored_hostnames)
 
   project      = var.project_id
-  display_name = "Health — ${each.key}"
+  display_name = "Health – ${each.key}"
   timeout      = "10s"
 
   # 1 minute. Executions bill at frequency x target x region against a free
   # allowance of 1M/month; two hostnames from all regions is ~518k, about
   # half of it. If a fourth hostname is added, pin selected_regions rather
-  # than slowing the checks back down — detection lag matters more.
+  # than slowing the checks back down – detection lag matters more.
   period = "60s"
 
   # Only the app host has an API to health-check. The public site is served
@@ -157,7 +157,7 @@ resource "google_monitoring_uptime_check_config" "health" {
   }
 }
 
-# ---------- Alert policy — fires when any check fails ----------
+# ---------- Alert policy – fires when any check fails ----------
 resource "google_monitoring_alert_policy" "uptime" {
   project      = var.project_id
   display_name = "Uptime failure (${var.environment})"
@@ -182,10 +182,10 @@ resource "google_monitoring_alert_policy" "uptime" {
 
       The two monitored hosts fail for different reasons:
 
-      - **${var.app_domain}** is the application — Cloud Run behind
+      - **${var.app_domain}** is the application – Cloud Run behind
         the load balancer, probed at `/api/health`. A failure points at the
         backend, the load balancer, or Cloud Run itself.
-      - **quill-medical.com** is the public site — static files served from a
+      - **quill-medical.com** is the public site – static files served from a
         Cloud Storage bucket, probed at `/`. It has no API and no Cloud Run
         service, so a failure here is the bucket, the backend bucket, or DNS.
 
@@ -229,7 +229,7 @@ resource "google_monitoring_alert_policy" "uptime" {
   }
 }
 
-# ---------- Alert policy — sustained outage, escalated ----------
+# ---------- Alert policy – sustained outage, escalated ----------
 #
 # Tier two. Same condition as the policy above, but it only fires once the
 # outage has lasted var.escalation_duration, and it notifies the louder
@@ -246,7 +246,7 @@ resource "google_monitoring_alert_policy" "uptime_escalation" {
   count = var.enable_sms_channel ? 1 : 0
 
   project      = var.project_id
-  display_name = "Uptime failure — sustained (${var.environment})"
+  display_name = "Uptime failure – sustained (${var.environment})"
   combiner     = "OR"
 
   documentation {
@@ -295,7 +295,7 @@ resource "google_monitoring_alert_policy" "uptime_escalation" {
   }
 }
 
-# ---------- Alert policy — Cloud Run container startup failures ----------
+# ---------- Alert policy – Cloud Run container startup failures ----------
 resource "google_monitoring_alert_policy" "cloud_run_startup" {
   count = length(var.cloud_run_services) > 0 ? 1 : 0
 
@@ -313,7 +313,7 @@ resource "google_monitoring_alert_policy" "cloud_run_startup" {
       or an application error before the port is bound.
 
       **The previous revision keeps serving traffic**, so this is not
-      necessarily an outage — but the new revision is not live, and a deploy
+      necessarily an outage – but the new revision is not live, and a deploy
       has silently not taken effect. Check whether the running revision is
       the one you expect.
 
@@ -344,17 +344,17 @@ resource "google_monitoring_alert_policy" "cloud_run_startup" {
   }
 }
 
-# ---------- Alert policy — backend 5xx responses ----------
+# ---------- Alert policy – backend 5xx responses ----------
 #
 # The uptime check above only proves that /api/health answers. A service
 # that starts cleanly, passes the health check, and then fails every real
-# endpoint raises nothing at all without this policy — and that is the
+# endpoint raises nothing at all without this policy – and that is the
 # failure a clinician actually runs into.
 resource "google_monitoring_alert_policy" "server_errors" {
   count = length(var.cloud_run_services) > 0 ? 1 : 0
 
   project      = var.project_id
-  display_name = "Server errors — 5xx (${var.environment})"
+  display_name = "Server errors – 5xx (${var.environment})"
   combiner     = "OR"
 
   documentation {
@@ -366,7 +366,7 @@ resource "google_monitoring_alert_policy" "server_errors" {
 
       This exists because the uptime check only proves `/api/health` answers.
       A service can start cleanly, pass its health check, and fail every real
-      endpoint — which is the failure a user actually notices, and which
+      endpoint – which is the failure a user actually notices, and which
       nothing else here would catch.
 
       Start with the logs for this revision, filtered to server errors:
@@ -424,7 +424,7 @@ resource "google_monitoring_alert_policy" "server_errors" {
   }
 }
 
-# ---------- Alert policy — any backend error ----------
+# ---------- Alert policy – any backend error ----------
 #
 # One error is enough. The 5xx policy above waits for more than
 # server_error_threshold responses in five minutes, which suits an outage
@@ -508,7 +508,7 @@ resource "google_monitoring_alert_policy" "backend_errors" {
   }
 }
 
-# ---------- Alert policy — browser errors ----------
+# ---------- Alert policy – browser errors ----------
 #
 # The half of "where are things going wrong" that no server-side signal sees.
 # A React crash returns no 5xx, answers the uptime check normally, and leaves
@@ -517,7 +517,7 @@ resource "google_monitoring_alert_policy" "backend_errors" {
 # somebody thinks to look, which is the position this whole phase set out to
 # fix.
 #
-# First tier only — Slack and email. Deliberately not SMS or a phone call: a
+# First tier only – Slack and email. Deliberately not SMS or a phone call: a
 # spike in browser errors is a bad morning, not an outage, and the tiers exist
 # precisely so that things which do not warrant waking someone do not. If a
 # fault is bad enough to matter at three in the morning it will take the
@@ -535,8 +535,8 @@ resource "google_monitoring_alert_policy" "client_errors" {
     subject   = "Browser errors above threshold"
     content   = <<-EOT
       The application reported more browser errors in five minutes than the
-      configured threshold. These are errors in the user's browser — a React
-      crash, a rejected promise, something thrown outside React's tree — not
+      configured threshold. These are errors in the user's browser – a React
+      crash, a rejected promise, something thrown outside React's tree – not
       server errors, so nothing else here would have caught them.
 
       Cloud Error Reporting is where to read one: it groups identical faults
@@ -545,7 +545,7 @@ resource "google_monitoring_alert_policy" "client_errors" {
 
       Errors: https://console.cloud.google.com/errors?project=$${project}
 
-      For the circumstances rather than the fault — the breadcrumbs leading up
+      For the circumstances rather than the fault – the breadcrumbs leading up
       to it, the route, the browser, and which build it came from:
 
       ```
@@ -565,7 +565,7 @@ resource "google_monitoring_alert_policy" "client_errors" {
 
     condition_threshold {
       # The resource.type restriction is required, not decorative: Monitoring
-      # rejects an alert filter without one outright, and it did — this policy
+      # rejects an alert filter without one outright, and it did – this policy
       # failed to create on every apply from the day it was written until the
       # restriction was added, so the browser-error alert did not exist while
       # the code said it did. A log-based metric inherits the resource type of
@@ -580,7 +580,7 @@ resource "google_monitoring_alert_policy" "client_errors" {
       duration        = "0s"
 
       # A DELTA metric, so ALIGN_SUM over the period reads as "this many
-      # reports in five minutes" rather than a rate per second — far easier to
+      # reports in five minutes" rather than a rate per second – far easier to
       # choose a threshold against, and the same shape as the 5xx policy.
       #
       # Summed across routes rather than grouped by them: a fault that breaks
@@ -609,7 +609,7 @@ resource "google_monitoring_alert_policy" "client_errors" {
   }
 }
 
-# ---------- Alert policy — video renditions that are not there ----------
+# ---------- Alert policy – video renditions that are not there ----------
 #
 # Drift between what the database says a transcode produced and what the
 # processed bucket actually holds. The player composes its URL from the
@@ -617,9 +617,9 @@ resource "google_monitoring_alert_policy" "client_errors" {
 # everywhere except to the learner staring at a player that will not start.
 #
 # Deliberately an alert rather than a reconciliation job. A sweep comparing
-# every link row against the bucket would run green almost always — the job
+# every link row against the bucket would run green almost always – the job
 # verifies its own uploads before recording them, so the only way to reach
-# this state is a hand-deletion — and a check that never finds anything stops
+# this state is a hand-deletion – and a check that never finds anything stops
 # being read. This fires only when a real learner has hit the fault.
 resource "google_monitoring_alert_policy" "video_not_found" {
   count = var.video_not_found_metric != null ? 1 : 0
@@ -644,7 +644,7 @@ resource "google_monitoring_alert_policy" "video_not_found" {
       hand. The transcode job verifies its own uploads are readable before it
       records them, so a job that half-succeeded should not produce this.
 
-      Which module and organisation, from the path — the object key is
+      Which module and organisation, from the path – the object key is
       `{org_id}/{module_id}/{asset_id}-720p.mp4` and the URL mirrors it:
 
       ```
@@ -668,8 +668,8 @@ resource "google_monitoring_alert_policy" "video_not_found" {
       # `l7_lb_rule`, not `http_load_balancer`. The two name the same load
       # balancer in different systems: the metric's *log* filter matches
       # `resource.type="http_load_balancer"`, which is what Logging calls it,
-      # and Logging then derives the Monitoring resource type — `l7_lb_rule`
-      # — for the descriptor it registers. An alert filter is read by
+      # and Logging then derives the Monitoring resource type – `l7_lb_rule`
+      # – for the descriptor it registers. An alert filter is read by
       # Monitoring, so it must use Monitoring's name.
       #
       # Naming the Logging one here fails with "The resource name does not
@@ -690,7 +690,7 @@ resource "google_monitoring_alert_policy" "video_not_found" {
       duration        = "0s"
 
       # DELTA, so ALIGN_SUM reads as "this many in five minutes" rather than
-      # a rate per second — the same shape as the browser-error policy.
+      # a rate per second – the same shape as the browser-error policy.
       aggregations {
         alignment_period     = "300s"
         per_series_aligner   = "ALIGN_SUM"
@@ -708,14 +708,14 @@ resource "google_monitoring_alert_policy" "video_not_found" {
   # Tier one only. Nobody is woken for this: the module is already hidden
   # from learners by the availability gate where the link is missing
   # entirely, and where it is not, the damage is one video rather than an
-  # outage. No notification_rate_limit — Google rejects it on a metric
+  # outage. No notification_rate_limit – Google rejects it on a metric
   # threshold policy.
   alert_strategy {
     auto_close = "1800s" # 30 minutes
   }
 }
 
-# ---------- Alert policy — Cloud SQL disk filling ----------
+# ---------- Alert policy – Cloud SQL disk filling ----------
 #
 # The failure that gives days of warning and still takes the service down if
 # nobody is watching. Unlike an outage, there is no symptom until the disk is
@@ -736,7 +736,7 @@ resource "google_monitoring_alert_policy" "sql_disk" {
       instance with no upper limit, so the disk grows on its own rather than
       filling up and stopping writes.
 
-      Treat it as a signal that something is growing faster than expected —
+      Treat it as a signal that something is growing faster than expected –
       a runaway log table, an unbounded insert, or a migration that copied
       more than intended. Disk that has grown does not shrink again, so it is
       also a standing cost.
@@ -782,7 +782,7 @@ resource "google_monitoring_alert_policy" "sql_disk" {
 }
 
 
-# ---------- Alert policy — major outage, tier three ----------
+# ---------- Alert policy – major outage, tier three ----------
 #
 # Fires only once an outage has lasted var.critical_duration, and notifies
 # PagerDuty alone, which places the phone call. Tiers one and two have
@@ -796,7 +796,7 @@ resource "google_monitoring_alert_policy" "uptime_critical" {
   count = var.enable_pagerduty_channel ? 1 : 0
 
   project      = var.project_id
-  display_name = "Major outage — call the on-call (${var.environment})"
+  display_name = "Major outage – call the on-call (${var.environment})"
   combiner     = "OR"
 
   documentation {
@@ -808,7 +808,7 @@ resource "google_monitoring_alert_policy" "uptime_critical" {
 
       This is the only alert that places a phone call. On the call, press the
       acknowledge option to stop the escalation. **Do not resolve from the
-      handset** — Cloud Monitoring closes the incident by itself once the
+      handset** – Cloud Monitoring closes the incident by itself once the
       check passes again, and resolving by keypress leaves PagerDuty and
       Google disagreeing about whether the outage is over.
 

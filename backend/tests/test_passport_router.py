@@ -3,7 +3,7 @@
 The authorisation matrix and the state machine, exercised over HTTP.
 
 The store is swapped for one rooted at a temporary directory through
-``app.dependency_overrides`` — the same mechanism ``conftest.py`` already
+``app.dependency_overrides`` – the same mechanism ``conftest.py`` already
 uses to point the database at SQLite. Nothing in a request can reach that
 dictionary; it is populated by test code and cleared afterwards, and the
 deployed application resolves the store from configuration alone.
@@ -16,7 +16,7 @@ holds the competency and belongs to the same organisation. The last is
 the one that matters: an authorisation bug does not look like an error,
 it looks like a successful response to the wrong person.
 
-**Self-sign-off is refused.** The one hard rule, tested at both doors —
+**Self-sign-off is refused.** The one hard rule, tested at both doors –
 asking yourself, and signing your own. The assertion is not merely that
 it is refused but that nothing is written when it is.
 
@@ -93,7 +93,7 @@ def passport_store(tmp_path: Path) -> Iterator[LocalPassportStore]:
 
     # Both, rooted together. Evidence lives beside the repository it
     # belongs to, so overriding only the passport store would leave the
-    # blob store resolving the real configured location — which is the
+    # blob store resolving the real configured location – which is the
     # one thing this fixture exists to make impossible.
     app.dependency_overrides[get_passport_store] = lambda: store
     app.dependency_overrides[get_blob_store] = lambda: blobs
@@ -1531,7 +1531,7 @@ class TestTheInvitationAnAskSends:
     The route that invited somebody by hand is gone: asking for a
     sign-off is what sends the invitation now. What it mints is a
     single-use link, and the properties that matter are the same ones
-    that mattered before — the token reaches the address and nobody
+    that mattered before – the token reaches the address and nobody
     else, only its hash is kept, and a holder cannot mail an unbounded
     number of strangers.
     """
@@ -1542,7 +1542,7 @@ class TestTheInvitationAnAskSends:
 
         ``EMAIL_DRY_RUN`` is already true under test, so nothing would
         leave the process either way. This is to assert on *what* was
-        written — above all that the token never appears in the response
+        written – above all that the token never appears in the response
         and the link does appear in the email.
         """
         outbox: list[dict[str, str]] = []
@@ -1917,7 +1917,7 @@ class TestAcceptingAnInvitation:
         """The holder gives an address and nothing else.
 
         Before this, the account was built from the invitation's own
-        name and registration columns — which the holder used to fill
+        name and registration columns – which the holder used to fill
         in. Asking for a sign-off does not collect them, so a new
         assessor was registered with an empty name and a registration
         of ``{"": ""}``: a meaningless entry in a clinical field.
@@ -2233,7 +2233,7 @@ class TestAcceptingAnInvitation:
         """The gate resolves through membership, which an invitee lacks.
 
         Gating these routes would make an invitation impossible to
-        accept — a circular dependency that is obvious once seen and
+        accept – a circular dependency that is obvious once seen and
         invisible in review.
         """
         passport_id = _create_passport(holder_client)
@@ -2254,7 +2254,7 @@ class TestTheGateResolvesForAnAcceptedAssessor:
 
     ``requires_feature`` unions organisation membership with site
     membership resolved through the site's organisation, and reads no
-    capacity at all — so an ``external`` member passes exactly as a
+    capacity at all – so an ``external`` member passes exactly as a
     ``staff`` one does. That is the whole reason no sibling gate is
     needed, and it is pinned here rather than reasoned about, because
     it is a property of code in another module that could change
@@ -2333,7 +2333,7 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         # Reaching the route at all is what this pins: 200 rather than
         # the 403 an account without the gate would get. The inbox is no
         # longer empty, because asking for a sign-off is what brings an
-        # assessor in — so the request that invited them is waiting,
+        # assessor in – so the request that invited them is waiting,
         # which is the arrangement the whole flow exists to produce.
         assert response.status_code == 200, response.text
         assert len(response.json()) == 1
@@ -2472,8 +2472,8 @@ class TestTheGateResolvesForAnAcceptedAssessor:
     ) -> None:
         """``external`` passes exactly as ``staff`` would.
 
-        Stated as its own test because the opposite — a gate that
-        quietly required ``staff`` — would leave every invited assessor
+        Stated as its own test because the opposite – a gate that
+        quietly required ``staff`` – would leave every invited assessor
         with a 403 and no obvious cause.
         """
         passport_id = _create_passport(holder_client)
@@ -2506,7 +2506,7 @@ class TestTheGateResolvesForAnAcceptedAssessor:
         Passing ``requires_feature`` says only that the passport feature
         is on where they are. What they may see is resolved separately,
         and a named assessor may read the sign-off they were asked about
-        — never the holder's passport as a whole.
+        – never the holder's passport as a whole.
         """
         passport_id = _create_passport(holder_client)
         self._invite_and_accept(holder_client, test_client, passport_id, sent)
@@ -2522,8 +2522,8 @@ class TestAdminRevoke:
 
     "Admin of the holder's organisation" is two questions. ``manage_users``
     says *what* somebody may do and is global; membership says *where*.
-    Either alone is wrong — the competency by itself would make an admin
-    at one trust an administrator of every assessor in Quill — so the
+    Either alone is wrong – the competency by itself would make an admin
+    at one trust an administrator of every assessor in Quill – so the
     tests that matter most here are the ones proving an admin elsewhere
     is refused.
     """
@@ -2707,7 +2707,7 @@ class TestAdminRevoke:
         sent: list[dict[str, str]],
     ) -> None:
         """A record of who assessed somebody is not undone by that person
-        later losing their access — the assessment happened."""
+        later losing their access – the assessment happened."""
         assessor_id = self._accept_an_assessor(
             holder_client, test_client, sent
         )
@@ -2867,7 +2867,7 @@ class TestEvidence:
     addressed by the SHA-256 of its own contents, so the address cannot
     be computed without reading every byte. That is the whole reason the
     signed-URL pattern used for teaching videos does not apply, and the
-    reason the size and type checks live at this boundary — `blobs.py`
+    reason the size and type checks live at this boundary – `blobs.py`
     decides neither, because storing is separate from admitting.
     """
 
@@ -2948,7 +2948,7 @@ class TestEvidence:
     ) -> None:
         """A caller sets `Content-Type`, so the allow-list checks a claim.
 
-        Without reading the bytes, anything at all uploads as a PDF —
+        Without reading the bytes, anything at all uploads as a PDF –
         the allow-list would be satisfied by the header alone.
         """
         passport_id = _create_passport(holder_client)
@@ -3352,7 +3352,7 @@ class TestEvidence:
         another, so guarding only the first leaves the second taking the
         caller's word. A genuine PNG, uploaded honestly, was then
         nameable as `application/pdf` and the record said so
-        permanently — the same claim the upload sniff refuses, made one
+        permanently – the same claim the upload sniff refuses, made one
         step later against bytes already in the store.
         """
         passport_id = _create_passport(holder_client)
@@ -3440,8 +3440,8 @@ class TestExport:
     """Taking the record away.
 
     All three are holder-only. The zip is the one that could never be
-    anything else — it copies the canonical files byte for byte, so it
-    carries the holder's reflections whatever the caller asked for — but
+    anything else – it copies the canonical files byte for byte, so it
+    carries the holder's reflections whatever the caller asked for – but
     an export hands over a whole passport in one call, and that is not
     something to offer a named assessor for the sake of symmetry with
     the per-record reads.
@@ -3728,7 +3728,7 @@ class TestWhatAnExternalAssessorCannotReach:
 
         assert response.status_code == 200, response.text
 
-        # Their own is there — asking is what brought them in, so an
+        # Their own is there – asking is what brought them in, so an
         # empty inbox would no longer prove anything. What matters is
         # that the other assessor's request is not, which is the leak
         # this guards: one query spanning every passport.
@@ -3836,7 +3836,7 @@ class TestWhatAnExternalAssessorCannotReach:
         The row's own ``expires_at`` is the check exercised here. It is
         checked as well as the token's ``exp`` because the row is what an
         administrator can see and reason about, and the two must not be
-        able to disagree — so the row alone has to be able to refuse.
+        able to disagree – so the row alone has to be able to refuse.
         """
         passport_id = _create_passport(holder_client)
         self._stale_invite(holder_client, db_session, passport_id)
@@ -3869,7 +3869,7 @@ class TestWhatAnExternalAssessorCannotReach:
         """The other half of the same guarantee.
 
         ``create_passport_invite_token`` refuses a lifetime below a day,
-        which is right everywhere but here — minting an already-dead
+        which is right everywhere but here – minting an already-dead
         token is a bug in real code. So this signs one directly with the
         same key to reach the ``exp`` check inside ``jwt.decode``, which
         is what actually stops a fortnight-old link.

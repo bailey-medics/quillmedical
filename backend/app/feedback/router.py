@@ -148,7 +148,7 @@ def list_feedback(
 
     Operator-only. Feedback comes from every organisation, so reading it
     is operating the deployment rather than administering any one place,
-    and ``manage_users`` — which is scoped to a place — is the wrong
+    and ``manage_users`` – which is scoped to a place – is the wrong
     question.
 
     Not paginated. Volumes are low, and the useful view is "everything

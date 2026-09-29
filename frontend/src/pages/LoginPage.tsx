@@ -40,7 +40,7 @@ export default function LoginPage() {
       const user = await login(data.username, data.password, data.totp);
 
       // Safety net: don't redirect to admin paths if the user cannot use
-      // them — prevents PHI leakage across login sessions. Asks the
+      // them – prevents PHI leakage across login sessions. Asks the
       // competency the `/admin` guard asks, so the two cannot disagree.
       const canAdminister =
         user.competencies?.includes("manage_users") ?? false;

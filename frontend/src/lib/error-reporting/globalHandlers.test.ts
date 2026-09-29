@@ -15,7 +15,7 @@ async function lastBody(
  *
  * Without this the test runner sees a genuinely unhandled error and reports it
  * against the run, even though raising it is the whole point of the test. The
- * suppression is the test harness's, not the application's — the real
+ * suppression is the test harness's, not the application's – the real
  * listeners deliberately do not call `preventDefault`, so the browser still
  * logs what it would have.
  */

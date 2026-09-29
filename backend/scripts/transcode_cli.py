@@ -5,7 +5,7 @@ Reads one uploaded video from the source bucket, produces the renditions
 a learner is actually served, and writes them to the processed bucket.
 
 Environment variables only, with no arguments and no prompts, because a
-Cloud Run Job has no terminal — the same shape as ``admin_cli.py``.
+Cloud Run Job has no terminal – the same shape as ``admin_cli.py``.
 
 Environment Variables:
     TRANSCODE_ORG_ID:     Required.  Organisation that owns the upload.
@@ -18,7 +18,7 @@ Environment Variables:
 
 Both callback variables are optional together: unset means development,
 where there is no backend to tell. Set in teaching, where the report is
-what makes a module servable — the backend fires this job and does not
+what makes a module servable – the backend fires this job and does not
 wait, so nothing else records that the renditions exist.
 
 Usage (Cloud Run Job):
@@ -54,7 +54,7 @@ if proj_root not in sys.path:
     sys.path.insert(0, proj_root)
 
 #: Cloud CDN caches what it is told to cache. An object written without
-#: this is revalidated on every request and the CDN buys us nothing —
+#: this is revalidated on every request and the CDN buys us nothing –
 #: which is the whole reason the bytes go through a backend bucket.
 CACHE_CONTROL = "public, max-age=86400"
 
@@ -101,7 +101,7 @@ def _report_complete(
     """Tell the backend the renditions are up, so the module can serve.
 
     Until this call lands, ``transcoded_at`` stays null and the
-    availability gate keeps the module hidden — the renditions exist and
+    availability gate keeps the module hidden – the renditions exist and
     no learner can reach them. This is the only thing that closes that
     gap: the backend fires the job and does not wait, so nothing else
     knows the job finished.
@@ -110,7 +110,7 @@ def _report_complete(
     and the source is about to be deleted; a callback that cannot be
     delivered must not undo any of that or trigger a re-encode. It is
     logged loudly instead, and the module stays hidden until someone
-    re-runs the job or the state is corrected by hand — the safe
+    re-runs the job or the state is corrected by hand – the safe
     direction, and visible in the admin card as "awaiting transcode".
 
     Unconfigured is not an error either: in development there is no
@@ -244,7 +244,7 @@ def transcode() -> int:
     from google.cloud import storage  # type: ignore[import-untyped]
 
     # `object_paths`, not `storage`: the latter imports `settings` at
-    # module scope, which requires JWT_SECRET and CORE_DB_PASSWORD — and
+    # module scope, which requires JWT_SECRET and CORE_DB_PASSWORD – and
     # a video encoder should hold neither. Importing it here crashed
     # this job on startup before it read a byte.
     from app.features.teaching.object_paths import media_object_path
@@ -327,7 +327,7 @@ def transcode() -> int:
 
     # Verify before deleting anything. An upload that reported success
     # but left nothing readable would otherwise cost us the master too,
-    # and the renditions are what the learner is served — there is no
+    # and the renditions are what the learner is served – there is no
     # second copy of either once the source is gone.
     #
     # This also closes the only drift window the system creates itself:
@@ -347,7 +347,7 @@ def transcode() -> int:
     # renditions exist the master's sole remaining use is re-encoding,
     # which is wanted within days of a video going up, not months.
     #
-    # A source already gone is not an error — a re-run over an asset
+    # A source already gone is not an error – a re-run over an asset
     # cleaned up by a previous attempt should still succeed.
     print(f"Deleting source {source_path}...")
     try:

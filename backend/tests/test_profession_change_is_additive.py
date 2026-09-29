@@ -6,14 +6,14 @@
 
 Every competency from the old profession then vanished unless separately
 listed in ``additional_competencies``, silently, with nothing recording
-why. A profession is a template rather than state — ``base-professions``
+why. A profession is a template rather than state – ``base-professions``
 says so itself, since ``additional``/``removed`` exist precisely so
-reality can diverge from it — so changing one should add what the new
+reality can diverge from it – so changing one should add what the new
 profession grants, not replace what the person has become.
 
 **The case that shows it.** A patient holds
 ``access_own_patient_records`` for their own record. Move them to a
-profession that does not grant it — ``teaching_delegate``, say — and a
+profession that does not grant it – ``teaching_delegate``, say – and a
 bare assignment loses it: they stop being able to see their own record
 by becoming a teaching delegate, which nobody asked for.
 
@@ -108,7 +108,7 @@ class TestTheOldCompetenciesSurvive:
 
         ``teaching_delegate`` grants ``view_teaching_cases`` and nothing
         else, so a replacement would leave this person unable to see
-        their own record — by being given teaching access.
+        their own record – by being given teaching access.
         """
         target = _user(db_session, "new_delegate", profession="patient")
         _place(db_session, org, target)

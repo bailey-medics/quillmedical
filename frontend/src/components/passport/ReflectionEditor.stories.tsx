@@ -42,7 +42,7 @@ export const HolderOnlyAndAnonymised: Story = {
       <ReflectionEditor {...args} />
       <StoryNote>
         Written reflection can be disclosed in legal proceedings, and UK doctors
-        are wary of it for good reason — so the panel says plainly that nobody
+        are wary of it for good reason – so the panel says plainly that nobody
         else can read this, rather than leaving it to be inferred. The
         anonymisation declaration is firmer than the logbook&rsquo;s passive
         note and must be ticked: a reflection is written about a real person,

@@ -3,7 +3,7 @@
  *
  * The one org_unit that decides which features appear in the sidebar. Both
  * the main sidebar and the teaching one render what this returns, so a
- * feature added here shows up in both — and, more to the point, cannot
+ * feature added here shows up in both – and, more to the point, cannot
  * show up in one and not the other.
  *
  * That is not a hypothetical tidiness argument. The teaching sidebar
@@ -16,7 +16,7 @@
  * Each entry carries its own gate, so the question "who may see this?"
  * is answered once, beside the link, rather than at each call site.
  *
- * What does *not* belong here is anything contextual — the patient
+ * What does *not* belong here is anything contextual – the patient
  * breadcrumb, the clinical Home and Messages links, teaching's current
  * module. Those depend on where the user is rather than on what the
  * app offers, so they stay with the sidebar that knows about them.

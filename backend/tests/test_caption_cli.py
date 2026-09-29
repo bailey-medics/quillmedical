@@ -1,6 +1,6 @@
 """Tests for the caption CLI script (Cloud Run Job).
 
-Whisper itself is never loaded here — it lives in a separate image and
+Whisper itself is never loaded here – it lives in a separate image and
 pulls torch, which this test environment does not have. What is tested
 is everything around it: the WebVTT the job writes, the object keys it
 reads and writes, and the validation that stops one organisation's job

@@ -1,4 +1,4 @@
-# main.tf — Root module wiring all infrastructure together
+# main.tf – Root module wiring all infrastructure together
 #
 # Usage:
 #   cd infra/
@@ -63,7 +63,7 @@ module "secrets" {
       "resend-api-key",
 
       # Alerting. These reach Terraform from GitHub today, which makes GitHub
-      # a custodian of a credential no workflow actually uses — it only relays
+      # a custodian of a credential no workflow actually uses – it only relays
       # them. Creating the containers here is the first half of moving them:
       # the values are added by hand afterwards, then a second change switches
       # Terraform to read them from here and drops the TF_VAR wiring. One
@@ -91,7 +91,7 @@ module "secrets" {
 
 # `teaching-sync-token` predates this declaration. It was created by hand on
 # 2026-05-24 and referenced in the Cloud Run env mapping ever since, without
-# Terraform ever managing it — so a live secret had no declared owner and
+# Terraform ever managing it – so a live secret had no declared owner and
 # nothing recorded that it should exist.
 #
 # A plain create would fail the apply with "already exists", so the existing
@@ -256,7 +256,7 @@ resource "google_secret_manager_secret_version" "jwt_secret" {
 }
 
 # The transcode job's completion report is authenticated with a shared
-# secret, so Terraform both generates and fills it — the same reasoning as
+# secret, so Terraform both generates and fills it – the same reasoning as
 # the video signing key, and the same exception to modules/secrets'
 # usual convention that Terraform creates containers and humans add
 # versions. Two ends must hold identical bytes; a human typing it into
@@ -354,7 +354,7 @@ module "cloud_run_backend" {
       # out rather than taken from the module's `id` output: this is the
       # name `run_job` addresses, the API wants the fully-qualified form,
       # and a wrong value fails at runtime inside a handler that logs and
-      # swallows — so it would present as "transcoding silently never
+      # swallows – so it would present as "transcoding silently never
       # happens" rather than as an error anyone sees.
       #
       # Unset until now, which is why no upload has ever been transcoded:
@@ -376,7 +376,7 @@ module "cloud_run_backend" {
       # image, and the job's own callback URL and token. Only the line
       # naming the job to the backend was missing, so the first real
       # transcode completed, called `start_caption`, found nothing
-      # configured and returned — leaving "No captions" on the admin card
+      # configured and returned – leaving "No captions" on the admin card
       # with no job ever having run.
       #
       # It failed exactly as designed: `start_caption` treats an unset
@@ -400,7 +400,7 @@ module "cloud_run_backend" {
       # Set in every environment: this one setting decides where passports
       # live, and unset would silently fall back to a local directory that
       # Cloud Run does not durably have. There is deliberately no companion
-      # PASSPORT_STORAGE_BACKEND — see the comment in backend/app/config.py.
+      # PASSPORT_STORAGE_BACKEND – see the comment in backend/app/config.py.
       PASSPORT_GCS_BUCKET = module.passport_storage.bucket_name
     },
     {
@@ -474,7 +474,7 @@ module "cloud_run_admin_job" {
 # object. Gated on the environment for the same reason the pipeline module is:
 # prod and staging have no video buckets for it to read or write.
 #
-# No VPC connector is wanted here — unlike the admin job, which reaches Cloud
+# No VPC connector is wanted here – unlike the admin job, which reaches Cloud
 # SQL on a private address, this one talks only to GCS and holds no database
 # connection at all. It is given one regardless because the module requires it,
 # and `PRIVATE_RANGES_ONLY` egress leaves the public GCS endpoint reachable.
@@ -531,13 +531,13 @@ module "cloud_run_transcode_job" {
 # Captions are a WCAG 2.1 AA requirement for the learning centre.
 #
 # Reads the processed bucket and writes back to it, so it needs no access to
-# the source bucket at all — the transcode job has usually deleted the master
+# the source bucket at all – the transcode job has usually deleted the master
 # by the time captions are wanted, which is why the 720p rendition is the
 # input.
 #
 # Sized for the model rather than the media: Whisper holds weights in memory
 # and is far more memory-hungry than FFmpeg, hence 10 GB against the transcode
-# job's 4. The hour-long timeout is the plan's figure and deliberate — a
+# job's 4. The hour-long timeout is the plan's figure and deliberate – a
 # transcription that has not finished in an hour has gone wrong.
 module "cloud_run_caption_job" {
   count  = local.is_teaching_product ? 1 : 0
@@ -562,7 +562,7 @@ module "cloud_run_caption_job" {
 
     # Its own endpoint, not the transcode one. A caption report names a
     # single output, and the transcode callback rewrites every rendition
-    # flag from the list it is given — so sending captions there would
+    # flag from the list it is given – so sending captions there would
     # clear `has_1080p` and `has_poster` and claim a transcode that did
     # not happen.
     CAPTION_CALLBACK_URL = "https://${var.app_domain}/api/ci/teaching/caption-complete"
@@ -631,7 +631,7 @@ module "cloud_storage" {
 # ---------- Cloud Storage: clinician passports (all environments) ----------
 # Not gated on an environment, unlike the teaching buckets above. A passport
 # is a personal record rather than a feature of one deployment, and an empty
-# bucket costs nothing until something is written to it — so every environment
+# bucket costs nothing until something is written to it – so every environment
 # has somewhere to put one rather than needing infrastructure work the day the
 # feature is switched on. Whether the passport feature is enabled at all stays
 # an organisation-level decision in the application.
@@ -655,7 +655,7 @@ module "teaching_video_pipeline" {
   environment    = var.environment
 
   # The same host the app is served from, which is what makes the signed
-  # cookie same-origin — and what the bucket must name in CORS, because
+  # cookie same-origin – and what the bucket must name in CORS, because
   # the upload itself goes cross-origin to storage.googleapis.com.
   app_origin = "https://${var.app_domain}"
 

@@ -15,7 +15,7 @@ vi.mock("@/lib/api", () => ({
 
 // `useBlocker` needs a data router, which `renderWithRouter` does not
 // set up. Stubbed to capture the predicate instead, so the decision
-// the page makes — block while a file is going up, not otherwise — is
+// the page makes – block while a file is going up, not otherwise – is
 // what gets asserted.
 let blockerPredicate: BlockerFunction | null = null;
 

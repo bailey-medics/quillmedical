@@ -35,7 +35,7 @@ interface ActionCardProps {
   fullWidth?: boolean;
   /** Button variant (default: "filled") */
   buttonVariant?: "light" | "filled";
-  /** Custom action element (e.g. SolidSwitch) — replaces the button */
+  /** Custom action element (e.g. SolidSwitch) – replaces the button */
   action?: ReactElement;
 }
 

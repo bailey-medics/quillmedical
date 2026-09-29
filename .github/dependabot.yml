@@ -1,4 +1,4 @@
-# Enables Dependabot VULNERABILITY ALERTS only — not automated PRs.
+# Enables Dependabot VULNERABILITY ALERTS only – not automated PRs.
 # Automated version-bump PRs are handled by Renovate (see renovate.json).
 #
 # Targets the main branch

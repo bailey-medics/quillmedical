@@ -1,8 +1,8 @@
 """Tests for catching a competency id that is not in the catalogue.
 
-A competency id is a bare string in three unconnected places — the catalogue
+A competency id is a bare string in three unconnected places – the catalogue
 in ``shared/competency-definitions/``, the two JSON columns on ``users``, and
-``practising_competency`` — with no foreign key between any of them. Nothing
+``practising_competency`` – with no foreign key between any of them. Nothing
 used to report a misspelt one: it was stored happily and surfaced much later
 as a permission that never applied.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for run-migrations.sh — the pre-deploy migration Cloud Run Job step.
+# Tests for run-migrations.sh – the pre-deploy migration Cloud Run Job step.
 #
 # `gcloud` is stubbed so the update/execute sequencing and argument handling
 # can be tested without any real GCP access.

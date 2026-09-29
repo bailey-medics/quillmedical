@@ -2,7 +2,7 @@
  * PassportExportButtons Tests
  *
  * Three things are worth pinning. That each button fetches the format it
- * names — swapping two would be invisible until somebody opened the file.
+ * names – swapping two would be invisible until somebody opened the file.
  * That a failed download says so, because a browser that silently saves
  * nothing looks identical to one that saved something. And that
  * reflections are not offered here, which is a privacy rule rather than a
@@ -34,7 +34,7 @@ const PASSPORT_ID = "3f2a8c1e";
  * Mantine mounts that behind a `Transition` whose exit is driven by a
  * timer. A test that asserts on the mock and returns leaves that timer
  * queued; Testing Library then unmounts the tree, jsdom goes with it,
- * and the timer fires into a world with no `window` — which vitest
+ * and the timer fires into a world with no `window` – which vitest
  * reports as an unhandled error and fails the whole run, with every
  * test passing. It failed two unrelated pull requests before it was
  * tracked down, so the wait is deliberate rather than defensive.

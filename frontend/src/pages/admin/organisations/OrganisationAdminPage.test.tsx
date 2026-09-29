@@ -666,7 +666,7 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("404 — Page not found")).toBeInTheDocument();
+        expect(screen.getByText("404 – Page not found")).toBeInTheDocument();
       });
     });
 
@@ -679,7 +679,7 @@ describe("OrganisationAdminPage", () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText("404 — Page not found")).toBeInTheDocument();
+        expect(screen.getByText("404 – Page not found")).toBeInTheDocument();
       });
     });
   });

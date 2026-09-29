@@ -14,7 +14,7 @@ Covers:
 ``TestAnOrganisationOutsideTheTree`` used to sit here, checking that an
 organisation whose ``org_unit_id`` was null authorised nobody. That
 column is required now, so the state it guarded against cannot be
-written — the test could only reach it by setting the column to null
+written – the test could only reach it by setting the column to null
 itself, which is the database refusing rather than the code failing
 closed.
 """

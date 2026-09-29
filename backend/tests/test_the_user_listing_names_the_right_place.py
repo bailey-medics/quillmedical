@@ -5,8 +5,8 @@ table. The names come from a join between the membership rows and the
 places they name.
 
 That join compared an *organisation* id against a *place* id for a
-release. The two sequences agreed on a small installation — an
-organisation and its own row in the tree were created together — so it
+release. The two sequences agreed on a small installation – an
+organisation and its own row in the tree were created together – so it
 matched, and stopped matching the moment a ward was created between two
 organisations. From then on an admin saw a user with no organisations at
 all, or with somebody else's.
@@ -83,7 +83,7 @@ class TestTheOrganisationNames:
     ) -> None:
         """The other half: an empty list has to mean empty.
 
-        Without it, the broken join would have passed this file — it
+        Without it, the broken join would have passed this file – it
         returned nothing for everybody.
         """
         loner = User(

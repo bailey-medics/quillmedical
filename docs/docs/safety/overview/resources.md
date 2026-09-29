@@ -32,16 +32,16 @@ Training portal: [NHS Digital Clinical Safety Training](https://digital.nhs.uk/s
 
 | Resource | Description | URL |
 |----------|-------------|-----|
-| Concentric Health CSCR | Publicly available Clinical Safety Case Report from a small healthtech company (digital consent) — good model for structure and tone | [Concentric Health](https://concentric.health/deployment/clinical-safety-case-report/) |
+| Concentric Health CSCR | Publicly available Clinical Safety Case Report from a small healthtech company (digital consent) – good model for structure and tone | [Concentric Health](https://concentric.health/deployment/clinical-safety-case-report/) |
 | Concentric Health DTAC | Example of DTAC evidence presentation including named CSO, registration details, and third-party risk coverage | [Concentric Health](https://concentric.health/standards-policies/dtac/) |
-| HSSIB EPR thematic review | Comprehensive investigation into patient safety issues associated with EPR systems — invaluable for hazard identification | [HSSIB](https://www.hssib.org.uk/patient-safety-investigations/electronic-patient-record-epr-systems-thematic-review/investigation-report/) |
+| HSSIB EPR thematic review | Comprehensive investigation into patient safety issues associated with EPR systems – invaluable for hazard identification | [HSSIB](https://www.hssib.org.uk/patient-safety-investigations/electronic-patient-record-epr-systems-thematic-review/investigation-report/) |
 | CDS API Clinical Safety Case Report | Example of NHS programme-level CSCR with hazard workshop methodology | [NHS Developer](https://developer.nhs.uk/apis/cds-api-1-1-1/) |
 
 ## Tooling
 
 | Tool | Description | URL |
 |------|-------------|-----|
-| SafetyLogix | Dedicated DCB 0129/0160 hazard log management tool — interactive risk matrix, collaboration, multiple export formats, training videos | [SafetyLogix](https://safetylogix.co.uk/) |
+| SafetyLogix | Dedicated DCB 0129/0160 hazard log management tool – interactive risk matrix, collaboration, multiple export formats, training videos | [SafetyLogix](https://safetylogix.co.uk/) |
 | NHS Digital document templates | Official templates for CRMP, Hazard Log, CSCR | Available from NHS Digital Clinical Safety website |
 
 ## CSO Consultancies
@@ -59,10 +59,10 @@ Training portal: [NHS Digital Clinical Safety Training](https://digital.nhs.uk/s
 
 | Resource | Description |
 |----------|-------------|
-| HSSIB EPR thematic review (2025) | Patient safety issues from EPR systems — real incident vignettes including weight-based medication errors, configuration risks |
+| HSSIB EPR thematic review (2025) | Patient safety issues from EPR systems – real incident vignettes including weight-based medication errors, configuration risks |
 | PSNet EHR primer (AHRQ) | Overview of EHR safety issues including medication errors, usability, and interoperability |
 | Pew Charitable Trusts: Ways to Improve EHR Safety (2018) | Clinical test case methodology for EHR safety evaluation |
 
 ---
 
-*Standards are under active review — monitor NHS Digital for Version 2 publications.*
+*Standards are under active review – monitor NHS Digital for Version 2 publications.*

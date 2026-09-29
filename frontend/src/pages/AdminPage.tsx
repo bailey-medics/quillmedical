@@ -113,7 +113,7 @@ export default function AdminPage() {
     async function fetchPatients() {
       // Nothing to wait for where there is no FHIR. The retry below
       // exists because FHIR takes time to come up, so a failure is
-      // normally "not ready yet" — but in a teaching deployment
+      // normally "not ready yet" – but in a teaching deployment
       // /patients answers 503 permanently, and the catch cannot tell
       // the two apart. One admin tab left open then polls every five
       // seconds for as long as it is open, which is exactly what

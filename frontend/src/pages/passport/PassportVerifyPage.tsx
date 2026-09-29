@@ -9,7 +9,7 @@
  * come from the URL the PDF encodes.
  *
  * It renders `VerificationPanel`, which shows what a match proves *and*
- * what it does not — the limits matter as much as the result.
+ * what it does not – the limits matter as much as the result.
  */
 
 import { useEffect, useState } from "react";

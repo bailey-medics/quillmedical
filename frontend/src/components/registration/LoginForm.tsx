@@ -36,7 +36,7 @@ interface LoginFormValues {
 }
 
 export interface LoginFormProps {
-  /** Called when the form is submitted — should return a FormSubmitResult */
+  /** Called when the form is submitted – should return a FormSubmitResult */
   onSubmit: (data: LoginFormData) => Promise<FormSubmitResult>;
   /** Whether to show the TOTP input */
   requireTotp?: boolean;

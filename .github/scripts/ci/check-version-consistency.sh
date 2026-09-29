@@ -28,7 +28,7 @@ check_python() {
   docker="$(grep -oE 'python:[0-9]+\.[0-9]+' backend/Dockerfile | head -1 | cut -d: -f2)"
   mypy="$(grep -m1 -oE 'python_version = "[0-9]+\.[0-9]+"' backend/pyproject.toml | grep -oE '[0-9]+\.[0-9]+')"
 
-  log "Python minor — .python-version: ${source:-<none>}, backend/Dockerfile: ${docker:-<none>}, mypy: ${mypy:-<none>}"
+  log "Python minor – .python-version: ${source:-<none>}, backend/Dockerfile: ${docker:-<none>}, mypy: ${mypy:-<none>}"
 
   for entry in "backend/Dockerfile=$docker" "backend/pyproject.toml (mypy)=$mypy"; do
     name="${entry%%=*}"
@@ -54,7 +54,7 @@ check_node() {
     fail=1
   fi
 
-  log "Node major — .github/actions/setup-frontend/action.yml: ${ci:-<none>}, frontend/Dockerfile: ${docker:-<none>}"
+  log "Node major – .github/actions/setup-frontend/action.yml: ${ci:-<none>}, frontend/Dockerfile: ${docker:-<none>}"
 
   if [ "$ci" != "$docker" ]; then
     error "Node major mismatch: setup-frontend action is '$ci' but frontend/Dockerfile is '$docker'"
@@ -74,7 +74,7 @@ check_poetry() {
 
   source="$(cut -d. -f1,2 < .poetry-version)"
 
-  log "Poetry — .poetry-version: $(cat .poetry-version) (minor ${source})"
+  log "Poetry – .poetry-version: $(cat .poetry-version) (minor ${source})"
 
   # Each pyproject's requires-poetry lower bound must match the pinned version.
   # The pin selects; the constraint rejects a Poetry that cannot read the lock,
@@ -99,8 +99,8 @@ check_poetry() {
 
   # Renovate runs in its own container and cannot read .poetry-version, so it
   # is pinned by value in renovate.json and checked here instead. Without this
-  # the bot relocks with whatever Poetry it happens to carry — it used 2.3.3
-  # against a 2.4.2 pin — which is the drift the pin exists to prevent.
+  # the bot relocks with whatever Poetry it happens to carry – it used 2.3.3
+  # against a 2.4.2 pin – which is the drift the pin exists to prevent.
   # Parsed as JSON rather than grepped: a line-window grep missed the pin as
   # soon as another constraint was listed before it, and reported the pin as
   # absent when it was there. Guarded, so a missing jq is not mistaken for a

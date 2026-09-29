@@ -2,10 +2,10 @@
  * State Message Component
  *
  * Displays informational messages for different application states.
- * Uses BaseCard with a background colour — border is automatically
+ * Uses BaseCard with a background colour – border is automatically
  * removed, text set to white.
  *
- * All content is passed via props — icon, title, description, and colour.
+ * All content is passed via props – icon, title, description, and colour.
  * The colour prop is constrained to the design system's StatusColourName.
  */
 

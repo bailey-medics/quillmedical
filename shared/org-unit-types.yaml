@@ -3,7 +3,7 @@
 # ORG UNIT TYPE DEFINITIONS
 #
 # An org_unit is one node of the governance tree: a trust, a site, a ward.
-# Its `type` is the only thing that says what it is — never its position in
+# Its `type` is the only thing that says what it is – never its position in
 # the tree. An organisation is an org_unit whose type says "organisation",
 # not an org_unit that happens to have no parent above it. See
 # docs/docs/plans/2026-09-11-site-tree-unification-plan.md.
@@ -17,11 +17,11 @@
 #
 # Three groups, cutting across the names:
 #
-#   * Nodes that hold governance — a trust, carrying features, patient lists
+#   * Nodes that hold governance – a trust, carrying features, patient lists
 #     and a Caldicott Guardian.
-#   * Nodes that hold clinical roles — a ward or a clinic, where naming a
+#   * Nodes that hold clinical roles – a ward or a clinic, where naming a
 #     clinical lead means something.
-#   * Nodes that are only an address — a room. Nobody is clinical lead of
+#   * Nodes that are only an address – a room. Nobody is clinical lead of
 #     room four.
 #
 # THE LIST LIVES HERE, NOT IN A DATABASE ENUM
@@ -43,7 +43,7 @@ org_unit_types:
 
   # The kinds of thing that can stand at the top of a tree. They used to
   # be a separate `type` column on the organisations table, which meant
-  # two vocabularies for one question — what is this org_unit? — and a root
+  # two vocabularies for one question – what is this org_unit? – and a root
   # in the tree that could not say which kind of organisation it was.
   #
   # `organisation` stays as the plain answer for a body that is none of
@@ -162,7 +162,7 @@ org_unit_types:
   - id: virtual
     display_name: "Virtual"
     description: >-
-      A place with no address — a remote clinic, or a team that meets
+      A place with no address – a remote clinic, or a team that meets
       nowhere in particular.
     requires_parent: true
     can_hold_features: false
@@ -179,7 +179,7 @@ org_unit_types:
     description: >-
       Where something is, and nothing more. Nobody is clinical lead of a
       room, nobody is a member of one, and no competency is authorised at
-      one — the ward above it answers all three.
+      one – the ward above it answers all three.
     requires_parent: true
     can_hold_features: false
     can_hold_positions: false

@@ -30,17 +30,17 @@ function parseTitle(title: string, accentColour: string): ReactNode {
 }
 
 export interface PublicTitleProps {
-  /** Title text — wrap a word in *asterisks* for amber italic accent */
+  /** Title text – wrap a word in *asterisks* for amber italic accent */
   title: string;
   /** Optional description/subtitle text */
   description?: string;
-  /** Size variant — defaults to lg */
+  /** Size variant – defaults to lg */
   size?: "sm" | "md" | "lg";
-  /** Text alignment — defaults to center */
+  /** Text alignment – defaults to center */
   ta?: "left" | "center" | "right";
-  /** Base text colour — defaults to amber */
+  /** Base text colour – defaults to amber */
   c?: string;
-  /** Accent colour for *marked* words — defaults to amber */
+  /** Accent colour for *marked* words – defaults to amber */
   accentColour?: string;
 }
 

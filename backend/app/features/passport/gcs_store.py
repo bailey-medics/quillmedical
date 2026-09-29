@@ -8,8 +8,8 @@ unbundles it into a real repository, delegates to
 uploads.
 
 That delegation is the point rather than a shortcut. Every property the
-local store guarantees — one write one commit, rollback on failure,
-refusing a rewrite, asserting HEAD — is implemented once and inherited
+local store guarantees – one write one commit, rollback on failure,
+refusing a rewrite, asserting HEAD – is implemented once and inherited
 here, so the two backends cannot drift apart in the ways that would
 matter. What this module adds is the part a bucket does differently:
 
@@ -30,14 +30,14 @@ kilobytes per sign-off and written rarely, so the round trip is cheap
 and a stale local copy is impossible by construction.
 
 **Bytes are addressed the same way on both backends.** An object key is
-the local relative path — ``ab/cd/<uuid>.bundle`` for a repository,
-``ab/cd/<uuid>/files/sha256/ab/cd/<64-hex>`` for a blob — so a bucket can
+the local relative path – ``ab/cd/<uuid>.bundle`` for a repository,
+``ab/cd/<uuid>/files/sha256/ab/cd/<64-hex>`` for a blob – so a bucket can
 be mirrored to a disk, or the reverse, with a plain copy.
 
 **Bundling shells out to ``git``, which nothing else here does.** The
 rest of this package uses pygit2 deliberately, and :mod:`.store` says so.
-libgit2 has no bundle support — pygit2 1.20 exposes ``PackBuilder`` and
-nothing that reads or writes the bundle format — so there is no
+libgit2 has no bundle support – pygit2 1.20 exposes ``PackBuilder`` and
+nothing that reads or writes the bundle format – so there is no
 in-process route to the one format that holds a full history as a single
 object. The binary is installed in both the ``dev`` and ``prod`` stages
 of the backend image, and the calls are fixed argument lists with no
@@ -721,7 +721,7 @@ def _bucket_for(bucket_name: str, client: Any) -> _Bucket:
     """Resolve a bucket, building a default client if none was given.
 
     The import is deferred to here so the module stays importable
-    wherever the library is absent — tooling that reads a passport off
+    wherever the library is absent – tooling that reads a passport off
     disk, and the tests, which drive a fake.
     """
     if client is None:

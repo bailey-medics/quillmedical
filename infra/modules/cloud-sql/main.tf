@@ -1,4 +1,4 @@
-# modules/cloud-sql/main.tf — Managed PostgreSQL instance
+# modules/cloud-sql/main.tf – Managed PostgreSQL instance
 
 resource "google_sql_database_instance" "instance" {
   project          = var.project_id

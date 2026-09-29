@@ -51,10 +51,10 @@ COMPETENCY = "prescribe_sact"
 LEVEL = "review_and_authorise"
 
 #: Every passport path, as the router declares them. Listed so a new
-#: route is a deliberate addition here too — a route that nobody thought
+#: route is a deliberate addition here too – a route that nobody thought
 #: to add to this list is a route whose response typing nothing checks.
 #: What a passport route may return instead of a diffable JSON schema.
-#: A download has no fields, so the field check does not apply to it —
+#: A download has no fields, so the field check does not apply to it –
 #: but it must say which of these it hands back. Declaring nothing is
 #: the case this set exists to refuse: FastAPI then advertises
 #: ``application/json`` with an empty schema, which passes for a
@@ -625,7 +625,7 @@ class TestTheSpecIsAdditiveAndDiffable:
 
         **Every route declares something checkable.** A JSON route
         declares its fields. A download declares the media type it
-        returns, from the set below — it has no fields to diff, so
+        returns, from the set below – it has no fields to diff, so
         listing them is not the check that applies to it. What is not
         allowed is declaring nothing: an undeclared response is
         advertised as ``application/json`` with an empty schema, which

@@ -19,7 +19,7 @@ import { useMediaQuery } from "@mantine/hooks";
 import BodyTextInline from "@components/typography/BodyTextInline";
 
 export interface AppTooltipProps {
-  /** Content to wrap — the tooltip target */
+  /** Content to wrap – the tooltip target */
   children: ReactElement;
   /** Text to display in the tooltip */
   label: ReactNode;

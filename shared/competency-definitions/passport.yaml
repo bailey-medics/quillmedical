@@ -2,7 +2,7 @@
 #
 # CLINICIAN PASSPORT COMPETENCY DEFINITIONS FOR QUILL MEDICAL
 #
-# Competencies governing the clinician passport — the portable record of
+# Competencies governing the clinician passport – the portable record of
 # what a person has been assessed as competent to do, who signed each
 # sign-off, when, and on what evidence.
 #
@@ -15,7 +15,7 @@
 # Every file in this directory is merged into one catalogue at load
 # time, so ids must be unique across the whole directory, not just
 # within a file. Which file an entry lives in carries no meaning to the
-# code — it is for the reader.
+# code – it is for the reader.
 
 competencies:
   # Two competencies, because assessing and holding have opposite
@@ -42,7 +42,7 @@ competencies:
   #
   # Kept rather than deleted because deleting revokes nothing. Anybody
   # holding it keeps whatever it granted, and the id stops being
-  # describable — which is what an audit trail needs in order to say
+  # describable – which is what an audit trail needs in order to say
   # what somebody was authorised to do at the time.
   - id: access_clinician_passport
     display_name: "Use the Clinician Passport"

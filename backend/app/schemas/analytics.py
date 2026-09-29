@@ -31,13 +31,13 @@ MAX_CRUMB_AGE_MS = 86_400_000
 #: separator means such a value never becomes a code in the first place.
 ERROR_CODE_PATTERN = r"^[A-Za-z0-9_]*$"
 
-#: A release is a revision, a tag or a semantic version — letters, digits and
+#: A release is a revision, a tag or a semantic version – letters, digits and
 #: separators. Matched against that shape rather than redacted: the prose rules
 #: corrupt it, because a git revision routinely contains a run of five or more
 #: digits and the record-number rule replaces them.
 RELEASE_PATTERN = r"^[A-Za-z0-9._-]*$"
 
-#: A session identifier is opaque by construction — the browser generates it
+#: A session identifier is opaque by construction – the browser generates it
 #: at random and holds it in memory only. Constraining the characters means it
 #: cannot be used to smuggle text into the logs under a harmless-looking name.
 SESSION_ID_PATTERN = r"^[A-Za-z0-9_-]*$"
@@ -51,7 +51,7 @@ SESSION_ID_PATTERN = r"^[A-Za-z0-9_-]*$"
 #: silently, counting nothing for a page somebody forgot to add.
 #:
 #: **Literal segments may not contain digits, and that is what does the work.**
-#: Without it the shape admits ``/patients/abc123`` — an identifier is
+#: Without it the shape admits ``/patients/abc123`` – an identifier is
 #: lowercase alphanumeric and so is a route word, leaving nothing to tell them
 #: apart. The rule is empirical rather than assumed: none of the sixty-three
 #: routes contains a digit in a literal segment. Should one ever be added, the
@@ -72,7 +72,7 @@ class PageViewIn(BaseModel):
     Carries the matched route pattern, never the resolved URL and never the
     document title. The browser builds the pattern from the router's own
     params, so an identifier is removed because the router said it was one
-    rather than because anything recognised its shape — see
+    rather than because anything recognised its shape – see
     ``frontend/src/lib/error-reporting/currentRoute.ts``.
 
     The session identifier is the same in-memory value the error reporter
@@ -135,8 +135,8 @@ Breadcrumb = Annotated[
 class ClientErrorIn(BaseModel):
     """A sanitised browser error report.
 
-    The browser sanitises before sending — see
-    ``frontend/src/lib/error-reporting/sanitise.ts`` — but this endpoint is
+    The browser sanitises before sending – see
+    ``frontend/src/lib/error-reporting/sanitise.ts`` – but this endpoint is
     public and unauthenticated, so nothing it receives is trusted. Fields are
     length-bounded, unknown fields are rejected, and the router redacts again
     before anything is logged.

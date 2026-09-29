@@ -212,7 +212,7 @@ const LongContent = () => (
           </List>
           <BodyText>
             As the section continues, imagine a stream of clinical notes,
-            letters, tasks, and audit trails—enough content to ensure the page
+            letters, tasks, and audit trails – enough content to ensure the page
             scrolls and your ribbon remains pinned to the top if sticky is
             enabled.
           </BodyText>

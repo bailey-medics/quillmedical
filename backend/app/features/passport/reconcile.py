@@ -2,8 +2,8 @@
 """Noticing when the database and the repository disagree, and healing it.
 
 ``Passport.head_commit`` is a cache of where the repository is. The
-model says what happens when the two disagree — "on any disagreement
-the repository wins, exactly as the directories win over the index" —
+model says what happens when the two disagree – "on any disagreement
+the repository wins, exactly as the directories win over the index" –
 and this module is where that is actually carried out.
 
 **Why they can disagree at all.** A write commits to the repository
@@ -11,8 +11,8 @@ first and updates the row second, in that order because a commit that
 no row points at is recoverable and a row pointing at a commit that was
 never made is not. The two are not one transaction and cannot be: git
 has no part in the database's. So anything that aborts the request
-between the commit and the database's own commit — an unhandled
-exception, a crash, a lost connection — leaves the repository one or
+between the commit and the database's own commit – an unhandled
+exception, a crash, a lost connection – leaves the repository one or
 more commits ahead of the row.
 
 **Ahead is ordinary; the repository is simply more current.** It means
@@ -74,7 +74,7 @@ class Divergence:
         row_commit: What the row said, or None if it said nothing.
         repository_commit: What the repository says, or None if it has
             no commits or could not be read.
-        detail: A sentence for a log line or an error, safe to record —
+        detail: A sentence for a log line or an error, safe to record –
             it carries commit ids and a passport id, never PHI.
     """
 
@@ -152,7 +152,7 @@ def inspect(store: PassportStore, row: Passport) -> Divergence:
         )
 
     if row_commit is None:
-        # The row never recorded a head — the create that made it died
+        # The row never recorded a head – the create that made it died
         # before the update. The repository has the record, so this is
         # the ordinary behind case.
         return Divergence(
@@ -186,7 +186,7 @@ def inspect(store: PassportStore, row: Passport) -> Divergence:
         repository_commit=repository_commit,
         detail=(
             f"Passport {row.id} has a database row at {row_commit}, which "
-            f"its repository does not contain — the repository is at "
+            f"its repository does not contain – the repository is at "
             f"{repository_commit}. History was rewritten or the repository "
             "was replaced."
         ),
@@ -198,7 +198,7 @@ def heal(db: Session, store: PassportStore, row: Passport) -> Divergence:
 
     The repository is the record; the row is a pointer at it. So healing
     only ever moves the pointer, and only forward. Nothing is written to
-    the repository here and nothing is deleted anywhere — a divergence
+    the repository here and nothing is deleted anywhere – a divergence
     is repaired by believing the evidence, not by editing it.
 
     **Flushed, not committed.** The caller owns the transaction, so this

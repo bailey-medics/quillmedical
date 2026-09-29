@@ -9,7 +9,7 @@ import { Divider as MantineDivider } from "@mantine/core";
 import type { MantineSpacing } from "@mantine/core";
 
 export interface DividerProps {
-  /** Orientation — defaults to horizontal */
+  /** Orientation – defaults to horizontal */
   orientation?: "horizontal" | "vertical";
   /** Vertical margin (Mantine spacing token) */
   my?: MantineSpacing;

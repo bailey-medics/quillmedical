@@ -98,25 +98,25 @@ JSON
 @test "formats an age under a day as plain hours" {
   run format_incident 6 "Server errors" "quill-backend"
 
-  [ "$output" = "- Server errors — open 6h (quill-backend)" ]
+  [ "$output" = "- Server errors – open 6h (quill-backend)" ]
 }
 
 @test "formats exactly one day as 1d 0h" {
   run format_incident 24 "Uptime failure" "example.com"
 
-  [ "$output" = "- Uptime failure — open 1d 0h (example.com)" ]
+  [ "$output" = "- Uptime failure – open 1d 0h (example.com)" ]
 }
 
 @test "formats the 124-day case readably" {
   run format_incident 2996 "Uptime failure (teaching)" "quill-medical.com"
 
-  [ "$output" = "- Uptime failure (teaching) — open 124d 20h (quill-medical.com)" ]
+  [ "$output" = "- Uptime failure (teaching) – open 124d 20h (quill-medical.com)" ]
 }
 
 @test "omits the brackets when there is no location" {
   run format_incident 30 "Some policy" ""
 
-  [ "$output" = "- Some policy — open 1d 6h" ]
+  [ "$output" = "- Some policy – open 1d 6h" ]
 }
 
 # ---------- the new helpers, each testable on its own ----------

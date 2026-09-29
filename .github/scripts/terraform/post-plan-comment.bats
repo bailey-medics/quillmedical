@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for post-plan-comment.sh — the Terraform plan PR-comment step.
+# Tests for post-plan-comment.sh – the Terraform plan PR-comment step.
 #
 # The pure formatting logic (plan_summary, build_body) is tested directly. resolve_job_url is tested against a `gh` stub, because its stdout is
 # its return value and anything else leaking there lands in the comment body.
@@ -146,7 +146,7 @@ PLAN
   [ "$output" = "unknown" ]
 }
 
-@test "build_body stays short — every comment is a handful of lines" {
+@test "build_body stays short – every comment is a handful of lines" {
   run build_body "No changes. Your infrastructure matches the configuration." \
     "https://github.com/o/r/actions/runs/42/job/99"
   [ "$status" -eq 0 ]

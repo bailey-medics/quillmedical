@@ -41,7 +41,7 @@ export const HostedWithQualitySwitch: Story = {
       <StoryNote>
         The control appears only because a 1080p rendition exists. Switching
         keeps the playback position, so changing quality part-way through a
-        lecture does not start it again. Both sources are the same file here —
+        lecture does not start it again. Both sources are the same file here –
         the switch is what is being shown, not the difference in picture.
       </StoryNote>
     </Stack>

@@ -8,7 +8,7 @@ Mirrors the same relative depth in both environments: locally,
 `backend/app/paths.py` sits three levels below the repo root; in the
 container (Dockerfile COPY), `backend/app` is copied to `/app/app`, and
 `shared/` and `api-compatibility/` are copied to `/shared` and
-`/api-compatibility` respectively — so three `.parent`s lands on the
+`/api-compatibility` respectively – so three `.parent`s lands on the
 matching root in both cases.
 """
 

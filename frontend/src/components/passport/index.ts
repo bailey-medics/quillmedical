@@ -2,7 +2,7 @@
  * Passport components.
  *
  * Display components and the self-declared record forms. The evidence
- * uploaders are not here yet — see the plan's phase 7.
+ * uploaders are not here yet – see the plan's phase 7.
  */
 
 export { default as AssessorDeclaration } from "./AssessorDeclaration";

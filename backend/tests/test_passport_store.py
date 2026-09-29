@@ -93,7 +93,7 @@ class TestCreate:
 
         Without setting it, commits land on a branch HEAD does not
         follow, so the repository reads as empty while holding every
-        record — a fault that looks like data loss and is not.
+        record – a fault that looks like data loss and is not.
         """
         _created(passport_store, actor)
 
@@ -267,7 +267,7 @@ class TestContains:
         The second repository is given different contents on purpose.
         Two passports created from identical files by the same actor in
         the same second produce the *same* commit id, git being content
-        addressed — which is correct, and would make this assert nothing.
+        addressed – which is correct, and would make this assert nothing.
         """
         _created(passport_store, actor)
         _created(passport_store, actor, passport_id=OTHER_ID)

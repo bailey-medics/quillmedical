@@ -6,7 +6,7 @@ set the precedent of a router living beside its own code; a single
 ``include_router`` line is a far smaller merge surface than a block of routes.
 
 Currently one endpoint: browser error reports. The browser sanitises before
-sending — see ``frontend/src/lib/error-reporting/sanitise.ts`` — but this
+sending – see ``frontend/src/lib/error-reporting/sanitise.ts`` – but this
 endpoint is public and unauthenticated, so nothing arriving here is trusted.
 Reports are length-bounded by the schema, redacted again below, and only then
 logged.
@@ -54,7 +54,7 @@ PAGE_VIEW_TYPE: Final = "quill.analytics.PageView"
 #:
 #: Not redundant: this endpoint takes unauthenticated input from anywhere, so
 #: without it a public route writes arbitrary text into logs that must never
-#: hold patient data. Deliberately the high-risk shapes only — this is a
+#: hold patient data. Deliberately the high-risk shapes only – this is a
 #: backstop, not a reimplementation of the client sanitiser.
 _REDACTIONS: Final[tuple[tuple[re.Pattern[str], str], ...]] = (
     (re.compile(r"\bhttps?://[^\s\"'`)<>\]]+", re.I), "[url]"),
@@ -75,7 +75,7 @@ _REDACTIONS: Final[tuple[tuple[re.Pattern[str], str], ...]] = (
 
 #: A run of digits inside an otherwise valid error code. The schema has already
 #: rejected separators, so a date or an NHS number can only arrive here with
-#: them stripped — `CODE_19740302` — which the word-boundary patterns miss.
+#: them stripped – `CODE_19740302` – which the word-boundary patterns miss.
 #: Real codes carry a digit or two at most: `PRESCRIBE_SCHEDULE_2_DENIED`.
 _CODE_DIGIT_RUN: Final[re.Pattern[str]] = re.compile(r"\d{3,}")
 
@@ -106,7 +106,7 @@ def clean_release(release: str) -> str:
     Running the prose rules over a release corrupted the value it exists to
     carry: a git revision routinely contains a run of five or more digits,
     which the record-number rule replaces, so a version reached the logs as
-    ``8ff30ad0c83b15f306deab[redacted]e1be[redacted]b0a`` — mangled differently
+    ``8ff30ad0c83b15f306deab[redacted]e1be[redacted]b0a`` – mangled differently
     each release, which defeats the point of recording which build a fault came
     from.
     """
@@ -127,7 +127,7 @@ def build_breadcrumbs(
 
     The schema has already restricted these to three known shapes with no
     free-text fields, so the only value worth a second pass is the route
-    pattern — the one field a caller supplies as a string.
+    pattern – the one field a caller supplies as a string.
     """
     out: list[dict[str, object]] = []
     for crumb in crumbs:
@@ -233,7 +233,7 @@ def report_client_error(
     poisoned is worse than one with a gap in it. A caller that is not signed
     in is recorded against its session identifier alone.
 
-    Returns 204 rather than a body — the browser has nothing to do with the
+    Returns 204 rather than a body – the browser has nothing to do with the
     answer, and a report failing must never surface to a user who is already
     looking at a broken page.
     """
@@ -267,7 +267,7 @@ def record_page_view(
     """Record that a page was opened.
 
     Counts sessions, not people. The identifier is the browser's in-memory
-    one, and the authentication cookie is not read at all — so a view cannot
+    one, and the authentication cookie is not read at all – so a view cannot
     be attributed to a named person even in principle.
 
     Nothing here records whether the caller was signed in. It once did, until

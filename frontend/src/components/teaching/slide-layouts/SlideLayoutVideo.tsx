@@ -25,7 +25,7 @@ export interface SlideLayoutVideoProps {
    *
    * Only for Storybook and tests. A grant is a network call, so without
    * this seam every hosted-video story renders the denial path and the
-   * player itself can never be seen — which makes restyling its
+   * player itself can never be seen – which makes restyling its
    * controls impossible. Undefined in the app, where the grant is the
    * whole authorisation boundary and must not be bypassed.
    */
@@ -71,7 +71,7 @@ export default function SlideLayoutVideo({
   // the base is a local route, and in production, where it is the CDN.
   //
   // Every rendition lives under the same prefix, which is what the
-  // signed cookie covers — so one grant reaches all of them and none
+  // signed cookie covers – so one grant reaches all of them and none
   // needs a request of its own.
   const withBase = (filename?: string) =>
     baseUrl && filename ? `${baseUrl}/${filename}` : undefined;
@@ -89,7 +89,7 @@ export default function SlideLayoutVideo({
           variant="inline"
           title="Video unavailable"
           message={
-            "This video is not available — your access may have expired. " +
+            "This video is not available – your access may have expired. " +
             "Try reloading the page."
           }
           action={{ label: "Reload page", onClick: () => location.reload() }}

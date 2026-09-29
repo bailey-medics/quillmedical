@@ -97,9 +97,9 @@ Clinical Risk Management
 ### Design controls (manufacturer)
 
 - Handle HTTP 409 Conflict from EHRbase: `create_ehr()` now raises `EhrAlreadyExistsError` when EHRbase returns 409, indicating another request already created the EHR for this patient. This prevents the error from propagating as an unhandled 500 to the user.
-- Retry pattern in `get_or_create_ehr()`: When `EhrAlreadyExistsError` is caught, the function re-fetches the EHR via `get_ehr_by_subject()` and returns the existing record. The race condition is resolved transparently — neither request fails, and both use the same EHR.
+- Retry pattern in `get_or_create_ehr()`: When `EhrAlreadyExistsError` is caught, the function re-fetches the EHR via `get_ehr_by_subject()` and returns the existing record. The race condition is resolved transparently – neither request fails, and both use the same EHR.
 - Logging: Race condition resolution is logged at INFO level (`"EHR creation race condition resolved for subject %s"`) for audit trail and monitoring. No PHI is included in the log message (only the FHIR patient ID, which is an opaque UUID).
-- EHRbase server-side unique constraint on `subject_id + subject_namespace` acts as the ultimate guard — even if application-level logic fails, duplicates cannot be created at the database level.
+- EHRbase server-side unique constraint on `subject_id + subject_namespace` acts as the ultimate guard – even if application-level logic fails, duplicates cannot be created at the database level.
 
 ### Testing controls (manufacturer)
 
@@ -110,7 +110,7 @@ Clinical Risk Management
 
 ### Training controls (deployment)
 
-- Clinical staff are not affected — the fix is transparent. No user-facing behaviour changes.
+- Clinical staff are not affected – the fix is transparent. No user-facing behaviour changes.
 - Development team aware that all EHRbase interactions must handle 409 Conflict for idempotent operations.
 
 ### Business process controls (deployment)
@@ -128,7 +128,7 @@ Very low. The combination of EHRbase server-side unique constraint (prevents dup
 
 ## Hazard status
 
-Fixed — controls implemented 4 May 2026
+Fixed – controls implemented 4 May 2026
 
 ---
 

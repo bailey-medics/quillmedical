@@ -2,9 +2,9 @@
 
 Two facts, kept separate:
 
-- The **ceiling** — what a person is qualified for at all. Lives on the user,
+- The **ceiling** – what a person is qualified for at all. Lives on the user,
   resolved by ``User.get_final_competencies``.
-- **Where they may practise it** — one row per person, org_unit and competency
+- **Where they may practise it** – one row per person, org_unit and competency
   in ``practising_competency``.
 
 Healthcare draws the same line as credentialing versus privileging: what
@@ -42,7 +42,7 @@ def _org_unit_clause(org_unit_id: int) -> ColumnElement[bool]:
     for the other.
 
     Args:
-        org_unit_id: The org_unit — an organisation's own row in the tree, or
+        org_unit_id: The org_unit – an organisation's own row in the tree, or
             any org_unit beneath one.
 
     Returns:
@@ -62,7 +62,7 @@ def competencies_at(
     Args:
         db: Database session.
         user: The person asked about.
-        org_unit_id: The org_unit — an organisation's own row in the tree, or
+        org_unit_id: The org_unit – an organisation's own row in the tree, or
             any org_unit beneath one.
 
     Returns:
@@ -95,7 +95,7 @@ def can_practise_at(
         db: Database session.
         user: The person asked about.
         competency: A competency id from ``shared/competency-definitions/``.
-        org_unit_id: The org_unit — an organisation's own row in the tree, or
+        org_unit_id: The org_unit – an organisation's own row in the tree, or
             any org_unit beneath one.
 
     Returns:
@@ -123,8 +123,8 @@ def who_can_practise_at(
 ) -> list[int]:
     """Return the ids of everyone authorised for ``competency`` at one org_unit.
 
-    The other direction the design has to answer — "who here can act as
-    clinical lead?" — and the reason the org_unit is carried on the row rather
+    The other direction the design has to answer – "who here can act as
+    clinical lead?" – and the reason the org_unit is carried on the row rather
     than reached through a membership.
 
     Ceilings are deliberately not applied here: this is a candidate list, and
@@ -134,7 +134,7 @@ def who_can_practise_at(
     Args:
         db: Database session.
         competency: A competency id from ``shared/competency-definitions/``.
-        org_unit_id: The org_unit — an organisation's own row in the tree, or
+        org_unit_id: The org_unit – an organisation's own row in the tree, or
             any org_unit beneath one.
 
     Returns:

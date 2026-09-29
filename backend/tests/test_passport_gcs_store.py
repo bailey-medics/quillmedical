@@ -1,8 +1,8 @@
 """Tests for app/features/passport/gcs_store.py.
 
 A fake bucket rather than a mocked one. The properties worth testing here
-are about generations — an upload conditional on the object not having
-moved — and a ``MagicMock`` would happily accept any precondition and
+are about generations – an upload conditional on the object not having
+moved – and a ``MagicMock`` would happily accept any precondition and
 report success, which is precisely the bug these tests exist to catch. So
 the fake implements the generation rule for real: every upload bumps it,
 and a mismatched ``if_generation_match`` raises the 412 the library
@@ -103,7 +103,7 @@ class FakeBlob:
             raise RuntimeError("the network went away mid-upload")
 
         # Simulate another writer landing between this caller's download
-        # and its upload — the window the generation check exists to
+        # and its upload – the window the generation check exists to
         # close, and the one a single process cannot otherwise reach.
         if self._bucket.bump_before_next_upload:
             self._bucket.bump_before_next_upload = False
@@ -238,8 +238,8 @@ class TestCreate:
     ) -> None:
         """Two instances creating one passport: the loser is refused.
 
-        The existence check cannot close this on its own — both callers
-        can pass it before either uploads — so the precondition is what
+        The existence check cannot close this on its own – both callers
+        can pass it before either uploads – so the precondition is what
         actually prevents one creation overwriting the other.
         """
         _created(passport_store, actor)
@@ -453,7 +453,7 @@ class TestFailure:
         """A partial upload must not cost the passport its history.
 
         The commit happened in a temporary directory that is then thrown
-        away, so a failed upload loses the change and keeps the record —
+        away, so a failed upload loses the change and keeps the record –
         which is the right way round.
         """
         first = _created(passport_store, actor)
@@ -533,7 +533,7 @@ class TestFailure:
 
         Through the public write path the HEAD assertion fires first, so
         this raises ``ConcurrentWriteError`` rather than
-        ``NonFastForwardError`` — the same ordering the local store has,
+        ``NonFastForwardError`` – the same ordering the local store has,
         inherited rather than reimplemented. The rewrite refusal itself
         is tested where the rule lives, in ``test_passport_store.py``,
         which reaches it through the private commit seam because no
@@ -612,7 +612,7 @@ class TestBlobs:
     def test_different_bytes_at_one_hash_are_refused(
         self, blob_store: GcsBlobStore, bucket: FakeBucket
     ) -> None:
-        """Corruption, not a collision — but refused either way.
+        """Corruption, not a collision – but refused either way.
 
         Reached by tampering with the bucket, because producing a real
         sha256 collision is not available to a test. What matters is that

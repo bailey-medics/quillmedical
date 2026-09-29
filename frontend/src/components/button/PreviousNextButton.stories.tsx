@@ -28,7 +28,7 @@ type Story = StoryObj<typeof PreviousNextButton>;
 /** Default with both buttons */
 export const Default: Story = {};
 
-/** First step — no Previous button */
+/** First step – no Previous button */
 export const FirstStep: Story = {
   args: {
     onPrevious: undefined,

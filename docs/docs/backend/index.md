@@ -192,7 +192,7 @@ All functions are organised under the `/api` prefix:
 ### CBAC (Competency-Based Access Control)
 
 - **View competencies** (`GET /api/cbac/my-competencies`): Get current user’s resolved competencies
-- **Update competencies** (`PATCH /api/cbac/my-competencies`): Update user's additional/removed competencies (note: admin gate not yet enforced — see code TODO)
+- **Update competencies** (`PATCH /api/cbac/my-competencies`): Update user's additional/removed competencies (note: admin gate not yet enforced – see code TODO)
 
 ### External Access
 

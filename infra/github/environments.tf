@@ -1,4 +1,4 @@
-# environments.tf — GitHub deployment environments
+# environments.tf – GitHub deployment environments
 #
 # This file manages GitHub deployment environments for the quillmedical
 # repository. The Terraform, provider, and variable blocks are declared in
@@ -10,7 +10,7 @@
 #   traceable for change-control audits.
 #
 # Secret handling:
-#   Secret VALUES are never managed here — they are set out-of-band via the
+#   Secret VALUES are never managed here – they are set out-of-band via the
 #   gh CLI (`gh secret set --env app ...`) so they never land in
 #   terraform.tfstate. Terraform manages only the environment resource and its
 #   deployment branch policy.
@@ -24,7 +24,7 @@
 #   apply from any checkout with `just terraform-github`.
 
 # ---------------------------------------------------------------------------
-# App environment — deployable from main only
+# App environment – deployable from main only
 # ---------------------------------------------------------------------------
 #
 # The environment deploy.yml and terraform.yml run their main-branch jobs in,
@@ -52,14 +52,14 @@ resource "github_repository_environment_deployment_policy" "app_main" {
 }
 
 # ---------------------------------------------------------------------------
-# API breaking-change review environment — required-reviewer approval gate
+# API breaking-change review environment – required-reviewer approval gate
 # ---------------------------------------------------------------------------
 #
 # API compatibility context (item 15 of the alembic review plan, see
 # docs/docs/backend/api-compatibility.md):
 #   Gates an undeclared breaking API change (detected by `oasdiff` in CI)
 #   behind one deliberate, separate approval action from the change's own
-#   author. `prevent_self_review = false` is intentional, not an oversight —
+#   author. `prevent_self_review = false` is intentional, not an oversight –
 #   a second reviewer is not inherently more careful than the person who
 #   wrote the change, so the goal is forcing one genuine action out of
 #   whoever is accountable, not diffusing accountability across more people.
@@ -88,7 +88,7 @@ resource "github_repository_environment" "api_breaking_change_review" {
 }
 
 # ---------------------------------------------------------------------------
-# Destructive DB migration review environment — required-reviewer approval gate
+# Destructive DB migration review environment – required-reviewer approval gate
 # ---------------------------------------------------------------------------
 #
 # Destructive migration context (see
@@ -96,14 +96,14 @@ resource "github_repository_environment" "api_breaking_change_review" {
 #   Gates a newly-added migration that drops a column, table, or constraint
 #   (detected by check_migrations.py --report-destructive in CI) behind one
 #   deliberate approval action. The existing
-#   `# migration-check: allow-destructive` marker is self-attested — whoever
+#   `# migration-check: allow-destructive` marker is self-attested – whoever
 #   writes the migration adds the comment themself, so it proves the comment
 #   exists, not that anyone weighed the cost of discarding clinical audit
 #   history. This environment supplies the part the marker cannot: an action
 #   nothing in the diff can produce.
 #
 #   `prevent_self_review = false` is intentional, matching
-#   api_breaking_change_review above — a second reviewer is not inherently
+#   api_breaking_change_review above – a second reviewer is not inherently
 #   more careful than the person who wrote the migration, so the goal is
 #   forcing one genuine, separate, deliberate action out of whoever is
 #   accountable, not diffusing accountability across more people.

@@ -120,7 +120,7 @@ export default function AdminUsersPage() {
     {
       header: "Organisation/site",
       render: (user) => {
-        if (!user.organisations.length && !user.sites.length) return "—";
+        if (!user.organisations.length && !user.sites.length) return "–";
         const org = user.organisations.join(", ");
         const site = user.sites.join(", ");
         if (org && site) return `${org} – ${site}`;

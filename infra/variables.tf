@@ -1,4 +1,4 @@
-# variables.tf — Root-level input variables
+# variables.tf – Root-level input variables
 
 variable "project_id" {
   description = "GCP project ID for this environment"

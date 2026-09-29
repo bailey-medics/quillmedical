@@ -84,7 +84,7 @@ class LevelOptionOut(BaseModel):
     """A level a competency offers, for populating a form.
 
     ``position`` is the order the framework lists them in, which is
-    where a scale's ordering belongs — never a number stored on a
+    where a scale's ordering belongs – never a number stored on a
     record, which would be wrong the moment a scale gained a step.
     """
 
@@ -121,7 +121,7 @@ class AttachmentIn(_In):
     for a bare hash and the filename being lost between the two calls.
 
     The hash is still checked against the store before anything is
-    written — naming a blob that is not there would leave a dangling
+    written – naming a blob that is not there would leave a dangling
     reference in a record whose whole claim is that it can be checked
     years later.
     """
@@ -163,8 +163,8 @@ class AssessorOut(BaseModel):
 class EvidenceSnapshotOut(BaseModel):
     """What was in front of the assessor when they decided.
 
-    Not a threshold that was met — the passport never judges sufficiency
-    — but a record of what the evidence looked like at that moment.
+    Not a threshold that was met – the passport never judges sufficiency
+    – but a record of what the evidence looked like at that moment.
     """
 
     logbook_entries: int = Field(ge=0)
@@ -351,8 +351,8 @@ class AssessorMatchOut(BaseModel):
     email address says only that somebody controls a mailbox. A
     registration number is the one identifier that says *which*
     registered professional this is. The trainee ends up holding it
-    regardless — every sign-off writes the assessor's registrations into
-    the passport — so showing it beforehand only brings it forward to
+    regardless – every sign-off writes the assessor's registrations into
+    the passport – so showing it beforehand only brings it forward to
     the moment it can still prevent a mistake.
 
     **It is what the person states, not what Quill checked.** Quill
@@ -407,8 +407,8 @@ class SignOffIn(_In):
     """The assessor signing.
 
     ``declaration_confirmed`` must be true. It is what makes signing a
-    deliberate act rather than a click — the software equivalent of
-    reading a statement and putting your name to it — so the route
+    deliberate act rather than a click – the software equivalent of
+    reading a statement and putting your name to it – so the route
     refuses without it and writes nothing.
     """
 
@@ -672,8 +672,8 @@ class InvitePreviewOut(BaseModel):
     """What the accept page shows before anybody commits to anything.
 
     Reading an invitation is not accepting it. This is what the link
-    resolves to when opened — as often as the assessor likes, for the
-    whole fourteen days — so somebody who opens it between clinics and
+    resolves to when opened – as often as the assessor likes, for the
+    whole fourteen days – so somebody who opens it between clinics and
     closes the tab can come back to it.
 
     ``needs_account`` tells the page which of two things to render: a
@@ -713,7 +713,7 @@ class AssessorInviteAcceptIn(_In):
 
     **The assessor states their own name and registration**, for the
     same reason. A trainee asking for a sign-off gives an email address
-    and nothing else — they may not know their consultant's GMC number,
+    and nothing else – they may not know their consultant's GMC number,
     and a number typed by somebody else is worth less than one typed by
     its holder. Required alongside ``username`` and ``password``, and
     ignored for an assessor who already has an account, whose details

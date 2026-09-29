@@ -98,7 +98,7 @@ createRoot(document.getElementById("root")!).render(
               <br />
               <br />A banner offering to reject them would be misleading,
               because refusing would simply stop the service working. If we ever
-              add a cookie that is not strictly necessary — for analytics, say —
+              add a cookie that is not strictly necessary – for analytics, say –
               we will ask first, and this page will change.
             </PublicBodyText>
           </Stack>

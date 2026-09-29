@@ -1,7 +1,7 @@
 /**
  * PassIcon Component
  *
- * Atomic pass/success indicator — teal circle with a white tick.
+ * Atomic pass/success indicator – teal circle with a white tick.
  * Uses the success status colour for consistency across the app.
  */
 

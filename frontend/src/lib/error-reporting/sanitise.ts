@@ -3,22 +3,22 @@
  *
  * Everything leaving the browser as an error report passes through here first.
  * The strongest rule is that no raw URL from the authenticated app may be
- * recorded, because app paths carry identifiers directly —
- * `/api/patients/{patient_id}/letters`, `/api/users/{user_id}` — and a URL is
+ * recorded, because app paths carry identifiers directly –
+ * `/api/patients/{patient_id}/letters`, `/api/users/{user_id}` – and a URL is
  * enough to disclose that a person is being treated for something, without a
  * single clinical field.
  *
  * Messages are kept and redacted rather than dropped. An earlier version kept
  * a message only when the JavaScript engine had composed it, on the grounds
  * that `api.ts` copies server-supplied `detail` strings into `Error.message`.
- * Auditing the backend showed that risk to be real but narrow — seventeen
+ * Auditing the backend showed that risk to be real but narrow – seventeen
  * endpoints interpolate a raw exception into `detail`, and every other
- * interpolation is a fixed vocabulary — so it is being fixed at those sites
+ * interpolation is a fixed vocabulary – so it is being fixed at those sites
  * instead. Filtering was the weaker move: it cost most of the diagnostic value
  * to defend against something a filter cannot actually catch, since names have
  * no pattern.
  *
- * What the redaction patterns here do catch is the structured shapes — NHS
+ * What the redaction patterns here do catch is the structured shapes – NHS
  * numbers, dates, postcodes, emails, identifiers and URLs. They are a
  * backstop, not the primary defence. The primary defence is that the backend
  * does not put patient data in an error response in the first place.
@@ -65,7 +65,7 @@ const REDACTIONS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\bhttps?:\/\/[^\s"'`)<>\]]+/gi, URL_PLACEHOLDER],
   // Email addresses. The repetitions are bounded rather than open-ended:
   // `[\w.+-]+@` backtracks quadratically over a long run of word characters
-  // with no `@` in it, which a minified stack trace is exactly made of — 2.8
+  // with no `@` in it, which a minified stack trace is exactly made of – 2.8
   // seconds on a 50 KB stack, blocking the main thread while the app is
   // already broken. The bounds are the real limits from RFC 5321 anyway: 64
   // characters for the local part, 63 for a domain label.
@@ -128,7 +128,7 @@ export function sanitiseMessage(message: string): string {
  * Sanitises a stack trace.
  *
  * Unlike a message, a stack is a list of code locations, so the bundle paths
- * are worth keeping — they are what makes a report actionable. Only the
+ * are worth keeping – they are what makes a report actionable. Only the
  * origin is stripped, since that is the part that could carry a route.
  */
 /**
@@ -169,7 +169,7 @@ export function sanitiseStack(stack: string): string {
  * Given the same treatment as a JavaScript stack, because it is the same kind
  * of thing: a list of code locations. Running plain redaction over it collapsed
  * every `https://…/index.js:60:65253` to `[url]`, so a production report read
- * `at Boom ([url])` — the name useful, the position gone. That also made the
+ * `at Boom ([url])` – the name useful, the position gone. That also made the
  * frames unresolvable against a source map, since a position is the only thing
  * a map has to work from.
  */
@@ -183,7 +183,7 @@ export function sanitiseComponentStack(componentStack: string): string {
 /**
  * Sanitises an error name.
  *
- * A name is an identifier — `TypeError`, `ApiError` — not prose, so it is
+ * A name is an identifier – `TypeError`, `ApiError` – not prose, so it is
  * filtered by character class rather than by the redaction patterns. Those
  * patterns are anchored on word boundaries, which do not fire when a value is
  * embedded inside a larger token: `Type` + a postcode + `Error` has no
@@ -200,7 +200,7 @@ export function sanitiseName(name: string): string {
 /**
  * Sanitises a backend error code.
  *
- * Codes are a fixed vocabulary the backend chooses — `USER_NOT_FOUND` — so
+ * Codes are a fixed vocabulary the backend chooses – `USER_NOT_FOUND` – so
  * they carry no user data by construction. They are still filtered by
  * character class rather than trusted, for the same reason as the name: a
  * value embedded in a larger token defeats the word-boundary patterns.
@@ -211,13 +211,13 @@ export function sanitiseName(name: string): string {
  * Shape-checked rather than redacted. Running the prose rules over it corrupted
  * the value it exists to carry: a git revision routinely contains a run of five
  * or more digits, which the record-number rule replaces, so a version arrived
- * as `8ff30ad0c83b15f306deab[redacted]e1be[redacted]b0a` — and differently
+ * as `8ff30ad0c83b15f306deab[redacted]e1be[redacted]b0a` – and differently
  * mangled each release, which defeats the entire point of recording which build
  * a fault came from.
  *
  * A version is letters, digits and separators: a revision, a tag, a semantic
  * version. Anything outside that is dropped. This is a weaker guarantee than
- * the other fields get, and deliberately so — the risk here is a caller putting
+ * the other fields get, and deliberately so – the risk here is a caller putting
  * their own noise in their own version field, not a disclosure, and certain
  * corruption is worse than a hypothetical.
  */
@@ -237,10 +237,10 @@ export function sanitiseErrorCode(code: string): string {
   // Redact before filtering, not after. Filtering alone only removes the
   // separators, so `CODE 943 476 5919` collapsed to `CODE9434765919` and
   // carried the NHS number through intact. Digits cannot simply be dropped
-  // the way the name field drops them, because real codes contain them —
+  // the way the name field drops them, because real codes contain them –
   // `PRESCRIBE_SCHEDULE_2_DENIED`.
   // Filtering alone only removes the separators, so `CODE 943 476 5919`
-  // collapsed to `CODE9434765919` and `CODE_1974-03-02` to `CODE_19740302` —
+  // collapsed to `CODE9434765919` and `CODE_1974-03-02` to `CODE_19740302` –
   // the value intact, merely reformatted. Redacting first does not help
   // either, because the patterns are anchored on word boundaries which do not
   // fire inside a larger token. A run of digits is what actually distinguishes
@@ -253,7 +253,7 @@ export function sanitiseErrorCode(code: string): string {
  * Narrows a status to a real HTTP status code.
  *
  * Anything outside the range, or not a whole number, is dropped rather than
- * clamped — a nonsense status is more likely to mean the property was not what
+ * clamped – a nonsense status is more likely to mean the property was not what
  * it claimed than to mean a real response.
  */
 export function sanitiseStatus(status: unknown): number | undefined {
@@ -266,7 +266,7 @@ export function sanitiseStatus(status: unknown): number | undefined {
  *
  * The pattern is rebuilt from the router's own params, so an identifier should
  * already have been replaced by the name that captured it. This is the
- * backstop for the cases that escape it — a route reached before the router
+ * backstop for the cases that escape it – a route reached before the router
  * matched, or a splat whose value did not line up with the path.
  */
 export function sanitiseRoute(route: string): string {
@@ -303,7 +303,7 @@ export type SanitisedErrorReport = {
 /**
  * Properties read off a thrown value, and the complete list of them.
  *
- * `api.ts` attaches `error_code`, `status` and — on some responses — `email`
+ * `api.ts` attaches `error_code`, `status` and – on some responses – `email`
  * to the errors it raises. The email is a real address belonging to a real
  * person, so this reads properties by name and never enumerates them. Anything
  * `api.ts` gains later is excluded until someone adds it here deliberately.

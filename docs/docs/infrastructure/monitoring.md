@@ -3,9 +3,9 @@
 ## What this is
 
 Teaching runs a three-tier escalation in Google Cloud Monitoring, defined in
-`infra/modules/monitoring/`. Each tier fires the same underlying conditions —
+`infra/modules/monitoring/`. Each tier fires the same underlying conditions –
 uptime checks, the 5xx alert, the Cloud SQL disk alert, the Cloud Run startup
-alert — but only the uptime failure escalates through all three tiers. The
+alert – but only the uptime failure escalates through all three tiers. The
 others notify once, to tier one's channels.
 
 | Tier | Delay | Channels                     |
@@ -16,7 +16,7 @@ others notify once, to tier one's channels.
 
 Each tier adds a route the previous one did not, rather than repeating a
 channel already used. Tier one keeps two channels because they are the cheap,
-ignorable ones — most failures resolve inside five minutes — and because
+ignorable ones – most failures resolve inside five minutes – and because
 Google documents Slack as sharing a delivery service with webhooks and its
 own mobile app, so email is Slack's independent path, not a duplicate of it.
 
@@ -25,7 +25,7 @@ Full reasoning, including what was tried and rejected, is in
 
 ## Which channels Terraform manages
 
-Email, SMS and PagerDuty are ordinary Terraform resources — created, updated
+Email, SMS and PagerDuty are ordinary Terraform resources – created, updated
 and destroyed by `terraform apply` like anything else. **Slack is not.** It is
 looked up by a data source, not created, because it cannot be created
 correctly by Terraform at all:
@@ -38,12 +38,12 @@ correctly by Terraform at all:
 - The channel type that actually posts a readable message is `slack`, and it
   needs an `auth_token` obtained through Slack's OAuth consent screen. There
   is no Terraform resource, gcloud command, or API call that produces this
-  token — only the Cloud console's "Add new" flow can. Google's own channel
+  token – only the Cloud console's "Add new" flow can. Google's own channel
   descriptor marks the field obfuscated on read, so even hand-importing it
   into Terraform state would show a masked value and re-drift on every plan.
 
 So the channel is created once, by hand, in the console, and Terraform reads
-it back by `display_name` and `type = "slack"` — see
+it back by `display_name` and `type = "slack"` – see
 `data.google_monitoring_notification_channel.slack` in
 `infra/modules/monitoring/main.tf`.
 
@@ -54,14 +54,14 @@ it back by `display_name` and `type = "slack"` — see
 2. Find the **Slack** section and click **Add new**.
 3. Authorise the Google Cloud Monitoring app against the Slack workspace, if
    not already authorised. This is a one-time OAuth consent per workspace.
-4. Pick the channel to post into. Note its **exact name** — this becomes the
+4. Pick the channel to post into. Note its **exact name** – this becomes the
    channel's display name in Cloud Monitoring, and Terraform will look it up
    by that name.
 5. Save. The channel now appears in **Alerting → Notification channels** with
    type Slack.
 6. Set `slack_channel_display_name` in the environment's `terraform.tfvars`
    to that exact name (see `infra/environments/teaching/terraform.tfvars`).
-   It is not a secret — it is a channel name — so it goes in `tfvars`
+   It is not a secret – it is a channel name – so it goes in `tfvars`
    directly, unlike the PagerDuty key or the escalation phone number, which
    come from Secret Manager.
 7. Run `just tf` (or let the `Terraform` GitHub Actions workflow apply it) so
@@ -70,14 +70,14 @@ it back by `display_name` and `type = "slack"` — see
 **Nothing about the channel's lifecycle is managed by Terraform.** If it is
 deleted or renamed in the console, the data source returns nothing on the
 next apply, tier one silently loses its Slack rung, and `terraform plan` will
-not say so — the `count` on the data source just becomes `0`. There is
+not say so – the `count` on the data source just becomes `0`. There is
 currently no automated check for this; if the channel matters, treat renaming
 or deleting it in Slack or the console as something to update
 `terraform.tfvars` for at the same time.
 
 ## Verifying delivery
 
-Configuration existing is not the same as delivery working — this project has
+Configuration existing is not the same as delivery working – this project has
 found that distinction the hard way more than once. To prove a channel
 actually reaches you:
 
@@ -87,6 +87,6 @@ actually reaches you:
 2. Wait for the condition to fire.
 3. Confirm delivery, then delete both temporary resources.
 
-Do this by hand, outside Terraform — the resources should exist for minutes,
+Do this by hand, outside Terraform – the resources should exist for minutes,
 and a forgotten temporary resource in state is how orphaned config gets left
 behind.

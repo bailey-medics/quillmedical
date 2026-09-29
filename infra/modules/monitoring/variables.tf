@@ -21,7 +21,7 @@ variable "alert_email" {
 }
 
 variable "slack_channel_display_name" {
-  description = "Display name of a Slack notification channel created by hand in the Cloud console (optional). Looked up, not created — see docs/docs/infrastructure/monitoring.md. Leave empty to disable the Slack rung of tier one."
+  description = "Display name of a Slack notification channel created by hand in the Cloud console (optional). Looked up, not created – see docs/docs/infrastructure/monitoring.md. Leave empty to disable the Slack rung of tier one."
   type        = string
   default     = ""
 }
@@ -49,7 +49,7 @@ variable "alert_sms_number" {
 }
 
 variable "enable_sms_channel" {
-  description = "Whether to create the SMS notification channel. Static config rather than a test on `alert_sms_number`, because a `count` must be known at plan time and that value is read from Secret Manager — see the note in main.tf."
+  description = "Whether to create the SMS notification channel. Static config rather than a test on `alert_sms_number`, because a `count` must be known at plan time and that value is read from Secret Manager – see the note in main.tf."
   type        = bool
   default     = false
 }

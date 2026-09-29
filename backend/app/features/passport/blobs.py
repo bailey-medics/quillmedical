@@ -3,7 +3,7 @@
 A scanned certificate, a DOPS form, a photograph of a logbook page. The
 bytes never enter git: they live under ``files/sha256/ab/cd/<64-hex>``,
 which is gitignored, and the record that refers to them stores only the
-hash. Git LFS was considered and rejected upstream of this design — a
+hash. Git LFS was considered and rejected upstream of this design – a
 content-addressed directory needs no extra tooling and no server-side
 support to clone.
 
@@ -24,8 +24,8 @@ else.
 and comparing with the filename is the whole check, which is what lets
 ``VERIFY.md`` offer something a holder can run with no software.
 
-What this module does *not* do is decide whether a file is acceptable —
-type, size, and whether the content is what it claims — because that is
+What this module does *not* do is decide whether a file is acceptable –
+type, size, and whether the content is what it claims – because that is
 an upload-boundary concern and belongs with the route that accepts it.
 Storing is separate from admitting.
 """
@@ -60,7 +60,7 @@ class BlobNotFoundError(BlobError):
 class BlobConflictError(BlobError):
     """A blob exists at that hash with different bytes.
 
-    Should be unreachable — two different files cannot share a SHA-256 —
+    Should be unreachable – two different files cannot share a SHA-256 –
     so reaching it means something other than this module wrote into the
     blob directory. Refusing loudly is the only safe response, because
     overwriting would redirect every record that referred to that hash.
@@ -162,7 +162,7 @@ class BlobStore:
             data: The file's contents.
             filename: What it was called when uploaded. Kept as data
                 because it is often the only clue what a scan is, and
-                never used to locate the bytes — a filename carrying a
+                never used to locate the bytes – a filename carrying a
                 patient identifier must not reach a path or a URL.
             media_type: What kind of file it is.
 

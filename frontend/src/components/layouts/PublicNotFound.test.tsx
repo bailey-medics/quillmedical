@@ -5,7 +5,7 @@ import PublicNotFound from "./PublicNotFound";
 describe("PublicNotFound", () => {
   it("renders the 404 title", () => {
     const { getByText } = renderWithMantine(<PublicNotFound />);
-    expect(getByText("404 — Page not found")).toBeInTheDocument();
+    expect(getByText("404 – Page not found")).toBeInTheDocument();
   });
 
   it("renders the description text", () => {

@@ -8,33 +8,33 @@ day it was last changed, so it claims only what the code, the tests or the
 
 ## Design foundations
 
-- **Typeface** — Atkinson Hyperlegible Next, designed by the Braille
+- **Typeface** – Atkinson Hyperlegible Next, designed by the Braille
   Institute for low-vision readers, with letters that are hard to confuse
   (`I`, `l` and `1`; `O` and `0`).
-- **Text size** — body text is fixed at 19px on every screen, the size the
+- **Text size** – body text is fixed at 19px on every screen, the size the
   NHS and GOV.UK design systems use. It does not shrink on small screens.
-- **Contrast** — every text colour in the theme meets WCAG AA, 4.5:1, on
+- **Contrast** – every text colour in the theme meets WCAG AA, 4.5:1, on
   the surfaces it is used on, in both light and dark mode. The unit tests
   in `frontend/src/theme.test.ts` fail if a colour change breaks that. The
   colours are listed on the [design system](design-system/index.md) page.
-- **Colour is never the only signal** — status colours were chosen so that
+- **Colour is never the only signal** – status colours were chosen so that
   people with red-green colour blindness can tell them apart, and every
   status also carries an icon or text.
-- **Dark mode** — a full dark theme, checked for contrast as strictly as
+- **Dark mode** – a full dark theme, checked for contrast as strictly as
   the light one.
-- **Reduced motion** — animations stop when the operating system asks for
+- **Reduced motion** – animations stop when the operating system asks for
   reduced motion.
-- **Structure** — each page has one level 1 heading and a `main` landmark,
+- **Structure** – each page has one level 1 heading and a `main` landmark,
   and the document declares `lang="en"`.
-- **Keyboard** — every page in a layout starts with a "Skip to main
+- **Keyboard** – every page in a layout starts with a "Skip to main
   content" link, and focus is visible when it arrives by keyboard. The
   navigation and the login form have been walked from the keyboard alone
   in automated tests; the rest of the interface is built from Mantine
   components designed for keyboard use, which people have not yet
   checked page by page.
-- **Status messages** — loading, search results and form outcomes are
+- **Status messages** – loading, search results and form outcomes are
   announced to screen readers through live regions, without moving focus.
-- **Sessions** — the sign-in session renews itself silently for seven
+- **Sessions** – the sign-in session renews itself silently for seven
   days, so nobody is timed out part-way through a task.
 
 ## What is checked automatically

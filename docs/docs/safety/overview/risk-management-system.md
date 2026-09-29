@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Clinical Risk Management System is the overarching framework of policies, processes, people, and documentation that ensures clinical risks are identified, assessed, mitigated, and monitored throughout the product lifecycle. It must be started at the **earliest stage of development** and maintained throughout — including design, build, deployment, operation, updates, and decommissioning.
+The Clinical Risk Management System is the overarching framework of policies, processes, people, and documentation that ensures clinical risks are identified, assessed, mitigated, and monitored throughout the product lifecycle. It must be started at the **earliest stage of development** and maintained throughout – including design, build, deployment, operation, updates, and decommissioning.
 
 ## Core Deliverables
 
@@ -15,7 +15,7 @@ Established at the beginning of each Clinical Safety Case, the CRMP defines:
 - **Intended use** of the product and the scope under assessment
 - **Clinical context** in which the product will be used (care settings, user types, patient populations)
 - **Procedures, policies, and resources** for clinical risk management
-- **Risk acceptability criteria** — the severity/likelihood matrix and acceptability thresholds
+- **Risk acceptability criteria** – the severity/likelihood matrix and acceptability thresholds
 - **Roles and responsibilities** of all personnel involved
 - **Hazard identification methodology** to be used (e.g. SWIFT, HAZID, FFA)
 - **Integration** with wider development and quality processes
@@ -37,7 +37,7 @@ A structured argument, supported by evidence, that the system is safe for releas
 
 - Summarises the hazard analysis findings
 - References the Hazard Log
-- Presents **safety claims** — assertions that:
+- Presents **safety claims** – assertions that:
   - All foreseeable clinical safety hazards are known
   - Hazards have been evaluated and documented by a multidisciplinary team
   - All identified risks are at an acceptable or tolerable level

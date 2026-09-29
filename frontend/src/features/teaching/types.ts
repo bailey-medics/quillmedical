@@ -296,7 +296,7 @@ export interface EducatorResult {
 }
 
 // ------------------------------------------------------------------
-// Admin — teaching modules overview
+// Admin – teaching modules overview
 // ------------------------------------------------------------------
 
 export interface AdminBank {
@@ -347,7 +347,7 @@ export interface CompiledSlide {
    * Filename of the 1080p rendition, where the transcode job made one.
    *
    * Absent rather than guessed: the names are deterministic, so this
-   * could be derived from `videoSrc` — but a derived name for a file
+   * could be derived from `videoSrc` – but a derived name for a file
    * nobody wrote is a 404 the player cannot explain. The API only
    * returns it when the link records that the job produced it.
    */
@@ -413,7 +413,7 @@ export interface MediaAsset {
    * When someone last saved the captions after reading them.
    *
    * Null where nobody has. Whisper mishears clinical terminology, so
-   * machine output is a draft until a human has been over it — and a
+   * machine output is a draft until a human has been over it – and a
    * learner relying on captions cannot tell the difference.
    */
   captions_reviewed_at?: string | null;

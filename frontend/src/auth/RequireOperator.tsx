@@ -2,7 +2,7 @@
  * Require Operator Route Guard
  *
  * Higher-order component that protects routes only a Quill operator may
- * reach. It asks `platform_role`, which is true everywhere or nowhere —
+ * reach. It asks `platform_role`, which is true everywhere or nowhere –
  * operating Quill has nothing to do with any organisation or site.
  *
  * This replaces `RequirePermission`, which took a `level` and compared it
@@ -13,10 +13,10 @@
  * unreachable code referring to a retiring column. See
  * docs/docs/plans/2026-09-09-platform-role-plan.md.
  *
- * Administering an org_unit is not this question — that is the `manage_users`
+ * Administering an org_unit is not this question – that is the `manage_users`
  * competency, guarded by `RequireCompetency` beside this.
  *
- * Works in conjunction with RequireAuth — assumes the user is authenticated.
+ * Works in conjunction with RequireAuth – assumes the user is authenticated.
  */
 
 import { Center } from "@mantine/core";
@@ -32,7 +32,7 @@ import { NotFoundLayout } from "@/components/layouts";
 interface RequireOperatorProps {
   /** Child components to render if the user operates Quill */
   children: ReactNode;
-  /** Behaviour when they do not — 404 by default, hiding the route */
+  /** Behaviour when they do not – 404 by default, hiding the route */
   fallback?: "redirect" | "404";
 }
 

@@ -4,8 +4,8 @@ There is one membership table now, keyed on a place in the tree. An
 organisation's place is its own row, so "who is at this trust" and "who
 is at this ward" are the same question asked of two rows.
 
-Both spellings are checked throughout — the query that answers by
-organisation, and the row itself — because they have to agree: they are
+Both spellings are checked throughout – the query that answers by
+organisation, and the row itself – because they have to agree: they are
 the same row read two ways.
 
 Covers:
@@ -125,7 +125,7 @@ class TestAWardIsAPlaceToo:
     """The writer takes a place, and a ward is one.
 
     It used to take an organisation id and translate to the root, so a
-    ward id found no organisation and the call silently did nothing —
+    ward id found no organisation and the call silently did nothing –
     or, where the two id sequences overlap, found a different
     organisation and wrote the membership there.
     """

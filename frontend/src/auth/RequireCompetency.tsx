@@ -11,10 +11,10 @@
  * may do; membership answers where they may do it, and the backend scopes
  * each request on `platform_role` and the caller's organisations. A route
  * guard has no org_unit to scope to, so it gates on the competency alone and
- * lets the API refuse anything out of scope — see
+ * lets the API refuse anything out of scope – see
  * docs/docs/plans/2026-09-09-platform-role-plan.md.
  *
- * Works in conjunction with RequireAuth — assumes the user is authenticated.
+ * Works in conjunction with RequireAuth – assumes the user is authenticated.
  */
 
 import { Center } from "@mantine/core";
@@ -34,7 +34,7 @@ interface RequireCompetencyProps {
   competency: CompetencyId;
   /** Child components to render if the user holds it */
   children: ReactNode;
-  /** Behaviour when they do not — 404 by default, hiding the route */
+  /** Behaviour when they do not – 404 by default, hiding the route */
   fallback?: "redirect" | "404";
 }
 

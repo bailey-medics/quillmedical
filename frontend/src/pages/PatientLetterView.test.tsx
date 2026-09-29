@@ -86,7 +86,7 @@ describe("PatientLetterView", () => {
     });
 
     expect(
-      screen.getByText("GP referral letter — gastroenterology"),
+      screen.getByText("GP referral letter – gastroenterology"),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/grateful if you could see this patient/),

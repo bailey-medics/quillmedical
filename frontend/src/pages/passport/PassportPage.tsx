@@ -3,7 +3,7 @@
  *
  * The holder's own passport: every competency they hold evidence for.
  *
- * Thin composition, as the plan asks — the components carry the
+ * Thin composition, as the plan asks – the components carry the
  * judgements about what may and may not be shown, and this page fetches
  * and arranges them.
  *
@@ -43,7 +43,7 @@ import type { PassportDetail } from "@lib/passport";
  *
  * The side navigation has one Passport entry and it points here, so
  * without these a holder could not reach their own logbook or CPD
- * record at all — the pages existed and were addressable only by typing
+ * record at all – the pages existed and were addressable only by typing
  * the URL.
  */
 const SECTIONS = [
@@ -81,7 +81,7 @@ const SECTIONS = [
   {
     icon: <IconPencil />,
     title: "Reflections",
-    subtitle: "Yours alone — no assessor or administrator can read them.",
+    subtitle: "Yours alone – no assessor or administrator can read them.",
     label: "Open reflections",
     to: "/passport/reflections",
   },
@@ -102,8 +102,8 @@ const SECTIONS = [
  * people's records waiting on this person's judgement. An external
  * assessor may have a queue and no passport at all.
  *
- * Drawn on every state of the page — error, no passport yet, and the
- * ordinary one — since somebody can be asked to assess a colleague
+ * Drawn on every state of the page – error, no passport yet, and the
+ * ordinary one – since somebody can be asked to assess a colleague
  * whether or not they have started a passport themselves.
  *
  * The plan records that "inbox" is the wrong name for the destination
@@ -140,7 +140,7 @@ export function Component() {
   // Starts true, because on the first render the answer is not known
   // yet. Without it the page fell through to the ordinary layout,
   // drew the action cards, and then swapped them for "you do not have
-  // a passport yet" when the 404 arrived — a flash of somebody else's
+  // a passport yet" when the 404 arrived – a flash of somebody else's
   // page on the way to your own.
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -160,7 +160,7 @@ export function Component() {
    * Apply one fetch's outcome to state.
    *
    * Shared by the initial load and the reload after creating, because
-   * the two differ only in what happens before the request — not in how
+   * the two differ only in what happens before the request – not in how
    * the answer is read. `cancelled` is passed in rather than closed
    * over so the effect can still abandon its own in-flight request.
    */
@@ -360,11 +360,21 @@ export function Component() {
         ))}
       </SimpleGrid>
 
+      {/* A row opens the competency's latest sign-off, on the same page
+          the sign-offs list opens. A competency with no sign-off yet has
+          only logbook entries or certificates, so it opens the logbook. */}
       <CompetencySummary
         competencies={passport?.competencies ?? []}
-        onSelect={(competencyId) =>
-          navigate(`/passport/competency/${competencyId}`)
-        }
+        onSelect={(competencyId) => {
+          const signOff = passport?.competencies.find(
+            (competency) => competency.id === competencyId,
+          )?.sign_off;
+          navigate(
+            signOff
+              ? `/passport/sign-offs/${encodeURIComponent(signOff)}`
+              : "/passport/logbook",
+          );
+        }}
       />
     </Stack>
   );

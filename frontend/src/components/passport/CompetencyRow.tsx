@@ -11,7 +11,7 @@
  *
  * `expires_on` is shown and nothing is computed from it. Whether a lapsed
  * sign-off means anything is a clinical decision that has not been made,
- * so the date is there to be read by somebody who can judge it — never
+ * so the date is there to be read by somebody who can judge it – never
  * rendered as an "expired" state.
  *
  * @example
@@ -126,7 +126,7 @@ export default function CompetencyRow({
   // No badge where nothing has been signed or asked for. The API sends
   // `requested` for a competency that only has a logbook entry against
   // it, as the nearest of the four statuses to "there is evidence here
-  // and nobody has assessed it" — but shown as a badge it reads as a
+  // and nobody has assessed it" – but shown as a badge it reads as a
   // claim that an assessor has been asked, which nobody has. `sign_off`
   // names the record and is null in exactly that case, so it is what
   // tells a real request apart from a stand-in.

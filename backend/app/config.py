@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     API_PREFIX: str = "/api"
     BACKEND_ENV: str = "development"
 
-    # CORS — restrict in production, allow all in development
+    # CORS – restrict in production, allow all in development
     CORS_ORIGINS: list[str] = Field(
         default=["*"],
         description="Allowed CORS origins (set explicitly in production)",
@@ -262,7 +262,7 @@ class Settings(BaseSettings):
             "Shared secret the transcode job presents when reporting that "
             "it finished. Both ends must hold the same bytes, so Terraform "
             "generates it and fills the secret rather than a human typing "
-            "it in — the same arrangement as the video signing key. Unset "
+            "it in – the same arrangement as the video signing key. Unset "
             "in development, where the callback endpoint refuses outright "
             "and nothing calls it."
         ),
@@ -271,8 +271,8 @@ class Settings(BaseSettings):
     # --- Clinician passport ---
     # One setting decides the backend, deliberately. The teaching feature
     # carries a second TEACHING_STORAGE_BACKEND naming "local" or "gcs"
-    # that nothing reads — get_storage_backend() branches on whether the
-    # bucket is set — so a deployment could set it to "local" and still
+    # that nothing reads – get_storage_backend() branches on whether the
+    # bucket is set – so a deployment could set it to "local" and still
     # write to the bucket. A switch that looks like one and is not is
     # worse than no switch, so the passport has only the bucket.
     PASSPORT_GCS_BUCKET: str | None = Field(

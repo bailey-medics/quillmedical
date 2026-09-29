@@ -128,7 +128,7 @@ class User(Base):
         Boolean, default=False, server_default="false"
     )
 
-    # Token version — incremented on password change to invalidate sessions
+    # Token version – incremented on password change to invalidate sessions
     token_version: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
     )
@@ -197,7 +197,7 @@ class User(Base):
         request: its competencies are written as ``profession`` rows here,
         once, and from then on only the rows count. Seeding in the
         constructor rather than in each route is what makes it true of every
-        way a user comes to exist — the admin routes, self-registration, an
+        way a user comes to exist – the admin routes, self-registration, an
         accepted invite, the command-line scripts and the seed data alike.
         A route that removes some of those competencies at creation closes
         the rows straight after, which records honestly that the profession
@@ -331,7 +331,7 @@ class OrgUnitFeature(Base):
     """Feature flag for an organisation.
 
     Row existence = feature is enabled. Deleting the row disables the
-    feature. No separate ``enabled`` boolean — avoids ambiguity between
+    feature. No separate ``enabled`` boolean – avoids ambiguity between
     "row exists but disabled" and "row absent".
 
     Attributes:
@@ -544,7 +544,7 @@ class ConversationParticipant(Base):
         role: How the user joined (initiator / participant / tagged).
         joined_at: When the user was added.
         last_read_at: Timestamp of the last time the user viewed the
-            conversation — used to calculate unread counts.
+            conversation – used to calculate unread counts.
     """
 
     __tablename__ = "conversation_participants"
@@ -604,8 +604,8 @@ class Message(Base):
         sender_id: FK to users table.
         body: Message text (markdown supported).
         amends_id: Self-FK to the message this one corrects (nullable).
-        redacted_at: Future — when the message was redacted.
-        redacted_by_id: Future — FK to user who performed redaction.
+        redacted_at: Future – when the message was redacted.
+        redacted_by_id: Future – FK to user who performed redaction.
         created_at: Immutable creation timestamp.
     """
 
@@ -695,8 +695,8 @@ class PushSubscription(Base):
 
 
 # In what capacity someone is at an org_unit, whether that org_unit is an
-# organisation or a site. Deliberately open-ended: more are expected —
-# volunteer, contractor, honorary, visiting — so this is a string validated
+# organisation or a site. Deliberately open-ended: more are expected –
+# volunteer, contractor, honorary, visiting – so this is a string validated
 # against a list in code rather than a database enum, which would need a
 # migration to extend. A free string is not the alternative; that repeats the
 # mistake competency ids made.
@@ -714,7 +714,7 @@ class PushSubscription(Base):
 #: What a person is to Quill itself, as opposed to at an org_unit.
 #:
 #: Two values, not a ladder. ``superadmin`` operates the platform;
-#: ``standard`` is everyone else, and says nothing about what they may do —
+#: ``standard`` is everyone else, and says nothing about what they may do –
 #: that is competencies, and where they may do it is membership. The
 #: previous column ranked four values, which invited the reading that
 #: ``superadmin`` subsumes clinical access. It does not.
@@ -730,7 +730,7 @@ def validate_platform_role(value: str) -> str:
     """Return the platform role unchanged, or raise naming the known ones.
 
     Validated in code rather than as a database enum, so adding a value
-    needs no migration — the same choice ``MEMBER_CAPACITIES`` made, and
+    needs no migration – the same choice ``MEMBER_CAPACITIES`` made, and
     for the same reason.
 
     Args:
@@ -755,7 +755,7 @@ def validate_platform_role(value: str) -> str:
     #: and this says only how they come to be here at all.
     #:
     #: ``external`` is for somebody who belongs to another org_unit entirely and
-    #: is here for one purpose — a consultant from another trust invited to
+    #: is here for one purpose – a consultant from another trust invited to
     #: sign off a trainee's competency. It has to be its own word rather than
     #: reusing ``staff``: ``staff`` carries a live behavioural check, letting
     #: a member self-join a conversation in ``messaging.py``, and a visiting
@@ -763,7 +763,7 @@ def validate_platform_role(value: str) -> str:
     #:
     #: ``patient`` is added alongside because the membership plan already
     #: anticipates it. What it means in business logic is settled there, not
-    #: here — this only reserves the word so the two plans cannot each invent
+    #: here – this only reserves the word so the two plans cannot each invent
     #: a different one.
 
 
@@ -829,7 +829,7 @@ org_unit_member = Table(
 """Association table: who is at an org_unit, and in what capacity.
 
 Keyed on an org_unit in the tree, so a membership at an organisation is a row
-against that organisation's own row — the root — and a membership at a
+against that organisation's own row – the root – and a membership at a
 ward is a row against the ward. One table for both, because a trainee is
 the same kind of member at either, and two tables were two meanings of
 one word waiting to drift apart.
@@ -839,7 +839,7 @@ its rows were never staff: ``register``, the public self-registration route,
 inserts teaching delegates, who are not employed by the site.
 
 Membership answers *where is this person*. What they may do there is a
-practising competency, and who holds a post is a ``Position`` — clinical
+practising competency, and who holds a post is a ``Position`` – clinical
 lead among them, which is why ``clinical_lead`` is no longer a capacity.
 """
 
@@ -856,7 +856,7 @@ class OrgUnit(Base):
     organisations, which left three questions with no single answer: whose
     features apply here, who the clinical lead is, and which admins may edit
     it. Ownership is now the parent column alone, and a relationship that is
-    not ownership — a medical school teaching on a trust's wards — becomes a
+    not ownership – a medical school teaching on a trust's wards – becomes a
     typed link rather than a second owner.
 
     **Organisations are rows in this table too**, carrying
@@ -897,7 +897,7 @@ class OrgUnit(Base):
     #:
     #: Media lives at ``{prefix}/{module}/{asset}`` and the signed
     #: cookie covers that path, so every object of one module at one
-    #: organisation has to share a prefix — a second number for the same
+    #: organisation has to share a prefix – a second number for the same
     #: organisation would need a second cookie nobody issues. The prefix
     #: in use was the organisation's own id, which is going, so it is
     #: recorded here instead of being derived from a table that will not
@@ -1017,7 +1017,7 @@ class OrgUnitLink(Base):
         #
         # An organisation is the root of its own tree: the row every org_unit beneath
         # it walks up to, and the thing that answers "who is accountable here". An
-        # organisation without one is invisible to the whole permission system —
+        # organisation without one is invisible to the whole permission system –
         # its sites reach no root, so nobody can administer them and nothing can be
         # scoped to them.
         #
@@ -1092,7 +1092,7 @@ class PractisingCompetency(Base):
     """Whether a person may practise a competency at certain org_unit.
 
     Named as the question it answers: can this person practise this
-    competency here? Deliberately not a "grant" — the organisation does not
+    competency here? Deliberately not a "grant" – the organisation does not
     confer the competency. That is held by the person, earned through
     training and sign-off. A row here only records that they are authorised
     to exercise it at this org_unit.
@@ -1113,14 +1113,14 @@ class PractisingCompetency(Base):
     were different tables. They are one table now, so the pair, the check
     that policed it and the two partial unique indexes it forced all go.
 
-    The objection once raised against a shared "org_units" table — that it
+    The objection once raised against a shared "org_units" table – that it
     would need a row for every organisation and site forever, and a missed
-    one makes that org_unit invisible to the whole permission system — does
+    one makes that org_unit invisible to the whole permission system – does
     not apply: every org_unit is a row by construction, because there is
     nowhere else for it to be.
 
     Nothing is inherited. A row at an organisation says nothing about its
-    wards, and one at a ward says nothing about its organisation — so a ward
+    wards, and one at a ward says nothing about its organisation – so a ward
     manager can administer their ward without trust-wide authority, and "why
     could this person do that?" is answered by one row rather than by
     replaying a hierarchy.
@@ -1197,7 +1197,7 @@ class PractisingCompetency(Base):
         return value
 
         # The positions the application itself reasons about. A free string would
-        # repeat the competency-id mistake — a bare value nothing validates — and a
+        # repeat the competency-id mistake – a bare value nothing validates – and a
         # YAML catalogue is not earned yet at this size. Display names live on the
         # row, so an organisation can call its clinical lead something else without
         # the code losing track of what the post is.
@@ -1205,7 +1205,7 @@ class PractisingCompetency(Base):
 
 #: How a ``user_competency`` row came to exist. Checked in code rather than
 #: by a database enum or check constraint, so a new way of granting needs no
-#: migration — the choice ``validate_org_unit_type`` made for org unit types.
+#: migration – the choice ``validate_org_unit_type`` made for org unit types.
 COMPETENCY_GRANT_SOURCES: tuple[str, ...] = (
     # A holder of `manage_users`, through the user editor or by adding
     # somebody to an org_unit.
@@ -1251,7 +1251,7 @@ class UserCompetency(Base):
 
     **No foreign key on ``competency_id``.** The catalogue is
     ``shared/competency-definitions/``, not a table, and a retired
-    competency has to stay readable on the rows that name it — the position
+    competency has to stay readable on the rows that name it – the position
     ``PassportSignOffRequest.competency_id`` takes for the same reason.
     Validation happens at the write boundary, in the request schemas.
 
@@ -1460,8 +1460,8 @@ class Position(Base):
         requires_competency: A competency the holder must have authorised at
             this org_unit, or None where the post needs no particular one.
         max_holders: How many people may hold it substantively, or None for
-            no limit. A fact about this org_unit — one site may job-share a post
-            another treats as singular — so it lives here rather than on the
+            no limit. A fact about this org_unit – one site may job-share a post
+            another treats as singular – so it lives here rather than on the
             kind.
     """
 
@@ -1517,8 +1517,8 @@ class Position(Base):
 class PositionHolding(Base):
     """Who holds a position, and for how long.
 
-    Separate from ``Position`` so that a vacancy is a real state — a post
-    with no current holding — rather than a missing row nobody can ask
+    Separate from ``Position`` so that a vacancy is a real state – a post
+    with no current holding – rather than a missing row nobody can ask
     about. It also makes the post's history queryable: "who was Caldicott
     Guardian in March?" is a question about the slot over time, which a
     single holder column on the position could not answer.

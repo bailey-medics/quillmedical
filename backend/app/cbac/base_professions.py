@@ -42,7 +42,7 @@ PROFESSION_IDS: tuple[str, ...] = tuple(p.id for p in BASE_PROFESSIONS)
 #: The profession a superadmin is provisioned with. Named here rather
 #: than spelled as a literal at each use, because promoting a user to
 #: superadmin has to reach for its competencies and a typo would fail
-#: silently — an unknown profession resolves to no competencies at all.
+#: silently – an unknown profession resolves to no competencies at all.
 SUPERADMIN_PROFESSION: str = "superadmin_profession"
 
 # Create Literal type
@@ -77,7 +77,7 @@ def grant_staff_competencies(
     grant in the same request as the membership, and both land here so
     the merge rule is written once.
 
-    **Additive, not replacing** — the same rule a profession change
+    **Additive, not replacing** – the same rule a profession change
     follows on ``update_user``. Whatever the person already held is
     carried into what they hold beyond their profession before the new
     profession is written, minus anything the new profession grants

@@ -5,9 +5,9 @@ screen asking has a place id: its route is keyed by one and the
 membership it creates names one. The parameter it sent that id to read
 it as an organisation id.
 
-The two id sequences agreed on a small installation — an organisation
+The two id sequences agreed on a small installation – an organisation
 and its own row in the tree were created together, so they came out with
-the same number — and diverged the moment a ward was created between two
+the same number – and diverged the moment a ward was created between two
 organisations. From then on the filter excluded the members of a
 different organisation, or of none, and the screen offered somebody who
 was already here.

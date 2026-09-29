@@ -6,8 +6,8 @@ admin at one trust could deactivate another trust's patient, or revoke an
 external clinician's access to them, by naming the id.
 
 **`check_user_patient_access` is not the check these needed**, though it
-looks like it. Its first line returns ``True`` for any admin — "always True
-for admin pages" — so calling it from an admin-gated route reads as a place
+looks like it. Its first line returns ``True`` for any admin – "always True
+for admin pages" – so calling it from an admin-gated route reads as a place
 check while permitting exactly what it appears to forbid.
 ``_require_shared_org_with_patient`` asks the question that matters instead.
 
@@ -169,7 +169,7 @@ class TestTheGateIsACompetencyNotARank:
     """`manage_users`, not `system_permissions in ("admin", ...)`.
 
     A rank said what someone is on the platform; the competency says what
-    they may do. The place check beside it still says where — without
+    they may do. The place check beside it still says where – without
     one, this competency is global and so strictly weaker than the rank
     it replaced.
     """

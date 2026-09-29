@@ -51,7 +51,7 @@ interface QuestionViewProps {
   submitting?: boolean;
   /** Total time limit in minutes (shows timer when provided) */
   timeLimitMinutes?: number;
-  /** When the assessment started — ISO string (required with timeLimitMinutes) */
+  /** When the assessment started – ISO string (required with timeLimitMinutes) */
   startedAt?: string;
   /** Called when the timer expires */
   onExpire?: () => void;

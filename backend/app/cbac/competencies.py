@@ -29,8 +29,8 @@ class CompetencyLevel(BaseModel):
     itself and survives the scale changing around it.
 
     The names come from whichever national framework defines the
-    competency — the RCR entrustment scale, the UK SACT Board's four
-    levels — and are quoted rather than harmonised, so a sign-off means
+    competency – the RCR entrustment scale, the UK SACT Board's four
+    levels – and are quoted rather than harmonised, so a sign-off means
     what the framework says it means.
 
     Attributes:
@@ -52,7 +52,7 @@ class CompetencyEntry(BaseModel):
         display_name: Human-readable name.
         retired_on: The date this competency stopped being available for new
             use, or None while it is current. Entries are retired rather
-            than deleted — see ``retired_on`` handling below and
+            than deleted – see ``retired_on`` handling below and
             ``docs/docs/plans/2026-09-06-org-scoped-access-findings.md``.
         levels: The scale this competency is signed off against, in
             order, or None where the honest answer is simply signed off
@@ -87,8 +87,8 @@ class CompetencyEntry(BaseModel):
 # Load competencies from every YAML file in the definitions directory.
 #
 # A directory rather than one file, so the catalogue can be split by kind
-# — clinical.yaml describes what may be done to a patient, and
-# feature-admin.yaml what may be done to Quill — and split further later
+# – clinical.yaml describes what may be done to a patient, and
+# feature-admin.yaml what may be done to Quill – and split further later
 # without touching this loader. Which file an entry lives in carries no
 # meaning here: the files are merged into one flat catalogue and the id
 # is what everything references.
@@ -213,9 +213,9 @@ def is_valid_competency(competency_id: str) -> bool:
 def unknown_competency_ids(ids: Iterable[str]) -> list[str]:
     """Return the ids the catalogue has never defined.
 
-    A competency id is a bare string in three unconnected org_units — this
+    A competency id is a bare string in three unconnected org_units – this
     catalogue, the JSON columns on ``users``, and ``practising_competency``
-    — with no foreign key between them. Nothing reports a misspelt one, so
+    – with no foreign key between them. Nothing reports a misspelt one, so
     it silently becomes a competency nobody holds.
 
     Retired ids count as known. They were valid when stored, and the record

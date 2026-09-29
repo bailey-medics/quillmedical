@@ -3,7 +3,7 @@
  *
  * Demonstrates the consolidated status strip in each of its states,
  * rendered inside the real app layout (TopRibbon + SideNav) for context
- * — matching the intended production placement (directly below
+ * – matching the intended production placement (directly below
  * TopRibbon, in normal layout flow, no fixed positioning).
  */
 
@@ -28,7 +28,7 @@ export default meta;
 
 type Story = StoryObj<typeof StatusStrip>;
 
-/** Offline — connectivity lost, shows the last successful sync time */
+/** Offline – connectivity lost, shows the last successful sync time */
 export const Offline: Story = {
   args: {
     variant: "offline",
@@ -38,14 +38,14 @@ export const Offline: Story = {
     <MainLayout patient={demoPatientsList[0]}>
       <StatusStrip {...args} />
       <StoryNote>
-        A lone strip always stays full-width, even on mobile — only switches to
+        A lone strip always stays full-width, even on mobile – only switches to
         a badge when stacked alongside another strip.
       </StoryNote>
     </MainLayout>
   ),
 };
 
-/** Reconnected — brief confirmation after connectivity returns */
+/** Reconnected – brief confirmation after connectivity returns */
 export const Reconnected: Story = {
   args: {
     variant: "reconnected",
@@ -57,7 +57,7 @@ export const Reconnected: Story = {
   ),
 };
 
-/** Updating — a contract-step forced reload is imminent */
+/** Updating – a contract-step forced reload is imminent */
 export const Updating: Story = {
   args: {
     variant: "updating",
@@ -69,7 +69,7 @@ export const Updating: Story = {
   ),
 };
 
-/** Fallback — the automatic forced reload didn't resolve the mismatch; keeps retrying in the background */
+/** Fallback – the automatic forced reload didn't resolve the mismatch; keeps retrying in the background */
 export const Fallback: Story = {
   args: {
     variant: "fallback",
@@ -82,7 +82,7 @@ export const Fallback: Story = {
 };
 
 /**
- * Two strips stacked — e.g. offline while a forced reload is also
+ * Two strips stacked – e.g. offline while a forced reload is also
  * pending. Each condition renders its own StatusStrip; they stack
  * vertically in mount order, with no priority given to either.
  */
@@ -97,10 +97,10 @@ export const TwoStripsStacked: Story = {
 };
 
 /**
- * Three strips stacked — offline, an update that didn't apply
+ * Three strips stacked – offline, an update that didn't apply
  * automatically, and (briefly) the updating notice. Demonstrates that
  * concurrent status conditions never overlap or compete for a single
- * slot — every condition gets its own strip.
+ * slot – every condition gets its own strip.
  */
 export const ThreeStripsStacked: Story = {
   render: () => (

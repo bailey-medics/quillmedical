@@ -4,7 +4,7 @@
  * Client-side half of the API-compatibility forced-reload mechanism (see
  * docs/docs/backend/api-compatibility.md and
  * docs/docs/plans/2026-08-09-sub-plan-api-compatibility-plan.md). Pure
- * comparison logic plus a tiny module-level "reload pending" flag — no
+ * comparison logic plus a tiny module-level "reload pending" flag – no
  * React here, so it's usable from both `lib/api.ts` (the response
  * interceptor) and `ForcedReloadGate` (the React orchestrator).
  *
@@ -23,15 +23,12 @@ export const COMPAT_GENERATION_HEADER = "Compat-Generation";
 export const COMPAT_MISMATCH_EVENT = "app:compat-mismatch";
 
 export type CompatCheckResult =
-  | "compatible"
-  | "client-behind"
-  | "server-behind"
-  | "unknown";
+  "compatible" | "client-behind" | "server-behind" | "unknown";
 
 /**
  * Compares this bundle's baked-in generation against the server's served
  * header value. Never infers incompatibility from a missing or
- * non-numeric header — that is always "unknown", not "client-behind".
+ * non-numeric header – that is always "unknown", not "client-behind".
  */
 export function checkCompatGeneration(
   clientGeneration: number,
@@ -45,7 +42,7 @@ export function checkCompatGeneration(
   if (!Number.isInteger(serverGeneration)) return "unknown";
 
   if (clientGeneration === serverGeneration) return "compatible";
-  // Backend momentarily behind (rolling deploy) — never act on this.
+  // Backend momentarily behind (rolling deploy) – never act on this.
   if (clientGeneration > serverGeneration) return "server-behind";
   return "client-behind";
 }
@@ -57,7 +54,7 @@ export function isReloadPending(): boolean {
   return reloadPending;
 }
 
-/** Marks a forced reload as pending — further mutating requests are blocked. */
+/** Marks a forced reload as pending – further mutating requests are blocked. */
 export function markReloadPending(): void {
   reloadPending = true;
 }

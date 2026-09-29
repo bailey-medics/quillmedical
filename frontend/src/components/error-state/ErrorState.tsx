@@ -12,8 +12,8 @@
  * other messages and cannot be mistaken for body copy.
  *
  * **It does not accept an error object, and that is the point.** Pages pass a
- * message somebody wrote for a person to read. The alternative — handing it
- * `err.message` — puts whatever the backend returned on screen, which for a
+ * message somebody wrote for a person to read. The alternative – handing it
+ * `err.message` – puts whatever the backend returned on screen, which for a
  * long time meant raw text from EHRbase, HAPI FHIR or the database appearing
  * in front of whoever was standing there. That is fixed at the source now, but
  * the restriction stays structural rather than advisory, because a convention
@@ -67,7 +67,7 @@ export interface ErrorStateProps {
   /**
    * `page` replaces the view and is right for a crash or a view that cannot
    * render at all. `inline` sits in the layout and is right for a section
-   * that failed to load, or a form submission that failed — blanking the page
+   * that failed to load, or a form submission that failed – blanking the page
    * there would throw away whatever the user had typed.
    */
   variant?: "page" | "inline";

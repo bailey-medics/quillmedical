@@ -11,10 +11,10 @@
  *
  * @example
  * ```tsx
- * // Inside a <Form> wrapper — no props needed
+ * // Inside a <Form> wrapper – no props needed
  * <FormStatus />
  *
- * // In Storybook — prop-driven
+ * // In Storybook – prop-driven
  * <FormStatus variant="success" title="Saved" description="Settings updated" />
  * ```
  */
@@ -35,11 +35,7 @@ import { statusColours } from "@/styles/semanticColours";
 import { useFormContext } from "./FormContext";
 
 type FormStatusVariant =
-  | "success"
-  | "partial_success"
-  | "error"
-  | "validation_error"
-  | "timeout";
+  "success" | "partial_success" | "error" | "validation_error" | "timeout";
 
 interface FormStatusPropsFromContext {
   /** When used inside a <Form>, no props needed */
@@ -50,7 +46,7 @@ interface FormStatusPropsFromContext {
 }
 
 interface FormStatusPropsManual {
-  /** Visual variant — for Storybook or standalone use */
+  /** Visual variant – for Storybook or standalone use */
   variant: FormStatusVariant;
   /** Status title */
   title: string;
@@ -61,8 +57,7 @@ interface FormStatusPropsManual {
 }
 
 export type FormStatusProps =
-  | FormStatusPropsFromContext
-  | FormStatusPropsManual;
+  FormStatusPropsFromContext | FormStatusPropsManual;
 
 const VARIANT_CONFIG: Record<
   FormStatusVariant,
@@ -109,7 +104,7 @@ function isManualProps(props: FormStatusProps): props is FormStatusPropsManual {
   return "variant" in props && props.variant !== undefined;
 }
 
-/** Inner render component — always called with resolved props, hooks safe */
+/** Inner render component – always called with resolved props, hooks safe */
 function FormStatusCard({
   variant,
   title,
@@ -174,7 +169,7 @@ function FormStatusCard({
   );
 }
 
-/** Context-aware wrapper — reads from Form context */
+/** Context-aware wrapper – reads from Form context */
 function FormStatusFromContext() {
   const ctx = useFormContext();
 

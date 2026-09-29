@@ -66,7 +66,7 @@ describe("RequireCompetency", () => {
       </RequireCompetency>,
     );
 
-    expect(screen.getByText("404 — Page not found")).toBeInTheDocument();
+    expect(screen.getByText("404 – Page not found")).toBeInTheDocument();
     expect(screen.queryByText("Admin content")).not.toBeInTheDocument();
   });
 
