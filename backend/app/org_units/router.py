@@ -19,7 +19,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import delete, func, insert, select
 from sqlalchemy.orm import Session
 
-from app.cbac.base_professions import grant_staff_competencies
+from app.cbac.base_professions import (
+    get_profession_base_competencies,
+    grant_staff_competencies,
+)
 from app.cbac.grants import sync_competency_rows
 from app.cbac.positions import clinical_leads_of, set_clinical_lead
 from app.db import get_core_db
@@ -60,12 +63,18 @@ from app.org_units.types import (
     type_requires_parent,
     validate_org_unit_type,
 )
-from app.organisations import org_units_administered_by
+from app.organisations import (
+    get_member_org_unit_ids,
+    org_units_administered_by,
+)
 from app.schemas.org_units import (
     AddOrgUnitMemberIn,
     AddOrgUnitPatientIn,
     AuthorisePractisingCompetencyIn,
     CreateOrgUnitIn,
+    GrantAndAuthoriseIn,
+    MemberAuthorisationItem,
+    MemberPracticeOut,
     OrgUnitDetailOut,
     OrgUnitFeaturesOut,
     OrgUnitItem,
@@ -956,6 +965,218 @@ def withdraw_practising_competency(
     )
     db.flush()
     return OrgUnitStatusOut(status="withdrawn")
+
+
+# ------------------------------------------------------------------
+# One member, at one place
+# ------------------------------------------------------------------
+
+
+def _require_member(db: Session, unit_id: int, user_id: int) -> User:
+    """Return the user, or 404 unless they are a member of the org_unit.
+
+    Keeps the member routes to the people at this org_unit, so they
+    cannot be pointed at anybody in the system by id.
+    """
+    person = db.get(User, user_id)
+    is_member = db.scalar(
+        select(org_unit_member.c.user_id).where(
+            org_unit_member.c.org_unit_id == unit_id,
+            org_unit_member.c.user_id == user_id,
+        )
+    )
+    if person is None or is_member is None:
+        raise HTTPException(status_code=404, detail="Member not found")
+    return person
+
+
+def _grant_refusal(
+    db: Session, caller: User, person: User
+) -> HTTPException | None:
+    """Why *caller* may not add to *person*'s competencies, or None.
+
+    The same three rules ``update_user`` applies, so this route is not a
+    way round them: nobody grants themselves a competency, only an
+    operator changes an operator, and an administrator acts only on
+    somebody they share an organisation with. An operator passes all
+    three.
+    """
+    if "manage_users" not in caller.get_final_competencies():
+        return HTTPException(status_code=403, detail="Not allowed")
+    if caller.platform_role == "superadmin":
+        return None
+    if person.platform_role == "superadmin":
+        return HTTPException(
+            status_code=403, detail="Cannot modify superadmin users"
+        )
+    if person.id == caller.id:
+        return HTTPException(
+            status_code=403,
+            detail=(
+                "Competencies must be changed by another user who holds "
+                "manage_users"
+            ),
+        )
+    shared = set(get_member_org_unit_ids(db, caller.id)) & set(
+        get_member_org_unit_ids(db, person.id)
+    )
+    if not shared:
+        return HTTPException(status_code=404, detail="Member not found")
+    return None
+
+
+@router.get(
+    "/{unit_id}/members/{user_id}/practice",
+    response_model=MemberPracticeOut,
+    dependencies=[DEP_REQUIRE_MANAGE_PRACTISING],
+)
+def get_member_practice(
+    unit_id: int,
+    user_id: int,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> MemberPracticeOut:
+    """What one member holds, and what they may practise here.
+
+    Their ceiling and this org_unit's rows for them, in one answer, so
+    the page about one person at one place draws from one request. Rows
+    beyond their ceiling are included: they authorise nothing, but they
+    are rows somebody wrote.
+
+    Requires ``manage_practising_competencies``.
+    """
+    unit = _require_visible(db, current_user, unit_id)
+    person = _require_member(db, unit_id, user_id)
+
+    rows = (
+        db.execute(
+            select(PractisingCompetency)
+            .where(
+                PractisingCompetency.org_unit_id == unit_id,
+                PractisingCompetency.user_id == user_id,
+            )
+            .order_by(PractisingCompetency.competency)
+        )
+        .scalars()
+        .all()
+    )
+    names = _names_of(
+        db, {row.authorised_by for row in rows if row.authorised_by}
+    )
+
+    return MemberPracticeOut(
+        user_id=person.id,
+        username=person.username,
+        full_name=person.full_name or "",
+        org_unit_id=unit.id,
+        org_unit_name=unit.name,
+        qualified=sorted(person.get_final_competencies()),
+        authorised=[
+            MemberAuthorisationItem(
+                competency=row.competency,
+                authorised_at=row.authorised_at.isoformat(),
+                authorised_by=(
+                    names.get(row.authorised_by) if row.authorised_by else None
+                ),
+            )
+            for row in rows
+        ],
+        may_grant=_grant_refusal(db, current_user, person) is None,
+    )
+
+
+@router.post(
+    "/{unit_id}/members/{user_id}/grant-and-authorise",
+    response_model=OrgUnitStatusOut,
+    dependencies=[
+        DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_MANAGE_USERS,
+        DEP_REQUIRE_MANAGE_PRACTISING,
+    ],
+)
+def grant_and_authorise(
+    unit_id: int,
+    user_id: int,
+    body: GrantAndAuthoriseIn,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> OrgUnitStatusOut:
+    """Give a member a competency, and authorise them to practise it here.
+
+    Two facts in one transaction: the competency joins their ceiling,
+    which applies everywhere, and a ``practising_competency`` row is
+    written at this org_unit only. Either both are written or neither
+    is, so the page never leaves somebody qualified and not authorised,
+    or authorised for something that does nothing, because the second
+    request failed.
+
+    Additive. Only this one competency changes on their ceiling, so two
+    administrators granting different things at once cannot undo each
+    other, as two saves of the whole list through ``PATCH /users`` can.
+    Asking again once both are in place changes nothing.
+
+    Requires ``manage_users`` and ``manage_practising_competencies``.
+    """
+    unit = _require_visible(db, current_user, unit_id)
+
+    if not type_can_hold_competencies(unit.type):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Nobody practises anything at a {unit.type}.",
+        )
+
+    person = _require_member(db, unit_id, user_id)
+
+    refusal = _grant_refusal(db, current_user, person)
+    if refusal is not None:
+        raise refusal
+
+    competency = body.competency
+    granted = competency not in person.get_final_competencies()
+    if granted:
+        template = set(
+            get_profession_base_competencies(person.base_profession)
+        )
+        additional = set(person.additional_competency_ids)
+        removed = set(person.removed_competency_ids)
+        # A competency their profession gives is restored by taking it
+        # off the removed list; anything else is added beyond it.
+        removed.discard(competency)
+        if competency not in template:
+            additional.add(competency)
+        sync_competency_rows(
+            person,
+            additional=sorted(additional),
+            removed=sorted(removed),
+            source="admin",
+            granted_by=current_user.id,
+            org_unit_id=unit_id,
+        )
+
+    existing = db.scalar(
+        select(PractisingCompetency.id).where(
+            PractisingCompetency.user_id == user_id,
+            PractisingCompetency.org_unit_id == unit_id,
+            PractisingCompetency.competency == competency,
+        )
+    )
+    authorised = existing is None
+    if authorised:
+        db.add(
+            PractisingCompetency(
+                user_id=user_id,
+                org_unit_id=unit_id,
+                competency=competency,
+                authorised_by=current_user.id,
+            )
+        )
+
+    db.flush()
+    if granted:
+        return OrgUnitStatusOut(status="granted_and_authorised")
+    if authorised:
+        return OrgUnitStatusOut(status="authorised")
+    return OrgUnitStatusOut(status="unchanged")
 
 
 # ------------------------------------------------------------------
