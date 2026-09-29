@@ -10,6 +10,7 @@ import { fn } from "storybook/test";
 import { Container } from "@mantine/core";
 import { ActiveStatusBadge } from "@/components/badge";
 import DataCard from "./DataCard";
+import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import type { Column } from "./DataTable";
 
 interface User {
@@ -135,6 +136,29 @@ export const WithFooter: Story = {
   args: {
     ...Default.args,
     footer: "Version mismatch: the module was built for an older schema.",
+  },
+};
+
+/**
+ * A last column with an empty header, as tables give their row menu,
+ * drawn as the card's action at its top right with no label.
+ */
+export const WithRowAction: Story = {
+  args: {
+    row: { id: 1, username: "alice.smith", email: "alice@example.com" },
+    columns: [
+      ...userColumns,
+      {
+        header: "",
+        render: () => (
+          <EllipsisMenu
+            aria-label="Actions for alice.smith"
+            items={[{ label: "Remove", onClick: fn() }]}
+          />
+        ),
+      },
+    ],
+    onClick: fn(),
   },
 };
 
