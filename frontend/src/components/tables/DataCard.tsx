@@ -7,6 +7,14 @@
  *
  * Each column is rendered as a labelled field with a divider between fields.
  *
+ * **A last column with an empty header is the row's action**, such as an
+ * `EllipsisMenu`. A table leaves that header blank so its heading cell is
+ * empty; labelled here it read as a bare ":" on a line of its own at the
+ * foot of the card. So it is drawn unlabelled at the card's top right
+ * instead, in the corner, beside the first row only: the rows beneath it
+ * keep the card's full width. Only the last column: an empty header
+ * anywhere else is left as a field, since nothing says it is an action.
+ *
  * @example
  * ```tsx
  * <DataCard
@@ -72,34 +80,61 @@ export default function DataCard<T>({
     );
   }
 
+  const last = columns[columns.length - 1];
+  const action = last && last.header.trim() === "" ? last : null;
+  const fields = action ? columns.slice(0, -1) : columns;
+
+  const body = (
+    <Stack gap="sm">
+      {fields.map((column, index) => {
+        const content = column.render(row);
+        // Only the first row shares its line with the action, so only it
+        // leaves room; every row below has the card's full width.
+        const besideAction = action !== null && index === 0;
+        return (
+          <div key={index} className={classes.field}>
+            {/* The room is kept on the text, not the row, so the divider
+                beneath still runs the card's full width. */}
+            <Group
+              gap="xs"
+              wrap="nowrap"
+              align="center"
+              className={besideAction ? classes.besideAction : undefined}
+            >
+              <span className={classes.header}>
+                <BodyTextBold>{column.header}:</BodyTextBold>
+              </span>
+              {typeof content === "string" || typeof content === "number" ? (
+                <BodyTextInline>{content}</BodyTextInline>
+              ) : (
+                content
+              )}
+            </Group>
+            {index < fields.length - 1 && <Divider mt="sm" />}
+          </div>
+        );
+      })}
+      {footer && (
+        <>
+          <Divider />
+          {footer}
+        </>
+      )}
+    </Stack>
+  );
+
   return (
     <BaseCard onClick={() => onClick(row)} style={{ cursor: "pointer" }}>
-      <Stack gap="sm">
-        {columns.map((column, index) => {
-          const content = column.render(row);
-          return (
-            <div key={index} className={classes.field}>
-              <Group gap="xs" wrap="nowrap" align="center">
-                <span className={classes.header}>
-                  <BodyTextBold>{column.header}:</BodyTextBold>
-                </span>
-                {typeof content === "string" || typeof content === "number" ? (
-                  <BodyTextInline>{content}</BodyTextInline>
-                ) : (
-                  content
-                )}
-              </Group>
-              {index < columns.length - 1 && <Divider mt="sm" />}
-            </div>
-          );
-        })}
-        {footer && (
-          <>
-            <Divider />
-            {footer}
-          </>
-        )}
-      </Stack>
+      {action ? (
+        <div className={classes.withAction}>
+          {body}
+          <div className={classes.action} data-testid="data-card-action">
+            {action.render(row)}
+          </div>
+        </div>
+      ) : (
+        body
+      )}
     </BaseCard>
   );
 }

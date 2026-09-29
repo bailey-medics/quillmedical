@@ -146,4 +146,62 @@ describe("DataCard", () => {
 
     expect(screen.getByText("Version mismatch")).toBeInTheDocument();
   });
+
+  describe("A last column with an empty header", () => {
+    type Row = { name: string };
+    const withAction: Column<Row>[] = [
+      { header: "Name", render: (r) => r.name },
+      {
+        header: "",
+        render: () => <button type="button">More actions</button>,
+      },
+    ];
+
+    it("is drawn as the card's action, with no label", () => {
+      renderWithMantine(
+        <DataCard
+          row={{ name: "EoEETA" }}
+          columns={withAction}
+          onClick={() => {}}
+        />,
+      );
+
+      expect(screen.getByTestId("data-card-action")).toContainElement(
+        screen.getByRole("button", { name: "More actions" }),
+      );
+      // The bare ":" it once showed on a line of its own.
+      expect(screen.queryByText(":")).not.toBeInTheDocument();
+      expect(screen.getByText("Name:")).toBeInTheDocument();
+    });
+
+    it("is left as a field when it is not the last column", () => {
+      const notLast: Column<Row>[] = [
+        { header: "", render: () => "Untitled" },
+        { header: "Name", render: (r) => r.name },
+      ];
+
+      renderWithMantine(
+        <DataCard
+          row={{ name: "EoEETA" }}
+          columns={notLast}
+          onClick={() => {}}
+        />,
+      );
+
+      expect(screen.queryByTestId("data-card-action")).not.toBeInTheDocument();
+      expect(screen.getByText("Untitled")).toBeInTheDocument();
+    });
+
+    it("leaves a card with every header named as it was", () => {
+      renderWithMantine(
+        <DataCard
+          row={{ name: "EoEETA" }}
+          columns={[{ header: "Name", render: (r: Row) => r.name }]}
+          onClick={() => {}}
+        />,
+      );
+
+      expect(screen.queryByTestId("data-card-action")).not.toBeInTheDocument();
+    });
+  });
 });
