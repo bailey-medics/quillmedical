@@ -431,6 +431,77 @@ class AuthorisePractisingCompetencyIn(BaseModel):
         return validate_competency_ids([value])[0]
 
 
+class MemberAuthorisationItem(BaseModel):
+    """One competency somebody may practise at one place.
+
+    Attributes:
+        competency: The competency id.
+        authorised_at: When practice here was authorised, as an ISO
+            timestamp.
+        authorised_by: A readable name for who authorised it, or None
+            once that person is deleted.
+    """
+
+    competency: str
+    authorised_at: str
+    authorised_by: str | None
+
+
+class MemberPracticeOut(BaseModel):
+    """One member of a place: what they hold, and what they may do here.
+
+    The two halves of the model side by side, so one page can show them
+    together. ``qualified`` is their ceiling, true everywhere at once;
+    ``authorised`` is the rows at this place only. A competency in
+    ``authorised`` and not in ``qualified`` has no effect, and is sent
+    anyway so the page can say so rather than hide a row somebody wrote.
+
+    Attributes:
+        user_id: The member.
+        username: Their username.
+        full_name: Their name, possibly empty.
+        org_unit_id: The place.
+        org_unit_name: What the place is called.
+        qualified: Every competency id they hold, sorted.
+        authorised: Every competency authorised for them here.
+        may_grant: Whether the caller may add to their ceiling from this
+            page. False for the caller themselves, for an operator unless
+            the caller is one, and for somebody who does not hold
+            ``manage_users``.
+    """
+
+    user_id: int
+    username: str
+    full_name: str
+    org_unit_id: int
+    org_unit_name: str
+    qualified: list[str]
+    authorised: list[MemberAuthorisationItem]
+    may_grant: bool
+
+
+class GrantAndAuthoriseIn(BaseModel):
+    """Request to give somebody a competency and authorise it here.
+
+    Two facts written together: the competency joins their ceiling,
+    which applies everywhere, and practice is authorised at this place
+    only.
+
+    Attributes:
+        competency: A competency id from ``shared/competency-definitions/``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    competency: str
+
+    @field_validator("competency")
+    @classmethod
+    def _competency_exists(cls, value: str) -> str:
+        """Reject an unknown or retired competency id."""
+        return validate_competency_ids([value])[0]
+
+
 class SetClinicalLeadIn(BaseModel):
     """Request to name an org_unit's clinical lead, or leave the post vacant.
 
