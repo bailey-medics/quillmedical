@@ -128,7 +128,8 @@ to the same two facts.
       `may_grant` is true, each with a "Grant and authorise" action behind
       a confirm that says both things will happen and that the grant
       applies everywhere, not just here. Searchable, because the catalogue
-      is long.
+      is long. Replaced in Phase 4 by a "Grant competency" button and
+      modal.
 
 - [x] **Component and domain work**: a `MemberPractice` type and the two
       calls in `domains/orgUnit.ts`. Build from existing pieces (`BaseCard`,
@@ -184,6 +185,132 @@ to the same two facts.
       through the organisation or site admin pages, so nothing is added to
       the "Not yet run" list in `testing-log.md`.
 
+## Phase 4: Tighten the member page after first use
+
+Changes from trying the page, made on the working tree above the stack.
+
+- [x] **"Their user account" is a button, top right.** An `IconTextButton`
+      with a person icon, beside the `PageHeader` in a
+      `<Group justify="space-between">`, as the list pages place their
+      header action. `IconTextButton` gains a `user` icon for it. The
+      `Group` was replaced in Phase 5, when it turned out to drop the
+      button to the left whenever it wrapped.
+
+- [x] **The "Back to" link goes.** The side navigation already names the
+      organisation or site above the member, so the link repeated it. With
+      it goes the page's `backTo` prop: the page no longer needs to know
+      which kind of org_unit it was opened from.
+
+- [x] **The table of held competencies loses its heading and helper
+      text.** The column header "May practise here" says what the switches
+      do, and the page header already names the person and the place.
+
+- [x] **"Other competencies" becomes a "Grant competency" button that
+      opens a modal.** Four shapes were weighed: a select and button above
+      the table; a header button opening a modal; an inline "add row" at
+      the foot of the table; and one table of every competency with a
+      held filter. The modal was chosen. Granting applies everywhere the
+      person works, so it wants a confirm step anyway, and a modal makes
+      that step the form itself rather than a select followed by a
+      confirm. It also keeps a change that reaches every place visually
+      apart from the switches, which reach only this one: mixing the two
+      is what made the old card confusing. The inline row was rejected
+      because no table here edits inline and it fights paging and search;
+      the single table because it lists the whole catalogue by default and
+      buries the few rows that matter.
+
+      A `GrantCompetencyModal` in `components/member-practice/`, composed
+      from Mantine's `Modal` (as `NewMessageModal` uses it), `Heading`,
+      `SelectField` (searchable), `BodyText` and `ButtonPair`. It lists the
+      active competencies the person does not hold, says the grant applies
+      everywhere they work and authorises it here, and grants on accept.
+      The "Grant competency" `AddButton` sits top right of the table card,
+      only when `may_grant` is true. The "Grant" button on a row in
+      "Authorised here but not held" opens the same modal with that
+      competency chosen, so there is one grant flow rather than two, and
+      the separate grant confirm goes.
+
+- [x] **No success messages on this page.** The switch shows its own new
+      state, so "Authorised" and "Withdrawn" only repeated it, and a
+      granted competency appears in the table switched on, so "Granted and
+      authorised" did the same. Failures are still said.
+
+- [x] **`IconTextButton` keeps its icon one size at every width.** Its
+      icon shrank from 20px to 16px below the sm breakpoint while the
+      button itself did not, so the person icon on "Their user account"
+      looked like it was shrinking. It now passes `fixed` to `Icon`, as a
+      control whose height does not change should. This applies to every
+      `IconTextButton` in the app, not only this page.
+
+## Phase 5: Page header actions that stay right when they wrap
+
+Found on the member page and true of every page with a header action: on
+a narrow screen the action wrapped under the title and fell to the left.
+The pages laid the two out in a `<Group justify="space-between">`, and
+`space-between` only spreads items that share a line, so a wrapped item,
+alone on its line, sat at the start.
+
+- [x] **`PageHeader` gains an `action` slot.** The row is a wrapping flex
+      row in `PageHeader.module.css`, and the action's wrapper has
+      `margin-inline-start: auto`, which pushes it right on the title's
+      line and on a line of its own alike. `actionAlign` is `end` by
+      default, sitting a button on the title's baseline as the pages did,
+      or `center` for something shorter than the title, as the passport's
+      inbox button and the admin page's role badge were. With no action,
+      `PageHeader` renders exactly as before. New stories show an action,
+      an action wrapped at phone width, and a centred one.
+
+- [x] **Every page moves onto it**: `Messages`, the users, patients,
+      organisations and sites admin lists, the member practice page, the
+      passport page, `Admin` and `SyncResultsPanel`. None keeps a hand-built
+      header `Group`.
+
+- [x] **The guidance names the prop.** The page-header line in
+      `.github/instructions/components.instructions.md` and its copy in
+      `.claude/rules/components.md` now point at `action` rather than the
+      `Group`, and say why.
+
+- [ ] **Run the Storybook tests over the new `PageHeader` stories.** The
+      unit tests, typecheck and lint pass, but the three new stories have
+      not had their axe checks, light and dark. `just sbt`, not alongside
+      `just e2e`.
+
+- [ ] **Land Phase 5 as its own branch in the stack**, not folded into
+      the member page's branch. It changes the header of nine pages across
+      the app, which a reviewer of the member page would not expect to
+      find there, and it stands on its own: nothing in it depends on the
+      member page. Phase 4's changes belong to the member page's branch,
+      except the end-to-end test's grant step, which belongs to the wiring
+      branch that owns that test.
+
+## Findings
+
+Things learnt while building that are not steps, but would cost time to
+rediscover.
+
+- **The dev server can keep serving a file's old version after a stack
+  command.** Landing a branch with the `just stack-*` recipes briefly
+  checks out other branches, so files new to this stack disappear from
+  the worktree and come back. Vite in the `quill_frontend` container,
+  whose watcher runs over a Docker bind mount, then stopped following
+  `MemberPracticePage.tsx`: later edits reached the container but not the
+  browser, and touching the file did not help. Restarting the container
+  (`docker restart quill_frontend`) did. There is no `just` recipe for
+  that yet.
+
+- **End-to-end locators on these pages need three allowances.** A member
+  seeded without a full name appears twice in their staff table row, since
+  the name column falls back to the username, so click the row, not a
+  cell. The navigation drawer has `role="dialog"`, so a modal is found by
+  its text, not by role alone. A Mantine switch's input is visually
+  hidden, so a forced click on it does nothing; click its track, the
+  `label` whose `for` names the input.
+
+- **A `Group` with `justify="space-between"` is not a header layout.** It
+  looked right on every desktop screen, which is why nine pages used it,
+  and was wrong on every phone. Phase 5 has the fix; the finding is that
+  the pattern had been written into the component guidance, so it spread.
+
 ## Open questions
 
 - **May somebody authorise their own practice?** The existing route allows
@@ -192,5 +319,5 @@ to the same two facts.
   say otherwise.
 - **Should a place be able to offer only some competencies?** Today every
   competency in the catalogue can be authorised anywhere that can hold
-  competencies. Out of scope here, noted because the "Not qualified" list
-  will make the catalogue's size visible.
+  competencies. Out of scope here, noted because the grant modal's list
+  makes the catalogue's size visible.

@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Stack, Center, Group } from "@mantine/core";
+import { Stack, Center } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import { StateMessage } from "@/components/message-cards";
 import { IconClock } from "@/components/icons/appIcons";
@@ -149,13 +149,15 @@ export default function AdminPatientsPage() {
 
   return (
     <Stack gap="lg">
-      <Group justify="space-between" align="flex-end">
-        <PageHeader title="Patient management" />
-        <AddButton
-          label="Add patient"
-          onClick={() => navigate("/admin/patients/new")}
-        />
-      </Group>
+      <PageHeader
+        title="Patient management"
+        action={
+          <AddButton
+            label="Add patient"
+            onClick={() => navigate("/admin/patients/new")}
+          />
+        }
+      />
 
       {fhirReady === false ? (
         <Center p="xl">

@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Stack, Group } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import AddButton from "@/components/button/AddButton";
 import type { Column } from "@/components/tables/DataTable";
@@ -146,13 +146,15 @@ export default function AdminUsersPage() {
 
   return (
     <Stack gap="lg">
-      <Group justify="space-between" align="flex-end">
-        <PageHeader title="Users" />
-        <AddButton
-          label="Add user"
-          onClick={() => navigate("/admin/users/new")}
-        />
-      </Group>
+      <PageHeader
+        title="Users"
+        action={
+          <AddButton
+            label="Add user"
+            onClick={() => navigate("/admin/users/new")}
+          />
+        }
+      />
 
       <DataTableControlled
         data={users}

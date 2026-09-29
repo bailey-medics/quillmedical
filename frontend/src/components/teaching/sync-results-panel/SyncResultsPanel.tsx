@@ -9,7 +9,7 @@
  * Results persist on screen until the next sync is triggered.
  */
 
-import { Group, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import DataTableWithResults, {
   type ResultColumn,
 } from "@/components/tables/DataTableWithResults";
@@ -122,15 +122,17 @@ export default function SyncResultsPanel({
 
   return (
     <Stack gap="lg">
-      <Group justify="space-between" align="flex-end">
-        <PageHeader title="Teaching modules" />
-        <IconTextButton
-          icon="refresh"
-          label="Sync all"
-          onClick={onSync}
-          disabled={syncing}
-        />
-      </Group>
+      <PageHeader
+        title="Teaching modules"
+        action={
+          <IconTextButton
+            icon="refresh"
+            label="Sync all"
+            onClick={onSync}
+            disabled={syncing}
+          />
+        }
+      />
 
       <DataTableWithResults
         data={modules}

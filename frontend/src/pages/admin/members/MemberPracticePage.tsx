@@ -4,38 +4,31 @@
  * One person at one org_unit: what they hold, and what they may practise
  * there. Reached by clicking somebody in an organisation's or a site's
  * staff table, and mounted under both, because both are org_units and the
- * page does not care which. The only difference is where "back" goes.
+ * page does not care which.
  *
  * A thin loader: everything that draws or changes anything is in
  * `MemberPracticePanel`, so the organisation and site versions share it.
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { Group, Skeleton, Stack } from "@mantine/core";
+import { useNavigate, useParams } from "react-router-dom";
+import { Skeleton, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import { usePageMessage } from "@/components/page-message";
-import { BodyText, TextLink } from "@/components/typography";
+import { BodyText } from "@/components/typography";
+import IconTextButton from "@/components/button/IconTextButton";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import { MemberPracticePanel } from "@/components/member-practice";
 import { orgUnits, type MemberPractice } from "@/domains/orgUnit";
 
-/** Props for {@link MemberPracticePage}. */
-export interface MemberPracticePageProps {
-  /** Which admin pages this was reached from, for the link back. */
-  backTo: "organisations" | "sites";
-}
-
 /**
  * Show and change what one member may practise at one org_unit.
  *
- * @param props - Component props
  * @returns The page
  */
-export default function MemberPracticePage({
-  backTo,
-}: MemberPracticePageProps) {
+export default function MemberPracticePage() {
   const { id, userId } = useParams<{ id: string; userId: string }>();
+  const navigate = useNavigate();
   const unitId = Number(id);
   const memberId = Number(userId);
   const valid = Number.isInteger(unitId) && Number.isInteger(memberId);
@@ -64,12 +57,16 @@ export default function MemberPracticePage({
     })();
   }, [load]);
 
-  /** Run one change, then say what happened and read the page again. */
+  /**
+   * Run one change, then read the page again.
+   *
+   * Only a failure is said. Success shows on the page itself: a switch
+   * moves, and a granted competency appears in the table switched on.
+   */
   const change = useCallback(
-    async (action: () => Promise<unknown>, done: string, failure: string) => {
+    async (action: () => Promise<unknown>, failure: string) => {
       try {
         await action();
-        showMessage({ variant: "success", title: done });
       } catch {
         showMessage({ variant: "error", title: failure });
       }
@@ -95,18 +92,17 @@ export default function MemberPracticePage({
 
   return (
     <Stack gap="lg">
-      <PageHeader title={name} />
-      <Stack gap="xs">
-        <BodyText>At {practice.org_unit_name}</BodyText>
-        <Group gap="lg">
-          <TextLink to={`/admin/${backTo}/${unitId}`}>
-            Back to {practice.org_unit_name}
-          </TextLink>
-          <TextLink to={`/admin/users/${memberId}`}>
-            Their user account
-          </TextLink>
-        </Group>
-      </Stack>
+      <PageHeader
+        title={name}
+        action={
+          <IconTextButton
+            icon="user"
+            label="Their user account"
+            onClick={() => navigate(`/admin/users/${memberId}`)}
+          />
+        }
+      />
+      <BodyText>At {practice.org_unit_name}</BodyText>
       <MemberPracticePanel
         practice={practice}
         onAuthorise={(competency) =>
@@ -116,21 +112,18 @@ export default function MemberPracticePage({
                 user_id: memberId,
                 competency,
               }),
-            "Authorised",
             "Could not authorise that",
           )
         }
         onWithdraw={(competency) =>
           change(
             () => orgUnits.withdrawPractising(unitId, memberId, competency),
-            "Withdrawn",
             "Could not withdraw that",
           )
         }
         onGrantAndAuthorise={(competency) =>
           change(
             () => orgUnits.grantAndAuthorise(unitId, memberId, competency),
-            "Granted and authorised",
             "Could not grant that",
           )
         }

@@ -2,6 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import PageHeader from "./PageHeader";
 import BodyText from "./BodyText";
 import { Box, Stack } from "@mantine/core";
+import AddButton from "@/components/button/AddButton";
+import IconTextButton from "@/components/button/IconTextButton";
+import { StoryNote } from "@/stories/variants";
 
 const meta = {
   title: "Foundations/Typography/Page header",
@@ -30,6 +33,42 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: {
     title: "Administration",
+  },
+};
+
+/** An "Add" button, the most common header action. */
+export const WithAction: Story = {
+  args: {
+    title: "Users",
+    action: <AddButton label="Add user" />,
+  },
+};
+
+/**
+ * Too narrow for both on one line: the action wraps under the title and
+ * stays on the right.
+ */
+export const WithActionWrapped: Story = {
+  args: {
+    title: "Patient management",
+    action: <IconTextButton icon="user" label="Their user account" />,
+  },
+  render: (args) => (
+    <>
+      <Box maw={320}>
+        <PageHeader {...args} />
+      </Box>
+      <StoryNote>Constrained to 320px, as on a phone.</StoryNote>
+    </>
+  ),
+};
+
+/** Something shorter than the title, such as a badge, centred against it. */
+export const WithCentredAction: Story = {
+  args: {
+    title: "Administration",
+    action: <IconTextButton icon="settings" label="Settings" />,
+    actionAlign: "center",
   },
 };
 

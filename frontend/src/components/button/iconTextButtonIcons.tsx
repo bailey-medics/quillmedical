@@ -13,6 +13,7 @@ import {
   IconRefresh,
   IconSettings,
   IconTrash,
+  IconUser,
 } from "@/components/icons/appIcons";
 import type { ReactElement } from "react";
 
@@ -25,6 +26,7 @@ const iconTextButtonIcons = {
   refresh: <IconRefresh />,
   settings: <IconSettings />,
   trash: <IconTrash />,
+  user: <IconUser />,
 } as const satisfies Record<string, ReactElement>;
 
 export default iconTextButtonIcons;

@@ -64,7 +64,7 @@ export default function IconTextButton({
 }: IconTextButtonProps) {
   return (
     <Button
-      leftSection={<Icon icon={iconTextButtonIcons[icon]} size="sm" />}
+      leftSection={<Icon icon={iconTextButtonIcons[icon]} size="sm" fixed />}
       onClick={disabled ? (e: React.MouseEvent) => e.preventDefault() : onClick}
       size="md"
       variant={variant}

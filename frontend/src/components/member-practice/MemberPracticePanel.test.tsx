@@ -52,7 +52,7 @@ function switchFor(name: string): HTMLInputElement {
 }
 
 describe("MemberPracticePanel", () => {
-  describe("Competencies held", () => {
+  describe("The competencies they hold", () => {
     it("lists each held competency with its switch set from the rows", () => {
       renderPanel();
 
@@ -131,42 +131,77 @@ describe("MemberPracticePanel", () => {
     });
   });
 
-  describe("Other competencies", () => {
-    it("asks before granting, and says the grant applies everywhere", async () => {
+  describe("Granting a competency", () => {
+    it("opens the grant modal from the button, and grants the choice", async () => {
       const user = userEvent.setup();
       const { onGrantAndAuthorise } = renderPanel();
 
-      const heading = screen.getByText("Other competencies");
-      expect(heading).toBeInTheDocument();
-      // The held competencies are not offered again.
-      expect(
-        screen.queryAllByRole("button", { name: "Grant and authorise" }).length,
-      ).toBeGreaterThan(0);
-
       await user.click(
-        screen.getAllByRole("button", { name: "Grant and authorise" })[0],
+        screen.getByRole("button", { name: "Grant competency" }),
       );
-      expect(onGrantAndAuthorise).not.toHaveBeenCalled();
-
       const dialog = await screen.findByRole("dialog");
       expect(
-        within(dialog).getByText(/applies everywhere they work/i),
+        within(dialog).getByText(/everywhere they work/i),
       ).toBeInTheDocument();
+
+      await user.click(within(dialog).getByRole("combobox"));
+      await user.click(
+        await screen.findByRole("option", { name: "Manage User Accounts" }),
+      );
       await user.click(
         within(dialog).getByRole("button", { name: "Grant and authorise" }),
       );
 
-      expect(onGrantAndAuthorise).toHaveBeenCalledTimes(1);
-      const granted = onGrantAndAuthorise.mock.calls[0][0] as string;
-      expect(practice.qualified).not.toContain(granted);
+      expect(onGrantAndAuthorise).toHaveBeenCalledWith("manage_users");
+    });
+
+    it("does not offer what they already hold", async () => {
+      const user = userEvent.setup();
+      renderPanel();
+
+      await user.click(
+        screen.getByRole("button", { name: "Grant competency" }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      await user.click(within(dialog).getByRole("combobox"));
+
+      expect(
+        await screen.findByRole("option", { name: "Manage User Accounts" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: "Certify Death" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("starts with the row's competency chosen from a not-held row", async () => {
+      const user = userEvent.setup();
+      const { onGrantAndAuthorise } = renderPanel({
+        authorised: [
+          {
+            competency: "manage_users",
+            authorised_at: "2026-09-01T09:00:00Z",
+            authorised_by: null,
+          },
+        ],
+      });
+
+      await user.click(screen.getByRole("button", { name: "Grant" }));
+      const dialog = await screen.findByRole("dialog");
+      expect(within(dialog).getByRole("combobox")).toHaveValue(
+        "Manage User Accounts",
+      );
+      await user.click(
+        within(dialog).getByRole("button", { name: "Grant and authorise" }),
+      );
+
+      expect(onGrantAndAuthorise).toHaveBeenCalledWith("manage_users");
     });
 
     it("is not offered to somebody who may not grant", () => {
       renderPanel({ may_grant: false });
 
-      expect(screen.queryByText("Other competencies")).not.toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: "Grant and authorise" }),
+        screen.queryByRole("button", { name: "Grant competency" }),
       ).not.toBeInTheDocument();
     });
   });

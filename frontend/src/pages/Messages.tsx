@@ -22,7 +22,7 @@ import {
 import { api } from "@lib/api";
 import { FHIR_POLLING_TIME } from "@lib/constants";
 import { extractAvatarGradientIndex } from "@lib/fhir-patient";
-import { Group, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import { EmptyState } from "@/components/typography";
 import BaseCard from "@/components/base-card/BaseCard";
 import { notifications } from "@mantine/notifications";
@@ -267,10 +267,12 @@ export default function Messages() {
 
   return (
     <Stack gap="lg">
-      <Group justify="space-between" align="flex-end">
-        <PageHeader title="Messages" />
-        <AddButton label="New message" onClick={() => setModalOpen(true)} />
-      </Group>
+      <PageHeader
+        title="Messages"
+        action={
+          <AddButton label="New message" onClick={() => setModalOpen(true)} />
+        }
+      />
 
       <NewMessageModal
         opened={modalOpen}

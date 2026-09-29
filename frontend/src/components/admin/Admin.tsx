@@ -9,7 +9,7 @@
  * - /admin/permissions - Permissions management
  */
 
-import { Group, SimpleGrid, Stack } from "@mantine/core";
+import { SimpleGrid, Stack } from "@mantine/core";
 import StatCard from "@/components/stats-card";
 import PageHeader from "@/components/page-header";
 import PlatformRoleBadge, {
@@ -47,10 +47,11 @@ export default function Admin({
 }: AdminProps) {
   return (
     <Stack gap="lg">
-      <Group justify="space-between" align="center">
-        <PageHeader title="Administration" />
-        <PlatformRoleBadge platformRole={platformRole} />
-      </Group>
+      <PageHeader
+        title="Administration"
+        action={<PlatformRoleBadge platformRole={platformRole} />}
+        actionAlign="center"
+      />
 
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <StatCard
