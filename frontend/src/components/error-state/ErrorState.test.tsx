@@ -117,4 +117,45 @@ describe("ErrorState", () => {
       container.querySelector('[data-testid="error-state"]'),
     ).toBeInTheDocument();
   });
+
+  it("looks like the other messages: a card in the alert colour", () => {
+    renderWithMantine(<ErrorState message="Could not save." />);
+
+    expect(screen.getByTestId("state-message")).toBeInTheDocument();
+  });
+
+  it("scrolls itself to the middle of the screen, and takes focus", () => {
+    // An inline error sits at the top of a form while the person is at
+    // its foot, so it was there and unseen.
+    const scrollIntoView = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+
+    renderWithMantine(<ErrorState message="Could not save." />);
+
+    expect(scrollIntoView).toHaveBeenCalledWith(
+      expect.objectContaining({ block: "center" }),
+    );
+    expect(screen.getByTestId("error-state")).toHaveFocus();
+  });
+
+  it("does it again when the message changes", () => {
+    const scrollIntoView = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+
+    const { rerender } = renderWithMantine(
+      <ErrorState message="Could not save." />,
+    );
+    rerender(<ErrorState message="Still could not save." />);
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not scroll the page variant, which is the whole view", () => {
+    const scrollIntoView = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+
+    renderWithMantine(<ErrorState variant="page" message="Could not load." />);
+
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
 });
