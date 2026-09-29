@@ -5,6 +5,12 @@
  * `page` replaces the view, `inline` sits inside the layout where a section
  * failed to load.
  *
+ * **It is a red `StateMessage` card**, the same card the app uses for "this
+ * is not available", in the alert colour. Until 29 September 2026 it was a
+ * light Mantine `Alert`: a 10% tint with no border, which on a page read as
+ * plain text. A failed save was missed that way, so it now looks like the
+ * other messages and cannot be mistaken for body copy.
+ *
  * **It does not accept an error object, and that is the point.** Pages pass a
  * message somebody wrote for a person to read. The alternative — handing it
  * `err.message` — puts whatever the backend returned on screen, which for a
@@ -18,12 +24,15 @@
  * matched against in the logs.
  */
 
-import { Alert, Center, Group, Stack } from "@mantine/core";
+import { useEffect, useRef } from "react";
+import { Box, Center, Group } from "@mantine/core";
 import { IconAlertTriangle } from "@/components/icons/appIcons";
-import Icon from "@/components/icons";
 import IconTextButton from "@/components/button/IconTextButton";
 import iconTextButtonIcons from "@/components/button/iconTextButtonIcons";
-import { BodyText, FieldDescription, Heading } from "@/components/typography";
+import StateMessage from "@/components/message-cards/StateMessage";
+import { BodyTextInline } from "@/components/typography";
+import { statusTextColour } from "@/styles/semanticColours";
+import classes from "./ErrorState.module.css";
 
 type IconName = keyof typeof iconTextButtonIcons;
 
@@ -72,18 +81,43 @@ export default function ErrorState({
   secondaryAction,
   variant = "inline",
 }: ErrorStateProps) {
-  const body = (
-    <Stack align={variant === "page" ? "center" : "flex-start"} gap="md">
-      <Icon
-        icon={<IconAlertTriangle />}
-        size="xl"
-        colour="var(--alert-color)"
-      />
-      <Heading>{title}</Heading>
-      <BodyText c="dimmed">{message}</BodyText>
-      {code ? <FieldDescription>Reference: {code}</FieldDescription> : null}
+  const inlineRef = useRef<HTMLDivElement>(null);
+
+  // Brought into view as it appears, to the middle of the screen. An
+  // inline error usually sits at the top of a form while the person is at
+  // its foot, having just pressed save, so it was there and unseen. Focus
+  // moves to it too, so a keyboard user carries on from the error rather
+  // than from the button. Again when the message changes, since a second
+  // failure is as easy to miss as the first.
+  useEffect(() => {
+    const element = inlineRef.current;
+    if (variant !== "inline" || !element) return;
+
+    const reduceMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    element.scrollIntoView?.({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "center",
+    });
+    element.focus({ preventScroll: true });
+  }, [variant, message]);
+
+  const card = (
+    <StateMessage
+      colour="alert"
+      icon={<IconAlertTriangle />}
+      title={title}
+      description={message}
+    >
+      {code ? (
+        <BodyTextInline c={statusTextColour("alert")}>
+          Reference: {code}
+        </BodyTextInline>
+      ) : null}
       {action ? (
-        <Group gap="sm" justify={variant === "page" ? "center" : "flex-start"}>
+        <Group gap="sm" mt="xs">
           <IconTextButton
             icon={action.icon ?? "refresh"}
             label={action.label}
@@ -95,29 +129,39 @@ export default function ErrorState({
               label={secondaryAction.label}
               onClick={secondaryAction.onClick}
               variant="outline"
+              // The card's own text colour, so the outline and label read
+              // on the alert red; the primary colour's did not.
+              color={statusTextColour("alert")}
             />
           ) : null}
         </Group>
       ) : null}
-    </Stack>
+    </StateMessage>
   );
 
   if (variant === "page") {
     return (
       <Center mih="60vh" data-testid="error-state">
-        {body}
+        <Box maw="36rem" w="100%">
+          {card}
+        </Box>
       </Center>
     );
   }
 
+  // Announced as it appears: a section failing inside a page is easy to
+  // miss without it.
   return (
-    <Alert
-      variant="light"
-      color="var(--alert-color)"
+    <Box
+      ref={inlineRef}
+      className={classes.inline}
       data-testid="error-state"
       role="alert"
+      // Focusable only by script, so it can take focus as it appears
+      // without joining the tab order.
+      tabIndex={-1}
     >
-      {body}
-    </Alert>
+      {card}
+    </Box>
   );
 }

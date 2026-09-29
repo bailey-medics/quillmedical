@@ -29,6 +29,12 @@ export interface StateMessageProps {
   description: ReactNode;
   /** Status colour name from the design system (defaults to "info") */
   colour?: StatusColourName;
+  /**
+   * Anything beneath the description, such as a reference code or
+   * buttons. `ErrorState` puts its recovery actions here, which is what
+   * lets it be this card rather than a copy of it.
+   */
+  children?: ReactNode;
 }
 
 /**
@@ -42,6 +48,7 @@ export default function StateMessage({
   title,
   description,
   colour = "info",
+  children,
 }: StateMessageProps) {
   // The palette has always carried a `text` value per colour; this
   // component hardcoded white and so quietly disagreed with it for
@@ -62,6 +69,7 @@ export default function StateMessage({
         <Stack gap={4}>
           <Heading c={textColour}>{title}</Heading>
           <BodyTextInline c={textColour}>{description}</BodyTextInline>
+          {children}
         </Stack>
       </Group>
     </BaseCard>

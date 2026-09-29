@@ -1,0 +1,10 @@
+/*
+ * The inline error takes focus as it appears, so a keyboard user carries
+ * on from it. It is not a control, so the browser's focus outline around
+ * it told nobody anything and read as a highlighted section. Hidden here;
+ * the focus itself, and the screen reader announcement, stay.
+ */
+.inline:focus,
+.inline:focus-visible {
+  outline: none;
+}
