@@ -60,6 +60,7 @@ from reportlab.platypus import (  # type: ignore[import-untyped]
 )
 
 from . import paths
+from .cpd_periods import group_cpd
 from .schemas import (
     Certificate,
     CpdEntry,
@@ -129,7 +130,7 @@ def render_pdf(
     story.extend(_competency_table(index, styles))
     story.extend(_logbook_totals(store, passport_id, index, styles))
     story.extend(_certificates(store, passport_id, styles))
-    story.extend(_cpd(store, passport_id, styles))
+    story.extend(_cpd(store, passport_id, styles, profile))
 
     story.extend(_reflections_note(store, passport_id, styles))
     story.extend(_sign_offs(store, passport_id, styles))
@@ -535,18 +536,22 @@ def _certificates(
 
 
 def _cpd(
-    store: PassportStore, passport_id: str, styles: dict[str, ParagraphStyle]
+    store: PassportStore,
+    passport_id: str,
+    styles: dict[str, ParagraphStyle],
+    profile: Profile,
 ) -> list[Any]:
-    """Continuing professional development, newest year first."""
+    """Continuing professional development, per appraisal period.
+
+    Newest first, and each total states its own range; see
+    ``cpd_periods``.
+    """
     story: list[Any] = [
         Paragraph("Continuing professional development", styles["heading"])
     ]
-    years = sorted(_list(store, passport_id, paths.CPD), reverse=True)
-    any_entries = False
+    entries: list[CpdEntry] = []
 
-    for year in years:
-        entries: list[CpdEntry] = []
-
+    for year in _list(store, passport_id, paths.CPD):
         for path in _list_paths(store, passport_id, paths.CPD / year):
             try:
                 entries.append(
@@ -555,23 +560,37 @@ def _cpd(
             except Exception:  # noqa: BLE001 - as above
                 logger.warning("Skipping unreadable CPD entry in %s", year)
 
-        if not entries:
-            continue
+    groups = group_cpd(entries, profile.appraisal_periods)
 
-        any_entries = True
-        entries.sort(key=lambda entry: entry.activity_on)
-        points = sum(entry.points or 0 for entry in entries)
-        activities = "activity" if len(entries) == 1 else "activities"
-        summary = f"{len(entries)} {activities}"
+    if not groups:
+        story.append(Paragraph("Nothing recorded.", styles["body"]))
+        return story
 
-        if points:
-            summary += f", {points:g} points"
-
+    if groups[0].convention:
         story.append(
-            Paragraph(f"{_text(year)} – {summary}", styles["subheading"])
+            Paragraph(
+                "No CPD date ranges have been set, so these run June to"
+                " June by convention rather than on the holder's actual"
+                " appraisal year.",
+                styles["body"],
+            )
         )
 
-        for entry in entries:
+    for group in groups:
+        count = len(group.entries)
+        activities = "activity" if count == 1 else "activities"
+        summary = f"{count} {activities}"
+
+        if group.points:
+            summary += f", {group.points:g} points"
+
+        story.append(
+            Paragraph(
+                f"{_text(group.heading)} – {summary}", styles["subheading"]
+            )
+        )
+
+        for entry in group.entries:
             story.append(
                 Paragraph(
                     f"{_day(entry.activity_on)} – {_text(entry.title)} "
@@ -579,9 +598,6 @@ def _cpd(
                     styles["body"],
                 )
             )
-
-    if not any_entries:
-        story.append(Paragraph("Nothing recorded.", styles["body"]))
 
     return story
 

@@ -301,7 +301,9 @@ Self-declared: recorded by the holder, with nobody countersigning.
 
 ## Continuing professional development
 
-### 2026
+No CPD date ranges have been set, so these run June to June by convention rather than on the holder's actual appraisal year.
+
+### 1 June 2025 to 31 May 2026
 
 1 activity, 6 points.
 

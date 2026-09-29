@@ -35,6 +35,7 @@ from datetime import date
 from pathlib import PurePosixPath
 
 from . import paths
+from .cpd_periods import group_cpd
 from .schemas import (
     Certificate,
     CpdEntry,
@@ -86,7 +87,7 @@ def render(
         _competency_table(index),
         _logbook_section(store, passport_id, index),
         _certificates_section(store, passport_id),
-        _cpd_section(store, passport_id),
+        _cpd_section(store, passport_id, profile),
     ]
 
     if include_reflections:
@@ -282,43 +283,53 @@ def _certificates_section(store: PassportStore, passport_id: str) -> str:
     return "\n".join(lines)
 
 
-def _cpd_section(store: PassportStore, passport_id: str) -> str:
-    """Continuing professional development, newest year first.
+def _cpd_section(
+    store: PassportStore, passport_id: str, profile: Profile
+) -> str:
+    """Continuing professional development, totalled per appraisal period.
 
-    Years descend because appraisal asks what you did *this* year, and
-    the current one should not be at the bottom of a long list.
+    Newest first, because appraisal asks what you did *this* year, and
+    the current one should not be at the bottom of a long list. Each
+    total states its own range; see ``cpd_periods``.
     """
     lines = ["## Continuing professional development", ""]
-    years = _list(store, passport_id, paths.CPD)
+    entries = [
+        entry
+        for year in _list(store, passport_id, paths.CPD)
+        for entry in _cpd_entries(store, passport_id, year)
+    ]
+    groups = group_cpd(entries, profile.appraisal_periods)
 
-    if not years:
+    if not groups:
         lines.append(_NOTHING)
         return "\n".join(lines)
 
-    any_entries = False
+    if groups[0].convention:
+        lines.extend(
+            [
+                "No CPD date ranges have been set, so these run June to"
+                " June by convention rather than on the holder's actual"
+                " appraisal year.",
+                "",
+            ]
+        )
 
-    for year in sorted(years, reverse=True):
-        entries = _cpd_entries(store, passport_id, year)
-
-        if not entries:
-            continue
-
-        any_entries = True
-        points = sum(e.points or 0 for e in entries)
-        lines.extend([f"### {year}", ""])
+    for group in groups:
+        lines.extend([f"### {group.heading}", ""])
 
         # "1 activities" reads as a bug to anyone looking at their own
         # record, and this document is read by the person it describes.
-        activities = "activity" if len(entries) == 1 else "activities"
+        count = len(group.entries)
+        activities = "activity" if count == 1 else "activities"
 
-        if points:
-            lines.append(f"{len(entries)} {activities}, {points:g} points.")
+        if group.points:
+            lines.append(f"{count} {activities}, {group.points:g} points.")
         else:
-            lines.append(f"{len(entries)} {activities}.")
+            lines.append(f"{count} {activities}.")
 
         lines.append("")
 
-        for entry in entries:
+        for entry in group.entries:
             suffix = f" ({entry.points:g} points)" if entry.points else ""
             lines.append(
                 f"- **{entry.activity_on.isoformat()}** – {entry.title}"
@@ -326,9 +337,6 @@ def _cpd_section(store: PassportStore, passport_id: str) -> str:
             )
 
         lines.append("")
-
-    if not any_entries:
-        lines.append(_NOTHING)
 
     return "\n".join(lines)
 
