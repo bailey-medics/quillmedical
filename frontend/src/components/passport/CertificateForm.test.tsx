@@ -12,6 +12,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
 import CertificateForm from "./CertificateForm";
+import { certificates } from "./fixtures";
 import type { AttachmentInput } from "@lib/passport";
 
 const uploaded: AttachmentInput = {
@@ -177,5 +178,44 @@ describe("CertificateForm", () => {
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(onCancel).toHaveBeenCalled();
+  });
+
+  describe("Editing", () => {
+    it("starts filled in from the certificate", () => {
+      renderWithMantine(
+        <CertificateForm onSubmit={vi.fn()} initial={certificates[0]} />,
+      );
+
+      expect(screen.getByRole("textbox", { name: /What is it/ })).toHaveValue(
+        "Advanced life support",
+      );
+      expect(screen.getByText("Edit this certificate")).toBeInTheDocument();
+    });
+
+    it("offers to remove the file, and says so when pressed", async () => {
+      const user = userEvent.setup();
+      const onRemoveAttachment = vi.fn();
+      renderWithMantine(
+        <CertificateForm
+          onSubmit={vi.fn()}
+          attachment={uploaded}
+          onRemoveAttachment={onRemoveAttachment}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "Remove file" }));
+
+      expect(onRemoveAttachment).toHaveBeenCalled();
+    });
+
+    it("offers no remove button when nobody handles it", () => {
+      renderWithMantine(
+        <CertificateForm onSubmit={vi.fn()} attachment={uploaded} />,
+      );
+
+      expect(
+        screen.queryByRole("button", { name: "Remove file" }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

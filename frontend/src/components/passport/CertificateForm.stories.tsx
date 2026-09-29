@@ -8,6 +8,7 @@
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import CertificateForm from "./CertificateForm";
+import { certificates } from "./fixtures";
 import type { AttachmentInput } from "@lib/passport";
 
 const uploaded: AttachmentInput = {
@@ -36,6 +37,18 @@ export const Default: Story = {
 
 export const WithEvidence: Story = {
   args: { attachment: uploaded },
+};
+
+/**
+ * Correcting a certificate already recorded: the form is filled in, and
+ * the file on the record can be taken off.
+ */
+export const Editing: Story = {
+  args: {
+    initial: certificates[0],
+    attachment: uploaded,
+    onRemoveAttachment: () => {},
+  },
 };
 
 export const Submitting: Story = {

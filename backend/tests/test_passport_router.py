@@ -3098,6 +3098,77 @@ class TestEvidence:
         # The uploaded filename may name a patient, so it is never sent.
         assert "certificate.pdf" not in str(response.headers)
 
+    def _correct(
+        self,
+        client: TestClient,
+        passport_id: str,
+        name: str,
+        **extra: object,
+    ) -> Response:
+        return client.patch(
+            f"/api/passport/{passport_id}/certificates/{name}",
+            json={
+                "title": "Advanced life support",
+                "issuer": "Resuscitation Council UK",
+                "awarded_on": "2026-03-14",
+                **extra,
+            },
+        )
+
+    def _held(
+        self, client: TestClient, passport_id: str, name: str
+    ) -> list[str]:
+        listed = client.get(f"/api/passport/{passport_id}/certificates").json()
+        certificate = next(c for c in listed if c["name"] == name)
+        return [a["hash"] for a in certificate["attachments"]]
+
+    def test_correcting_a_certificate_can_replace_its_file(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        first = self._upload(holder_client, passport_id).json()
+        second = self._upload(
+            holder_client, passport_id, content=b"%PDF-1.4 the right scan"
+        ).json()
+        name = self._certificate_with(holder_client, passport_id, first)
+
+        response = self._correct(
+            holder_client, passport_id, name, attachments=[second]
+        )
+
+        assert response.status_code == 200, response.text
+        assert self._held(holder_client, passport_id, name) == [second["hash"]]
+
+    def test_correcting_a_certificate_can_remove_its_file(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+        name = self._certificate_with(holder_client, passport_id, uploaded)
+
+        response = self._correct(
+            holder_client, passport_id, name, attachments=[]
+        )
+
+        assert response.status_code == 200, response.text
+        assert self._held(holder_client, passport_id, name) == []
+
+    def test_a_correction_that_leaves_out_attachments_keeps_the_file(
+        self, holder_client: TestClient
+    ) -> None:
+        """An older client sending only the fields it shows must not
+        delete the file by leaving the field out."""
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+        name = self._certificate_with(holder_client, passport_id, uploaded)
+
+        response = self._correct(holder_client, passport_id, name)
+
+        assert response.status_code == 200, response.text
+        assert self._held(holder_client, passport_id, name) == [
+            uploaded["hash"]
+        ]
+
     def test_a_hash_the_certificate_does_not_name_is_a_404(
         self, holder_client: TestClient
     ) -> None:

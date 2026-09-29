@@ -34,6 +34,7 @@ import { BodyTextInline, Heading } from "@/components/typography";
 import Icon from "@/components/icons/Icon";
 import { IconFileText } from "@/components/icons/appIcons";
 import ButtonPair from "@/components/button/ButtonPair";
+import IconTextButton from "@/components/button/IconTextButton";
 import type {
   AttachmentInput,
   Certificate,
@@ -50,6 +51,12 @@ export interface CertificateFormProps {
   /** Disables submission while a request is in flight */
   isSubmitting?: boolean;
   /**
+   * Called when the holder takes the attached file off. Given only while
+   * editing, where the file already on the record can be removed; the
+   * button does not show without it.
+   */
+  onRemoveAttachment?: () => void;
+  /**
    * A certificate already recorded, to correct. The form starts filled
    * in from it and says it is editing rather than recording.
    */
@@ -61,6 +68,7 @@ export default function CertificateForm({
   onCancel,
   attachment = null,
   isSubmitting = false,
+  onRemoveAttachment,
   initial,
 }: CertificateFormProps) {
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -144,9 +152,18 @@ export default function CertificateForm({
         />
 
         {attachment && (
-          <Group gap="xs" wrap="nowrap">
-            <Icon icon={<IconFileText />} />
-            <BodyTextInline>{attachment.filename}</BodyTextInline>
+          <Group justify="space-between" wrap="nowrap">
+            <Group gap="xs" wrap="nowrap">
+              <Icon icon={<IconFileText />} />
+              <BodyTextInline>{attachment.filename}</BodyTextInline>
+            </Group>
+            {onRemoveAttachment && (
+              <IconTextButton
+                icon="trash"
+                label="Remove file"
+                onClick={onRemoveAttachment}
+              />
+            )}
           </Group>
         )}
 
