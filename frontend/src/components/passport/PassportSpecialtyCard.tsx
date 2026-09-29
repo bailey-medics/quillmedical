@@ -31,7 +31,7 @@
 import { Stack } from "@mantine/core";
 import ActionCard from "@/components/action-card";
 import ActionCardButton from "@/components/button/ActionCardButton";
-import { IconFileText } from "@/components/icons/appIcons";
+import { IconEPassport } from "@/components/icons/appIcons";
 import type { SpecialtyOption } from "@lib/passport/specialties";
 import SpecialtyField from "./SpecialtyField";
 
@@ -57,7 +57,7 @@ export default function PassportSpecialtyCard({
 }: PassportSpecialtyCardProps) {
   return (
     <ActionCard
-      icon={<IconFileText />}
+      icon={<IconEPassport />}
       title="Clinician passport"
       action={
         <Stack gap="md">
