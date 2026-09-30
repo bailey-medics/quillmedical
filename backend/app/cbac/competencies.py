@@ -72,6 +72,15 @@ class CompetencyEntry(BaseModel):
             software permission, not a skill, and anything added for
             access control stays out of the passport until somebody
             decides it belongs there. CBAC ignores it.
+        may_grant: The competencies a holder of this one may grant to
+            and remove from other people, or None where holding it
+            gives no such authority. A whitelist on the granting
+            competency, so nothing new can be granted without
+            somebody adding it here. ``manage_users`` has no list:
+            it may grant anything, and is checked separately in
+            ``app.cbac.grant_scope``.
+        may_assign_professions: The base professions a holder may give
+            somebody, or None. Read with ``may_grant``.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -82,6 +91,8 @@ class CompetencyEntry(BaseModel):
     levels: list[CompetencyLevel] | None = None
     expires_after_months: int | None = None
     assessable: bool = False
+    may_grant: list[str] | None = None
+    may_assign_professions: list[str] | None = None
 
 
 # Load competencies from every YAML file in the definitions directory.
@@ -158,7 +169,50 @@ def _load_competencies(directory: Path) -> list[CompetencyEntry]:
             seen[entry.id] = path
             entries.append(entry)
 
+    _check_may_grant(entries)
     return entries
+
+
+#: The root competency. Its holder may grant anything, so naming it in
+#: another competency's ``may_grant`` would hand the root on through a
+#: side door.
+ROOT_COMPETENCY: str = "manage_users"
+
+
+def _check_may_grant(entries: list[CompetencyEntry]) -> None:
+    """Refuse a ``may_grant`` list naming anything it should not.
+
+    Checked at load, because a misspelt id in a whitelist fails silently:
+    it names a competency nobody can be given, and the one meant is left
+    out without a word.
+
+    Args:
+        entries: The whole merged catalogue.
+
+    Raises:
+        ValueError: If a list names an unknown or retired competency, or
+            the root competency.
+    """
+    by_id = {entry.id: entry for entry in entries}
+    for entry in entries:
+        for granted in entry.may_grant or []:
+            target = by_id.get(granted)
+            if target is None:
+                raise ValueError(
+                    f"Competency {entry.id!r} may_grant names unknown "
+                    f"competency {granted!r}."
+                )
+            if target.retired_on is not None:
+                raise ValueError(
+                    f"Competency {entry.id!r} may_grant names retired "
+                    f"competency {granted!r}."
+                )
+            if granted == ROOT_COMPETENCY:
+                raise ValueError(
+                    f"Competency {entry.id!r} may_grant names "
+                    f"{ROOT_COMPETENCY!r}, which may only be granted by "
+                    "its own holders."
+                )
 
 
 COMPETENCIES: list[CompetencyEntry] = _load_competencies(

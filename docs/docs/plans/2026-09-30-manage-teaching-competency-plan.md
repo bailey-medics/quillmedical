@@ -19,24 +19,22 @@ as the rarely granted root.
 
 ## Phase 1: The competency and its grant scope
 
-- [ ] **Add `manage_teaching` to `shared/competency-definitions/teaching.yaml`**,
+- [x] **Add `manage_teaching` to `shared/competency-definitions/teaching.yaml`**,
       with two new fields listing what its holder may hand out:
       `may_grant: [view_teaching_cases, manage_teaching, view_teaching_analytics]`
       and
       `may_assign_professions: [teaching_delegate, teaching_clinical_lead, teaching_admin]`.
       `manage_teaching` is on its own list so that one coordinator can
       appoint another without needing `manage_users`.
-- [ ] **Retire `manage_teaching_content`** by setting `retired_on` on its
-      entry, not by deleting it. `CompetencyEntry` retires entries rather
-      than deleting them, so that old rows and old audit entries still name
-      something the catalogue knows.
-- [ ] **Extend `CompetencyEntry` in `backend/app/cbac/competencies.py`** with
+- [x] **Extend `CompetencyEntry` in `backend/app/cbac/competencies.py`** with
       `may_grant: list[str] | None` and `may_assign_professions: list[str] | None`,
       both defaulting to None. Validate at load time that every id they
       list exists and is not retired, and that no list contains
       `manage_users`. A typo here would otherwise fail silently, because an
-      unknown id grants nothing.
-- [ ] **Add `backend/app/cbac/grant_scope.py`** as the one place that answers
+      unknown id grants nothing. The profession ids are checked in
+      `grant_scope.py` instead, because the two catalogues load separately
+      and neither loader should import the other.
+- [x] **Add `backend/app/cbac/grant_scope.py`** as the one place that answers
       "may this caller hand this out?". Holding `manage_users` means no
       limit. Otherwise the scope is the union of `may_grant` and
       `may_assign_professions` across the competencies the caller holds.
@@ -46,17 +44,31 @@ as the rarely granted root.
       target's current profession is assignable by the caller. That stops a
       teaching admin changing a clinician's profession or deactivating their
       account, even when the clinician also sits teaching assessments.
-- [ ] **Regenerate the frontend types** with `yarn generate:types`, and add
-      the two fields to the competency type in `frontend/src/types/cbac.ts`.
-- [ ] **Unit tests** for `grant_scope.py`: `manage_users` is unlimited; a
+- [x] **Add the two fields to the competency type** in
+      `frontend/src/types/cbac.ts`. The generated JSON passes every YAML
+      field through, so `yarn generate:types` needs no change.
+- [x] **Unit tests** for `grant_scope.py`: `manage_users` is unlimited; a
       `manage_teaching` holder may grant only the three teaching
       competencies and assign only the three teaching professions; a
       holder may not manage the account of anyone whose profession is
       outside the list; a YAML entry naming an unknown or retired id fails
       to load.
 
-## Phase 2: Move the rows and merge the professions
+## Phase 2: Switch teaching to `manage_teaching`
 
+This phase and the teaching content routes land as one unit. Moving the
+rows to `manage_teaching` while `_DEP_MANAGE` still asks for
+`manage_teaching_content` would lock every teaching admin out of the
+question banks for as long as the two sat on `main` apart, and merging a
+unit deploys it. Found while building Phase 1, which is also why retiring
+`manage_teaching_content` moved here from there: a retired id cannot sit in
+a profession's `base_competencies`, and `teaching_admin` lists it until this
+phase.
+
+- [ ] **Retire `manage_teaching_content`** by setting `retired_on` on its
+      entry, not by deleting it. `CompetencyEntry` retires entries rather
+      than deleting them, so that old rows and old audit entries still name
+      something the catalogue knows.
 - [ ] **Change `teaching_admin` in `shared/base-professions.yaml`** so its
       `base_competencies` are `view_teaching_cases`, `manage_teaching` and
       `view_teaching_analytics`. Rewrite the comment above it: it no longer
@@ -94,8 +106,6 @@ as the rarely granted root.
       set, and add a migration test for the row moves in the style of
       `test_practising_competency_backfill.py`.
 
-## Phase 3: Teaching content routes
-
 - [ ] **Switch `_DEP_MANAGE` in `backend/app/features/teaching/router.py`**
       from `manage_teaching_content` to `manage_teaching`. It gates 22
       routes, so the change is one line and the membership scoping beside
@@ -109,7 +119,7 @@ as the rarely granted root.
       `test_list_delegates_site_and_lead.py`, `test_auth.py` and
       `test_competencies.py`.
 
-## Phase 4: Scoped people routes
+## Phase 3: Scoped people routes
 
 Each route below today needs `manage_users`, `manage_staff_membership` or
 `manage_practising_competencies`. Each one now also accepts `manage_teaching`,
@@ -155,7 +165,7 @@ _what_, membership says _where_.
       clinician's clinical competency, change a nurse's profession,
       deactivate a consultant).
 
-## Phase 5: Frontend
+## Phase 4: Frontend
 
 - [ ] **Expose the caller's grant scope** on the auth `me` response as
       `may_grant` and `may_assign_professions`, both lists, or
@@ -176,7 +186,7 @@ _what_, membership says _where_.
 - [ ] **Stories and tests** for each changed component, with a story showing
       a teaching admin's view.
 
-## Phase 6: Documentation and accessibility
+## Phase 5: Documentation and accessibility
 
 - [ ] **Reword the `manage_users` note in `shared/competency-definitions/admin.yaml`.**
       It says capping a holder was considered and rejected. That rejected

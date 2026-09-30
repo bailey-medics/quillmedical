@@ -33,6 +33,11 @@ export interface Competency {
   /** Whether the clinician passport may record something against it.
    *  Opt-in: absent means a software permission, not a skill. */
   assessable?: boolean;
+  /** The competencies a holder of this one may grant and remove. A
+   *  whitelist: absent means holding it grants nothing to anyone. */
+  may_grant?: string[];
+  /** The base professions a holder of this one may give somebody. */
+  may_assign_professions?: string[];
 }
 export type BaseProfessionId =
   (typeof baseProfessionsData.base_professions)[number]["id"];
