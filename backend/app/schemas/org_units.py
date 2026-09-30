@@ -471,8 +471,13 @@ class MemberPracticeOut(BaseModel):
         authorised: Every competency authorised for them here.
         may_grant: Whether the caller may add to their ceiling from this
             page. False for the caller themselves, for an operator unless
-            the caller is one, and for somebody who does not hold
-            ``manage_users``.
+            the caller is one, and for somebody who holds neither
+            ``manage_users`` nor ``manage_teaching``.
+        may_change: The competencies the caller may grant, authorise or
+            withdraw here, or None for no limit. A caller reaching the
+            page through ``manage_teaching`` alone sees everything the
+            person holds and may change only these, so the page can show
+            the rest without offering to change it.
     """
 
     user_id: int
@@ -483,6 +488,7 @@ class MemberPracticeOut(BaseModel):
     qualified: list[str]
     authorised: list[MemberAuthorisationItem]
     may_grant: bool
+    may_change: list[str] | None = None
 
 
 class GrantAndAuthoriseIn(BaseModel):
