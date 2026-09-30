@@ -575,42 +575,34 @@ jobs:
       - name: Set up frontend
         uses: ./.github/actions/setup-frontend
 
-      # Its own cache key: the E2E tests run in WebKit as well as Chromium,
-      # and sharing the Storybook job's key would restore a cache without
-      # WebKit and skip installing it.
-      # The browsers belong to the Playwright version yarn.lock resolved, not
-      # to package.json's range, which stays ^1.60.0 while the installed
-      # version moves. Keyed on package.json, a Playwright bump restored the
-      # old browsers and skipped installing the new ones. Keyed on the whole
-      # yarn.lock, every unrelated bump would miss and download them again.
+      # The tests run in Microsoft's Playwright image, which carries the
+      # browsers and the system packages they need, so nothing is installed
+      # here. Installing them on the runner took 40 to 60s on a good run,
+      # and 6 to 19 minutes when Playwright's download servers or Ubuntu's
+      # package mirrors were slow, which timed the job out. The image is
+      # tagged by Playwright version, read from what yarn.lock resolved, so a
+      # Renovate bump moves the image with it.
       - name: Read Playwright version
         id: playwright_version
         working-directory: frontend
         run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
 
-      # playwright-cache.yml saves this key on main so pull requests can
-      # restore it. Change the key there too. No restore-keys: a partial
-      # match holds another version's browsers.
-      - name: Cache Playwright browsers
-        id: cache_playwright
-        uses: actions/cache@v6.1.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-e2e-${{ steps.playwright_version.outputs.version }}
+      # A step of its own so the pull shows in the job's timings.
+      - name: Pull Playwright image
+        run: docker pull "mcr.microsoft.com/playwright:v${{ steps.playwright_version.outputs.version }}-noble"
 
-      - name: Install Playwright browsers
-        if: steps.cache_playwright.outputs.cache-hit != 'true'
-        working-directory: frontend
-        run: npx playwright install --with-deps chromium webkit
-
-      - name: Install Playwright system dependencies
-        if: steps.cache_playwright.outputs.cache-hit == 'true'
-        working-directory: frontend
-        run: npx playwright install-deps chromium webkit
-
+      # --network host so localhost is the CI stack, exactly as it was on the
+      # runner. The runner's own user, so the report it writes stays
+      # removable, with HOME somewhere that user may write.
       - name: Run E2E tests
         working-directory: frontend
-        run: npx playwright test
+        run: >-
+          docker run --rm --network host --ipc host
+          --user "$(id -u):$(id -g)"
+          -e CI -e HOME=/tmp
+          -v "$PWD:/work" -w /work
+          "mcr.microsoft.com/playwright:v${{ steps.playwright_version.outputs.version }}-noble"
+          npx playwright test
 
       - name: Upload test results
         if: ${{ !cancelled() }}
