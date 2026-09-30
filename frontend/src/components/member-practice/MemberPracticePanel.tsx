@@ -136,7 +136,8 @@ export default function MemberPracticePanel({
     },
     {
       header: "May practise here",
-      width: "160px",
+      // Wide enough to keep the header on one line.
+      width: "200px",
       render: (row) => (
         <SolidSwitch
           checked={authorisedIds.has(row.id)}
