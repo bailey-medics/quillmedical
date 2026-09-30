@@ -392,6 +392,8 @@ jobs:
       - name: Set up frontend
         uses: ./.github/actions/setup-frontend
 
+      # playwright-cache.yml saves this key on main so pull requests can
+      # restore it. Change the key there too.
       - name: Cache Playwright browsers
         id: cache_playwright
         uses: actions/cache@v6.1.0
@@ -562,6 +564,8 @@ jobs:
       # Its own cache key: the E2E tests run in WebKit as well as Chromium,
       # and sharing the Storybook job's key would restore a cache without
       # WebKit and skip installing it.
+      # playwright-cache.yml saves this key on main so pull requests can
+      # restore it. Change the key there too.
       - name: Cache Playwright browsers
         id: cache_playwright
         uses: actions/cache@v6.1.0

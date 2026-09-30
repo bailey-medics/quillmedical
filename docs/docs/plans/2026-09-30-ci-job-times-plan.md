@@ -75,8 +75,11 @@ branch or on `main`, and the E2E job never runs on `main`. So each new
 branch downloads the browsers again. Saving the cache from a run on `main`
 would cut about 50s from every run.
 
-- [ ] Save the `ms-playwright` cache from a run on `main`, under the same
-      key the E2E job restores, without running the E2E tests there
+- [x] Save the `ms-playwright` cache from a run on `main`, under the same
+      key the E2E job restores, without running the E2E tests there.
+      `.github/workflows/playwright-cache.yml` warms both the E2E and the
+      Storybook keys on a push to `main` that touches the frontend
+      dependencies, weekly, and by hand
 - [ ] Confirm on a new pull request that "Install Playwright browsers" is
       skipped and only the system dependencies step runs
 - [ ] Re-measure the E2E job and record the new average here
