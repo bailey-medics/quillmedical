@@ -163,8 +163,7 @@ createRoot(document.getElementById("root")!).render(
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="What's next" size="md" c="white" />
             <PublicBodyText justify="centre">
-              More modules are on the way, built with clinical teams. If you
-              would like to build one together, get in touch.
+              Need something built for your clinical needs? Get in touch.
             </PublicBodyText>
             <Group mt="lg" justify="center">
               <PublicButton href="/contact">Contact us</PublicButton>
