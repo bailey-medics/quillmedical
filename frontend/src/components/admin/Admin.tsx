@@ -21,6 +21,12 @@ interface AdminProps {
   platformRole: PlatformRole | undefined;
   /** Whether clinical services (FHIR/EHRbase) are enabled */
   clinicalServicesEnabled?: boolean;
+  /**
+   * Whether the viewer administers patients. A teaching admin reaches
+   * this page through `manage_teaching` and has no patient pages, so the
+   * patient count is not theirs to see.
+   */
+  showPatients?: boolean;
   /** Loading state for users statistics */
   usersLoading?: boolean;
   /** Loading state for patients statistics */
@@ -38,6 +44,7 @@ interface AdminProps {
 export default function Admin({
   platformRole,
   clinicalServicesEnabled = true,
+  showPatients = true,
   usersLoading = false,
   patientsLoading = false,
   organisationsLoading = false,
@@ -59,7 +66,7 @@ export default function Admin({
           value={existingUsers.length}
           loading={usersLoading}
         />
-        {clinicalServicesEnabled && (
+        {clinicalServicesEnabled && showPatients && (
           <StatCard
             title="Total patients"
             value={existingPatients.length}

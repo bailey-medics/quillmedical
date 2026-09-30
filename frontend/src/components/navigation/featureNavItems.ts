@@ -25,7 +25,7 @@
 import { useLocation } from "react-router-dom";
 
 import { useHasFeature } from "@/lib/features";
-import { useHasCompetency } from "@/lib/cbac/hooks";
+import { useHasAnyCompetency, useHasCompetency } from "@/lib/cbac/hooks";
 import type { NavItem } from "./NestedNavLink";
 
 /**
@@ -91,7 +91,9 @@ export function useFeatureNavItems(): NavItem[] {
   // Each link advertises exactly what its route requires. An entry
   // whose gate is looser than its route's leads to a 404, which is a
   // worse experience than not offering the link at all.
-  const hasAdminAccess = useHasCompetency("manage_users");
+  // Either opens `/admin`, matching its route guard: `manage_teaching`
+  // reaches the part of it that is a teaching admin's.
+  const hasAdminAccess = useHasAnyCompetency("manage_users", "manage_teaching");
 
   // Where the user is, so the passport entry can hang the page that is
   // open beneath it. See the comment on those children.

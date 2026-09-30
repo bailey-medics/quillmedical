@@ -57,6 +57,30 @@ describe("RequireCompetency", () => {
     expect(screen.getByText("Admin content")).toBeInTheDocument();
   });
 
+  it("renders children when the user holds any one of a list", () => {
+    mockAuth({ ...holder, competencies: ["manage_teaching"] });
+
+    renderWithRouter(
+      <RequireCompetency competency={["manage_users", "manage_teaching"]}>
+        <div>Admin content</div>
+      </RequireCompetency>,
+    );
+
+    expect(screen.getByText("Admin content")).toBeInTheDocument();
+  });
+
+  it("shows 404 when the user holds none of a list", () => {
+    mockAuth(rankWithoutCompetency);
+
+    renderWithRouter(
+      <RequireCompetency competency={["manage_users", "manage_teaching"]}>
+        <div>Admin content</div>
+      </RequireCompetency>,
+    );
+
+    expect(screen.queryByText("Admin content")).not.toBeInTheDocument();
+  });
+
   it("shows 404 when the user lacks it, whatever their rank", () => {
     mockAuth(rankWithoutCompetency);
 

@@ -269,7 +269,7 @@ patient list, so that route could not be opened as it was.
       in the browser. Optional fields, so additive. Empty lists for
       somebody who may grant nothing, which the tests in
       `test_grant_scope.py` pin beside the teaching and unlimited cases.
-- [ ] **Open `/admin` and the organisation and site pages to either
+- [x] **Open `/admin` and the organisation and site pages to either
       competency** in `frontend/src/main.tsx`, with
       `useHasAnyCompetency(["manage_users", "manage_teaching"])` or an
       equivalent guard. The same change goes in `featureNavItems.ts` and the
@@ -277,12 +277,25 @@ patient list, so that route could not be opened as it was.
       (creating, editing and deleting an organisation or site, features,
       links, patients) get their own `RequireCompetency`, so a teaching
       admin reaches a 404 there rather than a page that fails to load.
-- [ ] **Show each section of the organisation and site pages by
+      `RequireCompetency` now takes a list, any one of which opens the
+      route. The member practice routes take `manage_practising_competencies`
+      or `manage_teaching`. The site pages stay operator-only, as they
+      were. Found while building: `/admin/teaching` and
+      `/admin/teaching/all-delegates` sat behind `manage_users` too, so a
+      teaching admin without it could not reach teaching's own admin
+      dashboard; opening `/admin` fixes that as a side effect. The Admin
+      landing page and the side navigation leave out the patient count and
+      the Patients entry for anybody without `manage_users`.
+- [x] **Show each section of the organisation and site pages by
       competency.** Staff and member practice for `manage_users` or
       `manage_teaching`. Patients for `manage_patient_membership` or
       `manage_users`. Features, links, edit and delete for `manage_users`.
       A section with no data from the backend is not drawn at all, rather
-      than drawn empty.
+      than drawn empty. Done on `OrganisationAdminPage` only: the site
+      pages are operator-only, so nobody else reaches them. Removing a
+      site from the organisation stays `manage_users`, as does the add
+      patient button; the patient list itself shows for
+      `manage_patient_membership` too, matching the backend.
 - [ ] **Filter the pickers** on the add and edit user pages, the add staff
       page and `GrantCompetencyModal` to the caller's `may_grant` and
       `may_assign_professions`.

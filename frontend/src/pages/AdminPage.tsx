@@ -7,6 +7,7 @@
 
 import Admin from "@/components/admin";
 import { useAuth } from "@/auth/AuthContext";
+import { useHasCompetency } from "@/lib/cbac/hooks";
 import { api } from "@/lib/api";
 import { orgUnits } from "@/domains/orgUnit";
 import { FHIR_POLLING_TIME } from "@/lib/constants";
@@ -67,6 +68,11 @@ export default function AdminPage() {
   // LoginPage and UserInfoUpdatePage rather than a new one.
   const isClinical = import.meta.env.VITE_CLINICAL_SERVICES_ENABLED !== "false";
 
+  // The patient admin pages stay `manage_users`-only. A teaching admin
+  // reaches this page through `manage_teaching`, so their patients are
+  // neither fetched nor counted.
+  const managesPatients = useHasCompetency("manage_users");
+
   // Fetch users (loads immediately)
   useEffect(() => {
     let cancelled = false;
@@ -119,7 +125,7 @@ export default function AdminPage() {
       // seconds for as long as it is open, which is exactly what
       // happened: 127 deliberate 503s logged at ERROR in thirteen
       // minutes.
-      if (!isClinical) {
+      if (!isClinical || !managesPatients) {
         setPatientsLoading(false);
         return;
       }
@@ -174,7 +180,7 @@ export default function AdminPage() {
     return () => {
       cancelled = true;
     };
-  }, [state.status, isClinical]);
+  }, [state.status, isClinical, managesPatients]);
 
   // Fetch organisations
   useEffect(() => {
@@ -225,6 +231,7 @@ export default function AdminPage() {
           : undefined
       }
       clinicalServicesEnabled={clinicalServicesEnabled}
+      showPatients={managesPatients}
       existingUsers={users}
       existingPatients={patients}
       usersLoading={usersLoading}

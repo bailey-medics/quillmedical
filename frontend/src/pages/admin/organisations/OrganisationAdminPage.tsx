@@ -34,7 +34,7 @@ import FeatureBadge from "@/components/badge/FeatureBadge";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import { useAuth } from "@/auth/AuthContext";
-import { useHasCompetency } from "@/lib/cbac/hooks";
+import { useHasAnyCompetency, useHasCompetency } from "@/lib/cbac/hooks";
 import {
   orgUnits,
   type OrgUnitChild,
@@ -82,7 +82,25 @@ export default function OrganisationAdminPage() {
     state.user.platform_role === "superadmin";
   // Somebody who may authorise practice here opens a member's page for
   // this organisation; anybody else keeps the link to the user page.
-  const mayManagePractice = useHasCompetency("manage_practising_competencies");
+  const mayManagePractice = useHasAnyCompetency(
+    "manage_practising_competencies",
+    "manage_teaching",
+  );
+  // Each section shows for the competency it needs. A teaching admin
+  // reaches this page through `manage_teaching`: they see the staff and
+  // may add, remove and open them, and the backend sends them no patients
+  // or features to draw. The rest stays `manage_users`, matching the
+  // routes behind each button. See
+  // docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md.
+  const mayAdministerOrg = useHasCompetency("manage_users");
+  const mayManageStaff = useHasAnyCompetency(
+    "manage_staff_membership",
+    "manage_teaching",
+  );
+  const maySeePatients = useHasAnyCompetency(
+    "manage_users",
+    "manage_patient_membership",
+  );
   const [org, setOrg] = useState<OrgUnitDetail | null>(null);
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
   // Without an id there is nothing to fetch, so the page does not begin in
@@ -228,6 +246,25 @@ export default function OrganisationAdminPage() {
     return <NotFoundLayout />;
   }
 
+  // Left out, not drawn empty, for somebody who may not remove staff.
+  const staffActionsColumn: Column<OrgUnitMember> = {
+    header: "",
+    width: "50px",
+    render: (member) => (
+      <EllipsisMenu
+        aria-label={`Actions for ${member.username}`}
+        items={[
+          {
+            label: "Remove from organisation",
+            icon: <IconUserMinus />,
+            color: "var(--alert-color)",
+            onClick: () => setRemovingMember(member),
+          },
+        ]}
+      />
+    ),
+  };
+
   const staffColumns: Column<OrgUnitMember>[] = [
     {
       header: "Full name",
@@ -250,28 +287,31 @@ export default function OrganisationAdminPage() {
       render: (member) => member.authorised_here,
       accessor: (member) => member.authorised_here,
     },
-    {
-      header: "",
-      width: "50px",
-      render: (member) => (
-        <EllipsisMenu
-          aria-label={`Actions for ${member.username}`}
-          items={[
-            {
-              label: "Remove from organisation",
-              icon: <IconUserMinus />,
-              color: "var(--alert-color)",
-              onClick: () => setRemovingMember(member),
-            },
-          ]}
-        />
-      ),
-    },
+    ...(mayManageStaff ? [staffActionsColumn] : []),
   ];
 
   const patientColumns: Column<PatientRow>[] = [
     { header: "Patient ID", render: (patient) => patient.patient_id },
   ];
+
+  // Removing a site edits the organisation, which is `manage_users`.
+  const siteActionsColumn: Column<OrgUnitChild> = {
+    header: "",
+    width: "50px",
+    render: (site) => (
+      <EllipsisMenu
+        aria-label={`Actions for ${site.name}`}
+        items={[
+          {
+            label: "Remove from organisation",
+            icon: <IconTrash />,
+            color: "var(--alert-color)",
+            onClick: () => setRemovingSite(site),
+          },
+        ]}
+      />
+    ),
+  };
 
   const siteColumns: Column<OrgUnitChild>[] = [
     {
@@ -298,23 +338,7 @@ export default function OrganisationAdminPage() {
       render: (site) => <ActiveStatusBadge active={site.is_active} />,
       accessor: (site) => (site.is_active ? "active" : "inactive"),
     },
-    {
-      header: "",
-      width: "50px",
-      render: (site) => (
-        <EllipsisMenu
-          aria-label={`Actions for ${site.name}`}
-          items={[
-            {
-              label: "Remove from organisation",
-              icon: <IconTrash />,
-              color: "var(--alert-color)",
-              onClick: () => setRemovingSite(site),
-            },
-          ]}
-        />
-      ),
-    },
+    ...(mayAdministerOrg ? [siteActionsColumn] : []),
   ];
 
   return (
@@ -325,11 +349,13 @@ export default function OrganisationAdminPage() {
         <Stack gap="md">
           <Group justify="space-between" align="center">
             <Heading>Organisation information</Heading>
-            <IconButton
-              icon={<IconPencil />}
-              onClick={() => navigate(`/admin/organisations/${id}/edit`)}
-              aria-label="Edit organisation"
-            />
+            {mayAdministerOrg && (
+              <IconButton
+                icon={<IconPencil />}
+                onClick={() => navigate(`/admin/organisations/${id}/edit`)}
+                aria-label="Edit organisation"
+              />
+            )}
           </Group>
 
           <Stack gap="xs">
@@ -355,10 +381,12 @@ export default function OrganisationAdminPage() {
         <Stack gap="md">
           <Group justify="space-between" align="center">
             <Heading>Organisation staff members</Heading>
-            <AddButton
-              label="Add staff"
-              onClick={() => navigate(`/admin/organisations/${id}/add-staff`)}
-            />
+            {mayManageStaff && (
+              <AddButton
+                label="Add staff"
+                onClick={() => navigate(`/admin/organisations/${id}/add-staff`)}
+              />
+            )}
           </Group>
 
           <DataTableControlled<OrgUnitMember>
@@ -378,17 +406,19 @@ export default function OrganisationAdminPage() {
         </Stack>
       </BaseCard>
       {/* Patient Members */}
-      {clinicalServicesEnabled && (
+      {clinicalServicesEnabled && maySeePatients && (
         <BaseCard>
           <Stack gap="md">
             <Group justify="space-between" align="center">
               <Heading>Patients</Heading>
-              <AddButton
-                label="Add patient"
-                onClick={() =>
-                  navigate(`/admin/organisations/${id}/add-patient`)
-                }
-              />
+              {mayAdministerOrg && (
+                <AddButton
+                  label="Add patient"
+                  onClick={() =>
+                    navigate(`/admin/organisations/${id}/add-patient`)
+                  }
+                />
+              )}
             </Group>
 
             <DataTableControlled<PatientRow>
@@ -405,28 +435,30 @@ export default function OrganisationAdminPage() {
         </BaseCard>
       )}
       {/* Enabled Features */}
-      <BaseCard>
-        <Stack gap="md">
-          <Group justify="space-between" align="center">
-            <Heading>Enabled features</Heading>
-            <IconButton
-              icon={<IconPencil />}
-              onClick={() => navigate(`/admin/organisations/${id}/features`)}
-              aria-label="Edit features"
-            />
-          </Group>
-
-          {enabledFeatures.length > 0 ? (
-            <Group gap="sm">
-              {enabledFeatures.map((key) => (
-                <FeatureBadge key={key} label={FEATURE_LABELS[key] ?? key} />
-              ))}
+      {mayAdministerOrg && (
+        <BaseCard>
+          <Stack gap="md">
+            <Group justify="space-between" align="center">
+              <Heading>Enabled features</Heading>
+              <IconButton
+                icon={<IconPencil />}
+                onClick={() => navigate(`/admin/organisations/${id}/features`)}
+                aria-label="Edit features"
+              />
             </Group>
-          ) : (
-            <EmptyState>No features enabled</EmptyState>
-          )}
-        </Stack>
-      </BaseCard>
+
+            {enabledFeatures.length > 0 ? (
+              <Group gap="sm">
+                {enabledFeatures.map((key) => (
+                  <FeatureBadge key={key} label={FEATURE_LABELS[key] ?? key} />
+                ))}
+              </Group>
+            ) : (
+              <EmptyState>No features enabled</EmptyState>
+            )}
+          </Stack>
+        </BaseCard>
+      )}
       {/* Sites */}
       <BaseCard>
         <Stack gap="md">

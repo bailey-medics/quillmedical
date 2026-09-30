@@ -24,6 +24,16 @@ const mockUsers: Record<string, User> = {
     competencies: ["manage_users"],
     clinical_services_enabled: true,
   },
+  // Reaches Admin through `manage_teaching`, which opens it to them
+  // without the patient pages.
+  teaching_admin: {
+    id: "5",
+    username: "teaching.admin",
+    email: "teaching@example.com",
+    roles: [],
+    competencies: ["manage_teaching"],
+    clinical_services_enabled: true,
+  },
   superadmin: {
     id: "4",
     username: "superadmin.user",
@@ -517,6 +527,19 @@ describe("SideNavContent Component", () => {
       // Expand Admin to check children
       const adminLink = screen.getByText("Admin");
       await userEvent.click(adminLink);
+
+      expect(screen.queryByText("Patients")).not.toBeInTheDocument();
+      expect(screen.getByText("Users")).toBeInTheDocument();
+      expect(screen.getByText("Organisations")).toBeInTheDocument();
+    });
+
+    it("shows a teaching admin Admin without Patients", async () => {
+      renderWithAuth(<SideNavContent />, "teaching_admin");
+
+      await waitFor(() => {
+        expect(screen.getByText("Admin")).toBeInTheDocument();
+      });
+      await userEvent.click(screen.getByText("Admin"));
 
       expect(screen.queryByText("Patients")).not.toBeInTheDocument();
       expect(screen.getByText("Users")).toBeInTheDocument();
