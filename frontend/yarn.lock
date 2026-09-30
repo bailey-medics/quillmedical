@@ -3270,8 +3270,8 @@ __metadata:
   linkType: hard
 
 "@mantine/core@npm:^9.0.0":
-  version: 9.6.2
-  resolution: "@mantine/core@npm:9.6.2"
+  version: 9.6.3
+  resolution: "@mantine/core@npm:9.6.3"
   dependencies:
     "@floating-ui/react": "npm:^0.27.20"
     clsx: "npm:^2.1.1"
@@ -3279,72 +3279,72 @@ __metadata:
     react-remove-scroll: "npm:^2.7.2"
     type-fest: "npm:^5.8.0"
   peerDependencies:
-    "@mantine/hooks": 9.6.2
+    "@mantine/hooks": 9.6.3
     react: ^19.2.0
     react-dom: ^19.2.0
-  checksum: 10c0/6561cea60baf22b4099b8ee66584410d006362a372370d5e93753ada6ec44f7c6fdf12a16bad74bca3ca1d6cbf1414cef7a7796fdec7d35973ecdecfa871c1fd
+  checksum: 10c0/c2c46c7067415edb8f6132350afb7a3c21a3be0fd2053ca4c533ae67eaf1fc3c1b421135bdefaba13ca6d67620a13cfa1f1114da9fb54529337d0b79449b46ed
   languageName: node
   linkType: hard
 
 "@mantine/dates@npm:^9.0.0":
-  version: 9.6.2
-  resolution: "@mantine/dates@npm:9.6.2"
+  version: 9.6.3
+  resolution: "@mantine/dates@npm:9.6.3"
   dependencies:
     clsx: "npm:^2.1.1"
   peerDependencies:
-    "@mantine/core": 9.6.2
-    "@mantine/hooks": 9.6.2
+    "@mantine/core": 9.6.3
+    "@mantine/hooks": 9.6.3
     dayjs: ">=1.0.0"
     react: ^19.2.0
     react-dom: ^19.2.0
-  checksum: 10c0/f1ef6ebaa2c0e86f46ce4b818cd1683ee0d70c588dbc0c1363a3210bbfc261b050c986d185c5265aff95bcd00b3e085c51f7210377df146d37fbd493bdd69d63
+  checksum: 10c0/bb3e08b9e1df4d0a62d7527a576058dd5f362fbe2140eb123ceae8b1f6e205061ca3346fd9d80af8fb5049540d71756c97b4263792b38b492a35d45e731b2036
   languageName: node
   linkType: hard
 
-"@mantine/dropzone@npm:9.6.1":
-  version: 9.6.1
-  resolution: "@mantine/dropzone@npm:9.6.1"
+"@mantine/dropzone@npm:9.6.3":
+  version: 9.6.3
+  resolution: "@mantine/dropzone@npm:9.6.3"
   dependencies:
     react-dropzone: "npm:20.1.1"
   peerDependencies:
-    "@mantine/core": 9.6.1
-    "@mantine/hooks": 9.6.1
+    "@mantine/core": 9.6.3
+    "@mantine/hooks": 9.6.3
     react: ^19.2.0
     react-dom: ^19.2.0
-  checksum: 10c0/adb408b049abfe5090cddf7579b1b46b735d3ac927cd9da5ee2cfb8073616615a4ff837f7b8b7e500983a7f5f61d8a25ecdcaf8a14353c2d9d98344cd9a5b6e0
+  checksum: 10c0/96c17b24e8bc4aebc4b89afd8d6d947634807b206caef13324c6e4b4b92bc9966d5434edf2f1ed6944f3770a258d0910da1c5dd663bb39754227cbe7811e6417
   languageName: node
   linkType: hard
 
 "@mantine/hooks@npm:^9.0.0":
-  version: 9.6.2
-  resolution: "@mantine/hooks@npm:9.6.2"
+  version: 9.6.3
+  resolution: "@mantine/hooks@npm:9.6.3"
   peerDependencies:
     react: ^19.2.0
-  checksum: 10c0/e14da9210fe88d7a3959832314ae2d6a1921aa1d4cbd24ae913f98f3f37ffd1d9dd431c5a7927cc4e240c132da97722601f2b93bb407b1c1cf7dcaa02abfae14
+  checksum: 10c0/245a1d3fa93b57e9401408115c4b47ffaa4bc7144ccb942e505fc267309ea3e1c504799b54d0ef4d7455586339b3ef49048df3877e074d480dceeb9f5353cd5b
   languageName: node
   linkType: hard
 
 "@mantine/notifications@npm:^9.0.0":
-  version: 9.6.2
-  resolution: "@mantine/notifications@npm:9.6.2"
+  version: 9.6.3
+  resolution: "@mantine/notifications@npm:9.6.3"
   dependencies:
-    "@mantine/store": "npm:9.6.2"
+    "@mantine/store": "npm:9.6.3"
     react-transition-group: "npm:4.4.5"
   peerDependencies:
-    "@mantine/core": 9.6.2
-    "@mantine/hooks": 9.6.2
+    "@mantine/core": 9.6.3
+    "@mantine/hooks": 9.6.3
     react: ^19.2.0
     react-dom: ^19.2.0
-  checksum: 10c0/f40e4ce4c8c0a8863f6e00dbfe2ae08496a6a989c77a9a4d94eaa6a94dbdd2a8e868d492ef0ab14efd88a65201f65001a7a17d48ddf4ff8cc66ea5f271774f1f
+  checksum: 10c0/4b4a420c20474fe4894f5ce6f5c1740e28508550815e1eaa26424de9c19589fa75e196f3ae30f4d6d48a3436c6976d8ea859418212f8d68ab769c3426de214ba
   languageName: node
   linkType: hard
 
-"@mantine/store@npm:9.6.2":
-  version: 9.6.2
-  resolution: "@mantine/store@npm:9.6.2"
+"@mantine/store@npm:9.6.3":
+  version: 9.6.3
+  resolution: "@mantine/store@npm:9.6.3"
   peerDependencies:
     react: ^19.2.0
-  checksum: 10c0/edd55dc3028f1a3a91458db6d782fc831a0eccc1d138457cb9e46038008e7c34ae72321e81e235bfca286fc62a1512287e432267095eb42908c795e6408a7fb0
+  checksum: 10c0/42d8186f6d4c9206edf9245deedba04685381fb4fb59eb0aa45e2a0ab0c9448d71f27cf165d30ec7f0f33a0e1aa1fdeaa518f3331edfa7bdeba872b32efa89e5
   languageName: node
   linkType: hard
 
@@ -5528,61 +5528,62 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@videojs/core@npm:10.0.0-rc.2":
-  version: 10.0.0-rc.2
-  resolution: "@videojs/core@npm:10.0.0-rc.2"
+"@videojs/core@npm:10.0.0-rc.4":
+  version: 10.0.0-rc.4
+  resolution: "@videojs/core@npm:10.0.0-rc.4"
   dependencies:
-    "@videojs/media": "npm:10.0.0-rc.2"
-    "@videojs/store": "npm:10.0.0-rc.2"
-    "@videojs/utils": "npm:10.0.0-rc.2"
-  checksum: 10c0/ae90e2451530508fa0155b1f6d2891513ed82f149ae9053ab4d02335770689cf39bc808deb88206e2ab3b24f9180590a061d0117f51d3e05b672611c8c4bc891
+    "@videojs/media": "npm:10.0.0-rc.4"
+    "@videojs/store": "npm:10.0.0-rc.4"
+    "@videojs/utils": "npm:10.0.0-rc.4"
+  checksum: 10c0/d799171c52ff8abd095625c1fb96ead502c5f56f481da3fa5883a268443b6b2ba635d808dbfe32e634b14616b16a815f52cf3ebfd1e455a1649e4115e69ac386
   languageName: node
   linkType: hard
 
-"@videojs/media@npm:10.0.0-rc.2":
-  version: 10.0.0-rc.2
-  resolution: "@videojs/media@npm:10.0.0-rc.2"
+"@videojs/media@npm:10.0.0-rc.4":
+  version: 10.0.0-rc.4
+  resolution: "@videojs/media@npm:10.0.0-rc.4"
   dependencies:
-    "@videojs/utils": "npm:10.0.0-rc.2"
-  checksum: 10c0/9e7378a37402b6d75660c0336359d4afea0e0f21dbb0a3ba7836d32c83ee54f135ba4fe754e81f73a1ae8a3726f553ceed05717382ad7b8bb34f65db51641b09
+    "@videojs/utils": "npm:10.0.0-rc.4"
+  checksum: 10c0/48319453b8d858cff08f2a1a995c8ce0e73435ddfaa93d4be57cb8a982e7cb08428413bcb5d591f3ca01ec82c69d6528fe2944113600e4161aee44a13961a4d3
   languageName: node
   linkType: hard
 
-"@videojs/native-hls-video@npm:10.0.0-rc.2":
-  version: 10.0.0-rc.2
-  resolution: "@videojs/native-hls-video@npm:10.0.0-rc.2"
+"@videojs/native-hls-video@npm:10.0.0-rc.4":
+  version: 10.0.0-rc.4
+  resolution: "@videojs/native-hls-video@npm:10.0.0-rc.4"
   dependencies:
-    "@videojs/media": "npm:10.0.0-rc.2"
-    "@videojs/utils": "npm:10.0.0-rc.2"
-  checksum: 10c0/42e6dfb9f9e62ca3e46bf74b30abd3a8a278368571510db2b0f96422fbfe46792063596670c4b0f8c624b810b7f3f7391aa54ff3ab4d4eb24578132e67286365
+    "@videojs/media": "npm:10.0.0-rc.4"
+    "@videojs/utils": "npm:10.0.0-rc.4"
+  checksum: 10c0/8d13871387d6139a1877b6a46a14729eaa7a3e5d9605d823bf02eca6217e0f64372911cdd10589686dde6943dfe89eea02f8fd2d72a0923f670cfdc924a981f7
   languageName: node
   linkType: hard
 
-"@videojs/react@npm:10.0.0-rc.2":
-  version: 10.0.0-rc.2
-  resolution: "@videojs/react@npm:10.0.0-rc.2"
+"@videojs/react@npm:10.0.0-rc.4":
+  version: 10.0.0-rc.4
+  resolution: "@videojs/react@npm:10.0.0-rc.4"
   dependencies:
-    "@videojs/core": "npm:10.0.0-rc.2"
-    "@videojs/media": "npm:10.0.0-rc.2"
-    "@videojs/native-hls-video": "npm:10.0.0-rc.2"
-    "@videojs/spf": "npm:10.0.0-rc.2"
-    "@videojs/store": "npm:10.0.0-rc.2"
-    "@videojs/utils": "npm:10.0.0-rc.2"
+    "@videojs/core": "npm:10.0.0-rc.4"
+    "@videojs/media": "npm:10.0.0-rc.4"
+    "@videojs/native-hls-video": "npm:10.0.0-rc.4"
+    "@videojs/spf": "npm:10.0.0-rc.4"
+    "@videojs/store": "npm:10.0.0-rc.4"
+    "@videojs/utils": "npm:10.0.0-rc.4"
+    react-compiler-runtime: "npm:^1.0.0"
   peerDependencies:
-    "@videojs/cloudflare-video": 10.0.0-rc.2
-    "@videojs/dash-video": 10.0.0-rc.2
-    "@videojs/google-cast": 10.0.0-rc.2
-    "@videojs/hlsjs-video": 10.0.0-rc.2
-    "@videojs/mux-audio": 10.0.0-rc.2
-    "@videojs/mux-data": 10.0.0-rc.2
-    "@videojs/mux-video": 10.0.0-rc.2
-    "@videojs/shaka-video": 10.0.0-rc.2
-    "@videojs/spotify-audio": 10.0.0-rc.2
-    "@videojs/tiktok-video": 10.0.0-rc.2
-    "@videojs/twitch-video": 10.0.0-rc.2
-    "@videojs/vimeo-video": 10.0.0-rc.2
-    "@videojs/wistia-video": 10.0.0-rc.2
-    "@videojs/youtube-video": 10.0.0-rc.2
+    "@videojs/cloudflare-video": 10.0.0-rc.4
+    "@videojs/dash-video": 10.0.0-rc.4
+    "@videojs/google-cast": 10.0.0-rc.4
+    "@videojs/hlsjs-video": 10.0.0-rc.4
+    "@videojs/mux-audio": 10.0.0-rc.4
+    "@videojs/mux-data": 10.0.0-rc.4
+    "@videojs/mux-video": 10.0.0-rc.4
+    "@videojs/shaka-video": 10.0.0-rc.4
+    "@videojs/spotify-audio": 10.0.0-rc.4
+    "@videojs/tiktok-video": 10.0.0-rc.4
+    "@videojs/twitch-video": 10.0.0-rc.4
+    "@videojs/vimeo-video": 10.0.0-rc.4
+    "@videojs/wistia-video": 10.0.0-rc.4
+    "@videojs/youtube-video": 10.0.0-rc.4
     react: ^18.0.0 || ^19.0.0
     react-dom: ^18.0.0 || ^19.0.0
   peerDependenciesMeta:
@@ -5614,52 +5615,53 @@ __metadata:
       optional: true
     "@videojs/youtube-video":
       optional: true
-  checksum: 10c0/369f44efc4567ef801f367156a3cbe0783ab16d8feab3e9704edb7e39900c0b295baa5f501fc6a11e581e865f88128a1facec9fec4a9079c4c4aaf423d80fab1
+  checksum: 10c0/4e1786ea9d9052ca452a4801f548c45a278de202fd239f1bc47bc37b1e3d4fd2abea9d060edc7bcd22460efef9923821365bb95ec1e171cf04966c8aa9ad645a
   languageName: node
   linkType: hard
 
-"@videojs/spf@npm:10.0.0-rc.2":
-  version: 10.0.0-rc.2
-  resolution: "@videojs/spf@npm:10.0.0-rc.2"
+"@videojs/spf@npm:10.0.0-rc.4":
+  version: 10.0.0-rc.4
+  resolution: "@videojs/spf@npm:10.0.0-rc.4"
   dependencies:
-    "@videojs/media": "npm:10.0.0-rc.2"
-    "@videojs/utils": "npm:10.0.0-rc.2"
+    "@videojs/media": "npm:10.0.0-rc.4"
+    "@videojs/utils": "npm:10.0.0-rc.4"
     signal-polyfill: "npm:^0.2.2"
-  checksum: 10c0/e90d4f8aefb84d74f520f51b5c437801cfa1467fedb01b470377ad4cb930103935d70482478fbc9dd9508d934fbccc6ee481c73ab8f74bce2f11be48ee75ee9f
+  checksum: 10c0/c2299844eefd5d8e8032e2986e287efd28ddefca57151e585a655b9bd9c5213e545da0ed22bba45714e37adb73ad61a7b414c6fbd2c9ce3d87e60421b5dc3f17
   languageName: node
   linkType: hard
 
-"@videojs/store@npm:10.0.0-rc.2":
-  version: 10.0.0-rc.2
-  resolution: "@videojs/store@npm:10.0.0-rc.2"
+"@videojs/store@npm:10.0.0-rc.4":
+  version: 10.0.0-rc.4
+  resolution: "@videojs/store@npm:10.0.0-rc.4"
   dependencies:
-    "@videojs/utils": "npm:10.0.0-rc.2"
+    "@videojs/utils": "npm:10.0.0-rc.4"
+    react-compiler-runtime: "npm:^1.0.0"
   peerDependencies:
-    "@videojs/element": 10.0.0-rc.2
+    "@videojs/element": 10.0.0-rc.4
     react: ^18.0.0 || ^19.0.0
   peerDependenciesMeta:
     "@videojs/element":
       optional: true
     react:
       optional: true
-  checksum: 10c0/6f1ab21dbf1b8fd3527ebcefd350379789584b76791375f4f3fcecad46a4449b5c5d4416be42da3a3ed6f5d9e815772188d6916e8e7529493d4a92c6817f2977
+  checksum: 10c0/ead843cdec55f2eb20eaf4bb3679cd2067325b887c3a8cb5c36013b8685423dc802ee23e492cd55ba35c1b94c8855b4b1597ddd75287c069d4191bd951acc864
   languageName: node
   linkType: hard
 
-"@videojs/utils@npm:10.0.0-rc.2":
-  version: 10.0.0-rc.2
-  resolution: "@videojs/utils@npm:10.0.0-rc.2"
-  checksum: 10c0/7eed1c06b9d7aa1c42cccc74957746c98ad69f61441fd7e367ddc253a982144e3207296c643c74866db5742656d98a61e292770640d21d47c6c5345a3bd5290d
+"@videojs/utils@npm:10.0.0-rc.4":
+  version: 10.0.0-rc.4
+  resolution: "@videojs/utils@npm:10.0.0-rc.4"
+  checksum: 10c0/5f2be3000ea8303c8f3addad14836077b6f6817d2d87708a57f5b122b91dd3cb172ac209b424e743d7c81dc92672604f1ccde0581bea2e420d287ce01ad71cc6
   languageName: node
   linkType: hard
 
-"@videojs/youtube-video@npm:10.0.0-rc.2":
-  version: 10.0.0-rc.2
-  resolution: "@videojs/youtube-video@npm:10.0.0-rc.2"
+"@videojs/youtube-video@npm:10.0.0-rc.4":
+  version: 10.0.0-rc.4
+  resolution: "@videojs/youtube-video@npm:10.0.0-rc.4"
   dependencies:
-    "@videojs/media": "npm:10.0.0-rc.2"
-    "@videojs/utils": "npm:10.0.0-rc.2"
-  checksum: 10c0/311adb813f376e7efeefe8d8553dc2f3151f1dbf988e8331693ffd88c44705d02eeaf175af116d802d1de148e7e3a410a39f1428d5be1b616cda64c19b7b5733
+    "@videojs/media": "npm:10.0.0-rc.4"
+    "@videojs/utils": "npm:10.0.0-rc.4"
+  checksum: 10c0/9010624864ccd2b7f3e17ba18b871fca108f136f5df1085b67fb9acab7e3b186254623f99e918bf77352b79fa646d189e83b20375e47be3a57e86f351d2f20f2
   languageName: node
   linkType: hard
 
@@ -7554,14 +7556,14 @@ __metadata:
   linkType: hard
 
 "dompurify@npm:^3.2.7":
-  version: 3.4.15
-  resolution: "dompurify@npm:3.4.15"
+  version: 3.4.16
+  resolution: "dompurify@npm:3.4.16"
   dependencies:
     "@types/trusted-types": "npm:^2.0.7"
   dependenciesMeta:
     "@types/trusted-types":
       optional: true
-  checksum: 10c0/406b5f0f9c9dcbc80016367d33e73585b6a6f440815228d7e9cbe8abe71058183b1f4cb4207b79b8473637de4a106fc055eb6da271ef9db353d29679b891ecbc
+  checksum: 10c0/65a901c6b6d489d3e898f67223d81dac66d613cda48f5785f0ed52a4ae320c4b2745490a58c14161e29f0273080fea0a0cb234a9ef892650e1a9b2a7befa07a5
   languageName: node
   linkType: hard
 
@@ -8859,7 +8861,7 @@ __metadata:
     "@fontsource-variable/cormorant-garamond": "npm:^5.3.0"
     "@mantine/core": "npm:^9.0.0"
     "@mantine/dates": "npm:^9.0.0"
-    "@mantine/dropzone": "npm:9.6.1"
+    "@mantine/dropzone": "npm:9.6.3"
     "@mantine/hooks": "npm:^9.0.0"
     "@mantine/notifications": "npm:^9.0.0"
     "@playwright/test": "npm:^1.60.0"
@@ -8882,8 +8884,8 @@ __metadata:
     "@types/react-dom": "npm:^19.1.9"
     "@typescript-eslint/eslint-plugin": "npm:^8.69.0"
     "@typescript-eslint/parser": "npm:^8.69.0"
-    "@videojs/react": "npm:10.0.0-rc.2"
-    "@videojs/youtube-video": "npm:10.0.0-rc.2"
+    "@videojs/react": "npm:10.0.0-rc.4"
+    "@videojs/youtube-video": "npm:10.0.0-rc.4"
     "@vitejs/plugin-react": "npm:^6.0.0"
     "@vitejs/plugin-react-swc": "npm:^4.0.0"
     axios: "npm:^1.12.2"
@@ -13071,6 +13073,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-compiler-runtime@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "react-compiler-runtime@npm:1.0.0"
+  peerDependencies:
+    react: ^17.0.0 || ^18.0.0 || ^19.0.0 || ^0.0.0-experimental
+  checksum: 10c0/e081192380ae32d18bebaf341071ae8aecf80f4401b188f80e4b77e8d8995bb4c7175b8c3f75e8307019eac2015edf45c7999f788dcfcd99fdbe2ba9a2d465a4
+  languageName: node
+  linkType: hard
+
 "react-docgen-typescript@npm:^2.2.2":
   version: 2.4.0
   resolution: "react-docgen-typescript@npm:2.4.0"
@@ -13126,11 +13137,15 @@ __metadata:
   linkType: hard
 
 "react-hook-form@npm:^7.75.0":
-  version: 7.88.0
-  resolution: "react-hook-form@npm:7.88.0"
+  version: 7.89.0
+  resolution: "react-hook-form@npm:7.89.0"
   peerDependencies:
+    "@types/react": "*"
     react: ^16.8.0 || ^17 || ^18 || ^19
-  checksum: 10c0/002fb4e21e34ea42d547dcd6314c0c1ab3b5b78ff7a5d99809c34e5aa5544a2495724300e7aa9269154647b8777be4fecfbce177f3e7c902049ca616dee307fb
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+  checksum: 10c0/efeefbacb6ded5e1c0eb0b740cab9e839b9b8018f692fe538f68295a0a655b42d1530a6aa00a47e34a272e429bd752f3ea8c8799b182ed8cf299a9966e90332a
   languageName: node
   linkType: hard
 
