@@ -16,6 +16,7 @@ import {
   useHasCompetency,
   useHasAnyCompetency,
   useHasAllCompetencies,
+  useGrantScope,
 } from "./hooks";
 import type { CompetencyId } from "@/types/cbac";
 
@@ -163,5 +164,65 @@ describe("useHasAllCompetencies", () => {
       />,
     );
     expect(screen.getByTestId("result").textContent).toBe("no");
+  });
+});
+
+/** Helper component showing what the grant scope allows. */
+function ScopeCheck() {
+  const { mayGrant, mayAssignProfession } = useGrantScope();
+  return (
+    <div data-testid="result">
+      {[
+        mayGrant("view_teaching_cases"),
+        mayGrant("prescribe_non_controlled"),
+        mayAssignProfession("teaching_delegate"),
+        mayAssignProfession("consultant"),
+      ]
+        .map((allowed) => (allowed ? "yes" : "no"))
+        .join(",")}
+    </div>
+  );
+}
+
+describe("useGrantScope", () => {
+  it("allows everything when the server sends no limit", () => {
+    mockUseAuth.mockReturnValue({
+      state: {
+        status: "authenticated",
+        user: { ...authenticatedUser, may_grant: null },
+      },
+    });
+    renderWithMantine(<ScopeCheck />);
+    expect(screen.getByTestId("result").textContent).toBe("yes,yes,yes,yes");
+  });
+
+  it("allows only the lists the server sends", () => {
+    mockUseAuth.mockReturnValue({
+      state: {
+        status: "authenticated",
+        user: {
+          ...authenticatedUser,
+          may_grant: ["view_teaching_cases"],
+          may_assign_professions: ["teaching_delegate"],
+        },
+      },
+    });
+    renderWithMantine(<ScopeCheck />);
+    expect(screen.getByTestId("result").textContent).toBe("yes,no,yes,no");
+  });
+
+  it("allows nothing from empty lists", () => {
+    mockUseAuth.mockReturnValue({
+      state: {
+        status: "authenticated",
+        user: {
+          ...authenticatedUser,
+          may_grant: [],
+          may_assign_professions: [],
+        },
+      },
+    });
+    renderWithMantine(<ScopeCheck />);
+    expect(screen.getByTestId("result").textContent).toBe("no,no,no,no");
   });
 });

@@ -138,6 +138,29 @@ class TestWhatATeachingAdminMayDo:
         }
         assert "consultant" in listed
 
+    def test_save_the_whole_form_for_a_clinician(
+        self, client: TestClient, consultant: User, trust: OrgUnit
+    ) -> None:
+        """The user form sends every field, changed or not.
+
+        Only the teaching competency differs here, so the save goes
+        through even though the account is a clinician's.
+        """
+        resp = client.patch(
+            f"/api/users/{consultant.id}",
+            json={
+                "name": consultant.full_name or "",
+                "email": consultant.email,
+                "username": consultant.username,
+                "base_profession": "consultant",
+                "platform_role": consultant.platform_role,
+                "org_unit_ids": [trust.id],
+                "additional_competencies": ["view_teaching_cases"],
+                "removed_competencies": [],
+            },
+        )
+        assert resp.status_code == 200, resp.text
+
 
 class TestWhatATeachingAdminMayNotDo:
     def test_create_a_clinician(
@@ -191,6 +214,22 @@ class TestWhatATeachingAdminMayNotDo:
         resp = client.patch(
             f"/api/users/{consultant.id}",
             json={"removed_competencies": ["prescribe_non_controlled"]},
+        )
+        assert resp.status_code == 403
+
+    def test_rename_a_clinician_through_the_whole_form(
+        self, client: TestClient, consultant: User, trust: OrgUnit
+    ) -> None:
+        resp = client.patch(
+            f"/api/users/{consultant.id}",
+            json={
+                "name": "Someone Else",
+                "email": consultant.email,
+                "username": consultant.username,
+                "base_profession": "consultant",
+                "platform_role": consultant.platform_role,
+                "org_unit_ids": [trust.id],
+            },
         )
         assert resp.status_code == 403
 

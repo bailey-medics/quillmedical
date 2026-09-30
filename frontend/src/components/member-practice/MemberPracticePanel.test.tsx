@@ -205,4 +205,53 @@ describe("MemberPracticePanel", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  describe("A viewer limited to some competencies", () => {
+    // A teaching admin: `may_change` names what they may switch and
+    // grant. Everything the person holds is still shown.
+    const teaching = {
+      qualified: [
+        "perform_venepuncture",
+        "certify_death",
+        "view_teaching_cases",
+      ],
+      may_change: [
+        "manage_teaching",
+        "view_teaching_analytics",
+        "view_teaching_cases",
+      ],
+    };
+
+    it("disables the switches they may not change, and shows them", () => {
+      renderPanel(teaching);
+
+      expect(switchFor("Certify Death")).toBeDisabled();
+      expect(switchFor("Perform Venepuncture")).toBeDisabled();
+      expect(switchFor("Take Teaching Assessments")).toBeEnabled();
+    });
+
+    it("offers to grant only what they may change", async () => {
+      const user = userEvent.setup();
+      renderPanel(teaching);
+
+      await user.click(
+        screen.getByRole("button", { name: "Grant competency" }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      await user.click(within(dialog).getByRole("combobox"));
+
+      expect(
+        await screen.findByRole("option", { name: "View Teaching Analytics" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: "Manage User Accounts" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("leaves every switch alone when there is no limit", () => {
+      renderPanel({ may_change: null });
+
+      expect(switchFor("Certify Death")).toBeEnabled();
+    });
+  });
 });

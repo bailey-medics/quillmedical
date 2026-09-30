@@ -1906,23 +1906,53 @@ def update_user(
     # Anything beyond the competency lists acts on the account as a whole,
     # which a limited scope reaches only for somebody whose profession it
     # could have given.
+    # A field counts only when it would change something. The user form
+    # sends every field on every save, so asking whether a field was sent
+    # would refuse a teaching admin who changed only a delegate's
+    # teaching competencies, or anybody's, because the form also carried
+    # their unchanged name.
+    # Every org_unit they belong to, as `get_user` reports them and so as
+    # the form sends them back.
+    current_org_unit_ids = set(
+        db.execute(
+            select(org_unit_member.c.org_unit_id).where(
+                org_unit_member.c.user_id == user.id
+            )
+        )
+        .scalars()
+        .all()
+    )
+    changes_profession = (
+        payload.base_profession is not None
+        and payload.base_profession != user.base_profession
+    )
+    changes_platform_role = (
+        payload.platform_role is not None
+        and payload.platform_role != user.platform_role
+    )
     acts_on_account = (
-        payload.username is not None
-        or payload.name is not None
-        or payload.email is not None
+        changes_profession
+        or changes_platform_role
         or bool(payload.password)
-        or payload.base_profession is not None
-        or payload.platform_role is not None
-        or payload.org_unit_ids is not None
+        or (
+            payload.username is not None
+            and payload.username.strip() != user.username
+        )
+        or (
+            payload.name is not None
+            and payload.name.strip() != (user.full_name or "")
+        )
+        or (payload.email is not None and payload.email.strip() != user.email)
+        or (
+            payload.org_unit_ids is not None
+            and set(payload.org_unit_ids) != current_org_unit_ids
+        )
     )
     if acts_on_account:
         _require_account_in_scope(current_user, user)
-    if payload.base_profession is not None:
+    if changes_profession and payload.base_profession is not None:
         _require_profession_in_scope(current_user, payload.base_profession)
-    if (
-        payload.platform_role is not None
-        and not scope_for(current_user).unlimited
-    ):
+    if changes_platform_role and not scope_for(current_user).unlimited:
         raise HTTPException(
             status_code=403, detail="You may not set a platform role."
         )

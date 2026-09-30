@@ -83,6 +83,15 @@ export default function MemberPracticePanel({
 
   const name = practice.full_name || practice.username;
 
+  // What the viewer may change here. A teaching admin sees every
+  // competency the person holds, so nothing is hidden from them, and may
+  // switch only the teaching ones: the rest are shown disabled rather
+  // than left out.
+  const mayChange = useMemo(() => {
+    const allowed = practice.may_change;
+    return (id: string) => allowed == null || allowed.includes(id);
+  }, [practice.may_change]);
+
   const authorisedIds = useMemo(
     () => new Set(practice.authorised.map((row) => row.competency)),
     [practice.authorised],
@@ -108,10 +117,10 @@ export default function MemberPracticePanel({
     () =>
       rowsFor(
         ACTIVE_COMPETENCIES.map((entry) => entry.id).filter(
-          (id) => !qualifiedIds.has(id),
+          (id) => !qualifiedIds.has(id) && mayChange(id),
         ),
       ),
-    [qualifiedIds],
+    [qualifiedIds, mayChange],
   );
 
   async function toggle(row: CompetencyRow, on: boolean) {
@@ -141,7 +150,7 @@ export default function MemberPracticePanel({
       render: (row) => (
         <SolidSwitch
           checked={authorisedIds.has(row.id)}
-          disabled={busy !== null}
+          disabled={busy !== null || !mayChange(row.id)}
           onChange={(event) => void toggle(row, event.currentTarget.checked)}
           aria-label={`${row.name}: may practise here`}
         />
@@ -158,18 +167,19 @@ export default function MemberPracticePanel({
     {
       header: "",
       width: practice.may_grant ? "180px" : "50px",
-      render: (row) => (
-        <Stack gap="xs" align="flex-end">
-          {practice.may_grant && (
-            <AddButton label="Grant" onClick={() => setGranting(row.id)} />
-          )}
-          <IconButton
-            icon={<Icon icon={<IconTrash />} />}
-            onClick={() => setWithdrawing(row)}
-            aria-label={`Withdraw ${row.name}`}
-          />
-        </Stack>
-      ),
+      render: (row) =>
+        mayChange(row.id) && (
+          <Stack gap="xs" align="flex-end">
+            {practice.may_grant && (
+              <AddButton label="Grant" onClick={() => setGranting(row.id)} />
+            )}
+            <IconButton
+              icon={<Icon icon={<IconTrash />} />}
+              onClick={() => setWithdrawing(row)}
+              aria-label={`Withdraw ${row.name}`}
+            />
+          </Stack>
+        ),
     },
   ];
 

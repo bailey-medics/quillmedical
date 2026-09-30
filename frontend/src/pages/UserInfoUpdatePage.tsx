@@ -38,6 +38,7 @@ import DirtyFormNavigation from "@/components/warnings";
 import PageHeader from "@/components/page-header";
 import type { BaseProfessionId, CompetencyId, Competency } from "@/types/cbac";
 import { getBaseProfessionDetails, ACTIVE_COMPETENCIES } from "@/types/cbac";
+import { useGrantScope } from "@/lib/cbac/hooks";
 import competenciesData from "@/generated/competencies.json";
 import baseProfessionsData from "@/generated/base-professions.json";
 import { api } from "@/lib/api";
@@ -99,8 +100,16 @@ function Step1BasicDetails({
 }) {
   const isClinical = import.meta.env.VITE_CLINICAL_SERVICES_ENABLED !== "false";
 
+  // Only what the viewer may give, plus the person's current profession
+  // so an edit still shows it. A teaching admin is offered the teaching
+  // professions; the API refuses anything else.
+  const { mayAssignProfession } = useGrantScope();
+
   const professionOptions = baseProfessionsData.base_professions
     .filter((p) => isClinical || !p.requires_clinical_services)
+    .filter(
+      (p) => mayAssignProfession(p.id) || p.id === formData.baseProfession,
+    )
     .map((p) => ({
       value: p.id,
       label: p.display_name,
@@ -276,7 +285,18 @@ function Step2Competencies({
   // Current only. The lookups further down still read the whole
   // catalogue, because a competency already granted has to keep
   // rendering its name after it is retired.
-  const competencyOptions = ACTIVE_COMPETENCIES.map((c: Competency) => ({
+  //
+  // Only what the viewer may grant or remove. A competency already
+  // chosen stays listed so the field still shows it; the API refuses a
+  // change to it.
+  const { mayGrant } = useGrantScope();
+  const chosen = new Set<string>([
+    ...formData.additionalCompetencies,
+    ...formData.removedCompetencies,
+  ]);
+  const competencyOptions = ACTIVE_COMPETENCIES.filter(
+    (c: Competency) => mayGrant(c.id) || chosen.has(c.id),
+  ).map((c: Competency) => ({
     value: c.id,
     label: c.display_name,
   }));

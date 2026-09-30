@@ -17,7 +17,7 @@
  * healthcare assistant keeps access to their own record.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Stack } from "@mantine/core";
 import { Controller } from "react-hook-form";
@@ -42,6 +42,7 @@ import { useAuth } from "@/auth/AuthContext";
 import ErrorState from "@/components/error-state/ErrorState";
 import { holdsStaffLikeCompetency } from "@/lib/cbac/staffLike";
 import { ACTIVE_COMPETENCIES } from "@/types/cbac";
+import { useGrantScope } from "@/lib/cbac/hooks";
 import baseProfessionsData from "@/generated/base-professions.json";
 
 interface ApiUser {
@@ -74,23 +75,23 @@ function AddStaffFields({
   const navigate = useNavigate();
   const { methods } = useFormContext();
 
-  const professionOptions = useMemo(
-    () =>
-      baseProfessionsData.base_professions.map((p) => ({
-        value: p.id,
-        label: p.display_name,
-      })),
-    [],
-  );
+  // Only what the viewer may give. A teaching admin is offered the
+  // teaching professions and competencies; the API refuses anything else.
+  const { mayGrant, mayAssignProfession } = useGrantScope();
 
-  const competencyOptions = useMemo(
-    () =>
-      ACTIVE_COMPETENCIES.map((c) => ({
-        value: c.id,
-        label: c.display_name,
-      })),
-    [],
-  );
+  const professionOptions = baseProfessionsData.base_professions
+    .filter((p) => mayAssignProfession(p.id))
+    .map((p) => ({
+      value: p.id,
+      label: p.display_name,
+    }));
+
+  const competencyOptions = ACTIVE_COMPETENCIES.filter((c) =>
+    mayGrant(c.id),
+  ).map((c) => ({
+    value: c.id,
+    label: c.display_name,
+  }));
 
   return (
     <Stack gap="md">
