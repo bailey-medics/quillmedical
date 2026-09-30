@@ -744,9 +744,9 @@ class TestRequestSignOff:
 class TestAnExistingAccountAskedToAssess:
     """An existing account asked to assess gets what a new assessor gets.
 
-    Somebody new to Quill accepts an invitation and becomes an
-    `external_assessor`, an external member where the holder is. An
-    existing account is sent no invitation, so until 28 September 2026 it
+    Somebody new to Quill accepts an invitation and becomes a
+    `passport_external_assessor`, an external member where the holder is.
+    An existing account is sent no invitation, so until 28 September 2026 it
     got neither: a teaching delegate asked to assess met a 404 on the
     passport pages and a 403 from the API.
     """
@@ -1885,7 +1885,7 @@ class TestAcceptingAnInvitation:
         assert response.json()["already_accepted"] is True
         assert response.json()["needs_account"] is False
 
-    def test_a_new_assessor_gets_the_external_assessor_profession(
+    def test_a_new_assessor_gets_the_passport_external_assessor_profession(
         self,
         holder_client: TestClient,
         test_client: TestClient,
@@ -1901,7 +1901,7 @@ class TestAcceptingAnInvitation:
 
         user = db_session.get(User, response.json()["user_id"])
         assert user is not None
-        assert user.base_profession == "external_assessor"
+        assert user.base_profession == "passport_external_assessor"
         assert [(r.authority, r.number) for r in user.registrations] == [
             ("GMC", "7654321")
         ]
@@ -2262,7 +2262,8 @@ class TestTheGateResolvesForAnAcceptedAssessor:
     without anybody thinking about assessors.
 
     A passport route also demands ``assess_clinician_passport``, which
-    for a new account comes from the ``external_assessor`` profession.
+    for a new account comes from the ``passport_external_assessor``
+    profession.
     Both halves have to hold for an assessor to reach anything, so both
     are exercised together through a real route.
     """
@@ -3749,7 +3750,7 @@ class TestWhatAnExternalAssessorCannotReach:
         test_client: TestClient,
         sent: list[dict[str, str]],
     ) -> None:
-        """``external_assessor`` carries the passport competency alone.
+        """The external assessor carries the passport competency alone.
 
         Without this the invitation would hand a stranger the staff
         directory of a trust they do not work for.

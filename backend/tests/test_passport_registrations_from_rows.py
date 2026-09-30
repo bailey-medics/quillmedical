@@ -27,7 +27,7 @@ def _user(db: Session, username: str) -> User:
         username=username,
         email=f"{username}@example.test",
         password_hash=hash_password("Password123!"),
-        base_profession="external_assessor",
+        base_profession="passport_external_assessor",
     )
     db.add(user)
     db.commit()
