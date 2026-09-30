@@ -133,6 +133,12 @@ export type MemberPractice = {
   authorised: MemberAuthorisation[];
   /** Whether the viewer may add to this person's competencies. */
   may_grant: boolean;
+  /**
+   * The competencies the viewer may grant, authorise or withdraw here, or
+   * null (or absent, from an older backend) for no limit. A teaching admin
+   * sees everything the person holds and may change only these.
+   */
+  may_change?: string[] | null;
 };
 
 /** An org_unit directly inside another. */

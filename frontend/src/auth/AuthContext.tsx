@@ -51,6 +51,15 @@ export type User = {
    * See docs/docs/plans/2026-09-09-platform-role-plan.md.
    */
   fhir_patient_id?: string | null;
+  /**
+   * The competencies this person may grant to and remove from other
+   * people, or null (or absent) for no limit. Empty for somebody who may
+   * grant nothing. Worked out on the server from the whitelists in
+   * `shared/competency-definitions/`; read through `useGrantScope`.
+   */
+  may_grant?: string[] | null;
+  /** The base professions they may give somebody, read the same way. */
+  may_assign_professions?: string[] | null;
 };
 
 /**

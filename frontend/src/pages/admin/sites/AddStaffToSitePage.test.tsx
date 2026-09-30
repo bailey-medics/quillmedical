@@ -19,6 +19,17 @@ import * as apiLib from "@/lib/api";
 
 const mockNavigate = vi.fn();
 
+// The page offers only what the viewer may grant, read from here. Null
+// lists mean no limit, as for a holder of `manage_users`.
+vi.mock("@/auth/AuthContext", () => ({
+  useAuth: () => ({
+    state: {
+      status: "authenticated",
+      user: { may_grant: null, may_assign_professions: null },
+    },
+  }),
+}));
+
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
   return {

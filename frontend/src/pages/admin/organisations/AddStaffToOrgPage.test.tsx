@@ -11,7 +11,7 @@
  * granted a profession in the same act.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
@@ -20,8 +20,18 @@ import * as apiLib from "@/lib/api";
 
 const mockNavigate = vi.fn();
 const mockReload = vi.fn().mockResolvedValue(undefined);
+// The viewer's grant scope comes from here too. Null lists mean no limit,
+// as for a holder of `manage_users`; a test signing in a teaching admin
+// sets them before rendering.
+const viewer = vi.hoisted(() => ({
+  may_grant: null as string[] | null,
+  may_assign_professions: null as string[] | null,
+}));
 vi.mock("@/auth/AuthContext", () => ({
-  useAuth: () => ({ reload: mockReload }),
+  useAuth: () => ({
+    reload: mockReload,
+    state: { status: "authenticated", user: viewer },
+  }),
 }));
 
 vi.mock("react-router-dom", async () => {
@@ -312,6 +322,35 @@ describe("AddStaffToOrgPage", () => {
           base_profession: "healthcare_assistant",
         });
       });
+    });
+  });
+
+  describe("A teaching admin", () => {
+    afterEach(() => {
+      viewer.may_grant = null;
+      viewer.may_assign_professions = null;
+    });
+
+    it("is offered only the teaching professions", async () => {
+      viewer.may_grant = ["view_teaching_cases"];
+      viewer.may_assign_professions = ["teaching_delegate", "teaching_admin"];
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [A_PATIENT] });
+
+      const user = userEvent.setup();
+      renderPage();
+
+      await waitFor(() => expect(apiLib.api.get).toHaveBeenCalled());
+      await selectUser(user, "janesmith (jane@test.com)");
+      await user.click(
+        await screen.findByRole("combobox", { name: /Base profession/ }),
+      );
+
+      expect(
+        await screen.findByRole("option", { name: "Teaching delegate" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: "Healthcare Assistant (HCA)" }),
+      ).not.toBeInTheDocument();
     });
   });
 });

@@ -296,16 +296,28 @@ patient list, so that route could not be opened as it was.
       site from the organisation stays `manage_users`, as does the add
       patient button; the patient list itself shows for
       `manage_patient_membership` too, matching the backend.
-- [ ] **Filter the pickers** on the add and edit user pages, the add staff
+- [x] **Filter the pickers** on the add and edit user pages, the add staff
       page and `GrantCompetencyModal` to the caller's `may_grant` and
-      `may_assign_professions`.
-- [ ] **Disable, rather than hide, the practice switches** in
+      `may_assign_professions`. Read through `useGrantScope` in
+      `frontend/src/lib/cbac/hooks.ts`. The user form still lists the
+      person's current profession and competencies when they fall outside
+      the scope, so an edit shows what they hold. Found while building:
+      the user form sends every field on every save, and `update_user`
+      treated any field sent as a change to the account, so a teaching
+      admin could not save even a delegate. It now counts a field only
+      when its value differs, with tests for a whole-form save that
+      changes only a teaching competency and one that renames a
+      clinician.
+- [x] **Disable, rather than hide, the practice switches** in
       `MemberPracticePanel` for any competency not in `may_change`, so a
       teaching admin still sees a clinician's clinical competencies but
       cannot change them.
-- [ ] **Stories and tests** for each changed component, with a story showing
+- [x] **Stories and tests** for each changed component, with a story showing
       a teaching admin's view of the organisation page, the member practice
-      panel and the grant modal.
+      panel and the grant modal. Pages carry no stories here, so the
+      organisation page's teaching view is pinned in its tests; the
+      `Admin` landing and `MemberPracticePanel` gained a teaching admin
+      story each, the panel's covering the grant modal it opens.
 
 ## Phase 5: Documentation and accessibility
 

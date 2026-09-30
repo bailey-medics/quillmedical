@@ -67,6 +67,31 @@ export const MayNotGrant: Story = {
   ),
 };
 
+/** A teaching admin's view of a clinician who also sits teaching. */
+export const TeachingAdminView: Story = {
+  args: {
+    practice: {
+      ...practice,
+      qualified: [...practice.qualified, "view_teaching_cases"],
+      may_change: [
+        "manage_teaching",
+        "view_teaching_analytics",
+        "view_teaching_cases",
+      ],
+    },
+  },
+  render: (args) => (
+    <>
+      <MemberPracticePanel {...args} />
+      <StoryNote>
+        Through `manage_teaching` alone, the viewer sees every competency held
+        and may switch only the teaching ones. Grant competency offers only what
+        they may grant.
+      </StoryNote>
+    </>
+  ),
+};
+
 /** A row here for something they no longer hold. */
 export const AuthorisedButNotHeld: Story = {
   args: {

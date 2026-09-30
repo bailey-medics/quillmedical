@@ -86,12 +86,22 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
+// What the viewer may grant. Null means no limit, as for a holder of
+// `manage_users`; a test signing in a teaching admin sets it first.
+const scope = vi.hoisted(() => ({
+  may_assign_professions: null as string[] | null,
+}));
+
 vi.mock("@/auth/AuthContext", () => ({
   useAuth: () => ({
     state: {
+      status: "authenticated",
       // A plain admin: `standard` on the platform, so the superadmin
       // option is absent from the permissions list.
-      user: { platform_role: "standard" },
+      user: {
+        platform_role: "standard",
+        may_assign_professions: scope.may_assign_professions,
+      },
     },
   }),
 }));
@@ -102,6 +112,27 @@ describe("UserInfoUpdatePage", () => {
   });
 
   describe("Step 1: Basic details", () => {
+    it("offers a teaching admin only the teaching professions", async () => {
+      scope.may_assign_professions = ["teaching_delegate", "teaching_admin"];
+      try {
+        const user = userEvent.setup();
+        renderWithRouter(<UserInfoUpdatePage />);
+
+        await user.click(
+          screen.getByRole("combobox", { name: /base profession/i }),
+        );
+
+        expect(
+          await screen.findByRole("option", { name: "Teaching delegate" }),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByRole("option", { name: "Consultant" }),
+        ).not.toBeInTheDocument();
+      } finally {
+        scope.may_assign_professions = null;
+      }
+    });
+
     it("renders step 1 with all required fields", () => {
       renderWithRouter(<UserInfoUpdatePage />);
 
