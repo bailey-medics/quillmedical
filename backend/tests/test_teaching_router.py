@@ -1142,10 +1142,10 @@ class TestAssessmentHistory:
 
 
 class TestEducatorEndpoints:
-    """Educator-only endpoints (manage_teaching_content competency)."""
+    """Educator-only endpoints (manage_teaching competency)."""
 
     def test_learner_cannot_access_items(self, test_client, db_session):
-        """Learner lacks manage_teaching_content → 403."""
+        """Learner lacks manage_teaching → 403."""
         org = _make_teaching_org(db_session)
         _make_learner(db_session, org)
         db_session.commit()
@@ -1638,7 +1638,7 @@ class TestPromotingAVersion:
         assert self._status(db_session, org).active_version == 1
 
     def test_a_learner_cannot_promote(self, test_client, db_session):
-        """Gated on manage_teaching_content like every other admin route."""
+        """Gated on manage_teaching like every other admin route."""
         org = _make_teaching_org(db_session)
         educator = _make_educator(db_session, org)
         self._with_two_versions(db_session, org, educator)
@@ -2037,7 +2037,7 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
     """The endpoint took an organisation from the path and never checked it.
 
     It confirmed the organisation existed, then wrote to it. So anyone
-    holding ``manage_teaching_content`` could set a bank live or closed for
+    holding ``manage_teaching`` could set a bank live or closed for
     an organisation they had nothing to do with, and closing one mid-cohort
     locks its candidates out of an assessment.
     """
@@ -2948,7 +2948,7 @@ class TestMediaUploadUrl:
     def test_a_learner_cannot_mint_an_upload_url(
         self, test_client, db_session
     ):
-        """Gated on manage_teaching_content, which a learner lacks."""
+        """Gated on manage_teaching, which a learner lacks."""
         org = _make_teaching_org(db_session)
         _make_learner(db_session, org)
         db_session.commit()
@@ -3205,7 +3205,7 @@ class TestModuleMedia:
     def test_a_learner_cannot_read_the_card(
         self, test_client, db_session, monkeypatch, tmp_path
     ):
-        """Gated on manage_teaching_content, which a learner lacks."""
+        """Gated on manage_teaching, which a learner lacks."""
         org = _make_teaching_org(db_session)
         _make_learner(db_session, org)
         db_session.commit()
@@ -3426,7 +3426,7 @@ class TestMediaLinking:
         )
 
     def test_a_learner_cannot_link(self, test_client, db_session):
-        """Gated on manage_teaching_content, which a learner lacks."""
+        """Gated on manage_teaching, which a learner lacks."""
         org = _make_teaching_org(db_session)
         _make_learner(db_session, org)
         db_session.commit()

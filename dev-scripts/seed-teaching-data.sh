@@ -169,7 +169,7 @@ EDUCATOR_JSON=$(jq -n \
     --arg username "$EDUCATOR_USERNAME" \
     --arg email "$EDUCATOR_EMAIL" \
     --arg password "$EDUCATOR_PASSWORD" \
-    '{name: $name, username: $username, email: $email, password: $password, base_profession: "teaching_admin", system_permissions: "admin"}')
+    '{name: $name, username: $username, email: $email, password: $password, base_profession: "teaching_admin"}')
 parse_response "$(api_call POST /users "$EDUCATOR_JSON")"
 
 if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then

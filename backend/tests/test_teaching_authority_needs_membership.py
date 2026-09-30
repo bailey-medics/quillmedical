@@ -59,7 +59,7 @@ def _teaching_org(db: Session, name: str = "Trust") -> OrgUnit:
 
 
 def _teaching_admin(db: Session, username: str) -> User:
-    """Holds ``manage_teaching_content`` and no membership yet."""
+    """Holds ``manage_teaching`` and no membership yet."""
     user = User(
         username=username,
         email=f"{username}@test.local",
@@ -131,7 +131,7 @@ def org(db_session: Session) -> OrgUnit:
 class TestReachingATrustIsNotAuthorityOverIt:
     """The hole this closes.
 
-    The caller holds ``manage_teaching_content``, so the competency gate
+    The caller holds ``manage_teaching``, so the competency gate
     admits them. What must refuse them is the place check.
     """
 

@@ -72,7 +72,7 @@ export default function SideNavContent({
   // What hangs under Teaching belongs to the sidebar rather than to the
   // shared list: here an educator gets the teaching pages, whereas the
   // teaching sidebar hangs the current module there instead.
-  const canManageContent = useHasCompetency("manage_teaching_content");
+  const canManageContent = useHasCompetency("manage_teaching");
 
   // Check if clinical services (FHIR/EHRbase) are available
   const hasClinicalServices =

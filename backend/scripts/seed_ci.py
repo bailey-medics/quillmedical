@@ -19,6 +19,7 @@ sys.path.insert(0, "/app")
 from sqlalchemy import func, select  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
+from app.cbac.grants import sync_competency_rows  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.db import CoreSessionLocal  # noqa: E402
 from app.features.teaching.models import (  # noqa: E402
@@ -206,12 +207,24 @@ def _ensure_user(
 def seed_member_practice(db: Session, org_unit_id: int) -> None:
     """Seed a user manager, and the members they manage, at one org_unit.
 
-    ``usermanager`` holds ``manage_users`` and
-    ``manage_practising_competencies`` through ``teaching_manager``, and
-    administers the org_unit through a ``practising_competency`` row
-    carrying ``manage_users``, which is what makes it theirs to administer.
+    ``usermanager`` is a ``teaching_admin`` given ``manage_users``,
+    ``manage_staff_membership`` and ``manage_practising_competencies`` on
+    top, which is what ``teaching_manager`` gave them before it was folded
+    into ``teaching_admin``. It administers the org_unit through a
+    ``practising_competency`` row carrying ``manage_users``, which is what
+    makes it theirs to administer.
     """
-    manager = _ensure_user(db, "usermanager", "teaching_manager")
+    manager = _ensure_user(db, "usermanager", "teaching_admin")
+    sync_competency_rows(
+        manager,
+        additional=[
+            "manage_users",
+            "manage_staff_membership",
+            "manage_practising_competencies",
+        ],
+        removed=[],
+        source="admin",
+    )
     add_org_unit_member(db, org_unit_id, manager.id, "staff")
     administers = db.scalar(
         select(PractisingCompetency.id).where(

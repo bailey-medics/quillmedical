@@ -65,25 +65,27 @@ unit deploys it. Found while building Phase 1, which is also why retiring
 a profession's `base_competencies`, and `teaching_admin` lists it until this
 phase.
 
-- [ ] **Retire `manage_teaching_content`** by setting `retired_on` on its
+- [x] **Retire `manage_teaching_content`** by setting `retired_on` on its
       entry, not by deleting it. `CompetencyEntry` retires entries rather
       than deleting them, so that old rows and old audit entries still name
       something the catalogue knows.
-- [ ] **Change `teaching_admin` in `shared/base-professions.yaml`** so its
+- [x] **Change `teaching_admin` in `shared/base-professions.yaml`** so its
       `base_competencies` are `view_teaching_cases`, `manage_teaching` and
       `view_teaching_analytics`. Rewrite the comment above it: it no longer
       "curates content rather than accounts", it does both within the
       teaching whitelist.
-- [ ] **Data migration** via `just migrate "manage teaching competency"`,
-      then hand-edit the empty revision into a data migration:
+- [x] **Data migration**, `16834fc0663d`, written by hand. `just migrate`
+      finds no model change and deletes an empty revision, so it cannot
+      start one:
       - move every user whose `base_profession` is `teaching_manager` to
         `teaching_admin`
       - for every open `user_competency` row for `manage_teaching_content`,
         close it (`ends_on` now) and insert a `manage_teaching` row with the
         same `source` and `granted_by`. Rows are closed, never deleted, so
         the history still shows who held the old competency.
-      - do the same for `practising_competency` rows, keeping
-        `authorised_by`
+      - point `practising_competency` rows at `manage_teaching` in place,
+        keeping `authorised_by`. A practising row has no dates, since its
+        existence is the authorisation, so there is no history to close
       - close any `manage_users`, `manage_staff_membership` and
         `manage_practising_competencies` rows whose `source` is
         `profession` on the users just moved from `teaching_manager`,
@@ -92,28 +94,34 @@ phase.
       - `downgrade()` reverses the row moves. It cannot tell a former
         `teaching_manager` from a `teaching_admin`, so it leaves
         professions as they are and says so in its docstring.
-- [ ] **Remove `teaching_manager`** from `shared/base-professions.yaml`, in
+- [x] **Remove `teaching_manager`** from `shared/base-professions.yaml`, in
       the same change as the migration. An unknown profession resolves to
       no competencies at all, so it must not outlive the users on it.
-- [ ] **Update `backend/scripts/seed_ci.py`**: the `usermanager` user moves to
-      `teaching_admin`. Check the E2E specs that sign in as `usermanager` still
-      reach the pages they need, because that user loses the unscoped
-      `manage_users`.
-- [ ] **Update `dev-scripts/seed-teaching-data.sh`**. It still passes
+- [x] **Update `backend/scripts/seed_ci.py`**: the `usermanager` user moves to
+      `teaching_admin`, and is given `manage_users`, `manage_staff_membership`
+      and `manage_practising_competencies` explicitly, which is what
+      `teaching_manager` gave it. `member-practice.spec.ts` signs in as it to
+      grant competencies and switch practice, which needs the unscoped
+      `manage_users` until Phase 3 opens those routes to `manage_teaching`,
+      and arguably after, since the journey is not about teaching.
+- [x] **Update `dev-scripts/seed-teaching-data.sh`**. It still passes
       `system_permissions: "admin"`, which the platform role work removed, so
       drop it while here.
-- [ ] **Tests**: extend `backend/tests/test_base_professions.py` for the new
-      set, and add a migration test for the row moves in the style of
-      `test_practising_competency_backfill.py`.
+- [x] **Tests**: `test_base_professions.py` pins the new `teaching_admin` set
+      and that `teaching_manager` is gone. `test_manage_teaching_migration.py`
+      runs the migration against Postgres, in the style of
+      `test_profession_seed_backfill.py`: a manager's seeded root rows close
+      and hand-granted ones stay, other professions keep `manage_users`,
+      practising rows move, and the downgrade moves the competency back.
 
-- [ ] **Switch `_DEP_MANAGE` in `backend/app/features/teaching/router.py`**
+- [x] **Switch `_DEP_MANAGE` in `backend/app/features/teaching/router.py`**
       from `manage_teaching_content` to `manage_teaching`. It gates 22
       routes, so the change is one line and the membership scoping beside
       each route stays as it is.
-- [ ] **Switch the frontend checks** in `SideNavContent.tsx`,
+- [x] **Switch the frontend checks** in `SideNavContent.tsx`,
       `AllResults.tsx` and `AdminTeachingDashboard.tsx`, plus their tests and
       `frontend/src/lib/cbac/hooks.test.tsx`.
-- [ ] **Update the backend tests** that name `manage_teaching_content`:
+- [x] **Update the backend tests** that name `manage_teaching_content`:
       `test_teaching_router.py`, `test_teaching_admin_needs_membership.py`,
       `test_teaching_authority_needs_membership.py`,
       `test_list_delegates_site_and_lead.py`, `test_auth.py` and

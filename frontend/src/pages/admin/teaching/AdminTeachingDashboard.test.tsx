@@ -15,7 +15,7 @@ vi.mock("@/auth/AuthContext", () => ({
 import AdminTeachingDashboard from "./AdminTeachingDashboard";
 
 describe("AdminTeachingDashboard", () => {
-  it("shows Modules card when user has manage_teaching_content competency", () => {
+  it("shows Modules card when user has manage_teaching competency", () => {
     mockUseAuth.mockReturnValue({
       state: {
         status: "authenticated",
@@ -23,7 +23,7 @@ describe("AdminTeachingDashboard", () => {
           id: "1",
           username: "admin",
           email: "admin@example.com",
-          competencies: ["manage_teaching_content"],
+          competencies: ["manage_teaching"],
         },
       },
     });
@@ -32,7 +32,7 @@ describe("AdminTeachingDashboard", () => {
     expect(screen.getByText("All delegates")).toBeInTheDocument();
   });
 
-  it("hides Modules card when user lacks manage_teaching_content competency", () => {
+  it("hides Modules card when user lacks manage_teaching competency", () => {
     mockUseAuth.mockReturnValue({
       state: {
         status: "authenticated",

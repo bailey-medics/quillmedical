@@ -45,7 +45,7 @@ def test_every_definition_file_is_merged() -> None:
     what anyone may do.
     """
     assert "certify_death" in COMPETENCY_IDS  # clinical.yaml
-    assert "manage_teaching_content" in COMPETENCY_IDS  # feature-admin.yaml
+    assert "manage_teaching" in COMPETENCY_IDS  # teaching.yaml
 
 
 def test_real_directory_holds_more_than_one_file() -> None:
