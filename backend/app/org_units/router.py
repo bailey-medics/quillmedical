@@ -496,7 +496,7 @@ def create_org_unit(
 @router.get(
     "/{unit_id}",
     response_model=OrgUnitDetailOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+    dependencies=[DEP_REQUIRE_MANAGE_USERS_OR_TEACHING],
 )
 def get_org_unit(
     unit_id: int,
@@ -508,9 +508,18 @@ def get_org_unit(
     Features and the patient list come back empty for anything but the top
     of a tree, because that is the only kind of org_unit that carries them.
 
-    Requires ``manage_users``.
+    Requires ``manage_users``, or ``manage_teaching`` at an org_unit the
+    caller belongs to. The detail then leaves out what the caller's
+    competencies do not cover, rather than the page hiding it, so a
+    section added to the page later cannot show patients by forgetting to
+    hide itself: features need ``manage_users``, and the patient list
+    ``manage_users`` or ``manage_patient_membership``. Left out means
+    empty, so the shape of the response does not change.
     """
-    unit = _require_visible(db, current_user, unit_id)
+    unit = _require_visible(db, current_user, unit_id, "manage_users")
+    held = set(current_user.get_final_competencies())
+    sees_features = "manage_users" in held
+    sees_patients = bool(held & {"manage_users", "manage_patient_membership"})
 
     children = list(
         db.execute(
@@ -526,7 +535,7 @@ def get_org_unit(
 
     features: list[str] = []
     patient_ids: list[str] = []
-    if type_can_hold_features(unit.type):
+    if type_can_hold_features(unit.type) and sees_features:
         features = list(
             db.execute(
                 select(OrgUnitFeature.feature_key)
@@ -536,6 +545,7 @@ def get_org_unit(
             .scalars()
             .all()
         )
+    if type_can_hold_features(unit.type) and sees_patients:
         patient_ids = list(
             db.execute(
                 select(org_unit_patient_member.c.patient_id)

@@ -229,26 +229,70 @@ Together they were more than one pull request could carry readably.
       give a clinical competency on adding someone, authorise, withdraw or
       grant a clinical competency, or see clinical practice rows.
 
-## Phase 4: Frontend
+## Phase 4: One org unit page, sections by competency
 
-- [ ] **Expose the caller's grant scope** on the auth `me` response as
-      `may_grant` and `may_assign_professions`, both lists, or
-      null for no limit. Pickers read these rather than working the whitelist
-      out again in the browser.
-- [ ] **Open `/admin` to either competency** in `frontend/src/main.tsx`, using
+An `org_unit` may one day run both teaching and clinical services, so a
+teaching admin uses the same organisation and site pages as everybody else
+rather than a separate teaching page listing the same staff twice. Each
+section of the page appears only for the competency it needs. The backend
+leaves out what a caller may not see, rather than the page hiding it, so a
+section added later cannot leak patient data by forgetting to hide itself:
+the data never reaches the browser.
+
+This phase replaces a first draft that opened `/admin` to teaching admins
+and put a `RequireCompetency` on each page they should not reach. Found
+while building Phase 3: the organisation page fetches
+`GET /api/org-units/{unit_id}`, whose detail carries features and the
+patient list, so that route could not be opened as it was.
+
+- [x] **`GET /api/org-units/{unit_id}` opens to `manage_teaching`**, for the
+      `org_unit`s the caller belongs to, through
+      `DEP_REQUIRE_MANAGE_USERS_OR_TEACHING` and `_require_visible` with
+      `"manage_users"`, as the member list already does. The response
+      leaves out what the caller's competencies do not cover:
+      - the patient list only for `manage_patient_membership` or
+        `manage_users`
+      - features, links and passport specialties only for `manage_users`
+
+      Left out means empty, not a different shape, so the response model
+      does not change and `oasdiff` has nothing to flag. Tests pin that a
+      teaching admin gets the `org_unit` and its staff with no patients and
+      no features, and that a `manage_users` holder still gets everything.
+      Links and passport specialties turned out not to be in the detail at
+      all: they have routes of their own, which stay `manage_users`-only.
+      The detail's `children` (the sites inside an organisation, with
+      their clinical lead's name) still come back to a teaching admin,
+      since the page draws them and they carry no patient data.
+- [x] **Expose the caller's grant scope** on the auth `me` response as
+      `may_grant` and `may_assign_professions`, both lists, or null for no
+      limit. Pickers read these rather than working the whitelist out again
+      in the browser. Optional fields, so additive. Empty lists for
+      somebody who may grant nothing, which the tests in
+      `test_grant_scope.py` pin beside the teaching and unlimited cases.
+- [ ] **Open `/admin` and the organisation and site pages to either
+      competency** in `frontend/src/main.tsx`, with
       `useHasAnyCompetency(["manage_users", "manage_teaching"])` or an
       equivalent guard. The same change goes in `featureNavItems.ts` and the
-      `LoginPage.tsx` redirect. Individual admin pages that stay
-      `manage_users`-only (organisation editing, features, links) get their
-      own `RequireCompetency` so a teaching admin reaches a 404, not a broken
-      page.
-- [ ] **Filter the pickers** on the add and edit user pages, and in
-      `GrantCompetencyModal`, to the caller's scope.
+      `LoginPage.tsx` redirect. The pages that stay `manage_users`-only
+      (creating, editing and deleting an organisation or site, features,
+      links, patients) get their own `RequireCompetency`, so a teaching
+      admin reaches a 404 there rather than a page that fails to load.
+- [ ] **Show each section of the organisation and site pages by
+      competency.** Staff and member practice for `manage_users` or
+      `manage_teaching`. Patients for `manage_patient_membership` or
+      `manage_users`. Features, links, edit and delete for `manage_users`.
+      A section with no data from the backend is not drawn at all, rather
+      than drawn empty.
+- [ ] **Filter the pickers** on the add and edit user pages, the add staff
+      page and `GrantCompetencyModal` to the caller's `may_grant` and
+      `may_assign_professions`.
 - [ ] **Disable, rather than hide, the practice switches** in
-      `MemberPracticePanel` when `may_change` is false, so a teaching admin
-      can still see a clinician's clinical competencies but not change them.
+      `MemberPracticePanel` for any competency not in `may_change`, so a
+      teaching admin still sees a clinician's clinical competencies but
+      cannot change them.
 - [ ] **Stories and tests** for each changed component, with a story showing
-      a teaching admin's view.
+      a teaching admin's view of the organisation page, the member practice
+      panel and the grant modal.
 
 ## Phase 5: Documentation and accessibility
 
@@ -296,6 +340,13 @@ Together they were more than one pull request could carry readably.
   second. Scoping per place would need a scope for each `org_unit`, and
   `manage_users` is already the rarely granted root. Revisit if the two
   are ever routinely held together.
+
+- **One org unit page for everybody, not a separate teaching page** – an
+  `org_unit` may one day run both teaching and clinical services, and two
+  pages would list the same staff twice. Each section shows for the
+  competency it needs, and the backend leaves out what a caller may not
+  see, so a new section cannot leak patient data by forgetting to hide
+  itself.
 
 - **Keep the id `teaching_admin`, drop `teaching_manager`** – `teaching_admin`
   is the one used across the tests, the CI seed and the dev seed script.

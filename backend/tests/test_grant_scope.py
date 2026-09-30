@@ -12,6 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.cbac.competencies import _load_competencies
@@ -160,3 +161,37 @@ class TestLoadChecks:
 
         with pytest.raises(ValueError, match="may only be granted"):
             _load_competencies(tmp_path)
+
+
+class TestTheMeResponse:
+    """``/api/auth/me`` carries the scope, so pickers need not work it out."""
+
+    def test_a_teaching_admin_gets_the_whitelists(
+        self, test_client: TestClient, db_session: Session
+    ) -> None:
+        _user(db_session, "coordinator", "teaching_admin")
+        test_client.post(
+            "/api/auth/login",
+            json={"username": "coordinator", "password": "Password123!"},
+        )
+
+        body = test_client.get("/api/auth/me").json()
+
+        assert body["may_grant"] == sorted(TEACHING_COMPETENCIES)
+        assert body["may_assign_professions"] == sorted(TEACHING_PROFESSIONS)
+
+    def test_a_user_manager_has_no_limit(
+        self, authenticated_admin_client: TestClient
+    ) -> None:
+        body = authenticated_admin_client.get("/api/auth/me").json()
+
+        assert body["may_grant"] is None
+        assert body["may_assign_professions"] is None
+
+    def test_somebody_who_grants_nothing_gets_empty_lists(
+        self, authenticated_client: TestClient
+    ) -> None:
+        body = authenticated_client.get("/api/auth/me").json()
+
+        assert body["may_grant"] == []
+        assert body["may_assign_professions"] == []
