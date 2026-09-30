@@ -191,23 +191,43 @@ Together they were more than one pull request could carry readably.
 
 ### The org unit routes
 
-- [ ] **Staff membership**, `POST` and `DELETE` on
+- [x] **Three gates**, in `backend/app/org_units/router.py`, each admitting
+      the competency the route always needed or `manage_teaching`. A
+      holder of the original competency sees no change. `_through_teaching`
+      says when a caller reached the route through `manage_teaching` alone;
+      only then does the route narrow what they may see to the `org_unit`s
+      they belong to, and what they may change to the whitelist.
+- [x] **Reads.** `GET /api/org-units` and `GET /{unit_id}/members` are open to
+      a teaching admin, for the `org_unit`s they belong to. `GET /{unit_id}`
+      is not: its detail carries features and the patient list, which are
+      not teaching's business. Found while building; Phase 4 needs a way to
+      show a teaching admin their `org_unit` that does not go through it.
+- [x] **Staff membership**, `POST` and `DELETE` on
       `/api/org-units/{unit_id}/members`: a `manage_teaching` holder may add
-      or remove a person whose profession is in their scope. The clinical
-      lead route, `PUT /{unit_id}/clinical-lead`, stays on
+      or remove a person whose profession is in their scope, give only a
+      teaching profession, and grant only teaching competencies on adding
+      them. The clinical lead route, `PUT /{unit_id}/clinical-lead`, stays on
       `manage_staff_membership` alone, because a clinical lead is not a
       teaching appointment.
-- [ ] **Practice**, the three `/practising-competencies` routes, `GET
+- [x] **Practice**, the three `/practising-competencies` routes, `GET
       /members/{user_id}/practice` and `POST
       /members/{user_id}/grant-and-authorise`: a `manage_teaching` holder may
-      authorise, withdraw and grant only competencies in scope. The member
-      practice page lists everything the person holds, so the response
-      gains a per-competency `may_change` flag rather than hiding rows.
-- [ ] **Everything else `manage_users` gates stays on `manage_users` alone**:
-      org unit create, edit, activate and delete, features, passport
+      authorise, withdraw and grant only competencies in scope, for members
+      of their `org_unit`. The list of practising rows shows them only the
+      teaching ones. The member practice response gains `may_change`, the
+      competencies the caller may change there, or null for no limit, so
+      the page can show everything the person holds and offer to change
+      only some of it. An optional response field, so additive.
+- [x] **Everything else `manage_users` gates stays on `manage_users` alone**:
+      org unit create, read, edit, activate and delete, features, passport
       specialties, links, and the patient routes.
-- [ ] **Tests**, pinning both halves: a `manage_teaching` holder can do the
-      teaching thing, and gets a 403 on the clinical one.
+- [x] **Tests** in `test_manage_teaching_org_unit_routes.py`: at their own
+      `org_unit` a teaching admin lists, adds and removes delegates,
+      authorises, withdraws, and grants teaching competencies, and sees
+      `may_change`. Beyond the whitelist they cannot reach another
+      `org_unit`, open the `org_unit` itself, add or remove a clinician,
+      give a clinical competency on adding someone, authorise, withdraw or
+      grant a clinical competency, or see clinical practice rows.
 
 ## Phase 4: Frontend
 

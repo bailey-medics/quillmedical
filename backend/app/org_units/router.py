@@ -22,6 +22,13 @@ from sqlalchemy.orm import Session
 from app.cbac.base_professions import (
     get_profession_base_competencies,
     grant_staff_competencies,
+    resolve_user_competencies,
+)
+from app.cbac.grant_scope import (
+    may_assign_profession,
+    may_manage_account,
+    out_of_scope_competencies,
+    scope_for,
 )
 from app.cbac.grants import sync_competency_rows
 from app.cbac.positions import clinical_leads_of, set_clinical_lead
@@ -31,6 +38,7 @@ from app.deps import (
     DEP_REQUIRE_CLINICAL,
     get_current_user,
     has_competency,
+    requires_any_competency,
 )
 from app.features.passport.models import OrgUnitPassportSpecialty
 from app.features.passport.specialties import SPECIALTY_IDS
@@ -116,8 +124,22 @@ DEP_REQUIRE_MANAGE_STAFF = Depends(has_competency("manage_staff_membership"))
 DEP_REQUIRE_MANAGE_PATIENTS = Depends(
     has_competency("manage_patient_membership")
 )
-DEP_REQUIRE_MANAGE_PRACTISING = Depends(
-    has_competency("manage_practising_competencies")
+#: The same three, each also admitting ``manage_teaching``. A holder of the
+#: original competency is unaffected: the route behaves exactly as before.
+#: Somebody who reaches it through ``manage_teaching`` alone acts where they
+#: are a member, and only within its whitelist, which the route body
+#: enforces through ``_through_teaching``. See
+#: ``docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md``.
+DEP_REQUIRE_MANAGE_USERS_OR_TEACHING = Depends(
+    requires_any_competency("manage_users", "manage_teaching")
+)
+DEP_REQUIRE_MANAGE_STAFF_OR_TEACHING = Depends(
+    requires_any_competency("manage_staff_membership", "manage_teaching")
+)
+DEP_REQUIRE_MANAGE_PRACTISING_OR_TEACHING = Depends(
+    requires_any_competency(
+        "manage_practising_competencies", "manage_teaching"
+    )
 )
 
 
@@ -145,20 +167,83 @@ def _visible_ids(db: Session, user: User) -> set[int] | None:
     return org_units_administered_by(db, user)
 
 
-def _require_visible(db: Session, user: User, unit_id: int) -> OrgUnit:
+def _through_teaching(user: User, *competencies: str) -> bool:
+    """Whether *user* reaches a route only through ``manage_teaching``.
+
+    True when they lack any of the competencies the route has always
+    needed and hold ``manage_teaching``. Such a caller acts where they are
+    a member, which is how teaching's own admin routes scope them, and
+    within ``manage_teaching``'s whitelist.
+
+    Args:
+        user: The caller.
+        *competencies: What the route needed before ``manage_teaching``.
+
+    Returns:
+        True for the narrower path.
+    """
+    held = set(user.get_final_competencies())
+    return "manage_teaching" in held and not set(competencies) <= held
+
+
+def _require_visible(
+    db: Session, user: User, unit_id: int, *needs: str
+) -> OrgUnit:
     """Return the org_unit, or refuse with a 404.
 
     404 rather than 403 throughout, so a refusal does not confirm that a
     org_unit exists to somebody who may not see it.
+
+    Args:
+        db: Core database session.
+        user: The caller.
+        unit_id: The org_unit.
+        *needs: The competencies the route needed before
+            ``manage_teaching``. When the caller lacks them and reaches
+            the route through ``manage_teaching``, what they may see is
+            the org_units they belong to rather than those they
+            administer.
     """
     unit = db.get(OrgUnit, unit_id)
     if unit is None:
         raise HTTPException(status_code=404, detail="Place not found")
 
-    visible = _visible_ids(db, user)
+    if needs and _through_teaching(user, *needs):
+        visible: set[int] | None = set(get_member_org_unit_ids(db, user.id))
+    else:
+        visible = _visible_ids(db, user)
     if visible is not None and unit_id not in visible:
         raise HTTPException(status_code=404, detail="Place not found")
     return unit
+
+
+def _require_in_scope(user: User, competencies: set[str]) -> None:
+    """Refuse a change to competencies outside the caller's whitelist.
+
+    Raises:
+        HTTPException: 403 naming every competency out of scope.
+    """
+    refused = out_of_scope_competencies(user, competencies)
+    if refused:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "You may not grant or remove: " + ", ".join(refused) + "."
+            ),
+        )
+
+
+def _require_account_in_scope(user: User, person: User) -> None:
+    """Refuse an act on somebody whose profession is outside the whitelist.
+
+    Raises:
+        HTTPException: 403 if the account is outside their scope.
+    """
+    if not may_manage_account(user, person):
+        raise HTTPException(
+            status_code=403,
+            detail="This account is outside what you may manage.",
+        )
 
 
 def _known_type(value: str) -> str:
@@ -304,7 +389,7 @@ def _members_of(db: Session, unit_id: int) -> OrgUnitMembersOut:
 @router.get(
     "",
     response_model=OrgUnitsListOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+    dependencies=[DEP_REQUIRE_MANAGE_USERS_OR_TEACHING],
 )
 def list_org_units(
     roots: bool | None = None,
@@ -318,11 +403,16 @@ def list_org_units(
     org_units inside them; ``parent_id`` narrows to one org_unit's children.
     Given neither, every org_unit the caller may administer comes back.
 
-    Requires ``manage_users``.
+    Requires ``manage_users``, or ``manage_teaching`` for the org_units
+    the caller belongs to.
     """
     stmt = select(OrgUnit).order_by(OrgUnit.name)
 
-    visible = _visible_ids(db, current_user)
+    visible: set[int] | None
+    if _through_teaching(current_user, "manage_users"):
+        visible = set(get_member_org_unit_ids(db, current_user.id))
+    else:
+        visible = _visible_ids(db, current_user)
     if visible is not None:
         if not visible:
             return OrgUnitsListOut(org_units=[])
@@ -641,22 +731,26 @@ def delete_org_unit(
 @router.get(
     "/{unit_id}/members",
     response_model=OrgUnitMembersOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+    dependencies=[DEP_REQUIRE_MANAGE_USERS_OR_TEACHING],
 )
 def list_org_unit_members(
     unit_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitMembersOut:
-    """Everybody at one org_unit. Requires ``manage_users``."""
-    _require_visible(db, current_user, unit_id)
+    """Everybody at one org_unit.
+
+    Requires ``manage_users``, or ``manage_teaching`` at an org_unit the
+    caller belongs to.
+    """
+    _require_visible(db, current_user, unit_id, "manage_users")
     return _members_of(db, unit_id)
 
 
 @router.post(
     "/{unit_id}/members",
     response_model=OrgUnitStatusOut,
-    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_STAFF],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_STAFF_OR_TEACHING],
 )
 def add_org_unit_member(
     unit_id: int,
@@ -674,9 +768,13 @@ def add_org_unit_member(
     Recording the same membership twice changes the capacity rather than
     failing.
 
-    Requires ``manage_staff_membership``.
+    Requires ``manage_staff_membership``, or ``manage_teaching`` for
+    somebody whose profession it may give, at an org_unit the caller
+    belongs to, granting only what it may grant.
     """
-    unit = _require_visible(db, current_user, unit_id)
+    unit = _require_visible(
+        db, current_user, unit_id, "manage_staff_membership"
+    )
 
     if not type_can_have_members(unit.type):
         raise HTTPException(
@@ -716,6 +814,21 @@ def add_org_unit_member(
         )
         status = "updated"
 
+    if _through_teaching(current_user, "manage_staff_membership"):
+        _require_account_in_scope(current_user, person)
+        if body.base_profession is not None:
+            if not may_assign_profession(current_user, body.base_profession):
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        "You may not give the profession "
+                        f"{body.base_profession}."
+                    ),
+                )
+        held_before = set(person.get_final_competencies())
+    else:
+        held_before = None
+
     # Read against the profession they have now, before any change to it:
     # asked afterwards, the new profession's competencies would all read
     # as "not held" and be kept from them.
@@ -723,6 +836,16 @@ def add_org_unit_member(
     additional = grant_staff_competencies(
         person, body.base_profession, body.additional_competencies
     )
+    if held_before is not None:
+        _require_in_scope(
+            current_user,
+            held_before
+            ^ set(
+                resolve_user_competencies(
+                    person.base_profession, additional, removed
+                )
+            ),
+        )
     # The term comes with the grant, for the reason the grant comes with
     # the membership: `passport_write` is written with its end date in
     # the same row, so a new starter is never left holding it with no
@@ -743,7 +866,7 @@ def add_org_unit_member(
 @router.delete(
     "/{unit_id}/members/{user_id}",
     response_model=OrgUnitStatusOut,
-    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_STAFF],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_STAFF_OR_TEACHING],
 )
 def remove_org_unit_member(
     unit_id: int,
@@ -759,9 +882,16 @@ def remove_org_unit_member(
     same surface refuses to create. The post is vacated rather than
     deleted, so the handover is recorded.
 
-    Requires ``manage_staff_membership``.
+    Requires ``manage_staff_membership``, or ``manage_teaching`` for
+    somebody whose profession it may give, at an org_unit the caller
+    belongs to.
     """
-    unit = _require_visible(db, current_user, unit_id)
+    unit = _require_visible(
+        db, current_user, unit_id, "manage_staff_membership"
+    )
+    if _through_teaching(current_user, "manage_staff_membership"):
+        person = _require_member(db, unit_id, user_id)
+        _require_account_in_scope(current_user, person)
 
     if clinical_leads_of(db, [unit_id]).get(unit_id) == user_id:
         set_clinical_lead(db, unit, None, appointed_by=current_user)
@@ -844,7 +974,7 @@ def set_org_unit_clinical_lead(
 @router.get(
     "/{unit_id}/practising-competencies",
     response_model=PractisingCompetenciesOut,
-    dependencies=[DEP_REQUIRE_MANAGE_PRACTISING],
+    dependencies=[DEP_REQUIRE_MANAGE_PRACTISING_OR_TEACHING],
 )
 def list_practising_competencies(
     unit_id: int,
@@ -859,9 +989,17 @@ def list_practising_competencies(
     narrowing silently would hide an authorisation that looks live in the
     database.
 
-    Requires ``manage_practising_competencies``.
+    Requires ``manage_practising_competencies``, or ``manage_teaching``
+    at an org_unit the caller belongs to, which sees only the rows for
+    competencies it may grant.
     """
-    _require_visible(db, current_user, unit_id)
+    _require_visible(
+        db, current_user, unit_id, "manage_practising_competencies"
+    )
+    through_teaching = _through_teaching(
+        current_user, "manage_practising_competencies"
+    )
+    in_scope = scope_for(current_user).competencies
 
     rows = db.execute(
         select(
@@ -888,6 +1026,9 @@ def list_practising_competencies(
                 "authorised_by": row.authorised_by,
             }
             for row in rows
+            if not through_teaching
+            or in_scope is None
+            or row.competency in in_scope
         ]
     )
 
@@ -895,7 +1036,7 @@ def list_practising_competencies(
 @router.post(
     "/{unit_id}/practising-competencies",
     response_model=OrgUnitStatusOut,
-    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_PRACTISING],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_PRACTISING_OR_TEACHING],
 )
 def authorise_practising_competency(
     unit_id: int,
@@ -916,15 +1057,23 @@ def authorise_practising_competency(
     constraint makes the second write a no-op, and a surface that fails on
     a repeat would make a double-click look like a problem.
 
-    Requires ``manage_practising_competencies``.
+    Requires ``manage_practising_competencies``, or ``manage_teaching``
+    for a competency it may grant, for a member of an org_unit the caller
+    belongs to.
     """
-    unit = _require_visible(db, current_user, unit_id)
+    unit = _require_visible(
+        db, current_user, unit_id, "manage_practising_competencies"
+    )
 
     if not type_can_hold_competencies(unit.type):
         raise HTTPException(
             status_code=422,
             detail=f"Nobody practises anything at a {unit.type}.",
         )
+
+    if _through_teaching(current_user, "manage_practising_competencies"):
+        _require_member(db, unit_id, body.user_id)
+        _require_in_scope(current_user, {body.competency})
 
     person = db.get(User, body.user_id)
     if person is None:
@@ -955,7 +1104,7 @@ def authorise_practising_competency(
 @router.delete(
     "/{unit_id}/practising-competencies/{user_id}/{competency}",
     response_model=OrgUnitStatusOut,
-    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_PRACTISING],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_PRACTISING_OR_TEACHING],
 )
 def withdraw_practising_competency(
     unit_id: int,
@@ -978,9 +1127,14 @@ def withdraw_practising_competency(
     Their competency itself is untouched. Somebody suspended at one place
     stays qualified, and stays authorised everywhere else they hold a row.
 
-    Requires ``manage_practising_competencies``.
+    Requires ``manage_practising_competencies``, or ``manage_teaching``
+    for a competency it may grant, at an org_unit the caller belongs to.
     """
-    _require_visible(db, current_user, unit_id)
+    _require_visible(
+        db, current_user, unit_id, "manage_practising_competencies"
+    )
+    if _through_teaching(current_user, "manage_practising_competencies"):
+        _require_in_scope(current_user, {competency})
 
     db.execute(
         delete(PractisingCompetency).where(
@@ -1027,7 +1181,8 @@ def _grant_refusal(
     somebody they share an organisation with. An operator passes all
     three.
     """
-    if "manage_users" not in caller.get_final_competencies():
+    held = set(caller.get_final_competencies())
+    if "manage_users" not in held and "manage_teaching" not in held:
         return HTTPException(status_code=403, detail="Not allowed")
     if caller.platform_role == "superadmin":
         return None
@@ -1054,7 +1209,7 @@ def _grant_refusal(
 @router.get(
     "/{unit_id}/members/{user_id}/practice",
     response_model=MemberPracticeOut,
-    dependencies=[DEP_REQUIRE_MANAGE_PRACTISING],
+    dependencies=[DEP_REQUIRE_MANAGE_PRACTISING_OR_TEACHING],
 )
 def get_member_practice(
     unit_id: int,
@@ -1069,10 +1224,18 @@ def get_member_practice(
     beyond their ceiling are included: they authorise nothing, but they
     are rows somebody wrote.
 
-    Requires ``manage_practising_competencies``.
+    Requires ``manage_practising_competencies``, or ``manage_teaching``
+    at an org_unit the caller belongs to, which may change only the
+    competencies ``may_change`` names.
     """
-    unit = _require_visible(db, current_user, unit_id)
+    unit = _require_visible(
+        db, current_user, unit_id, "manage_practising_competencies"
+    )
     person = _require_member(db, unit_id, user_id)
+    through_teaching = _through_teaching(
+        current_user, "manage_users", "manage_practising_competencies"
+    )
+    in_scope = scope_for(current_user).competencies
 
     rows = (
         db.execute(
@@ -1108,17 +1271,18 @@ def get_member_practice(
             for row in rows
         ],
         may_grant=_grant_refusal(db, current_user, person) is None,
+        may_change=(
+            sorted(in_scope)
+            if through_teaching and in_scope is not None
+            else None
+        ),
     )
 
 
 @router.post(
     "/{unit_id}/members/{user_id}/grant-and-authorise",
     response_model=OrgUnitStatusOut,
-    dependencies=[
-        DEP_REQUIRE_CSRF,
-        DEP_REQUIRE_MANAGE_USERS,
-        DEP_REQUIRE_MANAGE_PRACTISING,
-    ],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS_OR_TEACHING],
 )
 def grant_and_authorise(
     unit_id: int,
@@ -1141,9 +1305,17 @@ def grant_and_authorise(
     other, as two saves of the whole list through ``PATCH /users`` can.
     Asking again once both are in place changes nothing.
 
-    Requires ``manage_users`` and ``manage_practising_competencies``.
+    Requires ``manage_users`` and ``manage_practising_competencies``, or
+    ``manage_teaching`` for a competency it may grant, at an org_unit the
+    caller belongs to.
     """
-    unit = _require_visible(db, current_user, unit_id)
+    needs = ("manage_users", "manage_practising_competencies")
+    through_teaching = _through_teaching(current_user, *needs)
+    if not through_teaching and not set(needs) <= set(
+        current_user.get_final_competencies()
+    ):
+        raise HTTPException(status_code=403, detail="Not allowed")
+    unit = _require_visible(db, current_user, unit_id, *needs)
 
     if not type_can_hold_competencies(unit.type):
         raise HTTPException(
@@ -1158,6 +1330,8 @@ def grant_and_authorise(
         raise refusal
 
     competency = body.competency
+    if through_teaching:
+        _require_in_scope(current_user, {competency})
     granted = competency not in person.get_final_competencies()
     if granted:
         template = set(
