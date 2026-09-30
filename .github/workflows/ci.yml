@@ -21,7 +21,12 @@ on:
       - "gh-readonly-queue/**"
   pull_request:
     types: [ready_for_review, synchronize]
-    branches: [main]
+    # A stacked pull request's base is the branch below it, not main. With
+    # `main` alone, marking one ready fired `ready_for_review` and CI did
+    # not run, so the heavy tier waited for the next push to that branch:
+    # #1289 to #1292 went ready and ran nothing heavy. `feature/**` lets it
+    # start on ready, as gate-breaking.yml already does for the same event.
+    branches: [main, "feature/**"]
   merge_group:
     types: [checks_requested]
 
