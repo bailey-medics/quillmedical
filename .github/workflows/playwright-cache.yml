@@ -9,6 +9,9 @@
 # Saving the same keys here, on main, gives every pull request an exact hit.
 # actions/cache does not save on an exact hit, so the per-PR copies stop too.
 #
+# heavy_e2e no longer reads a cache: it runs in the Playwright image, which
+# carries its browsers. Only heavy_storybook_tests is warmed here now.
+#
 # The keys below must match ci.yml exactly, or this saves caches nothing reads.
 # See docs/docs/plans/2026-09-30-ci-job-times-plan.md.
 name: Playwright cache
@@ -45,10 +48,6 @@ jobs:
           - name: storybook
             key_prefix: playwright
             browsers: chromium
-          # heavy_e2e in ci.yml
-          - name: e2e
-            key_prefix: playwright-e2e
-            browsers: chromium webkit
     steps:
       - uses: actions/checkout@v7.0.1
 

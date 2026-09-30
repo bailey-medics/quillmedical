@@ -80,6 +80,35 @@ would cut about 50s from every run.
       `.github/workflows/playwright-cache.yml` warms both the E2E and the
       Storybook keys on a push to `main` that touches the frontend
       dependencies, weekly, and by hand
-- [ ] Confirm on a new pull request that "Install Playwright browsers" is
-      skipped and only the system dependencies step runs
+- [x] Key both caches on the installed Playwright version rather than a
+      hash of `frontend/package.json` (#1297). `package.json` says
+      `^1.60.0` while `yarn.lock` resolves 1.63.0, so a Playwright bump
+      that changed only the lock file kept the key, restored the old
+      browsers and skipped installing the new ones
+- [x] Confirm on a new pull request that "Install Playwright browsers" is
+      skipped and only the system dependencies step runs. It was, from the
+      #1293 queue run at 19:32 on 30 September onwards: E2E 3m 27s,
+      Storybook 4m 48s
 - [ ] Re-measure the E2E job and record the new average here
+
+## Phase 2: run the E2E tests in the Playwright image
+
+With the browsers cached, the system packages became the slow step.
+"Install Playwright system dependencies" is an `apt-get` against Ubuntu's
+mirrors on every run: 14 to 49s normally, but 358s and 410s on two of the
+first four merge queue runs after Phase 1, which put E2E at 8m 40s and
+9m 11s against 3m 30s for the others. Microsoft's Playwright image carries
+the browsers and their system packages, so nothing is installed at all.
+
+- [x] Run `npx playwright test` in `mcr.microsoft.com/playwright:v<version>-noble`
+      with `docker run --network host`, so `localhost` is still the CI stack.
+      The tag is the installed `@playwright/test` version, read by the same
+      step that keyed the cache, so a Renovate bump moves the image with it.
+      The cache and both install steps go from `heavy_e2e`
+- [x] Stop warming the E2E key in `playwright-cache.yml`; nothing reads it
+- [ ] Time "Pull Playwright image" over a few runs. If it is slow or
+      unreliable, mirror the image into GHCR, where the job already pulls
+      its own images in about 9s
+- [ ] Move `heavy_storybook_tests` the same way if its system dependencies
+      step starts stalling too. It is fiddlier, because it starts Storybook
+      with Yarn 4 inside the job, and today it takes 14 to 26s
