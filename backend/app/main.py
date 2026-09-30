@@ -2612,6 +2612,7 @@ def me(
         )
         enabled_features = list(features)
 
+    grant_scope = scope_for(current_user)
     return MeOut(
         id=current_user.id,
         username=current_user.username,
@@ -2624,6 +2625,16 @@ def me(
         enabled_features=enabled_features,
         clinical_services_enabled=settings.CLINICAL_SERVICES_ENABLED,
         competencies=current_user.get_final_competencies(),
+        may_grant=(
+            sorted(grant_scope.competencies)
+            if grant_scope.competencies is not None
+            else None
+        ),
+        may_assign_professions=(
+            sorted(grant_scope.professions)
+            if grant_scope.professions is not None
+            else None
+        ),
     )
 
 

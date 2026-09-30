@@ -13,10 +13,16 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
-from app.models import OrgUnit, PractisingCompetency, User
+from app.models import (
+    OrgUnit,
+    OrgUnitFeature,
+    PractisingCompetency,
+    User,
+    org_unit_patient_member,
+)
 from app.organisations import add_org_unit_member, get_member_org_unit_ids
 from app.security import hash_password
 
@@ -207,19 +213,81 @@ class TestAtTheirOwnOrgUnit:
         )
 
 
+class TestTheOrgUnitPage:
+    """The detail leaves out what the caller's competencies do not cover.
+
+    Left out by the backend rather than hidden by the page, so a section
+    added to the page later cannot show patients by forgetting to hide
+    itself.
+    """
+
+    @pytest.fixture
+    def trust_with_patients(
+        self, db_session: Session, trust: OrgUnit
+    ) -> OrgUnit:
+        db_session.add(
+            OrgUnitFeature(org_unit_id=trust.id, feature_key="teaching")
+        )
+        db_session.execute(
+            insert(org_unit_patient_member).values(
+                org_unit_id=trust.id, patient_id="patient-1"
+            )
+        )
+        db_session.commit()
+        return trust
+
+    def test_a_teaching_admin_sees_staff_and_no_patients_or_features(
+        self,
+        client: TestClient,
+        trust_with_patients: OrgUnit,
+        consultant: User,
+    ) -> None:
+        resp = client.get(f"/api/org-units/{trust_with_patients.id}")
+
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert "consultant" in {m["username"] for m in body["members"]}
+        assert body["patient_ids"] == []
+        assert body["features"] == []
+
+    def test_a_user_manager_still_sees_everything(
+        self,
+        authenticated_admin_client: TestClient,
+        test_admin: User,
+        trust_with_patients: OrgUnit,
+        db_session: Session,
+    ) -> None:
+        add_org_unit_member(
+            db_session, trust_with_patients.id, test_admin.id, "staff"
+        )
+        db_session.add(
+            PractisingCompetency(
+                user_id=test_admin.id,
+                org_unit_id=trust_with_patients.id,
+                competency="manage_users",
+            )
+        )
+        db_session.commit()
+
+        body = authenticated_admin_client.get(
+            f"/api/org-units/{trust_with_patients.id}"
+        ).json()
+        assert body["patient_ids"] == ["patient-1"]
+        assert body["features"] == ["teaching"]
+
+    def test_cannot_open_another_org_unit(
+        self, client: TestClient, elsewhere: OrgUnit
+    ) -> None:
+        resp = client.get(f"/api/org-units/{elsewhere.id}")
+        assert resp.status_code == 404
+
+
 class TestBeyondTheirWhitelist:
     def test_cannot_reach_another_org_unit(
         self, client: TestClient, elsewhere: OrgUnit
     ) -> None:
         resp = client.get(f"/api/org-units/{elsewhere.id}/members")
         assert resp.status_code == 404
-
-    def test_cannot_open_the_org_unit_itself(
-        self, client: TestClient, trust: OrgUnit
-    ) -> None:
-        """Its detail carries features and patients, which are not teaching."""
-        resp = client.get(f"/api/org-units/{trust.id}")
-        assert resp.status_code == 403
 
     def test_cannot_add_a_clinician(
         self, client: TestClient, trust: OrgUnit, db_session: Session

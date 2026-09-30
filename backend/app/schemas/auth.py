@@ -185,6 +185,11 @@ class MeOut(BaseModel):
         competencies: Resolved CBAC competency IDs.
         fhir_patient_id: The patient record this account belongs to, where
             the same human is both. Null for staff who are not patients here.
+        may_grant: The competencies this person may grant to and remove
+            from other people, or null for no limit (``manage_users``).
+            Empty for somebody who may grant nothing.
+        may_assign_professions: The base professions they may give
+            somebody, read the same way.
     """
 
     id: int
@@ -210,6 +215,12 @@ class MeOut(BaseModel):
     # well, so reading it here would hide the patient picker from
     # someone messaging about a patient they treat.
     fhir_patient_id: str | None
+    # Worked out from the whitelists in shared/competency-definitions/ by
+    # app.cbac.grant_scope, so the admin pickers offer what the API will
+    # accept rather than working the rule out again in the browser.
+    # Optional, so a client that predates them keeps working.
+    may_grant: list[str] | None = None
+    may_assign_professions: list[str] | None = None
 
 
 class ServiceHealthStatus(BaseModel):
