@@ -134,24 +134,63 @@ Each route below today needs `manage_users`, `manage_staff_membership` or
 through a dependency that passes when the caller holds either the existing
 competency or `manage_teaching`. The route body then checks `grant_scope.py`.
 Where the caller holds the existing competency, nothing changes for them.
-Place scoping by membership stays exactly as it is: the competency says
-_what_, membership says _where_.
 
-- [ ] **`POST /api/users`** (`create_user_with_cbac`): refuse a profession or
-      additional competency outside the caller's scope with a 403 naming the
-      id.
-- [ ] **`PATCH /api/users/{user_id}`** (`update_user`): the scope applies to
-      both directions. A competency may be added to or removed from
-      `additional_competencies` or `removed_competencies` only if it is in
-      scope. A profession change needs `may_manage_account` on the target
-      and `may_assign_profession` on the new profession. This is the step
-      that stops a teaching admin stripping a consultant's clinical
-      competencies.
-- [ ] **Deactivate, reactivate and send-invite** under `/api/users/{user_id}`:
+This lands as two units: the `/api/users` routes, then the org unit routes.
+Together they were more than one pull request could carry readably.
+
+### The `/api/users` routes
+
+- [x] **One gate, `DEP_REQUIRE_MANAGE_PEOPLE`**, in `backend/app/main.py`,
+      admitting `manage_users` or `manage_teaching`, on the seven routes
+      below. Three helpers beside it do the refusing, each a 403 naming
+      what was refused: `_require_changes_in_scope`,
+      `_require_profession_in_scope` and `_require_account_in_scope`.
+- [x] **Where a teaching admin places people.** Found while building: the
+      plan said membership decides _where_, but `/api/users` asks two
+      different things. Acting on one person by id asks
+      `_require_shared_org_with_user`, which is membership, and that stays.
+      Choosing which `org_unit`s a new or edited person belongs to asks
+      `org_units_administered_by`, which reads `practising_competency`
+      rows carrying `manage_users`, and a teaching admin has none. So
+      `_org_units_the_caller_places_people_in` adds, for a holder of
+      `manage_teaching`, the `org_unit`s they belong to. That matches
+      teaching's own admin routes, which already scope a teaching admin by
+      membership (`test_teaching_admin_needs_membership.py`).
+- [x] **`POST /api/users`** (`create_user_with_cbac`): with a limited scope,
+      the profession must be one the caller may give, the competencies the
+      new account would hold must all be in scope, the platform role must
+      be `standard`, and at least one `org_unit` must be named. The last is
+      because a limited scope reaches an account only through a shared
+      `org_unit`, so an account created in none would be out of reach the
+      moment it existed.
+- [x] **`PATCH /api/users/{user_id}`** (`update_user`): compares what the
+      person holds now with what they would hold after the request, so
+      hand-edited lists, profession carry-over and a new profession's
+      template are all checked the same way, and removal counts as much as
+      granting. Anything else on the account (username, name, email,
+      password, profession, platform role, `org_unit_ids`) needs
+      `may_manage_account`. So a teaching admin can give a consultant a
+      teaching competency, and cannot reset their password.
+- [x] **Deactivate, reactivate and send-invite** under `/api/users/{user_id}`:
       need `may_manage_account` on the target.
-- [ ] **`GET /api/users` and `GET /api/users/{user_id}`**: a caller without
-      `manage_users` sees only members of the `org_unit`s they belong to, the
-      same set `list_delegates` already uses.
+- [x] **`GET /api/users` and `GET /api/users/{user_id}`**: open to a teaching
+      admin with the existing membership scoping, so they see everyone at
+      their `org_unit`s, clinicians included, because they may give a
+      clinician a teaching competency. The `patient_id` mode of
+      `GET /api/users`, the message participant picker, stays
+      `manage_users`-only: it is about a patient, not teaching.
+- [x] **Tests** in `test_manage_teaching_user_routes.py`: what a teaching
+      admin may do (create a delegate at their trust, give a clinician a
+      teaching competency, edit and deactivate a delegate, read and list),
+      one test per way the limit could leak (a clinical profession, a
+      clinical competency on a new account, no `org_unit`, an operator,
+      granting `manage_users`, removing a clinical competency, changing a
+      clinician's profession, resetting their password, deactivating,
+      reactivating or inviting them, the patient picker), and that a
+      `manage_users` holder still reaches clinicians.
+
+### The org unit routes
+
 - [ ] **Staff membership**, `POST` and `DELETE` on
       `/api/org-units/{unit_id}/members`: a `manage_teaching` holder may add
       or remove a person whose profession is in their scope. The clinical
@@ -167,11 +206,8 @@ _what_, membership says _where_.
 - [ ] **Everything else `manage_users` gates stays on `manage_users` alone**:
       org unit create, edit, activate and delete, features, passport
       specialties, links, and the patient routes.
-- [ ] **Tests**, one file per route group, each pinning both halves: a
-      `manage_teaching` holder can do the teaching thing, and gets a 403 on
-      the clinical one (grant `prescribe_controlled_schedule_2`, remove a
-      clinician's clinical competency, change a nurse's profession,
-      deactivate a consultant).
+- [ ] **Tests**, pinning both halves: a `manage_teaching` holder can do the
+      teaching thing, and gets a 403 on the clinical one.
 
 ## Phase 4: Frontend
 
@@ -232,6 +268,14 @@ _what_, membership says _where_.
 - **`manage_users` stays the root, unchanged** – capping it too would be a
   wider change touching every admin route. It stays for very few people,
   and the teaching role no longer needs it.
+
+- **A caller holding both `manage_users` and `manage_teaching` has no
+  limit anywhere** – the scope is worked out from what they hold, not from
+  where they hold it. So somebody with `manage_users` at one trust and
+  `manage_teaching` at another could give a clinical profession at the
+  second. Scoping per place would need a scope for each `org_unit`, and
+  `manage_users` is already the rarely granted root. Revisit if the two
+  are ever routinely held together.
 
 - **Keep the id `teaching_admin`, drop `teaching_manager`** – `teaching_admin`
   is the one used across the tests, the CI seed and the dev seed script.

@@ -52,8 +52,15 @@ from app.cbac.base_professions import (
     PROFESSION_IDS,
     SUPERADMIN_PROFESSION,
     get_profession_base_competencies,
+    resolve_user_competencies,
 )
 from app.cbac.competencies import validate_competency_ids
+from app.cbac.grant_scope import (
+    may_assign_profession,
+    may_manage_account,
+    out_of_scope_competencies,
+    scope_for,
+)
 from app.cbac.grants import sync_competency_rows
 from app.cbac.positions import (
     clinical_leads_of,
@@ -63,6 +70,7 @@ from app.db import get_core_db
 from app.deps import (
     DEP_REQUIRE_CLINICAL,
     has_competency,
+    requires_any_competency,
 )
 from app.ehrbase_client import (
     EhrbaseClientError,
@@ -760,6 +768,19 @@ DEP_REQUIRE_CSRF = Depends(require_csrf)
 #: competency is global, which is strictly weaker than the rank it
 #: replaces.
 DEP_REQUIRE_MANAGE_USERS = Depends(has_competency("manage_users"))
+
+#: Managing people's accounts, either without limit or within a whitelist.
+#: ``manage_users`` may grant anything; ``manage_teaching`` may grant and
+#: remove only what its ``may_grant`` list names, give only the
+#: professions its ``may_assign_professions`` list names, and act on an
+#: account as a whole only when its profession is one of those. The gate
+#: admits either, and the route body then asks ``app.cbac.grant_scope``.
+#: A ``manage_users`` holder finds every check passes, so nothing changes
+#: for them. See
+#: ``docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md``.
+DEP_REQUIRE_MANAGE_PEOPLE = Depends(
+    requires_any_competency("manage_users", "manage_teaching")
+)
 
 #: Who belongs to an organisation or a site. Separate from
 #: ``DEP_REQUIRE_MANAGE_USERS`` because adding an existing colleague to a
@@ -1583,6 +1604,91 @@ def _capacity_at(place: OrgUnit) -> str:
     return "staff" if place.type in ROOT_TYPE_IDS else "trainee"
 
 
+def _org_units_the_caller_places_people_in(
+    db: Session, current_user: User
+) -> set[int] | None:
+    """The org_units whose membership the caller may settle, or None for all.
+
+    Where they administer through a ``manage_users`` practising row, as
+    ever. And, for a holder of ``manage_teaching``, the org_units they
+    belong to, which is where teaching's own admin routes let them act:
+    somebody running teaching at a trust signs delegates up to it.
+
+    Args:
+        db: Core database session.
+        current_user: The caller.
+
+    Returns:
+        The org_unit ids, or None for an operator.
+    """
+    allowed = org_units_administered_by(db, current_user)
+    if allowed is None:
+        return None
+    if "manage_teaching" in current_user.get_final_competencies():
+        allowed = allowed | set(get_member_org_unit_ids(db, current_user.id))
+    return allowed
+
+
+def _require_changes_in_scope(
+    current_user: User, before: set[str], after: set[str]
+) -> None:
+    """Refuse a change to anybody's competencies outside the caller's scope.
+
+    Compares what the person held with what they would hold, so every
+    route into a change is covered the same way: a list edited by hand, a
+    profession carrying competencies over, or a new profession's template.
+    Removal counts as much as granting.
+
+    Args:
+        current_user: The caller.
+        before: What the person holds now; empty for a new account.
+        after: What they would hold once the request is applied.
+
+    Raises:
+        HTTPException: 403 naming every competency out of scope.
+    """
+    refused = out_of_scope_competencies(current_user, before ^ after)
+    if refused:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "You may not grant or remove: " + ", ".join(refused) + "."
+            ),
+        )
+
+
+def _require_profession_in_scope(current_user: User, profession: str) -> None:
+    """Refuse a profession the caller may not give.
+
+    Raises:
+        HTTPException: 403 naming the profession.
+    """
+    if not may_assign_profession(current_user, profession):
+        raise HTTPException(
+            status_code=403,
+            detail=f"You may not give the profession {profession}.",
+        )
+
+
+def _require_account_in_scope(current_user: User, target: User) -> None:
+    """Refuse an act on a whole account the caller may not manage.
+
+    A change of profession, name, email or password, a deactivation, a
+    reactivation or an invite acts on the whole account. A holder of
+    ``manage_teaching`` may do these only for somebody whose profession
+    they could have given, so a clinician who also sits teaching
+    assessments stays out of their reach.
+
+    Raises:
+        HTTPException: 403 if the account is outside their scope.
+    """
+    if not may_manage_account(current_user, target):
+        raise HTTPException(
+            status_code=403,
+            detail="This account is outside what you may manage.",
+        )
+
+
 def _require_org_units_the_caller_administers(
     db: Session, current_user: User, place_ids: list[int]
 ) -> list[OrgUnit]:
@@ -1592,7 +1698,7 @@ def _require_org_units_the_caller_administers(
     the org_unit surface: the answer must not confirm that an org_unit exists to
     somebody who cannot see it.
     """
-    allowed = org_units_administered_by(db, current_user)
+    allowed = _org_units_the_caller_places_people_in(db, current_user)
 
     places: list[OrgUnit] = []
     for org_unit_id in place_ids:
@@ -1610,7 +1716,7 @@ def _require_org_units_the_caller_administers(
 @router.post(
     "/users",
     response_model=UserActionOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+    dependencies=[DEP_REQUIRE_MANAGE_PEOPLE],
 )
 def create_user_with_cbac(
     payload: AdminUserCreateIn,
@@ -1671,6 +1777,33 @@ def create_user_with_cbac(
         db, current_user, payload.org_unit_ids or []
     )
 
+    if not scope_for(current_user).unlimited:
+        # Somebody with a limited scope reaches an account only through a
+        # shared org_unit, so one they create in none would be out of
+        # their reach the moment it existed.
+        if not places:
+            raise HTTPException(
+                status_code=400,
+                detail="Choose at least one organisation or site.",
+            )
+        if payload.platform_role != "standard":
+            raise HTTPException(
+                status_code=403,
+                detail="You may not set a platform role.",
+            )
+        _require_profession_in_scope(current_user, payload.base_profession)
+        _require_changes_in_scope(
+            current_user,
+            set(),
+            set(
+                resolve_user_competencies(
+                    payload.base_profession,
+                    payload.additional_competencies,
+                    payload.removed_competencies,
+                )
+            ),
+        )
+
     # Create user
     user = User(
         username=username,
@@ -1715,7 +1848,7 @@ def create_user_with_cbac(
 @router.patch(
     "/users/{user_id}",
     response_model=UserActionOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+    dependencies=[DEP_REQUIRE_MANAGE_PEOPLE],
 )
 def update_user(
     user_id: int,
@@ -1769,6 +1902,31 @@ def update_user(
         )
 
     _require_shared_org_with_user(db, current_user, user)
+
+    # Anything beyond the competency lists acts on the account as a whole,
+    # which a limited scope reaches only for somebody whose profession it
+    # could have given.
+    acts_on_account = (
+        payload.username is not None
+        or payload.name is not None
+        or payload.email is not None
+        or bool(payload.password)
+        or payload.base_profession is not None
+        or payload.platform_role is not None
+        or payload.org_unit_ids is not None
+    )
+    if acts_on_account:
+        _require_account_in_scope(current_user, user)
+    if payload.base_profession is not None:
+        _require_profession_in_scope(current_user, payload.base_profession)
+    if (
+        payload.platform_role is not None
+        and not scope_for(current_user).unlimited
+    ):
+        raise HTTPException(
+            status_code=403, detail="You may not set a platform role."
+        )
+    held_before = set(user.get_final_competencies())
 
     # Nobody awards themselves competencies. Ask another holder of
     # `manage_users` to do it, so the person granting and the person
@@ -1907,6 +2065,16 @@ def update_user(
             )
             additional = sorted(granted)
 
+    _require_changes_in_scope(
+        current_user,
+        held_before,
+        set(
+            resolve_user_competencies(
+                user.base_profession, additional, removed
+            )
+        ),
+    )
+
     # Written once, from the lists as finally settled above: after the
     # profession carry-over and the superadmin promotion, not before.
     sync_competency_rows(
@@ -1925,7 +2093,7 @@ def update_user(
         places = _require_org_units_the_caller_administers(
             db, current_user, payload.org_unit_ids
         )
-        theirs = org_units_administered_by(db, current_user)
+        theirs = _org_units_the_caller_places_people_in(db, current_user)
         clearing = org_unit_member.delete().where(
             org_unit_member.c.user_id == user_id
         )
@@ -1963,7 +2131,7 @@ def update_user(
 @router.post(
     "/users/{user_id}/deactivate",
     response_model=UserIdActionOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+    dependencies=[DEP_REQUIRE_MANAGE_PEOPLE],
 )
 def deactivate_user(
     user_id: int,
@@ -2005,6 +2173,7 @@ def deactivate_user(
         )
 
     _require_shared_org_with_user(db, current_user, user)
+    _require_account_in_scope(current_user, user)
 
     if user.id == current_user.id:
         raise HTTPException(
@@ -2028,7 +2197,7 @@ def deactivate_user(
 @router.post(
     "/users/{user_id}/reactivate",
     response_model=UserIdActionOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+    dependencies=[DEP_REQUIRE_MANAGE_PEOPLE],
 )
 def reactivate_user(
     user_id: int,
@@ -2068,6 +2237,7 @@ def reactivate_user(
         )
 
     _require_shared_org_with_user(db, current_user, user)
+    _require_account_in_scope(current_user, user)
 
     if user.is_active:
         raise HTTPException(status_code=400, detail="User is already active")
@@ -2084,7 +2254,7 @@ def reactivate_user(
 @router.post(
     "/users/{user_id}/send-invite",
     response_model=DetailResponse,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+    dependencies=[DEP_REQUIRE_MANAGE_PEOPLE],
 )
 def send_invite_email(
     user_id: int,
@@ -2115,6 +2285,7 @@ def send_invite_email(
         raise HTTPException(status_code=404, detail="User not found")
 
     _require_shared_org_with_user(db, current_user, user)
+    _require_account_in_scope(current_user, user)
 
     token = create_password_reset_token(user.email)
     reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
@@ -2507,7 +2678,7 @@ def update_profile(
 @router.get(
     "/users",
     response_model=UsersListOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+    dependencies=[DEP_REQUIRE_MANAGE_PEOPLE],
 )
 def list_users(
     patient_id: str | None = None,
@@ -2545,6 +2716,14 @@ def list_users(
         HTTPException: 403 if user lacks permissions.
     """
     if patient_id:
+        # The message participant picker, which is about a patient and
+        # nothing to do with teaching, so a limited scope does not reach it.
+        if not scope_for(current_user).unlimited:
+            raise HTTPException(
+                status_code=403,
+                detail="Forbidden: User lacks required competency "
+                "'manage_users'",
+            )
         # Filtered mode: staff in patient's orgs + external with access
         patient_orgs = get_patient_org_unit_ids(db, patient_id)
         staff_ids = (
@@ -2697,7 +2876,7 @@ def list_users(
 @router.get(
     "/users/{user_id}",
     response_model=UserOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+    dependencies=[DEP_REQUIRE_MANAGE_PEOPLE],
 )
 def get_user(
     user_id: int,
