@@ -1,0 +1,72 @@
+# Warm the Playwright browser caches on main, so every pull request can use them.
+#
+# A run can only restore a cache saved on its own ref or on the base branch.
+# The Storybook and E2E jobs in ci.yml run only on pull requests and the merge
+# queue, never on main, so each new pull request found no cache it could read
+# and downloaded the browsers again: 40 to 62s per run, and about 600MB of
+# duplicate cache per pull request crowding the repository's 10GB allowance.
+#
+# Saving the same keys here, on main, gives every pull request an exact hit.
+# actions/cache does not save on an exact hit, so the per-PR copies stop too.
+#
+# The keys below must match ci.yml exactly, or this saves caches nothing reads.
+# See docs/docs/plans/2026-09-30-ci-job-times-plan.md.
+name: Playwright cache
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "frontend/package.json"
+      - "frontend/yarn.lock"
+      - ".github/workflows/playwright-cache.yml"
+  # A cache nobody reads for seven days is evicted. Pull requests read these
+  # constantly, but a quiet week would lose them; this puts them back.
+  schedule:
+    - cron: "0 5 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playwright-cache
+  cancel-in-progress: true
+
+jobs:
+  warm:
+    name: Warm Playwright cache (${{ matrix.name }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        include:
+          # heavy_storybook_tests in ci.yml
+          - name: storybook
+            key_prefix: playwright
+            browsers: chromium
+          # heavy_e2e in ci.yml
+          - name: e2e
+            key_prefix: playwright-e2e
+            browsers: chromium webkit
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Set up frontend
+        uses: ./.github/actions/setup-frontend
+
+      # No restore-keys: a partial match would be saved back under the new key
+      # holding the old browser version.
+      - name: Cache Playwright browsers
+        id: cache_playwright
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-${{ matrix.key_prefix }}-${{ hashFiles('frontend/package.json') }}
+
+      # Browsers only, no --with-deps: system packages are not in the cache,
+      # and the jobs in ci.yml install those themselves.
+      - name: Install Playwright browsers
+        if: steps.cache_playwright.outputs.cache-hit != 'true'
+        working-directory: frontend
+        run: npx playwright install ${{ matrix.browsers }}
