@@ -54,7 +54,7 @@ so a manager can take people on and give out passport roles without holding
 
 ## Phase 2: Delegate and clinical lead
 
-- [ ] **Add `passport_delegate`** ("Passport delegate") to the new passport
+- [x] **Add `passport_delegate`** ("Passport delegate") to the new passport
       section, with `requires_clinical_services: false` and
       `base_competencies: [assess_clinician_passport]`. Today that one
       competency is how somebody gets into the passport at all: it lets a
@@ -63,22 +63,25 @@ so a manager can take people on and give out passport roles without holding
       switched on for an organisation or paid for by an individual, and
       `test_no_profession_grants_the_right_to_write_a_passport` keeps it
       off every profession.
-- [ ] **Add `passport_clinical_lead`** ("Passport clinical lead") with the
+- [x] **Add `passport_clinical_lead`** ("Passport clinical lead") with the
       same competencies as the delegate. The role is a label: it names the
       clinician who leads the passport at their org unit, and gives them no
       extra powers. This is the same as `teaching_clinical_lead` compared
       with `teaching_delegate`.
-- [ ] **Follow the assessor access split if it lands first.** The
+- [x] **Follow the assessor access split if it lands first.** The
       [passport assessor access plan](2026-09-24-passport-assessor-access-plan.md)
       splits `assess_clinician_passport` into `review_clinician_passport`
       and `read_own_clinician_passport`. Whichever plan lands second gives
       both professions both competencies, and keeps
       `passport_external_assessor` on `review_clinician_passport` only.
-- [ ] **Tests**: add both professions to the holder set in
+      This plan got there first, so the step now sits in that plan's
+      Phase 2, beside the `base-professions.yaml` change it belongs with.
+- [x] **Tests**: add both professions to the holder set in
       `test_clinicians_hold_the_passport_and_others_do_not`, and update its
       docstring, which currently says the external assessor is the only
       exception. Add a test that neither profession needs clinical
-      services. Run `yarn generate:types`.
+      services, and one that the clinical lead holds exactly what the
+      delegate holds, so it stays a label. Run `yarn generate:types`.
 
 ## Phase 3: Passport manager
 

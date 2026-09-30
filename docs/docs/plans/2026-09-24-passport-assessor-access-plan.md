@@ -177,6 +177,13 @@ makes renaming cheaper now than it will ever be again.
       `review_clinician_passport` alone, which is the whole point of that
       profession.
 
+      Since this was written, the
+      [passport professions plan](2026-09-30-passport-professions-plan.md)
+      renamed `external_assessor` to `passport_external_assessor` and added
+      `passport_delegate` and `passport_clinical_lead`, which makes 17
+      holders. The two new professions take both competencies, like the
+      clinical ones.
+
       No profession takes `write_own_clinician_passport`, exactly as none took
       `passport_write`: it is sold, and a profession granting it would hand
       every clinician the paid feature at provisioning.

@@ -99,9 +99,11 @@ def test_clinicians_hold_the_passport_and_others_do_not() -> None:
     off a junior this year; most clinicians at a paying organisation
     hold both competencies.
 
-    ``passport_external_assessor`` is the one exception, and belongs to
-    the set for the opposite reason: it is the *only* thing that
-    profession can do. A consultant invited from another trust gets it on a new account
+    The passport professions belong to the set for the opposite reason:
+    the passport is the *only* thing they are for. A delegate or clinical
+    lead holds a passport of their own and signs off other people's, at
+    an organisation that uses the passport without the rest of Quill.
+    ``passport_external_assessor`` is narrower still. A consultant invited from another trust gets it on a new account
     so they can reach the passport routes and nothing else – no patient
     records, no clinical actions. Somebody who already uses Quill keeps
     the clinical profession they have, since all fourteen above already
@@ -128,6 +130,8 @@ def test_clinicians_hold_the_passport_and_others_do_not() -> None:
         "physiotherapist",
         "occupational_therapist",
         "paramedic",
+        "passport_delegate",
+        "passport_clinical_lead",
         "passport_external_assessor",
     }
 
@@ -145,6 +149,35 @@ def test_the_external_assessor_can_reach_nothing_but_the_passport() -> None:
 
     assert assessor.base_competencies == ["assess_clinician_passport"]
     assert not assessor.requires_clinical_services
+
+
+@pytest.mark.parametrize(
+    "profession_id", ["passport_delegate", "passport_clinical_lead"]
+)
+def test_passport_professions_need_nothing_clinical(
+    profession_id: str,
+) -> None:
+    """A passport-only organisation runs with clinical services off.
+
+    The passport holds no patient data, so neither profession may depend
+    on FHIR or EHRbase, or the new user form would hide it exactly where
+    it is needed.
+    """
+    profession = get_profession_details(profession_id)
+
+    assert profession is not None
+    assert not profession.requires_clinical_services
+
+
+def test_the_passport_clinical_lead_is_a_label() -> None:
+    """The lead names a person; it grants nothing a delegate lacks.
+
+    Anything more would be a clinical lead able to do what a delegate
+    cannot, which the profession was agreed not to carry.
+    """
+    assert get_profession_base_competencies(
+        "passport_clinical_lead"
+    ) == get_profession_base_competencies("passport_delegate")
 
 
 def test_no_profession_grants_the_right_to_write_a_passport() -> None:

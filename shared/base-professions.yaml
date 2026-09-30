@@ -440,6 +440,29 @@ base_professions:
   # PASSPORT PROFESSIONS
   # ==========================================================================
 
+  # Hold a passport of their own and sign off other people's. The one
+  # competency does both today: assess_clinician_passport is what opens the
+  # passport at all. Writing to their own passport is not here, because
+  # passport_write is sold – it comes from the organisation enabling it or
+  # an individual subscription, never from a profession.
+  - id: passport_delegate
+    display_name: "Passport delegate"
+    description: "Holds a clinician passport and signs off other people's competencies"
+    requires_clinical_services: false
+    base_competencies:
+      - assess_clinician_passport
+
+  # A label, as teaching_clinical_lead is beside teaching_delegate: it names
+  # the clinician who leads the passport at their org unit and grants
+  # nothing a delegate does not have.
+  - id: passport_clinical_lead
+    display_name: "Passport clinical lead"
+    description: "Named clinician leading the passport at their organisation or site"
+    requires_clinical_services: false
+    base_competencies:
+      - assess_clinician_passport
+
+
   # A consultant from another trust, invited by a holder to sign off one
   # of their competencies. They do not work here and must not be made
   # staff of a trust they have no relationship with, so this profession
