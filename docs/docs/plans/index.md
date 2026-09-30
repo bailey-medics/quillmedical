@@ -76,3 +76,4 @@
 - [Touch Target Sizes](2026-09-28-touch-target-sizes-plan.md)
 - [Appraisal Periods](2026-09-29-appraisal-periods-plan.md)
 - [Member Practice Page](2026-09-29-member-practice-page-plan.md)
+- [Manage Teaching Competency](2026-09-30-manage-teaching-competency-plan.md)
