@@ -23,3 +23,28 @@ competencies:
 
   - id: view_teaching_analytics
     display_name: "View Teaching Analytics"
+
+  # Running teaching at an organisation or site: curating the question
+  # banks, and signing up the delegates who sit them.
+  #
+  # The people half is what separates this from manage_users. Its holder
+  # may grant and remove only what may_grant lists, and give only the
+  # professions may_assign_professions lists. It is a whitelist, so a
+  # new competency cannot be granted here until somebody adds it. So a
+  # teaching coordinator can sign up a delegate and cannot hand out a
+  # clinical competency. It is on its own list so one coordinator can
+  # appoint another without holding manage_users.
+  #
+  # Like every competency it answers *what*, never *where*: membership
+  # still decides which org_units its holder may act at. See
+  # docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md.
+  - id: manage_teaching
+    display_name: "Manage Teaching"
+    may_grant:
+      - view_teaching_cases
+      - manage_teaching
+      - view_teaching_analytics
+    may_assign_professions:
+      - teaching_delegate
+      - teaching_clinical_lead
+      - teaching_admin
