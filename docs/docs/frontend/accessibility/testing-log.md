@@ -71,3 +71,12 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   the same Settings entry. Check that the nested link is announced as
   inside Settings and as the current page, and that the navigation
   drawer's focus trap still holds with it there.
+- **Journeys 1 and 3 as a teaching admin** – the
+  [manage teaching competency plan](../../plans/2026-09-30-manage-teaching-competency-plan.md)
+  shows teaching admins the Admin entry in the side navigation, without
+  Patients, and lets a sign-in with a link into `/admin` land there.
+  Journey 1 passes through that redirect and journey 3 through the
+  teaching sidebar, which renders the same navigation. Walk both signed in
+  as a `teaching_admin`: check the Admin entry and its children are
+  announced, and that no Patients entry is reached. No journey yet covers
+  the admin pages themselves.

@@ -41,6 +41,16 @@ competencies:
   # provision users are not always the people who practise. What
   # constrains this competency is that it is given to few.
   #
+  # Narrower authority to grant is a different thing, and exists: a
+  # competency may declare a may_grant whitelist, and its holder may
+  # grant and remove only what that names. manage_teaching is the first,
+  # limited to the teaching competencies and professions. That caps by a
+  # declared domain rather than by what the holder holds, so the
+  # objection above does not apply to it. manage_users has no list and
+  # may appear on none, so it stays the only way to grant everything.
+  # See app.cbac.grant_scope and
+  # docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md.
+  #
   # Anyone reviewing a grant of manage_users is therefore reviewing a
   # grant of everything, one step removed.
   - id: manage_users

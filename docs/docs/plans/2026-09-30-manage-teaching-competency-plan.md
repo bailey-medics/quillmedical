@@ -321,17 +321,25 @@ patient list, so that route could not be opened as it was.
 
 ## Phase 5: Documentation and accessibility
 
-- [ ] **Reword the `manage_users` note in `shared/competency-definitions/admin.yaml`.**
+- [x] **Reword the `manage_users` note in `shared/competency-definitions/admin.yaml`.**
       It says capping a holder was considered and rejected. That rejected
       capping by what the holder themselves holds, which is a seniority
       model. `manage_teaching` caps by a declared domain instead, so the note
       should say the two are different and point here.
-- [ ] **Update `.github/copilot-instructions.md`** under CBAC to describe
+- [x] **Update `.github/copilot-instructions.md`** under CBAC to describe
       `may_grant` and `may_assign_professions`, then run `/sync-copilot-config`.
-- [ ] **Accessibility journeys**: this changes who sees the Admin entry in
+      The paragraph is added to the source. The sync ran as a dry run only:
+      ten sources have drifted since its last run on 2026-09-26, nine of
+      them unrelated to this plan, so applying it belongs in its own piece
+      of work rather than folded in here. Until then CLAUDE.md lacks the
+      paragraph.
+- [x] **Accessibility journeys**: this changes who sees the Admin entry in
       the navigation. Name the journeys in
       `docs/docs/frontend/accessibility/journeys.md` that pass through the
       admin navigation, and add them to "Not yet run" in `testing-log.md`.
+      No journey covers the admin pages themselves. Journeys 1 and 3 pass
+      through the changed parts (the sign-in redirect and the teaching
+      sidebar), so "Journeys 1 and 3 as a teaching admin" is added.
 
 ## Decisions
 
