@@ -55,6 +55,13 @@ jobs:
       - name: Set up frontend
         uses: ./.github/actions/setup-frontend
 
+      # The version yarn.lock resolved, which is what the browsers belong to.
+      # ci.yml reads it the same way.
+      - name: Read Playwright version
+        id: playwright_version
+        working-directory: frontend
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
       # No restore-keys: a partial match would be saved back under the new key
       # holding the old browser version.
       - name: Cache Playwright browsers
@@ -62,7 +69,7 @@ jobs:
         uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-${{ matrix.key_prefix }}-${{ hashFiles('frontend/package.json') }}
+          key: ${{ runner.os }}-${{ matrix.key_prefix }}-${{ steps.playwright_version.outputs.version }}
 
       # Browsers only, no --with-deps: system packages are not in the cache,
       # and the jobs in ci.yml install those themselves.
