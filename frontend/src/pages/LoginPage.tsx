@@ -43,7 +43,9 @@ export default function LoginPage() {
       // them – prevents PHI leakage across login sessions. Asks the
       // competency the `/admin` guard asks, so the two cannot disagree.
       const canAdminister =
-        user.competencies?.includes("manage_users") ?? false;
+        user.competencies?.some(
+          (c) => c === "manage_users" || c === "manage_teaching",
+        ) ?? false;
       const canRedirect =
         redirectFrom &&
         redirectFrom !== "/" &&

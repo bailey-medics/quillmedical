@@ -30,11 +30,14 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-// Mock admin user
+// Mock admin user. Holds what the page's sections ask for: the page now
+// draws each section by competency, so an administrator with none would
+// see only the staff list.
 const mockAdminUser: User = {
   id: "3",
   username: "admin.user",
   email: "admin@example.com",
+  competencies: ["manage_users", "manage_staff_membership"],
 };
 
 describe("OrganisationAdminPage", () => {
@@ -958,6 +961,83 @@ describe("OrganisationAdminPage", () => {
         ).not.toBeInTheDocument();
       });
       expect(delSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("A teaching admin", () => {
+    // Reaches the page through `manage_teaching`. The backend sends them
+    // no patients or features; the page offers them the staff and nothing
+    // that leads to a route they would 404 on.
+    const teachingOrg = {
+      id: 3,
+      name: "Teaching Trust",
+      members: [
+        {
+          id: 10,
+          username: "delegate",
+          full_name: "Dee Legate",
+          email: "delegate@example.com",
+          capacity: "staff",
+          authorised_here: 1,
+        },
+      ],
+      children: [
+        {
+          id: 7,
+          name: "Ward B",
+          type: "ward",
+          is_active: true,
+          clinical_lead_name: null,
+        },
+      ],
+    };
+
+    beforeEach(() => {
+      vi.spyOn(authContext, "useAuth").mockReturnValue({
+        state: {
+          status: "authenticated",
+          user: { ...mockAdminUser, competencies: ["manage_teaching"] },
+        },
+        login: vi.fn(),
+        logout: vi.fn(),
+        reload: vi.fn(),
+      });
+      mockOrgApi(teachingOrg);
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/3",
+      });
+    });
+
+    it("may add and remove staff", async () => {
+      await screen.findByText("delegate");
+      expect(screen.getByText("Add staff")).toBeInTheDocument();
+      expect(screen.getByLabelText("Actions for delegate")).toBeInTheDocument();
+    });
+
+    it("opens a member's practice page", async () => {
+      const user = userEvent.setup();
+      await user.click(await screen.findByText("delegate"));
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/admin/organisations/3/members/10",
+      );
+    });
+
+    it("is not offered patients, features or editing the organisation", async () => {
+      await screen.findByText("delegate");
+      expect(screen.queryByText("Patients")).not.toBeInTheDocument();
+      expect(screen.queryByText("Enabled features")).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Edit organisation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("sees the sites but may not remove them", async () => {
+      await screen.findByText("Ward B");
+      expect(
+        screen.queryByLabelText("Actions for Ward B"),
+      ).not.toBeInTheDocument();
     });
   });
 });

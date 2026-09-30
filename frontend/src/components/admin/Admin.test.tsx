@@ -63,6 +63,18 @@ describe("Admin", () => {
       expect(screen.getByText("3")).toBeInTheDocument();
     });
 
+    it("leaves out the patient count for somebody without patient pages", () => {
+      renderWithRouter(
+        <Admin
+          platformRole="standard"
+          showPatients={false}
+          existingPatients={mockPatients}
+        />,
+      );
+      expect(screen.queryByText("Total patients")).not.toBeInTheDocument();
+      expect(screen.getByText("Total users")).toBeInTheDocument();
+    });
+
     it("displays total organisations count", () => {
       renderWithRouter(
         <Admin platformRole="superadmin" organisationCount={5} />,

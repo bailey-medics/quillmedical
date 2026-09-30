@@ -22,7 +22,7 @@ import LoadingSpinner from "@/components/loading-spinner";
 import { Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useAuth } from "./AuthContext";
-import { useHasCompetency } from "@/lib/cbac/hooks";
+import { useHasAnyCompetency } from "@/lib/cbac/hooks";
 import type { CompetencyId } from "@/types/cbac";
 import { NotFoundLayout } from "@/components/layouts";
 
@@ -30,8 +30,13 @@ import { NotFoundLayout } from "@/components/layouts";
  * RequireCompetency Props
  */
 interface RequireCompetencyProps {
-  /** Competency the user must hold (e.g. "manage_users") */
-  competency: CompetencyId;
+  /**
+   * Competency the user must hold (e.g. "manage_users"), or a list of
+   * which they must hold at least one. A list is for a route two
+   * competencies both open, as `manage_users` and `manage_teaching` both
+   * open the admin area, each to its own part of it.
+   */
+  competency: CompetencyId | CompetencyId[];
   /** Child components to render if the user holds it */
   children: ReactNode;
   /** Behaviour when they do not – 404 by default, hiding the route */
@@ -61,7 +66,9 @@ export default function RequireCompetency({
   fallback = "404",
 }: RequireCompetencyProps) {
   const { state } = useAuth();
-  const holdsIt = useHasCompetency(competency);
+  const holdsIt = useHasAnyCompetency(
+    ...(Array.isArray(competency) ? competency : [competency]),
+  );
 
   if (state.status === "loading") {
     return (

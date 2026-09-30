@@ -21,11 +21,22 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
+// What the signed-in user holds. The patient count is fetched only for
+// `manage_users`, so the default holds it; a test signing in a teaching
+// admin swaps it before rendering.
+const signedIn = vi.hoisted(() => ({
+  competencies: ["manage_users"] as string[],
+}));
+
 vi.mock("@/auth/AuthContext", () => ({
   useAuth: () => ({
     state: {
       status: "authenticated",
-      user: { username: "admin-user", platform_role: "superadmin" },
+      user: {
+        username: "admin-user",
+        platform_role: "superadmin",
+        competencies: signedIn.competencies,
+      },
     },
   }),
 }));
@@ -37,6 +48,7 @@ describe("AdminPage patient fetching", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllEnvs();
+    signedIn.competencies = ["manage_users"];
     (api.get as Mock).mockResolvedValue({ fhir_ready: true, patients: [] });
   });
 
@@ -61,5 +73,19 @@ describe("AdminPage patient fetching", () => {
       const paths = (api.get as Mock).mock.calls.map((c) => c[0]);
       expect(paths).toContain("/patients");
     });
+  });
+
+  it("does not ask for patients for a teaching admin", async () => {
+    // They reach Admin through `manage_teaching` and have no patient
+    // pages, so their patients are neither fetched nor counted.
+    vi.stubEnv("VITE_CLINICAL_SERVICES_ENABLED", "true");
+    signedIn.competencies = ["manage_teaching"];
+    renderWithRouter(<AdminPage />);
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalled();
+    });
+    const paths = (api.get as Mock).mock.calls.map((c) => c[0]);
+    expect(paths).not.toContain("/patients");
   });
 });

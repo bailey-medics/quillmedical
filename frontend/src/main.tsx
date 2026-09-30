@@ -386,11 +386,16 @@ const routes: RouteObject[] = [
         ],
       },
 
-      // Admin routes – require the competency the API itself requires
+      // Admin routes – require the competency the API itself requires.
+      // `manage_teaching` opens the area too, for a teaching admin to sign
+      // up delegates and manage their org_unit's staff; the pages that are
+      // not theirs carry `manage_users` again below, so they 404 rather
+      // than fail to load. See
+      // docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md.
       {
         path: "/admin",
         element: (
-          <RequireCompetency competency="manage_users">
+          <RequireCompetency competency={["manage_users", "manage_teaching"]}>
             <Outlet />
           </RequireCompetency>
         ),
@@ -414,34 +419,50 @@ const routes: RouteObject[] = [
             handle: { safeForReload: true },
           },
           { path: "users/:id/edit", element: <UserInfoUpdatePage /> },
+          // Patients are not teaching's business.
           {
-            path: "patients",
-            element: <AdminPatientsPage />,
-            handle: { safeForReload: true },
+            element: (
+              <RequireCompetency competency="manage_users">
+                <Outlet />
+              </RequireCompetency>
+            ),
+            children: [
+              {
+                path: "patients",
+                element: <AdminPatientsPage />,
+                handle: { safeForReload: true },
+              },
+              { path: "patients/new", element: <NewPatientPage /> },
+              {
+                path: "patients/list",
+                element: <ViewAllPatientsPage />,
+                handle: { safeForReload: true },
+              },
+              {
+                path: "patients/:patientId",
+                element: <PatientAdminPage />,
+                handle: { safeForReload: true },
+              },
+              {
+                path: "patients/:patientId/edit",
+                element: <EditPatientPage />,
+              },
+              {
+                path: "patients/:patientId/deactivate",
+                element: <DeactivatePatientPage />,
+              },
+              {
+                path: "patients/:patientId/activate",
+                element: <ActivatePatientPage />,
+              },
+              { path: "patients/edit", element: <EditPatientPage /> },
+              {
+                path: "patients/deactivate",
+                element: <DeactivatePatientPage />,
+              },
+              { path: "patients/:id/edit", element: <NewPatientPage /> },
+            ],
           },
-          { path: "patients/new", element: <NewPatientPage /> },
-          {
-            path: "patients/list",
-            element: <ViewAllPatientsPage />,
-            handle: { safeForReload: true },
-          },
-          {
-            path: "patients/:patientId",
-            element: <PatientAdminPage />,
-            handle: { safeForReload: true },
-          },
-          { path: "patients/:patientId/edit", element: <EditPatientPage /> },
-          {
-            path: "patients/:patientId/deactivate",
-            element: <DeactivatePatientPage />,
-          },
-          {
-            path: "patients/:patientId/activate",
-            element: <ActivatePatientPage />,
-          },
-          { path: "patients/edit", element: <EditPatientPage /> },
-          { path: "patients/deactivate", element: <DeactivatePatientPage /> },
-          { path: "patients/:id/edit", element: <NewPatientPage /> },
           {
             path: "organisations",
             element: <AdminOrganisationsPage />,
@@ -462,7 +483,11 @@ const routes: RouteObject[] = [
           },
           {
             path: "organisations/:id/edit",
-            element: <EditOrganisationPage />,
+            element: (
+              <RequireCompetency competency="manage_users">
+                <EditOrganisationPage />
+              </RequireCompetency>
+            ),
           },
           {
             path: "organisations/:id/add-staff",
@@ -470,12 +495,21 @@ const routes: RouteObject[] = [
           },
           {
             path: "organisations/:id/add-patient",
-            element: <AddPatientToOrgPage />,
+            element: (
+              <RequireCompetency competency="manage_users">
+                <AddPatientToOrgPage />
+              </RequireCompetency>
+            ),
           },
           {
             path: "organisations/:id/members/:userId",
             element: (
-              <RequireCompetency competency="manage_practising_competencies">
+              <RequireCompetency
+                competency={[
+                  "manage_practising_competencies",
+                  "manage_teaching",
+                ]}
+              >
                 <MemberPracticePage />
               </RequireCompetency>
             ),
@@ -531,7 +565,12 @@ const routes: RouteObject[] = [
               {
                 path: "sites/:id/members/:userId",
                 element: (
-                  <RequireCompetency competency="manage_practising_competencies">
+                  <RequireCompetency
+                    competency={[
+                      "manage_practising_competencies",
+                      "manage_teaching",
+                    ]}
+                  >
                     <MemberPracticePage />
                   </RequireCompetency>
                 ),
@@ -563,7 +602,11 @@ const routes: RouteObject[] = [
           },
           {
             path: "organisations/:id/features",
-            element: <OrgFeaturesPage />,
+            element: (
+              <RequireCompetency competency="manage_users">
+                <OrgFeaturesPage />
+              </RequireCompetency>
+            ),
           },
           {
             path: "teaching",

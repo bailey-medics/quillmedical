@@ -73,6 +73,9 @@ export default function SideNavContent({
   // shared list: here an educator gets the teaching pages, whereas the
   // teaching sidebar hangs the current module there instead.
   const canManageContent = useHasCompetency("manage_teaching");
+  // The patient admin pages stay `manage_users`-only, so their entry does
+  // too; a teaching admin reaches the rest of Admin.
+  const canManagePatients = useHasCompetency("manage_users");
 
   // Check if clinical services (FHIR/EHRbase) are available
   const hasClinicalServices =
@@ -368,7 +371,7 @@ export default function SideNavContent({
     icon: showIcons ? "adjustments" : undefined,
     children: [
       usersNavItem,
-      ...(hasClinicalServices ? [patientsNavItem] : []),
+      ...(hasClinicalServices && canManagePatients ? [patientsNavItem] : []),
       {
         label: "Organisations",
         href: "/admin/organisations",

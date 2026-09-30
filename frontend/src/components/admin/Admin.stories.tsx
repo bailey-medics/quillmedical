@@ -84,6 +84,22 @@ export const PatientsLoadingState: Story = {
   },
 };
 
+/**
+ * Teaching Admin View
+ *
+ * A teaching admin reaches Admin through `manage_teaching` and has no
+ * patient pages, so the patient count is left out.
+ */
+export const TeachingAdminView: Story = {
+  args: {
+    platformRole: "standard",
+    showPatients: false,
+    existingUsers: sampleUsers,
+    existingPatients: samplePatients,
+    organisationCount: 1,
+  },
+};
+
 export const DarkMode: Story = {
   args: {
     ...SuperAdminView.args,
