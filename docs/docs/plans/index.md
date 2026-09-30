@@ -77,3 +77,4 @@
 - [Appraisal Periods](2026-09-29-appraisal-periods-plan.md)
 - [Member Practice Page](2026-09-29-member-practice-page-plan.md)
 - [Manage Teaching Competency](2026-09-30-manage-teaching-competency-plan.md)
+- [CI Job Times](2026-09-30-ci-job-times-plan.md)
