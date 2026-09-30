@@ -998,7 +998,7 @@ def _let_existing_account_assess(
     """Give an existing account what it needs to open the request.
 
     Somebody new to Quill gets this by accepting the invitation: the
-    `external_assessor` profession, which carries
+    `passport_external_assessor` profession, which carries
     `assess_clinician_passport`, and an external membership where the
     holder is, which reaches the passport feature. An existing account is
     sent no invitation, so it got neither, on the assumption that every
@@ -3380,7 +3380,7 @@ def accept_assessor_invite(
             # and nothing else. No PractisingCompetency row is written,
             # so the clinical authorisation table keeps meaning only
             # clinical things.
-            base_profession="external_assessor",
+            base_profession="passport_external_assessor",
             is_active=True,
             # The invitation went to this address and the token proves
             # they read it, which is the same thing verification asks.

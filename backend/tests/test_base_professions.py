@@ -99,9 +99,9 @@ def test_clinicians_hold_the_passport_and_others_do_not() -> None:
     off a junior this year; most clinicians at a paying organisation
     hold both competencies.
 
-    ``external_assessor`` is the one exception, and belongs to the set
-    for the opposite reason: it is the *only* thing that profession can
-    do. A consultant invited from another trust gets it on a new account
+    ``passport_external_assessor`` is the one exception, and belongs to
+    the set for the opposite reason: it is the *only* thing that
+    profession can do. A consultant invited from another trust gets it on a new account
     so they can reach the passport routes and nothing else – no patient
     records, no clinical actions. Somebody who already uses Quill keeps
     the clinical profession they have, since all fourteen above already
@@ -128,7 +128,7 @@ def test_clinicians_hold_the_passport_and_others_do_not() -> None:
         "physiotherapist",
         "occupational_therapist",
         "paramedic",
-        "external_assessor",
+        "passport_external_assessor",
     }
 
 
@@ -139,7 +139,9 @@ def test_the_external_assessor_can_reach_nothing_but_the_passport() -> None:
     would be access to a trust's data granted by a trainee sending an
     email, which is why it is pinned rather than left to review.
     """
-    assessor = next(p for p in BASE_PROFESSIONS if p.id == "external_assessor")
+    assessor = next(
+        p for p in BASE_PROFESSIONS if p.id == "passport_external_assessor"
+    )
 
     assert assessor.base_competencies == ["assess_clinician_passport"]
     assert not assessor.requires_clinical_services
