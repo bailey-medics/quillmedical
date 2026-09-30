@@ -41,7 +41,7 @@ const authenticatedUser = {
   id: "1",
   username: "testuser",
   email: "test@example.com",
-  competencies: ["manage_teaching_content", "prescribe_non_controlled"],
+  competencies: ["manage_teaching", "prescribe_non_controlled"],
 };
 
 describe("useHasCompetency", () => {
@@ -49,7 +49,7 @@ describe("useHasCompetency", () => {
     mockUseAuth.mockReturnValue({
       state: { status: "unauthenticated", user: null },
     });
-    renderWithMantine(<SingleCheck competency="manage_teaching_content" />);
+    renderWithMantine(<SingleCheck competency="manage_teaching" />);
     expect(screen.getByTestId("result").textContent).toBe("no");
   });
 
@@ -57,7 +57,7 @@ describe("useHasCompetency", () => {
     mockUseAuth.mockReturnValue({
       state: { status: "loading", user: null },
     });
-    renderWithMantine(<SingleCheck competency="manage_teaching_content" />);
+    renderWithMantine(<SingleCheck competency="manage_teaching" />);
     expect(screen.getByTestId("result").textContent).toBe("no");
   });
 
@@ -65,7 +65,7 @@ describe("useHasCompetency", () => {
     mockUseAuth.mockReturnValue({
       state: { status: "authenticated", user: authenticatedUser },
     });
-    renderWithMantine(<SingleCheck competency="manage_teaching_content" />);
+    renderWithMantine(<SingleCheck competency="manage_teaching" />);
     expect(screen.getByTestId("result").textContent).toBe("yes");
   });
 
@@ -86,7 +86,7 @@ describe("useHasCompetency", () => {
         user: { ...authenticatedUser, competencies: undefined },
       },
     });
-    renderWithMantine(<SingleCheck competency="manage_teaching_content" />);
+    renderWithMantine(<SingleCheck competency="manage_teaching" />);
     expect(screen.getByTestId("result").textContent).toBe("no");
   });
 });
@@ -98,10 +98,7 @@ describe("useHasAnyCompetency", () => {
     });
     renderWithMantine(
       <AnyCheck
-        competencies={[
-          "manage_teaching_content",
-          "prescribe_controlled_schedule_2",
-        ]}
+        competencies={["manage_teaching", "prescribe_controlled_schedule_2"]}
       />,
     );
     expect(screen.getByTestId("result").textContent).toBe("yes");
@@ -126,7 +123,7 @@ describe("useHasAnyCompetency", () => {
     mockUseAuth.mockReturnValue({
       state: { status: "unauthenticated", user: null },
     });
-    renderWithMantine(<AnyCheck competencies={["manage_teaching_content"]} />);
+    renderWithMantine(<AnyCheck competencies={["manage_teaching"]} />);
     expect(screen.getByTestId("result").textContent).toBe("no");
   });
 });
@@ -138,7 +135,7 @@ describe("useHasAllCompetencies", () => {
     });
     renderWithMantine(
       <AllCheck
-        competencies={["manage_teaching_content", "prescribe_non_controlled"]}
+        competencies={["manage_teaching", "prescribe_non_controlled"]}
       />,
     );
     expect(screen.getByTestId("result").textContent).toBe("yes");
@@ -150,10 +147,7 @@ describe("useHasAllCompetencies", () => {
     });
     renderWithMantine(
       <AllCheck
-        competencies={[
-          "manage_teaching_content",
-          "prescribe_controlled_schedule_2",
-        ]}
+        competencies={["manage_teaching", "prescribe_controlled_schedule_2"]}
       />,
     );
     expect(screen.getByTestId("result").textContent).toBe("no");
@@ -165,7 +159,7 @@ describe("useHasAllCompetencies", () => {
     });
     renderWithMantine(
       <AllCheck
-        competencies={["manage_teaching_content", "prescribe_non_controlled"]}
+        competencies={["manage_teaching", "prescribe_non_controlled"]}
       />,
     );
     expect(screen.getByTestId("result").textContent).toBe("no");

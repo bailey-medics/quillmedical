@@ -82,7 +82,7 @@ def _member(db: Session, site: OrgUnit, user: User, capacity: str) -> None:
 def _in_org(db: Session, org: OrgUnit, user: User) -> None:
     """Put the caller in the organisation, with the gate the route needs."""
     add_org_unit_member(db, org.id, user.id, "trainee")
-    hold(user, "manage_teaching_content")
+    hold(user, "manage_teaching")
     db.commit()
 
 

@@ -307,13 +307,13 @@ class TestAuthMe:
         db_session: Session,
     ):
         """Test /auth/me returns additional competencies when set."""
-        hold(test_user, "manage_teaching_content")
+        hold(test_user, "manage_teaching")
         db_session.commit()
 
         response = authenticated_client.get("/api/auth/me")
         assert response.status_code == 200
         data = response.json()
-        assert "manage_teaching_content" in data["competencies"]
+        assert "manage_teaching" in data["competencies"]
 
     def test_auth_me_includes_platform_role(
         self, authenticated_client: TestClient, test_user: User

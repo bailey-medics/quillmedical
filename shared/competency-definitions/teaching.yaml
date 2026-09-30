@@ -18,8 +18,11 @@ competencies:
   - id: view_teaching_cases
     display_name: "Take Teaching Assessments"
 
+  # Retired: manage_teaching covers content and the delegates who sit it.
+  # Kept so rows and audit entries naming it stay readable.
   - id: manage_teaching_content
     display_name: "Manage Teaching Content"
+    retired_on: 2026-09-30
 
   - id: view_teaching_analytics
     display_name: "View Teaching Analytics"

@@ -2,7 +2,7 @@
 
 ``_get_user_org_id`` resolved through ``_get_user_org_ids``, which
 answers *reach*. All eighteen of its call sites are administrative routes
-behind ``manage_teaching_content`` – syncing items, linking and deleting
+behind ``manage_teaching`` – syncing items, linking and deleting
 media, writing captions, reading results – so a ``teaching_admin`` whose
 only membership was a ward linked to the trust resolved to the trust and
 administered it.
@@ -58,7 +58,7 @@ def _teaching_org(db: Session, name: str = "Trust") -> OrgUnit:
 
 
 def _teaching_admin(db: Session, username: str) -> User:
-    """Holds ``manage_teaching_content``, with no membership yet."""
+    """Holds ``manage_teaching``, with no membership yet."""
     user = User(
         username=username,
         email=f"{username}@test.local",
@@ -116,7 +116,7 @@ def org(db_session: Session) -> OrgUnit:
 class TestAWardAdminCannotAdministerTheTrust:
     """The escalation this closes.
 
-    ``manage_teaching_content`` admits the caller at the competency gate.
+    ``manage_teaching`` admits the caller at the competency gate.
     The resolver is what must refuse them.
     """
 

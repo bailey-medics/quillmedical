@@ -239,7 +239,7 @@ All teaching routes are under `/api/teaching` and require the `teaching` feature
 - **Complete assessment** (`POST /api/teaching/assessments/{id}/complete`)
 - **Download certificate** (`GET /api/teaching/assessments/{id}/certificate`)
 
-#### Educator endpoints (require `manage_teaching_content` competency)
+#### Educator endpoints (require `manage_teaching` competency)
 
 - **List items** (`GET /api/teaching/items`)
 - **Validate items** (`POST /api/teaching/items/validate`)

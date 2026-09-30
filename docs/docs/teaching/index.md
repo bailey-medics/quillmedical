@@ -255,7 +255,7 @@ All routes are under `/api/teaching` and require the `teaching` feature to be en
 
 ### Educator endpoints
 
-These require the `manage_teaching_content` CBAC competency.
+These require the `manage_teaching` CBAC competency.
 
 | Method | Path                                                     | Description                                               |
 | ------ | -------------------------------------------------------- | --------------------------------------------------------- |

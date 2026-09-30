@@ -1,7 +1,7 @@
 """Teaching feature API router.
 
 All routes gated by ``requires_feature("teaching")``.
-Educator routes additionally require ``manage_teaching_content`` competency.
+Educator routes additionally require ``manage_teaching`` competency.
 """
 
 from __future__ import annotations
@@ -165,7 +165,7 @@ def _get_user_org_id(user: User, db: Session) -> int:
 
     **Membership, not reach**, and it is the only caller of the two that
     asks for the narrower answer. Every one of its eighteen call sites is
-    an administrative route behind ``manage_teaching_content`` – syncing
+    an administrative route behind ``manage_teaching`` – syncing
     items, linking and deleting media, writing captions, changing bank
     settings. Reach is why a ward trainee *receives* the trust's content;
     it was never why they would edit it. While this delegated to
@@ -2079,7 +2079,7 @@ def download_certificate(
     # ------------------------------------------------------------------
 
 
-_DEP_MANAGE = Depends(has_competency("manage_teaching_content"))
+_DEP_MANAGE = Depends(has_competency("manage_teaching"))
 
 #: What a generated asset id may contain before it becomes a filename.
 #:
@@ -3429,7 +3429,7 @@ def _update_bank_org_settings(
     """Update settings (status) for a bank at an org_unit.
 
     The caller must be a member of the org_unit named. Without that, anyone
-    holding ``manage_teaching_content`` could set a bank live or closed
+    holding ``manage_teaching`` could set a bank live or closed
     anywhere at all – and closing one mid-cohort locks its candidates
     out of an assessment they are part-way through.
     """

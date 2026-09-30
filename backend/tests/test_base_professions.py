@@ -193,3 +193,18 @@ def test_the_passport_is_not_a_default_for_patients_or_back_office() -> None:
         assert (
             "assess_clinician_passport" not in competencies
         ), f"{profession_id} should not hold the passport by default"
+
+
+def test_teaching_admin_runs_teaching_without_the_root() -> None:
+    """One teaching profession, carrying ``manage_teaching``.
+
+    ``teaching_manager`` did the people half through ``manage_users``, the
+    root competency, and was folded into ``teaching_admin``. See
+    ``docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md``.
+    """
+    assert get_profession_base_competencies("teaching_admin") == [
+        "view_teaching_cases",
+        "manage_teaching",
+        "view_teaching_analytics",
+    ]
+    assert get_profession_details("teaching_manager") is None

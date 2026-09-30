@@ -2,7 +2,7 @@
  * AllResults Page
  *
  * Educator page showing all completed assessment results across users.
- * Filterable by question bank. Requires manage_teaching_content competency.
+ * Filterable by question bank. Requires manage_teaching competency.
  */
 
 import { Badge, Button, Group, Skeleton, Stack, Table } from "@mantine/core";

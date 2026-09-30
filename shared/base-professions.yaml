@@ -395,31 +395,21 @@ base_professions:
     base_competencies:
       - view_teaching_cases
 
+  # Runs teaching at an organisation or site: curates the question banks
+  # and signs up the delegates who sit them. manage_teaching carries both,
+  # and its holder may grant only the teaching competencies and give only
+  # the teaching professions, so this profession cannot hand out anything
+  # clinical. It replaced teaching_manager, which did the people half
+  # through manage_users, the root competency. See
+  # docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md.
   - id: teaching_admin
     display_name: "Teaching admin"
-    description: "Teaching content manager and assessment coordinator"
+    description: "Teaching coordinator who curates content and signs up delegates at their own organisation or site"
     requires_clinical_services: false
     base_competencies:
       - view_teaching_cases
-      - manage_teaching_content
+      - manage_teaching
       - view_teaching_analytics
-
-  # Teaching admin plus the people: this is the profession that
-  # provisions delegates at its own organisation or site. manage_users is
-  # the root competency – it can mint any other, including itself – so it
-  # is deliberately not on teaching_admin, who curates content rather
-  # than accounts. See shared/competency-definitions/admin.yaml.
-  - id: teaching_manager
-    display_name: "Teaching manager"
-    description: "Teaching coordinator who also provisions delegates at their own organisation or site"
-    requires_clinical_services: false
-    base_competencies:
-      - view_teaching_cases
-      - manage_teaching_content
-      - view_teaching_analytics
-      - manage_users
-      - manage_staff_membership
-      - manage_practising_competencies
 
   # ==========================================================================
   # EXTERNAL ASSESSORS

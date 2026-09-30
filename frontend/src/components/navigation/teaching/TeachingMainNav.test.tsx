@@ -16,13 +16,13 @@ vi.mock("@/auth/AuthContext", () => ({
     state: {
       status: "authenticated",
       user: {
-        // `manage_teaching_content` is deliberate: it is the competency
+        // `manage_teaching` is deliberate: it is the competency
         // that earns the Assessments and Manage items sub-links on the
         // main sidebar, so without it the test below that they are
         // absent here would pass whether the code was right or not.
         competencies: [
           "manage_users",
-          "manage_teaching_content",
+          "manage_teaching",
           "assess_clinician_passport",
           "passport_write",
         ],

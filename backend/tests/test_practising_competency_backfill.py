@@ -265,7 +265,6 @@ class TestWhatTheBackfillMustReproduce:
         "clinic_manager",
         "system_administrator",
         "superadmin_profession",
-        "teaching_manager",
     ],
 )
 def test_each_named_profession_still_grants_manage_users(

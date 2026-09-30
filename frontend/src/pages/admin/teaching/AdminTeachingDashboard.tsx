@@ -12,7 +12,7 @@ import { IconStack2, IconUserCheck } from "@/components/icons/appIcons";
 import { useHasCompetency } from "@/lib/cbac/hooks";
 
 export default function AdminTeachingDashboard() {
-  const canManageTeaching = useHasCompetency("manage_teaching_content");
+  const canManageTeaching = useHasCompetency("manage_teaching");
 
   return (
     <Stack gap="md">
