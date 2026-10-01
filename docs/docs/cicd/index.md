@@ -66,6 +66,11 @@ The Storybook tests run as three legs, `Storybook interaction tests (1/3)` to
 check named `Storybook interaction tests` is a small job that passes only when
 all three did, and it is the one branch protection requires.
 
+Both the Storybook legs and the E2E job run their tests in Microsoft's
+Playwright image, which carries the browsers and their system packages, so
+neither installs anything on the runner. The image tag is the installed
+`@playwright/test` version.
+
 ### Shell script tests
 
 Shell scripts that back the GitHub Actions workflows live under `.github/scripts/<workflow-name>/`. Any script with non-trivial logic has a [bats](https://github.com/bats-core/bats-core) (Bash Automated Testing System) test file alongside it – e.g. `deploy/resolve-commit.bats` sits next to `deploy/resolve-commit.sh`.
