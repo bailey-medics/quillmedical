@@ -13,6 +13,7 @@ import {
   ACTIVE_COMPETENCIES,
   ASSESSABLE_COMPETENCIES,
   getCompetencyDetails,
+  SCOPED_MANAGER_IDS,
 } from "./cbac";
 
 describe("The competency catalogue", () => {
@@ -91,5 +92,36 @@ describe("The competencies the passport may record", () => {
     );
 
     expect(retired).toEqual([]);
+  });
+});
+
+describe("The scoped managers", () => {
+  // These open the admin area alongside `manage_users`, so the list must
+  // match the backend's `SCOPED_MANAGER_IDS` exactly: a competency the
+  // frontend left out would 404 on pages its holder may use.
+  it("includes manage_teaching", () => {
+    expect(SCOPED_MANAGER_IDS).toContain("manage_teaching");
+  });
+
+  it("leaves out manage_users, which needs no whitelist", () => {
+    expect(SCOPED_MANAGER_IDS).not.toContain("manage_users");
+  });
+
+  it("is exactly the current competencies with a whitelist", () => {
+    const withAList = ACTIVE_COMPETENCIES.filter(
+      (c) =>
+        (c.may_grant?.length ?? 0) > 0 ||
+        (c.may_assign_professions?.length ?? 0) > 0,
+    ).map((c) => c.id);
+
+    expect([...SCOPED_MANAGER_IDS].sort()).toEqual(withAList.sort());
+  });
+
+  it("leaves out a retired competency", () => {
+    const retired = ALL_COMPETENCIES.filter((c) => c.retired_on).map(
+      (c) => c.id,
+    );
+
+    expect(SCOPED_MANAGER_IDS.filter((id) => retired.includes(id))).toEqual([]);
   });
 });

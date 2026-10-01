@@ -16,6 +16,7 @@ import { Stack } from "@mantine/core";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconCircleCheck } from "@/components/icons/appIcons";
 import { useAuth } from "../auth/AuthContext";
+import { isCompetencyId, SCOPED_MANAGER_IDS } from "@/types/cbac";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -44,7 +45,9 @@ export default function LoginPage() {
       // competency the `/admin` guard asks, so the two cannot disagree.
       const canAdminister =
         user.competencies?.some(
-          (c) => c === "manage_users" || c === "manage_teaching",
+          (c) =>
+            c === "manage_users" ||
+            (isCompetencyId(c) && SCOPED_MANAGER_IDS.includes(c)),
         ) ?? false;
       const canRedirect =
         redirectFrom &&
