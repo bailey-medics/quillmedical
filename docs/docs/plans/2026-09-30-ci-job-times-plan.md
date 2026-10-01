@@ -433,10 +433,12 @@ in the order they would then matter. None is committed to.
       argument names one job, and `just ci-speed 0` puts them back. The
       logic is `.github/scripts/ci/set-ci-speed.sh`. Whether to pay is
       still open, and is the next step
-- [ ] Decide whether to pay. If yes: set a spending limit, create the two
-      larger runners under those names in a runner group that allows
-      public repositories, then turn on one job at a time and compare
-      several runs each. Start with the frontend unit tests and Storybook,
+- [x] Decide whether to pay. Decided on 1 October 2026: not for now. The
+      free runner stays, and the variables stay unset. The rest of this
+      step is what to do if that changes. If yes: set a spending limit,
+      create the two larger runners under those names in a runner group
+      that allows public repositories, then turn on one job at a time and
+      compare several runs each. Start with the frontend unit tests and Storybook,
       which use every core. A variable naming a runner that does not exist
       leaves its job waiting, so do not set one before the runners exist
 
