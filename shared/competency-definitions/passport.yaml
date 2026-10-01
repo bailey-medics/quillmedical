@@ -56,10 +56,10 @@ competencies:
     display_name: "Sign Off Clinician Passport Competencies"
 
   # The product. Deliberately granted by NO base profession: it comes
-  # from an organisation's enablement or an individual subscription,
-  # and nowhere else. A profession granting it would hand every
-  # clinician the paid feature at provisioning and make the split
-  # cosmetic.
+  # from an organisation's enablement, an individual subscription, or a
+  # Passport admin (manage_passport) at their own org units, and nowhere
+  # else. A profession granting it would hand every clinician the paid
+  # feature at provisioning and make the split cosmetic.
   #
   # Given through an organisation it does not lapse. An individual
   # subscription runs for a year.
@@ -77,15 +77,19 @@ competencies:
   #
   # A whitelist, like manage_teaching in teaching.yaml, so its holder
   # never needs manage_users, which can grant anything. It is on its own
-  # list so one manager can appoint another. passport_write is not on it
-  # and cannot be: it is sold, and the loader refuses a may_grant list
-  # that names it. See
+  # list so one Passport admin can appoint another.
+  #
+  # passport_write is on it: a Passport admin may give writing to, and
+  # take it from, members of their own org units. This is the only list
+  # the loader lets name passport_write, because writing is otherwise
+  # sold. See
   # docs/docs/plans/2026-09-30-passport-professions-plan.md.
   - id: manage_passport
     display_name: "Manage the Clinician Passport"
     may_grant:
       - assess_clinician_passport
       - manage_passport
+      - passport_write
     may_assign_professions:
       - passport_delegate
       - passport_clinical_lead

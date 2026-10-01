@@ -171,7 +171,9 @@ services:
 - **`passport_admin`** – holds `manage_passport`, a scoped manager that
   may give the four passport professions and grant
   `assess_clinician_passport`, at the org units its holder belongs to. It
-  never needs `manage_users`, and no whitelist may name `passport_write`.
+  never needs `manage_users`. It may also give and take `passport_write`
+  for members of its own org units, and it is the only whitelist allowed
+  to name it.
 - **`passport_external_assessor`** – given to a clinician from elsewhere who
   accepts an invitation to sign off one competency. Until 30 September 2026
   its id was `external_assessor`.

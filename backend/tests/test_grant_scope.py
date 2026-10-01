@@ -202,22 +202,50 @@ class TestLoadChecks:
             _load_competencies(tmp_path)
 
     def test_the_sold_competency_fails_to_load(self, tmp_path: Path) -> None:
-        """A scoped manager must never hand out ``passport_write``.
+        """Only ``manage_passport`` may hand out ``passport_write``.
 
-        It is what an organisation or a person pays for, so a whitelist
-        naming it would give the passport away with nothing visibly
-        wrong.
+        It is what an organisation or a person pays for, so any other
+        whitelist naming it would give the passport away with nothing
+        visibly wrong.
         """
         self._write(tmp_path, ["passport_write"])
 
         with pytest.raises(ValueError, match="sold rather than granted"):
             _load_competencies(tmp_path)
 
+    def test_manage_passport_may_name_it(self, tmp_path: Path) -> None:
+        (tmp_path / "a.yaml").write_text(
+            "competencies:\n"
+            "  - id: manage_passport\n"
+            '    display_name: "Passport admin"\n'
+            "    may_grant:\n"
+            "      - passport_write\n"
+            "  - id: passport_write\n"
+            '    display_name: "Sold"\n'
+        )
+
+        loaded = _load_competencies(tmp_path)
+
+        assert {entry.id for entry in loaded} == {
+            "manage_passport",
+            "passport_write",
+        }
+
 
 class TestTheSoldCompetency:
-    def test_no_real_whitelist_names_it(self) -> None:
-        for entry in COMPETENCIES:
-            assert "passport_write" not in (entry.may_grant or [])
+    def test_only_manage_passport_names_it(self) -> None:
+        naming = {
+            entry.id
+            for entry in COMPETENCIES
+            if "passport_write" in (entry.may_grant or [])
+        }
+        assert naming == {"manage_passport"}
+
+    def test_manage_teaching_cannot_grant_it(self) -> None:
+        scope = scope_for_competencies(["manage_teaching"])
+
+        assert scope.competencies is not None
+        assert "passport_write" not in scope.competencies
 
 
 class TestManagePassport:
@@ -228,7 +256,7 @@ class TestManagePassport:
         scope = scope_for_competencies(["manage_passport"])
 
         assert scope.competencies == frozenset(
-            {"assess_clinician_passport", "manage_passport"}
+            {"assess_clinician_passport", "manage_passport", "passport_write"}
         )
         assert scope.professions == frozenset(
             {
