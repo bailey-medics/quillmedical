@@ -79,3 +79,4 @@
 - [Manage Teaching Competency](2026-09-30-manage-teaching-competency-plan.md)
 - [CI Job Times](2026-09-30-ci-job-times-plan.md)
 - [Passport Professions](2026-09-30-passport-professions-plan.md)
+- [Passport for Every Profession](2026-10-01-passport-for-every-profession-plan.md)
