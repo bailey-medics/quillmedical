@@ -212,6 +212,12 @@ type PractisingCompetenciesResponse = {
   practising_competencies: PractisingCompetency[];
 };
 type FeaturesResponse = { features: OrgUnitFeature[] };
+
+/** An org_unit's passport cover, as `/passport-cover` returns it. */
+export interface PassportCover {
+  enabled: boolean;
+  covered_count: number;
+}
 type PassportSpecialtiesResponse = { specialty_ids: string[] };
 type LinksResponse = { links: OrgUnitLink[] };
 type StatusResponse = { status: string };
@@ -379,6 +385,22 @@ export const orgUnits = {
     api.put<StatusResponse>(`/org-units/${id}/features/${featureKey}`, {
       enabled,
     }),
+
+  /**
+   * Whether an org_unit pays for its members' passport writing, and how
+   * many people hold writing through it: what switching it off would
+   * take away.
+   */
+  passportCover: async (id: number): Promise<PassportCover> => {
+    const data = await api.get<PassportCover>(
+      `/org-units/${id}/passport-cover`,
+    );
+    return {
+      enabled: data?.enabled === true,
+      covered_count:
+        typeof data?.covered_count === "number" ? data.covered_count : 0,
+    };
+  },
 
   /**
    * An organisation's lead passport specialties, in order: the ones its

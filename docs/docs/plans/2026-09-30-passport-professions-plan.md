@@ -388,7 +388,7 @@ nothing writes it yet.
       and check they can still write), so changing the code back fails
       the build.
 
-- [ ] **The secondary switch on `OrgFeaturesPage`.** Under "Clinician
+- [x] **The secondary switch on `OrgFeaturesPage`.** Under "Clinician
       passport", a second switch, "Cover members' writing", shown indented
       to the right only while the passport switch is on in the form. Turning
       the passport switch off in the form turns this one off too. When
@@ -396,6 +396,16 @@ nothing writes it yet.
       writing. Count it from a new read-only route, or add it to the
       features response; decide which here. The page's stories and tests
       need the new switch's on, off, hidden and confirm states.
+
+      Built with the count coming from a new read-only route,
+      `GET /api/org-units/{id}/passport-cover`, so the features response
+      keeps its shape. The switch is shown only to a superadmin, as the
+      API only lets a superadmin set it. When the passport and the cover
+      are switched on in one save, the passport is sent first, because
+      the API refuses cover without it. When the passport is switched
+      off, only that is sent, because it ends the cover itself. The
+      warning shows for anybody turning the passport off where cover is
+      on, operator or not.
 - [ ] **Tests**: - a feature on at a site reaches that site's members and nobody at
       the trust's other sites; a feature on at the trust still reaches
       every site - switching on grants every staff and trainee member, and no
