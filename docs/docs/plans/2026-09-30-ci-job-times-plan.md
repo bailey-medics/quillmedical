@@ -199,17 +199,33 @@ A trial, kept only if the numbers say so. `storybook:test:ci` starts
 it, so the tests wait on Vite as well as on the browser. A static build
 has done that work up front.
 
-- [ ] In each leg, run `storybook build` and serve the output, then point
+- [x] In each leg, run `storybook build` and serve the output, then point
       `test-storybook` at it with `--url`. The fast tier's
       `typescript_checks (storybook:build)` takes 53s, but it runs on the
       push event and the heavy tier on the pull request event, so its
       output cannot simply be handed over: each leg builds its own, and
       the build has to save more than 53s of test time to pay for itself.
       The `frontend/node_modules/.vite` cache the job already restores
-      should shorten it
+      should shorten it. Done in `run-storybook-tests-in-image.sh`: it
+      runs `yarn storybook:build`, the same build the fast tier does, and
+      serves the output with `python3 -m http.server`, which the runner
+      already has, so no package is added for it. Two things to watch on
+      the first run. `.storybook/main.ts` swaps `react-player` for a stub
+      in a production build, so a story that plays video is tested
+      against the stub here where the dev server used the real player.
+      And the test runner reads its list of stories from the build's
+      `index.json`, not from the story files. The first run on #1325 was
+      red for exactly the first reason: eight tests in three video story
+      files failed the colour contrast check, all on the stub's own
+      placeholder text, `#666` on `#1a1a1a` at about 3:1. The text is now
+      `#ccc`. Nothing else failed. Those stories are tested against the
+      placeholder from here on, not the real player
 - [ ] Measure against Phase 4's figure. If the slowest leg is not faster,
       close the pull request and record the result here, so it is not
-      tried again
+      tried again. First reading, from that red run: the legs took
+      2m 23s to 2m 26s against 3m 09s to 3m 18s on #1324, with the tests
+      themselves at 52 to 67s after a build of about 26s. So it is faster
+      by about 45s a leg, on one run
 
 ## Phase 6: let pull requests read the E2E image cache
 

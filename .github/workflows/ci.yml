@@ -390,7 +390,7 @@ jobs:
 
   # ---------- Storybook interaction tests ----------
   # Split three ways, because the tests themselves are 6 of the job's 7
-  # minutes and no cache around them helps. Each leg starts its own
+  # minutes and no cache around them helps. Each leg builds its own
   # Storybook and runs a third of the stories. Change the count in three
   # places together: the matrix, the shard handed to the script and the job
   # name. See docs/docs/plans/2026-09-30-ci-job-times-plan.md.
@@ -436,8 +436,10 @@ jobs:
       - name: Pull Playwright image
         run: docker pull "mcr.microsoft.com/playwright:v${{ steps.playwright_version.outputs.version }}-noble"
 
-      # Storybook starts on the runner and only the test runner goes into
-      # the image, which keeps Yarn 4 and the dev server out of it.
+      # Storybook is built and served on the runner, and only the test
+      # runner goes into the image, which keeps Yarn 4 out of it. A static
+      # build, not `storybook dev`: the dev server compiles each story the
+      # first time a test asks for it, so the tests waited on Vite too.
       - name: Run Storybook interaction tests
         run: bash .github/scripts/ci/run-storybook-tests-in-image.sh "mcr.microsoft.com/playwright:v${{ steps.playwright_version.outputs.version }}-noble" "${{ matrix.shard }}/3"
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs the Storybook interaction tests in a Playwright image, against a
-# Storybook started on the runner.
+# Storybook built and served on the runner.
 #
 # Usage: run-storybook-tests-in-image.sh <image> [shard]
 #
@@ -12,31 +12,44 @@
 # Run from the repository root. Only the test runner and its browser go into
 # the container. Storybook itself stays on the runner, where Yarn 4 and
 # node_modules already are, and the container reaches it over the host
-# network. Exits with the test runner's status. Storybook is stopped on the
-# way out, pass or fail, and its log is printed if it never came up.
+# network.
+#
+# The tests run against a static build, not `storybook dev`. The dev server
+# compiles each story the first time a test asks for it, so the tests waited
+# on Vite as well as on the browser; a build does that work once, up front.
+# A failed build stops the script before anything is served.
+#
+# Exits with the test runner's status. The server is stopped on the way out,
+# pass or fail, and its log is printed if it never came up.
 set -euo pipefail
 
 # shellcheck source=../shared/logging.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "run-storybook-tests-in-image"
 
-STORYBOOK_URL="http-get://127.0.0.1:6006/index.json"
-STORYBOOK_WAIT_MS=120000
+STORYBOOK_PORT=6006
+STORYBOOK_URL="http://127.0.0.1:${STORYBOOK_PORT}"
+STORYBOOK_WAIT_MS=30000
 
-# Set by start_storybook and read by the exit trap, so not local.
-STORYBOOK_PID=""
+# Where `storybook:build` in frontend/package.json writes, seen from frontend.
+STORYBOOK_BUILD_DIR="../docs/docs/code/storybook"
 
-# In a session of its own, so the whole process group can be stopped: yarn
-# starts node as a child, and stopping yarn alone leaves the server running.
-start_storybook() {
+# Set by serve_storybook and read by the exit trap, so not local.
+SERVER_PID=""
+
+# In a session of its own, so the exit trap can stop the whole process group
+# and nothing is left holding the port.
+serve_storybook() {
   local log_file="$1"
 
-  setsid yarn storybook --no-open --quiet --ci >"$log_file" 2>&1 &
-  STORYBOOK_PID=$!
+  setsid python3 -m http.server "$STORYBOOK_PORT" \
+    --bind 127.0.0.1 \
+    --directory "$STORYBOOK_BUILD_DIR" >"$log_file" 2>&1 &
+  SERVER_PID=$!
 }
 
 stop_storybook() {
-  if [ -n "$STORYBOOK_PID" ]; then
-    kill -- "-${STORYBOOK_PID}" 2>/dev/null || true
+  if [ -n "$SERVER_PID" ]; then
+    kill -- "-${SERVER_PID}" 2>/dev/null || true
   fi
 }
 
@@ -56,7 +69,7 @@ run_tests() {
     -e CI -e HOME=/tmp \
     -v "$PWD:/work" -w /work \
     "$image" \
-    npx test-storybook --testTimeout 60000 "${shard_args[@]}"
+    npx test-storybook --url "$STORYBOOK_URL" --testTimeout 60000 "${shard_args[@]}"
 }
 
 main() {
@@ -72,12 +85,15 @@ main() {
   cd frontend
   log_file="$(mktemp)"
 
-  trap stop_storybook EXIT
-  log "Starting Storybook on the runner"
-  start_storybook "$log_file"
+  log "Building Storybook"
+  yarn storybook:build
 
-  if ! npx wait-on "$STORYBOOK_URL" -t "$STORYBOOK_WAIT_MS"; then
-    error "Storybook did not come up. Its log follows."
+  trap stop_storybook EXIT
+  log "Serving the build on ${STORYBOOK_URL}"
+  serve_storybook "$log_file"
+
+  if ! npx wait-on "http-get://127.0.0.1:${STORYBOOK_PORT}/index.json" -t "$STORYBOOK_WAIT_MS"; then
+    error "The Storybook build was not served. The server's log follows."
     cat "$log_file" >&2
     exit 1
   fi
