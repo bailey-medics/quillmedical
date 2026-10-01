@@ -15,7 +15,11 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.cbac.competencies import _load_competencies
+from app.cbac.competencies import (
+    COMPETENCIES,
+    SCOPED_MANAGER_IDS,
+    _load_competencies,
+)
 from app.cbac.grant_scope import (
     UNLIMITED,
     may_assign_profession,
@@ -127,6 +131,39 @@ class TestAgainstUsers:
         assert may_grant(caller, "prescribe_controlled_schedule_2")
         assert may_manage_account(caller, consultant)
         assert out_of_scope_competencies(caller, ["anything"]) == []
+
+
+class TestScopedManagers:
+    """Which competencies open the people routes within a whitelist.
+
+    Read from the catalogue rather than named in each route, so a new
+    scoped manager is one YAML entry. Pinned because a competency that
+    gained a whitelist by mistake would open the people routes to its
+    holders, and one that lost it would lock them out, both silently.
+    """
+
+    def test_manage_teaching_is_a_scoped_manager(self) -> None:
+        assert "manage_teaching" in SCOPED_MANAGER_IDS
+
+    def test_the_root_competency_is_not(self) -> None:
+        """``manage_users`` opens the routes on its own, without a list."""
+        assert "manage_users" not in SCOPED_MANAGER_IDS
+
+    def test_every_one_has_a_whitelist_and_is_current(self) -> None:
+        by_id = {entry.id: entry for entry in COMPETENCIES}
+        for competency_id in SCOPED_MANAGER_IDS:
+            entry = by_id[competency_id]
+            assert entry.retired_on is None
+            assert entry.may_grant or entry.may_assign_professions
+
+    def test_every_competency_with_a_whitelist_is_one(self) -> None:
+        listed = {
+            entry.id
+            for entry in COMPETENCIES
+            if entry.retired_on is None
+            and (entry.may_grant or entry.may_assign_professions)
+        }
+        assert listed == set(SCOPED_MANAGER_IDS)
 
 
 class TestLoadChecks:

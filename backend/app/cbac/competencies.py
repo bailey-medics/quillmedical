@@ -241,6 +241,18 @@ ASSESSABLE_COMPETENCY_IDS: tuple[str, ...] = tuple(
     c.id for c in COMPETENCIES if c.retired_on is None and c.assessable
 )
 
+# The competencies that manage people within a whitelist: every active
+# entry with a ``may_grant`` or ``may_assign_professions`` list, such as
+# ``manage_teaching``. A people route admits ``manage_users`` or any of
+# these, then asks ``app.cbac.grant_scope`` what the caller may hand out,
+# so a new scoped manager needs only its YAML entry rather than an edit
+# to every route that once named ``manage_teaching``.
+SCOPED_MANAGER_IDS: tuple[str, ...] = tuple(
+    c.id
+    for c in COMPETENCIES
+    if c.retired_on is None and (c.may_grant or c.may_assign_professions)
+)
+
 # Create Literal type for type hints
 CompetencyId = Literal[COMPETENCY_IDS]  # type: ignore[valid-type]
 

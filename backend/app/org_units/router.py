@@ -24,6 +24,7 @@ from app.cbac.base_professions import (
     grant_staff_competencies,
     resolve_user_competencies,
 )
+from app.cbac.competencies import SCOPED_MANAGER_IDS
 from app.cbac.grant_scope import (
     may_assign_profession,
     may_manage_account,
@@ -124,21 +125,22 @@ DEP_REQUIRE_MANAGE_STAFF = Depends(has_competency("manage_staff_membership"))
 DEP_REQUIRE_MANAGE_PATIENTS = Depends(
     has_competency("manage_patient_membership")
 )
-#: The same three, each also admitting ``manage_teaching``. A holder of the
-#: original competency is unaffected: the route behaves exactly as before.
-#: Somebody who reaches it through ``manage_teaching`` alone acts where they
-#: are a member, and only within its whitelist, which the route body
-#: enforces through ``_through_teaching``. See
-#: ``docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md``.
-DEP_REQUIRE_MANAGE_USERS_OR_TEACHING = Depends(
-    requires_any_competency("manage_users", "manage_teaching")
+#: The same three, each also admitting a scoped manager: a competency with
+#: a ``may_grant`` or ``may_assign_professions`` whitelist, such as
+#: ``manage_teaching``. A holder of the original competency is unaffected:
+#: the route behaves exactly as before. Somebody who reaches it through a
+#: scoped manager alone acts where they are a member, and only within its
+#: whitelist, which the route body enforces through ``_through_a_scope``.
+#: See ``docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md``.
+DEP_REQUIRE_MANAGE_USERS_OR_SCOPED = Depends(
+    requires_any_competency("manage_users", *SCOPED_MANAGER_IDS)
 )
-DEP_REQUIRE_MANAGE_STAFF_OR_TEACHING = Depends(
-    requires_any_competency("manage_staff_membership", "manage_teaching")
+DEP_REQUIRE_MANAGE_STAFF_OR_SCOPED = Depends(
+    requires_any_competency("manage_staff_membership", *SCOPED_MANAGER_IDS)
 )
-DEP_REQUIRE_MANAGE_PRACTISING_OR_TEACHING = Depends(
+DEP_REQUIRE_MANAGE_PRACTISING_OR_SCOPED = Depends(
     requires_any_competency(
-        "manage_practising_competencies", "manage_teaching"
+        "manage_practising_competencies", *SCOPED_MANAGER_IDS
     )
 )
 
@@ -167,23 +169,25 @@ def _visible_ids(db: Session, user: User) -> set[int] | None:
     return org_units_administered_by(db, user)
 
 
-def _through_teaching(user: User, *competencies: str) -> bool:
-    """Whether *user* reaches a route only through ``manage_teaching``.
+def _through_a_scope(user: User, *competencies: str) -> bool:
+    """Whether *user* reaches a route only through a scoped manager.
 
     True when they lack any of the competencies the route has always
-    needed and hold ``manage_teaching``. Such a caller acts where they are
-    a member, which is how teaching's own admin routes scope them, and
-    within ``manage_teaching``'s whitelist.
+    needed and hold a scoped manager, such as ``manage_teaching``. Such a
+    caller acts where they are a member, which is how teaching's own
+    admin routes scope them, and within their whitelist.
 
     Args:
         user: The caller.
-        *competencies: What the route needed before ``manage_teaching``.
+        *competencies: What the route needed before scoped managers.
 
     Returns:
         True for the narrower path.
     """
     held = set(user.get_final_competencies())
-    return "manage_teaching" in held and not set(competencies) <= held
+    return not held.isdisjoint(SCOPED_MANAGER_IDS) and not (
+        set(competencies) <= held
+    )
 
 
 def _require_visible(
@@ -199,8 +203,8 @@ def _require_visible(
         user: The caller.
         unit_id: The org_unit.
         *needs: The competencies the route needed before
-            ``manage_teaching``. When the caller lacks them and reaches
-            the route through ``manage_teaching``, what they may see is
+            scoped managers. When the caller lacks them and reaches
+            the route through a scoped manager, what they may see is
             the org_units they belong to rather than those they
             administer.
     """
@@ -208,7 +212,7 @@ def _require_visible(
     if unit is None:
         raise HTTPException(status_code=404, detail="Place not found")
 
-    if needs and _through_teaching(user, *needs):
+    if needs and _through_a_scope(user, *needs):
         visible: set[int] | None = set(get_member_org_unit_ids(db, user.id))
     else:
         visible = _visible_ids(db, user)
@@ -389,7 +393,7 @@ def _members_of(db: Session, unit_id: int) -> OrgUnitMembersOut:
 @router.get(
     "",
     response_model=OrgUnitsListOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS_OR_TEACHING],
+    dependencies=[DEP_REQUIRE_MANAGE_USERS_OR_SCOPED],
 )
 def list_org_units(
     roots: bool | None = None,
@@ -403,13 +407,13 @@ def list_org_units(
     org_units inside them; ``parent_id`` narrows to one org_unit's children.
     Given neither, every org_unit the caller may administer comes back.
 
-    Requires ``manage_users``, or ``manage_teaching`` for the org_units
+    Requires ``manage_users``, or a scoped manager for the org_units
     the caller belongs to.
     """
     stmt = select(OrgUnit).order_by(OrgUnit.name)
 
     visible: set[int] | None
-    if _through_teaching(current_user, "manage_users"):
+    if _through_a_scope(current_user, "manage_users"):
         visible = set(get_member_org_unit_ids(db, current_user.id))
     else:
         visible = _visible_ids(db, current_user)
@@ -496,7 +500,7 @@ def create_org_unit(
 @router.get(
     "/{unit_id}",
     response_model=OrgUnitDetailOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS_OR_TEACHING],
+    dependencies=[DEP_REQUIRE_MANAGE_USERS_OR_SCOPED],
 )
 def get_org_unit(
     unit_id: int,
@@ -508,7 +512,7 @@ def get_org_unit(
     Features and the patient list come back empty for anything but the top
     of a tree, because that is the only kind of org_unit that carries them.
 
-    Requires ``manage_users``, or ``manage_teaching`` at an org_unit the
+    Requires ``manage_users``, or a scoped manager at an org_unit the
     caller belongs to. The detail then leaves out what the caller's
     competencies do not cover, rather than the page hiding it, so a
     section added to the page later cannot show patients by forgetting to
@@ -741,7 +745,7 @@ def delete_org_unit(
 @router.get(
     "/{unit_id}/members",
     response_model=OrgUnitMembersOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS_OR_TEACHING],
+    dependencies=[DEP_REQUIRE_MANAGE_USERS_OR_SCOPED],
 )
 def list_org_unit_members(
     unit_id: int,
@@ -750,7 +754,7 @@ def list_org_unit_members(
 ) -> OrgUnitMembersOut:
     """Everybody at one org_unit.
 
-    Requires ``manage_users``, or ``manage_teaching`` at an org_unit the
+    Requires ``manage_users``, or a scoped manager at an org_unit the
     caller belongs to.
     """
     _require_visible(db, current_user, unit_id, "manage_users")
@@ -760,7 +764,7 @@ def list_org_unit_members(
 @router.post(
     "/{unit_id}/members",
     response_model=OrgUnitStatusOut,
-    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_STAFF_OR_TEACHING],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_STAFF_OR_SCOPED],
 )
 def add_org_unit_member(
     unit_id: int,
@@ -778,7 +782,7 @@ def add_org_unit_member(
     Recording the same membership twice changes the capacity rather than
     failing.
 
-    Requires ``manage_staff_membership``, or ``manage_teaching`` for
+    Requires ``manage_staff_membership``, or a scoped manager for
     somebody whose profession it may give, at an org_unit the caller
     belongs to, granting only what it may grant.
     """
@@ -824,7 +828,7 @@ def add_org_unit_member(
         )
         status = "updated"
 
-    if _through_teaching(current_user, "manage_staff_membership"):
+    if _through_a_scope(current_user, "manage_staff_membership"):
         _require_account_in_scope(current_user, person)
         if body.base_profession is not None:
             if not may_assign_profession(current_user, body.base_profession):
@@ -876,7 +880,7 @@ def add_org_unit_member(
 @router.delete(
     "/{unit_id}/members/{user_id}",
     response_model=OrgUnitStatusOut,
-    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_STAFF_OR_TEACHING],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_STAFF_OR_SCOPED],
 )
 def remove_org_unit_member(
     unit_id: int,
@@ -892,14 +896,14 @@ def remove_org_unit_member(
     same surface refuses to create. The post is vacated rather than
     deleted, so the handover is recorded.
 
-    Requires ``manage_staff_membership``, or ``manage_teaching`` for
+    Requires ``manage_staff_membership``, or a scoped manager for
     somebody whose profession it may give, at an org_unit the caller
     belongs to.
     """
     unit = _require_visible(
         db, current_user, unit_id, "manage_staff_membership"
     )
-    if _through_teaching(current_user, "manage_staff_membership"):
+    if _through_a_scope(current_user, "manage_staff_membership"):
         person = _require_member(db, unit_id, user_id)
         _require_account_in_scope(current_user, person)
 
@@ -984,7 +988,7 @@ def set_org_unit_clinical_lead(
 @router.get(
     "/{unit_id}/practising-competencies",
     response_model=PractisingCompetenciesOut,
-    dependencies=[DEP_REQUIRE_MANAGE_PRACTISING_OR_TEACHING],
+    dependencies=[DEP_REQUIRE_MANAGE_PRACTISING_OR_SCOPED],
 )
 def list_practising_competencies(
     unit_id: int,
@@ -999,14 +1003,14 @@ def list_practising_competencies(
     narrowing silently would hide an authorisation that looks live in the
     database.
 
-    Requires ``manage_practising_competencies``, or ``manage_teaching``
+    Requires ``manage_practising_competencies``, or a scoped manager
     at an org_unit the caller belongs to, which sees only the rows for
     competencies it may grant.
     """
     _require_visible(
         db, current_user, unit_id, "manage_practising_competencies"
     )
-    through_teaching = _through_teaching(
+    through_teaching = _through_a_scope(
         current_user, "manage_practising_competencies"
     )
     in_scope = scope_for(current_user).competencies
@@ -1046,7 +1050,7 @@ def list_practising_competencies(
 @router.post(
     "/{unit_id}/practising-competencies",
     response_model=OrgUnitStatusOut,
-    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_PRACTISING_OR_TEACHING],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_PRACTISING_OR_SCOPED],
 )
 def authorise_practising_competency(
     unit_id: int,
@@ -1067,7 +1071,7 @@ def authorise_practising_competency(
     constraint makes the second write a no-op, and a surface that fails on
     a repeat would make a double-click look like a problem.
 
-    Requires ``manage_practising_competencies``, or ``manage_teaching``
+    Requires ``manage_practising_competencies``, or a scoped manager
     for a competency it may grant, for a member of an org_unit the caller
     belongs to.
     """
@@ -1081,7 +1085,7 @@ def authorise_practising_competency(
             detail=f"Nobody practises anything at a {unit.type}.",
         )
 
-    if _through_teaching(current_user, "manage_practising_competencies"):
+    if _through_a_scope(current_user, "manage_practising_competencies"):
         _require_member(db, unit_id, body.user_id)
         _require_in_scope(current_user, {body.competency})
 
@@ -1114,7 +1118,7 @@ def authorise_practising_competency(
 @router.delete(
     "/{unit_id}/practising-competencies/{user_id}/{competency}",
     response_model=OrgUnitStatusOut,
-    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_PRACTISING_OR_TEACHING],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_PRACTISING_OR_SCOPED],
 )
 def withdraw_practising_competency(
     unit_id: int,
@@ -1137,13 +1141,13 @@ def withdraw_practising_competency(
     Their competency itself is untouched. Somebody suspended at one place
     stays qualified, and stays authorised everywhere else they hold a row.
 
-    Requires ``manage_practising_competencies``, or ``manage_teaching``
+    Requires ``manage_practising_competencies``, or a scoped manager
     for a competency it may grant, at an org_unit the caller belongs to.
     """
     _require_visible(
         db, current_user, unit_id, "manage_practising_competencies"
     )
-    if _through_teaching(current_user, "manage_practising_competencies"):
+    if _through_a_scope(current_user, "manage_practising_competencies"):
         _require_in_scope(current_user, {competency})
 
     db.execute(
@@ -1192,7 +1196,7 @@ def _grant_refusal(
     three.
     """
     held = set(caller.get_final_competencies())
-    if "manage_users" not in held and "manage_teaching" not in held:
+    if "manage_users" not in held and held.isdisjoint(SCOPED_MANAGER_IDS):
         return HTTPException(status_code=403, detail="Not allowed")
     if caller.platform_role == "superadmin":
         return None
@@ -1219,7 +1223,7 @@ def _grant_refusal(
 @router.get(
     "/{unit_id}/members/{user_id}/practice",
     response_model=MemberPracticeOut,
-    dependencies=[DEP_REQUIRE_MANAGE_PRACTISING_OR_TEACHING],
+    dependencies=[DEP_REQUIRE_MANAGE_PRACTISING_OR_SCOPED],
 )
 def get_member_practice(
     unit_id: int,
@@ -1234,7 +1238,7 @@ def get_member_practice(
     beyond their ceiling are included: they authorise nothing, but they
     are rows somebody wrote.
 
-    Requires ``manage_practising_competencies``, or ``manage_teaching``
+    Requires ``manage_practising_competencies``, or a scoped manager
     at an org_unit the caller belongs to, which may change only the
     competencies ``may_change`` names.
     """
@@ -1242,7 +1246,7 @@ def get_member_practice(
         db, current_user, unit_id, "manage_practising_competencies"
     )
     person = _require_member(db, unit_id, user_id)
-    through_teaching = _through_teaching(
+    through_teaching = _through_a_scope(
         current_user, "manage_users", "manage_practising_competencies"
     )
     in_scope = scope_for(current_user).competencies
@@ -1292,7 +1296,7 @@ def get_member_practice(
 @router.post(
     "/{unit_id}/members/{user_id}/grant-and-authorise",
     response_model=OrgUnitStatusOut,
-    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS_OR_TEACHING],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS_OR_SCOPED],
 )
 def grant_and_authorise(
     unit_id: int,
@@ -1316,11 +1320,11 @@ def grant_and_authorise(
     Asking again once both are in place changes nothing.
 
     Requires ``manage_users`` and ``manage_practising_competencies``, or
-    ``manage_teaching`` for a competency it may grant, at an org_unit the
+    a scoped manager for a competency it may grant, at an org_unit the
     caller belongs to.
     """
     needs = ("manage_users", "manage_practising_competencies")
-    through_teaching = _through_teaching(current_user, *needs)
+    through_teaching = _through_a_scope(current_user, *needs)
     if not through_teaching and not set(needs) <= set(
         current_user.get_final_competencies()
     ):
