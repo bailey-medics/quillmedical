@@ -27,6 +27,7 @@ const data: FooterGroup[] = [
       { label: "Any device", link: "/any-device" },
       { label: "Assessments", link: "/assessments" },
       { label: "For educators", link: "/for-educators" },
+      { label: "EoEETA", link: "/optical-diagnosis-polyps" },
       { label: "Accessibility", link: "/accessibility" },
       { label: "Security", link: "/security" },
       { label: "Clinical records", link: "/clinical-records" },

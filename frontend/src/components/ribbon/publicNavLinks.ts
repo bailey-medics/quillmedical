@@ -23,15 +23,18 @@ export interface PublicNavLink {
  * rather than among the links, because it goes somewhere else entirely and
  * is what a returning visitor is looking for.
  *
- * The product pages first, then EPR (the clinical record, in development),
- * then Contact. About and Pricing live in the footer: the ribbon shows its
+ * The product pages first, then EoEETA (the optical diagnosis module built
+ * with the East of England Endoscopy Training Academy, the site's worked
+ * example), then EPR (the clinical record, in development), then Contact. About and Pricing live in the footer: the ribbon shows its
  * links from the `sm` breakpoint, where it replaces the burger, and every
  * extra word risks wrapping it onto a second line on a tablet held upright.
- * "EPR" is short enough to fit where "About" was not.
+ * "EPR" is short enough to fit where "About" was not, and "EoEETA" is one
+ * word for the same reason.
  */
 const publicNavLinks: PublicNavLink[] = [
   { label: "Assessments", href: "/assessments", icon: "assessments" },
   { label: "For educators", href: "/for-educators", icon: "educators" },
+  { label: "EoEETA", href: "/optical-diagnosis-polyps", icon: "teaching" },
   { label: "EPR", href: "/clinical-records", icon: "database" },
   { label: "Contact", href: "/contact", icon: "mail" },
 ];
