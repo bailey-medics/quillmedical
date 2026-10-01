@@ -27,6 +27,61 @@ from app.models import (
 from app.organisations import feature_holder_ids_of
 
 
+def feature_holders_for(db: Session, user_id: int) -> set[int]:
+    """Return the org_units whose features reach *user_id*.
+
+    The ones they belong to directly, and the organisation above each.
+
+    Args:
+        db: Core database session.
+        user_id: The person.
+
+    Returns:
+        The org_unit ids, empty when they belong nowhere.
+    """
+    return feature_holder_ids_of(
+        db,
+        [
+            int(org_unit_id)
+            for org_unit_id in db.execute(
+                select(org_unit_member.c.org_unit_id).where(
+                    org_unit_member.c.user_id == user_id
+                )
+            )
+            .scalars()
+            .all()
+        ],
+    )
+
+
+def user_has_feature(db: Session, user_id: int, feature_key: str) -> bool:
+    """Whether *feature_key* is switched on somewhere that reaches *user_id*.
+
+    The question ``requires_feature`` asks, for a caller that needs the
+    answer rather than a refusal.
+
+    Args:
+        db: Core database session.
+        user_id: The person.
+        feature_key: The feature.
+
+    Returns:
+        True when the feature reaches them.
+    """
+    holders = feature_holders_for(db, user_id)
+    if not holders:
+        return False
+    return (
+        db.scalar(
+            select(OrgUnitFeature.id).where(
+                OrgUnitFeature.org_unit_id.in_(holders),
+                OrgUnitFeature.feature_key == feature_key,
+            )
+        )
+        is not None
+    )
+
+
 def requires_feature(feature_key: str) -> Callable[..., User]:
     """FastAPI dependency: check the user's org has *feature_key* enabled.
 
@@ -50,35 +105,13 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
 
         user = get_current_user(request, db)
 
-        # Every org_unit whose features reach them: the ones they belong
-        # to directly, and the organisation above each.
-        user_org_unit_ids = feature_holder_ids_of(
-            db,
-            [
-                int(org_unit_id)
-                for org_unit_id in db.execute(
-                    select(org_unit_member.c.org_unit_id).where(
-                        org_unit_member.c.user_id == user.id
-                    )
-                )
-                .scalars()
-                .all()
-            ],
-        )
-
-        if not user_org_unit_ids:
+        if not feature_holders_for(db, user.id):
             raise HTTPException(
                 status_code=403,
                 detail="User has no organisation",
             )
 
-        enabled = db.scalar(
-            select(OrgUnitFeature.id).where(
-                OrgUnitFeature.org_unit_id.in_(user_org_unit_ids),
-                OrgUnitFeature.feature_key == feature_key,
-            )
-        )
-        if enabled is None:
+        if not user_has_feature(db, user.id, feature_key):
             raise HTTPException(
                 status_code=403,
                 detail=f"Feature '{feature_key}' is not enabled "

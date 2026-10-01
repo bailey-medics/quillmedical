@@ -24,7 +24,7 @@
 
 import { useLocation } from "react-router-dom";
 
-import { useHasFeature } from "@/lib/features";
+import { useCanReachPassport, useHasFeature } from "@/lib/features";
 import { useHasAnyCompetency, useHasCompetency } from "@/lib/cbac/hooks";
 import type { NavItem } from "./NestedNavLink";
 import { SCOPED_MANAGER_IDS } from "@/types/cbac";
@@ -108,7 +108,9 @@ export function useFeatureNavItems(): NavItem[] {
   // The passport routes carry RequireFeature *and* RequireCompetency,
   // so both are asked here. Teaching gates its entry on the feature
   // alone, matching its own routes.
-  const passportEnabled = useHasFeature("passport");
+  // A holder with no org_unit that has the passport still reaches their
+  // own record, so they are offered the way in too.
+  const passportEnabled = useCanReachPassport();
   const canAssess = useHasCompetency("assess_clinician_passport");
   const canWrite = useHasCompetency("passport_write");
   const hasPassport = passportEnabled && canAssess;

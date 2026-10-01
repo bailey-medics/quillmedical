@@ -36,6 +36,12 @@ export type User = {
   platform_role?: string;
   /** Features enabled on the user's primary organisation */
   enabled_features?: string[];
+  /**
+   * Whether they hold a clinician passport of their own. A holder may
+   * always read and export it, even where `enabled_features` lacks the
+   * passport, so this is what offers them the way in.
+   */
+  owns_passport?: boolean;
   /** Whether FHIR and EHRbase clinical services are available */
   clinical_services_enabled?: boolean;
   /** Resolved CBAC competency IDs for this user */

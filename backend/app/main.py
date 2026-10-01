@@ -88,6 +88,7 @@ from app.email_send import (
     send_email,
 )
 from app.features.passport import cover as passport_cover
+from app.features.passport.models import Passport
 from app.features.teaching.schemas import (
     CaptionCompleteIn,
     CaptionCompleteOut,
@@ -2679,7 +2680,14 @@ def me(
         enabled_features = list(features)
 
     grant_scope = scope_for(current_user)
+    owns_passport = (
+        db.scalar(
+            select(Passport.id).where(Passport.user_id == current_user.id)
+        )
+        is not None
+    )
     return MeOut(
+        owns_passport=owns_passport,
         id=current_user.id,
         username=current_user.username,
         name=current_user.full_name,

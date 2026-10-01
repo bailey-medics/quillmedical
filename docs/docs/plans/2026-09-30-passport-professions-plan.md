@@ -332,7 +332,7 @@ nothing writes it yet.
       and export their own passport (next step), but they cannot write,
       because writing still needs the passport switched on somewhere they
       belong.
-- [ ] **An owner can always read and export their own passport.** Today
+- [x] **An owner can always read and export their own passport.** Today
       every passport route hangs off one gate, `requires_feature("passport")`
       on `passport_router` in `backend/app/features/passport/router.py`,
       and the frontend wraps the whole `/passport` subtree in
@@ -350,6 +350,30 @@ nothing writes it yet.
       Agreed on 1 October 2026. Tests: somebody with no passport-enabled
       membership can read and export their own passport, gets 403 on
       writing, and gets 404 on anybody else's.
+
+      Built without moving any route. The router's one dependency is now
+      `_feature_unless_reading_your_own`: it waives the feature gate for
+      a `GET` on `/me` or beneath a `/{passport_id}` the caller holds, and
+      runs `requires_feature("passport")` for everything else. The id is
+      read from the path and never the query, so it cannot be supplied to
+      a route that has none. Two things differ from the step as written:
+
+      - **Somebody else's passport answers 403, not 404**, for a caller
+        the feature does not reach. The feature gate refuses them before
+        any passport is looked up, with the same answer whether or not
+        the id exists, so nothing is confirmed.
+      - **`assess_clinician_passport` is still asked for.** Each read
+        route carries it as well as the feature gate, and it is held
+        through somebody's profession, so leaving an org unit does not
+        take it away.
+
+      The page already takes its write controls from `entitlement.can_write`
+      in the passport response, so that is now false whenever the feature
+      does not reach the holder, and every "add" control is disabled with
+      the existing read-only notice. `/api/auth/me` gains `owns_passport`,
+      and a new `RequirePassport` guard and the navigation offer the
+      passport pages to a holder as well as to somebody the feature
+      reaches.
 - [x] **A trainee who rotates off loses writing.** Removing a `trainee`
       member, or changing a trainee to `external`, closes their
       `organisation` row from this unit. A rotation is not a career move
@@ -406,13 +430,26 @@ nothing writes it yet.
       off, only that is sent, because it ends the cover itself. The
       warning shows for anybody turning the passport off where cover is
       on, operator or not.
-- [ ] **Tests**: - a feature on at a site reaches that site's members and nobody at
-      the trust's other sites; a feature on at the trust still reaches
-      every site - switching on grants every staff and trainee member, and no
-      external or patient member - a staff or trainee member added afterwards is granted; an external
-      one is not, until changed to staff or trainee - removing a member of staff does not close their row - a trainee removed, or moved to external, loses writing - switching off closes exactly this unit's rows, and leaves an
-      `individual` row and another unit's row alone - switching it on without `passport` is refused - turning `passport` off ends the cover - a `manage_users` holder who is not a superadmin is refused the
-      switch, in both directions - a ward refuses the switch, as it refuses every feature
+- [x] **Tests**, in `backend/tests/test_site_features.py` and
+      `backend/tests/test_passport_cover.py`:
+
+      - a feature on at a site reaches that site's members and nobody at
+        the trust's other sites; a feature on at the trust still reaches
+        every site
+      - switching on grants every staff and trainee member, and no
+        external or patient member
+      - a staff or trainee member added afterwards is granted; an external
+        one is not, until changed to staff or trainee
+      - removing a member of staff does not close their row
+      - a trainee removed, or moved to external, loses writing
+      - switching off closes exactly this unit's rows, and leaves an
+        `individual` row and another unit's row alone
+      - switching it on without `passport` is refused
+      - turning `passport` off ends the cover
+      - a `manage_users` holder who is not a superadmin is refused the
+        switch, in both directions
+      - a ward refuses the switch, as it refuses every feature
+
 - [ ] **Set up Cheltenham** once this has merged: Gloucestershire
       Hospitals as the `organisation`, Cheltenham oncology as a `site`
       under it, with `passport` and `passport_write` switched on at the

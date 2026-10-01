@@ -190,6 +190,7 @@ class MeOut(BaseModel):
             Empty for somebody who may grant nothing.
         may_assign_professions: The base professions they may give
             somebody, read the same way.
+        owns_passport: Whether they hold a clinician passport of their own.
     """
 
     id: int
@@ -221,6 +222,12 @@ class MeOut(BaseModel):
     # Optional, so a client that predates them keeps working.
     may_grant: list[str] | None = None
     may_assign_professions: list[str] | None = None
+    # Whether they hold a clinician passport of their own. A holder may
+    # always read and export it, whether or not the passport feature
+    # reaches them, so the interface needs to know to offer the way in
+    # when `enabled_features` does not. Optional, so a client that
+    # predates it keeps working.
+    owns_passport: bool = False
 
 
 class ServiceHealthStatus(BaseModel):

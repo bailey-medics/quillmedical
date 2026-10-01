@@ -81,6 +81,18 @@ const mockUsers: Record<string, User> = {
     enabled_features: ["passport"],
     clinical_services_enabled: true,
   },
+  // Holds a passport of their own and belongs nowhere the passport is
+  // switched on, as somebody removed from the one org_unit that had it.
+  passport_owner_without_feature: {
+    id: "10",
+    username: "passport.leaver",
+    email: "leaver@example.com",
+    roles: ["Clinician"],
+    competencies: ["assess_clinician_passport", "passport_write"],
+    enabled_features: [],
+    owns_passport: true,
+    clinical_services_enabled: true,
+  },
   passport_feature_only: {
     id: "8",
     username: "passport.feature.only",
@@ -713,6 +725,15 @@ describe("SideNavContent Component", () => {
   describe("Passport", () => {
     it("shows Passport to somebody holding the feature and the competency", async () => {
       renderWithAuth(<SideNavContent />, "passport_holder");
+
+      await waitFor(() => {
+        expect(screen.getByText("Passport")).toBeInTheDocument();
+      });
+    });
+
+    it("shows Passport to a holder the feature does not reach", async () => {
+      // Their own record stays theirs to read and export
+      renderWithAuth(<SideNavContent />, "passport_owner_without_feature");
 
       await waitFor(() => {
         expect(screen.getByText("Passport")).toBeInTheDocument();
