@@ -176,6 +176,8 @@ class TestLoadChecks:
             f"    may_grant:{listed}\n"
             "  - id: manage_users\n"
             '    display_name: "Root"\n'
+            "  - id: passport_write\n"
+            '    display_name: "Sold"\n'
             "  - id: old\n"
             '    display_name: "Old"\n'
             "    retired_on: 2026-01-01\n"
@@ -198,6 +200,51 @@ class TestLoadChecks:
 
         with pytest.raises(ValueError, match="may only be granted"):
             _load_competencies(tmp_path)
+
+    def test_the_sold_competency_fails_to_load(self, tmp_path: Path) -> None:
+        """A scoped manager must never hand out ``passport_write``.
+
+        It is what an organisation or a person pays for, so a whitelist
+        naming it would give the passport away with nothing visibly
+        wrong.
+        """
+        self._write(tmp_path, ["passport_write"])
+
+        with pytest.raises(ValueError, match="sold rather than granted"):
+            _load_competencies(tmp_path)
+
+
+class TestTheSoldCompetency:
+    def test_no_real_whitelist_names_it(self) -> None:
+        for entry in COMPETENCIES:
+            assert "passport_write" not in (entry.may_grant or [])
+
+
+class TestManagePassport:
+    def test_is_a_scoped_manager(self) -> None:
+        assert "manage_passport" in SCOPED_MANAGER_IDS
+
+    def test_gives_the_passport_whitelists(self) -> None:
+        scope = scope_for_competencies(["manage_passport"])
+
+        assert scope.competencies == frozenset(
+            {"assess_clinician_passport", "manage_passport"}
+        )
+        assert scope.professions == frozenset(
+            {
+                "passport_delegate",
+                "passport_clinical_lead",
+                "passport_admin",
+                "passport_external_assessor",
+            }
+        )
+
+    def test_holding_both_managers_unions_the_lists(self) -> None:
+        scope = scope_for_competencies(["manage_passport", "manage_teaching"])
+
+        assert scope.professions is not None
+        assert "teaching_delegate" in scope.professions
+        assert "passport_delegate" in scope.professions
 
 
 class TestTheMeResponse:

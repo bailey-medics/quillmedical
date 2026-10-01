@@ -178,6 +178,13 @@ def _load_competencies(directory: Path) -> list[CompetencyEntry]:
 #: side door.
 ROOT_COMPETENCY: str = "manage_users"
 
+#: The paid half of the clinician passport. It comes from an
+#: organisation's enablement or an individual subscription and nowhere
+#: else, so a ``may_grant`` list naming it would let a scoped manager give
+#: away what is sold. Nothing would visibly go wrong: the person would
+#: simply be able to write.
+SOLD_COMPETENCY: str = "passport_write"
+
 
 def _check_may_grant(entries: list[CompetencyEntry]) -> None:
     """Refuse a ``may_grant`` list naming anything it should not.
@@ -190,8 +197,8 @@ def _check_may_grant(entries: list[CompetencyEntry]) -> None:
         entries: The whole merged catalogue.
 
     Raises:
-        ValueError: If a list names an unknown or retired competency, or
-            the root competency.
+        ValueError: If a list names an unknown or retired competency,
+            the root competency, or the sold one.
     """
     by_id = {entry.id: entry for entry in entries}
     for entry in entries:
@@ -212,6 +219,12 @@ def _check_may_grant(entries: list[CompetencyEntry]) -> None:
                     f"Competency {entry.id!r} may_grant names "
                     f"{ROOT_COMPETENCY!r}, which may only be granted by "
                     "its own holders."
+                )
+            if granted == SOLD_COMPETENCY:
+                raise ValueError(
+                    f"Competency {entry.id!r} may_grant names "
+                    f"{SOLD_COMPETENCY!r}, which is sold rather than "
+                    "granted."
                 )
 
 

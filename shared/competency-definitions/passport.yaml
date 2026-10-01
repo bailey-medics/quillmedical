@@ -70,3 +70,24 @@ competencies:
   # to it.
   - id: passport_write
     display_name: "Hold and Write a Clinician Passport"
+
+  # Running the passport at an organisation or site: signing up the
+  # delegates who hold passports, the clinical lead, other managers, and
+  # external assessors, at the org_units its holder belongs to.
+  #
+  # A whitelist, like manage_teaching in teaching.yaml, so its holder
+  # never needs manage_users, which can grant anything. It is on its own
+  # list so one manager can appoint another. passport_write is not on it
+  # and cannot be: it is sold, and the loader refuses a may_grant list
+  # that names it. See
+  # docs/docs/plans/2026-09-30-passport-professions-plan.md.
+  - id: manage_passport
+    display_name: "Manage the Clinician Passport"
+    may_grant:
+      - assess_clinician_passport
+      - manage_passport
+    may_assign_professions:
+      - passport_delegate
+      - passport_clinical_lead
+      - passport_admin
+      - passport_external_assessor
