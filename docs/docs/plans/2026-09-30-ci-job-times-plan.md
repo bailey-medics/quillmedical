@@ -411,7 +411,7 @@ in the order they would then matter. None is committed to.
 - [ ] Measure the image build on a pull request that leaves the frontend
       alone, once this has merged and warmed. The estimate is about 30s,
       from 1m 45s
-- [ ] Decide whether to pay for larger runners, and if so make the runner
+- [x] Decide whether to pay for larger runners, and if so make the runner
       a repository variable. `runs-on: ${{ vars.CI_RUNNER_PY_UNIT ||
       'ubuntu-24.04' }}` leaves a job on the free runner until the
       variable is set, so each job can be switched on its own with
@@ -423,7 +423,11 @@ in the order they would then matter. None is committed to.
       it free on a public repository, so set a spending limit first. More
       cores help only the jobs that use them: the frontend and Storybook
       legs should scale, the E2E tests will not while they run on one
-      worker, and a bigger runner has the same speed per core
+      worker, and a bigger runner has the same speed per core. Decided on
+      1 October 2026: not for now. Every job stays on the free runner. The
+      switch was built, with `just ci-speed` to set it, as #1336, and that
+      pull request was closed unmerged along with the decision. Its branch
+      is kept, so reopening it is where to start if this changes
 
 ## Decisions
 
