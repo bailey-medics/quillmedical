@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 import pyotp
 import pytest
+from argon2 import PasswordHasher, Type
 from jose import JWTError, jwt
 
 from app.config import settings
@@ -54,6 +55,47 @@ class TestPasswordHashing:
         # Defensive programming: empty passwords should be rejected
         with pytest.raises(ValueError, match="Password cannot be empty"):
             hash_password("")
+
+
+class TestProductionPasswordHasher:
+    """The suite hashes cheaply; production must not.
+
+    conftest.py swaps the hasher for a cheap one so the tests run quickly.
+    These pin what a deployment uses, so weakening it fails here.
+    """
+
+    def test_production_hasher_keeps_the_strong_parameters(
+        self, production_password_hasher: PasswordHasher
+    ) -> None:
+        """Argon2id at argon2-cffi's defaults, as security.py documents."""
+        assert production_password_hasher.type is Type.ID
+        assert production_password_hasher.time_cost == 3
+        assert production_password_hasher.memory_cost == 65536
+        assert production_password_hasher.parallelism == 4
+
+    def test_production_hash_carries_those_parameters(
+        self, production_password_hasher: PasswordHasher
+    ) -> None:
+        """What is written to the database says how it was made."""
+        hashed = production_password_hasher.hash("TestPassword123!")
+
+        assert hashed.startswith("$argon2id$")
+        assert "m=65536,t=3,p=4" in hashed
+
+    def test_production_hash_verifies_in_the_test_process(
+        self, production_password_hasher: PasswordHasher
+    ) -> None:
+        """verify_password reads the parameters from the hash, so a hash
+        made at full strength still verifies with the cheap hasher in
+        place, and a wrong password is still refused."""
+        hashed = production_password_hasher.hash("TestPassword123!")
+
+        assert verify_password("TestPassword123!", hashed)
+        assert not verify_password("WrongPassword123!", hashed)
+
+    def test_the_suite_itself_hashes_cheaply(self) -> None:
+        """The other half: without this the speed-up could quietly go."""
+        assert "m=8,t=1,p=1" in hash_password("TestPassword123!")
 
 
 class TestJWTTokens:

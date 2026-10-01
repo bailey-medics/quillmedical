@@ -365,13 +365,26 @@ in the order they would then matter. None is committed to.
       minutes with no retries. Only about 1m 40s of the job's 3 minutes
       is the tests, so the most this can save is under a minute. Try
       four once two has held for a while
-- [ ] Give the backend tests a cheap password hasher, if hashing is what
+- [x] Give the backend tests a cheap password hasher, if hashing is what
       limits them. Confirm it first with `pytest --durations=25` on a CI
       run. `security.py` uses argon2-cffi's defaults, 64MB and four
       threads per hash, which is right for production and is the likely
       reason four workers saved only about a minute. This changes how
       security code is configured, so it needs a decision of its own
-      before any of it is built
+      before any of it is built. Confirmed, and built without touching
+      security code at all. The two slowest tests were the password round
+      trips in `test_security_pentest.py`, at 19s and 11s for 400 hashes
+      and checks, about 47ms each, and almost every other test makes a
+      user. `tests/conftest.py` now swaps the hasher for a cheap one in
+      the test process only. `app/security.py` and its settings are
+      unchanged, so no switch exists that could weaken a deployment, which
+      was the worry behind asking for a decision. `test_security.py` gains
+      tests that the hasher production builds is still Argon2id at 64MB,
+      three passes and four threads, and that a hash made at full strength
+      still verifies. Timed locally on the whole suite, container start
+      included: 371s before and 172s after on one process, and 221s before
+      and 95s after with `-n auto`. So hashing was a little over half the
+      suite, and with it gone the workers from Phase 7 pay off
 - [ ] Widen what `e2e-image-cache.yml` warms, if Phase 6's reading shows
       the build stage is what remains. It saves only when a dependency
       file changes, so a pull request always rebuilds the application
