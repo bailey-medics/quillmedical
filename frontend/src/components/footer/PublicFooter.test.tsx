@@ -33,6 +33,7 @@ describe("PublicFooter", () => {
     ["Any device", "/any-device"],
     ["Assessments", "/assessments"],
     ["For educators", "/for-educators"],
+    ["EoEETA", "/optical-diagnosis-polyps"],
     ["Accessibility", "/accessibility"],
     ["Security", "/security"],
     ["Clinical records", "/clinical-records"],

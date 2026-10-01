@@ -526,6 +526,30 @@ EoEETA's does.
       It reads the file the branded emails use, which is 128px square, so
       it is shown at 5rem and softens if made much larger
 
+## Phase 7: Put the EoEETA page in the navigation
+
+The module page was reachable only from the home page feature. EoEETA is
+the showcase, and they have agreed to be named, so it earns a place in
+the navigation.
+
+- [x] Add `EoEETA`, linking `/optical-diagnosis-polyps`, to
+      `publicNavLinks.ts`, after `For educators` and before `EPR`. The
+      ribbon and the mobile drawer both read that list. One word, for the
+      reason the list's own comment gives: every extra word risks wrapping
+      the ribbon on a tablet held upright. That makes five links, the
+      number the ribbon was measured with in Phase 3. It takes the
+      existing `teaching` icon, so nothing new is registered in
+      `appIcons.ts`
+- [x] Add the same link to the footer's Platform group in
+      `PublicFooter.tsx`, after `For educators`
+- [x] Update `PublicTopRibbon.test.tsx` and `PublicFooter.test.tsx` for
+      the new link and its order
+- [x] Name the accessibility journeys this touches. None: the four in
+      `docs/docs/frontend/accessibility/journeys.md` all run inside the
+      application, and none passes through the public site's ribbon,
+      drawer or footer, so nothing is added to the "Not yet run" list in
+      `testing-log.md`
+
 ## Later
 
 Out of scope for this plan, and recorded only so the structure leaves room

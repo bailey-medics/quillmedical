@@ -29,6 +29,14 @@ describe("PublicTopRibbon Component", () => {
       expect(screen.queryByText("Teaching")).not.toBeInTheDocument();
     });
 
+    it("links EoEETA to the optical diagnosis module page", () => {
+      renderWithMantine(<PublicTopRibbon onBurgerClick={vi.fn()} />);
+      expect(screen.getByRole("link", { name: "EoEETA" })).toHaveAttribute(
+        "href",
+        "/optical-diagnosis-polyps",
+      );
+    });
+
     it("links EPR to the clinical records page as a live link", () => {
       // EPR was once a disabled placeholder; it now goes to the page that
       // says the clinical record is in development.
@@ -96,6 +104,7 @@ describe("PublicTopRibbon Component", () => {
       expect(hrefs).toEqual([
         "/assessments",
         "/for-educators",
+        "/optical-diagnosis-polyps",
         "/clinical-records",
         "/contact",
       ]);
