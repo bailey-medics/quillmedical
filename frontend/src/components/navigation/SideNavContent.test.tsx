@@ -221,7 +221,7 @@ describe("SideNavContent Component", () => {
       expect(onNavigate).toHaveBeenCalledTimes(1);
     });
 
-    it("calls onNavigate callback when Admin is clicked (for admin user)", async () => {
+    it("keeps the drawer open when Admin is clicked, so its pages can be chosen", async () => {
       const user = userEvent.setup();
       const onNavigate = vi.fn();
       renderWithAuth(<SideNavContent onNavigate={onNavigate} />, "admin");
@@ -231,6 +231,9 @@ describe("SideNavContent Component", () => {
       );
 
       await user.click(screen.getByText("Admin"));
+      expect(onNavigate).not.toHaveBeenCalled();
+
+      await user.click(await screen.findByText("Users"));
       expect(onNavigate).toHaveBeenCalledTimes(1);
     });
 
