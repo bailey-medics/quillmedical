@@ -155,6 +155,27 @@ deliberately not readers yet – how "admin of the holder's organisation" should
 be evaluated is being settled elsewhere, and inventing a scope here that that
 work then changes would be worse than the narrower rule.
 
+### Reading your own, wherever you work
+
+The feature gate is waived for one case: a `GET` on the caller's own
+passport, which is `/me` and anything beneath a `/{passport_id}` they hold.
+Reading and exporting a passport come from owning it, so a holder who
+belongs nowhere the passport is switched on can still open their record and
+take it with them. Every write stays behind the gate, and
+`entitlement.can_write` is false for them, so the pages show the record as
+read-only.
+
+### Passport cover
+
+`passport_write` is sold. One way to get it is to belong to an org unit
+whose cover is switched on: a `passport_write` feature row beside the
+`passport` one, which only a superadmin may set. `cover.py` grants writing
+to that org unit's `staff` and `trainee` members, and to anyone an
+administrator adds in those capacities afterwards. A member of staff who
+leaves keeps it; a trainee who is removed loses it. Switching cover off ends
+every grant it made. A site may hold features, so cover can be on for one
+team without its whole trust.
+
 ### Passport professions
 
 An organisation can use the passport with clinical services switched off, so

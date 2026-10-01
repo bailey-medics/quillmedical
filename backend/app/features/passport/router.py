@@ -65,7 +65,7 @@ from app.email_send import (
     EmailRateLimitError,
     send_email,
 )
-from app.features.gating import requires_feature
+from app.features.gating import requires_feature, user_has_feature
 from app.models import (
     OrgUnitFeature,
     ProfessionalRegistration,
@@ -177,10 +177,51 @@ from .store import PassportNotFoundError, PassportStore
 
 logger = logging.getLogger(__name__)
 
+_FEATURE_GATE = requires_feature("passport")
+
+
+def _feature_unless_reading_your_own(
+    request: Request, db: Session = Depends(get_core_db)
+) -> None:
+    """The passport feature gate, waived for a holder reading their own.
+
+    Reading and exporting a passport you hold come from owning it, never
+    from paying, and not from where you work either. Somebody who belongs
+    nowhere the passport is switched on, because they were removed from
+    the org_unit that had it, must still be able to open their own record
+    and take it with them.
+
+    Waived only for a ``GET`` on the caller's own passport: ``/me``, and
+    anything beneath a ``/{passport_id}`` they hold. Every write stays
+    behind the gate, and so does reading anybody else's, the assessor
+    inbox and the assessor search. The route's own checks still run
+    afterwards, so this never widens who may read what.
+
+    The passport id is taken from the path and never from the query, so
+    it cannot be supplied to a route that has none.
+
+    Raises:
+        HTTPException: 403 as ``requires_feature`` raises it.
+    """
+    if request.method == "GET":
+        user = _get_current_user(request, db)
+        passport_id = request.path_params.get("passport_id")
+        if passport_id is None:
+            if request.url.path.endswith("/passport/me"):
+                return
+        elif _PASSPORT_ID.match(passport_id):
+            owner = db.scalar(
+                select(Passport.user_id).where(Passport.id == passport_id)
+            )
+            if owner == user.id:
+                return
+    _FEATURE_GATE(request, db)
+
+
 passport_router = APIRouter(
     prefix="/passport",
     tags=["passport"],
-    dependencies=[Depends(requires_feature("passport"))],
+    dependencies=[Depends(_feature_unless_reading_your_own)],
 )
 
 #: A passport id is 32 lower-case hex characters and decides a filesystem
@@ -605,6 +646,13 @@ def _entitlement_out(db: Session, user_id: int) -> EntitlementOut:
     if holder is None or (
         "passport_write" not in holder.get_final_competencies()
     ):
+        return EntitlementOut(can_write=False)
+
+    # Writing sits behind the feature gate, and reading their own does
+    # not. Somebody who belongs nowhere the passport is on still holds
+    # the competency, so without this the page would offer them an "add"
+    # control that every save refused.
+    if not user_has_feature(db, user_id, "passport"):
         return EntitlementOut(can_write=False)
 
     ends_on = passport_write_ends_on(db, user_id)

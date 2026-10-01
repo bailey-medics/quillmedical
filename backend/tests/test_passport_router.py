@@ -4005,6 +4005,124 @@ class TestFeatureGate:
         assert response.status_code == 403
 
 
+class TestAnOwnerWhoBelongsNowhereThePassportIsOn:
+    """A holder always reads and exports their own passport.
+
+    Reading and exporting come from owning the record, never from paying
+    and never from where somebody works. Before 1 October 2026 the
+    feature gate sat in front of every route, so a holder removed from
+    the one org_unit that had the passport could not open their own
+    record at all. Writing, and everything that is not their own record,
+    still needs the feature.
+    """
+
+    @pytest.fixture
+    def removed(
+        self,
+        holder_client: TestClient,
+        db_session: Session,
+        holder: User,
+        org: OrgUnit,
+    ) -> tuple[TestClient, str]:
+        """The holder, with a passport, taken off the only org_unit."""
+        passport_id = _create_passport(holder_client)
+        db_session.execute(
+            org_unit_member.delete().where(
+                org_unit_member.c.user_id == holder.id
+            )
+        )
+        db_session.commit()
+        return holder_client, passport_id
+
+    def test_they_read_it(self, removed: tuple[TestClient, str]) -> None:
+        client, passport_id = removed
+
+        assert client.get("/api/passport/me").status_code == 200
+        assert client.get(f"/api/passport/{passport_id}").status_code == 200
+        assert (
+            client.get(f"/api/passport/{passport_id}/logbook").status_code
+            == 200
+        )
+
+    @pytest.mark.parametrize("kind", ["md", "zip"])
+    def test_they_export_it(
+        self, removed: tuple[TestClient, str], kind: str
+    ) -> None:
+        client, passport_id = removed
+
+        response = client.get(f"/api/passport/{passport_id}/export.{kind}")
+
+        assert response.status_code == 200
+
+    def test_they_are_told_it_is_read_only(
+        self, removed: tuple[TestClient, str]
+    ) -> None:
+        """They still hold ``passport_write``; the page must not offer it."""
+        client, _ = removed
+
+        entitlement = client.get("/api/passport/me").json()["entitlement"]
+
+        assert entitlement["can_write"] is False
+
+    def test_they_cannot_write_to_it(
+        self, removed: tuple[TestClient, str]
+    ) -> None:
+        client, passport_id = removed
+
+        response = client.post(
+            f"/api/passport/{passport_id}/reflections",
+            json={
+                "title": "After leaving",
+                "written_on": "2026-03-12",
+                "body": "Not saved.",
+                "anonymised_confirmed": True,
+                "attachments": [],
+            },
+        )
+
+        assert response.status_code == 403
+
+    def test_they_cannot_reach_the_assessor_inbox(
+        self, removed: tuple[TestClient, str]
+    ) -> None:
+        client, _ = removed
+
+        assert client.get("/api/passport/requests/inbox").status_code == 403
+
+    def test_they_cannot_read_another_persons(
+        self,
+        removed: tuple[TestClient, str],
+        test_client: TestClient,
+        db_session: Session,
+        org: OrgUnit,
+    ) -> None:
+        """The waiver is for their own record only.
+
+        Refused by the feature gate, with the same 403 whether or not the
+        id names a passport, so nothing is confirmed to them.
+        """
+        client, _ = removed
+        other = _make_user(db_session, "other_holder", writes=True)
+        add_org_unit_member(db_session, org.id, other.id, "trainee")
+        db_session.commit()
+        theirs = Passport(id="a" * 32, user_id=other.id)
+        db_session.add(theirs)
+        db_session.commit()
+
+        assert client.get(f"/api/passport/{theirs.id}").status_code == 403
+        assert client.get(f"/api/passport/{'b' * 32}").status_code == 403
+
+    def test_me_says_they_own_a_passport(
+        self, removed: tuple[TestClient, str]
+    ) -> None:
+        client, _ = removed
+
+        me = client.get("/api/auth/me").json()
+
+        assert me["owns_passport"] is True
+        assert "passport" not in me["enabled_features"]
+
+
 class TestOnlyAssessableCompetencies:
     """A passport records skills, never software permissions.
 

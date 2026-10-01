@@ -122,6 +122,7 @@ import RequireAuth from "./auth/RequireAuth";
 import RequireOperator from "./auth/RequireOperator";
 import RequireCompetency from "./auth/RequireCompetency";
 import { RequireFeature } from "./auth/RequireFeature";
+import { RequirePassport } from "./auth/RequirePassport";
 import RequireClinical from "./auth/RequireClinical";
 import { NoAccessLayout } from "@/components/layouts";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
@@ -224,16 +225,17 @@ const routes: RouteObject[] = [
       { path: "/", element: <HomeRedirect /> },
 
       // Passport – lazily loaded, and gated twice: the organisation
-      // feature and the CBAC competency. Most people who download the
+      // feature, or holding a passport of your own, and the CBAC
+      // competency. Most people who download the
       // app can never open these, which is why this subtree is the
       // pilot for code splitting rather than the largest one.
       {
         element: (
-          <RequireFeature feature="passport">
+          <RequirePassport>
             <RequireCompetency competency="assess_clinician_passport">
               <Outlet />
             </RequireCompetency>
-          </RequireFeature>
+          </RequirePassport>
         ),
         children: [
           {
