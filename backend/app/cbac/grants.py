@@ -47,6 +47,14 @@ TERMS: dict[str, timedelta] = {
 #: What a row seeded from somebody's base profession records as its source.
 PROFESSION_SOURCE = "profession"
 
+#: Sources whose rows the user editor must leave alone. A grant made by an
+#: org_unit's passport cover, or bought as a subscription, is never on the
+#: lists an admin saves, because it was not given on that page. Closing
+#: it there would end somebody's writing as a side effect of correcting
+#: their email. Only the mechanism that made such a row ends it: the
+#: cover switch, or the subscription's own end date.
+PROTECTED_SOURCES: frozenset[str] = frozenset({"organisation", "individual"})
+
 
 def sync_competency_rows(
     user: User,
@@ -72,6 +80,9 @@ def sync_competency_rows(
     ``profession``. Changing somebody's profession therefore adds rows for
     what the new one grants and closes nothing, and somebody with no rows
     yet gets the whole template as rows on their first save.
+
+    **A row whose source is in ``PROTECTED_SOURCES`` is never closed
+    here**, whatever the lists say. See that constant.
 
     No removal row is written. Somebody who does not hold a competency
     simply has no current grant row for it, and taking one away closes its
@@ -132,4 +143,6 @@ def sync_competency_rows(
 
     for competency_id in current.keys() - wanted_ids:
         for row in current[competency_id]:
+            if row.source in PROTECTED_SOURCES:
+                continue
             row.ends_on = now

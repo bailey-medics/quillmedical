@@ -299,15 +299,15 @@ class TestTheHelper:
     ) -> None:
         """Taking it off the list is how an administrator takes it away.
 
-        The dated row is closed like any other, before its term is up.
+        A grant an administrator made is closed like any other.
         """
         user = _user(db_session, "term_closed")
         user.competency_grants.append(
             UserCompetency(
                 competency_id="passport_write",
                 starts_on=datetime.now(UTC),
-                ends_on=datetime.now(UTC) + timedelta(days=365),
-                source="organisation",
+                ends_on=None,
+                source="admin",
             )
         )
         db_session.commit()
@@ -316,6 +316,34 @@ class TestTheHelper:
         db_session.commit()
 
         assert _current(db_session, user.id) == set()
+
+    @pytest.mark.parametrize("source", ["organisation", "individual"])
+    def test_a_paid_grant_is_left_alone_when_off_the_list(
+        self, db_session: Session, source: str
+    ) -> None:
+        """Only what made a paid grant may end it.
+
+        Until 1 October 2026 this asserted the opposite for an
+        ``organisation`` row: that saving the lists without
+        ``passport_write`` closed it. That would have ended an org_unit's
+        cover for somebody whenever their page was saved, so the rule was
+        reversed. See ``PROTECTED_SOURCES`` in ``app.cbac.grants``.
+        """
+        user = _user(db_session, f"paid_{source}")
+        user.competency_grants.append(
+            UserCompetency(
+                competency_id="passport_write",
+                starts_on=datetime.now(UTC),
+                ends_on=datetime.now(UTC) + timedelta(days=365),
+                source=source,
+            )
+        )
+        db_session.commit()
+
+        sync_competency_rows(user, additional=[], removed=[], source="admin")
+        db_session.commit()
+
+        assert _current(db_session, user.id) == {"passport_write"}
 
     def test_a_removal_writes_no_removal_row(
         self, db_session: Session
