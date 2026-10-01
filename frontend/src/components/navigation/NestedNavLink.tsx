@@ -39,6 +39,13 @@ export type NavItem = {
    * hamburger.
    */
   keepsDrawerOpen?: boolean;
+  /**
+   * Highlight on this item's own address only. An item with no children
+   * otherwise stays highlighted on every page beneath it, which is right
+   * when nothing else in the menu names that page and wrong when
+   * something does: two entries then claim to be where you are.
+   */
+  exact?: boolean;
 };
 
 /**
@@ -106,7 +113,9 @@ export default function NestedNavLink({
 
   const isActive = item.href
     ? location.pathname === item.href ||
-      (!item.children?.length && location.pathname.startsWith(item.href + "/"))
+      (!item.exact &&
+        !item.children?.length &&
+        location.pathname.startsWith(item.href + "/"))
     : false;
   const shouldExpand = isActiveOrParent(item, location.pathname);
   const hasChildren = item.children && item.children.length > 0;

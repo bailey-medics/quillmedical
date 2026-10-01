@@ -7,7 +7,7 @@ would fail rather than match a different place.
 
 Covers:
 - Enabling a feature records it against the organisation's place
-- A place inside an organisation holds no features of its own
+- A place inside an organisation does not share its organisation's rows
 - Adding and removing a patient works through the place
 - Deleting an organisation takes everything at its place with it
 """

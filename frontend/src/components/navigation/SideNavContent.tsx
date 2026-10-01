@@ -394,6 +394,11 @@ export default function SideNavContent({
               label: "Sites",
               href: "/admin/sites",
               icon: showIcons ? "building-hospital" : undefined,
+              // One site's own pages are named under its organisation
+              // above, so Sites stays lit for the list and the create
+              // form only. Lit on both, the menu said you were in two
+              // places.
+              exact: siteId !== null && /^\d+$/.test(siteId),
             } satisfies NavItem,
           ]
         : []),

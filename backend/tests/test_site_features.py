@@ -14,10 +14,15 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models import OrgUnit, OrgUnitFeature, User
+from app.org_units.types import ORG_UNIT_TYPE_IDS, ROOT_TYPE_IDS
 from app.organisations import add_org_unit_member, feature_holder_ids_of
 from app.security import hash_password
 
 PASSWORD = "SiteFeature123!"
+
+#: Every type that sits under an organisation, read from the YAML so a
+#: type added there is covered here without being named.
+CHILD_TYPE_IDS = set(ORG_UNIT_TYPE_IDS) - set(ROOT_TYPE_IDS)
 
 #: A passport route a consultant reaches once the feature is on. It also
 #: asks for ``assess_clinician_passport``, which a consultant holds.
@@ -169,18 +174,24 @@ class TestSwitchingItOn:
         assert resp.status_code == 200, resp.text
         assert resp.json()["status"] == "enabled"
 
-    def test_a_ward_still_refuses_one(
+    @pytest.mark.parametrize("type_id", sorted(CHILD_TYPE_IDS))
+    def test_an_org_unit_of_any_type_accepts_one(
         self,
+        type_id: str,
         db_session: Session,
-        oncology: OrgUnit,
+        trust: OrgUnit,
         authenticated_superadmin_client: TestClient,
     ) -> None:
-        ward = OrgUnit(name="Ward 1", type="ward", parent_id=oncology.id)
-        db_session.add(ward)
+        """Type does not decide it: the site screens offer every one of
+        these as a kind of site, and a feature may go on at any of them.
+        """
+        place = OrgUnit(name="Oncology", type=type_id, parent_id=trust.id)
+        db_session.add(place)
         db_session.commit()
 
         resp = authenticated_superadmin_client.put(
-            f"/api/org-units/{ward.id}/features/passport",
+            f"/api/org-units/{place.id}/features/passport",
             json={"enabled": True},
         )
-        assert resp.status_code == 422
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["status"] == "enabled"

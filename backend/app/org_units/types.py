@@ -39,7 +39,6 @@ class OrgUnitTypeEntry(BaseModel):
         description: What this kind of org_unit is, in a sentence.
         requires_parent: Whether a node of this type must sit under
             another. False only for the top of a tree.
-        can_hold_features: Whether features may be enabled here.
         can_hold_positions: Whether a post – clinical lead among them –
             may be held here.
         can_hold_competencies: Whether practice may be authorised here.
@@ -52,7 +51,6 @@ class OrgUnitTypeEntry(BaseModel):
     display_name: str
     description: str
     requires_parent: bool
-    can_hold_features: bool
     can_hold_positions: bool
     can_hold_competencies: bool
     can_have_members: bool
@@ -183,11 +181,6 @@ def _capability(type_id: str, flag: str) -> bool:
 def type_requires_parent(type_id: str) -> bool:
     """Whether a node of this type must sit under another org_unit."""
     return _capability(type_id, "requires_parent")
-
-
-def type_can_hold_features(type_id: str) -> bool:
-    """Whether features may be enabled on a node of this type."""
-    return _capability(type_id, "can_hold_features")
 
 
 def type_can_hold_positions(type_id: str) -> bool:

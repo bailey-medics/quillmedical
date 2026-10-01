@@ -294,13 +294,15 @@ position in the tree.** An organisation is a node whose type says
 
 - **Type vocabulary**: `shared/org-unit-types.yaml`, validated in code by
   `validate_org_unit_type` rather than a database enum so it grows without a
-  migration. Read via `type_can_hold_features`, `type_can_hold_positions`,
-  `type_can_hold_competencies` in `backend/app/org_units/types.py`.
+  migration. Read via `type_can_hold_positions`,
+  `type_can_hold_competencies`, `type_can_have_members` in
+  `backend/app/org_units/types.py`.
 - **Capability flags, not hardcoded name lists.** Each type declares
-  `requires_parent`, `can_hold_features`, `can_hold_positions`,
-  `can_hold_competencies` and `can_have_members`. Rules ask "can this type
-  hold positions?" instead of each carrying its own list of type names.
-  Nobody is clinical lead of room four.
+  `requires_parent`, `can_hold_positions`, `can_hold_competencies` and
+  `can_have_members`. Rules ask "can this type hold positions?" instead of
+  each carrying its own list of type names. Nobody is clinical lead of room
+  four. Features and patient lists are not a flag: any org unit may hold
+  them, whatever its type.
 - **Membership**: `org_unit_member` and `org_unit_patient_member`, with a
   capacity from `MEMBER_CAPACITIES` (`staff`, `trainee`, `external`,
   `patient`). A capacity is never a ranking and never a permission check – it

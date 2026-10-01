@@ -336,25 +336,25 @@ class TestTheOrganisationRoutes:
 
         assert put.status_code == 403, put.text
 
-    def test_a_ward_is_refused(
+    def test_an_org_unit_of_any_type_takes_leads(
         self, db_session: Session, test_client: TestClient
     ) -> None:
-        """Leads sit where features do: an organisation, never a ward."""
+        """Leads sit where features do, and type decides neither."""
         org = _organisation(db_session, "Plain Trust")
-        ward = OrgUnit(name="Ward 9", type="ward", parent_id=org.id)
-        db_session.add(ward)
+        room = OrgUnit(name="Room 9", type="room", parent_id=org.id)
+        db_session.add(room)
         db_session.commit()
         admin = _admin_of(db_session, org)
-        administers(db_session, admin.id, ward.id)
+        administers(db_session, admin.id, room.id)
         db_session.commit()
         client = _login(test_client, "admin")
 
         response = client.put(
-            _leads_url(ward), json={"specialty_ids": ["oncology"]}
+            _leads_url(room), json={"specialty_ids": ["oncology"]}
         )
 
-        assert response.status_code == 422, response.text
-        assert "does not carry features" in response.json()["detail"]
+        assert response.status_code == 200, response.text
+        assert response.json() == {"specialty_ids": ["oncology"]}
 
     def test_the_change_needs_csrf(
         self, db_session: Session, test_client: TestClient
