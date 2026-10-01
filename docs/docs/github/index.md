@@ -121,11 +121,11 @@ All 11 checks must pass before a PR can merge to `main`. The strict policy also 
 
 ### Heavy tier (ready PRs only)
 
-| Check name                              | What it does                                      |
-| --------------------------------------- | ------------------------------------------------- |
-| `typescript_checks (storybook:test:ci)` | Storybook interaction tests (Playwright/Chromium) |
-| `Semgrep (frontend SAST)`               | Static application security testing               |
-| `E2E (Playwright)`                      | Full-stack end-to-end tests                       |
+| Check name                    | What it does                                                 |
+| ----------------------------- | ------------------------------------------------------------ |
+| `Storybook interaction tests` | Storybook interaction tests (Playwright/Chromium), in 3 legs |
+| `Semgrep (frontend SAST)`     | Static application security testing                          |
+| `E2E (Playwright)`            | Full-stack end-to-end tests                                  |
 
 ## Pre-commit hooks
 

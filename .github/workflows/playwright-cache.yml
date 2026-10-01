@@ -10,7 +10,7 @@
 # actions/cache does not save on an exact hit, so the per-PR copies stop too.
 #
 # heavy_e2e no longer reads a cache: it runs in the Playwright image, which
-# carries its browsers. Only heavy_storybook_tests is warmed here now.
+# carries its browsers. Only heavy_storybook_shards is warmed here now.
 #
 # The keys below must match ci.yml exactly, or this saves caches nothing reads.
 # See docs/docs/plans/2026-09-30-ci-job-times-plan.md.
@@ -44,7 +44,7 @@ jobs:
     strategy:
       matrix:
         include:
-          # heavy_storybook_tests in ci.yml
+          # heavy_storybook_shards in ci.yml
           - name: storybook
             key_prefix: playwright
             browsers: chromium

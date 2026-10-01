@@ -72,3 +72,38 @@ PY
     [ "$status" -eq 0 ]
     [ "$output" = "passing" ]
 }
+
+# Prints "heavy" or "fast" for one check name.
+tier_of() {
+    python3 - "$SCRIPT" "$1" <<'PY'
+import importlib.util, sys
+
+spec = importlib.util.spec_from_file_location("stack_status", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+sys.modules["stack_status"] = module
+spec.loader.exec_module(module)
+
+print("heavy" if module.is_heavy(sys.argv[2]) else "fast")
+PY
+}
+
+@test "a leg of the sharded Storybook job counts as heavy" {
+    # ci.yml fans the job out, so it reports as "… (2/3)" beside the gate
+    # job that keeps the plain name. Read as fast, a draft's skipped legs
+    # would sit in the fast mark.
+    run tier_of "Storybook interaction tests (2/3)"
+    [ "$status" -eq 0 ]
+    [ "$output" = "heavy" ]
+}
+
+@test "the Storybook gate job still counts as heavy" {
+    run tier_of "Storybook interaction tests"
+    [ "$status" -eq 0 ]
+    [ "$output" = "heavy" ]
+}
+
+@test "the Storybook build, in the fast tier, is not caught by the prefix" {
+    run tier_of "typescript_checks (storybook:build)"
+    [ "$status" -eq 0 ]
+    [ "$output" = "fast" ]
+}

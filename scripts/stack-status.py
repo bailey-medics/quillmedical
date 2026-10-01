@@ -281,6 +281,17 @@ HEAVY_CHECKS = frozenset(
     }
 )
 
+# A heavy job that fans out over a matrix reports once per leg, as
+# "Storybook interaction tests (2/3)". Matched by prefix so that changing
+# the number of legs in ci.yml does not move them into the fast tier.
+HEAVY_CHECK_PREFIXES = ("Storybook interaction tests (",)
+
+
+def is_heavy(name: str) -> bool:
+    """Whether a check name belongs to the heavy tier."""
+    return name in HEAVY_CHECKS or name.startswith(HEAVY_CHECK_PREFIXES)
+
+
 PASSING = frozenset({"SUCCESS", "SKIPPED", "NEUTRAL"})
 FAILING = frozenset({"FAILURE", "ERROR", "TIMED_OUT", "CANCELLED"})
 PENDING = frozenset({"QUEUED", "IN_PROGRESS", "PENDING", "WAITING"})
@@ -396,8 +407,8 @@ def summarise_checks(pr: dict[str, object], palette: Palette) -> str:
             return palette.green("–")
         return palette.green("✓")
 
-    heavy = {n: v for n, v in best.items() if n in HEAVY_CHECKS}
-    fast = {n: v for n, v in best.items() if n not in HEAVY_CHECKS}
+    heavy = {n: v for n, v in best.items() if is_heavy(n)}
+    fast = {n: v for n, v in best.items() if not is_heavy(n)}
 
     # Fast tier first, heavy second, always in that order and unlabelled:
     # two marks in a fixed position are read at a glance, where the words
