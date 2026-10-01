@@ -241,6 +241,25 @@ describe("what a place carries", () => {
     expect(await orgUnits.passportSpecialties(6)).toEqual([]);
   });
 
+  it("reads the passport cover and how many it covers", async () => {
+    mocked.get.mockResolvedValue({ enabled: true, covered_count: 4 });
+
+    expect(await orgUnits.passportCover(6)).toEqual({
+      enabled: true,
+      covered_count: 4,
+    });
+    expect(mocked.get).toHaveBeenCalledWith("/org-units/6/passport-cover");
+  });
+
+  it("reads no cover from a reply without it", async () => {
+    mocked.get.mockResolvedValue({});
+
+    expect(await orgUnits.passportCover(6)).toEqual({
+      enabled: false,
+      covered_count: 0,
+    });
+  });
+
   it("replaces the lead passport specialties", async () => {
     mocked.put.mockResolvedValue({
       specialty_ids: ["general_surgery", "oncology"],

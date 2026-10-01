@@ -11,8 +11,24 @@ import OrgFeaturesPage from "./OrgFeaturesPage";
 import * as apiLib from "@/lib/api";
 
 const mockReload = vi.fn().mockResolvedValue(undefined);
+// Who is looking at the page. An ordinary administrator unless a test
+// makes them an operator, who alone is shown the passport's cover switch.
+const viewer = vi.hoisted(() => ({
+  platform_role: null as string | null,
+}));
 vi.mock("@/auth/AuthContext", () => ({
-  useAuth: () => ({ reload: mockReload }),
+  useAuth: () => ({
+    reload: mockReload,
+    state: {
+      status: "authenticated",
+      user: {
+        id: "1",
+        username: "admin",
+        email: "admin@example.com",
+        platform_role: viewer.platform_role,
+      },
+    },
+  }),
 }));
 
 describe("OrgFeaturesPage", () => {
@@ -35,6 +51,7 @@ describe("OrgFeaturesPage", () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    viewer.platform_role = null;
   });
 
   it("renders page heading after load", async () => {
@@ -495,6 +512,151 @@ describe("OrgFeaturesPage", () => {
         ),
       ).toBeInTheDocument();
       expect(pills(container)).toEqual(["Oncology"]);
+    });
+  });
+
+  describe("Passport cover", () => {
+    const COVER = "Toggle Cover members' writing";
+
+    // The org_unit, its lead specialties and its cover, answered by URL
+    function getWith(features: string[], coveredCount = 0) {
+      return vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
+        if (url.endsWith("/passport-specialties")) {
+          return Promise.resolve({ specialty_ids: [] });
+        }
+        if (url.endsWith("/passport-cover")) {
+          return Promise.resolve({
+            enabled: features.includes("passport_write"),
+            covered_count: coveredCount,
+          });
+        }
+        return Promise.resolve({ ...mockOrg, features });
+      });
+    }
+
+    function renderPage() {
+      return renderWithRouter(<OrgFeaturesPage />, {
+        routePath: "/admin/organisations/:id/features",
+        initialRoute: "/admin/organisations/3/features",
+      });
+    }
+
+    it("is not shown to somebody who is not an operator", async () => {
+      getWith(["passport"]);
+      renderPage();
+
+      await screen.findByRole("switch", { name: "Toggle Clinician passport" });
+      expect(
+        screen.queryByRole("switch", { name: COVER }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("is hidden from an operator while the passport is off", async () => {
+      viewer.platform_role = "superadmin";
+      getWith(["teaching"]);
+      renderPage();
+
+      await screen.findByRole("switch", { name: "Toggle Clinician passport" });
+      expect(
+        screen.queryByRole("switch", { name: COVER }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("appears when the operator turns the passport on", async () => {
+      const user = userEvent.setup();
+      viewer.platform_role = "superadmin";
+      getWith([]);
+      renderPage();
+
+      await user.click(
+        await screen.findByRole("switch", {
+          name: "Toggle Clinician passport",
+        }),
+      );
+
+      expect(screen.getByRole("switch", { name: COVER })).not.toBeChecked();
+    });
+
+    it("shows as on where the cover is already switched on", async () => {
+      viewer.platform_role = "superadmin";
+      getWith(["passport", "passport_write"], 4);
+      renderPage();
+
+      expect(await screen.findByRole("switch", { name: COVER })).toBeChecked();
+    });
+
+    it("sends the passport before the cover when both are switched on", async () => {
+      const user = userEvent.setup();
+      viewer.platform_role = "superadmin";
+      getWith([]);
+      const put = vi
+        .spyOn(apiLib.api, "put")
+        .mockResolvedValue({ status: "enabled" });
+      renderPage();
+
+      await user.click(
+        await screen.findByRole("switch", {
+          name: "Toggle Clinician passport",
+        }),
+      );
+      await user.click(screen.getByRole("switch", { name: COVER }));
+      await user.click(screen.getByTestId("submit-button"));
+      await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+      await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+      expect(put.mock.calls.map((call) => call[0])).toEqual([
+        "/org-units/3/features/passport",
+        "/org-units/3/features/passport_write",
+      ]);
+    });
+
+    it("says how many people lose writing when it is switched off", async () => {
+      const user = userEvent.setup();
+      viewer.platform_role = "superadmin";
+      getWith(["passport", "passport_write"], 4);
+      renderPage();
+
+      await user.click(await screen.findByRole("switch", { name: COVER }));
+      await user.click(screen.getByTestId("submit-button"));
+
+      expect(
+        screen.getByText(
+          /4 people will no longer be able to add to their passport/,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("goes off with the passport, and only the passport is sent", async () => {
+      const user = userEvent.setup();
+      viewer.platform_role = "superadmin";
+      getWith(["passport", "passport_write"], 1);
+      const put = vi
+        .spyOn(apiLib.api, "put")
+        .mockResolvedValue({ status: "disabled" });
+      renderPage();
+
+      await screen.findByRole("switch", { name: COVER });
+      await user.click(
+        screen.getByRole("switch", { name: "Toggle Clinician passport" }),
+      );
+
+      // The cover switch goes with the passport one
+      expect(
+        screen.queryByRole("switch", { name: COVER }),
+      ).not.toBeInTheDocument();
+
+      await user.click(screen.getByTestId("submit-button"));
+      expect(
+        screen.getByText(
+          /1 person will no longer be able to add to their passport/,
+        ),
+      ).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+      await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
+      expect(put).toHaveBeenCalledWith("/org-units/3/features/passport", {
+        enabled: false,
+      });
     });
   });
 

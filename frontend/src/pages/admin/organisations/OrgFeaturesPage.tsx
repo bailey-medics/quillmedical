@@ -71,21 +71,50 @@ const AVAILABLE_FEATURES: {
   },
 ];
 
+/**
+ * The passport's cover: a second switch, shown indented beneath the
+ * passport one while that is on. It gives every staff member and trainee
+ * here the paid right to add to their passport, so only an operator sees
+ * or sets it.
+ */
+const PASSPORT_COVER = {
+  key: "passport_write",
+  label: "Cover members' writing",
+  description:
+    "Staff and trainees here can add to their passport, paid for by this place",
+};
+
+/** The switches this viewer may set, cover included for an operator. */
+function trackedFeatures(canSetCover: boolean) {
+  return canSetCover
+    ? [...AVAILABLE_FEATURES, PASSPORT_COVER]
+    : AVAILABLE_FEATURES;
+}
+
 type FeatureFormValues = Record<string, boolean>;
 
 function ConfirmContent({
   orgName,
   savedKeys,
+  canSetCover,
+  coveredCount,
 }: {
   orgName: string;
   savedKeys: Set<string>;
+  canSetCover: boolean;
+  /** How many people hold writing through this place's cover */
+  coveredCount: number;
 }) {
   const { methods } = useFormContext();
   const values = methods.getValues() as FeatureFormValues;
-  const changes = AVAILABLE_FEATURES.filter(
+  const changes = trackedFeatures(canSetCover).filter(
     (f) => savedKeys.has(f.key) !== values[f.key],
   );
   const hasDisables = changes.some((f) => !values[f.key]);
+  // Cover ends when it is switched off, and when the passport is.
+  const endsCover =
+    savedKeys.has(PASSPORT_COVER.key) &&
+    (values[PASSPORT_COVER.key] === false || values.passport === false);
 
   return (
     <>
@@ -105,6 +134,14 @@ function ConfirmContent({
           reach here.
         </ErrorMessage>
       )}
+      {endsCover && (
+        <ErrorMessage>
+          {coveredCount === 1
+            ? "1 person will no longer be able to add to their passport."
+            : `${coveredCount} people will no longer be able to add to their passport.`}{" "}
+          That includes anyone who has since left.
+        </ErrorMessage>
+      )}
     </>
   );
 }
@@ -112,15 +149,19 @@ function ConfirmContent({
 function FeatureFields({
   orgId,
   parentPath,
+  canSetCover,
   afterFeatures,
 }: {
   orgId: string;
   parentPath: FeaturesParentPath;
+  /** Whether the viewer may set the passport's cover */
+  canSetCover: boolean;
   /** Shown between the feature switches and the buttons */
   afterFeatures?: ReactNode;
 }) {
   const navigate = useNavigate();
   const { methods, formState } = useFormContext();
+  const passportOnInForm = methods.watch("passport") === true;
 
   return (
     <Stack gap="md">
@@ -149,7 +190,19 @@ function FeatureFields({
 
                   <SolidSwitch
                     checked={field.value as boolean}
-                    onChange={field.onChange}
+                    onChange={(event) => {
+                      field.onChange(event);
+                      // The cover means nothing without the passport.
+                      if (
+                        feature.key === "passport" &&
+                        canSetCover &&
+                        !event.currentTarget.checked
+                      ) {
+                        methods.setValue(PASSPORT_COVER.key, false, {
+                          shouldDirty: true,
+                        });
+                      }
+                    }}
                     disabled={formState === "submitting"}
                     aria-label={`Toggle ${feature.label}`}
                   />
@@ -157,6 +210,28 @@ function FeatureFields({
               )}
             />
           ))}
+
+          {canSetCover && passportOnInForm && (
+            <Controller
+              name={PASSPORT_COVER.key}
+              control={methods.control}
+              render={({ field }) => (
+                <Group justify="space-between" wrap="nowrap" pl="xl">
+                  <Stack gap={2}>
+                    <BodyTextBold>{PASSPORT_COVER.label}</BodyTextBold>
+                    <BodyText>{PASSPORT_COVER.description}</BodyText>
+                  </Stack>
+
+                  <SolidSwitch
+                    checked={field.value as boolean}
+                    onChange={field.onChange}
+                    disabled={formState === "submitting"}
+                    aria-label={`Toggle ${PASSPORT_COVER.label}`}
+                  />
+                </Group>
+              )}
+            />
+          )}
         </Stack>
       </BaseCard>
 
@@ -181,7 +256,14 @@ export default function OrgFeaturesPage({
   parentPath = "organisations",
 }: OrgFeaturesPageProps = {}) {
   const { id } = useParams<{ id: string }>();
-  const { reload } = useAuth();
+  const { reload, state } = useAuth();
+  // Cover gives away the paid half of the passport, so the API lets only
+  // an operator switch it. Nobody else is shown the switch.
+  const canSetCover =
+    state.status === "authenticated" &&
+    state.user.platform_role === "superadmin";
+  // How many people hold writing through this place's cover
+  const [coveredCount, setCoveredCount] = useState(0);
   const [orgName, setOrgName] = useState<string>("");
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -190,6 +272,24 @@ export default function OrgFeaturesPage({
   const [leads, setLeads] = useState<string[] | null>(null);
   const [leadsError, setLeadsError] = useState<string | undefined>();
   const passportOn = savedKeys.has("passport");
+  const coverOn = savedKeys.has(PASSPORT_COVER.key);
+
+  useEffect(() => {
+    if (!id || !coverOn) return;
+    let cancelled = false;
+    orgUnits
+      .passportCover(Number(id))
+      .then((cover) => {
+        if (!cancelled) setCoveredCount(cover.covered_count);
+      })
+      .catch(() => {
+        // The count only words the warning; without it the dialog still
+        // says that writing ends.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, coverOn]);
 
   useEffect(() => {
     if (!id || !passportOn) return;
@@ -251,28 +351,46 @@ export default function OrgFeaturesPage({
 
   const defaultValues = useMemo(() => {
     const values: FeatureFormValues = {};
-    for (const feature of AVAILABLE_FEATURES) {
+    for (const feature of trackedFeatures(canSetCover)) {
       values[feature.key] = savedKeys.has(feature.key);
     }
     return values;
-  }, [savedKeys]);
+  }, [savedKeys, canSetCover]);
 
   async function handleSubmit(
     data: FeatureFormValues,
   ): Promise<FormSubmitResult> {
-    const changes = AVAILABLE_FEATURES.filter(
-      (f) => savedKeys.has(f.key) !== data[f.key],
-    );
+    const tracked = trackedFeatures(canSetCover);
+    const changes = tracked.filter((f) => savedKeys.has(f.key) !== data[f.key]);
+    // The API refuses cover without the passport, and turning the
+    // passport off ends cover itself. So the cover change is sent last
+    // when it is being switched on, and is not sent at all when the
+    // passport is being switched off in the same save.
+    const coverChange = changes.find((c) => c.key === PASSPORT_COVER.key);
+    const others = changes.filter((c) => c.key !== PASSPORT_COVER.key);
+    const passportGoingOff = savedKeys.has("passport") && !data.passport;
 
     try {
       await Promise.all(
-        changes.map((change) =>
+        others.map((change) =>
           orgUnits.setFeature(Number(id), change.key, data[change.key]),
         ),
       );
+      if (coverChange && !passportGoingOff) {
+        await orgUnits.setFeature(
+          Number(id),
+          coverChange.key,
+          data[coverChange.key],
+        );
+      }
       const newSaved = new Set(
-        AVAILABLE_FEATURES.filter((f) => data[f.key]).map((f) => f.key),
+        tracked.filter((f) => data[f.key]).map((f) => f.key),
       );
+      // Somebody who cannot set cover has no switch for it, but it is
+      // still on here unless they just turned the passport off.
+      if (!canSetCover && coverOn && data.passport) {
+        newSaved.add(PASSPORT_COVER.key);
+      }
       setSavedKeys(newSaved);
       await reload();
       const summary = changes
@@ -321,12 +439,20 @@ export default function OrgFeaturesPage({
           title: "Confirm feature changes",
           acceptLabel: "Confirm",
           cancelLabel: "Go back",
-          children: <ConfirmContent orgName={orgName} savedKeys={savedKeys} />,
+          children: (
+            <ConfirmContent
+              orgName={orgName}
+              savedKeys={savedKeys}
+              canSetCover={canSetCover}
+              coveredCount={coveredCount}
+            />
+          ),
         }}
       >
         <FeatureFields
           orgId={id!}
           parentPath={parentPath}
+          canSetCover={canSetCover}
           afterFeatures={
             passportOn && (
               <PassportLeadSpecialtiesCard

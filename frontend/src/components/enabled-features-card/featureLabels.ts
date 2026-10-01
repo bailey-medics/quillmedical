@@ -4,4 +4,5 @@ export const FEATURE_LABELS: Record<string, string> = {
   messaging: "Messaging",
   letters: "Letters",
   passport: "Clinician passport",
+  passport_write: "Passport writing covered",
 };
