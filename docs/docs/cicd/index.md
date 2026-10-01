@@ -48,7 +48,7 @@ Runs on every push to any non-`main` branch. Gives feedback in ~2 minutes.
 | TypeScript (prettier)        | `typescript_checks (prettier)`        | Prettier formatting                                                  |
 | TypeScript (stylelint)       | `typescript_checks (stylelint)`       | CSS linting                                                          |
 | TypeScript (typecheck)       | `typescript_checks (typecheck:all)`   | TypeScript strict compilation                                        |
-| TypeScript (unit tests)      | `typescript_checks (unit-test:run)`   | Vitest unit tests                                                    |
+| TypeScript (unit tests)      | `typescript_checks (unit-test:run)`   | Vitest unit tests, in three legs (`Frontend unit tests (1/3)` on)    |
 | TypeScript (storybook build) | `typescript_checks (storybook:build)` | Storybook static build                                               |
 
 ### Heavy tier (non-draft PRs only)

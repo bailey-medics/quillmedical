@@ -254,11 +254,24 @@ waits for.
       unchanged, and takes `-n auto` as an argument when wanted. Not run
       in parallel locally: the test image could not be rebuilt with the
       new package because Docker Hub was unreachable, so the pull
-      request's own `Python unit` run is the first proof
-- [ ] Then the frontend: "Run unit-test:run" has a median of 4m 56s.
+      request's own `Python unit` run is the first proof. That run, on
+      #1328, passed, but "Pytest (unit)" took 3m 42s: a gain of 47s, not
+      the three or four times that four workers suggested. The likely
+      reason, not yet confirmed, is password hashing. `security.py` uses
+      argon2-cffi's defaults, which hash on four threads, so a serial run
+      was already using every core whenever a test made a user. If so,
+      the real saving is a cheap hasher for tests, which is a change to
+      security code and wants its own decision
+- [x] Then the frontend: "Run unit-test:run" has a median of 4m 56s.
       Vitest already uses every core, so this one needs a matrix with
       `--shard`, and the same single named check as Phase 3 if the name
-      is required anywhere
+      is required anywhere. It is: `typescript_checks (unit-test:run)` is
+      required in `infra/github/branch_rules.tf`. Done as three legs,
+      `Frontend unit tests (1/3)` to `(3/3)`, and a job that keeps the
+      required name and passes only when all three did, through the same
+      `require-matrix-success.sh` as Phase 3. The first leg, run locally
+      with `just uf --shard=1/3`, was 103 test files and 1,036 tests in
+      49s
 
 ## Decisions
 

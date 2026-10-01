@@ -116,7 +116,7 @@ All 11 checks must pass before a PR can merge to `main`. The strict policy also 
 | `typescript_checks (prettier)`        | Prettier formatting check                                            |
 | `typescript_checks (stylelint)`       | CSS/SCSS linting                                                     |
 | `typescript_checks (typecheck:all)`   | TypeScript strict mode compilation                                   |
-| `typescript_checks (unit-test:run)`   | Vitest unit tests                                                    |
+| `typescript_checks (unit-test:run)`   | Vitest unit tests, in three legs                                     |
 | `typescript_checks (storybook:build)` | Storybook static build succeeds                                      |
 
 ### Heavy tier (ready PRs only)
