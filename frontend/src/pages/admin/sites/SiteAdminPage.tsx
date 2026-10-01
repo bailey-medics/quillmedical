@@ -28,6 +28,7 @@ import {
   type OrgUnitMember,
 } from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
+import EnabledFeaturesCard from "@/components/enabled-features-card";
 
 export default function SiteAdminPage() {
   const { id } = useParams<{ id: string }>();
@@ -224,6 +225,12 @@ export default function SiteAdminPage() {
           </Stack>
         </Stack>
       </BaseCard>
+
+      {/* Enabled Features */}
+      <EnabledFeaturesCard
+        features={site.features}
+        onEdit={() => navigate(`/admin/sites/${id}/features`)}
+      />
 
       {/* Staff Members */}
       <BaseCard>

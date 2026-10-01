@@ -24,7 +24,7 @@ from app.models import (
     User,
     org_unit_member,
 )
-from app.organisations import organisation_org_units_of
+from app.organisations import feature_holder_ids_of
 
 
 def requires_feature(feature_key: str) -> Callable[..., User]:
@@ -50,10 +50,9 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
 
         user = get_current_user(request, db)
 
-        # Every organisation a membership reaches: the ones they belong
-        # to directly, and the one accountable for any ward or clinic
-        # they belong to. One walk up answers both.
-        user_org_unit_ids = organisation_org_units_of(
+        # Every org_unit whose features reach them: the ones they belong
+        # to directly, and the organisation above each.
+        user_org_unit_ids = feature_holder_ids_of(
             db,
             [
                 int(org_unit_id)

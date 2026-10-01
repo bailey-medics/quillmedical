@@ -140,6 +140,7 @@ from app.org_units.tree import (
 )
 from app.organisations import (
     add_org_unit_member,
+    feature_holder_ids_of,
     get_accessible_patient_ids,
     get_member_org_unit_ids,
     get_org_unit_staff_ids,
@@ -2635,7 +2636,7 @@ def me(
         .scalars()
         .all()
     )
-    user_org_unit_ids = organisation_org_units_of(db, member_org_unit_ids)
+    user_org_unit_ids = feature_holder_ids_of(db, member_org_unit_ids)
     enabled_features: list[str] = []
     if user_org_unit_ids:
         features = (

@@ -1449,9 +1449,10 @@ def set_org_unit_feature(
 ) -> OrgUnitStatusOut:
     """Switch a feature on or off at an org_unit.
 
-    Only the top of a tree carries features. Refusing here rather than
-    writing a row nothing would ever read: a feature quietly enabled on a
-    ward that does nothing is worse than being told it cannot be.
+    Only a type that can hold features carries them: the top of a tree,
+    or a site. Refusing here rather than writing a row nothing would ever
+    read: a feature quietly enabled on a ward that does nothing is worse
+    than being told it cannot be.
 
     Requires ``manage_users`` at an org_unit the caller may administer, which
     is what the organisations surface has always asked. An operator-only

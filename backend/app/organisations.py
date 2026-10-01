@@ -118,6 +118,31 @@ def organisation_org_units_of(
     }
 
 
+def feature_holder_ids_of(db: Session, org_unit_ids: list[int]) -> set[int]:
+    """Return the org_units whose features reach a member of *org_unit_ids*.
+
+    Each org_unit itself, and the organisation above it. A feature
+    switched on at a trust reaches every site, as it always has. A
+    feature switched on at a site reaches that site's own members and
+    nobody else: not the trust's other sites, and not the wards beneath
+    it, because nothing passes down from a site.
+
+    The one answer for every feature question, so ``requires_feature``,
+    the feature list in ``/api/auth/me`` and anything else asking cannot
+    disagree.
+
+    Args:
+        db: Core database session.
+        org_unit_ids: The org_units somebody is a member of.
+
+    Returns:
+        The org_units whose ``org_unit_feature`` rows apply to them.
+    """
+    if not org_unit_ids:
+        return set()
+    return set(org_unit_ids) | organisation_org_units_of(db, org_unit_ids)
+
+
 def get_member_org_unit_ids(
     db: Session, user_id: int, *, capacity: str | None = None
 ) -> list[int]:

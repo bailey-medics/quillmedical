@@ -1,7 +1,10 @@
 /**
  * Organisation Features Page
  *
- * Admin page to enable/disable features on an organisation.
+ * Admin page to enable/disable features on an organisation, or on a site:
+ * a site may carry features of its own since 1 October 2026, so the
+ * passport can be on for one team without its whole trust. `parentPath`
+ * says which admin area the page sits in, for the way back.
  * Toggles are managed by React Hook Form. Save requires confirmation
  * listing what will change.
  *
@@ -98,8 +101,8 @@ function ConfirmContent({
       </Stack>
       {hasDisables && (
         <ErrorMessage>
-          Disabling features will immediately remove access for all users in
-          this organisation.
+          Disabling features will immediately remove access for everyone they
+          reach here.
         </ErrorMessage>
       )}
     </>
@@ -108,9 +111,11 @@ function ConfirmContent({
 
 function FeatureFields({
   orgId,
+  parentPath,
   afterFeatures,
 }: {
   orgId: string;
+  parentPath: FeaturesParentPath;
   /** Shown between the feature switches and the buttons */
   afterFeatures?: ReactNode;
 }) {
@@ -125,9 +130,9 @@ function FeatureFields({
           <Heading>Available features</Heading>
 
           <BodyTextInline>
-            You are about to make organisation-wide changes. Please do so with
-            care. You will need to press &ldquo;Save changes&rdquo; below for
-            these changes to take effect.
+            You are about to change what everyone here can use. Please do so
+            with care. You will need to press &ldquo;Save changes&rdquo; below
+            for these changes to take effect.
           </BodyTextInline>
 
           {AVAILABLE_FEATURES.map((feature) => (
@@ -158,13 +163,23 @@ function FeatureFields({
       {afterFeatures}
 
       <SubmitButton
-        onCancel={() => navigate(`/admin/organisations/${orgId}`)}
+        onCancel={() => navigate(`/admin/${parentPath}/${orgId}`)}
       />
     </Stack>
   );
 }
 
-export default function OrgFeaturesPage() {
+/** The admin area a features page sits in. */
+export type FeaturesParentPath = "organisations" | "sites";
+
+export interface OrgFeaturesPageProps {
+  /** Which admin area to return to. Defaults to organisations. */
+  parentPath?: FeaturesParentPath;
+}
+
+export default function OrgFeaturesPage({
+  parentPath = "organisations",
+}: OrgFeaturesPageProps = {}) {
   const { id } = useParams<{ id: string }>();
   const { reload } = useAuth();
   const [orgName, setOrgName] = useState<string>("");
@@ -311,6 +326,7 @@ export default function OrgFeaturesPage() {
       >
         <FeatureFields
           orgId={id!}
+          parentPath={parentPath}
           afterFeatures={
             passportOn && (
               <PassportLeadSpecialtiesCard
