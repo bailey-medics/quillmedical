@@ -62,6 +62,7 @@ from app.org_units.relations import (
     validate_org_unit_relation,
 )
 from app.org_units.tree import (
+    descendant_ids,
     would_make_a_cycle,
 )
 from app.org_units.types import (
@@ -193,6 +194,25 @@ def _through_a_scope(user: User, *competencies: str) -> bool:
     )
 
 
+def _scoped_manager_ids(db: Session, user: User) -> set[int]:
+    """Return the org_units a scoped manager may act at.
+
+    The organisations they belong to and every org_unit beneath those,
+    at any depth. Authority in the governance tree flows downward:
+    somebody running teaching for a trust runs it at the trust's sites
+    and wards too, and is not a member of each one. Nothing flows
+    upward, so belonging to a ward reaches neither its trust nor the
+    ward next door.
+
+    Args:
+        db: Core database session.
+        user: The caller, who reached the route through a scoped
+            manager such as ``manage_teaching``.
+    """
+    member = get_member_org_unit_ids(db, user.id)
+    return set(member) | descendant_ids(db, member)
+
+
 def _require_visible(
     db: Session, user: User, unit_id: int, *needs: str
 ) -> OrgUnit:
@@ -216,7 +236,7 @@ def _require_visible(
         raise HTTPException(status_code=404, detail="Place not found")
 
     if needs and _through_a_scope(user, *needs):
-        visible: set[int] | None = set(get_member_org_unit_ids(db, user.id))
+        visible: set[int] | None = _scoped_manager_ids(db, user)
     else:
         visible = _visible_ids(db, user)
     if visible is not None and unit_id not in visible:
@@ -410,14 +430,14 @@ def list_org_units(
     org_units inside them; ``parent_id`` narrows to one org_unit's children.
     Given neither, every org_unit the caller may administer comes back.
 
-    Requires ``manage_users``, or a scoped manager for the org_units
-    the caller belongs to.
+    Requires ``manage_users``, or a scoped manager for the
+    organisations the caller belongs to and the org_units beneath them.
     """
     stmt = select(OrgUnit).order_by(OrgUnit.name)
 
     visible: set[int] | None
     if _through_a_scope(current_user, "manage_users"):
-        visible = set(get_member_org_unit_ids(db, current_user.id))
+        visible = _scoped_manager_ids(db, current_user)
     else:
         visible = _visible_ids(db, current_user)
     if visible is not None:

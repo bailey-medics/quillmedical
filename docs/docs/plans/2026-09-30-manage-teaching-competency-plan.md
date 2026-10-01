@@ -341,6 +341,40 @@ patient list, so that route could not be opened as it was.
       through the changed parts (the sign-in redirect and the teaching
       sidebar), so "Journeys 1 and 3 as a teaching admin" is added.
 
+## Phase 6: A site opens from its organisation
+
+Found in use: a teaching admin could open their organisation's page, but
+the sites listed on it were not links. Every route under `/admin/sites`
+had been made operator-only, where the intent was narrower: only the Sites
+entry in the side navigation and the list of every site behind it.
+
+- [x] **Only `/admin/sites` and `/admin/sites/new` stay operator-only** in
+      `frontend/src/main.tsx`. `/admin/sites/:id`, its add staff page and
+      its member practice page open to whoever may open `/admin`. Editing a
+      site, and adding one to an organisation, take `manage_users`, as
+      editing an organisation does.
+- [x] **The sites on `OrganisationAdminPage` are links again** for
+      everybody, and Add site shows for `manage_users`.
+- [x] **`SiteAdminPage` shows each action by competency**, as the
+      organisation page does: Edit site and the enabled features card for
+      `manage_users` (as is `/admin/sites/:id/features`), Add staff and
+      Remove from site for `manage_staff_membership` or `manage_teaching`,
+      and a member's row opens their practice page for
+      `manage_practising_competencies` or `manage_teaching`.
+- [x] **A teaching admin reaches the `org_unit`s beneath their
+      organisations**, through `_scoped_manager_ids` in
+      `backend/app/org_units/router.py`. Before, `_require_visible` and
+      `GET /api/org-units` gave them only the organisations they belong
+      to, so a site returned a 404 even to one of its own members.
+      Authority flows down the tree and never up or across. This is for a
+      caller who reaches a route through `manage_teaching` alone; a
+      `manage_users` holder is still scoped by `practising_competency`
+      rows, where nothing is inherited.
+- [x] **Tests**: `test_manage_teaching_org_unit_routes.py` pins that a
+      teaching admin opens and lists a ward of their trust without
+      belonging to it, and gets a 404 for a ward of another trust. The
+      page tests pin the links and which actions each competency sees.
+
 ## Decisions
 
 - **One competency for content and people** – `manage_teaching` replaces

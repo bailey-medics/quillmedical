@@ -62,13 +62,6 @@ export default function OrganisationAdminPage() {
     state.status === "authenticated"
       ? state.user.clinical_services_enabled !== false
       : true;
-  // The site pages are operator-only for now, and they 404 for everybody
-  // else. Read here so this page does not offer a way into them that
-  // ends in a 404: the sites are still listed, they simply are not
-  // links.
-  const isOperator =
-    state.status === "authenticated" &&
-    state.user.platform_role === "superadmin";
   // Somebody who may authorise practice here opens a member's page for
   // this organisation; anybody else keeps the link to the user page.
   const mayManagePractice = useHasAnyCompetency(
@@ -435,7 +428,7 @@ export default function OrganisationAdminPage() {
         <Stack gap="md">
           <Group justify="space-between" align="center">
             <Heading>Sites</Heading>
-            {isOperator && (
+            {mayAdministerOrg && (
               <AddButton
                 label="Add site"
                 onClick={() => navigate(`/admin/organisations/${id}/add-site`)}
@@ -446,11 +439,7 @@ export default function OrganisationAdminPage() {
           <DataTableControlled<OrgUnitChild>
             data={org.children}
             columns={siteColumns}
-            onRowClick={
-              isOperator
-                ? (site) => navigate(`/admin/sites/${site.id}`)
-                : undefined
-            }
+            onRowClick={(site) => navigate(`/admin/sites/${site.id}`)}
             getRowKey={(site) => site.id}
             emptyMessage="No sites linked"
             searchFields={(s) => [s.name, s.type, s.clinical_lead_name]}

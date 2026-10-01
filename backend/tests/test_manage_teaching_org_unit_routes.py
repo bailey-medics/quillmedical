@@ -282,6 +282,48 @@ class TestTheOrgUnitPage:
         assert resp.status_code == 404
 
 
+def _ward(db: Session, name: str, parent: OrgUnit) -> OrgUnit:
+    ward = OrgUnit(name=name, type="ward", parent_id=parent.id)
+    db.add(ward)
+    db.commit()
+    db.refresh(ward)
+    return ward
+
+
+class TestBeneathTheirOrgUnit:
+    """Authority flows down the tree, and never up or across."""
+
+    def test_opens_a_ward_of_their_trust_without_belonging_to_it(
+        self, client: TestClient, db_session: Session, trust: OrgUnit
+    ) -> None:
+        ward = _ward(db_session, "Ward 1", trust)
+        resp = client.get(f"/api/org-units/{ward.id}")
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "Ward 1"
+
+    def test_lists_the_members_of_a_ward_of_their_trust(
+        self, client: TestClient, db_session: Session, trust: OrgUnit
+    ) -> None:
+        ward = _ward(db_session, "Ward 1", trust)
+        resp = client.get(f"/api/org-units/{ward.id}/members")
+        assert resp.status_code == 200
+
+    def test_lists_the_wards_of_their_trust(
+        self, client: TestClient, db_session: Session, trust: OrgUnit
+    ) -> None:
+        ward = _ward(db_session, "Ward 1", trust)
+        resp = client.get(f"/api/org-units?parent_id={trust.id}")
+        assert resp.status_code == 200
+        assert [u["id"] for u in resp.json()["org_units"]] == [ward.id]
+
+    def test_cannot_open_a_ward_of_another_trust(
+        self, client: TestClient, db_session: Session, elsewhere: OrgUnit
+    ) -> None:
+        ward = _ward(db_session, "Ward 9", elsewhere)
+        resp = client.get(f"/api/org-units/{ward.id}")
+        assert resp.status_code == 404
+
+
 class TestBeyondTheirWhitelist:
     def test_cannot_reach_another_org_unit(
         self, client: TestClient, elsewhere: OrgUnit

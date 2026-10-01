@@ -3,7 +3,8 @@
  *
  * Administrative view for a single site's details.
  * Shows site information, clinical lead, staff, and linked organisations.
- * Only accessible to admin/superadmin.
+ * Reached from the organisation's page by whoever may open that, with
+ * each action shown for the competency it needs.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -21,7 +22,8 @@ import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { usePageMessage } from "@/components/page-message";
-import { useHasCompetency } from "@/lib/cbac/hooks";
+import { useHasAnyCompetency, useHasCompetency } from "@/lib/cbac/hooks";
+import { SCOPED_MANAGER_IDS } from "@/types/cbac";
 import {
   orgUnits,
   type OrgUnitDetail,
@@ -37,7 +39,19 @@ export default function SiteAdminPage() {
   // Somebody who may authorise practice here opens a member's page for
   // this site. Nobody else had a row link on this table before, and
   // nobody else gains one.
-  const mayManagePractice = useHasCompetency("manage_practising_competencies");
+  const mayManagePractice = useHasAnyCompetency(
+    "manage_practising_competencies",
+    ...SCOPED_MANAGER_IDS,
+  );
+  // Each action shows for the competency it needs, as on the
+  // organisation's page: a scoped manager such as `manage_teaching`
+  // reaches this page too and may add and remove staff, while editing the
+  // site stays `manage_users`, matching the routes behind each button.
+  const mayAdministerSite = useHasCompetency("manage_users");
+  const mayManageStaff = useHasAnyCompetency(
+    "manage_staff_membership",
+    ...SCOPED_MANAGER_IDS,
+  );
   const [site, setSite] = useState<OrgUnitDetail | null>(null);
   // Without an id there is nothing to fetch, so the page does not begin in a
   // loading state and the effect below has nothing to do.
@@ -144,23 +158,29 @@ export default function SiteAdminPage() {
       render: (member) => member.authorised_here,
       accessor: (member) => member.authorised_here,
     },
-    {
-      header: "",
-      width: "50px",
-      render: (member) => (
-        <EllipsisMenu
-          aria-label={`Actions for ${member.username}`}
-          items={[
-            {
-              label: "Remove from site",
-              icon: <IconUserMinus />,
-              color: "var(--alert-color)",
-              onClick: () => setRemovingStaff(member),
-            },
-          ]}
-        />
-      ),
-    },
+  ];
+
+  const staffActionsColumn: Column<OrgUnitMember> = {
+    header: "",
+    width: "50px",
+    render: (member) => (
+      <EllipsisMenu
+        aria-label={`Actions for ${member.username}`}
+        items={[
+          {
+            label: "Remove from site",
+            icon: <IconUserMinus />,
+            color: "var(--alert-color)",
+            onClick: () => setRemovingStaff(member),
+          },
+        ]}
+      />
+    ),
+  };
+
+  const staffTableColumns = [
+    ...staffColumns,
+    ...(mayManageStaff ? [staffActionsColumn] : []),
   ];
 
   return (
@@ -172,11 +192,13 @@ export default function SiteAdminPage() {
         <Stack gap="md">
           <Group justify="space-between" align="center">
             <Heading>Site information</Heading>
-            <IconButton
-              icon={<IconPencil />}
-              onClick={() => navigate(`/admin/sites/${id}/edit`)}
-              aria-label="Edit site"
-            />
+            {mayAdministerSite && (
+              <IconButton
+                icon={<IconPencil />}
+                onClick={() => navigate(`/admin/sites/${id}/edit`)}
+                aria-label="Edit site"
+              />
+            )}
           </Group>
 
           <Group gap="xs">
@@ -227,25 +249,29 @@ export default function SiteAdminPage() {
       </BaseCard>
 
       {/* Enabled Features */}
-      <EnabledFeaturesCard
-        features={site.features}
-        onEdit={() => navigate(`/admin/sites/${id}/features`)}
-      />
+      {mayAdministerSite && (
+        <EnabledFeaturesCard
+          features={site.features}
+          onEdit={() => navigate(`/admin/sites/${id}/features`)}
+        />
+      )}
 
       {/* Staff Members */}
       <BaseCard>
         <Stack gap="md">
           <Group justify="space-between" align="center">
             <Heading>Site specific staff members</Heading>
-            <AddButton
-              label="Add staff"
-              onClick={() => navigate(`/admin/sites/${id}/add-staff`)}
-            />
+            {mayManageStaff && (
+              <AddButton
+                label="Add staff"
+                onClick={() => navigate(`/admin/sites/${id}/add-staff`)}
+              />
+            )}
           </Group>
 
           <DataTableControlled<OrgUnitMember>
             data={site.members}
-            columns={staffColumns}
+            columns={staffTableColumns}
             onRowClick={
               mayManagePractice
                 ? (member) =>
