@@ -1,5 +1,5 @@
 ---
-name: crpf
+name: nst-crpf
 description: Commit, rebase and push, then continue the current plan document
 argument-hint: "[repo: eoeeta|resp|all] [final]"
 allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git rebase:*), Bash(git push:*), Bash(git switch:*), Bash(git stash:*), Bash(git -C *), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*)
@@ -10,7 +10,7 @@ disable-model-invocation: true
 # Commit, rebase and push, then continue the plan
 
 Two halves, in order. **Part one** commits, rebases and pushes the work that is
-already reviewed – identical to `/crp`. **Part two** picks the plan document
+already reviewed – identical to `/nst-crp`. **Part two** picks the plan document
 back up and builds the next unit from it.
 
 The join between them is the point of this command: finishing a reviewed unit
@@ -57,16 +57,16 @@ Up to two space-separated arguments may be given, in any order:
   request out of draft. See "Final: update the pull request description" below.
   It never merges anything.
 
-`/crpf final` is valid on a clean working tree. Finalising a branch that an
+`/nst-crpf final` is valid on a clean working tree. Finalising a branch that an
 earlier run already committed and pushed is the ordinary case, not an error.
 
-So `/crpf`, `/crpf final`, `/crpf eoeeta` and `/crpf eoeeta final` are all
+So `/nst-crpf`, `/nst-crpf final`, `/nst-crpf eoeeta` and `/nst-crpf eoeeta final` are all
 valid. Any other token is an error: stop and ask what was meant rather than
 guessing.
 
 **A plan document path is not an argument here.** Part two finds the plan from
 the session – see "Finding the plan document". If you genuinely need to point
-at a different plan, use `/follow-the-plan-document <path>` instead.
+at a different plan, use `/nst-follow-the-plan-document <path>` instead.
 
 ## Target repository
 
@@ -206,7 +206,7 @@ checks because there is no old branch to reconcile.
    Read the uncommitted diff and the plan's next unit – the one part two is
    about to build – and name the branch for the batch they make up together.
    The plan's remaining phase is usually the right size: enough to hold
-   several `/crpf` rounds, not so wide that the title says nothing.
+   several `/nst-crpf` rounds, not so wide that the title says nothing.
 
    Not the old name with a suffix, not `-continued` or `-2`, not a date, a
    ticket number or the pull request number. Confirm the name is free on both
@@ -376,7 +376,7 @@ first that yields one:
 
 1. **The plan document already in use in this session** – the one whose steps
    the preceding work was following. This is the normal case and needs no
-   confirmation: `/crpf` exists to carry it forward.
+   confirmation: `/nst-crpf` exists to carry it forward.
 2. **An `@`-mentioned plan document** earlier in the conversation.
 3. **Neither** – ask which plan document to follow. Do not guess.
 
@@ -427,8 +427,8 @@ one failure this command is most prone to:
 - **Part two does not** – it ends at the review packet, leaving the working
   tree dirty for the human to read in the diff view.
 
-So a normal `/crpf` finishes with a clean push _and_ an uncommitted change,
-which is correct and not an oversight. The next `/crpf` commits that change and
+So a normal `/nst-crpf` finishes with a clean push _and_ an uncommitted change,
+which is correct and not an oversight. The next `/nst-crpf` commits that change and
 starts the unit after it. Never fold part two's work into part one's commit, and
 never commit part two's work "while you are there" because the command already
 committed once.

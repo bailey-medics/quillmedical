@@ -40,7 +40,7 @@ Apply these mappings. Where a target already exists, merge rather than overwrite
 A skill's invocable name (`/name`) comes from its **directory name**, never from the `SKILL.md` filename (which is always literally `SKILL.md`) and never from a `name:` field in personal/project skills (that field only sets a display label). Derive `<name>` for the target directory as follows:
 
 - Default: the source file's basename with `.prompt.md` stripped (e.g. `run-all-tests.prompt.md` → `.claude/skills/run-all-tests/`).
-- If the Copilot prompt's own frontmatter declares a `name:` that differs from its filename, use that `name:` value as the directory name instead, so the invoked command matches what the prompt was actually authored to be called (e.g. `commit-rebase-push.prompt.md` with `name: crp` → `.claude/skills/crp/`). Record this as `targetRenamed: true` in the manifest, same as before.
+- If the Copilot prompt's own frontmatter declares a `name:` that differs from its filename, use that `name:` value as the directory name instead, so the invoked command matches what the prompt was actually authored to be called (e.g. `commit-rebase-push.prompt.md` with `name: nst-crp` → `.claude/skills/nst-crp/`). Record this as `targetRenamed: true` in the manifest, same as before.
 - Never leave stale directories behind: if a previous sync created `.claude/skills/<old-name>/` for a source that has since been renamed, flag it as **orphaned** (see Drift detection) rather than silently leaving two directories for one source.
 
 ## Conversion rules
@@ -51,7 +51,7 @@ A skill's invocable name (`/name`) comes from its **directory name**, never from
 
 **When to add `disable-model-invocation: true`.** Skills (unlike the old bare command files) genuinely support Claude auto-invoking them from conversational judgement, so this field is meaningful – it stops that and leaves the skill runnable only by typing `/name`. Copilot's `mode: agent` vs `mode: ask` doesn't map cleanly onto this; decide instead on what the prompt does:
 
-- Any prompt whose steps commit, push, or otherwise mutate git history or a remote (e.g. the `crp` skill) must get `disable-model-invocation: true`. This is a hard rule – it mirrors CLAUDE.md's "NEVER auto-commit/push – always ask permission first", and a skill Claude can silently trigger from a vague request would undermine that.
+- Any prompt whose steps commit, push, or otherwise mutate git history or a remote (e.g. the `nst-crp` skill) must get `disable-model-invocation: true`. This is a hard rule – it mirrors CLAUDE.md's "NEVER auto-commit/push – always ask permission first", and a skill Claude can silently trigger from a vague request would undermine that.
 - A prompt that only reads, reports, or explains (e.g. `e`, `read-project-instructions`) does not need it – leave model-invocation on unless the prompt's own body says otherwise.
 - Otherwise, preserve whatever the existing target already has; don't flip it without a reason tied to the prompt's actual behaviour, and call out the reasoning in your report if you do change it.
 

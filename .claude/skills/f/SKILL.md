@@ -1,7 +1,7 @@
 ---
-name: st-follow-the-plan-document
-description: Build a plan document as a stack, one branch per reviewable unit
-argument-hint: "[path/to/plan.md]"
+name: f
+description: Follow the plan document last mentioned in the chat, building it as a stack, one branch per reviewable unit
+argument-hint: "[path/to/plan.md, or nothing to use the last plan mentioned]"
 allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git push:*), Bash(git switch:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(just stack-update:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(just stack-help:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*)
 disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 disable-model-invocation: true
@@ -15,9 +15,69 @@ stacked branch and its own draft pull request. Built to run unattended for a
 long stretch, so that the next morning there is a chain of small pull
 requests for a human to read rather than one large one.
 
-The plan document is: `$ARGUMENTS`
+## First: pick the plan document, and say which
 
-## What is different from the standard `/follow-the-plan-document`
+**This comes before everything else in this file**, and before any tool
+call. The human starts `/f` and walks away, so a run on the wrong plan is a
+night spent building the wrong thing. They need to see which document was
+picked while they are still at the keyboard.
+
+The argument given to `/f` was: `$ARGUMENTS`
+
+Pick the plan from the conversation alone, without searching the
+repository:
+
+1. **A path in the argument wins.** If the line above holds a path, that is
+   the plan.
+2. **Otherwise, the plan document most recently mentioned in the chat.**
+   A mention is a path or an `@`-mention of a file under
+   `docs/docs/plans/`, written by the human or by you, or a plan you
+   created or edited in this conversation. The most recent one wins over
+   any earlier one.
+
+**Then announce it, as the first thing written to the chat**, before reading
+the file or running anything:
+
+```markdown
+**Plan document:** [2026-09-30-ci-job-times-plan.md](docs/docs/plans/2026-09-30-ci-job-times-plan.md)
+– the last plan mentioned in this chat. Starting at Phase 3.
+```
+
+One short message: the file as a link, why it was picked (given as the
+argument, or last mentioned), and where work will start if that is already
+known from the conversation. Nothing else goes in front of it. Only then
+read the file and carry on.
+
+### When it is not obvious, stop and ask
+
+Ask straight away, in the first message, and do nothing else until the
+human answers. Do not read files, check the stack or search for candidates
+first: the point is that the human is still there to answer. It is not
+obvious when:
+
+- **No plan document has been mentioned**, and no argument was given. A
+  file that is merely open in the editor is not a mention. If it is a plan,
+  offer it as the suggestion, but still ask.
+- **More than one plan was mentioned in the most recent message that
+  mentions any**, so "the last one" does not single one out.
+- **The argument or the mention is not a plan**: not under
+  `docs/docs/plans/`, or a name that could match more than one file.
+- **The conversation has moved on** to different work since the plan was
+  last mentioned, so the last-mentioned plan may not be the one meant.
+
+Ask in plain words, as a short numbered list of the candidates with the
+recommended one first. Do not guess, and do not pick the newest file in
+`docs/docs/plans/` as a fallback.
+
+Two things can only be found after the announcement, once the file is
+read. Both are also a reason to stop and ask at once, before building
+anything:
+
+- **The file does not exist** at that path.
+- **Every checkbox in it is already ticked**, so there is nothing left to
+  follow.
+
+## What is different from `/nst-follow-the-plan-document`
 
 The old standard command gates every unit on a human reading the diff before anything is
 committed. This one does not, and the difference is deliberate rather than a
@@ -46,7 +106,7 @@ attended one. There is power in being able to build something
 that is close to the right solution. So, when you are unsure about a decision,
 undertake online research of current best practices and relevant guidelines before
 making a decision. Write up this research in the plan document. Also, log these
-decisions in the PR description, when you commit, rebase and push using `st-crpd`,
+decisions in the PR description, when you commit, rebase and push using `/crpd`,
 using the format stated in the latter mentioned agent.
 
 ## Never
@@ -67,10 +127,6 @@ using the format stated in the latter mentioned agent.
   stack is reviewed as drafts; marking ready starts the heavy CI tier on
   every branch at once.
 
-## Finding the plan document
-
-Only use the `@`-mentioned plan document argument.
-
 ## Sizing a unit
 
 **One unit is twenty to thirty minutes of human reading.** That is the
@@ -82,7 +138,7 @@ is usually about right.
   `just stack-update`, not stacked on top of it. This is the single most
   common way a stack becomes twice as long as it should be.
 - **Too big** is a pull request whose description cannot be written inside
-  `/st-crpd`'s three sections and 200-word ceiling, or which a reviewer
+  `/crpd`'s three sections and 200-word ceiling, or which a reviewer
   cannot hold in their head at once. Needing a fourth section, or running
   past the ceiling to say what changed, means the unit is really two.
 - **A unit must stand on its own.** Each depends only on the units below it,
@@ -113,7 +169,8 @@ that makes a stack hard to read, not the number of migrations in it.
 
 ## The loop
 
-Before starting, confirm where you are:
+The plan document has been picked and announced by now (see the first
+section). Before building, confirm where you are:
 
 ```bash
 just stack-log
@@ -128,7 +185,7 @@ Then, for each unit in the plan:
    with matching tests that actually exercise the new behaviour – the
    repository requires this, and a unit without them is not finished.
 
-   Do not create a branch first. `/st-crpd` makes the branch from the work
+   Do not create a branch first. `/crpd` makes the branch from the work
    in step 3, so the unit is built on whatever branch is checked out and
    lifted onto its own branch when it is finished.
 
@@ -136,7 +193,7 @@ Then, for each unit in the plan:
    the tick is committed with the unit it describes rather than trailing a
    unit behind.
 
-3. **Finish the unit** with `/st-crpd`. It commits the work onto a **new**
+3. **Finish the unit** with `/crpd`. It commits the work onto a **new**
    stacked branch, cascade-rebases, pushes, and writes that branch's pull
    request description. One unit, one branch, one pull request. Leave it a
    draft.

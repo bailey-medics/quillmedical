@@ -810,6 +810,7 @@
     "writable",
     "wronguser",
     "xattr",
+    "xdist",
     "xfail",
     "Xxefy",
     "Yara",

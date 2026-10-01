@@ -1,6 +1,6 @@
 ---
 agent: "agent"
-name: follow-the-plan-document
+name: nst-follow-the-plan-document
 description: Follow the plan document
 ---
 
