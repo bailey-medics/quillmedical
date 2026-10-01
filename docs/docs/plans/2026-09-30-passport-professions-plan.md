@@ -109,11 +109,15 @@ then is `manage_passport` added.
       keep `manage_teaching` by name, because they are about teaching,
       not about people. Tests in `backend/tests/test_grant_scope.py` pin
       the list to exactly the competencies that have a whitelist.
-- [ ] **Open the frontend admin area to any scoped manager.** The route
-      guards in `frontend/src/main.tsx`, the Admin navigation item, the
-      redirect after login and `OrganisationAdminPage` check for
-      `manage_teaching` by name. Derive the same list from
-      `frontend/src/generated/competencies.json` and use it in each one.
+- [x] **Open the frontend admin area to any scoped manager.** The route
+      guards in `frontend/src/main.tsx`, the Admin navigation item in
+      `featureNavItems.ts`, the redirect after login in `LoginPage.tsx`
+      and `OrganisationAdminPage` checked for `manage_teaching` by name.
+      `SCOPED_MANAGER_IDS` in `frontend/src/types/cbac.ts` derives the same
+      list as the backend from the generated catalogue, and each of them
+      uses it. `SideNavContent` and `AdminTeachingDashboard` keep
+      `manage_teaching`, because they show teaching content tools, not
+      people. Tests in `frontend/src/types/cbac.test.ts` pin the list.
 
 - [ ] **Add `manage_passport` to `shared/competency-definitions/passport.yaml`**
       with `may_grant: [assess_clinician_passport, manage_passport]` and

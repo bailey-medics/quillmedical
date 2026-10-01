@@ -41,6 +41,7 @@ import {
   type OrgUnitDetail,
   type OrgUnitMember,
 } from "@/domains/orgUnit";
+import { SCOPED_MANAGER_IDS } from "@/types/cbac";
 
 /** A patient this organisation is responsible for, as a table row. */
 interface PatientRow {
@@ -84,10 +85,10 @@ export default function OrganisationAdminPage() {
   // this organisation; anybody else keeps the link to the user page.
   const mayManagePractice = useHasAnyCompetency(
     "manage_practising_competencies",
-    "manage_teaching",
+    ...SCOPED_MANAGER_IDS,
   );
-  // Each section shows for the competency it needs. A teaching admin
-  // reaches this page through `manage_teaching`: they see the staff and
+  // Each section shows for the competency it needs. A scoped manager
+  // such as `manage_teaching` reaches this page too: they see the staff and
   // may add, remove and open them, and the backend sends them no patients
   // or features to draw. The rest stays `manage_users`, matching the
   // routes behind each button. See
@@ -95,7 +96,7 @@ export default function OrganisationAdminPage() {
   const mayAdministerOrg = useHasCompetency("manage_users");
   const mayManageStaff = useHasAnyCompetency(
     "manage_staff_membership",
-    "manage_teaching",
+    ...SCOPED_MANAGER_IDS,
   );
   const maySeePatients = useHasAnyCompetency(
     "manage_users",

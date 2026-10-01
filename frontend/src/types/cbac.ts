@@ -92,6 +92,25 @@ export const ASSESSABLE_COMPETENCIES: Competency[] = ACTIVE_COMPETENCIES.filter(
   (competency) => competency.assessable === true,
 );
 
+/**
+ * The competencies that manage people within a whitelist: every active
+ * one with a `may_grant` or `may_assign_professions` list, such as
+ * `manage_teaching`.
+ *
+ * Each opens the admin area alongside `manage_users`, and the API then
+ * limits what its holder may hand out. Read from the catalogue rather
+ * than named in each guard, so a new one is a YAML entry and the guards
+ * cannot disagree with the backend. Mirrors `SCOPED_MANAGER_IDS` in
+ * `backend/app/cbac/competencies.py`.
+ */
+export const SCOPED_MANAGER_IDS: CompetencyId[] = ACTIVE_COMPETENCIES.filter(
+  (competency) =>
+    (competency.may_grant?.length ?? 0) > 0 ||
+    (competency.may_assign_professions?.length ?? 0) > 0,
+)
+  .map((competency) => competency.id)
+  .filter(isCompetencyId);
+
 // Profession lookup
 export function getBaseProfessionDetails(
   id: BaseProfessionId,

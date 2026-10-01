@@ -78,6 +78,7 @@ import EditPatientPage from "./pages/admin/patients/EditPatientPage";
 import DeactivatePatientPage from "./pages/admin/patients/DeactivatePatientPage";
 import ActivatePatientPage from "./pages/admin/patients/ActivatePatientPage";
 import OrganisationAdminPage from "./pages/admin/organisations/OrganisationAdminPage";
+import { SCOPED_MANAGER_IDS } from "@/types/cbac";
 import CreateOrganisationPage from "./pages/admin/organisations/CreateOrganisationPage";
 import AddStaffToOrgPage from "./pages/admin/organisations/AddStaffToOrgPage";
 import AddPatientToOrgPage from "./pages/admin/organisations/AddPatientToOrgPage";
@@ -387,15 +388,17 @@ const routes: RouteObject[] = [
       },
 
       // Admin routes – require the competency the API itself requires.
-      // `manage_teaching` opens the area too, for a teaching admin to sign
-      // up delegates and manage their org_unit's staff; the pages that are
-      // not theirs carry `manage_users` again below, so they 404 rather
-      // than fail to load. See
+      // A scoped manager such as `manage_teaching` opens the area too, to
+      // sign up people within its whitelist and manage their org_unit's
+      // staff; the pages that are not theirs carry `manage_users` again
+      // below, so they 404 rather than fail to load. See
       // docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md.
       {
         path: "/admin",
         element: (
-          <RequireCompetency competency={["manage_users", "manage_teaching"]}>
+          <RequireCompetency
+            competency={["manage_users", ...SCOPED_MANAGER_IDS]}
+          >
             <Outlet />
           </RequireCompetency>
         ),
@@ -507,7 +510,7 @@ const routes: RouteObject[] = [
               <RequireCompetency
                 competency={[
                   "manage_practising_competencies",
-                  "manage_teaching",
+                  ...SCOPED_MANAGER_IDS,
                 ]}
               >
                 <MemberPracticePage />
@@ -568,7 +571,7 @@ const routes: RouteObject[] = [
                   <RequireCompetency
                     competency={[
                       "manage_practising_competencies",
-                      "manage_teaching",
+                      ...SCOPED_MANAGER_IDS,
                     ]}
                   >
                     <MemberPracticePage />
