@@ -497,6 +497,32 @@ provides it. None blocks another.
       clinician vouching for the module is the strongest thing the site can
       carry, and nothing Quill writes about itself can stand in for it
 
+## Phase 6: Link Let's Do Digital
+
+Let's Do Digital is the other trade name of Bailey Medics Ltd, at
+`letsdodigital.org`. A track record in teaching backs the learning and
+assessment pitch, so the site says so once, where a reader asks who is
+behind Quill.
+
+Its collaborators and supporters are not carried across. They agreed to
+be associated with that project, not with Quill, so naming one here, or
+showing its logo, needs that organisation's written permission first, as
+EoEETA's does.
+
+- [x] Add one linked sentence to the "Built by clinicians" section of
+      `about.tsx`, beside the line about the clinical record. It is kept
+      off the home page, ribbon and footer: a second brand there would
+      compete with learning and assessment and with the EoEETA showcase.
+      The wording follows how Let's Do Digital describes itself on its
+      own site, and wants checking by its owner
+- [x] Link the existing mention in `company-information.tsx`, which named
+      Let's Do Digital as plain text
+- [x] Show the Let's Do Digital logo above that sentence on `about.tsx`,
+      through a `LetsDoDigitalLogo` component that sets it on a white
+      panel, as `EoeetaLogo` does: the blue of the mark is lost on navy.
+      It reads the file the branded emails use, which is 128px square, so
+      it is shown at 5rem and softens if made much larger
+
 ## Later
 
 Out of scope for this plan, and recorded only so the structure leaves room

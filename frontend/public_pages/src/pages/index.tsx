@@ -69,7 +69,7 @@ createRoot(document.getElementById("root")!).render(
       <PublicLightBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
-            <EoeetaLogo />
+            <EoeetaLogo height={8} />
             <PublicTitle
               title="Optical diagnosis accreditation for *every* colonoscopist"
               size="md"
