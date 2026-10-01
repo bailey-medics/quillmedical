@@ -224,18 +224,27 @@ reasoning is in `admin.yaml`.
 catalogue entry may carry `may_grant` (competencies its holder may grant and
 remove) and `may_assign_professions` (base professions its holder may give).
 A caller's scope is the union across what they hold; `manage_users` means no
-limit and may appear on no list. `manage_teaching` is the first: a teaching
-admin grants only teaching competencies and professions, and acts on a whole
-account only when its profession is a teaching one.
+limit and may appear on no list. A competency carrying either list is a
+**scoped manager**. `manage_teaching` is one: a teaching admin grants only
+teaching competencies and professions, and acts on a whole account only when
+its profession is a teaching one. `manage_passport` is the other, for the
+four passport professions.
 
 - **Backend**: `backend/app/cbac/grant_scope.py` – `may_grant`,
-  `may_assign_profession`, `may_manage_account`. Routes open to either
-  competency check it in the body; removal counts as much as granting.
+  `may_assign_profession`, `may_manage_account`. The people routes admit
+  `manage_users` or any of `SCOPED_MANAGER_IDS` (in
+  `backend/app/cbac/competencies.py`, worked out from the catalogue), then
+  check the scope in the body; removal counts as much as granting. Never
+  name one scoped manager in a people route: a new one is a YAML entry.
+- **Frontend**: the admin guards use `SCOPED_MANAGER_IDS` from
+  `src/types/cbac.ts`, derived the same way.
 - **Frontend**: `/api/auth/me` returns `may_grant` and
   `may_assign_professions` (null for no limit); pickers read them through
   `useGrantScope` rather than working the whitelist out again.
 - **A whitelist, not a tag**: a new competency can be granted by nobody but
   `manage_users` until somebody adds it to a list.
+- **`passport_write` is sold, never granted**: the loader refuses a
+  `may_grant` list naming it, as it refuses `manage_users`.
 
 #### Practising competencies – where
 

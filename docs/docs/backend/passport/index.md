@@ -155,6 +155,29 @@ deliberately not readers yet – how "admin of the holder's organisation" should
 be evaluated is being settled elsewhere, and inventing a scope here that that
 work then changes would be worse than the narrower rule.
 
+### Passport professions
+
+An organisation can use the passport with clinical services switched off, so
+four base professions exist for it alone, none of which needs clinical
+services:
+
+- **`passport_delegate`** – holds a passport and signs off other people's,
+  through `assess_clinician_passport`. Writing to their own passport needs
+  `passport_write`, which comes only from an organisation's enablement or an
+  individual subscription.
+- **`passport_clinical_lead`** – the clinician who leads the passport at
+  their organisation or site. A label: it holds exactly what a delegate
+  holds.
+- **`passport_admin`** – holds `manage_passport`, a scoped manager that
+  may give the four passport professions and grant
+  `assess_clinician_passport`, at the org units its holder belongs to. It
+  never needs `manage_users`, and no whitelist may name `passport_write`.
+- **`passport_external_assessor`** – given to a clinician from elsewhere who
+  accepts an invitation to sign off one competency. Until 30 September 2026
+  its id was `external_assessor`.
+
+See `docs/docs/plans/2026-09-30-passport-professions-plan.md`.
+
 **Exports and reflections are holder-only.** The zip copies the canonical files
 including reflections, so it could never be anything else; the Markdown and PDF
 could in principle be read by a named assessor, but an export hands over a

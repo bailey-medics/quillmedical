@@ -152,11 +152,22 @@ then is `manage_passport` added.
 
 ## Phase 4: Documentation
 
-- [ ] **Update the passport docs** in `docs/docs/` that describe
-      `external_assessor`, to the new id and to the four professions.
-- [ ] **Add `manage_passport` to the authorisation notes** in
-      `.github/copilot-instructions.md` beside `manage_teaching`, then run
-      `/sync-copilot-config`.
+- [x] **Update the passport docs.** No page outside the plans named the
+      `external_assessor` id; prose about "an external assessor" is still
+      right. `docs/docs/backend/passport/index.md` gains a "Passport
+      professions" section under Authorisation describing the four
+      professions and `manage_passport`.
+- [x] **Add `manage_passport` to the authorisation notes** in
+      `.github/copilot-instructions.md`: the paragraph on grant whitelists
+      now names scoped managers, both of them, `SCOPED_MANAGER_IDS` on each
+      side, the rule never to name one scoped manager in a people route,
+      and that `passport_write` can be on no whitelist.
+- [ ] **Run `/sync-copilot-config apply`** to carry that into `CLAUDE.md`.
+      Left for a person: a dry run on 1 October 2026 found eleven synced
+      files changed on both sides since the last run on 26 September,
+      including the grant whitelist paragraph from the manage teaching
+      plan, which never reached `CLAUDE.md`. Reconciling all of that is a
+      sync of its own, not a step of this plan.
 
 ## Decisions
 
