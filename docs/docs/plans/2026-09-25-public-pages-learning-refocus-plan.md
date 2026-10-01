@@ -454,10 +454,13 @@ page first.
       ribbon links, "Log in" and the hero buttons in order, each with a
       visible focus outline. The scan was a one-off script, not a test in
       CI; see "Later"
-- [ ] Send EoEETA the preview link and ask for their written OK to be named
+- [x] Send EoEETA the preview link and ask for their written OK to be named
       on the site, kept by email. This is the one thing the deploy waits
       for, because the pages name them; if they would rather not be named,
-      swap in "a regional endoscopy training academy" and deploy
+      swap in "a regional endoscopy training academy" and deploy. Asked in
+      the 30 September 2026 update, and EoEETA replied by email that
+      their name and their logo may both be used. Recorded here on
+      1 October 2026; the email is the record
 - [x] Deploy to the GCS bucket. Happened on its own: `public-site.yml` runs
       on every push to `main` that touches the public pages, so the site
       went live at 12:55 on 25 September 2026 when the last of the six
@@ -479,8 +482,8 @@ provides it. None blocks another.
       it on a white panel: the logo is dark lettering on a transparent
       background and unreadable on the navy pages without one. It reads
       the same file the branded emails use, so there is one copy. Asked
-      for in the 30 September 2026 update; confirm the written answer is
-      on file before this deploys
+      for in the 30 September 2026 update, and agreed by email: see the
+      permission step in Phase 4
 - [x] Fold the EoEETA partnership into the module page and rename it
       `optical-diagnosis-polyps.tsx`, at `/optical-diagnosis-polyps`. One
       page now carries the logo, the module, whose content it is and how
