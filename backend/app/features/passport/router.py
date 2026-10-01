@@ -76,9 +76,9 @@ from app.models import (
 from app.org_units.tree import descendant_ids
 from app.organisations import (
     add_org_unit_member,
+    feature_holder_ids_of,
     get_member_org_unit_ids,
     get_reachable_org_unit_ids,
-    organisation_org_units_of,
     remove_org_unit_member,
 )
 from app.passport_storage import get_blob_store, get_passport_store
@@ -3184,16 +3184,15 @@ def _holder_org_unit(db: Session, passport_id: str) -> int:
         .all()
     )
 
-    # The same walk `requires_feature` makes: up to the root org_units
-    # and look for the feature there, so one that passes here is one the
-    # gate will accept.
+    # The same question `requires_feature` asks, so one that passes here
+    # is one the gate will accept.
     with_feature = [
         unit_id
         for unit_id in member_ids
         if db.scalar(
             select(OrgUnitFeature.id).where(
                 OrgUnitFeature.org_unit_id.in_(
-                    organisation_org_units_of(db, [unit_id])
+                    feature_holder_ids_of(db, [unit_id])
                 ),
                 OrgUnitFeature.feature_key == "passport",
             )

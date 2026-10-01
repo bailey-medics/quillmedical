@@ -171,3 +171,40 @@ describe("SiteAdminPage staff members", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
+
+describe("SiteAdminPage features", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(authContext, "useAuth").mockReturnValue({
+      state: { status: "authenticated", user: mockAdminUser },
+      login: vi.fn(),
+      logout: vi.fn(),
+      reload: vi.fn(),
+    } as ReturnType<typeof authContext.useAuth>);
+  });
+
+  it("shows the features switched on at the site", async () => {
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      ...site(null),
+      features: ["passport"],
+    });
+
+    renderWithRouter(<SiteAdminPage />, { initialRoute: "/admin/sites/1" });
+
+    expect(await screen.findByText("Enabled features")).toBeInTheDocument();
+    expect(screen.getByText("Clinician passport")).toBeInTheDocument();
+  });
+
+  it("opens the site's features page from the pencil", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(apiLib.api, "get").mockResolvedValue(site(null));
+
+    renderWithRouter(<SiteAdminPage />, { initialRoute: "/admin/sites/1" });
+
+    await user.click(
+      await screen.findByRole("button", { name: "Edit features" }),
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/1/features");
+  });
+});

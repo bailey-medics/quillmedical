@@ -113,9 +113,17 @@ def test_every_kind_of_organisation_is_named() -> None:
     }
 
 
-def test_only_the_top_of_a_tree_holds_features() -> None:
+def test_the_top_of_a_tree_and_a_site_hold_features() -> None:
+    """A site may carry features since 1 October 2026.
+
+    Before then only the top of a tree could, which meant the passport
+    could not be switched on for one team without its whole trust. The
+    levels below a site still cannot.
+    """
     for type_id in ORG_UNIT_TYPE_IDS:
-        assert type_can_hold_features(type_id) is (type_id in ROOT_TYPE_IDS)
+        assert type_can_hold_features(type_id) is (
+            type_id in ROOT_TYPE_IDS or type_id == "site"
+        )
 
 
 def test_a_site_names_a_clinical_lead() -> None:

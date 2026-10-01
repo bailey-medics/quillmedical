@@ -235,7 +235,7 @@ the passport feature, so that an org unit can cover its members' writing.
 `COMPETENCY_GRANT_SOURCES` since the user competency table plan, but
 nothing writes it yet.
 
-- [ ] **Let a site hold features, with its own features card and page.**
+- [x] **Let a site hold features, with its own features card and page.**
       The Cheltenham tree is Gloucestershire Hospitals as the
       `organisation` and Cheltenham oncology as a `site` under it. The
       passport must be on for oncology and not for the whole trust, but
@@ -252,6 +252,16 @@ nothing writes it yet.
       page gets the features card the organisation page has, opening the
       same features page, which is generalised from `OrgFeaturesPage` to
       take any org unit. Agreed on 1 October 2026.
+
+      Built as `feature_holder_ids_of` in `backend/app/organisations.py`,
+      the one answer to "which org units' features reach this person",
+      used by `requires_feature`, `/api/auth/me` and the passport's own
+      check for a holder's usable org unit. The card is a new
+      `EnabledFeaturesCard` component, now used by both admin pages.
+      `OrgFeaturesPage` takes `parentPath="sites"` for the way back, and
+      its wording no longer says "organisation-wide". The site pages are
+      still operator-only, so only a superadmin can switch a site's
+      features for now.
 - [ ] **Add a `passport_write` feature key**, stored as an
       `OrgUnitFeature` row like every other feature, so no migration is
       needed. `set_org_unit_feature` in `backend/app/org_units/router.py`

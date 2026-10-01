@@ -11,12 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Stack, Group, Skeleton } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
-import {
-  BodyTextInline,
-  BodyTextBold,
-  Heading,
-  EmptyState,
-} from "@/components/typography";
+import { BodyTextInline, BodyTextBold, Heading } from "@/components/typography";
 import {
   IconPencil,
   IconTrash,
@@ -30,7 +25,7 @@ import { ConfirmModal } from "@/components/confirm-modal";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import AddButton from "@/components/button/AddButton";
-import FeatureBadge from "@/components/badge/FeatureBadge";
+import EnabledFeaturesCard from "@/components/enabled-features-card";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import { useAuth } from "@/auth/AuthContext";
@@ -47,13 +42,6 @@ import { SCOPED_MANAGER_IDS } from "@/types/cbac";
 interface PatientRow {
   patient_id: string;
 }
-
-/** Labels for known feature keys */
-const FEATURE_LABELS: Record<string, string> = {
-  teaching: "Teaching",
-  messaging: "Messaging",
-  letters: "Letters",
-};
 
 /**
  * Organisation Admin Page
@@ -437,28 +425,10 @@ export default function OrganisationAdminPage() {
       )}
       {/* Enabled Features */}
       {mayAdministerOrg && (
-        <BaseCard>
-          <Stack gap="md">
-            <Group justify="space-between" align="center">
-              <Heading>Enabled features</Heading>
-              <IconButton
-                icon={<IconPencil />}
-                onClick={() => navigate(`/admin/organisations/${id}/features`)}
-                aria-label="Edit features"
-              />
-            </Group>
-
-            {enabledFeatures.length > 0 ? (
-              <Group gap="sm">
-                {enabledFeatures.map((key) => (
-                  <FeatureBadge key={key} label={FEATURE_LABELS[key] ?? key} />
-                ))}
-              </Group>
-            ) : (
-              <EmptyState>No features enabled</EmptyState>
-            )}
-          </Stack>
-        </BaseCard>
+        <EnabledFeaturesCard
+          features={enabledFeatures}
+          onEdit={() => navigate(`/admin/organisations/${id}/features`)}
+        />
       )}
       {/* Sites */}
       <BaseCard>

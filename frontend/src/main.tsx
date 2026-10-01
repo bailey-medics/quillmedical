@@ -562,6 +562,10 @@ const routes: RouteObject[] = [
               },
               { path: "sites/:id/edit", element: <EditSitePage /> },
               {
+                path: "sites/:id/features",
+                element: <OrgFeaturesPage parentPath="sites" />,
+              },
+              {
                 path: "sites/:id/add-staff",
                 element: <AddStaffToSitePage />,
               },

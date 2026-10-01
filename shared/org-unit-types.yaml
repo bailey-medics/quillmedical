@@ -103,13 +103,18 @@ org_unit_types:
   # CLINICAL ROLES
   # ==========================================================================
 
+  # A site may carry features of its own, so one team can have the
+  # passport without the whole trust: Cheltenham oncology under
+  # Gloucestershire Hospitals. A feature on at a site reaches that site's
+  # members only; one on at the organisation still reaches every site.
+  # See docs/docs/plans/2026-09-30-passport-professions-plan.md.
   - id: site
     display_name: "Site"
     description: >-
       The level below an organisation, and what teaching uses today. A site
-      names a clinical lead; it does not carry its own feature set.
+      names a clinical lead, and may switch features on for its own members.
     requires_parent: true
-    can_hold_features: false
+    can_hold_features: true
     can_hold_positions: true
     can_hold_competencies: true
     can_have_members: true

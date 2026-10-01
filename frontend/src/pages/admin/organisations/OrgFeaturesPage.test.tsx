@@ -5,7 +5,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithRouter } from "@/test/test-utils";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { renderWithMantine, renderWithRouter } from "@/test/test-utils";
 import OrgFeaturesPage from "./OrgFeaturesPage";
 import * as apiLib from "@/lib/api";
 
@@ -280,7 +281,9 @@ describe("OrgFeaturesPage", () => {
     await user.click(teachingSwitch);
     await user.click(screen.getByTestId("submit-button"));
 
-    expect(screen.getByText(/remove access for all users/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/remove access for everyone they reach here/),
+    ).toBeInTheDocument();
   });
 
   it("does not call API when go back is clicked in modal", async () => {
@@ -492,6 +495,37 @@ describe("OrgFeaturesPage", () => {
         ),
       ).toBeInTheDocument();
       expect(pills(container)).toEqual(["Oncology"]);
+    });
+  });
+
+  describe("On a site", () => {
+    it("goes back to the site on cancel", async () => {
+      const user = userEvent.setup();
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({
+        ...mockOrg,
+        name: "Cheltenham oncology",
+        type: "site",
+        is_root: false,
+        parent_id: 1,
+        features: ["passport"],
+      });
+      const router = createMemoryRouter(
+        [
+          {
+            path: "/admin/sites/:id/features",
+            element: <OrgFeaturesPage parentPath="sites" />,
+          },
+          { path: "/admin/sites/:id", element: <p>The site page</p> },
+        ],
+        { initialEntries: ["/admin/sites/3/features"] },
+      );
+
+      renderWithMantine(<RouterProvider router={router} />);
+
+      await user.click(await screen.findByRole("button", { name: "Cancel" }));
+
+      expect(await screen.findByText("The site page")).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe("/admin/sites/3");
     });
   });
 });
