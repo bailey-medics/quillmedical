@@ -119,28 +119,36 @@ then is `manage_passport` added.
       `manage_teaching`, because they show teaching content tools, not
       people. Tests in `frontend/src/types/cbac.test.ts` pin the list.
 
-- [ ] **Add `manage_passport` to `shared/competency-definitions/passport.yaml`**
+- [x] **Add `manage_passport` to `shared/competency-definitions/passport.yaml`**
       with `may_grant: [assess_clinician_passport, manage_passport]` and
       `may_assign_professions: [passport_delegate, passport_clinical_lead,
       passport_manager, passport_external_assessor]`. `manage_passport` is
-      on its own list so that one manager can appoint another. If the
-      assessor access split has landed by then, list its competencies in
-      place of `assess_clinician_passport`.
-- [ ] **Stop `passport_write` appearing on any `may_grant` list**, with the
-      same check at load time that the teaching plan uses to keep
-      `manage_users` off. A manager who could grant it would be giving
-      away the paid feature, and nothing would visibly go wrong.
-- [ ] **Add `passport_manager`** ("Passport manager") to
+      on its own list so that one manager can appoint another. The
+      assessor access split had not landed by then, so the list names
+      `assess_clinician_passport`; whichever change splits it updates this
+      list too. Because it has a whitelist, it is a scoped manager from
+      the moment it loads, and the two steps above let it through the
+      people routes and the admin pages with no further change.
+- [x] **Stop `passport_write` appearing on any `may_grant` list.**
+      `SOLD_COMPETENCY` in `backend/app/cbac/competencies.py` is refused at
+      load time, beside the check that keeps `manage_users` off. A manager
+      who could grant it would be giving away the paid feature, and
+      nothing would visibly go wrong.
+- [x] **Add `passport_manager`** ("Passport manager") to
       `shared/base-professions.yaml` with `requires_clinical_services: false`
       and `base_competencies: [manage_passport]`. Leave out
       `assess_clinician_passport`: running the scheme is not the same as
       holding a passport, and a manager who is also a clinician can be
       given it.
-- [ ] **Tests**: a passport manager can create a passport delegate at their
-      own org unit and give them `assess_clinician_passport`. They cannot
-      give out `passport_write`, `manage_users` or any clinical or teaching
-      competency. They cannot change the profession of a user who is not
-      in a passport profession.
+- [x] **Tests**: `backend/tests/test_manage_passport_user_routes.py`
+      covers what a passport manager may do through `/api/users`: create
+      each passport profession at their own org unit, grant
+      `assess_clinician_passport`, move a delegate to clinical lead,
+      deactivate a delegate. It also covers what they may not do: grant
+      `passport_write`, `manage_users`, a clinical or a teaching
+      competency, give a clinical or teaching profession, or act on a
+      clinician's or a teaching delegate's account. The load-time refusal
+      of `passport_write` is in `backend/tests/test_grant_scope.py`.
 
 ## Phase 4: Documentation
 

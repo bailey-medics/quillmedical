@@ -463,6 +463,18 @@ base_professions:
       - assess_clinician_passport
 
 
+  # Runs the passport at their organisation or site: takes on delegates,
+  # names the clinical lead and invites external assessors, within
+  # manage_passport's whitelist. It does not hold a passport by default.
+  # Running the scheme is not the same as holding one, and an admin who
+  # is also a clinician can be given assess_clinician_passport.
+  - id: passport_admin
+    display_name: "Passport admin"
+    description: "Runs the passport at their organisation or site and signs up the people in it"
+    requires_clinical_services: false
+    base_competencies:
+      - manage_passport
+
   # A consultant from another trust, invited by a holder to sign off one
   # of their competencies. They do not work here and must not be made
   # staff of a trust they have no relationship with, so this profession
