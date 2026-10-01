@@ -638,6 +638,7 @@
     "servable",
     "servicenetworking",
     "sessionmaker",
+    "setsid",
     "setdefault",
     "setmeta",
     "setval",

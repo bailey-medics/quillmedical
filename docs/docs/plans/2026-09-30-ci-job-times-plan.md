@@ -160,7 +160,10 @@ pull request, so its effect can be read off that pull request's own runs.
       draft's three skipped legs would have shown in the fast-tier mark
 - [ ] Measure over a day of runs and record here: the slowest leg, the
       whole heavy tier on a pull request, and the runner minutes spent per
-      run against today's 7. The estimate is 2m 30s to 3m per leg
+      run against today's 7. The estimate is 2m 30s to 3m per leg. First
+      reading, from the one run on #1319 once it was marked ready: the
+      legs took 3m 12s, 3m 08s and 2m 17s, and the job that carries the
+      required name took 5s. That is one run, not the day asked for
 
 ## Phase 4: run the Storybook tests in the Playwright image
 
@@ -170,13 +173,20 @@ and 12m 31s; the other 23 took 14 to 51s. Phase 3 makes this three times
 as likely per run, since every leg installs the packages, which is why
 this follows it directly.
 
-- [ ] Run `test-storybook` in `mcr.microsoft.com/playwright:v<version>-noble`
+- [x] Run `test-storybook` in `mcr.microsoft.com/playwright:v<version>-noble`
       with `docker run --network host`, as `heavy_e2e` does, against a
       Storybook still started on the runner. That keeps Yarn 4 and the dev
       server out of the container, which was the fiddly part: only the
       test runner and its browser move. The "Cache Playwright browsers"
-      step and both install steps go
-- [ ] Delete `.github/workflows/playwright-cache.yml`. The Storybook key
+      step and both install steps go. Done in
+      `.github/scripts/ci/run-storybook-tests-in-image.sh`, which starts
+      Storybook, waits for it, runs the tests in the image and stops
+      Storybook again. That is `storybook:test:ci` done by hand: its
+      `concurrently` wrapper could not put only one of its two halves in
+      a container. The leg now hands its shard to the script as an
+      argument, so CI no longer reads `SB_SHARD`; `storybook:test` keeps
+      it for a local run
+- [x] Delete `.github/workflows/playwright-cache.yml`. The Storybook key
       was the last thing it warmed
 - [ ] Measure and record here. Expect a normal run to be about 9s slower
       per leg, a 27s image pull in place of an 18s install, and the
