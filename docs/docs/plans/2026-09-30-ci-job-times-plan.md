@@ -276,7 +276,7 @@ caches and 10.04GB against a limit of 10GB, so GitHub is already evicting.
       run. The cost is that a second push to the same pull request no
       longer reuses its own build stage, but with the dependency layers
       coming from `main` that stage is `yarn build`, about 22s
-- [ ] Measure and record here. The estimate is 3m 23s down to about
+- [x] Measure and record here. The estimate is 3m 23s down to about
       1m 30s, which would put the E2E pair near 4m 30s. Not measurable yet.
       #1327 merged at 15:42 on 1 October and `e2e-image-cache.yml` then ran
       on `main` for the first time, finishing at 15:47: 52s for the backend
@@ -286,7 +286,13 @@ caches and 10.04GB against a limit of 10GB, so GitHub is already evicting.
       reading. The last run without it, #1329's in the queue, built the
       images in 3m 16s and ran the E2E tests in 3m 11s. The allowance is
       still over, 10.65GB across 154 caches, and should fall as the old
-      per pull request copies pass seven days unread
+      per pull request copies pass seven days unread. Measured on the
+      four heavy runs after that, two on pull requests and two in the
+      merge queue: the build took 1m 45s to 2m 12s, against 3m 16s to
+      4m 23s on the four queue runs before it. The backend image took 6 to
+      26s and the frontend about 62s. The E2E pair came to about 4m 15s,
+      and the two queue runs finished in 4m 21s and 4m 49s, where the four
+      before took 5m 42s to 7m 55s
 
 ## Phase 7: consider splitting the unit suites
 
@@ -364,7 +370,9 @@ in the order they would then matter. None is committed to.
       `CI=1 just e2e` passed locally, 43 tests on two workers in 1.2
       minutes with no retries. Only about 1m 40s of the job's 3 minutes
       is the tests, so the most this can save is under a minute. Try
-      four once two has held for a while
+      four once two has held for a while. In CI the "Run E2E tests" step
+      took 58s, 59s and 71s on two workers, against 104s on a pull request
+      still on one, so the job went from about 3 minutes to about 2m 30s
 - [x] Give the backend tests a cheap password hasher, if hashing is what
       limits them. Confirm it first with `pytest --durations=25` on a CI
       run. `security.py` uses argon2-cffi's defaults, 64MB and four
@@ -385,13 +393,24 @@ in the order they would then matter. None is committed to.
       included: 371s before and 172s after on one process, and 221s before
       and 95s after with `-n auto`. So hashing was a little over half the
       suite, and with it gone the workers from Phase 7 pay off
-- [ ] Widen what `e2e-image-cache.yml` warms, if Phase 6's reading shows
+- [x] Widen what `e2e-image-cache.yml` warms, if Phase 6's reading shows
       the build stage is what remains. It saves only when a dependency
       file changes, so a pull request always rebuilds the application
       layers, `yarn build` at about 22s among them. Warming on every push
       to `main` that touches `frontend/` or `backend/` would let a pull
       request that changes only one side take the other image whole from
-      the cache, at the cost of a build on most merges
+      the cache, at the cost of a build on most merges. The reading did
+      show it: with the dependencies cached the frontend image still took
+      about 62s on every run, and the E2E pair at about 4m 15s is what a
+      run waits for once the backend tests are quicker. The trigger now
+      lists everything either Dockerfile copies in, and for the backend no
+      more than that, so a change to its tests alone builds nothing. The
+      cache is only as fresh as the last finished run on `main`, so a pull
+      request that follows a merge closely still builds both, as it does
+      today
+- [ ] Measure the image build on a pull request that leaves the frontend
+      alone, once this has merged and warmed. The estimate is about 30s,
+      from 1m 45s
 - [ ] Decide whether to pay for larger runners, and if so make the runner
       a repository variable. `runs-on: ${{ vars.CI_RUNNER_PY_UNIT ||
       'ubuntu-24.04' }}` leaves a job on the free runner until the
