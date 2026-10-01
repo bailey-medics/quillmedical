@@ -30,8 +30,7 @@ createRoot(document.getElementById("root")!).render(
             <PublicBodyText justify="centre">
               Call small polyps confidently and correctly. An online module in
               optical diagnosis of diminutive colorectal polyps, built with the
-              East of England Endoscopy Training Academy (EoEETA), the first
-              clinical team to teach and assess on Quill.
+              East of England Endoscopy Training Academy (EoEETA).
             </PublicBodyText>
           </Stack>
         </Container>

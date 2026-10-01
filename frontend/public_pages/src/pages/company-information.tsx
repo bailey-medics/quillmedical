@@ -4,7 +4,7 @@ import PublicLightBackground from "@/components/background/PublicLightBackground
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/typography/PublicTitle";
 import PublicBodyText from "@/components/typography/PublicBodyText";
-import { Container, Stack } from "@mantine/core";
+import { Anchor, Container, Stack } from "@mantine/core";
 import PublicMantineProvider from "../PublicMantineProvider";
 import "../global-styles";
 import { createRoot } from "react-dom/client";
@@ -18,7 +18,15 @@ createRoot(document.getElementById("root")!).render(
             <PublicTitle title="Company information" />
             <PublicBodyText justify="centre">
               Quill Medical is a trade name of Bailey Medics Ltd, also trading
-              under the trade name of Let&rsquo;s Do Digital.
+              under the trade name of{" "}
+              <Anchor
+                href="https://letsdodigital.org/"
+                c="secondary.5"
+                underline="always"
+              >
+                Let&rsquo;s Do Digital
+              </Anchor>
+              .
             </PublicBodyText>
           </Stack>
         </Container>

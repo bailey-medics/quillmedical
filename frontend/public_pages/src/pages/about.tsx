@@ -1,10 +1,11 @@
 import PublicDarkBackground from "@/components/background/PublicDarkBackground";
 import PublicHeroBackground from "@/components/background/PublicHeroBackground";
 import PublicLightBackground from "@/components/background/PublicLightBackground";
+import LetsDoDigitalLogo from "@/components/images/LetsDoDigitalLogo";
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicTitle from "@/components/typography/PublicTitle";
 import PublicBodyText from "@/components/typography/PublicBodyText";
-import { Anchor, Container, Stack } from "@mantine/core";
+import { Anchor, Box, Container, Stack } from "@mantine/core";
 import PublicMantineProvider from "../PublicMantineProvider";
 import "../global-styles";
 import { createRoot } from "react-dom/client";
@@ -45,6 +46,21 @@ createRoot(document.getElementById("root")!).render(
                 clinical record
               </Anchor>{" "}
               on open standards, alongside the learning and assessment platform.
+            </PublicBodyText>
+            <Box mt="lg">
+              <LetsDoDigitalLogo />
+            </Box>
+            <PublicBodyText justify="centre">
+              We also run{" "}
+              <Anchor
+                href="https://letsdodigital.org/"
+                c="secondary.5"
+                underline="always"
+              >
+                Let&rsquo;s Do Digital
+              </Anchor>
+              , which works to improve healthcare through education and
+              collaboration.
             </PublicBodyText>
           </Stack>
         </Container>

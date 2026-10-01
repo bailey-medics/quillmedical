@@ -1,0 +1,9 @@
+/*
+ * The mark fills only the middle three quarters of its 128px file: there
+ * is a transparent margin of about an eighth on every side. Scaling by
+ * 128 / 96 lets the mark itself reach the edges of the image box, so it
+ * reads larger while the card around it stays the same size.
+ */
+.mark {
+  transform: scale(1.33);
+}
