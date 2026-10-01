@@ -18,7 +18,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "create-pr"
 
 # The placeholder body. This repository has no pull request template; the real
-# description is written when the branch is finished (see /crp final).
+# description is written when the branch is finished (see /crpd).
 placeholder_body() {
   cat <<'EOF'
 **Placeholder for the PR description**
@@ -27,7 +27,7 @@ You can autogenerate a PR description covering the whole PR if you are using
 VSCode Copilot or Claude Code. Run the below in the chat:
 
 ```
-/crp final
+/crpd
 ```
 EOF
 }

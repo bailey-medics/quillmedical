@@ -89,7 +89,15 @@ would cut about 50s from every run.
       skipped and only the system dependencies step runs. It was, from the
       #1293 queue run at 19:32 on 30 September onwards: E2E 3m 27s,
       Storybook 4m 48s
-- [ ] Re-measure the E2E job and record the new average here
+- [x] Re-measure the E2E job and record the new average here. Measured on
+      1 October over the 371 CI runs since 28 September, successful jobs
+      only, grouped by what each job did rather than by date. The 33 runs
+      that restored the cache and installed only the system packages had a
+      median of 3m 30s against 3m 27s for the 154 that downloaded the
+      browsers, and a mean of 4m 10s against 3m 57s. So the cache alone
+      bought nothing: the `apt-get` it left behind had a median of 52s, the
+      same as the download it replaced, and stalled as badly. Phase 2 is
+      what moved the job
 
 ## Phase 2: run the E2E tests in the Playwright image
 
@@ -106,9 +114,152 @@ the browsers and their system packages, so nothing is installed at all.
       step that keyed the cache, so a Renovate bump moves the image with it.
       The cache and both install steps go from `heavy_e2e`
 - [x] Stop warming the E2E key in `playwright-cache.yml`; nothing reads it
-- [ ] Time "Pull Playwright image" over a few runs. If it is slow or
+- [x] Time "Pull Playwright image" over a few runs. If it is slow or
       unreliable, mirror the image into GHCR, where the job already pulls
-      its own images in about 9s
-- [ ] Move `heavy_storybook_tests` the same way if its system dependencies
-      step starts stalling too. It is fiddlier, because it starts Storybook
-      with Yarn 4 inside the job, and today it takes 14 to 26s
+      its own images in about 9s. Over the first 15 runs it had a median of
+      27s and a slowest of 38s, so it is neither, and no mirror is needed
+- [x] Re-measure the E2E job. Over those 15 runs: median 3m 06s, mean
+      3m 04s, slowest 3m 24s, against 3m 27s, 3m 57s and 13m 09s before.
+      The gain is the tail, not the typical run. With `E2E image build` in
+      front of it the pair has a median of 6m 27s, down from 6m 58s. The
+      whole heavy tier on a pull request barely moved, 7m 14s to 7m 05s at
+      the median (8m 35s to 7m 34s at the 90th percentile, over only 7
+      runs), because Storybook now sets the finish time
+- [x] Move `heavy_storybook_tests` the same way if its system dependencies
+      step starts stalling too. It did, so this is now Phase 4
+
+## Phase 3: split the Storybook interaction tests across runners
+
+Storybook is the critical path now. Its job has a median of 7m 01s, and
+"Run Storybook interaction tests" is about 6m 19s of that, so no amount of
+caching around it helps: the browser cache swapped a 25s download for an
+18s package install and the job did not move. Each phase from here is one
+pull request, so its effect can be read off that pull request's own runs.
+
+- [ ] Run the job as a three-way matrix, each leg passing
+      `--shard=<n>/3` to `test-storybook`. `storybook:test` in
+      `frontend/package.json` already takes `SB_MAX_WORKERS` from the
+      environment; add the shard the same way. Three is a starting point:
+      each leg repeats about a minute of setup (checkout, `setup-frontend`,
+      the system packages, starting the Storybook dev server), so a fourth
+      leg buys less than the third did
+- [ ] Keep a check named `Storybook interaction tests`. A matrix renames
+      the checks to `Storybook interaction tests (1/3)` and so on, and that
+      exact name is required by `infra/github/branch_rules.tf` and read by
+      `scripts/stack-status.py`. Add a small job with the old name that
+      needs the three legs, so nothing in Terraform or the stack tooling
+      changes. It must run under `always()` and check each leg's result
+      itself: left to the default, a failed leg skips the job that needs
+      it, and a required check that is skipped counts as passed. Keep
+      today's draft condition alongside, so a draft still skips it
+- [ ] Measure over a day of runs and record here: the slowest leg, the
+      whole heavy tier on a pull request, and the runner minutes spent per
+      run against today's 7. The estimate is 2m 30s to 3m per leg
+
+## Phase 4: run the Storybook tests in the Playwright image
+
+Storybook has the stall E2E had. Of the 25 runs since Phase 1, two spent
+317s and 366s on "Install Playwright system dependencies" and took 12m 05s
+and 12m 31s; the other 23 took 14 to 51s. Phase 3 makes this three times
+as likely per run, since every leg installs the packages, which is why
+this follows it directly.
+
+- [ ] Run `test-storybook` in `mcr.microsoft.com/playwright:v<version>-noble`
+      with `docker run --network host`, as `heavy_e2e` does, against a
+      Storybook still started on the runner. That keeps Yarn 4 and the dev
+      server out of the container, which was the fiddly part: only the
+      test runner and its browser move. The "Cache Playwright browsers"
+      step and both install steps go
+- [ ] Delete `.github/workflows/playwright-cache.yml`. The Storybook key
+      was the last thing it warmed
+- [ ] Measure and record here. Expect a normal run to be about 9s slower
+      per leg, a 27s image pull in place of an 18s install, and the
+      12 minute runs to stop. The second is the point
+
+## Phase 5: test a built Storybook, not the dev server
+
+A trial, kept only if the numbers say so. `storybook:test:ci` starts
+`storybook dev`, which compiles each story the first time a test asks for
+it, so the tests wait on Vite as well as on the browser. A static build
+has done that work up front.
+
+- [ ] In each leg, run `storybook build` and serve the output, then point
+      `test-storybook` at it with `--url`. The fast tier's
+      `typescript_checks (storybook:build)` takes 53s, but it runs on the
+      push event and the heavy tier on the pull request event, so its
+      output cannot simply be handed over: each leg builds its own, and
+      the build has to save more than 53s of test time to pay for itself.
+      The `frontend/node_modules/.vite` cache the job already restores
+      should shorten it
+- [ ] Measure against Phase 4's figure. If the slowest leg is not faster,
+      close the pull request and record the result here, so it is not
+      tried again
+
+## Phase 6: let pull requests read the E2E image cache
+
+`E2E image build` has a median of 3m 23s, and once Storybook is down it
+is what holds the heavy tier up: `E2E (Playwright)` waits for it. It has
+the same fault Phase 1 fixed for the browsers. The Docker layer cache is
+`type=gha`, which a run can only read from its own ref or from `main`, and
+this job never runs on `main`. So a pull request's first heavy run, and
+every merge queue run, starts with nothing: on #1303's first run both
+`poetry install` and `yarn install` ran in full, and the job then spent
+18s and 89s writing the backend and frontend layers to a cache no other
+pull request can read. A later run on #1302, reading its own cache, built
+the frontend image in about 60s. The copies also fill the allowance: 326
+caches and 10.04GB against a limit of 10GB, so GitHub is already evicting.
+
+- [ ] Build both images on `main` and save the layers under the scopes
+      `ci-backend` and `ci-frontend`, in a workflow shaped like
+      `playwright-cache.yml`: on a push to `main` that touches a
+      Dockerfile or a lock file, weekly, and by hand. Nothing is pushed to
+      GHCR from it; only the cache matters
+- [ ] Stop pull request and merge queue runs writing the cache, by
+      dropping `cache-to` from both build steps in `heavy_e2e_images`.
+      This is where most of the time goes, 107s of the job on a first
+      run. The cost is that a second push to the same pull request no
+      longer reuses its own build stage, but with the dependency layers
+      coming from `main` that stage is `yarn build`, about 22s
+- [ ] Measure and record here. The estimate is 3m 23s down to about
+      1m 30s, which would put the E2E pair near 4m 30s
+
+## Phase 7: consider splitting the unit suites
+
+Not committed to: decide once Phase 6 has been measured. `Python unit` and
+`typescript_checks (unit-test:run)` both take about 5 minutes and bound
+the fast tier. That has not mattered to a pull request, whose heavy tier
+was slower. But the merge queue runs both tiers, so if the phases above
+bring the heavy tier to about 4 minutes, these two become what every merge
+waits for.
+
+- [ ] Decide whether to go ahead, from the heavy tier's time after Phase 6
+      and the merge queue's run times
+- [ ] If so, the backend first, as it needs no extra runner: "Pytest
+      (unit)" has a median of 4m 29s on one process, and `pytest-xdist`
+      is not installed. Add it and run with `-n auto`. Check first that
+      the in-memory SQLite fixtures in `conftest.py` are safe with one
+      database per worker
+- [ ] Then the frontend: "Run unit-test:run" has a median of 4m 56s.
+      Vitest already uses every core, so this one needs a matrix with
+      `--shard`, and the same single named check as Phase 3 if the name
+      is required anywhere
+
+## Decisions
+
+- **Sharding goes before the Playwright image** – the stall would be the
+  safer thing to fix first, since sharding triples the exposure to it.
+  But with one change per pull request, sharding first gives a clean
+  reading of the largest saving against today's baseline. The cost is a
+  short spell between the two in which a slow run is more likely.
+
+- **The dark-mode accessibility pass stays on every pull request** – axe
+  checks each story twice, light and dark, and running the dark pass only
+  in the merge queue would shorten the Storybook job. It was left out
+  because its share of the 6 minutes has not been measured, and because a
+  dark-mode violation would then surface at merge instead of at review.
+
+- **Warm the image cache on `main` instead of moving it to GHCR** – a
+  `type=registry` cache is not tied to a ref and would also fix Phase 6.
+  Warming on `main` was chosen because it is the pattern Phase 1 already
+  proved here, and it takes the build cache out of pull requests
+  altogether, which is what frees the allowance.

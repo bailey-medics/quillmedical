@@ -1330,7 +1330,7 @@ stack-submit:
     # a draft, which is what this repository needs: the heavy CI tier and the
     # four gate contexts fire on ready_for_review and synchronize, never on
     # opened, so a pull request created ready never gets them. Do not add
-    # --open here; `gh pr ready` or /crp final is how a branch leaves draft.
+    # --open here; `gh pr ready` or /nst-crp final is how a branch leaves draft.
     gh stack submit --auto
     python3 scripts/stack-status.py --prs
 

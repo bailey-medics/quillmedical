@@ -153,7 +153,7 @@ body_arg() {
   body="$(body_arg)"
   [[ "$body" == *"**Placeholder for the PR description**"* ]]
   [[ "$body" == *"VSCode Copilot or Claude Code"* ]]
-  [[ "$body" == *"/crp final"* ]]
+  [[ "$body" == *"/crpd"* ]]
 }
 
 @test "ignores a pull request template in the working directory" {

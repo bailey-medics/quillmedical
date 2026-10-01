@@ -1,5 +1,5 @@
 ---
-name: st-crpd
+name: crpd
 description: Commit, rebase, push and describe one stacked branch
 argument-hint: "[ready]"
 allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git push:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(git switch:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*)
@@ -8,7 +8,7 @@ disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*
 
 # Commit, rebase, push and describe one stacked branch
 
-The single act that finishes one unit of a stack. `/crp` does this for a
+The single act that finishes one unit of a stack. `/nst-crp` does this for a
 branch cut from `main`; this does it for a branch whose base is the branch
 below it.
 
@@ -22,7 +22,7 @@ not separable: adding a branch leaves anything above it sitting on an older
 parent, so committing without rebasing pushes a stack that is already
 inconsistent.
 
-`/st-follow-the-plan-document` calls this once per unit. It is also useful on
+`/f` calls this once per unit. It is also useful on
 its own, to finish a stacked branch by hand.
 
 ## The authorisation ends with the run
@@ -42,7 +42,7 @@ So after a run finishes:
   draft.
 
 The branch this skill made is not an open workspace. A later fix on it
-needs the user to run `/st-crpd` again, or to ask for a commit in their
+needs the user to run `/crpd` again, or to ask for a commit in their
 own words.
 
 **Confirming that a change works is not asking for it to be landed.**
@@ -52,12 +52,12 @@ is uncommitted. So is silence about git: a message that does not mention
 committing is not asking for one.
 
 **This is how the rule gets broken, every time.** The user runs
-`/st-crpd`, the branch lands, work continues, they confirm the next fix
+`/crpd`, the branch lands, work continues, they confirm the next fix
 – and amending "the branch we are already landing" feels like tidying
 rather than a new commit. It is a new commit. In the session that
 produced this section it happened five times in a row, each one reading
 as housekeeping, and the user's correction was "stop doing commits and
-pushes without st-crpd".
+pushes without crpd".
 
 If the work genuinely needs to be in git to be testable, commit it, show
 what was committed, and stop there. Never push on top of that.
@@ -135,7 +135,7 @@ read it. Pass `ready` when finishing a branch deliberately, by hand.
      else is the same.
    - **"No stack on this branch", on some other branch** – stop and say so.
      Committing here would put the work on a branch that is not part of any
-     stack, and `/crp` is the command for that.
+     stack, and `/nst-crp` is the command for that.
 
    The merged case is easy to miss, because `stack-log` still draws the
    stack – every branch simply carries `merged`. Read the marks, not the
@@ -326,7 +326,7 @@ Two things to check rather than assume:
    - **The branch is already checked out**, so run `just stack-add`
      again exactly as before – same name, same message. Do not switch
      branches first, and do not create a second one.
-   - **Fix the cause the same way `/crp` does.** A hook that rewrote
+   - **Fix the cause the same way `/nst-crp` does.** A hook that rewrote
      files, or a spelling fix, is mechanical: apply it and re-run
      without pausing. Anything needing you to write or change code –
      mypy, a lint finding a formatter would not fix, bandit – is a
@@ -405,7 +405,7 @@ Two things to check rather than assume:
    reviewed, and by this point the unit is being landed rather than built.
 
    This is narrower than it sounds, and it does not contradict
-   `/st-follow-the-plan-document`, which says to fix a failing test. That is
+   `/f`, which says to fix a failing test. That is
    the build phase, where fixing it is the work. This is the landing phase,
    reached because a human ran this command – so a test failing *here* means
    the work was finished with a red test, which a human should see.

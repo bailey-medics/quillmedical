@@ -30,7 +30,8 @@
     "2026-09-21: .claude/rules/ci.md is STILL DIVERGED and was not written to - re-verified, not assumed: the target (180 lines) describes the merge queue while its source (57 lines) still describes rebase-before-merge, so the target is ahead and syncing source over it would reinstate a superseded process. .claude/rules/workflows.md is now only 4 lines ahead of its source (125 vs 121) - the same two Claude-only bullets about `just test-scripts` running bats in ubuntu:24.04 and not judging a script by a bare bats run on macOS. The source hash moved this run for reasons unrelated to those bullets, so its recorded source hash is refreshed while the target hash is deliberately NOT, keeping the remainder reported. ci.md's hashes are both left stale on purpose.",
     "2026-09-26: the side-navigation breakpoint changed on the source side: copilot-instructions.md and components.instructions.md now say the side nav folds behind the hamburger below `md` (62em) via `useNavCollapsed()`, with `sm` still the standard for everything else. Both lines were spliced into CLAUDE.md and .claude/rules/components.md. backend.md and pages.md showed changed hashes on both sides but their bodies already matched their sources (pages.md apart from its by-design path rewrite), so only hashes were refreshed. CLAUDE.md's remaining differences from its source are prettier formatting (italics, a semicolon, a blank line) and the permitted backend.md path rewrite. ci.md and workflows.md remain DIVERGED exactly as the 2026-09-21 note describes; their hashes are deliberately left stale.",
     "2026-10-01: the CBAC grant-scope paragraph (`may_grant`, `may_assign_professions`, grant_scope.py, useGrantScope, 'a whitelist, not a tag') added to copilot-instructions.md by the manage teaching competency plan was spliced into CLAUDE.md after the `manage_users` root paragraph. CLAUDE.md's other differences from its source remain prettier formatting and the permitted backend.md path rewrite. Most other hash movement since 2026-09-26 is commit 18649b59's em dash sweep, applied to both sides: backend.md and run-all-tests bodies match exactly, and pages, fix-vs-code-problems and follow-the-plan-document differ only as their divergenceReason describes, so their hashes were refreshed with no target content written.",
-    "2026-10-01: three targets are AHEAD of their sources and were NOT written to; hashes deliberately left stale so they keep being reported. (1) .claude/rules/components.md carries a Claude-only 'No em dashes' bullet the source lacks. (2) .claude/skills/crp/SKILL.md step 6 says to run only the targeted tests after a rebase and not the full suite, where the source still says 'ensure tests pass'; that is substantive, not covered by crp's divergenceReason. (3) ci.md and workflows.md remain DIVERGED exactly as the 2026-09-21 note describes; workflows' source hash moved with the em dash sweep and was refreshed, its target hash was not. The fix for all of them is a back-port to .github/."
+    "2026-10-01: three targets are AHEAD of their sources and were NOT written to; hashes deliberately left stale so they keep being reported. (1) .claude/rules/components.md carries a Claude-only 'No em dashes' bullet the source lacks. (2) .claude/skills/crp/SKILL.md step 6 says to run only the targeted tests after a rebase and not the full suite, where the source still says 'ensure tests pass'; that is substantive, not covered by crp's divergenceReason. (3) ci.md and workflows.md remain DIVERGED exactly as the 2026-09-21 note describes; workflows' source hash moved with the em dash sweep and was refreshed, its target hash was not. The fix for all of them is a back-port to .github/.",
+    "2026-10-01: skills were renamed by hand on BOTH sides, so the stacked commands are the short ones and the non-stacked ones carry an `nst-` prefix. crp became nst-crp and follow-the-plan-document became nst-follow-the-plan-document: each Copilot source keeps its filename but its `name:` frontmatter now holds the new name, which is what sets the Claude directory, and both entries are targetRenamed:true. Three Claude-only skills with no Copilot source were renamed too: crpf to nst-crpf, st-crpd to crpd, and st-follow-the-plan-document to f. Do not re-create .claude/skills/crp/, crpf/, st-crpd/, follow-the-plan-document/ or st-follow-the-plan-document/ on a future run. The `<!-- crp:pr-summary -->` marker in pull request bodies was deliberately NOT renamed, since existing descriptions carry it. Hashes refreshed to record the reconciled state - not outstanding drift."
   ],
   "files": [
     {
@@ -86,9 +87,9 @@
     },
     {
       "source": ".github/prompts/commit-rebase-push.prompt.md",
-      "target": ".claude/skills/crp/SKILL.md",
-      "sourceSha256": "6c67b7bd55f6562a09d2432adb7a3ec594513e7b961dccfc6d8160bb9dd2572b",
-      "targetSha256": "987981cd36582f2a86242e42c99e8e9a785e1bdedecd7c7fbe87f2ba1f95efef",
+      "target": ".claude/skills/nst-crp/SKILL.md",
+      "sourceSha256": "fe2951742ad536647d2e86b2812f472f575f0393b240af4ccf91218d3a7880c3",
+      "targetSha256": "c9b74c45accccf656666c7905dbe5789bdb86b55f4a1b3fa8779dc25a21ef6c9",
       "syncedAt": "2026-09-12T00:00:00Z",
       "targetRenamed": true,
       "divergentByDesign": true,
@@ -122,10 +123,11 @@
     },
     {
       "source": ".github/prompts/follow-the-plan-document.prompt.md",
-      "target": ".claude/skills/follow-the-plan-document/SKILL.md",
-      "sourceSha256": "54a35d22b6e51057d978bc7a0a97f7481a9c508c5fc19ac7a81598accf9f9af8",
-      "targetSha256": "d1097cc4910fd92f4f599df3b74fdc4d6e6fe528b140b031effe073be74dd183",
+      "target": ".claude/skills/nst-follow-the-plan-document/SKILL.md",
+      "sourceSha256": "b62899d26a800dec1f41af299fb156bd21aec1a1ae97c573ad37d3620778b4cd",
+      "targetSha256": "5fc8d5c6834862dd6091ca150deda4bbe1078dd5705ccd1c70ee90fd75cf105e",
       "syncedAt": "2026-10-01T12:11:47Z",
+      "targetRenamed": true,
       "divergentByDesign": true,
       "divergenceReason": "How the plan document arrives: Copilot attaches it to the prompt, Claude takes a path via `$ARGUMENTS`. Both say to ask rather than guess when it is absent."
     },

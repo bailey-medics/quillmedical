@@ -1,5 +1,5 @@
 ---
-name: crp
+name: nst-crp
 description: Commit, rebase, and push code
 argument-hint: "[repo: eoeeta|resp|all] [final]"
 allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git rebase:*), Bash(git push:*), Bash(git switch:*), Bash(git stash:*), Bash(git -C *), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*)
@@ -46,10 +46,10 @@ Up to two space-separated arguments may be given, in any order:
   request out of draft. See "Final: update the pull request description" below.
   It never merges anything.
 
-`/crp final` is valid on a clean working tree. Finalising a branch that an
-earlier `/crp` already committed and pushed is the ordinary case, not an error.
+`/nst-crp final` is valid on a clean working tree. Finalising a branch that an
+earlier `/nst-crp` already committed and pushed is the ordinary case, not an error.
 
-So `/crp`, `/crp final`, `/crp eoeeta` and `/crp eoeeta final` are all valid.
+So `/nst-crp`, `/nst-crp final`, `/nst-crp eoeeta` and `/nst-crp eoeeta final` are all valid.
 Any other token is an error: stop and ask what was meant rather than guessing.
 
 ## Target repository
