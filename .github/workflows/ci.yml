@@ -119,11 +119,14 @@ jobs:
           pre-commit run --all-files --show-diff-on-failure --color=always
 
       # ---- Unit test steps ----
+      # One pytest-xdist worker per core. Every worker is its own process,
+      # so each gets its own in-memory SQLite database from conftest.py and
+      # no test shares state with one in another worker.
       - name: Pytest (unit)
         if: matrix.task == 'unit'
         working-directory: backend
         run: |
-          poetry run pytest -q -m "not integration and not e2e" --maxfail=1 --disable-warnings
+          poetry run pytest -q -n auto -m "not integration and not e2e" --maxfail=1 --disable-warnings
 
   # ---------- Alembic autogenerate-drift check ----------
   # Catches "model changed but migration forgotten": runs the migrations

@@ -238,13 +238,23 @@ was slower. But the merge queue runs both tiers, so if the phases above
 bring the heavy tier to about 4 minutes, these two become what every merge
 waits for.
 
-- [ ] Decide whether to go ahead, from the heavy tier's time after Phase 6
-      and the merge queue's run times
-- [ ] If so, the backend first, as it needs no extra runner: "Pytest
+- [x] Decide whether to go ahead, from the heavy tier's time after Phase 6
+      and the merge queue's run times. Decided on 1 October, before Phase
+      6 was measured: go ahead, and build it while Phases 4 to 6 are being
+      merged. The first runs of Phase 3 already put the Storybook legs at
+      about 3 minutes, under the unit suites' 5
+- [x] If so, the backend first, as it needs no extra runner: "Pytest
       (unit)" has a median of 4m 29s on one process, and `pytest-xdist`
       is not installed. Add it and run with `-n auto`. Check first that
       the in-memory SQLite fixtures in `conftest.py` are safe with one
-      database per worker
+      database per worker. They are, by construction: `conftest.py` builds
+      one `sqlite:///:memory:` engine with a `StaticPool` per process, and
+      each xdist worker is a process. The runners have 4 cores, as the
+      repository is public. Only CI runs in parallel; `just ub` is
+      unchanged, and takes `-n auto` as an argument when wanted. Not run
+      in parallel locally: the test image could not be rebuilt with the
+      new package because Docker Hub was unreachable, so the pull
+      request's own `Python unit` run is the first proof
 - [ ] Then the frontend: "Run unit-test:run" has a median of 4m 56s.
       Vitest already uses every core, so this one needs a matrix with
       `--shard`, and the same single named check as Phase 3 if the name
