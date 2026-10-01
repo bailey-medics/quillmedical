@@ -31,6 +31,14 @@ export type NavItem = {
   icon?: IconName;
   /** Optional child navigation items */
   children?: NavItem[];
+  /**
+   * Leave the mobile drawer open when this item is pressed. For a
+   * heading such as Admin, whose page is mostly a way to its children:
+   * pressing it reveals them, and closing the drawer at that moment
+   * hides them again, so reaching one took a second trip to the
+   * hamburger.
+   */
+  keepsDrawerOpen?: boolean;
 };
 
 /**
@@ -103,13 +111,15 @@ export default function NestedNavLink({
   const shouldExpand = isActiveOrParent(item, location.pathname);
   const hasChildren = item.children && item.children.length > 0;
 
+  const afterNavigate = item.keepsDrawerOpen ? undefined : onNavigate;
+
   const handleClick = () => {
     if (item.href) {
       navigate(item.href);
     } else if (hasChildren && item.children![0].href) {
       navigate(item.children![0].href);
     }
-    onNavigate?.();
+    afterNavigate?.();
   };
 
   // Calculate indentation for child items
@@ -144,7 +154,7 @@ export default function NestedNavLink({
           label={item.label}
           styles={nestedStyles}
           active={isActive}
-          onClick={() => onNavigate?.()}
+          onClick={() => afterNavigate?.()}
           leftSection={
             showIcons && item.icon ? <NavIcon name={item.icon} /> : undefined
           }

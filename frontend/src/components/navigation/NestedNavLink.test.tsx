@@ -265,6 +265,59 @@ describe("NestedNavLink Component", () => {
     });
   });
 
+  describe("Keeping the drawer open", () => {
+    const heading: NavItem = { ...navItemWithChildren, keepsDrawerOpen: true };
+
+    it("does not call onNavigate when a heading that keeps the drawer open is clicked", async () => {
+      const user = userEvent.setup();
+      const onNavigate = vi.fn();
+      renderWithRouter(
+        <NestedNavLink item={heading} onNavigate={onNavigate} />,
+      );
+
+      await user.click(screen.getByText("Patients"));
+
+      await waitFor(() => {
+        expect(window.location.pathname).toBe("/patients");
+      });
+      expect(onNavigate).not.toHaveBeenCalled();
+      expect(screen.getByText("All Patients")).toBeInTheDocument();
+    });
+
+    it("still calls onNavigate when one of its children is clicked", async () => {
+      const user = userEvent.setup();
+      const onNavigate = vi.fn();
+      renderWithRouter(
+        <NestedNavLink item={heading} onNavigate={onNavigate} />,
+        { initialRoute: "/patients" },
+      );
+
+      await user.click(screen.getByText("New Patient"));
+
+      await waitFor(() => {
+        expect(onNavigate).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it("does not call onNavigate for a heading without an href", async () => {
+      const user = userEvent.setup();
+      const onNavigate = vi.fn();
+      renderWithRouter(
+        <NestedNavLink
+          item={{ ...heading, href: undefined }}
+          onNavigate={onNavigate}
+        />,
+      );
+
+      await user.click(screen.getByText("Patients"));
+
+      await waitFor(() => {
+        expect(window.location.pathname).toBe("/patients/all");
+      });
+      expect(onNavigate).not.toHaveBeenCalled();
+    });
+  });
+
   describe("Parent without href", () => {
     const parentWithoutHref: NavItem = {
       label: "Teaching",
