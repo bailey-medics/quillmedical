@@ -136,14 +136,15 @@ caching around it helps: the browser cache swapped a 25s download for an
 18s package install and the job did not move. Each phase from here is one
 pull request, so its effect can be read off that pull request's own runs.
 
-- [ ] Run the job as a three-way matrix, each leg passing
+- [x] Run the job as a three-way matrix, each leg passing
       `--shard=<n>/3` to `test-storybook`. `storybook:test` in
       `frontend/package.json` already takes `SB_MAX_WORKERS` from the
       environment; add the shard the same way. Three is a starting point:
       each leg repeats about a minute of setup (checkout, `setup-frontend`,
       the system packages, starting the Storybook dev server), so a fourth
-      leg buys less than the third did
-- [ ] Keep a check named `Storybook interaction tests`. A matrix renames
+      leg buys less than the third did. Done as `heavy_storybook_shards`
+      in `ci.yml`, with the shard passed as `SB_SHARD`
+- [x] Keep a check named `Storybook interaction tests`. A matrix renames
       the checks to `Storybook interaction tests (1/3)` and so on, and that
       exact name is required by `infra/github/branch_rules.tf` and read by
       `scripts/stack-status.py`. Add a small job with the old name that
@@ -151,7 +152,12 @@ pull request, so its effect can be read off that pull request's own runs.
       changes. It must run under `always()` and check each leg's result
       itself: left to the default, a failed leg skips the job that needs
       it, and a required check that is skipped counts as passed. Keep
-      today's draft condition alongside, so a draft still skips it
+      today's draft condition alongside, so a draft still skips it. Done as
+      `heavy_storybook_tests`, which hands the legs' combined result to
+      `.github/scripts/ci/require-matrix-success.sh`. One thing in the
+      stack tooling did change: `scripts/stack-status.py` now counts any
+      check whose name starts `Storybook interaction tests (` as heavy, or a
+      draft's three skipped legs would have shown in the fast-tier mark
 - [ ] Measure over a day of runs and record here: the slowest leg, the
       whole heavy tier on a pull request, and the runner minutes spent per
       run against today's 7. The estimate is 2m 30s to 3m per leg

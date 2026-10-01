@@ -55,11 +55,16 @@ Runs on every push to any non-`main` branch. Gives feedback in ~2 minutes.
 
 Runs when a PR is marked ready for review or updated. Takes ~5–10 minutes.
 
-| Job                         | Check name                              | What it does                                   |
-| --------------------------- | --------------------------------------- | ---------------------------------------------- |
-| Storybook interaction tests | `typescript_checks (storybook:test:ci)` | Playwright interaction tests against Storybook |
-| Semgrep                     | `Semgrep (frontend SAST)`               | Static application security testing            |
-| E2E                         | `E2E (Playwright)`                      | Full-stack end-to-end tests via Docker Compose |
+| Job                         | Check name                    | What it does                                   |
+| --------------------------- | ----------------------------- | ---------------------------------------------- |
+| Storybook interaction tests | `Storybook interaction tests` | Playwright interaction tests against Storybook |
+| Semgrep                     | `Semgrep (frontend SAST)`     | Static application security testing            |
+| E2E                         | `E2E (Playwright)`            | Full-stack end-to-end tests via Docker Compose |
+
+The Storybook tests run as three legs, `Storybook interaction tests (1/3)` to
+`(3/3)`, each running a third of the stories against its own Storybook. The
+check named `Storybook interaction tests` is a small job that passes only when
+all three did, and it is the one branch protection requires.
 
 ### Shell script tests
 
