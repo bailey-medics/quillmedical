@@ -81,7 +81,7 @@ describe("OrganisationAdminPage", () => {
     });
   });
 
-  describe("Sites are operator-only for now", () => {
+  describe("Sites open from their organisation", () => {
     const withSite = {
       id: 1,
       name: "Test Hospital",
@@ -110,43 +110,19 @@ describe("OrganisationAdminPage", () => {
       });
     }
 
-    it("does not take an ordinary administrator to a site page", async () => {
-      // `/admin/sites/:id` 404s for them, so a row that navigated there
-      // would be a dead end. The site is still listed, because knowing
-      // the organisation holds it is useful on its own.
-      mockOrgApi(withSite);
-      renderPage();
-
-      await waitFor(() => {
-        expect(screen.getByText("Ward B")).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByText("Ward B"));
-      expect(mockNavigate).not.toHaveBeenCalledWith("/admin/sites/7");
-    });
-
-    it("hides Add site from an ordinary administrator", async () => {
-      mockOrgApi(withSite);
-      renderPage();
-
-      await waitFor(() => {
-        expect(screen.getByText("Ward B")).toBeInTheDocument();
-      });
-      expect(
-        screen.queryByRole("button", { name: /add site/i }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("takes an operator to the site page", async () => {
+    function signedInWith(competencies: string[]) {
       vi.spyOn(authContext, "useAuth").mockReturnValue({
         state: {
           status: "authenticated",
-          user: { ...mockAdminUser, platform_role: "superadmin" },
+          user: { ...mockAdminUser, competencies },
         },
         login: vi.fn(),
         logout: vi.fn(),
         reload: vi.fn(),
       });
+    }
+
+    it("takes an administrator to the site page", async () => {
       mockOrgApi(withSite);
       renderPage();
 
@@ -156,6 +132,43 @@ describe("OrganisationAdminPage", () => {
 
       await userEvent.click(screen.getByText("Ward B"));
       expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/7");
+    });
+
+    it("takes a teaching admin to the site page", async () => {
+      // Only the list of every site is operator-only. A site is opened
+      // from its organisation by whoever may open the organisation.
+      signedInWith(["manage_teaching"]);
+      mockOrgApi(withSite);
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText("Ward B")).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByText("Ward B"));
+      expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/7");
+    });
+
+    it("offers Add site to an administrator", async () => {
+      mockOrgApi(withSite);
+      renderPage();
+
+      expect(
+        await screen.findByRole("button", { name: /add site/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("hides Add site from a teaching admin", async () => {
+      signedInWith(["manage_teaching"]);
+      mockOrgApi(withSite);
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText("Ward B")).toBeInTheDocument();
+      });
+      expect(
+        screen.queryByRole("button", { name: /add site/i }),
+      ).not.toBeInTheDocument();
     });
   });
 

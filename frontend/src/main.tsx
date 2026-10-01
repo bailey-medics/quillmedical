@@ -521,29 +521,21 @@ const routes: RouteObject[] = [
             handle: { safeForReload: true },
           },
           {
-            // Creating a site is site administration, so it is held to
-            // the same operator-only rule as the pages below, even
-            // though its address sits under an organisation.
+            // Adding a site to an organisation is administering the
+            // organisation, so it takes `manage_users` as editing it
+            // does.
             path: "organisations/:id/add-site",
             element: (
-              <RequireOperator>
+              <RequireCompetency competency="manage_users">
                 <AddSiteToOrgPage />
-              </RequireOperator>
+              </RequireCompetency>
             ),
           },
-          // Operator-only for now. The pages work, but who may
-          // administer a site is not settled, so they are hidden rather
-          // than shown to somebody the answer might not include.
-          // `RequireOperator` 404s, so a site is not merely refused to
-          // them but invisible.
-          //
-          // The guard is on the routes alone. `/api/org-units`, which
-          // these pages read and write, is shared with the
-          // organisations pages, the user editor and practising
-          // competencies, so gating it would take those down with it.
-          // Somebody who knows the endpoint can still call it; that is
-          // the same access they had before this change, and no data is
-          // newly exposed.
+          // Operator-only: the list of every site, and creating one from
+          // it. A site is reached through its organisation's page by
+          // everybody else, so the pages for one site, below, are open
+          // to whoever may open the organisation's. `RequireOperator`
+          // 404s, so the list is not merely refused but invisible.
           {
             element: (
               <RequireOperator>
@@ -557,35 +549,46 @@ const routes: RouteObject[] = [
                 handle: { safeForReload: true },
               },
               { path: "sites/new", element: <CreateSitePage /> },
-              {
-                path: "sites/:id",
-                element: <SiteAdminPage />,
-                handle: { safeForReload: true },
-              },
-              { path: "sites/:id/edit", element: <EditSitePage /> },
-              {
-                path: "sites/:id/features",
-                element: <OrgFeaturesPage parentPath="sites" />,
-              },
-              {
-                path: "sites/:id/add-staff",
-                element: <AddStaffToSitePage />,
-              },
-              {
-                path: "sites/:id/members/:userId",
-                element: (
-                  <RequireCompetency
-                    competency={[
-                      "manage_practising_competencies",
-                      ...SCOPED_MANAGER_IDS,
-                    ]}
-                  >
-                    <MemberPracticePage />
-                  </RequireCompetency>
-                ),
-                handle: { safeForReload: true },
-              },
             ],
+          },
+          {
+            path: "sites/:id",
+            element: <SiteAdminPage />,
+            handle: { safeForReload: true },
+          },
+          {
+            path: "sites/:id/edit",
+            element: (
+              <RequireCompetency competency="manage_users">
+                <EditSitePage />
+              </RequireCompetency>
+            ),
+          },
+          {
+            path: "sites/:id/features",
+            element: (
+              <RequireCompetency competency="manage_users">
+                <OrgFeaturesPage parentPath="sites" />
+              </RequireCompetency>
+            ),
+          },
+          {
+            path: "sites/:id/add-staff",
+            element: <AddStaffToSitePage />,
+          },
+          {
+            path: "sites/:id/members/:userId",
+            element: (
+              <RequireCompetency
+                competency={[
+                  "manage_practising_competencies",
+                  ...SCOPED_MANAGER_IDS,
+                ]}
+              >
+                <MemberPracticePage />
+              </RequireCompetency>
+            ),
+            handle: { safeForReload: true },
           },
           // Operator-only: feedback comes from every organisation and may
           // hold patient data, so reading it is operating the deployment

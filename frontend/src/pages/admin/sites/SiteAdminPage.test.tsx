@@ -161,6 +161,47 @@ describe("SiteAdminPage staff members", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/1/members/7");
   });
 
+  it("opens the member's page for a teaching admin", async () => {
+    signedIn(["manage_teaching"]);
+    const user = userEvent.setup();
+
+    renderWithRouter(<SiteAdminPage />, { initialRoute: "/admin/sites/1" });
+    await user.click(await screen.findByText("dr.lead"));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/1/members/7");
+  });
+
+  it("lets a teaching admin add and remove staff, and not edit the site", async () => {
+    signedIn(["manage_teaching"]);
+
+    renderWithRouter(<SiteAdminPage />, { initialRoute: "/admin/sites/1" });
+    await screen.findByText("dr.lead");
+
+    expect(
+      screen.getByRole("button", { name: /add staff/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Actions for dr.lead" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit site" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers Edit site to somebody with manage_users", async () => {
+    signedIn(["manage_users"]);
+
+    renderWithRouter(<SiteAdminPage />, { initialRoute: "/admin/sites/1" });
+    await screen.findByText("dr.lead");
+
+    expect(
+      screen.getByRole("button", { name: "Edit site" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /add staff/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("opens nothing for anybody else, as before", async () => {
     signedIn([]);
     const user = userEvent.setup();
@@ -173,14 +214,32 @@ describe("SiteAdminPage staff members", () => {
 });
 
 describe("SiteAdminPage features", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  function signedIn(competencies: string[]) {
     vi.spyOn(authContext, "useAuth").mockReturnValue({
-      state: { status: "authenticated", user: mockAdminUser },
+      state: {
+        status: "authenticated",
+        user: { ...mockAdminUser, competencies } as User,
+      },
       login: vi.fn(),
       logout: vi.fn(),
       reload: vi.fn(),
     } as ReturnType<typeof authContext.useAuth>);
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Features are `manage_users`, as on the organisation's page.
+    signedIn(["manage_users"]);
+  });
+
+  it("draws no features card for a teaching admin", async () => {
+    signedIn(["manage_teaching"]);
+    vi.spyOn(apiLib.api, "get").mockResolvedValue(site(null));
+
+    renderWithRouter(<SiteAdminPage />, { initialRoute: "/admin/sites/1" });
+    await screen.findByText("Site information");
+
+    expect(screen.queryByText("Enabled features")).not.toBeInTheDocument();
   });
 
   it("shows the features switched on at the site", async () => {
