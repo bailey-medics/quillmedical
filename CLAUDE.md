@@ -225,6 +225,23 @@ which ids are granted, a holder can mint any competency in the catalogue,
 including `manage_users` itself. That is accepted rather than overlooked; the
 reasoning is in `admin.yaml`.
 
+**Narrower authority to grant is declared on the granting competency.** A
+catalogue entry may carry `may_grant` (competencies its holder may grant and
+remove) and `may_assign_professions` (base professions its holder may give).
+A caller's scope is the union across what they hold; `manage_users` means no
+limit and may appear on no list. `manage_teaching` is the first: a teaching
+admin grants only teaching competencies and professions, and acts on a whole
+account only when its profession is a teaching one.
+
+- **Backend**: `backend/app/cbac/grant_scope.py` – `may_grant`,
+  `may_assign_profession`, `may_manage_account`. Routes open to either
+  competency check it in the body; removal counts as much as granting.
+- **Frontend**: `/api/auth/me` returns `may_grant` and
+  `may_assign_professions` (null for no limit); pickers read them through
+  `useGrantScope` rather than working the whitelist out again.
+- **A whitelist, not a tag**: a new competency can be granted by nobody but
+  `manage_users` until somebody adds it to a list.
+
 #### Practising competencies – where
 
 `backend/app/cbac/scoped.py` over the `practising_competency` table. Every

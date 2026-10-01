@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "/sync-copilot-config",
-  "lastRun": "2026-09-26T18:43:32Z",
+  "lastRun": "2026-10-01T12:11:47Z",
   "notes": [
     "Prompt targets live under .claude/skills/<name>/SKILL.md (a skill is a directory, not a single file). A skill's invocable /name comes from the directory name, never the SKILL.md filename and never a name: frontmatter field (that only sets a display label for personal/project skills).",
     "Targets marked targetRenamed:true deliberately do not use the default source-derived directory name. Copilot's 'name:' frontmatter values were used as the directory names to preserve /crp, /e, and /read-project-instructions.",
@@ -28,22 +28,24 @@
     "2026-09-21: the authorisation model was corrected on BOTH sides. copilot-instructions.md's '### Authorisation' section described a four-rung `system_permissions` hierarchy, an `Organisation` and a `Site` model, `organisation_site`/`site_staff_member` tables, a `default_system_permission` on each base profession and a `feature-admin.yaml` competency file. None of that exists: the hierarchy became `platform_role` (superadmin or absent, see docs/docs/plans/2026-09-09-platform-role-plan.md), organisations and sites became one `OrgUnit` tree whose `type` carries capability flags (2026-09-11-site-tree-unification-plan.md), and practising competencies at a place arrived in backend/app/cbac/scoped.py. The section was rewritten in the source and the same content spliced into CLAUDE.md, replacing the four stale synced subsections (System permissions, Role composition examples, Organisations, Sites) with Platform role, CBAC, Practising competencies, Org units and Positions. Six stale references outside that section were corrected too: the RequirePermission guard (now RequireOperator and RequireCompetency), the three-database description, the admin-gate Quick Pattern, the new-base-profession field list, and two Key Files lines. CLAUDE.md's hand-written '## Claude-specific' section is byte-identical - prettier reformatted two lines inside it and both were reverted.",
     "2026-09-21: .claude/rules/backend.md and its source both lost the dead `ix_site_staff_one_clinical_lead` example, since `site_staff_member` no longer exists. The partial/expression-index rule itself stands, but NO model in backend/app uses `postgresql_where`/`sqlite_where` any more (grep confirms zero hits), so the bullet now says there is no live example to copy rather than naming a table that is gone. Bodies match apart from the applyTo/paths conversion.",
     "2026-09-21: .claude/rules/ci.md is STILL DIVERGED and was not written to - re-verified, not assumed: the target (180 lines) describes the merge queue while its source (57 lines) still describes rebase-before-merge, so the target is ahead and syncing source over it would reinstate a superseded process. .claude/rules/workflows.md is now only 4 lines ahead of its source (125 vs 121) - the same two Claude-only bullets about `just test-scripts` running bats in ubuntu:24.04 and not judging a script by a bare bats run on macOS. The source hash moved this run for reasons unrelated to those bullets, so its recorded source hash is refreshed while the target hash is deliberately NOT, keeping the remainder reported. ci.md's hashes are both left stale on purpose.",
-    "2026-09-26: the side-navigation breakpoint changed on the source side: copilot-instructions.md and components.instructions.md now say the side nav folds behind the hamburger below `md` (62em) via `useNavCollapsed()`, with `sm` still the standard for everything else. Both lines were spliced into CLAUDE.md and .claude/rules/components.md. backend.md and pages.md showed changed hashes on both sides but their bodies already matched their sources (pages.md apart from its by-design path rewrite), so only hashes were refreshed. CLAUDE.md's remaining differences from its source are prettier formatting (italics, a semicolon, a blank line) and the permitted backend.md path rewrite. ci.md and workflows.md remain DIVERGED exactly as the 2026-09-21 note describes; their hashes are deliberately left stale."
+    "2026-09-26: the side-navigation breakpoint changed on the source side: copilot-instructions.md and components.instructions.md now say the side nav folds behind the hamburger below `md` (62em) via `useNavCollapsed()`, with `sm` still the standard for everything else. Both lines were spliced into CLAUDE.md and .claude/rules/components.md. backend.md and pages.md showed changed hashes on both sides but their bodies already matched their sources (pages.md apart from its by-design path rewrite), so only hashes were refreshed. CLAUDE.md's remaining differences from its source are prettier formatting (italics, a semicolon, a blank line) and the permitted backend.md path rewrite. ci.md and workflows.md remain DIVERGED exactly as the 2026-09-21 note describes; their hashes are deliberately left stale.",
+    "2026-10-01: the CBAC grant-scope paragraph (`may_grant`, `may_assign_professions`, grant_scope.py, useGrantScope, 'a whitelist, not a tag') added to copilot-instructions.md by the manage teaching competency plan was spliced into CLAUDE.md after the `manage_users` root paragraph. CLAUDE.md's other differences from its source remain prettier formatting and the permitted backend.md path rewrite. Most other hash movement since 2026-09-26 is commit 18649b59's em dash sweep, applied to both sides: backend.md and run-all-tests bodies match exactly, and pages, fix-vs-code-problems and follow-the-plan-document differ only as their divergenceReason describes, so their hashes were refreshed with no target content written.",
+    "2026-10-01: three targets are AHEAD of their sources and were NOT written to; hashes deliberately left stale so they keep being reported. (1) .claude/rules/components.md carries a Claude-only 'No em dashes' bullet the source lacks. (2) .claude/skills/crp/SKILL.md step 6 says to run only the targeted tests after a rebase and not the full suite, where the source still says 'ensure tests pass'; that is substantive, not covered by crp's divergenceReason. (3) ci.md and workflows.md remain DIVERGED exactly as the 2026-09-21 note describes; workflows' source hash moved with the em dash sweep and was refreshed, its target hash was not. The fix for all of them is a back-port to .github/."
   ],
   "files": [
     {
       "source": ".github/copilot-instructions.md",
       "target": "CLAUDE.md",
-      "sourceSha256": "23402444837319788f5c70cdff54ecaf703fcfad24d8bb3a4120a552dc389f15",
-      "targetSha256": "4595ceaadb1d0fe1737573581bfc76385abb75275a7636b01ff5ccc20bed5722",
-      "syncedAt": "2026-09-26T18:43:32Z"
+      "sourceSha256": "462859e2e99b31130bcc397c20bbb4ede6e1d259740680d30fe83a6aaba6150a",
+      "targetSha256": "c28b6e8621304b0d2b8a3d86fa87b950e5f7c3381692079aa2cfa525cb887a91",
+      "syncedAt": "2026-10-01T12:11:47Z"
     },
     {
       "source": ".github/instructions/backend.instructions.md",
       "target": ".claude/rules/backend.md",
-      "sourceSha256": "accf957e3ef4c510b452dfdd9a23d7b28a10482b883d262d2c99e8dc9752be7c",
-      "targetSha256": "cc9f0ea176abee0dbdfc0d5b596b54f609917cf95f5c4d3164a720de04bbf9aa",
-      "syncedAt": "2026-09-26T18:43:32Z"
+      "sourceSha256": "8166a84276f9b175c8046049faec95e44e50eb63d9843ad967b31498d0a5e847",
+      "targetSha256": "7ebe671de46f9a9bc6ce6e3b6fac7119160e8263c1bfebb6978fb909f61069b5",
+      "syncedAt": "2026-10-01T12:11:47Z"
     },
     {
       "source": ".github/instructions/ci.instructions.md",
@@ -69,16 +71,16 @@
     {
       "source": ".github/instructions/pages.instructions.md",
       "target": ".claude/rules/pages.md",
-      "sourceSha256": "0088a7fd23ecf3c3f444431f9c94d670b550e0c33ad99adc09d6df4a0e9a8ec1",
-      "targetSha256": "da0449af5f14fc71e385b74f996c3c32260fbe583e671ee39bf3026d0d43a403",
-      "syncedAt": "2026-09-26T18:43:32Z",
+      "sourceSha256": "a23f6a76f968e372c9598d109583a7d183b1d6144f1e6e6a1cc8cecab8475091",
+      "targetSha256": "bab7bf8c47d152fec5b6129cd07ea19d7325a74c4ff0a60ca733508cd461d7a7",
+      "syncedAt": "2026-10-01T12:11:47Z",
       "divergentByDesign": true,
       "divergenceReason": "One cross-reference only: the source points at `.github/instructions/components.instructions.md`, the target at `.claude/rules/components.md`. That rewrite is this skill's own permitted edit - a Copilot path pointed at its Claude equivalent - so the sync reproduces it every run. Expected output, not drift."
     },
     {
       "source": ".github/instructions/workflows.instructions.md",
       "target": ".claude/rules/workflows.md",
-      "sourceSha256": "6f19c2c199282f8b01eede2131b8d881be42d7002e2ced419fa49fc65cb4cb5d",
+      "sourceSha256": "fb8dc3b5c0fe03b99f034e4f065406e5880baa7f16eb121ff0aac3292864364a",
       "targetSha256": "ee5c53c46cc928b25afc9b48dd6e35e6d7bf4b310b92006c45fa188518a552fd",
       "syncedAt": "2026-08-22T20:32:02Z"
     },
@@ -112,18 +114,18 @@
     {
       "source": ".github/prompts/fix-vs-code-problems.prompt.md",
       "target": ".claude/skills/fix-vs-code-problems/SKILL.md",
-      "sourceSha256": "dd7ec939ae5293d03e018743d82f66895c7d5e8fc05b3d4612af02d642533344",
-      "targetSha256": "80071ff05b19945b48fce8d75a1e92e6bcdd79a735ffb8dfa67f45e7c5a61914",
-      "syncedAt": "2026-09-05T20:23:24Z",
+      "sourceSha256": "b6ff091e43a98a7316b81b053ff50da8d021e36ba36c5918794118d7c1396192",
+      "targetSha256": "5fb48fb9f12ca345e7e50de9c57f082b59aa1f6790b5d514588dd3616ce3392f",
+      "syncedAt": "2026-10-01T12:11:47Z",
       "divergentByDesign": true,
       "divergenceReason": "Copilot has a `get_errors` tool; Claude does not, so the Claude copy falls back to the project's own linters. Syncing either direction would replace a working tool call with a workaround, or vice versa."
     },
     {
       "source": ".github/prompts/follow-the-plan-document.prompt.md",
       "target": ".claude/skills/follow-the-plan-document/SKILL.md",
-      "sourceSha256": "3c23877d11a501b904f75f4793c6da5f88a3486c53471f429f4f48e7245c52d0",
-      "targetSha256": "9440dcd3c723e2da6a9052b2f865fc6e48e49bc1c40605558bdae701c58aefd1",
-      "syncedAt": "2026-09-03T06:23:19Z",
+      "sourceSha256": "54a35d22b6e51057d978bc7a0a97f7481a9c508c5fc19ac7a81598accf9f9af8",
+      "targetSha256": "d1097cc4910fd92f4f599df3b74fdc4d6e6fe528b140b031effe073be74dd183",
+      "syncedAt": "2026-10-01T12:11:47Z",
       "divergentByDesign": true,
       "divergenceReason": "How the plan document arrives: Copilot attaches it to the prompt, Claude takes a path via `$ARGUMENTS`. Both say to ask rather than guess when it is absent."
     },
@@ -154,9 +156,9 @@
     {
       "source": ".github/prompts/run-all-tests.prompt.md",
       "target": ".claude/skills/run-all-tests/SKILL.md",
-      "sourceSha256": "911db1bb72aebfb2b39ec521a7016b8809e93ee8e8f45b4327cfb9f0d8e2ffa5",
-      "targetSha256": "95ab0f4944a11c984030ec2454a4712900077e0a3a31492f218b3ac6ef63a3c2",
-      "syncedAt": "2026-08-30T06:05:05Z"
+      "sourceSha256": "65b2c2e23015210216b3041112cf9e1698072ad5e9c25f8c0ce9a165f712d87c",
+      "targetSha256": "87709c5771fd4c62cb4fcaf22ce0a30e001adea80d8dac419848f72b61be2d4c",
+      "syncedAt": "2026-10-01T12:11:47Z"
     },
     {
       "source": ".github/prompts/strong-static-typing-defensive-programming.prompt.md",
