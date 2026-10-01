@@ -504,6 +504,11 @@ jobs:
         run: semgrep --config .semgrep.yml --error
 
   # ---------- Prebuild CI app images for E2E ----------
+  # The layer cache is read here and never written. e2e-image-cache.yml
+  # saves it on main, which is the only place a pull request and the merge
+  # queue can both read from; a copy saved here was readable by this pull
+  # request alone and took 107s of the job to write. The scopes, targets and
+  # build arguments must match that workflow.
   heavy_e2e_images:
     if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
@@ -534,7 +539,6 @@ jobs:
           push: true
           tags: ${{ env.CI_IMAGE_BACKEND }}
           cache-from: type=gha,scope=ci-backend
-          cache-to: type=gha,mode=max,scope=ci-backend
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v7.3.0
@@ -547,7 +551,6 @@ jobs:
           # TODO(clinical): flip to true and add FHIR/EHRbase to compose.ci.yml when we deliver the patient-facing side. See docs/docs/plans/todo.md.
           build-args: VITE_CLINICAL_SERVICES_ENABLED=false
           cache-from: type=gha,scope=ci-frontend
-          cache-to: type=gha,mode=max,scope=ci-frontend
 
   # ---------- E2E (Playwright) ----------
   heavy_e2e:

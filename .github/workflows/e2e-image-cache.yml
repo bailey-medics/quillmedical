@@ -1,0 +1,83 @@
+# Warm the Docker layer cache for the E2E images on main, so every pull request
+# can read it.
+#
+# heavy_e2e_images in ci.yml builds both images with a `type=gha` layer cache.
+# A run can only read a cache saved on its own ref or on the base branch, and
+# that job runs only on pull requests and the merge queue, never on main. So a
+# pull request's first heavy run, and every merge queue run, found nothing it
+# could read: `poetry install` and `yarn install` both ran in full, and the
+# job then spent 18s and 89s writing a copy of the layers that no other pull
+# request could use. Those copies also filled the repository's 10GB cache
+# allowance.
+#
+# Saving the layers here, on main, gives every pull request the dependency
+# layers. ci.yml no longer writes the cache at all; it only reads this one.
+#
+# Nothing is pushed to GHCR. Only the cache matters.
+#
+# The scopes, targets and build arguments below must match heavy_e2e_images
+# in ci.yml exactly, or this saves layers nothing reads.
+# See docs/docs/plans/2026-09-30-ci-job-times-plan.md.
+name: E2E image cache
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    # What the dependency layers are built from: the Dockerfiles, and every
+    # file they copy in before installing. A change to application code
+    # leaves those layers valid, so it does not need a new cache.
+    paths:
+      - "backend/Dockerfile"
+      - ".poetry-version"
+      - "backend/pyproject.toml"
+      - "backend/poetry.lock"
+      - "frontend/Dockerfile"
+      - "frontend/package.json"
+      - "frontend/yarn.lock"
+      - "frontend/.yarnrc.yml"
+      - "frontend/public_pages/package.json"
+      - ".github/workflows/e2e-image-cache.yml"
+  # A cache nobody reads for seven days is evicted. Pull requests read these
+  # constantly, but a quiet week would lose them; this puts them back.
+  schedule:
+    - cron: "0 5 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-image-cache
+  cancel-in-progress: true
+
+jobs:
+  warm:
+    name: Warm E2E image cache
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.3.0
+
+      - name: Build backend image
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: ./backend/Dockerfile
+          target: prod
+          push: false
+          cache-from: type=gha,scope=ci-backend
+          cache-to: type=gha,mode=max,scope=ci-backend
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: ./frontend/Dockerfile
+          target: prod
+          push: false
+          build-args: VITE_CLINICAL_SERVICES_ENABLED=false
+          cache-from: type=gha,scope=ci-frontend
+          cache-to: type=gha,mode=max,scope=ci-frontend

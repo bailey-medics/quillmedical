@@ -190,7 +190,11 @@ this follows it directly.
       was the last thing it warmed
 - [ ] Measure and record here. Expect a normal run to be about 9s slower
       per leg, a 27s image pull in place of an 18s install, and the
-      12 minute runs to stop. The second is the point
+      12 minute runs to stop. The second is the point. First reading, from
+      the one run on #1324 once it was marked ready: the legs took 3m 18s,
+      3m 09s and 3m 11s, against 3m 12s, 3m 08s and 2m 17s on #1319 before
+      the image. So the container path works, and costs about what was
+      expected
 
 ## Phase 5: test a built Storybook, not the dev server
 
@@ -241,12 +245,17 @@ pull request can read. A later run on #1302, reading its own cache, built
 the frontend image in about 60s. The copies also fill the allowance: 326
 caches and 10.04GB against a limit of 10GB, so GitHub is already evicting.
 
-- [ ] Build both images on `main` and save the layers under the scopes
+- [x] Build both images on `main` and save the layers under the scopes
       `ci-backend` and `ci-frontend`, in a workflow shaped like
       `playwright-cache.yml`: on a push to `main` that touches a
       Dockerfile or a lock file, weekly, and by hand. Nothing is pushed to
-      GHCR from it; only the cache matters
-- [ ] Stop pull request and merge queue runs writing the cache, by
+      GHCR from it; only the cache matters. Done as
+      `.github/workflows/e2e-image-cache.yml`. Its trigger also lists the
+      files each Dockerfile copies in before installing, such as
+      `.poetry-version` and `frontend/.yarnrc.yml`, since a change to any
+      of them rebuilds the dependency layers. `playwright-cache.yml`
+      itself went in Phase 4, so the shape is kept, not the file
+- [x] Stop pull request and merge queue runs writing the cache, by
       dropping `cache-to` from both build steps in `heavy_e2e_images`.
       This is where most of the time goes, 107s of the job on a first
       run. The cost is that a second push to the same pull request no

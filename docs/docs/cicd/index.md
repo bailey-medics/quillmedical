@@ -71,6 +71,10 @@ Playwright image, which carries the browsers and their system packages, so
 neither installs anything on the runner. The image tag is the installed
 `@playwright/test` version.
 
+`E2E image build` reads a Docker layer cache and never writes one.
+`.github/workflows/e2e-image-cache.yml` saves it from `main`, because a cache
+saved on a pull request can be read by that pull request alone.
+
 ### Shell script tests
 
 Shell scripts that back the GitHub Actions workflows live under `.github/scripts/<workflow-name>/`. Any script with non-trivial logic has a [bats](https://github.com/bats-core/bats-core) (Bash Automated Testing System) test file alongside it – e.g. `deploy/resolve-commit.bats` sits next to `deploy/resolve-commit.sh`.
