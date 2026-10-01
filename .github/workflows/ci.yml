@@ -67,7 +67,10 @@ jobs:
   # ---------- Python ----------
   python_checks:
     if: github.event_name == 'push' || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    # The unit leg's runner is a repository variable, unset by default, so
+    # it runs on the free standard runner unless `just ci-speed` has moved it
+    # to a larger, billed one. See .github/scripts/ci/set-ci-speed.sh.
+    runs-on: ${{ (matrix.task == 'unit' && vars.CI_RUNNER_PYTHON_UNIT) || 'ubuntu-24.04' }}
     name: Python ${{ matrix.task }}
     timeout-minutes: 20
     strategy:
@@ -236,7 +239,10 @@ jobs:
   # See docs/docs/plans/2026-09-30-ci-job-times-plan.md.
   frontend_unit_shards:
     if: github.event_name == 'push' || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    # The runner is a repository variable, unset by default, so this job runs
+    # on the free standard runner unless `just ci-speed` has moved it to a
+    # larger, billed one. See .github/scripts/ci/set-ci-speed.sh.
+    runs-on: ${{ vars.CI_RUNNER_FRONTEND_UNIT || 'ubuntu-24.04' }}
     name: Frontend unit tests (${{ matrix.shard }}/3)
     timeout-minutes: 15
     strategy:
@@ -442,7 +448,10 @@ jobs:
   # name. See docs/docs/plans/2026-09-30-ci-job-times-plan.md.
   heavy_storybook_shards:
     if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    # The runner is a repository variable, unset by default, so this job runs
+    # on the free standard runner unless `just ci-speed` has moved it to a
+    # larger, billed one. See .github/scripts/ci/set-ci-speed.sh.
+    runs-on: ${{ vars.CI_RUNNER_STORYBOOK || 'ubuntu-24.04' }}
     name: Storybook interaction tests (${{ matrix.shard }}/3)
     timeout-minutes: 15
     strategy:
@@ -557,7 +566,10 @@ jobs:
   # build arguments must match that workflow.
   heavy_e2e_images:
     if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    # The runner is a repository variable, unset by default, so this job runs
+    # on the free standard runner unless `just ci-speed` has moved it to a
+    # larger, billed one. See .github/scripts/ci/set-ci-speed.sh.
+    runs-on: ${{ vars.CI_RUNNER_E2E_BUILD || 'ubuntu-24.04' }}
     name: E2E image build
     timeout-minutes: 20
     env:
@@ -601,7 +613,10 @@ jobs:
   # ---------- E2E (Playwright) ----------
   heavy_e2e:
     if: (github.event_name == 'pull_request' && github.event.pull_request.draft == false) || github.event_name == 'merge_group'
-    runs-on: ubuntu-24.04
+    # The runner is a repository variable, unset by default, so this job runs
+    # on the free standard runner unless `just ci-speed` has moved it to a
+    # larger, billed one. See .github/scripts/ci/set-ci-speed.sh.
+    runs-on: ${{ vars.CI_RUNNER_E2E || 'ubuntu-24.04' }}
     name: E2E (Playwright)
     timeout-minutes: 20
     needs: [heavy_e2e_images]

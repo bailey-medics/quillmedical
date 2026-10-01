@@ -2024,6 +2024,18 @@ check-competency-seeding env:
         --wait
 
 
+alias cis := ci-speed
+# Show or set which runner the slow CI jobs use: 0 free, 1 eight cores, 2 sixteen (1 and 2 are billed)
+ci-speed level="show" job="":
+    #!/usr/bin/env bash
+    {{initialise}} "ci-speed"
+    # Sets repository variables that ci.yml reads, so the change takes effect
+    # on the next run with no commit. `job` limits it to one of python-unit,
+    # frontend-unit, storybook, e2e-build or e2e, to measure each on its own.
+    # The script's header says what has to exist first.
+    bash .github/scripts/ci/set-ci-speed.sh "{{level}}" {{job}}
+
+
 alias cs := create-superadmin
 # Create a superadmin on a remote environment via Cloud Run Job
 create-superadmin env:

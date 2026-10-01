@@ -411,7 +411,7 @@ in the order they would then matter. None is committed to.
 - [ ] Measure the image build on a pull request that leaves the frontend
       alone, once this has merged and warmed. The estimate is about 30s,
       from 1m 45s
-- [ ] Decide whether to pay for larger runners, and if so make the runner
+- [x] Decide whether to pay for larger runners, and if so make the runner
       a repository variable. `runs-on: ${{ vars.CI_RUNNER_PY_UNIT ||
       'ubuntu-24.04' }}` leaves a job on the free runner until the
       variable is set, so each job can be switched on its own with
@@ -423,7 +423,22 @@ in the order they would then matter. None is committed to.
       it free on a public repository, so set a spending limit first. More
       cores help only the jobs that use them: the frontend and Storybook
       legs should scale, the E2E tests will not while they run on one
-      worker, and a bigger runner has the same speed per core
+      worker, and a bigger runner has the same speed per core. The switch
+      is built and nothing is paid for. The five slow jobs in `ci.yml`
+      read `CI_RUNNER_PYTHON_UNIT`, `CI_RUNNER_FRONTEND_UNIT`,
+      `CI_RUNNER_STORYBOOK`, `CI_RUNNER_E2E_BUILD` and `CI_RUNNER_E2E`,
+      all unset, so every job is still on the free runner. `just ci-speed`
+      shows them, and `just ci-speed 1` or `2` moves the jobs to runners
+      named `ubuntu-24.04-8core` and `ubuntu-24.04-16core`; a second
+      argument names one job, and `just ci-speed 0` puts them back. The
+      logic is `.github/scripts/ci/set-ci-speed.sh`. Whether to pay is
+      still open, and is the next step
+- [ ] Decide whether to pay. If yes: set a spending limit, create the two
+      larger runners under those names in a runner group that allows
+      public repositories, then turn on one job at a time and compare
+      several runs each. Start with the frontend unit tests and Storybook,
+      which use every core. A variable naming a runner that does not exist
+      leaves its job waiting, so do not set one before the runners exist
 
 ## Decisions
 
