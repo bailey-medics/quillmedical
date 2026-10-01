@@ -474,10 +474,24 @@ provides it. None blocks another.
       one and how they want it named. No standards body (BSG, JAG, BCSP,
       NICE, ESGE, ASGE PIVI) is named anywhere in the repository, so the site
       names none until then. The pass criteria stay off the site either way
-- [ ] Add their logo, with written permission
+- [x] Add their logo, with written permission. On the home page feature
+      and the module page, through an `EoeetaLogo` component that sets
+      it on a white panel: the logo is dark lettering on a transparent
+      background and unreadable on the navy pages without one. It reads
+      the same file the branded emails use, so there is one copy. Asked
+      for in the 30 September 2026 update; confirm the written answer is
+      on file before this deploys
+- [x] Fold the EoEETA partnership into the module page and rename it
+      `optical-diagnosis-polyps.tsx`, at `/optical-diagnosis-polyps`. One
+      page now carries the logo, the module, whose content it is and how
+      to take part. A separate `eoeeta.tsx` was tried first and merged in:
+      two pages said much the same thing. The old `/optical-diagnosis`
+      address is gone, and the deploy mirror-deletes its HTML. A
+      screenshots section is added when the screenshots are chosen and
+      cleared with EoEETA
 - [ ] Add one white light and NBI image pair, chosen and cleared with
-      EoEETA, to the home page feature and `optical-diagnosis.tsx`. If this
-      needs a new component, propose it for review first, with its
+      EoEETA, to the home page feature and `optical-diagnosis-polyps.tsx`.
+      If this needs a new component, propose it for review first, with its
       `.stories.tsx` and `.test.tsx`
 - [ ] Add a short quote from EoEETA's lead, with their name and role. A
       clinician vouching for the module is the strongest thing the site can
@@ -489,7 +503,7 @@ Out of scope for this plan, and recorded only so the structure leaves room
 for them:
 
 - More modules and specialties, each able to get its own showcase page in the
-  shape of `optical-diagnosis.tsx`
+  shape of `optical-diagnosis-polyps.tsx`
 - Quill's own teaching modules and other Quill products, added to the home
   page feature grid and navigation when they are ready to be public
 - An axe scan of every public page in CI. The Phase 4 scan was a script

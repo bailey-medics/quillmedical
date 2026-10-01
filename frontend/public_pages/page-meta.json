@@ -3,9 +3,9 @@
     "title": "Quill Medical",
     "description": "Online learning and assessment for clinicians, built by clinicians."
   },
-  "optical-diagnosis": {
-    "title": "Optical diagnosis",
-    "description": "An online assessment of optical diagnosis of diminutive colorectal polyps, built with the East of England Endoscopy Training Academy."
+  "optical-diagnosis-polyps": {
+    "title": "Optical diagnosis of polyps",
+    "description": "An online module in optical diagnosis of diminutive colorectal polyps, built with the East of England Endoscopy Training Academy."
   },
   "assessments": {
     "title": "Assessments",

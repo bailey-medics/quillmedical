@@ -14,6 +14,7 @@ import {
 } from "@/components/icons/appIcons";
 import PublicInfoCard from "@/components/info-card/PublicInfoCard";
 import PublicLayout from "@/components/layouts/PublicLayout";
+import EoeetaLogo from "@/components/images/EoeetaLogo";
 import QuillLogo from "@/components/images/QuillLogo";
 import PublicTitle from "@/components/typography/PublicTitle";
 import PublicBodyText from "@/components/typography/PublicBodyText";
@@ -68,6 +69,7 @@ createRoot(document.getElementById("root")!).render(
       <PublicLightBackground>
         <Container size="lg" py="xl">
           <Stack align="center" gap="md" py="xl">
+            <EoeetaLogo />
             <PublicTitle
               title="Optical diagnosis accreditation for *every* colonoscopist"
               size="md"
@@ -81,7 +83,7 @@ createRoot(document.getElementById("root")!).render(
               screening programme to symptomatic colonoscopists.
             </PublicBodyText>
             <Group mt="lg" justify="center">
-              <PublicButton href="/optical-diagnosis">
+              <PublicButton href="/optical-diagnosis-polyps">
                 About the module
               </PublicButton>
             </Group>

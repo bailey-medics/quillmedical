@@ -27,7 +27,7 @@ frontend/
 │       ├── for-educators.tsx
 │       ├── index.tsx           ← Home page
 │       ├── not-found.tsx       ← 404 page
-│       ├── optical-diagnosis.tsx
+│       ├── optical-diagnosis-polyps.tsx
 │       ├── pricing.tsx
 │       ├── privacy-policy.tsx
 │       ├── security.tsx
