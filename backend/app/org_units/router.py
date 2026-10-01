@@ -70,7 +70,6 @@ from app.org_units.types import (
     get_org_unit_type,
     type_can_have_members,
     type_can_hold_competencies,
-    type_can_hold_features,
     type_can_hold_positions,
     type_requires_parent,
     validate_org_unit_type,
@@ -562,7 +561,7 @@ def get_org_unit(
 
     features: list[str] = []
     patient_ids: list[str] = []
-    if type_can_hold_features(unit.type) and sees_features:
+    if sees_features:
         features = list(
             db.execute(
                 select(OrgUnitFeature.feature_key)
@@ -572,7 +571,7 @@ def get_org_unit(
             .scalars()
             .all()
         )
-    if type_can_hold_features(unit.type) and sees_patients:
+    if sees_patients:
         patient_ids = list(
             db.execute(
                 select(org_unit_patient_member.c.patient_id)
@@ -1494,23 +1493,16 @@ def set_org_unit_feature(
 ) -> OrgUnitStatusOut:
     """Switch a feature on or off at an org_unit.
 
-    Only a type that can hold features carries them: the top of a tree,
-    or a site. Refusing here rather than writing a row nothing would ever
-    read: a feature quietly enabled on a ward that does nothing is worse
-    than being told it cannot be.
+    Any org_unit may carry a feature, whatever its type. What the feature
+    reaches is decided by who is a member there, not by what the org_unit
+    is called.
 
     Requires ``manage_users`` at an org_unit the caller may administer, which
     is what the organisations surface has always asked. An operator-only
     gate here would have taken a working thing away from every admin the
     day that surface was retired.
     """
-    unit = _require_visible(db, current_user, unit_id)
-
-    if not type_can_hold_features(unit.type):
-        raise HTTPException(
-            status_code=422,
-            detail=f"A {unit.type} does not carry features.",
-        )
+    _require_visible(db, current_user, unit_id)
 
     # Passport cover gives away the paid half of the passport, so whoever
     # switches it controls the price. A superadmin only, in both
@@ -1661,17 +1653,10 @@ def set_org_unit_passport_specialties(
     replaced rather than edited, because the order is the point, so
     positions are rewritten from 1 every time. An empty list clears it.
 
-    Held only where features are, by the same rule as
-    ``set_org_unit_feature``: an organisation, never a ward. Requires
+    Held at any org_unit, whatever its type, as a feature is. Requires
     ``manage_users`` at an org_unit the caller may administer.
     """
-    unit = _require_visible(db, current_user, unit_id)
-
-    if not type_can_hold_features(unit.type):
-        raise HTTPException(
-            status_code=422,
-            detail=f"A {unit.type} does not carry features.",
-        )
+    _require_visible(db, current_user, unit_id)
 
     # Neither message repeats what was sent: a client's own text is not
     # echoed back in an error.
@@ -1726,18 +1711,11 @@ def add_org_unit_patient(
 ) -> OrgUnitStatusOut:
     """Record that an org_unit is responsible for a patient.
 
-    Only the top of a tree keeps a patient list, for the same reason it is
-    the only org_unit that carries features.
+    Any org_unit may keep a patient list, whatever its type.
 
     Requires ``manage_patient_membership``.
     """
-    unit = _require_visible(db, current_user, unit_id)
-
-    if not type_can_hold_features(unit.type):
-        raise HTTPException(
-            status_code=422,
-            detail=f"A {unit.type} does not keep a patient list.",
-        )
+    _require_visible(db, current_user, unit_id)
 
     existing = db.execute(
         select(org_unit_patient_member).where(

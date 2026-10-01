@@ -103,6 +103,7 @@ def test_clinicians_hold_the_passport_and_others_do_not() -> None:
     the passport is the *only* thing they are for. A delegate or clinical
     lead holds a passport of their own and signs off other people's, at
     an organisation that uses the passport without the rest of Quill.
+    A Passport admin holds it as a perk of running the scheme.
     ``passport_external_assessor`` is narrower still. A consultant invited from another trust gets it on a new account
     so they can reach the passport routes and nothing else – no patient
     records, no clinical actions. Somebody who already uses Quill keeps
@@ -132,6 +133,7 @@ def test_clinicians_hold_the_passport_and_others_do_not() -> None:
         "paramedic",
         "passport_delegate",
         "passport_clinical_lead",
+        "passport_admin",
         "passport_external_assessor",
     }
 
@@ -167,6 +169,24 @@ def test_passport_professions_need_nothing_clinical(
 
     assert profession is not None
     assert not profession.requires_clinical_services
+
+
+def test_a_passport_admin_runs_the_passport_and_may_open_it() -> None:
+    """Managing the passport comes with the way into it.
+
+    An admin is a member of the place they run, so its cover gives them
+    ``passport_write``. Without ``assess_clinician_passport`` every
+    passport route refused them, and the paid grant could not be used.
+    Pinned whole, so nothing else arrives with the job unremarked.
+    """
+    admin = get_profession_details("passport_admin")
+
+    assert admin is not None
+    assert set(admin.base_competencies) == {
+        "manage_passport",
+        "assess_clinician_passport",
+    }
+    assert not admin.requires_clinical_services
 
 
 def test_the_passport_clinical_lead_is_a_label() -> None:

@@ -720,6 +720,42 @@ describe("SideNavContent Component", () => {
       });
       expect(screen.queryByText("Sites")).not.toBeInTheDocument();
     });
+
+    it.each(["/admin/sites", "/admin/sites/new"])(
+      "highlights Sites at %s",
+      async (route) => {
+        renderWithAuth(<SideNavContent />, "superadmin", {
+          initialRoute: route,
+        });
+
+        await waitFor(() => {
+          expect(screen.getByText("Sites")).toBeInTheDocument();
+        });
+        expect(screen.getByText("Sites").closest("a")).toHaveAttribute(
+          "data-active",
+          "true",
+        );
+      },
+    );
+
+    // One site's pages are named under its organisation, which is the
+    // entry that lights up. Sites lit as well said you were in two places.
+    it.each([
+      "/admin/sites/4",
+      "/admin/sites/4/features",
+      "/admin/sites/4/members/7",
+    ])("does not highlight Sites at %s", async (route) => {
+      renderWithAuth(<SideNavContent />, "superadmin", {
+        initialRoute: route,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Sites")).toBeInTheDocument();
+      });
+      expect(screen.getByText("Sites").closest("a")).not.toHaveAttribute(
+        "data-active",
+      );
+    });
   });
 
   describe("Passport", () => {

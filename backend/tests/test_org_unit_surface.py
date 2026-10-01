@@ -56,6 +56,14 @@ def _ward(db: Session, parent_id: int, name: str = "Ward 1") -> OrgUnit:
     return place
 
 
+def _room(db: Session, parent_id: int, name: str = "Room 4") -> OrgUnit:
+    place = OrgUnit(name=name, type="room", parent_id=parent_id)
+    db.add(place)
+    db.commit()
+    db.refresh(place)
+    return place
+
+
 def _person(db: Session, username: str = "alice") -> User:
     user = User(
         username=username,
@@ -644,10 +652,10 @@ class TestFeatures:
 
         assert resp.status_code == 404
 
-    def test_a_ward_carries_none(
+    def test_a_ward_carries_its_own(
         self, authenticated_superadmin_client, db_session
     ):
-        """Refused rather than written and never read."""
+        """Any org_unit may, since the site screens offer it."""
         org = _org(db_session)
         ward = _ward(db_session, org.id)
 
@@ -656,7 +664,23 @@ class TestFeatures:
             json={"enabled": True},
         )
 
-        assert resp.status_code == 422
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["status"] == "enabled"
+
+    def test_a_room_carries_its_own_too(
+        self, authenticated_superadmin_client, db_session
+    ):
+        """Type does not decide whether a feature may go on."""
+        org = _org(db_session)
+        room = _room(db_session, org.id)
+
+        resp = authenticated_superadmin_client.put(
+            f"/api/org-units/{room.id}/features/teaching",
+            json={"enabled": True},
+        )
+
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["status"] == "enabled"
 
 
 class TestPatients:
@@ -692,7 +716,7 @@ class TestPatients:
         )
         assert removed.json()["status"] == "removed"
 
-    def test_a_ward_keeps_no_list(
+    def test_an_org_unit_of_any_type_keeps_a_list(
         self,
         authenticated_patient_manager_client,
         db_session,
@@ -704,17 +728,18 @@ class TestPatients:
         )
         administers(db_session, test_patient_manager.id, org.id)
         db_session.commit()
-        ward = _ward(db_session, org.id)
-        # Authorised at the ward too, so the refusal below is about a
-        # ward keeping no patient list rather than about not seeing it.
-        administers(db_session, test_patient_manager.id, ward.id)
+        room = _room(db_session, org.id)
+        # A room is the type least like an organisation, so it stands
+        # for all of them: type does not decide who keeps a patient list.
+        administers(db_session, test_patient_manager.id, room.id)
 
         resp = authenticated_patient_manager_client.post(
-            f"/api/org-units/{ward.id}/patients",
+            f"/api/org-units/{room.id}/patients",
             json={"patient_id": "patient-1"},
         )
 
-        assert resp.status_code == 422
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["status"] == "added"
 
 
 class TestLinks:

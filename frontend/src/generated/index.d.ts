@@ -93,7 +93,6 @@ declare module "@/generated/org-unit-types.json" {
     display_name: string;
     description: string;
     requires_parent: boolean;
-    can_hold_features: boolean;
     can_hold_positions: boolean;
     can_hold_competencies: boolean;
     can_have_members: boolean;

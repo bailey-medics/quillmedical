@@ -28,7 +28,6 @@ from app.org_units.types import (
     get_org_unit_type,
     type_can_have_members,
     type_can_hold_competencies,
-    type_can_hold_features,
     type_can_hold_positions,
     type_requires_parent,
     validate_org_unit_type,
@@ -36,7 +35,6 @@ from app.org_units.types import (
 
 CAPABILITY_LOOKUPS = (
     type_requires_parent,
-    type_can_hold_features,
     type_can_hold_positions,
     type_can_hold_competencies,
     type_can_have_members,
@@ -113,17 +111,17 @@ def test_every_kind_of_organisation_is_named() -> None:
     }
 
 
-def test_the_top_of_a_tree_and_a_site_hold_features() -> None:
-    """A site may carry features since 1 October 2026.
+def test_no_type_says_whether_it_holds_features() -> None:
+    """Features are not a question a type answers.
 
-    Before then only the top of a tree could, which meant the passport
-    could not be switched on for one team without its whole trust. The
-    levels below a site still cannot.
+    There was a ``can_hold_features`` flag, true first for the top of a
+    tree and then for ``site`` as well. But the admin screens call every
+    org_unit under an organisation a site, so a team entered as a hospital
+    was offered a features page that could only refuse. Any org_unit may
+    now carry a feature, and the model forbids extra fields, so the flag
+    cannot come back in the YAML unremarked.
     """
-    for type_id in ORG_UNIT_TYPE_IDS:
-        assert type_can_hold_features(type_id) is (
-            type_id in ROOT_TYPE_IDS or type_id == "site"
-        )
+    assert "can_hold_features" not in OrgUnitTypeEntry.model_fields
 
 
 def test_a_site_names_a_clinical_lead() -> None:
@@ -137,7 +135,6 @@ def test_a_room_is_only_an_address() -> None:
     assert type_can_hold_positions("room") is False
     assert type_can_hold_competencies("room") is False
     assert type_can_have_members("room") is False
-    assert type_can_hold_features("room") is False
 
 
 def test_get_org_unit_type_known_id() -> None:
@@ -183,7 +180,6 @@ def test_entry_refuses_an_unexpected_field() -> None:
             display_name="Ward",
             description="A ward.",
             requires_parent=True,
-            can_hold_features=False,
             can_hold_positions=True,
             can_hold_competencies=True,
             can_have_members=True,
@@ -218,7 +214,6 @@ def test_load_refuses_a_duplicate_id(tmp_path: Path) -> None:
         "display_name": "Ward",
         "description": "A ward.",
         "requires_parent": True,
-        "can_hold_features": False,
         "can_hold_positions": True,
         "can_hold_competencies": True,
         "can_have_members": True,

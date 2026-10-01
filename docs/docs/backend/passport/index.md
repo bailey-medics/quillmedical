@@ -194,7 +194,8 @@ services:
   `assess_clinician_passport`, at the org units its holder belongs to. It
   never needs `manage_users`. It may also give and take `passport_write`
   for members of its own org units, and it is the only whitelist allowed
-  to name it.
+  to name it. It holds `assess_clinician_passport` too, so an admin may
+  open the passport themselves.
 - **`passport_external_assessor`** – given to a clinician from elsewhere who
   accepts an invitation to sign off one competency. Until 30 September 2026
   its id was `external_assessor`.

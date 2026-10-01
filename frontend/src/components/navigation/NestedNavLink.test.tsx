@@ -151,6 +151,36 @@ describe("NestedNavLink Component", () => {
       const activeLinks = container.querySelectorAll("[data-active='true']");
       expect(activeLinks).toHaveLength(0);
     });
+
+    it("marks an item with no children as active on a page beneath it", () => {
+      const { container } = renderWithRouter(
+        <NestedNavLink item={singleNavItem} />,
+        { initialRoute: `${singleNavItem.href}/4` },
+      );
+
+      const activeLinks = container.querySelectorAll("a[data-active='true']");
+      expect(activeLinks).toHaveLength(1);
+    });
+
+    it("does not mark an exact item as active on a page beneath it", () => {
+      const { container } = renderWithRouter(
+        <NestedNavLink item={{ ...singleNavItem, exact: true }} />,
+        { initialRoute: `${singleNavItem.href}/4` },
+      );
+
+      const activeLinks = container.querySelectorAll("a[data-active='true']");
+      expect(activeLinks).toHaveLength(0);
+    });
+
+    it("still marks an exact item as active on its own route", () => {
+      const { container } = renderWithRouter(
+        <NestedNavLink item={{ ...singleNavItem, exact: true }} />,
+        { initialRoute: singleNavItem.href },
+      );
+
+      const activeLinks = container.querySelectorAll("a[data-active='true']");
+      expect(activeLinks).toHaveLength(1);
+    });
   });
 
   describe("Child items", () => {
