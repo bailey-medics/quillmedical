@@ -2032,8 +2032,13 @@ GitHub starting a scheduled run late, which it does at busy times.
       Christmas Eve. Either accept it, or add a skip list of dates to the
       script, which is a few lines and easier than moving the anchor.
 
-- [ ] Watch the first run on 2026-10-01 and confirm all four arrive. A
+- [x] Watch the first run on 2026-10-01 and confirm all four arrive. A
       missing one is the finding, not a failure of the test.
+
+      Confirmed by Mark on 2026-10-01: the four-weekly test worked and
+      all four routes delivered, Slack, SMS, email and the PagerDuty
+      phone call. Both routes that had broken silently on 2026-09-23 are
+      proven working again.
 
 ## Batch 10a — Claude and Mark: make `quill-medical-app` the home of everything
 
