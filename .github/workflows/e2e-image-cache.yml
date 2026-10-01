@@ -11,7 +11,8 @@
 # allowance.
 #
 # Saving the layers here, on main, gives every pull request the dependency
-# layers. ci.yml no longer writes the cache at all; it only reads this one.
+# layers, and the application layers too for whichever image it leaves
+# alone. ci.yml no longer writes the cache at all; it only reads this one.
 #
 # Nothing is pushed to GHCR. Only the cache matters.
 #
@@ -24,19 +25,29 @@ on:
   workflow_dispatch: {}
   push:
     branches: [main]
-    # What the dependency layers are built from: the Dockerfiles, and every
-    # file they copy in before installing. A change to application code
-    # leaves those layers valid, so it does not need a new cache.
+    # Everything either image is built from, application code included.
+    #
+    # It began as the dependency files alone, which gave every pull request
+    # the installed packages and left it to build the application layers
+    # itself: about 62s for the frontend image, on every run. Most pull
+    # requests change one side only. With the cache following main, the side
+    # a pull request did not touch comes whole from the cache, and only the
+    # side it changed is built.
+    #
+    # The cost is one build here on most merges. Runs cancel each other, so
+    # a burst of merges builds once, for the last of them.
     paths:
       - "backend/Dockerfile"
-      - ".poetry-version"
       - "backend/pyproject.toml"
       - "backend/poetry.lock"
-      - "frontend/Dockerfile"
-      - "frontend/package.json"
-      - "frontend/yarn.lock"
-      - "frontend/.yarnrc.yml"
-      - "frontend/public_pages/package.json"
+      - "backend/app/**"
+      - "backend/alembic/**"
+      - "backend/alembic.ini"
+      - ".poetry-version"
+      - "frontend/**"
+      - "shared/**"
+      - "api-compatibility/**"
+      - "caddy/prod/**"
       - ".github/workflows/e2e-image-cache.yml"
   # A cache nobody reads for seven days is evicted. Pull requests read these
   # constantly, but a quiet week would lose them; this puts them back.
