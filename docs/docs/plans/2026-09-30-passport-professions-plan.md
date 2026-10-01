@@ -262,7 +262,7 @@ nothing writes it yet.
       its wording no longer says "organisation-wide". The site pages are
       still operator-only, so only a superadmin can switch a site's
       features for now.
-- [ ] **Add a `passport_write` feature key**, stored as an
+- [x] **Add a `passport_write` feature key**, stored as an
       `OrgUnitFeature` row like every other feature, so no migration is
       needed. `set_org_unit_feature` in `backend/app/org_units/router.py`
       refuses to switch it on unless `passport` is already on at the same
@@ -275,7 +275,7 @@ nothing writes it yet.
       is shown only to a superadmin. The switch goes on the unit that
       pays, which is the Cheltenham oncology site today. Agreed on
       1 October 2026.
-- [ ] **Switching it on writes a grant for every staff member and trainee.**
+- [x] **Switching it on writes a grant for every staff member and trainee.**
       One `passport_write` row per current member of that org unit in the
       `staff` or `trainee` capacity, with `source` `organisation`,
       `org_unit_id` the unit, `granted_by` whoever switched it on, and no
@@ -285,7 +285,7 @@ nothing writes it yet.
       so switching it off and on again does not duplicate anything. Put the
       logic in a new `backend/app/features/passport/cover.py`, so the
       feature route and the membership routes call one function.
-- [ ] **Joining as staff or a trainee writes the grant too.** Every route
+- [x] **Joining as staff or a trainee writes the grant too.** Every route
       that adds a member to an org unit calls `cover.py` once the
       membership row exists: `add_org_unit_member` in
       `backend/app/organisations.py`, and any route in
@@ -296,7 +296,29 @@ nothing writes it yet.
       Agreed on 1 October 2026: otherwise anybody who may add members to
       the site could add a friend from another trust and give them free
       writing.
-- [ ] **A member of staff who leaves keeps writing.** A doctor who moves to
+
+      Built as `membership_changed` in `cover.py`, called with the
+      capacity before and after from the three places an administrator
+      changes a membership: the add and remove member routes in
+      `backend/app/org_units/router.py`, and `create_user_with_cbac` and
+      `update_user` in `backend/app/main.py`. Two things were found on the
+      way:
+
+      - **Public registration is not covered.** Somebody who registers
+        themselves at an org unit joins as a `trainee`. If that granted
+        writing, anybody could give themselves the paid feature by
+        registering at a covered site. So the registration route does not
+        call `cover.py`, and only a membership an administrator makes is
+        covered.
+      - **The user editor rewrote capacities.** `update_user` clears and
+        rewrites somebody's memberships on every save, and wrote the
+        default capacity back: `staff` at the top of a tree, `trainee`
+        anywhere else. A member of staff at a site became a trainee the
+        first time their page was saved, which this phase cannot allow,
+        because a trainee who leaves loses writing and a member of staff
+        does not. A membership somebody already has now keeps its
+        capacity.
+- [x] **A member of staff who leaves keeps writing.** A doctor who moves to
       another trust keeps reading and writing their passport. They go on
       using it as their own record wherever they work, and they can show
       other trusts what it does. Their membership of the Cheltenham
@@ -328,20 +350,20 @@ nothing writes it yet.
       Agreed on 1 October 2026. Tests: somebody with no passport-enabled
       membership can read and export their own passport, gets 403 on
       writing, and gets 404 on anybody else's.
-- [ ] **A trainee who rotates off loses writing.** Removing a `trainee`
+- [x] **A trainee who rotates off loses writing.** Removing a `trainee`
       member, or changing a trainee to `external`, closes their
       `organisation` row from this unit. A rotation is not a career move
       away from the team, and covering every trainee who ever passed
       through would grow the free group with no end. Agreed on 1 October
       2026, for now.
-- [ ] **Switching it off closes every grant it made.** Every current row
+- [x] **Switching it off closes every grant it made.** Every current row
       with `source` `organisation`, `competency_id` `passport_write` and
       this `org_unit_id` gets `ends_on` set to now, leavers included. This
       was chosen deliberately (see Decisions). Reading and export are
       untouched, because they come from owning a passport, never from
       paying. Somebody also covered by another source, such as another
       unit or their own subscription, keeps writing through that one.
-- [ ] **Stop `sync_competency_rows` closing a paid grant.** Saving the
+- [x] **Stop `sync_competency_rows` closing a paid grant.** Saving the
       user editor does not change only the competency that was edited. It
       treats the lists on the screen as everything the person should hold,
       and closes any current row whose competency is not on them. A grant

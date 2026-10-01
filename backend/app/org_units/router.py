@@ -41,6 +41,8 @@ from app.deps import (
     has_competency,
     requires_any_competency,
 )
+from app.features.passport import cover
+from app.features.passport.cover import COVER_FEATURE
 from app.features.passport.models import OrgUnitPassportSpecialty
 from app.features.passport.specialties import SPECIALTY_IDS
 from app.models import (
@@ -88,6 +90,7 @@ from app.schemas.org_units import (
     OrgUnitFeaturesOut,
     OrgUnitItem,
     OrgUnitMembersOut,
+    OrgUnitPassportCoverOut,
     OrgUnitPassportSpecialtiesOut,
     OrgUnitsListOut,
     OrgUnitStatusOut,
@@ -803,7 +806,7 @@ def add_org_unit_member(
         raise HTTPException(status_code=404, detail="User not found")
 
     existing = db.scalar(
-        select(org_unit_member.c.user_id).where(
+        select(org_unit_member.c.capacity).where(
             org_unit_member.c.org_unit_id == unit_id,
             org_unit_member.c.user_id == body.user_id,
         )
@@ -872,6 +875,14 @@ def add_org_unit_member(
         granted_by=current_user.id,
         org_unit_id=unit_id,
     )
+    cover.membership_changed(
+        db,
+        unit_id,
+        body.user_id,
+        before=existing,
+        after=capacity,
+        changed_by=current_user,
+    )
 
     db.flush()
     return OrgUnitStatusOut(status=status)
@@ -910,6 +921,12 @@ def remove_org_unit_member(
     if clinical_leads_of(db, [unit_id]).get(unit_id) == user_id:
         set_clinical_lead(db, unit, None, appointed_by=current_user)
 
+    before = db.scalar(
+        select(org_unit_member.c.capacity).where(
+            org_unit_member.c.org_unit_id == unit_id,
+            org_unit_member.c.user_id == user_id,
+        )
+    )
     result = db.execute(
         delete(org_unit_member).where(
             org_unit_member.c.org_unit_id == unit_id,
@@ -918,6 +935,14 @@ def remove_org_unit_member(
     )
     if result.rowcount == 0:  # type: ignore[attr-defined]
         raise HTTPException(status_code=404, detail="Membership not found")
+    cover.membership_changed(
+        db,
+        unit_id,
+        user_id,
+        before=before,
+        after=None,
+        changed_by=current_user,
+    )
 
     db.flush()
     return OrgUnitStatusOut(status="removed")
@@ -1467,6 +1492,19 @@ def set_org_unit_feature(
             detail=f"A {unit.type} does not carry features.",
         )
 
+    # Passport cover gives away the paid half of the passport, so whoever
+    # switches it controls the price. A superadmin only, in both
+    # directions: a trust admin must not be able to make writing free
+    # across their trust.
+    if (
+        feature_key == COVER_FEATURE
+        and current_user.platform_role != "superadmin"
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Only an operator may switch passport cover.",
+        )
+
     existing = db.scalar(
         select(OrgUnitFeature).where(
             OrgUnitFeature.org_unit_id == unit_id,
@@ -1477,6 +1515,13 @@ def set_org_unit_feature(
     if body.enabled:
         if existing is not None:
             return OrgUnitStatusOut(status="already_enabled")
+        if feature_key == COVER_FEATURE and not _has_feature(
+            db, unit_id, "passport"
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="Switch the passport on here before its cover.",
+            )
         db.add(
             OrgUnitFeature(
                 org_unit_id=unit_id,
@@ -1485,13 +1530,64 @@ def set_org_unit_feature(
             )
         )
         db.flush()
+        if feature_key == COVER_FEATURE:
+            cover.switch_on(db, unit_id, current_user)
         return OrgUnitStatusOut(status="enabled")
 
     if existing is None:
         return OrgUnitStatusOut(status="already_disabled")
     db.delete(existing)
+    if feature_key == "passport":
+        # The cover means nothing without the passport, so it goes too.
+        cover_row = db.scalar(
+            select(OrgUnitFeature).where(
+                OrgUnitFeature.org_unit_id == unit_id,
+                OrgUnitFeature.feature_key == COVER_FEATURE,
+            )
+        )
+        if cover_row is not None:
+            db.delete(cover_row)
+            cover.switch_off(db, unit_id)
+    if feature_key == COVER_FEATURE:
+        cover.switch_off(db, unit_id)
     db.flush()
     return OrgUnitStatusOut(status="disabled")
+
+
+def _has_feature(db: Session, unit_id: int, feature_key: str) -> bool:
+    """Whether *feature_key* is switched on at the org_unit itself."""
+    return (
+        db.scalar(
+            select(OrgUnitFeature.id).where(
+                OrgUnitFeature.org_unit_id == unit_id,
+                OrgUnitFeature.feature_key == feature_key,
+            )
+        )
+        is not None
+    )
+
+
+@router.get(
+    "/{unit_id}/passport-cover",
+    response_model=OrgUnitPassportCoverOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
+def get_org_unit_passport_cover(
+    unit_id: int,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> OrgUnitPassportCoverOut:
+    """Whether the org_unit pays for its members' writing, and for how many.
+
+    The count is what switching the cover off would take away, so the
+    features page can say so before it is confirmed. Requires
+    ``manage_users``.
+    """
+    _require_visible(db, current_user, unit_id)
+    return OrgUnitPassportCoverOut(
+        enabled=cover.is_covered(db, unit_id),
+        covered_count=cover.covered_count(db, unit_id),
+    )
 
 
 def _lead_specialty_ids(db: Session, unit_id: int) -> list[str]:

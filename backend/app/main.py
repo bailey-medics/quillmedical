@@ -87,6 +87,7 @@ from app.email_send import (
     EmailRateLimitError,
     send_email,
 )
+from app.features.passport import cover as passport_cover
 from app.features.teaching.schemas import (
     CaptionCompleteIn,
     CaptionCompleteOut,
@@ -1842,6 +1843,15 @@ def create_user_with_cbac(
                 capacity=_capacity_at(place),
             )
         )
+    # Joining an org_unit whose passport cover is on grants writing.
+    passport_cover.memberships_changed(
+        db,
+        user.id,
+        before={},
+        after=passport_cover.capacities_of(db, user.id),
+        changed_by=current_user,
+    )
+    db.flush()
 
     db.refresh(user)
 
@@ -2132,6 +2142,7 @@ def update_user(
             db, current_user, payload.org_unit_ids
         )
         theirs = _org_units_the_caller_places_people_in(db, current_user)
+        memberships_before = passport_cover.capacities_of(db, user_id)
         clearing = org_unit_member.delete().where(
             org_unit_member.c.user_id == user_id
         )
@@ -2146,15 +2157,32 @@ def update_user(
                 org_unit_member.insert().values(
                     user_id=user_id,
                     org_unit_id=place.id,
-                    capacity=_capacity_at(place),
+                    # A membership they already had keeps its capacity.
+                    # Writing the default back would turn a member of
+                    # staff at a site into a trainee each time their
+                    # page was saved, and passport cover treats the two
+                    # differently when somebody leaves.
+                    capacity=memberships_before.get(
+                        place.id, _capacity_at(place)
+                    ),
                 )
             )
 
-            # Flush before refreshing: refresh reloads the row from the database,
-            # so pending in-memory changes are discarded unless they have been
-            # written first. The payload assignments above happen to survive
-            # because the session flushes automatically on the queries between
-            # them; an assignment after the last query would not.
+        # Keep passport cover in step with what changed. Clearing and
+        # writing back the same membership is no change at all.
+        passport_cover.memberships_changed(
+            db,
+            user_id,
+            before=memberships_before,
+            after=passport_cover.capacities_of(db, user_id),
+            changed_by=current_user,
+        )
+
+        # Flush before refreshing: refresh reloads the row from the database,
+        # so pending in-memory changes are discarded unless they have been
+        # written first. The payload assignments above happen to survive
+        # because the session flushes automatically on the queries between
+        # them; an assignment after the last query would not.
     db.flush()
     db.refresh(user)
 

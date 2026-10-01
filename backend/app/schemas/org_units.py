@@ -318,6 +318,19 @@ class OrgUnitPassportSpecialtiesOut(BaseModel):
     specialty_ids: list[str]
 
 
+class OrgUnitPassportCoverOut(BaseModel):
+    """Whether an org_unit pays for its members' passport writing.
+
+    Attributes:
+        enabled: Whether the cover is switched on.
+        covered_count: How many people hold a current grant from it, which
+            is how many would lose writing if it were switched off.
+    """
+
+    enabled: bool
+    covered_count: int
+
+
 class SetOrgUnitPassportSpecialtiesIn(BaseModel):
     """Replacing an organisation's lead passport specialties.
 
