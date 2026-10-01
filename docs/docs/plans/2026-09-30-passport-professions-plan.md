@@ -85,9 +85,35 @@ so a manager can take people on and give out passport roles without holding
 
 ## Phase 3: Passport manager
 
-This phase depends on Phase 1 of the manage teaching competency plan, which
-adds `may_grant`, `may_assign_professions` and `backend/app/cbac/grant_scope.py`.
-Do not start it until that phase has merged.
+This phase depends on the manage teaching competency plan, which added
+`may_grant`, `may_assign_professions` and `backend/app/cbac/grant_scope.py`.
+All of it had merged by 1 October 2026.
+
+When that plan landed, the people routes asked `grant_scope` for *what* a
+caller may hand out, but still named `manage_teaching` to decide *who* gets
+through the door: seven places in the backend and about ten in the
+frontend. A passport manager would have been refused at every one. So the
+first two steps make "a competency with a whitelist" the test, and only
+then is `manage_passport` added.
+
+- [x] **Open the backend people routes to any scoped manager.**
+      `SCOPED_MANAGER_IDS` in `backend/app/cbac/competencies.py` lists every
+      current competency with a `may_grant` or `may_assign_professions`
+      list. The gates in `backend/app/main.py` and
+      `backend/app/org_units/router.py` that read
+      `requires_any_competency(..., "manage_teaching")` now admit
+      `*SCOPED_MANAGER_IDS`. `_through_teaching` became `_through_a_scope`,
+      and the `_OR_TEACHING` gates became `_OR_SCOPED`. Today the list
+      holds only `manage_teaching`, so nothing changes for anyone yet. The
+      teaching content routes in `backend/app/features/teaching/router.py`
+      keep `manage_teaching` by name, because they are about teaching,
+      not about people. Tests in `backend/tests/test_grant_scope.py` pin
+      the list to exactly the competencies that have a whitelist.
+- [ ] **Open the frontend admin area to any scoped manager.** The route
+      guards in `frontend/src/main.tsx`, the Admin navigation item, the
+      redirect after login and `OrganisationAdminPage` check for
+      `manage_teaching` by name. Derive the same list from
+      `frontend/src/generated/competencies.json` and use it in each one.
 
 - [ ] **Add `manage_passport` to `shared/competency-definitions/passport.yaml`**
       with `may_grant: [assess_clinician_passport, manage_passport]` and
@@ -106,13 +132,6 @@ Do not start it until that phase has merged.
       `assess_clinician_passport`: running the scheme is not the same as
       holding a passport, and a manager who is also a clinician can be
       given it.
-- [ ] **Scope the people routes to `manage_passport`** alongside
-      `manage_teaching`. The teaching plan's Phase 4 changes
-      `create_user_with_cbac` and the membership routes to ask
-      `grant_scope`. As long as those routes ask `grant_scope` generically
-      and do not check for `manage_teaching` by name, a passport manager
-      needs nothing more than the YAML. Check that when Phase 4 lands, and
-      add any passport-specific route guard here.
 - [ ] **Tests**: a passport manager can create a passport delegate at their
       own org unit and give them `assess_clinician_passport`. They cannot
       give out `passport_write`, `manage_users` or any clinical or teaching

@@ -54,7 +54,10 @@ from app.cbac.base_professions import (
     get_profession_base_competencies,
     resolve_user_competencies,
 )
-from app.cbac.competencies import validate_competency_ids
+from app.cbac.competencies import (
+    SCOPED_MANAGER_IDS,
+    validate_competency_ids,
+)
 from app.cbac.grant_scope import (
     may_assign_profession,
     may_manage_account,
@@ -770,16 +773,17 @@ DEP_REQUIRE_CSRF = Depends(require_csrf)
 DEP_REQUIRE_MANAGE_USERS = Depends(has_competency("manage_users"))
 
 #: Managing people's accounts, either without limit or within a whitelist.
-#: ``manage_users`` may grant anything; ``manage_teaching`` may grant and
-#: remove only what its ``may_grant`` list names, give only the
-#: professions its ``may_assign_professions`` list names, and act on an
-#: account as a whole only when its profession is one of those. The gate
-#: admits either, and the route body then asks ``app.cbac.grant_scope``.
+#: ``manage_users`` may grant anything. A scoped manager, such as
+#: ``manage_teaching``, may grant and remove only what its ``may_grant``
+#: list names, give only the professions its ``may_assign_professions``
+#: list names, and act on an account as a whole only when its profession
+#: is one of those. The gate admits either, and the route body then asks
+#: ``app.cbac.grant_scope``.
 #: A ``manage_users`` holder finds every check passes, so nothing changes
 #: for them. See
 #: ``docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md``.
 DEP_REQUIRE_MANAGE_PEOPLE = Depends(
-    requires_any_competency("manage_users", "manage_teaching")
+    requires_any_competency("manage_users", *SCOPED_MANAGER_IDS)
 )
 
 #: Who belongs to an organisation or a site. Separate from
@@ -1610,9 +1614,10 @@ def _org_units_the_caller_places_people_in(
     """The org_units whose membership the caller may settle, or None for all.
 
     Where they administer through a ``manage_users`` practising row, as
-    ever. And, for a holder of ``manage_teaching``, the org_units they
-    belong to, which is where teaching's own admin routes let them act:
-    somebody running teaching at a trust signs delegates up to it.
+    ever. And, for a scoped manager such as ``manage_teaching``, the
+    org_units they belong to, which is where teaching's own admin routes
+    let them act: somebody running teaching at a trust signs delegates up
+    to it.
 
     Args:
         db: Core database session.
@@ -1624,7 +1629,9 @@ def _org_units_the_caller_places_people_in(
     allowed = org_units_administered_by(db, current_user)
     if allowed is None:
         return None
-    if "manage_teaching" in current_user.get_final_competencies():
+    if not set(current_user.get_final_competencies()).isdisjoint(
+        SCOPED_MANAGER_IDS
+    ):
         allowed = allowed | set(get_member_org_unit_ids(db, current_user.id))
     return allowed
 
@@ -1674,10 +1681,10 @@ def _require_account_in_scope(current_user: User, target: User) -> None:
     """Refuse an act on a whole account the caller may not manage.
 
     A change of profession, name, email or password, a deactivation, a
-    reactivation or an invite acts on the whole account. A holder of
-    ``manage_teaching`` may do these only for somebody whose profession
-    they could have given, so a clinician who also sits teaching
-    assessments stays out of their reach.
+    reactivation or an invite acts on the whole account. A scoped manager
+    such as ``manage_teaching`` may do these only for somebody whose
+    profession they could have given, so a clinician who also sits
+    teaching assessments stays out of their reach.
 
     Raises:
         HTTPException: 403 if the account is outside their scope.

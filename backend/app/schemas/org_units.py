@@ -472,10 +472,11 @@ class MemberPracticeOut(BaseModel):
         may_grant: Whether the caller may add to their ceiling from this
             page. False for the caller themselves, for an operator unless
             the caller is one, and for somebody who holds neither
-            ``manage_users`` nor ``manage_teaching``.
+            ``manage_users`` nor a scoped manager such as
+            ``manage_teaching``.
         may_change: The competencies the caller may grant, authorise or
             withdraw here, or None for no limit. A caller reaching the
-            page through ``manage_teaching`` alone sees everything the
+            page through a scoped manager alone sees everything the
             person holds and may change only these, so the page can show
             the rest without offering to change it.
     """
