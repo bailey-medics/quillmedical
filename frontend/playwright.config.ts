@@ -5,7 +5,12 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Two in CI, where the runner's four cores are shared with the stack the
+  // tests drive. It was one, Playwright's template default, which ran the
+  // tests one at a time. The tests are written to run side by side: each
+  // browser project works on its own seeded member, and a retry replays
+  // cleanly.
+  workers: process.env.CI ? 2 : undefined,
   reporter: "html",
   use: {
     // CI drives the compose.ci.yml stack on port 80. `just e2e` runs the same

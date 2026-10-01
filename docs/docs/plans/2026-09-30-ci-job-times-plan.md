@@ -163,7 +163,15 @@ pull request, so its effect can be read off that pull request's own runs.
       run against today's 7. The estimate is 2m 30s to 3m per leg. First
       reading, from the one run on #1319 once it was marked ready: the
       legs took 3m 12s, 3m 08s and 2m 17s, and the job that carries the
-      required name took 5s. That is one run, not the day asked for
+      required name took 5s. That is one run, not the day asked for.
+      In the merge queue on 1 October, the eight runs after the split had
+      legs of 2m 37s to 3m 26s, against a single job of 4m 39s to 7m 07s
+      in the six runs before it. The whole run did not get shorter, 6m 02s
+      to 7m 11s against 6m 08s to 7m 11s, because the E2E pair and the
+      unit suites then set the finish time. Two of the eight had one leg
+      stall on the package install, at 5m 42s and 6m 32s, which is what
+      Phase 4 removes. Each run now spends about 9 runner minutes on these
+      tests where it spent 5 to 7
 
 ## Phase 4: run the Storybook tests in the Playwright image
 
@@ -194,7 +202,10 @@ this follows it directly.
       the one run on #1324 once it was marked ready: the legs took 3m 18s,
       3m 09s and 3m 11s, against 3m 12s, 3m 08s and 2m 17s on #1319 before
       the image. So the container path works, and costs about what was
-      expected
+      expected. In the merge queue, #1324's own run had legs of 2m 29s,
+      2m 47s and 3m 23s, and the next, #1328, 3m 12s to 3m 23s. Neither
+      stalled, and nor did the three runs after them. Five runs is too
+      few to call the stall gone, since it showed in 2 of 25 before
 
 ## Phase 5: test a built Storybook, not the dev server
 
@@ -224,12 +235,16 @@ has done that work up front.
       placeholder text, `#666` on `#1a1a1a` at about 3:1. The text is now
       `#ccc`. Nothing else failed. Those stories are tested against the
       placeholder from here on, not the real player
-- [ ] Measure against Phase 4's figure. If the slowest leg is not faster,
+- [x] Measure against Phase 4's figure. If the slowest leg is not faster,
       close the pull request and record the result here, so it is not
       tried again. First reading, from that red run: the legs took
       2m 23s to 2m 26s against 3m 09s to 3m 18s on #1324, with the tests
       themselves at 52 to 67s after a build of about 26s. So it is faster
-      by about 45s a leg, on one run
+      by about 45s a leg, on one run. The three merge queue runs with it
+      agreed: legs of 2m 30s to 2m 34s on #1325, 2m 35s to 2m 37s on #1327
+      and 2m 11s to 2m 40s on #1329, against 3m 12s to 3m 23s on the last
+      run without it. The slowest leg is about 40s faster, so it is kept
+      and was merged
 
 ## Phase 6: let pull requests read the E2E image cache
 
@@ -262,7 +277,16 @@ caches and 10.04GB against a limit of 10GB, so GitHub is already evicting.
       longer reuses its own build stage, but with the dependency layers
       coming from `main` that stage is `yarn build`, about 22s
 - [ ] Measure and record here. The estimate is 3m 23s down to about
-      1m 30s, which would put the E2E pair near 4m 30s
+      1m 30s, which would put the E2E pair near 4m 30s. Not measurable yet.
+      #1327 merged at 15:42 on 1 October and `e2e-image-cache.yml` then ran
+      on `main` for the first time, finishing at 15:47: 52s for the backend
+      image and 2m 19s for the frontend, cache export included. Both
+      scopes now exist on `refs/heads/main`. No heavy tier has run since,
+      so the first pull request marked ready after that is the first
+      reading. The last run without it, #1329's in the queue, built the
+      images in 3m 16s and ran the E2E tests in 3m 11s. The allowance is
+      still over, 10.65GB across 154 caches, and should fall as the old
+      per pull request copies pass seven days unread
 
 ## Phase 7: consider splitting the unit suites
 
@@ -306,7 +330,68 @@ waits for.
       required name and passes only when all three did, through the same
       `require-matrix-success.sh` as Phase 3. The first leg, run locally
       with `just uf --shard=1/3`, was 103 test files and 1,036 tests in
-      49s
+      49s. On #1329's merge queue run the three legs took 1m 28s, 1m 43s
+      and 2m 04s, against 5m 07s to 5m 37s for the single job in the runs
+      before it
+- [ ] Measure `Python unit` over a day of runs. The three merge queue
+      runs with `-n auto` took 4m 26s, 4m 07s and 3m 36s for the whole
+      job, against a middle value of about 5m 20s across the sixteen
+      queue runs before it, which ranged from 4m 36s to 5m 50s. That is
+      about a minute, and more than the first run suggested, but the two
+      ranges nearly touch
+
+## Phase 8: what is left to speed up
+
+After Phases 3 to 7 a merge queue run takes about 7 minutes and all of it
+is the E2E pair: on #1329's run the image build and the E2E tests took
+6m 27s between them while everything else had finished inside 4m 30s. If
+Phase 6 delivers its estimate, the pair drops to about 4m 30s and sits
+level with `Python unit`. These are the candidates found while building,
+in the order they would then matter. None is committed to.
+
+- [x] Run the E2E tests on more than one worker. `playwright.config.ts`
+      sets `workers: 1` when `CI` is set, so `E2E (Playwright)` runs its
+      tests one at a time on a 4 core runner, for about 3 minutes. It also
+      sets `retries: 2`. Find out first why it is one: the tests share one
+      seeded stack and database, so some may depend on what another left
+      behind, and that is what would have to be fixed before the number
+      goes up. It was one because that is the default in Playwright's
+      starter configuration, not for a reason of ours. The tests already
+      allow for running side by side: `fullyParallel` is on, a local run
+      uses several workers, each browser project changes its own seeded
+      member, and a retry replays cleanly. Set to two in CI, not four,
+      because the runner's four cores also carry the stack under test.
+      `CI=1 just e2e` passed locally, 43 tests on two workers in 1.2
+      minutes with no retries. Only about 1m 40s of the job's 3 minutes
+      is the tests, so the most this can save is under a minute. Try
+      four once two has held for a while
+- [ ] Give the backend tests a cheap password hasher, if hashing is what
+      limits them. Confirm it first with `pytest --durations=25` on a CI
+      run. `security.py` uses argon2-cffi's defaults, 64MB and four
+      threads per hash, which is right for production and is the likely
+      reason four workers saved only about a minute. This changes how
+      security code is configured, so it needs a decision of its own
+      before any of it is built
+- [ ] Widen what `e2e-image-cache.yml` warms, if Phase 6's reading shows
+      the build stage is what remains. It saves only when a dependency
+      file changes, so a pull request always rebuilds the application
+      layers, `yarn build` at about 22s among them. Warming on every push
+      to `main` that touches `frontend/` or `backend/` would let a pull
+      request that changes only one side take the other image whole from
+      the cache, at the cost of a build on most merges
+- [ ] Decide whether to pay for larger runners, and if so make the runner
+      a repository variable. `runs-on: ${{ vars.CI_RUNNER_PY_UNIT ||
+      'ubuntu-24.04' }}` leaves a job on the free runner until the
+      variable is set, so each job can be switched on its own with
+      `gh variable set` and no commit, and a `just ci-speed` recipe could
+      set them as a group. The organisation is on the Enterprise plan, so
+      larger runners are available once created, in a runner group that
+      allows public repositories. On 1 October 2026 GitHub listed Linux
+      x64 at $0.022 a minute for 8 cores and $0.042 for 16, with none of
+      it free on a public repository, so set a spending limit first. More
+      cores help only the jobs that use them: the frontend and Storybook
+      legs should scale, the E2E tests will not while they run on one
+      worker, and a bigger runner has the same speed per core
 
 ## Decisions
 
