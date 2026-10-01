@@ -3,8 +3,8 @@
 ``manage_passport`` is the second scoped manager, after
 ``manage_teaching``. It opens the user routes alongside ``manage_users``
 and limits them to its whitelist: ``assess_clinician_passport``, itself,
-and the four passport professions. ``passport_write`` is sold, so it is
-never in reach. See
+the four passport professions, and ``passport_write`` for members of
+their own org units, which is otherwise sold. See
 ``docs/docs/plans/2026-09-30-passport-professions-plan.md``.
 """
 
@@ -160,27 +160,99 @@ class TestWhatAPassportAdminMayDo:
         assert resp.status_code == 200, resp.text
 
 
-class TestWhatAPassportAdminMayNotDo:
-    def test_give_away_passport_write(
-        self, client: TestClient, delegate: User
+class TestGrantingWriting:
+    """A Passport admin may give and take ``passport_write`` in their units.
+
+    Writing is otherwise sold. Before 1 October 2026 this class asserted
+    the opposite: that a passport admin was refused it. The plan changed
+    that deliberately, so these cases replaced the refusals.
+    """
+
+    def test_give_a_delegate_writing(
+        self, client: TestClient, delegate: User, db_session: Session
     ) -> None:
-        """Writing is sold, so no admin may grant it."""
         resp = client.patch(
             f"/api/users/{delegate.id}",
             json={"additional_competencies": ["passport_write"]},
         )
-        assert resp.status_code == 403
-        assert "passport_write" in resp.json()["detail"]
+
+        assert resp.status_code == 200, resp.text
+        db_session.refresh(delegate)
+        assert "passport_write" in delegate.get_final_competencies()
+
+    def test_take_a_delegates_writing_away(
+        self, client: TestClient, delegate: User, db_session: Session
+    ) -> None:
+        client.patch(
+            f"/api/users/{delegate.id}",
+            json={"additional_competencies": ["passport_write"]},
+        )
+        resp = client.patch(
+            f"/api/users/{delegate.id}",
+            json={"additional_competencies": []},
+        )
+
+        assert resp.status_code == 200, resp.text
+        db_session.refresh(delegate)
+        assert "passport_write" not in delegate.get_final_competencies()
 
     def test_create_a_delegate_who_can_write(
-        self, client: TestClient, trust: OrgUnit
+        self, client: TestClient, trust: OrgUnit, db_session: Session
     ) -> None:
         resp = client.post(
             "/api/users",
             json=_new_user(trust, additional_competencies=["passport_write"]),
         )
+
+        assert resp.status_code == 200, resp.text
+        created = db_session.get(User, resp.json()["id"])
+        assert created is not None
+        assert "passport_write" in created.get_final_competencies()
+
+    def test_not_to_somebody_at_another_trust(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        elsewhere = OrgUnit(name="Elsewhere Trust", type="organisation")
+        db_session.add(elsewhere)
+        db_session.commit()
+        stranger = _user(
+            db_session, "stranger", "passport_delegate", elsewhere
+        )
+
+        resp = client.patch(
+            f"/api/users/{stranger.id}",
+            json={"additional_competencies": ["passport_write"]},
+        )
+
+        assert resp.status_code == 404
+        db_session.refresh(stranger)
+        assert "passport_write" not in stranger.get_final_competencies()
+
+    def test_a_teaching_admin_cannot(
+        self,
+        test_client: TestClient,
+        trust: OrgUnit,
+        delegate: User,
+        db_session: Session,
+    ) -> None:
+        teacher = _user(db_session, "teacher", "teaching_admin", trust)
+        test_client.post(
+            "/api/auth/login",
+            json={"username": teacher.username, "password": PASSWORD},
+        )
+        csrf = test_client.cookies.get("XSRF-TOKEN")
+        if csrf:
+            test_client.headers["X-CSRF-Token"] = csrf
+
+        resp = test_client.patch(
+            f"/api/users/{delegate.id}",
+            json={"additional_competencies": ["passport_write"]},
+        )
+
         assert resp.status_code == 403
 
+
+class TestWhatAPassportAdminMayNotDo:
     @pytest.mark.parametrize(
         "competency",
         ["manage_users", "prescribe_non_controlled", "view_teaching_cases"],

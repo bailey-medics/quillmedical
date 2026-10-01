@@ -178,12 +178,16 @@ def _load_competencies(directory: Path) -> list[CompetencyEntry]:
 #: side door.
 ROOT_COMPETENCY: str = "manage_users"
 
-#: The paid half of the clinician passport. It comes from an
-#: organisation's enablement or an individual subscription and nowhere
-#: else, so a ``may_grant`` list naming it would let a scoped manager give
-#: away what is sold. Nothing would visibly go wrong: the person would
-#: simply be able to write.
+#: The paid half of the clinician passport. Somebody gets it by paying,
+#: by joining an org unit whose cover is on, or from a Passport admin. So
+#: exactly one scoped manager may name it on its ``may_grant`` list:
+#: ``SOLD_COMPETENCY_GRANTER``. Any other list naming it would let that
+#: manager give away what is sold, and nothing would visibly go wrong: the
+#: person would simply be able to write.
 SOLD_COMPETENCY: str = "passport_write"
+
+#: The one scoped manager whose whitelist may include ``SOLD_COMPETENCY``.
+SOLD_COMPETENCY_GRANTER: str = "manage_passport"
 
 
 def _check_may_grant(entries: list[CompetencyEntry]) -> None:
@@ -198,7 +202,8 @@ def _check_may_grant(entries: list[CompetencyEntry]) -> None:
 
     Raises:
         ValueError: If a list names an unknown or retired competency,
-            the root competency, or the sold one.
+            the root competency, or the sold one on any list but its
+            granter's.
     """
     by_id = {entry.id: entry for entry in entries}
     for entry in entries:
@@ -220,11 +225,14 @@ def _check_may_grant(entries: list[CompetencyEntry]) -> None:
                     f"{ROOT_COMPETENCY!r}, which may only be granted by "
                     "its own holders."
                 )
-            if granted == SOLD_COMPETENCY:
+            if (
+                granted == SOLD_COMPETENCY
+                and entry.id != SOLD_COMPETENCY_GRANTER
+            ):
                 raise ValueError(
                     f"Competency {entry.id!r} may_grant names "
                     f"{SOLD_COMPETENCY!r}, which is sold rather than "
-                    "granted."
+                    f"granted. Only {SOLD_COMPETENCY_GRANTER!r} may."
                 )
 
 
