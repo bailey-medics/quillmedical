@@ -375,6 +375,35 @@ entry in the side navigation and the list of every site behind it.
       belonging to it, and gets a 404 for a ward of another trust. The
       page tests pin the links and which actions each competency sees.
 
+## Phase 7: Administering reaches downward for `manage_users` too
+
+Phase 6 left the two kinds of administrator disagreeing: a teaching admin
+reached everything beneath their organisations, while a `manage_users`
+holder reached only the `org_unit`s carrying a `practising_competency` row
+of their own, so a site added to a trust later was out of their reach
+until a row was written there.
+
+- [x] **`org_units_administered_by` in `backend/app/organisations.py`
+      returns each `org_unit` with a `manage_users` row and everything
+      beneath it**, through `descendant_ids`. It still never reaches
+      upward or sideways, so a ward manager administers their ward and
+      not the trust. Both `/api/org-units` and `/api/users` ask this one
+      function, so they change together. What somebody may practise at an
+      `org_unit`, in `backend/app/cbac/scoped.py`, is untouched: still
+      one row per `org_unit`.
+- [x] **Tests** in `test_administered_places_come_from_rows.py`: a row at
+      a trust reaches its wards, including one added later, and not
+      another trust; a row at a ward reaches neither its trust nor the
+      ward next door; and the same through `GET /api/org-units/{unit_id}`.
+- [x] **`.github/copilot-instructions.md` and `CLAUDE.md`** say that
+      administering is the one exception to "nothing is inherited".
+- [x] **Accessibility**: Phase 6 makes the site rows on an organisation's
+      admin page links for everybody, which changes how people move around
+      the admin area. No journey in
+      `docs/docs/frontend/accessibility/journeys.md` covers the admin
+      pages, so "The site page as a teaching admin" is added to "Not yet
+      run" in `testing-log.md` as a named page.
+
 ## Decisions
 
 - **One competency for content and people** – `manage_teaching` replaces
@@ -414,6 +443,15 @@ entry in the side navigation and the list of every site behind it.
   competency it needs, and the backend leaves out what a caller may not
   see, so a new section cannot leak patient data by forgetting to hide
   itself.
+
+- **Administering flows down the tree; practising does not** – a
+  `manage_users` row, and a teaching admin's membership, reach every
+  `org_unit` beneath them. This reverses part of the practising
+  competencies enforcement plan, which gave a row its own `org_unit` only.
+  That plan's aim, a ward manager without trust-wide authority, still
+  holds, because nothing flows upward. Clinical practice stays one row per
+  `org_unit`: being authorised to prescribe at a trust should not mean
+  being authorised on every ward.
 
 - **Keep the id `teaching_admin`, drop `teaching_manager`** – `teaching_admin`
   is the one used across the tests, the CI seed and the dev seed script.

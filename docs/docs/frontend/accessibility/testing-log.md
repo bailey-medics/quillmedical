@@ -80,3 +80,10 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   as a `teaching_admin`: check the Admin entry and its children are
   announced, and that no Patients entry is reached. No journey yet covers
   the admin pages themselves.
+- **The site page as a teaching admin** – the same plan's Phase 6 makes
+  each row of the Sites table on an organisation's admin page a link to
+  `/admin/sites/:id` for everybody who can open the page, where it was a
+  link for operators only. No journey covers the admin pages, so this is a
+  named page rather than a journey: by keyboard and screen reader, check
+  that a site row is reached and announced as something that opens, and
+  that the site page's heading is read on arrival.

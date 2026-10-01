@@ -43,6 +43,7 @@ from app.models import (
 )
 from app.org_units.relations import relation_grants_reach
 from app.org_units.tree import (
+    descendant_ids,
     organisation_org_unit_ids,
     root_ids_of,
 )
@@ -183,19 +184,28 @@ def org_units_administered_by(db: Session, user: User) -> set[int] | None:
     because "all of them" and "these thousands" are different answers
     and only the first stays true as the table grows.
 
-    **Nothing is inherited**, which is the point of reading rows. A row
-    at a trust says nothing about its wards and a row at a ward says
-    nothing about its trust, so a ward manager can administer their ward
-    without trust-wide authority, and "why could this person do that?"
-    is answered by one row rather than by replaying a hierarchy.
+    **A row reaches downward and never upward.** A row at a trust
+    administers the trust and every org_unit beneath it, at any depth; a
+    row at a ward says nothing about its trust or the ward next door. So
+    a ward manager still administers their ward without trust-wide
+    authority, and "why could this person do that?" is answered by one
+    row at that org_unit or above it.
 
-    This used to answer from membership: the organisations somebody
-    belonged to, plus every org_unit beneath them at any depth. That
-    could only ever say "all of this trust or none of it", and it meant a
-    competency granted anywhere was a competency everywhere. The rows
-    were seeded from exactly those memberships by migration
-    ``b4c2e7a91f38``, so the answer on the day it deployed was the
-    answer the day before. See
+    For a while a row reached only its own org_unit. That left somebody
+    who administers a trust unable to open a site added to it later,
+    until a row was written there too, and it disagreed with
+    ``manage_teaching``, whose holder reaches everything beneath the
+    organisations they belong to. Authority in the governance tree flows
+    down, and both now say so.
+
+    This applies to administering only. What somebody may *practise* at
+    an org_unit is still one row per org_unit with nothing inherited:
+    see ``app/cbac/scoped.py``.
+
+    Before rows, this answered from membership: the organisations
+    somebody belonged to, plus every org_unit beneath them. That could
+    only ever say "all of this trust or none of it". The rows were
+    seeded from those memberships by migration ``b4c2e7a91f38``. See
     ``docs/docs/plans/2026-09-21-practising-competencies-enforcement-plan.md``.
 
     Reach is deliberately not part of this, and never was. Reach is why
@@ -212,7 +222,7 @@ def org_units_administered_by(db: Session, user: User) -> set[int] | None:
     if user.platform_role == "superadmin":
         return None
 
-    return {
+    authorised = {
         int(org_unit_id)
         for org_unit_id in db.execute(
             select(PractisingCompetency.org_unit_id).where(
@@ -224,6 +234,7 @@ def org_units_administered_by(db: Session, user: User) -> set[int] | None:
         .all()
         if org_unit_id is not None
     }
+    return authorised | descendant_ids(db, sorted(authorised))
 
 
 def get_reachable_org_unit_ids(

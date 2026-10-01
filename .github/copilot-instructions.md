@@ -268,6 +268,11 @@ read of a place goes through this module.
   manager can administer their ward without trust-wide authority, and "why
   could this person do that?" is answered by one row rather than by replaying
   a hierarchy.
+- **The one exception is administering, which reaches downward.**
+  `org_units_administered_by` in `backend/app/organisations.py` gives a
+  `manage_users` row at an org unit that org unit and everything beneath it,
+  and a scoped manager such as `manage_teaching` reaches everything beneath
+  the organisations they belong to. Neither reaches upward or sideways.
 - **A row beyond somebody's ceiling has no effect**, so a lapsed
   qualification narrows every place at once without a row being touched – and
   a ceiling with no row behind it authorises nothing.
