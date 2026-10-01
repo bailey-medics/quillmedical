@@ -23,12 +23,35 @@ os.environ.setdefault("CLINICAL_SERVICES_ENABLED", "false")
 # Force dry-run to prevent tests from sending real emails via Resend
 os.environ["EMAIL_DRY_RUN"] = "true"
 
-from app import email_send
+from argon2 import PasswordHasher
+
+from app import email_send, security
 from app.db import get_core_db
 from app.deps import require_clinical_services
 from app.main import app, limiter
 from app.models import Base, OrgUnit, Role, User
 from app.security import hash_password
+
+# Hash passwords cheaply in tests. The hasher app/security.py builds is
+# argon2-cffi's default, 64MB and four threads per hash, which is right for
+# production and is most of what this suite spent its time on: almost every
+# test makes a user. It also used every core for each hash, so running the
+# suite on several workers gained little.
+#
+# This swaps the hasher for the test process only. Nothing in the app reads a
+# setting for it, so there is no switch that could weaken a deployment.
+# `verify_password` reads the parameters out of the hash itself, so a hash
+# made here still verifies. The hasher production uses is kept, and
+# tests/test_security.py checks it is as strong as it should be.
+PRODUCTION_PASSWORD_HASHER = security._ph
+security._ph = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1)
+
+
+@pytest.fixture
+def production_password_hasher() -> PasswordHasher:
+    """The hasher app/security.py builds, before the cheap one replaced it."""
+    return PRODUCTION_PASSWORD_HASHER
+
 
 # Use in-memory SQLite database for unit tests
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
