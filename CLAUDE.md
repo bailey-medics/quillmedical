@@ -229,18 +229,28 @@ reasoning is in `admin.yaml`.
 catalogue entry may carry `may_grant` (competencies its holder may grant and
 remove) and `may_assign_professions` (base professions its holder may give).
 A caller's scope is the union across what they hold; `manage_users` means no
-limit and may appear on no list. `manage_teaching` is the first: a teaching
-admin grants only teaching competencies and professions, and acts on a whole
-account only when its profession is a teaching one.
+limit and may appear on no list. A competency carrying either list is a
+**scoped manager**. `manage_teaching` is one: a teaching admin grants only
+teaching competencies and professions, and acts on a whole account only when
+its profession is a teaching one. `manage_passport` is the other, for the
+four passport professions.
 
 - **Backend**: `backend/app/cbac/grant_scope.py` – `may_grant`,
-  `may_assign_profession`, `may_manage_account`. Routes open to either
-  competency check it in the body; removal counts as much as granting.
+  `may_assign_profession`, `may_manage_account`. The people routes admit
+  `manage_users` or any of `SCOPED_MANAGER_IDS` (in
+  `backend/app/cbac/competencies.py`, worked out from the catalogue), then
+  check the scope in the body; removal counts as much as granting. Never
+  name one scoped manager in a people route: a new one is a YAML entry.
+- **Frontend**: the admin guards use `SCOPED_MANAGER_IDS` from
+  `src/types/cbac.ts`, derived the same way.
 - **Frontend**: `/api/auth/me` returns `may_grant` and
   `may_assign_professions` (null for no limit); pickers read them through
   `useGrantScope` rather than working the whitelist out again.
 - **A whitelist, not a tag**: a new competency can be granted by nobody but
   `manage_users` until somebody adds it to a list.
+- **`passport_write` is sold**: the loader refuses it on every `may_grant`
+  list except `manage_passport`'s, so only a Passport admin may hand it
+  out, and only to members of their own org units.
 
 #### Practising competencies – where
 
@@ -263,6 +273,11 @@ read of a place goes through this module.
   manager can administer their ward without trust-wide authority, and "why
   could this person do that?" is answered by one row rather than by replaying
   a hierarchy.
+- **The one exception is administering, which reaches downward.**
+  `org_units_administered_by` in `backend/app/organisations.py` gives a
+  `manage_users` row at an org unit that org unit and everything beneath it,
+  and a scoped manager such as `manage_teaching` reaches everything beneath
+  the organisations they belong to. Neither reaches upward or sideways.
 - **A row beyond somebody's ceiling has no effect**, so a lapsed
   qualification narrows every place at once without a row being touched – and
   a ceiling with no row behind it authorises nothing.
