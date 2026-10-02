@@ -128,6 +128,12 @@ class NotInMessageOrganisation(MessagingError):
     error_code = "not_in_message_organisation"
     message = "You must be staff at one of the message's organisations to join"
 
+
+class LacksPatientRecordCompetency(MessagingError):
+    status_code = 403
+    error_code = "lacks_patient_record_competency"
+    message = "You are not authorised to read patient records"
+
     # ---------------------------------------------------------------------------
     # Internal helpers
     # ---------------------------------------------------------------------------
@@ -155,41 +161,82 @@ def _snowball_orgs(db: Session, conversation_id: int, user_id: int) -> None:
             )
 
 
+def _reads_without_taking_part(
+    competencies: list[str],
+    user_org_unit_ids: set[int],
+    granted_patient_ids: set[str],
+    conv: Conversation,
+) -> bool:
+    """Whether somebody outside a conversation may still read it.
+
+    A conversation is about a patient, so reading one is reading part of
+    their record, and it is gated the way ``check_user_patient_access``
+    gates the record: a competency saying *what*, paired with a scope
+    saying *which*.
+
+    - ``access_patient_records`` and an org_unit shared with the
+      conversation
+    - ``access_granted_patient_records`` and an active
+      ``ExternalPatientAccess`` grant naming the patient
+
+    The scope alone used to be enough. A trainee placed at an org_unit, or
+    an account whose competency had been withdrawn but whose grant row
+    was still there, could read every message; neither could have opened
+    the patient's record.
+
+    A participant is not asked this. They were added to this one
+    conversation by name, and the patient may be among them.
+
+    Args:
+        competencies: The reader's current competency ids.
+        user_org_unit_ids: The org_units the reader is a member of.
+        granted_patient_ids: Patients the reader holds an active grant for.
+        conv: The conversation being read.
+
+    Returns:
+        True if either pairing holds.
+    """
+    if "access_patient_records" in competencies:
+        conv_org_unit_ids = {place.id for place in conv.places}
+        if user_org_unit_ids & conv_org_unit_ids:
+            return True
+
+    if "access_granted_patient_records" in competencies:
+        if conv.patient_id in granted_patient_ids:
+            return True
+
+    return False
+
+
+def _granted_patient_ids(db: Session, user: User) -> set[str]:
+    """Patients this user holds an active external access grant for."""
+    rows = db.execute(
+        ExternalPatientAccess.__table__.select().where(
+            ExternalPatientAccess.user_id == user.id,
+            ExternalPatientAccess.revoked_at.is_(None),
+        )
+    ).all()
+    return {r.patient_id for r in rows}
+
+
 def _user_has_conversation_access(
     db: Session, user: User, conv: Conversation
 ) -> bool:
     """Check if user can access a conversation.
 
-    Access is granted if:
-    - user is a participant, OR
-    - user's org(s) overlap with the conversation's orgs, OR
-    - user is an external type with active access to the patient.
+    Access is granted if the user is a participant, or may read without
+    taking part: see ``_reads_without_taking_part``.
     """
-    # Participant check
     cp = next((p for p in conv.participants if p.user_id == user.id), None)
     if cp is not None:
         return True
 
-        # Org overlap check
-    user_org_units = set(get_member_org_unit_ids(db, user.id))
-    conv_org_unit_ids = {place.id for place in conv.places}
-    if user_org_units & conv_org_unit_ids:
-        return True
-
-        # External access grant (see ALL messages for granted patients)
-    grant = (
-        db.query(ExternalPatientAccess)
-        .filter(
-            ExternalPatientAccess.user_id == user.id,
-            ExternalPatientAccess.patient_id == conv.patient_id,
-            ExternalPatientAccess.revoked_at.is_(None),
-        )
-        .first()
+    return _reads_without_taking_part(
+        user.get_final_competencies(),
+        set(get_member_org_unit_ids(db, user.id)),
+        _granted_patient_ids(db, user),
+        conv,
     )
-    if grant is not None:
-        return True
-
-    return False
 
 
 def _user_display_name(user: User) -> str:
@@ -363,9 +410,8 @@ def list_conversations(
 ) -> list[ConversationOut]:
     """List conversations the user can access.
 
-    Includes conversations where the user is a participant, or where
-    the user's org(s) overlap with the conversation's orgs, or where
-    the user is an external type with access to the patient.
+    Includes conversations where the user is a participant, and those
+    they may read without taking part: see ``_reads_without_taking_part``.
     """
     query = db.query(Conversation)
     if status:
@@ -377,28 +423,17 @@ def list_conversations(
     conversations = query.all()
 
     user_org_unit_ids = set(get_member_org_unit_ids(db, user.id))
-
-    # Get per-patient access grants (for users with external patient access)
-    external_patient_ids: set[str] = set()
-    rows = db.execute(
-        ExternalPatientAccess.__table__.select().where(
-            ExternalPatientAccess.user_id == user.id,
-            ExternalPatientAccess.revoked_at.is_(None),
-        )
-    ).all()
-    external_patient_ids = {r.patient_id for r in rows}
+    granted_patient_ids = _granted_patient_ids(db, user)
+    competencies = user.get_final_competencies()
 
     results: list[ConversationOut] = []
     for conv in conversations:
         cp = next((p for p in conv.participants if p.user_id == user.id), None)
         is_participant = cp is not None
 
-        # Access check: participant OR org overlap OR external grant
-        conv_org_unit_ids = {place.id for place in conv.places}
-        has_org_access = bool(user_org_unit_ids & conv_org_unit_ids)
-        has_external_access = conv.patient_id in external_patient_ids
-
-        if not (is_participant or has_org_access or has_external_access):
+        if not is_participant and not _reads_without_taking_part(
+            competencies, user_org_unit_ids, granted_patient_ids, conv
+        ):
             continue
 
         if cp and cp.last_read_at:
@@ -606,8 +641,8 @@ def list_patient_conversations(
 ) -> list[ConversationOut]:
     """List all conversations about a patient.
 
-    Only returns conversations the user can access via org membership,
-    participation, or external access grant.
+    Only returns conversations the user takes part in or may read
+    without taking part: see ``_reads_without_taking_part``.
     """
     # First verify user has access to this patient
     if not check_user_patient_access(db, user, patient_id):
@@ -623,28 +658,18 @@ def list_patient_conversations(
     conversations = query.all()
 
     user_org_unit_ids = set(get_member_org_unit_ids(db, user.id))
-
-    # Get per-patient access grants
-    ext_rows = db.execute(
-        ExternalPatientAccess.__table__.select().where(
-            ExternalPatientAccess.user_id == user.id,
-            ExternalPatientAccess.revoked_at.is_(None),
-        )
-    ).all()
-    granted_patient_ids = {r.patient_id for r in ext_rows}
+    granted_patient_ids = _granted_patient_ids(db, user)
+    competencies = user.get_final_competencies()
 
     results: list[ConversationOut] = []
     for conv in conversations:
         cp = next((p for p in conv.participants if p.user_id == user.id), None)
         is_participant = cp is not None
 
-        # Access check: participant OR org overlap OR per-patient grant
-        if not is_participant:
-            conv_org_unit_ids = {place.id for place in conv.places}
-            has_org_access = bool(user_org_unit_ids & conv_org_unit_ids)
-            has_grant = conv.patient_id in granted_patient_ids
-            if not has_org_access and not has_grant:
-                continue
+        if not is_participant and not _reads_without_taking_part(
+            competencies, user_org_unit_ids, granted_patient_ids, conv
+        ):
+            continue
 
         if cp is not None and cp.last_read_at:
             unread = sum(
@@ -689,6 +714,11 @@ def join_conversation(
     Deliberately membership, not reach. A trainee at a site receives the
     organisation's teaching content, and that must not also admit them to
     its staff conversations.
+
+    Membership says *where*; ``access_patient_records`` says *what*, and
+    is required too. Joining makes somebody a participant, and a
+    participant reads every message, so a staff member who could not open
+    the patient's record must not be able to join their way in.
     """
     conv = db.get(Conversation, conversation_id)
     if conv is None:
@@ -700,6 +730,11 @@ def join_conversation(
     conv_org_unit_ids = {place.id for place in conv.places}
     if not (staff_org_unit_ids & conv_org_unit_ids):
         raise NotInMessageOrganisation()
+
+    # After the membership check, so somebody who is not staff here is
+    # told that, as before, whatever competencies they hold.
+    if "access_patient_records" not in user.get_final_competencies():
+        raise LacksPatientRecordCompetency()
 
     existing = (
         db.query(ConversationParticipant)

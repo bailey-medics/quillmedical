@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models import (
+    ExternalPatientAccess,
     Message,
     OrgUnit,
     User,
@@ -1136,6 +1137,211 @@ class TestOrgScopedAccess:
 
         resp = authenticated_client.get(f"/api/conversations/{conv_id}")
         assert resp.status_code == 404
+
+
+def _login(client: TestClient, username: str, password: str) -> str:
+    """Log in on the shared client and return that session's CSRF token."""
+    client.post(
+        "/api/auth/login",
+        json={"username": username, "password": password},
+    )
+    client.get("/api/auth/me")
+    token = client.cookies.get("XSRF-TOKEN")
+    assert token is not None
+    return token
+
+
+def _reader(
+    db: Session,
+    username: str,
+    *,
+    profession: str,
+) -> User:
+    """A user with a named profession, so their competencies are real."""
+    user = User(
+        username=username,
+        email=f"{username}@example.com",
+        password_hash=hash_password("ReaderPassword123!"),
+        is_active=True,
+        email_verified=True,
+        base_profession=profession,
+    )
+    db.add(user)
+    db.flush()
+    return user
+
+
+class TestReadingNeedsACompetency:
+    """Reading a conversation from outside it needs *what* as well as *where*.
+
+    A shared org_unit or an external grant used to be enough on its own.
+    Each is now paired with its competency, as reaching the patient's
+    record is: ``access_patient_records`` with the org_unit,
+    ``access_granted_patient_records`` with the grant. The tests fail if
+    either half is dropped – ``second_user`` and ``external_hcp`` hold the
+    competency and are admitted by the same scope that refuses the
+    accounts here.
+    """
+
+    @staticmethod
+    def _conversation(client: TestClient, csrf_token: str) -> int:
+        resp = client.post(
+            "/api/conversations",
+            json={"patient_id": PATIENT_ID, "initial_message": "Bloods"},
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        assert resp.status_code == 200
+        return int(resp.json()["id"])
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_org_member_without_the_competency_cannot_read(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+        db_session: Session,
+        test_org: OrgUnit,
+    ):
+        """Staff at the conversation's org_unit, but no clinical competency."""
+        conv_id = self._conversation(authenticated_client, csrf_token)
+        operator = _reader(
+            db_session, "org_operator", profession="superadmin_profession"
+        )
+        add_org_unit_member(db_session, test_org.id, operator.id, "staff")
+        db_session.commit()
+        assert (
+            "access_patient_records" not in operator.get_final_competencies()
+        )
+
+        _login(authenticated_client, "org_operator", "ReaderPassword123!")
+
+        detail = authenticated_client.get(f"/api/conversations/{conv_id}")
+        assert detail.status_code == 404
+        listed = authenticated_client.get("/api/conversations")
+        assert listed.json()["conversations"] == []
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_org_member_without_the_competency_cannot_join(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+        db_session: Session,
+        test_org: OrgUnit,
+    ):
+        """Joining would make them a participant, who reads everything."""
+        conv_id = self._conversation(authenticated_client, csrf_token)
+        operator = _reader(
+            db_session, "join_operator", profession="superadmin_profession"
+        )
+        add_org_unit_member(db_session, test_org.id, operator.id, "staff")
+        db_session.commit()
+
+        token = _login(
+            authenticated_client, "join_operator", "ReaderPassword123!"
+        )
+        resp = authenticated_client.post(
+            f"/api/conversations/{conv_id}/join",
+            headers={"X-CSRF-Token": token},
+        )
+
+        assert resp.status_code == 403
+        assert (
+            resp.json()["detail"]["error_code"]
+            == "lacks_patient_record_competency"
+        )
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_grant_with_its_competency_can_read(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+        db_session: Session,
+        test_user: User,
+    ):
+        """An external clinician with a grant naming this patient."""
+        conv_id = self._conversation(authenticated_client, csrf_token)
+        external = _reader(
+            db_session, "external_reader", profession="external_hcp"
+        )
+        db_session.add(
+            ExternalPatientAccess(
+                user_id=external.id,
+                patient_id=PATIENT_ID,
+                granted_by_user_id=test_user.id,
+            )
+        )
+        db_session.commit()
+
+        _login(authenticated_client, "external_reader", "ReaderPassword123!")
+
+        detail = authenticated_client.get(f"/api/conversations/{conv_id}")
+        assert detail.status_code == 200
+        assert detail.json()["is_participant"] is False
+        listed = authenticated_client.get("/api/conversations")
+        assert [c["id"] for c in listed.json()["conversations"]] == [conv_id]
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_grant_without_its_competency_cannot_read(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+        db_session: Session,
+        test_user: User,
+    ):
+        """The grant row is still there; the competency is not."""
+        conv_id = self._conversation(authenticated_client, csrf_token)
+        lapsed = _reader(
+            db_session, "lapsed_grant", profession="superadmin_profession"
+        )
+        db_session.add(
+            ExternalPatientAccess(
+                user_id=lapsed.id,
+                patient_id=PATIENT_ID,
+                granted_by_user_id=test_user.id,
+            )
+        )
+        db_session.commit()
+
+        _login(authenticated_client, "lapsed_grant", "ReaderPassword123!")
+
+        detail = authenticated_client.get(f"/api/conversations/{conv_id}")
+        assert detail.status_code == 404
+        listed = authenticated_client.get("/api/conversations")
+        assert listed.json()["conversations"] == []
+
+    @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())
+    def test_participant_without_a_competency_still_reads(
+        self,
+        _mock_fhir,
+        authenticated_client: TestClient,
+        csrf_token: str,
+        db_session: Session,
+    ):
+        """Somebody added by name is not asked for a competency."""
+        invited = _reader(
+            db_session, "invited_one", profession="superadmin_profession"
+        )
+        db_session.commit()
+        resp = authenticated_client.post(
+            "/api/conversations",
+            json={
+                "patient_id": PATIENT_ID,
+                "initial_message": "Bloods",
+                "participant_ids": [invited.id],
+            },
+            headers={"X-CSRF-Token": csrf_token},
+        )
+        assert resp.status_code == 200
+        conv_id = resp.json()["id"]
+
+        _login(authenticated_client, "invited_one", "ReaderPassword123!")
+
+        detail = authenticated_client.get(f"/api/conversations/{conv_id}")
+        assert detail.status_code == 200
+        assert detail.json()["is_participant"] is True
 
         # ---------------------------------------------------------------------------
         # Shared organisations endpoint

@@ -325,7 +325,7 @@ they are what the next reader, human or model, takes as the reason.
 A decision first, then code. Not urgent: these routes only exist when
 clinical services are on, and the live deployment has them off.
 
-- [ ] Decide whether reading a conversation should require a competency.
+- [x] Decide whether reading a conversation should require a competency.
       Reaching a patient record requires one on every route, through
       `check_user_patient_access` in `backend/app/organisations.py`. The
       `/conversations` routes in `backend/app/main.py` carry only
@@ -334,10 +334,38 @@ clinical services are on, and the live deployment has them off.
       code, the comments or the plans says whether that difference is
       intended.
 
-- [ ] If a competency is wanted, add it and its tests, following
+      Decided: yes, for anybody who is not a participant. The review's
+      picture was half right. Starting a conversation and listing a
+      patient's conversations already went through
+      `check_user_patient_access`. Reading one, listing your own and
+      joining did not: a shared org_unit or an external grant was enough
+      on its own. So a trainee placed at an org_unit, or an account whose
+      competency was withdrawn while its grant row stayed, could read
+      every message about a patient whose record they could not open.
+
+      A conversation about a patient is part of that patient's record. The
+      NHS Records Management Code of Practice 2021 lists text and instant
+      messages among the formats a record takes, and Caldicott principle 4
+      asks for access on a strict need-to-know basis. That argues for one
+      gate, not two.
+
+- [x] If a competency is wanted, add it and its tests, following
       `backend/tests/test_patient_access_competency.py`. If the difference
       is intended, say so in a comment beside the conversation routes, so
       the next review does not raise it again.
+
+      Both, because both turned out to apply. In `backend/app/messaging.py`
+      each scope is now paired with its competency, the way the record is:
+      `access_patient_records` with a shared org_unit,
+      `access_granted_patient_records` with a grant. Joining needs
+      `access_patient_records` as well as staff membership, and refuses
+      with a new error code, `lacks_patient_record_competency`. The routes
+      still carry no `has_competency` dependency, because which competency
+      applies depends on how the caller reaches the conversation; a comment
+      above them in `main.py` says so. Tests are in
+      `backend/tests/test_messaging.py`, `TestReadingNeedsACompetency`.
+
+      A participant is still asked for no competency: see Decisions.
 
 ## Decisions
 
@@ -349,6 +377,15 @@ clinical services are on, and the live deployment has them off.
   before the backend starts refusing a wildcard, or a deploy that lands
   first takes the service down. Phase 2 exists so the next environment
   cannot repeat the omission.
+
+- **A participant in a conversation needs no competency** – phase 8
+  gated everybody who reads from outside a conversation and left
+  participants alone. A participant was added to that one conversation
+  by name, and the patient may be one. But `add_participant` checks
+  nothing about the person added, so a participant can still bring in
+  somebody who could not open the record. Whether adding should check
+  the newcomer, and against which competency, is open; no catalogue
+  entry describes "may take part in a conversation".
 
 - **Whether a login code may be one step out is not decided** –
   `verify_totp_code` accepts only the current 30-second step, though its
