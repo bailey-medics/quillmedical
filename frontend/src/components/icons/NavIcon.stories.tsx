@@ -23,6 +23,7 @@ const iconNames = [
   "adjustments",
   "building-community",
   "feedback",
+  "safety",
 ] as const;
 
 const sizes = ["xs", "sm", "md", "lg", "xl"] as const;

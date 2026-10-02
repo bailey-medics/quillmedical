@@ -69,6 +69,14 @@ const AVAILABLE_FEATURES: {
     description:
       "Competency records signed off by a named assessor, held per clinician",
   },
+  {
+    // A mock-up with no backend: the key gates static pages and a
+    // sidebar entry, nothing more. See
+    // docs/docs/plans/2026-10-02-safety-feature-mock-up-plan.md.
+    key: "safety",
+    label: "Safety",
+    description: "Clinical safety cases, hazard logs and compliance sign-off",
+  },
 ];
 
 /**
