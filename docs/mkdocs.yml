@@ -65,6 +65,7 @@ nav:
       - Public Pages: frontend/public-pages.md
       - User Workflows: frontend/workflows.md
       - Security: frontend/security.md
+      - Client updates: frontend/client-updates.md
       - Accessibility:
           - Overview: frontend/accessibility.md
           - Test journeys: frontend/accessibility/journeys.md
