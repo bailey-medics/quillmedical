@@ -1957,7 +1957,7 @@ _gcp_env_project env:
 
 
 alias ba := build-admin
-# Build and push the admin Docker image to a remote environment (app)
+# Build and push the admin image, and point the Cloud Run Job at it (app)
 build-admin env:
     #!/usr/bin/env bash
     {{initialise}} "build-admin ({{env}})"
@@ -1982,26 +1982,19 @@ build-admin env:
     docker push "$IMAGE"
     echo "✓ Admin image pushed to ${IMAGE}"
 
-    # Deploy the Cloud Run Job (creates if new, updates if existing)
-    # Look up the Cloud SQL core database private IP
-    echo "Looking up database connection..."
-    CORE_DB_HOST=$(gcloud sql instances describe "quill-core-{{env}}" \
-        --project="$PROJECT" \
-        --format='value(ipAddresses[0].ipAddress)')
-
-    echo "Deploying Cloud Run Job..."
-    gcloud run jobs deploy "quill-admin-{{env}}" \
+    # Point the job at the new image, and change nothing else. Terraform
+    # owns the job (`job_name = "admin"` in infra/main.tf): its egress, its
+    # environment and its secrets. This used to be `gcloud run jobs deploy`
+    # with its own copy of those, which set the egress back to
+    # private-ranges-only and dropped the PASSPORT_* variables until the
+    # next apply. So the job has to exist already; Terraform creates it.
+    echo "Pointing the Cloud Run Job at the new image..."
+    gcloud run jobs update "quill-admin-{{env}}" \
         --project="$PROJECT" \
         --region="$REGION" \
         --image="$IMAGE" \
-        --vpc-connector="quill-vpc-cx-{{env}}" \
-        --vpc-egress=private-ranges-only \
-        --max-retries=0 \
-        --task-timeout=300s \
-        --set-env-vars "CORE_DB_HOST=${CORE_DB_HOST},CORE_DB_NAME=quill_core,CORE_DB_USER=quill" \
-        --set-secrets "CORE_DB_PASSWORD=core-db-password:latest,JWT_SECRET=jwt-secret:latest" \
         --quiet
-    echo "✓ Cloud Run Job deployed"
+    echo "✓ Cloud Run Job updated"
 
 
 alias bc := build-caption

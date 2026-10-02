@@ -94,7 +94,7 @@ before Terraform has set the variable, and refuse to boot.
 
 ## Phase 3: Stop `just build-admin` overwriting Terraform's job settings
 
-- [ ] The `build-admin` recipe in the `Justfile` ends with
+- [x] The `build-admin` recipe in the `Justfile` ends with
       `gcloud run jobs deploy "quill-admin-{{env}}"`, passing
       `--vpc-egress=private-ranges-only` and a full `--set-env-vars` and
       `--set-secrets`. Terraform owns that same job in `infra/main.tf`
@@ -111,8 +111,12 @@ before Terraform has set the variable, and refuse to boot.
       pushes the admin image on every backend change, so the recipe is only
       for running tooling that has not been deployed yet.
 
-- [ ] Update `docs/docs/infrastructure/admin.md`, which describes the recipe
+- [x] Update `docs/docs/infrastructure/admin.md`, which describes the recipe
       as updating the Cloud Run Job, if the wording no longer fits.
+
+      No change needed. The page says the recipe "updates the Cloud Run Job
+      to use it", which is now exactly what it does, and its troubleshooting
+      section already says Terraform creates the job.
 
 ## Phase 4: One value for the `sm` breakpoint
 
