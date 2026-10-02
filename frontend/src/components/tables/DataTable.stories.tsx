@@ -6,9 +6,11 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 import { fn } from "storybook/test";
-import { Container } from "@mantine/core";
+import { Container, Group } from "@mantine/core";
 import { ActiveStatusBadge } from "@/components/badge";
+import IconTextButton from "@/components/button/IconTextButton";
 import { StoryNote } from "@/stories/variants";
 import DataTable, { type Column } from "./DataTable";
 
@@ -257,8 +259,8 @@ const threeColumns: Column<Admission>[] = sevenColumns.filter((c) =>
 );
 
 /**
- * Seven columns in a 40rem space. Seven columns need 70rem at the
- * default 10rem each, so the table draws cards. Widen the Storybook
+ * Seven columns in a 40rem space. Seven columns need 56rem at the
+ * default 8rem each, so the table draws cards. Widen the Storybook
  * canvas and nothing changes: the container, not the screen, is what is
  * measured.
  */
@@ -282,7 +284,7 @@ export const SevenColumnsInANarrowSpace: StoryObj<typeof DataTable<Admission>> =
   };
 
 /**
- * Three columns in the same 40rem space. Three columns need 30rem, which
+ * Three columns in the same 40rem space. Three columns need 24rem, which
  * fits, so this stays a table where the one above became cards.
  */
 export const ThreeColumnsInANarrowSpace: StoryObj<typeof DataTable<Admission>> =
@@ -306,8 +308,8 @@ export const ThreeColumnsInANarrowSpace: StoryObj<typeof DataTable<Admission>> =
 
 /**
  * Seven columns at the full width of the page container. Drag the
- * Storybook canvas narrower than about 70rem and it switches to cards;
- * widen it past 72rem and it comes back, the 2rem margin stopping it
+ * Storybook canvas narrower than about 56rem and it switches to cards;
+ * widen it past 58rem and it comes back, the 2rem margin stopping it
  * flickering at the edge.
  */
 export const SevenColumnsAtFullWidth: StoryObj<typeof DataTable<Admission>> = {
@@ -320,10 +322,48 @@ export const SevenColumnsAtFullWidth: StoryObj<typeof DataTable<Admission>> = {
         getRowKey={(a) => a.id}
       />
       <StoryNote mt="xs">
-        Shrink the canvas below about 70rem to see the switch to cards
+        Shrink the canvas below about 56rem to see the switch to cards
       </StoryNote>
     </div>
   ),
+};
+
+function NarrowTableThatRemounts() {
+  const [mountCount, setMountCount] = useState(0);
+  return (
+    <div>
+      <Group justify="flex-end" mb="md">
+        <IconTextButton
+          icon="refresh"
+          label="Remount the table"
+          onClick={() => setMountCount((count) => count + 1)}
+        />
+      </Group>
+      <Container size={40 * 16} px={0}>
+        <DataTable
+          key={mountCount}
+          data={admissions}
+          columns={sevenColumns}
+          onRowClick={fn()}
+          getRowKey={(a) => a.id}
+        />
+      </Container>
+      <StoryNote mt="xs">
+        Seven columns in 40rem, mounted afresh on each press. It must appear as
+        cards at once, never as a table for a frame first.
+      </StoryNote>
+    </div>
+  );
+}
+
+/**
+ * Remount to check for a flash. The container is measured before the
+ * first paint, so a table that is going to be cards is never drawn as a
+ * table first. Press the button and watch the top of the table: there
+ * should be no flicker. Before the fix there was one frame of table.
+ */
+export const RemountToCheckForAFlash: StoryObj<typeof DataTable<Admission>> = {
+  render: () => <NarrowTableThatRemounts />,
 };
 
 /**

@@ -68,14 +68,14 @@ describe("DataTable fit", () => {
     size.width = 0;
   });
 
-  it("draws seven columns as cards in 500px, since they need 1120px", () => {
+  it("draws seven columns as cards in 500px, since they need 896px", () => {
     size.width = 500;
     render(seven);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(screen.getByText("a1")).toBeInTheDocument();
   });
 
-  it("keeps three columns as a table in 500px, since they need 480px", () => {
+  it("keeps three columns as a table in 500px, since they need 384px", () => {
     size.width = 500;
     render(three);
     expect(screen.getByRole("table")).toBeInTheDocument();

@@ -18,34 +18,42 @@ anyone setting it by hand.
 
 ## Phase 1: Switch on fit, in `DataTable`
 
-- [ ] **Measure the container.** `DataTableView` wraps its output in a
+- [x] **Measure the container.** `DataTableView` wraps its output in a
       `div` carrying the `ref` from Mantine's `useElementSize`, which
       reports the width and updates it whenever the window is dragged or
       the sidebar opens or closes. Every rendering (loading, error, empty,
       cards, table) sits inside the same wrapper so the measurement never
       disappears between states.
-- [ ] **Work out what the columns need.** A new `minColumnWidth` prop in
-      rem, default 10, times the column count. A table that knows better
+- [x] **Work out what the columns need.** A new `minColumnWidth` prop in
+      rem, default 8, times the column count. A table that knows better
       passes `cardsBelow`, a width in rem under which it goes to cards,
       and that replaces the calculation. Rem is converted to pixels with
       the document's root font size, so a user who has enlarged their
       text gets cards sooner, which is right: their columns need more
       room.
-- [ ] **Switch with a margin.** Cards when the container is narrower than
+- [x] **Switch with a margin.** Cards when the container is narrower than
       the need; back to a table only once it is wider than the need plus
       2rem. Without the margin a switch to cards can change the page's
       height, bring a scrollbar in, narrow the container by its width and
       flip the layout straight back.
-- [ ] **Keep the viewport rule as a floor.** Below `sm` the table is
+- [x] **Keep the viewport rule as a floor.** Below `sm` the table is
       always cards, as now, so a phone in portrait never sees a table even
       with two columns. A container that has not been measured yet (width
       0, which is also what jsdom reports) falls back to the viewport rule
-      alone, so the first paint and every existing test behave as before.
-- [ ] **Stories** in `DataTable.stories.tsx`: seven columns in a 40rem
+      alone, so every existing test behaves as before.
+- [x] **Measure before the first paint.** Seen on `/safety` once the
+      first version was in: the ResizeObserver behind `useElementSize`
+      reports after the first paint, so a table that was going to be cards
+      was drawn as a table for one frame and then flipped. The wrapper is
+      now also measured once in a `useLayoutEffect`, which runs before
+      paint, and that first width stands in until the observer catches up.
+      A callback ref both stores the node for that and hands it to the
+      observer. jsdom still measures 0, so nothing changes for the tests.
+- [x] **Stories** in `DataTable.stories.tsx`: seven columns in a 40rem
       container (cards), three columns in the same container (table), and
       seven columns at full width (table), each with a `StoryNote` saying
       what to expect. Shrinking the Storybook canvas shows the switch.
-- [ ] **Tests** mock `useElementSize` to report a width: seven columns at
+- [x] **Tests** mock `useElementSize` to report a width: seven columns at
       500px draw cards, three columns at 500px draw a table, `cardsBelow`
       overrides the calculation, and width 0 leaves the viewport rule in
       charge. The existing tests stay as they are, because width 0 is what
@@ -72,7 +80,14 @@ anyone setting it by hand.
   found that cannot become cards, a `Table.ScrollContainer` is the
   fallback to add then.
 
-- **Default 10rem per column** – wide enough for a date, a name or a
-  badge without squashing. A table with long text passes a larger
+- **Default 8rem per column, down from a first guess of 10** – the page
+  container is 1140px wide with 16px padding each side, so a table never
+  has more than 1108px. At 10rem the seven-column safety case table
+  needed 1120px and was cards even on a wide laptop, where it had fitted
+  fine as a table before the change. At 8rem seven short columns need
+  896px and fit, and the switch to cards lands at about 900px, where the
+  overflow actually started. A table with long text passes a larger
   `minColumnWidth` or a `cardsBelow` of its own; the default is a
-  starting point, not a law.
+  starting point, not a law. A per-column minimum, so a badge asks for
+  less than a name, is the Phase 2 refinement if the flat number proves
+  wrong the other way.
