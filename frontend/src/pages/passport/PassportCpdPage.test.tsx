@@ -84,6 +84,16 @@ function dateRangeField() {
   return screen.getByRole("combobox", { name: "Date range" });
 }
 
+/**
+ * Waits for the field to show a range. Mantine's Select writes the
+ * chosen option's label into its input from an effect, one render after
+ * the page first holds the choice, so reading the field straight after
+ * waiting for other text on the page races that render.
+ */
+async function dateRangeShows(label: string) {
+  await waitFor(() => expect(dateRangeField()).toHaveValue(label));
+}
+
 async function optionLabels(user: ReturnType<typeof userEvent.setup>) {
   await user.click(dateRangeField());
   const listbox = await screen.findByRole("listbox");
@@ -129,8 +139,7 @@ describe("PassportCpdPage", () => {
       fetchAllCpd.mockResolvedValue(cpdEntries);
       renderWithRouter(<PassportCpdPage />);
 
-      await screen.findByText(/by convention/);
-      expect(dateRangeField()).toHaveValue("Jun 2026 – May 2027");
+      await dateRangeShows("Jun 2026 – May 2027");
       const labels = await optionLabels(user);
       expect(labels[0]).toBe("Jun 2026 – May 2027");
       expect(labels[1]).toBe("Jun 2025 – May 2026");
@@ -141,7 +150,7 @@ describe("PassportCpdPage", () => {
       fetchAllCpd.mockResolvedValue(cpdEntries);
       renderWithRouter(<PassportCpdPage />);
 
-      await screen.findByText(/by convention/);
+      await dateRangeShows("Jun 2026 – May 2027");
       await user.click(dateRangeField());
       await user.click(
         await screen.findByRole("option", {
@@ -161,9 +170,7 @@ describe("PassportCpdPage", () => {
       fetchAppraisalPeriods.mockResolvedValue([octoberYear, calendar2026]);
       renderWithRouter(<PassportCpdPage />);
 
-      await waitFor(() =>
-        expect(dateRangeField()).toHaveValue("Jan 2026 – Dec 2026"),
-      );
+      await dateRangeShows("Jan 2026 – Dec 2026");
       expect(await optionLabels(user)).toEqual([
         "Jan 2026 – Dec 2026",
         "Oct 2024 – Aug 2025",
@@ -239,7 +246,7 @@ describe("PassportCpdPage", () => {
 
       // 1 March 2024 is in no range, so the page moves to those.
       expect(await screen.findByText("Old course")).toBeInTheDocument();
-      expect(dateRangeField()).toHaveValue("Outside your date ranges");
+      await dateRangeShows("Outside your date ranges");
     });
   });
 
