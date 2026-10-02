@@ -2,7 +2,7 @@
 name: f
 description: Follow the plan document last mentioned in the chat, building it as a stack, one branch per reviewable unit
 argument-hint: "[path/to/plan.md, or nothing to use the last plan mentioned]"
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git push:*), Bash(git switch:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(just stack-update:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(just stack-help:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*)
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git push:*), Bash(git switch:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(just stack-update:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(just stack-help:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*)
 disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 disable-model-invocation: true
 ---
@@ -46,7 +46,8 @@ the file or running anything:
 One short message: the file as a link, why it was picked (given as the
 argument, or last mentioned), and where work will start if that is already
 known from the conversation. Nothing else goes in front of it. Only then
-read the file and carry on.
+carry on: bring the stack up to date (see "Before building" below), and
+read the file after that, so the copy read is the one on current `main`.
 
 ### When it is not obvious, stop and ask
 
@@ -73,7 +74,9 @@ Two things can only be found after the announcement, once the file is
 read. Both are also a reason to stop and ask at once, before building
 anything:
 
-- **The file does not exist** at that path.
+- **The file does not exist** at that path. Judge this only after "Before
+  building" has run: on a branch whose stack has merged, a plan written
+  since is missing simply because the branch is behind `main`.
 - **Every checkbox in it is already ticked**, so there is nothing left to
   follow.
 
@@ -167,17 +170,78 @@ What still matters is that each unit's migration belongs to that unit. A
 migration sitting on a branch whose code is two units higher is the thing
 that makes a stack hard to read, not the number of migrations in it.
 
-## The loop
+## Before building: bring the stack up to date
 
-The plan document has been picked and announced by now (see the first
-section). Before building, confirm where you are:
+Once per run, after the announcement and before the plan file is read or
+anything is built. The human is still at the keyboard here, which is why
+it happens now: the same problem found after a unit is built ends the run
+with nothing landed.
 
 ```bash
+git status --short
 just stack-log
 ```
 
-If the working tree is dirty, deal with that first – either it belongs to the
-current unit, or the human left it there and you should ask.
+**Read the marks, not the shape.** A stack whose pull requests have all
+merged is still drawn; every branch simply carries `merged`. That branch
+is spent. It sits where `main` was when it merged, and `main` has moved
+since, so a unit built there is built and tested against old code, and
+the plan document may be out of date or missing altogether.
+
+What `stack-log` shows decides what happens next:
+
+- **A stack with nothing merged** – the ordinary case. Carry on.
+- **A stack with any branch merged**, some or all. Note the stack key
+  first (the word its branch names open with), then:
+
+  ```bash
+  just stack-sync
+  ```
+
+  It drops the merged branches and rebases whatever is left onto current
+  `main`. What is left decides the rest:
+
+  - **Branches still open** – the stack continues. `just stack-move top`,
+    and the next unit stacks on it as usual.
+  - **Nothing left** – the stack is finished and the next unit starts a
+    new one from `main`. The sync leaves `main` checked out; if it did
+    not, `git switch main`. Then check `git rev-list --left-right --count
+    HEAD...origin/main` reports `0 0`. `/crpd` will find no stack on
+    `main` and start one with `just stack-new`.
+
+- **"No stack on this branch", on `main`** – a first unit. `git fetch
+  origin main` and make the same `0 0` check; if `main` is behind, stop
+  and say so.
+- **"No stack on this branch", on some other branch** – stop and ask.
+  `/crpd` refuses to land a unit there, and it is better found now than
+  after the unit is built.
+
+**Starting a new stack does not abandon the old topic.** Once every
+branch has merged, its code is in `main`, so a branch off `main` sits on
+exactly what a branch "on top of" the old stack would. What carries a
+topic on is the stack key:
+
+- **The plan is the same area of work as the merged stack** – reuse its
+  key, so the new pull requests read as the same series. A key is free
+  again once its stack has finished.
+- **The plan is a different area** – choose a new key, as `/crpd` sets
+  out under "The stack key".
+
+**If the working tree is dirty**, deal with that first. When the only
+changes are the plan document itself (and its entry in the plans index),
+run the sync anyway: they belong to the first unit and travel with the
+checkout. Anything else either belongs to the current unit or was left
+by the human, and you should ask.
+
+**If the sync fails, or the move to `main` is refused, stop and report
+it at once.** A rebase conflict, uncommitted changes that `main` has
+also touched, `main` checked out in another worktree: none is yours to
+work around, and the human is still there to sort it out.
+
+## The loop
+
+The plan document has been picked and announced, and the stack brought up
+to date (see the two sections above). Now read the plan file.
 
 Then, for each unit in the plan:
 
@@ -186,8 +250,9 @@ Then, for each unit in the plan:
    repository requires this, and a unit without them is not finished.
 
    Do not create a branch first. `/crpd` makes the branch from the work
-   in step 3, so the unit is built on whatever branch is checked out and
-   lifted onto its own branch when it is finished.
+   in step 3, so the unit is built on whatever branch is checked out –
+   which "Before building" has already made current – and lifted onto
+   its own branch when it is finished.
 
 2. **Tick the plan.** Mark the unit's checkbox `- [x]` before finishing, so
    the tick is committed with the unit it describes rather than trailing a
@@ -215,6 +280,8 @@ Stop and report – do not carry on to the next unit – when:
   second migration in the same stack is not itself a reason to stop.
 - The stack spans worktrees (`just stack-log` says so). A stack lives in one
   worktree.
+- `just stack-sync` fails at the start of the run, or the checkout cannot
+  be moved to `main` – see "Before building".
 - You reach the end of the plan.
 
 If you discover something important while building, add it to the plan
