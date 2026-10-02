@@ -34,7 +34,7 @@ The Quill Medical backend is the application server that handles all the busines
 **Caddy** Web Server
 
 - Routes web traffic to the right services
-- Manages HTTPS security certificates automatically
+- Sits behind the GCP load balancer, which manages HTTPS certificates in production
 - Serves the web application files
 - Balances load across multiple servers if needed
 
@@ -177,22 +177,25 @@ All functions are organised under the `/api` prefix:
 - **Send invite** (`POST /api/users/{id}/send-invite`): Send an invitation email to a user
 - **Link patient** (`PATCH /api/users/{id}/link-patient`): Link user to FHIR patient
 
-### Organisations (Admin)
+### Org units (Admin)
 
-- **List organisations** (`GET /api/organisations`): List all organisations
-- **Create organisation** (`POST /api/organisations`): Create new organisation
-- **View organisation** (`GET /api/organisations/{id}`): Get organisation with staff/patient lists
-- **Update organisation** (`PUT /api/organisations/{id}`): Update organisation details
-- **Delete organisation** (`DELETE /api/organisations/{id}`): Delete organisation
-- **Manage membership**: Add/remove staff and patients
-- **Link/unlink sites**: `POST/DELETE /api/organisations/{org_id}/sites/{site_id}`
-- **List features** (`GET /api/organisations/{id}/features`): List organisation feature flags
-- **Toggle feature** (`PUT /api/organisations/{id}/features/{key}`): Enable or disable a feature
+Organisations, sites and wards are all org units, in one tree.
+
+- **List org units** (`GET /api/org-units`): List org units
+- **Create org unit** (`POST /api/org-units`): Create new org unit
+- **View org unit** (`GET /api/org-units/{id}`): Get org unit details
+- **Update org unit** (`PUT /api/org-units/{id}`): Update org unit details
+- **Toggle active** (`PATCH /api/org-units/{id}/active`): Activate/deactivate an org unit
+- **Delete org unit** (`DELETE /api/org-units/{id}`): Delete org unit
+- **Manage membership**: List, add and remove members (`GET/POST /api/org-units/{id}/members`, `DELETE /api/org-units/{id}/members/{user_id}`); add and remove patients (`POST /api/org-units/{id}/patients`, `DELETE /api/org-units/{id}/patients/{patient_id}`)
+- **Link/unlink org units**: `GET/POST /api/org-units/{id}/links`, `DELETE /api/org-units/{id}/links/{link_id}`
+- **List features** (`GET /api/org-units/{id}/features`): List org unit feature flags
+- **Toggle feature** (`PUT /api/org-units/{id}/features/{key}`): Enable or disable a feature
 
 ### CBAC (Competency-Based Access Control)
 
 - **View competencies** (`GET /api/cbac/my-competencies`): Get current user’s resolved competencies
-- **Update competencies** (`PATCH /api/cbac/my-competencies`): Update user's additional/removed competencies (note: admin gate not yet enforced – see code TODO)
+- **Update competencies** (`PATCH /api/cbac/my-competencies`): Update the caller's own additional/removed competencies (platform operators only)
 
 ### External Access
 
@@ -204,20 +207,7 @@ All functions are organised under the `/api` prefix:
 ### Push Notifications
 
 - **Subscribe** (`POST /api/push/subscribe`): Register a push subscription for the current browser
-- **Send test** (`POST /api/push/send-test`): Send a test notification to all subscribers (development only)
-
-### Sites (Admin)
-
-- **List sites** (`GET /api/sites`): List all sites
-- **Create site** (`POST /api/sites`): Create a new site
-- **Get site** (`GET /api/sites/{id}`): Get site details
-- **Update site** (`PUT /api/sites/{id}`): Update site details
-- **Toggle active** (`PATCH /api/sites/{id}/active`): Activate/deactivate a site
-- **Delete site** (`DELETE /api/sites/{id}`): Delete a site
-- **Link site to org** (`POST /api/organisations/{org_id}/sites/{site_id}`): Link site to organisation
-- **Unlink site from org** (`DELETE /api/organisations/{org_id}/sites/{site_id}`): Unlink site from organisation
-- **Add site staff** (`POST /api/sites/{site_id}/staff`): Add staff member to site
-- **Remove site staff** (`DELETE /api/sites/{site_id}/staff/{user_id}`): Remove staff from site
+- **Send test** (`POST /api/push/send-test`): Send a test notification to all subscribers (platform operators only)
 
 ### Teaching (feature-gated)
 
@@ -251,7 +241,7 @@ All teaching routes are under `/api/teaching` and require the `teaching` feature
 - **Sync all banks** (`POST /api/teaching/admin/sync-all`)
 - **Get bank detail** (`GET /api/teaching/admin/banks/{bank_id}`)
 - **List bank organisations** (`GET /api/teaching/admin/banks/{bank_id}/organisations`)
-- **Update bank org settings** (`PUT /api/teaching/admin/banks/{bank_id}/organisations/{org_id}/settings`)
+- **Update bank org settings** (`PUT /api/teaching/admin/banks/{bank_id}/org-units/{org_unit_id}/settings`)
 - **Get settings** (`GET /api/teaching/settings`)
 - **Update settings** (`PUT /api/teaching/settings`)
 
@@ -282,7 +272,7 @@ User login and permission information:
 
 - Usernames and email addresses
 - Encrypted passwords (Argon2 hashing)
-- System permissions (patient, staff, admin, superadmin)
+- Platform role (standard, superadmin)
 - Roles (e.g. Clinician)
 - CBAC configuration (base profession, additional/removed competencies)
 - Two-factor authentication settings (TOTP)
@@ -328,8 +318,8 @@ To work on the application, developers need:
 
 One command starts the entire application with all services:
 
-- Web application (accessible at <http://localhost:8080>)
-- Application server with documentation (<http://localhost:8080/api/docs>)
+- Web application (accessible at <http://localhost>)
+- Application server with documentation (<http://localhost/api/docs>)
 - FHIR server for patient data
 - OpenEHR server for clinical records
 - Database
@@ -339,11 +329,11 @@ One command starts the entire application with all services:
 
 The development environment runs these services:
 
-- **Application server**: Main business logic (port 8000)
-- **Database**: User authentication (port 5432)
-- **FHIR Server**: Patient demographics (port 8081) with database (port 5433)
-- **OpenEHR Server**: Clinical documents (port 8082) with database (port 5434)
-- **Web Server**: Entry point for all requests (port 8080)
+- **Application server**: Main business logic (port 8000, internal)
+- **Database**: User authentication (port 5432, internal)
+- **FHIR Server**: Patient demographics (port 8080, internal) with database (port 5432, internal)
+- **OpenEHR Server**: Clinical documents (port 8080, internal) with database (port 5432, internal)
+- **Web Server**: Entry point for all requests (port 80)
 
 ## Testing
 

@@ -162,7 +162,7 @@ Frontend implements health polling during startup:
 
 ```http
 GET /api/patients/{patient_id}/demographics
-Cookie: access_token_cookie=<jwt>
+Cookie: access_token=<jwt>
 ```
 
 ### Update Patient Demographics

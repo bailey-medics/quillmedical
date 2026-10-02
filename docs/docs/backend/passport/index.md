@@ -23,8 +23,8 @@ everything below follows from it.
   canonical files byte for byte, both rendered views, and a `git bundle` of the
   full history.
 
-The cost is that some questions files cannot answer, which is why one table
-exists – see [Coordination](#coordination-in-postgres) below.
+The cost is that some questions files cannot answer, which is why a few tables
+exist – see [Coordination](#coordination-in-postgres) below.
 
 ## The shape of a passport
 
@@ -121,36 +121,41 @@ so nobody needs to look inside it; a passport blob is addressed by its content.
 
 Size and type are checked at the route rather than in the store:
 `ALLOWED_EVIDENCE_TYPES` in `router.py` admits PDF, JPEG, PNG, HEIC and WebP,
-and the global 10 MB request-body limit applies. Storing is separate from
+and `MAX_EVIDENCE_BYTES` caps a file at 8 MB, below the global 10 MB
+request-body limit. Storing is separate from
 admitting.
 
 ## Coordination in Postgres
 
-One table, `passport_signoff_request`, and it is workflow rather than a copy of
-the record.
+Four tables, and none is a copy of the record: `passport` points at one
+holder's repository, `passport_assessor_invite` brings an outside assessor in,
+`org_unit_passport_specialty` holds an organisation's lead specialties, and
+`passport_signoff_request` is workflow.
 
 An assessor's inbox is a cross-passport query – "what have I been asked to
 sign?" – and no single repository can answer it. The row is the ask; each
 record is read from its own passport. It closes when the file is written.
 
-This is the only concession to the database, and deliberately not a projection:
-nothing reads it to learn what a passport contains.
+These are the only concessions to the database, and deliberately not a
+projection: nothing reads them to learn what a passport contains.
 
 ## Authorisation
 
 Two independent questions, and passing the first says nothing about the second.
 
 - **`requires_feature("passport")`** – is the passport switched on for this
-  person's organisation or site? It unions organisation membership with site
-  membership joined back up through `organisation_site`, which is why an
+  person's organisation or site? It takes every org unit they belong to and the
+  organisation above each, which is why an
   invited external assessor passes at either level.
 - **Who may read this particular record** – resolved from the passport row and
   the request rows naming the caller. `_require_holder` for anything only the
-  holder may do; `_require_reader` for the holder or somebody named on a
-  request against them.
+  holder may do; `_require_reader` for reading the passport as a whole, which
+  is also the holder alone; `_require_signoff_reader` for the holder or the
+  assessor named on that one sign-off.
 
 An accepted external assessor passes the feature gate and still gets a 404 on a
-holder's passport unless a request names them. Organisation admins are
+holder's passport; a request naming them opens that one sign-off and nothing
+else. Organisation admins are
 deliberately not readers yet – how "admin of the holder's organisation" should
 be evaluated is being settled elsewhere, and inventing a scope here that that
 work then changes would be worse than the narrower rule.
@@ -252,7 +257,7 @@ concurrent writes must not silently lose one.
   boundary, the other is validated on read as well as write.
 - `backend/app/passport_storage.py` – the composition point, and the only place
   that knows how a backend is chosen. It sits outside the feature package
-  because every module under `features/passport` must import without
+  because the passport's pure core under `features/passport` must import without
   `app.config`, so a passport on disk stays readable by tooling with no
   application around it.
 
@@ -267,6 +272,6 @@ concurrent writes must not silently lose one.
 - **It does not act on expiry.** `expires_on` is recorded and nothing reads it,
   because what a lapsed sign-off implies is a clinical decision rather than a
   technical one.
-- **It does not verify a registration.** `verified` stays false until an
-  organisation admin has checked a register by hand. Quill checks none itself,
+- **It does not verify a registration.** A registration is recorded as
+  declared. Quill checks no register itself,
   and the response says so rather than implying otherwise.

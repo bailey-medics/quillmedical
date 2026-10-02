@@ -29,14 +29,14 @@ reaching the application again.
   admin's browser
         │  resumable upload, straight to GCS
         ▼
-  quill-teaching-videos-source-teaching        (private, 7-day lifecycle)
+  quill-teaching-videos-source-app             (private, 1-day lifecycle)
         │
-        │  Cloud Run job: video-transcode  (FFmpeg)
+        │  Cloud Run job: quill-transcode-app  (FFmpeg)
         ▼
-  quill-teaching-videos-processed-teaching     (private, versioned)
+  quill-teaching-videos-processed-app          (private, versioned)
         │      720p + 1080p mp4, poster jpg, WebVTT captions
         │
-        │  Cloud Run job: video-caption    (Whisper)
+        │  Cloud Run job: quill-caption-app    (Whisper)
         ▼
   Cloud CDN  ──  backend bucket  ──  /videos/*  on the app's own domain
         │
@@ -55,29 +55,30 @@ Both live in `europe-west2`, with uniform bucket-level access and public
 access prevention enforced. Defined in
 `infra/modules/teaching-video-pipeline/`.
 
-- **Source** – `quill-teaching-videos-source-teaching`. Raw uploads. Not
+- **Source** – `quill-teaching-videos-source-app`. Raw uploads. Not
   versioned: a replaced upload is simply a new upload. A CORS policy allows
   `POST`, `PUT` and `OPTIONS` from the app origin and exposes `Location`,
   which is what carries the resumable session URL back to the browser.
 
-- **Processed** – `quill-teaching-videos-processed-teaching`. What learners
+- **Processed** – `quill-teaching-videos-processed-app`. What learners
   are served. Versioned, because losing a transcode means re-running a job
   over a source that may already be gone.
 
 ### Why the source bucket empties itself
 
 The transcode job deletes its own master once it has verified the renditions
-are readable. The bucket's 7-day lifecycle rule is a backstop for uploads
+are readable. The bucket's 1-day lifecycle rule is a backstop for uploads
 whose job never ran, not the routine path.
 
-Seven days rather than ninety, deliberately: a never-transcoded upload then
-fails loudly within a week, while re-uploading is merely annoying. At ninety
-days it would fail silently, long after anyone remembers the lecture, with the
-master unrecoverable.
+One day, deliberately: an abandoned upload should not outlive the person's
+memory of making it. The cost is the re-transcode window: a rendition fault
+found the next morning can no longer be fixed by re-running the job, and the
+admin re-uploads instead.
 
 ## Object keys
 
-The load balancer does **not** strip the URL prefix. A request for
+The load balancer strips the `/videos/` prefix with a URL rewrite, because a
+backend bucket does not strip it on its own. A request for
 `/videos/{org_id}/{module_id}/{asset_id}-720p.mp4` fetches the bucket key
 `{org_id}/{module_id}/{asset_id}-720p.mp4` – the path after `/videos/` is the
 object key exactly.
@@ -118,8 +119,8 @@ Three properties carry the design:
   cookie for `module-1` also covering `module-10`.
 
 - **Signing is arithmetic.** An HMAC over a shared secret, so minting needs no
-  GCS credentials and no API call. This is why the backend holds no IAM role
-  at all on the video bucket.
+  GCS credentials and no API call. The backend's roles on the video buckets
+  are for uploads and caption review, never for minting.
 
 - **Short-lived.** Thirty minutes by default
   (`TEACHING_VIDEO_COOKIE_TTL_MINUTES`). A grant outlives logout and outlives
@@ -155,8 +156,8 @@ the edge verifies, and neither works if they differ.
 
 ## Local development
 
-There is no bucket, no CDN, no signature and no cookie. `TEACHING_VIDEOS_BUCKET`
-is unset, so `/video-access` returns a base URL of
+There is no bucket, no CDN, no signature and no cookie. `TEACHING_VIDEO_BASE_URL`
+and the signing key are unset, so `/video-access` returns a base URL of
 `/api/teaching/videos/{module_id}` and sets no cookie; a local route streams
 the file off disk from the module's `learning/` directory.
 
