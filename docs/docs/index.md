@@ -84,7 +84,7 @@ Quill Medical uses a defence-in-depth security architecture:
 - **Backend validation** – All permissions checked server-side (source of truth)
 - **Frontend protection** – Hides inaccessible features for better user experience
 - **Tiered security** – Different user types receive appropriate error responses
-- **Permission hierarchy** – Patient → Staff → Admin → Superadmin
+- **Competencies, not a ladder** – what somebody may do comes from the competencies they hold, and where from the places they belong to; a separate platform role marks who operates Quill itself
 - **Fail-safe defaults** – Access denied unless explicitly granted
 
 This approach ensures:
@@ -128,12 +128,12 @@ This approach ensures:
 
 #### Access Points
 
-- Main application: <http://localhost:8080>
-- API documentation: <http://localhost:8080/api/docs>
+- Main application: <http://localhost>
+- API documentation: <http://localhost/api/docs>
 
 ## Pre-commit CI
 
-This repository uses `pre-commit` to run formatters, linters and checks. The feature workflow (`.github/workflows/feature.yml`) runs `pre-commit run --all-files` as part of the Python styling checks.
+This repository uses `pre-commit` to run formatters, linters and checks. The CI workflow (`.github/workflows/ci.yml`) runs `pre-commit run --all-files` as part of the Python checks.
 
 To run the checks locally:
 
@@ -142,8 +142,8 @@ To run the checks locally:
 python -m pip install --upgrade pip
 pip install pre-commit
 
-# install hooks (optional, to run automatically on commit)
-pre-commit install
+# set up the git hooks (runs `.husky/pre-commit` on every commit)
+just initialise-repo
 
 # run all checks across the repository
 pre-commit run --all-files

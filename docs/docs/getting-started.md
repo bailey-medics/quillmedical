@@ -17,7 +17,7 @@
    cd quillmedical
    ```
 
-2. Clone the teaching content repos and tooling:
+2. Clone the teaching content repos:
 
    ```bash
    just initial-install
@@ -47,8 +47,8 @@ they're not part of the clone, and the dev Docker stack isn't running yet.
 `.claude/hooks/session-start.sh` handles this automatically on every session –
 it materialises `.env`, `backend/.env` and `frontend/.env` from the committed
 `.env-sample` files (skipping any that already exist) and runs
-`docker compose -f compose.dev.yml up -d --wait`. There's nothing to configure
-for this to work.
+`docker compose -f compose.dev.yml up -d --wait`. The one thing to configure is
+network access for Docker Hub's image CDN; see `.claude/hooks/README.md`.
 
 To make that hook fast, pair it with an environment **Setup script** (set in
 the environment dialog at [claude.ai/code](https://claude.ai/code)) that
@@ -99,10 +99,10 @@ Run `just --list` for all available recipes. Key ones:
 | `just start-teaching`    | `j st`  | Start dev (teaching only, no FHIR/EHRbase)  |
 | `just start-dev`         | `j sd`  | Start dev (full EPR with clinical services) |
 | `just stop`              | `j sc`  | Stop all containers                         |
-| `just initial-install`   | `j ii`  | Clone/pull teaching repos and tooling       |
+| `just initial-install`   | `j ii`  | Clone/pull teaching repos                   |
 | `just validate-teaching` | `j vt`  | Validate all teaching content locally       |
 | `just sync-teaching`     | `j syt` | Sync question banks into the DB             |
 | `just seed-teaching`     | `j sdt` | Seed fresh DB with teaching data            |
 | `just uf`                |         | Run frontend unit tests                     |
 | `just ub`                |         | Run backend unit tests                      |
-| `just docs`              | `j d`   | Rebuild API docs                            |
+| `just docs`              | `j d`   | Build and open the documentation            |
