@@ -1245,6 +1245,60 @@ failure this repository has the most scar tissue about.
   — a wrong answer indistinguishable from a right one. It now asks for 30
   open pull requests, and says so loudly when the read fails.
 
+### What a stack of sixteen found
+
+A stack of sixteen docs pull requests broke twice on 2 October 2026.
+Both were gaps in the tooling here, and both are now closed in it. The
+work is in
+[the docs review second findings plan](2026-10-02-docs-review-second-findings-plan.md).
+
+- **A pull request that is closed and replaced strands the record.**
+  #1363 was closed and reopened as #1386 on the same branch, and the
+  record in `.git/gh-stack` kept #1363. When #1386 merged, gh-stack
+  never learned of it: the entry still looked live, so `just stack-sync`
+  pushed a branch GitHub had deleted and the whole push was rejected.
+  `scripts/stack-forget-merged.py` could not help, because it dropped
+  only entries recorded as merged, and it ran only after the sync that
+  was failing.
+
+  It now reads the branch as well as the recorded number. An entry is
+  finished when its local branch is gone, or when its tip is already in
+  `origin/main` and gh-stack is not going to tidy it itself: the record
+  already says merged, GitHub says the recorded pull request is closed,
+  or no pull request is recorded. A merge gh-stack has not yet seen is
+  left alone, because `gh stack sync --prune` deletes only the branches
+  still in the record, and dropping the entry first would leave the
+  branch behind. Three entries are never dropped: the branch checked
+  out, a branch with no commits of its own, and one GitHub cannot be
+  asked about. `stack-sync` runs the script before the sync as well as
+  after it.
+
+- **`just stack-refresh` could not run once any pull request had
+  merged.** It takes the stack apart and re-initialises it, and GitHub
+  refuses to unstack a stack holding merged pull requests. The attempt left the
+  open ones in no stack on GitHub at all.
+
+  It now asks GitHub first whether the stack holds a merged pull
+  request. If it does, GitHub's stack is left alone: the record is
+  rebuilt locally with `gh stack unstack --local` and `gh stack init`,
+  and `scripts/stack-relink.py` links the open pull requests with
+  `gh stack link` and writes that stack's `id` and `number` into the
+  record. It finds each branch's open pull request by asking GitHub,
+  not from the record, which is wrong in exactly the closed-and-replaced
+  case above. It links by number, never by branch name, because given a
+  branch `gh stack link` pushes it first.
+
+  The `id` and `number` come from
+  `gh api repos/{owner}/{repo}/pulls/<number>`, whose `stack` field
+  holds both. That `id` is the numeric id inside the stack's GraphQL
+  node id, as an integer; gh-stack keeps it as a string.
+
+  **This route has not been run against GitHub.** The bats tests in
+  `scripts/tests/stack-relink.bats` stub `gh`, so they pin what the
+  script asks for and what it writes, not how GitHub answers. The first
+  refresh of a part-merged stack is the real test, and what it finds
+  belongs here.
+
 ### The workflow this is all for
 
 Two halves, deliberately asymmetric. The first runs without a human; the

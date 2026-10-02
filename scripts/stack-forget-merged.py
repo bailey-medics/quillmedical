@@ -14,14 +14,36 @@ trunk's own history, which arrives as a long run of conflicts against
 commits that merged days ago. That is the failure this script exists to
 prevent, seen on 2026-09-18 replaying 58 commits.
 
-So an entry is dropped only when both are true:
+An entry is finished, and dropped, in either of two cases.
 
-- its pull request is recorded as merged, and
-- no local branch of that name exists any more.
+**Its local branch is gone.** Whatever its pull request is recorded as,
+an entry with no branch behind it is the broken chain above.
 
-An entry whose branch is still checked out is left alone even when the
-pull request merged: the branch is still somebody's working copy, and
-this is not the thing that deletes it.
+**Its branch is still there, but its tip is already in the trunk**, and
+gh-stack is not going to tidy it up itself. That second half matters:
+`gh stack sync --prune` deletes the branch of a pull request it sees
+merge, and an entry dropped before it gets there leaves that branch
+behind. So a branch whose tip is in the trunk is dropped only when:
+
+- the record already says its pull request merged, so gh-stack has seen
+  the merge and left the branch; or
+- GitHub says the recorded pull request is closed without merging; or
+- no pull request is recorded at all.
+
+The closed case is the one this rule exists for. A pull request that is
+closed and replaced by another on the same branch (#1363 by #1386, on
+2026-10-02) leaves the record pointing at the closed one. When the
+replacement merges, gh-stack never learns of it, keeps the entry as
+live, and pushes a branch GitHub has deleted. The tip being in the
+trunk is the evidence the recorded number cannot give.
+
+Three entries are always left alone, whatever the trunk holds:
+
+- the branch checked out here, which is somebody's working copy;
+- a branch with no commits of its own, whose tip is its own base: it is
+  in the trunk only because nothing has been put on it yet;
+- one whose recorded pull request GitHub cannot be asked about. Not
+  knowing is not evidence, so it stays.
 
 Exit codes: 0 wrote a change or found nothing to do, 1 the record could
 not be read.
@@ -65,6 +87,98 @@ def branch_exists(name: str) -> bool:
     )
 
 
+def rev_parse(name: str) -> str | None:
+    """The commit a name points at, or None when it points at nothing."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{name}^{{commit}}"],
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def current_branch() -> str:
+    result = subprocess.run(
+        ["git", "branch", "--show-current"],
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def tip_in_trunk(name: str, trunk: str) -> bool:
+    """Whether everything on a branch is already in the trunk.
+
+    Asked of `origin/<trunk>` first: the local trunk is often behind in
+    a worktree, since only one worktree can have it checked out.
+    """
+    for ref in (f"origin/{trunk}", trunk):
+        if rev_parse(ref) is None:
+            continue
+        return (
+            subprocess.run(
+                ["git", "merge-base", "--is-ancestor", name, ref],
+                capture_output=True,
+            ).returncode
+            == 0
+        )
+    return False
+
+
+def pull_request_state(number: object) -> str | None:
+    """GitHub's state for a pull request, or None when it cannot be had.
+
+    OPEN, CLOSED or MERGED. None covers gh missing, the network down and
+    a number GitHub does not know: each is "not known", never "closed".
+    """
+    if not isinstance(number, int):
+        return None
+    try:
+        result = subprocess.run(
+            [
+                "gh",
+                "pr",
+                "view",
+                str(number),
+                "--json",
+                "state",
+                "--jq",
+                ".state",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    state = result.stdout.strip()
+    return state if result.returncode == 0 and state else None
+
+
+def is_finished(entry: dict[str, object], trunk: str, current: str) -> bool:
+    """Whether an entry has nothing left to land. See the module docstring."""
+    name = str(entry.get("branch", ""))
+    if not name:
+        return False
+    if not branch_exists(name):
+        return True
+    if name == current:
+        return False
+
+    tip = rev_parse(name)
+    base = entry.get("base")
+    if tip is None or (isinstance(base, str) and rev_parse(base) == tip):
+        return False
+    if not tip_in_trunk(name, trunk):
+        return False
+
+    raw = entry.get("pullRequest")
+    pull_request = raw if isinstance(raw, dict) else {}
+    if not pull_request or pull_request.get("merged"):
+        return True
+    return pull_request_state(pull_request.get("number")) == "CLOSED"
+
+
 def main() -> int:
     path = stack_file()
     if path is None:
@@ -82,19 +196,20 @@ def main() -> int:
     if not isinstance(stacks, list):
         return 0
 
+    current = current_branch()
     dropped: list[str] = []
     for stack in stacks:
         branches = stack.get("branches")
         if not isinstance(branches, list):
             continue
 
+        trunk_name = str((stack.get("trunk") or {}).get("branch") or "main")
         kept = []
         for entry in branches:
-            name = str(entry.get("branch", ""))
-            pull_request = entry.get("pullRequest") or {}
-            merged = bool(pull_request.get("merged"))
-            if name and merged and not branch_exists(name):
-                dropped.append(name)
+            if isinstance(entry, dict) and is_finished(
+                entry, trunk_name, current
+            ):
+                dropped.append(str(entry.get("branch", "")))
                 continue
             kept.append(entry)
 
@@ -117,7 +232,7 @@ def main() -> int:
 
     path.write_text(json.dumps(record, indent=2))
     noun = "branch" if len(dropped) == 1 else "branches"
-    print(f"  Forgot {len(dropped)} merged {noun}:")
+    print(f"  Forgot {len(dropped)} finished {noun}:")
     for name in dropped:
         print(f"      {name}")
     return 0
