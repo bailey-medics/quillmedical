@@ -56,7 +56,8 @@ Caddy listens on port 80 and reverse-proxies to local Docker services:
 In production, the **GCP Global HTTPS Load Balancer** handles:
 
 - TLS termination (Google-managed certificate)
-- Path routing: `/api/*` → backend Cloud Run, `/*` → frontend Cloud Run
+- Path routing: `/api/*` → backend Cloud Run, `/videos/*` → teaching video bucket (teaching deployments only), `/*` → frontend Cloud Run
+- Host routing: the landing domain, where one is configured, → landing site bucket
 - Cloud Armor WAF + rate limiting
 - HTTP → HTTPS redirect
 
@@ -72,7 +73,7 @@ Caddy runs inside the frontend container on port 8080 (Cloud Run strips `cap_net
 
   # Security headers
   header {
-    Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    Strict-Transport-Security "max-age=63072000; includeSubDomains"
     Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://storage.googleapis.com; font-src 'self'; connect-src 'self' https://storage.googleapis.com; frame-src 'self' https://www.youtube.com; frame-ancestors 'none'"
     X-Frame-Options "DENY"
     X-Content-Type-Options "nosniff"
@@ -112,7 +113,7 @@ Caddy runs inside the frontend container on port 8080 (Cloud Run strips `cap_net
 ### Key production features
 
 - **`admin off`** – disables the Caddy admin API (not needed in Cloud Run)
-- **Security headers** – HSTS (2 years, preload), CSP, X-Frame-Options DENY, nosniff, referrer policy, permissions policy, server header removal
+- **Security headers** – HSTS (2 years), CSP, X-Frame-Options DENY, nosniff, referrer policy, permissions policy, server header removal
 - **`/healthz`** – returns `200 ok` for Cloud Run startup/liveness probes
 - **Cache strategy** – hashed assets get 1 year immutable cache; HTML always revalidates
 - **`try_files`** – SPA fallback to `index.html` for client-side routing
@@ -154,6 +155,7 @@ Browser → Caddy (:80) → backend:8000 (/api/*)
 
 ```
 Browser → GCP HTTPS LB → backend Cloud Run (/api/*)
+                        → teaching video bucket (/videos/*)
                         → frontend Cloud Run (:8080) → Caddy → static SPA
 ```
 
