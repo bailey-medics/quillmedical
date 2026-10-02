@@ -61,7 +61,7 @@ git push origin feature/test-api-compat
 
 Pushing a `feature/**` branch triggers `.github/workflows/auto-pr.yml`, which
 auto-creates the PR as a **draft** – by design, this holds back the heavy
-tier (including `heavy_api_schema_diff`) entirely; a draft PR shows no
+tier (including `api_schema_diff`) entirely; a draft PR shows no
 schema-diff check at all, not even a pending one. Click **Ready for review**
 on the PR before continuing – that's what actually fires the heavy tier
 (`pull_request.ready_for_review`), not the initial push.
@@ -69,7 +69,7 @@ on the PR before continuing – that's what actually fires the heavy tier
 The CI workflow will:
 
 1. Generate the OpenAPI spec from your branch
-2. Download and diff against the `main` branch spec via `oasdiff breaking`
+2. Generate the spec from the commit your branch started from, and diff the two via `oasdiff breaking`
 3. Report any breaking changes found
 
 ### Github will report the failure as below
@@ -82,20 +82,17 @@ The CI workflow will:
 
 **Check the CI logs:**
 
-In the **Checks** tab of your PR, find the `heavy_api_schema_diff` job and click **View workflow run**:
+In the **Checks** tab of your PR, find the `api_schema_diff` job and click **View workflow run**:
 
-- Look for the step: "Run openapi schema diff"
-- The output will show `breaking=true` if your change was detected
-- Look for `oasdiff`'s JSON report listing your change (e.g., `"response-required-property-removed"` or `"request-required-property-added"`)
+- Look for the step: "Check for undeclared breaking API changes"
+- The log ends with `Breaking API change(s) detected` if your change was detected
+- Above it is `oasdiff`'s report listing your change (e.g., `response-required-property-removed` or `request-required-property-added`)
 
 **Expected output snippet** in the job log:
 
 ```
 ...
-+++ oasdiff - OpenAPI diff and breaking changes detector
-+ oasdiff breaking --format json main.json pr.json > oasdiff-report.json
-[check-api-breaking-changes] Detected 1 breaking change(s)
-breaking=true
+[check-api-breaking-changes] ERROR: Breaking API change(s) detected - see the oasdiff report above.
 ```
 
 ## Step 3: Observe the GitHub Actions approval gate
@@ -132,7 +129,7 @@ Click the environment link or go to **Settings** → **Environments** → **api-
 2. (Optional) add a comment explaining the business case for the breaking change
 3. Confirm approval
 
-Approving advances the workflow to the next jobs (validation, Slack notification, etc.).
+Approving lets the gate job finish. Validation and the Slack notification do not wait for it: both have already run.
 
 ## Step 4: Run the validation script and observe it fail
 
@@ -168,7 +165,7 @@ bash .github/scripts/ci/validate-compat-files.sh /tmp/oasdiff-report.json api-co
 'response-required-property-removed GET /api/test/breaking-api'
 ```
 
-The script lists which exact `oasdiff` change ID + operation + path it found but for which no decision file exists.
+The script lists which exact `oasdiff` change ID + operation + path + text it found but for which no decision file exists.
 
 ## Step 5: Create a decision file
 
@@ -181,26 +178,12 @@ python backend/scripts/new_compat_decision.py
 **Follow the prompts:**
 
 ```
-Enter the oasdiff change ID + operation + path exactly as it appears in the error:
-> response-required-property-removed GET /api/test/breaking-api
+change> response-required-property-removed GET /api/test/breaking-api
 
-Enter forces_reload (true/false) – does this breaking change require every open
-tab to reload immediately?
+reason> Test scenario for the api-compatibility CI harness (see docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md, item 19, Phase 2). MUTATE_REMOVE_MESSAGE_1 removes the "message" field from the disposable /api/test/breaking-api endpoint, which is never called by the real app – no client, real or stale, depends on it.
 
-  - true: if a tab's cached data depends on the removed field and will crash or
-    malfunction without it
-  - false: if the app gracefully handles the missing field (e.g. optional field,
-    or the UI doesn't use it)
-
-Enter (true/false):
-> false
-
-Enter a reason (for the safety/audit trail):
-> Test scenario for the api-compatibility CI harness (see
-  docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md, item 19,
-  Phase 2). MUTATE_REMOVE_MESSAGE_1 removes the "message" field from the
-  disposable /api/test/breaking-api endpoint, which is never called by the
-  real app – no client, real or stale, depends on it.
+Does this change require a forced reload of open tabs? (y/n)
+forces_reload> n
 
 ```
 
@@ -223,7 +206,7 @@ bash .github/scripts/ci/validate-compat-files.sh /tmp/oasdiff-report.json api-co
 **Expected output (success):**
 
 ```
-[validate-compat-files] Validation passed (11 rule checks)
+[validate-compat-files] All validation rules passed ✓
 ```
 
 No errors, exit code 0.
@@ -239,7 +222,7 @@ git push origin feature/test-api-compat
 Push to the PR. CI re-runs:
 
 - `api_schema_diff` still detects the breaking change (`breaking=true`)
-- `api_breaking_change_gate` still waits for approval (or auto-skips if you already approved)
+- `api_breaking_change_gate` asks for approval again, because adding the decision file changed the pull request's code
 - The workflow completes green
 
 ## Step 8: Observe what happens with no decision file (optional)
@@ -284,13 +267,13 @@ Also flip the mutation constant(s) in `test_api_endpoints.py` back to `False` on
 
 ## Common errors and fixes
 
-| Error                                                          | Cause                                                          | Fix                                                                                                            |
-| -------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `oasdiff: command not found`                                   | oasdiff not installed                                          | Install: `brew install oasdiff` or download from [oasdiff releases](https://github.com/Tufin/oasdiff/releases) |
-| `[validate-compat-files] ERROR: Flagged change not covered...` | Decision file missing or `change:` field doesn't match exactly | Check the error message's exact change string; ensure your decision file's `change:` field matches it verbatim |
-| `[validate-compat-files] ERROR: Filename regex mismatch`       | Decision file name is wrong format                             | Use `YYYYMMDDHHMMSS-<slug>.yaml` format (UTC timestamp, no separators, kebab-case slug)                        |
-| `[validate-compat-files] ERROR: YAML parsing failed`           | Decision file has invalid YAML syntax                          | Check indentation, quotes, special characters (use `yamllint api-compatibility/<filename>.yaml`)               |
-| `[validate-compat-files] ERROR: Stale change string`           | Decision file references a change oasdiff didn't detect        | Check oasdiff output; ensure the `change:` field exactly matches what was found                                |
+| Error                                                                                                          | Cause                                                          | Fix                                                                                                              |
+| -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `oasdiff: command not found`                                                                                   | oasdiff not installed                                          | Install: `brew install oasdiff` or download from [oasdiff releases](https://github.com/oasdiff/oasdiff/releases) |
+| `[validate-compat-files] ERROR: Flagged change not covered...`                                                 | Decision file missing or `change:` field doesn't match exactly | Check the error message's exact change string; ensure your decision file's `change:` field matches it verbatim   |
+| `[validate-compat-files] ERROR: File ... does not match required regex`                                        | Decision file name is wrong format                             | Use `YYYYMMDDHHMMSS-<slug>.yaml` format (UTC timestamp, no separators, kebab-case slug)                          |
+| `[validate-compat-files] ERROR: YAML parsing failed`                                                           | Decision file has invalid YAML syntax                          | Check indentation, quotes, special characters (use `yamllint api-compatibility/<filename>.yaml`)                 |
+| `[validate-compat-files] ERROR: File ... references change '...' which was not flagged by oasdiff in this run` | Decision file references a change oasdiff didn't detect        | Check oasdiff output; ensure the `change:` field exactly matches what was found                                  |
 
 ## Reference: decision file schema
 
@@ -299,7 +282,7 @@ All decision files must have:
 ```yaml
 generation: <positive integer>
 forces_reload: <true or false>
-change: "<exact oasdiff change ID> <HTTP method> <path>"
+change: "<exact oasdiff change ID> <HTTP method> <path> <text>"
 reason: "<non-empty explanation for audit trail>"
 ```
 

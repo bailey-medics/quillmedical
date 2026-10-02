@@ -207,7 +207,7 @@ reason: "Old bundles call this endpoint from the encounter close button. Removin
   new bundle before they encounter the changed API. This decision is a human
   judgement call recorded by the required reviewer.
 
-- `change` – the exact oasdiff flagged change ID and operation, copied
+- `change` – the exact oasdiff flagged change ID, operation, path and text, copied
   verbatim from the CI log so a reviewer can match the file against what
   the CI tool actually found. Example: `api-path-removed-without-deprecation DELETE /api/v1/encounters/{id}`.
 
