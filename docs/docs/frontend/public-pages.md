@@ -182,7 +182,7 @@ The GCS landing bucket sits behind the Global HTTPS Load Balancer (managed by Te
 - **SSL** – Google-managed certificate covering `quill-medical.com` and `www.quill-medical.com`
 - **CDN** – Enabled on the backend bucket for edge caching
 - **404 page** – Load balancer serves `not-found.html` for missing paths
-- **Cloud Armor** – WAF with rate limiting (500 req/min per IP)
+- **Cloud Armor** – not applied to this site. The rate limit (500 req/min per IP) is attached to the application's two backend services, and the landing bucket carries no policy
 
 ### DNS
 
