@@ -226,6 +226,149 @@ backend reads the catalogue and the professions at load and needs no code.
       and hidden.
 - [x] **Page and nav tests**, run with `just uf` on the two files.
 
+## Phase 8: Documents open as A4 pages
+
+Asked for once the pages were up: a row on `/safety/:caseId/documentation`
+should open the document itself, laid out like a printed A4 page, rather
+than stopping at a table of names and versions. Turva's premise is a safety
+case as markdown with placeholders, so the document content is markdown
+with `{{ key }}` placeholders that the case's placeholder table fills in,
+which also makes the Placeholders card mean something.
+
+- [x] **Give each `SafetyDocument` an `id` and markdown `content`** in
+      `lib/safety/types.ts`. The four standard documents get templates in
+      `lib/safety/documentTemplates.ts`: a clinical risk management plan,
+      a hazard log (built from the case's hazards, so it agrees with the
+      hazard table), a clinical safety case report and a file index, each
+      with the sections DCB0129 asks for and `{{ product_name }}`,
+      `{{ product_version }}`, `{{ supplier_name }}`,
+      `{{ deploying_organisation }}` and `{{ review_interval }}` where the
+      real documents would name them. `renderDocument(document,
+      placeholders)` in `lib/safety/render.ts` substitutes the values; an
+      unknown key is left visible, as a template tool would, so a missing
+      placeholder shows rather than vanishes. Fixture tests check every
+      document renders with no placeholder left.
+- [x] **`components/safety/SafetyDocumentSheet.tsx`**: the page itself.
+      A `Box` with a CSS module giving it A4 proportions (max width about
+      50rem, which is 210mm at 96dpi, with a 210 by 297 aspect ratio as the
+      minimum height), paper-like padding and a shadow, in the theme's
+      body colour so dark mode keeps a readable sheet rather than a white
+      glare. A header block names the document, product, version, status
+      and date, then `MarkdownView` renders the content. Narrow screens
+      drop the fixed proportions and let the sheet fill the width.
+      Stories for each of the four documents and a dark-mode one.
+- [x] **Route `/safety/:caseId/documentation/:documentId`**,
+      `pages/safety/SafetyDocumentPage.tsx`, lazy and safe to reload, a
+      404 for an unknown case or document. `DocumentTable` gains
+      `onSelect`, and the documentation page navigates on a row click.
+- [x] **Sidebar**: `safetyPageAt` in `featureNavItems.ts` learns the
+      page of one record, as the passport's does: on a document the
+      navigation reads Safety, Documentation, Document.
+- [x] **Tests** for the sheet, the page and the nav child.
+
+## Phase 9: Hazards open to a page of their own
+
+Asked for alongside the documents: a row on `/safety/:caseId/hazards`
+opens a page for that hazard with its risk in full, the likelihood and
+severity before and after mitigation, not only the product the table
+shows.
+
+- [ ] **Add `mitigation` to `Hazard`**, the controls that take the
+      initial risk to the residual one, since a hazard page that shows
+      two ratings must say what sits between them. Every fixture hazard
+      gets one.
+- [ ] **`components/safety/HazardDetail.tsx`**: cards for the hazard
+      itself (description, cause, effect, status), the risk before and
+      after mitigation (likelihood, severity and the rating badge for
+      each, with the DCB0129 words for each score: 1 "very low" to 5
+      "very high" for likelihood, 1 "minor" to 5 "catastrophic" for
+      severity), the mitigation, and the incidents linked to it. Stories
+      and tests.
+- [ ] **Route `/safety/:caseId/hazards/:hazardId`**,
+      `pages/safety/SafetyHazardPage.tsx`; `HazardTable` gains
+      `onSelect`; the hazards page navigates on a row click; the nav child
+      reads Safety, Hazards, Hazard. A 404 for an unknown hazard.
+- [ ] **Tests** for the detail component, the page and the nav child.
+
+## Phase 10: Incidents open to an incident report
+
+Asked for with the hazard pages: a row on `/safety/:caseId/incidents`
+opens the incident's report, and the incidents listed on a hazard's page
+link to the same reports.
+
+- [ ] **Extend `Incident`** with what a report carries beyond the table
+      row: `immediate_action`, `root_cause`, `outcome` and `reported_by`
+      (a role, never a name, since incident reports are where a real
+      system would be tempted to name a patient). Every fixture incident
+      gets them, still describing a system fault and never a patient.
+- [ ] **`components/safety/IncidentReport.tsx`**: cards for what
+      happened (date, severity, summary, reported by), the hazard it
+      realised as a `TextLink` to the hazard page, the immediate action,
+      the root cause and the outcome. Stories and tests.
+- [ ] **Route `/safety/:caseId/incidents/:incidentId`**,
+      `pages/safety/SafetyIncidentPage.tsx`; `IncidentTable` gains
+      `onSelect`; the incidents page and the incidents on `HazardDetail`
+      open the report; the nav child reads Safety, Incidents, Incident. A
+      404 for an unknown incident.
+- [ ] **Tests** for the report, the page and the nav child.
+
+## Phase 11: Officers can be edited
+
+Asked for on `/safety/:caseId/officers`: each officer card needs an edit
+icon. The mock-up has nothing to save to, so an edit lives in the page's
+state until it is reloaded, which is enough to show the interaction.
+
+- [ ] **`OfficerList` gains `onEdit`**, and each card an `IconButton` with
+      the pencil icon, labelled "Edit <role>" for a screen reader, in the
+      card's top right. Without `onEdit` no icon is drawn, so the list
+      reads the same anywhere it is only read.
+- [ ] **`components/safety/OfficerForm.tsx`**: name and email fields, the
+      role shown but not editable (the roles are the posts a case has, as
+      a position is), with the app's `ButtonPair` for save and cancel,
+      following the passport forms' react-hook-form shape. Stories and
+      tests.
+- [ ] **The officers page** holds the officers in state, opens the form
+      in a `Modal` on edit, and writes the result back on save. A note
+      under the title says changes are not kept, so nobody is surprised
+      by a reload.
+- [ ] **Tests** for the icon, the form and the page round trip.
+
+## Phase 12: No back link on the card pages
+
+Asked for on the card pages: the case title under each page title was a
+link back to the case, and it should not be. The sidebar already says
+where you are and the browser has a back button.
+
+- [x] **Replace the `TextLink` on the six card pages** with the case
+      title as dimmed plain text, so a page still says which case it
+      belongs to without offering a link. Update the page tests, which
+      asserted a link. Landed with Phase 8, which touches the same pages.
+
+## Phase 13: Placeholders can be edited, and the documents follow
+
+Asked for on `/safety/:caseId/placeholders`: an edit page. Because the
+documents of Phase 8 are rendered from the placeholders, an edit here
+should show up in every document that names the key, which is the whole
+point of a placeholder and the best demonstration the mock-up can give.
+
+- [ ] **A session store for edits**, `lib/safety/edits.ts`: an in-memory
+      map of per-case overrides behind `useSyncExternalStore`, with
+      `usePlaceholders(caseId)` returning the fixtures with any edits
+      applied and `setPlaceholderValue(caseId, key, value)` to write one.
+      Lost on reload, by design, and said so on the page. The officers
+      edit of Phase 11 moves onto the same store, so both behave alike.
+- [ ] **Route `/safety/:caseId/placeholders/edit`**,
+      `pages/safety/SafetyPlaceholdersEditPage.tsx`: one text field per
+      placeholder, labelled by its key, with `ButtonPair` to save or
+      cancel, both returning to the placeholders page. The placeholders
+      page gains an edit button in its header through `PageHeader`'s
+      `action`.
+- [ ] **The document page reads `usePlaceholders`** rather than the
+      fixture directly, so an edited value appears in the rendered
+      document.
+- [ ] **Tests**: the store, the edit page round trip, and a document
+      test that renders an edited value.
+
 ## Decisions
 
 - **No backend, no backend placeholder** – the data lives in

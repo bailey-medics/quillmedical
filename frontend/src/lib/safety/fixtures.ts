@@ -17,8 +17,15 @@ import type {
   Placeholder,
   RiskScore,
   SafetyCaseDetail,
+  SafetyDocument,
   SignOffItem,
 } from "./types";
+import {
+  CLINICAL_RISK_MANAGEMENT_PLAN,
+  CLINICAL_SAFETY_CASE_REPORT,
+  FILE_INDEX,
+  hazardLogMarkdown,
+} from "./documentTemplates";
 
 /**
  * The risk rating DCB0129 gives a likelihood and severity pair: their
@@ -33,30 +40,42 @@ export function openHazardCount(safetyCase: SafetyCaseDetail): number {
   return safetyCase.hazards.filter((hazard) => hazard.status === "open").length;
 }
 
-const STANDARD_DOCUMENTS = (version: string, approved: boolean) => [
+const STANDARD_DOCUMENTS = (
+  version: string,
+  approved: boolean,
+  hazards: Hazard[],
+): SafetyDocument[] => [
   {
+    id: "crmp",
     name: "Clinical risk management plan",
     version,
-    status: approved ? ("approved" as const) : ("draft" as const),
+    status: approved ? "approved" : "draft",
     updated_on: "2026-08-14",
+    content: CLINICAL_RISK_MANAGEMENT_PLAN,
   },
   {
+    id: "hazard-log",
     name: "Hazard log",
     version,
-    status: approved ? ("approved" as const) : ("draft" as const),
+    status: approved ? "approved" : "draft",
     updated_on: "2026-09-22",
+    content: hazardLogMarkdown(hazards),
   },
   {
+    id: "cscr",
     name: "Clinical safety case report",
     version,
-    status: approved ? ("approved" as const) : ("draft" as const),
+    status: approved ? "approved" : "draft",
     updated_on: "2026-09-25",
+    content: CLINICAL_SAFETY_CASE_REPORT,
   },
   {
+    id: "file-index",
     name: "Clinical risk management file index",
     version,
-    status: "approved" as const,
+    status: "approved",
     updated_on: "2026-07-03",
+    content: FILE_INDEX,
   },
 ];
 
@@ -360,7 +379,7 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
     status: "in_review",
     clinical_safety_officer: "Dr Hannah Okafor",
     updated_on: "2026-09-25",
-    documents: STANDARD_DOCUMENTS("4.2", false),
+    documents: STANDARD_DOCUMENTS("4.2", false, ePrescribingHazards),
     hazards: ePrescribingHazards,
     incidents: [
       {
@@ -392,7 +411,7 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
     status: "signed_off",
     clinical_safety_officer: "Dr Tom Reilly",
     updated_on: "2026-09-26",
-    documents: STANDARD_DOCUMENTS("2.0", true),
+    documents: STANDARD_DOCUMENTS("2.0", true, portalHazards),
     hazards: portalHazards,
     incidents: [
       {
@@ -416,7 +435,7 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
     status: "in_review",
     clinical_safety_officer: "Dr Amara Diallo",
     updated_on: "2026-09-22",
-    documents: STANDARD_DOCUMENTS("1.8", false),
+    documents: STANDARD_DOCUMENTS("1.8", false, resultsHazards),
     hazards: resultsHazards,
     incidents: [
       {
@@ -456,7 +475,7 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
     status: "draft",
     clinical_safety_officer: "Dr Hannah Okafor",
     updated_on: "2026-09-12",
-    documents: STANDARD_DOCUMENTS("3.1", false),
+    documents: STANDARD_DOCUMENTS("3.1", false, bedBoardHazards),
     hazards: bedBoardHazards,
     incidents: [],
     officers: officers(
@@ -475,7 +494,7 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
     status: "signed_off",
     clinical_safety_officer: "Dr Amara Diallo",
     updated_on: "2026-08-29",
-    documents: STANDARD_DOCUMENTS("5.0", true),
+    documents: STANDARD_DOCUMENTS("5.0", true, dischargeHazards),
     hazards: dischargeHazards,
     incidents: [
       {
@@ -496,6 +515,14 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
     placeholders: placeholders("LetterFlow", "5.0", "MedScribe Health Ltd"),
   },
 ];
+
+/** The document with this id on a case, or undefined. */
+export function safetyDocumentById(
+  safetyCase: SafetyCaseDetail,
+  documentId: string,
+): SafetyDocument | undefined {
+  return safetyCase.documents.find((document) => document.id === documentId);
+}
 
 /** The case with this id, or undefined for an address nobody has. */
 export function safetyCaseById(id: string): SafetyCaseDetail | undefined {

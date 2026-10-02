@@ -9,13 +9,15 @@
  */
 
 import { Stack } from "@mantine/core";
+import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import DocumentTable from "@/components/safety/DocumentTable";
-import { BodyText, TextLink } from "@/components/typography";
+import { BodyText } from "@/components/typography";
 import { useSafetyCase } from "./useSafetyCase";
 
 export function Component() {
+  const navigate = useNavigate();
   const safetyCase = useSafetyCase();
 
   if (!safetyCase) {
@@ -25,10 +27,13 @@ export function Component() {
   return (
     <Stack gap="lg">
       <PageHeader title="Documentation" />
-      <BodyText>
-        <TextLink to={`/safety/${safetyCase.id}`}>{safetyCase.title}</TextLink>
-      </BodyText>
-      <DocumentTable documents={safetyCase.documents} />
+      <BodyText c="dimmed">{safetyCase.title}</BodyText>
+      <DocumentTable
+        documents={safetyCase.documents}
+        onSelect={(document) =>
+          navigate(`/safety/${safetyCase.id}/documentation/${document.id}`)
+        }
+      />
     </Stack>
   );
 }

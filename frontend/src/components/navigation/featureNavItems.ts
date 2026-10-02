@@ -79,25 +79,37 @@ function passportPageAt(pathname: string): NavItem | undefined {
  * The safety feature is a mock-up with no backend; see
  * docs/docs/plans/2026-10-02-safety-feature-mock-up-plan.md.
  */
-const SAFETY_PAGES: readonly { label: string; segment: string }[] = [
-  { label: "Documentation", segment: "documentation" },
-  { label: "Hazards", segment: "hazards" },
-  { label: "Incidents", segment: "incidents" },
+const SAFETY_PAGES: readonly {
+  label: string;
+  segment: string;
+  detail?: string;
+}[] = [
+  { label: "Documentation", segment: "documentation", detail: "Document" },
+  { label: "Hazards", segment: "hazards", detail: "Hazard" },
+  { label: "Incidents", segment: "incidents", detail: "Incident" },
   { label: "Officers", segment: "officers" },
   { label: "Compliance sign-off", segment: "sign-off" },
   { label: "Placeholders", segment: "placeholders" },
 ];
 
 /**
- * The safety case page this address is, if any: `/safety/:caseId/:segment`.
- * The case page itself and the landing page hang nothing beneath Safety.
+ * The safety case page this address is, or sits beneath, if any:
+ * `/safety/:caseId/:segment`, with the record's own link beneath it on
+ * `/safety/:caseId/:segment/:recordId`, as the passport's does. The case
+ * page itself and the landing page hang nothing beneath Safety.
  */
 function safetyPageAt(pathname: string): NavItem | undefined {
-  const match = pathname.match(/^\/safety\/([^/]+)\/([^/]+)\/?$/);
+  const match = pathname.match(/^\/safety\/([^/]+)\/([^/]+)(\/[^/]+)?\/?$/);
   if (!match) return undefined;
   const page = SAFETY_PAGES.find((item) => item.segment === match[2]);
   if (!page) return undefined;
-  return { label: page.label, href: `/safety/${match[1]}/${page.segment}` };
+  const link = {
+    label: page.label,
+    href: `/safety/${match[1]}/${page.segment}`,
+  };
+  return page.detail && match[3]
+    ? { ...link, children: [{ label: page.detail, href: pathname }] }
+    : link;
 }
 
 /**

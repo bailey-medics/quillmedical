@@ -12,7 +12,7 @@ import { Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import HazardTable from "@/components/safety/HazardTable";
-import { BodyText, TextLink } from "@/components/typography";
+import { BodyText } from "@/components/typography";
 import { useSafetyCase } from "./useSafetyCase";
 
 export function Component() {
@@ -25,9 +25,7 @@ export function Component() {
   return (
     <Stack gap="lg">
       <PageHeader title="Hazards" />
-      <BodyText>
-        <TextLink to={`/safety/${safetyCase.id}`}>{safetyCase.title}</TextLink>
-      </BodyText>
+      <BodyText c="dimmed">{safetyCase.title}</BodyText>
       <HazardTable hazards={safetyCase.hazards} />
     </Stack>
   );

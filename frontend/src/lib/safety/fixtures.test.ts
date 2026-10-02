@@ -12,7 +12,9 @@ import {
   openHazardCount,
   riskRating,
   safetyCaseById,
+  safetyDocumentById,
 } from "./fixtures";
+import { placeholderKeysIn, renderDocument } from "./render";
 
 describe("safety fixtures", () => {
   it("holds five cases with unique ids", () => {
@@ -80,5 +82,46 @@ describe("safety fixtures", () => {
     const first = safetyCaseById("sc-001");
     expect(first).toBeDefined();
     expect(openHazardCount(first!)).toBe(2);
+  });
+});
+
+describe("safety documents", () => {
+  it("gives every case four documents with unique ids and content", () => {
+    for (const safetyCase of SAFETY_CASES) {
+      expect(safetyCase.documents).toHaveLength(4);
+      const ids = new Set(safetyCase.documents.map((d) => d.id));
+      expect(ids.size).toBe(4);
+      for (const document of safetyCase.documents) {
+        expect(document.content.length).toBeGreaterThan(100);
+      }
+    }
+  });
+
+  it("renders every document with no placeholder left", () => {
+    for (const safetyCase of SAFETY_CASES) {
+      for (const document of safetyCase.documents) {
+        const rendered = renderDocument(document, safetyCase.placeholders);
+        expect(rendered).not.toMatch(/\{\{/);
+        expect(rendered).toContain(safetyCase.placeholders[0].value);
+      }
+    }
+  });
+
+  it("leaves an unknown placeholder visible", () => {
+    const document = {
+      ...SAFETY_CASES[0].documents[0],
+      content: "Made by {{ supplier_name }} for {{ nobody }}.",
+    };
+    expect(renderDocument(document, SAFETY_CASES[0].placeholders)).toBe(
+      "Made by MedScribe Health Ltd for {{ nobody }}.",
+    );
+    expect(placeholderKeysIn(document)).toEqual(["supplier_name", "nobody"]);
+  });
+
+  it("writes the case's hazards into its hazard log", () => {
+    const log = safetyDocumentById(SAFETY_CASES[0], "hazard-log");
+    expect(log).toBeDefined();
+    expect(log!.content).toContain("H-01");
+    expect(log!.content).toContain("rating 15");
   });
 });
