@@ -106,6 +106,16 @@ const mockUsers: Record<string, User> = {
     username: "safety.officer",
     email: "safety@example.com",
     roles: ["Clinician"],
+    competencies: ["view_safety_cases"],
+    enabled_features: ["safety"],
+    clinical_services_enabled: false,
+  },
+  // The feature reaches them but nothing has given them the competency.
+  safety_feature_only: {
+    id: "12",
+    username: "safety.feature.only",
+    email: "safety.feature.only@example.com",
+    roles: ["Clinician"],
     enabled_features: ["safety"],
     clinical_services_enabled: false,
   },
@@ -767,7 +777,7 @@ describe("SideNavContent Component", () => {
   });
 
   describe("Safety", () => {
-    it("shows Safety to somebody the feature reaches", async () => {
+    it("shows Safety to somebody holding the feature and the competency", async () => {
       renderWithAuth(<SideNavContent />, "safety_only");
 
       await waitFor(() => {
@@ -781,6 +791,17 @@ describe("SideNavContent Component", () => {
 
     it("hides Safety from somebody the feature does not reach", async () => {
       renderWithAuth(<SideNavContent />, "staff");
+
+      await waitFor(() => {
+        expect(screen.getByText("Settings")).toBeInTheDocument();
+      });
+      expect(screen.queryByText("Safety")).not.toBeInTheDocument();
+    });
+
+    it("hides Safety from somebody with the feature but not the competency", async () => {
+      // Gated as the passport is: the route carries RequireCompetency
+      // too, so a link here would lead to a 404.
+      renderWithAuth(<SideNavContent />, "safety_feature_only");
 
       await waitFor(() => {
         expect(screen.getByText("Settings")).toBeInTheDocument();

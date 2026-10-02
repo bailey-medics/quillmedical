@@ -275,6 +275,21 @@ class TestManagePassport:
         assert "passport_delegate" in scope.professions
 
 
+class TestManageSafety:
+    def test_is_a_scoped_manager(self) -> None:
+        assert "manage_safety" in SCOPED_MANAGER_IDS
+
+    def test_gives_the_safety_whitelists(self) -> None:
+        scope = scope_for_competencies(["manage_safety"])
+
+        assert scope.competencies == frozenset(
+            {"view_safety_cases", "manage_safety"}
+        )
+        assert scope.professions == frozenset(
+            {"safety_officer", "safety_clinical_lead", "safety_admin"}
+        )
+
+
 class TestTheMeResponse:
     """``/api/auth/me`` carries the scope, so pickers need not work it out."""
 

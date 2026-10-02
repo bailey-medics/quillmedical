@@ -99,9 +99,10 @@ describe("The scoped managers", () => {
   // These open the admin area alongside `manage_users`, so the list must
   // match the backend's `SCOPED_MANAGER_IDS` exactly: a competency the
   // frontend left out would 404 on pages its holder may use.
-  it("includes manage_teaching and manage_passport", () => {
+  it("includes manage_teaching, manage_passport and manage_safety", () => {
     expect(SCOPED_MANAGER_IDS).toContain("manage_teaching");
     expect(SCOPED_MANAGER_IDS).toContain("manage_passport");
+    expect(SCOPED_MANAGER_IDS).toContain("manage_safety");
   });
 
   it("leaves out manage_users, which needs no whitelist", () => {

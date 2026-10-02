@@ -320,16 +320,18 @@ const routes: RouteObject[] = [
         ],
       },
 
-      // Safety – a throwaway mock-up with no backend, gated on the
-      // organisation feature alone: the pages read fixtures, so there is
-      // nothing a competency would protect. Lazily loaded like the
+      // Safety – a throwaway mock-up with no backend, gated as the
+      // passport is: the organisation feature and the competency the
+      // safety professions carry. Lazily loaded like the
       // passport, and nothing holds form state, so every page is safe
       // to reload. See
       // docs/docs/plans/2026-10-02-safety-feature-mock-up-plan.md.
       {
         element: (
           <RequireFeature feature="safety">
-            <Outlet />
+            <RequireCompetency competency="view_safety_cases">
+              <Outlet />
+            </RequireCompetency>
           </RequireFeature>
         ),
         children: [

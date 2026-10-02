@@ -412,6 +412,44 @@ base_professions:
       - view_teaching_analytics
 
   # ==========================================================================
+  # SAFETY PROFESSIONS
+  # ==========================================================================
+
+  # The Safety feature is a mock-up with no backend; these professions
+  # exist so it is staffed the way Teaching and Passport are. None needs
+  # clinical services: a safety case holds no patient data. See
+  # docs/docs/plans/2026-10-02-safety-feature-mock-up-plan.md.
+
+  # The clinical safety officer: writes and reads the safety cases.
+  - id: safety_officer
+    display_name: "Safety officer"
+    description: "Clinical safety officer who works on safety cases (no clinical access)"
+    requires_clinical_services: false
+    base_competencies:
+      - view_safety_cases
+
+  # A label, as the teaching and passport clinical leads are: it names
+  # the clinician who leads clinical safety at their org unit and grants
+  # nothing an officer does not have.
+  - id: safety_clinical_lead
+    display_name: "Safety clinical lead"
+    description: "Named clinician leading clinical safety at their organisation or site"
+    requires_clinical_services: false
+    base_competencies:
+      - view_safety_cases
+
+  # Runs safety at their organisation or site: takes on officers and
+  # names the clinical lead, within manage_safety's whitelist. Opens the
+  # cases as well, so the admin sees what they are signing people up to.
+  - id: safety_admin
+    display_name: "Safety admin"
+    description: "Runs the Safety feature at their organisation or site and signs up the people in it"
+    requires_clinical_services: false
+    base_competencies:
+      - view_safety_cases
+      - manage_safety
+
+  # ==========================================================================
   # EXTERNAL, PER-PATIENT
   # ==========================================================================
 

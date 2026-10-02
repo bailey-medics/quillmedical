@@ -195,7 +195,7 @@ via `resolve_user_competencies` behind `User.get_final_competencies`.
 
 - **Catalogue**: `shared/competency-definitions/` – `clinical.yaml`,
   `clinical-admin.yaml`, `admin.yaml`, `oncology.yaml`, `teaching.yaml`,
-  `passport.yaml`. All merged into one catalogue at load, so **ids must be
+  `passport.yaml`, `safety.yaml`. All merged into one catalogue at load, so **ids must be
   unique across the directory**, not just within a file. Which file an entry
   lives in carries no meaning to the code; it is for the reader.
 - **Professions**: `shared/base-professions.yaml` – `id`, `display_name`,

@@ -166,6 +166,66 @@ organisation and nobody else.
       yet run" list in `testing-log.md`.
 - [x] **Register this plan in `docs/docs/plans/index.md`.**
 
+## Phase 6: Competencies and professions, mirroring teaching and passport
+
+Asked for after the first four phases landed: the mock-up should be
+gated and staffed the way Teaching and Passport are, so that a safety
+organisation can be set up from the same admin pages with nothing
+special-cased. Everything here is YAML plus the tests that pin it; the
+backend reads the catalogue and the professions at load and needs no code.
+
+- [x] **Add `shared/competency-definitions/safety.yaml`** with two
+      competencies. `view_safety_cases` ("Use Safety Cases") opens the
+      safety pages, as `view_teaching_cases` opens teaching and
+      `assess_clinician_passport` opens the passport. `manage_safety`
+      ("Manage Safety") is a scoped manager, with `may_grant` of
+      `view_safety_cases` and `manage_safety` (on its own list, so one
+      safety admin can appoint another) and `may_assign_professions` of the
+      three safety professions. Nothing sold, so the loader's
+      `passport_write` rule is not involved. Because `SCOPED_MANAGER_IDS` is
+      derived from the catalogue on both sides, `manage_safety` opens the
+      admin area and the people routes with no further change.
+- [x] **Add a "Safety professions" section to
+      `shared/base-professions.yaml`**: `safety_officer` ("Safety officer",
+      the clinical safety officer who writes and reads cases, holding
+      `view_safety_cases`), `safety_clinical_lead` ("Safety clinical lead", a
+      label beside the officer as the passport and teaching leads are,
+      holding the same), and `safety_admin` ("Safety admin", holding
+      `view_safety_cases` and `manage_safety`). All three
+      `requires_clinical_services: false`, because a safety case holds no
+      patient data and the demo deployment runs with clinical services off.
+- [x] **Gate the routes and the sidebar on the competency as well as the
+      feature.** Wrap the safety subtree in `main.tsx` in
+      `<RequireCompetency competency="view_safety_cases">` inside the
+      `RequireFeature`, as the passport subtree is, and gate the sidebar
+      entry in `featureNavItems.ts` on both. Update the `SideNavContent`
+      tests: the feature without the competency hides the entry.
+- [x] **Pin it in tests.** `backend/tests/test_base_professions.py` gains
+      the safety equivalents of the passport tests: the three professions
+      need nothing clinical, the admin's competencies are pinned whole, and
+      the lead grants nothing the officer lacks. `frontend/src/types/cbac.test.ts`
+      adds `manage_safety` to the scoped managers it expects. Run
+      `just ub -k "base_professions or grant_scope"` and the two frontend
+      files.
+- [x] **Name `safety.yaml` in the catalogue list** in
+      `.github/copilot-instructions.md` and the synced `CLAUDE.md`.
+
+## Phase 7: Safety admin, mirroring teaching's
+
+- [ ] **Add `/admin/safety`**, `pages/admin/safety/AdminSafetyDashboard.tsx`,
+      under the existing `/admin` route, which already admits every scoped
+      manager. Like `AdminTeachingDashboard` it is `PageHeader` and action
+      cards: "Safety cases", opening `/safety`, and "People", opening
+      `/admin/users`, where a `manage_safety` holder can take on safety
+      officers and leads within their whitelist. Shown to anybody the
+      `safety` feature reaches who may open Admin; a safety admin reaches
+      `/admin` through `manage_safety` as a teaching admin does through
+      `manage_teaching`.
+- [ ] **Hang "Safety" under Admin in `SideNavContent.tsx`**, beside the
+      Teaching entry and gated the same way, on the feature. Test it shown
+      and hidden.
+- [ ] **Page and nav tests**, run with `just uf` on the two files.
+
 ## Decisions
 
 - **No backend, no backend placeholder** – the data lives in
@@ -189,10 +249,11 @@ organisation and nobody else.
   `lib/safety/` or `components/safety/`, so that removing the three folders,
   the routes, the nav entry and the feature key is the whole of the clean-up.
 
-- **One `RequireFeature` gate and no competency** – the passport's second
-  gate exists because its routes write; these read fixtures. A competency
-  would be invented for the demo alone and would then need a profession to
-  hold it.
+- **One `RequireFeature` gate and no competency, at first** – the
+  passport's second gate exists because its routes write; these read
+  fixtures. Reversed in Phase 6, when the mock-up was asked to mirror
+  Teaching and Passport in how it is gated and staffed, so that a safety
+  organisation can be set up from the same admin pages.
 
 - **Plain `ActionCard`s on the case page rather than a new card
   component** – six cards with an icon, title, subtitle and button is
