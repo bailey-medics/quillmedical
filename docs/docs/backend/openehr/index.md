@@ -73,7 +73,7 @@ We've built custom integration in `backend/app/ehrbase_client.py`:
 import requests
 
 # Create EHR for a patient
-ehr_id = get_or_create_ehr(patient_id='fhir-patient-123')
+ehr_id = get_or_create_ehr(subject_id='fhir-patient-123')
 
 # Create a letter composition
 composition = create_letter_composition(

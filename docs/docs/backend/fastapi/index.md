@@ -43,8 +43,8 @@ The backend is organised in `backend/app/`:
 app/
 ├── main.py              # Application entry point, route definitions
 ├── config.py            # Configuration and environment variables
-├── models.py            # SQLAlchemy ORM models (User, Organisation, Site, etc.)
-├── deps.py              # Shared dependency definitions
+├── models.py            # SQLAlchemy ORM models (User, OrgUnit, Position, etc.)
+├── deps.py              # Shared dependencies (has_competency(), DEP_* constants)
 ├── security.py          # Authentication, JWT, password hashing, CSRF, TOTP
 ├── fhir_client.py       # FHIR integration
 ├── ehrbase_client.py    # OpenEHR integration
@@ -62,9 +62,9 @@ app/
 │   ├── __init__.py      # CBAC module exports
 │   ├── competencies.py  # Competency definitions from YAML
 │   ├── base_professions.py  # Base profession definitions from YAML
-│   └── decorators.py    # has_competency(), FastAPI dependencies
+│   └── scoped.py        # What somebody may practise at one place
 ├── features/
-│   ├── __init__.py      # Feature-gating utilities (requires_feature dependency)
+│   ├── gating.py        # Feature-gating utilities (requires_feature dependency)
 │   └── teaching/        # Teaching feature module
 ├── schemas/
 │   ├── __init__.py      # Schema module exports
@@ -143,8 +143,7 @@ All API endpoints are prefixed with `/api`:
 - `/api/patients/{id}/invite-external` - External access invitations
 - `/api/patients/{id}/external-access/*` - External access management
 - `/api/conversations/*` - Messaging (conversations and messages)
-- `/api/organisations/*` - Organisation management (admin)
-- `/api/sites/*` - Site management (admin)
+- `/api/org-units/*` - Org unit management: organisations, sites and wards (admin)
 - `/api/cbac/*` - Competency-based access control
 - `/api/push/*` - Web push notifications
 - `/api/teaching/*` - Teaching assessments and learning modules (feature-gated)
@@ -170,7 +169,7 @@ POST /api/auth/login
   "detail": "ok",
   "user": { "username": "...", "roles": [...] }
 }
-# JWT access/refresh tokens and CSRF token set as HTTP-only cookies
+# JWT access/refresh tokens set as HTTP-only cookies; the XSRF-TOKEN cookie is readable by JavaScript
 ```
 
 #### Protected Endpoints
@@ -195,7 +194,7 @@ def create_letter(
 
 ```python
 # POST/PUT/DELETE require CSRF token
-@router.post(
+@router.put(
     "/patients/{id}/demographics",
     dependencies=[DEP_REQUIRE_CSRF]
 )
@@ -236,16 +235,17 @@ hold `access_patient_records` cannot read a record.
 # competency says *what*, membership says *where*, and a route carrying
 # the competency without a place check beside it is global.
 @router.get(
-    "/organisations/{org_id}/users",
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+    "/{unit_id}/members",
+    response_model=OrgUnitMembersOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS_OR_SCOPED],
 )
-def list_org_users(
-    org_id: int,
-    user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
-):
-    _require_own_org(db, user, org_id)
-    # ... list users
+def list_org_unit_members(
+    unit_id: int,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> OrgUnitMembersOut:
+    _require_visible(db, current_user, unit_id, "manage_users")
+    return _members_of(db, unit_id)
 
 # CBAC-protected endpoint
 @router.post(
@@ -274,7 +274,7 @@ The backend permission system works with frontend route guards:
 
 - Backend: Enforces access rules (security)
 - Frontend: Hides inaccessible features (UX)
-- Both: Use same permission hierarchy
+- Both: Use the same competencies and platform role
 - Defence in depth: Multiple validation layers
 
 ### Dependency Injection
@@ -282,7 +282,7 @@ The backend permission system works with frontend route guards:
 FastAPI's dependency injection provides clean, testable code. The backend uses pre-built dependency constants:
 
 ```python
-# Standard dependency constants (defined in main.py)
+# Standard dependency constants (defined in main.py and deps.py)
 DEP_GET_SESSION    # Database session via get_core_db
 DEP_CURRENT_USER   # Authenticated user from JWT cookie
 DEP_REQUIRE_ROLES_CLINICIAN  # Clinician role gate
