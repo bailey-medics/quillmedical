@@ -140,8 +140,8 @@ the baseline included – is held to the full standard below.
   `allow-destructive` marker is present**. The marker is a pre-commit nudge
   to make the author deliberate; the CI detection is independent of it,
   proving that a human decision happened separately.
-- When a destructive migration is added to a PR, the `heavy_db_destructive_migration_check`
-  CI job detects it and sets the PR to `waiting` on the
+- When a destructive migration is added to a PR, the `db_destructive_migration_check`
+  CI job (`.github/workflows/gate-breaking.yml`) detects it and sets the PR to `waiting` on the
   `db-destructive-migration-review` environment – a required-reviewer GitHub
   Actions environment with `can_admins_bypass: false`. The environment's
   sole reviewer is accountable for approving destructive database changes.
@@ -282,8 +282,8 @@ depends on the current response/request shape for as long as it stays open.
 ### Enforcement: `oasdiff` + a required-reviewer environment gate
 
 - `backend/scripts/dump_openapi.py` generates the OpenAPI spec used to diff
-  `main` against the PR branch. The `api_breaking_change_check` CI job
-  (`.github/workflows/ci.yml`) runs `oasdiff breaking` on the two specs and
+  `main` against the PR branch. The `api_schema_diff` CI job
+  (`.github/workflows/gate-breaking.yml`) runs `oasdiff breaking` on the two specs and
   fails the build on any undeclared breaking change.
 - The **only** way to declare a breaking change intentional is a required
   reviewer approval on the GitHub Actions environment

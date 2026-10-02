@@ -5,7 +5,7 @@
 `main`, then implementation on a fresh branch
 **Scope:** `backend/alembic/` — collapse the entire core-DB migration history
 into a single baseline migration, pre-launch, while there is no live data
-**Parent:** [Alembic review and migration safety plan](2026-08-09-alembic-review-plan.md)
+**Parent:** [Alembic review and migration safety plan](2026-08-09-alembic-review-and-revisions-plan.md)
 (this plan delivers the squash that plan's item 17 defers here)
 
 ## Why we are doing this
@@ -268,7 +268,7 @@ schema. This whole step is only safe inside the current no-data window.
 - [x] **Drift gate green (parent item 4)** — once the autogenerate-drift CI job
       lands, it passes immediately against the baseline. Building that CI job is
       tracked and implemented under item 4 of the
-      [Alembic review and migration safety plan](2026-08-09-alembic-review-plan.md),
+      [Alembic review and migration safety plan](2026-08-09-alembic-review-and-revisions-plan.md),
       not here — this item just confirms it passes cleanly against the baseline
       once it lands.
 

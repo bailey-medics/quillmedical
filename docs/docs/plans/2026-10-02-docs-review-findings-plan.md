@@ -294,14 +294,19 @@ they are what the next reader, human or model, takes as the reason.
 
 ## Phase 7: References to names that have moved
 
-- [ ] **The Alembic review plan was renamed** to
+- [x] **The Alembic review plan was renamed** to
       `2026-08-09-alembic-review-and-revisions-plan.md`. Three places still
       use the old name: the nav in `docs/mkdocs.yml`, the list in
       `docs/docs/plans/index.md`, and a comment at the top of
       `.github/scripts/deploy/deploy-tagged.sh`. The first two are broken
       links on the docs site.
 
-- [ ] **Two CI job names in the backend rules are out of date.**
+      Three more turned up and are fixed with them: two links in
+      `2026-08-11-migrations-squash-plan.md` and a path in `todo.md`. The
+      two in `docs/docs/backend/alembic-migration-safety.md` are left to
+      pull request #1388, open on 2 October, which already fixes them.
+
+- [x] **Two CI job names in the backend rules are out of date.**
       `.github/instructions/backend.instructions.md` names
       `heavy_db_destructive_migration_check` and says
       `api_breaking_change_check` is in `ci.yml`. The jobs are
@@ -309,6 +314,11 @@ they are what the next reader, human or model, takes as the reason.
       `.github/workflows/gate-breaking.yml`. Edit the `.github/` file, which
       is the source of truth, then run `/sync-copilot-config` to carry it to
       `.claude/rules/backend.md`.
+
+      The same two edits were made to `.claude/rules/backend.md` by hand,
+      and that one entry's hashes updated in `.claude/sync-manifest.json`,
+      which is what the sync would have written. The full sync was not run,
+      so that this unit carries nothing but these two names.
 
 ## Phase 8: Decide how conversation access is gated
 

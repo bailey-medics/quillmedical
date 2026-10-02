@@ -49,8 +49,8 @@
     {
       "source": ".github/instructions/backend.instructions.md",
       "target": ".claude/rules/backend.md",
-      "sourceSha256": "8166a84276f9b175c8046049faec95e44e50eb63d9843ad967b31498d0a5e847",
-      "targetSha256": "7ebe671de46f9a9bc6ce6e3b6fac7119160e8263c1bfebb6978fb909f61069b5",
+      "sourceSha256": "ff1d2b07a733700fcea52b107f94d26e2c9b2497d6cef2ff64d28124bc277a95",
+      "targetSha256": "8c504f88a019404ada5e5dc50c1510dabf223530b5c41133690313d7c8cf1fc3",
       "syncedAt": "2026-10-01T12:11:47Z"
     },
     {

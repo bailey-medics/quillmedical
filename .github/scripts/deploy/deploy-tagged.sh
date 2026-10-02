@@ -2,7 +2,7 @@
 # Deploys a new revision under a traffic tag with --no-traffic, smoke-tests
 # that revision's own tagged URL, and only then promotes it to receive all
 # traffic. Keeps live traffic on the previous revision until the new one has
-# proven healthy – see docs/docs/plans/2026-08-09-alembic-review-plan.md,
+# proven healthy – see docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md,
 # item 13.
 #
 # Usage: deploy-tagged.sh <service> <project> <region> <image> <tag> <health-path>
