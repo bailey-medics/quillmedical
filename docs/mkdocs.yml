@@ -35,6 +35,7 @@ nav:
       - Organisation: concepts/organisation.md
       - CBAC (Competency-Based Access Control): concepts/cbac.md
       - Clinician passport and CBAC: concepts/clinician-passport.md
+      - Deployment modes and features: concepts/deployment-modes-and-features.md
   - Engineering conventions:
       - Overview: conventions/index.md
       - Finished-response notifications: conventions/finished-response-notifications.md
