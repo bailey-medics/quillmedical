@@ -2,11 +2,26 @@
  * Safety Document Page Tests
  */
 
-import { afterEach, describe, expect, it } from "vitest";
-import { resetEdits, setPlaceholderValue } from "@lib/safety";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
+import {
+  resetEdits,
+  setDocumentContent,
+  setPlaceholderValue,
+} from "@lib/safety";
 import { screen } from "@testing-library/react";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as Page } from "./SafetyDocumentPage";
+
+const navigate = vi.fn();
+
+vi.mock("react-router-dom", async () => {
+  const actual =
+    await vi.importActual<typeof import("react-router-dom")>(
+      "react-router-dom",
+    );
+  return { ...actual, useNavigate: () => navigate };
+});
 
 function renderPage(caseId: string, documentId: string) {
   return renderWithRouter(<Page />, {
@@ -56,5 +71,33 @@ describe("SafetyDocumentPage", () => {
       0,
     );
     expect(screen.queryByText(/MedScribe Health Ltd/)).not.toBeInTheDocument();
+  });
+
+  it("offers an edit button that opens the edit page", async () => {
+    renderPage("sc-001", "crmp");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Edit document" }),
+    );
+    expect(navigate).toHaveBeenCalledWith(
+      "/safety/sc-001/documentation/crmp/edit",
+    );
+  });
+
+  it("renders edited markdown, with placeholders still filled", () => {
+    setDocumentContent(
+      "sc-001",
+      "crmp",
+      "## Rewritten\n\nNow about {{ product_name }} only.",
+    );
+    renderPage("sc-001", "crmp");
+    expect(
+      screen.getByRole("heading", { name: "Rewritten" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Now about MedScribe EPMA only."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "2. Scope" }),
+    ).not.toBeInTheDocument();
   });
 });

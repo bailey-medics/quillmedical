@@ -1,8 +1,9 @@
 /**
- * Safety Document Page
+ * Safety Document Edit Page
  *
- * One document of a safety case, rendered from its markdown with the
- * case's placeholders filled in and laid out as an A4 page.
+ * Edit one document's markdown. Saving writes to the session store, and
+ * the document page renders it with the case's placeholders filled in.
+ * Nothing is kept past a reload.
  *
  * Part of the safety mock-up, which has no backend; see
  * docs/docs/plans/2026-10-02-safety-feature-mock-up-plan.md.
@@ -14,15 +15,13 @@
 import { Stack } from "@mantine/core";
 import { useNavigate, useParams } from "react-router-dom";
 import PageHeader from "@/components/page-header";
-import IconTextButton from "@/components/button/IconTextButton";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
-import SafetyDocumentSheet from "@/components/safety/SafetyDocumentSheet";
+import DocumentForm from "@/components/safety/DocumentForm";
 import { BodyText } from "@/components/typography";
 import {
-  renderDocument,
   safetyDocumentById,
+  setDocumentContent,
   useDocumentContent,
-  usePlaceholders,
 } from "@lib/safety";
 import { useSafetyCase } from "./useSafetyCase";
 
@@ -30,39 +29,32 @@ export function Component() {
   const navigate = useNavigate();
   const safetyCase = useSafetyCase();
   const { documentId } = useParams<{ documentId: string }>();
-  // Through the session store, so an edited placeholder shows here.
-  const placeholders = usePlaceholders(safetyCase?.id ?? "");
-  const content = useDocumentContent(safetyCase?.id ?? "", documentId ?? "");
   const document =
     safetyCase && documentId
       ? safetyDocumentById(safetyCase, documentId)
       : undefined;
+  const content = useDocumentContent(safetyCase?.id ?? "", documentId ?? "");
 
   if (!safetyCase || !document || content === undefined) {
     return <NotFoundLayout />;
   }
 
+  const back = `/safety/${safetyCase.id}/documentation/${document.id}`;
+
   return (
     <Stack gap="lg">
-      <PageHeader
-        title={document.name}
-        action={
-          <IconTextButton
-            icon="pencil"
-            label="Edit document"
-            onClick={() =>
-              navigate(
-                `/safety/${safetyCase.id}/documentation/${document.id}/edit`,
-              )
-            }
-          />
-        }
-      />
+      <PageHeader title={`Edit ${document.name.toLowerCase()}`} />
       <BodyText c="dimmed">{safetyCase.title}</BodyText>
-      <SafetyDocumentSheet
-        document={document}
-        product={safetyCase.system}
-        content={renderDocument({ ...document, content }, placeholders)}
+      <BodyText c="dimmed">
+        Edits are kept only until the page is reloaded.
+      </BodyText>
+      <DocumentForm
+        initial={content}
+        onSave={(next) => {
+          setDocumentContent(safetyCase.id, document.id, next);
+          navigate(back);
+        }}
+        onCancel={() => navigate(back)}
       />
     </Stack>
   );

@@ -18,11 +18,14 @@ export {
 export { renderDocument, placeholderKeysIn } from "./render";
 export { likelihoodWord, severityWord, riskBand } from "./risk";
 export {
+  documentContentOf,
   officersOf,
   placeholdersOf,
   resetEdits,
+  setDocumentContent,
   setOfficer,
   setPlaceholderValue,
+  useDocumentContent,
   useOfficers,
   usePlaceholders,
 } from "./edits";

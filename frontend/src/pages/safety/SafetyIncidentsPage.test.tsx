@@ -59,4 +59,11 @@ describe("SafetyIncidentsPage", () => {
       "/safety/sc-001/incidents/INC-2026-004",
     );
   });
+
+  it("shows an button, for show only", () => {
+    renderPage("sc-001");
+    expect(
+      screen.getByRole("button", { name: "Add incident" }),
+    ).toBeInTheDocument();
+  });
 });

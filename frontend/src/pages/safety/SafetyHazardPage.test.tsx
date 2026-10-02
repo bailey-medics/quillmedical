@@ -53,4 +53,11 @@ describe("SafetyHazardPage", () => {
     renderPage("sc-001", "H-99");
     expect(screen.getByText(/404|not found/i)).toBeInTheDocument();
   });
+
+  it("shows a button, for show only", () => {
+    renderPage("sc-001", "H-01");
+    expect(
+      screen.getByRole("button", { name: "Edit hazard" }),
+    ).toBeInTheDocument();
+  });
 });

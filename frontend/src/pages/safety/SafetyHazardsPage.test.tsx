@@ -57,4 +57,11 @@ describe("SafetyHazardsPage", () => {
     await userEvent.click(screen.getByText("H-02"));
     expect(navigate).toHaveBeenCalledWith("/safety/sc-001/hazards/H-02");
   });
+
+  it("shows an button, for show only", () => {
+    renderPage("sc-001");
+    expect(
+      screen.getByRole("button", { name: "Add hazard" }),
+    ).toBeInTheDocument();
+  });
 });

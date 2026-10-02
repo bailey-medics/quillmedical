@@ -50,7 +50,7 @@ export default function PlaceholderForm({
         {placeholders.map((placeholder) => (
           <TextField
             key={placeholder.key}
-            label={`{{ ${placeholder.key} }}`}
+            label={placeholder.key}
             description={`Used in ${placeholder.used_in.join(", ")}.`}
             value={values[placeholder.key] ?? ""}
             onChange={(event) => {

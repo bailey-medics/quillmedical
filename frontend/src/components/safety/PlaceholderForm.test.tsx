@@ -20,7 +20,7 @@ describe("PlaceholderForm", () => {
         onCancel={vi.fn()}
       />,
     );
-    expect(screen.getByLabelText(/\{\{ product_name \}\}/)).toHaveValue(
+    expect(screen.getByLabelText(/^product_name\b/)).toHaveValue(
       "MedScribe EPMA",
     );
     expect(screen.getAllByRole("textbox")).toHaveLength(placeholders.length);
@@ -38,7 +38,7 @@ describe("PlaceholderForm", () => {
         onCancel={vi.fn()}
       />,
     );
-    const version = screen.getByLabelText(/\{\{ product_version \}\}/);
+    const version = screen.getByLabelText(/^product_version\b/);
     await userEvent.clear(version);
     await userEvent.type(version, "4.3");
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
@@ -60,7 +60,7 @@ describe("PlaceholderForm", () => {
         onCancel={onCancel}
       />,
     );
-    await userEvent.clear(screen.getByLabelText(/\{\{ supplier_name \}\}/));
+    await userEvent.clear(screen.getByLabelText(/^supplier_name\b/));
     expect(
       screen.getByRole("button", { name: "Save changes" }),
     ).toHaveAttribute("aria-disabled", "true");
