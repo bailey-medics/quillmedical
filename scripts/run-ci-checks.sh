@@ -257,9 +257,8 @@ run_docs_build() {
 
   cd ..
 
-  # Copy prompts
-  mkdir -p docs/docs/llm/prompts
-  cp -r .github/prompts/* docs/docs/llm/prompts/
+  # Copy the Claude configuration
+  bash .github/scripts/docs/copy-llm-config.sh . docs/docs/llm
 
   # Build MkDocs
   cd backend

@@ -10,7 +10,9 @@ on:
       - "frontend/**"
       - "docs/**"
       - "shared/**"
-      - ".github/prompts/**"
+      - "CLAUDE.md"
+      - ".claude/**"
+      - ".github/scripts/docs/**"
       - ".github/workflows/docs.yml"
 
 permissions:
@@ -66,10 +68,8 @@ jobs:
         working-directory: backend
         run: poetry run python scripts/dump_openapi.py --dev
 
-      - name: Copy LLM prompts from .github to docs folder
-        run: |
-          mkdir -p docs/docs/llm/prompts
-          cp -r .github/prompts/* docs/docs/llm/prompts/
+      - name: Copy the Claude configuration to docs folder
+        run: bash .github/scripts/docs/copy-llm-config.sh . docs/docs/llm
 
       - name: Build MkDocs site
         run: |

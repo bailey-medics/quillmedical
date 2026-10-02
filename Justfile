@@ -237,9 +237,8 @@ alias d := docs
 docs:
     #!/usr/bin/env bash
     {{initialise}} "docs"
-    # Copy prompts to docs for inclusion in MkDocs build
-    mkdir -p docs/docs/llm/prompts
-    cp -r .github/prompts/* docs/docs/llm/prompts/
+    # Copy the Claude configuration to docs for inclusion in MkDocs build
+    bash .github/scripts/docs/copy-llm-config.sh . docs/docs/llm
     cd frontend
     yarn docs:build
     yarn storybook:build
