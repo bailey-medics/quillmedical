@@ -40,7 +40,7 @@ describe("SafetyPlaceholdersEditPage", () => {
 
   it("saves into the session store and returns to the placeholders page", async () => {
     renderPage("sc-001");
-    const interval = screen.getByLabelText(/\{\{ review_interval \}\}/);
+    const interval = screen.getByLabelText(/^review_interval\b/);
     await userEvent.clear(interval);
     await userEvent.type(interval, "6 months");
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));

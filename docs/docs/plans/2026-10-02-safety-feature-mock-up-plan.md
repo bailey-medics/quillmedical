@@ -371,6 +371,50 @@ point of a placeholder and the best demonstration the mock-up can give.
 - [x] **Tests**: the store, the edit page round trip, and a document
       test that renders an edited value.
 
+## Phase 14: Documents can be edited
+
+Asked for on `/safety/:caseId/documentation/:documentId`: an edit button.
+Turva's premise is that the document *is* the markdown, so the edit is
+the markdown itself, placeholders and all, and the sheet re-renders from
+it.
+
+- [x] **The session store learns documents**: `setDocumentContent(caseId,
+      documentId, content)` and `useDocumentContent(caseId, documentId)`
+      in `lib/safety/edits.ts`, alongside officers and placeholders.
+- [x] **Route `/safety/:caseId/documentation/:documentId/edit`**,
+      `pages/safety/SafetyDocumentEditPage.tsx`: a
+      `components/safety/DocumentForm.tsx` with one `TextAreaField`
+      holding the markdown, a note that `{{ key }}` placeholders are
+      filled in when the document is shown, and `ButtonPair` to save or
+      cancel back to the document. The document page gains an "Edit
+      document" button in its header and renders the stored content.
+- [x] **Sidebar**: on the edit page the navigation reads Safety,
+      Documentation, Edit.
+- [x] **Tests** for the store, the form, the edit page round trip, and
+      the document page rendering an edit.
+
+## Phase 15: Add and edit buttons that are only for show
+
+Asked for after the document editor: an edit button on a hazard's page
+and on an incident report, and an add button on the hazards and incidents
+pages. **These do nothing, by request**: they are there so the pages look
+complete in the demonstration, and a button that opened a form would be a
+form nobody asked for. They are drawn without a handler, so pressing one
+has no effect, and the plan says so here rather than leaving a reader to
+wonder whether a handler was forgotten. Landed with Phase 14.
+
+- [x] **`AddButton`** labelled "Add hazard" in the hazards page header
+      and "Add incident" in the incidents page header, through
+      `PageHeader`'s `action`.
+- [x] **`IconTextButton` with the pencil** labelled "Edit hazard" on the
+      hazard page and "Edit incident" on the incident page, the same way.
+- [x] **Tests** that each button is present, and nothing more.
+- [x] **Placeholder keys shown bare.** Asked for at the same time: the
+      placeholders table and the edit form show `product_name`, not
+      `{{ product_name }}`. The braces are how a template names a key,
+      not part of the key, and the documents are the only place they
+      belong.
+
 ## Decisions
 
 - **No backend, no backend placeholder** – the data lives in

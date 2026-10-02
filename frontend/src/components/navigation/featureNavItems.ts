@@ -99,7 +99,9 @@ const SAFETY_PAGES: readonly {
  * page itself and the landing page hang nothing beneath Safety.
  */
 function safetyPageAt(pathname: string): NavItem | undefined {
-  const match = pathname.match(/^\/safety\/([^/]+)\/([^/]+)(\/[^/]+)?\/?$/);
+  const match = pathname.match(
+    /^\/safety\/([^/]+)\/([^/]+)(\/[^/]+)?(\/edit)?\/?$/,
+  );
   if (!match) return undefined;
   const page = SAFETY_PAGES.find((item) => item.segment === match[2]);
   if (!page) return undefined;
@@ -107,9 +109,11 @@ function safetyPageAt(pathname: string): NavItem | undefined {
     label: page.label,
     href: `/safety/${match[1]}/${page.segment}`,
   };
-  return page.detail && match[3]
-    ? { ...link, children: [{ label: page.detail, href: pathname }] }
-    : link;
+  if (!page.detail || !match[3]) return link;
+  // Editing a record hangs "Edit" where the record would be: one child,
+  // so the menu does not grow a third level for a form.
+  const label = match[4] ? "Edit" : page.detail;
+  return { ...link, children: [{ label, href: pathname }] };
 }
 
 /**

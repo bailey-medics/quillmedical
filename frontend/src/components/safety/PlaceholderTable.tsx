@@ -13,7 +13,7 @@ import type { Placeholder } from "@lib/safety";
 const columns: Column<Placeholder>[] = [
   {
     header: "Placeholder",
-    render: (placeholder) => `{{ ${placeholder.key} }}`,
+    render: (placeholder) => placeholder.key,
     accessor: (placeholder) => placeholder.key,
   },
   {

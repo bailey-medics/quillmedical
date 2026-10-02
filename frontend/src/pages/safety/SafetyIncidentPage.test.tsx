@@ -31,4 +31,11 @@ describe("SafetyIncidentPage", () => {
     renderPage("sc-001", "INC-9999-999");
     expect(screen.getByText(/404|not found/i)).toBeInTheDocument();
   });
+
+  it("shows a button, for show only", () => {
+    renderPage("sc-001", "INC-2026-009");
+    expect(
+      screen.getByRole("button", { name: "Edit incident" }),
+    ).toBeInTheDocument();
+  });
 });

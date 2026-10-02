@@ -44,7 +44,7 @@ describe("SafetyPlaceholdersPage", () => {
 
   it("shows the case's content", () => {
     renderPage("sc-001");
-    expect(screen.getByText("{{ product_name }}")).toBeInTheDocument();
+    expect(screen.getByText("product_name")).toBeInTheDocument();
     expect(
       screen.getByText(/A placeholder is a value written once/),
     ).toBeInTheDocument();

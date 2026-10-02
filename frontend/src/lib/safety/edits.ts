@@ -18,13 +18,19 @@ interface CaseEdits {
   officers: Record<string, Officer>;
   /** Placeholder values, keyed by placeholder key */
   placeholders: Record<string, string>;
+  /** Document markdown, keyed by document id */
+  documents: Record<string, string>;
 }
 
 /**
  * One shared "no edits" value, so a case nobody has touched has a stable
  * identity: the snapshots below compare by reference.
  */
-const NO_EDITS: CaseEdits = Object.freeze({ officers: {}, placeholders: {} });
+const NO_EDITS: CaseEdits = Object.freeze({
+  officers: {},
+  placeholders: {},
+  documents: {},
+});
 
 let edits: Record<string, CaseEdits> = {};
 const listeners = new Set<() => void>();
@@ -72,6 +78,34 @@ export function setPlaceholderValue(
     },
   };
   emit();
+}
+
+/** Replace one document's markdown on a case. */
+export function setDocumentContent(
+  caseId: string,
+  documentId: string,
+  content: string,
+): void {
+  const current = editsFor(caseId);
+  edits = {
+    ...edits,
+    [caseId]: {
+      ...current,
+      documents: { ...current.documents, [documentId]: content },
+    },
+  };
+  emit();
+}
+
+/** A document's markdown, edited or as the fixture has it; undefined if unknown. */
+export function documentContentOf(
+  caseId: string,
+  documentId: string,
+): string | undefined {
+  const edited = editsFor(caseId).documents[documentId];
+  if (edited !== undefined) return edited;
+  return safetyCaseById(caseId)?.documents.find((d) => d.id === documentId)
+    ?.content;
 }
 
 /** Forget every edit. For tests, and nothing else calls it. */
@@ -140,4 +174,15 @@ export function useOfficers(caseId: string): Officer[] {
 /** The case's placeholders, re-rendering when one is edited. */
 export function usePlaceholders(caseId: string): Placeholder[] {
   return useSyncExternalStore(subscribe, () => placeholdersSnapshot(caseId));
+}
+
+/** A document's markdown, re-rendering when it is edited. */
+export function useDocumentContent(
+  caseId: string,
+  documentId: string,
+): string | undefined {
+  // Strings compare by value, so no snapshot cache is needed here.
+  return useSyncExternalStore(subscribe, () =>
+    documentContentOf(caseId, documentId),
+  );
 }

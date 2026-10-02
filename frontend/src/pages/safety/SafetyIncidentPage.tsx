@@ -13,6 +13,7 @@
 import { Stack } from "@mantine/core";
 import { useParams } from "react-router-dom";
 import PageHeader from "@/components/page-header";
+import IconTextButton from "@/components/button/IconTextButton";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import IncidentReport from "@/components/safety/IncidentReport";
 import { BodyText } from "@/components/typography";
@@ -31,7 +32,12 @@ export function Component() {
 
   return (
     <Stack gap="lg">
-      <PageHeader title={`Incident ${incident.id}`} />
+      <PageHeader
+        title={`Incident ${incident.id}`}
+        // For show only, by request: there is no form behind it. See
+        // Phase 15 of the plan.
+        action={<IconTextButton icon="pencil" label="Edit incident" />}
+      />
       <BodyText c="dimmed">{safetyCase.title}</BodyText>
       <IncidentReport
         incident={incident}

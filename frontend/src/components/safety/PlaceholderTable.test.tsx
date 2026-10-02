@@ -9,11 +9,12 @@ import PlaceholderTable from "./PlaceholderTable";
 import { SAFETY_CASES } from "@lib/safety";
 
 describe("PlaceholderTable", () => {
-  it("shows each key as a template placeholder with its value", () => {
+  it("shows each key, bare, with its value", () => {
     renderWithMantine(
       <PlaceholderTable placeholders={SAFETY_CASES[0].placeholders} />,
     );
-    expect(screen.getByText("{{ product_name }}")).toBeInTheDocument();
+    expect(screen.getByText("product_name")).toBeInTheDocument();
+    expect(screen.queryByText(/\{\{/)).not.toBeInTheDocument();
     expect(screen.getByText("MedScribe EPMA")).toBeInTheDocument();
   });
 

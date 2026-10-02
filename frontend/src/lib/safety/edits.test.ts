@@ -5,11 +5,14 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import {
+  documentContentOf,
   officersOf,
   placeholdersOf,
   resetEdits,
+  setDocumentContent,
   setOfficer,
   setPlaceholderValue,
+  useDocumentContent,
   useOfficers,
   usePlaceholders,
 } from "./edits";
@@ -70,6 +73,19 @@ describe("safety session edits", () => {
     );
     expect(result.current.find((o) => o.role === "Top management")?.name).toBe(
       "Dr Sam Patel",
+    );
+  });
+
+  it("replaces a document's markdown and re-renders its hook", () => {
+    expect(documentContentOf("sc-001", "crmp")).toBe(
+      SAFETY_CASES[0].documents[0].content,
+    );
+    expect(documentContentOf("sc-001", "nope")).toBeUndefined();
+    const { result } = renderHook(() => useDocumentContent("sc-001", "crmp"));
+    act(() => setDocumentContent("sc-001", "crmp", "## Rewritten\n\nShort."));
+    expect(result.current).toBe("## Rewritten\n\nShort.");
+    expect(documentContentOf("sc-001", "cscr")).toBe(
+      SAFETY_CASES[0].documents[2].content,
     );
   });
 });
