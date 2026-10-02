@@ -1528,6 +1528,34 @@ stack-watch:
     #
     # Not `watch(1)`: macOS does not ship it, and this needs to survive the
     # script exiting non-zero when there is no stack.
+    # The dots a keypress starts run in the background, and a background
+    # job in a script ignores ctrl-c: left alone it would go on printing
+    # into the terminal after the watch had gone. So the interrupt stops
+    # it by name. INT and TERM only, leaving the EXIT trap `initialise`
+    # set to do its own tidying on the way out.
+    dots=""
+    trap '[ -n "${dots}" ] && kill "${dots}" 2>/dev/null; echo; exit 130' INT TERM
+
+    # A label, then a dot every two seconds until `stop_dots`. What they
+    # cover is a network call: usually about three seconds, sometimes many
+    # more, and a line that keeps growing says it is still going where a
+    # fixed one cannot be told from a hang.
+    start_dots() {
+        printf '  %s' "$1"
+        ( while sleep 2; do printf '.'; done ) &
+        dots=$!
+    }
+
+    # `wait` collects the job, so bash does not print a "Terminated" line
+    # over whatever is drawn next.
+    stop_dots() {
+        if [ -n "${dots}" ]; then
+            kill "${dots}" 2>/dev/null || true
+            wait "${dots}" 2>/dev/null || true
+            dots=""
+        fi
+    }
+
     while true; do
         # Fetch first, then clear. Clearing before the ~3s `gh pr list` call
         # left the terminal blank for the whole of it, which read as a hang;
@@ -1540,23 +1568,32 @@ stack-watch:
         # and the loop should keep drawing it rather than dying on it.
         drawn=$(python3 scripts/stack-status.py --prs --colour 2>&1 || true)
 
+        # Stop the dots a keypress started, further down.
+        stop_dots
+
         # \033[H homes the cursor, \033[2J clears the screen and \033[3J the
         # scrollback. The third matters: without it the previous draw is
         # only pushed up rather than thrown away, so a stack taller than
         # the window leaves the older copy above the new one and the
         # status line scrolls out of sight with it.
         printf '\033[H\033[2J\033[3J'
-        echo "  updated $(date '+%H:%M:%S') · every 60s · r ready all · any key redraws · ctrl-c to stop"
+        # printf with the time as an argument, not echo with it inline: the
+        # backticks round each key are literal, and inside double quotes
+        # bash would run them as commands.
+        printf '  updated %s · every 60s · `r` ready all · `s` sync · `any key` updates now · `ctrl-c` to stop\n' \
+            "$(date '+%H:%M:%S')"
         printf '%s\n' "${drawn}"
 
         # The minute's wait doubles as the keyboard: one keypress ends it
         # early. `r` takes every open pull request in the stack out of
-        # draft, which is `stack-ready` and nothing more; any other key
-        # simply redraws now rather than at the end of the minute.
+        # draft, which is `stack-ready` and nothing more; `s` is
+        # `stack-sync`, for when a pull request below has merged; any other
+        # key simply redraws now rather than at the end of the minute.
         #
-        # No confirmation, by choice. Marking ready starts the heavy CI
-        # tier on every branch, and that is exactly what pressing `r` here
-        # is asking for.
+        # No confirmation on either, by choice. Marking ready starts the
+        # heavy CI tier on every branch, and a sync rebases and pushes the
+        # branches still open, and that is exactly what pressing the key
+        # here is asking for.
         #
         # Without a terminal on stdin `read` returns at once, which would
         # turn the loop into a spin against the GitHub API, so that case
@@ -1565,17 +1602,61 @@ stack-watch:
             sleep 60
             continue
         fi
+        # The key is read silently and then answered in words, rather than
+        # left to echo. A bare `r` on the line says nothing about what it
+        # set off, and the redraw's fetch takes about three seconds, in
+        # which a keypress that showed nothing read as one that was missed.
+        # Silent reading also keeps an arrow key from printing its escape
+        # sequence. A timeout is not a keypress, so it says nothing.
         key=""
-        read -rsn1 -t 60 key || true
-        if [ "${key}" = "r" ] || [ "${key}" = "R" ]; then
+        pressed=0
+        read -rsn1 -t 60 key || pressed=$?
+        if [ "${pressed}" -ne 0 ]; then
+            continue
+        fi
+        # Whichever key it was, the dots run on into the fetch at the top
+        # of the loop, which is what stops them: one growing line from the
+        # keypress to the redraw.
+        echo ""
+        case "${key}" in
+            r|R)
+                recipe="stack-ready"
+                start_dots "r · taking every pull request out of draft"
+                ;;
+            s|S)
+                recipe="stack-sync"
+                start_dots "s · syncing the stack"
+                ;;
+            *)
+                start_dots "updating"
+                continue
+                ;;
+        esac
+
+        # The recipe is run for what it does, not for what it prints: its
+        # trace, a line per pull request or branch, and a drawing of the
+        # stack that the redraw is about to replace. So its output is
+        # captured and shown only when something went wrong, and then held
+        # until a key says it has been read, because the redraw would
+        # otherwise wipe it three seconds later.
+        #
+        # "Went wrong" is the exit code or a line opening with a warning
+        # mark. The second half is for `gh stack sync`, which exits 0 after
+        # failing to move the checkout off a merged branch and says so only
+        # in a `⚠` line. A mark part-way along a line is the drawing's own,
+        # a red check or a branch needing a rebase, and is not a failure.
+        recipe_status=0
+        recipe_output=$(just "${recipe}" 2>&1) || recipe_status=$?
+        if [ "${recipe_status}" -eq 0 ] \
+            && printf '%s\n' "${recipe_output}" | grep -qE '^[[:space:]]*(⚠|✗) '; then
+            recipe_status=1
+        fi
+        if [ "${recipe_status}" -ne 0 ]; then
+            stop_dots
+            printf '\n%s\n\n' "${recipe_output}"
+            read -rsn1 -p "  ${recipe} did not finish cleanly · any key to carry on" _ || true
             echo ""
-            # A failure – no stack, or one spanning worktrees – would be
-            # wiped by the redraw three seconds later, so it is held on
-            # screen until a key says it has been read.
-            if ! just stack-ready; then
-                echo ""
-                read -rsn1 -p "  stack-ready failed · any key to carry on" _ || true
-            fi
+            start_dots "updating"
         fi
     done
 
