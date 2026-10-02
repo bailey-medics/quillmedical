@@ -58,7 +58,7 @@ organisation and nobody else.
 
 ## Phase 2: Static data
 
-- [ ] **Create `frontend/src/lib/safety/types.ts`** with the shapes the
+- [x] **Create `frontend/src/lib/safety/types.ts`** with the shapes the
       pages render, typed strictly with string-literal unions rather than
       bare strings: `SafetyCase` (id, title, system, standard `"DCB0129" |
     "DCB0160"`, status `"draft" | "in_review" | "signed_off"`, clinical
@@ -70,7 +70,7 @@ organisation and nobody else.
       `Placeholder` (key, value, used in). Strict types cost nothing and
       keep the pages honest, even though nothing will ever be built on
       these shapes.
-- [ ] **Create `frontend/src/lib/safety/fixtures.ts`** with the five cases
+- [x] **Create `frontend/src/lib/safety/fixtures.ts`** with the five cases
       and their detail, exported as `SAFETY_CASES` and `safetyCaseById(id)`.
       Plausible but fictional systems: an e-prescribing module, a patient
       portal, a results acknowledgement service, a bed management board and
@@ -80,7 +80,7 @@ organisation and nobody else.
       and residual scores. Officer names are invented and emails use
       `example.org`. No PHI anywhere, including in the incidents, which
       describe a system fault and never a patient.
-- [ ] **Create `frontend/src/lib/safety/index.ts`** as the barrel, and a
+- [x] **Create `frontend/src/lib/safety/index.ts`** as the barrel, and a
       `fixtures.test.ts` that checks the five cases have unique ids, every
       incident links to a hazard that exists, and every case has at least
       one officer. Cheap, and it stops a later edit to the demo data
@@ -88,14 +88,14 @@ organisation and nobody else.
 
 ## Phase 3: Components
 
-- [ ] **`components/safety/SafetyCaseTable.tsx`** over `DataTable` from
+- [x] **`components/safety/SafetyCaseTable.tsx`** over `DataTable` from
       `components/tables`: columns title, system, standard, clinical safety
       officer, open hazards, status and last updated, with `onRowClick`
       navigating to the case. Status renders through a new
       **`components/safety/SafetyStatusBadge.tsx`**, following
       `SignOffStatusBadge` and `badgeColours.ts`, so the three states use
       the badge colours the rest of the app uses.
-- [ ] **`components/safety/RiskScoreBadge.tsx`**: a badge for a risk score
+- [x] **`components/safety/RiskScoreBadge.tsx`**: a badge for a risk score
       of 1 to 5, coloured low to high from the design system's semantic
       colours, used by the hazard table for initial and residual scores.
 - [ ] **`components/safety/HazardTable.tsx`, `IncidentTable.tsx`,
