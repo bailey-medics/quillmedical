@@ -13,6 +13,7 @@
 
 import type {
   Hazard,
+  Incident,
   Officer,
   Placeholder,
   RiskScore,
@@ -423,6 +424,13 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
           "Two identical orders created when a slow network let the submit button be pressed twice",
         severity: "moderate",
         hazard_id: "H-03",
+        immediate_action:
+          "Second order cancelled before administration; prescribers told to wait for the confirmation screen.",
+        root_cause:
+          "Submit button stayed enabled while the request was in flight on a slow ward network.",
+        outcome:
+          "Button now disabled in flight and the server rejects a duplicate order within 60 seconds. Hazard H-03 closed.",
+        reported_by: "Ward pharmacist",
       },
       {
         id: "INC-2026-009",
@@ -431,6 +439,13 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
           "Allergy banner absent after a user was signed out mid-session and signed back in",
         severity: "high",
         hazard_id: "H-02",
+        immediate_action:
+          "Prescribing paused on the affected workstation and the patient's allergies checked by hand.",
+        root_cause:
+          "Allergy alert state was held in the browser and lost when the session was re-established.",
+        outcome:
+          "Allergy state moved to the server; a screen that cannot fetch it blocks prescribing. Hazard H-02 stays open until the release is live.",
+        reported_by: "Prescribing clinician",
       },
     ],
     officers: officers("Dr Hannah Okafor", "Dr Tom Reilly", "Sarah Lindqvist"),
@@ -455,6 +470,13 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
           "A histology report appeared in the portal twelve hours before the requesting clinician opened it",
         severity: "high",
         hazard_id: "H-01",
+        immediate_action:
+          "Report hidden from the portal and the requesting clinician phoned the patient the same day.",
+        root_cause:
+          "Release rule keyed on the report's status rather than on clinical acknowledgement.",
+        outcome:
+          "Release now waits for acknowledgement, with a 72-hour hold on anything flagged abnormal. Hazard H-01 mitigated.",
+        reported_by: "Clinical safety officer",
       },
     ],
     officers: officers("Dr Tom Reilly", "Dr Hannah Okafor", "James Whitfield"),
@@ -479,6 +501,13 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
           "Worklist on a ward workstation had not refreshed for three hours; new results were visible only after reload",
         severity: "moderate",
         hazard_id: "H-03",
+        immediate_action:
+          "Workstation reloaded and the ward asked to refresh manually until fixed.",
+        root_cause:
+          "Websocket reconnect gave up after five attempts following a network blip.",
+        outcome:
+          "Reconnect now retries indefinitely and a banner shows while the list is stale. Hazard H-03 closed.",
+        reported_by: "Ward sister",
       },
       {
         id: "INC-2026-011",
@@ -487,6 +516,13 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
           "A potassium result from a community laboratory displayed with no unit",
         severity: "moderate",
         hazard_id: "H-04",
+        immediate_action:
+          "Result confirmed by phone with the laboratory before it was acted on.",
+        root_cause:
+          "Inbound HL7 message omitted the units field and the display showed a blank.",
+        outcome:
+          "Results without a unit are held for review and never shown on the worklist. Hazard H-04 mitigated.",
+        reported_by: "Biomedical scientist",
       },
       {
         id: "INC-2026-012",
@@ -495,6 +531,12 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
           "Acknowledgement recorded against the previous user of a shared workstation",
         severity: "low",
         hazard_id: "H-02",
+        immediate_action:
+          "Acknowledgement reassigned to the clinician who had actually reviewed the result.",
+        root_cause: "Previous user had not signed out of a shared workstation.",
+        outcome:
+          "Idle timeout shortened to two minutes and acknowledgement now asks for a PIN. Hazard H-02 stays open pending the release.",
+        reported_by: "Clinical safety officer",
       },
     ],
     officers: officers("Dr Amara Diallo", "Dr Tom Reilly", "Sarah Lindqvist"),
@@ -538,6 +580,13 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
           "Discharge summary sent to a practice the patient had left two years earlier",
         severity: "moderate",
         hazard_id: "H-02",
+        immediate_action:
+          "Letter re-sent to the correct practice and the old practice asked to destroy its copy.",
+        root_cause:
+          "Registered practice was read from a demographic record cached two years earlier.",
+        outcome:
+          "Practice is now looked up live at the moment of sending. Hazard H-02 closed.",
+        reported_by: "Medical secretary",
       },
     ],
     officers: officers(
@@ -549,6 +598,14 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
     placeholders: placeholders("LetterFlow", "5.0", "MedScribe Health Ltd"),
   },
 ];
+
+/** The incident with this reference on a case, or undefined. */
+export function incidentById(
+  safetyCase: SafetyCaseDetail,
+  incidentId: string,
+): Incident | undefined {
+  return safetyCase.incidents.find((incident) => incident.id === incidentId);
+}
 
 /** The hazard with this reference on a case, or undefined. */
 export function hazardById(

@@ -1,5 +1,7 @@
 /**
- * Incidents page of one safety case.
+ * Safety Incident Page
+ *
+ * One incident report of a safety case.
  *
  * Part of the safety mock-up, which has no backend; see
  * docs/docs/plans/2026-10-02-safety-feature-mock-up-plan.md.
@@ -9,30 +11,32 @@
  */
 
 import { Stack } from "@mantine/core";
-import { useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import PageHeader from "@/components/page-header";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
-import IncidentTable from "@/components/safety/IncidentTable";
+import IncidentReport from "@/components/safety/IncidentReport";
 import { BodyText } from "@/components/typography";
+import { hazardById, incidentById } from "@lib/safety";
 import { useSafetyCase } from "./useSafetyCase";
 
 export function Component() {
-  const navigate = useNavigate();
   const safetyCase = useSafetyCase();
+  const { incidentId } = useParams<{ incidentId: string }>();
+  const incident =
+    safetyCase && incidentId ? incidentById(safetyCase, incidentId) : undefined;
 
-  if (!safetyCase) {
+  if (!safetyCase || !incident) {
     return <NotFoundLayout />;
   }
 
   return (
     <Stack gap="lg">
-      <PageHeader title="Incidents" />
+      <PageHeader title={`Incident ${incident.id}`} />
       <BodyText c="dimmed">{safetyCase.title}</BodyText>
-      <IncidentTable
-        incidents={safetyCase.incidents}
-        onSelect={(incident) =>
-          navigate(`/safety/${safetyCase.id}/incidents/${incident.id}`)
-        }
+      <IncidentReport
+        incident={incident}
+        hazard={hazardById(safetyCase, incident.hazard_id)}
+        hazardHref={`/safety/${safetyCase.id}/hazards/${incident.hazard_id}`}
       />
     </Stack>
   );

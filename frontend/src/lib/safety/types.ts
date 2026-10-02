@@ -72,6 +72,14 @@ export interface Incident {
   severity: IncidentSeverity;
   /** The hazard this incident is an instance of */
   hazard_id: string;
+  /** What was done at once to make things safe */
+  immediate_action: string;
+  /** Why it happened, as the investigation found */
+  root_cause: string;
+  /** What changed as a result */
+  outcome: string;
+  /** Who reported it, as a role and never a name */
+  reported_by: string;
 }
 
 /** A named person with a role on the case. */
