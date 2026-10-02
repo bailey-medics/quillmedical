@@ -9,6 +9,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import { Container } from "@mantine/core";
 import { ActiveStatusBadge } from "@/components/badge";
+import { StoryNote } from "@/stories/variants";
 import DataTable, { type Column } from "./DataTable";
 
 interface User {
@@ -189,6 +190,141 @@ export const LongText: Story = {
   },
 };
 // cspell:enable
+
+interface Admission {
+  id: number;
+  name: string;
+  nhsNumber: string;
+  ward: string;
+  consultant: string;
+  admitted: string;
+  expectedDischarge: string;
+  status: "active" | "inactive";
+}
+
+const admissions: Admission[] = [
+  {
+    id: 1,
+    name: "Alice Smith",
+    nhsNumber: "943 476 5919",
+    ward: "Ward 12",
+    consultant: "Dr Okafor",
+    admitted: "2026-09-28",
+    expectedDischarge: "2026-10-04",
+    status: "active",
+  },
+  {
+    id: 2,
+    name: "Bob Jones",
+    nhsNumber: "943 476 5920",
+    ward: "Ward 7",
+    consultant: "Dr Reilly",
+    admitted: "2026-09-30",
+    expectedDischarge: "2026-10-02",
+    status: "inactive",
+  },
+  {
+    id: 3,
+    name: "Charlie Brown",
+    nhsNumber: "943 476 5921",
+    ward: "Ward 12",
+    consultant: "Dr Diallo",
+    admitted: "2026-10-01",
+    expectedDischarge: "2026-10-06",
+    status: "active",
+  },
+];
+
+const sevenColumns: Column<Admission>[] = [
+  { header: "Name", render: (a) => a.name, accessor: (a) => a.name },
+  { header: "NHS number", render: (a) => a.nhsNumber },
+  { header: "Ward", render: (a) => a.ward, accessor: (a) => a.ward },
+  { header: "Consultant", render: (a) => a.consultant },
+  {
+    header: "Admitted",
+    render: (a) => a.admitted,
+    accessor: (a) => a.admitted,
+  },
+  { header: "Expected discharge", render: (a) => a.expectedDischarge },
+  {
+    header: "Status",
+    render: (a) => <ActiveStatusBadge active={a.status === "active"} />,
+  },
+];
+
+const threeColumns: Column<Admission>[] = sevenColumns.filter((c) =>
+  ["Name", "Ward", "Status"].includes(c.header),
+);
+
+/**
+ * Seven columns in a 40rem space. Seven columns need 70rem at the
+ * default 10rem each, so the table draws cards. Widen the Storybook
+ * canvas and nothing changes: the container, not the screen, is what is
+ * measured.
+ */
+export const SevenColumnsInANarrowSpace: StoryObj<typeof DataTable<Admission>> =
+  {
+    render: () => (
+      <div>
+        <Container size={40 * 16} px={0}>
+          <DataTable
+            data={admissions}
+            columns={sevenColumns}
+            onRowClick={fn()}
+            getRowKey={(a) => a.id}
+          />
+        </Container>
+        <StoryNote mt="xs">
+          Container constrained to 40rem: seven columns do not fit, so cards
+        </StoryNote>
+      </div>
+    ),
+  };
+
+/**
+ * Three columns in the same 40rem space. Three columns need 30rem, which
+ * fits, so this stays a table where the one above became cards.
+ */
+export const ThreeColumnsInANarrowSpace: StoryObj<typeof DataTable<Admission>> =
+  {
+    render: () => (
+      <div>
+        <Container size={40 * 16} px={0}>
+          <DataTable
+            data={admissions}
+            columns={threeColumns}
+            onRowClick={fn()}
+            getRowKey={(a) => a.id}
+          />
+        </Container>
+        <StoryNote mt="xs">
+          The same 40rem: three columns fit, so still a table
+        </StoryNote>
+      </div>
+    ),
+  };
+
+/**
+ * Seven columns at the full width of the page container. Drag the
+ * Storybook canvas narrower than about 70rem and it switches to cards;
+ * widen it past 72rem and it comes back, the 2rem margin stopping it
+ * flickering at the edge.
+ */
+export const SevenColumnsAtFullWidth: StoryObj<typeof DataTable<Admission>> = {
+  render: () => (
+    <div>
+      <DataTable
+        data={admissions}
+        columns={sevenColumns}
+        onRowClick={fn()}
+        getRowKey={(a) => a.id}
+      />
+      <StoryNote mt="xs">
+        Shrink the canvas below about 70rem to see the switch to cards
+      </StoryNote>
+    </div>
+  ),
+};
 
 /**
  * Error State

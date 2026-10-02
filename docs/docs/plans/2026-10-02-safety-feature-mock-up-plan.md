@@ -212,6 +212,15 @@ backend reads the catalogue and the professions at load and needs no code.
 
 ## Phase 7: Safety admin, mirroring teaching's
 
+**Removed again on 2 October 2026.** The request was "safety admin and
+safety competencies mirroring teaching and passport", and this phase read
+"safety admin" as teaching's admin area, `/admin/teaching`. What was meant
+was the `safety_admin` profession and `manage_safety` competency of
+Phase 6, which stand. The page, its route and its Safety child under
+Admin in the sidebar were taken out; a `manage_safety` holder still
+reaches `/admin`, as any scoped manager does, and finds the people pages
+there. The steps below are left as the record of what was built.
+
 - [x] **Add `/admin/safety`**, `pages/admin/safety/AdminSafetyDashboard.tsx`,
       under the existing `/admin` route, which already admits every scoped
       manager. Like `AdminTeachingDashboard` it is `PageHeader` and action

@@ -82,3 +82,4 @@
 - [Passport for Every Profession](2026-10-01-passport-for-every-profession-plan.md)
 - [Safety Feature Mock-up](2026-10-02-safety-feature-mock-up-plan.md)
 - [API Security Headers](2026-10-02-api-security-headers-plan.md)
+- [Tables Switch to Cards When Columns Do Not Fit](2026-10-02-tables-switch-to-cards-when-columns-do-not-fit-plan.md)

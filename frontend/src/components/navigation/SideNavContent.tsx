@@ -68,9 +68,6 @@ export default function SideNavContent({
   // Still needed here: the admin section has its own teaching sub-nav,
   // which is about administering the feature rather than using it.
   const hasTeaching = useHasFeature("teaching");
-  // The same for safety: `/admin/safety` is about administering the
-  // feature, so it hangs under Admin rather than under Safety.
-  const hasSafety = useHasFeature("safety");
 
   // What hangs under Teaching belongs to the sidebar rather than to the
   // shared list: here an educator gets the teaching pages, whereas the
@@ -458,15 +455,6 @@ export default function SideNavContent({
                           },
                         ]
                       : undefined,
-            } satisfies NavItem,
-          ]
-        : []),
-      ...(hasSafety
-        ? [
-            {
-              label: "Safety",
-              href: "/admin/safety",
-              icon: showIcons ? "safety" : undefined,
             } satisfies NavItem,
           ]
         : []),
