@@ -1,10 +1,9 @@
 # Deploy public marketing site to the GCS landing bucket.
 #
-# The app project, not teaching: the apex moves there before the teaching
-# project is retired. The bucket name is derived from the project id as
-# `<project>-landing`, so changing the secret changes the target.
-# Builds the public_pages Vite workspace once and syncs it to the teaching
+# Builds the public_pages Vite workspace once and syncs it to the app
 # project's landing bucket, which serves the apex quill-medical.com domain.
+# The bucket name is derived from the project id as `<project>-landing`, so
+# changing the secret changes the target.
 name: Deploy public site
 
 on:
@@ -56,12 +55,17 @@ jobs:
           name: public-site
           path: frontend/dist/public_pages/
 
-  deploy-teaching:
-    name: Deploy to teaching
+  deploy:
+    name: Deploy to app
     runs-on: ubuntu-24.04
     needs: build
+    # The environment that holds the GCP_APP_* secrets read below, and the
+    # only one infra/github/environments.tf manages. It deploys from main
+    # only. This job ran under `teaching` until October 2026, an environment
+    # with no secrets of its own, so it was reading the repository-level
+    # copies and recording its deployments against a retired name.
     environment:
-      name: teaching
+      name: app
 
     steps:
       - name: Checkout
@@ -87,10 +91,10 @@ jobs:
       - name: List deployed files
         run: bash .github/scripts/public-site/list-files.sh "${{ secrets.GCP_APP_PROJECT_ID }}"
 
-  notify-teaching-failure:
-    name: Notify teaching deploy failure
-    needs: [build, deploy-teaching]
-    if: ${{ always() && (needs.build.result == 'failure' || needs.deploy-teaching.result == 'failure') }}
+  notify-failure:
+    name: Notify public site deploy failure
+    needs: [build, deploy]
+    if: ${{ always() && (needs.build.result == 'failure' || needs.deploy.result == 'failure') }}
     uses: ./.github/workflows/slack-notify.yml
     with:
       channel: teaching

@@ -26,7 +26,7 @@ show_usage() {
   echo "  main                  Run main.yml workflow (all jobs)"
   echo ""
   echo -e "${BOLD}Specific Jobs (non-main):${NC}"
-  echo "  python-styling        Run Python styling checks"
+  echo "  python-pre-commit     Run Python pre-commit checks"
   echo "  python-unit           Run Python unit tests"
   echo "  ts-eslint             Run TypeScript ESLint"
   echo "  ts-prettier           Run TypeScript Prettier"
@@ -41,7 +41,7 @@ show_usage() {
   echo -e "${BOLD}Examples:${NC}"
   echo "  $0 non-main                    # Run all non-main checks"
   echo "  $0 non-main ts-unit            # Run only TypeScript unit tests"
-  echo "  $0 non-main python-styling     # Run only Python styling checks"
+  echo "  $0 non-main python-pre-commit  # Run only Python pre-commit checks"
   echo ""
   echo -e "${BOLD}Notes:${NC}"
   echo "  - Requires Docker to be running"
@@ -111,7 +111,7 @@ map_job_name() {
   local job=$1
 
   case "$job" in
-    python-styling)
+    python-pre-commit)
       echo "python_checks"
       ;;
     python-unit)

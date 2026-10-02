@@ -27,7 +27,7 @@ import { EXTRA_RULES, WCAG_TAGS } from "../src/lib/accessibility/axeConfig";
       email: "mark.bailey@example.com",
       name: "Mark Bailey",
       roles: ["Clinician"],
-      system_permissions: "superadmin",
+      platform_role: "superadmin",
       // Components gated on a competency render nothing without it.
       competencies: ["manage_practising_competencies"],
     };
