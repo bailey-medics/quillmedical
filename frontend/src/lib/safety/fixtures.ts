@@ -171,6 +171,8 @@ const ePrescribingHazards: Hazard[] = [
     description: "Wrong dose unit shown on the prescribing screen",
     cause: "Unit defaults to mg where the formulary entry is in micrograms",
     effect: "Prescriber confirms a dose a thousand times too large",
+    mitigation:
+      "Dose unit is taken from the formulary entry and cannot be changed by the prescriber; a dose outside the entry's range needs a second confirmation naming the unit.",
     initial_likelihood: 3,
     initial_severity: 5,
     residual_likelihood: 1,
@@ -182,6 +184,8 @@ const ePrescribingHazards: Hazard[] = [
     description: "Allergy alert suppressed after a session timeout",
     cause: "Alert state is held in the browser and lost on re-login",
     effect: "A drug the patient is allergic to is prescribed unchallenged",
+    mitigation:
+      "Allergy state moved from the browser to the server and re-fetched on every prescribing screen; a session that cannot fetch it blocks prescribing rather than proceeding.",
     initial_likelihood: 2,
     initial_severity: 5,
     residual_likelihood: 1,
@@ -193,6 +197,8 @@ const ePrescribingHazards: Hazard[] = [
     description: "Duplicate order created on a double submit",
     cause: "Submit button stays enabled while the request is in flight",
     effect: "Two doses are administered",
+    mitigation:
+      "Submit button disabled while the request is in flight, and the server rejects a second order identical to one in the last 60 seconds.",
     initial_likelihood: 4,
     initial_severity: 3,
     residual_likelihood: 1,
@@ -204,6 +210,8 @@ const ePrescribingHazards: Hazard[] = [
     description: "Weight-based dose calculated from a stale weight",
     cause: "No prompt when the recorded weight is older than 30 days",
     effect: "Under or over dosing in children",
+    mitigation:
+      "Weight-based calculations show the weight's date beside the dose and refuse to calculate from a weight older than 30 days for a patient under 16 until it is re-entered.",
     initial_likelihood: 3,
     initial_severity: 4,
     residual_likelihood: 2,
@@ -218,6 +226,8 @@ const portalHazards: Hazard[] = [
     description: "Result released to the portal before clinician review",
     cause: "Release rule keyed on report status, not on acknowledgement",
     effect: "A patient reads a serious result with nobody to explain it",
+    mitigation:
+      "Release now keyed on the requesting clinician's acknowledgement, with a 72-hour hold on any report flagged abnormal.",
     initial_likelihood: 3,
     initial_severity: 4,
     residual_likelihood: 1,
@@ -229,6 +239,8 @@ const portalHazards: Hazard[] = [
     description: "Appointment letter shown for the wrong patient",
     cause: "Proxy access cache keyed on the device rather than the account",
     effect: "Confidential information disclosed to a family member",
+    mitigation:
+      "Proxy access cache keyed on the account and cleared on every sign-out; a device-level cache is no longer kept.",
     initial_likelihood: 2,
     initial_severity: 4,
     residual_likelihood: 1,
@@ -241,6 +253,8 @@ const portalHazards: Hazard[] = [
     cause: "No retry or failure notice when the gateway times out",
     effect:
       "A patient believes they have reported a symptom and nobody sees it",
+    mitigation:
+      "Gateway failures are retried three times, then shown to the patient with a phone number to call; unsent messages stay in an outbox the patient can see.",
     initial_likelihood: 3,
     initial_severity: 3,
     residual_likelihood: 2,
@@ -255,6 +269,8 @@ const resultsHazards: Hazard[] = [
     description: "Abnormal result filed without acknowledgement",
     cause: "Auto-file rule matches on test code alone",
     effect: "A critical result is never actioned",
+    mitigation:
+      "Auto-file rules may not match a result flagged abnormal; every such result needs a named clinician's acknowledgement.",
     initial_likelihood: 3,
     initial_severity: 5,
     residual_likelihood: 1,
@@ -266,6 +282,8 @@ const resultsHazards: Hazard[] = [
     description: "Acknowledgement recorded against the wrong clinician",
     cause: "Shared workstation session not ended between users",
     effect: "Responsibility for follow-up is unclear",
+    mitigation:
+      "Shared workstations end the session after two minutes idle, and acknowledgement asks for the clinician's PIN.",
     initial_likelihood: 3,
     initial_severity: 3,
     residual_likelihood: 2,
@@ -277,6 +295,8 @@ const resultsHazards: Hazard[] = [
     description: "Result worklist stops refreshing",
     cause: "Websocket reconnect gives up after five attempts",
     effect: "New results do not appear until the page is reloaded",
+    mitigation:
+      "Reconnect retries indefinitely with backoff and the worklist shows a visible banner while it is stale.",
     initial_likelihood: 4,
     initial_severity: 3,
     residual_likelihood: 1,
@@ -288,6 +308,8 @@ const resultsHazards: Hazard[] = [
     description: "Result from an outside laboratory shown without units",
     cause: "Inbound HL7 message omits OBX-6 and the display shows a blank",
     effect: "A value is misread against the wrong reference range",
+    mitigation:
+      "A result with no unit is held in a review queue and never shown on the worklist until a laboratory confirms the unit.",
     initial_likelihood: 2,
     initial_severity: 4,
     residual_likelihood: 1,
@@ -299,6 +321,8 @@ const resultsHazards: Hazard[] = [
     description: "Delta flag missing on a rapidly changing value",
     cause: "Comparison uses the last filed result, not the last reported one",
     effect: "A deteriorating trend is not noticed",
+    mitigation:
+      "Delta comparison now uses the last reported result, and a delta flag is shown on the worklist as well as the detail.",
     initial_likelihood: 2,
     initial_severity: 4,
     residual_likelihood: 2,
@@ -314,6 +338,8 @@ const bedBoardHazards: Hazard[] = [
     cause: "Discharge message from the PAS is delayed by up to 20 minutes",
     effect:
       "A bed is held empty while a patient waits in the emergency department",
+    mitigation:
+      "Board polls the PAS every two minutes and shows the time of the last update; a bed with a pending discharge is marked as such.",
     initial_likelihood: 4,
     initial_severity: 2,
     residual_likelihood: 2,
@@ -325,6 +351,8 @@ const bedBoardHazards: Hazard[] = [
     description: "Isolation flag not carried on a ward transfer",
     cause: "Flag stored on the bed record rather than the patient record",
     effect: "An infectious patient is placed in a shared bay",
+    mitigation:
+      "Isolation flag moved to the patient record so it travels with a transfer, and a bay placement warns when any occupant is flagged.",
     initial_likelihood: 2,
     initial_severity: 4,
     residual_likelihood: 1,
@@ -339,6 +367,8 @@ const dischargeHazards: Hazard[] = [
     description: "Medication list on the letter omits a changed dose",
     cause: "Letter reads the admission list, not the discharge reconciliation",
     effect: "A GP continues the pre-admission dose",
+    mitigation:
+      "Letter reads the discharge reconciliation and will not generate until the pharmacist has completed it.",
     initial_likelihood: 3,
     initial_severity: 4,
     residual_likelihood: 1,
@@ -350,6 +380,8 @@ const dischargeHazards: Hazard[] = [
     description: "Letter sent to a previous GP practice",
     cause: "Registered practice read from a cached demographic record",
     effect: "The current GP never receives the discharge summary",
+    mitigation:
+      "Registered practice is fetched live from the demographics service at the moment of sending, never from a cache.",
     initial_likelihood: 2,
     initial_severity: 3,
     residual_likelihood: 1,
@@ -361,6 +393,8 @@ const dischargeHazards: Hazard[] = [
     description: "Follow-up actions lost when the letter is regenerated",
     cause: "Free-text section is not preserved on template change",
     effect: "A requested repeat blood test is never arranged",
+    mitigation:
+      "Free-text sections are preserved across template changes and the letter asks for confirmation before any section is dropped.",
     initial_likelihood: 3,
     initial_severity: 3,
     residual_likelihood: 1,
@@ -515,6 +549,14 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
     placeholders: placeholders("LetterFlow", "5.0", "MedScribe Health Ltd"),
   },
 ];
+
+/** The hazard with this reference on a case, or undefined. */
+export function hazardById(
+  safetyCase: SafetyCaseDetail,
+  hazardId: string,
+): Hazard | undefined {
+  return safetyCase.hazards.find((hazard) => hazard.id === hazardId);
+}
 
 /** The document with this id on a case, or undefined. */
 export function safetyDocumentById(

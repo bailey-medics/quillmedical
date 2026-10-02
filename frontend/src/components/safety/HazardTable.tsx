@@ -85,14 +85,17 @@ const columns: Column<Hazard>[] = [
 
 export interface HazardTableProps {
   hazards: Hazard[];
+  /** Called when a hazard is chosen */
+  onSelect?: (hazard: Hazard) => void;
 }
 
-export default function HazardTable({ hazards }: HazardTableProps) {
+export default function HazardTable({ hazards, onSelect }: HazardTableProps) {
   return (
     <DataTable
       data={hazards}
       columns={columns}
       getRowKey={(hazard) => hazard.id}
+      onRowClick={onSelect}
       emptyMessage="No hazards in the log"
     />
   );

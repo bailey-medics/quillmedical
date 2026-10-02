@@ -11,6 +11,10 @@
  */
 
 import type { Hazard } from "./types";
+import {
+  LIKELIHOOD_WORDS as LIKELIHOOD,
+  SEVERITY_WORDS as SEVERITY,
+} from "./risk";
 
 export const CLINICAL_RISK_MANAGEMENT_PLAN = `## 1. Purpose
 
@@ -88,16 +92,6 @@ export const FILE_INDEX = `The clinical risk management file for {{ product_name
 The file is held by {{ supplier_name }} and a copy is provided to {{ deploying_organisation }} with every release. It is retained for the life of the product and for ten years after withdrawal.
 `;
 
-const LIKELIHOOD = ["", "very low", "low", "medium", "high", "very high"];
-const SEVERITY = [
-  "",
-  "minor",
-  "significant",
-  "considerable",
-  "major",
-  "catastrophic",
-];
-
 /** The hazard log as a document, built from the case's hazards. */
 export function hazardLogMarkdown(hazards: Hazard[]): string {
   const entries = hazards
@@ -106,6 +100,7 @@ export function hazardLogMarkdown(hazards: Hazard[]): string {
 
 - **Cause**: ${hazard.cause}
 - **Effect**: ${hazard.effect}
+- **Mitigation**: ${hazard.mitigation}
 - **Initial risk**: likelihood ${hazard.initial_likelihood} (${LIKELIHOOD[hazard.initial_likelihood]}), severity ${hazard.initial_severity} (${SEVERITY[hazard.initial_severity]}), rating ${hazard.initial_likelihood * hazard.initial_severity}
 - **Residual risk**: likelihood ${hazard.residual_likelihood} (${LIKELIHOOD[hazard.residual_likelihood]}), severity ${hazard.residual_severity} (${SEVERITY[hazard.residual_severity]}), rating ${hazard.residual_likelihood * hazard.residual_severity}
 - **Status**: ${hazard.status}

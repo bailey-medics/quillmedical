@@ -2,7 +2,8 @@
  * HazardTable Component Tests
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import HazardTable from "./HazardTable";
@@ -38,5 +39,14 @@ describe("HazardTable", () => {
   it("says so when the log is empty", () => {
     renderWithMantine(<HazardTable hazards={[]} />);
     expect(screen.getByText("No hazards in the log")).toBeInTheDocument();
+  });
+
+  it("reports the row chosen", async () => {
+    const onSelect = vi.fn();
+    renderWithMantine(
+      <HazardTable hazards={SAFETY_CASES[0].hazards} onSelect={onSelect} />,
+    );
+    await userEvent.click(screen.getByText("H-02"));
+    expect(onSelect).toHaveBeenCalledWith(SAFETY_CASES[0].hazards[1]);
   });
 });

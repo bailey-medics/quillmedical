@@ -64,9 +64,14 @@ const columns: Column<Incident>[] = [
 
 export interface IncidentTableProps {
   incidents: Incident[];
+  /** Called when an incident is chosen */
+  onSelect?: (incident: Incident) => void;
 }
 
-export default function IncidentTable({ incidents }: IncidentTableProps) {
+export default function IncidentTable({
+  incidents,
+  onSelect,
+}: IncidentTableProps) {
   const sorted = [...incidents].sort((a, b) =>
     b.occurred_on.localeCompare(a.occurred_on),
   );
@@ -75,6 +80,7 @@ export default function IncidentTable({ incidents }: IncidentTableProps) {
       data={sorted}
       columns={columns}
       getRowKey={(incident) => incident.id}
+      onRowClick={onSelect}
       emptyMessage="No incidents recorded against this case"
     />
   );
