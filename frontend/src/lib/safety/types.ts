@@ -92,8 +92,14 @@ export interface Officer {
 
 /** One line of the compliance sign-off checklist. */
 export interface SignOffItem {
+  /** Section reference used in the address, such as "crmp" */
+  id: string;
   /** The section of the standard, such as "Clinical risk management plan" */
   section: string;
+  /** The sentence the signatory puts their name to */
+  attests: string;
+  /** The ids of the documents reviewed to sign it */
+  reviews: string[];
   signatory: string;
   /** ISO date signed, or null while awaiting */
   signed_on: string | null;

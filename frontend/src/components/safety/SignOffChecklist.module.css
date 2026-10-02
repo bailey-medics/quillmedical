@@ -1,0 +1,27 @@
+/*
+ * SignOffChecklist styles
+ *
+ * A card that is a link: the anchor fills the row and the card inside it
+ * lifts on hover and shows a focus ring, so the whole card reads as one
+ * target.
+ */
+
+.link {
+  display: block;
+  width: 100%;
+  border-radius: var(--mantine-radius-md);
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--mantine-color-primary-6);
+  outline-offset: 2px;
+}
+
+.linked {
+  cursor: pointer;
+  transition: box-shadow 150ms ease;
+}
+
+.link:hover .linked {
+  box-shadow: var(--mantine-shadow-md);
+}

@@ -876,6 +876,7 @@ describe("SideNavContent Component", () => {
       ["/safety/sc-001/incidents/INC-2026-004", "Incidents", "Incident"],
       ["/safety/sc-001/placeholders/edit", "Placeholders", "Edit"],
       ["/safety/sc-001/documentation/crmp/edit", "Documentation", "Edit"],
+      ["/safety/sc-001/sign-off/approval", "Compliance sign-off", "Section"],
     ])("hangs the record under its page on %s", async (route, page, detail) => {
       renderWithAuth(<SideNavContent />, "safety_only", {
         initialRoute: route,

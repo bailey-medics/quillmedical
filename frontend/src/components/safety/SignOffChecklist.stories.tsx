@@ -19,6 +19,13 @@ export const PartlySigned: Story = {
   args: { items: SAFETY_CASES[0].sign_off },
 };
 
+export const AsLinks: Story = {
+  args: {
+    items: SAFETY_CASES[0].sign_off,
+    hrefFor: (item) => `/safety/sc-001/sign-off/${item.id}`,
+  },
+};
+
 export const FullySigned: Story = {
   args: { items: SAFETY_CASES[1].sign_off },
 };

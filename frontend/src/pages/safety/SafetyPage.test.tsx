@@ -29,6 +29,13 @@ describe("SafetyPage", () => {
     expect(screen.getByText(/Demonstration safety cases/)).toBeInTheDocument();
   });
 
+  it("shows an Add safety case button, for show only", () => {
+    renderWithRouter(<SafetyPage />);
+    expect(
+      screen.getByRole("button", { name: "Add safety case" }),
+    ).toBeInTheDocument();
+  });
+
   it("lists the five cases", () => {
     renderWithRouter(<SafetyPage />);
     expect(screen.getAllByRole("row").slice(1)).toHaveLength(5);
