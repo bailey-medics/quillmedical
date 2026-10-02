@@ -569,7 +569,7 @@ Get the catalogue entry for a competency.
 
 ## Related Documentation
 
-- [User Model](../backend/app/models.py) - User database schema
-- [FastAPI Main](../backend/app/main.py) - Example usage in `/prescriptions/controlled` endpoint
-- [Competency definitions](../../shared/competency-definitions/) - All competency definitions
-- [Base Professions YAML](../../shared/base-professions.yaml) - Default profession competency sets
+- [User model](../../../backend/app/models.py) - User database schema
+- [FastAPI dependencies](../../../backend/app/deps.py) - `has_competency`, with a `/prescriptions/controlled` example in its docstring
+- [Competency definitions](../../../shared/competency-definitions/) - All competency definitions
+- [Base professions YAML](../../../shared/base-professions.yaml) - Default profession competency sets
