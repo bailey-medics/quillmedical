@@ -120,7 +120,7 @@ before Terraform has set the variable, and refuse to boot.
 
 ## Phase 4: One value for the `sm` breakpoint
 
-- [ ] `frontend/src/theme.ts` sets `breakpoints.sm` to `"40em"`, the value
+- [x] `frontend/src/theme.ts` sets `breakpoints.sm` to `"40em"`, the value
       `CLAUDE.md` names as the standard. Three build configurations set the
       PostCSS variable `mantine-breakpoint-sm` to `48em`:
       `frontend/postcss.config.cjs`, `frontend/.storybook/main.ts` and
@@ -134,14 +134,40 @@ before Terraform has set the variable, and refuse to boot.
       40em changes how every responsive CSS module looks between 640px and
       768px, on the app and on the public site.
 
-- [ ] Add a unit test that fails when the two disagree, reading the
+      Decided: 40em. The other four breakpoints already agreed. The move is
+      much smaller than feared, because only one CSS module uses the
+      variable at all: `PublicFooter.module.css`. Twelve others write
+      `40em` out by hand, so they were already right. The footer therefore
+      now stays in its desktop row down to 640px instead of stacking at
+      768px, and nothing else moves. `ErrorMessage.module.css` wrote `48em`
+      by hand for its icon size and is now `40em` too.
+
+      The widths now live in one file, `frontend/src/breakpoints.json`,
+      which `theme.ts` and all three build configurations read, so there is
+      no second list to fall behind. `.storybook/main.ts` needs
+      `with { type: "json" }` on that import: Storybook loads it through
+      Node's own loader, which refuses a JSON import without it.
+
+- [x] Add a unit test that fails when the two disagree, reading the
       breakpoints from `theme.ts` and from `postcss.config.cjs`, so the next
       change to one cannot leave the other behind. Run with `just uf` on
       that test file.
 
+      `frontend/src/breakpoints.test.ts`. It also checks that the Storybook
+      and public site configurations read the shared file instead of
+      listing widths of their own.
+
 - [ ] Run `just sbtci` on its own, never alongside `just e2e`, and look at
       the pages by hand at 700px wide. The automated checks cannot say
       whether a layout that moved still reads well.
+
+      Still open. `just sbtci` was run twice on 2 October and no story
+      failed an assertion, but both runs ended red: two suites in the first
+      and three different ones in the second timed out loading their page,
+      with the machine's load average above 40. That is the saturation
+      `CLAUDE.md` warns of, not a finding, so the heavy CI tier is the
+      result to trust. The look by hand at 700px has not been done; the
+      public site's footer is the one thing to look at.
 
 ## Phase 5: Small code faults
 
@@ -216,6 +242,10 @@ they are what the next reader, human or model, takes as the reason.
 - [ ] `backend/app/models.py` – the docstring on `org_unit_member` still
       explains the name `site_member`, and the one on `OrgUnitLink` says
       both ends point at `sites`.
+
+- [ ] `frontend/src/components/tables/DataTable.tsx` says
+      `theme.breakpoints.sm` is 768px. It is 640px. Found while doing
+      phase 4.
 
 - [ ] `frontend/src/components/profile-pic/ProfilePic.tsx` gives the
       gradient index range as 0 to 35. There are 30 gradients.

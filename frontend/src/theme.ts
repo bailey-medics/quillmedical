@@ -33,6 +33,7 @@ import {
 } from "@mantine/core";
 
 import brand from "@/generated/brand.json";
+import breakpoints from "./breakpoints.json";
 import navLinkClasses from "./styles/navLink.module.css";
 
 /**
@@ -437,16 +438,15 @@ export const theme = createTheme({
   },
 
   /**
-   * Breakpoints - for responsive typography
-   * Matches Mantine defaults, with mobile-first approach
+   * Breakpoints, from breakpoints.json: xs 576px, sm 640px (the main
+   * mobile/desktop split), md 992px, lg 1200px, xl 1408px.
+   *
+   * One file, read here and by the three PostCSS configurations
+   * (postcss.config.cjs, .storybook/main.ts, public_pages/vite.config.ts),
+   * so `theme.breakpoints.sm` in a component and `$mantine-breakpoint-sm`
+   * in a CSS module cannot name different widths.
    */
-  breakpoints: {
-    xs: "36em", // 576px
-    sm: "40em", // 640px - Main responsive breakpoint
-    md: "62em", // 992px
-    lg: "75em", // 1200px
-    xl: "88em", // 1408px
-  },
+  breakpoints,
 
   components: {
     /** Current nav link – amber label and icon on a mild grey fill (see navLink.module.css) */

@@ -6,6 +6,18 @@ import postcssPresetMantine from "postcss-preset-mantine";
 import postcssSimpleVars from "postcss-simple-vars";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
+import breakpoints from "../src/breakpoints.json";
+
+/**
+ * The `$mantine-breakpoint-*` variables for CSS modules, built from the
+ * same file the Mantine theme reads. See postcss.config.cjs.
+ */
+const breakpointVariables = Object.fromEntries(
+  Object.entries(breakpoints).map(([name, width]) => [
+    `mantine-breakpoint-${name}`,
+    width,
+  ]),
+);
 
 // Minimal Vite config for the public_pages workspace
 export default defineConfig({
@@ -133,13 +145,7 @@ export default defineConfig({
       plugins: [
         postcssPresetMantine(),
         postcssSimpleVars({
-          variables: {
-            "mantine-breakpoint-xs": "36em",
-            "mantine-breakpoint-sm": "48em",
-            "mantine-breakpoint-md": "62em",
-            "mantine-breakpoint-lg": "75em",
-            "mantine-breakpoint-xl": "88em",
-          },
+          variables: breakpointVariables,
         }),
       ],
     },

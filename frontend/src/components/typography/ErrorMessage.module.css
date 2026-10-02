@@ -4,7 +4,7 @@
   height: 22px;
 }
 
-@media (width >= 48em) {
+@media (width >= 40em) {
   .icon {
     width: 28px;
     height: 28px;
