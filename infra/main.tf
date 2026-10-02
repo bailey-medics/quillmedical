@@ -319,7 +319,14 @@ module "cloud_run_backend" {
       SECURE_COOKIES = "true"
       # No COOKIE_DOMAIN: unset means host-only, so a cookie set by this
       # host is never sent to another subdomain of quill-medical.com.
-      FRONTEND_URL    = "https://${var.lb_domains[0]}"
+      FRONTEND_URL = "https://${var.lb_domains[0]}"
+      # The app's own origin and nothing else. Unset, the backend falls back
+      # to ["*"], and with allow_credentials Starlette then answers any
+      # origin by naming it as allowed. A JSON list, because the setting is
+      # a list[str] and pydantic-settings reads those from the environment
+      # as JSON. The app itself calls the API same-origin and needs no CORS
+      # header at all, so this only ever refuses somebody else's page.
+      CORS_ORIGINS    = jsonencode(["https://${var.lb_domains[0]}"])
       CORE_DB_HOST    = module.cloud_sql_core.private_ip
       CORE_DB_NAME    = module.cloud_sql_core.database_name
       CORE_DB_USER    = module.cloud_sql_core.database_user

@@ -45,3 +45,27 @@ class TestSettingsComputedFields:
         assert "postgres-ehrbase" in url
         assert "5432" in url
         assert "ehrbase" in url
+
+
+class TestCorsOriginsFromEnvironment:
+    """CORS_ORIGINS as Terraform sets it on the backend Cloud Run service."""
+
+    def test_json_list_in_environment_is_read_as_a_list(self, monkeypatch):
+        """`jsonencode([...])` in infra/main.tf arrives as a JSON string."""
+        monkeypatch.setenv("CORS_ORIGINS", '["https://app.quill-medical.com"]')
+        settings = Settings(
+            JWT_SECRET="test_secret_long_enough_32_chars_min",
+            CORE_DB_PASSWORD="auth_pass",
+            VAPID_PRIVATE="vapid_key",
+        )
+        assert settings.CORS_ORIGINS == ["https://app.quill-medical.com"]
+
+    def test_unset_falls_back_to_the_wildcard(self, monkeypatch):
+        """The default every environment gets when nothing sets it."""
+        monkeypatch.delenv("CORS_ORIGINS", raising=False)
+        settings = Settings(
+            JWT_SECRET="test_secret_long_enough_32_chars_min",
+            CORE_DB_PASSWORD="auth_pass",
+            VAPID_PRIVATE="vapid_key",
+        )
+        assert settings.CORS_ORIGINS == ["*"]
