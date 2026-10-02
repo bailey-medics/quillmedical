@@ -133,7 +133,14 @@ read it. Pass `ready` when finishing a branch deliberately, by hand.
    - **"No stack on this branch", and on `main`** – this is the first unit.
      Step 2 uses `just stack-new` instead, which starts the stack. Everything
      else is the same.
-   - **"No stack on this branch", on some other branch** – stop and say so.
+   - **"No stack on this branch", on a branch level with `origin/main`** –
+     also the first unit, and step 2 uses `just stack-new` just the same.
+     `main` can be checked out in one worktree only, so the others park on
+     a temporary branch at its tip. Check it rather than assume it:
+     `git fetch origin main`, then `git rev-list --left-right --count
+     HEAD...origin/main` must report `0 0`. The branch then holds nothing
+     `main` does not, and `stack-new` cuts the new branch from it.
+   - **"No stack on this branch", on any other branch** – stop and say so.
      Committing here would put the work on a branch that is not part of any
      stack, and `/nst-crp` is the command for that.
 
@@ -423,6 +430,15 @@ Two things to check rather than assume:
 
    It pushes the *whole* stack, not just this branch – that is unavoidable,
    because rebasing this branch rewrote the ones above it.
+
+   **Do not push while a pull request in the stack is queued to merge.**
+   `gh stack view --json` marks one with `isQueued: true`. `stack-submit`
+   cannot rebase past it, and pushing a queued pull request takes it out
+   of the queue. Stop here instead: the unit is committed on its branch,
+   which is as far as it can go. Say in the report that it is committed
+   and not pushed, and which pull request is queued. The next run pushes
+   it along with its own unit once the queue has drained, and describes
+   both.
 
 6. **Find this branch's pull request.**
 
