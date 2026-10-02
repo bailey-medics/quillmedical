@@ -119,14 +119,32 @@ export default function VideoPlayer({
   // its iframe. Caught by a callback ref because the player is lazy and
   // arrives after the first render.
   const [frameHost, setFrameHost] = useState<ShadowRoot | null>(null);
+  const [player, setPlayer] = useState<HTMLVideoElement | null>(null);
   const attachPlayer = useCallback((node: HTMLVideoElement | null) => {
     playerRef.current = node;
+    setPlayer(node);
     setFrameHost(node?.shadowRoot ?? null);
   }, []);
   useEffect(() => {
     if (!youtubeId || !frameHost) return;
     return titleFrames(frameHost, YOUTUBE_FRAME_TITLE);
   }, [youtubeId, frameHost]);
+
+  // The poster is set on the element itself, not passed as a prop.
+  // react-player v3 hands the underlying element a fixed list of props
+  // and `poster` is not on it, so `poster={posterUrl}` type-checks and
+  // is then dropped without a word: every hosted lecture showed a black
+  // frame before play, with its poster sitting unused in the bucket.
+  // YouTube draws its own thumbnail.
+  useEffect(() => {
+    if (!player || youtubeId) return;
+
+    if (posterUrl) {
+      player.setAttribute("poster", posterUrl);
+    } else {
+      player.removeAttribute("poster");
+    }
+  }, [player, posterUrl, youtubeId]);
 
   const handleTimeUpdate = useCallback(() => {
     if (onProgress && playerRef.current) {
@@ -161,7 +179,6 @@ export default function VideoPlayer({
               width="100%"
               height="100%"
               controls
-              poster={posterUrl}
               onCanPlay={handleReady}
               onTimeUpdate={handleTimeUpdate}
             >
@@ -184,7 +201,6 @@ export default function VideoPlayer({
               width="100%"
               height="100%"
               controls
-              poster={posterUrl}
               onCanPlay={handleReady}
               onTimeUpdate={handleTimeUpdate}
             />

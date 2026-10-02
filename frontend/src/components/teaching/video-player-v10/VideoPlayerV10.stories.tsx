@@ -88,9 +88,8 @@ export const WithPoster: Story = {
     <Stack gap="sm">
       <VideoPlayerV10 {...args} />
       <StoryNote>
-        The still shown before playback begins. `VideoPlayer` accepts a poster
-        too but is never given one – the cheapest visual win available without
-        changing player at all.
+        The still shown before playback begins. `VideoPlayer` shows one too, set
+        on the video element itself because react-player drops a `poster` prop.
       </StoryNote>
     </Stack>
   ),
