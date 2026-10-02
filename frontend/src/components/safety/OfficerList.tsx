@@ -7,8 +7,8 @@
  * docs/docs/plans/2026-10-02-safety-feature-mock-up-plan.md.
  */
 
-import { Group, SimpleGrid, Stack } from "@mantine/core";
-import BaseCard from "@/components/base-card/BaseCard";
+import { SimpleGrid } from "@mantine/core";
+import { BaseCard, CardActionRow } from "@/components/base-card";
 import IconButton from "@/components/button/IconButton";
 import { IconPencil } from "@/components/icons/appIcons";
 import { BodyText, BodyTextBold } from "@/components/typography";
@@ -28,22 +28,23 @@ export default function OfficerList({ officers, onEdit }: OfficerListProps) {
     <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
       {officers.map((officer) => (
         <BaseCard key={officer.role}>
-          <Group justify="space-between" align="flex-start" wrap="nowrap">
-            <Stack gap="xs">
-              <BodyTextBold>{officer.role}</BodyTextBold>
-              <BodyText>{officer.name}</BodyText>
-              <BodyText c="dimmed">{officer.email}</BodyText>
-            </Stack>
-            {onEdit && (
-              <IconButton
-                icon={<IconPencil />}
-                variant="subtle"
-                color="primary"
-                aria-label={`Edit ${officer.role.toLowerCase()}`}
-                onClick={() => onEdit(officer)}
-              />
-            )}
-          </Group>
+          <CardActionRow
+            action={
+              onEdit && (
+                <IconButton
+                  icon={<IconPencil />}
+                  variant="subtle"
+                  color="primary"
+                  aria-label={`Edit ${officer.role.toLowerCase()}`}
+                  onClick={() => onEdit(officer)}
+                />
+              )
+            }
+          >
+            <BodyTextBold>{officer.role}</BodyTextBold>
+            <BodyText>{officer.name}</BodyText>
+            <BodyText c="dimmed">{officer.email}</BodyText>
+          </CardActionRow>
         </BaseCard>
       ))}
     </SimpleGrid>

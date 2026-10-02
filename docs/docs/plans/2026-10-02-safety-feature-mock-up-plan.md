@@ -520,6 +520,17 @@ grew out of Phase 17 and uses its component, so it is recorded here.
       status. Asked for alongside: email, organisation and site, and
       platform role leave the table but stay searchable, and the user's
       own page still shows them.
+- [x] **Officer cards keep their edit icon inside at every width.** Seen
+      between 640px and about 800px, where two cards share a row: the
+      text column had no permission to shrink, so a long email held its
+      full width and pushed the `IconButton` out of the `BaseCard`. The
+      fix is a new child component of `BaseCard`, `CardActionRow` in
+      `components/base-card/`: text on the left, one action on the right,
+      with the column allowed to shrink (`min-width: 0`), long words
+      allowed to break (`overflow-wrap: anywhere`) and the action never
+      squashed. Asked for as a shared piece so every card with a control
+      gets the rule once; `OfficerList` is its first user. A story
+      constrains the card to 18rem to show it.
 
 ## Decisions
 
