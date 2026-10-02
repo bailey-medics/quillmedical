@@ -42,7 +42,7 @@ type Props = {
   givenName?: string;
   /** Family name from FHIR Patient.name[0].family */
   familyName?: string;
-  /** Gradient color index (0-35). If index exceeds available gradients, shows white background */
+  /** Gradient color index (0-29). If index exceeds available gradients, shows white background */
   gradientIndex?: number;
   /** Force generic person icon instead of initials (useful for showing tooltip with name) */
   showGeneric?: boolean;

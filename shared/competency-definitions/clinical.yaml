@@ -14,10 +14,10 @@
 # code – it is for the reader.
 #
 # Competencies are granted to users based on their training,
-# qualifications and organisational approval. See
-# resolve_user_competencies() in backend/app/cbac/base_professions.py
-# for how base_profession + additional + removed combine into a user's
-# final competency list.
+# qualifications and organisational approval. A user holds what their
+# current user_competency rows say and nothing else: a base profession
+# seeds rows when it is given, and is not consulted afterwards. See
+# User.get_final_competencies() in backend/app/models.py.
 #
 # ASSESSABLE
 #

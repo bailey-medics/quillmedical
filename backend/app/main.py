@@ -1114,7 +1114,7 @@ def register(
 
     Validation Rules:
     - Username and email must not be empty after stripping whitespace
-    - Password must be at least 6 characters long
+    - Password must be at least 8 characters long
     - Username must be unique across all users
     - Email must be unique across all users
 
@@ -1137,7 +1137,7 @@ def register(
         HTTPException: 403 if clinical services are enabled.
         HTTPException: 400 if validation fails or constraints violated:
             - "Missing fields" if username, email, or password empty
-            - "Password too short" if password < 6 characters
+            - "Password must be at least 8 characters" if shorter
             - "Username already exists" if username taken
             - "Email already exists" if email taken
         HTTPException: 429 if that address has had its hour's allowance.
@@ -4017,7 +4017,8 @@ async def update_my_competencies(
         UserCompetenciesResponse: The caller's updated competency information
 
     Raises:
-        HTTPException: 403 if the user lacks ``manage_users``.
+        HTTPException: 403 unless the caller's ``platform_role`` is
+            ``superadmin``.
     """
     # Self-granting, so only an operator may use it. Everyone else asks
     # another holder of `manage_users`, through `PATCH /users/{id}`,
@@ -4073,10 +4074,10 @@ def _require_shared_org_with_patient(
     """Refuse a patient the admin shares no organisation with.
 
     The org_unit check for the admin routes that act on one patient by id.
-    Deliberately *not* ``check_user_patient_access``, whose first line
-    returns ``True`` for any admin: called from an admin-gated route it
-    would read as an org_unit check and permit exactly what it appears to
-    forbid.
+    Deliberately *not* ``check_user_patient_access``, which also requires
+    a patient-record competency: an admin acting on a patient's account
+    holds ``manage_users``, not necessarily one of those, so it would
+    refuse the people these routes are for.
 
     404 rather than 403, matching the other org_unit checks, so the response
     does not confirm that a patient exists to an admin who may not see

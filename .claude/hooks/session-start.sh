@@ -90,6 +90,13 @@ rename_session_branch
 # Install pre-commit so commits made in this session run the same checks as CI.
 # Without it a web session commits unchecked and the first failure only shows
 # up in the CI run.
+#
+# `pre-commit install` below is the one place it is right. CLAUDE.md says
+# never to run it, and on a developer's machine that holds: `just
+# initialise-repo` has pointed core.hooksPath at .husky, and pre-commit
+# refuses to install beside it. A web session is a fresh clone where nobody
+# has run that recipe, so there is no hook at all until this installs one.
+# Where core.hooksPath is set it fails and only warns.
 if ! command -v pre-commit >/dev/null 2>&1; then
     python3 -m pip install --quiet --disable-pip-version-check pre-commit \
         || warn "could not install pre-commit; commits will not be checked locally"

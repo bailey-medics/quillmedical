@@ -834,9 +834,9 @@ ward is a row against the ward. One table for both, because a trainee is
 the same kind of member at either, and two tables were two meanings of
 one word waiting to drift apart.
 
-Named ``site_member`` rather than ``site_staff_member`` because a third of
-its rows were never staff: ``register``, the public self-registration route,
-inserts teaching delegates, who are not employed by the site.
+Named for membership rather than staff because a third of its rows were
+never staff: ``register``, the public self-registration route, inserts
+teaching delegates, who are not employed by the org_unit.
 
 Membership answers *where is this person*. What they may do there is a
 practising competency, and who holds a post is a ``Position`` – clinical
@@ -943,10 +943,9 @@ class OrgUnitLink(Base):
     ``app/org_units/relations.py``, so a route asks the relation rather
     than matching on its name.
 
-    Both ends point at ``sites``, which is the table the org_unit tree is
-    being built in: organisations become rows there in a later step, at
-    which point a school-to-trust link becomes expressible without this
-    table changing.
+    Both ends point at ``org_unit``, the one table the tree lives in.
+    Organisations are rows there too, so a school-to-trust link is
+    expressible without this table changing.
 
     **Direction matters.** ``teaches_at`` from a school to a trust is not
     the same fact as the reverse, so the pair is ordered and the same two

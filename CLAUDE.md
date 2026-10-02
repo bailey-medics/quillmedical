@@ -704,6 +704,9 @@ SQLite and the frontend suite is vitest under jsdom, so no service is needed.
 - **Never run `pre-commit install`.** Git runs the tracked `.husky/pre-commit`
   through the relative `core.hooksPath` set by `just initialise-repo`, which
   resolves per worktree. pre-commit refuses to install alongside it anyway.
+  The one exception is `.claude/hooks/session-start.sh`, in a web session:
+  a fresh clone where nobody has run `just initialise-repo`, so there is no
+  hook until it installs one.
 
 **End-to-end tests have their own per-worktree stack.** `just e2e` (and
 `e2e-ui`, `e2e-report`) brings up `compose.ci.yml`, the same file, images and

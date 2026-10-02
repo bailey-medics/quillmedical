@@ -2,12 +2,10 @@
 
 These require a real, migrated PostgreSQL database – SQLite unit tests
 build their schema from model metadata directly (see `conftest.py`) and
-never exercise Alembic's autogenerate comparison. Run via the dedicated
-`alembic_drift_check` CI job, or locally inside the dev stack once the DB
-is migrated to head:
-
-    docker exec quill_backend sh -lc \
-        "alembic upgrade head && pytest tests/test_alembic_check.py -m migration"
+never exercise Alembic's autogenerate comparison. Run by the dedicated
+`alembic_drift_check` CI job. No `just` recipe runs them locally:
+`just ub` leaves out everything marked `integration`, and has no
+Postgres to give them.
 """
 
 from __future__ import annotations
