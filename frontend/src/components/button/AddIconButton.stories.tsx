@@ -5,6 +5,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import AddIconButton from "./AddIconButton";
+import { IconUserPlus } from "@/components/icons/appIcons";
 
 const meta: Meta<typeof AddIconButton> = {
   title: "Button/Add icon button",
@@ -17,6 +18,10 @@ type Story = StoryObj<typeof AddIconButton>;
 
 export const Default: Story = {
   args: { "aria-label": "Add hazard", onClick: fn() },
+};
+
+export const AddingAPerson: Story = {
+  args: { "aria-label": "Add user", icon: <IconUserPlus />, onClick: fn() },
 };
 
 export const Disabled: Story = {

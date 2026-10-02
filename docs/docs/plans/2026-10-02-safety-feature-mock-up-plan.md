@@ -491,6 +491,31 @@ on the safety pages, so every table in the app gets them at once.
 - [x] **Tests** hover each icon and find its tooltip text. Where it lands
       cannot be checked in jsdom; the tooltip's Below story shows it.
 
+## Phase 19: The users table takes the same add icon
+
+Asked for once the safety tables had theirs: `/admin/users` should add a
+user from an icon in the table's row too, with `IconUserPlus` rather than
+the file icon, since the record is a person. Not a safety change, but it
+grew out of Phase 17 and uses its component, so it is recorded here.
+
+- [x] **`AddIconButton` takes an `icon`**, defaulting to `IconFilePlus`
+      as before, so a table of people can pass `IconUserPlus`, which
+      `appIcons.ts` already registers.
+- [x] **The users page** drops the `AddButton` from its header and passes
+      the icon into `DataTableControlled`'s `action` slot, still
+      navigating to `/admin/users/new`. The button keeps the name "Add
+      user", so anything that finds it by name still does.
+- [x] **Tests**: the button's icon prop, and a new page test for the
+      list, the add icon and opening a row.
+- [x] **Same stroke as search and filter.** Asked for on seeing it:
+      `AddIconButton` now draws its `ActionIcon` and icon exactly as
+      `SearchButton` and `FilterSelect` do (size 32, the same button
+      size), rather than through `IconButton`, whose smaller icon made it
+      the odd one out. The stroke is Tabler's default 2 rather than
+      their 2.5: a file or person with a plus has more lines in the same
+      box, and at 2.5 it read as heavier than its simpler neighbours. It joins the lint exception list
+      that lets those two import `ActionIcon` directly.
+
 ## Decisions
 
 - **No backend, no backend placeholder** – the data lives in
