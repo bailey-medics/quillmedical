@@ -197,8 +197,9 @@ timeline shows the risk arriving *and* going. Slack is not told – nobody needs
 paging to say a risk went away – and a PR that never had a destructive
 migration stays silent, since there is nothing to report the disappearance of.
 
-The approval is unaffected by any of this: it is SHA-scoped and stays required
-on every push. How often Slack is told is a notification concern, never a
+The approval is unaffected by any of this: it covers the pull request's own
+change, and is asked for again whenever that change differs, though not for a
+rebase. How often Slack is told is a notification concern, never a
 safety control.
 
 **One Slack message per gate**, sent when a break needs approval and only then.
@@ -323,7 +324,7 @@ query against that table queues behind the migration in turn, stalling all
 traffic to it. A short `lock_timeout` makes the migration fail fast instead;
 thanks to PostgreSQL's transactional DDL, that failure rolls back cleanly
 and the old app revision keeps serving against the unchanged schema (see
-the crash-loop mitigation section in the [review plan](../plans/2026-08-09-alembic-review-plan.md)).
+the crash-loop mitigation section in the [review plan](../plans/2026-08-09-alembic-review-and-revisions-plan.md)).
 `statement_timeout` is a similar backstop against a single migration
 statement running away.
 
@@ -341,8 +342,8 @@ container on every boot:
   whenever backend source changes, then runs `.github/scripts/deploy/run-migrations.sh`
   – which updates the `quill-admin-{env}` Cloud Run Job to the new image and
   executes it with `--wait` – **before** the tagged, `--no-traffic` backend
-  deploy step (see below) that creates the new backend revision, for both
-  the teaching and production stages.
+  deploy step (see below) that creates the new backend revision, for the
+  single `app` environment.
 - `backend/docker/entrypoint.sh` (which previously ran `alembic upgrade
 head` with retries before starting uvicorn) has been removed – the
   serving container now starts uvicorn directly. The migration job running
@@ -356,13 +357,14 @@ head` with retries before starting uvicorn) has been removed – the
 The backend deploy step (`.github/scripts/deploy/deploy-tagged.sh`) deploys
 the new revision under a unique traffic tag with `--no-traffic`, smoke-tests
 **that revision's own tagged URL**, and only then promotes it
-(`gcloud run services update-traffic --to-latest`) to receive live traffic.
+(`gcloud run services update-traffic --to-revisions=<revision>=100`, naming
+the tested revision rather than `--to-latest`) to receive live traffic.
 Live traffic stays on the previous, still-healthy revision for the whole
 window between the migration job finishing and the new revision proving
 itself – including the migration's own correctness, since a broken migration
 that still lets the app boot would otherwise only surface once real traffic
 hit it. This complements, rather than replaces, the public-edge smoke test
-that runs afterwards (`https://teaching.quill-medical.com/api/health`) –
+that runs afterwards (`https://app.quill-medical.com/api/health`) –
 that one continues to confirm the live edge (DNS/load balancer/Caddy) is
 routing correctly post-promotion, a different failure domain from the
 revision's own health.
@@ -372,7 +374,7 @@ revision's own health.
 - [Database destructive migration review plan](../plans/2026-08-25-db-destructive-migration-review-plan.md) –
   the full implementation plan, decision log, and verification steps for the
   human review gate documented in Layer 3 above.
-- [Alembic review and migration safety plan](../plans/2026-08-09-alembic-review-plan.md) –
+- [Alembic review and migration safety plan](../plans/2026-08-09-alembic-review-and-revisions-plan.md) –
   the full review, decision log, and implementation tracker this page
   summarises.
 - [Alembic migrations squash plan](../plans/2026-08-11-migrations-squash-plan.md) –
