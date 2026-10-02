@@ -4447,6 +4447,13 @@ def list_external_access(
 
     # ---------------------------------------------------------------------------
     # Messaging
+    #
+    # These routes carry no ``has_competency`` dependency, and that is
+    # deliberate rather than missed. Which competency applies depends on
+    # how the caller reaches the conversation – as a participant, through
+    # a shared org_unit, or through an external grant – so the check is
+    # made per conversation in ``app.messaging``, in
+    # ``_reads_without_taking_part`` and ``check_user_patient_access``.
     # ---------------------------------------------------------------------------
 
 
@@ -4853,7 +4860,7 @@ def join_conversation_endpoint(
     Raises:
         HTTPException: 404 if conversation not found.
         HTTPException: 403 if the user is not staff of one of its
-            organisations.
+            organisations, or lacks ``access_patient_records``.
     """
     try:
         return join_conversation(
