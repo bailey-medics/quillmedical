@@ -10,7 +10,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
-import AddButton from "@/components/button/AddButton";
+import AddIconButton from "@/components/button/AddIconButton";
+import { IconUserPlus } from "@/components/icons/appIcons";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
@@ -146,17 +147,18 @@ export default function AdminUsersPage() {
 
   return (
     <Stack gap="lg">
-      <PageHeader
-        title="Users"
+      <PageHeader title="Users" />
+
+      <DataTableControlled
+        // Adding sits with the table's own search and filter icons, as
+        // the safety tables do, rather than as a button in the header.
         action={
-          <AddButton
-            label="Add user"
+          <AddIconButton
+            aria-label="Add user"
+            icon={<IconUserPlus />}
             onClick={() => navigate("/admin/users/new")}
           />
         }
-      />
-
-      <DataTableControlled
         data={users}
         columns={columns}
         onRowClick={(user) => navigate(`/admin/users/${user.id}`)}
