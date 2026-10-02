@@ -144,6 +144,7 @@ import AssessmentQuestionResultsPage from "./features/teaching/pages/AssessmentQ
 import SyncStatus from "./features/teaching/pages/SyncStatus";
 import AdminTeachingPage from "./pages/admin/teaching/AdminTeachingPage";
 import AdminTeachingDashboard from "./pages/admin/teaching/AdminTeachingDashboard";
+import AdminSafetyDashboard from "./pages/admin/safety/AdminSafetyDashboard";
 import AdminAllDelegatesPage from "./pages/admin/teaching/AdminAllDelegatesPage";
 import AdminBankDetailPage from "./pages/admin/teaching/AdminBankDetailPage";
 import AdminBankOrgSettingsPage from "./pages/admin/teaching/AdminBankOrgSettingsPage";
@@ -681,6 +682,19 @@ const routes: RouteObject[] = [
           {
             path: "teaching",
             element: <AdminTeachingDashboard />,
+            handle: { safeForReload: true },
+          },
+          {
+            // The safety mock-up's admin landing, shown where the feature
+            // is on. Reached by a safety admin through `manage_safety`,
+            // as a teaching admin reaches `/admin` through
+            // `manage_teaching`.
+            path: "safety",
+            element: (
+              <RequireFeature feature="safety">
+                <AdminSafetyDashboard />
+              </RequireFeature>
+            ),
             handle: { safeForReload: true },
           },
           {
