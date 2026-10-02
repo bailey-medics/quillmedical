@@ -45,9 +45,22 @@ describe("AdminUsersPage", () => {
     });
   });
 
-  it("lists the users once loaded", async () => {
+  it("lists the users once loaded, with full name, username and status only", async () => {
     renderWithRouter(<AdminUsersPage />);
     expect(await screen.findByText("ada.lovelace")).toBeInTheDocument();
+    const headers = screen
+      .getAllByRole("columnheader")
+      .map((header) => header.textContent?.trim());
+    expect(headers).toEqual(["Full name", "Username", "Status"]);
+    expect(screen.queryByText("ada@example.com")).not.toBeInTheDocument();
+  });
+
+  it("still finds a user by email, which is searched though not shown", async () => {
+    renderWithRouter(<AdminUsersPage />);
+    await screen.findByText("ada.lovelace");
+    await userEvent.click(screen.getByLabelText("Open search"));
+    await userEvent.type(screen.getByLabelText("Search"), "ada@example");
+    expect(screen.getByText("ada.lovelace")).toBeInTheDocument();
   });
 
   it("offers Add user as an icon in the table's row, not in the header", async () => {
