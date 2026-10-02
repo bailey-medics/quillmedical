@@ -6,11 +6,9 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useState } from "react";
 import { fn } from "storybook/test";
-import { Container, Group } from "@mantine/core";
+import { Container } from "@mantine/core";
 import { ActiveStatusBadge } from "@/components/badge";
-import IconTextButton from "@/components/button/IconTextButton";
 import { StoryNote } from "@/stories/variants";
 import DataTable, { type Column } from "./DataTable";
 
@@ -326,44 +324,6 @@ export const SevenColumnsAtFullWidth: StoryObj<typeof DataTable<Admission>> = {
       </StoryNote>
     </div>
   ),
-};
-
-function NarrowTableThatRemounts() {
-  const [mountCount, setMountCount] = useState(0);
-  return (
-    <div>
-      <Group justify="flex-end" mb="md">
-        <IconTextButton
-          icon="refresh"
-          label="Remount the table"
-          onClick={() => setMountCount((count) => count + 1)}
-        />
-      </Group>
-      <Container size={40 * 16} px={0}>
-        <DataTable
-          key={mountCount}
-          data={admissions}
-          columns={sevenColumns}
-          onRowClick={fn()}
-          getRowKey={(a) => a.id}
-        />
-      </Container>
-      <StoryNote mt="xs">
-        Seven columns in 40rem, mounted afresh on each press. It must appear as
-        cards at once, never as a table for a frame first.
-      </StoryNote>
-    </div>
-  );
-}
-
-/**
- * Remount to check for a flash. The container is measured before the
- * first paint, so a table that is going to be cards is never drawn as a
- * table first. Press the button and watch the top of the table: there
- * should be no flicker. Before the fix there was one frame of table.
- */
-export const RemountToCheckForAFlash: StoryObj<typeof DataTable<Admission>> = {
-  render: () => <NarrowTableThatRemounts />,
 };
 
 /**
