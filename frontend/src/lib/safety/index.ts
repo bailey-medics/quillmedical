@@ -9,9 +9,11 @@
 export {
   SAFETY_CASES,
   safetyCaseById,
+  safetyDocumentById,
   openHazardCount,
   riskRating,
 } from "./fixtures";
+export { renderDocument, placeholderKeysIn } from "./render";
 export type {
   DocumentStatus,
   Hazard,

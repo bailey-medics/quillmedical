@@ -30,8 +30,15 @@ export type DocumentStatus = "draft" | "approved";
 
 /** One document in the safety case file. */
 export interface SafetyDocument {
+  /** Document reference used in the address, such as "crmp" */
+  id: string;
   /** Document name, as DCB0129 names it */
   name: string;
+  /**
+   * The document as markdown, with `{{ key }}` placeholders that the
+   * case's placeholder table fills in. See `renderDocument`.
+   */
+  content: string;
   /** Version string, such as "1.2" */
   version: string;
   status: DocumentStatus;

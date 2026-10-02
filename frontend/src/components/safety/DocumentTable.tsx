@@ -57,14 +57,20 @@ const columns: Column<SafetyDocument>[] = [
 
 export interface DocumentTableProps {
   documents: SafetyDocument[];
+  /** Called when a document is chosen */
+  onSelect?: (document: SafetyDocument) => void;
 }
 
-export default function DocumentTable({ documents }: DocumentTableProps) {
+export default function DocumentTable({
+  documents,
+  onSelect,
+}: DocumentTableProps) {
   return (
     <DataTable
       data={documents}
       columns={columns}
-      getRowKey={(document) => document.name}
+      getRowKey={(document) => document.id}
+      onRowClick={onSelect}
       emptyMessage="No documents in this case file"
     />
   );

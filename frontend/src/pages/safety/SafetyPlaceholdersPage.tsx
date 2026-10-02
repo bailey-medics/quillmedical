@@ -12,7 +12,7 @@ import { Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import PlaceholderTable from "@/components/safety/PlaceholderTable";
-import { BodyText, TextLink } from "@/components/typography";
+import { BodyText } from "@/components/typography";
 import { useSafetyCase } from "./useSafetyCase";
 
 export function Component() {
@@ -25,9 +25,7 @@ export function Component() {
   return (
     <Stack gap="lg">
       <PageHeader title="Placeholders" />
-      <BodyText>
-        <TextLink to={`/safety/${safetyCase.id}`}>{safetyCase.title}</TextLink>
-      </BodyText>
+      <BodyText c="dimmed">{safetyCase.title}</BodyText>
       <BodyText c="dimmed">
         A placeholder is a value written once and substituted into every
         document of the case that names it, so a product name or version changes

@@ -2,7 +2,8 @@
  * DocumentTable Component Tests
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import DocumentTable from "./DocumentTable";
@@ -27,5 +28,17 @@ describe("DocumentTable", () => {
     expect(
       screen.getByText("No documents in this case file"),
     ).toBeInTheDocument();
+  });
+
+  it("reports the document chosen", async () => {
+    const onSelect = vi.fn();
+    renderWithMantine(
+      <DocumentTable
+        documents={SAFETY_CASES[0].documents}
+        onSelect={onSelect}
+      />,
+    );
+    await userEvent.click(screen.getByText("Hazard log"));
+    expect(onSelect).toHaveBeenCalledWith(SAFETY_CASES[0].documents[1]);
   });
 });

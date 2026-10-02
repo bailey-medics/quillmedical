@@ -870,6 +870,24 @@ describe("SideNavContent Component", () => {
       expect(screen.queryByText("Safety")).not.toBeInTheDocument();
     });
 
+    it.each([
+      ["/safety/sc-001/documentation/crmp", "Documentation", "Document"],
+      ["/safety/sc-001/hazards/H-01", "Hazards", "Hazard"],
+      ["/safety/sc-001/incidents/INC-2026-004", "Incidents", "Incident"],
+    ])("hangs the record under its page on %s", async (route, page, detail) => {
+      renderWithAuth(<SideNavContent />, "safety_only", {
+        initialRoute: route,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText(page)).toBeInTheDocument();
+      });
+
+      const child = screen.getByText(detail).closest("a");
+      expect(child).toHaveAttribute("href", route);
+      expect(child).toHaveAttribute("data-active", "true");
+    });
+
     it("hangs nothing under Safety on the case page itself", async () => {
       // The case page is a destination, not a heading: its cards link
       // to the pages beneath it.

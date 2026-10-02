@@ -15,14 +15,17 @@ function renderPage(caseId: string) {
 }
 
 describe("SafetyHazardsPage", () => {
-  it("titles the page and links back to the case", () => {
+  it("titles the page and names the case, with no link back", () => {
     renderPage("sc-001");
     expect(
       screen.getByRole("heading", { level: 1, name: "Hazards" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Electronic prescribing module" }),
-    ).toHaveAttribute("href", "/safety/sc-001");
+      screen.getByText("Electronic prescribing module"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Electronic prescribing module" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the case's content", () => {
