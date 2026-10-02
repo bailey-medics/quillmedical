@@ -2,7 +2,7 @@
  * RequireClinical Component Tests
  *
  * Tests for the clinical services route guard:
- * - Redirects to /teaching when clinical services are disabled
+ * - Redirects to / when clinical services are disabled
  * - Renders children when clinical services are enabled
  */
 
@@ -42,7 +42,7 @@ describe("RequireClinical", () => {
     expect(screen.getByText("Clinical Content")).toBeInTheDocument();
   });
 
-  it("redirects to /teaching when clinical services are disabled", () => {
+  it("redirects to / when clinical services are disabled", () => {
     vi.spyOn(authContext, "useAuth").mockReturnValue({
       state: {
         status: "authenticated",
@@ -66,7 +66,7 @@ describe("RequireClinical", () => {
     );
 
     expect(screen.queryByText("Clinical Content")).not.toBeInTheDocument();
-    expect(window.location.pathname).toBe("/teaching");
+    expect(window.location.pathname).toBe("/");
   });
 
   it("renders children when clinical_services_enabled is undefined (defaults to enabled)", () => {
