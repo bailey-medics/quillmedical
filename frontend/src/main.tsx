@@ -372,6 +372,11 @@ const routes: RouteObject[] = [
             handle: { safeForReload: true },
           },
           {
+            path: "/safety/:caseId/incidents/:incidentId",
+            lazy: () => import("./pages/safety/SafetyIncidentPage"),
+            handle: { safeForReload: true },
+          },
+          {
             path: "/safety/:caseId/officers",
             lazy: () => import("./pages/safety/SafetyOfficersPage"),
             handle: { safeForReload: true },

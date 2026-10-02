@@ -296,21 +296,21 @@ Asked for with the hazard pages: a row on `/safety/:caseId/incidents`
 opens the incident's report, and the incidents listed on a hazard's page
 link to the same reports.
 
-- [ ] **Extend `Incident`** with what a report carries beyond the table
+- [x] **Extend `Incident`** with what a report carries beyond the table
       row: `immediate_action`, `root_cause`, `outcome` and `reported_by`
       (a role, never a name, since incident reports are where a real
       system would be tempted to name a patient). Every fixture incident
       gets them, still describing a system fault and never a patient.
-- [ ] **`components/safety/IncidentReport.tsx`**: cards for what
+- [x] **`components/safety/IncidentReport.tsx`**: cards for what
       happened (date, severity, summary, reported by), the hazard it
       realised as a `TextLink` to the hazard page, the immediate action,
       the root cause and the outcome. Stories and tests.
-- [ ] **Route `/safety/:caseId/incidents/:incidentId`**,
+- [x] **Route `/safety/:caseId/incidents/:incidentId`**,
       `pages/safety/SafetyIncidentPage.tsx`; `IncidentTable` gains
       `onSelect`; the incidents page and the incidents on `HazardDetail`
       open the report; the nav child reads Safety, Incidents, Incident. A
       404 for an unknown incident.
-- [ ] **Tests** for the report, the page and the nav child.
+- [x] **Tests** for the report, the page and the nav child.
 
 ## Phase 11: Officers can be edited
 
@@ -325,7 +325,8 @@ state until it is reloaded, which is enough to show the interaction.
 - [ ] **`components/safety/OfficerForm.tsx`**: name and email fields, the
       role shown but not editable (the roles are the posts a case has, as
       a position is), with the app's `ButtonPair` for save and cancel,
-      following the passport forms' react-hook-form shape. Stories and
+      following the passport forms' shape: `useState` per field and a
+      `canSubmit` guard, as `CertificateForm` does. Stories and
       tests.
 - [ ] **The officers page** holds the officers in state, opens the form
       in a `Modal` on edit, and writes the result back on save. A note
