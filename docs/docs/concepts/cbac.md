@@ -24,21 +24,20 @@ Traditional RBAC assigns users to rigid job roles (e.g., "doctor", "nurse") with
 │                         User Model                              │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │ base_profession: "foundation_year_2"                    │   │
-│  │ additional_competencies: ["prescribe_controlled_sch..."]│   │
-│  │ removed_competencies: ["certify_death"]                 │   │
+│  │ competency_grants: rows in user_competency, one per     │   │
+│  │   grant, each with a start, an end and a source         │   │
 │  └─────────────────────────────────────────────────────────┘   │
 └────────┬────────────────────────────────────────────────────────┘
          │
          │ get_final_competencies()
          ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│              Competency Resolution (resolve_user_competencies)  │
+│              Current grants                                      │
 │                                                                  │
-│  1. Load base profession competencies                           │
-│     (from shared/base-professions.yaml)                         │
-│  2. Add additional_competencies                                 │
-│  3. Remove removed_competencies                                 │
-│  4. Return final list                                           │
+│  1. Read the user's user_competency rows                        │
+│  2. Keep those that have started and have not ended             │
+│  3. Return their competency ids                                 │
+│     (the base profession seeded rows once; it is not read here) │
 └────────┬────────────────────────────────────────────────────────┘
          │
          │ Final competencies: ["access_patient_records",
@@ -65,12 +64,23 @@ backend/app/cbac/
 ├── __init__.py          - Public API exports
 ├── competencies.py      - Merges competency-definitions/, provides validation
 ├── base_professions.py  - Loads base-professions.yaml
-└── decorators.py        - has_competency(), FastAPI dependencies
+├── grants.py            - Turns a saved pair of lists into user_competency rows
+├── grant_scope.py       - What a caller may grant (may_grant, may_assign_professions)
+├── scoped.py            - What somebody may practise at one place
+├── positions.py         - Positions and who holds them
+└── audit.py             - Finds unknown and retired ids in stored data
+
+backend/app/deps.py      - has_competency(), FastAPI dependencies
 
 shared/
 ├── competency-definitions/  - All competency definitions, merged at load
 │   ├── clinical.yaml        - What may be done in the care of a patient
-│   └── feature-admin.yaml   - What may be done to Quill itself
+│   ├── oncology.yaml        - Oncology competencies, clinical in kind
+│   ├── clinical-admin.yaml  - Running the clinical service
+│   ├── admin.yaml           - Administering a place
+│   ├── teaching.yaml        - Who may use the teaching feature
+│   ├── passport.yaml        - Who may use the clinician passport
+│   └── safety.yaml          - Who may use the safety feature
 └── base-professions.yaml    - Default competency sets per profession
 ```
 
@@ -78,41 +88,41 @@ shared/
 
 ### User Fields (backend/app/models.py)
 
-Each `User` has three CBAC fields:
+Each `User` has a base profession and a set of grants:
 
 ```python
 class User(Base):
     base_profession: str = "patient"  # Base profession ID
-    additional_competencies: list[str] = []  # Extra competencies added
-    removed_competencies: list[str] = []  # Competencies removed
+    competency_grants: list[UserCompetency]  # One row per grant
 
     def get_final_competencies(self) -> list[str]:
-        """Compute final competencies: base + additional - removed."""
-        return resolve_user_competencies(
-            base_profession=self.base_profession,
-            additional_competencies=self.additional_competencies,
-            removed_competencies=self.removed_competencies,
-        )
+        """The ids of this user's current grant rows, and nothing else."""
 ```
 
-**Resolution Formula**:
+A grant is a row in `user_competency` (`UserCompetency`), carrying `competency_id`, `starts_on`, `ends_on`, `source`, `org_unit_id` and `granted_by`. Rows are inserted or closed, never deleted: taking a competency away sets `ends_on`, so what somebody could do last year stays answerable.
+
+**The base profession seeds rows once.** When somebody is given a profession, its competencies are written as rows with the source `profession`, and from then on only the rows count. An edit to `shared/base-professions.yaml` changes only people given the profession afterwards.
+
+**The formula describes a save, not a read.** The user editor works in two lists read against the profession: `additional`, what somebody holds beyond it, and `removed`, what it gives that they do not hold. `sync_competency_rows` in `backend/app/cbac/grants.py` brings the rows into line with:
 
 ```
-final_competencies = (base_profession_competencies + additional_competencies) - removed_competencies
+competencies to hold = (base_profession_competencies + additional) - removed
 ```
 
 ### Example User Configuration
 
 ```python
 # FY2 doctor with extra controlled drug prescribing, but death certification removed
-user = User(
-    username="dr_smith",
-    base_profession="foundation_year_2",
-    additional_competencies=["prescribe_controlled_schedule_2"],
-    removed_competencies=["certify_death"],  # Not yet trained
+user = User(username="dr_smith", base_profession="foundation_year_2")
+sync_competency_rows(
+    user,
+    additional=["prescribe_controlled_schedule_2"],
+    removed=["certify_death"],  # Not yet trained
+    source="admin",
+    granted_by=admin.id,
 )
 
-# Final competencies = FY2 base + prescribe_controlled_sch2 - certify_death
+# Rows now held = FY2 base + prescribe_controlled_sch2 - certify_death
 # Result: can prescribe controlled drugs, cannot certify death
 ```
 
@@ -124,9 +134,10 @@ Defines all available competencies in the system. Located at
 `shared/competency-definitions/`, a directory whose files are merged into
 one flat catalogue at load time.
 
-The split is by kind, for the reader: `clinical.yaml` holds what may be
-done in the care of a patient, `feature-admin.yaml` what may be done to
-Quill itself. The code sees one catalogue and the id is what everything
+The split is by kind, for the reader: `clinical.yaml` and `oncology.yaml` hold
+what may be done in the care of a patient; `clinical-admin.yaml`,
+`admin.yaml`, `teaching.yaml`, `passport.yaml` and `safety.yaml` hold what
+may be done to Quill itself. The code sees one catalogue and the id is what everything
 references, so moving an entry between files changes nothing. **Ids must
 be unique across the whole directory**, not merely within a file – a
 duplicate is refused at load, and in CI.
@@ -137,24 +148,20 @@ duplicate is refused at load, and in CI.
 competencies:
   - id: prescribe_controlled_schedule_2
     display_name: "Prescribe Schedule 2 Controlled Drugs"
-    description: "Ability to prescribe Schedule 2 controlled drugs (e.g., morphine, fentanyl)"
-    category: prescribing
-    risk_level: high
-    requires_registration: true
-    registration_type: ["GMC"]
-    audit_retention_days: 2555 # 7 years
-    clinical_safety_notes: "High-risk competency. Risks: Addiction, overdose, diversion."
+    assessable: true
 ```
 
 **Key Fields**:
 
 - `id`: Unique competency identifier (used in code)
-- `risk_level`: `low`, `medium`, or `high` (affects audit logging)
-- `requires_registration`: Whether professional registration needed
-- `registration_type`: Which registrations qualify (GMC, NMC, GPhC, etc.)
-- `clinical_safety_notes`: Safety considerations for Clinical Safety Officer
+- `display_name`: Human-readable name
+- `retired_on`: The date the competency stopped being available for new use. Entries are retired, not deleted
+- `levels`, `expires_after_months`, `assessable`: read by the clinician passport; CBAC ignores them
+- `may_grant`, `may_assign_professions`: what a holder may grant to other people
 
-**Competency Categories**:
+An entry may carry no other field: the loader refuses anything else.
+
+**Competency Categories** (comment headings in `clinical.yaml`, not a field):
 
 - `prescribing`: Medication prescribing authorities
 - `certification`: Medical certifications (death, fitness to work, etc.)
@@ -176,6 +183,7 @@ base_professions:
   - id: foundation_year_1
     display_name: "Foundation Year 1 Doctor (FY1)"
     description: "Newly qualified doctor in first year of foundation training"
+    requires_clinical_services: true
     base_competencies:
       - access_patient_records
       - modify_patient_records
@@ -186,7 +194,7 @@ base_professions:
       - refer_specialty
       - prescribe_non_controlled
       - certify_fitness_to_work
-    notes: "FY1 doctors require supervision for prescribing and procedures."
+      - assess_clinician_passport
 ```
 
 **Available Base Professions**:
@@ -209,7 +217,21 @@ base_professions:
 - `medical_secretary` - Medical secretaries
 - `receptionist` - Receptionists
 - `clinic_manager` - Clinic managers
+- `patient_manager` - Patient managers
 - `system_administrator` - System administrators
+- `superadmin_profession` - Superadmins
+- `teaching_delegate` - Teaching delegates
+- `teaching_clinical_lead` - Teaching clinical leads
+- `teaching_admin` - Teaching admins
+- `safety_officer` - Safety officers
+- `safety_clinical_lead` - Safety clinical leads
+- `safety_admin` - Safety admins
+- `patient_advocate` - Patient advocates
+- `external_hcp` - External healthcare professionals
+- `passport_delegate` - Passport delegates
+- `passport_clinical_lead` - Passport clinical leads
+- `passport_admin` - Passport admins
+- `passport_external_assessor` - Passport external assessors
 
 ## API Protection
 
@@ -276,6 +298,8 @@ async def perform_procedure(
 
 ## Competency Resolution Logic
 
+`resolve_user_competencies` works out what one save should leave somebody holding. It is called when a save is turned into rows, not on every read: a read returns the current rows.
+
 ### Implementation (backend/app/cbac/base_professions.py)
 
 ```python
@@ -321,6 +345,7 @@ removed_competencies = []
 # - refer_specialty
 # - prescribe_non_controlled
 # - certify_fitness_to_work
+# - assess_clinician_passport
 # (Cannot prescribe controlled drugs, cannot certify death)
 ```
 
@@ -342,13 +367,13 @@ removed_competencies = ["certify_death"]  # Not yet trained
 
 ```python
 base_profession = "consultant"
-additional_competencies = ["apply_deprivation_of_liberty"]  # Completed DoLS training
+additional_competencies = ["prescribe_sact"]  # Completed SACT training
 removed_competencies = []
 
-# Result: consultant base + apply_deprivation_of_liberty
+# Result: consultant base + prescribe_sact
 # - All consultant competencies (including certify_cremation, certify_death)
 # - prescribe_controlled_schedule_2
-# - apply_deprivation_of_liberty (added)
+# - prescribe_sact (added)
 ```
 
 **Example 4: Advanced Nurse Practitioner**
@@ -371,6 +396,7 @@ removed_competencies = []
 # - prescribe_controlled_schedule_3_4_5
 # - certify_fitness_to_work
 # - approve_clinical_letters
+# - assess_clinician_passport
 ```
 
 ## Validation & Type Safety
@@ -386,8 +412,8 @@ if not is_valid_competency("prescribe_controlled_schedule_2"):
 
 # Get competency metadata
 details = get_competency_details("prescribe_controlled_schedule_2")
-print(details["risk_level"])  # "high"
-print(details["requires_registration"])  # True
+print(details.display_name)  # "Prescribe Schedule 2 Controlled Drugs"
+print(details.assessable)  # True
 ```
 
 ### Type Hints
@@ -396,44 +422,28 @@ print(details["requires_registration"])  # True
 from app.cbac.competencies import CompetencyId
 
 # CompetencyId is a Literal type of all valid competency IDs
-def grant_competency(user: User, competency: CompetencyId) -> None:
+def grant_competency(
+    user: User, competency: CompetencyId, granted_by: int
+) -> None:
     # Type checker validates competency is valid ID
-    user.additional_competencies.append(competency)
+    sync_competency_rows(
+        user,
+        additional=[*user.additional_competency_ids, competency],
+        removed=user.removed_competency_ids,
+        source="admin",
+        granted_by=granted_by,
+    )
 ```
 
 ## Audit Logging
 
-### High-Risk Competencies
-
-CBAC automatically identifies high-risk competencies for audit logging:
-
-```python
-risk_level = get_competency_risk_level("prescribe_controlled_schedule_2")
-# Returns: "high"
-
-# High-risk competencies:
-# - prescribe_controlled_schedule_2 (Schedule 2 drugs)
-# - certify_death (death certification)
-# - certify_cremation (cremation forms)
-# - perform_advanced_airway (advanced airway management)
-```
-
-**TODO**: Audit logging is currently a placeholder. When implemented, high-risk competency checks will log:
+**TODO**: Audit logging is currently a placeholder. When implemented, competency checks will log:
 
 - User ID
 - Competency checked
 - Success/failure
 - Timestamp
 - Request context
-
-### Audit Retention
-
-Each competency specifies required audit retention period:
-
-```yaml
-- id: prescribe_controlled_schedule_2
-  audit_retention_days: 2555 # 7 years (regulatory requirement)
-```
 
 ## Safety Considerations
 
@@ -471,13 +481,7 @@ Some competencies require supervision even when granted:
    ```yaml
    - id: prescribe_unlicensed_medication
      display_name: "Prescribe Unlicensed Medications"
-     description: "Off-label or unlicensed drug prescribing"
-     category: prescribing
-     risk_level: high
-     requires_registration: true
-     registration_type: ["GMC"]
-     audit_retention_days: 2555
-     clinical_safety_notes: "Requires consultant-level expertise..."
+     assessable: true
    ```
 
 2. **Update base professions** if needed in `shared/base-professions.yaml`:
@@ -516,7 +520,7 @@ def resolve_user_competencies(
 ) -> list[str]
 ```
 
-Compute final competencies for a user.
+Work out what one save should leave a user holding: the profession's competencies, plus `additional`, minus `removed`.
 
 #### has_competency
 
@@ -537,38 +541,29 @@ FastAPI dependency to require at least one of specified competencies.
 #### get_competency_details
 
 ```python
-def get_competency_details(competency_id: str) -> dict | None
+def get_competency_details(competency_id: str) -> CompetencyEntry | None
 ```
 
-Get full metadata for a competency from YAML.
-
-#### get_competency_risk_level
-
-```python
-def get_competency_risk_level(competency_id: str) -> str
-```
-
-Get risk level: "low", "medium", or "high".
+Get the catalogue entry for a competency.
 
 ## Implementation Status
 
 ### ✓ Implemented
 
-- Competency data model (User fields)
+- Competency data model (`user_competency` grant rows)
 - Competency resolution logic
 - YAML configuration loading
 - `has_competency()` FastAPI dependency
 - `requires_any_competency()` dependency
 - Type-safe competency IDs
-- Risk level classification
+- User interface for competency management
 
 ### ⚠️ TODO / Pending
 
-- Audit logging for high-risk competencies
+- Audit logging for competency checks
 - Professional registration API validation (GMC, NMC, GPhC)
 - Supervision tracking and enforcement
-- Competency expiry dates (revalidation)
-- User interface for competency management
+- Competency expiry dates (revalidation) – a grant can end, but nothing acts on a definition's `expires_after_months`
 - Competency assignment workflow (request → approval → grant)
 - Integration with clinical records (supervisor sign-off)
 
