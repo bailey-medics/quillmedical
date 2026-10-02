@@ -3,6 +3,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fn } from "storybook/test";
 import OfficerList from "./OfficerList";
 import { SAFETY_CASES } from "@lib/safety";
 
@@ -17,6 +18,10 @@ type Story = StoryObj<typeof OfficerList>;
 
 export const Default: Story = {
   args: { officers: SAFETY_CASES[0].officers },
+};
+
+export const Editable: Story = {
+  args: { officers: SAFETY_CASES[0].officers, onEdit: fn() },
 };
 
 export const Empty: Story = {
