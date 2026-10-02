@@ -140,6 +140,7 @@ nav:
           - Docs Review Findings: plans/2026-10-02-docs-review-findings-plan.md
   - Teaching:
       - Overview: teaching/index.md
+      - Content pipeline: teaching/content-pipeline.md
   - Learnings:
       - Overview: learnings/index.md
       - FHIR & EHRbase Staging Issues: learnings/fhir-ehrbase-issues.md
