@@ -108,14 +108,16 @@ check fails if they ever go missing again.
 
 ## Phase 2: Headers on video responses
 
-- [ ] Add `custom_response_headers` to
+- [x] Add `custom_response_headers` to
       `google_compute_backend_bucket.videos` in
       `infra/modules/teaching-video-pipeline/main.tf`:
       `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
       `Referrer-Policy: strict-origin-when-cross-origin` and the same
       `Strict-Transport-Security` value as phase 1. No
       `Content-Security-Policy`: these are media and caption files, and a
-      policy on them does nothing.
+      policy on them does nothing. `DENY` is right here even though
+      phase 1 had to use `SAMEORIGIN`: the player loads these files through
+      a `video` element and its own requests, and nothing frames one.
 
 - [ ] After the apply, play a lecture on the live teaching site and confirm
       playback and captions still work. Then read the response headers of

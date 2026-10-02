@@ -93,6 +93,30 @@ resource "google_compute_backend_bucket" "videos" {
     cache_mode  = "CACHE_ALL_STATIC"
     default_ttl = 86400
   }
+
+  # Security headers for everything under `/videos/*`.
+  #
+  # These responses come straight from the bucket through the load balancer
+  # and never pass through Caddy, and Cloud Storage cannot set headers of
+  # this kind itself, so this is the only place they can be added. The API's
+  # backend service and the landing site's backend bucket in
+  # `modules/load-balancer/main.tf` carry theirs the same way.
+  #
+  # `DENY` is safe here where the API needed `SAMEORIGIN`: the player loads
+  # these files through a `video` element and its own requests, and nothing
+  # puts one in a frame.
+  #
+  # No Content-Security-Policy. These are media and caption files, which
+  # load nothing, so a policy on them would do nothing.
+  #
+  # Strict-Transport-Security is the value Caddy already sends for this
+  # hostname, so it makes no new promise.
+  custom_response_headers = [
+    "Strict-Transport-Security: max-age=63072000; includeSubDomains",
+    "X-Content-Type-Options: nosniff",
+    "Referrer-Policy: strict-origin-when-cross-origin",
+    "X-Frame-Options: DENY",
+  ]
 }
 
 # A backend bucket is not immediately referenceable by a URL map – Phase 0 hit
