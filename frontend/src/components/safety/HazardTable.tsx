@@ -9,7 +9,9 @@
  */
 
 import { Badge } from "@mantine/core";
-import DataTable, { type Column } from "@components/tables/DataTable";
+import type { ReactNode } from "react";
+import { type Column } from "@components/tables/DataTable";
+import DataTableControlled from "@components/tables/DataTableControlled";
 import {
   badgeColours,
   BADGE_VARIANT,
@@ -84,14 +86,30 @@ const columns: Column<Hazard>[] = [
 ];
 
 export interface HazardTableProps {
+  /**
+   * The table\'s own action, such as an add icon, shown in the row with
+   * search and filter. See `DataTableControlled`.
+   */
+  action?: ReactNode;
   hazards: Hazard[];
   /** Called when a hazard is chosen */
   onSelect?: (hazard: Hazard) => void;
 }
 
-export default function HazardTable({ hazards, onSelect }: HazardTableProps) {
+export default function HazardTable({
+  action,
+  hazards,
+  onSelect,
+}: HazardTableProps) {
   return (
-    <DataTable
+    <DataTableControlled
+      action={action}
+      searchFields={(hazard) => [
+        hazard.id,
+        hazard.description,
+        hazard.cause,
+        hazard.effect,
+      ]}
       data={hazards}
       columns={columns}
       getRowKey={(hazard) => hazard.id}

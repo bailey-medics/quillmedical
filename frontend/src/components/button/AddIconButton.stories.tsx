@@ -1,0 +1,29 @@
+/**
+ * AddIconButton Storybook Stories
+ */
+
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fn } from "storybook/test";
+import AddIconButton from "./AddIconButton";
+
+const meta: Meta<typeof AddIconButton> = {
+  title: "Button/Add icon button",
+  component: AddIconButton,
+  parameters: { layout: "padded" },
+};
+
+export default meta;
+type Story = StoryObj<typeof AddIconButton>;
+
+export const Default: Story = {
+  args: { "aria-label": "Add hazard", onClick: fn() },
+};
+
+export const Disabled: Story = {
+  args: { "aria-label": "Add hazard", disabled: true },
+};
+
+export const DarkMode: Story = {
+  ...Default,
+  globals: { colorScheme: "dark" },
+};

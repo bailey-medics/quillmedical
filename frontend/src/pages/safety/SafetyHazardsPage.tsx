@@ -11,7 +11,7 @@
 import { Stack } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
-import AddButton from "@/components/button/AddButton";
+import AddIconButton from "@/components/button/AddIconButton";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import HazardTable from "@/components/safety/HazardTable";
 import { BodyText } from "@/components/typography";
@@ -27,14 +27,12 @@ export function Component() {
 
   return (
     <Stack gap="lg">
-      <PageHeader
-        title="Hazards"
-        // For show only, by request: there is no form behind it. See
-        // Phase 15 of the plan.
-        action={<AddButton label="Add hazard" />}
-      />
+      <PageHeader title="Hazards" />
       <BodyText c="dimmed">{safetyCase.title}</BodyText>
       <HazardTable
+        // For show only, by request: there is no form behind it. See
+        // Phases 15 and 17 of the plan.
+        action={<AddIconButton aria-label="Add hazard" />}
         hazards={safetyCase.hazards}
         onSelect={(hazard) =>
           navigate(`/safety/${safetyCase.id}/hazards/${hazard.id}`)

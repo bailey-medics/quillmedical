@@ -8,7 +8,9 @@
  */
 
 import { Badge } from "@mantine/core";
-import DataTable, { type Column } from "@components/tables/DataTable";
+import type { ReactNode } from "react";
+import { type Column } from "@components/tables/DataTable";
+import DataTableControlled from "@components/tables/DataTableControlled";
 import FormattedDate from "@/components/data/Date";
 import {
   badgeColours,
@@ -63,12 +65,18 @@ const columns: Column<Incident>[] = [
 ];
 
 export interface IncidentTableProps {
+  /**
+   * The table\'s own action, such as an add icon, shown in the row with
+   * search and filter. See `DataTableControlled`.
+   */
+  action?: ReactNode;
   incidents: Incident[];
   /** Called when an incident is chosen */
   onSelect?: (incident: Incident) => void;
 }
 
 export default function IncidentTable({
+  action,
   incidents,
   onSelect,
 }: IncidentTableProps) {
@@ -76,7 +84,13 @@ export default function IncidentTable({
     b.occurred_on.localeCompare(a.occurred_on),
   );
   return (
-    <DataTable
+    <DataTableControlled
+      action={action}
+      searchFields={(incident) => [
+        incident.id,
+        incident.summary,
+        incident.hazard_id,
+      ]}
       data={sorted}
       columns={columns}
       getRowKey={(incident) => incident.id}

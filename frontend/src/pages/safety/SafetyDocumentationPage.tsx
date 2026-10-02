@@ -11,6 +11,7 @@
 import { Stack } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
+import AddIconButton from "@/components/button/AddIconButton";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import DocumentTable from "@/components/safety/DocumentTable";
 import { BodyText } from "@/components/typography";
@@ -29,6 +30,9 @@ export function Component() {
       <PageHeader title="Documentation" />
       <BodyText c="dimmed">{safetyCase.title}</BodyText>
       <DocumentTable
+        // For show only, by request: there is no form behind it. See
+        // Phases 15 and 17 of the plan.
+        action={<AddIconButton aria-label="Add document" />}
         documents={safetyCase.documents}
         onSelect={(document) =>
           navigate(`/safety/${safetyCase.id}/documentation/${document.id}`)
