@@ -98,7 +98,7 @@ organisation and nobody else.
 - [x] **`components/safety/RiskScoreBadge.tsx`**: a badge for a risk score
       of 1 to 5, coloured low to high from the design system's semantic
       colours, used by the hazard table for initial and residual scores.
-- [ ] **`components/safety/HazardTable.tsx`, `IncidentTable.tsx`,
+- [x] **`components/safety/HazardTable.tsx`, `IncidentTable.tsx`,
       `OfficerList.tsx`, `DocumentTable.tsx`, `SignOffChecklist.tsx` and
       `PlaceholderTable.tsx`**, one per card page, each a thin `DataTable`
       or `Stack` of `BaseCard` over the typed data. Officers and the
@@ -107,7 +107,7 @@ organisation and nobody else.
       where the date is null. The hazard table is the one place to spend a
       little care, because it is what anyone who knows DCB0129 will look
       at first.
-- [ ] **Stories and tests for every component**, as the components rule
+- [x] **Stories and tests for every component**, as the components rule
       requires, using `VariantStack` for the badge sizes and
       `renderWithRouter` where a row click navigates. Stories render the
       fixtures directly, which doubles as a visual check of the demo data.
