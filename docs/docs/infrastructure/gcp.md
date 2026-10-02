@@ -2,15 +2,19 @@
 
 ## Overview
 
-Quill Medical runs on three separate GCP projects, each in **europe-west2** (London):
+Quill Medical runs on one GCP project, in **europe-west2** (London). Three earlier projects are retired:
 
-| Environment | Project ID                 | Purpose                                    | Status     |
-| ----------- | -------------------------- | ------------------------------------------ | ---------- |
-| Production  | `quill-medical-production` | Clinical app for real patients             | Shut down  |
-| Staging     | `quill-medical-staging`    | Integration testing + landing page         | Shut down  |
-| Teaching    | `quill-medical-teaching`   | Teaching and clinician passport            | Active     |
+| Environment | Project ID                 | Purpose                                           | Status  |
+| ----------- | -------------------------- | ------------------------------------------------- | ------- |
+| App         | `quill-medical-app`        | Teaching, clinician passport and the landing page | Active  |
+| Production  | `quill-medical-production` | Clinical app for real patients                    | Retired |
+| Staging     | `quill-medical-staging`    | Integration testing + landing page                | Retired |
+| Teaching    | `quill-medical-teaching`   | Teaching and clinician passport                   | Retired |
 
-Only teaching is deployed. Staging was shut down because an idle environment was not worth its monthly cost, and production was shut down when clinical work stopped; both configurations are kept in `infra/environments/` so either can be brought back. See [Production hibernation](#production-hibernation) below.
+Only app is deployed. Staging, teaching and production were retired and their configurations removed; only `infra/environments/app/` remains. See [Retired environments](#retired-environments) below.
+
+!!! note "The diagram and the setup log below are older than this"
+    The architecture diagram, and the steps under "What has been set up", were written when staging, teaching and production existed. Today there is one load balancer, in the app project, serving `app.quill-medical.com` and the landing page at `quill-medical.com`.
 
 ## Architecture
 
@@ -72,7 +76,7 @@ Production and staging also have:
 
 Teaching additionally has:
 
-- **Cloud Storage** – image bucket for educational content (question bank YAML + images deployed by CI from `quill-question-bank` repo)
+- **Cloud Storage** – image bucket for educational content (question bank YAML + images deployed by CI from the `eoeeta-teaching` and `respiratory-teaching` content repos)
 
 ## What has been set up
 
@@ -169,21 +173,15 @@ GCP credentials are set via `gh secret set`, one trio per environment:
 | `GCP_{ENV}_SERVICE_ACCOUNT` | `github-actions@quill-medical-{env}.iam.gserviceaccount.com`                                     |
 | `GCP_{ENV}_PROJECT_ID`      | `quill-medical-{env}`                                                                            |
 
-Where `{ENV}` is `PROD`, `STAGING`, or `TEACHING`.
+Where `{ENV}` is `APP`. Two further accounts exist: `GCP_APP_DEPLOY_SERVICE_ACCOUNT` (builds and deploys) and `GCP_APP_PLAN_SERVICE_ACCOUNT` (read-only, for the Terraform plan on pull requests).
 
 Scoping:
 
-- `GCP_PROD_*` and `GCP_STAGING_*` are **repository-level** secrets.
-- `GCP_TEACHING_*` exist at **both** scopes:
-  - **Environment-scoped** to the `teaching` environment (set with
-    `gh secret set --env teaching`). Jobs that declare `environment: teaching`
-    (`deploy.yml` build + deploy-teaching, `public-site.yml` deploy-teaching,
-    `terraform.yml` apply) read these env-scoped values, which take precedence.
-  - **Repository-level** copies are **retained** because the `plan` job in
-    `terraform.yml` runs on pull requests with no `environment:` and therefore
-    cannot use the (now main-only) `teaching` environment. Removing the
-    repo-level copies would break Terraform planning on PRs.
-- The teaching environment enforces a **main-only** deployment branch policy
+- Jobs that declare `environment: app` (`deploy.yml` build + deploy,
+  `terraform.yml` apply) read the values scoped to the `app` environment.
+- The `plan` job in `terraform.yml` runs on pull requests with no
+  `environment:`, so it cannot use the main-only `app` environment.
+- The app environment enforces a **main-only** deployment branch policy
   (see `infra/github/environments.tf`).
 
 Additional secret:
@@ -209,18 +207,22 @@ These secrets authenticate the question bank deploy workflow (`deploy.yml`) to s
 
 The infrastructure is defined in `infra/` using Terraform modules:
 
-| Module          | Purpose                                                                 |
-| --------------- | ----------------------------------------------------------------------- |
-| `secrets`       | Secret Manager secret containers                                        |
-| `networking`    | VPC, subnet, Cloud NAT, VPC connector, firewall rules                   |
-| `cloud-sql`     | PostgreSQL instances with private IP, backups, auto-generated passwords |
-| `cloud-run`     | Backend and frontend services with secret injection                     |
-| `cloud-run-job` | Admin CLI jobs (create-superadmin, add-role, run-migrations)           |
-| `load-balancer` | Global HTTPS LB, Cloud Armor rate limiting, serverless NEGs, SSL certs  |
-| `compute-fhir`  | VM running HAPI FHIR + EHRbase (prod/staging only)                      |
-| `monitoring`    | Uptime checks and email alerting                                        |
-| `dns`           | Cloud DNS zone management                                               |
-| `cloud-storage` | Image bucket (teaching only)                                            |
+| Module                    | Purpose                                                                 |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `secrets`                 | Secret Manager secret containers                                        |
+| `networking`              | VPC, subnet, Cloud NAT, VPC connector, firewall rules                   |
+| `cloud-sql`               | PostgreSQL instances with private IP, backups, auto-generated passwords |
+| `cloud-run`               | Backend and frontend services with secret injection                     |
+| `cloud-run-job`           | Admin CLI jobs (create-superadmin, add-role, run-migrations)            |
+| `load-balancer`           | Global HTTPS LB, Cloud Armor rate limiting, serverless NEGs, SSL certs  |
+| `compute-fhir`            | VM running HAPI FHIR + EHRbase (prod/staging only)                      |
+| `monitoring`              | Uptime checks and email alerting                                        |
+| `cloud-storage`           | Image bucket (teaching only)                                            |
+| `teaching-video-pipeline` | Lecture video buckets, CDN backend and signing key                      |
+| `passport-storage`        | Clinician passport bucket                                               |
+| `analytics`               | Page-view and client-error metrics                                      |
+
+The Cloud DNS zone and its records are in `infra/dns.tf`, in the root module, not in a module of their own.
 
 Environment-specific settings live in `infra/environments/{env}/terraform.tfvars`.
 
@@ -234,12 +236,12 @@ europe-west2-docker.pkg.dev/quill-medical-{env}/quill/
 
 Container images are pushed here by CI (not GHCR – Cloud Run only supports Artifact Registry, GCR, or Docker Hub). Image paths:
 
-- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/backend:main` – backend service (built from `prod` Dockerfile stage)
-- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/frontend:main` – frontend service (built from `prod` Dockerfile stage)
-- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/admin:latest` – admin CLI (built from `admin` Dockerfile stage, via `just build-admin`)
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/backend:{sha}` – backend service (built from `prod` Dockerfile stage; also tagged `latest`)
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/frontend:{sha}` – frontend service (built from `prod` Dockerfile stage; also tagged `latest`)
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/admin:latest` – admin CLI (built from `admin` Dockerfile stage, by CI on every backend change or via `just build-admin`)
 
 !!! warning "Docker build targets"
-The backend Dockerfile has three stages: `dev`, `prod`, and `admin`. The `admin` stage is last, so building without `--target` produces the admin CLI image, not the web server. CI deploy workflows must always specify `target: prod`.
+The backend Dockerfile has five stages: `base`, `dev`, `prod`, `admin`, and `transcode`. The `transcode` stage is last, so building without `--target` produces the transcode job image, not the web server. CI deploy workflows must always specify `target: prod`.
 
 ### Organisation policy override (done)
 
@@ -291,7 +293,7 @@ Cloud Run URLs:
 
 ### Production Terraform apply ~~(done)~~ (hibernated)
 
-Production was fully provisioned and deployed, then **hibernated** via `terraform destroy` to save costs while not needed. See [Production hibernation](#production-hibernation) for details and restore instructions.
+Production was fully provisioned and deployed, then **hibernated** via `terraform destroy` to save costs while not needed. See [Retired environments](#retired-environments).
 
 ### Global HTTPS Load Balancer (done)
 
@@ -303,39 +305,37 @@ Each environment has a Global HTTPS Load Balancer that sits in front of the Clou
 - **HTTP to HTTPS redirect**: all port 80 traffic is redirected to port 443
 - **Static global IP**: stable IP addresses for DNS A records
 
-| Environment | Domain                       | Load Balancer IP  | Status                |
-| ----------- | ---------------------------- | ----------------- | --------------------- |
-| App         | `app.quill-medical.com`      | `34.49.99.83`     | Active                |
-| Teaching    | `teaching.quill-medical.com` | `136.110.221.126` | Active (being retired) |
-| Staging     | `staging.quill-medical.com`  | `35.186.223.130`  | Shut down             |
-| Staging     | `quill-medical.com`          | `35.186.223.130`  | Active (landing page) |
-| Production  | `ehr.quill-medical.com`      | –                 | Shut down, no DNS record |
+| Environment | Domain                       | Load Balancer IP | Status                   |
+| ----------- | ---------------------------- | ---------------- | ------------------------ |
+| App         | `app.quill-medical.com`      | `34.49.99.83`    | Active                   |
+| App         | `quill-medical.com`          | `34.49.99.83`    | Active (landing page)    |
+| Teaching    | `teaching.quill-medical.com` | –                | Retired, no DNS record   |
+| Staging     | `staging.quill-medical.com`  | –                | Retired, no DNS record   |
+| Production  | `ehr.quill-medical.com`      | –                | Shut down, no DNS record |
 
 The Caddyfile no longer reverse-proxies `/api/*` to the backend – the load balancer handles all routing. Caddy now just serves static frontend files and provides a `/healthz` endpoint for health checks.
 
 ### Domain architecture (done)
 
-| Domain                       | Purpose                       | Update process                       | Status              |
-| ---------------------------- | ----------------------------- | ------------------------------------ | ------------------- |
-| `quill-medical.com`          | Public landing/marketing site | Update anytime, no clinical sign-off | Active (staging LB) |
-| `app.quill-medical.com`      | Teaching and clinician passport | Auto-deploy from main branch       | Active              |
-| `teaching.quill-medical.com` | The same product, on the project it is moving off | Auto-deploy from main branch | Active, retired in Batch 8 |
-| `ehr.quill-medical.com`      | Live clinical application     | Release versions, DCB0129, UAT       | Named only, not built |
-| `staging.quill-medical.com`  | Staging/integration testing   | Auto-deploy from main branch         | Shut down           |
+| Domain                       | Purpose                                       | Update process                       | Status                |
+| ---------------------------- | --------------------------------------------- | ------------------------------------ | --------------------- |
+| `quill-medical.com`          | Public landing/marketing site                 | Update anytime, no clinical sign-off | Active (app LB)       |
+| `app.quill-medical.com`      | Teaching and clinician passport               | Auto-deploy from main branch         | Active                |
+| `teaching.quill-medical.com` | The same product, on the project it moved off | –                                    | Retired               |
+| `ehr.quill-medical.com`      | Live clinical application                     | Release versions, DCB0129, UAT       | Named only, not built |
+| `staging.quill-medical.com`  | Staging/integration testing                   | –                                    | Retired               |
 
-The public landing site (`quill-medical.com` and `www.quill-medical.com`) is served from a GCS bucket behind the staging load balancer. The site is built from the `frontend/public_pages/` Vite workspace and deployed via the `public-site.yml` CI workflow on pushes to `main`. This allows marketing pages and feature announcements to be updated without going through clinical release gates.
+The public landing site (`quill-medical.com` and `www.quill-medical.com`) is served from a GCS bucket behind the app load balancer. The site is built from the `frontend/public_pages/` Vite workspace and deployed via the `public-site.yml` CI workflow on pushes to `main`. This allows marketing pages and feature announcements to be updated without going through clinical release gates.
 
 ### DNS records (done)
 
-Cloud DNS zone `quill-medical-zone` in the production project holds all DNS records:
+Cloud DNS zone `quill-medical-com` in the app project (`infra/dns.tf`) holds all DNS records. The web records are:
 
-| Record                       | Type  | TTL | Value               | Notes                     |
-| ---------------------------- | ----- | --- | ------------------- | ------------------------- |
-| `quill-medical.com`          | A     | 300 | `35.186.223.130`    | Landing page (staging LB) |
-| `www.quill-medical.com`      | CNAME | 300 | `quill-medical.com` | www redirect to apex      |
-| `staging.quill-medical.com`  | A     | 300 | `35.186.223.130`    | Environment shut down     |
-| `teaching.quill-medical.com` | A     | 300 | `136.110.221.126`   | Retired in Batch 8        |
-| `app.quill-medical.com`      | A     | 300 | `34.49.99.83`       |                           |
+| Record                  | Type  | TTL | Value               | Notes                 |
+| ----------------------- | ----- | --- | ------------------- | --------------------- |
+| `quill-medical.com`     | A     | 300 | `34.49.99.83`       | Landing page (app LB) |
+| `www.quill-medical.com` | CNAME | 300 | `quill-medical.com` | www redirect to apex  |
+| `app.quill-medical.com` | A     | 300 | `34.49.99.83`       |                       |
 
 GoDaddy nameservers were updated to delegate to Google Cloud DNS:
 
@@ -361,15 +361,15 @@ Terraform and the `gh` CLI were installed via Homebrew on the admin account.
 ## Branching and deployment model
 
 ```
-feature/*  ──►  main  ──►  promote to production
+feature/*  ──►  main
                   │
            deploys to:
-           teaching
+           app
            landing page
            docs
 ```
 
-### Teaching deployment (merge to main)
+### App deployment (merge to main)
 
 Workflow: `.github/workflows/deploy.yml`
 
@@ -379,7 +379,7 @@ Workflow: `.github/workflows/deploy.yml`
 4. Deploy backend: tagged, `--no-traffic`, smoke-tested at its own tagged
    URL, then promoted to receive traffic; deploy frontend directly
 5. Smoke test the public edge: `GET /api/health` (5 retries, 10s intervals)
-6. Slack notification
+6. Slack notification on failure
 
 See [Alembic migration safety](../backend/alembic-migration-safety.md) for
 why migrations run as a separate pre-deploy job and why the backend deploy
@@ -387,70 +387,38 @@ is tagged/no-traffic rather than direct.
 
 ### Production deployment (promotion)
 
-Workflow: `.github/workflows/deploy.yml` (same workflow, gated by GitHub Environment approval)
-
-1. Copy exact image bytes from teaching AR to production AR via `gcrane`
-2. Run database migrations as a pre-deploy Cloud Run Job
-3. Deploy backend: tagged, `--no-traffic`, smoke-tested at its own tagged
-   URL, then promoted to receive traffic; deploy frontend directly
-4. Smoke test the public edge: `GET /api/health`
-5. Create annotated CalVer git tag
-6. Slack notification
-
-Production deploys are never cancelled mid-flight. The same image bytes that were validated in teaching are promoted – no rebuild.
-
-**Note:** Production is currently offline to save costs. The promotion job is disabled (`if: false`) until re-enabled.
+There is no production environment. The promotion job, and the CalVer tag it made, were removed from `deploy.yml` with the production project. A clinical environment gets its own, deliberate promotion step when it exists.
 
 ### Infrastructure changes (changes to infra/)
 
 Workflow: `.github/workflows/terraform.yml`
 
 - **Pull requests** – runs `terraform plan` and posts the diff as a PR comment
-- **Merge to main** – runs `terraform apply` for teaching
+- **Merge to main** – runs `terraform apply` for app
 
 ## Environment configuration
 
-### Production
+### App
+
+The only environment, in `infra/environments/app/terraform.tfvars`:
 
 ```hcl
-project_id              = "quill-medical-production"
-environment             = "prod"
-enable_fhir             = true
-enable_ha               = false
-db_tier                 = "db-f1-micro"
-cloud_run_max_instances = 10
-```
-
-### Staging
-
-```hcl
-project_id              = "quill-medical-staging"
-environment             = "staging"
-enable_fhir             = true
-enable_ha               = false
-db_tier                 = "db-f1-micro"
-cloud_run_max_instances = 3
-```
-
-### Teaching
-
-```hcl
-project_id              = "quill-medical-teaching"
-environment             = "teaching"
+project_id              = "quill-medical-app"
+environment             = "app"
 enable_fhir             = false
 enable_ha               = false
 db_tier                 = "db-f1-micro"
 cloud_run_max_instances = 5
 ```
 
-Teaching-specific Cloud Run backend environment variables (in addition to the standard set):
+App-specific Cloud Run backend environment variables (in addition to the standard set):
 
-| Variable                    | Value                                                  | Purpose                                    |
-| --------------------------- | ------------------------------------------------------ | ------------------------------------------ |
-| `CLINICAL_SERVICES_ENABLED` | `false`                                                | Disables FHIR/EHRbase endpoints            |
-| `TEACHING_STORAGE_BACKEND`  | `gcs`                                                  | Use GCS for teaching image storage         |
-| `TEACHING_GCS_BUCKET`       | `quill-images-teaching`                                | GCS bucket containing question banks       |
-| `TEACHING_IMAGES_BASE_URL`  | `https://storage.googleapis.com/quill-images-teaching` | Public URL prefix for question bank images |
+| Variable                    | Value                                             | Purpose                                    |
+| --------------------------- | ------------------------------------------------- | ------------------------------------------ |
+| `CLINICAL_SERVICES_ENABLED` | `false`                                           | Disables FHIR/EHRbase endpoints            |
+| `TEACHING_STORAGE_BACKEND`  | `gcs`                                             | Use GCS for teaching image storage         |
+| `TEACHING_GCS_BUCKET`       | `quill-images-app`                                | GCS bucket containing question banks       |
+| `TEACHING_IMAGES_BASE_URL`  | `https://storage.googleapis.com/quill-images-app` | Public URL prefix for question bank images |
 
 ## Environment variable naming
 
@@ -470,21 +438,12 @@ If names don't match, the backend silently falls back to the Docker Compose defa
 
 ## Cloud Storage IAM
 
-The teaching GCS bucket (`quill-images-teaching`) requires an explicit IAM binding for the Cloud Run backend service account. The default compute service account (`{project-number}-compute@developer.gserviceaccount.com`) does **not** automatically inherit `storage.objects.list` permission, even though it is a project editor – legacy bucket IAM grants access to `projectEditor`/`projectViewer` principal groups, but the compute SA is not automatically a member for API-level object listing.
+The teaching GCS bucket (`quill-images-app`) requires an explicit IAM binding for the Cloud Run backend's service account, `roles/storage.objectViewer`. Without it the backend cannot list the bucket's objects.
 
-The required binding:
-
-```bash
-gcloud storage buckets add-iam-policy-binding gs://quill-images-teaching \
-  --member="serviceAccount:{project-number}-compute@developer.gserviceaccount.com" \
-  --role="roles/storage.objectViewer" \
-  --project=quill-medical-teaching
-```
+The binding is in Terraform: `google_storage_bucket_iam_member.runtime_backend_images` in `infra/runtime-identities.tf` grants it to the backend's own `run-backend` service account. Nothing runs as the default compute service account any more.
 
 !!! warning "Symptom of missing binding"
 The backend logs `Failed to list GCS banks` and the Admin > Teaching page shows "No teaching modules found" after clicking Sync. The underlying error is `google.api_core.exceptions.Forbidden: 403 ... does not have storage.objects.list access`.
-
-This binding should be added to the `cloud-storage` Terraform module to avoid manual steps on future environments.
 
 ## Security
 
@@ -579,13 +538,13 @@ Database migrations (`alembic upgrade head`) run as a separate **pre-deploy step
 
 ### Backend deploys via a tagged, smoke-tested revision (done)
 
-The backend deploy step (`.github/scripts/deploy/deploy-tagged.sh`) deploys the new revision under a unique traffic tag with `--no-traffic`, smoke-tests that revision's own tagged URL, and only then promotes it (`--to-latest`) to receive live traffic. Live traffic stays on the previous, healthy revision until the new one – including its migration – has proven itself, rather than cutting over immediately and finding out via the public-edge smoke test. See [Alembic migration safety](../backend/alembic-migration-safety.md#revision-specific-smoke-test).
+The backend deploy step (`.github/scripts/deploy/deploy-tagged.sh`) deploys the new revision under a unique traffic tag with `--no-traffic`, smoke-tests that revision's own tagged URL, and only then promotes that revision by name (`--to-revisions`) to receive live traffic. Live traffic stays on the previous, healthy revision until the new one – including its migration – has proven itself, rather than cutting over immediately and finding out via the public-edge smoke test. See [Alembic migration safety](../backend/alembic-migration-safety.md#revision-specific-smoke-test).
 
 The promotion is issued with `--async` and verified by polling the service's own status until it is Ready with the new revision carrying all traffic, rather than relying on gcloud's built-in wait. That wait has no ceiling: on 2026-09-10 Cloud Run stalled on "Provisioning revision instances to receive traffic" and gcloud sat for 56 minutes before crashing, holding the serialised deploy queue the whole time. The poll is bounded (`PROMOTE_TIMEOUT_SECONDS`, default 300s), a stalled promotion gets one fresh attempt (`PROMOTE_ATTEMPTS`, default 2), and a failure prints the service's conditions and traffic split into the job log. The deploy jobs also carry a 30-minute `timeout-minutes` ceiling as a backstop.
 
 ### Admin Cloud Run Job (done)
 
-Each active environment has a `quill-admin-{env}` Cloud Run Job for one-off admin tasks (creating superadmin users, updating permissions, assigning roles, running migrations). See the [admin tasks documentation](admin.md) for usage.
+Each active environment has a `quill-admin-{env}` Cloud Run Job for one-off admin tasks (creating superadmin users, assigning roles, running migrations). See the [admin tasks documentation](admin.md) for usage.
 
 The job is defined in the `cloud-run-job` Terraform module and uses a separate Docker image built from the `admin` target in the backend Dockerfile. The admin image is a CLI tool – it does **not** run an HTTP server.
 
@@ -598,12 +557,9 @@ The job is defined in the `cloud-run-job` Terraform module and uses a separate D
 
 ### Future improvements
 
-- Slack webhook for deployment notifications
-- CPU/memory/error-rate monitoring (beyond uptime checks)
+- CPU/memory monitoring (uptime, 5xx and disk alerts exist)
 - Production database tier upgrade from `db-f1-micro`
 - High availability for production Cloud SQL
-- Restrict Cloud Run ingress to `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER` (once LB is confirmed working)
-- Add `roles/storage.objectViewer` binding to the `cloud-storage` Terraform module (currently applied manually)
 
 ## Retired environments
 

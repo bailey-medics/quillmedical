@@ -2,7 +2,7 @@
 
 ## What this is
 
-Teaching runs a three-tier escalation in Google Cloud Monitoring, defined in
+The app environment runs a three-tier escalation in Google Cloud Monitoring, defined in
 `infra/modules/monitoring/`. Each tier fires the same underlying conditions –
 uptime checks, the 5xx alert, the Cloud SQL disk alert, the Cloud Run startup
 alert – but only the uptime failure escalates through all three tiers. The
@@ -60,7 +60,7 @@ it back by `display_name` and `type = "slack"` – see
 5. Save. The channel now appears in **Alerting → Notification channels** with
    type Slack.
 6. Set `slack_channel_display_name` in the environment's `terraform.tfvars`
-   to that exact name (see `infra/environments/teaching/terraform.tfvars`).
+   to that exact name (see `infra/environments/app/terraform.tfvars`).
    It is not a secret – it is a channel name – so it goes in `tfvars`
    directly, unlike the PagerDuty key or the escalation phone number, which
    come from Secret Manager.
@@ -70,8 +70,9 @@ it back by `display_name` and `type = "slack"` – see
 **Nothing about the channel's lifecycle is managed by Terraform.** If it is
 deleted or renamed in the console, the data source returns nothing on the
 next apply, tier one silently loses its Slack rung, and `terraform plan` will
-not say so – the `count` on the data source just becomes `0`. There is
-currently no automated check for this; if the channel matters, treat renaming
+not say so. The four-weekly alert route test
+(`.github/workflows/alert-route-test.yml`) is the only check, and it relies on
+a person noticing the missing Slack message; if the channel matters, treat renaming
 or deleting it in Slack or the console as something to update
 `terraform.tfvars` for at the same time.
 
