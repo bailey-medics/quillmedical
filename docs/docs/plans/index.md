@@ -36,7 +36,7 @@
 - [CBAC Frontend Implementation](2026-05-31-cbac-implementation-plan.md)
 - [Base Profession Update](2026-06-02-base-profession-update-plan.md)
 - [Teaching Environment Scoping](2026-08-05-teaching-env-scoping-plan.md)
-- [Alembic Review and Migration Safety](2026-08-09-alembic-review-plan.md)
+- [Alembic Review and Migration Safety](2026-08-09-alembic-review-and-revisions-plan.md)
 - [Alembic Migrations Squash](2026-08-11-migrations-squash-plan.md)
 - [Site Tree Unification (org_unit)](2026-09-11-site-tree-unification-plan.md)
 - [Core DB Auto-Commit](2026-08-25-core-db-auto-commit-plan.md)
