@@ -197,8 +197,8 @@ This page describes the common workflows and processes that users will follow in
 
 #### Recommended for all users, required for staff
 
-1. Go to Settings → Security
-2. Click "Enable Two-Factor Authentication"
+1. Go to Settings → Two-factor authentication (TOTP)
+2. Click "Configure TOTP"
 3. Scan QR code with authenticator app
 4. Enter verification code
 5. Save backup codes in a secure location

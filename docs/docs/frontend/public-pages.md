@@ -16,6 +16,7 @@ frontend/
 │   │   └── generate-pages.cjs  ← Generates HTML from TSX
 │   └── src/pages/
 │       ├── about.tsx
+│       ├── accessibility-statement.tsx
 │       ├── accessibility.tsx
 │       ├── any-device.tsx
 │       ├── assessments.tsx
@@ -36,7 +37,7 @@ frontend/
 ├── src/
 │   ├── theme.ts            ← Shared Mantine theme
 │   └── components/
-│       └── public-layout/  ← PublicLayout wrapper
+│       └── layouts/        ← PublicLayout wrapper
 └── public/                 ← Shared static assets (logo, favicon)
 ```
 
@@ -48,7 +49,7 @@ frontend/
 | Deployment      | Cloud Run container via Caddy  | GCS bucket with CDN                            |
 | Authentication  | Required (JWT cookies)         | None                                           |
 | Release process | DCB0129 clinical sign-off      | Update anytime                                 |
-| Domain          | `staging.quill-medical.com`    | `quill-medical.com`                            |
+| Domain          | `app.quill-medical.com`        | `quill-medical.com`                            |
 
 ### Shared code
 
@@ -98,25 +99,25 @@ The production build picks the page up too: `rollupOptions.input` in `vite.confi
 
    ```tsx
    import PublicLayout from "@/components/layouts/PublicLayout";
-   import { theme } from "@/theme";
-   import { Container, MantineProvider, Title } from "@mantine/core";
-   import "@mantine/core/styles.css";
+   import { Container, Title } from "@mantine/core";
+   import PublicMantineProvider from "../PublicMantineProvider";
+   import "../global-styles";
    import { createRoot } from "react-dom/client";
 
    createRoot(document.getElementById("root")!).render(
-     <MantineProvider theme={theme} defaultColorScheme="light">
+     <PublicMantineProvider>
        <PublicLayout>
          <Container size="lg" py="xl">
            <Title order={1}>My page</Title>
          </Container>
        </PublicLayout>
-     </MantineProvider>,
+     </PublicMantineProvider>,
    );
    ```
 
 2. Add a title and description for it to `frontend/public_pages/page-meta.json`, keyed by the file name without `.tsx`. The description is what a search result shows, so keep it under 160 characters; `generate-pages.test.ts` checks that.
 
-3. Run `just pup` – the HTML file is generated automatically and the dev server opens.
+3. Run `just pub` – the HTML file is generated automatically and the dev server opens.
 
 ## PublicLayout
 
@@ -135,7 +136,7 @@ Props:
 ## Local development
 
 ```bash
-just pup          # Start dev server (alias for public-pages)
+just pub          # Start dev server (alias for public-pages)
 ```
 
 This runs `yarn workspace public-pages dev`, which:
@@ -160,13 +161,14 @@ The `public-site.yml` workflow triggers on pushes to `main` that change:
 - `frontend/public/**` (shared static assets)
 - `frontend/src/components/**` (shared components)
 - `frontend/src/theme.ts`
+- `shared/brand.yaml` (the theme's colours)
 - `frontend/src/styles/**`
+- `.github/scripts/public-site/**` and `.github/workflows/public-site.yml` (how the site is deployed)
 
 **Pipeline:**
 
 1. **Build** – `yarn workspace public-pages build` → outputs to `frontend/dist/public_pages/`
-2. **Deploy staging** – syncs to `{staging-project}-landing` GCS bucket
-3. **Deploy production** – syncs to `{prod-project}-landing` GCS bucket
+2. **Deploy** – syncs to the app project's `{project}-landing` GCS bucket
 
 ### Cache strategy
 
@@ -188,5 +190,5 @@ The GCS landing bucket sits behind the Global HTTPS Load Balancer (managed by Te
 
 | Record                  | Type  | Value               |
 | ----------------------- | ----- | ------------------- |
-| `quill-medical.com`     | A     | Staging LB IP       |
+| `quill-medical.com`     | A     | App LB IP           |
 | `www.quill-medical.com` | CNAME | `quill-medical.com` |

@@ -13,7 +13,7 @@ Quill Medical takes security seriously. This page explains the security features
 - Username and password required
 - Passwords are never stored in plain text
 - Failed login attempts are limited
-- Automatic logout after inactivity
+- Sessions last seven days from their last renewal, then ask for a fresh login
 
 #### Why it matters
 
@@ -27,7 +27,7 @@ An extra layer of security requiring a second form of verification beyond your p
 
 #### How to use
 
-1. Enable in Settings → Security
+1. Enable in Settings → Two-factor authentication (TOTP)
 2. Scan QR code with authenticator app (like Google Authenticator or Authy)
 3. Enter the 6-digit code when logging in
 
@@ -78,38 +78,15 @@ Quill Medical implements a defence-in-depth security architecture for access con
 - Clear navigation based on permissions
 - Graceful handling of unauthorized access
 
-#### Permission levels
+#### Who can do what
 
-The system uses a hierarchical permission model:
+Access is not a ladder of levels. Three things decide it:
 
-1. **Patient** (lowest privileges)
-   - Access to own health information
-   - View assigned clinical letters
-   - Message assigned clinicians
-   - Update own contact details
+1. **Competencies** – what somebody is qualified to do, such as viewing patient records or managing users. They come from the person's base profession, with additions and removals for the individual.
 
-2. **Teaching delegate** (same level as patient)
-   - Access to teaching features only
-   - No clinical data access
-   - Used for external educators and assessors
+2. **Membership** – where they may do it. Somebody acts only at the organisations, sites and wards they belong to.
 
-3. **Staff**
-   - All patient privileges
-   - Access to assigned patient records
-   - Create clinical letters
-   - Messaging capabilities
-
-4. **Admin**
-   - All staff privileges
-   - User management
-   - Patient administration
-   - System configuration
-
-5. **Superadmin** (highest privileges)
-   - All admin privileges
-   - Full system access
-   - Security settings
-   - Audit log access
+3. **Platform role** – `superadmin`, held by the few people who operate Quill itself. It does not administer any organisation.
 
 #### Tiered security approach
 
@@ -130,23 +107,23 @@ Different user types receive different experiences when attempting unauthorized 
 
 #### Implementation
 
-The permission system uses the `RequirePermission` component to protect routes:
+The permission system uses the `RequireCompetency` and `RequireOperator` components to protect routes:
 
 ```tsx
-<RequirePermission level="admin">
+<RequireCompetency competency="manage_users">
   <AdminDashboard />
-</RequirePermission>
+</RequireCompetency>
 ```
 
 Other route guards:
 
-- **`<RequireClinical>`**: Gates FHIR/EHRbase-dependent routes (patients, messaging). When `clinical_services_enabled` is false, redirects to `/teaching`.
+- **`<RequireClinical>`**: Gates FHIR/EHRbase-dependent routes (patients, messaging). When `clinical_services_enabled` is false, redirects to `/`.
 - **`<RequireFeature feature="teaching">`**: Gates routes behind organisation feature flags. Shows 404 when the user's organisation does not have the specified feature enabled.
 
 ##### Behaviour
 
-- Checks user's permission level on route access
-- Compares against required permission level
+- Checks the user's platform role or competencies on route access
+- Compares against what the route requires
 - Shows loading state during authentication check
 - Redirects or shows 404 based on user type
 
@@ -353,9 +330,7 @@ Payment processing via Stripe is planned but not yet built. When implemented, it
 
 ### Account Recovery
 
-**Status: Planned feature – not yet implemented.**
-
-Password reset functionality is not yet available. Contact an administrator to reset your password.
+Use the forgot password link on the login page. A reset link is emailed to you.
 
 ### Suspicious Activity Detection
 
@@ -387,7 +362,7 @@ Automatic monitoring of suspicious activity (failed logins, unusual locations) i
 
 #### Recommended settings
 
-- **Cookies**: Allow for quillmedical.com
+- **Cookies**: Allow for quill-medical.com
 - **JavaScript**: Enabled
 - **Pop-ups**: Allow for payment processing
 - **Auto-fill**: Disable for passwords (use password manager instead)
@@ -451,7 +426,7 @@ Using shared public computers for accessing Quill Medical due to security risks.
 
 #### Contact
 
-- Use "Report Issue" in Settings
+- Use "Feedback" in the side navigation
 - Email: <security@quillmedical.com>
 - Mark as urgent if immediate threat
 - Provide as much detail as possible
@@ -546,7 +521,7 @@ A: Only your assigned clinician and necessary administrators can access your con
 
 #### Q: What happens if I forget to log out?
 
-A: The system automatically logs you out after 15 minutes of inactivity.
+A: Nothing logs you out for inactivity. Your session stays valid for up to seven days, so log out yourself on a shared device.
 
 #### Q: Is video chat secure?
 

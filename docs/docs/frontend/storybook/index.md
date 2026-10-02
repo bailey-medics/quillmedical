@@ -1,10 +1,10 @@
 # Storybook
 
-**Status:** Storybook is configured and operational with 145 story files covering core UI components. Component documentation and interactive development environment are available.
+**Status:** Storybook is configured and operational with 215 story files covering core UI components. Component documentation and interactive development environment are available.
 
 ## Overview
 
-Quill Medical uses [Storybook 10.3.3](https://storybook.js.org/) as an interactive component development and documentation tool. Storybook allows developers to:
+Quill Medical uses [Storybook 10.6.0](https://storybook.js.org/) as an interactive component development and documentation tool. Storybook allows developers to:
 
 - Develop UI components in isolation
 - Document component props and variations
@@ -16,7 +16,7 @@ Quill Medical uses [Storybook 10.3.3](https://storybook.js.org/) as an interacti
 Storybook is configured with:
 
 - **Framework**: React + Vite integration (`@storybook/react-vite`)
-- **Version**: 10.3.6
+- **Version**: 10.6.0
 - **Dev Server**: Port 6006
 - **Build Output**: `docs/docs/code/storybook/` (deployed with MkDocs documentation)
 
@@ -53,7 +53,7 @@ Stories are alphabetically sorted in the sidebar for easy navigation.
 
 ## Available Stories
 
-The project includes **145 component story files** across various UI categories:
+The project includes **215 component story files** across various UI categories:
 
 ### Core Components
 
@@ -67,13 +67,13 @@ The project includes **145 component story files** across various UI categories:
 
 ### Typography
 
-- **BodyText**, **BodyTextBold**, **BodyTextClamp**, **BodyTextInline**, **BodyTextMuted** - Body text variants
-- **ErrorText** - Error message text with alert icon
-- **HeaderText** - Heading text
-- **HyperlinkText** - Internal navigation link
+- **BodyText**, **BodyTextBold**, **BodyTextClamp**, **BodyTextInline** - Body text variants
+- **ErrorMessage** - Error message text with alert icon
+- **Heading** - Heading text
+- **TextLink** - Internal navigation link
 - **PageHeader** - Page title and description header
-- **PlaceholderText** - Placeholder text
-- **PublicText**, **PublicTitle** - Public-facing typography
+- **EmptyState** - Empty-state hint text
+- **PublicBodyText**, **PublicTitle** - Public-facing typography
 
 ### Navigation & Layout
 
@@ -110,20 +110,19 @@ The project includes **145 component story files** across various UI categories:
 - **IconButton** - Icon-only button
 - **IconTextButton** - Icon with text button
 - **PreviousNextButton** - Previous/next navigation button pair
-- **PublicBurgerButton** - Public-facing hamburger menu toggle
 - **PublicButton** - Public-facing button
 - **SearchButton** - Search toggle button for the top ribbon
 
 ### Badges & Status
 
-- **ActiveStatus** - Active/inactive status badge
-- **AppointmentStatus** - Appointment status badge
+- **ActiveStatusBadge** - Active/inactive status badge
+- **AppointmentStatusBadge** - Appointment status badge
 - **AssessmentResultBadge** - Assessment result badge
 - **LetterStatusBadge** - Letter status badge
 - **NoteCategoryBadge** - Note category badge
 - **OnQuillBadge** - On Quill status badge
 - **PassFailIcon** - Atomic pass/fail indicator icons (PassIcon + FailIcon)
-- **PermissionBadge** - User permission level badge
+- **PlatformRoleBadge** - Marks a Quill operator
 - **UnreadBadge** - Unread message count badge
 
 ### State Messages
@@ -196,10 +195,7 @@ The project includes **145 component story files** across various UI categories:
 - **AssessmentProgress** - Assessment progress indicator
 - **AssessmentResult** - Assessment result display
 - **AssessmentTimer** - Assessment countdown timer
-- **CertificateDownload** - Certificate download component
 - **ExamCloseButton** - Button to close/abandon an exam early
-- **ItemManagementTable** - Teaching item management table
-- **QuestionBankCard** - Question bank card component
 - **QuestionView** - Question display component
 - **ScoreBreakdown** - Score breakdown display
 - **SyncResultsPanel** - Sync results table with status display
@@ -207,7 +203,7 @@ The project includes **145 component story files** across various UI categories:
 - **VideoPlayer** - Video player component
 - **Callout** - Callout/highlight component
 - **Figure** - Figure/image component with caption
-- **SlideViewer** - Slide deck viewer
+- **SlideLayouts** - Slide layouts, rendered through SlideViewer
 
 ## Notable Stories
 
@@ -217,12 +213,12 @@ The **PatientsList** component includes comprehensive loading state stories demo
 
 #### AnimatedLoadingSequence
 
-A 30-second animated story showing the complete startup flow:
+A 20-second looping animated story showing the complete startup flow:
 
 1. **Health check phase** (0-5s): System checks if FHIR server is ready
 2. **Database initialising** (5-10s): Shows "Database is initialising" message with clock icon (blue alert)
 3. **Fetching patients** (10-15s): Skeleton loading UI with animated pulse effect
-4. **Patient list loaded** (15-30s): Displays mock patient data
+4. **Patient list loaded** (15-20s): Displays mock patient data
 
 This story provides visual documentation of expected UX during system startup and helps validate that loading states are visually distinct and user-friendly.
 
@@ -239,7 +235,7 @@ The **StateMessage** component provides consistent system state messaging across
   - Prevents showing "failed to load" errors during startup window
   - Linked to Hazard-0046 (Backend starts before FHIR ready) mitigation
 
-- **No Patients**: Gray alert with `IconUserOff`, message: "There are currently no patients in the system. New patients can be added by administrators."
+- **No Patients**: Warning-coloured card with `IconUserOff`, message: "There are currently no patients in the system."
   - Used when FHIR server is ready but patient list is genuinely empty
   - Visually distinct from initialization state (different color and icon)
   - Linked to Hazard-0019 (FHIR health check false negative) mitigation
@@ -282,7 +278,7 @@ All story files follow these conventions:
 ### Example Story Structure
 
 ```tsx
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ComponentName } from "./ComponentName";
 
 /**
@@ -336,7 +332,7 @@ Every story is checked against WCAG 2.2 AA by [axe-core](https://github.com/dequ
 
 ### Running the checks locally
 
-- `just sbtci` starts Storybook, runs every story's tests including both a11y passes, and stops it. This is what CI runs.
+- `just sbtci` starts Storybook, runs every story's tests including both a11y passes, and stops it. CI runs the same tests, against a static build.
 - `just sbt` runs the same tests against a Storybook already running from `just sb`.
 - To check a few files, run `yarn test-storybook --url http://localhost:6006 src/path/to/Thing.stories.tsx` in `frontend/`.
 - **Restart Storybook after changing `.storybook/main.ts`.** A server started before a change there does not pick it up, and the test-runner then fails every story with `ReferenceError: Cannot access 'StorybookTestRunnerError' before initialization`, which says nothing about the real cause.
