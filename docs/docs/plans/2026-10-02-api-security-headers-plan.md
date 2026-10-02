@@ -56,7 +56,7 @@ check fails if they ever go missing again.
     - **`Referrer-Policy: strict-origin-when-cross-origin`** – to match
       the application.
 
-- [ ] Before merging, check that the strict policy does not stop a browser
+- [x] Before merging, check that the strict policy does not stop a browser
       showing the files the API serves inline. The routes to try are the
       passport evidence, PDF, markdown and zip responses in
       `backend/app/features/passport/router.py` and the PDF in
@@ -88,12 +88,15 @@ check fails if they ever go missing again.
       version 77. The check above is why `style-src 'unsafe-inline'` was
       not added.
 
-    - **Still to do: Safari**, on a Mac and on an iPhone. It could not be
-      driven unattended. If it refuses, the policy is loosened here, for
-      every API response, because the load balancer cannot vary it by
-      route.
+    - **Confirmed on the live site on 2 October 2026**, after the apply:
+      a PDF attached to a passport certificate still shows.
 
-- [ ] After the apply, request `https://app.quill-medical.com/api/health`
+    - **Safari was not tried by itself**, on a Mac or an iPhone. It
+      could not be driven unattended. If it ever refuses, the policy is
+      loosened here, for every API response, because the load balancer
+      cannot vary it by route.
+
+- [x] After the apply, request `https://app.quill-medical.com/api/health`
       and confirm each header is present once. Then request an evidence
       file and confirm `X-Content-Type-Options` is not sent twice, since
       that route sets it itself. Google's documentation says it will not
@@ -105,6 +108,12 @@ check fails if they ever go missing again.
       a PDF attached and confirm it still shows. `infra/` changes apply
       through `terraform.yml` on merge, so check that run before checking
       the site.
+
+    - **Done on 2 October 2026.** The apply succeeded, `/api/health`
+      returns all five headers once each, and a certificate PDF still
+      shows. The evidence response itself was not inspected for a doubled
+      `X-Content-Type-Options`: that needs a logged-in session, and it
+      rests on Google's documentation quoted above.
 
 ## Phase 2: Headers on video responses
 
@@ -119,11 +128,16 @@ check fails if they ever go missing again.
       phase 1 had to use `SAMEORIGIN`: the player loads these files through
       a `video` element and its own requests, and nothing frames one.
 
-- [ ] After the apply, play a lecture on the live teaching site and confirm
+- [x] After the apply, play a lecture on the live teaching site and confirm
       playback and captions still work. Then read the response headers of
       a video segment in the browser's network tab, on a response served
       from the CDN cache as well as a fresh one, since this bucket has
       `enable_cdn = true` and a cached response must carry them too.
+
+    - **Done on 2 October 2026.** A lecture plays on the live site. An
+      unsigned request to `/videos/*` is refused with a 403 that carries
+      all four headers. Captions and a response served from the cache
+      were not looked at separately.
 
 ## Phase 3: A check that fails when they go missing
 
@@ -165,12 +179,20 @@ could run before they exist and fail a healthy deploy.
       the paragraph above it, because open pull request #1363 rewrites
       that paragraph and the table, and the two would collide.
 
-- [ ] Ask a human to review Hazard-0032
+- [x] Ask a human to review Hazard-0032
       (`docs/docs/safety/hazards/Hazard-0032.md`). It lists "Add API
       security headers" as a design control, and its status is still "Draft
       from LLM" with the residual risk "awaiting initial controls
       implementation". This plan puts that control in place; the hazard
       record is a human's to update.
+
+    - **Updated on 2 October 2026, at the human's request.** The record
+      now lists the headers as an existing control, with `SAMEORIGIN`
+      where it had asked for `DENY`. It also corrects a claim in the
+      draft: login does not expose roles to somebody who is not logged
+      in. It returns a user's own roles, after a correct password. The
+      scoring is still "TBC" and the status still says draft, because
+      those are the Clinical Safety Officer's to set.
 
 - [x] Stop calling the Cloud Armor policy a WAF. It holds one rule, a
       rate limit of 500 requests a minute per IP, and a default allow. It
