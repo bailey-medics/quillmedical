@@ -38,6 +38,25 @@ on the live site.
       in `backend/tests/test_config.py` pin the format: a JSON list in the
       environment is read as a list, and unset still falls back to `["*"]`.
 
+- [x] Let Terraform change a Cloud Run service's settings at all. The
+      apply for the step above failed on 2 October with `Error 409:
+      Revision named 'quill-backend-app-00170-cip' with different
+      configuration already exists`, so the variable was not set and
+      production CORS stayed open.
+
+      It was not the CORS change. Since 24 September
+      `infra/modules/cloud-run/main.tf` had ignored `template[0].revision`,
+      and an ignored field is still sent: Terraform returned the name of
+      the revision the deploy had just made, with a different
+      configuration, and Cloud Run refused. Every template change failed
+      that way; this was the first environment variable since. The module
+      no longer ignores the name, so each apply clears it and Cloud Run
+      picks a new one. The cost is one spare revision per service per
+      apply, which serves nothing because the deploy pins traffic.
+
+      Phase 2 must not merge until this has applied and a deploy has run
+      after it.
+
 - [ ] After the Terraform apply and the next deploy, confirm on the live site
       that a request carrying `Origin: https://example.com` gets no
       `Access-Control-Allow-Origin` back, and that the app itself still works:

@@ -102,14 +102,30 @@ resource "google_cloud_run_v2_service" "service" {
       # on 2026-09-23 wiped a running deploy's tag and put an untested
       # revision live. See .github/scripts/deploy/deploy-tagged.sh.
       traffic,
-      # Set by `gcloud run deploy` on every release: the deploy names each
-      # revision, and gcloud stamps its own name and version. Terraform
-      # never sets them, so without this every apply cleared all three,
-      # showed five Cloud Run resources as changed when nothing had, and
-      # created a spare backend revision each time.
-      template[0].revision,
+      # Set by `gcloud run deploy` on every release: gcloud stamps its own
+      # name and version. Terraform never sets them, so without this every
+      # apply cleared both and showed the service as changed when nothing
+      # had.
       client,
       client_version,
+      # `template[0].revision` is deliberately NOT here, though the deploy
+      # sets that too. It was, from 2026-09-24, to stop each apply clearing
+      # the name and creating a spare revision. But ignoring a field does
+      # not leave it out of the request: Terraform sends back the name it
+      # last read, which is the revision the deploy just made. Any change
+      # to the template – an environment variable, a label – then asks
+      # Cloud Run for that same name with a different configuration, and it
+      # refuses: "Error 409: Revision named '…' with different
+      # configuration already exists". That failed the apply on 2026-09-28
+      # and again on 2026-10-02, when it left CORS_ORIGINS unset. See
+      # hashicorp/terraform-provider-google issue 14569.
+      #
+      # So the name is cleared on every apply and Cloud Run picks a new
+      # one. The cost is what the ignore was added to avoid: each apply
+      # shows the service as changed and creates one spare revision. The
+      # spare serves nothing, because the deploy pins traffic to the
+      # revision it tested and `traffic` is ignored above. A setting
+      # changed here goes live on the first deploy after the apply.
     ]
   }
 }
