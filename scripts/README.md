@@ -73,7 +73,7 @@ Uses **[act](https://github.com/nektos/act)** to run the exact GitHub Actions wo
 ./scripts/run-github-actions-locally.sh non-main
 
 # Run specific job from non-main workflow
-./scripts/run-github-actions-locally.sh non-main python-styling
+./scripts/run-github-actions-locally.sh non-main python-pre-commit
 ./scripts/run-github-actions-locally.sh non-main ts-unit
 
 # Run main workflow
@@ -82,7 +82,7 @@ Uses **[act](https://github.com/nektos/act)** to run the exact GitHub Actions wo
 
 **Available jobs:**
 
-- `python-styling` - Python pre-commit checks
+- `python-pre-commit` - Python pre-commit checks
 - `python-unit` - Python unit tests
 - `ts-eslint` - ESLint
 - `ts-prettier` - Prettier
@@ -185,7 +185,7 @@ act -s .secrets push
 ./scripts/run-ci-checks.sh
 
 # Then verify specific failing checks in Docker
-./scripts/run-github-actions-locally.sh non-main python-styling
+./scripts/run-github-actions-locally.sh non-main python-pre-commit
 ```
 
 ### Test documentation build

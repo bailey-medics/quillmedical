@@ -173,35 +173,45 @@ before Terraform has set the variable, and refuse to boot.
 
 One pull request, since each is a line or two.
 
-- [ ] **A missing `f` prefix.** `backend/scripts/new_compat_decision.py`,
+- [x] **A missing `f` prefix.** `backend/scripts/new_compat_decision.py`,
       in `print_success_message`, prints the literal text `{generation}` in
       "Once merged, required_client_generation will become {generation}."
 
-- [ ] **A stale Renovate pin.** `renovate.json` holds Docker `python` to
+- [x] **A stale Renovate pin.** `renovate.json` holds Docker `python` to
       `<3.14`, with the note "Revisit Q3 2026". `backend/Dockerfile` is
       already `python:3.14-slim`, so the rule now only blocks updates.
       Remove it, or change it to hold below 3.15.
 
-- [ ] **A recipe name that does not exist.** The `prune-branches` recipe in
+      Removed. `renovate.json` merges nothing on its own, so a 3.15 image
+      arrives as a pull request to read like any other, and a new hold
+      would only go stale the same way.
+
+- [x] **A recipe name that does not exist.** The `prune-branches` recipe in
       the `Justfile` tells the reader to run `just clone-teaching`. The
       recipe is `initial-install`.
 
-- [ ] **An old job name.** `scripts/run-github-actions-locally.sh` calls the
+- [x] **An old job name.** `scripts/run-github-actions-locally.sh` calls the
       job `python-styling` in three places. `ci.yml` names it
       `Python pre-commit`, from the `python_checks` job.
 
-- [ ] **A mock user from the old permission model.**
+      Renamed to `python-pre-commit`, in the script and in
+      `scripts/README.md`. The script has a larger fault this does not fix:
+      it runs `.github/workflows/non-main.yml` and `main.yml`, and neither
+      file exists, so it cannot run at all. Repairing or deleting it is a
+      decision for a person; see Decisions.
+
+- [x] **A mock user from the old permission model.**
       `frontend/.storybook/preview.tsx` gives the mock user
       `system_permissions: "superadmin"`, a field that no longer exists, and
       no `platform_role`. A story that depends on being an operator is
       therefore not testing what it appears to.
 
-- [ ] **An unpinned image.** `compose.ci.yml` uses `caddy:2-alpine`.
+- [x] **An unpinned image.** `compose.ci.yml` uses `caddy:2-alpine`.
       `compose.dev.yml` and `frontend/Dockerfile` pin the same image by
       digest. Pin it, so the end-to-end stack cannot change under a pull
       request that touched nothing.
 
-- [ ] **The public site deploys under an environment called `teaching`.**
+- [x] **The public site deploys under an environment called `teaching`.**
       The job in `.github/workflows/public-site.yml` is `deploy-teaching`
       with `environment: name: teaching`, while it reads the `GCP_APP_*`
       secrets and `infra/github/environments.tf` manages only `app`. Its
@@ -210,6 +220,15 @@ One pull request, since each is a line or two.
       secrets it reads are scoped: if they are only reachable through the
       `teaching` environment, moving the job to `app` needs them there
       first.
+
+      Moved to `app`. Checked on 2 October: the `teaching` environment
+      holds no secrets at all, so the job had been reading the
+      repository-level copies, and `app` holds all three it needs. Google
+      Cloud trusts the job by repository and branch
+      (`bailey-medics/quillmedical@refs/heads/main`), not by environment
+      name, so the rename does not change who it can sign in as. The job is
+      now `deploy` and the notifier `notify-failure`. The Slack channel is
+      still called `teaching` and is left alone.
 
 ## Phase 6: Comments and docstrings that contradict the code
 
@@ -305,6 +324,12 @@ clinical services are on, and the live deployment has them off.
   before the backend starts refusing a wildcard, or a deploy that lands
   first takes the service down. Phase 2 exists so the next environment
   cannot repeat the omission.
+
+- **`scripts/run-github-actions-locally.sh` cannot run** – it points `act`
+  at `non-main.yml` and `main.yml`, which no longer exist; the workflows
+  are `ci.yml` and `deploy.yml`. Phase 5 fixed the one job name the review
+  reported and left the rest, because whether to repair the script or
+  delete it depends on whether anybody still wants to run Actions locally.
 
 - **Reported by the review and not confirmed** – these came back from the
   checkers and were not opened again before this plan was written, so

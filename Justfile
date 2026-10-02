@@ -726,7 +726,7 @@ prune-branches scope="":
     if [ "{{scope}}" = "a" ]; then
         if ! compgen -G "$ROOT/teaching-repos/*/.git" > /dev/null; then
             echo ""
-            echo "No teaching content repos cloned – run 'just clone-teaching' first."
+            echo "No teaching content repos cloned – run 'just initial-install' first."
         else
             for REPO in "$ROOT"/teaching-repos/*/; do
                 # A directory without .git is content someone dropped in by

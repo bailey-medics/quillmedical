@@ -301,7 +301,7 @@ def print_success_message(
             f"⚠️  This file has forces_reload: true with generation {generation}."
         )
         print(
-            "   Once merged, required_client_generation will become {generation}."
+            f"   Once merged, required_client_generation will become {generation}."
         )
         print(
             "   Every open browser tab will force-reload to pick up the new bundle."

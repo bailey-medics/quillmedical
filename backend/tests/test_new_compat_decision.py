@@ -8,6 +8,7 @@ Tests cover:
 - Generation reuse for forces_reload: false files
 - Filename regex compliance
 - Input validation (empty/newline refusal)
+- The success message names the generation it warns about
 """
 
 from __future__ import annotations
@@ -15,6 +16,8 @@ from __future__ import annotations
 import re
 import tempfile
 from pathlib import Path
+
+import pytest
 
 # Import functions from the script
 # Inside Docker container, scripts are at /app/scripts/
@@ -24,6 +27,7 @@ from scripts.new_compat_decision import (
     derive_slug,
     parse_forces_reload_from_file,
     parse_generation_from_file,
+    print_success_message,
     yaml_escape,
 )
 
@@ -302,3 +306,34 @@ class TestParsingExistingFiles:
             test_file.write_text("generation: 1\n")
             val = parse_forces_reload_from_file(test_file)
             assert val is None
+
+
+class TestSuccessMessage:
+    """Test what is printed once a decision file has been written."""
+
+    def test_reload_warning_names_the_generation(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The number is printed, not the placeholder `{generation}`."""
+        print_success_message(
+            Path("decision.yaml"),
+            generation=7,
+            forces_reload=True,
+            yaml_content="generation: 7\n",
+        )
+        out = capsys.readouterr().out
+        assert "required_client_generation will become 7." in out
+        assert "{generation}" not in out
+
+    def test_no_reload_warning_without_forces_reload(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A file that forces no reload prints no reload warning."""
+        print_success_message(
+            Path("decision.yaml"),
+            generation=7,
+            forces_reload=False,
+            yaml_content="generation: 7\n",
+        )
+        out = capsys.readouterr().out
+        assert "required_client_generation will become" not in out
