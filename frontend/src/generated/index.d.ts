@@ -1,8 +1,14 @@
 /**
  * Type declarations for generated JSON files
  *
- * These files are auto-generated from YAML sources.
- * Run `npm run generate:types` to regenerate.
+ * The JSON files beside this one are generated from the YAML in
+ * `shared/` by `yarn generate:types`, and are not tracked in git. This
+ * file is written by hand and is tracked: a field added to a YAML file
+ * has to be added here too, and one removed has to be removed.
+ *
+ * `src/types/generated-declarations.test.ts` holds the two together. It
+ * fails `yarn typecheck:all` when a declaration names a field the JSON
+ * lacks, gives one the wrong type, or misses a field the JSON holds.
  */
 
 declare module "@/generated/competencies.json" {
@@ -26,6 +32,10 @@ declare module "@/generated/competencies.json" {
     // Whether the clinician passport may record something against it.
     // Opt-in: absent means a software permission rather than a skill.
     assessable?: boolean;
+    // What a holder may hand out: competency ids and base profession
+    // ids. A competency carrying either list is a scoped manager.
+    may_grant?: string[];
+    may_assign_professions?: string[];
   }
 
   const data: {
@@ -42,7 +52,6 @@ declare module "@/generated/base-professions.json" {
     description: string;
     requires_clinical_services: boolean;
     base_competencies: string[];
-    notes: string;
   }
 
   const data: {
@@ -67,12 +76,28 @@ declare module "@/generated/jurisdiction-config.json" {
     required_for_professions?: string[];
   }
 
+  interface ControlledDrugSchedule {
+    // A number in the UK, a name elsewhere: 2, "II", "S8", "national".
+    schedule: number | string;
+    description: string;
+    prescription_requirements: string;
+  }
+
+  interface AuditRequirements {
+    medical_records_retention_years: number;
+    prescribing_audit_retention_years: number;
+    controlled_drugs_retention_years: number;
+  }
+
   interface Jurisdiction {
     display_name: string;
     regulatory_authority?: string;
     data_protection?: string;
     prescribing_regulations?: string;
     professional_registrations?: ProfessionalRegistration[];
+    controlled_drug_schedules?: ControlledDrugSchedule[];
+    audit_requirements?: AuditRequirements;
+    clinical_safety_standards?: string[];
   }
 
   const data: {

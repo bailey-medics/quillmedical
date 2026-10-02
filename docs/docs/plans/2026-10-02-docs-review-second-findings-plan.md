@@ -45,7 +45,7 @@ decision first.
 
 ## Phase 2: The generated type declarations
 
-- [ ] `frontend/src/generated/index.d.ts` is written by hand and tracked in
+- [x] `frontend/src/generated/index.d.ts` is written by hand and tracked in
       git, while the JSON files beside it are generated and ignored. Nothing
       checks one against the other, and it has drifted twice:
 
@@ -57,7 +57,7 @@ decision first.
     - its own comment records that the `jurisdiction-config.json`
       declaration was wrong until something first imported the file.
 
-- [ ] Add a check that fails when they disagree. `frontend/src/types/cbac.ts`
+- [x] Add a check that fails when they disagree. `frontend/src/types/cbac.ts`
       already imports two of the files by relative path, which takes the
       type from the JSON itself, while pages import through the
       `@/generated/...` alias, which takes it from the declaration. A small
@@ -66,7 +66,20 @@ decision first.
       first that the two routes really are typed differently: that is the
       reviewer's reading of the two files, not something that was tested.
 
-- [ ] The comment in `frontend/scripts/generate-json-from-yaml.ts` above
+      Confirmed: they are typed differently, and
+      `frontend/src/types/generated-declarations.test.ts` failed on
+      `notes` the first time it was run. Assignment alone sees a field
+      the declaration has and the JSON lacks, but not the reverse, since
+      an object with an extra field is still assignable. So the file also
+      works out, as a type, the keys the JSON holds that the declaration
+      does not name. That found five more: `may_grant` and
+      `may_assign_professions` on a competency, and
+      `controlled_drug_schedules`, `audit_requirements` and
+      `clinical_safety_standards` on a jurisdiction. All five are now
+      declared. `cbac.ts` was unaffected because it reads the two scope
+      lists through the relative import.
+
+- [x] The comment in `frontend/scripts/generate-json-from-yaml.ts` above
       `COMPETENCY_DEFINITIONS_DIR` still names `feature-admin.yaml`, which
       no longer exists. Name the files that do.
 
