@@ -24,7 +24,7 @@
 
 import type { ReactNode } from "react";
 import LiveStatus from "@/components/live-status";
-import { useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Group,
   Table,
@@ -103,11 +103,18 @@ export interface DataTableProps<T> {
    */
   statusMessage?: string;
   /**
-   * The least width a column needs, in rem. Default 10. Multiplied by
+   * The least width a column needs, in rem. Default 8. Multiplied by
    * the column count to find the width below which the table draws
    * cards instead, so a seven-column table gives up on being a table
    * long before a three-column one does. A table with long text can
    * ask for more.
+   *
+   * 8 rather than 10 because the page container is 1140px wide with
+   * 16px padding each side, so a table never has more than 1108px: at
+   * 10rem a seven-column table of short values (a name, a code, a badge,
+   * a date) was cards even on a wide screen, where it had fitted fine
+   * as a table. At 8rem seven columns need 896px and fit; the switch to
+   * cards happens at about 900px, where the overflow started.
    */
   minColumnWidth?: number;
   /**
@@ -183,16 +190,34 @@ function DataTableView<T>({
   pageSize: initialPageSize,
   fullControls = false,
   controls,
-  minColumnWidth = 10,
+  minColumnWidth = 8,
   cardsBelow,
 }: DataTableProps<T>) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
 
-  // Does the table fit the space it has? `width` is 0 until the first
-  // measurement (and always in jsdom), in which case only the viewport
-  // rule above decides, exactly as before this was added.
-  const { ref: measureRef, width } = useElementSize();
+  // Does the table fit the space it has? `observedWidth` follows the
+  // container through a ResizeObserver, but that first reports after the
+  // first paint, which showed a table for one frame before it became
+  // cards. So the wrapper is also measured once, before paint, in a
+  // layout effect, and that first width stands in until the observer
+  // catches up. Both are 0 in jsdom, which does no layout, and then only
+  // the viewport rule above decides, exactly as before this was added.
+  const { ref: observeRef, width: observedWidth } = useElementSize();
+  const nodeRef = useRef<HTMLDivElement | null>(null);
+  const measureRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      nodeRef.current = node;
+      observeRef(node);
+    },
+    [observeRef],
+  );
+  const [firstWidth, setFirstWidth] = useState(0);
+  useLayoutEffect(() => {
+    const node = nodeRef.current;
+    if (node) setFirstWidth(node.getBoundingClientRect().width);
+  }, []);
+  const width = observedWidth || firstWidth;
   const remPx = useMemo(() => rootFontSizePx(), []);
   const needPx = (cardsBelow ?? columns.length * minColumnWidth) * remPx;
   const [tooNarrow, setTooNarrow] = useState(false);
