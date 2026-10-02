@@ -119,6 +119,17 @@ const mockUsers: Record<string, User> = {
     enabled_features: ["safety"],
     clinical_services_enabled: false,
   },
+  // Runs the safety mock-up at their org units, reaching Admin through
+  // `manage_safety` as a teaching admin does through `manage_teaching`.
+  safety_admin: {
+    id: "13",
+    username: "safety.admin",
+    email: "safety.admin@example.com",
+    roles: [],
+    competencies: ["view_safety_cases", "manage_safety"],
+    enabled_features: ["safety"],
+    clinical_services_enabled: false,
+  },
   admin_no_clinical: {
     id: "6",
     username: "admin.teaching",
@@ -832,6 +843,32 @@ describe("SideNavContent Component", () => {
         expect(child).toHaveAttribute("data-active", "true");
       },
     );
+
+    it("hangs Safety under Admin for a safety admin", async () => {
+      renderWithAuth(<SideNavContent />, "safety_admin");
+
+      await waitFor(() => {
+        expect(screen.getByText("Admin")).toBeInTheDocument();
+      });
+      await userEvent.click(screen.getByText("Admin"));
+
+      const links = screen.getAllByText("Safety").map((el) => el.closest("a"));
+      expect(links.map((link) => link?.getAttribute("href"))).toEqual(
+        expect.arrayContaining(["/safety", "/admin/safety"]),
+      );
+      expect(screen.queryByText("Patients")).not.toBeInTheDocument();
+    });
+
+    it("hangs no Safety under Admin where the feature is off", async () => {
+      renderWithAuth(<SideNavContent />, "admin_no_clinical");
+
+      await waitFor(() => {
+        expect(screen.getByText("Admin")).toBeInTheDocument();
+      });
+      await userEvent.click(screen.getByText("Admin"));
+
+      expect(screen.queryByText("Safety")).not.toBeInTheDocument();
+    });
 
     it("hangs nothing under Safety on the case page itself", async () => {
       // The case page is a destination, not a heading: its cards link

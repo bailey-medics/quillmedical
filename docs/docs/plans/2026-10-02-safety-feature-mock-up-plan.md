@@ -212,7 +212,7 @@ backend reads the catalogue and the professions at load and needs no code.
 
 ## Phase 7: Safety admin, mirroring teaching's
 
-- [ ] **Add `/admin/safety`**, `pages/admin/safety/AdminSafetyDashboard.tsx`,
+- [x] **Add `/admin/safety`**, `pages/admin/safety/AdminSafetyDashboard.tsx`,
       under the existing `/admin` route, which already admits every scoped
       manager. Like `AdminTeachingDashboard` it is `PageHeader` and action
       cards: "Safety cases", opening `/safety`, and "People", opening
@@ -221,10 +221,10 @@ backend reads the catalogue and the professions at load and needs no code.
       `safety` feature reaches who may open Admin; a safety admin reaches
       `/admin` through `manage_safety` as a teaching admin does through
       `manage_teaching`.
-- [ ] **Hang "Safety" under Admin in `SideNavContent.tsx`**, beside the
+- [x] **Hang "Safety" under Admin in `SideNavContent.tsx`**, beside the
       Teaching entry and gated the same way, on the feature. Test it shown
       and hidden.
-- [ ] **Page and nav tests**, run with `just uf` on the two files.
+- [x] **Page and nav tests**, run with `just uf` on the two files.
 
 ## Decisions
 
