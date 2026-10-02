@@ -345,6 +345,28 @@ class Settings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def _validate_cors_origins(self) -> "Settings":
+        """Refuse to start in production with CORS open to every origin.
+
+        The middleware in ``app.main`` allows credentials, and with
+        ``"*"`` Starlette then answers any origin by naming it as allowed.
+        Production ran that way until ``infra/main.tf`` set the variable,
+        because nothing fails when it is left out. This makes the next
+        environment built without it fail at startup instead.
+
+        Development, testing and the end-to-end stack keep the default:
+        everything there is served from one origin through Caddy.
+        """
+        if self.BACKEND_ENV.lower() != "production":
+            return self
+        if "*" in self.CORS_ORIGINS:
+            raise ValueError(
+                "CORS_ORIGINS must name the allowed origins when "
+                'BACKEND_ENV is production; it may not contain "*"'
+            )
+        return self
+
     # --- Computed Database URLs ---
     @computed_field  # type: ignore[prop-decorator]
     @property

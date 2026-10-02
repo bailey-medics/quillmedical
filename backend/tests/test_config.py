@@ -1,5 +1,8 @@
 """Tests for configuration settings."""
 
+import pytest
+from pydantic import ValidationError
+
 from app.config import Settings
 
 
@@ -68,4 +71,50 @@ class TestCorsOriginsFromEnvironment:
             CORE_DB_PASSWORD="auth_pass",
             VAPID_PRIVATE="vapid_key",
         )
+        assert settings.CORS_ORIGINS == ["*"]
+
+
+class TestCorsOriginsStartupCheck:
+    """Production may not start with CORS open to every origin."""
+
+    @staticmethod
+    def _settings(**overrides: object) -> Settings:
+        return Settings(
+            JWT_SECRET="test_secret_long_enough_32_chars_min",
+            CORE_DB_PASSWORD="auth_pass",
+            VAPID_PRIVATE="vapid_key",
+            **overrides,
+        )
+
+    def test_production_with_the_wildcard_is_refused(self):
+        with pytest.raises(ValidationError, match="CORS_ORIGINS"):
+            self._settings(BACKEND_ENV="production", CORS_ORIGINS=["*"])
+
+    def test_production_with_the_default_is_refused(self, monkeypatch):
+        """The real failure: nothing set CORS_ORIGINS at all."""
+        monkeypatch.delenv("CORS_ORIGINS", raising=False)
+        with pytest.raises(ValidationError, match="CORS_ORIGINS"):
+            self._settings(BACKEND_ENV="production")
+
+    def test_production_with_a_wildcard_among_named_origins_is_refused(self):
+        with pytest.raises(ValidationError, match="CORS_ORIGINS"):
+            self._settings(
+                BACKEND_ENV="production",
+                CORS_ORIGINS=["https://app.quill-medical.com", "*"],
+            )
+
+    def test_production_is_matched_whatever_its_case(self):
+        with pytest.raises(ValidationError, match="CORS_ORIGINS"):
+            self._settings(BACKEND_ENV="Production", CORS_ORIGINS=["*"])
+
+    def test_production_with_a_named_origin_is_accepted(self):
+        settings = self._settings(
+            BACKEND_ENV="production",
+            CORS_ORIGINS=["https://app.quill-medical.com"],
+        )
+        assert settings.CORS_ORIGINS == ["https://app.quill-medical.com"]
+
+    @pytest.mark.parametrize("env", ["development", "testing"])
+    def test_other_environments_keep_the_wildcard(self, env):
+        settings = self._settings(BACKEND_ENV=env, CORS_ORIGINS=["*"])
         assert settings.CORS_ORIGINS == ["*"]

@@ -13,9 +13,9 @@ services:
       SECURE_COOKIES: "true"
       # No COOKIE_DOMAIN: unset means host-only, so a cookie set by this
       # host is never sent to another subdomain of quill-medical.com.
-      # CORS_ORIGINS set per environment via Secret Manager / Cloud Run env:
-      #   prod:    '["https://app.quill-medical.com","https://quill-medical.com"]'
-      #   staging: '["https://staging.quill-medical.com"]'
+      # CORS_ORIGINS is set on the Cloud Run service by infra/main.tf, as a
+      # JSON list holding the app's own origin. The backend refuses to
+      # start in production without it.
     expose:
       - "8000"
     deploy:

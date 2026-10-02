@@ -74,14 +74,20 @@ on the live site.
 Lands after phase 1 is live. Merged alongside it, the backend could start
 before Terraform has set the variable, and refuse to boot.
 
-- [ ] Add a validator to `Settings` in `backend/app/config.py` that raises
+- [x] Add a validator to `Settings` in `backend/app/config.py` that raises
       when `BACKEND_ENV` is `production` and `CORS_ORIGINS` contains `"*"`.
       Phase 1 fixes today's value; this stops the next environment being
       built without one, which is how this happened. Development and the
       end-to-end stack keep the default, since everything there is served
       from one origin through Caddy.
 
-- [ ] Add unit tests in `backend/tests/` for both directions: production
+      Only the backend service is given `BACKEND_ENV=production`. The admin,
+      transcode and caption jobs leave it unset, so they are not caught by
+      this. `compose.prod.cloud-run.yml` sets it too but is only ever built,
+      never run; its comment listing `quill-medical.com` as an allowed
+      origin was wrong and now points at `infra/main.tf`.
+
+- [x] Add unit tests in `backend/tests/` for both directions: production
       with the wildcard is refused, production with a named origin and
       development with the wildcard are accepted. Run with
       `just ub -k "cors"`.
