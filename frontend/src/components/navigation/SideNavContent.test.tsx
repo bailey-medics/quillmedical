@@ -844,7 +844,10 @@ describe("SideNavContent Component", () => {
       },
     );
 
-    it("hangs Safety under Admin for a safety admin", async () => {
+    it("opens Admin to a safety admin, with Safety a top-level entry only", async () => {
+      // `manage_safety` is a scoped manager, so Admin is theirs; there is
+      // no safety page under it, the competencies and professions being
+      // the whole of what mirrors teaching here.
       renderWithAuth(<SideNavContent />, "safety_admin");
 
       await waitFor(() => {
@@ -853,21 +856,10 @@ describe("SideNavContent Component", () => {
       await userEvent.click(screen.getByText("Admin"));
 
       const links = screen.getAllByText("Safety").map((el) => el.closest("a"));
-      expect(links.map((link) => link?.getAttribute("href"))).toEqual(
-        expect.arrayContaining(["/safety", "/admin/safety"]),
-      );
+      expect(links.map((link) => link?.getAttribute("href"))).toEqual([
+        "/safety",
+      ]);
       expect(screen.queryByText("Patients")).not.toBeInTheDocument();
-    });
-
-    it("hangs no Safety under Admin where the feature is off", async () => {
-      renderWithAuth(<SideNavContent />, "admin_no_clinical");
-
-      await waitFor(() => {
-        expect(screen.getByText("Admin")).toBeInTheDocument();
-      });
-      await userEvent.click(screen.getByText("Admin"));
-
-      expect(screen.queryByText("Safety")).not.toBeInTheDocument();
     });
 
     it.each([

@@ -34,7 +34,7 @@ import {
   useMantineTheme,
   useComputedColorScheme,
 } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
+import { useElementSize, useMediaQuery } from "@mantine/hooks";
 import { BodyText, BodyTextBold } from "@/components/typography";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
@@ -102,6 +102,34 @@ export interface DataTableProps<T> {
    * search. "Loading" is announced while `loading` is true regardless.
    */
   statusMessage?: string;
+  /**
+   * The least width a column needs, in rem. Default 10. Multiplied by
+   * the column count to find the width below which the table draws
+   * cards instead, so a seven-column table gives up on being a table
+   * long before a three-column one does. A table with long text can
+   * ask for more.
+   */
+  minColumnWidth?: number;
+  /**
+   * The width, in rem, below which this table draws cards, replacing
+   * the per-column calculation for a table that knows better.
+   */
+  cardsBelow?: number;
+}
+
+/**
+ * How much wider than the need the container must be before cards go
+ * back to being a table. Without this margin a switch to cards can
+ * change the page's height, bring a scrollbar in, narrow the container
+ * by its width and flip the layout straight back.
+ */
+const CARDS_TO_TABLE_MARGIN_REM = 2;
+
+/** The document's root font size, which is what 1rem is. */
+function rootFontSizePx(): number {
+  if (typeof document === "undefined") return 16;
+  const size = parseFloat(getComputedStyle(document.documentElement).fontSize);
+  return Number.isFinite(size) && size > 0 ? size : 16;
 }
 
 /**
@@ -118,8 +146,13 @@ export interface DataTableProps<T> {
  * - Hover highlighting on both layouts
  * - Clickable rows/cards with pointer cursor
  *
- * Breakpoint: Uses theme.breakpoints.sm (768px) to switch between layouts.
- * This ensures critical patient/user information is never hidden on small screens.
+ * When it draws cards: below theme.breakpoints.sm always, so a phone never
+ * sees a table, and above that whenever its own container is narrower
+ * than its columns need (`minColumnWidth` times the column count, or
+ * `cardsBelow`). The table measures itself rather than the screen, so a
+ * wide table becomes cards at a laptop width where it has to and a
+ * narrow one stays a table down to a phone held sideways. Nothing is
+ * ever hidden: cards show every column.
  *
  * Used on admin pages for users, patients, and other resources.
  */
@@ -150,9 +183,28 @@ function DataTableView<T>({
   pageSize: initialPageSize,
   fullControls = false,
   controls,
+  minColumnWidth = 10,
+  cardsBelow,
 }: DataTableProps<T>) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+
+  // Does the table fit the space it has? `width` is 0 until the first
+  // measurement (and always in jsdom), in which case only the viewport
+  // rule above decides, exactly as before this was added.
+  const { ref: measureRef, width } = useElementSize();
+  const remPx = useMemo(() => rootFontSizePx(), []);
+  const needPx = (cardsBelow ?? columns.length * minColumnWidth) * remPx;
+  const [tooNarrow, setTooNarrow] = useState(false);
+  // Derived state with a margin, set during render as `page` is below:
+  // once on cards, stay on cards until there is comfortably room.
+  const wantCards = tooNarrow
+    ? width <= needPx + CARDS_TO_TABLE_MARGIN_REM * remPx
+    : width < needPx;
+  if (width > 0 && wantCards !== tooNarrow) {
+    setTooNarrow(wantCards);
+  }
+  const useCards = isMobile || (width > 0 && tooNarrow);
   const colorScheme = useComputedColorScheme("light");
   const isDark = colorScheme === "dark";
   const hoverColor = isDark ? "var(--mantine-color-primary-5)" : undefined;
@@ -230,20 +282,22 @@ function DataTableView<T>({
   // Error state
   if (error) {
     return (
-      <StateMessage
-        icon={<IconAlertCircle />}
-        title="Error loading data"
-        description={error}
-        colour="alert"
-      />
+      <div ref={measureRef}>
+        <StateMessage
+          icon={<IconAlertCircle />}
+          title="Error loading data"
+          description={error}
+          colour="alert"
+        />
+      </div>
     );
   }
 
   // Loading state
   if (loading) {
-    if (isMobile) {
+    if (useCards) {
       return (
-        <Stack gap="md">
+        <Stack gap="md" ref={measureRef}>
           {Array.from({ length: 3 }, (_, i) => (
             <DataCard
               key={i}
@@ -258,35 +312,37 @@ function DataTableView<T>({
     }
 
     return (
-      <Table striped stripedColor={stripedColor}>
-        <Table.Thead>
-          <Table.Tr>
-            {columns.map((column, index) => (
-              <Table.Th key={index} style={{ width: column.width }}>
-                <BodyTextBold>{column.header}</BodyTextBold>
-              </Table.Th>
-            ))}
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {Array.from({ length: 4 }, (_, rowIndex) => (
-            <Table.Tr key={rowIndex}>
-              {columns.map((_, colIndex) => (
-                <Table.Td key={colIndex}>
-                  <Skeleton height={25} mt={4} mb={4} />
-                </Table.Td>
+      <div ref={measureRef}>
+        <Table striped stripedColor={stripedColor}>
+          <Table.Thead>
+            <Table.Tr>
+              {columns.map((column, index) => (
+                <Table.Th key={index} style={{ width: column.width }}>
+                  <BodyTextBold>{column.header}</BodyTextBold>
+                </Table.Th>
               ))}
             </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
+          </Table.Thead>
+          <Table.Tbody>
+            {Array.from({ length: 4 }, (_, rowIndex) => (
+              <Table.Tr key={rowIndex}>
+                {columns.map((_, colIndex) => (
+                  <Table.Td key={colIndex}>
+                    <Skeleton height={25} mt={4} mb={4} />
+                  </Table.Td>
+                ))}
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </div>
     );
   }
 
   // Empty state
   if (sortedData.length === 0) {
     return (
-      <Stack gap="md">
+      <Stack gap="md" ref={measureRef}>
         {controls && (
           <Group justify="flex-end" mih={42} align="center">
             {controls}
@@ -299,10 +355,11 @@ function DataTableView<T>({
     );
   }
 
-  // Mobile: Card layout with all information visible
-  if (isMobile) {
+  // Cards: on a phone, or wherever the columns do not fit. Every column
+  // is shown, so nothing is lost by the switch.
+  if (useCards) {
     return (
-      <Stack gap="md">
+      <Stack gap="md" ref={measureRef}>
         {controls && (
           <Group justify="flex-end" mih={42} align="center">
             {controls}
@@ -337,9 +394,9 @@ function DataTableView<T>({
     );
   }
 
-  // Desktop: Table layout
+  // Table layout, where the columns fit
   return (
-    <Stack gap="md">
+    <Stack gap="md" ref={measureRef}>
       {controls && (
         <Group justify="flex-end" mih={42} align="center">
           {controls}
