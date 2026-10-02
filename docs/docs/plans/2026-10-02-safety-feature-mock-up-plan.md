@@ -318,21 +318,24 @@ Asked for on `/safety/:caseId/officers`: each officer card needs an edit
 icon. The mock-up has nothing to save to, so an edit lives in the page's
 state until it is reloaded, which is enough to show the interaction.
 
-- [ ] **`OfficerList` gains `onEdit`**, and each card an `IconButton` with
+- [x] **`OfficerList` gains `onEdit`**, and each card an `IconButton` with
       the pencil icon, labelled "Edit <role>" for a screen reader, in the
       card's top right. Without `onEdit` no icon is drawn, so the list
       reads the same anywhere it is only read.
-- [ ] **`components/safety/OfficerForm.tsx`**: name and email fields, the
+- [x] **`components/safety/OfficerEditModal.tsx`** (the form and its
+      `Modal` in one, as `GrantCompetencyModal` is): name and email fields, the
       role shown but not editable (the roles are the posts a case has, as
       a position is), with the app's `ButtonPair` for save and cancel,
       following the passport forms' shape: `useState` per field and a
       `canSubmit` guard, as `CertificateForm` does. Stories and
       tests.
-- [ ] **The officers page** holds the officers in state, opens the form
-      in a `Modal` on edit, and writes the result back on save. A note
-      under the title says changes are not kept, so nobody is surprised
-      by a reload.
-- [ ] **Tests** for the icon, the form and the page round trip.
+- [x] **The officers page** reads the officers through a session store,
+      `lib/safety/edits.ts` (an in-memory map of per-case overrides behind
+      `useSyncExternalStore`, built here and reused by Phase 13), opens
+      the modal on edit, and writes the result back on save. A note under
+      the title says changes are not kept, so nobody is surprised by a
+      reload.
+- [x] **Tests** for the icon, the form and the page round trip.
 
 ## Phase 12: No back link on the card pages
 
@@ -352,12 +355,10 @@ documents of Phase 8 are rendered from the placeholders, an edit here
 should show up in every document that names the key, which is the whole
 point of a placeholder and the best demonstration the mock-up can give.
 
-- [ ] **A session store for edits**, `lib/safety/edits.ts`: an in-memory
-      map of per-case overrides behind `useSyncExternalStore`, with
-      `usePlaceholders(caseId)` returning the fixtures with any edits
-      applied and `setPlaceholderValue(caseId, key, value)` to write one.
-      Lost on reload, by design, and said so on the page. The officers
-      edit of Phase 11 moves onto the same store, so both behave alike.
+- [x] **A session store for edits**, `lib/safety/edits.ts`: built in
+      Phase 11, with `usePlaceholders(caseId)` returning the fixtures with
+      any edits applied and `setPlaceholderValue(caseId, key, value)` to
+      write one. Lost on reload, by design, and said so on the page.
 - [ ] **Route `/safety/:caseId/placeholders/edit`**,
       `pages/safety/SafetyPlaceholdersEditPage.tsx`: one text field per
       placeholder, labelled by its key, with `ButtonPair` to save or

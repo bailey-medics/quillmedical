@@ -17,6 +17,15 @@ export {
 } from "./fixtures";
 export { renderDocument, placeholderKeysIn } from "./render";
 export { likelihoodWord, severityWord, riskBand } from "./risk";
+export {
+  officersOf,
+  placeholdersOf,
+  resetEdits,
+  setOfficer,
+  setPlaceholderValue,
+  useOfficers,
+  usePlaceholders,
+} from "./edits";
 export type {
   DocumentStatus,
   Hazard,
