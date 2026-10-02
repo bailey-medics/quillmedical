@@ -54,10 +54,10 @@ export default function LoginPage() {
         redirectFrom !== "/" &&
         (!redirectFrom.startsWith("/admin") || canAdminister);
 
+      // Otherwise to `/`, which lands them on the first link in their
+      // side navigation – see `HomeRedirect`.
       if (canRedirect) {
         window.location.assign(redirectFrom);
-      } else if (!user.clinical_services_enabled) {
-        window.location.assign("/teaching");
       } else {
         window.location.assign(base);
       }

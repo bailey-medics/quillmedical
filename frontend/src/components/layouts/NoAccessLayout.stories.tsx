@@ -30,6 +30,17 @@ export const Default: Story = {
   },
 };
 
+/**
+ * No feature at all
+ * Displays at `/` when the first link in the side navigation would be
+ * Settings, because the account reaches no feature
+ */
+export const NoFeatures: Story = {
+  args: {
+    feature: undefined,
+  },
+};
+
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },

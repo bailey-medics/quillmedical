@@ -2,8 +2,9 @@
  * No Access Layout Component
  *
  * Friendly fallback page shown when an authenticated user lacks access
- * to a feature (e.g. teaching). Displays a welcoming message instead
- * of a confusing 404, with guidance to contact their administrator.
+ * to a feature (e.g. teaching), or to every feature. Displays a
+ * welcoming message instead of a confusing 404, with guidance to
+ * contact their administrator.
  */
 
 import { Container, Stack } from "@mantine/core";
@@ -12,8 +13,12 @@ import StateMessage from "@/components/message-cards/StateMessage";
 import { IconShieldCheck } from "@/components/icons/appIcons";
 
 interface NoAccessLayoutProps {
-  /** Name of the feature the user lacks access to */
-  feature: string;
+  /**
+   * Name of the feature the user lacks access to. Left out when they
+   * reach no feature at all, which words the message about Quill as a
+   * whole rather than about one part of it.
+   */
+  feature?: string;
 }
 
 /**
@@ -34,9 +39,18 @@ export default function NoAccessLayout({ feature }: NoAccessLayoutProps) {
           title="No access"
           description={
             <>
-              Your account does not have access to the{" "}
-              <span style={{ fontWeight: 900 }}>{feature}</span> feature. If you
-              need access to this feature, please email{" "}
+              {feature ? (
+                <>
+                  Your account does not have access to the{" "}
+                  <span style={{ fontWeight: 900 }}>{feature}</span> feature. If
+                  you need access to this feature, please email{" "}
+                </>
+              ) : (
+                <>
+                  Your account does not have access to any of Quill
+                  Medical&apos;s features. Please email{" "}
+                </>
+              )}
               <a
                 href="mailto:info@quill-medical.com"
                 style={{ color: "white" }}

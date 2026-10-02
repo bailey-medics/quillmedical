@@ -28,6 +28,19 @@ describe("NoAccessLayout Component", () => {
       expect(link).toHaveAttribute("href", "mailto:info@quill-medical.com");
     });
 
+    it("words the message about every feature when none is named", () => {
+      renderWithMantine(<NoAccessLayout />);
+      expect(screen.getByText("No access")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /Your account does not have access to any of Quill Medical's features\. Please email/,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "info@quill-medical.com" }),
+      ).toHaveAttribute("href", "mailto:info@quill-medical.com");
+    });
+
     it("uses heading level 1 for page header", () => {
       renderWithMantine(<NoAccessLayout feature="teaching" />);
       const heading = screen.getByRole("heading", { level: 1 });
