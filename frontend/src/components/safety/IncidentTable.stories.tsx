@@ -3,6 +3,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fn } from "storybook/test";
 import IncidentTable from "./IncidentTable";
 import { SAFETY_CASES } from "@lib/safety";
 
@@ -16,7 +17,7 @@ export default meta;
 type Story = StoryObj<typeof IncidentTable>;
 
 export const Default: Story = {
-  args: { incidents: SAFETY_CASES[0].incidents },
+  args: { incidents: SAFETY_CASES[0].incidents, onSelect: fn() },
 };
 
 export const Empty: Story = {

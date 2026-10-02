@@ -9,6 +9,7 @@
  */
 
 import { Stack } from "@mantine/core";
+import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import HazardTable from "@/components/safety/HazardTable";
@@ -16,6 +17,7 @@ import { BodyText } from "@/components/typography";
 import { useSafetyCase } from "./useSafetyCase";
 
 export function Component() {
+  const navigate = useNavigate();
   const safetyCase = useSafetyCase();
 
   if (!safetyCase) {
@@ -26,7 +28,12 @@ export function Component() {
     <Stack gap="lg">
       <PageHeader title="Hazards" />
       <BodyText c="dimmed">{safetyCase.title}</BodyText>
-      <HazardTable hazards={safetyCase.hazards} />
+      <HazardTable
+        hazards={safetyCase.hazards}
+        onSelect={(hazard) =>
+          navigate(`/safety/${safetyCase.id}/hazards/${hazard.id}`)
+        }
+      />
     </Stack>
   );
 }

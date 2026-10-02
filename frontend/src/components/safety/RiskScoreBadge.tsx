@@ -23,18 +23,22 @@ import {
   BADGE_VARIANT,
   type BadgeColourConfig,
 } from "@/components/badge/badgeColours";
-import { riskRating, type RiskScore } from "@lib/safety";
+import { riskBand, riskRating, type RiskScore } from "@lib/safety";
 
 type Props = {
   likelihood: RiskScore;
   severity: RiskScore;
 };
 
+const BAND_COLOUR: Record<ReturnType<typeof riskBand>, BadgeColourConfig> = {
+  acceptable: badgeColours.success,
+  tolerable: badgeColours.neutral,
+  undesirable: badgeColours.warning,
+  unacceptable: badgeColours.alert,
+};
+
 function colourFor(rating: number): BadgeColourConfig {
-  if (rating <= 2) return badgeColours.success;
-  if (rating <= 4) return badgeColours.neutral;
-  if (rating <= 9) return badgeColours.warning;
-  return badgeColours.alert;
+  return BAND_COLOUR[riskBand(rating)];
 }
 
 export default function RiskScoreBadge({ likelihood, severity }: Props) {

@@ -2,10 +2,21 @@
  * Hazards page tests
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 import { screen } from "@testing-library/react";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as Page } from "./SafetyHazardsPage";
+
+const navigate = vi.fn();
+
+vi.mock("react-router-dom", async () => {
+  const actual =
+    await vi.importActual<typeof import("react-router-dom")>(
+      "react-router-dom",
+    );
+  return { ...actual, useNavigate: () => navigate };
+});
 
 function renderPage(caseId: string) {
   return renderWithRouter(<Page />, {
@@ -39,5 +50,11 @@ describe("SafetyHazardsPage", () => {
       screen.queryByRole("heading", { level: 1, name: "Hazards" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText(/404|not found/i)).toBeInTheDocument();
+  });
+
+  it("opens a hazard when its row is chosen", async () => {
+    renderPage("sc-001");
+    await userEvent.click(screen.getByText("H-02"));
+    expect(navigate).toHaveBeenCalledWith("/safety/sc-001/hazards/H-02");
   });
 });

@@ -53,6 +53,8 @@ export interface Hazard {
   description: string;
   cause: string;
   effect: string;
+  /** The controls that take the initial risk to the residual one */
+  mitigation: string;
   initial_likelihood: RiskScore;
   initial_severity: RiskScore;
   residual_likelihood: RiskScore;

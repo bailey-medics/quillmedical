@@ -273,22 +273,22 @@ opens a page for that hazard with its risk in full, the likelihood and
 severity before and after mitigation, not only the product the table
 shows.
 
-- [ ] **Add `mitigation` to `Hazard`**, the controls that take the
+- [x] **Add `mitigation` to `Hazard`**, the controls that take the
       initial risk to the residual one, since a hazard page that shows
       two ratings must say what sits between them. Every fixture hazard
       gets one.
-- [ ] **`components/safety/HazardDetail.tsx`**: cards for the hazard
+- [x] **`components/safety/HazardDetail.tsx`**: cards for the hazard
       itself (description, cause, effect, status), the risk before and
       after mitigation (likelihood, severity and the rating badge for
       each, with the DCB0129 words for each score: 1 "very low" to 5
       "very high" for likelihood, 1 "minor" to 5 "catastrophic" for
       severity), the mitigation, and the incidents linked to it. Stories
       and tests.
-- [ ] **Route `/safety/:caseId/hazards/:hazardId`**,
+- [x] **Route `/safety/:caseId/hazards/:hazardId`**,
       `pages/safety/SafetyHazardPage.tsx`; `HazardTable` gains
       `onSelect`; the hazards page navigates on a row click; the nav child
       reads Safety, Hazards, Hazard. A 404 for an unknown hazard.
-- [ ] **Tests** for the detail component, the page and the nav child.
+- [x] **Tests** for the detail component, the page and the nav child.
 
 ## Phase 10: Incidents open to an incident report
 

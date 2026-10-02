@@ -2,7 +2,8 @@
  * IncidentTable Component Tests
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import IncidentTable from "./IncidentTable";
@@ -29,5 +30,17 @@ describe("IncidentTable", () => {
     expect(
       screen.getByText("No incidents recorded against this case"),
     ).toBeInTheDocument();
+  });
+
+  it("reports the row chosen", async () => {
+    const onSelect = vi.fn();
+    renderWithMantine(
+      <IncidentTable
+        incidents={SAFETY_CASES[0].incidents}
+        onSelect={onSelect}
+      />,
+    );
+    await userEvent.click(screen.getByText("INC-2026-004"));
+    expect(onSelect).toHaveBeenCalledWith(SAFETY_CASES[0].incidents[0]);
   });
 });
