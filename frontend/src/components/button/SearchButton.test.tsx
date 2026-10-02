@@ -46,4 +46,10 @@ describe("SearchButton", () => {
     await user.click(screen.getByRole("button", { name: "Open search" }));
     expect(handleClick).toHaveBeenCalledOnce();
   });
+
+  it("shows a Search tooltip on hover", async () => {
+    renderWithMantine(<SearchButton onClick={vi.fn()} />);
+    await userEvent.hover(screen.getByLabelText("Open search"));
+    expect(await screen.findByText("Search")).toBeInTheDocument();
+  });
 });
