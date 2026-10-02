@@ -104,6 +104,42 @@ resource "google_compute_backend_service" "backend" {
     enable      = true
     sample_rate = var.log_sample_rate
   }
+
+  # Security headers for every API response.
+  #
+  # `/api/*` is routed straight to the backend service and never passes
+  # through Caddy, which is where the application's pages get theirs, so
+  # until now these responses went out with none. Setting them here rather
+  # than in a FastAPI middleware covers every route, including ones not
+  # written yet. The frontend service below is deliberately left alone:
+  # Caddy already sets its headers.
+  #
+  # The load balancer overwrites a header of the same name that the backend
+  # sent, so a route cannot loosen or tighten any of these for itself, and
+  # none of them is sent twice. That is why the framing rule below has to
+  # suit every route at once.
+  #
+  # Framing is allowed from this origin and no other: `SAMEORIGIN` and
+  # `frame-ancestors 'self'`, not `DENY` and `'none'`. The certificate page
+  # shows a PDF by handing an `/api/passport/…/attachments/…` URL to an
+  # iframe (`components/documents/Document.tsx`), and with `DENY` Chrome
+  # and Firefox both refuse to draw it. Another site still cannot frame an
+  # API response, which is what the header is for.
+  #
+  # `default-src 'none'` is far tighter than the application's policy,
+  # because an API response should load nothing at all. Chrome 154 and
+  # Firefox 154 both draw a framed PDF under it in their built-in viewers.
+  #
+  # Strict-Transport-Security is the value Caddy already sends for this
+  # hostname, so it makes no new promise. No `preload` token, for the
+  # reason given in `caddy/prod/Caddyfile`.
+  custom_response_headers = [
+    "Content-Security-Policy: default-src 'none'; frame-ancestors 'self'",
+    "Strict-Transport-Security: max-age=63072000; includeSubDomains",
+    "X-Content-Type-Options: nosniff",
+    "Referrer-Policy: strict-origin-when-cross-origin",
+    "X-Frame-Options: SAMEORIGIN",
+  ]
 }
 
 resource "google_compute_backend_service" "frontend" {
