@@ -9,10 +9,8 @@
   "type": "module",
   "scripts": {
     "generate:types": "npx tsx scripts/generate-json-from-yaml.ts",
-    "predev": "yarn generate:types",
-    "prebuild": "yarn generate:types",
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "yarn generate:types && vite",
+    "build": "yarn generate:types && tsc -b && vite build",
     "preview": "vite preview",
     "storybook": "yarn generate:types && storybook dev -p 6006",
     "storybook:build": "yarn generate:types && storybook build -o ../docs/docs/code/storybook",
