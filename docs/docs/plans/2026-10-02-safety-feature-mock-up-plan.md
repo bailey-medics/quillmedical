@@ -441,6 +441,29 @@ give it.
       Compliance sign-off, Section. A 404 for an unknown section.
 - [x] **Tests** for the data, the link cards, the detail and the page.
 
+## Phase 17: Add as an icon in the table's own row
+
+Asked for after the show-only add buttons landed: the add control should
+be an icon, `IconFilePlus`, sitting in the row above the table beside
+the search and filter icons, rather than a written "Add" button in the
+page header. `DataTableControlled` already has an `action` slot in that
+row, added for the member practice page's "Grant competency" button, so
+the safety tables move onto it.
+
+- [x] **Register `IconFilePlus` in `appIcons.ts`**, in the re-export and
+      the catalogue.
+- [x] **`components/button/AddIconButton.tsx`**: an `IconButton` with
+      `IconFilePlus`, subtle and primary like the filter icon beside it,
+      with a required `aria-label` naming what it adds. Stories and tests.
+- [x] **The safety tables move to `DataTableControlled`**: the case
+      table, hazard table, incident table and document table each gain
+      search over their text columns and an `action` prop passed through
+      to the slot. The pages pass `<AddIconButton aria-label="Add hazard" />`
+      and the like, still show-only, and the written `AddButton`s leave
+      the page headers on the landing, hazards and incidents pages.
+- [x] **Tests**: the button, each table's search and action slot, and
+      the pages' buttons found by their new names.
+
 ## Decisions
 
 - **No backend, no backend placeholder** – the data lives in

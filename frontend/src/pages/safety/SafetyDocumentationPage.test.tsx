@@ -59,4 +59,11 @@ describe("SafetyDocumentationPage", () => {
       "/safety/sc-001/documentation/hazard-log",
     );
   });
+
+  it("shows an Add document icon, for show only", () => {
+    renderPage("sc-001");
+    expect(
+      screen.getByRole("button", { name: "Add document" }),
+    ).toBeInTheDocument();
+  });
 });

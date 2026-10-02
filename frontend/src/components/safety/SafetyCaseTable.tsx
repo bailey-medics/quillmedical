@@ -11,7 +11,9 @@
  * ```
  */
 
-import DataTable, { type Column } from "@components/tables/DataTable";
+import type { ReactNode } from "react";
+import { type Column } from "@components/tables/DataTable";
+import DataTableControlled from "@components/tables/DataTableControlled";
 import FormattedDate from "@/components/data/Date";
 import SafetyStatusBadge from "./SafetyStatusBadge";
 import { openHazardCount, type SafetyCaseDetail } from "@lib/safety";
@@ -57,6 +59,11 @@ const columns: Column<SafetyCaseDetail>[] = [
 ];
 
 export interface SafetyCaseTableProps {
+  /**
+   * The table\'s own action, such as an add icon, shown in the row with
+   * search and filter. See `DataTableControlled`.
+   */
+  action?: ReactNode;
   /** The cases, in the order to show them */
   cases: readonly SafetyCaseDetail[];
   /** Called when a case is chosen */
@@ -64,11 +71,19 @@ export interface SafetyCaseTableProps {
 }
 
 export default function SafetyCaseTable({
+  action,
   cases,
   onSelect,
 }: SafetyCaseTableProps) {
   return (
-    <DataTable
+    <DataTableControlled
+      action={action}
+      searchFields={(safetyCase) => [
+        safetyCase.title,
+        safetyCase.system,
+        safetyCase.standard,
+        safetyCase.clinical_safety_officer,
+      ]}
       data={[...cases]}
       columns={columns}
       getRowKey={(safetyCase) => safetyCase.id}

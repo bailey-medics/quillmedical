@@ -8,7 +8,9 @@
  */
 
 import { Badge } from "@mantine/core";
-import DataTable, { type Column } from "@components/tables/DataTable";
+import type { ReactNode } from "react";
+import { type Column } from "@components/tables/DataTable";
+import DataTableControlled from "@components/tables/DataTableControlled";
 import FormattedDate from "@/components/data/Date";
 import { badgeColours, BADGE_VARIANT } from "@/components/badge/badgeColours";
 import type { SafetyDocument } from "@lib/safety";
@@ -56,17 +58,25 @@ const columns: Column<SafetyDocument>[] = [
 ];
 
 export interface DocumentTableProps {
+  /**
+   * The table\'s own action, such as an add icon, shown in the row with
+   * search and filter. See `DataTableControlled`.
+   */
+  action?: ReactNode;
   documents: SafetyDocument[];
   /** Called when a document is chosen */
   onSelect?: (document: SafetyDocument) => void;
 }
 
 export default function DocumentTable({
+  action,
   documents,
   onSelect,
 }: DocumentTableProps) {
   return (
-    <DataTable
+    <DataTableControlled
+      action={action}
+      searchFields={(document) => [document.name, document.version]}
       data={documents}
       columns={columns}
       getRowKey={(document) => document.id}
