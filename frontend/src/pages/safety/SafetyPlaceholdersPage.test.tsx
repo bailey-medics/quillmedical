@@ -2,10 +2,22 @@
  * Placeholders page tests
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { resetEdits, setPlaceholderValue } from "@lib/safety";
 import { screen } from "@testing-library/react";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as Page } from "./SafetyPlaceholdersPage";
+
+const navigate = vi.fn();
+
+vi.mock("react-router-dom", async () => {
+  const actual =
+    await vi.importActual<typeof import("react-router-dom")>(
+      "react-router-dom",
+    );
+  return { ...actual, useNavigate: () => navigate };
+});
 
 function renderPage(caseId: string) {
   return renderWithRouter(<Page />, {
@@ -15,6 +27,8 @@ function renderPage(caseId: string) {
 }
 
 describe("SafetyPlaceholdersPage", () => {
+  afterEach(() => resetEdits());
+
   it("titles the page and names the case, with no link back", () => {
     renderPage("sc-001");
     expect(
@@ -42,5 +56,19 @@ describe("SafetyPlaceholdersPage", () => {
       screen.queryByRole("heading", { level: 1, name: "Placeholders" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText(/404|not found/i)).toBeInTheDocument();
+  });
+
+  it("offers an edit button that opens the edit page", async () => {
+    renderPage("sc-001");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Edit placeholders" }),
+    );
+    expect(navigate).toHaveBeenCalledWith("/safety/sc-001/placeholders/edit");
+  });
+
+  it("shows an edited value from the session store", () => {
+    setPlaceholderValue("sc-001", "product_version", "4.3");
+    renderPage("sc-001");
+    expect(screen.getByText("4.3")).toBeInTheDocument();
   });
 });

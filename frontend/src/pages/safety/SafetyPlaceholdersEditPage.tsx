@@ -1,5 +1,9 @@
 /**
- * Placeholders page of one safety case.
+ * Placeholders edit page of one safety case.
+ *
+ * Every placeholder's value in one form. Saving writes to the session
+ * store, so each document that names a key shows the new value, which
+ * is what a placeholder is for. Nothing is kept past a reload.
  *
  * Part of the safety mock-up, which has no backend; see
  * docs/docs/plans/2026-10-02-safety-feature-mock-up-plan.md.
@@ -11,11 +15,10 @@
 import { Stack } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
-import IconTextButton from "@/components/button/IconTextButton";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
-import PlaceholderTable from "@/components/safety/PlaceholderTable";
+import PlaceholderForm from "@/components/safety/PlaceholderForm";
 import { BodyText } from "@/components/typography";
-import { usePlaceholders } from "@lib/safety";
+import { setPlaceholderValue, usePlaceholders } from "@lib/safety";
 import { useSafetyCase } from "./useSafetyCase";
 
 export function Component() {
@@ -27,27 +30,26 @@ export function Component() {
     return <NotFoundLayout />;
   }
 
+  const back = `/safety/${safetyCase.id}/placeholders`;
+
   return (
     <Stack gap="lg">
-      <PageHeader
-        title="Placeholders"
-        action={
-          <IconTextButton
-            icon="pencil"
-            label="Edit placeholders"
-            onClick={() =>
-              navigate(`/safety/${safetyCase.id}/placeholders/edit`)
-            }
-          />
-        }
-      />
+      <PageHeader title="Edit placeholders" />
       <BodyText c="dimmed">{safetyCase.title}</BodyText>
       <BodyText c="dimmed">
-        A placeholder is a value written once and substituted into every
-        document of the case that names it, so a product name or version changes
-        everywhere at the same time.
+        A new value appears in every document that names the key. Edits are kept
+        only until the page is reloaded.
       </BodyText>
-      <PlaceholderTable placeholders={placeholders} />
+      <PlaceholderForm
+        placeholders={placeholders}
+        onSave={(values) => {
+          for (const [key, value] of Object.entries(values)) {
+            setPlaceholderValue(safetyCase.id, key, value);
+          }
+          navigate(back);
+        }}
+        onCancel={() => navigate(back)}
+      />
     </Stack>
   );
 }

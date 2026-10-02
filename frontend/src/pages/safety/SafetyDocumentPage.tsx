@@ -17,12 +17,18 @@ import PageHeader from "@/components/page-header";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import SafetyDocumentSheet from "@/components/safety/SafetyDocumentSheet";
 import { BodyText } from "@/components/typography";
-import { renderDocument, safetyDocumentById } from "@lib/safety";
+import {
+  renderDocument,
+  safetyDocumentById,
+  usePlaceholders,
+} from "@lib/safety";
 import { useSafetyCase } from "./useSafetyCase";
 
 export function Component() {
   const safetyCase = useSafetyCase();
   const { documentId } = useParams<{ documentId: string }>();
+  // Through the session store, so an edited placeholder shows here.
+  const placeholders = usePlaceholders(safetyCase?.id ?? "");
   const document =
     safetyCase && documentId
       ? safetyDocumentById(safetyCase, documentId)
@@ -39,7 +45,7 @@ export function Component() {
       <SafetyDocumentSheet
         document={document}
         product={safetyCase.system}
-        content={renderDocument(document, safetyCase.placeholders)}
+        content={renderDocument(document, placeholders)}
       />
     </Stack>
   );

@@ -89,7 +89,7 @@ const SAFETY_PAGES: readonly {
   { label: "Incidents", segment: "incidents", detail: "Incident" },
   { label: "Officers", segment: "officers" },
   { label: "Compliance sign-off", segment: "sign-off" },
-  { label: "Placeholders", segment: "placeholders" },
+  { label: "Placeholders", segment: "placeholders", detail: "Edit" },
 ];
 
 /**
