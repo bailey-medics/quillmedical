@@ -320,6 +320,62 @@ const routes: RouteObject[] = [
         ],
       },
 
+      // Safety – a throwaway mock-up with no backend, gated on the
+      // organisation feature alone: the pages read fixtures, so there is
+      // nothing a competency would protect. Lazily loaded like the
+      // passport, and nothing holds form state, so every page is safe
+      // to reload. See
+      // docs/docs/plans/2026-10-02-safety-feature-mock-up-plan.md.
+      {
+        element: (
+          <RequireFeature feature="safety">
+            <Outlet />
+          </RequireFeature>
+        ),
+        children: [
+          {
+            path: "/safety",
+            lazy: () => import("./pages/safety/SafetyPage"),
+            handle: { safeForReload: true },
+          },
+          {
+            path: "/safety/:caseId",
+            lazy: () => import("./pages/safety/SafetyCasePage"),
+            handle: { safeForReload: true },
+          },
+          {
+            path: "/safety/:caseId/documentation",
+            lazy: () => import("./pages/safety/SafetyDocumentationPage"),
+            handle: { safeForReload: true },
+          },
+          {
+            path: "/safety/:caseId/hazards",
+            lazy: () => import("./pages/safety/SafetyHazardsPage"),
+            handle: { safeForReload: true },
+          },
+          {
+            path: "/safety/:caseId/incidents",
+            lazy: () => import("./pages/safety/SafetyIncidentsPage"),
+            handle: { safeForReload: true },
+          },
+          {
+            path: "/safety/:caseId/officers",
+            lazy: () => import("./pages/safety/SafetyOfficersPage"),
+            handle: { safeForReload: true },
+          },
+          {
+            path: "/safety/:caseId/sign-off",
+            lazy: () => import("./pages/safety/SafetySignOffPage"),
+            handle: { safeForReload: true },
+          },
+          {
+            path: "/safety/:caseId/placeholders",
+            lazy: () => import("./pages/safety/SafetyPlaceholdersPage"),
+            handle: { safeForReload: true },
+          },
+        ],
+      },
+
       // Clinical routes – require FHIR/EHRbase connectivity
       {
         // Everything under here is patient data, and is deliberately not
