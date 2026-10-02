@@ -113,9 +113,9 @@ Settings, Privacy and Security, Accessibility.
 That takes about 330 milliseconds. `code -r <path>` does the same job with
 no permission at all, but takes about 1.3 seconds, because it starts Node
 and boots VS Code's command line machinery before it can speak to the
-running editor. It also *opens* a folder that has no window yet, which is
-wrong for something whose job is to return to an open one. It is left in
-the script, commented out.
+running editor. It also *opens* a folder that has no window yet, so
+the script uses it only as a fallback: when no window holds the folder,
+and only for a path that is a real directory.
 
 ### Clear old notifications before testing a click
 
