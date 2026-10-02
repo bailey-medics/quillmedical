@@ -281,7 +281,9 @@ def verify_totp_code(secret: str, code: str) -> bool:
 
     Verifies a 6-digit TOTP code against the user's secret. Uses RFC 6238
     time-based one-time password algorithm with 30-second time steps.
-    Allows for clock drift of ±1 time step (default pyotp behavior).
+    Only the current time step is accepted: ``verify`` is called without
+    ``valid_window``, and pyotp's default is 0, so a code from the step
+    before or after is refused.
 
     Args:
         secret: Base32-encoded TOTP secret from database.

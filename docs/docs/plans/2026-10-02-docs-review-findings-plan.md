@@ -235,7 +235,7 @@ One pull request, since each is a line or two.
 Comments only, so no behaviour changes and no tests. They matter because
 they are what the next reader, human or model, takes as the reason.
 
-- [ ] `backend/app/main.py`
+- [x] `backend/app/main.py`
     - the docstring of `_require_shared_org_with_patient` says
       `check_user_patient_access` returns `True` for any admin. That
       shortcut was removed.
@@ -244,38 +244,53 @@ they are what the next reader, human or model, takes as the reason.
     - the docstring of `register` says a password needs 6 characters. The
       code enforces 8.
 
-- [ ] `backend/app/security.py` – the docstring of the TOTP check says it
+- [x] `backend/app/security.py` – the docstring of the TOTP check says it
       allows one step of clock drift, "default pyotp behavior". The call
       passes no `valid_window`, so only the current step is accepted. Decide
       which is wanted: if drift tolerance is, this is a code change and not
       a comment.
 
-- [ ] `backend/app/cbac/competencies.py` – a comment still names
+      The docstring now says what the code does: only the current step is
+      accepted. Whether to allow drift is left open, because it changes
+      who can log in; see Decisions.
+
+- [x] `backend/app/cbac/competencies.py` – a comment still names
       `feature-admin.yaml`, and a docstring says "defined in more than one
       org_unit" where it means more than one file.
 
-- [ ] `shared/competency-definitions/clinical.yaml` – the header says
+- [x] `shared/competency-definitions/clinical.yaml` – the header says
       `resolve_user_competencies()` is how a user's final list is worked
       out. A user now holds what their `user_competency` rows say.
 
-- [ ] `backend/app/models.py` – the docstring on `org_unit_member` still
+- [x] `backend/app/models.py` – the docstring on `org_unit_member` still
       explains the name `site_member`, and the one on `OrgUnitLink` says
       both ends point at `sites`.
 
-- [ ] `frontend/src/components/tables/DataTable.tsx` says
+- [x] `frontend/src/components/tables/DataTable.tsx` says
       `theme.breakpoints.sm` is 768px. It is 640px. Found while doing
-      phase 4.
+      phase 4. Left alone here: pull request #1393, open on 2 October,
+      already deletes that comment, and a second edit would only conflict.
 
-- [ ] `frontend/src/components/profile-pic/ProfilePic.tsx` gives the
+- [x] `frontend/src/components/profile-pic/ProfilePic.tsx` gives the
       gradient index range as 0 to 35. There are 30 gradients.
 
-- [ ] `backend/tests/test_alembic_check.py` and
+- [x] `backend/tests/test_alembic_check.py` and
       `backend/scripts/remove_avatar_gradients.py` tell the reader to run
       them with `docker exec quill_backend`, the pattern `CLAUDE.md` forbids.
 
-- [ ] `.claude/hooks/session-start.sh` runs `pre-commit install`, which
+      The script now says `just eb`. The test file says the truth, which is
+      that only the `alembic_drift_check` CI job runs it: no recipe gives
+      those tests a migrated Postgres locally.
+
+- [x] `.claude/hooks/session-start.sh` runs `pre-commit install`, which
       `CLAUDE.md` says never to do. It only warns on failure, so it is
       harmless where `core.hooksPath` is set, but the two disagree.
+
+      The hook is right and the rule was too broad. A web session is a
+      fresh clone where nobody has run `just initialise-repo`, so
+      `core.hooksPath` is unset and `pre-commit install` is the only thing
+      that gives it a hook. The hook's comment and the rule in `CLAUDE.md`
+      now both say so. No behaviour changed.
 
 ## Phase 7: References to names that have moved
 
@@ -324,6 +339,16 @@ clinical services are on, and the live deployment has them off.
   before the backend starts refusing a wildcard, or a deploy that lands
   first takes the service down. Phase 2 exists so the next environment
   cannot repeat the omission.
+
+- **Whether a login code may be one step out is not decided** –
+  `verify_totp_code` accepts only the current 30-second step, though its
+  docstring claimed one step of drift either way until phase 6 corrected
+  it. RFC 6238, section 5.2, recommends allowing at most one step for
+  network delay, and most services do, since a code typed at second 29
+  otherwise fails. It would be `totp.verify(code, valid_window=1)`. Left
+  for a person because it widens what logs somebody in, and a code would
+  then stay valid for up to 90 seconds, so it wants a check that a used
+  code cannot be replayed.
 
 - **`scripts/run-github-actions-locally.sh` cannot run** – it points `act`
   at `non-main.yml` and `main.yml`, which no longer exist; the workflows

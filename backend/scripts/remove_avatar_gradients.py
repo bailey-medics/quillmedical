@@ -4,8 +4,9 @@ Remove avatar gradient extensions from all patients.
 This script removes avatar gradient color extensions from all FHIR Patient
 resources. Useful for testing the backfill script.
 
-Usage:
-    docker exec quill_backend python scripts/remove_avatar_gradients.py --yes
+Usage, from the worktree the dev stack was started in:
+    just eb
+    python scripts/remove_avatar_gradients.py --yes
 """
 
 import sys

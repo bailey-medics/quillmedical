@@ -99,7 +99,7 @@ class CompetencyEntry(BaseModel):
 #
 # A directory rather than one file, so the catalogue can be split by kind
 # – clinical.yaml describes what may be done to a patient, and
-# feature-admin.yaml what may be done to Quill – and split further later
+# admin.yaml what may be done to Quill – and split further later
 # without touching this loader. Which file an entry lives in carries no
 # meaning here: the files are merged into one flat catalogue and the id
 # is what everything references.
@@ -119,7 +119,7 @@ def _load_competencies(directory: Path) -> list[CompetencyEntry]:
         FileNotFoundError: If the directory holds no definition files at
             all, which means a missing mount or a bad path rather than an
             empty catalogue.
-        ValueError: If an id is defined in more than one org_unit. Ids are
+        ValueError: If an id is defined in more than one file. Ids are
             referenced from stored records, so a duplicate makes which
             definition applies depend on filename order.
     """
