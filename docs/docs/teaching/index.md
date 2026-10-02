@@ -9,25 +9,25 @@ The feature is **organisation-scoped** and gated behind a feature flag – only 
 ## Architecture overview
 
 ```
-question-bank repo (Git)
+teaching content repos (Git)
         │
         ▼
-  ./question-bank/questions/   ── volume mount ──▶  /question-banks/  (container)
+  ./teaching-repos/            ── volume mount ──▶  /teaching-repos/  (container)
         │                                                    │
         │                                          sync (API or CLI)
         │                                                    │
         ▼                                                    ▼
-  Local filesystem                                   PostgreSQL (auth DB)
+  Local filesystem                                   PostgreSQL (core DB)
   (images served via StaticFiles)                    (config + items + assessments)
 ```
 
 ### Three layers
 
-| Layer        | Purpose                                  | Location                                                                |
-| ------------ | ---------------------------------------- | ----------------------------------------------------------------------- |
-| **Content**  | Question bank YAML + images              | `question-bank/` repo (Git LFS for images)                              |
-| **Backend**  | Sync, scoring, assessments API           | `backend/app/features/teaching/`                                        |
-| **Frontend** | Dashboard, assessment UI, educator pages | `frontend/src/features/teaching/` + `frontend/src/components/teaching/` |
+| Layer        | Purpose                                  | Location                                                                   |
+| ------------ | ---------------------------------------- | -------------------------------------------------------------------------- |
+| **Content**  | Question bank YAML + images              | teaching content repos, cloned into `teaching-repos/` (Git LFS for images) |
+| **Backend**  | Sync, scoring, assessments API           | `backend/app/features/teaching/`                                           |
+| **Frontend** | Dashboard, assessment UI, educator pages | `frontend/src/features/teaching/` + `frontend/src/components/teaching/`    |
 
 ### Storage backends
 
@@ -71,28 +71,32 @@ key contract, cookie mechanics and monitoring.
 
 ## Question bank format
 
-A question bank is a directory containing a `config.yaml` and numbered question directories:
+A question bank is the `assessment/` directory of a module in a content repo. It contains an `assessment.yaml` and numbered question directories:
 
 ```
-colonoscopy-optical-diagnosis-test/
-├── config.yaml
-├── question_001/
-│   ├── question.yaml
-│   ├── image_1.jpg
-│   └── image_2.jpg
-├── question_002/
-│   ├── question.yaml
-│   ├── image_1.jpg
-│   └── image_2.jpg
-└── ...
+modules/colonoscopy-optical-diagnosis-test/
+├── module.yaml
+├── learning/
+└── assessment/
+    ├── assessment.yaml
+    ├── question_001/
+    │   ├── question.yaml
+    │   ├── image_1.jpg
+    │   └── image_2.jpg
+    ├── question_002/
+    │   ├── question.yaml
+    │   ├── image_1.jpg
+    │   └── image_2.jpg
+    └── ...
 ```
 
-### config.yaml
+An older flat layout, a bank directory holding a `config.yaml`, is still read.
 
-The top-level configuration defines the bank's identity, options, assessment rules, and pass criteria.
+### assessment.yaml
+
+The top-level configuration defines the bank's options, assessment rules, and pass criteria. The bank's id is the module directory's name.
 
 ```yaml
-id: colonoscopy-optical-diagnosis-test
 version: 1
 title: "Optical Diagnosis of diminutive colorectal polyps MCQ Online - Test"
 description: >
@@ -161,7 +165,7 @@ For uniform banks, each question only needs the answer field matching `correct_a
 diagnosis: serrated
 ```
 
-Options come from the shared `options` list in `config.yaml`.
+Options come from the shared `options` list in `assessment.yaml`.
 
 ### question.yaml (variable type)
 
@@ -181,10 +185,10 @@ correct_option_id: option_b
 
 ### Bank types
 
-| Type         | Options                                    | Scoring                                                                           | Use case                                       |
-| ------------ | ------------------------------------------ | --------------------------------------------------------------------------------- | ---------------------------------------------- |
-| **Uniform**  | Shared across all items (in `config.yaml`) | Tag matching: selected option's non-confidence tags checked against item metadata | Standardised tests (e.g. polyp classification) |
-| **Variable** | Per-item (in `question.yaml`)              | Direct option ID comparison                                                       | Varied question formats                        |
+| Type         | Options                                        | Scoring                                                                           | Use case                                       |
+| ------------ | ---------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------- |
+| **Uniform**  | Shared across all items (in `assessment.yaml`) | Tag matching: selected option's non-confidence tags checked against item metadata | Standardised tests (e.g. polyp classification) |
+| **Variable** | Per-item (in `question.yaml`)                  | Direct option ID comparison                                                       | Varied question formats                        |
 
 ---
 
@@ -257,36 +261,36 @@ All routes are under `/api/teaching` and require the `teaching` feature to be en
 
 These require the `manage_teaching` CBAC competency.
 
-| Method | Path                                                     | Description                                               |
-| ------ | -------------------------------------------------------- | --------------------------------------------------------- |
-| `GET`  | `/items`                                                 | List items in the org's question bank                     |
-| `POST` | `/items/validate`                                        | Dry-run validation (no import)                            |
-| `POST` | `/items/sync`                                            | Trigger sync from filesystem to database                  |
-| `GET`  | `/results`                                               | List all completed assessment results                     |
-| `GET`  | `/syncs`                                                 | List sync history                                         |
-| `GET`  | `/settings`                                              | Get teaching settings                                     |
-| `PUT`  | `/settings`                                              | Update teaching settings (coordinator email, institution) |
-| `GET`  | `/admin/delegates`                                       | List delegates across orgs                                |
-| `GET`  | `/admin/banks`                                           | List all banks (superadmin)                               |
-| `POST` | `/admin/sync-all`                                        | Sync all question banks (superadmin)                      |
-| `GET`  | `/admin/banks/{bank_id}`                                 | Get bank detail (superadmin)                              |
-| `GET`  | `/admin/banks/{bank_id}/organisations`                   | List bank's organisations (superadmin)                    |
-| `PUT`  | `/admin/banks/{bank_id}/organisations/{org_id}/settings` | Update bank org settings (superadmin)                     |
+| Method | Path                                                      | Description                                               |
+| ------ | --------------------------------------------------------- | --------------------------------------------------------- |
+| `GET`  | `/items`                                                  | List items in the org's question bank                     |
+| `POST` | `/items/validate`                                         | Dry-run validation (no import)                            |
+| `POST` | `/items/sync`                                             | Trigger sync from filesystem to database                  |
+| `GET`  | `/results`                                                | List all completed assessment results                     |
+| `GET`  | `/syncs`                                                  | List sync history                                         |
+| `GET`  | `/settings`                                               | Get teaching settings                                     |
+| `PUT`  | `/settings`                                               | Update teaching settings (coordinator email, institution) |
+| `GET`  | `/admin/delegates`                                        | List delegates across orgs                                |
+| `GET`  | `/admin/banks`                                            | List all banks                                            |
+| `POST` | `/admin/sync-all`                                         | Sync all question banks                                   |
+| `GET`  | `/admin/banks/{bank_id}`                                  | Get bank detail                                           |
+| `GET`  | `/admin/banks/{bank_id}/organisations`                    | List bank's organisations                                 |
+| `PUT`  | `/admin/banks/{bank_id}/org-units/{org_unit_id}/settings` | Update bank org settings                                  |
 
 ### Sync process
 
 The sync (`sync_question_bank()` in `sync.py`) runs these steps:
 
-1. **Validate** – checks config.yaml structure, item directories, image counts, answer fields
+1. **Validate** – checks assessment.yaml structure, item directories, image counts, answer fields
 2. **Upsert config** – creates or updates the `QuestionBankConfig` row
-3. **Import items** – creates or updates `QuestionBankItem` rows (status defaults to `draft`)
+3. **Import items** – creates or updates `QuestionBankItem` rows (written as `published`)
 4. **Record audit** – creates a `QuestionBankSync` record with status, counts, and timestamps
 
-Items must be **published** (status changed from `draft` to `published`) before they appear in assessments. The `just sync-teaching` command auto-publishes items after sync.
+Only **published** items appear in assessments, and sync publishes every item it imports.
 
 ### Validation
 
-Validation (`validate.py`) runs in three contexts:
+Validation (`tooling/validate.py`) runs in three contexts:
 
 1. **CI** on the question bank repo (catches errors before merge)
 2. **Dry-run API** (`POST /items/validate`) – educators check content without importing
@@ -294,7 +298,7 @@ Validation (`validate.py`) runs in three contexts:
 
 Checks performed:
 
-- Required config fields: `id`, `version`, `title`, `description`, `type`
+- Required config fields: `version`, `title`, `description`, `type`
 - Valid type: `uniform` or `variable`
 - Assessment section: `items_per_attempt`, `time_limit_minutes`, `min_pool_size`
 - Uniform: `options` list and `images_per_item` required
@@ -312,11 +316,12 @@ The entire teaching router uses `requires_feature("teaching")` as a dependency:
 ```python
 teaching_router = APIRouter(
     prefix="/teaching",
+    tags=["teaching"],
     dependencies=[Depends(requires_feature("teaching"))],
 )
 ```
 
-This checks the user's organisations (resolved via both direct `organisation_staff_member` AND indirect `site_staff_member` → `organisation_site` linkage) have a row in `organisation_features` with `feature_key = 'teaching'`. Returns 403 if not.
+This checks that an org unit the user belongs to (a row in `org_unit_member`), or the organisation above it, has a row in `org_unit_feature` with `feature_key = 'teaching'`. Returns 403 if not.
 
 ### Frontend
 
@@ -327,7 +332,7 @@ Routes are wrapped in `<RequireFeature feature="teaching">`:
   path: "/teaching",
   element: (
     <RequireFeature feature="teaching">
-      <AssessmentDashboard />
+      <TeachingDashboard />
     </RequireFeature>
   ),
 }
@@ -341,15 +346,15 @@ Routes are wrapped in `<RequireFeature feature="teaching">`:
 
 All page components live in `frontend/src/features/teaching/pages/`.
 
-| Route                                    | Page                   | Description                                                         |
-| ---------------------------------------- | ---------------------- | ------------------------------------------------------------------- |
-| `/teaching`                              | `TeachingDashboard`    | Lists available question banks, start new assessments, view history |
-| `/teaching/:bankId`                      | `TeachingModuleMain`   | Module landing page (info, learning content, start assessment)      |
-| `/teaching/learn`                        | `LearningDashboard`    | Learning content dashboard                                          |
-| `/teaching/learn/:moduleId/slide/:index` | `SlideReader`          | Slide-based learning content viewer                                 |
-| `/teaching/assessment/:id`               | `AssessmentAttempt`    | Active assessment – shows images, options, timer, progress          |
-| `/teaching/assessment/:id/result`        | `AssessmentResultPage` | Pass/fail result with score breakdown                               |
-| `/teaching/sync`                         | `SyncStatus`           | Educator: sync history and status                                   |
+| Route                                         | Page                   | Description                                                         |
+| --------------------------------------------- | ---------------------- | ------------------------------------------------------------------- |
+| `/teaching`                                   | `TeachingDashboard`    | Lists available question banks, start new assessments, view history |
+| `/teaching/:bankId`                           | `TeachingModuleMain`   | Module landing page (info, learning content, start assessment)      |
+| `/teaching/learn`                             | `LearningDashboard`    | Learning content dashboard                                          |
+| `/teaching/learn/:moduleId/slide/:slideIndex` | `SlideReader`          | Slide-based learning content viewer                                 |
+| `/teaching/assessment/:id`                    | `AssessmentAttempt`    | Active assessment – shows images, options, timer, progress          |
+| `/teaching/assessment/:id/result`             | `AssessmentResultPage` | Pass/fail result with score breakdown                               |
+| `/teaching/sync`                              | `SyncStatus`           | Educator: sync history and status                                   |
 
 ### Components
 
@@ -382,7 +387,7 @@ Set in `compose.dev.yml` for local development:
 
 | Variable                      | Dev value              | Description                                 |
 | ----------------------------- | ---------------------- | ------------------------------------------- |
-| `TEACHING_QUESTION_BANK_PATH` | `/question-banks`      | Container path to question bank directories |
+| `TEACHING_QUESTION_BANK_PATH` | `/teaching-repos`      | Container path to question bank directories |
 | `TEACHING_IMAGES_BASE_URL`    | `/api/teaching/images` | Base URL for image serving                  |
 | `TEACHING_GCS_BUCKET`         | _(not set)_            | GCS bucket name (production only)           |
 | `TEACHING_SYNC_TOKEN`         | _(not set)_            | Auth token for CI sync endpoint             |
@@ -391,10 +396,10 @@ Set in `compose.dev.yml` for local development:
 
 ```yaml
 volumes:
-  - ./question-bank/questions:/question-banks
+  - ./teaching-repos:/teaching-repos
 ```
 
-This mounts the local `question-bank/questions/` directory into the container at `/question-banks`, making question bank content available for sync and image serving.
+This mounts the local `teaching-repos/` directory into the container at `/teaching-repos`, making question bank content available for sync and image serving.
 
 ---
 
@@ -402,7 +407,7 @@ This mounts the local `question-bank/questions/` directory into the container at
 
 ### First-time setup
 
-1. **Clone teaching repos and tooling** (done during initial project setup):
+1. **Clone the teaching content repos** (done during initial project setup):
 
    ```bash
    just initial-install
@@ -427,10 +432,10 @@ This mounts the local `question-bank/questions/` directory into the container at
 After editing question bank content:
 
 ```bash
-just sync-teaching          # alias: sy
+just sync-teaching          # alias: syt
 ```
 
-This finds the teaching-enabled organisation, syncs all question bank directories, and auto-publishes draft items.
+This finds the teaching-enabled organisation, and syncs all question bank directories.
 
 ### Justfile commands
 
@@ -451,11 +456,11 @@ This finds the teaching-enabled organisation, syncs all question bank directorie
 In production, question bank content lives in a **GCS bucket** rather than the local filesystem:
 
 1. CI/CD pushes updated question bank content to GCS via `gsutil rsync`
-2. An educator manually triggers a sync via the UI (`/teaching/sync` page) or API
+2. The pipeline then calls `POST /api/ci/teaching/sync` with a service token; an educator can also trigger a sync from the `/teaching/sync` page
 3. The backend reads config and item YAML from GCS, persists to the database
 4. Images are served via signed GCS URLs (15-minute expiry)
 
-The manual sync trigger is intentional – it gives educators control over when new content goes live, which is important for clinical safety.
+Sync serves the newest version of each bank that is switched on, so a merged revision reaches learners at the next sync. The review on the content repository's pull request is the gate.
 
 ---
 
