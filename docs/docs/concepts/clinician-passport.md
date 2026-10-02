@@ -54,6 +54,9 @@ deliberately not encoded centrally.
   does gate *reaching* the passport even though the passport never writes back
   to CBAC.
 
+The flag is waived for a holder reading their own passport, so somebody
+removed from the place that had it can still open and export their record.
+
 Passing both says only that the passport exists for this person. Whether they
 may read a *particular* record is a third question, answered by whether they
 are the holder or are named on a request against them.
@@ -67,17 +70,19 @@ two different rights, because they have opposite economics.
 gets the benefit and the assessor gets nothing, so an assessor who met a price
 would simply decline, and the trainee waiting on them could not be signed off
 at all. `assess_clinician_passport` is therefore granted by base
-profession, never sold, and never lapses for payment.
+profession, or to an existing account when it is asked to sign off, never
+sold, and never lapses for payment.
 
 **Holding is the product.** `passport_write` grants the right to create a
 passport and add to it. No base profession carries it: it reaches a person
-either through an organisation that pays, granted at onboarding, or through an
-individual subscription. Most clinicians at a paying organisation hold both
+through an organisation that pays, granted at onboarding, through a Passport
+admin at their own org units, or through an individual subscription. Most clinicians at a paying organisation hold both
 competencies, and neither implies the other is beneath it – a consultant of
 thirty years still gets signed off on new things.
 
-**An entitlement ends on a date**, recorded in `passport_write_entitlement`
-rather than as a flag, so the holder can be warned before it does. Somebody may
+**An entitlement that ends does so on a date**, recorded as `ends_on` on its
+`user_competency` row rather than as a flag, so the holder can be warned
+before it does. A grant through an organisation has no end. Somebody may
 hold one from more than one source at once, and losing one does not end the
 other.
 
@@ -98,8 +103,8 @@ Two consequences follow, both deliberate:
 
 ## The deferred idea
 
-An automatic grant – a signed-off passport competency raising a request to add
-the matching id to a user's `additional_competencies`, subject to
+An automatic grant – a signed-off passport competency raising a request to grant
+the matching id to the user as a `user_competency` row, subject to
 administrator approval – is recorded as a future item.
 
 It is deferred rather than rejected. The distinction worth preserving is that
