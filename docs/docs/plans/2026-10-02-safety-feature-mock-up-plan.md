@@ -513,8 +513,13 @@ grew out of Phase 17 and uses its component, so it is recorded here.
       size), rather than through `IconButton`, whose smaller icon made it
       the odd one out. The stroke is Tabler's default 2 rather than
       their 2.5: a file or person with a plus has more lines in the same
-      box, and at 2.5 it read as heavier than its simpler neighbours. It joins the lint exception list
-      that lets those two import `ActionIcon` directly.
+      box, and at 2.5 it read as heavier than its simpler neighbours. It
+      joins the lint exception list that lets those two import
+      `ActionIcon` directly.
+- [x] **The users table shows three columns**: full name, username and
+      status. Asked for alongside: email, organisation and site, and
+      platform role leave the table but stay searchable, and the user's
+      own page still shows them.
 
 ## Decisions
 

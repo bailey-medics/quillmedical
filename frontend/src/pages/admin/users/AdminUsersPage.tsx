@@ -15,7 +15,6 @@ import { IconUserPlus } from "@/components/icons/appIcons";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
-import PlatformRoleBadge from "@/components/badge/PlatformRoleBadge";
 import { api } from "@/lib/api";
 
 interface User {
@@ -113,31 +112,9 @@ export default function AdminUsersPage() {
       render: (user) => user.username,
       accessor: (user) => user.username,
     },
-    {
-      header: "Email",
-      render: (user) => user.email,
-      accessor: (user) => user.email,
-    },
-    {
-      header: "Organisation/site",
-      render: (user) => {
-        if (!user.organisations.length && !user.sites.length) return "–";
-        const org = user.organisations.join(", ");
-        const site = user.sites.join(", ");
-        if (org && site) return `${org} – ${site}`;
-        return org || site;
-      },
-      accessor: (user) =>
-        [...user.organisations, ...user.sites].join(", ") || "",
-    },
-    {
-      // Marks operators only, so the column is empty for almost every
-      // row. There is no filter beside it: a field with two values,
-      // one of which renders nothing, offers no way to narrow anything.
-      header: "Platform role",
-      render: (user) => <PlatformRoleBadge platformRole={user.platform_role} />,
-      accessor: (user) => user.platform_role,
-    },
+    // Email, organisation and site, and platform role used to be columns
+    // too. They are still searched, and shown on the user's own page;
+    // three columns leave the list readable on a laptop and a phone.
     {
       header: "Status",
       render: (user) => <ActiveStatusBadge active={user.is_active} />,
