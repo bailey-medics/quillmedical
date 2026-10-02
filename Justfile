@@ -1546,9 +1546,37 @@ stack-watch:
         # the window leaves the older copy above the new one and the
         # status line scrolls out of sight with it.
         printf '\033[H\033[2J\033[3J'
-        echo "  updated $(date '+%H:%M:%S') · every 60s · ctrl-c to stop"
+        echo "  updated $(date '+%H:%M:%S') · every 60s · r ready all · any key redraws · ctrl-c to stop"
         printf '%s\n' "${drawn}"
-        sleep 60
+
+        # The minute's wait doubles as the keyboard: one keypress ends it
+        # early. `r` takes every open pull request in the stack out of
+        # draft, which is `stack-ready` and nothing more; any other key
+        # simply redraws now rather than at the end of the minute.
+        #
+        # No confirmation, by choice. Marking ready starts the heavy CI
+        # tier on every branch, and that is exactly what pressing `r` here
+        # is asking for.
+        #
+        # Without a terminal on stdin `read` returns at once, which would
+        # turn the loop into a spin against the GitHub API, so that case
+        # keeps the plain sleep.
+        if [ ! -t 0 ]; then
+            sleep 60
+            continue
+        fi
+        key=""
+        read -rsn1 -t 60 key || true
+        if [ "${key}" = "r" ] || [ "${key}" = "R" ]; then
+            echo ""
+            # A failure – no stack, or one spanning worktrees – would be
+            # wiped by the redraw three seconds later, so it is held on
+            # screen until a key says it has been read.
+            if ! just stack-ready; then
+                echo ""
+                read -rsn1 -p "  stack-ready failed · any key to carry on" _ || true
+            fi
+        fi
     done
 
 
