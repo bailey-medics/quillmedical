@@ -6,8 +6,22 @@ import postcssPresetMantine from "postcss-preset-mantine";
 import postcssSimpleVars from "postcss-simple-vars";
 import remarkGfm from "remark-gfm";
 import tsconfigPaths from "vite-tsconfig-paths";
+// `with { type: "json" }` because Storybook loads this file through Node's
+// own module loader, which refuses a JSON import without it.
+import breakpoints from "../src/breakpoints.json" with { type: "json" };
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * The `$mantine-breakpoint-*` variables for CSS modules, built from the
+ * same file the Mantine theme reads. See postcss.config.cjs.
+ */
+const breakpointVariables = Object.fromEntries(
+  Object.entries(breakpoints).map(([name, width]) => [
+    `mantine-breakpoint-${name}`,
+    width,
+  ]),
+);
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.mdx", "../src/**/*.stories.@(ts|tsx)"],
@@ -52,13 +66,7 @@ const config: StorybookConfig = {
         plugins: [
           postcssPresetMantine(),
           postcssSimpleVars({
-            variables: {
-              "mantine-breakpoint-xs": "36em",
-              "mantine-breakpoint-sm": "48em",
-              "mantine-breakpoint-md": "62em",
-              "mantine-breakpoint-lg": "75em",
-              "mantine-breakpoint-xl": "88em",
-            },
+            variables: breakpointVariables,
           }),
         ],
       },
