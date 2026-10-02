@@ -37,7 +37,7 @@ Who walks it: every user with two-factor authentication on, which is
 every clinician.
 
 1. Open `/login`. Hear the page title and the level 1 heading "Sign in to
-   Quill" ("Sign in to Quill Teaching" on the teaching platform).
+   Quill Medical" ("Sign in to Quill Teaching" on the teaching platform).
 2. Move to the username field. Hear "Username, edit text, required".
 3. Type the username, move to the password field. Hear "Password, secure
    edit text, required".
@@ -64,8 +64,8 @@ Who walks it: clinicians and clinical administrators.
 3. Move to a patient and activate it. Hear the patient's name; focus
    lands on the new page, not back at the top of the old one.
 4. Navigate by headings. Hear one level 1 heading, the patient's name.
-5. Move through the cards (Messaging, Letters, Documents, Appointments,
-   Notes). Each is announced with its title and is activated with Enter.
+5. Move through the cards (Messaging, Appointments, Clinical letters,
+   Documents, Clinical notes). Each is announced with its title and is activated with Enter.
 6. Open the side navigation from the ribbon's menu button on a narrow
    screen. Hear "Navigation, dialog"; Tab stays inside it; Escape or
    choosing a link closes it and focus returns to the menu button.

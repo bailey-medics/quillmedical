@@ -113,7 +113,7 @@ Built using current web standards for
 #### Technology Stack
 
 - **React 19** with TypeScript for type-safe, maintainable code
-- **Mantine UI 8** for accessible, customisable components
+- **Mantine UI 9** for accessible, customisable components
 - **Tabler Icons** for consistent iconography throughout the application
 - **React Router 7** for seamless client-side navigation
 - **Vite 8** for rapid development and optimised production builds
@@ -136,7 +136,7 @@ Built using current web standards for
 
 - All patient information is encrypted
 - No sensitive data stored in browser permanently
-- Automatic logout after inactivity
+- Sessions last seven days from their last renewal, then ask for a fresh login
 - Secure session management
 
 ### Audit Trail

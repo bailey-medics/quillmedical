@@ -1,6 +1,6 @@
 # Design system
 
-Quill's design system provides a consistent visual language across the application. It is built on [Mantine 8](https://mantine.dev/) and documented in Storybook under the **Foundations/** category.
+Quill's design system provides a consistent visual language across the application. It is built on [Mantine 9](https://mantine.dev/) and documented in Storybook under the **Foundations/** category.
 
 ## Typography
 
@@ -113,7 +113,7 @@ Every text colour meets WCAG AA (4.5:1) on the surfaces it is used on, in both c
 
 - **default** – inherits. Headings (`Heading`, `PageHeader`)
 - **body** – `var(--mantine-color-text)`, navy `#143f6b` in light and `#c9d1d9` in dark. Body text (`BodyText`, `BodyTextBold`, `BodyTextInline`, `BodyTextClamp`)
-- **muted** – `c="dimmed"` / `var(--mantine-color-dimmed)`: `gray.7` in light, `primary.1` in dark. `FieldDescription`, input descriptions, `EmptyState`, the messages in `ErrorState` and `NotFoundLayout`
+- **muted** – `c="dimmed"` / `var(--mantine-color-dimmed)`: `gray.7` in light, `primary.1` in dark. `FieldDescription`, input descriptions, `EmptyState`, the message in `NotFoundLayout`
 - **link** – `var(--link-color)`: `primary.4` in light, `primary.1` in dark, hovering to `primary.8` and `primary.0`. `TextLink` and inline links
 - **error** – `var(--error-color)`: orange-red `#c4320a` in light, `#ff8a65` in dark. `ErrorMessage`, input error text and error borders
 
@@ -156,7 +156,7 @@ These are documentation-only stories with no associated test files.
 
 ## Pass/fail indicators
 
-Atomic `PassIcon` and `FailIcon` components in `components/badge/` provide consistent pass/fail visual indicators:
+Atomic `PassIcon` and `FailIcon` components in `components/icons/` provide consistent pass/fail visual indicators:
 
 - **PassIcon** – teal filled circle with white tick (uses `badgeColours.success`)
 - **FailIcon** – red filled circle with white cross (uses `badgeColours.alert`)
