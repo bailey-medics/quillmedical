@@ -9,9 +9,8 @@
  */
 
 import { Stack } from "@mantine/core";
-import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
-import IconTextButton from "@/components/button/IconTextButton";
+import AddIconButton from "@/components/button/AddIconButton";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import PlaceholderTable from "@/components/safety/PlaceholderTable";
 import { BodyText } from "@/components/typography";
@@ -19,7 +18,6 @@ import { usePlaceholders } from "@lib/safety";
 import { useSafetyCase } from "./useSafetyCase";
 
 export function Component() {
-  const navigate = useNavigate();
   const safetyCase = useSafetyCase();
   const placeholders = usePlaceholders(safetyCase?.id ?? "");
 
@@ -29,25 +27,21 @@ export function Component() {
 
   return (
     <Stack gap="lg">
-      <PageHeader
-        title="Placeholders"
-        action={
-          <IconTextButton
-            icon="pencil"
-            label="Edit placeholders"
-            onClick={() =>
-              navigate(`/safety/${safetyCase.id}/placeholders/edit`)
-            }
-          />
-        }
-      />
+      <PageHeader title="Placeholders" />
       <BodyText c="dimmed">{safetyCase.title}</BodyText>
       <BodyText c="dimmed">
         A placeholder is a value written once and substituted into every
         document of the case that names it, so a product name or version changes
         everywhere at the same time.
       </BodyText>
-      <PlaceholderTable placeholders={placeholders} />
+      <PlaceholderTable
+        // For show only, by request: there is no form behind it. See
+        // Phases 15 and 17 of the plan. The edit page at
+        // `/safety/:caseId/placeholders/edit` still exists; nothing on
+        // this page links to it now.
+        action={<AddIconButton aria-label="Add placeholder" />}
+        placeholders={placeholders}
+      />
     </Stack>
   );
 }

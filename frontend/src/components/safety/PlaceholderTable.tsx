@@ -7,7 +7,9 @@
  * docs/docs/plans/2026-10-02-safety-feature-mock-up-plan.md.
  */
 
-import DataTable, { type Column } from "@components/tables/DataTable";
+import type { ReactNode } from "react";
+import { type Column } from "@components/tables/DataTable";
+import DataTableControlled from "@components/tables/DataTableControlled";
 import type { Placeholder } from "@lib/safety";
 
 const columns: Column<Placeholder>[] = [
@@ -29,13 +31,21 @@ const columns: Column<Placeholder>[] = [
 
 export interface PlaceholderTableProps {
   placeholders: Placeholder[];
+  /**
+   * The table's own action, such as an add icon, shown in the row with
+   * search and filter. See `DataTableControlled`.
+   */
+  action?: ReactNode;
 }
 
 export default function PlaceholderTable({
   placeholders,
+  action,
 }: PlaceholderTableProps) {
   return (
-    <DataTable
+    <DataTableControlled
+      action={action}
+      searchFields={(placeholder) => [placeholder.key, placeholder.value]}
       data={placeholders}
       columns={columns}
       getRowKey={(placeholder) => placeholder.key}

@@ -463,6 +463,10 @@ the safety tables move onto it.
       the page headers on the landing, hazards and incidents pages.
 - [x] **Tests**: the button, each table's search and action slot, and
       the pages' buttons found by their new names.
+- [x] **The placeholders page too**, asked for afterwards: the "Edit
+      placeholders" button leaves the header and `PlaceholderTable` gets
+      the same add icon in its row. The edit page of Phase 13 still
+      exists at its address; nothing links to it from here now.
 
 ## Decisions
 

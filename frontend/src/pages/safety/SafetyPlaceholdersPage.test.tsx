@@ -3,7 +3,6 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import userEvent from "@testing-library/user-event";
 import { resetEdits, setPlaceholderValue } from "@lib/safety";
 import { screen } from "@testing-library/react";
 import { renderWithRouter } from "@/test/test-utils";
@@ -58,12 +57,14 @@ describe("SafetyPlaceholdersPage", () => {
     expect(screen.getByText(/404|not found/i)).toBeInTheDocument();
   });
 
-  it("offers an edit button that opens the edit page", async () => {
+  it("shows an Add placeholder icon above the table, for show only", () => {
     renderPage("sc-001");
-    await userEvent.click(
-      screen.getByRole("button", { name: "Edit placeholders" }),
-    );
-    expect(navigate).toHaveBeenCalledWith("/safety/sc-001/placeholders/edit");
+    expect(
+      screen.getByRole("button", { name: "Add placeholder" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit placeholders" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows an edited value from the session store", () => {
