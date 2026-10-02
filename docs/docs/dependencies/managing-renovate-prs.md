@@ -8,9 +8,9 @@ For background on tiering and policies, see
 
 ## How Renovate PRs arrive
 
-Renovate runs on a **Wednesday schedule** and opens PRs against `main`.
-After every merge to `main` it also re-evaluates open PRs – rebasing
-them or regenerating lock files as needed. This is normal and expected.
+Renovate runs on a **Wednesday schedule** and opens draft PRs against `main`.
+It does not rebase them after a merge to `main` (`rebaseWhen` is `never` in
+`renovate.json`); the merge queue tests each one against current `main` instead.
 
 Vulnerability alert PRs bypass the schedule and appear immediately.
 They target `main` on ordinary `renovate/*` branches, labelled
@@ -59,8 +59,8 @@ When multiple Renovate PRs are open, merge in this order:
    changelogs
 5. **Major version bumps** – one at a time, verify locally if needed
 
-After each merge, Renovate rebases the remaining PRs. Wait for CI to
-re-run before merging the next one.
+Renovate does not rebase the remaining PRs after a merge; the merge queue
+re-runs CI against current `main` for each one.
 
 ## Handling major version bumps
 
@@ -111,8 +111,9 @@ version than the project expects.
 
 **Fix**: Ensure `"packageManager": "yarn@<version>"` is set in
 `frontend/package.json`. This tells both Corepack and Renovate which
-exact Yarn binary to use. After merging the fix to `main`, Renovate
-rebases its branches and regenerates lock files correctly.
+exact Yarn binary to use. After merging the fix to `main`, tick the
+rebase box on each affected PR so Renovate regenerates its lock file; it
+does not rebase on its own.
 
 ### Peer dependency warnings
 
@@ -125,7 +126,8 @@ conflicting package.
 
 This usually means something changed on `main` that breaks the lockfile
 (e.g. a new dependency was added without committing `yarn.lock`). Fix
-`main` first – Renovate will rebase automatically.
+`main` first, then tick the rebase box on each PR – Renovate does not
+rebase on its own.
 
 ### Renovate recreates a closed PR
 

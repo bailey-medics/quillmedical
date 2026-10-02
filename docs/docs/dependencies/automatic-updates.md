@@ -46,15 +46,15 @@ Routine updates run **every Wednesday** (`Europe/London` timezone) with a **3-da
 
 ### Grouping
 
-| Group                           | Behaviour                              |
-| ------------------------------- | -------------------------------------- |
-| All non-major npm + pip updates | Single weekly PR                       |
-| `@types/*` packages             | Grouped PR, no automerge               |
-| devDependencies (minor/patch)   | Grouped PR, no automerge               |
-| GitHub Actions                  | Grouped PR, no automerge               |
-| pre-commit hooks                | Grouped PR, no automerge               |
-| Terraform providers             | Separate PR per provider, no automerge |
-| Lock file maintenance           | Single weekly PR, no automerge         |
+| Group                           | Behaviour                      |
+| ------------------------------- | ------------------------------ |
+| All non-major npm + pip updates | Single weekly PR               |
+| `@types/*` packages             | Grouped PR, no automerge       |
+| devDependencies (minor/patch)   | Grouped PR, no automerge       |
+| GitHub Actions                  | Grouped PR, no automerge       |
+| pre-commit hooks                | Grouped PR, no automerge       |
+| Terraform providers             | Grouped PR, no automerge       |
+| Lock file maintenance           | Single weekly PR, no automerge |
 
 No Renovate PR is merged automatically. Every one is reviewed and added to
 the merge queue by hand – see `.claude/rules/ci.md` for that flow.
@@ -120,7 +120,7 @@ For critical/high vulnerabilities in Tier 1 or Tier 2 dependencies. Renovate's o
 3. CI validates (fast tier on push, heavy tier when PR is marked ready).
 4. Merge to `main` and promote to production via the deploy workflow approval gate.
 
-See the [branching plan](../plans/github-branching-plan.md#production-hotfixes) for full hotfix details.
+See the [branching plan](../plans/2026-05-25-github-branching-plan.md#production-hotfixes) for full hotfix details.
 
 ## Notifications
 
@@ -137,7 +137,7 @@ After committing these files, the following settings must be configured manually
    - Repository → _Settings_ → _Security & analysis_ → enable **Secret scanning** and **Code scanning** if applicable.
 
 3. **Branch protection rules**
-   - `main`: require PR reviews (≥ 1), require status checks to pass, disallow direct push.
+   - `main`: require a pull request (0 approvals while solo), require status checks to pass, disallow direct push. Managed by Terraform in `infra/github/branch_rules.tf`.
    - `clinical-live`: require PR reviews (≥ 2), require status checks to pass, disallow direct push, restrict who can push.
 
 4. **Notification routing for `info@quill-medical.com`**
