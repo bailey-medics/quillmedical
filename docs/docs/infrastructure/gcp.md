@@ -28,7 +28,7 @@ Only teaching is deployed. Staging was shut down because an idle environment was
          │              ┌────────────▼────────┐   ┌──────▼───────┐
          └──────────────►   Global LB        │   │  Global LB   │
                         │   Cloud Armor      │   │  Cloud Armor │
-                        │   WAF              │   │  WAF         │
+                        │   rate limiting    │   │  rate limit  │
                         └──┬───────┬───┬─────┘   └──┬────────┬──┘
                            │       │   │            │        │
                         /api/*   /*   landing     /api/*    /*
@@ -58,7 +58,7 @@ Only teaching is deployed. Staging was shut down because an idle environment was
 
 Each environment has:
 
-- **Global HTTPS Load Balancer** – path-based routing, Cloud Armor WAF, Google-managed SSL
+- **Global HTTPS Load Balancer** – path-based routing, Cloud Armor rate limiting, Google-managed SSL
 - **Cloud Run** – backend (FastAPI) and frontend (React/Vite), auto-scaling
 - **Cloud SQL** – PostgreSQL for the auth database (all environments)
 - **Secret Manager** – JWT keys, database passwords, VAPID keys
@@ -216,7 +216,7 @@ The infrastructure is defined in `infra/` using Terraform modules:
 | `cloud-sql`     | PostgreSQL instances with private IP, backups, auto-generated passwords |
 | `cloud-run`     | Backend and frontend services with secret injection                     |
 | `cloud-run-job` | Admin CLI jobs (create-superadmin, add-role, run-migrations)           |
-| `load-balancer` | Global HTTPS LB, Cloud Armor WAF, serverless NEGs, SSL certs            |
+| `load-balancer` | Global HTTPS LB, Cloud Armor rate limiting, serverless NEGs, SSL certs  |
 | `compute-fhir`  | VM running HAPI FHIR + EHRbase (prod/staging only)                      |
 | `monitoring`    | Uptime checks and email alerting                                        |
 | `dns`           | Cloud DNS zone management                                               |
@@ -299,7 +299,7 @@ Each environment has a Global HTTPS Load Balancer that sits in front of the Clou
 
 - **Path-based routing**: `/api/*` goes to the backend Cloud Run service, everything else goes to the frontend
 - **Google-managed SSL certificates**: automatically provisioned and renewed for each domain
-- **Cloud Armor WAF**: rate limiting at 500 requests per minute per IP address
+- **Cloud Armor rate limiting**: 500 requests per minute per IP address. This is the policy's only rule; it has none that look for attack patterns
 - **HTTP to HTTPS redirect**: all port 80 traffic is redirected to port 443
 - **Static global IP**: stable IP addresses for DNS A records
 
@@ -495,16 +495,23 @@ This binding should be added to the `cloud-storage` Terraform module to avoid ma
 - **Attribute condition on WIF** – only `bailey-medics/quillmedical` can authenticate (production/staging); teaching also allows `bailey-medics/quill-question-bank`
 - **Least-privilege service accounts** – each environment has its own service account
 - **Explicit GCS IAM bindings** – Cloud Run service accounts need bucket-level `roles/storage.objectViewer` even when they are project editors (see [Cloud Storage IAM](#cloud-storage-iam))
-- **Cloud Armor WAF** – rate limiting (500 req/min per IP) on all load balancers
+- **Cloud Armor rate limiting** – 500 req/min per IP on the backend and frontend services of every load balancer. The landing and video buckets carry no policy
 - **HTTPS enforced** – HTTP to HTTPS redirect on all environments, Google-managed SSL certificates
 - **Google-managed TLS** – certificates auto-provisioned and auto-renewed, no manual cert management
 - **Content Security Policy** – browser-enforced allowlists per resource type (see [CSP headers](#content-security-policy-csp-headers) below)
 
 ### Content Security Policy (CSP) headers
 
-The production Caddyfile (`caddy/prod/Caddyfile`) sets a `Content-Security-Policy` response header on every page. This tells the browser which origins are allowed to load each type of resource, providing defence against XSS and data-injection attacks.
+A `Content-Security-Policy` response header tells the browser which origins are allowed to load each type of resource, providing defence against XSS and data-injection attacks. Which layer sets it depends on the response:
 
-Current policy:
+- **The application's pages** – the production Caddyfile (`caddy/prod/Caddyfile`), with the policy below.
+- **API responses, `/api/*`** – the load balancer's backend service (`infra/modules/load-balancer/main.tf`), with `default-src 'none'; frame-ancestors 'self'`. These go straight to the backend and never pass through Caddy.
+- **Teaching videos, `/videos/*`** – none. The videos backend bucket sets the other security headers, but a policy does nothing on a media file.
+- **The landing site** – its backend bucket, in the load balancer module, with its own policy.
+
+See [Which layer sets the headers](../cybersecurity/index.md#which-layer-sets-the-headers) for the full set of headers on each.
+
+The application's policy:
 
 ```
 default-src 'self';
@@ -512,19 +519,21 @@ script-src  'self';
 style-src   'self' 'unsafe-inline';
 img-src     'self' data: https://storage.googleapis.com;
 font-src    'self';
-connect-src 'self';
+connect-src 'self' https://storage.googleapis.com;
+frame-src   'self' https://www.youtube.com;
 frame-ancestors 'none'
 ```
 
-| Directive         | Allowed origins                               | Notes                                           |
-| ----------------- | --------------------------------------------- | ----------------------------------------------- |
-| `default-src`     | `'self'`                                      | Fallback for any type not listed below          |
-| `script-src`      | `'self'`                                      | Only first-party JavaScript                     |
-| `style-src`       | `'self' 'unsafe-inline'`                      | Mantine injects inline styles at runtime        |
-| `img-src`         | `'self' data: https://storage.googleapis.com` | GCS signed URLs for teaching images             |
-| `font-src`        | `'self'`                                      | Only first-party fonts                          |
-| `connect-src`     | `'self'`                                      | XHR/fetch – API calls go via the same-origin LB |
-| `frame-ancestors` | `'none'`                                      | Prevents the app being embedded in an iframe    |
+| Directive         | Allowed origins                               | Notes                                                             |
+| ----------------- | --------------------------------------------- | ----------------------------------------------------------------- |
+| `default-src`     | `'self'`                                      | Fallback for any type not listed below                            |
+| `script-src`      | `'self'`                                      | Only first-party JavaScript                                       |
+| `style-src`       | `'self' 'unsafe-inline'`                      | Mantine injects inline styles at runtime                          |
+| `img-src`         | `'self' data: https://storage.googleapis.com` | GCS signed URLs for teaching images                               |
+| `font-src`        | `'self'`                                      | Only first-party fonts                                            |
+| `connect-src`     | `'self' https://storage.googleapis.com`       | API calls go via the same-origin LB; lecture uploads go to GCS    |
+| `frame-src`       | `'self' https://www.youtube.com`              | Certificate PDFs framed from the API; YouTube for teaching videos |
+| `frame-ancestors` | `'none'`                                      | Prevents the app being embedded in an iframe                      |
 
 !!! warning "Adding external image or API sources"
 If a new feature loads images from an external origin (e.g. a different CDN or FHIR server), that origin **must** be added to the relevant CSP directive in `caddy/prod/Caddyfile`. Without this, the browser silently blocks the request and images appear broken with no errors in the application logs – only a CSP violation message in the browser console.

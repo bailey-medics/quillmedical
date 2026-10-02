@@ -4,7 +4,7 @@
 #   - Path-based routing: /api/* → backend Cloud Run, /* → frontend Cloud Run
 #   - Google-managed SSL certificate (auto-renewing)
 #   - HTTP → HTTPS redirect
-#   - Cloud Armor WAF with rate limiting
+#   - Cloud Armor rate limiting
 #   - Full request logging
 
 # ---------- Static IP ----------

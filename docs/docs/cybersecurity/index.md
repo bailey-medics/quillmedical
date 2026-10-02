@@ -85,7 +85,7 @@ Rate limiting restricts how many requests a user can make in a given time window
 | `POST /api/auth/totp/verify`     | 5 per minute |
 | `POST /api/auth/totp/disable`    | 5 per minute |
 
-In production, **Google Cloud Platform (GCP) Cloud Armor web application firewall (WAF)** provides additional global rate limiting at the load balancer level.
+In production, **Google Cloud Platform (GCP) Cloud Armor** provides additional global rate limiting at the load balancer level: 500 requests a minute per IP address. That one rule is all the policy holds. It has no rules that look for attack patterns, so it is not a web application firewall.
 
 ### Anti-enumeration
 
@@ -182,6 +182,19 @@ Security headers are instructions sent by the server that tell the browser how t
 | `Referrer-Policy`           | `strict-origin-when-cross-origin`                                                                                                                                                                                          | Limits what URL information is shared with other sites          |
 | `Permissions-Policy`        | `camera=(), microphone=(), geolocation=()`                                                                                                                                                                                 | Blocks access to device features the app does not need          |
 | `Server`                    | Removed                                                                                                                                                                                                                    | Hides server software details from potential attackers          |
+
+### Which layer sets the headers
+
+Caddy only sees the responses it serves, so in production three other kinds of response get their headers from the load balancer instead, through `custom_response_headers` in Terraform. The dev and end-to-end stacks have no load balancer, so there only Caddy's headers exist.
+
+- **The application's pages and static files** – Caddy (`caddy/prod/Caddyfile`), with the values in the table above.
+- **API responses, `/api/*`** – the load balancer's backend service (`infra/modules/load-balancer/main.tf`). `Content-Security-Policy` is `default-src 'none'; frame-ancestors 'self'`, far tighter than the application's because an API response should load nothing. `X-Frame-Options` is `SAMEORIGIN` rather than `DENY`, because the certificate page shows a PDF from the API in an iframe. `Strict-Transport-Security`, `X-Content-Type-Options` and `Referrer-Policy` match the table.
+- **Teaching videos and captions, `/videos/*`** – the videos backend bucket (`infra/modules/teaching-video-pipeline/main.tf`). The same set as the API with `X-Frame-Options: DENY`, and no `Content-Security-Policy`, which does nothing on a media file.
+- **The landing site** – its own backend bucket, in the load balancer module, with a policy written for that site.
+
+The load balancer overwrites a header of the same name that the backend sent, so a single API route cannot set its own value for any of these.
+
+After every deploy, `deploy.yml` requests `/` and `/api/health` on the live site and fails if `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy` or `Strict-Transport-Security` is missing (`.github/scripts/deploy/check-security-headers.sh`).
 
 ### Transport Layer Security (TLS)
 

@@ -153,11 +153,17 @@ could run before they exist and fail a healthy deploy.
 
 ## Phase 4: Make the documents true
 
-- [ ] Update the security headers section of
+- [x] Update the security headers section of
       `docs/docs/cybersecurity/index.md` and the CSP section of
       `docs/docs/infrastructure/gcp.md` to say which layer sets the headers
       for which responses: Caddy for the application's pages, the load
       balancer for the API, the videos and the landing site.
+      The CSP section of `gcp.md` also showed a policy older than the
+      Caddyfile's, without `frame-src` and without Cloud Storage in
+      `connect-src`; it now matches. In `cybersecurity/index.md` the new
+      account is its own section under the table rather than a rewrite of
+      the paragraph above it, because open pull request #1363 rewrites
+      that paragraph and the table, and the two would collide.
 
 - [ ] Ask a human to review Hazard-0032
       (`docs/docs/safety/hazards/Hazard-0032.md`). It lists "Add API
@@ -166,7 +172,7 @@ could run before they exist and fail a healthy deploy.
       implementation". This plan puts that control in place; the hazard
       record is a human's to update.
 
-- [ ] Stop calling the Cloud Armor policy a WAF. It holds one rule, a
+- [x] Stop calling the Cloud Armor policy a WAF. It holds one rule, a
       rate limit of 500 requests a minute per IP, and a default allow. It
       has no rules that look for attack patterns. Reword it as "Cloud Armor
       rate limiting" in the comments at the top of
@@ -175,6 +181,12 @@ could run before they exist and fail a healthy deploy.
       `docs/docs/infrastructure/gcp.md`,
       `docs/docs/frontend/public-pages.md` and
       `docs/docs/backend/caddy/index.md`.
+      Rewording turned up a second false claim: `public-pages.md` listed
+      Cloud Armor as protecting the landing site, and `gcp.md` said "on all
+      load balancers". The policy is attached only to the backend and
+      frontend services. Neither the landing bucket nor the videos bucket
+      carries one, and both documents now say so. Whether those buckets
+      should have a rate limit is not decided here.
 
 ## Decisions
 

@@ -57,7 +57,7 @@ In production, the **GCP Global HTTPS Load Balancer** handles:
 
 - TLS termination (Google-managed certificate)
 - Path routing: `/api/*` → backend Cloud Run, `/*` → frontend Cloud Run
-- Cloud Armor WAF + rate limiting
+- Cloud Armor rate limiting
 - HTTP → HTTPS redirect
 
 Caddy runs inside the frontend container on port 8080 (Cloud Run strips `cap_net_bind_service`, preventing non-root users from binding to :80). It serves the built React SPA with security headers:
