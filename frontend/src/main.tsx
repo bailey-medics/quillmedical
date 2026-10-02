@@ -391,6 +391,13 @@ const routes: RouteObject[] = [
             lazy: () => import("./pages/safety/SafetyPlaceholdersPage"),
             handle: { safeForReload: true },
           },
+          {
+            // A form, but one that starts from the stored values, so a
+            // reload loses nothing that was not already lost.
+            path: "/safety/:caseId/placeholders/edit",
+            lazy: () => import("./pages/safety/SafetyPlaceholdersEditPage"),
+            handle: { safeForReload: true },
+          },
         ],
       },
 

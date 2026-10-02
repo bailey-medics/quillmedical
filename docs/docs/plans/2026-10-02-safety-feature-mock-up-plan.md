@@ -359,16 +359,16 @@ point of a placeholder and the best demonstration the mock-up can give.
       Phase 11, with `usePlaceholders(caseId)` returning the fixtures with
       any edits applied and `setPlaceholderValue(caseId, key, value)` to
       write one. Lost on reload, by design, and said so on the page.
-- [ ] **Route `/safety/:caseId/placeholders/edit`**,
+- [x] **Route `/safety/:caseId/placeholders/edit`**,
       `pages/safety/SafetyPlaceholdersEditPage.tsx`: one text field per
       placeholder, labelled by its key, with `ButtonPair` to save or
       cancel, both returning to the placeholders page. The placeholders
       page gains an edit button in its header through `PageHeader`'s
       `action`.
-- [ ] **The document page reads `usePlaceholders`** rather than the
+- [x] **The document page reads `usePlaceholders`** rather than the
       fixture directly, so an edited value appears in the rendered
       document.
-- [ ] **Tests**: the store, the edit page round trip, and a document
+- [x] **Tests**: the store, the edit page round trip, and a document
       test that renders an edited value.
 
 ## Decisions

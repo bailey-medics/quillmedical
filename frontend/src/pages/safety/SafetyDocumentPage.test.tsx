@@ -2,7 +2,8 @@
  * Safety Document Page Tests
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { resetEdits, setPlaceholderValue } from "@lib/safety";
 import { screen } from "@testing-library/react";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as Page } from "./SafetyDocumentPage";
@@ -15,6 +16,8 @@ function renderPage(caseId: string, documentId: string) {
 }
 
 describe("SafetyDocumentPage", () => {
+  afterEach(() => resetEdits());
+
   it("titles the page with the document and renders it as a sheet", () => {
     renderPage("sc-001", "cscr");
     expect(
@@ -44,5 +47,14 @@ describe("SafetyDocumentPage", () => {
   it("answers an unknown case with a 404", () => {
     renderPage("sc-999", "crmp");
     expect(screen.getByText(/404|not found/i)).toBeInTheDocument();
+  });
+
+  it("renders an edited placeholder value", () => {
+    setPlaceholderValue("sc-001", "supplier_name", "Acme Clinical Systems");
+    renderPage("sc-001", "crmp");
+    expect(screen.getAllByText(/Acme Clinical Systems/).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.queryByText(/MedScribe Health Ltd/)).not.toBeInTheDocument();
   });
 });
