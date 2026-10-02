@@ -80,6 +80,17 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   as a `teaching_admin`: check the Admin entry and its children are
   announced, and that no Patients entry is reached. No journey yet covers
   the admin pages themselves.
+- **Journeys 2 and 3, the side navigation, with the Safety entry** – the
+  [safety feature mock-up plan](../../plans/2026-10-02-safety-feature-mock-up-plan.md)
+  adds a Safety entry after Passport, shown where the `safety` feature is
+  on, with one nested link for the open page of a case (Hazards,
+  Incidents and so on) while `/safety/:caseId/<page>` is open. Journey 2
+  opens the side navigation from the ribbon and journey 3 uses the
+  teaching sidebar, which renders the same entries. Walk both with the
+  feature on: check the Safety entry is announced, that the nested link
+  is announced as inside Safety and as the current page, and that the
+  drawer's focus trap still holds. The safety pages themselves are a
+  mock-up with fixture data and no journey covers them.
 - **The site page as a teaching admin** – the same plan's Phase 6 makes
   each row of the Sites table on an organisation's admin page a link to
   `/admin/sites/:id` for everybody who can open the page, where it was a

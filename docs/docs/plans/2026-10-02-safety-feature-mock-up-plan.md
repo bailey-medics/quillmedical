@@ -114,17 +114,17 @@ organisation and nobody else.
 
 ## Phase 4: Pages and routes
 
-- [ ] **Create `frontend/src/pages/safety/`** with pages that each export
+- [x] **Create `frontend/src/pages/safety/`** with pages that each export
       `Component` for React Router's `lazy`, as the passport pages do:
       `SafetyPage.tsx` (landing), `SafetyCasePage.tsx` (one case) and six
       card pages `SafetyDocumentationPage.tsx`, `SafetyHazardsPage.tsx`,
       `SafetyIncidentsPage.tsx`, `SafetyOfficersPage.tsx`,
       `SafetySignOffPage.tsx` and `SafetyPlaceholdersPage.tsx`. Each is the
       standard `<Stack gap="lg">` with `PageHeader`, no Container.
-- [ ] **Landing page**: `PageHeader` titled "Safety" with a subtitle
+- [x] **Landing page**: `PageHeader` titled "Safety" with a subtitle
       saying these are demonstration cases, then `SafetyCaseTable` over
       `SAFETY_CASES`. No add button: there is nothing to add to.
-- [ ] **Case page**: header carries the case title with the system and
+- [x] **Case page**: header carries the case title with the system and
       standard as subtitle and the status badge, then a `SimpleGrid` of six
       `ActionCard`s in the order asked for (documentation, hazards,
       incidents, officers, compliance sign-off, placeholders), each with an
@@ -134,31 +134,33 @@ organisation and nobody else.
       `IconAlertTriangle`, `IconFileText` and `IconUsers` are the likely set.
       An unknown `:caseId` renders `NotFoundLayout`, matching how every gate
       here answers with a 404.
-- [ ] **Card pages**: header with the case title as a link back to the
+- [x] **Card pages**: header with the case title as a link back to the
       case, then the matching component over `safetyCaseById(caseId)`.
       Placeholders gets a short paragraph explaining what a placeholder is,
       a value substituted into every document of the case, because it is
       the one card whose name does not explain itself.
-- [ ] **Routes in `frontend/src/main.tsx`**, inside the `RequireAuth` and
+- [x] **Routes in `frontend/src/main.tsx`**, inside the `RequireAuth` and
       `RootLayout` subtree beside the passport block, wrapped once in
       `<RequireFeature feature="safety"><Outlet /></RequireFeature>`. Every
       route uses `lazy: () => import("./pages/safety/...")` and
       `handle: { safeForReload: true }`, since nothing here holds form
       state. Paths: `/safety`, `/safety/:caseId`, and
       `/safety/:caseId/{documentation,hazards,incidents,officers,sign-off,placeholders}`.
-- [ ] **Page tests**, one file per page: renders the fixture content,
+- [x] **Page tests**, one file per page: renders the fixture content,
       navigates on a row or card click, and the 404 for an unknown case.
       Run `just uf src/pages/safety` and `just uf src/components/safety`
       locally, nothing wider.
-- [ ] **Run `yarn typecheck:all` in `frontend/`**, not bare `tsc`, so the
+- [x] **Run `yarn typecheck:all` in `frontend/`**, not bare `tsc`, so the
       stories are checked too.
 
 ## Phase 5: Switch on and record
 
 - [ ] **Switch the feature on at the demo organisation** from its Features
       admin page once the change is deployed. Nothing else sees it: the
-      sidebar entry and every route check `enabled_features`.
-- [ ] **Add the Safety journey to the accessibility log**: the sidebar
+      sidebar entry and every route check `enabled_features`. Left for a
+      human: it needs the stack merged and deployed first, and switching a
+      feature on in production is not something an unattended run does.
+- [x] **Add the Safety journey to the accessibility log**: the sidebar
       gains an entry and a child link, so name the navigation journey in
       `docs/docs/frontend/accessibility/journeys.md` and add it to the "Not
       yet run" list in `testing-log.md`.
