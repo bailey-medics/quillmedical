@@ -11,6 +11,7 @@
 import { ActionIcon, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { IconSearch } from "@/components/icons/appIcons";
+import AppTooltip from "@/components/tooltip/AppTooltip";
 
 interface SearchButtonProps {
   /** Click handler to toggle the search field */
@@ -32,20 +33,24 @@ export default function SearchButton({
   );
 
   return (
-    <ActionIcon
-      variant="subtle"
-      size={isMobile ? 44 : "lg"}
-      onClick={onClick}
-      aria-label="Open search"
-      style={{
-        color: isDark ? "white" : "var(--mantine-color-primary-5)",
-        "--ai-hover": isDark
-          ? "var(--mantine-color-primary-6)"
-          : "var(--mantine-color-gray-1)",
-        "--ai-hover-color": isDark ? "white" : "var(--mantine-color-primary-5)",
-      }}
-    >
-      <IconSearch size={30} stroke={2.5} />
-    </ActionIcon>
+    <AppTooltip label="Search" position="bottom">
+      <ActionIcon
+        variant="subtle"
+        size={isMobile ? 44 : "lg"}
+        onClick={onClick}
+        aria-label="Open search"
+        style={{
+          color: isDark ? "white" : "var(--mantine-color-primary-5)",
+          "--ai-hover": isDark
+            ? "var(--mantine-color-primary-6)"
+            : "var(--mantine-color-gray-1)",
+          "--ai-hover-color": isDark
+            ? "white"
+            : "var(--mantine-color-primary-5)",
+        }}
+      >
+        <IconSearch size={30} stroke={2.5} />
+      </ActionIcon>
+    </AppTooltip>
   );
 }

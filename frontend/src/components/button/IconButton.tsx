@@ -11,7 +11,7 @@
  * 32px. md there would be 20px, lost in the larger button.
  */
 
-import type { ReactElement, MouseEventHandler } from "react";
+import { forwardRef, type MouseEventHandler, type ReactElement } from "react";
 import { ActionIcon, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import type { MantineColor } from "@mantine/core";
@@ -49,6 +49,9 @@ interface IconButtonProps {
 /**
  * IconButton component that wraps ActionIcon with automatic sizing.
  *
+ * Forwards its ref, so a tooltip or popover can wrap it: both attach
+ * to the element the ref lands on.
+ *
  * @param props - Component props
  * @returns ActionIcon with Icon inside
  *
@@ -63,20 +66,21 @@ interface IconButtonProps {
  * />
  * ```
  */
-export default function IconButton({
-  icon,
-  ...actionIconProps
-}: IconButtonProps) {
-  const theme = useMantineTheme();
-  const isMobile = useMediaQuery(
-    `(max-width: ${theme.breakpoints.sm})`,
-    false,
-    { getInitialValueInEffect: false },
-  );
+const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
+  function IconButton({ icon, ...actionIconProps }, ref) {
+    const theme = useMantineTheme();
+    const isMobile = useMediaQuery(
+      `(max-width: ${theme.breakpoints.sm})`,
+      false,
+      { getInitialValueInEffect: false },
+    );
 
-  return (
-    <ActionIcon {...actionIconProps} size={isMobile ? 48 : 42}>
-      <Icon icon={icon} size={isMobile ? "lg" : "md"} />
-    </ActionIcon>
-  );
-}
+    return (
+      <ActionIcon ref={ref} {...actionIconProps} size={isMobile ? 48 : 42}>
+        <Icon icon={icon} size={isMobile ? "lg" : "md"} />
+      </ActionIcon>
+    );
+  },
+);
+
+export default IconButton;

@@ -14,6 +14,7 @@ import { IconFilter2 } from "@components/icons/appIcons";
 import { BodyText } from "@components/typography";
 import FilterModal from "./filter/FilterModal";
 import classes from "./FilterSelect.module.css";
+import AppTooltip from "@/components/tooltip/AppTooltip";
 
 interface FilterSelectProps {
   /** Grouped or flat option data – same format as MultiSelect */
@@ -63,16 +64,22 @@ export default function FilterSelect({
         shadow="none"
         trapFocus={false}
       >
-        <Popover.Target>
-          <ActionIcon
-            variant="subtle"
-            size={isMobile ? 44 : "lg"}
-            onClick={toggle}
-            aria-label={ariaLabel}
-          >
-            <IconFilter2 size={32} stroke={2.5} />
-          </ActionIcon>
-        </Popover.Target>
+        {/* The tooltip wraps the target, not the other way round:
+            Popover.Target forwards the props it is given down to the
+            button, so aria-expanded still lands there, whereas a tooltip
+            in the middle would keep them. */}
+        <AppTooltip label={ariaLabel} position="bottom">
+          <Popover.Target>
+            <ActionIcon
+              variant="subtle"
+              size={isMobile ? 44 : "lg"}
+              onClick={toggle}
+              aria-label={ariaLabel}
+            >
+              <IconFilter2 size={32} stroke={2.5} />
+            </ActionIcon>
+          </Popover.Target>
+        </AppTooltip>
         <Popover.Dropdown ref={dropdownRef} className={classes.dropdown}>
           <FilterModal
             data={data}

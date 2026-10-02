@@ -34,4 +34,17 @@ describe("AppTooltip", () => {
     );
     expect(screen.queryByText("Hidden text")).not.toBeInTheDocument();
   });
+
+  it("still opens when asked to sit below the target", async () => {
+    // jsdom does no layout, so where it lands cannot be checked here;
+    // the Below story shows it. This pins that the prop is accepted.
+    const user = userEvent.setup();
+    renderWithMantine(
+      <AppTooltip label="Below" openDelay={0} position="bottom">
+        <button type="button">Bottom</button>
+      </AppTooltip>,
+    );
+    await user.hover(screen.getByRole("button", { name: "Bottom" }));
+    expect(await screen.findByText("Below")).toBeInTheDocument();
+  });
 });
