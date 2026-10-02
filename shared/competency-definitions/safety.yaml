@@ -1,0 +1,44 @@
+# shared/competency-definitions/safety.yaml
+#
+# SAFETY COMPETENCY DEFINITIONS FOR QUILL MEDICAL
+#
+# Competencies governing the Safety feature: who may open the clinical
+# safety cases, and who runs the feature at an organisation or site.
+#
+# The feature is a mock-up with no backend, built to show what clinical
+# safety content looks like in Quill. These entries exist so it is gated
+# and staffed the way Teaching and Passport are, from the same admin
+# pages. See docs/docs/plans/2026-10-02-safety-feature-mock-up-plan.md.
+#
+# Feature-admin in kind, like teaching.yaml and passport.yaml: these say
+# who may use a part of Quill, never what may be done in the care of a
+# patient.
+#
+# Every file in this directory is merged into one catalogue at load
+# time, so ids must be unique across the whole directory, not just
+# within a file. Which file an entry lives in carries no meaning to the
+# code – it is for the reader.
+
+competencies:
+  # Opens the safety pages, as view_teaching_cases opens teaching and
+  # assess_clinician_passport opens the passport. Granted by the safety
+  # professions at provisioning.
+  - id: view_safety_cases
+    display_name: "Use Safety Cases"
+
+  # Running safety at an organisation or site: signing up the safety
+  # officers, the clinical lead and other admins, at the org_units its
+  # holder belongs to.
+  #
+  # A whitelist, like manage_teaching and manage_passport, so its holder
+  # never needs manage_users, which can grant anything. It is on its own
+  # list so one safety admin can appoint another. Nothing here is sold.
+  - id: manage_safety
+    display_name: "Manage Safety"
+    may_grant:
+      - view_safety_cases
+      - manage_safety
+    may_assign_professions:
+      - safety_officer
+      - safety_clinical_lead
+      - safety_admin

@@ -134,10 +134,11 @@ export function useFeatureNavItems(): NavItem[] {
 
   const hasTeaching = useHasFeature("teaching");
 
-  // Safety gates its entry on the feature alone, matching its routes,
-  // which carry `RequireFeature` and nothing else: the pages read
-  // fixtures, so there is nothing a competency would protect.
-  const hasSafety = useHasFeature("safety");
+  // Safety is gated as the passport is, on the organisation feature and
+  // the competency its professions carry, matching its routes.
+  const safetyEnabled = useHasFeature("safety");
+  const canViewSafety = useHasCompetency("view_safety_cases");
+  const hasSafety = safetyEnabled && canViewSafety;
 
   // The passport routes carry RequireFeature *and* RequireCompetency,
   // so both are asked here. Teaching gates its entry on the feature

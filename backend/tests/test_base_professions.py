@@ -263,3 +263,41 @@ def test_teaching_admin_runs_teaching_without_the_root() -> None:
         "view_teaching_analytics",
     ]
     assert get_profession_details("teaching_manager") is None
+
+
+@pytest.mark.parametrize(
+    "profession_id", ["safety_officer", "safety_clinical_lead", "safety_admin"]
+)
+def test_safety_professions_need_nothing_clinical(profession_id: str) -> None:
+    """A safety-only organisation runs with clinical services off.
+
+    A safety case holds no patient data, so no safety profession may
+    depend on FHIR or EHRbase, or the new user form would hide it exactly
+    where it is needed.
+    """
+    profession = get_profession_details(profession_id)
+
+    assert profession is not None
+    assert not profession.requires_clinical_services
+
+
+def test_a_safety_admin_runs_safety_and_may_open_it() -> None:
+    """Managing safety comes with the way into it, and nothing else.
+
+    Pinned whole, as the passport admin is, so nothing arrives with the
+    job unremarked.
+    """
+    admin = get_profession_details("safety_admin")
+
+    assert admin is not None
+    assert set(admin.base_competencies) == {
+        "manage_safety",
+        "view_safety_cases",
+    }
+
+
+def test_the_safety_clinical_lead_is_a_label() -> None:
+    """The lead names a person; it grants nothing an officer lacks."""
+    assert get_profession_base_competencies(
+        "safety_clinical_lead"
+    ) == get_profession_base_competencies("safety_officer")
