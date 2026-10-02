@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
+import { waitFor } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 
 // Mock react-player to avoid actual YouTube embedding in tests
@@ -8,25 +9,34 @@ vi.mock("react-player", () => ({
     ({
       src,
       controls,
-      poster,
       children,
+      ref,
     }: {
       src: string;
       controls: boolean;
-      poster?: string;
       children?: React.ReactNode;
+      ref?: React.Ref<HTMLVideoElement>;
     }) => (
       // Children are rendered because the real component forwards them
       // to the underlying video element – which is how the caption
       // track reaches the DOM, and therefore what these tests assert.
-      <div
+      //
+      // `poster` is deliberately not accepted. The real component hands
+      // the element a fixed list of props and `poster` is not on it. An
+      // earlier mock took the prop and echoed it back, so the poster
+      // test passed while no hosted lecture showed one.
+      //
+      // The caption track arrives as `children`, as it does in the real
+      // component, so the rule cannot see one here.
+      // eslint-disable-next-line jsx-a11y/media-has-caption
+      <video
+        ref={ref}
         data-testid="react-player"
         data-src={src}
         data-controls={controls}
-        data-poster={poster}
       >
         {children}
-      </div>
+      </video>
     ),
   ),
 }));
@@ -152,16 +162,80 @@ describe("VideoPlayer", () => {
     expect(container.querySelector("track")).toBeNull();
   });
 
-  it("passes the poster through", async () => {
-    const { findByTestId } = renderWithMantine(
-      <VideoPlayer
-        src="https://x.test/a.mp4"
-        posterUrl="https://x.test/p.jpg"
-      />,
-    );
+  describe("poster", () => {
+    it("sets the poster on the video element itself", async () => {
+      // On the element, not through a prop: react-player drops a
+      // `poster` prop before it reaches the video.
+      const { findByTestId } = renderWithMantine(
+        <VideoPlayer
+          src="https://x.test/a.mp4"
+          posterUrl="https://x.test/p.jpg"
+        />,
+      );
 
-    const player = await findByTestId("react-player");
-    expect(player).toHaveAttribute("data-poster", "https://x.test/p.jpg");
+      const player = await findByTestId("react-player");
+      await waitFor(() =>
+        expect(player).toHaveAttribute("poster", "https://x.test/p.jpg"),
+      );
+    });
+
+    it("sets the poster alongside a caption track", async () => {
+      // The captioned player is a separate branch of the render.
+      const { findByTestId } = renderWithMantine(
+        <VideoPlayer
+          src="https://x.test/a.mp4"
+          posterUrl="https://x.test/p.jpg"
+          captionsUrl="https://x.test/a.vtt"
+        />,
+      );
+
+      const player = await findByTestId("react-player");
+      await waitFor(() =>
+        expect(player).toHaveAttribute("poster", "https://x.test/p.jpg"),
+      );
+    });
+
+    it("sets no poster when none is given", async () => {
+      const { findByTestId } = renderWithMantine(
+        <VideoPlayer src="https://x.test/a.mp4" />,
+      );
+
+      const player = await findByTestId("react-player");
+      expect(player).not.toHaveAttribute("poster");
+    });
+
+    it("follows the poster when it changes, and clears it when removed", async () => {
+      const { findByTestId, rerender } = renderWithMantine(
+        <VideoPlayer
+          src="https://x.test/a.mp4"
+          posterUrl="https://x.test/p.jpg"
+        />,
+      );
+      const player = await findByTestId("react-player");
+      await waitFor(() => expect(player).toHaveAttribute("poster"));
+
+      rerender(
+        <VideoPlayer
+          src="https://x.test/a.mp4"
+          posterUrl="https://x.test/q.jpg"
+        />,
+      );
+      await waitFor(() =>
+        expect(player).toHaveAttribute("poster", "https://x.test/q.jpg"),
+      );
+
+      rerender(<VideoPlayer src="https://x.test/a.mp4" />);
+      await waitFor(() => expect(player).not.toHaveAttribute("poster"));
+    });
+
+    it("leaves YouTube to draw its own thumbnail", async () => {
+      const { findByTestId } = renderWithMantine(
+        <VideoPlayer youtubeId="abc123" posterUrl="https://x.test/p.jpg" />,
+      );
+
+      const player = await findByTestId("react-player");
+      expect(player).not.toHaveAttribute("poster");
+    });
   });
 
   describe("quality switch", () => {
