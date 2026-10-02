@@ -2,7 +2,7 @@
 
 Technical overview of the security controls implemented across the Quill Medical platform. This document covers authentication (verifying who a user is), authorisation (controlling what they can do), infrastructure hardening, input validation, frontend protections, and continuous integration / continuous deployment (CI/CD) security tooling.
 
-For the detailed audit findings and penetration test results, see the [Security review plan](../plans/security-review.md).
+For the detailed audit findings and penetration test results, see the [Security review plan](../plans/2026-04-04-security-review.md).
 
 ## Authentication
 
@@ -65,7 +65,7 @@ This works because an attacker's website can trigger a request that includes the
 
 2FA adds an extra layer of security beyond a password. TOTP generates a short-lived code (typically six digits) using an authenticator app on the user's phone.
 
-- **Standard**: RFC 6238 (TOTP), 30-second time steps, ±1 step clock drift tolerance.
+- **Standard**: RFC 6238 (TOTP), 30-second time steps, no clock drift tolerance (only the current step is accepted).
 - **Library**: `pyotp`.
 - **Secret**: 32-character Base32, generated per user via `pyotp.random_base32()`.
 - **Provisioning**: `otpauth://` URI for QR code scanning (Google Authenticator, Authy, etc.).
@@ -127,9 +127,9 @@ and site membership plus competencies; only `superadmin` stood alone. See
 Healthcare-specific authorisation layer for clinical operations. Rather than simple role-based permissions, CBAC checks whether a user has a specific clinical competency (e.g. "can prescribe controlled drugs") before allowing an action.
 
 - **Competency resolution**: `final_competencies = base_profession_competencies + additional_competencies - removed_competencies`
-- **Configuration**: Defined in `shared/competency-definitions/` (a directory split by kind – `clinical.yaml` for what may be done to a patient, `feature-admin.yaml` for what may be done to Quill – merged into one catalogue at load time) and `shared/base-professions.yaml` (profession templates).
+- **Configuration**: Defined in `shared/competency-definitions/` (a directory split by kind – `clinical.yaml` for what may be done to a patient, `admin.yaml` for administering a place, and feature files such as `teaching.yaml` and `passport.yaml` – merged into one catalogue at load time) and `shared/base-professions.yaml` (profession templates).
 - **Enforcement**: `has_competency("competency_id")` FastAPI dependency – raises 403 if the user lacks the required competency.
-- **Self-modification blocked**: Only admin/superadmin users can modify competencies via `PATCH /cbac/my-competencies`.
+- **Self-modification blocked**: Only a superadmin (platform role) can modify their own competencies via `PATCH /cbac/my-competencies`; everyone else is changed by a holder of `manage_users` through `PATCH /users/{user_id}`.
 
 ### Route protection (frontend)
 
@@ -137,8 +137,8 @@ These components wrap pages to control who can see them:
 
 - **`<RequireAuth>`**: Redirects unauthenticated users to `/login`.
 - **`<GuestOnly>`**: Redirects authenticated users away from login/register pages.
-- **`<RequirePermission level="admin">`**: Enforces permission hierarchy client-side. Patients, teaching delegates, and staff see a "not found" page for admin routes (feature hiding). The backend always re-validates.
-- **`<RequireClinical>`**: Gates Fast Healthcare Interoperability Resources (FHIR) / EHRbase-dependent routes (patients, messaging). Redirects to `/teaching` when `CLINICAL_SERVICES_ENABLED` is false.
+- **`<RequireOperator>`** and **`<RequireCompetency competency="manage_users">`**: Gate operator and competency-gated routes client-side. Anyone without the platform role or the competency sees a "not found" page (feature hiding). The backend always re-validates.
+- **`<RequireClinical>`**: Gates Fast Healthcare Interoperability Resources (FHIR) / EHRbase-dependent routes (patients, messaging). Redirects to `/` when `CLINICAL_SERVICES_ENABLED` is false.
 - **`<RequireFeature feature="teaching">`**: Gates feature-flagged routes. Shows a "not found" page when the user's organisation does not have the feature enabled.
 
 ## Input validation and injection prevention
@@ -204,10 +204,10 @@ TLS encrypts all data in transit between the user's browser and the server, prev
 
 Docker containers package the application and its dependencies into isolated units. The following measures harden these containers:
 
-- **Non-root user**: Containers run as `appuser` (UID 10001), limiting the damage if a container is compromised.
+- **Non-root user**: Backend containers run as `appuser` (UID 10001) and the frontend container as `nobody`, limiting the damage if a container is compromised.
 - **Multi-stage builds**: Build dependencies (compilers, dev tools) are not included in production images, reducing the attack surface.
 - **Base images**: Slim/Alpine variants, digest-pinned for reproducibility (each image is locked to an exact version).
-- **Network isolation**: Backend and databases are on a `private` network not exposed to the host. Only the Caddy/frontend container is on the `public` network.
+- **Network isolation**: The databases are on an internal `private` network not exposed to the host. The backend, FHIR and EHRbase containers join both networks; only Caddy and the frontend dev server publish ports to the host.
 
 ### Secrets management
 
@@ -252,29 +252,29 @@ CI/CD (continuous integration / continuous deployment) automates the process of 
 
 Static analysis tools examine the source code without running it, catching potential vulnerabilities early:
 
-| Tool              | Scope                                                                       | Trigger                                |
-| ----------------- | --------------------------------------------------------------------------- | -------------------------------------- |
-| **Bandit**        | Python security linting (backend, excluding tests)                          | Pre-commit hook on every commit        |
-| **Gitleaks**      | Detects accidentally committed secrets (API keys, tokens, passwords)        | Pre-commit hook on every commit        |
-| **Semgrep**       | JavaScript/TypeScript security rules (frontend)                             | CI pipeline on every pull request (PR) |
-| **Ruff**          | Python linting rules including security-relevant checks (E, F, W, I, UP, B) | Pre-commit hook                        |
-| **mypy --strict** | Type safety – catches type confusion and null safety issues                 | Pre-commit hook and CI                 |
+| Tool              | Scope                                                                       | Trigger                                                                 |
+| ----------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **Bandit**        | Python security linting (backend, excluding tests)                          | Pre-commit hook on every commit                                         |
+| **Gitleaks**      | Detects accidentally committed secrets (API keys, tokens, passwords)        | Pre-commit hook on every commit                                         |
+| **Semgrep**       | JavaScript/TypeScript security rules (frontend)                             | CI pipeline on every non-draft pull request (PR) and in the merge queue |
+| **Ruff**          | Python linting rules including security-relevant checks (E, F, W, I, UP, B) | Pre-commit hook                                                         |
+| **mypy --strict** | Type safety – catches type confusion and null safety issues                 | Pre-commit hook and CI                                                  |
 
 ### Dependency scanning
 
 Third-party libraries can contain known vulnerabilities. Dependency scanning tools monitor for these and alert the team:
 
-| Tool           | Scope                                                                | Frequency                                                                                               |
-| -------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| **Dependabot** | Vulnerability alerts for pip, npm, Docker, Terraform, GitHub Actions | Weekly scan against `main` and `clinical-live`                                                          |
-| **Renovate**   | Version-bump PRs with 3-tier severity policy                         | Continuous; critical/high Common Vulnerabilities and Exposures (CVEs) trigger immediate hotfix branches |
+| Tool           | Scope                                                                | Frequency                                                                                                                          |
+| -------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Dependabot** | Vulnerability alerts for pip, npm, Docker, Terraform, GitHub Actions | Weekly scan against `main` and `clinical-live`                                                                                     |
+| **Renovate**   | Version-bump PRs with 3-tier severity policy                         | Weekly, on Wednesdays; fixes for Common Vulnerabilities and Exposures (CVEs) skip the schedule and open immediately against `main` |
 
 ### Penetration testing
 
 Penetration testing simulates real-world attacks to verify defences hold. Automated security regression tests run monthly (and on-demand) via `.github/workflows/security-pentest.yml`:
 
-- **38 tests** in `backend/tests/test_security_pentest.py` covering:
-  - Property-based crypto round-trips (Hypothesis, 200 examples each)
+- **39 tests** in `backend/tests/test_security_pentest.py` covering:
+  - Property-based crypto round-trips (Hypothesis, 50 to 200 examples each)
   - JWT manipulation attacks (alg:none, wrong secret, expired, tampered, stale token_version)
   - CSRF bypass attempts (missing header, forged token, cross-user token)
   - Authentication attacks (rate limiting, anti-enumeration, password policy)
