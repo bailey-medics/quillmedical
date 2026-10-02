@@ -72,6 +72,35 @@ function passportPageAt(pathname: string): NavItem | undefined {
 }
 
 /**
+ * The pages of one safety case, each shown as a child of Safety while it
+ * is open. The address carries the case id, so these are matched on the
+ * segment after it rather than on a fixed prefix.
+ *
+ * The safety feature is a mock-up with no backend; see
+ * docs/docs/plans/2026-10-02-safety-feature-mock-up-plan.md.
+ */
+const SAFETY_PAGES: readonly { label: string; segment: string }[] = [
+  { label: "Documentation", segment: "documentation" },
+  { label: "Hazards", segment: "hazards" },
+  { label: "Incidents", segment: "incidents" },
+  { label: "Officers", segment: "officers" },
+  { label: "Compliance sign-off", segment: "sign-off" },
+  { label: "Placeholders", segment: "placeholders" },
+];
+
+/**
+ * The safety case page this address is, if any: `/safety/:caseId/:segment`.
+ * The case page itself and the landing page hang nothing beneath Safety.
+ */
+function safetyPageAt(pathname: string): NavItem | undefined {
+  const match = pathname.match(/^\/safety\/([^/]+)\/([^/]+)\/?$/);
+  if (!match) return undefined;
+  const page = SAFETY_PAGES.find((item) => item.segment === match[2]);
+  if (!page) return undefined;
+  return { label: page.label, href: `/safety/${match[1]}/${page.segment}` };
+}
+
+/**
  * Settings pages shown as a child of Settings while open. Only those
  * with no link of their own on the settings page's cards need it, and
  * today that is the passport's CPD date ranges.
@@ -104,6 +133,11 @@ export function useFeatureNavItems(): NavItem[] {
   const { pathname } = useLocation();
 
   const hasTeaching = useHasFeature("teaching");
+
+  // Safety gates its entry on the feature alone, matching its routes,
+  // which carry `RequireFeature` and nothing else: the pages read
+  // fixtures, so there is nothing a competency would protect.
+  const hasSafety = useHasFeature("safety");
 
   // The passport routes carry RequireFeature *and* RequireCompetency,
   // so both are asked here. Teaching gates its entry on the feature
@@ -167,6 +201,18 @@ export function useFeatureNavItems(): NavItem[] {
       // `/admin` should reveal what is under it, and wrong here, where
       // the passport itself is a destination rather than a heading.
       children: !assessesOnly && openPage ? [openPage] : undefined,
+    });
+  }
+
+  if (hasSafety) {
+    const openPage = safetyPageAt(pathname);
+    items.push({
+      label: "Safety",
+      href: "/safety",
+      icon: "safety",
+      // As under Passport: the one open page, attached by route, so the
+      // navigation says which part of a case is open.
+      children: openPage ? [openPage] : undefined,
     });
   }
 

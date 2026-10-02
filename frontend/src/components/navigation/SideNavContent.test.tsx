@@ -101,6 +101,14 @@ const mockUsers: Record<string, User> = {
     enabled_features: ["passport"],
     clinical_services_enabled: true,
   },
+  safety_only: {
+    id: "11",
+    username: "safety.officer",
+    email: "safety@example.com",
+    roles: ["Clinician"],
+    enabled_features: ["safety"],
+    clinical_services_enabled: false,
+  },
   admin_no_clinical: {
     id: "6",
     username: "admin.teaching",
@@ -755,6 +763,66 @@ describe("SideNavContent Component", () => {
       expect(screen.getByText("Sites").closest("a")).not.toHaveAttribute(
         "data-active",
       );
+    });
+  });
+
+  describe("Safety", () => {
+    it("shows Safety to somebody the feature reaches", async () => {
+      renderWithAuth(<SideNavContent />, "safety_only");
+
+      await waitFor(() => {
+        expect(screen.getByText("Safety")).toBeInTheDocument();
+      });
+      expect(screen.getByText("Safety").closest("a")).toHaveAttribute(
+        "href",
+        "/safety",
+      );
+    });
+
+    it("hides Safety from somebody the feature does not reach", async () => {
+      renderWithAuth(<SideNavContent />, "staff");
+
+      await waitFor(() => {
+        expect(screen.getByText("Settings")).toBeInTheDocument();
+      });
+      expect(screen.queryByText("Safety")).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ["/safety/sc-001/documentation", "Documentation"],
+      ["/safety/sc-001/hazards", "Hazards"],
+      ["/safety/sc-001/incidents", "Incidents"],
+      ["/safety/sc-001/officers", "Officers"],
+      ["/safety/sc-001/sign-off", "Compliance sign-off"],
+      ["/safety/sc-001/placeholders", "Placeholders"],
+    ])(
+      "hangs the open case page under Safety, and marks it: %s",
+      async (route, label) => {
+        renderWithAuth(<SideNavContent />, "safety_only", {
+          initialRoute: route,
+        });
+
+        await waitFor(() => {
+          expect(screen.getByText("Safety")).toBeInTheDocument();
+        });
+
+        const child = screen.getByText(label).closest("a");
+        expect(child).toHaveAttribute("href", route);
+        expect(child).toHaveAttribute("data-active", "true");
+      },
+    );
+
+    it("hangs nothing under Safety on the case page itself", async () => {
+      // The case page is a destination, not a heading: its cards link
+      // to the pages beneath it.
+      renderWithAuth(<SideNavContent />, "safety_only", {
+        initialRoute: "/safety/sc-001",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Safety")).toBeInTheDocument();
+      });
+      expect(screen.queryByText("Hazards")).not.toBeInTheDocument();
     });
   });
 

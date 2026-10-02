@@ -24,6 +24,7 @@ import {
   IconDatabase,
   IconMail,
   IconMessageReport,
+  IconShieldCheck,
 } from "@/components/icons/appIcons";
 
 /** Available icon types */
@@ -44,7 +45,8 @@ export type IconName =
   | "pricing"
   | "database"
   | "mail"
-  | "feedback";
+  | "feedback"
+  | "safety";
 
 /** Available icon sizes */
 type IconSize = "xs" | "sm" | "md" | "lg" | "xl";
@@ -78,6 +80,7 @@ const iconMap = {
   database: IconDatabase,
   mail: IconMail,
   feedback: IconMessageReport,
+  safety: IconShieldCheck,
 } as const;
 
 // Map size to icon pixel dimensions

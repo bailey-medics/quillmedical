@@ -85,6 +85,7 @@ describe("OrgFeaturesPage", () => {
       expect(screen.getByText("Messaging")).toBeInTheDocument();
       expect(screen.getByText("Letters")).toBeInTheDocument();
       expect(screen.getByText("Clinician passport")).toBeInTheDocument();
+      expect(screen.getByText("Safety")).toBeInTheDocument();
     });
   });
 

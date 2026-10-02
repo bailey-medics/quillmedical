@@ -123,6 +123,7 @@ describe("NavIcon Component", () => {
       "file",
       "adjustments",
       "feedback",
+      "safety",
     ] as const;
 
     iconNames.forEach((iconName) => {
