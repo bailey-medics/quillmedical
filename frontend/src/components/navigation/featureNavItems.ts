@@ -88,7 +88,7 @@ const SAFETY_PAGES: readonly {
   { label: "Hazards", segment: "hazards", detail: "Hazard" },
   { label: "Incidents", segment: "incidents", detail: "Incident" },
   { label: "Officers", segment: "officers" },
-  { label: "Compliance sign-off", segment: "sign-off" },
+  { label: "Compliance sign-off", segment: "sign-off", detail: "Section" },
   { label: "Placeholders", segment: "placeholders", detail: "Edit" },
 ];
 

@@ -86,24 +86,40 @@ const STANDARD_SIGN_OFF = (
   partial = false,
 ): SignOffItem[] => [
   {
+    id: "crmp",
     section: "Clinical risk management plan",
     signatory: cso,
     signed_on: signed || partial ? "2026-08-14" : null,
+    attests:
+      "The clinical risk management plan describes how clinical risk will be identified, assessed and controlled for this release, and the clinical safety organisation named in it is in place.",
+    reviews: ["crmp"],
   },
   {
+    id: "hazard-log",
     section: "Hazard log reviewed",
     signatory: cso,
     signed_on: signed || partial ? "2026-09-22" : null,
+    attests:
+      "Every hazard in the log has been reviewed line by line, each residual rating has been re-confirmed, and no hazard remains at an unacceptable residual risk without a documented plan and an owner.",
+    reviews: ["hazard-log"],
   },
   {
+    id: "cscr",
     section: "Clinical safety case report",
     signatory: cso,
     signed_on: signed ? "2026-09-25" : null,
+    attests:
+      "The clinical safety case report is a true account of the hazards identified and the controls in place, and the residual clinical risk is as low as reasonably practicable and acceptable for use.",
+    reviews: ["cscr", "hazard-log"],
   },
   {
+    id: "approval",
     section: "Top management approval",
     signatory: "Dr Priya Nandakumar",
     signed_on: signed ? "2026-09-26" : null,
+    attests:
+      "Top management accepts the clinical safety officer's judgement in the clinical safety case report and approves this release for deployment.",
+    reviews: ["cscr"],
   },
 ];
 
@@ -605,6 +621,14 @@ export function incidentById(
   incidentId: string,
 ): Incident | undefined {
   return safetyCase.incidents.find((incident) => incident.id === incidentId);
+}
+
+/** The sign-off section with this id on a case, or undefined. */
+export function signOffSectionById(
+  safetyCase: SafetyCaseDetail,
+  sectionId: string,
+): SignOffItem | undefined {
+  return safetyCase.sign_off.find((item) => item.id === sectionId);
 }
 
 /** The hazard with this reference on a case, or undefined. */

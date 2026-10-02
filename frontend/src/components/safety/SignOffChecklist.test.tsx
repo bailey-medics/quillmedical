@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { screen } from "@testing-library/react";
-import { renderWithMantine } from "@test/test-utils";
+import { renderWithMantine, renderWithRouter } from "@test/test-utils";
 import SignOffChecklist from "./SignOffChecklist";
 import { SAFETY_CASES } from "@lib/safety";
 
@@ -29,5 +29,23 @@ describe("SignOffChecklist", () => {
     expect(screen.getAllByText(/^Signed/)).toHaveLength(
       SAFETY_CASES[1].sign_off.length,
     );
+  });
+
+  it("makes each card a link when told where its page is", () => {
+    renderWithRouter(
+      <SignOffChecklist
+        items={SAFETY_CASES[0].sign_off}
+        hrefFor={(item) => `/safety/sc-001/sign-off/${item.id}`}
+      />,
+    );
+    expect(
+      screen.getByRole("link", { name: "Open Hazard log reviewed" }),
+    ).toHaveAttribute("href", "/safety/sc-001/sign-off/hazard-log");
+    expect(screen.getAllByRole("link")).toHaveLength(4);
+  });
+
+  it("draws no links unless asked to", () => {
+    renderWithMantine(<SignOffChecklist items={SAFETY_CASES[0].sign_off} />);
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });

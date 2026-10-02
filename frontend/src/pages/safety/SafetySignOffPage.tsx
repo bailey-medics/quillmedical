@@ -26,7 +26,10 @@ export function Component() {
     <Stack gap="lg">
       <PageHeader title="Compliance sign-off" />
       <BodyText c="dimmed">{safetyCase.title}</BodyText>
-      <SignOffChecklist items={safetyCase.sign_off} />
+      <SignOffChecklist
+        items={safetyCase.sign_off}
+        hrefFor={(item) => `/safety/${safetyCase.id}/sign-off/${item.id}`}
+      />
     </Stack>
   );
 }

@@ -12,6 +12,7 @@ export {
   safetyDocumentById,
   hazardById,
   incidentById,
+  signOffSectionById,
   openHazardCount,
   riskRating,
 } from "./fixtures";

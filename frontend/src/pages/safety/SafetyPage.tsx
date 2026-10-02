@@ -15,6 +15,7 @@
 import { Stack } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
+import AddButton from "@/components/button/AddButton";
 import SafetyCaseTable from "@/components/safety/SafetyCaseTable";
 import { BodyText } from "@/components/typography";
 import { SAFETY_CASES } from "@lib/safety";
@@ -24,7 +25,12 @@ export function Component() {
 
   return (
     <Stack gap="lg">
-      <PageHeader title="Safety" />
+      <PageHeader
+        title="Safety"
+        // For show only, by request: there is no form behind it. See
+        // Phase 15 of the plan.
+        action={<AddButton label="Add safety case" />}
+      />
       <BodyText c="dimmed">
         Demonstration safety cases. Nothing here is a real system, person or
         incident.

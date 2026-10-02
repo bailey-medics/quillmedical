@@ -40,4 +40,11 @@ describe("SafetySignOffPage", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText(/404|not found/i)).toBeInTheDocument();
   });
+
+  it("makes each section a link to its own page", () => {
+    renderPage("sc-001");
+    expect(
+      screen.getByRole("link", { name: "Open Top management approval" }),
+    ).toHaveAttribute("href", "/safety/sc-001/sign-off/approval");
+  });
 });

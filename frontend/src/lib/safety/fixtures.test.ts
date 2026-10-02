@@ -124,4 +124,19 @@ describe("safety documents", () => {
     expect(log!.content).toContain("H-01");
     expect(log!.content).toContain("rating 15");
   });
+
+  it("gives every sign-off line an id, a declaration and documents it reviews", () => {
+    for (const safetyCase of SAFETY_CASES) {
+      const documentIds = new Set(safetyCase.documents.map((d) => d.id));
+      const ids = new Set(safetyCase.sign_off.map((item) => item.id));
+      expect(ids.size).toBe(safetyCase.sign_off.length);
+      for (const item of safetyCase.sign_off) {
+        expect(item.attests.length).toBeGreaterThan(40);
+        expect(item.reviews.length).toBeGreaterThan(0);
+        for (const reviewed of item.reviews) {
+          expect(documentIds.has(reviewed)).toBe(true);
+        }
+      }
+    }
+  });
 });

@@ -409,11 +409,37 @@ wonder whether a handler was forgotten. Landed with Phase 14.
 - [x] **`IconTextButton` with the pencil** labelled "Edit hazard" on the
       hazard page and "Edit incident" on the incident page, the same way.
 - [x] **Tests** that each button is present, and nothing more.
+- [x] **`AddButton` "Add safety case"** in the landing page header, asked
+      for after the rest and landed with Phase 16. Show-only, like the
+      others.
 - [x] **Placeholder keys shown bare.** Asked for at the same time: the
       placeholders table and the edit form show `product_name`, not
       `{{ product_name }}`. The braces are how a template names a key,
       not part of the key, and the documents are the only place they
       belong.
+
+## Phase 16: Sign-off sections open to an overview
+
+Asked for on `/safety/:caseId/sign-off`: each card should open a page.
+A signature on a safety case attests to something specific, so the
+overview says what, by whom, when, and which documents were reviewed to
+give it.
+
+- [x] **`SignOffItem` gains `id`, `attests` and `reviews`**: a slug for
+      the address, the sentence a signatory is putting their name to, and
+      the ids of the documents they reviewed. Every fixture line gets
+      them, with the top management approval reviewing the case report.
+- [x] **`SignOffChecklist` cards become links**, each a `Link` wrapping
+      the card so the whole card is the target and reachable by keyboard,
+      when given `hrefFor`. Without it the cards stay as they were.
+- [x] **`components/safety/SignOffDetail.tsx`**: cards for the signature
+      (status, signatory, date), what it attests, and the documents
+      reviewed as links to their pages, with a show-only "Record
+      signature" button on a line still awaiting one, as Phase 15 does.
+- [x] **Route `/safety/:caseId/sign-off/:sectionId`**,
+      `pages/safety/SafetySignOffDetailPage.tsx`; the nav reads Safety,
+      Compliance sign-off, Section. A 404 for an unknown section.
+- [x] **Tests** for the data, the link cards, the detail and the page.
 
 ## Decisions
 
