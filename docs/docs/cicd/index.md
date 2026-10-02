@@ -1,6 +1,6 @@
 # CI/CD pipeline
 
-Quill Medical uses a trunk-based branching strategy with a single protected branch (`main`). GitHub Actions workflows validate, test, and deploy code changes. Feature branches open PRs to `main`, which auto-deploys to teaching on merge. Production deploys the same image via a GitHub Environment approval gate.
+Quill Medical uses a trunk-based branching strategy with a single protected branch (`main`). GitHub Actions workflows validate, test, and deploy code changes. Feature branches open PRs to `main`, which auto-deploys to the app environment on merge.
 
 ## Branching strategy
 
@@ -8,15 +8,14 @@ Quill Medical uses a trunk-based branching strategy with a single protected bran
 graph LR
     A["feature/* / copilot/*"] -->|PR| B[main]
     C[hotfix/*] -->|PR| B
-    B -->|auto-deploy| D[Teaching]
-    B -->|approve| E[Production]
+    B -->|auto-deploy| D[App]
 ```
 
 - **`feature/*`** – individual feature/fix branches; CI runs checks and opens a draft PR to `main`
 - **`copilot/*`** – AI-generated branches; same CI pipeline as `feature/*`
 - **`hotfix/*`** – urgent fixes; same CI pipeline
 - **`renovate/*`** – automated dependency updates; same CI pipeline
-- **`main`** – the only long-lived branch; auto-deploys to teaching on merge
+- **`main`** – the only long-lived branch; auto-deploys to the app environment on merge
 
 ## Pipeline overview
 
@@ -27,9 +26,7 @@ graph TD
     C -->|Mark ready| D[Heavy CI]
     D -->|All pass| E[Merge to main]
     E --> F[Build Docker images]
-    F --> G[Deploy to teaching]
-    G --> H{Approve?}
-    H -->|Yes| I[Promote to production]
+    F --> G[Deploy to app]
 ```
 
 ## Test tiering
@@ -42,7 +39,7 @@ Runs on every push to any non-`main` branch. Gives feedback in ~2 minutes.
 
 | Job                          | Check name                            | What it does                                                         |
 | ---------------------------- | ------------------------------------- | -------------------------------------------------------------------- |
-| Python styling               | `Python styling`                      | Pre-commit hooks (ruff, black, mypy, bandit, cspell, YAML/TOML/JSON) |
+| Python pre-commit            | `Python pre-commit`                   | Pre-commit hooks (ruff, black, mypy, bandit, cspell, YAML/TOML/JSON) |
 | Python unit                  | `Python unit`                         | pytest (excludes integration and e2e markers)                        |
 | TypeScript (eslint)          | `typescript_checks (eslint)`          | ESLint                                                               |
 | TypeScript (prettier)        | `typescript_checks (prettier)`        | Prettier formatting                                                  |
@@ -81,29 +78,30 @@ Shell scripts that back the GitHub Actions workflows live under `.github/scripts
 
 - **Run locally:** `just test-scripts` (alias `ts`) – runs the suite inside `ubuntu:24.04`, the same image, bats version and invocation as CI. Needs Docker running; bats itself is not installed on the host.
 - **Why the container:** the scripts run on `ubuntu-24.04` runners, so a host run tests a different bash, coreutils and `sha256sum`. `bats --recursive .github/scripts` still works by hand, but a result from it – green or red – is not evidence about CI.
-- **Lint:** `find .github/scripts -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR` (needs `brew install shellcheck`)
-- **CI:** the `Shell script lint and test` job runs ShellCheck then the full bats suite on every push, using the pinned `bats-core/bats-action`
+- **Lint:** `find .github/scripts .claude/hooks -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR` (needs `brew install shellcheck`)
+- **CI:** the `Shell and workflow lint` job runs ShellCheck then the full bats suite on every push, using the pinned `bats-core/bats-action`
 
 When adding or changing a workflow script, add or update its `.bats` file in the same directory so the logic stays covered.
 
 ### Draft PR mechanism
 
-The fast tier's `open-pr` job auto-creates a **draft** PR for `feature/*` and `copilot/*` branches. Heavy checks only fire when the PR is marked "Ready for review" (via `pull_request.ready_for_review` event). This means:
+The `create-pr` job in `auto-pr.yml` auto-creates a **draft** PR for `feature/*` and `hotfix/*` branches. Heavy checks only fire when the PR is marked "Ready for review" (via `pull_request.ready_for_review` event). This means:
 
 - Push to branch → fast checks run (~2 min)
 - Mark PR ready → heavy checks run (~5–10 min)
-- All 11 checks pass → merge button enabled
+- All 18 required checks pass → merge button enabled
 
 ## Workflows
 
-### Branch CI (`branch-ci.yml`)
+### CI (`ci.yml`)
 
 **Triggers:**
 
 - `push` to any branch except `main` (fast tier)
-- `pull_request` types `ready_for_review` and `synchronize` targeting `main` (heavy tier)
+- `pull_request` types `ready_for_review` and `synchronize` targeting `main` or `feature/**` (heavy tier)
+- `merge_group` (both tiers, when a PR enters the merge queue)
 
-**Concurrency:** `feature-${{ github.ref }}` with cancel-in-progress (newer pushes cancel older runs).
+**Concurrency:** `feature-${{ github.ref }}-${{ github.event_name }}-${{ github.event.action }}` with cancel-in-progress (newer pushes cancel older runs).
 
 ### Deploy (`deploy.yml`)
 
@@ -128,10 +126,10 @@ Builds MkDocs + TypeDoc + Storybook + OpenAPI and deploys to GitHub Pages.
 
 ### Terraform (`terraform.yml`)
 
-**Triggers:** Push/PR to `main` when `infra/**` changes.
+**Triggers:** Push/PR to `main` when `infra/**` changes (except `infra/github/**`).
 
 - PRs: `terraform plan` posted as comment
-- Push to `main`: `terraform apply` for staging and teaching
+- Push to `main`: `terraform apply` for app
 
 ## Branch protection
 
@@ -142,18 +140,18 @@ Managed via Terraform in `infra/github/branch_rules.tf`.
 | Rule                   | Setting                                            |
 | ---------------------- | -------------------------------------------------- |
 | PR required            | Yes (0 approvals while solo dev)                   |
-| Required status checks | All 11 checks (strict – branch must be up-to-date) |
+| Required status checks | All 18 checks (strict – branch must be up-to-date) |
 | Force push             | Blocked                                            |
 | Branch deletion        | Blocked                                            |
 | Bypass actors          | None                                               |
 
 **Branch naming:**
 
-All branches must match `^(feature|hotfix|copilot|renovate)/.+` – enforced at creation time.
+All branches must match `^(feature|hotfix|copilot|renovate|gh-readonly-queue)/.+` – enforced at creation time (`gh-readonly-queue/*` is the merge queue's own prefix).
 
 ## Docker build
 
-The backend Dockerfile has three stages: `dev`, `prod`, and `admin`. Deploy workflows **must** specify `target: prod`:
+The backend Dockerfile has five stages: `base`, `dev`, `prod`, `admin`, and `transcode`. Deploy workflows **must** specify `target: prod`:
 
 ```yaml
 - name: Build image
@@ -162,18 +160,18 @@ The backend Dockerfile has three stages: `dev`, `prod`, and `admin`. Deploy work
     target: prod
 ```
 
-The `admin` stage is the last stage – building without `--target` produces the admin CLI, not the web server.
+The `transcode` stage is the last stage – building without `--target` produces the transcode CLI, not the web server.
 
 ## Secrets
 
-| Secret                         | Purpose                                       |
-| ------------------------------ | --------------------------------------------- |
-| `GCP_TEACHING_WIF_PROVIDER`    | Workload Identity Federation for teaching     |
-| `GCP_TEACHING_SERVICE_ACCOUNT` | Teaching deploy service account               |
-| `GCP_TEACHING_PROJECT_ID`      | Teaching GCP project ID                       |
-| `GCP_PROD_WIF_PROVIDER`        | WIF for production _(not yet active)_         |
-| `GCP_PROD_SERVICE_ACCOUNT`     | Production service account _(not yet active)_ |
-| `GCP_PROD_PROJECT_ID`          | Production GCP project ID _(not yet active)_  |
+| Secret                           | Purpose                                       |
+| -------------------------------- | --------------------------------------------- |
+| `GCP_APP_WIF_PROVIDER`           | Workload Identity Federation for app          |
+| `GCP_APP_DEPLOY_SERVICE_ACCOUNT` | App deploy service account                    |
+| `GCP_APP_PROJECT_ID`             | App GCP project ID                            |
+| `GCP_PROD_WIF_PROVIDER`          | WIF for production _(not yet active)_         |
+| `GCP_PROD_SERVICE_ACCOUNT`       | Production service account _(not yet active)_ |
+| `GCP_PROD_PROJECT_ID`            | Production GCP project ID _(not yet active)_  |
 
 Authentication uses **Workload Identity Federation** – no long-lived service account keys.
 
@@ -189,10 +187,10 @@ pre-commit run --all-files
 cd backend && poetry run pytest -m "not integration and not e2e"
 
 # TypeScript
-cd frontend && yarn eslint && yarn prettier:check && yarn typecheck:all && yarn unit-test:run
+cd frontend && yarn eslint && yarn prettier && yarn typecheck:all && yarn unit-test:run
 
 # Shell scripts (GitHub Actions) – lint and test
-find .github/scripts -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR
+find .github/scripts .claude/hooks -name '*.sh' | xargs shellcheck --source-path=SCRIPTDIR
 just test-scripts   # runs in ubuntu:24.04, as CI does
 ```
 
@@ -200,8 +198,8 @@ The shell-script checks need [ShellCheck](https://www.shellcheck.net/) (`brew in
 
 ### PR not created automatically
 
-The `open-pr` job only runs on push to `feature/*` or `copilot/*`. Check the branch name matches and all fast checks passed.
+The `create-pr` job in `auto-pr.yml` only runs on push to `feature/*` or `hotfix/*`. Check the branch name matches; the PR is opened about a minute after the push, and not at all if a PR for that branch has already merged or closed.
 
-### Teaching not deploying
+### App not deploying
 
 Deploy triggers on push to `main` only. Check the PR was merged (not just closed) and changes weren't docs-only (paths-ignore applies).
