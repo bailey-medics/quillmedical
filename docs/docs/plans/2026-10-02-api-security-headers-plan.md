@@ -131,20 +131,24 @@ This phase lands only after phases 1 and 2 are live. The deploy and the
 Terraform apply both run on merge, so a check merged alongside the headers
 could run before they exist and fail a healthy deploy.
 
-- [ ] Add `.github/scripts/deploy/check-security-headers.sh` with a
+- [x] Add `.github/scripts/deploy/check-security-headers.sh` with a
       `.bats` file beside it, following `.claude/rules/workflows.md`. It
       takes a URL and fails unless the response carries
       `X-Content-Type-Options`, `X-Frame-Options`,
       `Content-Security-Policy` and `Strict-Transport-Security`. This is
       the only place the headers can be tested: neither the dev stack nor
       the E2E stack has a load balancer.
+      It checks the names and not the values, because `/` and
+      `/api/health` are meant to differ: `DENY` against `SAMEORIGIN`, and
+      two different policies. `Referrer-Policy` is left out as the list
+      above has it; it is the least consequential of the five.
 
-- [ ] Call it from `deploy.yml` after the existing smoke test of
+- [x] Call it from `deploy.yml` after the existing smoke test of
       `https://${HOSTNAME}/api/health`, once for `/` and once for
       `/api/health`. Checking `/` as well guards the Caddy headers, which
       nothing asserts today either.
 
-- [ ] Mark the "Security headers" item in `docs/docs/plans/todo.md` as
+- [x] Mark the "Security headers" item in `docs/docs/plans/todo.md` as
       done.
 
 ## Phase 4: Make the documents true

@@ -312,6 +312,17 @@ jobs:
           HOSTNAME: app.quill-medical.com
         run: bash .github/scripts/deploy/smoke-test.sh "https://${HOSTNAME}/api/health"
 
+      # The security headers are set at the edge, by Caddy for the
+      # application's pages and by the load balancer for the API, so the
+      # live site is the only place they can be checked. One request to
+      # each, so losing either set fails the deploy.
+      - name: Check security headers
+        env:
+          HOSTNAME: app.quill-medical.com
+        run: |
+          bash .github/scripts/deploy/check-security-headers.sh "https://${HOSTNAME}/"
+          bash .github/scripts/deploy/check-security-headers.sh "https://${HOSTNAME}/api/health"
+
   # ---------- Slack notifications ----------
   notify-deploy-failure:
     name: Notify deploy failure
