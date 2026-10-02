@@ -47,6 +47,19 @@ export const LongLabel: Story = {
   ),
 };
 
+export const Below: Story = {
+  render: () => (
+    <div>
+      <AppTooltip label="Add hazard" openDelay={0} position="bottom">
+        <Button>Hover me</Button>
+      </AppTooltip>
+      <StoryNote mt="xs">
+        Opens below the target, as the icons above a table do
+      </StoryNote>
+    </div>
+  ),
+};
+
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },

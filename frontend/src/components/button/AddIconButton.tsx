@@ -6,7 +6,8 @@
  * primary so it sits with the filter icon rather than shouting over it.
  *
  * The label is required because the button shows only an icon: without
- * it a screen reader announces "button" and nothing else.
+ * it a screen reader announces "button" and nothing else. The same words
+ * show as a tooltip on hover and focus.
  *
  * @example
  * ```tsx
@@ -19,6 +20,7 @@
 
 import type { MouseEventHandler } from "react";
 import IconButton from "@/components/button/IconButton";
+import AppTooltip from "@/components/tooltip/AppTooltip";
 import { IconFilePlus } from "@/components/icons/appIcons";
 
 interface AddIconButtonProps {
@@ -33,14 +35,18 @@ export default function AddIconButton({
   onClick,
   disabled = false,
 }: AddIconButtonProps) {
+  // The same words as the aria-label, so sighted users get the hint
+  // a screen reader user already has.
   return (
-    <IconButton
-      icon={<IconFilePlus />}
-      variant="subtle"
-      color="primary"
-      aria-label={label}
-      onClick={onClick}
-      disabled={disabled}
-    />
+    <AppTooltip label={label} position="bottom">
+      <IconButton
+        icon={<IconFilePlus />}
+        variant="subtle"
+        color="primary"
+        aria-label={label}
+        onClick={onClick}
+        disabled={disabled}
+      />
+    </AppTooltip>
   );
 }

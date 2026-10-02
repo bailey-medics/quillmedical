@@ -14,6 +14,7 @@ import {
   Tooltip,
   useComputedColorScheme,
   useMantineTheme,
+  type FloatingPosition,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import BodyTextInline from "@components/typography/BodyTextInline";
@@ -25,6 +26,12 @@ export interface AppTooltipProps {
   label: ReactNode;
   /** Delay before opening (ms). Default: 400 */
   openDelay?: number;
+  /**
+   * Which side of the target the tooltip opens on. Default: "top".
+   * The icons above a table use "bottom", so the hint sits over the
+   * table rather than over the page title.
+   */
+  position?: FloatingPosition;
 }
 
 /**
@@ -35,6 +42,7 @@ export default function AppTooltip({
   children,
   label,
   openDelay = 400,
+  position = "top",
 }: AppTooltipProps) {
   const theme = useMantineTheme();
   const colorScheme = useComputedColorScheme("light");
@@ -55,6 +63,7 @@ export default function AppTooltip({
           label={tooltipLabel}
           openDelay={openDelay}
           color={tooltipColour}
+          position={position}
           events={{ hover: true, focus: true, touch: true }}
         >
           {children}
@@ -64,7 +73,12 @@ export default function AppTooltip({
   }
 
   return (
-    <Tooltip label={tooltipLabel} openDelay={openDelay} color={tooltipColour}>
+    <Tooltip
+      label={tooltipLabel}
+      openDelay={openDelay}
+      color={tooltipColour}
+      position={position}
+    >
       {children}
     </Tooltip>
   );

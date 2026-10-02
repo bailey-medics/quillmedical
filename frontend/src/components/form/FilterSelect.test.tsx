@@ -134,4 +134,17 @@ describe("FilterSelect", () => {
     expect(button).toHaveAttribute("aria-expanded", "true");
     expect(button.parentElement).not.toHaveAttribute("aria-expanded");
   });
+
+  it("shows its label as a tooltip on hover", async () => {
+    renderWithMantine(
+      <FilterSelect
+        data={["One"]}
+        value={[]}
+        onChange={vi.fn()}
+        aria-label="Filter users"
+      />,
+    );
+    await userEvent.hover(screen.getByRole("button", { name: "Filter users" }));
+    expect(await screen.findByText("Filter users")).toBeInTheDocument();
+  });
 });

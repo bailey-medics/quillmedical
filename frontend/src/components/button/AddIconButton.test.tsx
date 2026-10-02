@@ -32,4 +32,12 @@ describe("AddIconButton", () => {
     renderWithMantine(<AddIconButton aria-label="Add hazard" disabled />);
     expect(screen.getByRole("button", { name: "Add hazard" })).toBeDisabled();
   });
+
+  it("shows its label as a tooltip on hover", async () => {
+    renderWithMantine(<AddIconButton aria-label="Add hazard" />);
+    await userEvent.hover(screen.getByRole("button", { name: "Add hazard" }));
+    // The aria-label is not text, so the only "Add hazard" text on the
+    // page is the tooltip.
+    expect(await screen.findByText("Add hazard")).toBeInTheDocument();
+  });
 });

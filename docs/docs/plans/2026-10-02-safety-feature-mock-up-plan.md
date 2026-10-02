@@ -468,6 +468,29 @@ the safety tables move onto it.
       the same add icon in its row. The edit page of Phase 13 still
       exists at its address; nothing links to it from here now.
 
+## Phase 18: Tooltips on the icons above every table
+
+Asked for after the add icon landed: the icons in the row above a table
+should say what they are on hover. Done in the atomic components, not
+on the safety pages, so every table in the app gets them at once.
+
+- [x] **`SearchButton`, `FilterSelect` and `AddIconButton`** each wrap
+      their icon in `AppTooltip`, the design-system tooltip, with the
+      same words as the button's `aria-label`: "Search", the filter's
+      label, and whatever the add icon adds. A sighted user now gets the
+      hint a screen reader user already had.
+- [x] **`IconButton` forwards its ref**, which a tooltip needs to attach
+      to the button, and which a popover needs too. Inside `FilterSelect`
+      the tooltip wraps `Popover.Target`, not the other way round:
+      the target forwards the props it is given down to the button, so
+      `aria-expanded` still lands there.
+- [x] **The hints open below the icons.** `AppTooltip` gains a
+      `position` prop, "top" by default as before, and the three icons
+      pass "bottom", so the hint sits over the table rather than over the
+      page title.
+- [x] **Tests** hover each icon and find its tooltip text. Where it lands
+      cannot be checked in jsdom; the tooltip's Below story shows it.
+
 ## Decisions
 
 - **No backend, no backend placeholder** – the data lives in
