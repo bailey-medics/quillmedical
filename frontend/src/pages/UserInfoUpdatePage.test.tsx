@@ -7,7 +7,7 @@
  * - Data persistence across steps
  * - API submission
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, onTestFinished } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
@@ -431,6 +431,93 @@ describe("UserInfoUpdatePage", () => {
       expect(
         screen.getByRole("option", { name: "Test Org - Main building" }),
       ).toBeInTheDocument();
+    }, 30000);
+
+    it("opens with the address and org_unit it was sent, for a new user", async () => {
+      // The add-staff page sends somebody here when a lookup finds no
+      // account, with the address and the site they were being added to.
+      const user = userEvent.setup();
+      const mockPost = vi.fn().mockResolvedValue({ data: { id: 1 } });
+      (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
+
+      // `renderWithRouter` leaves the address on the window, where the
+      // next test's page would read it and open filled in too.
+      onTestFinished(() => window.history.pushState({}, "", "/"));
+
+      renderWithRouter(<UserInfoUpdatePage />, {
+        initialRoute:
+          "/admin/users/new?email=new.person%40example.org&org_unit=10",
+      });
+
+      expect(screen.getByLabelText(/email/i)).toHaveValue(
+        "new.person@example.org",
+      );
+
+      await user.type(screen.getByLabelText(/full name/i), "New Person");
+      await user.type(screen.getByLabelText(/username/i), "new.person");
+      await user.type(
+        screen.getByLabelText(/initial password/i),
+        "password123",
+      );
+      await user.click(
+        screen.getByRole("combobox", { name: /base profession/i }),
+      );
+      await user.keyboard("{ArrowDown}");
+      await user.keyboard("{Enter}");
+
+      // Step 1 → 2 → 3 → 4 → review, choosing nothing on the way
+      for (let step = 0; step < 4; step += 1) {
+        await user.click(screen.getByRole("button", { name: /next/i }));
+      }
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Review" }),
+        ).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole("button", { name: /create user/i }));
+
+      await waitFor(() => {
+        expect(mockPost).toHaveBeenCalledWith(
+          "/users",
+          expect.objectContaining({
+            email: "new.person@example.org",
+            org_unit_ids: [10],
+          }),
+        );
+      });
+    }, 30000);
+
+    it("offers a site whose organisation the viewer cannot see", async () => {
+      // Somebody who runs one site and not its trust is answered with
+      // the site alone. It is still theirs to put people in.
+      const get = vi.mocked(apiModule.api.get);
+      const usual = get.getMockImplementation();
+      get.mockImplementation((url: string) =>
+        Promise.resolve(
+          url === "/org-units"
+            ? { org_units: [{ ...PLACES[2], id: 4, name: "Oncology" }] }
+            : {},
+        ),
+      );
+
+      try {
+        const user = userEvent.setup();
+        renderWithRouter(<UserInfoUpdatePage />);
+        await toThePlacesStep(user);
+
+        await user.click(screen.getByRole("combobox", { name: /^site/i }));
+        expect(
+          await screen.findByRole("option", { name: "Oncology" }),
+        ).toBeInTheDocument();
+
+        // No organisation is offered: the unseen one is not a choice.
+        await user.click(
+          screen.getByRole("combobox", { name: /^organisation/i }),
+        );
+        expect(screen.queryByRole("option", { name: "" })).toBeNull();
+      } finally {
+        get.mockImplementation(usual!);
+      }
     }, 30000);
   });
 

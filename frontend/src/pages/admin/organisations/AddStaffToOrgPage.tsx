@@ -9,6 +9,11 @@
  * becoming a healthcare assistant, which is the case this page most
  * needs to support.
  *
+ * The picker lists the people the admin can already see who are not
+ * yet here. Somebody with an account elsewhere is not among them, so
+ * the page opens with a lookup by email, which finds them, or offers to
+ * create them with this organisation already chosen.
+ *
  * So the list shows everyone, and the judgement moved here. Selecting
  * somebody who holds nothing a member of staff would opens a
  * confirmation – are you sure? – and offers to grant them a profession
@@ -18,6 +23,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { Stack } from "@mantine/core";
 import { Controller } from "react-hook-form";
@@ -25,7 +31,7 @@ import BaseCard from "@/components/base-card/BaseCard";
 import SelectField from "@/components/form/SelectField";
 import MultiSelectField from "@/components/form/MultiSelectField";
 import PageHeader from "@/components/page-header";
-import { BodyText } from "@/components/typography";
+import { BodyText, Heading } from "@/components/typography";
 import {
   Form,
   FormStatus,
@@ -37,7 +43,8 @@ import type {
   FormSubmitResult,
 } from "@/components/form/Form";
 import { api } from "@/lib/api";
-import { orgUnits } from "@/domains/orgUnit";
+import { orgUnits, type MemberLookupUser } from "@/domains/orgUnit";
+import { MemberLookup } from "@/components/member-lookup";
 import { useAuth } from "@/auth/AuthContext";
 import ErrorState from "@/components/error-state/ErrorState";
 import { holdsStaffLikeCompetency } from "@/lib/cbac/staffLike";
@@ -48,7 +55,8 @@ import baseProfessionsData from "@/generated/base-professions.json";
 interface ApiUser {
   id: number;
   username: string;
-  email: string;
+  /** Absent for somebody found by lookup, whose address is not sent back */
+  email?: string;
   full_name: string;
   competencies: string[];
 }
@@ -64,12 +72,15 @@ function AddStaffFields({
   users,
   usersLoading,
   onUserChange,
+  onFound,
   showGrantFields,
 }: {
   orgId: string;
   users: ApiUser[];
   usersLoading: boolean;
   onUserChange: (userId: string | null) => void;
+  /** Somebody the lookup found: offer them in the picker */
+  onFound: (user: MemberLookupUser) => void;
   showGrantFields: boolean;
 }) {
   const navigate = useNavigate();
@@ -98,6 +109,46 @@ function AddStaffFields({
       <FormStatus />
       <BaseCard>
         <Stack gap="md">
+          <Heading>Find somebody by email</Heading>
+          <MemberLookup
+            placeName="this organisation"
+            onLookUp={(email) => orgUnits.lookUpMember(Number(orgId), email)}
+            onFound={(found) => {
+              onFound(found);
+              // Chosen for them: the lookup was the choosing.
+              methods.setValue("userId", String(found.id), {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+              onUserChange(String(found.id));
+            }}
+            // The new user form opens with the address and this
+            // organisation already filled in.
+            onCreate={(email) => {
+              // Leaving is the point of the button, so whatever was
+              // chosen below is let go first: left dirty, the form asks
+              // "are you sure you want to leave?". Flushed, so the form
+              // is clean before the navigation is judged, not after.
+              flushSync(() => methods.reset());
+              navigate(
+                `/admin/users/new?${new URLSearchParams({
+                  email,
+                  org_unit: orgId,
+                })}`,
+              );
+            }}
+          />
+        </Stack>
+      </BaseCard>
+      <BaseCard>
+        <Stack gap="md">
+          <Heading>Add to this organisation</Heading>
+          {users.length === 0 && !usersLoading && (
+            <BodyText>
+              Nobody you can see is waiting to be added. Find them by email
+              above.
+            </BodyText>
+          )}
           <Controller
             name="userId"
             control={methods.control}
@@ -108,7 +159,7 @@ function AddStaffFields({
                 placeholder="Search for a user"
                 data={users.map((u) => ({
                   value: String(u.id),
-                  label: `${u.username} (${u.email})`,
+                  label: u.email ? `${u.username} (${u.email})` : u.username,
                 }))}
                 value={field.value as string | null}
                 onChange={(value) => {
@@ -304,6 +355,13 @@ export default function AddStaffToOrgPage() {
           users={users}
           usersLoading={usersLoading}
           onUserChange={setSelectedUserId}
+          onFound={(found) =>
+            setUsers((current) =>
+              current.some((u) => u.id === found.id)
+                ? current
+                : [...current, found],
+            )
+          }
           showGrantFields={needsConfirmation}
         />
       </Form>

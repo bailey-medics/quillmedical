@@ -237,6 +237,103 @@ def org_units_administered_by(db: Session, user: User) -> set[int] | None:
     return authorised | descendant_ids(db, sorted(authorised))
 
 
+def org_units_run_by_scoped_manager(db: Session, user_id: int) -> set[int]:
+    """Return the org_units a scoped manager may act at.
+
+    Every org_unit they belong to, of any type, and every org_unit
+    beneath those, at any depth. Authority in the governance tree flows
+    downward: somebody running teaching for a trust runs it at the
+    trust's sites and wards too, and is not a member of each one. Nothing
+    flows upward, so belonging to a ward reaches neither its trust nor
+    the ward next door.
+
+    Membership of a site counts as membership of a trust does. It read
+    organisation memberships only for a while, which left somebody who
+    runs the passport at one site, and belongs nowhere else, able to
+    administer nothing at all.
+
+    The caller decides whether *user_id* holds a scoped manager such as
+    ``manage_teaching``; this answers only where one would reach.
+
+    Args:
+        db: Core database session.
+        user_id: The scoped manager.
+
+    Returns:
+        The org_unit ids.
+    """
+    member = sorted(
+        {
+            int(row[0])
+            for row in db.execute(
+                select(org_unit_member.c.org_unit_id).where(
+                    org_unit_member.c.user_id == user_id
+                )
+            ).all()
+        }
+    )
+    return set(member) | descendant_ids(db, member)
+
+
+def org_units_whose_people_reached_by(
+    db: Session, user: User
+) -> set[int] | None:
+    """Return the org_units whose members *user* may act on, or None for all.
+
+    The one answer to "whose accounts may this admin see and change?",
+    asked by the user list, by every route acting on one user by id, and
+    by the grant on a member's practice page. Each used to ask about
+    shared *organisation* membership alone, which left somebody who runs
+    one site unable to see or edit the people they had just put there.
+
+    Every org_unit the admin belongs to, of any type, and everything
+    beneath those. Downward only: a ward's admin reaches the ward's
+    people, and neither the trust's nor the ward next door's.
+
+    Membership, deliberately, and not ``manage_users`` practising rows.
+    A change to somebody's account or competencies follows them
+    everywhere they work, so it asks that the admin works alongside
+    them; a row saying an admin administers a ward they do not belong to
+    opens the ward's pages and not its staff's accounts.
+
+    The caller decides whether *user* may administer at all; this
+    answers only where.
+
+    Args:
+        db: Core database session.
+        user: The admin.
+
+    Returns:
+        The org_unit ids, or None for an operator.
+    """
+    if user.platform_role == "superadmin":
+        return None
+    return org_units_run_by_scoped_manager(db, user.id)
+
+
+def is_member_within(
+    db: Session, user_id: int, org_unit_ids: set[int]
+) -> bool:
+    """Whether *user_id* belongs to any of *org_unit_ids*, in any capacity.
+
+    Somebody in no org_unit at all belongs to none of them, so a record
+    that has slipped out of the membership table fails closed.
+    """
+    if not org_unit_ids:
+        return False
+    return (
+        db.scalar(
+            select(org_unit_member.c.user_id)
+            .where(
+                org_unit_member.c.user_id == user_id,
+                org_unit_member.c.org_unit_id.in_(org_unit_ids),
+            )
+            .limit(1)
+        )
+        is not None
+    )
+
+
 def get_reachable_org_unit_ids(
     db: Session, user_id: int, *, capacity: str | None = None
 ) -> list[int]:

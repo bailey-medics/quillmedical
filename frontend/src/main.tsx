@@ -621,25 +621,23 @@ const routes: RouteObject[] = [
               </RequireCompetency>
             ),
           },
-          // Operator-only: the list of every site, and creating one from
-          // it. A site is reached through its organisation's page by
-          // everybody else, so the pages for one site, below, are open
-          // to whoever may open the organisation's. `RequireOperator`
-          // 404s, so the list is not merely refused but invisible.
+          // The list of sites is open to all of Admin: the API answers
+          // with the sites the caller administers, and for somebody who
+          // administers a site but no organisation it is the only way
+          // in. Creating one from it stays operator-only. `RequireOperator`
+          // 404s, so the form is not merely refused but invisible.
           {
+            path: "sites",
+            element: <AdminSitesPage />,
+            handle: { safeForReload: true },
+          },
+          {
+            path: "sites/new",
             element: (
               <RequireOperator>
-                <Outlet />
+                <CreateSitePage />
               </RequireOperator>
             ),
-            children: [
-              {
-                path: "sites",
-                element: <AdminSitesPage />,
-                handle: { safeForReload: true },
-              },
-              { path: "sites/new", element: <CreateSitePage /> },
-            ],
           },
           {
             path: "sites/:id",

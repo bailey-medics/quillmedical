@@ -246,6 +246,24 @@ export type OrgUnitChanges = {
  * addresses appear once. The last rename showed why: the same path was
  * written out in a dozen files, and moving it meant finding all of them.
  */
+/** Somebody a member lookup found, in as little as adding them needs. */
+export interface MemberLookupUser {
+  id: number;
+  username: string;
+  full_name: string;
+  competencies: string[];
+}
+
+/**
+ * What a member lookup found. `user` comes with `found` and
+ * `already_member` only: an account the caller may not add is named no
+ * further than that it exists.
+ */
+export interface MemberLookup {
+  status: "found" | "already_member" | "not_addable" | "not_found";
+  user: MemberLookupUser | null;
+}
+
 export const orgUnits = {
   /**
    * List org_units.
@@ -300,6 +318,17 @@ export const orgUnits = {
       additional_competencies?: string[] | null;
     },
   ) => api.post<StatusResponse>(`/org-units/${id}/members`, member),
+
+  /**
+   * Ask whether an email address already has an account, to add its
+   * owner to an org_unit. An admin sees only the people at the org_units
+   * they reach, so this is how they find somebody from elsewhere: one
+   * exact address, one answer, and nothing to browse.
+   */
+  lookUpMember: (id: number, email: string) =>
+    api.post<MemberLookup>(`/org-units/${id}/member-lookup`, {
+      term: email,
+    }),
 
   /** Take somebody off an org_unit. */
   removeMember: (id: number, userId: number) =>

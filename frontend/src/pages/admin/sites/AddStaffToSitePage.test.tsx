@@ -230,4 +230,92 @@ describe("AddStaffToSitePage", () => {
       },
     );
   });
+
+  describe("Somebody the admin cannot see", () => {
+    // Somebody who runs only this site sees its members and nobody
+    // else, so the picker is empty and the lookup is the way in.
+    const SITE = { name: "Oncology", members: [], clinical_lead_id: null };
+
+    async function findByEmail(
+      user: ReturnType<typeof userEvent.setup>,
+      email: string,
+    ) {
+      await user.type(await screen.findByLabelText(/email address/i), email);
+      await user.click(screen.getByRole("button", { name: "Find" }));
+    }
+
+    it("says the picker is empty and points at the lookup", async () => {
+      mockLoad([], SITE);
+
+      renderPage();
+
+      expect(
+        await screen.findByText(/Nobody you can see is waiting to be added/),
+      ).toBeInTheDocument();
+    });
+
+    it("adds somebody the lookup finds", async () => {
+      mockLoad([], SITE);
+      const post = vi
+        .spyOn(apiLib.api, "post")
+        .mockImplementation((path: string) =>
+          Promise.resolve(
+            path.endsWith("/member-lookup")
+              ? {
+                  status: "found",
+                  user: {
+                    id: 9,
+                    username: "a.patel",
+                    full_name: "Anita Patel",
+                    competencies: ["access_patient_records"],
+                  },
+                }
+              : { status: "added" },
+          ),
+        );
+
+      const user = userEvent.setup();
+      renderPage();
+      await findByEmail(user, "a.patel@example.org");
+
+      expect(post).toHaveBeenCalledWith("/org-units/1/member-lookup", {
+        term: "a.patel@example.org",
+      });
+      // Chosen for them, in the picker below.
+      await waitFor(() =>
+        expect(screen.getByPlaceholderText("Search for a user")).toHaveValue(
+          "a.patel",
+        ),
+      );
+
+      await selectRole(user, "Trainee");
+      await user.click(screen.getByTestId("submit-button"));
+
+      await waitFor(() => {
+        expect(post).toHaveBeenCalledWith("/org-units/1/members", {
+          user_id: 9,
+          capacity: "trainee",
+        });
+      });
+    });
+
+    it("opens the new user form, filled in, when nobody has the address", async () => {
+      mockLoad([], SITE);
+      vi.spyOn(apiLib.api, "post").mockResolvedValue({
+        status: "not_found",
+        user: null,
+      });
+
+      const user = userEvent.setup();
+      renderPage();
+      await findByEmail(user, "new.person@example.org");
+      await user.click(
+        await screen.findByRole("button", { name: "Create new user" }),
+      );
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/admin/users/new?email=new.person%40example.org&org_unit=1",
+      );
+    });
+  });
 });

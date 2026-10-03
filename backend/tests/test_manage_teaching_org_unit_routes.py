@@ -324,6 +324,85 @@ class TestBeneathTheirOrgUnit:
         assert resp.status_code == 404
 
 
+class TestBelongingOnlyToAWard:
+    """A scoped manager at a ward runs the ward, and nothing above it."""
+
+    @pytest.fixture
+    def ward(self, db_session: Session, trust: OrgUnit) -> OrgUnit:
+        return _ward(db_session, "Ward 1", trust)
+
+    @pytest.fixture
+    def ward_client(
+        self, test_client: TestClient, db_session: Session, ward: OrgUnit
+    ) -> TestClient:
+        admin = _user(db_session, "ward.admin", "teaching_admin", ward)
+        response = test_client.post(
+            "/api/auth/login",
+            json={"username": admin.username, "password": PASSWORD},
+        )
+        assert response.status_code == 200
+        csrf = test_client.cookies.get("XSRF-TOKEN")
+        if csrf:
+            test_client.headers["X-CSRF-Token"] = csrf
+        return test_client
+
+    def test_lists_the_ward_and_not_its_trust(
+        self, ward_client: TestClient, ward: OrgUnit
+    ) -> None:
+        units = ward_client.get("/api/org-units").json()["org_units"]
+        assert [u["id"] for u in units] == [ward.id]
+
+    def test_lists_no_organisations(
+        self, ward_client: TestClient, ward: OrgUnit
+    ) -> None:
+        resp = ward_client.get("/api/org-units?roots=true")
+        assert resp.status_code == 200
+        assert resp.json()["org_units"] == []
+
+    def test_opens_the_ward(
+        self, ward_client: TestClient, ward: OrgUnit
+    ) -> None:
+        resp = ward_client.get(f"/api/org-units/{ward.id}")
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "Ward 1"
+
+    def test_reaches_what_is_beneath_the_ward(
+        self, ward_client: TestClient, db_session: Session, ward: OrgUnit
+    ) -> None:
+        bay = _ward(db_session, "Bay A", ward)
+        resp = ward_client.get(f"/api/org-units/{bay.id}")
+        assert resp.status_code == 200
+
+    def test_cannot_open_the_trust_above(
+        self, ward_client: TestClient, ward: OrgUnit, trust: OrgUnit
+    ) -> None:
+        resp = ward_client.get(f"/api/org-units/{trust.id}")
+        assert resp.status_code == 404
+
+    def test_cannot_open_the_ward_next_door(
+        self, ward_client: TestClient, db_session: Session, trust: OrgUnit
+    ) -> None:
+        next_door = _ward(db_session, "Ward 2", trust)
+        resp = ward_client.get(f"/api/org-units/{next_door.id}")
+        assert resp.status_code == 404
+
+    def test_grants_and_authorises_for_somebody_at_the_ward(
+        self, ward_client: TestClient, db_session: Session, ward: OrgUnit
+    ) -> None:
+        learner = _user(db_session, "learner", "teaching_delegate", ward)
+
+        resp = ward_client.post(
+            f"/api/org-units/{ward.id}/members/{learner.id}"
+            "/grant-and-authorise",
+            json={"competency": "view_teaching_analytics"},
+        )
+
+        assert resp.status_code == 200, resp.text
+        assert "view_teaching_analytics" in _practising(
+            db_session, learner, ward
+        )
+
+
 class TestBeyondTheirWhitelist:
     def test_cannot_reach_another_org_unit(
         self, client: TestClient, elsewhere: OrgUnit
@@ -331,15 +410,50 @@ class TestBeyondTheirWhitelist:
         resp = client.get(f"/api/org-units/{elsewhere.id}/members")
         assert resp.status_code == 404
 
-    def test_cannot_add_a_clinician(
+    def test_adds_a_clinician_and_leaves_their_account_alone(
+        self, client: TestClient, trust: OrgUnit, db_session: Session
+    ) -> None:
+        """Being at an org_unit is not a change to somebody's account."""
+        nurse = _user(db_session, "nurse", "registered_nurse", None)
+        held = set(nurse.get_final_competencies())
+
+        resp = client.post(
+            f"/api/org-units/{trust.id}/members",
+            json={"user_id": nurse.id, "capacity": "staff"},
+        )
+
+        assert resp.status_code == 200, resp.text
+        db_session.refresh(nurse)
+        assert trust.id in get_member_org_unit_ids(db_session, nurse.id)
+        assert nurse.base_profession == "registered_nurse"
+        assert set(nurse.get_final_competencies()) == held
+
+    def test_cannot_give_a_clinician_a_profession_on_adding(
         self, client: TestClient, trust: OrgUnit, db_session: Session
     ) -> None:
         nurse = _user(db_session, "nurse", "registered_nurse", None)
 
         resp = client.post(
             f"/api/org-units/{trust.id}/members",
-            json={"user_id": nurse.id, "capacity": "staff"},
+            json={
+                "user_id": nurse.id,
+                "capacity": "staff",
+                "base_profession": "teaching_delegate",
+            },
         )
+
+        assert resp.status_code == 403
+        db_session.refresh(nurse)
+        assert nurse.base_profession == "registered_nurse"
+
+    def test_cannot_change_the_capacity_of_a_clinician_already_here(
+        self, client: TestClient, trust: OrgUnit, consultant: User
+    ) -> None:
+        resp = client.post(
+            f"/api/org-units/{trust.id}/members",
+            json={"user_id": consultant.id, "capacity": "trainee"},
+        )
+
         assert resp.status_code == 403
 
     def test_cannot_give_a_clinical_competency_on_adding(

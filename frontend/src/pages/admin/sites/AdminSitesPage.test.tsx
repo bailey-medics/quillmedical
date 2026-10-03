@@ -13,6 +13,8 @@ import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import AdminSitesPage from "./AdminSitesPage";
 import * as apiLib from "@/lib/api";
+import * as authContext from "@/auth/AuthContext";
+import type { User } from "@/auth/AuthContext";
 
 const mockNavigate = vi.fn();
 
@@ -59,6 +61,24 @@ const clinic = place({
   parent_id: 10,
 });
 
+/** Sign in as an operator, or as an admin who is not one. */
+function signInAs(platformRole: "superadmin" | "standard") {
+  const user: User = {
+    id: "3",
+    username: "admin.user",
+    email: "admin@example.com",
+    roles: [],
+    competencies: ["manage_users"],
+    platform_role: platformRole,
+  };
+  vi.spyOn(authContext, "useAuth").mockReturnValue({
+    state: { status: "authenticated", user },
+    login: vi.fn(),
+    logout: vi.fn(),
+    reload: vi.fn(),
+  });
+}
+
 function mockList(org_units: unknown[]) {
   return vi.spyOn(apiLib.api, "get").mockResolvedValue({ org_units });
 }
@@ -67,6 +87,7 @@ describe("AdminSitesPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockNavigate.mockClear();
+    signInAs("superadmin");
   });
 
   describe("What it lists", () => {
@@ -154,6 +175,20 @@ describe("AdminSitesPage", () => {
       );
 
       expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/new");
+    });
+
+    it("does not offer adding one to an admin who is not an operator", async () => {
+      // The create form is operator-only, and a link to a 404 is worse
+      // than no link.
+      signInAs("standard");
+      mockList([trust, ward]);
+
+      renderWithRouter(<AdminSitesPage />);
+
+      expect(await screen.findByText("Ward 1")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /add site/i }),
+      ).not.toBeInTheDocument();
     });
   });
 });

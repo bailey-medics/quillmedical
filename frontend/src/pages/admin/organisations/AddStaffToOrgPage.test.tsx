@@ -353,4 +353,74 @@ describe("AddStaffToOrgPage", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  describe("Somebody the admin cannot see", () => {
+    it("adds somebody the lookup finds", async () => {
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [] });
+      const post = vi
+        .spyOn(apiLib.api, "post")
+        .mockImplementation((path: string) =>
+          Promise.resolve(
+            path.endsWith("/member-lookup")
+              ? {
+                  status: "found",
+                  user: {
+                    id: 9,
+                    username: "a.patel",
+                    full_name: "Anita Patel",
+                    competencies: ["access_patient_records"],
+                  },
+                }
+              : { status: "added" },
+          ),
+        );
+
+      const user = userEvent.setup();
+      renderPage();
+      await user.type(
+        await screen.findByLabelText(/email address/i),
+        "a.patel@example.org",
+      );
+      await user.click(screen.getByRole("button", { name: "Find" }));
+
+      await waitFor(() =>
+        expect(screen.getByPlaceholderText("Search for a user")).toHaveValue(
+          "a.patel",
+        ),
+      );
+      await user.click(screen.getByTestId("submit-button"));
+
+      await waitFor(() => {
+        expect(post).toHaveBeenCalledWith(
+          expect.stringMatching(/^\/org-units\/\d+\/members$/),
+          expect.objectContaining({ user_id: 9, capacity: "staff" }),
+        );
+      });
+    });
+
+    it("opens the new user form, filled in, when nobody has the address", async () => {
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [] });
+      vi.spyOn(apiLib.api, "post").mockResolvedValue({
+        status: "not_found",
+        user: null,
+      });
+
+      const user = userEvent.setup();
+      renderPage();
+      await user.type(
+        await screen.findByLabelText(/email address/i),
+        "new.person@example.org",
+      );
+      await user.click(screen.getByRole("button", { name: "Find" }));
+      await user.click(
+        await screen.findByRole("button", { name: "Create new user" }),
+      );
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\/admin\/users\/new\?email=new\.person%40example\.org&org_unit=\d+$/,
+        ),
+      );
+    });
+  });
 });

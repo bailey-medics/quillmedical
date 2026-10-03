@@ -144,11 +144,13 @@ from app.organisations import (
     add_org_unit_member,
     feature_holder_ids_of,
     get_accessible_patient_ids,
-    get_member_org_unit_ids,
     get_org_unit_staff_ids,
     get_patient_org_unit_ids,
     get_shared_org_unit_ids,
+    is_member_within,
     org_units_administered_by,
+    org_units_run_by_scoped_manager,
+    org_units_whose_people_reached_by,
     organisation_org_unit_member,
     organisation_org_units_of,
 )
@@ -1618,9 +1620,10 @@ def _org_units_the_caller_places_people_in(
 
     Where they administer through a ``manage_users`` practising row, as
     ever. And, for a scoped manager such as ``manage_teaching``, the
-    org_units they belong to, which is where teaching's own admin routes
-    let them act: somebody running teaching at a trust signs delegates up
-    to it.
+    org_units they belong to and everything beneath those, which is
+    where the org_unit routes let them act: somebody running teaching at
+    a trust signs delegates up to it and to its sites, and somebody
+    running the passport at one site signs people up to that site.
 
     Args:
         db: Core database session.
@@ -1635,7 +1638,9 @@ def _org_units_the_caller_places_people_in(
     if not set(current_user.get_final_competencies()).isdisjoint(
         SCOPED_MANAGER_IDS
     ):
-        allowed = allowed | set(get_member_org_unit_ids(db, current_user.id))
+        allowed = allowed | org_units_run_by_scoped_manager(
+            db, current_user.id
+        )
     return allowed
 
 
@@ -2865,23 +2870,22 @@ def list_users(
         # Anyone but an operator sees only users at their own org_units;
         # operators see everyone.
     if current_user.platform_role != "superadmin":
-        admin_org_units = get_member_org_unit_ids(db, current_user.id)
-        org_scoped_ids = get_org_unit_staff_ids(db, admin_org_units)
-
-        # Also include site-only members beneath the admin's org_units
-        site_ids_for_orgs = descendant_ids(db, list(admin_org_units))
-        site_scoped_ids: set[int] = set()
-        if site_ids_for_orgs:
-            site_scoped_ids = {
+        # Everybody at an org_unit the admin belongs to, or at one
+        # beneath it: the same reach the routes acting on one user
+        # check, so nobody is listed who cannot then be opened.
+        reached = org_units_whose_people_reached_by(db, current_user)
+        all_scoped_ids: set[int] = (
+            {
                 row[0]
                 for row in db.execute(
                     select(org_unit_member.c.user_id).where(
-                        org_unit_member.c.org_unit_id.in_(site_ids_for_orgs)
+                        org_unit_member.c.org_unit_id.in_(reached)
                     )
                 ).all()
             }
-
-        all_scoped_ids = org_scoped_ids | site_scoped_ids
+            if reached
+            else set()
+        )
         if not all_scoped_ids:
             return UsersListOut(users=[])
         stmt = stmt.where(User.id.in_(all_scoped_ids))
@@ -4101,14 +4105,19 @@ def _require_shared_org_with_patient(
 def _require_shared_org_with_user(
     db: Session, current_user: User, target: User
 ) -> None:
-    """Refuse a user the admin shares no organisation with.
+    """Refuse a user who is at no org_unit the admin reaches.
 
     The org_unit check for the admin routes that act on one user by id. Being
     an admin says what someone may do, never where: the column is global
     and the authority is not, so without this an admin at one trust can
     act on a user at another by naming their id.
 
-    A user in no organisation at all is refused rather than treated as
+    The admin reaches the org_units they belong to and everything
+    beneath those, which is what the user list shows them. It
+    asked for a shared *organisation* until somebody running one site
+    could add a person there and then not open them.
+
+    A user in no org_unit at all is refused rather than treated as
     everyone's, so a record that has slipped out of the membership tables
     fails closed.
 
@@ -4121,15 +4130,14 @@ def _require_shared_org_with_user(
         target: The user being acted on.
 
     Raises:
-        HTTPException: 404 if they share no organisation.
+        HTTPException: 404 if the target is at none of them.
     """
-    if current_user.platform_role == "superadmin":
-        return
     if target.id == current_user.id:
         return
-    admin_org_ids = set(get_member_org_unit_ids(db, current_user.id))
-    target_org_ids = set(get_member_org_unit_ids(db, target.id))
-    if not (admin_org_ids & target_org_ids):
+    reached = org_units_whose_people_reached_by(db, current_user)
+    if reached is None:
+        return
+    if not is_member_within(db, target.id, reached):
         raise HTTPException(status_code=404, detail="User not found")
 
 

@@ -20,9 +20,14 @@ import AddButton from "@/components/button/AddButton";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import { orgUnits, type OrgUnit } from "@/domains/orgUnit";
+import { useAuth } from "@/auth/AuthContext";
 
 export default function AdminSitesPage() {
   const navigate = useNavigate();
+  const { state } = useAuth();
+  const isOperator =
+    state.status === "authenticated" &&
+    state.user.platform_role === "superadmin";
   const [places, setPlaces] = useState<OrgUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,10 +134,14 @@ export default function AdminSitesPage() {
       <PageHeader
         title="Sites"
         action={
-          <AddButton
-            label="Add site"
-            onClick={() => navigate("/admin/sites/new")}
-          />
+          // Matching the route guard on the create form: a link to a
+          // page that 404s is worse than no link.
+          isOperator && (
+            <AddButton
+              label="Add site"
+              onClick={() => navigate("/admin/sites/new")}
+            />
+          )
         }
       />
 
