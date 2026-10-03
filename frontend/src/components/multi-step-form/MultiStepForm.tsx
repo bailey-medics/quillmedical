@@ -10,11 +10,13 @@
  * @module MultiStepForm
  */
 
-import { Button, Group, Stack, Stepper } from "@mantine/core";
+import { Button, Group, Stack, Stepper, useMantineTheme } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { useState, type ReactNode } from "react";
 import { IconCheck } from "@/components/icons/appIcons";
 import BaseCard from "@/components/base-card/BaseCard";
 import ButtonPair from "@/components/button/ButtonPair";
+import BodyText from "@/components/typography/BodyText";
 
 /**
  * Individual step configuration
@@ -28,7 +30,7 @@ export interface StepConfig {
   content: (props: StepContentProps) => ReactNode;
   /** Optional validation function - returns true if step is valid */
   validate?: () => boolean | Promise<boolean>;
-  /** Optional custom label for the Next button (e.g., "Add Patient", "Create User") */
+  /** Optional custom label for the Next button (e.g., "Add patient", "Create user") */
   nextButtonLabel?: string;
   /** Optional custom label for the Cancel/Back button */
   cancelButtonLabel?: string;
@@ -92,6 +94,9 @@ export default function MultiStepForm({
     controlledStep ?? 0,
   );
 
+  const theme = useMantineTheme();
+  const isNarrow = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
+
   // Use controlled step if provided, otherwise use internal state
   const activeStep = controlledStep ?? internalStep;
   const setActiveStep = onStepChange ?? setInternalStep;
@@ -140,35 +145,61 @@ export default function MultiStepForm({
 
   return (
     <Stack gap="lg">
-      <Stepper
-        active={activeStep}
-        onStepClick={handleStepClick}
-        completedIcon={
-          <IconCheck
-            size={21}
-            stroke={3}
-            color="var(--mantine-color-secondary-4)"
-          />
-        }
-        styles={{
-          stepLabel: {
-            fontSize: "var(--mantine-font-size-md)",
-          },
-          stepIcon: {
-            fontSize: "var(--mantine-font-size-md)",
-            color: "var(--mantine-color-text)",
-          },
-        }}
-        size="sm"
-      >
-        {steps.map((step, index) => (
-          <Stepper.Step
-            key={index}
-            label={step.label}
-            allowStepSelect={allStepsAccessible || index <= highestVisitedStep}
-          />
-        ))}
-      </Stepper>
+      <Stack gap="xs">
+        <Stepper
+          active={activeStep}
+          onStepClick={handleStepClick}
+          completedIcon={
+            <IconCheck
+              size={21}
+              stroke={3}
+              color="var(--mantine-color-secondary-4)"
+            />
+          }
+          styles={{
+            stepLabel: {
+              fontSize: "var(--mantine-font-size-md)",
+            },
+            stepIcon: {
+              fontSize: "var(--mantine-font-size-md)",
+              color: "var(--mantine-color-text)",
+            },
+            // No line between one step and the next.
+            separator: {
+              display: "none",
+            },
+            // On a wide screen, at most four steps to a row: each takes
+            // a quarter of the width and the rest wrap beneath, lined
+            // up in the same columns. On a narrow one the labels are
+            // left out, so the circles sit side by side in one row.
+            step: isNarrow
+              ? { paddingInlineEnd: "var(--mantine-spacing-xs)" }
+              : {
+                  flex: "0 0 25%",
+                  paddingInlineEnd: "var(--mantine-spacing-md)",
+                },
+          }}
+          size="sm"
+        >
+          {steps.map((step, index) => (
+            <Stepper.Step
+              key={index}
+              // A circle with no label beside it still needs a name.
+              {...(isNarrow
+                ? { "aria-label": step.label }
+                : { label: step.label })}
+              allowStepSelect={
+                allStepsAccessible || index <= highestVisitedStep
+              }
+            />
+          ))}
+        </Stepper>
+        {isNarrow && (
+          <BodyText>
+            Step {activeStep + 1} of {steps.length}: {currentStepConfig.label}
+          </BodyText>
+        )}
+      </Stack>
 
       {currentStepConfig.hideCard ? (
         currentStepConfig.content(stepContentProps)

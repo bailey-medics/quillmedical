@@ -12,6 +12,13 @@ import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
 import MultiStepForm, { type StepConfig } from "./MultiStepForm";
 
+const media = vi.hoisted(() => ({ isNarrow: false }));
+
+vi.mock("@mantine/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@mantine/hooks")>();
+  return { ...actual, useMediaQuery: () => media.isNarrow };
+});
+
 describe("MultiStepForm", () => {
   const mockOnCancel = vi.fn();
 
@@ -35,6 +42,7 @@ describe("MultiStepForm", () => {
 
   beforeEach(() => {
     mockOnCancel.mockClear();
+    media.isNarrow = false;
   });
 
   describe("Basic rendering", () => {
@@ -45,6 +53,34 @@ describe("MultiStepForm", () => {
       expect(screen.getByText("Step 1")).toBeInTheDocument();
       expect(screen.getByText("Step 2")).toBeInTheDocument();
       expect(screen.getByText("Step 3")).toBeInTheDocument();
+    });
+
+    it("draws no line between one step and the next", () => {
+      const { container } = renderWithMantine(
+        <MultiStepForm steps={defaultSteps} onCancel={mockOnCancel} />,
+      );
+
+      const separators = container.querySelectorAll<HTMLElement>(
+        ".mantine-Stepper-separator",
+      );
+      expect(separators.length).toBeGreaterThan(0);
+      separators.forEach((separator) => {
+        expect(separator.style.display).toBe("none");
+      });
+    });
+
+    it("gives each step a quarter of the row, so four fit and the rest wrap", () => {
+      const { container } = renderWithMantine(
+        <MultiStepForm steps={defaultSteps} onCancel={mockOnCancel} />,
+      );
+
+      const steps = container.querySelectorAll<HTMLElement>(
+        ".mantine-Stepper-step",
+      );
+      expect(steps).toHaveLength(defaultSteps.length);
+      steps.forEach((step) => {
+        expect(step.style.flex).toBe("0 0 25%");
+      });
     });
 
     it("renders first step content by default", () => {
@@ -91,6 +127,63 @@ describe("MultiStepForm", () => {
         <MultiStepForm steps={defaultSteps} onCancel={mockOnCancel} />,
       );
       expect(screen.getByRole("button", { name: /Next/i })).toBeInTheDocument();
+    });
+  });
+
+  describe("On a narrow screen", () => {
+    beforeEach(() => {
+      media.isNarrow = true;
+    });
+
+    it("names the current step in one line under the circles", () => {
+      renderWithMantine(
+        <MultiStepForm steps={defaultSteps} onCancel={mockOnCancel} />,
+      );
+
+      expect(screen.getByText("Step 1 of 3: Step 1")).toBeInTheDocument();
+    });
+
+    it("leaves the labels out, and names each circle for a screen reader", () => {
+      renderWithMantine(
+        <MultiStepForm steps={defaultSteps} onCancel={mockOnCancel} />,
+      );
+
+      expect(screen.queryByText("Step 2")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Step 2" }),
+      ).toBeInTheDocument();
+    });
+
+    it("moves the line on with the step", async () => {
+      const user = userEvent.setup();
+      renderWithMantine(
+        <MultiStepForm steps={defaultSteps} onCancel={mockOnCancel} />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "Next" }));
+
+      expect(screen.getByText("Step 2 of 3: Step 2")).toBeInTheDocument();
+    });
+
+    it("still jumps back when a circle is pressed", async () => {
+      const user = userEvent.setup();
+      renderWithMantine(
+        <MultiStepForm steps={defaultSteps} onCancel={mockOnCancel} />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "Next" }));
+      await user.click(screen.getByRole("button", { name: "Step 1" }));
+
+      expect(screen.getByText("Step 1 Content")).toBeInTheDocument();
+    });
+
+    it("does not show the line on a wide screen", () => {
+      media.isNarrow = false;
+      renderWithMantine(
+        <MultiStepForm steps={defaultSteps} onCancel={mockOnCancel} />,
+      );
+
+      expect(screen.queryByText(/Step 1 of 3/)).not.toBeInTheDocument();
     });
   });
 

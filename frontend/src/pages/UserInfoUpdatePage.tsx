@@ -188,7 +188,7 @@ function practiceToSend(
 }
 
 /**
- * Step 1: Basic Details
+ * Step 1: Basic details
  */
 function Step1BasicDetails({
   formData,
@@ -1128,7 +1128,7 @@ export default function UserInfoUpdatePage() {
 
   const steps: StepConfig[] = [
     {
-      label: "Basic Details",
+      label: "Basic details",
       description: "Name, email, and base profession",
       content: (props) => (
         <Step1BasicDetails
@@ -1211,7 +1211,7 @@ export default function UserInfoUpdatePage() {
           }
         />
       ),
-      nextButtonLabel: isEditMode ? "Update User" : "Create User",
+      nextButtonLabel: isEditMode ? "Update user" : "Create user",
     },
     {
       label: "Confirmation",
@@ -1261,7 +1261,7 @@ export default function UserInfoUpdatePage() {
             title="Error loading user"
             message={loadError}
             action={{
-              label: "Return to Admin",
+              label: "Return to admin",
               icon: "arrowLeft",
               onClick: () => navigate("/admin/users"),
             }}
