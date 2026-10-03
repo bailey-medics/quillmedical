@@ -320,4 +320,63 @@ describe("UserAdminPage", () => {
       });
     });
   });
+
+  describe("Somebody who operates Quill", () => {
+    // An admin who works beside an operator sees them in the list, and
+    // their page opens. Changing them is another operator's alone.
+    const operator = {
+      ...mockUserDetails,
+      platform_role: "superadmin" as const,
+    };
+
+    it("offers an admin nothing to change, and says why", async () => {
+      vi.spyOn(apiLib.api, "get").mockResolvedValue(operator);
+
+      renderWithRouter(<UserAdminPage />, {
+        routePath: "/admin/users/:id",
+        initialRoute: "/admin/users/1",
+      });
+
+      expect(
+        await screen.findByText(/Only another Quill operator can change/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Edit user")).not.toBeInTheDocument();
+      expect(screen.queryByText("Send invite email")).not.toBeInTheDocument();
+      expect(screen.queryByText("Deactivate user")).not.toBeInTheDocument();
+    });
+
+    it("offers another operator the actions as usual", async () => {
+      vi.spyOn(authContext, "useAuth").mockReturnValue({
+        state: {
+          status: "authenticated",
+          user: { ...mockAuthUsers.superadmin, platform_role: "superadmin" },
+        },
+        login: vi.fn(),
+        logout: vi.fn(),
+        reload: vi.fn(),
+      });
+      vi.spyOn(apiLib.api, "get").mockResolvedValue(operator);
+
+      renderWithRouter(<UserAdminPage />, {
+        routePath: "/admin/users/:id",
+        initialRoute: "/admin/users/1",
+      });
+
+      expect(await screen.findByText("Edit user")).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Only another Quill operator can change/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("still offers the actions on an ordinary account", async () => {
+      vi.spyOn(apiLib.api, "get").mockResolvedValue(mockUserDetails);
+
+      renderWithRouter(<UserAdminPage />, {
+        routePath: "/admin/users/:id",
+        initialRoute: "/admin/users/1",
+      });
+
+      expect(await screen.findByText("Edit user")).toBeInTheDocument();
+    });
+  });
 });

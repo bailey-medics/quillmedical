@@ -174,25 +174,22 @@ class TestTheRoutesReadTheNewColumn:
         assert resp.status_code == 200
 
 
-class TestTheListingsHideOperatorsByTheNewColumn:
-    """An admin's listings hide operators, read from `platform_role`.
+class TestAnAdminSeesAnOperatorTheyWorkBeside:
+    """An admin sees an operator at their org_unit, and cannot change them.
 
-    Three queries filter the *listed* user rather than the caller –
-    `GET /api/users`, and the staff lists on an organisation and a site.
-    Same column as the checks above, opposite side of the comparison, so
-    it is a separate change: miss it and an operator appears in an
-    admin's list the moment the old column stops being written.
+    `GET /api/users` used to leave operators out for anybody who was not
+    one, while the staff table on the org_unit went on naming them: an
+    admin saw a colleague on one page and not the other. The listing
+    names them now, and their page opens. What did not change is who
+    may act on an operator: every route that writes still refuses.
 
-    The operator below says `single-user` in the old column, so the test
-    fails if the filter still reads it.
+    Both sides read `platform_role`. The operator below says
+    `single-user` in the old column, so a check still reading that one
+    would treat them as ordinary and let the writes through.
     """
 
-    def test_an_operator_is_hidden_from_the_user_listing(
-        self,
-        authenticated_admin_client,
-        test_admin: User,
-        db_session: Session,
-    ):
+    @pytest.fixture
+    def operator(self, db_session: Session, test_admin: User) -> User:
         org = OrgUnit(name="Shared Trust", type="organisation")
         db_session.add(org)
         db_session.commit()
@@ -200,22 +197,82 @@ class TestTheListingsHideOperatorsByTheNewColumn:
 
         operator = _user(
             db_session,
-            "hidden_operator",
+            "visible_operator",
             platform_role="superadmin",
             base_profession="superadmin_profession",
         )
         for person in (test_admin, operator):
             add_org_unit_member(db_session, org.id, person.id, "staff")
         # Only the admin administers it; the listing is scoped to the
-        # places they hold a manage_users row at.
+        # places they belong to.
         administers(db_session, test_admin.id, org.id)
         db_session.commit()
+        return operator
 
+    def test_an_operator_is_listed_with_their_colleagues(
+        self, authenticated_admin_client, operator: User
+    ):
         resp = authenticated_admin_client.get("/api/users")
 
         assert resp.status_code == 200
-        listed = {u["username"] for u in resp.json()["users"]}
-        assert "hidden_operator" not in listed
+        listed = {
+            u["username"]: u["platform_role"] for u in resp.json()["users"]
+        }
+        assert listed["visible_operator"] == "superadmin"
+
+    def test_an_operators_page_opens(
+        self, authenticated_admin_client, operator: User
+    ):
+        resp = authenticated_admin_client.get(f"/api/users/{operator.id}")
+
+        assert resp.status_code == 200
+        assert resp.json()["platform_role"] == "superadmin"
+
+    def test_an_operator_elsewhere_is_neither_listed_nor_opened(
+        self, authenticated_admin_client, operator: User, db_session: Session
+    ):
+        """Seeing one follows from working beside them, not from rank."""
+        stranger = _user(
+            db_session,
+            "distant_operator",
+            platform_role="superadmin",
+            base_profession="superadmin_profession",
+        )
+
+        listing = authenticated_admin_client.get("/api/users")
+        opened = authenticated_admin_client.get(f"/api/users/{stranger.id}")
+
+        listed = {u["username"] for u in listing.json()["users"]}
+        assert "distant_operator" not in listed
+        assert opened.status_code == 404
+
+    @pytest.mark.parametrize(
+        ("method", "path", "body"),
+        [
+            ("patch", "/api/users/{id}", {"name": "Renamed"}),
+            ("post", "/api/users/{id}/deactivate", None),
+            ("post", "/api/users/{id}/send-invite", {}),
+        ],
+    )
+    def test_an_operator_still_cannot_be_changed(
+        self,
+        authenticated_admin_client,
+        operator: User,
+        db_session: Session,
+        method: str,
+        path: str,
+        body: dict[str, str] | None,
+    ):
+        send = getattr(authenticated_admin_client, method)
+        url = path.format(id=operator.id)
+
+        resp = send(url, json=body) if body is not None else send(url)
+
+        assert resp.status_code == 403
+        assert "superadmin" in resp.json()["detail"].lower()
+        db_session.refresh(operator)
+        assert operator.is_active is True
+        assert operator.full_name != "Renamed"
 
     def test_an_ordinary_colleague_is_still_listed(
         self,

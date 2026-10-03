@@ -40,6 +40,7 @@ import type {
   FormSubmitResult,
 } from "@/components/form/Form";
 import { api } from "@/lib/api";
+import { useAuth } from "@/auth/AuthContext";
 import { orgUnits, type MemberLookupUser } from "@/domains/orgUnit";
 import { MemberLookup, newUserSearch } from "@/components/member-lookup";
 import ErrorState from "@/components/error-state/ErrorState";
@@ -60,6 +61,8 @@ interface ApiUser {
   /** Absent for somebody found by lookup, whose address is not sent back */
   email?: string;
   competencies: string[];
+  /** Absent for somebody found by lookup, who is never an operator */
+  platform_role?: string;
 }
 
 interface AddStaffFormValues {
@@ -267,6 +270,10 @@ export default function AddStaffToSitePage() {
   // sits above the field that sets it.
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [siteName, setSiteName] = useState("this site");
+  const { state } = useAuth();
+  const viewerIsOperator =
+    state.status === "authenticated" &&
+    state.user.platform_role === "superadmin";
 
   useEffect(() => {
     async function fetchData() {
@@ -284,8 +291,15 @@ export default function AddStaffToSitePage() {
         const existingStaffIds = new Set(
           siteResponse.members.map((member) => member.id),
         );
+        // Not somebody already here, and not an operator unless the
+        // viewer is one: the list names operators now, and adding one
+        // is refused for anybody else, as the lookup above says too.
         setUsers(
-          usersResponse.users.filter((u) => !existingStaffIds.has(u.id)),
+          usersResponse.users.filter(
+            (u) =>
+              !existingStaffIds.has(u.id) &&
+              (viewerIsOperator || u.platform_role !== "superadmin"),
+          ),
         );
         // The post, not a role on a staff row: a site can have the post
         // and nobody in it, which is exactly when a lead may be added.
@@ -301,7 +315,7 @@ export default function AddStaffToSitePage() {
     }
 
     fetchData();
-  }, [id]);
+  }, [id, viewerIsOperator]);
 
   const selectedUser = users.find((u) => String(u.id) === selectedUserId);
   // `competencies` is absent on a stale cached response; treat that as

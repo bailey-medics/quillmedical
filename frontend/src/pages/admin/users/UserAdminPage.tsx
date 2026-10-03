@@ -29,6 +29,7 @@ import PageHeader from "@/components/page-header";
 import ActionCard from "@/components/action-card";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { api } from "@/lib/api";
+import { useAuth } from "@/auth/AuthContext";
 import competenciesData from "@/generated/competencies.json";
 import baseProfessionsData from "@/generated/base-professions.json";
 import ErrorState from "@/components/error-state/ErrorState";
@@ -68,6 +69,10 @@ export default function UserAdminPage() {
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [inviteSending, setInviteSending] = useState(false);
   const [inviteSent, setInviteSent] = useState(false);
+  const { state } = useAuth();
+  const viewerIsOperator =
+    state.status === "authenticated" &&
+    state.user.platform_role === "superadmin";
 
   useEffect(() => {
     async function fetchUserData() {
@@ -108,6 +113,8 @@ export default function UserAdminPage() {
       />
     );
   }
+
+  const mayChange = viewerIsOperator || user.platform_role !== "superadmin";
 
   return (
     <Stack gap="lg">
@@ -201,51 +208,63 @@ export default function UserAdminPage() {
         </Stack>
       </BaseCard>
 
+      {/* An operator's account is changed only by another operator. An
+          admin who works beside one sees them here, and is told why
+          there is nothing to press: the API refuses each of these. */}
+      {!mayChange && (
+        <BodyText>
+          This person operates Quill. Only another Quill operator can change
+          their account.
+        </BodyText>
+      )}
+
       {/* Action Cards */}
-      <Stack gap="md">
-        <Heading>Actions</Heading>
+      {mayChange && (
+        <Stack gap="md">
+          <Heading>Actions</Heading>
 
-        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <ActionCard
-            icon={<IconPencil />}
-            onClick={() => navigate(`/admin/users/${id}/edit`)}
-            title="Edit user"
-            subtitle="Modify user account and permissions"
-            buttonLabel="Edit"
-          />
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            <ActionCard
+              icon={<IconPencil />}
+              onClick={() => navigate(`/admin/users/${id}/edit`)}
+              title="Edit user"
+              subtitle="Modify user account and permissions"
+              buttonLabel="Edit"
+            />
 
-          <ActionCard
-            icon={<IconMail />}
-            onClick={async () => {
-              setInviteSending(true);
-              try {
-                await api.post(`/users/${id}/send-invite`, {});
-                setInviteSent(true);
-              } finally {
-                setInviteSending(false);
+            <ActionCard
+              icon={<IconMail />}
+              onClick={async () => {
+                setInviteSending(true);
+                try {
+                  await api.post(`/users/${id}/send-invite`, {});
+                  setInviteSent(true);
+                } finally {
+                  setInviteSending(false);
+                }
+              }}
+              title="Send invite email"
+              subtitle="Email the user a link to set up their credentials"
+              buttonLabel={
+                inviteSent ? "Sent" : inviteSending ? "Sending…" : "Send"
               }
-            }}
-            title="Send invite email"
-            subtitle="Email the user a link to set up their credentials"
-            buttonLabel={
-              inviteSent ? "Sent" : inviteSending ? "Sending…" : "Send"
-            }
-            disabled={inviteSending || inviteSent}
-          />
+              disabled={inviteSending || inviteSent}
+            />
 
-          <ActionCard
-            icon={user.is_active ? <IconUserMinus /> : <IconUserPlus />}
-            onClick={() => setDeactivateOpen(true)}
-            title={user.is_active ? "Deactivate user" : "Reactivate user"}
-            subtitle={
-              user.is_active
-                ? "Disable this user account"
-                : "Re-enable this user account"
-            }
-            buttonLabel={user.is_active ? "Deactivate" : "Reactivate"}
-          />
-        </SimpleGrid>
-      </Stack>
+            <ActionCard
+              icon={user.is_active ? <IconUserMinus /> : <IconUserPlus />}
+              onClick={() => setDeactivateOpen(true)}
+              title={user.is_active ? "Deactivate user" : "Reactivate user"}
+              subtitle={
+                user.is_active
+                  ? "Disable this user account"
+                  : "Re-enable this user account"
+              }
+              buttonLabel={user.is_active ? "Deactivate" : "Reactivate"}
+            />
+          </SimpleGrid>
+        </Stack>
+      )}
 
       <ConfirmModal
         opened={deactivateOpen}
