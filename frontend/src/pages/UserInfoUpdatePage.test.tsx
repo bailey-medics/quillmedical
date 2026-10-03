@@ -745,9 +745,14 @@ describe("UserInfoUpdatePage", () => {
       await user.click(screen.getByRole("button", { name: /create user/i }));
 
       await waitFor(() => {
-        expect(
-          screen.getByText("User created successfully"),
-        ).toBeInTheDocument();
+        expect(mockNavigate).toHaveBeenCalledWith("/admin/users", {
+          state: {
+            flash: expect.objectContaining({
+              variant: "success",
+              title: "User created",
+            }),
+          },
+        });
       });
     }, 30000);
   });
@@ -762,8 +767,10 @@ describe("UserInfoUpdatePage", () => {
       expect(mockNavigate).toHaveBeenCalledWith("/admin/users");
     });
 
-    it("navigates back to admin from confirmation", async () => {
-      const mockPost = vi.fn().mockResolvedValue({ data: { id: 1 } });
+    it("stays on Review and says why when the save fails", async () => {
+      const mockPost = vi
+        .fn()
+        .mockRejectedValue(new Error("Something went wrong on the server"));
       (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
 
       const user = userEvent.setup();
@@ -816,13 +823,20 @@ describe("UserInfoUpdatePage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("User created successfully"),
+          screen.getByText("Something went wrong on the server"),
         ).toBeInTheDocument();
       });
-
-      await user.click(screen.getByRole("button", { name: /finished/i }));
-
-      expect(mockNavigate).toHaveBeenCalledWith("/admin/users");
+      expect(screen.getByText("User not created")).toBeInTheDocument();
+      // Still on Review, with the button there to try again, and no
+      // step after it.
+      expect(
+        screen.getByRole("heading", { name: "Review" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /create user/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Confirmation")).not.toBeInTheDocument();
+      expect(mockNavigate).not.toHaveBeenCalled();
     }, 30000);
   });
 
