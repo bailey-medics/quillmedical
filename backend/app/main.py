@@ -985,19 +985,26 @@ def list_teaching_modules_public(
     if not registrable_bank_ids:
         return TeachingModulesOut(modules=[])
 
+    # Newest version first, so the first row met for a bank is the one
+    # everybody is served. Every version ever synced is kept, and each
+    # organisation holds its own copy, so a bank has many rows here.
     configs = (
         db.execute(
             select(QuestionBankConfig)
             .where(
                 QuestionBankConfig.question_bank_id.in_(registrable_bank_ids)
             )
-            .order_by(QuestionBankConfig.title)
+            .order_by(QuestionBankConfig.version.desc())
         )
         .scalars()
         .all()
     )
 
-    # Deduplicate by question_bank_id (may exist for multiple orgs)
+    # One entry per bank, named by its newest version. This used to sort
+    # the rows by title and keep the first, which named a bank by
+    # whichever of its titles came first in the alphabet: a module
+    # retitled "… Test" in a later version went on showing the old name,
+    # the same as the module it had been renamed apart from.
     seen: set[str] = set()
     modules: list[TeachingModuleItem] = []
     for c in configs:
@@ -1007,7 +1014,7 @@ def list_teaching_modules_public(
                 TeachingModuleItem(value=c.question_bank_id, label=c.title)
             )
 
-    return TeachingModulesOut(modules=modules)
+    return TeachingModulesOut(modules=sorted(modules, key=lambda m: m.label))
 
 
 class ValidateClinicalLeadIn(BaseModel):
