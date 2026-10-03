@@ -146,7 +146,7 @@ the user form can write the same rows without a second copy of the rule.
 
 ## Phase 3: The practice editor component
 
-- [ ] **Build `PracticeByPlaceEditor` in
+- [x] **Build `PracticeByPlaceEditor` in
       `frontend/src/components/member-practice/`**, with stories and
       tests. One `BaseCard` per org unit, headed with its name, holding a
       table of the competencies the person will hold and a `SolidSwitch`
@@ -154,18 +154,28 @@ the user form can write the same rows without a second copy of the rule.
       from the same parts, so no new atomic component is needed. It is
       controlled: it takes the org units, the competencies, the current
       choices and what the viewer may change, and reports a change. It
-      saves nothing itself.
+      saves nothing itself. Each switch is named with its org unit as
+      well as its competency ("Certify Death at Oncology: may practise
+      here"), because the same competency has a switch in every card and
+      a screen reader hears them all. The naming and sorting of
+      competency rows moved out of `MemberPracticePanel` into
+      `competencyRows.ts`, which both now use.
 
-- [ ] **Disable, do not hide, what the viewer may not switch.** A
+- [x] **Disable, do not hide, what the viewer may not switch.** A
       teaching admin sees every competency the person holds and may
       switch only the teaching ones, as `MemberPracticePanel` already
       does with `may_change`. Hiding the rest would make a clinician look
-      as if they held nothing. Read the whitelist through `useGrantScope`.
+      as if they held nothing. The editor takes a `mayChange` function,
+      and the form passes it from `useGrantScope`.
 
-- [ ] **Say plainly when there is nothing to show**: no org unit chosen
+- [x] **Say plainly when there is nothing to show**: no org unit chosen
       yet, an org unit whose type holds no competencies (a room, where
       "nobody is clinical lead of room four" applies as much to practice),
-      or a person who will hold no competencies.
+      or a person who will hold no competencies. Whether a type holds
+      competencies is read by `typeCanHoldCompetencies` in
+      `frontend/src/domains/orgUnit.ts`, from the same
+      `shared/org-unit-types.yaml` the backend asks before it writes a
+      row.
 
 ## Phase 4: The step in the form
 

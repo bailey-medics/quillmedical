@@ -40,6 +40,19 @@ export const organisationTypeOptions = orgUnitTypesData.org_unit_types
   .filter((type) => !type.requires_parent)
   .map((type) => ({ value: type.id, label: type.display_name }));
 
+/**
+ * Whether somebody can be authorised to practise at an org_unit of this
+ * type. The backend asks the same flag of the same file before it writes
+ * a practice row, so a screen that asks it here offers no switch the
+ * server would refuse. A type the file does not know holds nothing.
+ */
+export function typeCanHoldCompetencies(type: string): boolean {
+  return (
+    orgUnitTypesData.org_unit_types.find((entry) => entry.id === type)
+      ?.can_hold_competencies ?? false
+  );
+}
+
 /** One org_unit in the tree, as a list shows it. */
 export type OrgUnit = {
   /** org_unit ID. */

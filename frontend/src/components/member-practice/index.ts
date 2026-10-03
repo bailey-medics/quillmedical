@@ -8,3 +8,9 @@ export type {
   GrantCompetencyModalProps,
   GrantOption,
 } from "./GrantCompetencyModal";
+export { default as PracticeByPlaceEditor } from "./PracticeByPlaceEditor";
+export type {
+  PracticeByPlace,
+  PracticeByPlaceEditorProps,
+  PracticePlace,
+} from "./PracticeByPlaceEditor";
