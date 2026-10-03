@@ -7,8 +7,8 @@ where the mailing list lives, that the person exists. So today nobody who
 registers can be emailed news at all, and nobody has been offered a way to
 refuse it.
 
-The outcome is one choice, offered at registration on both register pages
-and changeable later in Settings. It is an opt-out: a new registrant gets
+The outcome is one choice, offered on the registration form and
+changeable later in Settings. It is an opt-out: a new registrant gets
 news unless they say no. The choice is recorded in Quill's database with
 when and how it was made, and kept in step with Resend in both directions,
 so an unsubscribe link in an email and the switch in Settings always agree.
@@ -223,16 +223,27 @@ them; the other ticks them off.
       and said no is evidence, and without a row it looks the same as
       never having been asked. Both register pages post to this one route.
 
-- [ ] **Add the question to both register pages,**
-      `frontend/src/pages/RegisterPage.tsx` and
-      `frontend/src/pages/TeachingRegisterPage.tsx`, with `CheckboxField`
-      from `components/form/`. Unticked by default, below the password
-      fields and above the submit button, reading:
-      "We'll email you news and updates about Quill Medical from time to
-      time. Tick this box if you would rather not get them." Sentence case,
-      British English, the same words on both pages: put the sentence in one
-      shared constant so the two cannot drift, and bump
-      `MARKETING_WORDING_VERSION` if it changes.
+- [x] **Add the question where somebody registers.** This step first
+      said "both register pages", and there turned out to be one form.
+      `/register` (`frontend/src/pages/RegisterPage.tsx`) only asks which
+      module and who the clinical lead is; it takes no personal details
+      and creates no account. The account is made on the next page,
+      `frontend/src/pages/TeachingRegisterPage.tsx`, through the shared
+      `RegistrationForm` in `frontend/src/components/registration/`, so
+      the question goes there, with `CheckboxField` from
+      `components/form/`: unticked by default, below the password fields
+      and above the submit button. The label is "I would rather not get
+      news and updates" and the description is "We'll email you news and
+      updates about Quill Medical from time to time. Tick this box if you
+      would rather not get them." Both are in
+      `frontend/src/lib/marketing/wording.ts`, so any later form asks in
+      the same words; bump `MARKETING_WORDING_VERSION` if they change.
+      The page always sends `marketing_opt_out`, ticked or not, because
+      "not ticked" is what says the person was shown the question.
+      `frontend/src/pages/NewPatientPage.tsx` also posts to
+      `/api/auth/register`, when an admin makes an account for a patient.
+      It sends no answer, so that account is left unsubscribed, which is
+      right: the patient was never asked.
 
 - [x] **Read and change it from Settings, backend.** `/api/auth/me`
       returns `marketing_emails`, and `PUT /api/marketing/preference`
@@ -251,23 +262,26 @@ them; the other ticks them off.
       late opt-in costs nothing. An address not yet verified is not sent
       at all; verifying it sends it.
 
-- [ ] **The Settings switch, frontend.** In
-      `frontend/src/pages/Settings.tsx`, add a `SolidSwitch` titled "News
-      and updates by email" with the subtitle "Account emails, such as
+- [x] **The Settings switch, frontend.** In
+      `frontend/src/pages/Settings.tsx`, a `SolidSwitch` in a card titled
+      "News and updates by email", with the subtitle "News about Quill
+      Medical, new courses and product updates. Account emails, such as
       password resets and certificates, are always sent." It saves on
       change, like the other switches on that page, and puts the switch
-      back and shows the error if the save fails.
+      back and shows the error under it if the save fails.
 
-- [ ] **Tests.** Backend, in `backend/tests/test_marketing_registration.py`:
+- [x] **Tests.** Backend, in `backend/tests/test_marketing_registration.py`:
       registering with the box unticked sets the column true with a
-      `registration` row; ticked sets it false; an admin-created user is
-      false with no row; the Settings route flips it, needs a session and a
-      CSRF token, and returns 502 when an opt-out cannot reach Resend.
-      Frontend: both register page tests send `marketing_opt_out` as
-      ticked; the Settings test covers on, off and a failed save.
+      `registration` row; ticked leaves it false, with a row; a form that
+      sent no answer leaves it false with no row, and so does an
+      admin-created user; the Settings route flips it, needs a session and
+      a CSRF token, and returns 502 when an opt-out cannot reach Resend.
+      Frontend: `RegistrationForm.test.tsx` covers the box unticked and
+      ticked, `TeachingRegisterPage.test.tsx` what is posted, and
+      `Settings.test.tsx` on, off and a failed save.
 
-- [ ] **Say what counts, in `docs/docs/backend/`:** a short page,
-      "Marketing email", registered in the docs index. Marketing is news,
+- [x] **Say what counts, in `docs/docs/backend/marketing-email.md`,**
+      added to the navigation in `docs/mkdocs.yml`. Marketing is news,
       new courses and product updates, sent from Resend broadcasts to the
       Newsletter topic. Everything Quill sends itself through
       `email_send.py` (password resets, invites, email verification,
