@@ -1,13 +1,14 @@
 /**
  * A user manager opens one member of their organisation, grants them a
  * competency and authorises it there in one step, then switches practice
- * off and on again.
+ * off and on again, saving and confirming each change.
  *
  * Signs in as `usermanager`, seeded by `backend/scripts/seed_ci.py`. Each
  * browser project works on its own member (`practice_chromium`,
  * `practice_webkit`), so the two never change the same person. The grant
- * step is skipped when a retry finds it already done, and the switch ends
- * where it started, so a retry replays cleanly.
+ * step is skipped when a retry finds it already done, a switch a retry
+ * finds off is put back on first, and the switch ends where it started,
+ * so a retry replays cleanly.
  */
 
 import type { Page } from "@playwright/test";
@@ -69,25 +70,46 @@ test.describe("Member practice", () => {
       await expect(dialog).toBeHidden();
     }
 
-    await expect(toggle).toBeChecked();
-
     // The switch's input is visually hidden, so click its track, the
     // label a person clicks.
     const track = page.locator(
       `label[for="${await toggle.getAttribute("id")}"]`,
     );
 
-    // Off asks first, because withdrawal has no undo.
+    /**
+     * Save the switches: nothing reaches the server until "Save changes"
+     * is pressed and the list of changes is confirmed.
+     */
+    async function saveAndConfirm(warning: string | null, outcome: string) {
+      await page.getByRole("button", { name: "Save changes" }).click();
+      const dialog = page
+        .getByRole("dialog")
+        .filter({ hasText: "Confirm practice changes" });
+      await expect(dialog).toBeVisible();
+      if (warning) await expect(dialog).toContainText(warning);
+      await dialog.getByRole("button", { name: "Confirm" }).click();
+      await expect(dialog).toBeHidden();
+      await expect(page.getByText(outcome)).toBeVisible();
+    }
+
+    // A retry can find the switch off, if the run before it stopped
+    // between the two saves. Put it back on first.
+    if (!(await toggle.isChecked())) {
+      await track.click();
+      await saveAndConfirm(null, `${COMPETENCY} authorised`);
+    }
+    await expect(toggle).toBeChecked();
+
+    // Off: the switch moves at once, and saving warns that withdrawing
+    // takes effect straight away.
     await track.click();
-    await page
-      .getByRole("dialog")
-      .filter({ hasText: "stay qualified" })
-      .getByRole("button", { name: "Withdraw" })
-      .click();
+    await expect(toggle).not.toBeChecked();
+    await saveAndConfirm("stay qualified", `${COMPETENCY} withdrawn`);
     await expect(toggle).not.toBeChecked();
 
-    // On acts at once, leaving the member as the test found them.
+    // On again, leaving the member as the test found them.
     await track.click();
+    await saveAndConfirm(null, `${COMPETENCY} authorised`);
     await expect(toggle).toBeChecked();
 
     await scanPage("member-practice");

@@ -3,8 +3,9 @@
  *
  * The page is a loader around `MemberPracticePanel`, so these cover what
  * it adds: reading the member for the route, the button to their user
- * account, calling the right endpoint for each change and reading again
- * afterwards, and a 404 when the member cannot be read.
+ * account, saving the switches only once confirmed, calling the right
+ * endpoint for each change and reading again afterwards, and a 404 when
+ * the member cannot be read.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -81,7 +82,7 @@ describe("MemberPracticePage", () => {
     },
   );
 
-  it("authorises through the org_unit and reads again", async () => {
+  it("changes nothing until the switches are saved and confirmed", async () => {
     const user = userEvent.setup();
     const read = vi
       .spyOn(orgUnits, "memberPractice")
@@ -89,28 +90,6 @@ describe("MemberPracticePage", () => {
     const authorise = vi
       .spyOn(orgUnits, "authorisePractising")
       .mockResolvedValue({ status: "authorised" });
-
-    renderPage();
-    await user.click(
-      await screen.findByRole("switch", {
-        name: "Certify Death: may practise here",
-      }),
-    );
-
-    expect(authorise).toHaveBeenCalledWith(3, {
-      user_id: 4,
-      competency: "certify_death",
-    });
-    // The switch shows its own new state, so no message repeats it.
-    await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
-    expect(screen.queryByText("Authorised")).not.toBeInTheDocument();
-  });
-
-  it("withdraws through the org_unit once confirmed", async () => {
-    const user = userEvent.setup();
-    const read = vi
-      .spyOn(orgUnits, "memberPractice")
-      .mockResolvedValue(practice);
     const withdraw = vi
       .spyOn(orgUnits, "withdrawPractising")
       .mockResolvedValue({ status: "withdrawn" });
@@ -118,15 +97,79 @@ describe("MemberPracticePage", () => {
     renderPage();
     await user.click(
       await screen.findByRole("switch", {
+        name: "Certify Death: may practise here",
+      }),
+    );
+    await user.click(
+      screen.getByRole("switch", {
         name: "Perform Venepuncture: may practise here",
       }),
     );
-    const dialog = await screen.findByRole("dialog");
-    await user.click(within(dialog).getByRole("button", { name: "Withdraw" }));
+    expect(authorise).not.toHaveBeenCalled();
+    expect(withdraw).not.toHaveBeenCalled();
 
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/authorise$/)).toHaveTextContent(
+      "Certify Death – authorise",
+    );
+    expect(within(dialog).getByText(/withdraw$/)).toHaveTextContent(
+      "Perform Venepuncture – withdraw",
+    );
+    expect(authorise).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() =>
+      expect(authorise).toHaveBeenCalledWith(3, {
+        user_id: 4,
+        competency: "certify_death",
+      }),
+    );
     expect(withdraw).toHaveBeenCalledWith(3, 4, "perform_venepuncture");
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
-    expect(screen.queryByText("Withdrawn")).not.toBeInTheDocument();
+    expect(await screen.findByText("Practice updated")).toBeInTheDocument();
+  });
+
+  it("goes back without saving when the confirmation is declined", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(orgUnits, "memberPractice").mockResolvedValue(practice);
+    const authorise = vi.spyOn(orgUnits, "authorisePractising");
+
+    renderPage();
+    await user.click(
+      await screen.findByRole("switch", {
+        name: "Certify Death: may practise here",
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Go back" }));
+
+    expect(authorise).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("switch", { name: "Certify Death: may practise here" }),
+    ).toBeChecked();
+  });
+
+  it("keeps Save changes disabled until a switch moves", async () => {
+    vi.spyOn(orgUnits, "memberPractice").mockResolvedValue(practice);
+
+    renderPage();
+
+    expect(
+      await screen.findByRole("button", { name: "Save changes" }),
+    ).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("cancels back to the organisation or site", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(orgUnits, "memberPractice").mockResolvedValue(practice);
+
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    expect(mockNavigate).toHaveBeenCalledWith("../..", { relative: "path" });
   });
 
   it("grants and authorises through the member endpoint", async () => {
@@ -156,7 +199,7 @@ describe("MemberPracticePage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("says so when a change fails", async () => {
+  it("says so when a save fails", async () => {
     const user = userEvent.setup();
     vi.spyOn(orgUnits, "memberPractice").mockResolvedValue(practice);
     vi.spyOn(orgUnits, "authorisePractising").mockRejectedValue(
@@ -169,9 +212,15 @@ describe("MemberPracticePage", () => {
         name: "Certify Death: may practise here",
       }),
     );
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Confirm" }));
 
     expect(
-      await screen.findByText("Could not authorise that"),
+      await screen.findByText("Failed to update practice"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("None of the changes could be saved. Please try again."),
     ).toBeInTheDocument();
   });
 
