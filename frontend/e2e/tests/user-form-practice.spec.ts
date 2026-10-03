@@ -89,7 +89,9 @@ test.describe("User form practice", () => {
     await next.click();
     await expect(page.getByText(`May practise: ${COMPETENCY}`)).toBeVisible();
     await page.getByRole("button", { name: "Create user" }).click();
-    await expect(page.getByText("User created successfully")).toBeVisible();
+    // Saving goes back to the list of users, which says what happened.
+    await expect(page).toHaveURL(/\/admin\/users$/);
+    await expect(page.getByText("User created")).toBeVisible();
 
     // Their page at the organisation shows it authorised, with nobody
     // having opened the staff table to switch it on.

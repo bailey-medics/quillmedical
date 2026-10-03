@@ -24,7 +24,6 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { IconCheck, IconAlertCircle } from "@components/icons/appIcons";
 import BaseCard from "@/components/base-card/BaseCard";
 import TextField from "@/components/form/TextField";
 import PasswordField from "@/components/form/PasswordField";
@@ -37,7 +36,7 @@ import {
   Heading,
 } from "@/components/typography";
 import CompetencyBadge from "@/components/badge/CompetencyBadge";
-import { StateMessage } from "@/components/message-cards";
+import { usePageMessage } from "@/components/page-message";
 import MultiStepForm, {
   type StepConfig,
   type StepContentProps,
@@ -775,46 +774,6 @@ function PracticeReview({
 }
 
 /**
- * Step 5: Confirmation
- */
-function Step5Confirmation({
-  success,
-  isEditMode = false,
-  errorMessage,
-}: Pick<StepContentProps, never> & {
-  success: boolean;
-  isEditMode?: boolean;
-  errorMessage?: string;
-}) {
-  return success ? (
-    <StateMessage
-      icon={<IconCheck />}
-      title={
-        isEditMode ? "User updated successfully" : "User created successfully"
-      }
-      description={
-        isEditMode
-          ? "The user's details have been updated."
-          : "The new user has been created and can now log in to the system."
-      }
-      colour="success"
-    />
-  ) : (
-    <StateMessage
-      icon={<IconAlertCircle />}
-      title={isEditMode ? "Failed to update user" : "Failed to create user"}
-      description={
-        errorMessage ||
-        (isEditMode
-          ? "There was an error updating the user. Please try again."
-          : "There was an error creating the user. Please try again.")
-      }
-      colour="alert"
-    />
-  );
-}
-
-/**
  * New User Page Component
  *
  * Multi-step form for creating or editing users with competencies and permissions.
@@ -832,7 +791,7 @@ export default function UserInfoUpdatePage() {
   const [activeStep, setActiveStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { showMessage, clearAll } = usePageMessage();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(isEditMode);
@@ -1058,7 +1017,7 @@ export default function UserInfoUpdatePage() {
 
   const shownPracticePlaces = practicePlaces(formData, placesById);
 
-  async function handleSubmit() {
+  async function save() {
     if (submitting) return;
 
     setSubmitting(true);
@@ -1109,22 +1068,47 @@ export default function UserInfoUpdatePage() {
         await api.post("/users", payload);
       }
 
+      // Leaving is done by the effect below, once this has rendered:
+      // the blocker reads `success`, and would stop a navigation made
+      // here, before it has seen the change.
       setSuccess(true);
-      setDirty(false); // Clear dirty flag on successful submission
-      setActiveStep(confirmationStep); // Move to confirmation step
     } catch (error) {
       console.error(
         `Failed to ${isEditMode ? "update" : "create"} user:`,
         error,
       );
-      setSuccess(false);
-      setErrorMessage(error instanceof Error ? error.message : null);
-      setDirty(false); // Clear dirty flag even on error (user can retry from admin)
-      setActiveStep(confirmationStep); // Move to confirmation step even on error
+      // Stay on Review with everything as it was entered, so the save
+      // can be tried again or a step put right.
+      showMessage({
+        variant: "error",
+        title: isEditMode ? "User not updated" : "User not created",
+        description:
+          (error instanceof Error && error.message) ||
+          "Something went wrong. Nothing was saved. Please try again.",
+      });
     } finally {
       setSubmitting(false);
     }
   }
+
+  // Once saved, back to the list of users, which says what happened.
+  // There is no result step: Review is the last one, and its button
+  // saves.
+  const savedUsername = formData.username;
+  useEffect(() => {
+    if (!success) return;
+    navigate("/admin/users", {
+      state: {
+        flash: {
+          variant: "success",
+          title: isEditMode ? "User updated" : "User created",
+          description: isEditMode
+            ? `${savedUsername}'s details have been updated.`
+            : `${savedUsername} has been created and can now log in.`,
+        },
+      },
+    });
+  }, [success, isEditMode, savedUsername, navigate]);
 
   const steps: StepConfig[] = [
     {
@@ -1213,35 +1197,13 @@ export default function UserInfoUpdatePage() {
       ),
       nextButtonLabel: isEditMode ? "Update user" : "Create user",
     },
-    {
-      label: "Confirmation",
-      description: isEditMode ? "User updated" : "User created",
-      content: (props) => (
-        <Step5Confirmation
-          {...props}
-          success={success}
-          isEditMode={isEditMode}
-          errorMessage={errorMessage ?? undefined}
-        />
-      ),
-      hideCancelButton: true,
-      hideCard: true,
-      nextButtonLabel: "Finished",
-    },
   ];
 
-  // Found by position, not by number: the Practice step is there for
-  // some viewers and not for others, which moves everything after it.
-  const confirmationStep = steps.length - 1;
-  const reviewStep = confirmationStep - 1;
-
-  // Intercept the review -> confirmation transition to submit the form
-  function handleStepChange(newStep: number) {
-    if (activeStep === reviewStep && newStep === confirmationStep) {
-      handleSubmit();
-    } else {
-      setActiveStep(newStep);
-    }
+  function handleSubmit() {
+    // A failure message from an earlier try would otherwise sit above
+    // the new attempt.
+    clearAll();
+    void save();
   }
 
   return (
@@ -1271,7 +1233,8 @@ export default function UserInfoUpdatePage() {
             steps={steps}
             onCancel={handleCancel}
             activeStep={activeStep}
-            onStepChange={handleStepChange}
+            onStepChange={setActiveStep}
+            onSubmit={handleSubmit}
             allStepsAccessible={isEditMode}
           />
         )}
