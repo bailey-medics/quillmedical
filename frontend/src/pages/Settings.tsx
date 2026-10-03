@@ -13,6 +13,7 @@ import {
   IconChartBar,
   IconDownload,
   IconFaceId,
+  IconMail,
   IconMoon,
   IconUser,
 } from "@/components/icons/appIcons";
@@ -62,6 +63,36 @@ export default function Settings() {
   const [countPageViews, setCountPageViews] = useState(!hasOptedOut());
   const navigate = useNavigate();
   const { state } = useAuth();
+  // News and updates by email. Unlike the switch above this is held on
+  // the server, and Resend, which sends the newsletter, has to be told:
+  // so the switch only stays where it was put once the save has worked.
+  const [marketingEmails, setMarketingEmails] = useState(
+    state.status === "authenticated" && state.user.marketing_emails === true,
+  );
+  const [savingMarketing, setSavingMarketing] = useState(false);
+  const [marketingError, setMarketingError] = useState<string | undefined>();
+
+  async function changeMarketingEmails(wants: boolean) {
+    setMarketingError(undefined);
+    setMarketingEmails(wants);
+    setSavingMarketing(true);
+    try {
+      const saved = await api.put<{ marketing_emails: boolean }>(
+        "/marketing/preference",
+        { wants_marketing: wants },
+      );
+      setMarketingEmails(saved.marketing_emails);
+    } catch (err: unknown) {
+      // Put it back: what the switch shows must be what is saved.
+      setMarketingEmails(!wants);
+      setMarketingError(
+        (err instanceof Error && err.message) ||
+          "We could not update your email preferences. Please try again.",
+      );
+    } finally {
+      setSavingMarketing(false);
+    }
+  }
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const useTwoColumnActionCards = useMediaQuery(
     `(min-width: ${layoutTokens.actionCardTwoColumnMinWidth})`,
@@ -240,6 +271,23 @@ export default function Settings() {
                 setCountPageViews(on);
                 setOptedOut(!on);
               }}
+            />
+          }
+        />
+
+        <ActionCard
+          icon={<IconMail />}
+          title="News and updates by email"
+          subtitle="News about Quill Medical, new courses and product updates. Account emails, such as password resets and certificates, are always sent."
+          action={
+            <SolidSwitch
+              aria-label="News and updates by email"
+              checked={marketingEmails}
+              disabled={savingMarketing}
+              error={marketingError}
+              onChange={(event) =>
+                void changeMarketingEmails(event.currentTarget.checked)
+              }
             />
           }
         />

@@ -14,6 +14,11 @@ import {
   SelectField,
   TextField,
 } from "@components/form";
+import CheckboxField from "@components/form/CheckboxField";
+import {
+  MARKETING_OPT_OUT_DESCRIPTION,
+  MARKETING_OPT_OUT_LABEL,
+} from "@lib/marketing/wording";
 import { Heading } from "@components/typography";
 import StateMessage from "@components/message-cards/StateMessage";
 import { IconWifiOff } from "@/components/icons/appIcons";
@@ -33,6 +38,8 @@ export interface RegistrationFormData {
   email: string;
   password: string;
   organisation?: string;
+  /** Whether they ticked the box refusing news and updates */
+  marketingOptOut: boolean;
 }
 
 interface RegistrationFormValues {
@@ -42,6 +49,7 @@ interface RegistrationFormValues {
   password: string;
   confirm: string;
   organisation: string | null;
+  marketingOptOut: boolean;
 }
 
 export interface RegistrationFormProps {
@@ -123,6 +131,13 @@ function RegistrationFields({
         required
         autoComplete="new-password"
       />
+      {/* An opt-out: left unticked, they are sent news. Never pre-ticked,
+          and the words that say so are on screen beside the box. */}
+      <CheckboxField
+        label={MARKETING_OPT_OUT_LABEL}
+        description={MARKETING_OPT_OUT_DESCRIPTION}
+        {...methods.register("marketingOptOut")}
+      />
       <FormStatusNarrow />
       <SubmitButton />
     </Stack>
@@ -141,6 +156,7 @@ export default function RegistrationForm({
       fullName: data.fullName.trim(),
       email: data.email.trim(),
       password: data.password,
+      marketingOptOut: data.marketingOptOut,
       ...(data.organisation ? { organisation: data.organisation } : {}),
     });
   }
@@ -155,6 +171,7 @@ export default function RegistrationForm({
           password: "",
           confirm: "",
           organisation: null,
+          marketingOptOut: false,
         }}
         onSubmit={handleSubmit}
         submitLabel="Register"

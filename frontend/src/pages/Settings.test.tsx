@@ -6,15 +6,18 @@
  * was before these changes too.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { fetchMyPassport, setPassportSpecialties } from "@lib/passport";
 import { hasOptedOut, setOptedOut } from "@/lib/page-views/optOut";
 import { PASSPORT_SPECIALTIES } from "@lib/passport/specialties";
+import { api } from "@/lib/api";
 import Settings from "./Settings";
 
-vi.mock("@/lib/api", () => ({ api: { post: vi.fn(), get: vi.fn() } }));
+vi.mock("@/lib/api", () => ({
+  api: { post: vi.fn(), get: vi.fn(), put: vi.fn() },
+}));
 
 // Mutable, so a test can give the user the passport feature. Everybody
 // else sees the page as a user with neither.
@@ -23,6 +26,7 @@ const authUser = vi.hoisted(() => ({
   clinical_services_enabled: false,
   enabled_features: [] as string[],
   competencies: [] as string[],
+  marketing_emails: false,
 }));
 
 vi.mock("@/auth/AuthContext", () => ({
@@ -129,6 +133,86 @@ describe("the page-view opt-out", () => {
     expect(
       screen.getByText(/patient pages are never counted/i),
     ).toBeInTheDocument();
+  });
+});
+
+describe("news and updates by email", () => {
+  const toggle = () =>
+    screen.getByRole("switch", { name: "News and updates by email" });
+
+  beforeEach(() => {
+    authUser.marketing_emails = false;
+    vi.mocked(api.put).mockReset();
+  });
+
+  it("reads as off for somebody who is not sent them", () => {
+    renderWithRouter(<Settings />);
+
+    expect(toggle()).not.toBeChecked();
+  });
+
+  it("reads as on for somebody who is", () => {
+    authUser.marketing_emails = true;
+
+    renderWithRouter(<Settings />);
+
+    expect(toggle()).toBeChecked();
+  });
+
+  it("says that account emails are always sent", () => {
+    renderWithRouter(<Settings />);
+
+    expect(
+      screen.getByText(/password resets and certificates, are always sent/i),
+    ).toBeInTheDocument();
+  });
+
+  it("saves switching on", async () => {
+    vi.mocked(api.put).mockResolvedValue({ marketing_emails: true });
+    const user = userEvent.setup();
+    renderWithRouter(<Settings />);
+
+    await user.click(toggle());
+
+    expect(api.put).toHaveBeenCalledWith("/marketing/preference", {
+      wants_marketing: true,
+    });
+    await waitFor(() => expect(toggle()).toBeChecked());
+  });
+
+  it("saves switching off", async () => {
+    authUser.marketing_emails = true;
+    vi.mocked(api.put).mockResolvedValue({ marketing_emails: false });
+    const user = userEvent.setup();
+    renderWithRouter(<Settings />);
+
+    await user.click(toggle());
+
+    expect(api.put).toHaveBeenCalledWith("/marketing/preference", {
+      wants_marketing: false,
+    });
+    await waitFor(() => expect(toggle()).not.toBeChecked());
+  });
+
+  it("puts the switch back and says why when the save fails", async () => {
+    authUser.marketing_emails = true;
+    vi.mocked(api.put).mockRejectedValue(
+      new Error(
+        "We could not update your email preferences. Please try again.",
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithRouter(<Settings />);
+
+    await user.click(toggle());
+
+    expect(
+      await screen.findByText(
+        "We could not update your email preferences. Please try again.",
+      ),
+    ).toBeInTheDocument();
+    expect(toggle()).toBeChecked();
+    expect(toggle()).toBeEnabled();
   });
 });
 

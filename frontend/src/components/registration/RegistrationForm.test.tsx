@@ -145,4 +145,75 @@ describe("RegistrationForm", () => {
       );
     });
   }, 15000);
+
+  describe("the marketing question", () => {
+    async function fillIn(user: ReturnType<typeof userEvent.setup>) {
+      await user.type(screen.getByLabelText("Full name *"), "Test User");
+      await user.type(screen.getByLabelText("Username *"), "testuser");
+      await user.type(screen.getByLabelText("Email *"), "test@example.com");
+      await user.type(screen.getByLabelText(/^Password/), "pass1234");
+      await user.type(screen.getByLabelText(/Confirm password/), "pass1234");
+    }
+
+    const box = () =>
+      screen.getByRole("checkbox", {
+        name: "I would rather not get news and updates",
+      });
+
+    it("says news will be sent, beside a box that is not ticked", () => {
+      renderWithMantine(
+        <RegistrationForm onSubmit={() => new Promise(() => {})} />,
+      );
+
+      expect(box()).not.toBeChecked();
+      expect(
+        screen.getByText(
+          /We'll email you news and updates about Quill Medical/,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("sends the box as left alone when it is not ticked", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn().mockResolvedValue(successResult);
+      renderWithMantine(<RegistrationForm onSubmit={onSubmit} />);
+
+      await fillIn(user);
+      await user.click(screen.getByTestId("submit-button"));
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      expect(onSubmit.mock.calls[0][0]).toMatchObject({
+        marketingOptOut: false,
+      });
+    });
+
+    it("sends the refusal when it is ticked", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn().mockResolvedValue(successResult);
+      renderWithMantine(<RegistrationForm onSubmit={onSubmit} />);
+
+      await fillIn(user);
+      await user.click(box());
+      await user.click(screen.getByTestId("submit-button"));
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      expect(onSubmit.mock.calls[0][0]).toMatchObject({
+        marketingOptOut: true,
+      });
+    });
+
+    it("does not have to be ticked to register", async () => {
+      const user = userEvent.setup();
+      renderWithMantine(
+        <RegistrationForm onSubmit={() => new Promise(() => {})} />,
+      );
+
+      await fillIn(user);
+
+      expect(screen.getByTestId("submit-button")).not.toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    });
+  });
 });

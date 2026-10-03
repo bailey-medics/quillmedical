@@ -46,6 +46,7 @@ nav:
       - Alembic Migration Safety: backend/alembic-migration-safety.md
       - API Compatibility (Expand-Contract): backend/api-compatibility.md
       - API Compatibility Testing: backend/api-compatibility-testing.md
+      - Marketing Email: backend/marketing-email.md
       - FastAPI:
           - Overview: backend/fastapi/index.md
       - FHIR:

@@ -42,6 +42,8 @@ export type User = {
    * passport, so this is what offers them the way in.
    */
   owns_passport?: boolean;
+  /** Whether they are sent news and updates by email */
+  marketing_emails?: boolean;
   /** Whether FHIR and EHRbase clinical services are available */
   clinical_services_enabled?: boolean;
   /** Resolved CBAC competency IDs for this user */

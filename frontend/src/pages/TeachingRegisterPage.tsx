@@ -37,6 +37,9 @@ export default function TeachingRegisterPage() {
         password: data.password,
         org_unit_id: state.organisationId ?? undefined,
         site_id: state.siteId ?? undefined,
+        // Always sent, ticked or not: an answer of "not ticked" is what
+        // says the person was shown the question.
+        marketing_opt_out: data.marketingOptOut,
       });
 
       navigate("/verify-email-pending", { state: { email: data.email } });
