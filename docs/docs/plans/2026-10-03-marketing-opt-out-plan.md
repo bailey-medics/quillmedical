@@ -197,6 +197,26 @@ them; the other ticks them off.
       opt-out that clears `marketing_synced_at`: the retry then puts the
       contact back, opted out, so Resend goes on holding the refusal.
 
+- [x] **Allow for Resend's reads lagging its writes.** Found on
+      3 October 2026 by running `sync_contact` against the real service
+      from the dev stack, with a throwaway contact. Creating, opting out,
+      opting in and removing all work. But a topic read within about a
+      second of a write still returns the old value, and is right by two
+      seconds. That matters to the webhook twice over. First, Resend sends
+      `contact.updated` for changes Quill itself made; read at once, the
+      stale answer would look like the person changing their mind, and
+      would undo the choice they had just made (opting in, then being
+      switched off in Quill while Resend goes on emailing them). So an
+      event within `ECHO_WINDOW`, sixty seconds, of Quill's own sync is
+      ignored, unless it is a deletion or a full unsubscribe, which Quill
+      never does to a contact it has just synced. Second, a real
+      unsubscribe's event can arrive before a read shows it. So when the
+      first read says nothing changed, the route waits `SETTLE_SECONDS`,
+      two, and asks once more. The same run showed Resend's rate limit is
+      ten requests a second, well clear of the three a sync makes, and one
+      call that took longer than the five second timeout, which the retry
+      exists for.
+
 - [x] **Give the route a typed response model** in
       `backend/app/schemas/marketing.py`, as every route needs.
 
