@@ -881,9 +881,7 @@ describe("UserInfoUpdatePage", () => {
       expect(
         await screen.findByRole("heading", { name: "Platform role" }),
       ).toBeInTheDocument();
-      expect(
-        screen.queryByRole("heading", { name: "Where they may practise" }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     }, 30000);
 
     it("follows Competencies, with everything switched off for a new user", async () => {
@@ -893,10 +891,10 @@ describe("UserInfoUpdatePage", () => {
 
       await user.click(screen.getByRole("button", { name: /^next$/i }));
 
+      // The step is its cards: one for the org_unit chosen.
       expect(
-        await screen.findByRole("heading", { name: "Where they may practise" }),
-      ).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Test Org" })).toBeVisible();
+        await screen.findByRole("heading", { name: "Test Org" }),
+      ).toBeVisible();
       const switches = screen.getAllByRole("switch");
       expect(switches.length).toBeGreaterThan(0);
       for (const input of switches) {

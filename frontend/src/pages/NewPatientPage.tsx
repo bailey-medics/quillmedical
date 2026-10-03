@@ -9,7 +9,9 @@
  * @module NewPatientPage
  */
 
-// Multi-step form uses Box with maw instead of Container for custom max-width
+// The standard page pattern: a plain Stack, with the main layout setting
+// the width. This page used to wrap itself in a padded, 900px box, which
+// sat its title lower and its content narrower than every other page.
 
 import LoadingSpinner from "@/components/loading-spinner";
 import {
@@ -620,7 +622,7 @@ export default function NewPatientPage() {
 
   return (
     <>
-      <Box p="xl" maw={900} mx="auto">
+      <Stack gap="lg">
         <PageHeader
           title={isEditMode ? "Edit patient" : "Create new patient"}
         />
@@ -650,7 +652,7 @@ export default function NewPatientPage() {
             onStepChange={handleStepChange}
           />
         )}
-      </Box>
+      </Stack>
 
       <DirtyFormNavigation
         blocker={blocker}

@@ -69,9 +69,6 @@ test.describe("User form practice", () => {
 
     // Practice: one card for the organisation, everything off.
     await expect(
-      page.getByRole("heading", { name: "Where they may practise" }),
-    ).toBeVisible();
-    await expect(
       page.getByRole("heading", { name: ORGANISATION, level: 2 }),
     ).toBeVisible();
     const toggle = page.getByRole("switch", {

@@ -12,7 +12,9 @@
  * @module UserInfoUpdatePage
  */
 
-// Multi-step form uses Box with maw instead of Container for custom max-width
+// The standard page pattern: a plain Stack, with the main layout setting
+// the width. This page used to wrap itself in a padded, 900px box, which
+// sat its title lower and its content narrower than every other page.
 
 import { Box, Group, Stack, Alert, Loader, Center } from "@mantine/core";
 import { useState, useEffect } from "react";
@@ -499,33 +501,25 @@ function StepPractice({
   // on their whitelist; the rest are shown and held still.
   const { mayGrant } = useGrantScope();
 
+  // No heading or introduction of its own: the stepper names the step,
+  // and each card is headed with its org_unit and says "May practise
+  // here" over its switches. A card explaining that above them was one
+  // more thing to read before the thing itself.
   return (
-    <Stack gap="lg">
-      <BaseCard>
-        <Stack gap="md">
-          <Heading>Where they may practise</Heading>
-          <BodyText>
-            Holding a competency is not enough to use it. Switch on what they
-            may practise at each organisation or site. Anything left off, they
-            cannot do there.
-          </BodyText>
-        </Stack>
-      </BaseCard>
-      <PracticeByPlaceEditor
-        places={places}
-        competencies={heldCompetencies(formData)}
-        value={practiceToSend(formData, places)}
-        onChange={(value) =>
-          setFormData({
-            ...formData,
-            // Merged, so switches at an org_unit not shown just now are
-            // kept as they were.
-            practising: { ...formData.practising, ...value },
-          })
-        }
-        mayChange={mayGrant}
-      />
-    </Stack>
+    <PracticeByPlaceEditor
+      places={places}
+      competencies={heldCompetencies(formData)}
+      value={practiceToSend(formData, places)}
+      onChange={(value) =>
+        setFormData({
+          ...formData,
+          // Merged, so switches at an org_unit not shown just now are
+          // kept as they were.
+          practising: { ...formData.practising, ...value },
+        })
+      }
+      mayChange={mayGrant}
+    />
   );
 }
 
@@ -1252,7 +1246,7 @@ export default function UserInfoUpdatePage() {
 
   return (
     <>
-      <Box p="xl" maw={900} mx="auto">
+      <Stack gap="lg">
         <PageHeader title={isEditMode ? "Edit user" : "Create new user"} />
 
         {loading ? (
@@ -1281,7 +1275,7 @@ export default function UserInfoUpdatePage() {
             allStepsAccessible={isEditMode}
           />
         )}
-      </Box>
+      </Stack>
 
       <DirtyFormNavigation
         blocker={blocker}
