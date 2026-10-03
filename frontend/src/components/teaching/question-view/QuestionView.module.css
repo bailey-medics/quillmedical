@@ -1,5 +1,42 @@
+/* Images that share a row. Stacked on a phone; side by side from sm up,
+   where each panel's share of the width follows its image's shape, so
+   every image in the row comes out the same height. */
+.imageRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+  width: 100%;
+
+  @media (min-width: $mantine-breakpoint-sm) {
+    flex-direction: row;
+    align-items: flex-start;
+
+    /* Keeps the row within 80vh: its height is its width over the sum
+       of its images' ratios */
+    max-width: calc(80vh * var(--row-ratio));
+    margin-inline: auto;
+  }
+}
+
+/* A last row with fewer images keeps to the width its images would have
+   had in a full row */
+.imageRowPartial {
+  @media (min-width: $mantine-breakpoint-sm) {
+    max-width: min(
+      calc(50% - var(--mantine-spacing-md) / 2),
+      calc(80vh * var(--row-ratio))
+    );
+  }
+}
+
 .imagePanel {
-  flex: 1;
+  min-width: 0;
+  width: 100%;
+
+  @media (min-width: $mantine-breakpoint-sm) {
+    flex: var(--image-ratio) 1 0%;
+    width: auto;
+  }
 }
 
 .imageWrapperSingle {
@@ -18,9 +55,7 @@
 .image {
   display: block;
   width: 100%;
-  max-height: 80vh;
   height: auto;
-  object-fit: contain;
 }
 
 .imageSingle {
