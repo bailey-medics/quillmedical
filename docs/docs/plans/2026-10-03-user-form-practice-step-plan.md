@@ -65,23 +65,25 @@ the user form can write the same rows without a second copy of the rule.
 
 ## Phase 2: The user routes take practice
 
-- [ ] **Add `practising` to `AdminUserCreateIn` and `AdminUserUpdateIn`**
-      in `backend/app/main.py`: an optional list of
+- [x] **Add `practising` to `AdminUserCreateIn` and `AdminUserUpdateIn`**
+      in `backend/app/main.py`: an optional list of `PractisingAtIn`,
       `{org_unit_id, competencies}`, one entry per org unit, validated
       with `validate_competency_ids` as the two competency lists already
       are. Optional and defaulting to nothing, for two reasons. A client
       built before this step sends no such field and must change nobody's
       practice. And it keeps the change additive, so the API
       breaking-change check has nothing to flag. Both models already set
-      `extra="forbid"`.
+      `extra="forbid"`. The same org unit listed twice is a 422: each
+      entry is the whole answer for its org unit, so the second would
+      undo the first.
 
-- [ ] **Settle practice in `create_user_with_cbac` and `update_user`,
+- [x] **Settle practice in `create_user_with_cbac` and `update_user`,
       after membership and competencies are settled** and in the same
       transaction, so a new starter is never left created and
-      unauthorised. For each org unit named, the list is the whole answer
-      for the competencies the person will hold once this save is
-      applied: listed ones are authorised, held ones not listed are
-      withdrawn. Three limits on that:
+      unauthorised. Both call `_settle_practice`. For each org unit
+      named, the list is the whole answer for the competencies the person
+      holds once this save is applied: listed ones are authorised, held
+      ones not listed are withdrawn. Three limits on that:
 
       - **An org unit not named is not touched.** The form names only
         the org units it showed, and an admin who cannot see a place must
@@ -90,37 +92,57 @@ the user form can write the same rows without a second copy of the rule.
         alone.** Those are the "Authorised here but not held" rows the
         member practice page shows on purpose, so that a lapsed
         qualification is seen. The form has no switch for them, so its
-        silence about one is not an instruction to withdraw it.
+        silence about one is not an instruction to withdraw it. To see
+        them at all, the settling reads the rows through a new
+        `authorised_at` in `scoped.py`, which applies no ceiling;
+        `competencies_at` narrows to the ceiling and would have hidden
+        them.
       - **A row that does not change keeps its `authorised_by` and
         `authorised_at`.** Rewriting every row on every save would turn
         "who authorised this?" into "who last opened the form?".
 
-- [ ] **Refuse what the caller may not set, using the function from
-      phase 1**, and refuse the whole save, not part of it. The user
-      routes admit `manage_users` or a scoped manager; setting practice
-      needs `manage_practising_competencies` or a scoped manager acting
-      within its whitelist. A caller with `manage_users` alone who sends
-      `practising` gets a 403 naming what was refused. Each named org unit
-      must also be one the person belongs to once the save is applied, or
-      the save is a 422: the form offers practice only where it is putting
-      them.
+      A listed competency the person does not hold is authorised all the
+      same, as the authorise route has always allowed: the row does
+      nothing until the ceiling catches up. The form never sends one.
 
-- [ ] **Return what the form needs to open in edit mode.** Add
-      `practising`, in the request's own shape, to `UserOut`
-      (`backend/app/schemas/auth.py`), read through
-      `competencies_at` in `scoped.py`. Narrowed to the org units the
-      caller reaches, by the rule `org_units_whose_people_reached_by`
-      already gives the user routes, so the response never names a place
-      the caller could not open. An added response field is not a
-      breaking change.
+- [x] **Refuse what the caller may not set, using `practice_refusal`
+      from phase 1**, and refuse the whole save, not part of it. Every
+      change is checked before any is written, and the refusals are
+      gathered into one answer: the status of the first, and each
+      distinct reason. The user routes admit `manage_users` or a scoped
+      manager; setting practice needs `manage_practising_competencies` or
+      a scoped manager acting within its whitelist. `practice_refusal`
+      does not ask that itself, because the practice routes sit behind a
+      dependency that does, so `_settle_practice` asks it first: a caller
+      with `manage_users` alone gets a 403. Each named org unit must also
+      be one the person belongs to once the save is applied, or the save
+      is a 422: the form offers practice only where it is putting them.
 
-- [ ] **Test it in `backend/tests/`**: a new user created with practice
-      at two org units holds exactly those rows; an update authorises and
-      withdraws in one save; an org unit left out is untouched; an
-      row for a competency they do not hold survives; an unchanged row keeps its author; a caller
-      with `manage_users` alone is refused; a scoped manager is held to
-      its whitelist; an org unit the person does not belong to is a 422;
-      a request with no `practising` changes nothing.
+      A list that changes nothing is never refused. The form sends every
+      field on every save, so a caller who may not set practice, or a
+      scoped manager looking at a clinician, must be able to save a form
+      that carries the practice it was shown.
+
+- [x] **Return what the form needs to open in edit mode.** `practising`,
+      as `PractisingAtOut` in the request's own shape, is added to
+      `UserOut` (`backend/app/schemas/auth.py`), read through
+      `competencies_at` in `scoped.py`. One entry per org unit the person
+      belongs to, with an empty list where nothing is authorised.
+      Narrowed to the org units the caller reaches, by the rule
+      `org_units_whose_people_reached_by` already gives the user routes,
+      so the response never names a place the caller could not open. An
+      added response field is not a breaking change.
+
+- [x] **Test it in `backend/tests/test_user_form_practice.py`**: a new
+      user created with practice at two org units holds exactly those
+      rows; a refused save leaves no account behind; an update authorises
+      and withdraws in one save; an org unit left out is untouched; a
+      row for a competency they do not hold survives; an unchanged row
+      keeps its author; a caller with `manage_users` alone is refused,
+      and is not refused for a list that changes nothing; a scoped
+      manager is held to its whitelist; an org unit the person does not
+      belong to is a 422; a request with no `practising` changes nothing;
+      and what `GET` returns can be sent straight back.
 
 ## Phase 3: The practice editor component
 

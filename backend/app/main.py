@@ -68,6 +68,12 @@ from app.cbac.grants import sync_competency_rows
 from app.cbac.positions import (
     clinical_leads_of,
 )
+from app.cbac.scoped import (
+    authorise_practice,
+    authorised_at,
+    competencies_at,
+    withdraw_practice,
+)
 from app.config import settings
 from app.db import get_core_db
 from app.deps import (
@@ -133,6 +139,7 @@ from app.models import (
 from app.org_units import (
     ROOT_TYPE_IDS,
 )
+from app.org_units.router import practice_refusal
 from app.org_units.router import router as org_units_router
 from app.org_units.tree import (
     descendant_ids,
@@ -169,6 +176,7 @@ from app.schemas.auth import (
     MeOut,
     OrganisationListItem,
     OrganisationsOut,
+    PractisingAtOut,
     RefreshOut,
     RegisterIn,
     ResendVerificationIn,
@@ -1453,6 +1461,55 @@ def reset_password(
     return DetailResponse(detail="Password reset successfully")
 
 
+class PractisingAtIn(BaseModel):
+    """What somebody may practise at one org_unit, as the user form sends it.
+
+    The whole answer for that org_unit, for the competencies the person
+    holds: the ones listed are authorised there and the ones they hold
+    and are not listed are withdrawn. An org_unit that is not sent is
+    not touched.
+
+    Attributes:
+        org_unit_id: The org_unit.
+        competencies: What they may practise there.
+    """
+
+    model_config = {"extra": "forbid"}
+
+    org_unit_id: int
+    competencies: list[str] = []
+
+    @field_validator("competencies")
+    @classmethod
+    def _competencies_exist(cls, value: list[str]) -> list[str]:
+        """Reject a competency id that is not in the catalogue.
+
+        A misspelt one would otherwise be written as a row that
+        authorises nothing, and look like a decision somebody made.
+        """
+        return validate_competency_ids(value)
+
+
+def _one_entry_per_org_unit(
+    value: list[PractisingAtIn] | None,
+) -> list[PractisingAtIn] | None:
+    """Refuse a practice list naming the same org_unit twice.
+
+    Each entry is the whole answer for its org_unit, so two for one
+    org_unit are two answers, and the second would undo the first.
+    """
+    if value is None:
+        return None
+    seen: set[int] = set()
+    for entry in value:
+        if entry.org_unit_id in seen:
+            raise ValueError(
+                f"Place {entry.org_unit_id} is listed more than once."
+            )
+        seen.add(entry.org_unit_id)
+    return value
+
+
 class AdminUserCreateIn(BaseModel):
     """Admin User Creation Request.
 
@@ -1489,6 +1546,17 @@ class AdminUserCreateIn(BaseModel):
     # it to a bare list would refuse an explicit null a caller may still
     # be sending, which is a second breaking change for no gain.
     org_unit_ids: list[int] | None = None
+    # What they may practise at each org_unit. Absent means "say nothing
+    # about practice", which is what a client built before the field
+    # sends, and it leaves a new account authorised nowhere.
+    practising: list[PractisingAtIn] | None = None
+
+    @field_validator("practising")
+    @classmethod
+    def _practising_once_each(
+        cls, value: list[PractisingAtIn] | None
+    ) -> list[PractisingAtIn] | None:
+        return _one_entry_per_org_unit(value)
 
     @field_validator("platform_role")
     @classmethod
@@ -1558,6 +1626,16 @@ class AdminUserUpdateIn(BaseModel):
     removed_competencies: list[str] | None = None
     platform_role: str | None = None
     org_unit_ids: list[int] | None = None
+    # What they may practise at each org_unit sent. Absent leaves every
+    # practice row as it is, as does an org_unit left out of the list.
+    practising: list[PractisingAtIn] | None = None
+
+    @field_validator("practising")
+    @classmethod
+    def _practising_once_each(
+        cls, value: list[PractisingAtIn] | None
+    ) -> list[PractisingAtIn] | None:
+        return _one_entry_per_org_unit(value)
 
     @field_validator("platform_role")
     @classmethod
@@ -1642,6 +1720,142 @@ def _org_units_the_caller_places_people_in(
             db, current_user.id
         )
     return allowed
+
+
+def _settle_practice(
+    db: Session,
+    current_user: User,
+    person: User,
+    practising: list[PractisingAtIn],
+) -> None:
+    """Make a person's practice rows match what the user form sent.
+
+    Called once their membership and competencies are settled and
+    flushed, in the same transaction, so a new starter is never left
+    created and authorised nowhere.
+
+    For each org_unit sent, the list is the whole answer for the
+    competencies the person now holds: listed ones are authorised there,
+    and ones they hold and are not listed are withdrawn. Three things
+    are deliberately left alone:
+
+    - **An org_unit that was not sent.** The form names only the
+      org_units it showed, so an admin who cannot see one does not
+      empty it by saving.
+    - **A row for a competency outside their ceiling.** Those are the
+      "authorised here but not held" rows the member practice page
+      shows on purpose, and the form has no switch for them. Its
+      silence about one is not an instruction to withdraw it.
+    - **A row that does not change.** It keeps who authorised it and
+      when; ``authorise_practice`` writes nothing for a repeat.
+
+    Every change is checked before any is written, and one refusal
+    refuses the save: this is one request and one transaction, and a
+    user half created is worse than one not created. A list that
+    changes nothing is never refused, because the form sends every
+    field on every save.
+
+    Args:
+        db: Core database session.
+        current_user: The caller.
+        person: Whose practice it is, with membership and competencies
+            already settled.
+        practising: One entry per org_unit to settle.
+
+    Raises:
+        HTTPException: 422 for an org_unit the person does not belong
+            to; 403 when the caller may not set practice at all; and
+            whatever ``practice_refusal`` answers for a change they may
+            not make, with every such change named.
+    """
+    member_of = set(
+        db.execute(
+            select(org_unit_member.c.org_unit_id).where(
+                org_unit_member.c.user_id == person.id
+            )
+        )
+        .scalars()
+        .all()
+    )
+    strangers = sorted(
+        entry.org_unit_id
+        for entry in practising
+        if entry.org_unit_id not in member_of
+    )
+    if strangers:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Practice can be set only where they belong. Not a member "
+                "of place " + ", ".join(str(unit) for unit in strangers) + "."
+            ),
+        )
+
+    held = set(person.get_final_competencies())
+    # (org_unit, competency, authorising), in the order they were sent.
+    changes: list[tuple[int, str, bool]] = []
+    for entry in practising:
+        current = authorised_at(db, person.id, org_unit_id=entry.org_unit_id)
+        wanted = set(entry.competencies)
+        changes.extend(
+            (entry.org_unit_id, competency, True)
+            for competency in sorted(wanted - current)
+        )
+        changes.extend(
+            (entry.org_unit_id, competency, False)
+            for competency in sorted((current & held) - wanted)
+        )
+    if not changes:
+        return
+
+    # The practice routes sit behind a dependency asking this; the user
+    # routes admit `manage_users` alone, which is not authority to set
+    # where somebody practises.
+    callers = set(current_user.get_final_competencies())
+    if "manage_practising_competencies" not in callers and callers.isdisjoint(
+        SCOPED_MANAGER_IDS
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="You may not set where somebody practises.",
+        )
+
+    refusals: list[HTTPException] = []
+    for org_unit_id, competency, authorising in changes:
+        refusal = practice_refusal(
+            db,
+            current_user,
+            unit_id=org_unit_id,
+            user_id=person.id,
+            competency=competency,
+            authorising=authorising,
+        )
+        if refusal is not None:
+            refusals.append(refusal)
+    if refusals:
+        # One status, the first's, and every distinct reason: the form
+        # shows one message and it should say everything that was wrong.
+        reasons = list(dict.fromkeys(str(r.detail) for r in refusals))
+        raise HTTPException(
+            status_code=refusals[0].status_code, detail=" ".join(reasons)
+        )
+
+    for org_unit_id, competency, authorising in changes:
+        if authorising:
+            authorise_practice(
+                db,
+                user_id=person.id,
+                org_unit_id=org_unit_id,
+                competency=competency,
+                authorised_by=current_user.id,
+            )
+        else:
+            withdraw_practice(
+                db,
+                user_id=person.id,
+                org_unit_id=org_unit_id,
+                competency=competency,
+            )
 
 
 def _require_changes_in_scope(
@@ -1860,6 +2074,11 @@ def create_user_with_cbac(
     db.flush()
 
     db.refresh(user)
+
+    # Last, once they belong somewhere and hold something: where they
+    # may practise it. Same transaction as the account itself.
+    if payload.practising:
+        _settle_practice(db, current_user, user, payload.practising)
 
     return UserActionOut(
         detail="created",
@@ -2191,6 +2410,11 @@ def update_user(
         # them; an assignment after the last query would not.
     db.flush()
     db.refresh(user)
+
+    # After membership and competencies, because practice is checked
+    # against both as they now stand.
+    if payload.practising:
+        _settle_practice(db, current_user, user, payload.practising)
 
     return UserActionOut(
         detail="updated",
@@ -3014,6 +3238,7 @@ def get_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     _require_shared_org_with_user(db, current_user, user)
+    reached = org_units_whose_people_reached_by(db, current_user)
 
     user_org_unit_ids = [
         row[0]
@@ -3037,6 +3262,18 @@ def get_user(
         # Every org_unit they belong to, organisations included, in
         # the ids the org_units themselves answer in.
         org_unit_ids=user_org_unit_ids,
+        practising=[
+            PractisingAtOut(
+                org_unit_id=unit_id,
+                competencies=sorted(
+                    competencies_at(db, user, org_unit_id=unit_id)
+                ),
+            )
+            for unit_id in sorted(user_org_unit_ids)
+            # Only where the caller reaches, so the answer never names
+            # practice at an org_unit they could not open.
+            if reached is None or unit_id in reached
+        ],
     )
 
 
