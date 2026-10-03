@@ -60,6 +60,17 @@ class FakeResend:
             return httpx.Response(200, json={"deleted": True})
         if contact is None:
             return httpx.Response(404, json={"message": "not found"})
+        if request.method == "GET" and path.endswith("/topics"):
+            return httpx.Response(
+                200,
+                json={
+                    "object": "list",
+                    "data": [
+                        {"id": topic, "subscription": subscription}
+                        for topic, subscription in contact["topics"].items()
+                    ],
+                },
+            )
         if request.method == "GET":
             return httpx.Response(200, json={"id": "c_1"})
         if request.method == "POST" and "/segments/" in path:
@@ -343,3 +354,30 @@ class TestClosingAnAccount:
         assert response.status_code == 200
         db_session.refresh(user)
         assert user.is_active is False
+
+
+class TestReadingATopic:
+    def test_says_what_resend_holds(self, db_session, fake_resend):
+        from app.marketing.resend_contacts import topic_subscription
+
+        fake_resend.contacts["ada@example.com"] = {
+            "segments": [SEGMENT],
+            "topics": {TOPIC: "opt_out", "top_other": "opt_in"},
+        }
+
+        assert topic_subscription("ada@example.com") == "opt_out"
+
+    def test_is_none_for_somebody_resend_does_not_have(self, fake_resend):
+        from app.marketing.resend_contacts import topic_subscription
+
+        assert topic_subscription("nobody@example.com") is None
+
+    def test_is_none_when_the_topic_is_not_listed(self, fake_resend):
+        from app.marketing.resend_contacts import topic_subscription
+
+        fake_resend.contacts["ada@example.com"] = {
+            "segments": [],
+            "topics": {"top_other": "opt_in"},
+        }
+
+        assert topic_subscription("ada@example.com") is None

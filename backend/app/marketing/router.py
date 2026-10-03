@@ -1,0 +1,186 @@
+# cspell:ignore svix whsec
+"""Marketing email routes.
+
+One so far: the webhook Resend calls when a contact changes. Somebody who
+clicks "unsubscribe" in a newsletter changes their entry in Resend, and
+without this Quill would go on showing their Settings switch as on.
+
+See ``docs/docs/plans/2026-10-03-marketing-opt-out-plan.md``.
+"""
+
+import logging
+from datetime import UTC, datetime
+from typing import Any
+
+import resend
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.config import settings
+from app.db import get_core_db
+from app.marketing.preferences import set_marketing_preference
+from app.marketing.resend_contacts import (
+    MarketingSyncError,
+    is_configured,
+    topic_subscription,
+)
+from app.models import User
+from app.rate_limit import limiter
+from app.schemas.marketing import ResendWebhookOut
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/marketing", tags=["marketing"])
+
+_DEP_SESSION = Depends(get_core_db)
+
+
+async def _raw_body(request: Request) -> bytes:
+    """The request body exactly as sent, which is what the signature covers."""
+    return await request.body()
+
+
+_DEP_RAW_BODY = Depends(_raw_body)
+
+
+def _verified_event(request: Request, raw: bytes) -> dict[str, Any]:
+    """Return the webhook's event once its signature has been checked.
+
+    Nothing in the body is read before this passes. The check is Resend's
+    own (HMAC-SHA256 over the id, the timestamp and the body, with a five
+    minute window against replays) and needs no API key.
+
+    Args:
+        request: The request, for its signature headers.
+        raw: The body as sent.
+
+    Returns:
+        The parsed event.
+
+    Raises:
+        HTTPException: 503 if no signing secret is configured, 401 if the
+            signature does not match.
+    """
+    secret = settings.RESEND_WEBHOOK_SECRET
+    if secret is None:
+        raise HTTPException(
+            status_code=503, detail="Webhook is not configured."
+        )
+
+    try:
+        event = resend.Webhooks.verify(
+            {
+                "payload": raw.decode("utf-8"),
+                "headers": {
+                    "id": request.headers.get("svix-id", ""),
+                    "timestamp": request.headers.get("svix-timestamp", ""),
+                    "signature": request.headers.get("svix-signature", ""),
+                },
+                "webhook_secret": secret.get_secret_value().strip(),
+            }
+        )
+    except (ValueError, UnicodeDecodeError):
+        raise HTTPException(
+            status_code=401, detail="Invalid signature."
+        ) from None
+    return dict(event)
+
+
+def _wants_marketing(event_type: str, data: dict[str, Any]) -> bool | None:
+    """What an event says about whether the contact wants news.
+
+    Args:
+        event_type: ``contact.updated`` or ``contact.deleted``.
+        data: The event's contact.
+
+    Returns:
+        True or False, or None when the event settles nothing.
+
+    Raises:
+        MarketingSyncError: If Resend had to be asked and could not be.
+    """
+    if event_type == "contact.deleted":
+        return False
+    if data.get("unsubscribed") is True:
+        return False
+    if not is_configured():
+        return None
+
+    # The event carries the contact, not its topics, so ask.
+    subscription = topic_subscription(str(data.get("email", "")))
+    if subscription is None:
+        return None
+    return subscription == "opt_in"
+
+
+# Public and without a CSRF token on purpose: it is called by Resend, not
+# by a browser with a session. The signature is what authenticates it.
+@router.post("/resend-webhook", response_model=ResendWebhookOut)
+@limiter.limit("120/minute")
+def resend_webhook(
+    request: Request,
+    raw: bytes = _DEP_RAW_BODY,
+    db: Session = _DEP_SESSION,
+) -> ResendWebhookOut:
+    """Take a contact change from Resend and record it against the user.
+
+    Args:
+        request: The request, for its signature headers.
+        raw: The body as sent.
+        db: Database session.
+
+    Returns:
+        Whether a preference changed, already matched, or the event was
+        not one this route acts on.
+
+    Raises:
+        HTTPException: 503 with no signing secret, 401 on a bad signature,
+            502 if Resend had to be asked about the contact and could not
+            be, so that Resend sends the event again later.
+    """
+    event = _verified_event(request, raw)
+
+    event_type = event.get("type")
+    data = event.get("data")
+    if event_type not in ("contact.updated", "contact.deleted") or not (
+        isinstance(data, dict)
+    ):
+        return ResendWebhookOut(status="ignored")
+
+    email = data.get("email")
+    if not isinstance(email, str) or not email:
+        return ResendWebhookOut(status="ignored")
+
+    # An address with no account is somebody who joined the list from the
+    # public site. Nothing of theirs is held here.
+    user = db.scalar(
+        select(User).where(func.lower(User.email) == email.lower())
+    )
+    if user is None:
+        return ResendWebhookOut(status="ignored")
+
+    try:
+        wants = _wants_marketing(str(event_type), data)
+    except MarketingSyncError as exc:
+        logger.warning(
+            "Resend webhook could not read topics for user %s: %s",
+            user.id,
+            exc,
+        )
+        raise HTTPException(
+            status_code=502, detail="Could not confirm with Resend."
+        ) from None
+    if wants is None:
+        return ResendWebhookOut(status="ignored")
+
+    changed = set_marketing_preference(db, user, wants=wants, source="resend")
+    # Resend is where the answer came from, so it does not need telling.
+    # A deleted contact is the exception: the retry puts it back, opted
+    # out, so that Resend goes on holding the refusal.
+    if event_type == "contact.updated":
+        user.marketing_synced_at = datetime.now(UTC)
+    else:
+        user.marketing_synced_at = None
+
+    return ResendWebhookOut(status="updated" if changed else "unchanged")
