@@ -23,6 +23,7 @@ from app.features.teaching.models import (
 )
 from app.features.teaching.router import (
     chosen_option_label,
+    image_label,
     question_number_of,
     resolve_visible_module,
     scored_criteria,
@@ -4410,6 +4411,48 @@ class TestLocalMediaUpload:
         )
 
         assert resp.status_code == 404
+
+
+class TestImageLabel:
+    """The caption under an image during an assessment."""
+
+    BANK = {
+        "images": [
+            {"key": "wli.png", "label": "White light (WLI)"},
+            {"key": "nbi.png", "label": "Narrow band imaging (NBI)"},
+        ]
+    }
+
+    def test_is_the_label_the_bank_gives_that_file(self) -> None:
+        """A uniform item stores only the key; the bank holds the label."""
+        assert (
+            image_label({"key": "nbi.png"}, 1, self.BANK)
+            == "Narrow band imaging (NBI)"
+        )
+
+    def test_matches_on_the_file_and_not_on_the_position(self) -> None:
+        """An item missing its first image must not borrow that label."""
+        assert (
+            image_label({"key": "nbi.png"}, 0, self.BANK)
+            == "Narrow band imaging (NBI)"
+        )
+
+    def test_prefers_the_label_the_item_carries_itself(self) -> None:
+        image = {"key": "wli.png", "label": "PA chest X-ray"}
+        assert image_label(image, 0, self.BANK) == "PA chest X-ray"
+
+    def test_falls_back_to_the_older_positional_list(self) -> None:
+        config = {"image_labels": ["First", "Second"]}
+        assert image_label({"key": "image_2.png"}, 1, config) == "Second"
+
+    def test_is_none_when_the_bank_gives_no_label(self) -> None:
+        assert image_label({"key": "wli.png"}, 0, {}) is None
+        assert image_label({"key": "other.png"}, 5, self.BANK) is None
+
+    def test_is_none_for_a_malformed_bank(self) -> None:
+        config = {"images": "wli.png", "image_labels": "White light"}
+        assert image_label({"key": "wli.png"}, 0, config) is None
+        assert image_label({"key": "wli.png"}, 0, {"images": ["x"]}) is None
 
 
 class TestChosenOptionLabel:

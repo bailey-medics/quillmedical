@@ -254,16 +254,13 @@ def _build_candidate_item(
 
     # Resolve images
     images: list[ItemImageOut] = []
-    image_labels = config.get("image_labels", [])
     item_folder = item.metadata_json.get(
         "_source_dir", f"question_{answer.display_order}"
     )
 
     for idx, img in enumerate(item.images or []):
         key = img.get("key", "")
-        label = img.get("label")
-        if not label and idx < len(image_labels):
-            label = image_labels[idx]
+        label = image_label(img, idx, config)
         url = storage.get_image_url(item.question_bank_id, item_folder, key)
         images.append(ItemImageOut(key=key, label=label, url=url))
 
@@ -1226,6 +1223,37 @@ def question_number_of(source_dir: str) -> int | None:
     """
     match = _QUESTION_NUMBER.search(source_dir)
     return int(match.group(1)) if match else None
+
+
+def image_label(
+    image: dict[str, Any], index: int, config: dict[str, Any]
+) -> str | None:
+    """The caption for one image of an item, or ``None`` when it has none.
+
+    A variable item carries its own label. A uniform item stores only the
+    file name, so its label comes from the bank: the ``images`` entry with
+    the same ``key``, or, in a bank written before that list existed, the
+    ``image_labels`` entry at the same position.
+    """
+    own = image.get("label")
+    if own:
+        return str(own)
+
+    key = image.get("key")
+    declared = config.get("images")
+    if key and isinstance(declared, list):
+        for entry in declared:
+            if isinstance(entry, dict) and entry.get("key") == key:
+                label = entry.get("label")
+                if label:
+                    return str(label)
+
+    legacy = config.get("image_labels")
+    if isinstance(legacy, list) and 0 <= index < len(legacy):
+        label = legacy[index]
+        if label:
+            return str(label)
+    return None
 
 
 def chosen_option_label(

@@ -105,9 +105,11 @@ description: >
 type: uniform # "uniform" or "variable"
 
 images_per_item: 2
-image_labels:
-  - "White light (WLI)"
-  - "Narrow band imaging (NBI)"
+images: # One per image: the file every question holds, and its caption
+  - key: "wli.png"
+    label: "White light (WLI)"
+  - key: "nbi.png"
+    label: "Narrow band imaging (NBI)"
 
 options: # Shared options (uniform type only)
   - id: high_confidence_adenoma
