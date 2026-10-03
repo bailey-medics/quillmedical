@@ -3,7 +3,7 @@
 Newsletters are sent from Resend, not from Quill, so Resend's record of a
 contact is what decides who is emailed. This module tells it what a person
 chose: in the newsletter segment, opted in to or out of the newsletter
-topic.
+topic, and subscribed or unsubscribed as a contact to match.
 
 Somebody who opted out is still sent, as a contact opted *out*. Resend
 then holds the refusal, and a later import of addresses cannot subscribe
@@ -35,9 +35,20 @@ logger = logging.getLogger(__name__)
 
 RESEND_API_URL = "https://api.resend.com"
 
-#: Seconds to wait for Resend. Short, because one of the callers is a
-#: person waiting for a page.
-TIMEOUT = 5.0
+#: How long to wait for Resend. Short, because one of the callers is a
+#: person waiting for a page, and shorter still to connect: a connection
+#: that has not opened in two seconds is not about to.
+TIMEOUT = httpx.Timeout(5.0, connect=2.0)
+
+#: The address the client connects *from*, which is how ``httpx`` is told
+#: to use IPv4 only. Resend's API has two IPv6 addresses and two IPv4
+#: ones, and the backend on Cloud Run has no IPv6 route out. Tried in the
+#: order the resolver gives, each IPv6 address hangs for the whole connect
+#: timeout before an IPv4 one is reached. On 3 October 2026, the first day
+#: this ran in production, two of three saves from the Settings switch
+#: took 10.5 seconds, which is two five-second connect timeouts and one
+#: ordinary request; the third took one second.
+IPV4_ONLY = "0.0.0.0"  # nosec B104 - a source address, not a listener
 
 
 class MarketingSyncError(Exception):
@@ -77,6 +88,7 @@ def _client(config: _Config) -> httpx.Client:
         base_url=RESEND_API_URL,
         headers={"Authorization": f"Bearer {config.api_key}"},
         timeout=TIMEOUT,
+        transport=httpx.HTTPTransport(local_address=IPV4_ONLY),
     )
 
 
@@ -126,8 +138,16 @@ def sync_contact(user: User) -> bool:
         )
         return False
 
+    # Resend holds two switches for a contact and both are set. The topic
+    # is the one a newsletter is sent to. The contact's own
+    # ``unsubscribed`` flag is what Resend checks when a broadcast names a
+    # segment and no topic, and what its Audience page shows. Setting the
+    # topic alone left somebody who had refused showing as "Subscribed"
+    # there, and one broadcast sent without the topic away from being
+    # emailed. There is one newsletter and one choice, so the two agree.
     subscription = "opt_in" if user.marketing_emails else "opt_out"
     topics = [{"id": config.topic_id, "subscription": subscription}]
+    unsubscribed = not user.marketing_emails
     contact = quote(user.email, safe="")
 
     try:
@@ -140,6 +160,7 @@ def sync_contact(user: User) -> bool:
                         json={
                             "email": user.email,
                             **_names(user),
+                            "unsubscribed": unsubscribed,
                             "segments": [{"id": config.segment_id}],
                             "topics": topics,
                         },
@@ -157,6 +178,13 @@ def sync_contact(user: User) -> bool:
                         json={},
                     ),
                     "adding the contact to the segment",
+                )
+                _check(
+                    client.patch(
+                        f"/contacts/{contact}",
+                        json={"unsubscribed": unsubscribed},
+                    ),
+                    "setting whether the contact is unsubscribed",
                 )
                 # The topics go as a bare list, which is what Resend
                 # takes on this route.

@@ -46,6 +46,15 @@ updates". Left alone, the person is sent news. The words are in
   refused is still held there, opted out, so a later import of addresses
   cannot subscribe them by accident.
 
+Resend holds two switches for a contact, and Quill sets both to match.
+The topic is what a newsletter is sent to. The contact's own
+"subscribed" status is what Resend's Audience page shows, and what it
+checks when a broadcast names the segment and no topic. With only the
+topic set, somebody who had refused read as "Subscribed" on that page
+and would have been emailed by a broadcast sent without the topic.
+**Send every newsletter to the "Newsletter" topic all the same**: the
+second switch is a safety net, not the plan.
+
 Every change in Quill goes through `set_marketing_preference` in
 `backend/app/marketing/preferences.py`. If the sentence on the
 registration form changes, bump `MARKETING_WORDING_VERSION` beside it.

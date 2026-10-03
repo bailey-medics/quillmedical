@@ -46,6 +46,7 @@ class FakeResend:
             self.contacts[body["email"]] = {
                 "segments": [s["id"] for s in body["segments"]],
                 "topics": {t["id"]: t["subscription"] for t in body["topics"]},
+                "unsubscribed": body.get("unsubscribed"),
                 "first_name": body.get("first_name"),
                 "last_name": body.get("last_name"),
             }
@@ -72,6 +73,9 @@ class FakeResend:
                 },
             )
         if request.method == "GET":
+            return httpx.Response(200, json={"id": "c_1"})
+        if request.method == "PATCH" and not path.endswith("/topics"):
+            contact.update(body)
             return httpx.Response(200, json={"id": "c_1"})
         if request.method == "POST" and "/segments/" in path:
             contact["segments"].append(path.rsplit("/", 1)[1])
@@ -119,6 +123,33 @@ def _person(db_session, name, *, wants=True, verified=True, active=True):
     return user
 
 
+class TestTheConnection:
+    """The real client, not the stub: how it reaches Resend."""
+
+    def _real_client(self):
+        return resend_contacts._client(
+            resend_contacts._Config(
+                api_key="re_contacts", segment_id=SEGMENT, topic_id=TOPIC
+            )
+        )
+
+    def test_connects_over_ipv4_only(self):
+        """Cloud Run has no IPv6 route out, and Resend has IPv6 addresses.
+
+        Each one tried is a whole connect timeout spent before an IPv4
+        address is reached, which made a Settings save take ten seconds.
+        """
+        with self._real_client() as client:
+            pool = client._transport._pool
+
+        assert pool._local_address == "0.0.0.0"
+
+    def test_gives_up_on_a_connection_sooner_than_on_an_answer(self):
+        with self._real_client() as client:
+            assert client.timeout.connect == 2.0
+            assert client.timeout.read == 5.0
+
+
 class TestSyncingSomebodyNew:
     def test_creates_the_contact_opted_in(self, db_session, fake_resend):
         user = _person(db_session, "ada")
@@ -156,6 +187,7 @@ class TestSyncingSomebodyNew:
             "email",
             "first_name",
             "last_name",
+            "unsubscribed",
             "segments",
             "topics",
         }
@@ -171,6 +203,39 @@ class TestSyncingSomebodyNew:
         body = fake_resend.calls[-1][2]
         assert "first_name" not in body
         assert "last_name" not in body
+
+
+class TestTheContactsOwnSwitch:
+    """Resend checks this one when a broadcast names no topic."""
+
+    def test_somebody_new_who_wants_news_is_subscribed(
+        self, db_session, fake_resend
+    ):
+        sync_contact(_person(db_session, "ada"))
+
+        assert fake_resend.contacts["ada@example.com"]["unsubscribed"] is False
+
+    def test_somebody_new_who_refused_is_unsubscribed(
+        self, db_session, fake_resend
+    ):
+        sync_contact(_person(db_session, "ada", wants=False))
+
+        assert fake_resend.contacts["ada@example.com"]["unsubscribed"] is True
+
+    def test_follows_a_change_of_mind_both_ways(self, db_session, fake_resend):
+        user = _person(db_session, "ada")
+        sync_contact(user)
+
+        user.marketing_emails = False
+        sync_contact(user)
+        contact = fake_resend.contacts["ada@example.com"]
+        assert contact["unsubscribed"] is True
+        assert contact["topics"] == {TOPIC: "opt_out"}
+
+        user.marketing_emails = True
+        sync_contact(user)
+        assert contact["unsubscribed"] is False
+        assert contact["topics"] == {TOPIC: "opt_in"}
 
 
 class TestSyncingSomebodyResendAlreadyKnows:
