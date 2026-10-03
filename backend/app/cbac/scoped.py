@@ -90,6 +90,36 @@ def competencies_at(
     return authorised & set(user.get_final_competencies())
 
 
+def authorised_at(db: Session, user_id: int, *, org_unit_id: int) -> set[str]:
+    """Return every competency authorised for somebody at one org_unit.
+
+    The rows as written, with no ceiling applied: what the place has
+    decided, whether or not the person holds the competency today. For
+    what they may actually do there, which is the intersection, ask
+    ``competencies_at``. This is for a caller settling the rows
+    themselves, which has to see the ones that have no effect too so as
+    to leave them alone.
+
+    Args:
+        db: Database session.
+        user_id: The person asked about.
+        org_unit_id: The org_unit.
+
+    Returns:
+        The competency ids with a row there. Empty when there are none.
+    """
+    return set(
+        db.execute(
+            select(PractisingCompetency.competency).where(
+                PractisingCompetency.user_id == user_id,
+                _org_unit_clause(org_unit_id),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+
 def can_practise_at(
     db: Session,
     user: User,

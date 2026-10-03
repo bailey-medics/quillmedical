@@ -391,6 +391,24 @@ class UsersListOut(BaseModel):
     users: list[UserSummaryItem]
 
 
+class PractisingAtOut(BaseModel):
+    """What somebody may practise at one org_unit.
+
+    The shape the user form sends back as ``practising``, so the form
+    opens with what is saved and returns it unchanged where nothing
+    moved.
+
+    Attributes:
+        org_unit_id: The org_unit.
+        competencies: What they may practise there, narrowed to what
+            they hold: a row beyond their ceiling has no effect and is
+            not listed.
+    """
+
+    org_unit_id: int
+    competencies: list[str]
+
+
 class UserOut(BaseModel):
     """Detailed user profile response.
 
@@ -406,6 +424,8 @@ class UserOut(BaseModel):
         is_active: Whether user is active.
         org_unit_ids: Every org_unit the user belongs to, organisations
             included, in the ids the org_units themselves answer in.
+        practising: What they may practise at each org_unit they
+            belong to that the caller reaches, one entry per org_unit.
     """
 
     id: int
@@ -418,6 +438,7 @@ class UserOut(BaseModel):
     platform_role: str
     is_active: bool
     org_unit_ids: list[int] = []
+    practising: list[PractisingAtOut] = []
 
 
 class LinkPatientIn(BaseModel):
