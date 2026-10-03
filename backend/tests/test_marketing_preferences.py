@@ -108,6 +108,28 @@ class TestAnUnchangedAnswer:
         assert row.source == "registration"
 
 
+class TestTheFirstAnswer:
+    def test_a_refusal_at_registration_is_recorded(
+        self, db_session, test_user
+    ):
+        """Shown the question and said no: a row, though nothing changed."""
+        changed = set_marketing_preference(
+            db_session,
+            test_user,
+            wants=False,
+            source="registration",
+            wording_version=MARKETING_WORDING_VERSION,
+            first_answer=True,
+        )
+        db_session.commit()
+
+        assert changed is False
+        assert test_user.marketing_emails is False
+        [row] = _changes(db_session, test_user)
+        assert row.wants_marketing is False
+        assert row.source == "registration"
+
+
 class TestAnUnknownSource:
     def test_is_refused_before_anything_is_written(
         self, db_session, test_user

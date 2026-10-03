@@ -1,9 +1,10 @@
 # cspell:ignore svix whsec
 """Marketing email routes.
 
-One so far: the webhook Resend calls when a contact changes. Somebody who
-clicks "unsubscribe" in a newsletter changes their entry in Resend, and
-without this Quill would go on showing their Settings switch as on.
+Two: the Settings switch that changes a person's own preference, and the
+webhook Resend calls when a contact changes. Somebody who clicks
+"unsubscribe" in a newsletter changes their entry in Resend, and without
+the webhook Quill would go on showing their Settings switch as on.
 
 See ``docs/docs/plans/2026-10-03-marketing-opt-out-plan.md``.
 """
@@ -19,21 +20,105 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_core_db
-from app.marketing.preferences import set_marketing_preference
+from app.deps import DEP_CURRENT_USER, get_current_user
+from app.marketing.preferences import (
+    MARKETING_WORDING_VERSION,
+    set_marketing_preference,
+)
 from app.marketing.resend_contacts import (
     MarketingSyncError,
     is_configured,
+    sync_contact,
     topic_subscription,
 )
 from app.models import User
 from app.rate_limit import limiter
-from app.schemas.marketing import ResendWebhookOut
+from app.schemas.marketing import (
+    MarketingPreferenceIn,
+    MarketingPreferenceOut,
+    ResendWebhookOut,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/marketing", tags=["marketing"])
 
 _DEP_SESSION = Depends(get_core_db)
+
+
+def _require_csrf(request: Request, db: Session = _DEP_SESSION) -> None:
+    """Check the CSRF token, borrowing ``main``'s implementation.
+
+    ``main`` imports this router, so importing ``require_csrf`` at module
+    level would be a cycle. The feedback and org_units routers do the same.
+    """
+    from app.main import require_csrf
+
+    require_csrf(request, get_current_user(request, db))
+
+
+@router.put(
+    "/preference",
+    response_model=MarketingPreferenceOut,
+    dependencies=[Depends(_require_csrf)],
+)
+@limiter.limit("20/minute")
+def set_my_marketing_preference(
+    request: Request,
+    payload: MarketingPreferenceIn,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> MarketingPreferenceOut:
+    """Change whether the signed-in person is sent news and updates.
+
+    Newsletters are sent from Resend, so an opt-out that only reached
+    this database would stop nothing. Opting out is therefore not done
+    until Resend has been told: if it cannot be, the request fails, the
+    change is rolled back and the person is asked to try again. Opting in
+    can wait for the retry, because a late opt-in costs nothing.
+
+    An address not yet verified is never on the list, so there is nothing
+    to tell Resend until it is.
+
+    Args:
+        request: The request, for the rate limiter.
+        payload: The new answer.
+        current_user: The signed-in person.
+        db: Database session.
+
+    Returns:
+        The preference as it now stands.
+
+    Raises:
+        HTTPException: 502 if an opt-out could not reach Resend.
+    """
+    changed = set_marketing_preference(
+        db,
+        current_user,
+        wants=payload.wants_marketing,
+        source="settings",
+        wording_version=MARKETING_WORDING_VERSION,
+    )
+
+    if changed and current_user.email_verified:
+        try:
+            sync_contact(current_user)
+        except MarketingSyncError as exc:
+            logger.warning(
+                "Marketing sync failed for user %s: %s", current_user.id, exc
+            )
+            if not payload.wants_marketing:
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        "We could not update your email preferences. "
+                        "Please try again."
+                    ),
+                ) from None
+
+    return MarketingPreferenceOut(
+        marketing_emails=current_user.marketing_emails
+    )
 
 
 async def _raw_body(request: Request) -> bytes:

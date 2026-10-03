@@ -115,6 +115,10 @@ from app.fhir_client import (
 )
 from app.log_context import request_id_var, user_id_var
 from app.logging_config import setup_logging
+from app.marketing.preferences import (
+    MARKETING_WORDING_VERSION,
+    set_marketing_preference,
+)
 from app.marketing.resend_contacts import (
     MarketingSyncError,
     remove_contact,
@@ -1218,6 +1222,20 @@ def register(
 
     db.add(user)
     db.flush()  # Assigns user.id so we can create memberships
+
+    # Registration is an opt-out: somebody shown the sentence who leaves
+    # the box unticked is sent news. A form that never showed it sends
+    # nothing here, and that person is left unsubscribed. Resend is told
+    # when the address is verified, not now.
+    if payload.marketing_opt_out is not None:
+        set_marketing_preference(
+            db,
+            user,
+            wants=not payload.marketing_opt_out,
+            source="registration",
+            wording_version=MARKETING_WORDING_VERSION,
+            first_answer=True,
+        )
 
     # Add the user to the org_unit they named. It has to be an
     # organisation: registration offers the tops of trees, and a
@@ -2979,6 +2997,7 @@ def me(
         username=current_user.username,
         name=current_user.full_name,
         email=current_user.email,
+        marketing_emails=current_user.marketing_emails,
         roles=[r.name for r in current_user.roles],
         platform_role=current_user.platform_role,
         fhir_patient_id=current_user.fhir_patient_id,
