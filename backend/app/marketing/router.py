@@ -10,7 +10,8 @@ See ``docs/docs/plans/2026-10-03-marketing-opt-out-plan.md``.
 """
 
 import logging
-from datetime import UTC, datetime
+import time
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import resend
@@ -42,6 +43,19 @@ from app.schemas.marketing import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/marketing", tags=["marketing"])
+
+#: How long after Quill tells Resend something a "contact changed" event
+#: is taken to be Resend repeating it back. Found against the real
+#: service on 3 October 2026: a topic read for about a second after a
+#: write still returns the old value. An echo arriving in that second
+#: would be read as the person changing their mind, and would undo the
+#: choice they had just made.
+ECHO_WINDOW = timedelta(seconds=60)
+
+#: How long to wait before asking Resend a second time, when its first
+#: answer says nothing changed. The same lag, from the other side: the
+#: event for an unsubscribe can arrive before a read shows it.
+SETTLE_SECONDS = 2.0
 
 _DEP_SESSION = Depends(get_core_db)
 
@@ -172,12 +186,38 @@ def _verified_event(request: Request, raw: bytes) -> dict[str, Any]:
     return dict(event)
 
 
-def _wants_marketing(event_type: str, data: dict[str, Any]) -> bool | None:
+def _is_echo(user: User, event_type: str, data: dict[str, Any]) -> bool:
+    """Whether an event is Resend repeating what Quill just told it.
+
+    Args:
+        user: The person the event is about.
+        event_type: The event's type.
+        data: The event's contact.
+
+    Returns:
+        True for a ``contact.updated`` soon after Quill's own sync. A
+        deletion, or a contact unsubscribed from everything, is never an
+        echo: Quill does neither of those to a contact it has just synced.
+    """
+    if event_type != "contact.updated" or data.get("unsubscribed") is True:
+        return False
+    synced_at = user.marketing_synced_at
+    if synced_at is None:
+        return False
+    if synced_at.tzinfo is None:
+        synced_at = synced_at.replace(tzinfo=UTC)
+    return datetime.now(UTC) - synced_at < ECHO_WINDOW
+
+
+def _wants_marketing(
+    event_type: str, data: dict[str, Any], current: bool
+) -> bool | None:
     """What an event says about whether the contact wants news.
 
     Args:
         event_type: ``contact.updated`` or ``contact.deleted``.
         data: The event's contact.
+        current: What Quill holds for them now.
 
     Returns:
         True or False, or None when the event settles nothing.
@@ -192,8 +232,14 @@ def _wants_marketing(event_type: str, data: dict[str, Any]) -> bool | None:
     if not is_configured():
         return None
 
-    # The event carries the contact, not its topics, so ask.
-    subscription = topic_subscription(str(data.get("email", "")))
+    # The event carries the contact, not its topics, so ask. Resend said
+    # something changed; if its answer is what Quill already holds, the
+    # read may be behind the write, so wait and ask once more.
+    email = str(data.get("email", ""))
+    subscription = topic_subscription(email)
+    if subscription is not None and (subscription == "opt_in") == current:
+        time.sleep(SETTLE_SECONDS)
+        subscription = topic_subscription(email)
     if subscription is None:
         return None
     return subscription == "opt_in"
@@ -245,8 +291,11 @@ def resend_webhook(
     if user is None:
         return ResendWebhookOut(status="ignored")
 
+    if _is_echo(user, str(event_type), data):
+        return ResendWebhookOut(status="ignored")
+
     try:
-        wants = _wants_marketing(str(event_type), data)
+        wants = _wants_marketing(str(event_type), data, user.marketing_emails)
     except MarketingSyncError as exc:
         logger.warning(
             "Resend webhook could not read topics for user %s: %s",

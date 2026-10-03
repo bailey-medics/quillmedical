@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import json
 import time
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from pydantic import SecretStr
@@ -59,13 +60,27 @@ def _event(kind, email, *, unsubscribed=False):
 @pytest.fixture
 def webhook(monkeypatch):
     """The webhook configured, with Resend's topics answered from here."""
-    state = {"subscription": "opt_in", "error": False, "asked": 0}
+    state = {
+        "subscription": "opt_in",
+        "then": [],
+        "error": False,
+        "asked": 0,
+        "waited": 0,
+    }
 
     def topic_subscription(email):
         state["asked"] += 1
         if state["error"]:
             raise MarketingSyncError("Resend refused: HTTP 500")
+        # "then" holds later answers, for a read that lags behind a write.
+        if state["asked"] > 1 and state["then"]:
+            return state["then"].pop(0)
         return state["subscription"]
+
+    def no_wait(seconds):
+        state["waited"] += 1
+
+    monkeypatch.setattr(marketing_router.time, "sleep", no_wait)
 
     monkeypatch.setattr(
         settings, "RESEND_WEBHOOK_SECRET", SecretStr(SECRET + "\n")
@@ -159,7 +174,9 @@ class TestAnUnsubscribe:
         test_client.post(URL, **request)
         response = test_client.post(URL, **request)
 
-        assert response.json() == {"status": "unchanged"}
+        # The first event recorded that Resend and Quill agree, so a
+        # repeat straight after it is taken as an echo and not read.
+        assert response.json() == {"status": "ignored"}
         assert len(_changes(db_session, subscriber)) == 1
 
 
@@ -229,6 +246,99 @@ class TestWhatIsIgnored:
         assert response.json() == {"status": "ignored"}
         db_session.refresh(subscriber)
         assert subscriber.marketing_emails is True
+
+
+class TestWhenResendsReadIsBehindItsWrite:
+    """Found against the real service: a read lags a write by a second."""
+
+    def test_an_unsubscribe_the_first_read_missed_is_caught_by_the_second(
+        self, test_client, db_session, webhook, subscriber
+    ):
+        webhook["subscription"] = "opt_in"
+        webhook["then"] = ["opt_out"]
+
+        response = test_client.post(
+            URL, **_signed(_event("contact.updated", "ada@example.com"))
+        )
+
+        assert response.json() == {"status": "updated"}
+        assert webhook["asked"] == 2
+        assert webhook["waited"] == 1
+        db_session.refresh(subscriber)
+        assert subscriber.marketing_emails is False
+
+    def test_a_first_read_that_shows_the_change_is_not_asked_again(
+        self, test_client, db_session, webhook, subscriber
+    ):
+        webhook["subscription"] = "opt_out"
+
+        test_client.post(
+            URL, **_signed(_event("contact.updated", "ada@example.com"))
+        )
+
+        assert webhook["asked"] == 1
+        assert webhook["waited"] == 0
+
+    def test_resend_repeating_back_what_quill_just_sent_changes_nothing(
+        self, test_client, db_session, webhook, subscriber
+    ):
+        """Somebody opts in; the echo must not read a stale 'out'."""
+        subscriber.marketing_synced_at = datetime.now(UTC)
+        db_session.commit()
+        webhook["subscription"] = "opt_out"
+
+        response = test_client.post(
+            URL, **_signed(_event("contact.updated", "ada@example.com"))
+        )
+
+        assert response.json() == {"status": "ignored"}
+        assert webhook["asked"] == 0
+        db_session.refresh(subscriber)
+        assert subscriber.marketing_emails is True
+        assert _changes(db_session, subscriber) == []
+
+    def test_an_event_long_after_the_last_sync_is_acted_on(
+        self, test_client, db_session, webhook, subscriber
+    ):
+        subscriber.marketing_synced_at = datetime.now(UTC) - timedelta(
+            minutes=5
+        )
+        db_session.commit()
+        webhook["subscription"] = "opt_out"
+
+        response = test_client.post(
+            URL, **_signed(_event("contact.updated", "ada@example.com"))
+        )
+
+        assert response.json() == {"status": "updated"}
+
+    def test_a_full_unsubscribe_just_after_a_sync_is_still_acted_on(
+        self, test_client, db_session, webhook, subscriber
+    ):
+        """Quill never unsubscribes a contact from everything itself."""
+        subscriber.marketing_synced_at = datetime.now(UTC)
+        db_session.commit()
+
+        response = test_client.post(
+            URL,
+            **_signed(
+                _event("contact.updated", "ada@example.com", unsubscribed=True)
+            ),
+        )
+
+        assert response.json() == {"status": "updated"}
+
+    def test_a_deletion_just_after_a_sync_is_still_acted_on(
+        self, test_client, db_session, webhook, subscriber
+    ):
+        subscriber.marketing_synced_at = datetime.now(UTC)
+        db_session.commit()
+
+        response = test_client.post(
+            URL, **_signed(_event("contact.deleted", "ada@example.com"))
+        )
+
+        assert response.json() == {"status": "updated"}
 
 
 class TestTheSignature:
