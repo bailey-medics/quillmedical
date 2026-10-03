@@ -231,7 +231,7 @@ all; the fourth is a rule to decide and has moved to Phase 7.
 `.claude/skills/update-docs-docs/SKILL.md`. Its Copilot source in
 `.github/prompts/` commits nothing, so neither change applies there.
 
-- [ ] **Its start check is too strict.** It stops when the branch "is not
+- [x] **Its start check is too strict.** It stops when the branch "is not
       `main` and is not in a stack". A worktree here parks on a temporary
       branch at the tip of `main`, because `main` can be checked out in one
       worktree only, and `just stack-new` works from there. Allow a branch
@@ -239,14 +239,28 @@ all; the fourth is a rule to decide and has moved to Phase 7.
       has the same rule in its first step and wants the same change, or
       the two will disagree.
 
-- [ ] **It has no rule for a merge queue that fills during a run.** Pull
+      Done in all three places that had the rule: the docs review skill,
+      `/crpd`, and `/f`, whose "Before building" section stopped on the
+      same state. Each checks level with `git fetch origin main` and
+      `git rev-list --left-right --count HEAD...origin/main` reporting
+      `0 0`. The run of this very plan met the old rule on its first
+      attempt and was only unblocked by freeing `main` in another
+      worktree.
+
+- [x] **It has no rule for a merge queue that fills during a run.** Pull
       requests from early units were queued while later units were still
       being built, and `just stack-submit` could not rebase past them. Say
       what to do: before each push, check whether any pull request in the
       stack is queued; if one is, commit the unit locally and carry on, and
       push once the queue has drained.
 
-- [ ] **It has no rule for a fault found outside the area it was given.**
+      Done, under "When the merge queue fills during the run". The skill
+      commits only through `/crpd`, which had no way to commit without
+      pushing, so `/crpd`'s push step now carries the other half: with a
+      pull request queued it stops after the commit and reports the unit
+      as not pushed.
+
+- [x] **It has no rule for a fault found outside the area it was given.**
       A run on `backend/caddy` found the same error in the cybersecurity
       page and could only raise it as a question. Say that such a fault is
       reported, not fixed.
