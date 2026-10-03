@@ -59,6 +59,8 @@ interface ApiUser {
   email?: string;
   full_name: string;
   competencies: string[];
+  /** Absent for somebody found by lookup, who is never an operator */
+  platform_role?: string;
 }
 
 interface AddStaffFormValues {
@@ -229,7 +231,10 @@ function AddStaffFields({
 export default function AddStaffToOrgPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { reload } = useAuth();
+  const { reload, state } = useAuth();
+  const viewerIsOperator =
+    state.status === "authenticated" &&
+    state.user.platform_role === "superadmin";
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -249,7 +254,14 @@ export default function AddStaffToOrgPage() {
           // since gone with the organisations table.
           `/users?exclude_org_unit=${id}`,
         );
-        setUsers(response.users);
+        // Not an operator unless the viewer is one: the list names
+        // operators now, and adding one is refused for anybody else,
+        // as the lookup above says too.
+        setUsers(
+          response.users.filter(
+            (u) => viewerIsOperator || u.platform_role !== "superadmin",
+          ),
+        );
       } catch (err) {
         setLoadError(
           err instanceof Error ? err.message : "Failed to load users",
@@ -260,7 +272,7 @@ export default function AddStaffToOrgPage() {
     }
 
     fetchUsers();
-  }, [id]);
+  }, [id, viewerIsOperator]);
 
   const selectedUser = users.find((u) => String(u.id) === selectedUserId);
   // `competencies` is absent on a stale cached response; treat that as

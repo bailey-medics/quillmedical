@@ -2580,6 +2580,16 @@ def send_invite_email(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Only an operator may act on another operator, as on every other
+    # route that does something to an account.
+    if (
+        current_user.platform_role != "superadmin"
+        and user.platform_role == "superadmin"
+    ):
+        raise HTTPException(
+            status_code=403, detail="Cannot modify superadmin users"
+        )
+
     _require_shared_org_with_user(db, current_user, user)
     _require_account_in_scope(current_user, user)
 
@@ -3114,8 +3124,12 @@ def list_users(
             return UsersListOut(users=[])
         stmt = stmt.where(User.id.in_(all_scoped_ids))
 
-        # Admins must not see superadmin users
-        stmt = stmt.where(User.platform_role != "superadmin")
+        # An operator who belongs to one of those org_units is listed
+        # with everybody else. They were filtered out here, while the
+        # org_unit's own staff table went on naming them, so an admin
+        # saw a colleague on one page and not the other. Seeing is all
+        # it is: every route that changes an account still refuses a
+        # non-operator acting on an operator.
 
     try:
         users = db.execute(stmt).scalars().unique().all()
@@ -3230,13 +3244,10 @@ def get_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-        # Only an operator may view another operator
-    if (
-        current_user.platform_role != "superadmin"
-        and user.platform_role == "superadmin"
-    ):
-        raise HTTPException(status_code=404, detail="User not found")
-
+    # An operator may be viewed by an admin who reaches an org_unit
+    # they belong to, as anybody else there may: the list names them,
+    # so the row has to open. Changing them stays an operator's alone,
+    # refused on each route that writes.
     _require_shared_org_with_user(db, current_user, user)
     reached = org_units_whose_people_reached_by(db, current_user)
 

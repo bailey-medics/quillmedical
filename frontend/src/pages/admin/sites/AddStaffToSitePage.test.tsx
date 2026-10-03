@@ -231,6 +231,27 @@ describe("AddStaffToSitePage", () => {
     );
   });
 
+  it("leaves somebody who operates Quill out of the picker", async () => {
+    // The user list names operators to an admin who works beside one.
+    // Adding one is another operator's alone, so the picker skips them.
+    mockLoad([
+      A_NURSE,
+      { ...A_PATIENT, username: "the.operator", platform_role: "superadmin" },
+    ]);
+
+    const user = userEvent.setup();
+    renderPage();
+    await waitFor(() => expect(apiLib.api.get).toHaveBeenCalled());
+    await user.click(await screen.findByPlaceholderText("Search for a user"));
+
+    expect(
+      await screen.findByRole("option", { name: "drsmith (dr@test.com)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: /the\.operator/ }),
+    ).not.toBeInTheDocument();
+  });
+
   describe("Somebody the admin cannot see", () => {
     // Somebody who runs only this site sees its members and nobody
     // else, so the picker is empty and the lookup is the way in.
