@@ -90,6 +90,10 @@ vi.mock("react-router-dom", async () => {
 // `manage_users`; a test signing in a teaching admin sets it first.
 const scope = vi.hoisted(() => ({
   may_assign_professions: null as string[] | null,
+  // What the viewer holds. Empty by default, so the Practice step, which
+  // asks for `manage_practising_competencies`, is not offered and the
+  // rest of these tests walk the form as it was before the step.
+  competencies: [] as string[],
 }));
 
 vi.mock("@/auth/AuthContext", () => ({
@@ -101,6 +105,7 @@ vi.mock("@/auth/AuthContext", () => ({
       user: {
         platform_role: "standard",
         may_assign_professions: scope.may_assign_professions,
+        competencies: scope.competencies,
       },
     },
   }),
@@ -818,6 +823,220 @@ describe("UserInfoUpdatePage", () => {
       await user.click(screen.getByRole("button", { name: /finished/i }));
 
       expect(mockNavigate).toHaveBeenCalledWith("/admin/users");
+    }, 30000);
+  });
+
+  describe("Practice", () => {
+    // Offered to somebody who may set where a competency is used.
+    //
+    // "Next" is matched whole throughout: the Practice step's tables
+    // page their rows, and their "next page" button would match too.
+    beforeEach(() => {
+      scope.competencies = ["manage_users", "manage_practising_competencies"];
+      onTestFinished(() => {
+        scope.competencies = [];
+      });
+    });
+
+    /** Fill in step 1, choose Test Org in step 2, and stop on step 3. */
+    async function toCompetencies(user: ReturnType<typeof userEvent.setup>) {
+      await user.type(screen.getByLabelText(/full name/i), "Dr Jane Smith");
+      await user.type(
+        screen.getByLabelText(/email/i),
+        "jane.smith@example.com",
+      );
+      await user.type(screen.getByLabelText(/username/i), "janesmith");
+      await user.type(
+        screen.getByLabelText(/initial password/i),
+        "password123",
+      );
+      await user.click(
+        screen.getByRole("combobox", { name: /base profession/i }),
+      );
+      await user.keyboard("{ArrowDown}");
+      await user.keyboard("{Enter}");
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+
+      await user.click(
+        await screen.findByRole("combobox", { name: /^organisation/i }),
+      );
+      await user.click(await screen.findByRole("option", { name: "Test Org" }));
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Competency configuration" }),
+        ).toBeInTheDocument();
+      });
+    }
+
+    it("is not offered to somebody who may not set practice", async () => {
+      scope.competencies = ["manage_users"];
+      const user = userEvent.setup();
+      renderWithRouter(<UserInfoUpdatePage />);
+      await toCompetencies(user);
+
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+
+      // Straight on to the platform role, as before the step existed.
+      expect(
+        await screen.findByRole("heading", { name: "Platform role" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "Where they may practise" }),
+      ).not.toBeInTheDocument();
+    }, 30000);
+
+    it("follows Competencies, with everything switched off for a new user", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(<UserInfoUpdatePage />);
+      await toCompetencies(user);
+
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+
+      expect(
+        await screen.findByRole("heading", { name: "Where they may practise" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Test Org" })).toBeVisible();
+      const switches = screen.getAllByRole("switch");
+      expect(switches.length).toBeGreaterThan(0);
+      for (const input of switches) {
+        expect(input).not.toBeChecked();
+      }
+    }, 30000);
+
+    it("sends what was switched on, and shows it in the review", async () => {
+      const user = userEvent.setup();
+      const mockPost = vi.fn().mockResolvedValue({ data: { id: 1 } });
+      (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
+      renderWithRouter(<UserInfoUpdatePage />);
+      await toCompetencies(user);
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+
+      const first = (await screen.findAllByRole("switch"))[0];
+      const competency = first
+        .getAttribute("aria-label")!
+        .replace(" at Test Org: may practise here", "");
+      await user.click(first);
+
+      // Practice → Permissions → Review
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+      expect(
+        await screen.findByText(`May practise: ${competency}`),
+      ).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /create user/i }));
+
+      await waitFor(() => expect(mockPost).toHaveBeenCalled());
+      const sent = mockPost.mock.calls[0][1] as {
+        practising: { org_unit_id: number; competencies: string[] }[];
+      };
+      expect(sent.practising).toHaveLength(1);
+      expect(sent.practising[0].org_unit_id).toBe(1);
+      expect(sent.practising[0].competencies).toHaveLength(1);
+    }, 30000);
+
+    it("drops the practice at an org_unit that is taken away again", async () => {
+      const user = userEvent.setup();
+      const mockPost = vi.fn().mockResolvedValue({ data: { id: 1 } });
+      (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
+      renderWithRouter(<UserInfoUpdatePage />);
+      await toCompetencies(user);
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+      await user.click((await screen.findAllByRole("switch"))[0]);
+
+      // Back to Organisation/site, and take Test Org off.
+      await user.click(screen.getByRole("button", { name: /back|previous/i }));
+      await user.click(screen.getByRole("button", { name: /back|previous/i }));
+      await user.click(
+        await screen.findByRole("combobox", { name: /^organisation/i }),
+      );
+      await user.click(await screen.findByRole("option", { name: "Test Org" }));
+
+      // Organisation/site → Competencies → Practice → Permissions → Review
+      for (let step = 0; step < 4; step += 1) {
+        await user.click(screen.getByRole("button", { name: /^next$/i }));
+      }
+      await user.click(
+        await screen.findByRole("button", { name: /create user/i }),
+      );
+
+      await waitFor(() => expect(mockPost).toHaveBeenCalled());
+      expect(mockPost).toHaveBeenCalledWith(
+        "/users",
+        expect.objectContaining({ org_unit_ids: [], practising: [] }),
+      );
+    }, 30000);
+
+    it("opens an edit as saved, and names what it will withdraw", async () => {
+      onTestFinished(() => window.history.pushState({}, "", "/"));
+      const get = vi.mocked(apiModule.api.get);
+      const usual = get.getMockImplementation();
+      onTestFinished(() => {
+        get.mockImplementation(usual!);
+      });
+      get.mockImplementation((url: string) =>
+        Promise.resolve(
+          url === "/org-units"
+            ? { org_units: PLACES }
+            : url === "/users/7"
+              ? {
+                  name: "Dr Jane Smith",
+                  email: "jane.smith@example.com",
+                  username: "janesmith",
+                  base_profession: "consultant",
+                  additional_competencies: [],
+                  removed_competencies: [],
+                  platform_role: "standard",
+                  org_unit_ids: [1],
+                  practising: [
+                    { org_unit_id: 1, competencies: ["certify_death"] },
+                  ],
+                }
+              : {},
+        ),
+      );
+      const mockPatch = vi.fn().mockResolvedValue({});
+      (apiModule.api.patch as ReturnType<typeof vi.fn>) = mockPatch;
+      const user = userEvent.setup();
+
+      renderWithRouter(<UserInfoUpdatePage />, {
+        routePath: "/admin/users/:id/edit",
+        initialRoute: "/admin/users/7/edit",
+      });
+
+      // Basic details → Organisation/site → Competencies → Practice
+      await screen.findByLabelText(/full name/i);
+      for (let step = 0; step < 3; step += 1) {
+        await user.click(screen.getByRole("button", { name: /^next$/i }));
+      }
+      const saved = await screen.findByRole("switch", {
+        // On the table's first page: a consultant holds more than one
+        // page of competencies.
+        name: "Certify Death at Test Org: may practise here",
+      });
+      expect(saved).toBeChecked();
+      await user.click(saved);
+
+      // Practice → Permissions → Review
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+      expect(
+        await screen.findByText("Withdrawn: Certify Death"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/stops them practising it there straight away/),
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: /update user/i }));
+
+      await waitFor(() => {
+        expect(mockPatch).toHaveBeenCalledWith(
+          "/users/7",
+          expect.objectContaining({
+            practising: [{ org_unit_id: 1, competencies: [] }],
+          }),
+        );
+      });
     }, 30000);
   });
 });

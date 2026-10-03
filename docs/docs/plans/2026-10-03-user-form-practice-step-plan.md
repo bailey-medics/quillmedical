@@ -179,27 +179,39 @@ the user form can write the same rows without a second copy of the rule.
 
 ## Phase 4: The step in the form
 
-- [ ] **Add the step to `frontend/src/pages/UserInfoUpdatePage.tsx`
+- [x] **Add the step to `frontend/src/pages/UserInfoUpdatePage.tsx`
       after Competencies**, so the steps read Basic details,
       Organisation/site, Competencies, Practice, Permissions, Review. It
       has to follow both of the steps before it, because it is built from
       their answers: the org units chosen in Organisation/site, and the
       competencies the profession and the two lists in Competencies
-      resolve to. Going back and changing either must drop choices that
-      no longer apply: practice at an org unit since removed, or for a
-      competency since taken away.
+      resolve to. Going back and changing either drops choices that no
+      longer apply: practice at an org unit since removed, or for a
+      competency since taken away. That is done by narrowing, not by
+      editing: the switches are kept as they were left, and
+      `practiceToSend` narrows them to the org units still chosen and the
+      competencies still held, for showing, for the review and for
+      sending. The earlier steps do not have to know the step exists.
 
-- [ ] **Everything starts switched off for a new user.** A ceiling with
+      The step draws without the form's usual card, because the editor
+      draws a card per org unit and a card inside a card is a box in a
+      box. The form found its Review and Confirmation steps by number,
+      which a step that some viewers have and others do not would have
+      thrown out; they are found by position now.
+
+- [x] **Everything starts switched off for a new user.** A ceiling with
       no row behind it authorises nothing, and the form should not grant
       practice by default any more than the API does. In edit mode the
       switches open as the server holds them.
 
-- [ ] **Offer the step only to somebody who may use it**: a holder of
+- [x] **Offer the step only to somebody who may use it**: a holder of
       `manage_practising_competencies`, or a scoped manager. Anybody else
       gets the form as it is today and sends no `practising`, so the API
-      leaves practice alone.
+      leaves practice alone. An org unit the person belongs to that the
+      viewer cannot see has no card, and is left out of what is sent for
+      the same reason.
 
-- [ ] **Show practice in the Review step, per org unit**, and in edit
+- [x] **Show practice in the Review step, per org unit**, and in edit
       mode mark what will be withdrawn, with the member practice page's
       wording: withdrawing stops them practising it there straight away,
       and they stay qualified and stay authorised anywhere else. The
@@ -207,14 +219,23 @@ the user form can write the same rows without a second copy of the rule.
       warning belongs; a second modal on top of it would be the same
       question asked twice.
 
-- [ ] **Send `practising` with the create and the update**, and load it
+- [x] **Send `practising` with the create and the update**, and load it
       in edit mode from the field added to `GET /api/users/{id}`.
 
-- [ ] **Extend `frontend/src/pages/UserInfoUpdatePage.test.tsx`** for
-      the new step, and add an end-to-end case beside
-      `frontend/e2e/tests/member-practice.spec.ts`: an admin creates
-      somebody at an org unit with one competency switched on, and that
-      person's page at the org unit shows it authorised.
+- [x] **Extend `frontend/src/pages/UserInfoUpdatePage.test.tsx`** for
+      the new step, and add an end-to-end case,
+      `frontend/e2e/tests/user-form-practice.spec.ts`, beside
+      `member-practice.spec.ts`: a user manager creates a teaching
+      delegate at the seeded organisation with their one competency
+      switched on, and that person's page at the organisation shows it
+      authorised. It does not run `scanPage` on the step: the scan
+      reloads the page for each colour scheme, and a reload empties the
+      form. The step's cards are scanned in Storybook.
+
+      One thing the tests turned up, left as it is: each card's table
+      pages its rows ten at a time, as every `DataTableControlled` does,
+      so a consultant's competencies run to more than one page per org
+      unit. The search above each table finds one by name.
 
 ## Decisions
 
