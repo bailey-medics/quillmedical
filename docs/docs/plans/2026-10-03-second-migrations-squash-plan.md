@@ -16,7 +16,8 @@ The outcome is one baseline migration that is both base and head, the
 backfill tests deleted, `api-compatibility/` reduced to a single fresh
 `init` file with its tooling intact, and the one deployed core database
 (`quill_core` on `quill-core-app`, project `quill-medical-app`)
-rebuilt empty. The GCP project and its infrastructure stay as they are.
+rebuilt empty, with the buckets holding the files its rows pointed at
+emptied too. The GCP project and its infrastructure stay as they are.
 This is only safe while there is no live data; once there is, a squash
 means `alembic stamp` against the live database, never a drop.
 
@@ -29,9 +30,10 @@ means `alembic stamp` against the live database, never a drop.
       and `enable_fhir = false` in `infra/environments/app/terraform.tfvars`,
       so `quill_core` is the only database to reset. Anything in it
       (test accounts, question banks, CPD records, passport uploads) is
-      lost, and the objects in the teaching-video and passport buckets
-      are orphaned by it. Decide here whether the buckets are emptied
-      too or left to sit unreferenced.
+      lost. The files those rows point at go too: decided on
+      2026-10-03 that the buckets holding user uploads are emptied in
+      Phase 7 alongside the database, since a file whose row is gone
+      is unreachable and only costs storage.
 
 - [ ] Check that no other open branch adds a migration. Every such
       branch has a `down_revision` pointing into the chain this plan
@@ -161,7 +163,7 @@ means `alembic stamp` against the live database, never a drop.
       keyed on `backend/alembic/**` holds a stale image, it rebuilds on
       its own.
 
-## Phase 7: Reset the deployed database
+## Phase 7: Reset the deployed database and buckets
 
 Do this after the pull request is approved and immediately before it
 merges, because the deploy on merge runs `alembic upgrade head` through
@@ -187,11 +189,65 @@ is acceptable with nobody relying on it.
       squash replaced the whole instance to rename it; there is no
       rename this time, so replacing it would add risk for nothing.
 
-- [ ] Empty the buckets, if Phase 1 decided to.
+- [ ] Empty the buckets whose objects only exist because a database row
+      points at them, straight after the drop while the app is down,
+      so nothing new is uploaded between the two. Each name is
+      `<name>-{environment}`, so for the app environment:
+
+      - **`quill-passports-app`** – passport repositories and evidence,
+        from `infra/modules/passport-storage/`. Versioned.
+
+      - **`quill-passports-deleted-app`** – where the admin job's
+        `delete-passport` action copies a holder's files. It clears
+        itself at 30 days, but empty it now so nothing from before the
+        reset reappears in an audit.
+
+      - **`quill-teaching-videos-processed-app`** – transcoded
+        renditions and captions, from
+        `infra/modules/teaching-video-pipeline/`. Versioned.
+
+      - **`quill-teaching-videos-source-app`** – raw uploads, normally
+        removed by the transcode job or within two days by the
+        lifecycle rule. Usually empty already; check anyway.
+
+      Versioned buckets keep a deleted object as a noncurrent version,
+      so remove every version, not just the live one:
+
+      ```sh
+      gcloud storage rm --recursive --all-versions \
+        "gs://quill-passports-app/**"
+      ```
+
+      Repeat for each bucket, then list each with `--all-versions` to
+      confirm it is empty. The processed videos are served through
+      Cloud CDN, which can keep serving a cached rendition after the
+      object is gone, so invalidate the cache as well, with
+      `gcloud compute url-maps invalidate-cdn-cache` against the app's
+      URL map (find its name with `gcloud compute url-maps list`) and
+      `--path "/*"`.
+
+      Two buckets are deliberately **left alone**:
+
+      - **`quill-images-app`** (teaching question bank images, from
+        `infra/modules/cloud-storage/`) is not user uploads. It is
+        written by the content pipeline and is the source the
+        question bank rows are rebuilt _from_, through
+        `POST /api/ci/teaching/sync` in `backend/app/main.py`. Emptying
+        it would leave nothing to sync until the content pipeline
+        pushed everything again.
+
+      - **`quill-medical-app-landing`** is the public landing page,
+        unrelated to the database.
 
 - [ ] Merge (a human does this), let the deploy run, then confirm
       `/api/health` reports the core DB available and `alembic current`
       through the admin job reports the new baseline as head.
+
+- [ ] Rebuild the question banks by re-running the content pipeline's
+      sync, which calls `POST /api/ci/teaching/sync` and recreates the
+      bank rows from `quill-images-app`. Check the response lists the
+      banks: `"No banks found"` with a 200 means the backend could not
+      list the bucket, not that it is empty.
 
 - [ ] Recreate the accounts needed to use the app, with the
       create-user recipes.
