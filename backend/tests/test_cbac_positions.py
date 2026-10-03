@@ -177,12 +177,7 @@ class TestHowManyMayHoldIt:
         )
 
     def test_vacating_frees_the_slot(self, db_session):
-        """A handover: one ends on the 30th, the next starts on the 1st.
-
-        Both dates are inclusive, so someone leaving on the 30th still held
-        the post that day. Appointing a successor to start the same day
-        would be two holders, and is refused.
-        """
+        """One ends on the 30th, the next starts on the 1st."""
         site = _site(db_session)
         post = _post(db_session, site=site, max_holders=1)
         leaver = _user(db_session, "dr_leaver")
@@ -201,10 +196,54 @@ class TestHowManyMayHoldIt:
         assert holders_of(db_session, post, date(2026, 6, 30)) == [leaver.id]
         assert holders_of(db_session, post, date(2026, 7, 1)) == [joiner.id]
 
-    def test_a_successor_cannot_start_on_the_leaver_s_last_day(
-        self, db_session
-    ):
-        """Two holders on one day is two holders."""
+    def test_a_successor_may_start_on_the_leaver_s_last_day(self, db_session):
+        """Somebody who has gone does not make the post full.
+
+        Replacing a holder is one act on one day. No day's gap is asked
+        for between the two.
+        """
+        site = _site(db_session)
+        post = _post(db_session, site=site, max_holders=1)
+        leaver = _user(db_session, "dr_leaver")
+        joiner = _user(db_session, "dr_joiner")
+        for person in (leaver, joiner):
+            _authorise(db_session, person, site=site)
+
+        held = appoint(db_session, post, leaver, started_on=date(2026, 1, 1))
+        db_session.commit()
+        vacate(db_session, held, ended_on=date(2026, 6, 30))
+        db_session.commit()
+
+        appoint(db_session, post, joiner, started_on=date(2026, 6, 30))
+        db_session.commit()
+
+        assert holders_of(db_session, post, date(2026, 7, 1)) == [joiner.id]
+
+    def test_a_leaver_does_not_excuse_somebody_still_in_post(self, db_session):
+        """Only the one who has gone is left out of the count."""
+        site = _site(db_session)
+        post = _post(db_session, site=site, max_holders=2)
+        first = _user(db_session, "dr_first")
+        second = _user(db_session, "dr_second")
+        third = _user(db_session, "dr_third")
+        fourth = _user(db_session, "dr_fourth")
+        for person in (first, second, third, fourth):
+            _authorise(db_session, person, site=site)
+        start = date(2026, 1, 1)
+        leaving = appoint(db_session, post, first, started_on=start)
+        appoint(db_session, post, second, started_on=start)
+        db_session.commit()
+        vacate(db_session, leaving, ended_on=date(2026, 6, 30))
+        db_session.commit()
+
+        appoint(db_session, post, third, started_on=date(2026, 6, 30))
+        db_session.commit()
+
+        with pytest.raises(ValueError, match="already has"):
+            appoint(db_session, post, fourth, started_on=date(2026, 6, 30))
+
+    def test_a_leaver_still_fills_the_post_before_they_go(self, db_session):
+        """A holder leaving next week still holds the post today."""
         site = _site(db_session)
         post = _post(db_session, site=site, max_holders=1)
         leaver = _user(db_session, "dr_leaver")
@@ -218,7 +257,7 @@ class TestHowManyMayHoldIt:
         db_session.commit()
 
         with pytest.raises(ValueError, match="already has"):
-            appoint(db_session, post, joiner, started_on=date(2026, 6, 30))
+            appoint(db_session, post, joiner, started_on=date(2026, 6, 29))
 
     def test_a_non_positive_limit_is_refused_by_the_database(self, db_session):
         site = _site(db_session)

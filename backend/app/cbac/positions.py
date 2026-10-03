@@ -45,10 +45,9 @@ def holdings_on(
       the post on the 30th, which is what a review of that date needs to be
       told.
 
-    So a handover is the outgoing holder ending one day and the incoming
-    starting the next: appointing a successor to start on the predecessor's
-    last day counts as two holders on that day, and ``max_holders`` refuses
-    it.
+    A replacement made on one day therefore shows both people on that
+    day, which is true: each held the post for part of it. ``appoint``
+    does not count the one who has gone against ``max_holders``.
 
     Args:
         db: Database session.
@@ -126,7 +125,9 @@ def appoint(
             authorised to practise at that org_unit, or if filling it
             substantively would exceed ``max_holders``. Acting cover does
             not count against the limit, because covering leave must not be
-            blocked by the person being covered for.
+            blocked by the person being covered for. Nor does somebody
+            whose holding ends on or before the start date: they have
+            gone, so the post is free to fill that same day.
     """
     start = started_on or _today()
 
@@ -149,8 +150,13 @@ def appoint(
             )
 
     if not is_acting and position.max_holders is not None:
+        # Somebody whose last day is the start date has gone, and does
+        # not make the post full. Replacing a holder is one act on one
+        # day, with no day's gap asked for between the two.
         substantive = [
-            h for h in holdings_on(db, position, start) if not h.is_acting
+            h
+            for h in holdings_on(db, position, start)
+            if not h.is_acting and (h.ended_on is None or h.ended_on > start)
         ]
         if len(substantive) >= position.max_holders:
             raise ValueError(
@@ -271,7 +277,7 @@ def set_clinical_lead(
     """Make someone the clinical lead of a site, or leave the post vacant.
 
     Ends whoever currently holds it substantively before appointing, so the
-    handover is recorded rather than the previous holder simply vanishing.
+    change is recorded rather than the previous holder simply vanishing.
 
     Args:
         db: Database session.

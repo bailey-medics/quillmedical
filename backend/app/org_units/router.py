@@ -1158,7 +1158,17 @@ def set_org_unit_clinical_lead(
                 detail="That person is not at this place.",
             )
 
-    set_clinical_lead(db, unit, lead, appointed_by=current_user)
+    try:
+        set_clinical_lead(db, unit, lead, appointed_by=current_user)
+    except ValueError:
+        # The post refused them: it is full, or asks for a competency
+        # they may not practise here. Said in words written here, since a
+        # caught exception's text must not reach a client, and as a 409,
+        # not left to surface as a 500.
+        raise HTTPException(
+            status_code=409,
+            detail="That person cannot be made clinical lead here.",
+        ) from None
     db.flush()
     return OrgUnitStatusOut(status="vacant" if lead is None else "set")
 
