@@ -88,7 +88,7 @@ test.describe("User form practice", () => {
     // Platform role, then the review names what was switched on.
     await next.click();
     await expect(page.getByText(`May practise: ${COMPETENCY}`)).toBeVisible();
-    await page.getByRole("button", { name: "Create User" }).click();
+    await page.getByRole("button", { name: "Create user" }).click();
     await expect(page.getByText("User created successfully")).toBeVisible();
 
     // Their page at the organisation shows it authorised, with nobody

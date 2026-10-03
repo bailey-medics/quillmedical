@@ -295,7 +295,7 @@ function Step3Confirmation({
             </Box>
           )}
           <Button onClick={onCancel} mt="lg">
-            Return to Admin
+            Return to admin
           </Button>
         </>
       ) : (
@@ -318,7 +318,7 @@ function Step3Confirmation({
             </BodyText>
           </Box>
           <Button onClick={onCancel} mt="lg">
-            Return to Admin
+            Return to admin
           </Button>
         </>
       )}
@@ -550,7 +550,7 @@ export default function NewPatientPage() {
             />
           ),
           validate: validateStep1,
-          nextButtonLabel: "Update Patient",
+          nextButtonLabel: "Update patient",
         },
         {
           label: "Confirmation",
@@ -581,7 +581,7 @@ export default function NewPatientPage() {
           validate: validateStep1,
         },
         {
-          label: "User Account",
+          label: "User account",
           description: "Optional portal access",
           content: (props) => (
             <Step2UserAccount
@@ -592,7 +592,7 @@ export default function NewPatientPage() {
             />
           ),
           validate: validateStep2,
-          nextButtonLabel: "Add Patient",
+          nextButtonLabel: "Add patient",
         },
         {
           label: "Confirmation",
@@ -639,7 +639,7 @@ export default function NewPatientPage() {
             title="Error loading patient"
             message={loadError}
             action={{
-              label: "Return to Admin",
+              label: "Return to admin",
               icon: "arrowLeft",
               onClick: () => navigate("/admin"),
             }}
