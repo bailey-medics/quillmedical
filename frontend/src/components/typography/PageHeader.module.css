@@ -15,6 +15,15 @@
   color: var(--mantine-color-text);
 }
 
+/* The title and its subtitle, one block beside any action */
+.titleGroup {
+  margin: 0;
+}
+
+.subtitle {
+  margin-top: var(--mantine-spacing-xs);
+}
+
 /*
  * Title and action on one row, wrapping on a narrow screen. The action's
  * auto start margin pushes it right on the title's line and on a line of

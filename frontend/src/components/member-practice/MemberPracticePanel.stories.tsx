@@ -41,7 +41,7 @@ const meta: Meta<typeof MemberPracticePanel> = {
   parameters: { layout: "padded" },
   args: {
     practice,
-    onAuthorise: done,
+    onSave: done,
     onWithdraw: done,
     onGrantAndAuthorise: done,
   },

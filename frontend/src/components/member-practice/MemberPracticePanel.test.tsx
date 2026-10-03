@@ -1,9 +1,10 @@
 /**
  * Member practice panel tests.
  *
- * Covers what each of the three tables lists, that switching on
- * authorises straight away, that switching off and granting both ask
- * first, and that somebody who may not grant is not offered it.
+ * Covers what each of the tables lists, that the switches save only
+ * through "Save changes" and a confirmation, that withdrawing from the
+ * not-held table and granting both ask first, and that somebody who may
+ * not grant is not offered it.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -32,8 +33,9 @@ const practice: MemberPractice = {
 
 function renderPanel(overrides: Partial<MemberPractice> = {}) {
   const handlers = {
-    onAuthorise: vi.fn().mockResolvedValue(undefined),
+    onSave: vi.fn().mockResolvedValue(undefined),
     onWithdraw: vi.fn().mockResolvedValue(undefined),
+    onCancel: vi.fn(),
     onGrantAndAuthorise: vi.fn().mockResolvedValue(undefined),
   };
   renderWithRouter(
@@ -60,29 +62,90 @@ describe("MemberPracticePanel", () => {
       expect(switchFor("Certify Death").checked).toBe(false);
     });
 
-    it("authorises straight away when switched on", async () => {
+    it("saves nothing when a switch moves", async () => {
       const user = userEvent.setup();
-      const { onAuthorise } = renderPanel();
+      const { onSave, onWithdraw } = renderPanel();
 
       await user.click(switchFor("Certify Death"));
+      await user.click(switchFor("Perform Venepuncture"));
 
-      expect(onAuthorise).toHaveBeenCalledWith("certify_death");
+      expect(switchFor("Certify Death").checked).toBe(true);
+      expect(switchFor("Perform Venepuncture").checked).toBe(false);
+      expect(onSave).not.toHaveBeenCalled();
+      expect(onWithdraw).not.toHaveBeenCalled();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    it("asks before withdrawing when switched off", async () => {
+    it("saves both directions together once confirmed", async () => {
       const user = userEvent.setup();
-      const { onWithdraw } = renderPanel();
+      const { onSave } = renderPanel();
 
+      await user.click(switchFor("Certify Death"));
       await user.click(switchFor("Perform Venepuncture"));
-      expect(onWithdraw).not.toHaveBeenCalled();
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
 
       const dialog = await screen.findByRole("dialog");
       expect(within(dialog).getByText(/stay qualified/i)).toBeInTheDocument();
-      await user.click(
-        within(dialog).getByRole("button", { name: "Withdraw" }),
-      );
+      expect(onSave).not.toHaveBeenCalled();
+      await user.click(within(dialog).getByRole("button", { name: "Confirm" }));
 
-      expect(onWithdraw).toHaveBeenCalledWith("perform_venepuncture");
+      expect(onSave).toHaveBeenCalledWith({
+        authorise: ["certify_death"],
+        withdraw: ["perform_venepuncture"],
+      });
+      expect(await screen.findByText("Practice updated")).toBeInTheDocument();
+    });
+
+    it("gives no withdrawal warning when only authorising", async () => {
+      const user = userEvent.setup();
+      renderPanel();
+
+      await user.click(switchFor("Certify Death"));
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      const dialog = await screen.findByRole("dialog");
+      expect(
+        within(dialog).queryByText(/stay qualified/i),
+      ).not.toBeInTheDocument();
+    });
+
+    it("counts a switch moved and moved back as no change", async () => {
+      const user = userEvent.setup();
+      renderPanel();
+
+      await user.click(switchFor("Certify Death"));
+      await user.click(switchFor("Certify Death"));
+
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).toHaveAttribute("aria-disabled", "true");
+    });
+
+    it("shows the reason when the save fails", async () => {
+      const user = userEvent.setup();
+      const { onSave } = renderPanel();
+      onSave.mockRejectedValue(new Error("1 of 1 changes could not be saved."));
+
+      await user.click(switchFor("Certify Death"));
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+      const dialog = await screen.findByRole("dialog");
+      await user.click(within(dialog).getByRole("button", { name: "Confirm" }));
+
+      expect(
+        await screen.findByText("Failed to update practice"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("1 of 1 changes could not be saved."),
+      ).toBeInTheDocument();
+    });
+
+    it("cancels through the handler", async () => {
+      const user = userEvent.setup();
+      const { onCancel } = renderPanel();
+
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(onCancel).toHaveBeenCalledOnce();
     });
 
     it("says so when they hold nothing", () => {
@@ -202,6 +265,36 @@ describe("MemberPracticePanel", () => {
 
       expect(
         screen.queryByRole("button", { name: "Grant competency" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Their user account", () => {
+    it("opens it from the icon beside the table's search", async () => {
+      const user = userEvent.setup();
+      const onOpenUserAccount = vi.fn();
+      renderWithRouter(
+        <MemberPracticePanel
+          practice={{ ...practice, may_grant: false }}
+          onSave={vi.fn()}
+          onWithdraw={vi.fn()}
+          onGrantAndAuthorise={vi.fn()}
+          onOpenUserAccount={onOpenUserAccount}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: "Their user account" }),
+      );
+
+      expect(onOpenUserAccount).toHaveBeenCalledOnce();
+    });
+
+    it("is not shown without a handler", () => {
+      renderPanel();
+
+      expect(
+        screen.queryByRole("button", { name: "Their user account" }),
       ).not.toBeInTheDocument();
     });
   });

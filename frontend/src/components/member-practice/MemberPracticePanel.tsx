@@ -7,6 +7,10 @@
  * competency they hold gets a switch for the second, which is the only
  * choice an organisation or site has to make about them.
  *
+ * The switches are a form, as on the features page: moving one changes
+ * nothing until "Save changes", which asks first and lists what will
+ * change, and leaving with unsaved switches asks too.
+ *
  * A viewer who may also change somebody's competencies gets a "Grant
  * competency" button, which gives them one and authorises it here in one
  * step. That grant applies everywhere the person works, so it is kept to
@@ -16,16 +20,30 @@
  * nothing here depends on which kind.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Stack } from "@mantine/core";
+import { Controller } from "react-hook-form";
 import BaseCard from "@/components/base-card/BaseCard";
-import { BodyText, Heading } from "@/components/typography";
+import {
+  BodyText,
+  BodyTextInline,
+  ErrorMessage,
+  Heading,
+} from "@/components/typography";
 import { ConfirmModal } from "@/components/confirm-modal";
 import AddButton from "@/components/button/AddButton";
+import AddIconButton from "@/components/button/AddIconButton";
 import IconButton from "@/components/button/IconButton";
 import Icon from "@/components/icons/Icon";
-import { IconTrash } from "@/components/icons/appIcons";
+import { IconTagPlus, IconTrash, IconUser } from "@/components/icons/appIcons";
 import { SolidSwitch } from "@/components/form";
+import {
+  Form,
+  FormStatus,
+  SubmitButton,
+  useFormContext,
+} from "@/components/form/Form";
+import type { FormSubmitResult } from "@/components/form/Form";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import type { MemberPractice } from "@/domains/orgUnit";
@@ -36,13 +54,35 @@ import GrantCompetencyModal from "./GrantCompetencyModal";
 export interface MemberPracticePanelProps {
   /** The member, their ceiling and what is authorised for them here. */
   practice: MemberPractice;
-  /** Authorise a competency they hold at this org_unit. */
-  onAuthorise: (competency: string) => Promise<void>;
-  /** Stop them practising a competency at this org_unit. */
+  /**
+   * Save the switches: authorise and withdraw at this org_unit in one go.
+   * Rejects, with a message to show, when any of it could not be saved.
+   */
+  onSave: (changes: PracticeChanges) => Promise<void>;
+  /**
+   * Stop them practising a competency at this org_unit straight away:
+   * the "Authorised here but not held" table, which has no switches.
+   */
   onWithdraw: (competency: string) => Promise<void>;
+  /** Leave without saving. The form asks first if a switch has moved. */
+  onCancel?: () => void;
   /** Give them a competency and authorise it here. */
   onGrantAndAuthorise: (competency: string) => Promise<void>;
+  /**
+   * Open their user account. Shown as an icon beside the table's search
+   * and filter when given, so every action on them sits in one place.
+   */
+  onOpenUserAccount?: () => void;
 }
+
+/** What one save asks for, by competency id. */
+export interface PracticeChanges {
+  authorise: string[];
+  withdraw: string[];
+}
+
+/** One switch per competency held, keyed by its id: on means authorised. */
+type PracticeValues = Record<string, boolean>;
 
 /** One row in either table: a competency and its name. */
 interface CompetencyRow {
@@ -62,6 +102,98 @@ function rowsFor(ids: Iterable<string>): CompetencyRow[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** Which switches differ from what is saved, split by direction. */
+function changesFrom(
+  values: PracticeValues,
+  saved: PracticeValues,
+): PracticeChanges {
+  const ids = Object.keys(saved).filter((id) => values[id] !== saved[id]);
+  return {
+    authorise: ids.filter((id) => values[id]),
+    withdraw: ids.filter((id) => !values[id]),
+  };
+}
+
+/**
+ * Keeps the form's saved values in step with the page. A save, a grant or
+ * a withdrawal from the other table reloads `practice`; switches the
+ * viewer has moved but not saved are kept, and the rest follow.
+ */
+function SyncSaved({ saved }: { saved: PracticeValues }) {
+  const { methods } = useFormContext();
+  useEffect(() => {
+    methods.reset(saved, { keepDirtyValues: true });
+  }, [methods, saved]);
+  return null;
+}
+
+/** The confirmation: what the save will authorise and withdraw. */
+function ConfirmContent({
+  saved,
+  username,
+  orgUnitName,
+}: {
+  saved: PracticeValues;
+  username: string;
+  orgUnitName: string;
+}) {
+  const { methods } = useFormContext();
+  const { authorise, withdraw } = changesFrom(
+    methods.getValues() as PracticeValues,
+    saved,
+  );
+
+  return (
+    <>
+      You are about to change what <strong>{username}</strong> may practise at{" "}
+      <strong>{orgUnitName}</strong>:
+      <Stack gap={4} mt="xs" align="center">
+        {authorise.map((id) => (
+          <BodyText key={id}>
+            <strong>{competencyName(id)}</strong> – authorise
+          </BodyText>
+        ))}
+        {withdraw.map((id) => (
+          <BodyText key={id}>
+            <strong>{competencyName(id)}</strong> – withdraw
+          </BodyText>
+        ))}
+      </Stack>
+      {withdraw.length > 0 && (
+        <ErrorMessage>
+          Withdrawing stops them practising it here straight away. They stay
+          qualified, and stay authorised anywhere else.
+        </ErrorMessage>
+      )}
+    </>
+  );
+}
+
+/** The switch for one competency, held still while a save is under way. */
+function PracticeSwitch({
+  row,
+  disabled,
+}: {
+  row: CompetencyRow;
+  disabled: boolean;
+}) {
+  const { methods, formState } = useFormContext();
+  return (
+    <Controller
+      name={row.id}
+      control={methods.control}
+      render={({ field }) => (
+        <SolidSwitch
+          checked={field.value === true}
+          onChange={field.onChange}
+          disabled={disabled || formState === "submitting"}
+          aria-label={`${row.name}: may practise here`}
+        />
+      )}
+    />
+  );
+}
+
 /**
  * Switch practice here on and off for each competency somebody holds.
  *
@@ -70,11 +202,12 @@ function rowsFor(ids: Iterable<string>): CompetencyRow[] {
  */
 export default function MemberPracticePanel({
   practice,
-  onAuthorise,
+  onSave,
   onWithdraw,
+  onCancel,
   onGrantAndAuthorise,
+  onOpenUserAccount,
 }: MemberPracticePanelProps) {
-  const [busy, setBusy] = useState<string | null>(null);
   const [withdrawing, setWithdrawing] = useState<CompetencyRow | null>(null);
   // Undefined while closed; otherwise the competency to start with, if any.
   const [granting, setGranting] = useState<string | null | undefined>(
@@ -123,17 +256,36 @@ export default function MemberPracticePanel({
     [qualifiedIds, mayChange],
   );
 
-  async function toggle(row: CompetencyRow, on: boolean) {
-    if (!on) {
-      // Withdrawal has no undo, so it asks first.
-      setWithdrawing(row);
-      return;
-    }
-    setBusy(row.id);
+  // What is saved: a switch per competency held, on where authorised.
+  const saved = useMemo(() => {
+    const values: PracticeValues = {};
+    for (const id of practice.qualified) values[id] = authorisedIds.has(id);
+    return values;
+  }, [practice.qualified, authorisedIds]);
+
+  async function handleSubmit(
+    values: PracticeValues,
+  ): Promise<FormSubmitResult> {
+    const changes = changesFrom(values, saved);
+    const summary = [
+      ...changes.authorise.map((id) => `${competencyName(id)} authorised`),
+      ...changes.withdraw.map((id) => `${competencyName(id)} withdrawn`),
+    ].join(", ");
     try {
-      await onAuthorise(row.id);
-    } finally {
-      setBusy(null);
+      await onSave(changes);
+      return {
+        state: "success",
+        message: { title: "Practice updated", description: summary },
+      };
+    } catch (err) {
+      return {
+        state: "error",
+        message: {
+          title: "Failed to update practice",
+          description:
+            err instanceof Error ? err.message : "An unexpected error occurred",
+        },
+      };
     }
   }
 
@@ -148,12 +300,7 @@ export default function MemberPracticePanel({
       // Wide enough to keep the header on one line.
       width: "200px",
       render: (row) => (
-        <SolidSwitch
-          checked={authorisedIds.has(row.id)}
-          disabled={busy !== null || !mayChange(row.id)}
-          onChange={(event) => void toggle(row, event.currentTarget.checked)}
-          aria-label={`${row.name}: may practise here`}
-        />
+        <PracticeSwitch row={row} disabled={!mayChange(row.id)} />
       ),
     },
   ];
@@ -185,23 +332,65 @@ export default function MemberPracticePanel({
 
   return (
     <Stack gap="lg">
-      <BaseCard>
-        <DataTableControlled<CompetencyRow>
-          data={qualified}
-          columns={qualifiedColumns}
-          getRowKey={(row) => row.id}
-          emptyMessage="They hold no competencies yet"
-          searchFields={(row) => [row.name]}
-          action={
-            practice.may_grant && (
-              <AddButton
-                label="Grant competency"
-                onClick={() => setGranting(null)}
+      <Form<PracticeValues>
+        defaultValues={saved}
+        onSubmit={handleSubmit}
+        submitLabel="Save changes"
+        submittingLabel="Saving…"
+        disableWhenClean
+        confirm={{
+          title: "Confirm practice changes",
+          acceptLabel: "Confirm",
+          cancelLabel: "Go back",
+          children: (
+            <ConfirmContent
+              saved={saved}
+              username={practice.username}
+              orgUnitName={practice.org_unit_name}
+            />
+          ),
+        }}
+      >
+        <SyncSaved saved={saved} />
+        <Stack gap="md">
+          <FormStatus />
+          <BaseCard>
+            <Stack gap="md">
+              <BodyTextInline>
+                Switch on what {name} may practise here. You will need to press
+                &ldquo;Save changes&rdquo; below for these changes to take
+                effect.
+              </BodyTextInline>
+              <DataTableControlled<CompetencyRow>
+                data={qualified}
+                columns={qualifiedColumns}
+                getRowKey={(row) => row.id}
+                emptyMessage="They hold no competencies yet"
+                searchFields={(row) => [row.name]}
+                action={
+                  <>
+                    {practice.may_grant && (
+                      <AddIconButton
+                        aria-label="Grant competency"
+                        icon={<IconTagPlus />}
+                        onClick={() => setGranting(null)}
+                      />
+                    )}
+                    {onOpenUserAccount && (
+                      <AddIconButton
+                        aria-label="Their user account"
+                        icon={<IconUser />}
+                        onClick={onOpenUserAccount}
+                      />
+                    )}
+                  </>
+                }
               />
-            )
-          }
-        />
-      </BaseCard>
+            </Stack>
+          </BaseCard>
+          <SubmitButton onCancel={onCancel} />
+        </Stack>
+      </Form>
 
       {withoutEffect.length > 0 && (
         <BaseCard>

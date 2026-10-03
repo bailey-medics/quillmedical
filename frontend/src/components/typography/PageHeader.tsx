@@ -12,7 +12,13 @@
  */
 
 import type { ReactNode } from "react";
-import { Box, Title, VisuallyHidden, useMantineTheme } from "@mantine/core";
+import {
+  Box,
+  Text,
+  Title,
+  VisuallyHidden,
+  useMantineTheme,
+} from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useDocumentTitle } from "@lib/accessibility/useDocumentTitle";
 import classes from "./PageHeader.module.css";
@@ -26,6 +32,13 @@ export interface PageHeaderProps {
    * for a screen reader user navigating by heading.
    */
   visuallyHidden?: boolean;
+  /**
+   * A line under the title that qualifies it, such as the place a page
+   * is about: "At Oncology". Grouped with the h1 in an `hgroup`, so it
+   * reads as part of the title rather than as a section of its own, and
+   * left out of the document title.
+   */
+  subtitle?: string;
   /**
    * The page's header action, shown on the right of the title, and on
    * the right of its own line when the screen is too narrow for both.
@@ -42,6 +55,7 @@ export interface PageHeaderProps {
 export default function PageHeader({
   title,
   visuallyHidden = false,
+  subtitle,
   action,
   actionAlign = "end",
 }: PageHeaderProps) {
@@ -50,14 +64,34 @@ export default function PageHeader({
   // The page's h1 is also its document title (WCAG 2.4.2)
   useDocumentTitle(title);
 
-  const heading = visuallyHidden ? (
-    <VisuallyHidden>
-      <Title order={1}>{title}</Title>
-    </VisuallyHidden>
-  ) : (
-    <Title order={1} className={isDesktop ? classes.lgTitle : classes.smTitle}>
+  const shownTitle = (
+    <Title
+      order={1}
+      className={
+        visuallyHidden
+          ? undefined
+          : isDesktop
+            ? classes.lgTitle
+            : classes.smTitle
+      }
+    >
       {title}
     </Title>
+  );
+  const titleBlock = subtitle ? (
+    <Box component="hgroup" className={classes.titleGroup}>
+      {shownTitle}
+      <Text size="lg" c="dimmed" className={classes.subtitle}>
+        {subtitle}
+      </Text>
+    </Box>
+  ) : (
+    shownTitle
+  );
+  const heading = visuallyHidden ? (
+    <VisuallyHidden>{titleBlock}</VisuallyHidden>
+  ) : (
+    titleBlock
   );
 
   if (!action) {

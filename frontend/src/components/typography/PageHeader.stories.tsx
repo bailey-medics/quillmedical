@@ -72,7 +72,16 @@ export const WithCentredAction: Story = {
   },
 };
 
+/** A line qualifying the title, such as the place the page is about. */
+export const WithSubtitle: Story = {
+  args: {
+    title: "Dr Jane Smith",
+    subtitle: "At Oncology",
+    action: <IconTextButton icon="user" label="Their user account" />,
+  },
+};
+
 export const DarkMode: Story = {
-  ...Default,
+  ...WithSubtitle,
   globals: { colorScheme: "dark" },
 };

@@ -15,10 +15,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Skeleton, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import { usePageMessage } from "@/components/page-message";
-import { BodyText } from "@/components/typography";
-import IconTextButton from "@/components/button/IconTextButton";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
-import { MemberPracticePanel } from "@/components/member-practice";
+import {
+  MemberPracticePanel,
+  type PracticeChanges,
+} from "@/components/member-practice";
 import { orgUnits, type MemberPractice } from "@/domains/orgUnit";
 
 /**
@@ -75,6 +76,39 @@ export default function MemberPracticePage() {
     [load, showMessage],
   );
 
+  /**
+   * Save the switches, then read the page again.
+   *
+   * Every change is tried, so one failure does not stop the rest, and the
+   * page is reloaded whatever happened so it shows what was really saved.
+   * Rejects when anything failed, for the form to say so.
+   */
+  const save = useCallback(
+    async ({ authorise, withdraw }: PracticeChanges) => {
+      const results = await Promise.allSettled([
+        ...authorise.map((competency) =>
+          orgUnits.authorisePractising(unitId, {
+            user_id: memberId,
+            competency,
+          }),
+        ),
+        ...withdraw.map((competency) =>
+          orgUnits.withdrawPractising(unitId, memberId, competency),
+        ),
+      ]);
+      await load();
+      const failed = results.filter((r) => r.status === "rejected").length;
+      if (failed > 0) {
+        throw new Error(
+          failed === results.length
+            ? "None of the changes could be saved. Please try again."
+            : `${failed} of ${results.length} changes could not be saved. The switches show what was.`,
+        );
+      }
+    },
+    [unitId, memberId, load],
+  );
+
   if (loading) {
     return (
       <Stack gap="lg">
@@ -92,29 +126,13 @@ export default function MemberPracticePage() {
 
   return (
     <Stack gap="lg">
-      <PageHeader
-        title={name}
-        action={
-          <IconTextButton
-            icon="user"
-            label="Their user account"
-            onClick={() => navigate(`/admin/users/${memberId}`)}
-          />
-        }
-      />
-      <BodyText>At {practice.org_unit_name}</BodyText>
+      <PageHeader title={name} subtitle={`At ${practice.org_unit_name}`} />
       <MemberPracticePanel
         practice={practice}
-        onAuthorise={(competency) =>
-          change(
-            () =>
-              orgUnits.authorisePractising(unitId, {
-                user_id: memberId,
-                competency,
-              }),
-            "Could not authorise that",
-          )
-        }
+        onOpenUserAccount={() => navigate(`/admin/users/${memberId}`)}
+        // Back to the organisation or site this page sits under.
+        onCancel={() => navigate("../..", { relative: "path" })}
+        onSave={save}
         onWithdraw={(competency) =>
           change(
             () => orgUnits.withdrawPractising(unitId, memberId, competency),
