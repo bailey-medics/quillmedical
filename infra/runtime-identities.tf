@@ -31,11 +31,13 @@ locals {
       VAPID_PRIVATE    = "vapid-private"
       RESEND_API_KEY   = "resend-api-key"
       # The mailing list: a second Resend key, allowed to manage
-      # contacts. Mounted only once the secret has a version, which Cloud
-      # Run insists on. `resend-webhook-secret` follows the same way when
-      # the webhook exists. See
+      # contacts, and the signing secret of the webhook Resend calls when
+      # a contact unsubscribes. Each was mounted only once its secret had
+      # a version, which Cloud Run insists on. The backend alone gets the
+      # webhook secret: the admin job receives no webhooks. See
       # docs/docs/plans/2026-10-03-marketing-opt-out-plan.md, Phase 1.
       RESEND_CONTACTS_API_KEY = "resend-contacts-api-key"
+      RESEND_WEBHOOK_SECRET   = "resend-webhook-secret"
     },
     var.enable_fhir ? {
       FHIR_DB_PASSWORD           = "fhir-db-password"
