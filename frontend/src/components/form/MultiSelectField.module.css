@@ -76,6 +76,9 @@
 }
 
 .root :global(.mantine-MultiSelect-input[data-error]) {
+  /* Softer than the border, so it still reads as a placeholder */
+  --input-placeholder-color: var(--error-placeholder-color);
+
   border-width: 2px;
   border-color: var(--error-color) !important;
 }

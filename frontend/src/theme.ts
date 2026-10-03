@@ -263,6 +263,13 @@ const appCssVariables = {
     "--typo-md": typographyTokens.fontSizes.md,
     "--typo-lg": typographyTokens.fontSizes.lg,
     "--typo-xl": typographyTokens.fontSizes.xl,
+    // A field's placeholder while the field is in error. Mantine paints
+    // it the full error colour, the same red as the border, so an empty
+    // field read as if somebody had typed something wrong into it. Part
+    // transparent, so it thins towards whatever the field sits on in
+    // either colour scheme, and still reads as a placeholder.
+    "--error-placeholder-color":
+      "color-mix(in srgb, var(--error-color) 55%, transparent)",
     // Status colours – semantic design tokens
     "--success-color": statusColourValues.success,
     "--warning-color": statusColourValues.warning,

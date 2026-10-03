@@ -140,9 +140,10 @@ type TextColourConfig = {
  * `muted`, `link` and `error` change with the scheme, which the
  * Foundations/Colours story shows by switching the toolbar.
  *
- * Input placeholders use `--mantine-color-placeholder` (`gray.4`, 1.5:1
- * on white). It is deliberately not listed: it is never a colour for
- * content, and the story's sample of it would fail its own a11y check.
+ * Input placeholders are deliberately not listed here: a placeholder is
+ * never a colour for content, and a text sample of one would fail the
+ * story's own a11y check. They have their own list, `placeholderColours`
+ * below, which the story shows inside real fields rather than as text.
  */
 export const textColours: Record<string, TextColourConfig> = {
   default: {
@@ -164,5 +165,34 @@ export const textColours: Record<string, TextColourConfig> = {
   error: {
     value: "var(--error-color)",
     usage: "ErrorMessage – validation and error messages",
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/*  Placeholder colours                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The colours of an input's placeholder: the hint shown in an empty
+ * field. Fainter than any text colour on purpose, so a hint is never
+ * mistaken for something typed. Neither meets 4.5:1, and neither is ever
+ * to be used for content.
+ *
+ * `error` is the placeholder of a field in the error state. Mantine
+ * paints it the full error colour, the same red as the field's border,
+ * which made an empty field look as if something wrong had been typed
+ * into it. It is `--error-color` at 55%, part transparent, so it follows
+ * the error colour in both schemes and thins towards the field behind it.
+ * Each form field's CSS module sets it on `[data-error]`.
+ */
+export const placeholderColours: Record<string, TextColourConfig> = {
+  default: {
+    value: "var(--mantine-color-placeholder)",
+    usage: "The hint in an empty field",
+  },
+  error: {
+    value: "var(--error-placeholder-color)",
+    usage:
+      "The hint in an empty field that is in error: softer than the field's red border",
   },
 };
