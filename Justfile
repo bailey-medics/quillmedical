@@ -959,6 +959,26 @@ stack-add name message:
     {{stack_repo}}
     set -euo pipefail
     just _stack-guard
+    # Refuse to stack on a branch whose pull request has merged. The
+    # stack's own record cannot be trusted for this: `gh stack view` says
+    # what it knew at the last sync, so a pull request merged on GitHub
+    # since then still reads as open. `gh stack add` then rebases the
+    # branch level with the trunk, finds it empty, and commits onto it
+    # rather than making a new branch, so the new unit lands under the
+    # merged unit's name. Ask GitHub, which knows.
+    current="$(git branch --show-current)"
+    if merged="$(gh pr list --head "${current}" --state merged --json number --jq '.[0].number // empty')"; then
+        if [ -n "${merged}" ]; then
+            echo "✗ Refusing to stack on ${current}: its pull request #${merged} has merged." >&2
+            echo "  Bring the stack up to date, then stack on what is left," >&2
+            echo "  or start a new stack from main if nothing is:" >&2
+            echo "    just stack-sync" >&2
+            echo "    just stack-new {{name}} \"<message>\"" >&2
+            exit 1
+        fi
+    else
+        echo "⚠ Could not ask GitHub whether ${current} has merged; carrying on." >&2
+    fi
     branch="$(just _stack-branch-name '{{name}}')"
     # -A stages everything including untracked files, which is what makes
     # this one command rather than three. The commit message is required

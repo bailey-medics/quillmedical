@@ -223,6 +223,32 @@ Four things differ in substance, and nothing else does:
    is already in `main`, and its pull request then carries the old stack's
    merge commits.
 
+   **The marks are only as fresh as the last sync, so ask GitHub too.**
+   `stack-log` reads the stack's local record, which learns of a merge
+   only when something syncs. A pull request merged on GitHub since then
+   still reads as open, in `stack-log` and in `stack-log-long` alike
+   (which says only "no pull request"). That is the usual state when
+   this command is run: the human merged, came back, and carried on
+   working. So before trusting an unmarked branch, ask about the one
+   checked out:
+
+   ```bash
+   gh pr list --head "$(git branch --show-current)" --state merged \
+     --json number,title
+   ```
+
+   - **Empty** – the branch has not merged. Carry on with whichever case
+     `stack-log` showed.
+   - **A pull request comes back** – the branch checked out has merged,
+     whatever the marks say. A stack merges from the bottom, so every
+     branch beneath it has too and the stack is spent. Treat it as "every
+     branch is merged": follow "Starting again after a stack has merged"
+     below, and step 2 uses `just stack-new`.
+
+   `just stack-add` makes the same check and refuses to stack on a branch
+   whose pull request has merged. That refusal means this step was
+   skipped. Do what it says, never work round it.
+
 2. **Stop if the stack spans worktrees.** `just stack-log` names any branch
    checked out elsewhere. A stack lives in one worktree; `gh stack rebase`
    would skip those branches and still report success. Report it and stop
