@@ -186,6 +186,39 @@ describe("TeachingLayout", () => {
     });
   });
 
+  describe("on a phone", () => {
+    beforeEach(() => {
+      mockWidth.value = 390;
+    });
+
+    it("narrows the ribbon to a hamburger when there is a sidebar", () => {
+      renderWithMantine(
+        <TeachingLayout sidebar={<div data-testid="sidebar">Nav</div>}>
+          <div>Content</div>
+        </TeachingLayout>,
+      );
+
+      expect(screen.getByTestId("top-ribbon")).toHaveAttribute(
+        "data-narrow",
+        "true",
+      );
+    });
+
+    // The assessment attempt: a hamburger here would open nothing
+    it("keeps the full ribbon, with no hamburger, on a page with no sidebar", () => {
+      renderWithMantine(
+        <TeachingLayout>
+          <div>Content</div>
+        </TeachingLayout>,
+      );
+
+      expect(screen.getByTestId("top-ribbon")).toHaveAttribute(
+        "data-narrow",
+        "false",
+      );
+    });
+  });
+
   it("shows the sidebar beside the page on a tablet held sideways", () => {
     renderWithMantine(
       <TeachingLayout sidebar={<div data-testid="sidebar">Nav</div>}>

@@ -109,9 +109,11 @@ export default function TeachingLayout({
           isLoading={false}
           patient={null}
           navOpen={opened}
-          // A page with no side bar has nothing to fold away, so a tablet
-          // keeps the Quill name; only a phone narrows the ribbon for it
-          isNarrow={hasSidebar ? navCollapsed : isSm}
+          // A page with no side bar has nothing to fold away, so it keeps
+          // the Quill name at every width. Narrowing the ribbon for it put
+          // a hamburger on a phone that opened nothing, on the assessment
+          // attempt above all
+          isNarrow={hasSidebar && navCollapsed}
           showSearch={false}
         />
       </Box>
