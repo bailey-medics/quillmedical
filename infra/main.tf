@@ -62,6 +62,17 @@ module "secrets" {
       "vapid-private",
       "resend-api-key",
 
+      # The mailing list. A second Resend key, allowed to manage contacts
+      # where `resend-api-key` only needs to send, and the signing secret
+      # of the webhook Resend calls when a contact unsubscribes. Only the
+      # containers are made here. The backend is not yet told to read
+      # them: Cloud Run refuses a revision that mounts a secret with no
+      # version, so the values go in by hand first and a second change
+      # mounts them. See
+      # docs/docs/plans/2026-10-03-marketing-opt-out-plan.md, Phase 1.
+      "resend-contacts-api-key",
+      "resend-webhook-secret",
+
       # Alerting. These reach Terraform from GitHub today, which makes GitHub
       # a custodian of a credential no workflow actually uses – it only relays
       # them. Creating the containers here is the first half of moving them:
