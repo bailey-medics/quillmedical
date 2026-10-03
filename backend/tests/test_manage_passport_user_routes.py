@@ -17,7 +17,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models import OrgUnit, User
-from app.organisations import add_org_unit_member, get_member_org_unit_ids
+from app.organisations import (
+    add_org_unit_member,
+    get_member_org_unit_ids,
+    org_units_run_by_scoped_manager,
+)
 from app.security import hash_password
 
 PASSWORD = "PassportAdmin123!"
@@ -158,6 +162,227 @@ class TestWhatAPassportAdminMayDo:
     ) -> None:
         resp = client.post(f"/api/users/{delegate.id}/deactivate")
         assert resp.status_code == 200, resp.text
+
+
+class TestAPassportAdminOfOneSite:
+    """Belonging to a site and nowhere else: they run that site."""
+
+    @pytest.fixture
+    def site(self, db_session: Session, trust: OrgUnit) -> OrgUnit:
+        site = OrgUnit(name="Oncology", type="hospital", parent_id=trust.id)
+        db_session.add(site)
+        db_session.commit()
+        db_session.refresh(site)
+        return site
+
+    @pytest.fixture
+    def site_client(
+        self, test_client: TestClient, db_session: Session, site: OrgUnit
+    ) -> TestClient:
+        admin = _user(db_session, "site_admin", "passport_admin", site)
+        response = test_client.post(
+            "/api/auth/login",
+            json={"username": admin.username, "password": PASSWORD},
+        )
+        assert response.status_code == 200
+        csrf = test_client.cookies.get("XSRF-TOKEN")
+        if csrf:
+            test_client.headers["X-CSRF-Token"] = csrf
+        return test_client
+
+    def test_create_a_delegate_at_their_site(
+        self, site_client: TestClient, site: OrgUnit, db_session: Session
+    ) -> None:
+        resp = site_client.post("/api/users", json=_new_user(site))
+
+        assert resp.status_code == 200, resp.text
+        assert site.id in org_units_run_by_scoped_manager(
+            db_session, resp.json()["id"]
+        )
+
+    def test_not_at_the_trust_above(
+        self, site_client: TestClient, site: OrgUnit, trust: OrgUnit
+    ) -> None:
+        resp = site_client.post("/api/users", json=_new_user(trust))
+
+        assert resp.status_code == 404
+
+    def test_lists_the_people_at_their_site(
+        self, site_client: TestClient, site: OrgUnit, db_session: Session
+    ) -> None:
+        colleague = _user(db_session, "colleague", "passport_delegate", site)
+
+        names = {
+            u["username"]
+            for u in site_client.get("/api/users").json()["users"]
+        }
+
+        assert colleague.username in names
+
+    def test_does_not_list_the_people_at_the_trust_above(
+        self, site_client: TestClient, delegate: User
+    ) -> None:
+        names = {
+            u["username"]
+            for u in site_client.get("/api/users").json()["users"]
+        }
+
+        assert delegate.username not in names
+
+    def test_edits_somebody_at_their_site(
+        self, site_client: TestClient, site: OrgUnit, db_session: Session
+    ) -> None:
+        colleague = _user(db_session, "colleague", "passport_delegate", site)
+
+        resp = site_client.patch(
+            f"/api/users/{colleague.id}",
+            json={"base_profession": "passport_clinical_lead"},
+        )
+
+        assert resp.status_code == 200, resp.text
+        db_session.refresh(colleague)
+        assert colleague.base_profession == "passport_clinical_lead"
+
+    def test_cannot_edit_somebody_at_the_trust_above(
+        self, site_client: TestClient, delegate: User
+    ) -> None:
+        resp = site_client.patch(
+            f"/api/users/{delegate.id}",
+            json={"base_profession": "passport_clinical_lead"},
+        )
+
+        assert resp.status_code == 404
+
+
+class TestLookingSomebodyUpToAddThem:
+    """A site's admin cannot see beyond the site, so they ask by email."""
+
+    @pytest.fixture
+    def site(self, db_session: Session, trust: OrgUnit) -> OrgUnit:
+        site = OrgUnit(name="Oncology", type="hospital", parent_id=trust.id)
+        db_session.add(site)
+        db_session.commit()
+        db_session.refresh(site)
+        return site
+
+    @pytest.fixture
+    def site_client(
+        self, test_client: TestClient, db_session: Session, site: OrgUnit
+    ) -> TestClient:
+        admin = _user(db_session, "site_admin", "passport_admin", site)
+        response = test_client.post(
+            "/api/auth/login",
+            json={"username": admin.username, "password": PASSWORD},
+        )
+        assert response.status_code == 200
+        csrf = test_client.cookies.get("XSRF-TOKEN")
+        if csrf:
+            test_client.headers["X-CSRF-Token"] = csrf
+        return test_client
+
+    @staticmethod
+    def _look_up(client: TestClient, unit: OrgUnit, email: str) -> Any:
+        return client.post(
+            f"/api/org-units/{unit.id}/member-lookup", json={"term": email}
+        )
+
+    def test_finds_somebody_they_cannot_otherwise_see(
+        self, site_client: TestClient, site: OrgUnit, delegate: User
+    ) -> None:
+        resp = self._look_up(site_client, site, delegate.email)
+
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["status"] == "found"
+        assert body["user"]["id"] == delegate.id
+        assert body["user"]["username"] == delegate.username
+        assert "email" not in body["user"]
+
+    def test_ignores_case_and_surrounding_space(
+        self, site_client: TestClient, site: OrgUnit, delegate: User
+    ) -> None:
+        resp = self._look_up(site_client, site, f"  {delegate.email.upper()} ")
+
+        assert resp.json()["status"] == "found"
+
+    def test_does_not_match_part_of_an_address(
+        self, site_client: TestClient, site: OrgUnit, delegate: User
+    ) -> None:
+        resp = self._look_up(site_client, site, "delegate@example")
+
+        assert resp.json() == {"status": "not_found", "user": None}
+
+    def test_says_when_nobody_has_the_address(
+        self, site_client: TestClient, site: OrgUnit
+    ) -> None:
+        resp = self._look_up(site_client, site, "nobody@example.test")
+
+        assert resp.json() == {"status": "not_found", "user": None}
+
+    def test_says_when_they_are_here_already(
+        self, site_client: TestClient, site: OrgUnit, db_session: Session
+    ) -> None:
+        colleague = _user(db_session, "colleague", "passport_delegate", site)
+
+        resp = self._look_up(site_client, site, colleague.email)
+
+        assert resp.json()["status"] == "already_member"
+
+    def test_finds_a_clinician_too(
+        self, site_client: TestClient, site: OrgUnit, consultant: User
+    ) -> None:
+        """Anybody may be added, whatever their profession."""
+        resp = self._look_up(site_client, site, consultant.email)
+
+        assert resp.json()["status"] == "found"
+        assert resp.json()["user"]["id"] == consultant.id
+
+    def test_names_nothing_about_a_deactivated_account(
+        self,
+        site_client: TestClient,
+        site: OrgUnit,
+        delegate: User,
+        db_session: Session,
+    ) -> None:
+        delegate.is_active = False
+        db_session.commit()
+
+        resp = self._look_up(site_client, site, delegate.email)
+
+        assert resp.json() == {"status": "not_addable", "user": None}
+
+    def test_not_at_an_org_unit_they_do_not_run(
+        self, site_client: TestClient, trust: OrgUnit, delegate: User
+    ) -> None:
+        resp = self._look_up(site_client, trust, delegate.email)
+
+        assert resp.status_code == 404
+
+    def test_refuses_what_is_not_an_address(
+        self, site_client: TestClient, site: OrgUnit
+    ) -> None:
+        resp = self._look_up(site_client, site, "delegate")
+
+        assert resp.status_code == 422
+
+    def test_what_it_finds_can_be_added(
+        self,
+        site_client: TestClient,
+        site: OrgUnit,
+        delegate: User,
+        db_session: Session,
+    ) -> None:
+        found = self._look_up(site_client, site, delegate.email).json()
+
+        resp = site_client.post(
+            f"/api/org-units/{site.id}/members",
+            json={"user_id": found["user"]["id"], "capacity": "trainee"},
+        )
+
+        assert resp.status_code == 200, resp.text
+        assert site.id in org_units_run_by_scoped_manager(
+            db_session, delegate.id
+        )
 
 
 class TestGrantingWriting:

@@ -3,6 +3,13 @@
  *
  * Form for adding a staff member to a site with a role.
  *
+ * Two ways to name the person. The picker lists the people the admin
+ * can already see who are not yet here, which for somebody who runs
+ * only this site is nobody: they see the site's members and no one
+ * else. So the page opens with a lookup by email, which finds somebody
+ * with an account elsewhere, or offers to create them with this site
+ * already chosen.
+ *
  * Like the organisation staff picker, the list is unfiltered: there is
  * no rank left to filter on, and any filter would hide the patient
  * becoming a healthcare assistant – the case the picker most needs to
@@ -13,6 +20,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { Stack } from "@mantine/core";
 import { Controller } from "react-hook-form";
@@ -20,7 +28,7 @@ import BaseCard from "@/components/base-card/BaseCard";
 import SelectField from "@/components/form/SelectField";
 import MultiSelectField from "@/components/form/MultiSelectField";
 import PageHeader from "@/components/page-header";
-import { BodyText } from "@/components/typography";
+import { BodyText, Heading } from "@/components/typography";
 import {
   Form,
   FormStatus,
@@ -32,7 +40,8 @@ import type {
   FormSubmitResult,
 } from "@/components/form/Form";
 import { api } from "@/lib/api";
-import { orgUnits } from "@/domains/orgUnit";
+import { orgUnits, type MemberLookupUser } from "@/domains/orgUnit";
+import { MemberLookup } from "@/components/member-lookup";
 import ErrorState from "@/components/error-state/ErrorState";
 import { holdsStaffLikeCompetency } from "@/lib/cbac/staffLike";
 import { ACTIVE_COMPETENCIES } from "@/types/cbac";
@@ -48,7 +57,8 @@ const ROLE_OPTIONS = [
 interface ApiUser {
   id: number;
   username: string;
-  email: string;
+  /** Absent for somebody found by lookup, whose address is not sent back */
+  email?: string;
   competencies: string[];
 }
 
@@ -61,17 +71,22 @@ interface AddStaffFormValues {
 
 function AddStaffFields({
   siteId,
+  siteName,
   users,
   usersLoading,
   hasClinicalLead,
   onUserChange,
+  onFound,
   showGrantFields,
 }: {
   siteId: string;
+  siteName: string;
   users: ApiUser[];
   usersLoading: boolean;
   hasClinicalLead: boolean;
   onUserChange: (userId: string | null) => void;
+  /** Somebody the lookup found: offer them in the picker */
+  onFound: (user: MemberLookupUser) => void;
   showGrantFields: boolean;
 }) {
   const navigate = useNavigate();
@@ -106,6 +121,47 @@ function AddStaffFields({
       <FormStatus />
       <BaseCard>
         <Stack gap="md">
+          <Heading>Find somebody by email</Heading>
+          <MemberLookup
+            placeName={siteName}
+            onLookUp={(email) => orgUnits.lookUpMember(Number(siteId), email)}
+            onFound={(found) => {
+              onFound(found);
+              // Chosen for them: the lookup was the choosing.
+              methods.setValue("userId", String(found.id), {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+              onUserChange(String(found.id));
+            }}
+            // The new user form opens with the address and this site
+            // already filled in.
+            onCreate={(email) => {
+              // Leaving is the point of the button, so whatever was
+              // chosen below is let go first. Left dirty, the form asked
+              // "are you sure you want to leave?" of somebody who had
+              // just pressed "Create new user". Flushed, so the form is
+              // clean before the navigation is judged, not after.
+              flushSync(() => methods.reset());
+              navigate(
+                `/admin/users/new?${new URLSearchParams({
+                  email,
+                  org_unit: siteId,
+                })}`,
+              );
+            }}
+          />
+        </Stack>
+      </BaseCard>
+      <BaseCard>
+        <Stack gap="md">
+          <Heading>Add to this site</Heading>
+          {users.length === 0 && !usersLoading && (
+            <BodyText>
+              Nobody you can see is waiting to be added. Find them by email
+              above.
+            </BodyText>
+          )}
           <Controller
             name="userId"
             control={methods.control}
@@ -116,7 +172,7 @@ function AddStaffFields({
                 placeholder="Search for a user"
                 data={users.map((u) => ({
                   value: String(u.id),
-                  label: `${u.username} (${u.email})`,
+                  label: u.email ? `${u.username} (${u.email})` : u.username,
                 }))}
                 value={field.value as string | null}
                 onChange={(value) => {
@@ -215,6 +271,7 @@ export default function AddStaffToSitePage() {
   // Lifted out of the form because `confirm` is a prop on `Form`, which
   // sits above the field that sets it.
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [siteName, setSiteName] = useState("this site");
 
   useEffect(() => {
     async function fetchData() {
@@ -238,6 +295,7 @@ export default function AddStaffToSitePage() {
         // The post, not a role on a staff row: a site can have the post
         // and nobody in it, which is exactly when a lead may be added.
         setHasClinicalLead(siteResponse.clinical_lead_id !== null);
+        setSiteName(siteResponse.name);
       } catch (err) {
         setLoadError(
           err instanceof Error ? err.message : "Failed to load data",
@@ -342,6 +400,14 @@ export default function AddStaffToSitePage() {
       >
         <AddStaffFields
           siteId={id!}
+          siteName={siteName}
+          onFound={(found) =>
+            setUsers((current) =>
+              current.some((u) => u.id === found.id)
+                ? current
+                : [...current, found],
+            )
+          }
           users={users}
           usersLoading={usersLoading}
           hasClinicalLead={hasClinicalLead}

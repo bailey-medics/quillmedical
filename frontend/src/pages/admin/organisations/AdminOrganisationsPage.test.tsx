@@ -46,6 +46,20 @@ const mockSuperadminUser: User = {
   platform_role: "superadmin",
 };
 
+/** One organisation, so an admin who is not an operator sees the page. */
+const oneOrganisation = {
+  id: 1,
+  name: "Test Hospital",
+  type: "organisation",
+  type_display_name: "Organisation",
+  is_root: true,
+  parent_id: null,
+  is_active: true,
+  location: "London",
+  created_at: "2024-01-15T10:00:00Z",
+  updated_at: "2024-01-15T10:00:00Z",
+};
+
 describe("AdminOrganisationsPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -65,7 +79,9 @@ describe("AdminOrganisationsPage", () => {
 
   describe("Page layout", () => {
     it("displays page title", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ org_units: [] });
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({
+        org_units: [oneOrganisation],
+      });
 
       renderWithRouter(<AdminOrganisationsPage />, {
         initialRoute: "/admin/organisations",
@@ -77,7 +93,9 @@ describe("AdminOrganisationsPage", () => {
     });
 
     it("does not display add organisation button for admin", async () => {
-      vi.spyOn(apiLib.api, "get").mockResolvedValue({ org_units: [] });
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({
+        org_units: [oneOrganisation],
+      });
 
       renderWithRouter(<AdminOrganisationsPage />, {
         initialRoute: "/admin/organisations",
@@ -223,7 +241,13 @@ describe("AdminOrganisationsPage", () => {
       });
     });
 
-    it("shows empty state when no organisations", async () => {
+    it("shows an operator the empty state when there are none", async () => {
+      vi.spyOn(authContext, "useAuth").mockReturnValue({
+        state: { status: "authenticated", user: mockSuperadminUser },
+        login: vi.fn(),
+        logout: vi.fn(),
+        reload: vi.fn(),
+      });
       vi.spyOn(apiLib.api, "get").mockResolvedValue({ org_units: [] });
 
       renderWithRouter(<AdminOrganisationsPage />, {
@@ -233,6 +257,23 @@ describe("AdminOrganisationsPage", () => {
       await waitFor(() => {
         expect(screen.getByText("No organisations found")).toBeInTheDocument();
       });
+    });
+
+    it("is not found for an admin who administers no organisation", async () => {
+      // A site's admin: the menu does not offer the page, and the
+      // address 404s as any other admin page they may not use.
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ org_units: [] });
+
+      renderWithRouter(<AdminOrganisationsPage />, {
+        initialRoute: "/admin/organisations",
+      });
+
+      expect(
+        await screen.findByRole("heading", { name: "404 – Page not found" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "Organisations" }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -305,7 +346,13 @@ describe("AdminOrganisationsPage", () => {
   });
 
   describe("Loading state", () => {
-    it("shows loading state initially", () => {
+    it("shows an operator the page while loading", () => {
+      vi.spyOn(authContext, "useAuth").mockReturnValue({
+        state: { status: "authenticated", user: mockSuperadminUser },
+        login: vi.fn(),
+        logout: vi.fn(),
+        reload: vi.fn(),
+      });
       vi.spyOn(apiLib.api, "get").mockImplementation(
         () => new Promise(() => {}), // Never resolves
       );
@@ -315,6 +362,20 @@ describe("AdminOrganisationsPage", () => {
       });
 
       expect(screen.getByText("Organisations")).toBeInTheDocument();
+    });
+
+    it("holds the page back from an admin until the list answers", () => {
+      // It may turn out they administer no organisation, and a page
+      // shown and then taken away is worse than a moment's wait.
+      vi.spyOn(apiLib.api, "get").mockImplementation(
+        () => new Promise(() => {}), // Never resolves
+      );
+
+      renderWithRouter(<AdminOrganisationsPage />, {
+        initialRoute: "/admin/organisations",
+      });
+
+      expect(screen.queryByText("Organisations")).not.toBeInTheDocument();
     });
   });
 

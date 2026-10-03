@@ -8,7 +8,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Stack } from "@mantine/core";
+import { Skeleton, Stack } from "@mantine/core";
+import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import PageHeader from "@/components/page-header";
 import { usePageMessage } from "@/components/page-message";
 import AddButton from "@/components/button/AddButton";
@@ -162,6 +163,23 @@ export default function AdminOrganisationsPage() {
         ]
       : []),
   ];
+
+  // Somebody who administers no organisation – a site's admin – is not
+  // offered this page in the menu, and reaching it by address gets the
+  // same 404 as any other admin page they may not use. Held back until
+  // the list answers, so the page is not shown and then taken away. An
+  // operator administers every organisation, none yet included.
+  if (!isSuperadmin && loading) {
+    return (
+      <Stack gap="lg">
+        <Skeleton height={60} />
+        <Skeleton height={300} />
+      </Stack>
+    );
+  }
+  if (!isSuperadmin && !error && organisations.length === 0) {
+    return <NotFoundLayout />;
+  }
 
   return (
     <Stack gap="lg">

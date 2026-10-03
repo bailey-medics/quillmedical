@@ -62,7 +62,6 @@ from app.org_units.relations import (
     validate_org_unit_relation,
 )
 from app.org_units.tree import (
-    descendant_ids,
     would_make_a_cycle,
 )
 from app.org_units.types import (
@@ -75,9 +74,12 @@ from app.org_units.types import (
     validate_org_unit_type,
 )
 from app.organisations import (
-    get_member_org_unit_ids,
+    is_member_within,
     org_units_administered_by,
+    org_units_run_by_scoped_manager,
+    org_units_whose_people_reached_by,
 )
+from app.rate_limit import limiter
 from app.schemas.org_units import (
     AddOrgUnitMemberIn,
     AddOrgUnitPatientIn,
@@ -85,6 +87,9 @@ from app.schemas.org_units import (
     CreateOrgUnitIn,
     GrantAndAuthoriseIn,
     MemberAuthorisationItem,
+    MemberLookupIn,
+    MemberLookupOut,
+    MemberLookupUser,
     MemberPracticeOut,
     OrgUnitDetailOut,
     OrgUnitFeaturesOut,
@@ -196,20 +201,16 @@ def _through_a_scope(user: User, *competencies: str) -> bool:
 def _scoped_manager_ids(db: Session, user: User) -> set[int]:
     """Return the org_units a scoped manager may act at.
 
-    The organisations they belong to and every org_unit beneath those,
-    at any depth. Authority in the governance tree flows downward:
-    somebody running teaching for a trust runs it at the trust's sites
-    and wards too, and is not a member of each one. Nothing flows
-    upward, so belonging to a ward reaches neither its trust nor the
-    ward next door.
+    Answered by ``org_units_run_by_scoped_manager``, which the user
+    routes in ``main`` ask too: two surfaces disagreeing about where a
+    scoped manager acts is worse than either answer.
 
     Args:
         db: Core database session.
         user: The caller, who reached the route through a scoped
             manager such as ``manage_teaching``.
     """
-    member = get_member_org_unit_ids(db, user.id)
-    return set(member) | descendant_ids(db, member)
+    return org_units_run_by_scoped_manager(db, user.id)
 
 
 def _require_visible(
@@ -784,6 +785,70 @@ def list_org_unit_members(
 
 
 @router.post(
+    "/{unit_id}/member-lookup",
+    response_model=MemberLookupOut,
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_STAFF_OR_SCOPED],
+)
+@limiter.limit("10/minute")
+def look_up_member(
+    request: Request,
+    unit_id: int,
+    body: MemberLookupIn,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> MemberLookupOut:
+    """Find one person by their whole email address, to add them here.
+
+    An admin sees only the people at the org_units they reach, so
+    somebody with an account elsewhere could not be picked from a list
+    and could not be created either, their address being taken. This is
+    the way between: name the address, and be told whether it has an
+    account that may be added.
+
+    It answers about one exact address and never lists, so it cannot be
+    used to browse who has an account. It does confirm that a given
+    address has one, which adding a member by id already did; the rate
+    limit keeps that from being asked in bulk. A POST, so the address
+    travels in the body and stays out of access logs.
+
+    Requires what adding a member requires, at an org_unit the caller
+    may add to.
+    """
+    _require_visible(db, current_user, unit_id, "manage_staff_membership")
+
+    person = db.scalar(
+        select(User).where(func.lower(User.email) == body.term.lower())
+    )
+    if person is None:
+        return MemberLookupOut(status="not_found")
+
+    found = MemberLookupUser(
+        id=person.id,
+        username=person.username,
+        full_name=person.full_name or "",
+        competencies=person.get_final_competencies(),
+    )
+    already = db.scalar(
+        select(org_unit_member.c.user_id).where(
+            org_unit_member.c.org_unit_id == unit_id,
+            org_unit_member.c.user_id == person.id,
+        )
+    )
+    if already is not None:
+        return MemberLookupOut(status="already_member", user=found)
+
+    # Accounts nobody but an operator should be handed. Nothing about
+    # the account travels with the refusal.
+    if not person.is_active or (
+        person.platform_role == "superadmin"
+        and current_user.platform_role != "superadmin"
+    ):
+        return MemberLookupOut(status="not_addable")
+
+    return MemberLookupOut(status="found", user=found)
+
+
+@router.post(
     "/{unit_id}/members",
     response_model=OrgUnitStatusOut,
     dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_STAFF_OR_SCOPED],
@@ -804,9 +869,10 @@ def add_org_unit_member(
     Recording the same membership twice changes the capacity rather than
     failing.
 
-    Requires ``manage_staff_membership``, or a scoped manager for
-    somebody whose profession it may give, at an org_unit the caller
-    belongs to, granting only what it may grant.
+    Requires ``manage_staff_membership``, or a scoped manager at an
+    org_unit the caller belongs to. A scoped manager may add anybody,
+    grants only what it may grant, and gives a profession or changes an
+    existing capacity only for somebody whose profession it may give.
     """
     unit = _require_visible(
         db, current_user, unit_id, "manage_staff_membership"
@@ -851,7 +917,14 @@ def add_org_unit_member(
         status = "updated"
 
     if _through_a_scope(current_user, "manage_staff_membership"):
-        _require_account_in_scope(current_user, person)
+        # Anybody may be added: being at an org_unit is not a change to
+        # their account, and somebody running the passport at a site
+        # has to be able to bring a consultant into it. What stays
+        # limited is everything that *is* a change to the account: the
+        # capacity of somebody already here, a new profession, and
+        # (below) the competencies granted.
+        if existing is not None or body.base_profession is not None:
+            _require_account_in_scope(current_user, person)
         if body.base_profession is not None:
             if not may_assign_profession(current_user, body.base_profession):
                 raise HTTPException(
@@ -1236,8 +1309,9 @@ def _grant_refusal(
     The same three rules ``update_user`` applies, so this route is not a
     way round them: nobody grants themselves a competency, only an
     operator changes an operator, and an administrator acts only on
-    somebody they share an organisation with. An operator passes all
-    three.
+    somebody at an org_unit they reach, as
+    ``org_units_whose_people_reached_by`` answers it. An operator passes
+    all three.
     """
     held = set(caller.get_final_competencies())
     if "manage_users" not in held and held.isdisjoint(SCOPED_MANAGER_IDS):
@@ -1256,10 +1330,8 @@ def _grant_refusal(
                 "manage_users"
             ),
         )
-    shared = set(get_member_org_unit_ids(db, caller.id)) & set(
-        get_member_org_unit_ids(db, person.id)
-    )
-    if not shared:
+    reached = org_units_whose_people_reached_by(db, caller)
+    if reached is not None and not is_member_within(db, person.id, reached):
         return HTTPException(status_code=404, detail="Member not found")
     return None
 

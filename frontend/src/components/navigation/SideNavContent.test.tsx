@@ -140,24 +140,42 @@ const mockUsers: Record<string, User> = {
   },
 };
 
+/** The organisations list, as `/org-units?roots=true` answers it. */
+function organisationsList(count: number) {
+  return {
+    org_units: Array.from({ length: count }, (_, index) => ({
+      id: index + 1,
+      name: `Trust ${index + 1}`,
+      is_root: true,
+    })),
+  };
+}
+
 function renderWithAuth(
   ui: React.ReactElement,
   userType: keyof typeof mockUsers = "staff",
-  options?: { initialRoute?: string },
+  options?: { initialRoute?: string; organisations?: number },
 ) {
   const mockUser = mockUsers[userType];
+  // One by default: most administrators administer an organisation.
+  const organisations = options?.organisations ?? 1;
 
   // Mock fetch to return the appropriate user
   global.fetch = vi.fn((url: string | URL | Request) => {
     const urlString = typeof url === "string" ? url : url.toString();
 
-    if (urlString.includes("/auth/me")) {
+    const answer = urlString.includes("/auth/me")
+      ? mockUser
+      : urlString.includes("/org-units?roots=true")
+        ? organisationsList(organisations)
+        : null;
+    if (answer !== null) {
       return Promise.resolve({
         ok: true,
         status: 200,
         statusText: "OK",
         headers: new Headers({ "Content-Type": "application/json" }),
-        json: () => Promise.resolve(mockUser),
+        json: () => Promise.resolve(answer),
       } as Response);
     }
 
@@ -638,9 +656,11 @@ describe("SideNavContent Component", () => {
 
         const answer = urlString.includes("/auth/me")
           ? user
-          : urlString.includes("/org-units/")
-            ? body
-            : null;
+          : urlString.includes("/org-units?roots=true")
+            ? organisationsList(1)
+            : urlString.includes("/org-units/")
+              ? body
+              : null;
 
         if (answer === null) {
           return Promise.resolve({
@@ -738,16 +758,59 @@ describe("SideNavContent Component", () => {
       });
     });
 
-    it("hides Sites from an administrator who does not operate Quill", async () => {
-      // Administering an organisation is not operating Quill, and who
-      // may administer a site is not settled. The link goes rather than
-      // pointing at a page that would 404 on arrival.
+    it("offers Sites to an administrator who does not operate Quill", async () => {
       renderWithAuth(<SideNavContent />, "admin");
 
       await waitFor(() => {
         expect(screen.getByText("Organisations")).toBeInTheDocument();
       });
-      expect(screen.queryByText("Sites")).not.toBeInTheDocument();
+      expect(screen.getByText("Sites")).toBeInTheDocument();
+    });
+
+    it("hides Organisations from somebody who administers none", async () => {
+      // A site's admin: the organisations list would be empty, so Sites
+      // is their way in.
+      renderWithAuth(<SideNavContent />, "teaching_admin", {
+        organisations: 0,
+      });
+
+      // Offered until the list answers, then taken away.
+      await waitFor(() => {
+        expect(screen.getByText("Sites")).toBeInTheDocument();
+        expect(screen.queryByText("Organisations")).not.toBeInTheDocument();
+      });
+    });
+
+    it("offers Organisations to an operator without asking", async () => {
+      renderWithAuth(<SideNavContent />, "superadmin", { organisations: 0 });
+
+      await waitFor(() => {
+        expect(screen.getByText("Organisations")).toBeInTheDocument();
+      });
+      expect(
+        vi
+          .mocked(global.fetch)
+          .mock.calls.some(([url]) => String(url).includes("roots=true")),
+      ).toBe(false);
+    });
+
+    it("hangs a site's pages under Sites when there is no Organisations", async () => {
+      renderWithAuth(<SideNavContent />, "teaching_admin", {
+        organisations: 0,
+        initialRoute: "/admin/sites/4",
+      });
+
+      // With no Organisations entry, the only place the open site can
+      // hang is under Sites. The site cannot be read here, so it shows
+      // as its placeholder.
+      await waitFor(() => {
+        expect(screen.getByText("Sites")).toBeInTheDocument();
+        expect(screen.queryByText("Organisations")).not.toBeInTheDocument();
+        expect(screen.getByText("…").closest("a")).toHaveAttribute(
+          "href",
+          "/admin/sites/4",
+        );
+      });
     });
 
     it.each(["/admin/sites", "/admin/sites/new"])(

@@ -11,9 +11,11 @@ import {
   IconMessageReport,
   IconPencil,
   IconRefresh,
+  IconSearch,
   IconSettings,
   IconTrash,
   IconUser,
+  IconUserPlus,
 } from "@/components/icons/appIcons";
 import type { ReactElement } from "react";
 
@@ -24,9 +26,11 @@ const iconTextButtonIcons = {
   feedback: <IconMessageReport />,
   pencil: <IconPencil />,
   refresh: <IconRefresh />,
+  search: <IconSearch />,
   settings: <IconSettings />,
   trash: <IconTrash />,
   user: <IconUser />,
+  userPlus: <IconUserPlus />,
 } as const satisfies Record<string, ReactElement>;
 
 export default iconTextButtonIcons;

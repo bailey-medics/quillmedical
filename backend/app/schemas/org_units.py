@@ -12,6 +12,8 @@ org_unit ids, which is what makes them different surfaces rather than one
 surface with two names.
 """
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.cbac.base_professions import PROFESSION_IDS
@@ -367,6 +369,66 @@ class AddOrgUnitPatientIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     patient_id: str
+
+
+class MemberLookupIn(BaseModel):
+    """Ask whether somebody already has an account, by their email.
+
+    Attributes:
+        term: The whole address. Matched exactly, ignoring case, so the
+            lookup finds one named person and cannot be used to browse.
+            Named for what was typed, not for what it must be, so the
+            request keeps its shape if more than an address is matched.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    term: str = Field(min_length=3, max_length=254)
+
+    @field_validator("term")
+    @classmethod
+    def _looks_like_an_address(cls, value: str) -> str:
+        """Trim it, and refuse anything that is plainly not an address."""
+        value = value.strip()
+        if (
+            value.count("@") != 1
+            or value.startswith("@")
+            or value.endswith("@")
+        ):
+            raise ValueError("Enter a whole email address.")
+        return value
+
+
+class MemberLookupUser(BaseModel):
+    """Somebody a lookup found, in as little as adding them needs.
+
+    Attributes:
+        id: Their user id, to add them with.
+        username: Their username, to name them on screen.
+        full_name: Their name, or an empty string.
+        competencies: What they hold, so the form can ask whether to
+            grant somebody who holds nothing a member of staff would.
+    """
+
+    id: int
+    username: str
+    full_name: str
+    competencies: list[str]
+
+
+class MemberLookupOut(BaseModel):
+    """What a lookup found.
+
+    Attributes:
+        status: ``found`` for somebody who may be added here;
+            ``already_member`` for somebody who is here already;
+            ``not_addable`` for an account the caller may not add: one
+            that is deactivated, or an operator's; ``not_found`` when nobody has that address.
+        user: The person, for ``found`` and ``already_member`` only.
+    """
+
+    status: Literal["found", "already_member", "not_addable", "not_found"]
+    user: MemberLookupUser | None = None
 
 
 class OrgUnitStatusOut(BaseModel):

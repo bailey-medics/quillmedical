@@ -12,10 +12,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Stack, Group, Skeleton } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import { BodyTextInline, BodyTextBold, Heading } from "@/components/typography";
-import { IconPencil, IconUserMinus } from "@components/icons/appIcons";
+import {
+  IconPencil,
+  IconUserMinus,
+  IconUserPlus,
+} from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
-import AddButton from "@/components/button/AddButton";
+import AddIconButton from "@/components/button/AddIconButton";
 import IconButton from "@/components/button/IconButton";
 import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import type { Column } from "@/components/tables/DataTable";
@@ -259,19 +263,20 @@ export default function SiteAdminPage() {
       {/* Staff Members */}
       <BaseCard>
         <Stack gap="md">
-          <Group justify="space-between" align="center">
-            <Heading>Site specific staff members</Heading>
-            {mayManageStaff && (
-              <AddButton
-                label="Add staff"
-                onClick={() => navigate(`/admin/sites/${id}/add-staff`)}
-              />
-            )}
-          </Group>
+          <Heading>Site specific staff members</Heading>
 
           <DataTableControlled<OrgUnitMember>
             data={site.members}
             columns={staffTableColumns}
+            action={
+              mayManageStaff && (
+                <AddIconButton
+                  aria-label="Add staff"
+                  icon={<IconUserPlus />}
+                  onClick={() => navigate(`/admin/sites/${id}/add-staff`)}
+                />
+              )
+            }
             onRowClick={
               mayManagePractice
                 ? (member) =>

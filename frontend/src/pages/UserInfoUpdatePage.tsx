@@ -15,7 +15,12 @@
 
 import { Box, Group, Stack, Alert, Loader, Center } from "@mantine/core";
 import { useState, useEffect } from "react";
-import { useNavigate, useBlocker, useParams } from "react-router-dom";
+import {
+  useNavigate,
+  useBlocker,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { IconCheck, IconAlertCircle } from "@components/icons/appIcons";
 import BaseCard from "@/components/base-card/BaseCard";
 import TextField from "@/components/form/TextField";
@@ -60,6 +65,23 @@ interface OrgOption {
   id: number;
   name: string;
   sites: { id: number; name: string }[];
+  /**
+   * Set on the one group holding sites whose organisation the viewer
+   * cannot see: somebody who runs a site without running its trust. It
+   * is not an organisation to choose, and its sites go by their own
+   * name alone.
+   */
+  unseen?: true;
+}
+
+/** The organisations among *options* that can themselves be chosen. */
+function seenOrganisations(options: OrgOption[]): OrgOption[] {
+  return options.filter((option) => !option.unseen);
+}
+
+/** What a site is called in a list: under its organisation where known. */
+function siteLabel(org: OrgOption, site: { name: string }): string {
+  return org.unseen ? site.name : `${org.name} - ${site.name}`;
 }
 
 /**
@@ -210,7 +232,7 @@ function Step2Organisation({
   setFormData: (data: UserFormData) => void;
   organisations: OrgOption[];
 }) {
-  const orgOptions = organisations.map((o) => ({
+  const orgOptions = seenOrganisations(organisations).map((o) => ({
     value: String(o.id),
     label: o.name,
   }));
@@ -218,7 +240,7 @@ function Step2Organisation({
   const siteOptions = organisations.flatMap((org) =>
     org.sites.map((s) => ({
       value: String(s.id),
-      label: `${org.name} - ${s.name}`,
+      label: siteLabel(org, s),
     })),
   );
 
@@ -452,13 +474,13 @@ function Step4Review({
     ? getBaseProfessionDetails(formData.baseProfession)
     : null;
 
-  const selectedOrgs = organisations.filter((o) =>
+  const selectedOrgs = seenOrganisations(organisations).filter((o) =>
     formData.orgUnitIds.includes(String(o.id)),
   );
   const selectedSites = organisations.flatMap((org) =>
     org.sites
       .filter((s) => formData.orgUnitIds.includes(String(s.id)))
-      .map((s) => `${org.name} - ${s.name}`),
+      .map((s) => siteLabel(org, s)),
   );
 
   return (
@@ -619,16 +641,25 @@ export default function UserInfoUpdatePage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [organisations, setOrganisations] = useState<OrgOption[]>([]);
 
+  // A new user may arrive already half described: the add-staff page
+  // sends somebody here when a lookup finds no account for an address,
+  // with that address and the org_unit they were being added to. Both
+  // only fill the form in; the API still decides what may be saved.
+  const [searchParams] = useSearchParams();
+  const startingEmail = isEditMode ? "" : (searchParams.get("email") ?? "");
+  const startingOrgUnit = isEditMode ? null : searchParams.get("org_unit");
+
   const [formData, setFormData] = useState<UserFormData>({
     name: "",
-    email: "",
+    email: startingEmail,
     username: "",
     password: "",
     baseProfession: "",
     additionalCompetencies: [],
     removedCompetencies: [],
     platformRole: "standard",
-    orgUnitIds: [],
+    orgUnitIds:
+      startingOrgUnit && /^\d+$/.test(startingOrgUnit) ? [startingOrgUnit] : [],
   });
 
   // Fetch user data in edit mode
@@ -717,18 +748,23 @@ export default function UserInfoUpdatePage() {
             });
           }
         }
+        // An org_unit whose organisation is not in the answer is one the
+        // person may administer without administering the tree above
+        // it: somebody who runs one site. It is still theirs to put
+        // people in, so it is offered under its own name. Leaving it
+        // out left such an admin with nowhere to add anybody.
+        const unseen: OrgOption = { id: -1, name: "", sites: [], unseen: true };
         for (const place of places) {
           if (place.is_root) continue;
           const root = rootOf(place);
-          // An org_unit whose organisation is not in the answer is one the
-          // person may administer without administering the tree above
-          // it. It has nowhere to be listed, so it is left out rather
-          // than shown under a name we do not have.
-          if (!root) continue;
-          grouped.get(root.id)?.sites.push({ id: place.id, name: place.name });
+          const group = root ? grouped.get(root.id) : unseen;
+          group?.sites.push({ id: place.id, name: place.name });
         }
 
-        setOrganisations([...grouped.values()]);
+        setOrganisations([
+          ...grouped.values(),
+          ...(unseen.sites.length > 0 ? [unseen] : []),
+        ]);
       } catch (error) {
         console.error("Failed to fetch places:", error);
       }

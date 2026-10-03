@@ -55,8 +55,14 @@ export default function SideNavContent({
   const location = useLocation();
   const [patientName, setPatientName] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
-  const [orgNavChildren, setOrgNavChildren] = useState<NavItem[] | undefined>(
-    undefined,
+  // The open org_unit, and the org_unit above it when there is one. Kept
+  // apart so the breadcrumb can hang under Organisations or under Sites.
+  const [placeNav, setPlaceNav] = useState<
+    { parent?: NavItem; place: NavItem } | undefined
+  >(undefined);
+  // Whether the caller administers any organisation; null until known.
+  const [hasOrganisations, setHasOrganisations] = useState<boolean | null>(
+    null,
   );
   const [bankTitle, setBankTitle] = useState<string | null>(null);
 
@@ -64,6 +70,7 @@ export default function SideNavContent({
   // with the teaching sidebar so the two cannot disagree about which
   // features exist – see `featureNavItems.ts`.
   const featureItems = useFeatureNavItems();
+  const showsAdmin = featureItems.some((item) => item.href === "/admin");
 
   // Still needed here: the admin section has its own teaching sub-nav,
   // which is about administering the feature rather than using it.
@@ -223,7 +230,7 @@ export default function SideNavContent({
       // "new" is a page, not an org_unit. Asking about it used to produce a
       // failed request on every visit to the create form.
       if (!placeId || !/^\d+$/.test(placeId)) {
-        setOrgNavChildren(undefined);
+        setPlaceNav(undefined);
         return;
       }
 
@@ -264,22 +271,21 @@ export default function SideNavContent({
         // The org_unit above may be a building rather than the trust, so
         // which page to link to comes from the server rather than from
         // assuming everything hangs straight off an organisation.
-        if (place.parent_id !== null && place.parent_name) {
-          setOrgNavChildren([
-            {
-              label: place.parent_name,
-              href: place.parent_is_root
-                ? `/admin/organisations/${place.parent_id}`
-                : `/admin/sites/${place.parent_id}`,
-              children: [placeItem],
-            },
-          ]);
-        } else {
-          setOrgNavChildren([placeItem]);
-        }
+        setPlaceNav({
+          place: placeItem,
+          parent:
+            place.parent_id !== null && place.parent_name
+              ? {
+                  label: place.parent_name,
+                  href: place.parent_is_root
+                    ? `/admin/organisations/${place.parent_id}`
+                    : `/admin/sites/${place.parent_id}`,
+                }
+              : undefined,
+        });
       } catch (error) {
         console.error("Failed to fetch place name:", error);
-        if (!cancelled) setOrgNavChildren(undefined);
+        if (!cancelled) setPlaceNav(undefined);
       }
     }
 
@@ -288,6 +294,33 @@ export default function SideNavContent({
       cancelled = true;
     };
   }, [orgId, orgSubPage, siteId, siteSubPage, memberId]);
+
+  // Whether to offer Organisations. Somebody who administers only a site
+  // has none, and the list would be empty, so the entry goes and Sites
+  // is their way in. Asked of the same list the Organisations page
+  // shows, so the link and the page cannot disagree. An operator
+  // administers every organisation and is not asked.
+  useEffect(() => {
+    if (!showsAdmin || isOperator) return;
+    let cancelled = false;
+    orgUnits
+      .list({ roots: true })
+      .then((organisations) => {
+        if (!cancelled) setHasOrganisations(organisations.length > 0);
+      })
+      .catch(() => {
+        // Fail closed: an entry leading to an empty or refused page is
+        // worse than no entry.
+        if (!cancelled) setHasOrganisations(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showsAdmin, isOperator]);
+  // Offered until the answer says otherwise. Most administrators have
+  // one, and holding the entry back until the list answered made the
+  // breadcrumb under it arrive late on every organisation page.
+  const showsOrganisations = isOperator || hasOrganisations !== false;
 
   // Fetch bank title when on teaching bank admin page
   useEffect(() => {
@@ -341,11 +374,24 @@ export default function SideNavContent({
       : undefined,
   };
 
-  // Compute Organisations nav children.
+  // The breadcrumb for the open org_unit. Under Organisations it starts
+  // at the parent, whatever that is. Under Sites, for somebody offered no
+  // Organisations, a parent organisation is left out: its page would
+  // refuse them.
+  const orgNavChildren: NavItem[] | undefined = (() => {
+    if (!placeNav) return undefined;
+    const { parent, place } = placeNav;
+    const keepsParent =
+      parent !== undefined &&
+      (showsOrganisations || parent.href?.startsWith("/admin/sites/"));
+    return keepsParent ? [{ ...parent, children: [place] }] : [place];
+  })();
+
+  // Compute the breadcrumb's children.
   // When on a site page, ensure the children include the site href so
   // isActiveOrParent keeps the nav expanded (prevents collapse flicker).
   const orgNavEffective: NavItem[] | undefined = (() => {
-    if (siteId) {
+    if (siteId && /^\d+$/.test(siteId)) {
       const siteHref = `/admin/sites/${siteId}`;
       const containsSiteHref = (items: NavItem[]): boolean =>
         items.some(
@@ -375,33 +421,32 @@ export default function SideNavContent({
     children: [
       usersNavItem,
       ...(hasClinicalServices && canManagePatients ? [patientsNavItem] : []),
-      {
-        label: "Organisations",
-        href: "/admin/organisations",
-        icon: showIcons ? "building-community" : undefined,
-        children: orgNavEffective,
-      } satisfies NavItem,
-      // The sites of one organisation already hang under it above. This
-      // is the way in for somebody who knows the site but not which
-      // organisation owns it, which until now was no way in at all.
-      //
-      // Operator-only for now, matching the route guard: who may
-      // administer a site is not settled, so the pages are hidden
-      // rather than shown to somebody the answer might not include.
-      ...(isOperator
+      ...(showsOrganisations
         ? [
             {
-              label: "Sites",
-              href: "/admin/sites",
-              icon: showIcons ? "building-hospital" : undefined,
-              // One site's own pages are named under its organisation
-              // above, so Sites stays lit for the list and the create
-              // form only. Lit on both, the menu said you were in two
-              // places.
-              exact: siteId !== null && /^\d+$/.test(siteId),
+              label: "Organisations",
+              href: "/admin/organisations",
+              icon: showIcons ? "building-community" : undefined,
+              children: orgNavEffective,
             } satisfies NavItem,
           ]
         : []),
+      // Always offered. The sites of one organisation already hang under
+      // it above, so this is the way in for somebody who knows the site
+      // but not which organisation owns it, and the only way in for
+      // somebody who administers a site and no organisation.
+      {
+        label: "Sites",
+        href: "/admin/sites",
+        icon: showIcons ? "building-hospital" : undefined,
+        // With Organisations offered, one site's own pages are named
+        // under it, so Sites stays lit for the list and the create form
+        // only: lit on both, the menu said you were in two places.
+        // Without it, the site's pages hang here instead.
+        ...(showsOrganisations
+          ? { exact: siteId !== null && /^\d+$/.test(siteId) }
+          : { children: orgNavEffective }),
+      } satisfies NavItem,
       // Operator-only, matching the route guard and the API: feedback
       // spans every organisation. Shares its label with the top-level
       // Feedback link, which opens the modal; nested under Admin, this one
