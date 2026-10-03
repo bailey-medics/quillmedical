@@ -6,24 +6,24 @@
  * - variable: item-provided images, text, and options
  *
  * Layout order:
- * 1. Sticky timer (top-left, stays visible on scroll)
- * 2. Images (max 2 per row on desktop, stacked on mobile)
- * 3. Question title (e.g. "Question 1")
- * 4. Patient history text (if any)
- * 5. Answer options
- * 6. Progress bar
- * 7. Previous/Next navigation buttons
+ * 1. Images (max 2 per row on desktop, stacked on mobile)
+ * 2. Question title (e.g. "Question 1")
+ * 3. Patient history text (if any)
+ * 4. Answer options
+ * 5. Progress bar
+ * 6. Previous/Next navigation buttons
+ *
+ * The timer and the "End exam" button are not here: the page puts them in
+ * the ribbon, through TeachingLayout's `ribbonRight`.
  */
 
-import { Box, Group, Image, SimpleGrid, Stack, rem } from "@mantine/core";
+import { Box, Image, SimpleGrid, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import PreviousNextButton from "@components/button/PreviousNextButton";
 import RadioField from "@/components/form/RadioField";
 import { BodyTextInline, Heading } from "@/components/typography";
 import type { CandidateItem, ItemImage } from "@/features/teaching/types";
 import { TeachingProgressBar } from "@components/teaching/teaching-progress-bar/TeachingProgressBar";
-import { AssessmentTimer } from "@components/teaching/assessment-timer/AssessmentTimer";
-import ExamCloseButton from "@components/teaching/exam-close-button/ExamCloseButton";
 import classes from "./QuestionView.module.css";
 
 interface QuestionViewProps {
@@ -49,14 +49,6 @@ interface QuestionViewProps {
   isLastQuestion?: boolean;
   /** Whether the next/submit action is in progress */
   submitting?: boolean;
-  /** Total time limit in minutes (shows timer when provided) */
-  timeLimitMinutes?: number;
-  /** When the assessment started – ISO string (required with timeLimitMinutes) */
-  startedAt?: string;
-  /** Called when the timer expires */
-  onExpire?: () => void;
-  /** Called when the user confirms ending the exam early */
-  onCloseExam?: () => void;
 }
 
 function ImagePanel({ image, single }: { image: ItemImage; single: boolean }) {
@@ -90,26 +82,9 @@ export function QuestionView({
   onSubmit,
   isLastQuestion = false,
   submitting = false,
-  timeLimitMinutes,
-  startedAt,
-  onExpire,
-  onCloseExam,
 }: QuestionViewProps) {
   return (
-    <Stack gap="lg" pt={timeLimitMinutes != null ? rem(48) : undefined}>
-      {/* Fixed timer + close exam button */}
-      {timeLimitMinutes != null && startedAt && onExpire && (
-        <div className={classes.timer}>
-          <Group gap="sm">
-            <AssessmentTimer
-              timeLimitMinutes={timeLimitMinutes}
-              startedAt={startedAt}
-              onExpire={onExpire}
-            />
-            {onCloseExam && <ExamCloseButton onConfirm={onCloseExam} />}
-          </Group>
-        </div>
-      )}
+    <Stack gap="lg">
       {/* Images */}
       {item.images.length > 0 && (
         <SimpleGrid cols={{ base: 1, sm: item.images.length > 1 ? 2 : 1 }}>
