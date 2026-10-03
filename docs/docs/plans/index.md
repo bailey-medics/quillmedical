@@ -87,3 +87,4 @@
 - [Second Migrations Squash](2026-10-03-second-migrations-squash-plan.md)
 - [Docs Review Second Findings](2026-10-02-docs-review-second-findings-plan.md)
 - [User Form Practice Step](2026-10-03-user-form-practice-step-plan.md)
+- [Marketing Opt-out](2026-10-03-marketing-opt-out-plan.md)

@@ -133,6 +133,24 @@ class User(Base):
         Integer, nullable=False, default=0, server_default="0"
     )
 
+    #: Whether this person is sent news and updates. The current answer;
+    #: ``marketing_preference_change`` holds how it came to be. False by
+    #: default on purpose: the opt-out is offered at registration, and an
+    #: account made any other way (by an admin, by a seed script) was never
+    #: offered it, so must not be sent news on the strength of a default.
+    #: Registration sets it true explicitly. Changed only through
+    #: ``app.marketing.preferences.set_marketing_preference``.
+    marketing_emails: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+
+    #: When Resend, which holds the mailing list, last accepted this
+    #: person's current answer. Null means it has not been told, which is
+    #: what the retry in ``app.marketing.sync`` looks for.
+    marketing_synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # FHIR patient ID link (for patient users)
     fhir_patient_id: Mapped[str | None] = mapped_column(
         String(255), unique=True, nullable=True
@@ -188,6 +206,19 @@ class User(Base):
         lazy="selectin",
         cascade="all, delete-orphan",
         passive_deletes=True,
+    )
+
+    #: Every change to ``marketing_emails``, oldest first. Not loaded with
+    #: the user: only the marketing module reads it. The cascade is here
+    #: as well as on the foreign key, and without ``passive_deletes``, so
+    #: the ORM deletes the rows itself. Leaving it to the database would
+    #: leave them behind under SQLite, which does not enforce the key in
+    #: the unit tests.
+    marketing_preference_changes: Mapped[list[MarketingPreferenceChange]] = (
+        relationship(
+            order_by="MarketingPreferenceChange.id",
+            cascade="all, delete-orphan",
+        )
     )
 
     def __init__(self, **kwargs: Any) -> None:
@@ -723,6 +754,84 @@ class PushSubscription(Base):
 #: to an organisation or a site, with its own tables and its own capacity
 #: column. Reusing the word here would have put two unrelated ideas behind
 #: one term, which is the mistake this column exists to undo.
+#: Where a change to somebody's marketing preference came from.
+#: ``registration`` and ``settings`` are pages the person answered on;
+#: ``resend`` is the mailing service telling Quill, after an unsubscribe
+#: link in an email. Validated in code, as ``PLATFORM_ROLES`` is, so a new
+#: source needs no migration.
+MARKETING_PREFERENCE_SOURCES: tuple[str, ...] = (
+    "registration",
+    "settings",
+    "resend",
+)
+
+
+def validate_marketing_preference_source(value: str) -> str:
+    """Return the source unchanged, or raise naming the known ones.
+
+    Args:
+        value: The source to check.
+
+    Returns:
+        The same value.
+
+    Raises:
+        ValueError: If it is not a known source.
+    """
+    if value not in MARKETING_PREFERENCE_SOURCES:
+        raise ValueError(
+            f"Unknown marketing preference source: {value}. Known sources "
+            "are " + ", ".join(MARKETING_PREFERENCE_SOURCES) + "."
+        )
+    return value
+
+
+class MarketingPreferenceChange(Base):
+    """One change to whether somebody is sent news and updates.
+
+    The evidence behind ``User.marketing_emails``: what the person was
+    shown, what they chose and when. One row per change, never updated,
+    so "what did they agree to in March?" is answered by a row. The column
+    on the user is only the latest of them.
+
+    A table, not a list on the user, because each entry needs its own
+    date, source and wording.
+
+    Attributes:
+        id: Primary key.
+        user_id: The person. Their rows go when they do.
+        wants_marketing: The answer after this change.
+        source: Where the change came from, one of
+            ``MARKETING_PREFERENCE_SOURCES``.
+        wording_version: Which wording of the question they answered. Null
+            when no page asked: Resend told Quill.
+        created_at: When.
+    """
+
+    __tablename__ = "marketing_preference_change"
+    __table_args__ = (Index("ix_marketing_preference_change_user", "user_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    wants_marketing: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    source: Mapped[str] = mapped_column(String(20), nullable=False)
+    wording_version: Mapped[str | None] = mapped_column(
+        String(20), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    @validates("source")
+    def _source_is_known(self, _key: str, value: str) -> str:
+        """Reject a source that is not in ``MARKETING_PREFERENCE_SOURCES``."""
+        return validate_marketing_preference_source(value)
+
+
 PLATFORM_ROLES: tuple[str, ...] = ("standard", "superadmin")
 
 
