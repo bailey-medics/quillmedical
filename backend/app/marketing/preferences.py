@@ -33,6 +33,7 @@ def set_marketing_preference(
     wants: bool,
     source: str,
     wording_version: str | None = None,
+    first_answer: bool = False,
 ) -> bool:
     """Record whether somebody wants news and updates.
 
@@ -52,6 +53,11 @@ def set_marketing_preference(
             ``MARKETING_PREFERENCE_SOURCES``.
         wording_version: Which wording they answered, or None when no page
             asked.
+        first_answer: Whether this is the answer given at registration.
+            It is recorded even when it matches where an account starts,
+            because "they were shown the question and said no" is
+            evidence too, and without a row it looks the same as never
+            having been asked.
 
     Returns:
         True if the answer changed, False if it was already that.
@@ -61,7 +67,8 @@ def set_marketing_preference(
     """
     validate_marketing_preference_source(source)
 
-    if user.marketing_emails == wants:
+    changed = user.marketing_emails != wants
+    if not changed and not first_answer:
         return False
 
     db.add(
@@ -75,4 +82,4 @@ def set_marketing_preference(
     user.marketing_emails = wants
     user.marketing_synced_at = None
     db.flush()
-    return True
+    return changed

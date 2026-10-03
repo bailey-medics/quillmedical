@@ -35,6 +35,12 @@ class RegisterIn(BaseModel):
             organisation's own row in the tree (optional).
         site_id: ID of the site to join as trainee (optional). Already a
             org_unit id: a site is an org_unit.
+        marketing_opt_out: Whether they ticked "I would rather not get
+            news and updates". False means they were shown the sentence
+            and left the box alone, so they are sent news. Null means the
+            form that sent this never showed it (a tab left open on an
+            older version), and they are not: nobody is subscribed
+            without having been offered the way out.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -45,6 +51,7 @@ class RegisterIn(BaseModel):
     password: str
     org_unit_id: int | None = None
     site_id: int | None = None
+    marketing_opt_out: bool | None = None
 
 
 class ChangePasswordIn(BaseModel):
@@ -191,12 +198,14 @@ class MeOut(BaseModel):
         may_assign_professions: The base professions they may give
             somebody, read the same way.
         owns_passport: Whether they hold a clinician passport of their own.
+        marketing_emails: Whether they are sent news and updates.
     """
 
     id: int
     username: str
     name: str | None
     email: str
+    marketing_emails: bool
     roles: list[str]
     platform_role: str
     totp_enabled: bool

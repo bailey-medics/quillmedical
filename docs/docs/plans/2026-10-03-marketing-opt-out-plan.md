@@ -208,14 +208,20 @@ them; the other ticks them off.
 
 ## Phase 5: Registration and Settings
 
-- [ ] **Accept the choice at registration.** Add
-      `marketing_opt_out: bool = False` to `RegisterIn` in
-      `backend/app/schemas/auth.py`. Optional with a default, so it is an
-      additive API change and an open tab on the old form still registers.
-      In `register` in `backend/app/main.py`, after the user is created,
-      call `set_marketing_preference` with `wants=not payload.marketing_opt_out`,
-      source `registration` and the current wording version. Both register
-      pages post to this one route.
+- [x] **Accept the choice at registration.** Add `marketing_opt_out` to
+      `RegisterIn` in `backend/app/schemas/auth.py`, as `bool | None`
+      defaulting to null. Optional, so it is an additive API change and an
+      open tab on the old form still registers. This step first said
+      `bool = False`, which would have subscribed that open tab's user
+      without ever showing them the sentence; null means "the form never
+      asked", and that person is left unsubscribed. In `register` in
+      `backend/app/main.py`, after the user is created, an answer that was
+      given is recorded through `set_marketing_preference` with
+      `wants=not payload.marketing_opt_out`, source `registration` and the
+      current wording version. A refusal is recorded too, with
+      `first_answer=True`, though it changes nothing: shown the question
+      and said no is evidence, and without a row it looks the same as
+      never having been asked. Both register pages post to this one route.
 
 - [ ] **Add the question to both register pages,**
       `frontend/src/pages/RegisterPage.tsx` and
@@ -228,18 +234,24 @@ them; the other ticks them off.
       shared constant so the two cannot drift, and bump
       `MARKETING_WORDING_VERSION` if it changes.
 
-- [ ] **Sync an opt-out straight away, and say so if it fails.** Email is
-      sent from Resend, so an opt-out that only reached Quill's database
-      would not stop anything. The Settings route below calls
-      `sync_contact` in the request when the person is opting out, and
-      answers 502 with "We could not update your email preferences. Please
-      try again." if Resend refuses. Opting in may go in the background:
-      a late opt-in costs nothing.
+- [x] **Read and change it from Settings, backend.** `/api/auth/me`
+      returns `marketing_emails`, and `PUT /api/marketing/preference`
+      takes `{ wants_marketing: bool }`, with `DEP_CURRENT_USER`, a CSRF
+      token and a rate limit, source `settings`. It lives in
+      `backend/app/marketing/router.py` beside the webhook, not under
+      `/api/auth/` as this step first said: it is not about signing in.
 
-- [ ] **Read and change it in Settings.** Return `marketing_emails` from
-      `/api/auth/me`, and add `PUT /api/auth/marketing-preference` taking
-      `{ wants_marketing: bool }`, with `DEP_CURRENT_USER` and
-      `DEP_REQUIRE_CSRF`, source `settings`. In
+- [x] **Sync an opt-out straight away, and say so if it fails.** Email is
+      sent from Resend, so an opt-out that only reached Quill's database
+      would not stop anything. The route above calls `sync_contact` in the
+      request, and when the person is opting out and Resend refuses, it
+      answers 502 with "We could not update your email preferences. Please
+      try again." and the change is rolled back, so Quill and Resend still
+      agree. A failed opt-in is saved anyway and left for the retry: a
+      late opt-in costs nothing. An address not yet verified is not sent
+      at all; verifying it sends it.
+
+- [ ] **The Settings switch, frontend.** In
       `frontend/src/pages/Settings.tsx`, add a `SolidSwitch` titled "News
       and updates by email" with the subtitle "Account emails, such as
       password resets and certificates, are always sent." It saves on

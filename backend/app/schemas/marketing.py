@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ResendWebhookOut(BaseModel):
@@ -15,3 +15,25 @@ class ResendWebhookOut(BaseModel):
     """
 
     status: Literal["updated", "unchanged", "ignored"]
+
+
+class MarketingPreferenceIn(BaseModel):
+    """A person changing whether they are sent news and updates.
+
+    Attributes:
+        wants_marketing: Whether they want them.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    wants_marketing: bool
+
+
+class MarketingPreferenceOut(BaseModel):
+    """Somebody's marketing preference as it now stands.
+
+    Attributes:
+        marketing_emails: Whether they are sent news and updates.
+    """
+
+    marketing_emails: bool
