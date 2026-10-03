@@ -19,35 +19,56 @@ Shared with [Public site email subscriptions](2026-03-21-subscriptions.md),
 whose Phase 1 asks for the same things. Whichever plan is built first does
 them; the other ticks them off.
 
-- [ ] **Create the "Quill Medical" segment and the "Newsletter" topic,**
+- [x] **Create the "Quill Medical" segment and the "Newsletter" topic,**
       and note both ids. One list for everybody, registrants and public
       site signups alike: there is one newsletter. Resend groups contacts
       into segments, and a contact opts in or out of a topic; the topic is
-      what an unsubscribe link switches off.
+      what an unsubscribe link switches off. Done on 3 October 2026, the
+      topic public with a default of opt-out, so a contact that arrives
+      some other way gets nothing until something opts it in.
 
-- [ ] **Make an API key that can manage contacts,** stored in GCP Secret
-      Manager as `resend-contacts-api-key` and read by Terraform. The
-      sending key the backend holds today may be send-only. It belongs in
-      Secret Manager, not GitHub, because GitHub would only relay it.
+- [ ] **Make two API keys that can manage contacts,** with Full access:
+      a "Sending access" key cannot. One for the dev stack, kept in
+      `backend/.env`, and one for production, so either can be revoked
+      without the other. The sending key the backend already holds stays
+      as it is.
 
-- [ ] **Add a webhook for contact changes,** pointing at
+- [x] **Create the two secret containers, in `infra/main.tf`:**
+      `resend-contacts-api-key` and `resend-webhook-secret`, added to the
+      `secrets` module's list beside `resend-api-key`. Terraform makes
+      the containers and nothing else; the values never enter its state.
+      This step first said the secrets had to exist before any Terraform
+      change, which had it backwards: this repository creates the
+      containers in Terraform and fills them by hand. What does have to
+      wait is mounting them, the step after next, because Cloud Run
+      refuses a revision that mounts a secret with no version.
+
+- [ ] **Put the production key in, by hand, once the change above has
+      applied:**
+      `printf '%s' '<key>' | gcloud secrets versions add resend-contacts-api-key --data-file=- --project=<project>`.
+      `printf`, not `echo`: a trailing newline in `resend-api-key` is
+      what stopped every email in September. The webhook secret goes in
+      the same way, later, once the webhook exists.
+
+- [ ] **Mount the settings on the backend and the admin job, in
+      `infra/`.** `RESEND_CONTACTS_API_KEY` joins `backend_secret_env_vars`
+      and `admin_secret_env_vars` in `infra/runtime-identities.tf`, which
+      also grants each service account access. The admin job needs it
+      because `marketing-sync` runs there. `RESEND_NEWSLETTER_SEGMENT_ID`
+      and `RESEND_NEWSLETTER_TOPIC_ID` are not secrets and go in as plain
+      environment variables beside `EMAIL_FROM` in `infra/main.tf`. Only
+      after the key has a version. Until this is done the code is inert
+      in production: with the settings unset nothing is sent to Resend,
+      and people still register.
+
+- [ ] **Add a webhook for contact changes,** once Phase 4 has deployed,
+      since the address does not exist until then:
       `https://<host>/api/marketing/resend-webhook`, subscribed to
-      `contact.updated` and `contact.deleted`. Store its signing secret in
-      Secret Manager as `resend-webhook-secret`. Do this after Phase 4 has
-      deployed, since the address does not exist until then. Check the event
-      names against Resend's webhook list when doing it: this plan was
-      written from the documentation, not from a working webhook.
-
-- [ ] **Give the backend its four settings, in `infra/`,** once the
-      secrets above exist: `RESEND_CONTACTS_API_KEY` and
-      `RESEND_WEBHOOK_SECRET` from Secret Manager through
-      `google_secret_manager_secret_version` data sources, and
-      `RESEND_NEWSLETTER_SEGMENT_ID` and `RESEND_NEWSLETTER_TOPIC_ID` as
-      plain environment variables on the backend Cloud Run service and the
-      admin job. Not done with the code: a data source for a secret that
-      does not exist yet fails the Terraform apply that runs on merge.
-      Until this is done the code below is inert in production: with the
-      settings unset nothing is sent to Resend, and people still register.
+      `contact.updated` and `contact.deleted`. Put its signing secret
+      into `resend-webhook-secret` as above, then
+      mount it as `RESEND_WEBHOOK_SECRET` on the backend in a last
+      `infra/` change. Without it the webhook answers 503 and everything
+      else works.
 
 ## Phase 2: The record in Quill
 
@@ -307,6 +328,118 @@ them; the other ticks them off.
       `email_send.py` (password resets, invites, email verification,
       certificates, course reminders) is a service message, is not affected
       by this choice, and must never be used to carry marketing.
+
+## Phase 6: Checking it on production
+
+"Production" is the live teaching app. Phases 2 to 5 were tested against
+a stub, and Phase 3 once against real Resend from the dev stack. Three
+things have never run for real: the settings arriving through Terraform
+and Secret Manager, a registration going the whole way from the form to
+Resend, and the webhook, which Resend cannot reach on a laptop. Done in
+this order, each step proves what the next one stands on. Use an email
+address of Mark's own for every test account, and plus-addresses
+(`name+test1@...`) to make several.
+
+- [ ] **Merge and deploy the stack, and check the migration ran.** The
+      deploy runs migrations itself before the new revision takes
+      traffic. In the `deploy.yml` run, the migration job should show
+      `add marketing preference`. Then load the login page and sign in:
+      a missing `users.marketing_emails` column fails every sign-in, as
+      it did on the dev stack before `just migrate-local` was run.
+
+- [ ] **Finish Phase 1 for production, with its own key.** Make a second
+      contacts API key in Resend for production, not the one in the dev
+      stack's `backend/.env`, so either can be revoked without the other.
+      Store it and wire the settings as Phase 1 says, merge the `infra/`
+      change, and check the `terraform.yml` run applied. The segment and
+      topic are the ones already made: dev and production share one list,
+      which is why every test contact below is removed afterwards.
+
+- [ ] **Check the running service has the three sync settings.** By
+      name, never by value: in the Cloud Run console the backend revision
+      should list `RESEND_CONTACTS_API_KEY`, `RESEND_NEWSLETTER_SEGMENT_ID`
+      and `RESEND_NEWSLETTER_TOPIC_ID`. If a secret was changed after the
+      last deploy, re-run `deploy.yml`, which is what makes a new revision
+      read it; do not use `gcloud run services update`.
+
+- [ ] **Register, and see that nothing reaches Resend yet.** On the live
+      site, go through `/register` to the account form and register with
+      the marketing box left unticked. Before clicking the verification
+      link, search Resend's contacts for the address. It should not be
+      there: an unverified address never joins the list.
+
+- [ ] **Verify, and see the contact arrive.** Click the link in the
+      verification email. Within a few seconds Resend should have the
+      contact, with the name, in the "Quill Medical" segment, opted in
+      to "Newsletter". Sign in and check the Settings switch "News and
+      updates by email" is on.
+
+- [ ] **Register a second account with the box ticked.** After verifying,
+      Resend should hold that contact opted **out** of "Newsletter", and
+      its Settings switch should be off.
+
+- [ ] **Flip the Settings switch both ways.** On the first account,
+      switch news off, wait a few seconds, and check Resend shows opted
+      out. Switch it on again and check Resend shows opted in. Resend's
+      reads lag its writes by a second or two, so reload its page before
+      deciding a change has not arrived.
+
+- [ ] **Add the webhook in Resend, as Phase 1's last step says,** now that
+      the address exists: `https://<teaching host>/api/marketing/resend-webhook`,
+      events `contact.updated` and `contact.deleted`. Store the signing
+      secret, wire `RESEND_WEBHOOK_SECRET`, and re-run `deploy.yml`.
+
+- [ ] **Check the webhook refuses a stranger.** From a terminal:
+      `curl -i -X POST https://<teaching host>/api/marketing/resend-webhook -d '{}'`
+      should answer 401. A 503 means the secret has not reached the
+      running revision. A 200 would mean anybody can change a preference,
+      and is a reason to take the route down.
+
+- [ ] **Unsubscribe from Resend's side, and see Quill follow.** Wait at
+      least a minute after the last Settings change, because the route
+      ignores an event within sixty seconds of Quill's own sync as an
+      echo. Then, in Resend, open the first test contact and opt it out
+      of "Newsletter". In Resend's webhook log the delivery should show a
+      200. Reload Settings in Quill: the switch should now be off. This
+      is the step nothing before production could test.
+
+- [ ] **Do the same through a real email.** Send a test broadcast to the
+      "Newsletter" topic with only the test contacts opted in, using the
+      template from `just email-export quill`. Check it arrives, looks
+      like Quill's other email, and that its unsubscribe link opens
+      Resend's page. Unsubscribe there, and check the Settings switch
+      goes off as in the step before. This is the path a real person
+      takes.
+
+- [ ] **Check an admin-created account is left alone.** Create a user at
+      `/admin/users/new` with a test address. No contact should appear in
+      Resend, even after they set a password and sign in, until they
+      switch news on in Settings themselves.
+
+- [ ] **Deactivate a test account, and see the contact go.** Deactivate
+      the second test account from the admin users page. Its contact
+      should be gone from Resend.
+
+- [ ] **Run the retry once, and expect nothing to do.** Execute the admin
+      job with `ADMIN_ACTION=marketing-sync`, the way `just migrate-remote`
+      runs `run-migrations`. It should print `Synced 0, failed 0.` or
+      sync only the reactivated or unverified-then-verified accounts from
+      the steps above. If it is worth running often, add a
+      `marketing-sync-remote` recipe beside `migrate-remote` then.
+
+- [ ] **Read the logs for addresses.** In Cloud Logging, search the
+      backend's logs for the test addresses. The marketing code logs a
+      user id and an HTTP status, never an address; a hit from
+      `app.marketing` is a bug to fix before real people register.
+
+- [ ] **Tidy up.** Delete the test contacts in Resend and deactivate the
+      test accounts, so the first real broadcast goes to nobody who did
+      not register for real.
+
+- [ ] **Before the first real broadcast, settle the soft opt-in
+      question** in Decisions. Everything above proves the machinery
+      works. It does not prove an opt-out is the right basis for emailing
+      people who registered for free.
 
 ## Decisions
 
