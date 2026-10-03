@@ -35,6 +35,22 @@ _terminal-description message=" ":
     echo -ne "\033]0;{{message}}\007"
 
 
+# Which repository the stack recipes act on. Unset, it is this one.
+#
+# The teaching content lives in repositories of its own, cloned under
+# teaching-repos/, and they have no Justfile. Setting STACK_REPO to one of
+# them runs the same recipes there: `STACK_REPO=teaching-repos/eoeeta-teaching
+# just stack-log`. An environment variable rather than an argument, so it
+# reaches the recipes these call in turn (`stack-submit` calls
+# `stack-rebase`, which calls `_stack-guard`) without each having to pass
+# it on. A path that does not exist stops the recipe at the `cd`.
+stack_repo := 'cd "${STACK_REPO:-.}"'
+
+# The stack scripts by their full path, since a recipe that has changed
+# directory to another repository can no longer find them by a relative one.
+stack_scripts := justfile_directory() / "scripts"
+
+
 # Compose project name for this worktree's throwaway test containers.
 #
 # Derived from the worktree directory, so every worktree gets its own
@@ -916,7 +932,8 @@ _stack-branch-name name:
 _stack-guard:
     #!/usr/bin/env bash
     set -uo pipefail
-    python3 scripts/stack-status.py --check
+    {{stack_repo}}
+    python3 "{{stack_scripts}}"/stack-status.py --check
     status=$?
     # 1 is "no stack here". The script has already named the recipes and
     # the skill that start or check out one, so stopping here is what makes
@@ -939,6 +956,7 @@ alias sta := stack-add
 stack-add name message:
     #!/usr/bin/env bash
     {{initialise}} "stack-add"
+    {{stack_repo}}
     set -euo pipefail
     just _stack-guard
     branch="$(just _stack-branch-name '{{name}}')"
@@ -947,7 +965,7 @@ stack-add name message:
     # rather than optional: without -m, gh opens an editor, and a recipe
     # that sometimes opens an editor is a recipe that hangs in a script.
     gh stack add -A -m "{{message}}" "${branch}"
-    python3 scripts/stack-status.py
+    python3 "{{stack_scripts}}"/stack-status.py
 
 
 alias stc := stack-checkout
@@ -955,13 +973,14 @@ alias stc := stack-checkout
 stack-checkout target="":
     #!/usr/bin/env bash
     {{initialise}} "stack-checkout"
+    {{stack_repo}}
     set -euo pipefail
     # The recovery path when a stack's local state is gone – a removed
     # worktree takes .git/worktrees/<name>/gh-stack with it. This fetches
     # the stack back from GitHub, which works once two or more pull
     # requests exist. With no argument it opens a picker of every stack.
     gh stack checkout {{target}}
-    python3 scripts/stack-status.py
+    python3 "{{stack_scripts}}"/stack-status.py
 
 
 alias stf := stack-files
@@ -971,14 +990,15 @@ stack-files patch="":
     set +x
     {{initialise}} "stack-files"
     set +x
+    {{stack_repo}}
     # Against its own parent, not the trunk: a branch three layers up
     # diffed against main replays every change below it, which is the
     # wall of diff that stacking exists to avoid. Pass 'p' for the full
     # patch rather than the per-file summary.
     if [ "{{patch}}" = "p" ]; then
-        python3 scripts/stack-status.py --files --patch || true
+        python3 "{{stack_scripts}}"/stack-status.py --files --patch || true
     else
-        python3 scripts/stack-status.py --files || true
+        python3 "{{stack_scripts}}"/stack-status.py --files || true
     fi
 
 
@@ -1099,6 +1119,7 @@ stack-log:
     set +x
     {{initialise}} "stack-log"
     set +x
+    {{stack_repo}}
     # Local flags only: branch order, merged/queued, needs-rebase, and which
     # branches another worktree holds. Instant and works offline. `just stll`
     # is the same picture with pull request and CI state joined on.
@@ -1106,7 +1127,7 @@ stack-log:
     # Exit 1 means "no stack here", which the script has already explained.
     # Passing it through would make just print "Recipe failed", dressing an
     # ordinary answer up as a fault.
-    python3 scripts/stack-status.py || true
+    python3 "{{stack_scripts}}"/stack-status.py || true
 
 
 alias stll := stack-log-long
@@ -1116,6 +1137,7 @@ stack-log-long:
     set +x
     {{initialise}} "stack-log-long"
     set +x
+    {{stack_repo}}
     # One `gh pr list` for the whole stack rather than one call per branch,
     # so a six-deep stack is one round trip. This is the view that answers
     # "is this one green yet" without opening a browser.
@@ -1126,7 +1148,7 @@ stack-log-long:
     # request not being a draft and so on a stack usually has not run at
     # all. One combined tick would hide that, and a dash is not a failure:
     # it means "not run yet".
-    python3 scripts/stack-status.py --prs || true
+    python3 "{{stack_scripts}}"/stack-status.py --prs || true
 
 
 alias stm := stack-move
@@ -1134,6 +1156,7 @@ alias stm := stack-move
 stack-move direction="":
     #!/usr/bin/env bash
     {{initialise}} "stack-move"
+    {{stack_repo}}
     set -euo pipefail
     # `gh stack switch` with no argument opens an interactive picker; the
     # named directions are the cheap ones. Wrapped together because they
@@ -1152,7 +1175,7 @@ stack-move direction="":
             exit 1
             ;;
     esac
-    python3 scripts/stack-status.py
+    python3 "{{stack_scripts}}"/stack-status.py
 
 
 alias stn := stack-new
@@ -1160,6 +1183,7 @@ alias stn := stack-new
 stack-new name message:
     #!/usr/bin/env bash
     {{initialise}} "stack-new"
+    {{stack_repo}}
     set -euo pipefail
     branch="$(just _stack-branch-name '{{name}}')"
     # init adopts the branch it creates as the bottom of a new stack, based
@@ -1184,7 +1208,7 @@ stack-new name message:
     # here, which only moved the bookkeeping into the command line.
     git add -A
     git commit -m "{{message}}"
-    python3 scripts/stack-status.py
+    python3 "{{stack_scripts}}"/stack-status.py
 
 
 alias strd := stack-ready
@@ -1192,6 +1216,7 @@ alias strd := stack-ready
 stack-ready:
     #!/usr/bin/env bash
     {{initialise}} "stack-ready"
+    {{stack_repo}}
     set -euo pipefail
     just _stack-guard
     # Marking ready is what starts the heavy CI tier (Storybook interaction
@@ -1218,7 +1243,7 @@ stack-ready:
             *) echo "#${number} is not open (${state%% *}); skipped." ;;
         esac
     done
-    python3 scripts/stack-status.py --prs
+    python3 "{{stack_scripts}}"/stack-status.py --prs
 
 
 alias str := stack-rebase
@@ -1226,13 +1251,14 @@ alias str := stack-rebase
 stack-rebase:
     #!/usr/bin/env bash
     {{initialise}} "stack-rebase"
+    {{stack_repo}}
     set -euo pipefail
     just _stack-guard
     gh stack rebase
     # gh stack rebase exits 0 even when it skipped a branch, so the result is
     # verified rather than trusted: `view --json` reports needsRebase
     # correctly for exactly the branch a silent skip leaves behind.
-    if python3 scripts/stack-status.py --no-colour | grep -q "needs rebase"; then
+    if python3 "{{stack_scripts}}"/stack-status.py --no-colour | grep -q "needs rebase"; then
         echo "" >&2
         echo "✗ Branches still need a rebase after gh stack rebase." >&2
         echo "  It reports success even when it skips a branch." >&2
@@ -1243,7 +1269,7 @@ stack-rebase:
         echo "  'just stack-refresh'. See that recipe for why." >&2
         exit 1
     fi
-    python3 scripts/stack-status.py
+    python3 "{{stack_scripts}}"/stack-status.py
 
 
 alias stre := stack-refresh
@@ -1251,6 +1277,7 @@ alias stre := stack-refresh
 stack-refresh:
     #!/usr/bin/env bash
     {{initialise}} "stack-refresh"
+    {{stack_repo}}
     set -euo pipefail
     # The record in .git/gh-stack stores trunk.head: the commit main sat
     # at when the stack was started. `gh stack rebase` works out "your
@@ -1279,7 +1306,7 @@ stack-refresh:
     # Bottom to top, which is the order `gh stack init` adopts them in.
     # Naming only the current branch would drop the rest of the stack
     # from the record, which is not a repair.
-    branches="$(python3 scripts/stack-status.py --rebuild-order)"
+    branches="$(python3 "{{stack_scripts}}"/stack-status.py --rebuild-order)"
     if [ -z "${branches}" ]; then
         echo "✗ No unmerged branches in this stack to rebuild." >&2
         exit 1
@@ -1302,7 +1329,7 @@ stack-refresh:
     git fetch origin main --quiet
     echo "Rebuilding the stack record for:"
     echo "${branches}" | sed 's/^/  /'
-    if python3 scripts/stack-relink.py --needed; then
+    if python3 "{{stack_scripts}}"/stack-relink.py --needed; then
         # GitHub refuses to unstack a stack holding a merged pull request
         # ("Pull requests #1356, #1358 cannot be removed from this
         # stack"), and on 2026-10-02 the attempt left the open ones in
@@ -1317,13 +1344,13 @@ stack-refresh:
         # shellcheck disable=SC2086
         gh stack init ${branches}
         # shellcheck disable=SC2086
-        python3 scripts/stack-relink.py --link ${branches}
+        python3 "{{stack_scripts}}"/stack-relink.py --link ${branches}
     else
         gh stack unstack
         # shellcheck disable=SC2086
         gh stack init ${branches}
     fi
-    python3 scripts/stack-status.py
+    python3 "{{stack_scripts}}"/stack-status.py
 
 
 alias stsu := stack-submit
@@ -1331,6 +1358,7 @@ alias stsu := stack-submit
 stack-submit:
     #!/usr/bin/env bash
     {{initialise}} "stack-submit"
+    {{stack_repo}}
     set -euo pipefail
     # Rebase first, every time. A stack is submitted over and over as the
     # units above it are revised, and trunk moves underneath it while that
@@ -1349,7 +1377,7 @@ stack-submit:
     # opened, so a pull request created ready never gets them. Do not add
     # --open here; `gh pr ready` or /nst-crp final is how a branch leaves draft.
     gh stack submit --auto
-    python3 scripts/stack-status.py --prs
+    python3 "{{stack_scripts}}"/stack-status.py --prs
 
 
 alias stsy := stack-sync
@@ -1357,6 +1385,7 @@ alias stsy := stack-sync
 stack-sync scope="":
     #!/usr/bin/env bash
     {{initialise}} "stack-sync"
+    {{stack_repo}}
     set -uo pipefail
 
     # One function, called once per worktree, so a sweep gives each checkout
@@ -1371,7 +1400,7 @@ stack-sync scope="":
         # answer for a single run and the wrong one inside a loop. Both are
         # ordinary outcomes of a sweep and each deserves its own line.
         local status=0
-        python3 scripts/stack-status.py --check >/dev/null 2>&1 || status=$?
+        python3 "{{stack_scripts}}"/stack-status.py --check >/dev/null 2>&1 || status=$?
         if [ "${status}" -eq 1 ]; then
             echo "  No stack here – nothing to sync."
             return 0
@@ -1399,7 +1428,7 @@ stack-sync scope="":
         # stack-forget-merged.py see that such a branch is already in
         # the trunk; it leaves an ordinary merge for --prune to delete.
         git fetch origin --quiet || true
-        python3 scripts/stack-forget-merged.py || return 1
+        python3 "{{stack_scripts}}"/stack-forget-merged.py || return 1
         if ! gh stack sync --prune; then
             echo "  ✗ gh stack sync failed here; leaving this worktree alone." >&2
             return 1
@@ -1417,7 +1446,7 @@ stack-sync scope="":
         # `git rev-parse --git-path gh-stack` – so this tidies the checkout it
         # is run from and no other. That is exactly why a sweep has to visit
         # each one rather than tidying up centrally.
-        python3 scripts/stack-forget-merged.py || return 1
+        python3 "{{stack_scripts}}"/stack-forget-merged.py || return 1
 
         # Exit 1 means "no stack here". That is the ordinary ending for a sync
         # – the last branch merging deletes the stack, so the run that tidies
@@ -1427,7 +1456,7 @@ stack-sync scope="":
         # instead. Any other exit code is a real fault.
         local drawn=""
         local draw_status=0
-        drawn=$(python3 scripts/stack-status.py --prs --colour 2>&1) || draw_status=$?
+        drawn=$(python3 "{{stack_scripts}}"/stack-status.py --prs --colour 2>&1) || draw_status=$?
         if [ "${draw_status}" -eq 0 ]; then
             printf '%s\n' "${drawn}"
         elif [ "${draw_status}" -eq 1 ]; then
@@ -1479,6 +1508,7 @@ alias stu := stack-update
 stack-update message="":
     #!/usr/bin/env bash
     {{initialise}} "stack-update"
+    {{stack_repo}}
     set -euo pipefail
     # The counterpart to stack-new and stack-add, which both create a branch.
     # This one revises the branch already checked out – the ordinary case when
@@ -1535,7 +1565,7 @@ stack-update message="":
     # above to restack"; 2 is a real problem and must still reach the guard
     # inside stack-rebase rather than being quietly taken for "no stack".
     stack_state=0
-    python3 scripts/stack-status.py --check >/dev/null 2>&1 || stack_state=$?
+    python3 "{{stack_scripts}}"/stack-status.py --check >/dev/null 2>&1 || stack_state=$?
     if [ "${stack_state}" -eq 1 ]; then
         echo "  Amended. Not in a stack, so nothing above needs rebasing."
     else
@@ -1550,6 +1580,7 @@ stack-watch:
     set +x
     {{initialise}} "stack-watch"
     set +x
+    {{stack_repo}}
     # `stack-log-long` in a loop. A minute is the cadence because CI state
     # does not change faster than that in any way worth watching, and one
     # `gh pr list` a minute is 60 calls an hour against a 5000-point limit.
@@ -1594,7 +1625,7 @@ stack-watch:
         # drops colour when it is not a terminal. `|| true` for the same
         # reason `stack-log` has it: "no stack here" is an ordinary answer,
         # and the loop should keep drawing it rather than dying on it.
-        drawn=$(python3 scripts/stack-status.py --prs --colour 2>&1 || true)
+        drawn=$(python3 "{{stack_scripts}}"/stack-status.py --prs --colour 2>&1 || true)
 
         # Stop the dots a keypress started, further down.
         stop_dots
