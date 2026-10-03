@@ -198,6 +198,32 @@ act -s .secrets push
 ./scripts/run-github-actions-locally.sh non-main docs
 ```
 
+## Teaching content
+
+### trim-question-image-frames.py
+
+Cuts the frame baked into teaching question images: the one-pixel grey
+outline and the strip of white that come with a picture captured out of a
+document. It walks every `question_*` directory beneath the paths given.
+
+It needs Pillow, which nothing else here depends on:
+
+```bash
+python3 -m pip install pillow
+```
+
+```bash
+# Report what would be cut, changing nothing
+./scripts/trim-question-image-frames.py teaching-repos/eoeeta-teaching
+
+# Trim the images in place
+./scripts/trim-question-image-frames.py --write teaching-repos/eoeeta-teaching
+```
+
+- Run it on a clean working tree in the content repo, so `git checkout .` undoes it.
+- An image that would lose more than a quarter of its width or height is not written. It is listed as `REVIEW` for a person to look at, and the script exits 1.
+- It is safe to run again: a trimmed image has nothing left to cut.
+
 ## See Also
 
 - [GitHub Actions workflows](../.github/workflows/)
