@@ -30,6 +30,12 @@ locals {
       CORE_DB_PASSWORD = "core-db-password"
       VAPID_PRIVATE    = "vapid-private"
       RESEND_API_KEY   = "resend-api-key"
+      # The mailing list: a second Resend key, allowed to manage
+      # contacts. Mounted only once the secret has a version, which Cloud
+      # Run insists on. `resend-webhook-secret` follows the same way when
+      # the webhook exists. See
+      # docs/docs/plans/2026-10-03-marketing-opt-out-plan.md, Phase 1.
+      RESEND_CONTACTS_API_KEY = "resend-contacts-api-key"
     },
     var.enable_fhir ? {
       FHIR_DB_PASSWORD           = "fhir-db-password"
@@ -49,6 +55,17 @@ locals {
   admin_secret_env_vars = {
     CORE_DB_PASSWORD = "core-db-password"
     JWT_SECRET       = "jwt-secret"
+    # For the `marketing-sync` action, which retries telling Resend about
+    # people it could not be told about at the time.
+    RESEND_CONTACTS_API_KEY = "resend-contacts-api-key"
+  }
+
+  # Where the mailing list is in Resend. Identifiers, not secrets: they
+  # name the "Quill Medical" segment and the "Newsletter" topic, and are
+  # no use without the key above. One list, shared by every environment.
+  resend_newsletter_env_vars = {
+    RESEND_NEWSLETTER_SEGMENT_ID = "1ab63c23-c71b-4dfc-982c-33ffe995eb73"
+    RESEND_NEWSLETTER_TOPIC_ID   = "c386f074-318f-4134-bc9e-0ab123bea4e5"
   }
 
   transcode_secret_env_vars = {

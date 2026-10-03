@@ -424,7 +424,8 @@ module "cloud_run_backend" {
     {
       EMAIL_FROM    = "info@quill-medical.com"
       EMAIL_DRY_RUN = "false"
-    }
+    },
+    local.resend_newsletter_env_vars
   )
 
   secret_env_vars = local.backend_secret_env_vars
@@ -465,18 +466,22 @@ module "cloud_run_admin_job" {
   # the Cloud NAT in modules/networking.
   vpc_egress = "ALL_TRAFFIC"
 
-  env_vars = {
-    CORE_DB_HOST = module.cloud_sql_core.private_ip
-    CORE_DB_NAME = module.cloud_sql_core.database_name
-    CORE_DB_USER = module.cloud_sql_core.database_user
+  env_vars = merge(
+    {
+      CORE_DB_HOST = module.cloud_sql_core.private_ip
+      CORE_DB_NAME = module.cloud_sql_core.database_name
+      CORE_DB_USER = module.cloud_sql_core.database_user
 
-    # For `delete-passport`: where passports live, where a deleted one is
-    # archived, and whose may be deleted at all. The last is empty unless
-    # the environment's tfvars names somebody.
-    PASSPORT_GCS_BUCKET          = module.passport_storage.bucket_name
-    PASSPORT_ARCHIVE_GCS_BUCKET  = module.passport_storage.archive_bucket_name
-    PASSPORT_DELETABLE_USERNAMES = join(",", var.passport_deletable_usernames)
-  }
+      # For `delete-passport`: where passports live, where a deleted one is
+      # archived, and whose may be deleted at all. The last is empty unless
+      # the environment's tfvars names somebody.
+      PASSPORT_GCS_BUCKET          = module.passport_storage.bucket_name
+      PASSPORT_ARCHIVE_GCS_BUCKET  = module.passport_storage.archive_bucket_name
+      PASSPORT_DELETABLE_USERNAMES = join(",", var.passport_deletable_usernames)
+    },
+    # For `marketing-sync`.
+    local.resend_newsletter_env_vars
+  )
 
   secret_env_vars = local.admin_secret_env_vars
 
