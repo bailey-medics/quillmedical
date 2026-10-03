@@ -1,8 +1,8 @@
 ---
 name: crpd
 description: Commit, rebase, push and describe one stacked branch
-argument-hint: "[ready]"
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git push:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(git switch:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*)
+argument-hint: "[repo: eoeeta-teaching|eoeeta-teaching-testing|respiratory-teaching] [ready]"
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git push:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(git switch:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*), Bash(STACK_REPO=* just stack-*), Bash(git -C *), Bash(just validate-teaching:*)
 disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), Bash(git commit:*), Bash(git reset:*), Bash(git cherry-pick:*), Bash(git stash:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 ---
 
@@ -106,14 +106,87 @@ These hold on every run.
 
 ## Arguments
 
-One optional argument:
+Up to two space-separated arguments, both optional, in either order:
 
+- A **repository** name – `eoeeta-teaching`, `eoeeta-teaching-testing` or
+  `respiratory-teaching`, or the short form of one, `eoeeta`,
+  `eoeeta-test` or `resp`. Omitted, the run acts on **quillmedical**. See
+  "Target repository" below.
 - **`ready`** – after describing it, take the pull request out of draft.
   Omitted, the pull request stays a draft. It never merges anything.
+
+So `/crpd`, `/crpd ready`, `/crpd eoeeta-teaching`, `/crpd eoeeta` and
+`/crpd eoeeta-teaching ready` are all valid. Any other token is an error: stop and ask what was meant rather than
+guessing.
 
 Default to leaving it a draft. In a long unattended run the whole stack is
 reviewed the next morning, and a draft is the correct state until a human has
 read it. Pass `ready` when finishing a branch deliberately, by hand.
+
+The arguments supplied to this command are: `$ARGUMENTS`
+
+## Target repository
+
+The teaching content lives in repositories of its own, cloned under
+`teaching-repos/` in the main checkout. Each is a separate git repository
+with its own `main`, its own pull requests and its own stack.
+
+| Argument | Repository path                                                             | GitHub repository                   |
+| -------- | --------------------------------------------------------------------------- | ----------------------------------- |
+| _(none)_ | the checkout this was run from                                              | `bailey-medics/quillmedical`        |
+| `eoeeta-teaching` or `eoeeta` | `/Users/markbailey/github/quillmedical/teaching-repos/eoeeta-teaching`      | `bailey-medics/eoeeta-teaching`     |
+| `eoeeta-teaching-testing`, `eoeeta-teaching-test` or `eoeeta-test` | `/Users/markbailey/github/quillmedical/teaching-repos/eoeeta-teaching-testing` | `bailey-medics/eoeeta-teaching-testing` |
+| `respiratory-teaching` or `resp` | `/Users/markbailey/github/quillmedical/teaching-repos/respiratory-teaching` | `bailey-medics/respiratory-teaching` |
+
+**One repository per run.** A run makes one branch and one pull request,
+and those belong to one repository. There is no `all`: work in two
+repositories is two runs, and two stacks.
+
+With no repository argument, everything below is read exactly as written.
+With one, the same steps run against that repository, and three things
+change in how each command is written. Call the path from the table
+`<repo>` and the GitHub name `<owner/name>`.
+
+- **Every `just stack-*` recipe takes the repository from `STACK_REPO`.**
+  The teaching repositories have no Justfile, so the recipes are run from
+  the quillmedical checkout and told where to act:
+
+  ```bash
+  STACK_REPO=<repo> just stack-log
+  STACK_REPO=<repo> just stack-add <name> "<message>"
+  STACK_REPO=<repo> just stack-submit
+  ```
+
+  Set it on **every** stack recipe in the run, `stack-new`, `stack-add`,
+  `stack-rebase`, `stack-sync`, `stack-files` and `stack-submit` alike. A
+  recipe run without it acts on quillmedical, and says nothing about the
+  mistake: it would commit quillmedical's uncommitted work instead.
+- **Every `git` command names the repository**: `git -C <repo> status
+  --short`, `git -C <repo> fetch origin main`, `git -C <repo> switch main`.
+- **Every `gh` command names it too**: `gh pr list -R <owner/name> …`,
+  `gh pr edit <number> -R <owner/name> …`, `gh pr ready <number> -R
+  <owner/name>`. Without `-R`, `gh` answers about quillmedical. `gh stack
+  view` has no `-R`; run it as `(cd <repo> && gh stack view --json)`.
+
+Four things differ in substance, and nothing else does:
+
+- **The stack key is chosen for that repository**, and checked against
+  that repository's open pull requests. The key names an area of the
+  teaching content, such as `Colonoscopy`, not an area of the application.
+- **The tests in step 4 are the content validation**, `just
+  validate-teaching`, which checks every module in every teaching
+  repository. It needs the dev stack running in the main checkout. If it
+  cannot run, say so in the report rather than skipping it silently: never
+  claim it passed.
+- **The description is written about teaching content.** "What has
+  changed" says what a learner or an educator would now see. The "Risks"
+  section still stands, and for content means clinical accuracy, anything
+  identifying a patient in an image or a case, and licensing of what was
+  added.
+- **Merging matters more, not less.** The sync serves the newest version
+  of the content once a pull request merges, so the pull request is the
+  only gate there is. Leave it a draft unless `ready` was given, and never
+  merge it.
 
 ## Before anything
 
@@ -403,7 +476,9 @@ Two things to check rather than assume:
    is the usual case – running it then is harmless.
 
 4. **Run the targeted tests for what this branch touched** – `just ub -k
-   "..."` and `just uf src/path/to/file.test.tsx` – and nothing wider. CI's
+   "..."` and `just uf src/path/to/file.test.tsx` – and nothing wider. For
+   a teaching repository it is `just validate-teaching` instead: see
+   "Target repository". CI's
    fast tier runs the full suites on every push and the merge queue re-runs
    them against current `main`; a local full run duplicates that. See "Test
    tiers" in `CLAUDE.md`.
