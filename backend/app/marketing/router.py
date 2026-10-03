@@ -196,8 +196,10 @@ def _is_echo(user: User, event_type: str, data: dict[str, Any]) -> bool:
 
     Returns:
         True for a ``contact.updated`` soon after Quill's own sync. A
-        deletion, or a contact unsubscribed from everything, is never an
-        echo: Quill does neither of those to a contact it has just synced.
+        deletion is never an echo: Quill does not delete a contact it has
+        just synced. Nor is a contact marked unsubscribed, which needs no
+        second look: it means "no" whoever set it, Quill included, and
+        acting on it when Quill already holds "no" changes nothing.
     """
     if event_type != "contact.updated" or data.get("unsubscribed") is True:
         return False

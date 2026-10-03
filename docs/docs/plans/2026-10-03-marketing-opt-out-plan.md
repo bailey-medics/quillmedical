@@ -340,6 +340,43 @@ this order, each step proves what the next one stands on. Use an email
 address of Mark's own for every test account, and plus-addresses
 (`name+test1@...`) to make several.
 
+- [x] **First run on production, 3 October 2026, and two things it
+      found.** Mark registered `mark.bailey.teaching.delegate` on the live
+      app with the box unticked. The contact reached Resend, in the
+      segment and opted in, within half a second of the address being
+      verified, and Resend's first signed call to the webhook was
+      accepted. The Settings switch then changed the topic correctly each
+      time. Two faults showed, both fixed in
+      `backend/app/marketing/resend_contacts.py`:
+
+      **Two of three saves from the Settings switch took 10.5 seconds.**
+      Resend's API has two IPv6 addresses and two IPv4 ones, and the
+      backend on Cloud Run has no IPv6 route out. Tried in the order the
+      resolver gives, each IPv6 address hangs for the whole five second
+      connect timeout before an IPv4 one is reached: two of those and one
+      ordinary request is 10.5 seconds. This is worked out from the
+      timings and the DNS records, not seen directly. The client now
+      connects over IPv4 only and gives up on a connection after two
+      seconds. The save times in the logs after the next deploy are the
+      proof. `email_send.py` reaches the same host through the `resend`
+      SDK and may be slowed the same way; it has not been changed.
+
+      **Resend's Audience page showed "Subscribed" for somebody who had
+      opted out.** Resend holds two switches for a contact: the topic,
+      which Quill was setting, and the contact's own `unsubscribed` flag,
+      which it was not. A broadcast sent to the segment without naming the
+      topic checks only the second, so it would have emailed a person who
+      had refused. `sync_contact` now sets both to match. Tried against
+      real Resend from the dev stack with a throwaway contact, through
+      four changes of mind: both switches followed each time. A contact
+      synced before this change keeps the old state until its preference
+      next changes.
+
+      Also seen: Resend sent `contact.updated` when the contact was
+      created, and nothing when its topic was changed through the API.
+      Whether it sends one when a person changes their own topic on
+      Resend's page is still to be tested, below.
+
 - [ ] **Merge and deploy the stack, and check the migration ran.** The
       deploy runs migrations itself before the new revision takes
       traffic. In the `deploy.yml` run, the migration job should show

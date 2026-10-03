@@ -73,6 +73,10 @@ export default function Settings() {
   const [marketingError, setMarketingError] = useState<string | undefined>();
 
   async function changeMarketingEmails(wants: boolean) {
+    // A second press while the first is still saving is dropped. The
+    // switch is not disabled for that second: a disabled control shows a
+    // "not allowed" pointer, which reads as a refusal, not as a wait.
+    if (savingMarketing) return;
     setMarketingError(undefined);
     setMarketingEmails(wants);
     setSavingMarketing(true);
@@ -283,7 +287,7 @@ export default function Settings() {
             <SolidSwitch
               aria-label="News and updates by email"
               checked={marketingEmails}
-              disabled={savingMarketing}
+              aria-busy={savingMarketing}
               error={marketingError}
               onChange={(event) =>
                 void changeMarketingEmails(event.currentTarget.checked)

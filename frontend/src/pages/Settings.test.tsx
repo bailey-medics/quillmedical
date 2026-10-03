@@ -194,6 +194,33 @@ describe("news and updates by email", () => {
     await waitFor(() => expect(toggle()).not.toBeChecked());
   });
 
+  it("stays enabled while saving, and drops a second press", async () => {
+    let finish: (value: { marketing_emails: boolean }) => void = () => {};
+    vi.mocked(api.put).mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithRouter(<Settings />);
+
+    await user.click(toggle());
+
+    // Not disabled, so no "not allowed" pointer; it says it is busy.
+    expect(toggle()).toBeEnabled();
+    expect(toggle()).toHaveAttribute("aria-busy", "true");
+    expect(toggle()).toBeChecked();
+
+    await user.click(toggle());
+
+    expect(api.put).toHaveBeenCalledTimes(1);
+    expect(toggle()).toBeChecked();
+
+    finish({ marketing_emails: true });
+    await waitFor(() => expect(toggle()).toHaveAttribute("aria-busy", "false"));
+    expect(toggle()).toBeChecked();
+  });
+
   it("puts the switch back and says why when the save fails", async () => {
     authUser.marketing_emails = true;
     vi.mocked(api.put).mockRejectedValue(
