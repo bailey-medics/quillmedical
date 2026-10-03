@@ -5,9 +5,22 @@ import { renderWithMantine } from "@test/test-utils";
 import ExamCloseButton from "./ExamCloseButton";
 
 describe("ExamCloseButton", () => {
-  it("renders the end exam badge", () => {
+  it("renders End exam as a button", () => {
     renderWithMantine(<ExamCloseButton onConfirm={vi.fn()} />);
-    expect(screen.getByText("End exam")).toBeInTheDocument();
+    const button = screen.getByRole("button", { name: "End exam" });
+    expect(button).toHaveAttribute("type", "button");
+  });
+
+  it("opens the confirmation from the keyboard", async () => {
+    // A badge with a click handler could not be tabbed to at all
+    const user = userEvent.setup();
+    renderWithMantine(<ExamCloseButton onConfirm={vi.fn()} />);
+
+    await user.tab();
+    expect(screen.getByRole("button", { name: "End exam" })).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByText(/unanswered questions/i)).toBeInTheDocument();
   });
 
   it("opens confirmation modal on click", async () => {
