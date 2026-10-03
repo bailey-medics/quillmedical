@@ -85,19 +85,28 @@ decision first.
 
 ## Phase 3: Hooks that do not run
 
-- [ ] `frontend/package.json` has `predev` and `prebuild` scripts that call
+- [x] `frontend/package.json` has `predev` and `prebuild` scripts that call
       `yarn generate:types`. The comment in `frontend/Dockerfile` says
       "Yarn 4 skips pre\* hooks", which is why its build stage calls the
       script by name. Confirm it: run `yarn build` in a checkout with no
       `src/generated/*.json` and see whether the JSON appears. This was not
       tested by the review.
 
-- [ ] If they are dead, remove both and make the scripts say what they do:
+      Confirmed with Yarn 4.18.1. With the JSON deleted, `yarn build` went
+      straight to `tsc -b`, failed on the missing modules, and left
+      `src/generated/` holding only `index.d.ts`.
+
+- [x] If they are dead, remove both and make the scripts say what they do:
       `"dev": "yarn generate:types && vite"`, and the same in front of
       `build`. Every other script that needs the JSON already calls it this
       way. Today the dev container gets its JSON only because the public
       pages' `pages:gen` happens to run the same step alongside, in
       `frontend/dev-start.sh`.
+
+      Done. The Dockerfile's separate `RUN yarn generate:types` went with
+      them, since `yarn build` now does it and running it twice says
+      nothing. With the JSON deleted again, `yarn build` now generates it
+      and builds.
 
 ## Phase 4: The stack tooling
 
