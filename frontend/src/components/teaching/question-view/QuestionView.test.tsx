@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import { QuestionView } from "./QuestionView";
@@ -43,6 +43,124 @@ describe("QuestionView", () => {
 
     expect(screen.getByText("White light")).toBeInTheDocument();
     expect(screen.getByText("NBI")).toBeInTheDocument();
+  });
+
+  describe("images sharing a row", () => {
+    /** Pretend an image has loaded at the given natural size. */
+    function load(alt: string, width: number, height: number) {
+      const image = screen.getByAltText(alt);
+      Object.defineProperty(image, "naturalWidth", { value: width });
+      Object.defineProperty(image, "naturalHeight", { value: height });
+      fireEvent.load(image);
+    }
+
+    /** The panel holding an image and its label, which carries the share. */
+    function panelOf(alt: string): HTMLElement {
+      const panel = screen
+        .getByAltText(alt)
+        .closest<HTMLElement>('[class*="imagePanel"]');
+      if (!panel) throw new Error(`no panel for ${alt}`);
+      return panel;
+    }
+
+    it("gives each image a share of the row that follows its own shape", () => {
+      renderWithMantine(
+        <QuestionView
+          item={uniformItem}
+          selectedOption={null}
+          onSelectOption={() => {}}
+        />,
+      );
+
+      // Same height, different widths: the heights come out equal only
+      // if the narrower picture gets the narrower column
+      load("White light", 219, 189);
+      load("NBI", 235, 189);
+
+      expect(
+        Number(panelOf("White light").style.getPropertyValue("--image-ratio")),
+      ).toBeCloseTo(219 / 189);
+      expect(
+        Number(panelOf("NBI").style.getPropertyValue("--image-ratio")),
+      ).toBeCloseTo(235 / 189);
+
+      const row = panelOf("NBI").parentElement;
+      expect(Number(row?.style.getPropertyValue("--row-ratio"))).toBeCloseTo(
+        (219 + 235) / 189,
+      );
+    });
+
+    it("assumes a common shape until an image has loaded", () => {
+      renderWithMantine(
+        <QuestionView
+          item={uniformItem}
+          selectedOption={null}
+          onSelectOption={() => {}}
+        />,
+      );
+
+      expect(
+        Number(panelOf("NBI").style.getPropertyValue("--image-ratio")),
+      ).toBeCloseTo(4 / 3);
+    });
+
+    it("ignores an image that reports no size", () => {
+      renderWithMantine(
+        <QuestionView
+          item={uniformItem}
+          selectedOption={null}
+          onSelectOption={() => {}}
+        />,
+      );
+
+      load("NBI", 0, 0);
+
+      expect(
+        Number(panelOf("NBI").style.getPropertyValue("--image-ratio")),
+      ).toBeCloseTo(4 / 3);
+    });
+
+    it("puts two images in a row and the third on the next", () => {
+      const three: CandidateItem = {
+        ...uniformItem,
+        images: [
+          ...uniformItem.images,
+          { key: "img3", label: "Close up", url: "/img3.png" },
+        ],
+      };
+      renderWithMantine(
+        <QuestionView
+          item={three}
+          selectedOption={null}
+          onSelectOption={() => {}}
+        />,
+      );
+
+      expect(panelOf("White light").parentElement).toBe(
+        panelOf("NBI").parentElement,
+      );
+      expect(panelOf("Close up").parentElement).not.toBe(
+        panelOf("NBI").parentElement,
+      );
+    });
+
+    it("leaves a single image out of any row", () => {
+      const one: CandidateItem = {
+        ...uniformItem,
+        images: [uniformItem.images[0]],
+      };
+      renderWithMantine(
+        <QuestionView
+          item={one}
+          selectedOption={null}
+          onSelectOption={() => {}}
+        />,
+      );
+
+      expect(
+        screen.getByAltText("White light").closest('[class*="imageRow"]'),
+      ).toBeNull();
+    });
   });
 
   it("renders question number", () => {

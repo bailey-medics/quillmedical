@@ -6,7 +6,8 @@
  * - variable: item-provided images, text, and options
  *
  * Layout order:
- * 1. Images (max 2 per row on desktop, stacked on mobile)
+ * 1. Images (max 2 per row on desktop, stacked on mobile). Images sharing
+ *    a row are drawn at the same height, whatever their shapes.
  * 2. Question title (e.g. "Question 1")
  * 3. Patient history text (if any)
  * 4. Answer options
@@ -17,7 +18,8 @@
  * the ribbon, through TeachingLayout's `ribbonRight`.
  */
 
-import { Box, Image, SimpleGrid, Stack } from "@mantine/core";
+import { Box, Image, Stack } from "@mantine/core";
+import { useState } from "react";
 import BaseCard from "@/components/base-card/BaseCard";
 import PreviousNextButton from "@components/button/PreviousNextButton";
 import RadioField from "@/components/form/RadioField";
@@ -51,23 +53,86 @@ interface QuestionViewProps {
   submitting?: boolean;
 }
 
-function ImagePanel({ image, single }: { image: ItemImage; single: boolean }) {
+/** How many images share a row on a wide screen */
+const IMAGES_PER_ROW = 2;
+
+/** Width over height assumed for an image until it has loaded */
+const DEFAULT_RATIO = 4 / 3;
+
+/** One image on its own, at its natural shape */
+function SingleImage({ image }: { image: ItemImage }) {
   return (
-    <Stack gap="xs" align="center" className={classes.imagePanel}>
-      <Box
-        className={
-          single ? classes.imageWrapperSingle : classes.imageWrapperMulti
-        }
-      >
+    <Stack gap="xs" align="center">
+      <Box className={classes.imageWrapperSingle}>
         <Image
           src={image.url}
           alt={image.label ?? "Question image"}
-          className={single ? classes.imageSingle : classes.image}
+          className={classes.imageSingle}
         />
       </Box>
       {image.label && <BodyTextInline>{image.label}</BodyTextInline>}
     </Stack>
   );
+}
+
+/**
+ * Images side by side at one height.
+ *
+ * Each takes a share of the row's width in proportion to its own width
+ * over height, which is what makes the heights come out equal with no
+ * cropping and no bars: a narrower picture gets a narrower column. The
+ * shapes are read from the images as they load.
+ */
+function ImageRow({ images }: { images: ItemImage[] }) {
+  const [ratios, setRatios] = useState<Record<string, number>>({});
+  const ratioOf = (image: ItemImage) => ratios[image.url] ?? DEFAULT_RATIO;
+  const rowRatio = images.reduce((sum, image) => sum + ratioOf(image), 0);
+
+  return (
+    <Box
+      className={
+        images.length < IMAGES_PER_ROW
+          ? `${classes.imageRow} ${classes.imageRowPartial}`
+          : classes.imageRow
+      }
+      __vars={{ "--row-ratio": String(rowRatio) }}
+    >
+      {images.map((image) => (
+        <Stack
+          key={image.key}
+          gap="xs"
+          align="center"
+          className={classes.imagePanel}
+          __vars={{ "--image-ratio": String(ratioOf(image)) }}
+        >
+          <Box className={classes.imageWrapperMulti}>
+            <Image
+              src={image.url}
+              alt={image.label ?? "Question image"}
+              className={classes.image}
+              onLoad={(event) => {
+                const { naturalWidth, naturalHeight } = event.currentTarget;
+                if (naturalWidth > 0 && naturalHeight > 0) {
+                  const ratio = naturalWidth / naturalHeight;
+                  setRatios((known) => ({ ...known, [image.url]: ratio }));
+                }
+              }}
+            />
+          </Box>
+          {image.label && <BodyTextInline>{image.label}</BodyTextInline>}
+        </Stack>
+      ))}
+    </Box>
+  );
+}
+
+/** Split a list into rows of at most `size` */
+function inRows<T>(items: T[], size: number): T[][] {
+  const rows: T[][] = [];
+  for (let start = 0; start < items.length; start += size) {
+    rows.push(items.slice(start, start + size));
+  }
+  return rows;
 }
 
 export function QuestionView({
@@ -86,16 +151,16 @@ export function QuestionView({
   return (
     <Stack gap="lg">
       {/* Images */}
-      {item.images.length > 0 && (
-        <SimpleGrid cols={{ base: 1, sm: item.images.length > 1 ? 2 : 1 }}>
-          {item.images.map((img) => (
-            <ImagePanel
-              key={img.key}
-              image={img}
-              single={item.images.length === 1}
+      {item.images.length === 1 && <SingleImage image={item.images[0]} />}
+      {item.images.length > 1 && (
+        <Stack gap="md">
+          {inRows(item.images, IMAGES_PER_ROW).map((row) => (
+            <ImageRow
+              key={row.map((image) => image.key).join("|")}
+              images={row}
             />
           ))}
-        </SimpleGrid>
+        </Stack>
       )}
 
       {/* Question title */}
