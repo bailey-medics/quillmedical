@@ -13,70 +13,58 @@ Quill Medical runs on one GCP project, in **europe-west2** (London). Three earli
 
 Only app is deployed. Staging, teaching and production were retired and their configurations removed; only `infra/environments/app/` remains. See [Retired environments](#retired-environments) below.
 
-!!! note "The diagram and the setup log below are older than this"
-    The architecture diagram, and the steps under "What has been set up", were written when staging, teaching and production existed. Today there is one load balancer, in the app project, serving `app.quill-medical.com` and the landing page at `quill-medical.com`.
+!!! note "The setup log below is older than this"
+    The steps under "What has been set up" were written when staging, teaching and production existed. Today there is one load balancer, in the app project, serving `app.quill-medical.com` and the landing page at `quill-medical.com`.
 
 ## Architecture
 
 ```
-                        ┌──────────────────────────┐
-                        │   Cloud DNS              │
-                        │   quill-medical.com      │
-                        └────────────┬─────────────┘
-                                     │
-         ┌───────────────────────────┼───────────────────┐
-         │                           │                   │
-    quill-medical.com    staging.quill-    teaching.quill-
-    (landing page)       medical.com       medical.com
-         │                           │                   │
-         │              ┌────────────▼────────┐   ┌──────▼───────┐
-         └──────────────►   Global LB        │   │  Global LB   │
-                        │   Cloud Armor      │   │  Cloud Armor │
-                        │   rate limiting    │   │  rate limit  │
-                        └──┬───────┬───┬─────┘   └──┬────────┬──┘
-                           │       │   │            │        │
-                        /api/*   /*   landing     /api/*    /*
-                           │       │   page         │        │
-                        ┌──▼──┐ ┌──▼──┐ ┌──┐    ┌──▼──┐  ┌──▼──┐
-                        │Back │ │Front│ │GCS│   │Back │  │Front│
-                        │end  │ │end  │ │   │   │end  │  │end  │
-                        └──┬──┘ └─────┘ └───┘   └──┬──┘  └─────┘
-                           │                       │
-                     ┌─────┼─────────┐          ┌──▼────────┐
-                     │     │         │          │Cloud SQL  │
-                  ┌──▼──┐┌─▼──┐┌────▼┐         │Auth only  │
-                  │Auth ││FHIR││EHR- │         └───────────┘
-                  │DB   ││DB  ││base │
-                  └─────┘└────┘└─────┘
-                  3× Cloud SQL instances
-                           │
-                        ┌──▼────────┐
-                        │HAPI FHIR  │
-                        │EHRbase VM │
-                        └───────────┘
-
-                         Staging                 Teaching
-
-  Production: HIBERNATED (project exists, all resources destroyed)
+              ┌──────────────────────────┐
+              │ Cloud DNS                │
+              │ quill-medical.com zone   │
+              └─────────────┬────────────┘
+                            │
+  app.quill-medical.com     │    quill-medical.com
+                            │    www.quill-medical.com
+     ┌──────────────────────▼──────────────────────┐
+     │ Global HTTPS load balancer                  │
+     │ one IP, one certificate                     │
+     │ routes by host, then by path                │
+     └─┬─────────────┬─────────────┬─────────────┬─┘
+       │             │             │             │
+    /api/*      /videos/*         /*       every path
+       │             │             │             │
+  ┌────▼─────┐  ┌────▼─────┐  ┌────▼─────┐  ┌────▼─────┐
+  │ Backend  │  │ Videos   │  │ Frontend │  │ Landing  │
+  │ Cloud Run│  │ bucket   │  │ Cloud Run│  │ bucket   │
+  │ Cloud    │  │ Cloud CDN│  │ Cloud    │  │ Cloud CDN│
+  │ Armor    │  │          │  │ Armor    │  │          │
+  └────┬─────┘  └──────────┘  └──────────┘  └──────────┘
+       │
+  ┌────▼─────┐
+  │ Cloud SQL│
+  │ core DB  │
+  └──────────┘
 ```
 
-Each environment has:
+The first three routes are on the app host, and the fourth is on the landing hosts. The load balancer's four routes (`infra/modules/load-balancer/main.tf`):
 
-- **Global HTTPS Load Balancer** – path-based routing, Cloud Armor rate limiting, Google-managed SSL
-- **Cloud Run** – backend (FastAPI) and frontend (React/Vite), auto-scaling
-- **Cloud SQL** – PostgreSQL for the auth database (all environments)
+- **`/api/*` on the app host** – the backend Cloud Run service (FastAPI)
+- **`/videos/*` on the app host** – the teaching videos bucket, through Cloud CDN, which checks a signed cookie
+- **Everything else on the app host** – the frontend Cloud Run service (Caddy serving the built React app)
+- **Every path on `quill-medical.com` and `www.quill-medical.com`** – the landing site's bucket, through Cloud CDN
+
+The Cloud Armor policy, a rate limit, is attached to the two Cloud Run backend services only. The two buckets have none.
+
+The app environment has:
+
+- **Global HTTPS Load Balancer** – host and path routing, Google-managed SSL
+- **Cloud Run** – backend (FastAPI) and frontend (React/Vite), auto-scaling, plus the admin, transcode and caption jobs
+- **Cloud SQL** – one PostgreSQL instance, the core database. There is no FHIR or EHRbase database (`enable_fhir = false`)
+- **Cloud Storage** – the landing site, the teaching videos, the teaching content (question bank YAML and images, deployed by CI from the `eoeeta-teaching` and `respiratory-teaching` content repos) and the clinician passport
 - **Secret Manager** – JWT keys, database passwords, VAPID keys
 - **VPC** – private networking, no public database IPs
 - **Monitoring** – uptime checks on `/api/health` with email alerts
-
-Production and staging also have:
-
-- **Cloud SQL** – additional FHIR and EHRbase databases
-- **Compute Engine** – e2-small VM running HAPI FHIR and EHRbase via Docker
-
-Teaching additionally has:
-
-- **Cloud Storage** – image bucket for educational content (question bank YAML + images deployed by CI from the `eoeeta-teaching` and `respiratory-teaching` content repos)
 
 ## What has been set up
 

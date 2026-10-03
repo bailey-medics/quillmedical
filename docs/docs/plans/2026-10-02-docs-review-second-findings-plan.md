@@ -176,23 +176,36 @@ phase turns what was done by hand into the tooling.
       which is where the stack tooling's behaviour is written down. Under
       "What a stack of sixteen found".
 
-## Phase 5: Passages in the documentation that need a decision
+## Phase 5: Passages in the documentation
 
-Left in place by the review, because each needs something the code cannot
-supply.
+Left in place by the review, because each needed something the code alone
+did not supply. Three could be settled from the code and a real run after
+all; the fourth is a rule to decide and has moved to Phase 7.
 
-- [ ] **The architecture diagram in `docs/docs/infrastructure/gcp.md`**
+- [x] **The architecture diagram in `docs/docs/infrastructure/gcp.md`**
       still draws staging, teaching and a hibernated production. A note
       above it now says it is out of date. Redraw it for the one `app`
       environment, with the load balancer's four routes: `/api/*`,
       `/videos/*`, the application, and the landing site by hostname.
 
-- [ ] **Four links at the foot of `docs/docs/concepts/cbac.md`**, under
+      Redrawn from `infra/modules/load-balancer/main.tf` and
+      `infra/environments/app/terraform.tfvars`. The list under it, which
+      said what "each environment" has, now describes the one there is,
+      and the note above covers only the setup log.
+
+- [x] **Four links at the foot of `docs/docs/concepts/cbac.md`**, under
       "Related Documentation", point at paths that do not exist under
       `docs/`. Decide what each should point at, a generated code page or a
       file on GitHub, or remove the section.
 
-- [ ] **The example change strings in
+      Pointed at the files themselves by relative path, three levels up.
+      That is what the other pages under `docs/docs/` do: forty-seven
+      links of that shape and none to a GitHub URL. The second link named
+      `main.py` for a `/prescriptions/controlled` example that lives in
+      the docstring of `has_competency` in `backend/app/deps.py`, so it
+      points there now.
+
+- [x] **The example change strings in
       `docs/docs/backend/api-compatibility-testing.md`** would fail the
       validator they illustrate. A real string is the change id, the
       operation, the path and oasdiff's own description; the examples stop
@@ -200,13 +213,18 @@ supply.
       including the generated file's name and contents, which the guide
       also shows in a form the script does not produce.
 
-- [ ] **`docs/docs/backend/api-compatibility.md` says a later edit to a
-      decision file's `reason` goes "only via the same
-      `api-breaking-change-review` gate".** That gate job runs only when
-      oasdiff finds a breaking change, so a `reason`-only edit never meets
-      it. Decide which is meant: if the rule is wanted, something has to
-      enforce it; if it is not, change the sentence, and the matching line
-      in `.github/instructions/backend.instructions.md`.
+      Run on 2 October 2026 with `MUTATE_REMOVE_MESSAGE_1`, oasdiff 1.29.1
+      and the real `new_compat_decision.py`, and the guide now shows what
+      came out. The run found two more faults in the guide:
+
+    - its step 6 ran the validator before the decision file was
+      committed. The validator finds new files with `git diff` against
+      the branch's base, so it does not see an uncommitted one and
+      reports the same failure. The commit now comes first.
+    - `validate-compat-files.sh` uses `declare -A`, which macOS's bash
+      3.2 does not have, so on a Mac it stops part-way through its rules.
+      The guide now says it needs bash 4 or later. The passing output in
+      the guide came from the script run in the Linux shell-test image.
 
 ## Phase 6: The docs review skill
 
@@ -233,7 +251,16 @@ supply.
       page and could only raise it as a question. Say that such a fault is
       reported, not fixed.
 
-## Phase 7: Two things to decide before any code
+## Phase 7: Three things to decide before any code
+
+- [ ] **Whether a later edit to a decision file's `reason` needs the
+      gate.** `docs/docs/backend/api-compatibility.md` says such an edit
+      goes "only via the same `api-breaking-change-review` gate". That
+      gate job runs only when oasdiff finds a breaking change, so a
+      `reason`-only edit never meets it. Decide which is meant: if the
+      rule is wanted, something has to enforce it; if it is not, change
+      the sentence, and the matching line in
+      `.github/instructions/backend.instructions.md`.
 
 - [ ] **Which organisation a content sync is for.**
       `POST /api/ci/teaching/sync` in `backend/app/main.py` imports every
