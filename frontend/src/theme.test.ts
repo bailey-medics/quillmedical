@@ -127,6 +127,14 @@ describe("cssVariablesResolver", () => {
     ).toBeGreaterThanOrEqual(AA_TEXT);
   });
 
+  it("softens the error colour for a placeholder in an errored field", () => {
+    // Derived from --error-color rather than a second red, so it follows
+    // the error colour in both schemes and thins towards the field.
+    expect(vars.variables["--error-placeholder-color"]).toBe(
+      "color-mix(in srgb, var(--error-color) 55%, transparent)",
+    );
+  });
+
   it("lets app overrides win over Mantine's values", () => {
     // Mantine's resolver sets --mantine-color-error to a red shade; the
     // app overrides it with its accessible error token.

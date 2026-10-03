@@ -119,6 +119,11 @@ Every text colour meets WCAG AA (4.5:1) on the surfaces it is used on, in both c
 
 Input placeholders use `--mantine-color-placeholder`, `gray.4`. It is not a text colour for content and is not in `textColours`: at 1.5:1 on white it would fail the Storybook accessibility check anywhere it carried real text.
 
+The placeholder colours have a list of their own, `placeholderColours` in `styles/semanticColours.ts`, shown inside real fields under "Placeholder colours" in the Foundations/Colours story:
+
+- **default** – `var(--mantine-color-placeholder)`: the hint in an empty field
+- **error** – `var(--error-placeholder-color)`: the hint in an empty field that is in error. It is `--error-color` at 55%, part transparent, so it stays softer than the field's red border in both colour schemes. Mantine's default paints it the full error colour, which made an empty field look as if something wrong had been typed into it. Each form field's CSS module sets it on `[data-error]`
+
 > **Accessibility note:** Error text is an orange-red with an alert circle icon rather than red, giving a distinct signal for users with red-green colour vision deficiency. The icon ensures error state is communicated by shape as well as colour.
 
 ## Typography components

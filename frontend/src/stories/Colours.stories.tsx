@@ -2,14 +2,15 @@
  * Foundations/Colours Story
  *
  * Visual reference for the app's semantic colour palette.
- * Documents brand colours, status colours, and text colours
- * so developers know which tokens to use.
+ * Documents brand colours, status colours, text colours and placeholder
+ * colours so developers know which tokens to use.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Badge, Box, Group, Stack, Text } from "@mantine/core";
 import {
   brand,
+  placeholderColours,
   statusColours,
   statusTextColour,
   textColours,
@@ -18,6 +19,7 @@ import {
 import { primaryScale, secondaryScale, greyScale } from "@/theme";
 import { StoryNote } from "@/stories/variants";
 import PageHeader from "@components/page-header";
+import { TextField } from "@components/form";
 import Image from "@components/images/Image";
 import publicAsset from "@lib/publicAsset";
 
@@ -205,6 +207,8 @@ const statusEntries = Object.entries(statusColours) as [
 
 const textEntries = Object.entries(textColours);
 
+const placeholderEntries = Object.entries(placeholderColours);
+
 /** Full colour palette overview. */
 export const Overview: Story = {
   render: () => (
@@ -348,6 +352,49 @@ export const Overview: Story = {
         <Stack gap="md" mt="xl">
           {textEntries.map(([name, config]) => (
             <TextSwatch key={name} name={name} config={config} />
+          ))}
+        </Stack>
+      </div>
+
+      <div>
+        <PageHeader title="Placeholder colours" />
+        <StoryNote>
+          The hint in an empty field. Fainter than any text colour on purpose,
+          so neither meets 4.5:1 and neither is ever used for content: they are
+          shown here where they belong, in a field. A field in error keeps its
+          placeholder softer than its red border, so an empty field does not
+          look as if something wrong was typed into it.
+        </StoryNote>
+        <Stack gap="lg" mt="xl">
+          {placeholderEntries.map(([name, config]) => (
+            // The field on the left and its notes on the right, as the
+            // swatches above are laid out. Only on a screen too narrow
+            // for both do the notes wrap beneath the field.
+            <Group key={name} gap="md" align="center">
+              <Box w="20rem">
+                <TextField
+                  label={
+                    name === "error" ? "A field in error" : "An empty field"
+                  }
+                  placeholder="Placeholder text"
+                  error={
+                    name === "error" ? "This field is required" : undefined
+                  }
+                  // Nothing is typed here: the field is the sample
+                  readOnly
+                />
+              </Box>
+              {/* Takes the rest of the row and wraps its own words, so a
+                  long note stays beside its field. Left to its natural
+                  width, the error note was too wide for the row and
+                  dropped beneath the field. */}
+              <Box flex={1} miw="14rem">
+                <StoryNote mt={0}>{name.toUpperCase()}</StoryNote>
+                <StoryNote mt={0}>
+                  {config.value} – {config.usage}
+                </StoryNote>
+              </Box>
+            </Group>
           ))}
         </Stack>
       </div>
