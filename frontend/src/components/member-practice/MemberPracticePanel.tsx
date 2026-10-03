@@ -47,7 +47,8 @@ import type { FormSubmitResult } from "@/components/form/Form";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import type { MemberPractice } from "@/domains/orgUnit";
-import { ACTIVE_COMPETENCIES, ALL_COMPETENCIES } from "@/types/cbac";
+import { ACTIVE_COMPETENCIES } from "@/types/cbac";
+import { competencyName, rowsFor, type CompetencyRow } from "./competencyRows";
 import GrantCompetencyModal from "./GrantCompetencyModal";
 
 /** Props for {@link MemberPracticePanel}. */
@@ -83,24 +84,6 @@ export interface PracticeChanges {
 
 /** One switch per competency held, keyed by its id: on means authorised. */
 type PracticeValues = Record<string, boolean>;
-
-/** One row in either table: a competency and its name. */
-interface CompetencyRow {
-  id: string;
-  name: string;
-}
-
-/** What a competency id is called, or the id when it is unknown. */
-function competencyName(id: string): string {
-  return ALL_COMPETENCIES.find((entry) => entry.id === id)?.display_name ?? id;
-}
-
-/** Rows for *ids*, sorted by name so a long list reads alphabetically. */
-function rowsFor(ids: Iterable<string>): CompetencyRow[] {
-  return [...ids]
-    .map((id) => ({ id, name: competencyName(id) }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-}
 
 /** Which switches differ from what is saved, split by direction. */
 function changesFrom(
