@@ -3,19 +3,23 @@
 The acceptance criteria in ``test_org_scoped_access_criteria.py`` say what the
 model must express. These test the resolver itself: the intersection with a
 person's ceiling, both query directions, the refusal to guess a place, and
-the constraint that keeps a row pointing at exactly one thing.
+the constraint that keeps a row pointing at exactly one thing, and the two
+writers every route that sets practice goes through.
 """
 
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.cbac.scoped import (
+    authorise_practice,
     can_practise_at,
     competencies_at,
     who_can_practise_at,
+    withdraw_practice,
 )
 from app.models import OrgUnit, PractisingCompetency, User
 from app.security import hash_password
@@ -284,3 +288,125 @@ class TestTheDatabaseKeepsAGrantToOnePlace:
         with pytest.raises(IntegrityError):
             db_session.commit()
         db_session.rollback()
+
+
+def _rows(
+    db: Session, user: User, unit: OrgUnit
+) -> list[PractisingCompetency]:
+    return list(
+        db.scalars(
+            select(PractisingCompetency).where(
+                PractisingCompetency.user_id == user.id,
+                PractisingCompetency.org_unit_id == unit.id,
+            )
+        ).all()
+    )
+
+
+class TestWritingAPracticeRow:
+    """The one pair of writers the org_unit and user routes share."""
+
+    def test_authorising_writes_the_row_and_names_who_decided(
+        self, db_session
+    ):
+        org = _org(db_session, "Trust")
+        doctor = _user(db_session, "doc")
+        admin = _user(db_session, "admin")
+
+        written = authorise_practice(
+            db_session,
+            user_id=doctor.id,
+            org_unit_id=org.id,
+            competency="access_patient_records",
+            authorised_by=admin.id,
+        )
+
+        assert written is True
+        (row,) = _rows(db_session, doctor, org)
+        assert row.competency == "access_patient_records"
+        assert row.authorised_by == admin.id
+        assert can_practise_at(
+            db_session, doctor, "access_patient_records", org_unit_id=org.id
+        )
+
+    def test_authorising_twice_writes_nothing_and_keeps_the_author(
+        self, db_session
+    ):
+        org = _org(db_session, "Trust")
+        doctor = _user(db_session, "doc")
+        first = _user(db_session, "first")
+        second = _user(db_session, "second")
+        authorise_practice(
+            db_session,
+            user_id=doctor.id,
+            org_unit_id=org.id,
+            competency="access_patient_records",
+            authorised_by=first.id,
+        )
+
+        written = authorise_practice(
+            db_session,
+            user_id=doctor.id,
+            org_unit_id=org.id,
+            competency="access_patient_records",
+            authorised_by=second.id,
+        )
+
+        assert written is False
+        (row,) = _rows(db_session, doctor, org)
+        assert row.authorised_by == first.id
+
+    def test_authorising_beyond_the_ceiling_is_written_and_does_nothing(
+        self, db_session
+    ):
+        org = _org(db_session, "Trust")
+        patient = _user(db_session, "pat", profession="patient")
+        admin = _user(db_session, "admin")
+
+        written = authorise_practice(
+            db_session,
+            user_id=patient.id,
+            org_unit_id=org.id,
+            competency="certify_death",
+            authorised_by=admin.id,
+        )
+
+        assert written is True
+        assert not can_practise_at(
+            db_session, patient, "certify_death", org_unit_id=org.id
+        )
+
+    def test_withdrawing_removes_only_that_row(self, db_session):
+        org = _org(db_session, "Trust")
+        elsewhere = _org(db_session, "Other Trust")
+        doctor = _user(db_session, "doc")
+        _authorise(db_session, doctor, "access_patient_records", org=org)
+        _authorise(db_session, doctor, "certify_death", org=org)
+        _authorise(db_session, doctor, "access_patient_records", org=elsewhere)
+
+        withdraw_practice(
+            db_session,
+            user_id=doctor.id,
+            org_unit_id=org.id,
+            competency="access_patient_records",
+        )
+
+        assert [r.competency for r in _rows(db_session, doctor, org)] == [
+            "certify_death"
+        ]
+        assert len(_rows(db_session, doctor, elsewhere)) == 1
+
+    def test_withdrawing_what_was_never_authorised_is_not_an_error(
+        self, db_session
+    ):
+        org = _org(db_session, "Trust")
+        doctor = _user(db_session, "doc")
+
+        withdraw_practice(
+            db_session,
+            user_id=doctor.id,
+            org_unit_id=org.id,
+            competency="access_patient_records",
+        )
+
+        assert _rows(db_session, doctor, org) == []
