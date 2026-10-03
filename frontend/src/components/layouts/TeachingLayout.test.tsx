@@ -32,6 +32,7 @@ vi.mock("@components/ribbon/TopRibbon", () => ({
     patient,
     showSearch,
     isNarrow,
+    rightSection,
   }: {
     onBurgerClick?: () => void;
     isLoading: boolean;
@@ -39,13 +40,16 @@ vi.mock("@components/ribbon/TopRibbon", () => ({
     navOpen: boolean;
     isNarrow: boolean;
     showSearch: boolean;
+    rightSection?: React.ReactNode;
   }) => (
     <div
       data-testid="top-ribbon"
       data-patient={patient}
       data-show-search={showSearch}
       data-narrow={isNarrow}
-    />
+    >
+      {rightSection}
+    </div>
   ),
 }));
 
@@ -253,6 +257,18 @@ describe("TeachingLayout", () => {
     const ribbon = screen.getByTestId("top-ribbon");
     expect(ribbon).not.toHaveAttribute("data-patient");
     expect(ribbon).toHaveAttribute("data-show-search", "false");
+  });
+
+  it("puts ribbonRight in the ribbon, not in the page", () => {
+    renderWithMantine(
+      <TeachingLayout ribbonRight={<div>Exam controls</div>}>
+        <div>Content</div>
+      </TeachingLayout>,
+    );
+
+    const controls = screen.getByText("Exam controls");
+    expect(screen.getByTestId("top-ribbon")).toContainElement(controls);
+    expect(screen.getByRole("main")).not.toContainElement(controls);
   });
 
   it("renders footer with auth username by default", () => {

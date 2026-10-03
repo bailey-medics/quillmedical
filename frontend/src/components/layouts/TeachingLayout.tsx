@@ -42,6 +42,8 @@ export interface TeachingLayoutProps {
   children: ReactNode;
   /** Override footer text (defaults to auth context) */
   footerText?: string;
+  /** Content for the right-hand end of the ribbon, such as an exam's timer */
+  ribbonRight?: ReactNode;
 }
 
 export default function TeachingLayout({
@@ -49,6 +51,7 @@ export default function TeachingLayout({
   drawerContent,
   children,
   footerText,
+  ribbonRight,
 }: TeachingLayoutProps) {
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
@@ -115,6 +118,7 @@ export default function TeachingLayout({
           // attempt above all
           isNarrow={hasSidebar && navCollapsed}
           showSearch={false}
+          rightSection={ribbonRight}
         />
       </Box>
 

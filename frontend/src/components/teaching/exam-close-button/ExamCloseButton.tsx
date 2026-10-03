@@ -2,7 +2,7 @@
  * ExamCloseButton Component
  *
  * A button + confirmation modal for ending an exam early.
- * Placed next to the timer in QuestionView during assessments.
+ * Placed next to the timer in the ribbon during an assessment.
  */
 
 import { Badge, Text } from "@mantine/core";

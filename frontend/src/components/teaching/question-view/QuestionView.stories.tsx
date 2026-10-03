@@ -62,7 +62,7 @@ const meta: Meta<typeof QuestionView> = {
     docs: {
       description: {
         component:
-          "Displays a teaching assessment question with images, options, timer, and progress bar. Supports uniform (shared options) and variable (per-item options) question types.",
+          "Displays a teaching assessment question with images, options, and progress bar. Supports uniform (shared options) and variable (per-item options) question types.",
       },
     },
     layout: "fullscreen",
@@ -89,12 +89,6 @@ const meta: Meta<typeof QuestionView> = {
       </>
     ),
   ],
-  args: {
-    timeLimitMinutes: 75,
-    startedAt: new Date().toISOString(),
-    onExpire: () => {},
-    onCloseExam: () => {},
-  },
 };
 
 export default meta;

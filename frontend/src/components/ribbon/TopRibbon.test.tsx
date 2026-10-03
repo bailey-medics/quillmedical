@@ -445,6 +445,31 @@ describe("TopRibbon Component", () => {
     });
   });
 
+  describe("Right section", () => {
+    it("renders a right section beside the Quill name", () => {
+      renderWithRouter(
+        <TopRibbon
+          onBurgerClick={vi.fn()}
+          patient={null}
+          isLoading={false}
+          showSearch={false}
+          rightSection={<div>Exam controls</div>}
+        />,
+      );
+
+      expect(screen.getByText("Exam controls")).toBeInTheDocument();
+      expect(screen.getByAltText("Quill Medical")).toBeInTheDocument();
+    });
+
+    it("renders no right-hand slot when there is nothing to put in it", () => {
+      const { container } = renderWithRouter(
+        <TopRibbon onBurgerClick={vi.fn()} patient={null} isLoading={false} />,
+      );
+
+      expect(container.querySelector('[class*="end"]')).toBeNull();
+    });
+  });
+
   it("lets the keyboard reach the patient details", async () => {
     // A button rather than a clickable div: Enter does what a click does.
     const user = userEvent.setup();

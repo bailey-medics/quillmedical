@@ -15,6 +15,7 @@ import QuillName from "@components/images/QuillName";
 import ProfilePic from "@components/profile-pic/ProfilePic";
 import { Group, Skeleton, Text, UnstyledButton } from "@mantine/core";
 import BurgerButton from "@/components/button/BurgerButton";
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import classes from "./TopRibbon.module.scss";
 
@@ -42,6 +43,8 @@ type Props = {
   examMode?: boolean;
   /** Whether to show the search field (hidden on non-clinical deployments) */
   showSearch?: boolean;
+  /** Content pinned to the right-hand end, such as an exam's timer */
+  rightSection?: ReactNode;
 };
 
 /**
@@ -143,6 +146,7 @@ export default function TopRibbon({
   onPatientDoubleClick,
   examMode = false,
   showSearch = true,
+  rightSection,
 }: Props) {
   const showBrand = !isNarrow || examMode;
   const search = useSearch();
@@ -178,6 +182,8 @@ export default function TopRibbon({
         {showBrand && (
           <Link
             to="/"
+            // On a narrow ribbon the name gives way to the right section
+            className={rightSection ? classes.brandYields : undefined}
             style={{
               display: "flex",
               alignItems: "center",
@@ -213,6 +219,7 @@ export default function TopRibbon({
             <SearchField value={search.query} onChange={search.setQuery} />
           </div>
         )}
+        {rightSection && <div className={classes.end}>{rightSection}</div>}
       </div>
     </>
   );
