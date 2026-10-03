@@ -120,6 +120,7 @@ from app.marketing.resend_contacts import (
     remove_contact,
     sync_contact,
 )
+from app.marketing.router import router as marketing_router
 from app.messaging import (
     MessagingError,
     add_participant,
@@ -294,6 +295,7 @@ router = APIRouter(prefix=settings.API_PREFIX)
 
 router.include_router(analytics_router)
 router.include_router(feedback_router)
+router.include_router(marketing_router)
 router.include_router(push_router)
 
 # Permanent API-compatibility test harness (item 19) – always false in real

@@ -172,7 +172,7 @@ them; the other ticks them off.
 
 ## Phase 4: Hearing from Resend
 
-- [ ] **`POST /api/marketing/resend-webhook`,** public, in a new
+- [x] **`POST /api/marketing/resend-webhook`,** public, in a new
       `backend/app/marketing/router.py`. Somebody who clicks "unsubscribe"
       in an email changes their topic in Resend, and Quill would otherwise
       go on showing the Settings switch as on. The route verifies the
@@ -188,14 +188,19 @@ them; the other ticks them off.
       of the Newsletter topic. The `resend` SDK's `Webhooks.verify` checks
       the signature and needs no API key, so it is safe to use here.
       An address with no user (a public site signup) is ignored with a 200.
-      Rate limited with the existing limiter. It needs no CSRF token, being
-      called by Resend and not a browser: mark it as an intentional
-      exception where the others are listed.
+      Rate limited with the existing limiter, at 120 a minute. It needs no
+      CSRF token, being called by Resend and not a browser. There turned
+      out to be no list of intentionally public routes to add it to, so
+      the exception is a comment on the route itself. As built, it also
+      answers 502 when Resend cannot be asked about the topics, so that
+      Resend sends the event again, and it treats `contact.deleted` as an
+      opt-out that clears `marketing_synced_at`: the retry then puts the
+      contact back, opted out, so Resend goes on holding the refusal.
 
-- [ ] **Give the route a typed response model** in
+- [x] **Give the route a typed response model** in
       `backend/app/schemas/marketing.py`, as every route needs.
 
-- [ ] **Tests** in `backend/tests/test_marketing_webhook.py`: a valid
+- [x] **Tests** in `backend/tests/test_marketing_webhook.py`: a valid
       unsubscribe flips the column and writes a `resend` row; a bad or
       missing signature is 401 and changes nothing; an unknown address is
       200 and changes nothing; a repeat of the same event writes no second

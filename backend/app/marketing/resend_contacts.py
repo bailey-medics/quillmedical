@@ -175,6 +175,50 @@ def sync_contact(user: User) -> bool:
     return True
 
 
+def topic_subscription(email: str) -> str | None:
+    """What Resend holds for somebody on the newsletter topic.
+
+    Asked when Resend says a contact changed, because that message does
+    not say what the contact's topics now are.
+
+    Args:
+        email: The contact's address.
+
+    Returns:
+        ``"opt_in"`` or ``"opt_out"``, or None when Resend holds no answer
+        for the topic, has no such contact, or the settings are unset.
+
+    Raises:
+        MarketingSyncError: If Resend could not be reached or refused.
+    """
+    config = _config()
+    if config is None:
+        return None
+
+    contact = quote(email, safe="")
+    try:
+        with _client(config) as client:
+            response = client.get(f"/contacts/{contact}/topics")
+    except httpx.HTTPError as exc:
+        raise MarketingSyncError(
+            f"Resend could not be reached: {type(exc).__name__}"
+        ) from None
+    if response.status_code == 404:
+        return None
+    _check(response, "reading the contact's topics")
+
+    payload = response.json()
+    topics = payload.get("data") if isinstance(payload, dict) else None
+    if not isinstance(topics, list):
+        return None
+    for topic in topics:
+        if isinstance(topic, dict) and topic.get("id") == config.topic_id:
+            subscription = topic.get("subscription")
+            if subscription in ("opt_in", "opt_out"):
+                return str(subscription)
+    return None
+
+
 def remove_contact(email: str) -> bool:
     """Take somebody off the mailing list altogether.
 
