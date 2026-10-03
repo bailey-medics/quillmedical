@@ -820,6 +820,97 @@ class TestTheClinicalLead:
         )
         assert detail.json()["clinical_lead_id"] == person.id
 
+    def test_replacing_one(self, authenticated_superadmin_client, db_session):
+        """Handed over on the day it is decided.
+
+        The outgoing lead is stood down today and the incoming one starts
+        today. That used to find the post full, because somebody's last
+        day is still a day they hold it, and the route answered 500.
+        """
+        org = _org(db_session)
+        ward = _ward(db_session, org.id)
+        outgoing = _person(db_session, "outgoing")
+        incoming = _person(db_session, "incoming")
+        for person in (outgoing, incoming):
+            authenticated_superadmin_client.post(
+                f"/api/org-units/{ward.id}/members",
+                json={"user_id": person.id, "capacity": "staff"},
+            )
+        authenticated_superadmin_client.put(
+            f"/api/org-units/{ward.id}/clinical-lead",
+            json={"user_id": outgoing.id},
+        )
+
+        resp = authenticated_superadmin_client.put(
+            f"/api/org-units/{ward.id}/clinical-lead",
+            json={"user_id": incoming.id},
+        )
+
+        assert resp.status_code == 200, resp.text
+        detail = authenticated_superadmin_client.get(
+            f"/api/org-units/{ward.id}"
+        )
+        assert detail.json()["clinical_lead_id"] == incoming.id
+
+    def test_replacing_one_twice_in_a_day(
+        self, authenticated_superadmin_client, db_session
+    ):
+        """A mistake put right the same day: three leads, one after another."""
+        org = _org(db_session)
+        ward = _ward(db_session, org.id)
+        people = [
+            _person(db_session, name) for name in ("first", "second", "third")
+        ]
+        for person in people:
+            authenticated_superadmin_client.post(
+                f"/api/org-units/{ward.id}/members",
+                json={"user_id": person.id, "capacity": "staff"},
+            )
+
+        for person in people:
+            resp = authenticated_superadmin_client.put(
+                f"/api/org-units/{ward.id}/clinical-lead",
+                json={"user_id": person.id},
+            )
+            assert resp.status_code == 200, resp.text
+
+        detail = authenticated_superadmin_client.get(
+            f"/api/org-units/{ward.id}"
+        )
+        assert detail.json()["clinical_lead_id"] == people[-1].id
+
+    def test_a_post_that_refuses_somebody_is_a_409_not_a_500(
+        self, authenticated_superadmin_client, db_session
+    ):
+        """The post asks for a competency they may not practise here."""
+        org = _org(db_session)
+        ward = _ward(db_session, org.id)
+        person = _person(db_session)
+        authenticated_superadmin_client.post(
+            f"/api/org-units/{ward.id}/members",
+            json={"user_id": person.id, "capacity": "staff"},
+        )
+        db_session.add(
+            Position(
+                org_unit_id=ward.id,
+                kind="clinical_lead",
+                title="Clinical lead",
+                max_holders=1,
+                requires_competency="certify_death",
+            )
+        )
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.put(
+            f"/api/org-units/{ward.id}/clinical-lead",
+            json={"user_id": person.id},
+        )
+
+        assert resp.status_code == 409
+        assert resp.json()["detail"] == (
+            "That person cannot be made clinical lead here."
+        )
+
     def test_leaving_the_post_vacant(
         self, authenticated_superadmin_client, db_session
     ):
