@@ -485,6 +485,18 @@ preview-certificate bank="colonoscopy-optical-diagnosis-test":
     open certificate-preview.pdf
 
 
+alias ms := marketing-sync
+# Send unsynced marketing preferences to Resend (dev stack; retry after a failure)
+marketing-sync:
+    #!/usr/bin/env bash
+    {{initialise}} "marketing-sync"
+    # Needs the live stack's database, so it carries the worktree guard.
+    # In production the same code runs as the admin job's
+    # `marketing-sync` action.
+    just _worktree-guard quill_backend
+    docker exec quill_backend python -m app.marketing.sync
+
+
 alias m := migrate
 # Autogenerate a migration for this worktree's model changes (throwaway database)
 migrate message:

@@ -266,6 +266,17 @@ def run_migrations() -> int:
         return 1
 
 
+def marketing_sync() -> int:
+    """Tell Resend about everybody it has not yet been told about.
+
+    The retry for a marketing preference that could not reach Resend when
+    it was made. See ``app.marketing.sync``.
+    """
+    from app.marketing.sync import main as sync_main
+
+    return sync_main()
+
+
 def smoke_test() -> int:
     """Check a URL returns 200, from inside the VPC.
 
@@ -557,6 +568,10 @@ def delete_passport() -> int:
 
 
 ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
+    "marketing-sync": (
+        marketing_sync,
+        "Send unsynced marketing preferences to Resend",
+    ),
     "check-competency-seeding": (
         check_competency_seeding,
         "List users who would lose a competency when only rows count",

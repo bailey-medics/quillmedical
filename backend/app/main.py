@@ -115,6 +115,11 @@ from app.fhir_client import (
 )
 from app.log_context import request_id_var, user_id_var
 from app.logging_config import setup_logging
+from app.marketing.resend_contacts import (
+    MarketingSyncError,
+    remove_contact,
+    sync_contact,
+)
 from app.messaging import (
     MessagingError,
     add_participant,
@@ -1309,6 +1314,26 @@ def register(
     return DetailResponse(detail="created")
 
 
+def _sync_marketing_contact(user: User) -> None:
+    """Tell Resend what somebody chose, and carry on if it cannot be told.
+
+    Done once the address is verified and not at registration, so an
+    address somebody mistyped, or typed for somebody else, never reaches
+    the mailing list: its owner never clicks the link.
+
+    A failure is logged and swallowed. ``marketing_synced_at`` stays
+    empty, which is what ``app.marketing.sync`` goes back over, and the
+    thing the person came to do is not held up by a mailing list.
+
+    Args:
+        user: The person whose preference is sent.
+    """
+    try:
+        sync_contact(user)
+    except MarketingSyncError as exc:
+        logger.warning("Marketing sync failed for user %s: %s", user.id, exc)
+
+
 @router.post("/auth/verify-email", response_model=DetailResponse)
 @limiter.limit("10/minute")
 def verify_email(
@@ -1343,6 +1368,7 @@ def verify_email(
         return DetailResponse(detail="verified")
 
     user.email_verified = True
+    _sync_marketing_contact(user)
     return DetailResponse(detail="verified")
 
 
@@ -2489,6 +2515,19 @@ def deactivate_user(
         )
 
     user.is_active = False
+
+    # A closed account comes off the mailing list. Best effort: the
+    # account is closed whether or not Resend answers, and the sync mark
+    # is cleared so a reactivated account is sent again.
+    try:
+        remove_contact(user.email)
+    except MarketingSyncError as exc:
+        logger.warning(
+            "Could not remove user %s from the mailing list: %s",
+            user.id,
+            exc,
+        )
+    user.marketing_synced_at = None
 
     return UserIdActionOut(
         detail="deactivated",

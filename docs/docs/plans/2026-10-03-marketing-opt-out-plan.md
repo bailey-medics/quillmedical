@@ -38,6 +38,17 @@ them; the other ticks them off.
       names against Resend's webhook list when doing it: this plan was
       written from the documentation, not from a working webhook.
 
+- [ ] **Give the backend its four settings, in `infra/`,** once the
+      secrets above exist: `RESEND_CONTACTS_API_KEY` and
+      `RESEND_WEBHOOK_SECRET` from Secret Manager through
+      `google_secret_manager_secret_version` data sources, and
+      `RESEND_NEWSLETTER_SEGMENT_ID` and `RESEND_NEWSLETTER_TOPIC_ID` as
+      plain environment variables on the backend Cloud Run service and the
+      admin job. Not done with the code: a data source for a secret that
+      does not exist yet fails the Terraform apply that runs on merge.
+      Until this is done the code below is inert in production: with the
+      settings unset nothing is sent to Resend, and people still register.
+
 ## Phase 2: The record in Quill
 
 - [x] **Add `marketing_emails` to `User`, in `backend/app/models.py`:** a
@@ -86,7 +97,7 @@ them; the other ticks them off.
 
 ## Phase 3: Telling Resend
 
-- [ ] **Settings, in `backend/app/config.py`:** `RESEND_CONTACTS_API_KEY`
+- [x] **Settings, in `backend/app/config.py`:** `RESEND_CONTACTS_API_KEY`
       (`SecretStr`), `RESEND_NEWSLETTER_SEGMENT_ID`,
       `RESEND_NEWSLETTER_TOPIC_ID` and `RESEND_WEBHOOK_SECRET`
       (`SecretStr`), all optional. The subscriptions plan names the first
@@ -94,48 +105,64 @@ them; the other ticks them off.
       is skipped and logged once, so a local or CI stack with no Resend
       still registers people.
 
-- [ ] **A Resend contacts client, `backend/app/marketing/resend_contacts.py`:**
+- [x] **A Resend contacts client, `backend/app/marketing/resend_contacts.py`:**
       `sync_contact(user)` creates or updates the contact by email address,
       in the segment, with the topic opted in or out to match
-      `marketing_emails`, and properties `consent_source` and
-      `consent_wording_version` from the latest change row.
-      `remove_contact(email)` deletes it. Both idempotent, both wrapped in
-      try/except around the HTTP call, both logging the user id and never
-      the address. Use the `resend` SDK already in the image if it covers
-      contacts with segments and topics; if it does not, call the REST API
-      with `httpx` and say so in a comment.
+      `marketing_emails`. `remove_contact(email)` deletes it. Both
+      idempotent, both wrapped in try/except around the HTTP call, both
+      logging the user id and never the address. Two things found while
+      building it, both departures from what this step first said:
 
-- [ ] **Sync when the email address is verified, not at registration.**
+      **It calls the REST API with `httpx`, not the `resend` SDK.** The SDK
+      (2.48 in the image) does cover contacts, segments and topics, but it
+      keeps its API key in one module-level variable, `resend.api_key`,
+      which `email_send.py` sets on every send. This needs a different
+      key, so setting it here would race with a password reset being sent
+      on another thread, and one of the two would go out with the wrong
+      key. `httpx` was already a dependency. The paths and bodies were
+      read from the SDK's own source: `GET` and `DELETE /contacts/{email}`,
+      `POST /contacts`, `POST /contacts/{email}/segments/{segment_id}`, and
+      `PATCH /contacts/{email}/topics` taking a bare list.
+
+      **No consent properties are sent to Resend.** Custom properties have
+      to be defined in Resend before a contact can carry them, so sending
+      `consent_source` and `consent_wording_version` would have made every
+      sync fail until somebody set them up in the dashboard, for a copy of
+      what `marketing_preference_change` already records. Resend holds the
+      list and Quill holds the evidence, as Decisions says. Only the
+      address and the name are sent.
+
+- [x] **Sync when the email address is verified, not at registration.**
       In `verify_email` in `backend/app/main.py`, after `email_verified` is
-      set, queue `sync_contact` as a background task. An address somebody
-      mistyped, or typed for somebody else, never reaches the list, because
-      its owner never clicks the verification link. This is what stands in
-      for the double opt-in the public site's form needs. A person who
-      opted out is still synced, as a contact opted out of the topic, so
-      Resend holds the refusal and a later import cannot subscribe them by
-      accident.
+      set, call `sync_contact`. An address somebody mistyped, or typed for
+      somebody else, never reaches the list, because its owner never clicks
+      the verification link. This is what stands in for the double opt-in
+      the public site's form needs. A person who opted out is still synced,
+      as a contact opted out of the topic, so Resend holds the refusal and
+      a later import cannot subscribe them by accident. Done in the request
+      and not as a background task, which is what this step first said: a
+      background task runs after the request's session has closed and
+      would need a session of its own, for a call with a five second
+      timeout on a link somebody clicks once. A failure is logged and
+      swallowed, `marketing_synced_at` stays null and the retry below picks
+      it up.
 
-- [ ] **Sync an opt-out straight away, and say so if it fails.** Email is
-      sent from Resend, so an opt-out that only reached Quill's database
-      would not stop anything. The Settings route in Phase 5 calls
-      `sync_contact` in the request when the person is opting out, and
-      answers 502 with "We could not update your email preferences. Please
-      try again." if Resend refuses. Opting in may go in the background:
-      a late opt-in costs nothing.
+- [x] **A retry for the ones that failed:** `just marketing-sync`, running
+      `python -m app.marketing.sync` in the dev stack's backend container,
+      which syncs every verified, active user whose `marketing_synced_at`
+      is null. It needs the live database, so it carries the worktree
+      guard. In production the same code is the admin job's
+      `marketing-sync` action, in `backend/scripts/admin_cli.py`. Run by
+      hand for now; a scheduled job is in Decisions.
 
-- [ ] **A retry for the ones that failed:** `just marketing-sync`, running
-      `python -m app.marketing.sync`, which syncs every verified user whose
-      `marketing_synced_at` is null. Add the recipe in alphabetical order,
-      as `.claude/rules/just.md` asks. Run by hand for now; a scheduled job
-      is in Decisions.
+- [x] **Remove the contact when the account goes.** There is no route
+      that deletes an account; closing one is `deactivate_user` in
+      `backend/app/main.py`, which sets `is_active` false. It now calls
+      `remove_contact`, best effort, and clears `marketing_synced_at`, so
+      an account that is reactivated is picked up by the retry and put
+      back as it was.
 
-- [ ] **Remove the contact when the account goes.** Find where an account
-      is deleted or deactivated in `backend/app/main.py` and call
-      `remove_contact` there. If there is no such route yet, say so in this
-      step and leave a note where one would go: do not build account
-      deletion for this plan.
-
-- [ ] **Tests** with Resend stubbed, in
+- [x] **Tests** with Resend stubbed, in
       `backend/tests/test_marketing_resend_sync.py`: verifying an address
       syncs with the right segment, topic state and properties; an
       unverified user is never synced; a Resend failure leaves
@@ -153,6 +180,13 @@ them; the other ticks them off.
       body and answers 401 on a bad one, finds the user by the contact's
       email address, and calls `set_marketing_preference` with source
       `resend`, then sets `marketing_synced_at`, since Resend already knows.
+      Found while building Phase 3: a `contact.updated` event carries the
+      contact's address and its global `unsubscribed` flag, but not its
+      topics. So the route asks Resend for the contact's topics
+      (`GET /contacts/{email}/topics`) and takes the person as wanting
+      news only when they are not globally unsubscribed and not opted out
+      of the Newsletter topic. The `resend` SDK's `Webhooks.verify` checks
+      the signature and needs no API key, so it is safe to use here.
       An address with no user (a public site signup) is ignored with a 200.
       Rate limited with the existing limiter. It needs no CSRF token, being
       called by Resend and not a browser: mark it as an intentional
@@ -188,6 +222,14 @@ them; the other ticks them off.
       British English, the same words on both pages: put the sentence in one
       shared constant so the two cannot drift, and bump
       `MARKETING_WORDING_VERSION` if it changes.
+
+- [ ] **Sync an opt-out straight away, and say so if it fails.** Email is
+      sent from Resend, so an opt-out that only reached Quill's database
+      would not stop anything. The Settings route below calls
+      `sync_contact` in the request when the person is opting out, and
+      answers 502 with "We could not update your email preferences. Please
+      try again." if Resend refuses. Opting in may go in the background:
+      a late opt-in costs nothing.
 
 - [ ] **Read and change it in Settings.** Return `marketing_emails` from
       `/api/auth/me`, and add `PUT /api/auth/marketing-preference` taking
