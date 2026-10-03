@@ -320,15 +320,14 @@ export const orgUnits = {
   ) => api.post<StatusResponse>(`/org-units/${id}/members`, member),
 
   /**
-   * Ask whether an email address already has an account, to add its
-   * owner to an org_unit. An admin sees only the people at the org_units
-   * they reach, so this is how they find somebody from elsewhere: one
-   * exact address, one answer, and nothing to browse.
+   * Ask whether a username or an email address already has an account,
+   * to add its owner to an org_unit. An admin sees only the people at
+   * the org_units they reach, so this is how they find somebody from
+   * elsewhere: one whole username or address, one answer, and nothing
+   * to browse.
    */
-  lookUpMember: (id: number, email: string) =>
-    api.post<MemberLookup>(`/org-units/${id}/member-lookup`, {
-      term: email,
-    }),
+  lookUpMember: (id: number, term: string) =>
+    api.post<MemberLookup>(`/org-units/${id}/member-lookup`, { term }),
 
   /** Take somebody off an org_unit. */
   removeMember: (id: number, userId: number) =>

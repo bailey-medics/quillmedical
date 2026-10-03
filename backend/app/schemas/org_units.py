@@ -372,13 +372,12 @@ class AddOrgUnitPatientIn(BaseModel):
 
 
 class MemberLookupIn(BaseModel):
-    """Ask whether somebody already has an account, by their email.
+    """Ask whether somebody already has an account, by how they are known.
 
     Attributes:
-        term: The whole address. Matched exactly, ignoring case, so the
-            lookup finds one named person and cannot be used to browse.
-            Named for what was typed, not for what it must be, so the
-            request keeps its shape if more than an address is matched.
+        term: A whole username or a whole email address. Matched exactly,
+            ignoring case, so the lookup finds one named person and
+            cannot be used to browse.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -387,15 +386,24 @@ class MemberLookupIn(BaseModel):
 
     @field_validator("term")
     @classmethod
-    def _looks_like_an_address(cls, value: str) -> str:
-        """Trim it, and refuse anything that is plainly not an address."""
+    def _one_whole_name(cls, value: str) -> str:
+        """Trim it, and refuse what is neither a username nor an address.
+
+        Anything with an ``@`` is read as an address and must be a whole
+        one. Anything else is read as a username, which holds no spaces.
+        """
         value = value.strip()
-        if (
-            value.count("@") != 1
-            or value.startswith("@")
-            or value.endswith("@")
-        ):
-            raise ValueError("Enter a whole email address.")
+        if len(value) < 3:
+            raise ValueError("Enter a whole username or email address.")
+        if "@" in value:
+            if (
+                value.count("@") != 1
+                or value.startswith("@")
+                or value.endswith("@")
+            ):
+                raise ValueError("Enter a whole email address.")
+        elif any(character.isspace() for character in value):
+            raise ValueError("Enter a username or an email address.")
         return value
 
 
@@ -423,7 +431,7 @@ class MemberLookupOut(BaseModel):
         status: ``found`` for somebody who may be added here;
             ``already_member`` for somebody who is here already;
             ``not_addable`` for an account the caller may not add: one
-            that is deactivated, or an operator's; ``not_found`` when nobody has that address.
+            that is deactivated, or an operator's; ``not_found`` when nobody has that username or address.
         user: The person, for ``found`` and ``already_member`` only.
     """
 

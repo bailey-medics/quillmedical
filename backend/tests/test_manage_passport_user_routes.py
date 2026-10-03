@@ -281,9 +281,9 @@ class TestLookingSomebodyUpToAddThem:
         return test_client
 
     @staticmethod
-    def _look_up(client: TestClient, unit: OrgUnit, email: str) -> Any:
+    def _look_up(client: TestClient, unit: OrgUnit, term: str) -> Any:
         return client.post(
-            f"/api/org-units/{unit.id}/member-lookup", json={"term": email}
+            f"/api/org-units/{unit.id}/member-lookup", json={"term": term}
         )
 
     def test_finds_somebody_they_cannot_otherwise_see(
@@ -304,6 +304,28 @@ class TestLookingSomebodyUpToAddThem:
         resp = self._look_up(site_client, site, f"  {delegate.email.upper()} ")
 
         assert resp.json()["status"] == "found"
+
+    def test_finds_somebody_by_their_username(
+        self, site_client: TestClient, site: OrgUnit, delegate: User
+    ) -> None:
+        resp = self._look_up(site_client, site, delegate.username.upper())
+
+        assert resp.json()["status"] == "found"
+        assert resp.json()["user"]["id"] == delegate.id
+
+    def test_does_not_match_part_of_a_username(
+        self, site_client: TestClient, site: OrgUnit, delegate: User
+    ) -> None:
+        resp = self._look_up(site_client, site, delegate.username[:-1])
+
+        assert resp.json() == {"status": "not_found", "user": None}
+
+    def test_does_not_match_a_name(
+        self, site_client: TestClient, site: OrgUnit, delegate: User
+    ) -> None:
+        resp = self._look_up(site_client, site, "New Delegate")
+
+        assert resp.status_code == 422
 
     def test_does_not_match_part_of_an_address(
         self, site_client: TestClient, site: OrgUnit, delegate: User
@@ -358,10 +380,10 @@ class TestLookingSomebodyUpToAddThem:
 
         assert resp.status_code == 404
 
-    def test_refuses_what_is_not_an_address(
+    def test_refuses_half_an_address(
         self, site_client: TestClient, site: OrgUnit
     ) -> None:
-        resp = self._look_up(site_client, site, "delegate")
+        resp = self._look_up(site_client, site, "delegate@")
 
         assert resp.status_code == 422
 

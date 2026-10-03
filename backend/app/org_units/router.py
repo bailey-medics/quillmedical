@@ -797,28 +797,36 @@ def look_up_member(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> MemberLookupOut:
-    """Find one person by their whole email address, to add them here.
+    """Find one person by their whole username or email, to add them here.
 
     An admin sees only the people at the org_units they reach, so
     somebody with an account elsewhere could not be picked from a list
     and could not be created either, their address being taken. This is
-    the way between: name the address, and be told whether it has an
-    account that may be added.
+    the way between: name them, and be told whether there is an account
+    that may be added.
 
-    It answers about one exact address and never lists, so it cannot be
-    used to browse who has an account. It does confirm that a given
-    address has one, which adding a member by id already did; the rate
-    limit keeps that from being asked in bulk. A POST, so the address
-    travels in the body and stays out of access logs.
+    **A whole username or a whole address, matched exactly.** Never part
+    of one, and never a name: the passport's assessor search matched
+    substrings and full names until the authorisation review of 22
+    September found it was a directory of every account. An exact match
+    answers about one person the caller can already name.
+
+    It does confirm that a given username or address has an account,
+    which adding a member by id already did; the rate limit keeps that
+    from being asked in bulk. A POST, so what was typed travels in the
+    body and stays out of access logs.
 
     Requires what adding a member requires, at an org_unit the caller
     may add to.
     """
     _require_visible(db, current_user, unit_id, "manage_staff_membership")
 
-    person = db.scalar(
-        select(User).where(func.lower(User.email) == body.term.lower())
-    )
+    # An address names one mailbox and a username one account, so either
+    # way this is at most one person. Which of the two was typed is read
+    # from the `@`, so a username is never tried as an address.
+    term = body.term.lower()
+    column = User.email if "@" in term else User.username
+    person = db.scalar(select(User).where(func.lower(column) == term))
     if person is None:
         return MemberLookupOut(status="not_found")
 

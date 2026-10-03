@@ -1,7 +1,8 @@
 /**
  * Member lookup tests.
  *
- * Covers that it asks only when told to and only about a whole address,
+ * Covers that it asks only when told to and only about a whole username
+ * or address,
  * what it says for each of the four answers, that somebody found is
  * handed to the page, and that creating is offered only for an address
  * nobody has.
@@ -43,7 +44,7 @@ function renderLookup(result: Result | Error, withCreate = true) {
 
 async function find(email: string) {
   const user = userEvent.setup();
-  await user.type(screen.getByLabelText(/email address/i), email);
+  await user.type(screen.getByLabelText(/username or email address/i), email);
   await user.click(screen.getByRole("button", { name: "Find" }));
   return user;
 }
@@ -54,7 +55,10 @@ describe("MemberLookup", () => {
 
     await userEvent
       .setup()
-      .type(screen.getByLabelText(/email address/i), "a.patel@example.org");
+      .type(
+        screen.getByLabelText(/username or email address/i),
+        "a.patel@example.org",
+      );
 
     expect(onLookUp).not.toHaveBeenCalled();
   });
@@ -62,10 +66,31 @@ describe("MemberLookup", () => {
   it("refuses part of an address without asking", async () => {
     const { onLookUp } = renderLookup({ status: "not_found", user: null });
 
-    await find("a.patel");
+    await find("a.patel@example");
 
     expect(onLookUp).not.toHaveBeenCalled();
     expect(screen.getByText("Enter a whole email address")).toBeInTheDocument();
+  });
+
+  it("refuses a name without asking", async () => {
+    // A username holds no spaces, so this is somebody's name, and names
+    // are not looked up.
+    const { onLookUp } = renderLookup({ status: "not_found", user: null });
+
+    await find("Anita Patel");
+
+    expect(onLookUp).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("Enter a username or an email address"),
+    ).toBeInTheDocument();
+  });
+
+  it("asks about a username", async () => {
+    const { onLookUp } = renderLookup({ status: "found", user: person });
+
+    await find("a.patel");
+
+    expect(onLookUp).toHaveBeenCalledWith("a.patel");
   });
 
   it("asks about the address, trimmed, on Find", async () => {
@@ -96,7 +121,7 @@ describe("MemberLookup", () => {
     await userEvent
       .setup()
       .type(
-        screen.getByLabelText(/email address/i),
+        screen.getByLabelText(/username or email address/i),
         "a.patel@example.org{Enter}",
       );
 
@@ -163,7 +188,7 @@ describe("MemberLookup", () => {
 
     await find("new.person@example.org");
 
-    expect(screen.getByText(/Nobody on Quill has the address/)).toBeVisible();
+    expect(screen.getByText(/Nobody on Quill uses/)).toBeVisible();
     expect(
       screen.queryByRole("button", { name: "Create new user" }),
     ).not.toBeInTheDocument();
@@ -175,7 +200,7 @@ describe("MemberLookup", () => {
     await find("a.patel@example.org");
 
     expect(
-      screen.getByText("Could not look that address up. Please try again."),
+      screen.getByText("Could not look that up. Please try again."),
     ).toBeInTheDocument();
     expect(onFound).not.toHaveBeenCalled();
   });

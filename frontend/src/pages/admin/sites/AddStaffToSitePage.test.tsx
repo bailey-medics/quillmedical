@@ -240,7 +240,10 @@ describe("AddStaffToSitePage", () => {
       user: ReturnType<typeof userEvent.setup>,
       email: string,
     ) {
-      await user.type(await screen.findByLabelText(/email address/i), email);
+      await user.type(
+        await screen.findByLabelText(/username or email address/i),
+        email,
+      );
       await user.click(screen.getByRole("button", { name: "Find" }));
     }
 
