@@ -114,7 +114,7 @@ The stack of docs pull requests broke twice on 2 October. Both times the
 cause was the same pair of gaps, and both times it was mended by hand. This
 phase turns what was done by hand into the tooling.
 
-- [ ] **A pull request that was closed and replaced strands the record.**
+- [x] **A pull request that was closed and replaced strands the record.**
       #1363 was closed by GitHub and reopened as #1386 on the same branch.
       The local record in `.git/gh-stack` kept pointing at #1363. When
       #1386 merged, `scripts/stack-forget-merged.py` could not drop the
@@ -128,7 +128,19 @@ phase turns what was done by hand into the tooling.
       says. The hand repair was to mark the entry merged and run the
       script, which then dropped it and re-chained the rest correctly.
 
-- [ ] **`just stack-refresh` cannot run once any pull request has merged.**
+      Done, with two things the step did not foresee. The script ran only
+      after `gh stack sync`, which is the command that was failing, so
+      `stack-sync` now runs it before the sync as well. And run that
+      early, "tip in the trunk" alone would take every ordinary merge
+      before `gh stack sync --prune` saw it, leaving the local branch
+      behind, since prune deletes only branches still in the record. So a
+      branch whose tip is in the trunk is dropped only when gh-stack will
+      not tidy it: the record already says merged, GitHub says the
+      recorded pull request is closed, or none is recorded. The branch
+      checked out, a branch with no commits of its own, and an entry
+      GitHub cannot be asked about are always kept.
+
+- [x] **`just stack-refresh` cannot run once any pull request has merged.**
       It takes the stack apart and re-initialises it, and GitHub refuses
       to unstack a stack holding merged pull requests ("Pull requests
       #1356, #1358 cannot be removed from this stack"). The open ones were
@@ -141,11 +153,28 @@ phase turns what was done by hand into the tooling.
       agreement. The record's `id` is the numeric id inside the stack's
       GraphQL node id.
 
-- [ ] Add tests beside `scripts/tests/stack-status.bats` for both cases,
-      built on a throwaway record file, and run them with `just ts`.
+      Done in `scripts/stack-relink.py`, which the recipe calls when
+      GitHub's stack holds a merged pull request. The recipe asks first
+      and does not try the unstack, since the failed attempt is what
+      removed the open pull requests from their stack. It still rebuilds
+      the local record, with `gh stack unstack --local` and
+      `gh stack init`, because repointing `trunk.head` is what the recipe
+      is for. The `id` and `number` are read from the `stack` field of
+      `gh api repos/{owner}/{repo}/pulls/<number>`.
 
-- [ ] Record both in `docs/docs/plans/2026-09-14-stacked-branches-plan.md`,
-      which is where the stack tooling's behaviour is written down.
+      **Not run against GitHub.** It needs a real stack with a merged pull
+      request in it, and making one for the purpose was judged not worth
+      it. The first refresh of a part-merged stack is the test.
+
+- [x] Add tests beside `scripts/tests/stack-status.bats` for both cases,
+      built on a throwaway record file, and run them with `just ts`.
+      `stack-forget-merged.bats` and `stack-relink.bats`, each on a
+      throwaway repository with `gh` stubbed on `PATH`. Run with
+      `just ts scripts/tests`: thirty tests, all passing.
+
+- [x] Record both in `docs/docs/plans/2026-09-14-stacked-branches-plan.md`,
+      which is where the stack tooling's behaviour is written down. Under
+      "What a stack of sixteen found".
 
 ## Phase 5: Passages in the documentation that need a decision
 
