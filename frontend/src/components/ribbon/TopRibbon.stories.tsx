@@ -11,6 +11,9 @@ import { demoPatientsList } from "@/demo-data/patients/demoPatients";
  * - Responsive layout adjustments
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Group } from "@mantine/core";
+import { AssessmentTimer } from "@/components/teaching/assessment-timer/AssessmentTimer";
+import ExamCloseButton from "@/components/teaching/exam-close-button/ExamCloseButton";
 import TopRibbon from "./TopRibbon";
 
 const meta: Meta<typeof TopRibbon> = {
@@ -59,6 +62,29 @@ export const WithPatientNarrow: Story = {
     isNarrow: true,
   },
   render: (args) => <TopRibbon {...args} />,
+};
+
+/** A right section – the timer and "End exam" of a running assessment.
+ * Below 26em the Quill name gives way to it. */
+export const WithRightSection: Story = {
+  args: {
+    onBurgerClick: () => {},
+    patient: null,
+    isLoading: false,
+    navOpen: false,
+    isNarrow: false,
+    showSearch: false,
+    rightSection: (
+      <Group gap="sm" wrap="nowrap">
+        <AssessmentTimer
+          timeLimitMinutes={75}
+          startedAt={new Date().toISOString()}
+          onExpire={() => {}}
+        />
+        <ExamCloseButton onConfirm={() => {}} />
+      </Group>
+    ),
+  },
 };
 
 /** Loading state – shows skeleton + Quill mark (narrow screen) */

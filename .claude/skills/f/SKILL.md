@@ -212,7 +212,12 @@ What `stack-log` shows decides what happens next:
 - **"No stack on this branch", on `main`** – a first unit. `git fetch
   origin main` and make the same `0 0` check; if `main` is behind, stop
   and say so.
-- **"No stack on this branch", on some other branch** – stop and ask.
+- **"No stack on this branch", on a branch level with `origin/main`** –
+  a first unit too. `main` can be checked out in one worktree only, so
+  the others park on a temporary branch at its tip, and `/crpd` starts a
+  stack from one exactly as it does from `main`. `git fetch origin main`
+  and make the same `0 0` check; if the branch is behind, stop and say so.
+- **"No stack on this branch", on any other branch** – stop and ask.
   `/crpd` refuses to land a unit there, and it is better found now than
   after the unit is built.
 

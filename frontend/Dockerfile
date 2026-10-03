@@ -56,10 +56,8 @@ ENV VITE_CLINICAL_SERVICES_ENABLED=${VITE_CLINICAL_SERVICES_ENABLED}
 ARG VITE_APP_VERSION
 ENV VITE_APP_VERSION=${VITE_APP_VERSION}
 
-# Generate TypeScript types from shared YAML (Yarn 4 skips pre* hooks)
-RUN yarn generate:types
-
-# Build SPA (outputs to dist/)
+# Build SPA (outputs to dist/). The build script generates the JSON from
+# the shared YAML first, by name: Yarn 4 does not run pre* hooks.
 RUN yarn build
 
 # ============================================================

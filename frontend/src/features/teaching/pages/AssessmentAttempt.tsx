@@ -6,7 +6,7 @@
  * completion, and early abandonment with navigation blocking.
  */
 
-import { Stack } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import LoadingSpinner from "@/components/loading-spinner";
 import PageHeader from "@/components/page-header";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
@@ -21,6 +21,8 @@ import {
 } from "react-router-dom";
 import { api } from "@/lib/api";
 import { QuestionView } from "@/components/teaching/question-view/QuestionView";
+import { AssessmentTimer } from "@/components/teaching/assessment-timer/AssessmentTimer";
+import ExamCloseButton from "@/components/teaching/exam-close-button/ExamCloseButton";
 import { AssessmentIntro } from "@/components/teaching/assessment-intro/AssessmentIntro";
 import { AssessmentClosing } from "@/components/teaching/assessment-closing/AssessmentClosing";
 import { ConfirmModal } from "@/components/confirm-modal";
@@ -313,8 +315,24 @@ export default function AssessmentAttempt() {
   const introPage = bankDetail?.config_yaml?.assessment?.intro_page;
   const closingPage = bankDetail?.config_yaml?.assessment?.closing_page;
 
+  // The timer and "End exam" sit in the ribbon while questions are showing,
+  // so they stay in view however far the question scrolls
+  const examControls =
+    phase === "questions" &&
+    assessment?.time_limit_minutes != null &&
+    assessment.started_at ? (
+      <Group gap="sm" wrap="nowrap">
+        <AssessmentTimer
+          timeLimitMinutes={assessment.time_limit_minutes}
+          startedAt={assessment.started_at}
+          onExpire={handleExpire}
+        />
+        <ExamCloseButton onConfirm={handleComplete} />
+      </Group>
+    ) : undefined;
+
   return (
-    <TeachingLayout>
+    <TeachingLayout ribbonRight={examControls}>
       <PageHeader title="Assessment" visuallyHidden />
       {/* Blocker modal – warns when navigating away during active exam */}
       <ConfirmModal
@@ -374,10 +392,6 @@ export default function AssessmentAttempt() {
               onSelectOption={setSelectedOption}
               currentQuestion={currentItem.display_order}
               totalQuestions={assessment?.total_items}
-              timeLimitMinutes={assessment?.time_limit_minutes}
-              startedAt={assessment?.started_at}
-              onExpire={handleExpire}
-              onCloseExam={handleComplete}
               onPrevious={
                 currentItem.display_order > 1 ? handlePrevious : undefined
               }

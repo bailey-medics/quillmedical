@@ -161,11 +161,18 @@ bash .github/scripts/ci/validate-compat-files.sh /tmp/oasdiff-report.json api-co
 **Expected output (failure):**
 
 ```
-[validate-compat-files] ERROR: Flagged change not covered by any decision file:
-'response-required-property-removed GET /api/test/breaking-api'
+[validate-compat-files] Parsing oasdiff output...
+[validate-compat-files] Running validation rules...
+[validate-compat-files] Checking coverage: 1 flagged change(s) must have matching files...
+[validate-compat-files] ERROR: Flagged change not covered by any decision file: 'response-required-property-removed GET /api/test/breaking-api removed the required property `message` from the response with the `200` status'
 ```
 
-The script lists which exact `oasdiff` change ID + operation + path + text it found but for which no decision file exists.
+The string in quotes is the change: `oasdiff`'s change ID, the operation, the path and `oasdiff`'s own description, joined by spaces. Copy all of it. A string that stops at the path matches nothing, because the description is what tells two changes on one endpoint apart.
+
+Two things to know before running the validator locally:
+
+- **It needs bash 4 or later.** macOS ships bash 3.2, where the script stops at `declare: -A: invalid option` part-way through its rules. Install a newer one (`brew install bash`) and call that, or run the script on Linux.
+- **It reads only decision files committed on the branch.** It finds new files with `git diff` against the branch's base, so a decision file that is written but not yet committed does not count, and the failure above is reported as if it were not there.
 
 ## Step 5: Create a decision file
 
@@ -178,44 +185,65 @@ python backend/scripts/new_compat_decision.py
 **Follow the prompts:**
 
 ```
-change> response-required-property-removed GET /api/test/breaking-api
+Enter the oasdiff-flagged change:
+change> response-required-property-removed GET /api/test/breaking-api removed the required property `message` from the response with the `200` status
 
-reason> Test scenario for the api-compatibility CI harness (see docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md, item 19, Phase 2). MUTATE_REMOVE_MESSAGE_1 removes the "message" field from the disposable /api/test/breaking-api endpoint, which is never called by the real app – no client, real or stale, depends on it.
+Explain why you made this forces_reload decision:
+reason> Test scenario for the api-compatibility CI harness. MUTATE_REMOVE_MESSAGE_1 removes the "message" field from the disposable /api/test/breaking-api endpoint, which is never called by the real app, so no client, real or stale, depends on it.
 
 Does this change require a forced reload of open tabs? (y/n)
 forces_reload> n
-
 ```
 
-The script generates a file like:
+The script names the file itself, from the time in UTC and the first sixty characters of the reason, and prints where it put it:
+
+```
+✓ Decision file created: /Users/markbailey/github/quillmedical/api-compatibility/20261002184153-test-scenario-for-the-api-compatibility-ci-harness-mutate-re.yaml
+```
+
+The file holds four lines and nothing else:
 
 ```yaml
-# api-compatibility/20260821120345-breaking-api-message-removal.yaml
-generation: 3
+generation: 1
 forces_reload: false
-change: "response-required-property-removed GET /api/test/breaking-api"
-reason: 'Test scenario for the api-compatibility CI harness (see docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md, item 19, Phase 2). MUTATE_REMOVE_MESSAGE_1 removes the "message" field from the disposable /api/test/breaking-api endpoint, which is never called by the real app – no client, real or stale, depends on it.'
+change: "response-required-property-removed GET /api/test/breaking-api removed the required property `message` from the response with the `200` status"
+reason: "Test scenario for the api-compatibility CI harness. MUTATE_REMOVE_MESSAGE_1 removes the \"message\" field from the disposable /api/test/breaking-api endpoint, which is never called by the real app, so no client, real or stale, depends on it."
 ```
 
-## Step 6: Run validation again (expect pass)
+`generation` is worked out by the script from the files already there, so yours may differ.
+
+## Step 6: Commit the file and run validation again (expect pass)
+
+Commit first. The validator does not see the file until it is committed:
 
 ```bash
+git add api-compatibility/
+git commit -m "docs: add decision file for breaking-api message removal (forces_reload=false)"
 bash .github/scripts/ci/validate-compat-files.sh /tmp/oasdiff-report.json api-compatibility
 ```
 
 **Expected output (success):**
 
 ```
+[validate-compat-files] Parsing oasdiff output...
+[validate-compat-files] Running validation rules...
+[validate-compat-files] Checking coverage: 1 flagged change(s) must have matching files...
+[validate-compat-files] Checking reason fields are non-empty...
+[validate-compat-files] Checking change fields are single scalars...
+[validate-compat-files] Checking immutability of generation/forces_reload/change fields...
+[validate-compat-files] Checking for deleted files...
+[validate-compat-files] Checking filename regex for new files...
+[validate-compat-files] Checking for duplicate generations in forces_reload:true files...
+[validate-compat-files] Checking generation range for forces_reload:false files (1 to 0)...
+[validate-compat-files] Checking for stale change strings...
 [validate-compat-files] All validation rules passed ✓
 ```
 
 No errors, exit code 0.
 
-## Step 7: Commit and watch CI pass
+## Step 7: Push and watch CI pass
 
 ```bash
-git add api-compatibility/
-git commit -m "docs: add decision file for breaking-api message removal (forces_reload=false)"
 git push origin feature/test-api-compat
 ```
 
@@ -230,7 +258,7 @@ Push to the PR. CI re-runs:
 To test the **failure path**, temporarily remove your decision file:
 
 ```bash
-rm api-compatibility/20260821120345-breaking-api-message-removal.yaml
+rm api-compatibility/20261002184153-test-scenario-for-the-api-compatibility-ci-harness-mutate-re.yaml
 git add api-compatibility/
 git commit -m "test: remove decision file"
 git push origin feature/test-api-compat
@@ -270,7 +298,8 @@ Also flip the mutation constant(s) in `test_api_endpoints.py` back to `False` on
 | Error                                                                                                          | Cause                                                          | Fix                                                                                                              |
 | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `oasdiff: command not found`                                                                                   | oasdiff not installed                                          | Install: `brew install oasdiff` or download from [oasdiff releases](https://github.com/oasdiff/oasdiff/releases) |
-| `[validate-compat-files] ERROR: Flagged change not covered...`                                                 | Decision file missing or `change:` field doesn't match exactly | Check the error message's exact change string; ensure your decision file's `change:` field matches it verbatim   |
+| `[validate-compat-files] ERROR: Flagged change not covered...`                                                 | Decision file missing, not yet committed, or `change:` field doesn't match exactly | Commit the file; check the error message's exact change string and ensure your decision file's `change:` field matches it verbatim |
+| `declare: -A: invalid option`                                                                                  | The validator was run with macOS's bash 3.2                    | Run it with bash 4 or later (`brew install bash`), or on Linux                                                   |
 | `[validate-compat-files] ERROR: File ... does not match required regex`                                        | Decision file name is wrong format                             | Use `YYYYMMDDHHMMSS-<slug>.yaml` format (UTC timestamp, no separators, kebab-case slug)                          |
 | `[validate-compat-files] ERROR: YAML parsing failed`                                                           | Decision file has invalid YAML syntax                          | Check indentation, quotes, special characters (use `yamllint api-compatibility/<filename>.yaml`)                 |
 | `[validate-compat-files] ERROR: File ... references change '...' which was not flagged by oasdiff in this run` | Decision file references a change oasdiff didn't detect        | Check oasdiff output; ensure the `change:` field exactly matches what was found                                  |

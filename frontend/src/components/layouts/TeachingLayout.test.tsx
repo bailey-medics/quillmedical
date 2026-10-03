@@ -32,6 +32,7 @@ vi.mock("@components/ribbon/TopRibbon", () => ({
     patient,
     showSearch,
     isNarrow,
+    rightSection,
   }: {
     onBurgerClick?: () => void;
     isLoading: boolean;
@@ -39,13 +40,16 @@ vi.mock("@components/ribbon/TopRibbon", () => ({
     navOpen: boolean;
     isNarrow: boolean;
     showSearch: boolean;
+    rightSection?: React.ReactNode;
   }) => (
     <div
       data-testid="top-ribbon"
       data-patient={patient}
       data-show-search={showSearch}
       data-narrow={isNarrow}
-    />
+    >
+      {rightSection}
+    </div>
   ),
 }));
 
@@ -186,6 +190,39 @@ describe("TeachingLayout", () => {
     });
   });
 
+  describe("on a phone", () => {
+    beforeEach(() => {
+      mockWidth.value = 390;
+    });
+
+    it("narrows the ribbon to a hamburger when there is a sidebar", () => {
+      renderWithMantine(
+        <TeachingLayout sidebar={<div data-testid="sidebar">Nav</div>}>
+          <div>Content</div>
+        </TeachingLayout>,
+      );
+
+      expect(screen.getByTestId("top-ribbon")).toHaveAttribute(
+        "data-narrow",
+        "true",
+      );
+    });
+
+    // The assessment attempt: a hamburger here would open nothing
+    it("keeps the full ribbon, with no hamburger, on a page with no sidebar", () => {
+      renderWithMantine(
+        <TeachingLayout>
+          <div>Content</div>
+        </TeachingLayout>,
+      );
+
+      expect(screen.getByTestId("top-ribbon")).toHaveAttribute(
+        "data-narrow",
+        "false",
+      );
+    });
+  });
+
   it("shows the sidebar beside the page on a tablet held sideways", () => {
     renderWithMantine(
       <TeachingLayout sidebar={<div data-testid="sidebar">Nav</div>}>
@@ -220,6 +257,18 @@ describe("TeachingLayout", () => {
     const ribbon = screen.getByTestId("top-ribbon");
     expect(ribbon).not.toHaveAttribute("data-patient");
     expect(ribbon).toHaveAttribute("data-show-search", "false");
+  });
+
+  it("puts ribbonRight in the ribbon, not in the page", () => {
+    renderWithMantine(
+      <TeachingLayout ribbonRight={<div>Exam controls</div>}>
+        <div>Content</div>
+      </TeachingLayout>,
+    );
+
+    const controls = screen.getByText("Exam controls");
+    expect(screen.getByTestId("top-ribbon")).toContainElement(controls);
+    expect(screen.getByRole("main")).not.toContainElement(controls);
   });
 
   it("renders footer with auth username by default", () => {

@@ -2,7 +2,7 @@
 name: update-docs-docs
 description: Review and update documentation to match the codebase and write the documents it is missing, landing each docs folder and each new document as its own stacked pull request
 argument-hint: "[folder or file under docs/docs, e.g. backend] (default: everything in scope)"
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git switch:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(just stack-new:*), Bash(just stack-add:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-sync:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(python3 scripts/stack-status.py:*)
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git switch:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(just stack-new:*), Bash(just stack-add:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-sync:*), Bash(gh stack view:*), Bash(git fetch:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(python3 scripts/stack-status.py:*)
 disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 disable-model-invocation: true
 ---
@@ -38,13 +38,21 @@ Stop and say so, before any other work, when:
 
 - **The working tree is dirty.** The human left something there, and
   `/crpd` would commit it with the first unit. Ask what to do with it.
-- **The branch is not `main` and is not in a stack.** `/crpd` will not
-  commit there.
+- **The branch is not `main`, is not in a stack, and is not level with
+  `origin/main`.** `/crpd` will not commit there. Level means
+  `git fetch origin main`, then `git rev-list --left-right --count
+  HEAD...origin/main` reporting `0 0`.
 - **The stack spans worktrees.** `just stack-log` says so. A stack lives in
   one worktree.
 
 A stack with unmerged branches is fine: the units stack on top of it. So is
 `main`, or a stack that has fully merged: `/crpd` starts a new stack.
+
+So is a branch outside any stack that is level with `origin/main`. `main`
+can be checked out in one worktree only, so every other worktree parks on
+a temporary branch at its tip. That branch holds nothing `main` does not,
+and `just stack-new` starts a stack from it exactly as it would from
+`main`.
 
 Then say in one short message what is about to be reviewed and which state
 the stack is in, and carry on.
@@ -165,6 +173,11 @@ than a gap. What that means for a document depends on what it is for:
   `git log` support.** Name the files it was written from, so a reader can
   check it and the next run of this skill can.
 - **Never edit code.** A fault found in the code is reported, not fixed.
+- **A fault outside the area named is reported, not fixed.** A run on
+  `backend/caddy` that finds the same error in another folder's page
+  leaves that page alone, and names it in the final report with the
+  correction it would make. The pull requests of a run on one area should
+  hold that area and nothing else.
 - **Do not stop to ask during the run.** A question goes into the pull
   request description of the unit it belongs to, and into the final report.
   The human is not there to answer, and a run that waits is a run that
@@ -240,6 +253,31 @@ appear under `docs/docs/`:
 5. **Next unit**, back to step 1. The new branch is already the top of the
    stack, so the next unit builds on it.
 
+## When the merge queue fills during the run
+
+A long run can still be building its later units when a human reads the
+early ones and queues them to merge. `just stack-submit` rebases the whole
+stack before it pushes, and it cannot rebase past a queued pull request;
+pushing one also takes it out of the queue.
+
+So before each push, look:
+
+```bash
+gh stack view --json
+```
+
+- **No branch has `isQueued: true`** – push as usual.
+- **Any branch has** – do not push. `/crpd` commits the unit onto its
+  branch and stops there, as its own step 5 sets out. Carry on to the next
+  unit: it stacks on the unpushed one.
+- **Look again before the next unit's push.** Once nothing is queued, bring
+  the stack up to date with `just stack-sync` if a branch has merged, and
+  push. That one push carries every unit held back, and each of their pull
+  requests then needs its description written, not only the newest.
+- **Still queued at the end of the run** – do not wait. Name the units
+  that are committed and not pushed in the final report, so the human can
+  run `just stack-submit` once the queue has drained.
+
 ## Then the new documents, one unit each
 
 These come after every correction unit, so they sit at the top of the
@@ -283,6 +321,9 @@ At the end, one block:
 - Anything unresolved, as a numbered list of questions, each with a
   recommendation and the pull request it belongs to.
 - Anything that stopped the run.
+- Any unit committed and not pushed because the merge queue was in use.
+- Any fault found in a document outside the area named, with the
+  correction it needs.
 - Any fault found in the code itself, which this skill does not fix.
 - Documents not written because their reasoning is not recorded anywhere,
   each with what the user would need to supply.

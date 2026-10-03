@@ -7,15 +7,18 @@
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
+import { Group } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import { AssessmentIntro } from "./assessment-intro/AssessmentIntro";
 import { QuestionView } from "./question-view/QuestionView";
 import { AssessmentResult } from "./assessment-result/AssessmentResult";
+import { AssessmentTimer } from "./assessment-timer/AssessmentTimer";
+import ExamCloseButton from "./exam-close-button/ExamCloseButton";
 import type { CandidateItem } from "@/features/teaching/types";
 import publicAsset from "@lib/publicAsset";
 
 const meta: Meta = {
-  title: "Teaching/Layouts/Assessment complete",
+  title: "Teaching/Layouts/Running the assessment",
   parameters: { layout: "fullscreen" },
 };
 
@@ -114,6 +117,20 @@ const chestXrayItem: CandidateItem = {
   ],
 };
 
+/** The timer and "End exam", as the attempt page puts them in the ribbon */
+function examControls(timeLimitMinutes: number) {
+  return (
+    <Group gap="sm" wrap="nowrap">
+      <AssessmentTimer
+        timeLimitMinutes={timeLimitMinutes}
+        startedAt={new Date().toISOString()}
+        onExpire={() => {}}
+      />
+      <ExamCloseButton onConfirm={() => {}} />
+    </Group>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Stories                                                            */
 /* ------------------------------------------------------------------ */
@@ -138,7 +155,10 @@ export const ColonoscopyPolyps: Story = {
   render: () => {
     const [selected, setSelected] = useState<string | null>(null);
     return (
-      <TeachingLayout footerText="Logged in: dr.jones">
+      <TeachingLayout
+        footerText="Logged in: dr.jones"
+        ribbonRight={examControls(75)}
+      >
         <QuestionView
           item={demoItem}
           selectedOption={selected}
@@ -148,10 +168,6 @@ export const ColonoscopyPolyps: Story = {
           onPrevious={() => {}}
           onNext={() => {}}
           isLastQuestion={false}
-          timeLimitMinutes={75}
-          startedAt={new Date().toISOString()}
-          onExpire={() => {}}
-          onCloseExam={() => {}}
         />
       </TeachingLayout>
     );
@@ -164,7 +180,10 @@ export const ChestXray: Story = {
   render: () => {
     const [selected, setSelected] = useState<string | null>(null);
     return (
-      <TeachingLayout footerText="Logged in: dr.jones">
+      <TeachingLayout
+        footerText="Logged in: dr.jones"
+        ribbonRight={examControls(10)}
+      >
         <QuestionView
           item={chestXrayItem}
           selectedOption={selected}
@@ -173,10 +192,6 @@ export const ChestXray: Story = {
           totalQuestions={4}
           onNext={() => {}}
           isLastQuestion={false}
-          timeLimitMinutes={10}
-          startedAt={new Date().toISOString()}
-          onExpire={() => {}}
-          onCloseExam={() => {}}
         />
       </TeachingLayout>
     );

@@ -42,6 +42,8 @@ export interface TeachingLayoutProps {
   children: ReactNode;
   /** Override footer text (defaults to auth context) */
   footerText?: string;
+  /** Content for the right-hand end of the ribbon, such as an exam's timer */
+  ribbonRight?: ReactNode;
 }
 
 export default function TeachingLayout({
@@ -49,6 +51,7 @@ export default function TeachingLayout({
   drawerContent,
   children,
   footerText,
+  ribbonRight,
 }: TeachingLayoutProps) {
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
@@ -109,10 +112,13 @@ export default function TeachingLayout({
           isLoading={false}
           patient={null}
           navOpen={opened}
-          // A page with no side bar has nothing to fold away, so a tablet
-          // keeps the Quill name; only a phone narrows the ribbon for it
-          isNarrow={hasSidebar ? navCollapsed : isSm}
+          // A page with no side bar has nothing to fold away, so it keeps
+          // the Quill name at every width. Narrowing the ribbon for it put
+          // a hamburger on a phone that opened nothing, on the assessment
+          // attempt above all
+          isNarrow={hasSidebar && navCollapsed}
           showSearch={false}
+          rightSection={ribbonRight}
         />
       </Box>
 

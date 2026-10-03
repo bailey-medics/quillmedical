@@ -55,6 +55,21 @@
   margin-bottom: -5px;
 }
 
+/* Whatever a page pins to the right-hand end, such as an exam's timer */
+.end {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* A phone has no room for the Quill name beside a right section, and the
+   right section is the one somebody needs */
+@container (max-width: 26em) {
+  .brandYields {
+    display: none !important;
+  }
+}
+
 // /* Container query: react to the container's width, not the window */
 // @container (max-width: #{$cq-narrow}) {
 //   .left { display: flex; align-items: center; gap: var(--mantine-spacing-sm); }

@@ -1302,9 +1302,27 @@ stack-refresh:
     git fetch origin main --quiet
     echo "Rebuilding the stack record for:"
     echo "${branches}" | sed 's/^/  /'
-    gh stack unstack
-    # shellcheck disable=SC2086
-    gh stack init ${branches}
+    if python3 scripts/stack-relink.py --needed; then
+        # GitHub refuses to unstack a stack holding a merged pull request
+        # ("Pull requests #1356, #1358 cannot be removed from this
+        # stack"), and on 2026-10-02 the attempt left the open ones in
+        # no stack on GitHub at all. So GitHub's stack is left alone:
+        # the record is rebuilt locally, the open pull requests are
+        # linked into a stack, and the record is pointed at it. See
+        # scripts/stack-relink.py.
+        echo "GitHub's stack holds merged pull requests, which it will"
+        echo "not unstack. Rebuilding the local record and linking the"
+        echo "open pull requests instead."
+        gh stack unstack --local
+        # shellcheck disable=SC2086
+        gh stack init ${branches}
+        # shellcheck disable=SC2086
+        python3 scripts/stack-relink.py --link ${branches}
+    else
+        gh stack unstack
+        # shellcheck disable=SC2086
+        gh stack init ${branches}
+    fi
     python3 scripts/stack-status.py
 
 
@@ -1372,6 +1390,16 @@ stack-sync scope="":
         # Tidying up after a merge is the whole reason this recipe exists, and
         # a merged branch's commits are on main and its pull request is on
         # GitHub, so there is nothing in one to lose.
+        #
+        # The record is tidied first as well as afterwards. An entry
+        # whose pull request was closed and replaced still looks live to
+        # gh-stack after the replacement merges, so the sync pushes a
+        # branch GitHub has deleted and the whole push is rejected,
+        # before the tidy below is ever reached. The fetch is what lets
+        # stack-forget-merged.py see that such a branch is already in
+        # the trunk; it leaves an ordinary merge for --prune to delete.
+        git fetch origin --quiet || true
+        python3 scripts/stack-forget-merged.py || return 1
         if ! gh stack sync --prune; then
             echo "  ✗ gh stack sync failed here; leaving this worktree alone." >&2
             return 1
