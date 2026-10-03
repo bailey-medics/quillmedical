@@ -1,21 +1,23 @@
 /**
- * Find somebody by their email address, to add them to an org_unit.
+ * Find somebody by their username or email address, to add them to an
+ * org_unit.
  *
  * An admin sees only the people at the org_units they reach. Somebody
  * with an account elsewhere could therefore not be picked from a list,
  * and could not be created either, their address being taken. This asks
- * about one whole address and says what it found: somebody who can be
+ * about one whole username or address and says what it found: somebody who can be
  * added, somebody already here, an account that may not be added, or
  * nobody, in which case it offers to create them.
  *
- * It asks only when told to, never as the address is typed, so it finds
+ * It asks only when told to, never as it is typed, and matches the whole
+ * username or address and never part of one or a name, so it finds
  * one named person and cannot be used to browse.
  */
 
 import { useState, type KeyboardEvent } from "react";
 import { Group, Stack } from "@mantine/core";
 import IconTextButton from "@/components/button/IconTextButton";
-import { EMAIL_PATTERN, EmailField } from "@/components/form";
+import { EMAIL_PATTERN, TextField } from "@/components/form";
 import { BodyText, ErrorMessage } from "@/components/typography";
 import type { MemberLookup as Result } from "@/domains/orgUnit";
 
@@ -23,16 +25,23 @@ import type { MemberLookup as Result } from "@/domains/orgUnit";
 export interface MemberLookupProps {
   /** The org_unit somebody is being added to, to name it in the answers */
   placeName: string;
-  /** Ask about one address. Rejects when the question could not be asked. */
-  onLookUp: (email: string) => Promise<Result>;
+  /**
+   * Ask about one username or address. Rejects when the question could
+   * not be asked.
+   */
+  onLookUp: (term: string) => Promise<Result>;
   /** Somebody who may be added was found */
   onFound: (user: NonNullable<Result["user"]>) => void;
-  /** Nobody has the address: create them. Omit to leave that out. */
-  onCreate?: (email: string) => void;
+  /**
+   * Nobody has that username or address: create them. Given what was
+   * typed; `newUserSearch` turns it into the new user form's address.
+   * Omit to leave the offer out.
+   */
+  onCreate?: (term: string) => void;
 }
 
 /**
- * An email field, a "Find" button and what the lookup said.
+ * One field, a "Find" button and what the lookup said.
  *
  * @param props - Component props
  * @returns The lookup
@@ -43,21 +52,30 @@ export default function MemberLookup({
   onFound,
   onCreate,
 }: MemberLookupProps) {
-  const [email, setEmail] = useState("");
+  const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
-  // What was found, and the address it was asked about: the answer is
-  // about that address, whatever has been typed since.
+  // What was found, and what it was asked about: the answer is about
+  // that username or address, whatever has been typed since.
   const [answer, setAnswer] = useState<
-    { result: Result; email: string } | undefined
+    { result: Result; term: string } | undefined
   >();
 
   async function lookUp() {
-    const asked = email.trim();
+    const asked = typed.trim();
     if (busy) return;
-    if (!EMAIL_PATTERN.value.test(asked)) {
+    // Anything with an @ is an address and must be a whole one. Anything
+    // else is a username, which holds no spaces: a name is not looked up.
+    const problem = asked.includes("@")
+      ? EMAIL_PATTERN.value.test(asked)
+        ? undefined
+        : "Enter a whole email address"
+      : asked.length < 3 || /\s/.test(asked)
+        ? "Enter a username or an email address"
+        : undefined;
+    if (problem) {
       setAnswer(undefined);
-      setError("Enter a whole email address");
+      setError(problem);
       return;
     }
 
@@ -66,10 +84,10 @@ export default function MemberLookup({
     setAnswer(undefined);
     try {
       const result = await onLookUp(asked);
-      setAnswer({ result, email: asked });
+      setAnswer({ result, term: asked });
       if (result.status === "found" && result.user) onFound(result.user);
     } catch {
-      setError("Could not look that address up. Please try again.");
+      setError("Could not look that up. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -87,14 +105,14 @@ export default function MemberLookup({
 
   return (
     <Stack gap="md">
-      <EmailField
-        label="Email address"
-        description="Their whole address. Somebody who already has a Quill account is found; anybody else can be created."
-        placeholder="name@example.org"
-        // Their address, not the admin's own
+      <TextField
+        label="Username or email address"
+        description="Their whole username or address. Somebody who already has a Quill account is found; anybody else can be created."
+        placeholder="a.patel or name@example.org"
+        // Somebody else's, not the admin's own
         autoComplete="off"
-        value={email}
-        onChange={(event) => setEmail(event.currentTarget.value)}
+        value={typed}
+        onChange={(event) => setTyped(event.currentTarget.value)}
         onKeyDown={findOnEnter}
         error={error}
       />
@@ -125,7 +143,7 @@ export default function MemberLookup({
 
         {status === "not_addable" && (
           <ErrorMessage>
-            {answer?.email} has a Quill account that you may not add here. Ask
+            {answer?.term} has a Quill account that you may not add here. Ask
             somebody who manages users to add them.
           </ErrorMessage>
         )}
@@ -133,7 +151,7 @@ export default function MemberLookup({
         {status === "not_found" && (
           <>
             <BodyText>
-              Nobody on Quill has the address <strong>{answer?.email}</strong>.
+              Nobody on Quill uses <strong>{answer?.term}</strong>.
               {onCreate ? " You can create them an account." : ""}
             </BodyText>
             {onCreate && (
@@ -141,7 +159,7 @@ export default function MemberLookup({
                 <IconTextButton
                   icon="userPlus"
                   label="Create new user"
-                  onClick={() => onCreate(answer?.email ?? "")}
+                  onClick={() => onCreate(answer?.term ?? "")}
                 />
               </Group>
             )}

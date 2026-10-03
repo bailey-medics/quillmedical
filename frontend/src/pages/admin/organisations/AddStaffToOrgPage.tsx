@@ -11,7 +11,7 @@
  *
  * The picker lists the people the admin can already see who are not
  * yet here. Somebody with an account elsewhere is not among them, so
- * the page opens with a lookup by email, which finds them, or offers to
+ * the page opens with a lookup by username or email, which finds them, or offers to
  * create them with this organisation already chosen.
  *
  * So the list shows everyone, and the judgement moved here. Selecting
@@ -44,7 +44,7 @@ import type {
 } from "@/components/form/Form";
 import { api } from "@/lib/api";
 import { orgUnits, type MemberLookupUser } from "@/domains/orgUnit";
-import { MemberLookup } from "@/components/member-lookup";
+import { MemberLookup, newUserSearch } from "@/components/member-lookup";
 import { useAuth } from "@/auth/AuthContext";
 import ErrorState from "@/components/error-state/ErrorState";
 import { holdsStaffLikeCompetency } from "@/lib/cbac/staffLike";
@@ -109,10 +109,10 @@ function AddStaffFields({
       <FormStatus />
       <BaseCard>
         <Stack gap="md">
-          <Heading>Find somebody by email</Heading>
+          <Heading>Find somebody by username or email</Heading>
           <MemberLookup
             placeName="this organisation"
-            onLookUp={(email) => orgUnits.lookUpMember(Number(orgId), email)}
+            onLookUp={(term) => orgUnits.lookUpMember(Number(orgId), term)}
             onFound={(found) => {
               onFound(found);
               // Chosen for them: the lookup was the choosing.
@@ -124,18 +124,13 @@ function AddStaffFields({
             }}
             // The new user form opens with the address and this
             // organisation already filled in.
-            onCreate={(email) => {
+            onCreate={(term) => {
               // Leaving is the point of the button, so whatever was
               // chosen below is let go first: left dirty, the form asks
               // "are you sure you want to leave?". Flushed, so the form
               // is clean before the navigation is judged, not after.
               flushSync(() => methods.reset());
-              navigate(
-                `/admin/users/new?${new URLSearchParams({
-                  email,
-                  org_unit: orgId,
-                })}`,
-              );
+              navigate(`/admin/users/new?${newUserSearch(term, orgId)}`);
             }}
           />
         </Stack>
@@ -145,8 +140,8 @@ function AddStaffFields({
           <Heading>Add to this organisation</Heading>
           {users.length === 0 && !usersLoading && (
             <BodyText>
-              Nobody you can see is waiting to be added. Find them by email
-              above.
+              Nobody you can see is waiting to be added. Find them by username
+              or email above.
             </BodyText>
           )}
           <Controller

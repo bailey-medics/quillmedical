@@ -52,7 +52,7 @@ describe("AddStaffToSitePage, leaving to create a user", () => {
     await user.click(await screen.findByRole("option", { name: "Trainee" }));
 
     await user.type(
-      screen.getByLabelText(/email address/i),
+      screen.getByLabelText(/username or email address/i),
       "new.person@example.org",
     );
     await user.click(screen.getByRole("button", { name: "Find" }));

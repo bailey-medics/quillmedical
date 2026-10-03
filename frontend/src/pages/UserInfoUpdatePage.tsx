@@ -643,16 +643,20 @@ export default function UserInfoUpdatePage() {
 
   // A new user may arrive already half described: the add-staff page
   // sends somebody here when a lookup finds no account for an address,
-  // with that address and the org_unit they were being added to. Both
+  // with that address or username and the org_unit they were being
+  // added to. Both
   // only fill the form in; the API still decides what may be saved.
   const [searchParams] = useSearchParams();
   const startingEmail = isEditMode ? "" : (searchParams.get("email") ?? "");
+  const startingUsername = isEditMode
+    ? ""
+    : (searchParams.get("username") ?? "");
   const startingOrgUnit = isEditMode ? null : searchParams.get("org_unit");
 
   const [formData, setFormData] = useState<UserFormData>({
     name: "",
     email: startingEmail,
-    username: "",
+    username: startingUsername,
     password: "",
     baseProfession: "",
     additionalCompetencies: [],

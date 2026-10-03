@@ -2,7 +2,7 @@
  * Member lookup stories.
  *
  * The answer comes from the `onLookUp` prop, so each story hands back a
- * different one rather than stubbing a request. Type any whole address
+ * different one rather than stubbing a request. Type any whole username or address
  * and press "Find".
  */
 
@@ -52,7 +52,7 @@ export const Found: Story = {
   render: (args) => (
     <>
       <MemberLookup {...args} />
-      <StoryNote>Type a whole address and press Find.</StoryNote>
+      <StoryNote>Type a whole username or address and press Find.</StoryNote>
     </>
   ),
 };

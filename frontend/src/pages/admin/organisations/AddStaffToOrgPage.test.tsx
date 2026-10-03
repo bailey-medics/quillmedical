@@ -378,7 +378,7 @@ describe("AddStaffToOrgPage", () => {
       const user = userEvent.setup();
       renderPage();
       await user.type(
-        await screen.findByLabelText(/email address/i),
+        await screen.findByLabelText(/username or email address/i),
         "a.patel@example.org",
       );
       await user.click(screen.getByRole("button", { name: "Find" }));
@@ -408,7 +408,7 @@ describe("AddStaffToOrgPage", () => {
       const user = userEvent.setup();
       renderPage();
       await user.type(
-        await screen.findByLabelText(/email address/i),
+        await screen.findByLabelText(/username or email address/i),
         "new.person@example.org",
       );
       await user.click(screen.getByRole("button", { name: "Find" }));

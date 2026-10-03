@@ -487,6 +487,17 @@ describe("UserInfoUpdatePage", () => {
       });
     }, 30000);
 
+    it("opens with the username it was sent, for a new user", () => {
+      onTestFinished(() => window.history.pushState({}, "", "/"));
+
+      renderWithRouter(<UserInfoUpdatePage />, {
+        initialRoute: "/admin/users/new?username=new.person&org_unit=10",
+      });
+
+      expect(screen.getByLabelText(/username/i)).toHaveValue("new.person");
+      expect(screen.getByLabelText(/email/i)).toHaveValue("");
+    });
+
     it("offers a site whose organisation the viewer cannot see", async () => {
       // Somebody who runs one site and not its trust is answered with
       // the site alone. It is still theirs to put people in.
