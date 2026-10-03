@@ -21,11 +21,19 @@ paid for itself: the org_unit used to be two nullable columns and is now one,
 and confining the branch here meant the storage could change without
 touching a single call site. See
 ``docs/docs/plans/2026-09-06-org-scoped-access-findings.md``.
+
+Every write goes through it too: ``authorise_practice`` and
+``withdraw_practice``. The org_unit routes wrote the row inline until the
+user form came to write the same rows, at which point two copies of "a
+repeat is not an error, and an unchanged row keeps its author" would have
+been free to drift. Who may write a row is not decided here: that is the
+caller's question, answered by ``practice_refusal`` in
+``app/org_units/router.py``.
 """
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -151,3 +159,87 @@ def who_can_practise_at(
         .scalars()
         .all()
     ]
+
+
+def authorise_practice(
+    db: Session,
+    *,
+    user_id: int,
+    org_unit_id: int,
+    competency: str,
+    authorised_by: int,
+) -> bool:
+    """Record that somebody may practise a competency at one org_unit.
+
+    Authorising the same thing twice is not an error and writes nothing:
+    the row already there keeps who authorised it and when. Rewriting it
+    would turn "who authorised this?" into "who last saved the form?".
+
+    Not a grant of the competency itself, and not a check of it: a row
+    beyond somebody's ceiling is allowed and has no effect until the
+    ceiling catches up. Whether the caller may write the row at all is
+    decided before this is called.
+
+    Args:
+        db: Database session. The row is flushed, not committed.
+        user_id: The person being authorised.
+        org_unit_id: Where.
+        competency: A competency id from ``shared/competency-definitions/``.
+        authorised_by: The user making the decision.
+
+    Returns:
+        True if a row was written, False if it was already there.
+    """
+    existing = db.scalar(
+        select(PractisingCompetency.id).where(
+            PractisingCompetency.user_id == user_id,
+            PractisingCompetency.competency == competency,
+            _org_unit_clause(org_unit_id),
+        )
+    )
+    if existing is not None:
+        return False
+
+    db.add(
+        PractisingCompetency(
+            user_id=user_id,
+            org_unit_id=org_unit_id,
+            competency=competency,
+            authorised_by=authorised_by,
+        )
+    )
+    db.flush()
+    return True
+
+
+def withdraw_practice(
+    db: Session,
+    *,
+    user_id: int,
+    org_unit_id: int,
+    competency: str,
+) -> None:
+    """Stop somebody practising a competency at one org_unit.
+
+    The row is deleted and nothing is recorded in its place: absence is
+    already the unauthorised state. Withdrawing something that was not
+    authorised is not an error, because the caller asked for it to be
+    unauthorised here and it is.
+
+    Their competency itself is untouched, and so is every row they hold
+    at any other org_unit.
+
+    Args:
+        db: Database session. The delete is flushed, not committed.
+        user_id: The person.
+        org_unit_id: Where.
+        competency: A competency id from ``shared/competency-definitions/``.
+    """
+    db.execute(
+        delete(PractisingCompetency).where(
+            PractisingCompetency.user_id == user_id,
+            PractisingCompetency.competency == competency,
+            _org_unit_clause(org_unit_id),
+        )
+    )
+    db.flush()

@@ -33,6 +33,7 @@ from app.cbac.grant_scope import (
 )
 from app.cbac.grants import sync_competency_rows
 from app.cbac.positions import clinical_leads_of, set_clinical_lead
+from app.cbac.scoped import authorise_practice, withdraw_practice
 from app.db import get_core_db
 from app.deps import (
     DEP_CURRENT_USER,
@@ -258,6 +259,63 @@ def _require_in_scope(user: User, competencies: set[str]) -> None:
                 "You may not grant or remove: " + ", ".join(refused) + "."
             ),
         )
+
+
+def practice_refusal(
+    db: Session,
+    caller: User,
+    *,
+    unit_id: int,
+    user_id: int,
+    competency: str,
+    authorising: bool,
+) -> HTTPException | None:
+    """Why *caller* may not set somebody's practice at an org_unit, or None.
+
+    The one answer to "may this caller write this practice row?", asked
+    by the two practice routes here and by the user routes in ``main``,
+    which write the same rows when a user is created or edited. Returned
+    and not raised, so a caller settling several rows at once can gather
+    every refusal and name them together.
+
+    Both directions need the org_unit to be one the caller reaches for
+    ``manage_practising_competencies``, and a caller who reaches it only
+    through a scoped manager, such as ``manage_teaching``, to stay inside
+    its whitelist. Authorising asks for more than withdrawing does: the
+    org_unit's type must be one somebody can practise at, the person must
+    exist, and a scoped manager may authorise only a member of the
+    org_unit. Withdrawing asks for none of those, so that a row can always
+    be taken away, whatever has happened to the person or the place since
+    it was written.
+
+    Args:
+        db: Core database session.
+        caller: Who is asking.
+        unit_id: The org_unit.
+        user_id: The person whose practice it is.
+        competency: A competency id.
+        authorising: True to authorise, False to withdraw.
+
+    Returns:
+        The refusal to raise, or None when the row may be written.
+    """
+    needs = "manage_practising_competencies"
+    try:
+        unit = _require_visible(db, caller, unit_id, needs)
+        if authorising and not type_can_hold_competencies(unit.type):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Nobody practises anything at a {unit.type}.",
+            )
+        if _through_a_scope(caller, needs):
+            if authorising:
+                _require_member(db, unit_id, user_id)
+            _require_in_scope(caller, {competency})
+        if authorising and db.get(User, user_id) is None:
+            raise HTTPException(status_code=404, detail="User not found")
+    except HTTPException as refusal:
+        return refusal
+    return None
 
 
 def _require_account_in_scope(user: User, person: User) -> None:
@@ -1200,44 +1258,25 @@ def authorise_practising_competency(
     for a competency it may grant, for a member of an org_unit the caller
     belongs to.
     """
-    unit = _require_visible(
-        db, current_user, unit_id, "manage_practising_competencies"
+    refusal = practice_refusal(
+        db,
+        current_user,
+        unit_id=unit_id,
+        user_id=body.user_id,
+        competency=body.competency,
+        authorising=True,
     )
+    if refusal is not None:
+        raise refusal
 
-    if not type_can_hold_competencies(unit.type):
-        raise HTTPException(
-            status_code=422,
-            detail=f"Nobody practises anything at a {unit.type}.",
-        )
-
-    if _through_a_scope(current_user, "manage_practising_competencies"):
-        _require_member(db, unit_id, body.user_id)
-        _require_in_scope(current_user, {body.competency})
-
-    person = db.get(User, body.user_id)
-    if person is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    existing = db.scalar(
-        select(PractisingCompetency.id).where(
-            PractisingCompetency.user_id == body.user_id,
-            PractisingCompetency.org_unit_id == unit_id,
-            PractisingCompetency.competency == body.competency,
-        )
+    written = authorise_practice(
+        db,
+        user_id=body.user_id,
+        org_unit_id=unit_id,
+        competency=body.competency,
+        authorised_by=current_user.id,
     )
-    if existing is not None:
-        return OrgUnitStatusOut(status="unchanged")
-
-    db.add(
-        PractisingCompetency(
-            user_id=body.user_id,
-            org_unit_id=unit_id,
-            competency=body.competency,
-            authorised_by=current_user.id,
-        )
-    )
-    db.flush()
-    return OrgUnitStatusOut(status="authorised")
+    return OrgUnitStatusOut(status="authorised" if written else "unchanged")
 
 
 @router.delete(
@@ -1269,20 +1308,20 @@ def withdraw_practising_competency(
     Requires ``manage_practising_competencies``, or a scoped manager
     for a competency it may grant, at an org_unit the caller belongs to.
     """
-    _require_visible(
-        db, current_user, unit_id, "manage_practising_competencies"
+    refusal = practice_refusal(
+        db,
+        current_user,
+        unit_id=unit_id,
+        user_id=user_id,
+        competency=competency,
+        authorising=False,
     )
-    if _through_a_scope(current_user, "manage_practising_competencies"):
-        _require_in_scope(current_user, {competency})
+    if refusal is not None:
+        raise refusal
 
-    db.execute(
-        delete(PractisingCompetency).where(
-            PractisingCompetency.user_id == user_id,
-            PractisingCompetency.org_unit_id == unit_id,
-            PractisingCompetency.competency == competency,
-        )
+    withdraw_practice(
+        db, user_id=user_id, org_unit_id=unit_id, competency=competency
     )
-    db.flush()
     return OrgUnitStatusOut(status="withdrawn")
 
 
@@ -1491,23 +1530,13 @@ def grant_and_authorise(
             org_unit_id=unit_id,
         )
 
-    existing = db.scalar(
-        select(PractisingCompetency.id).where(
-            PractisingCompetency.user_id == user_id,
-            PractisingCompetency.org_unit_id == unit_id,
-            PractisingCompetency.competency == competency,
-        )
+    authorised = authorise_practice(
+        db,
+        user_id=user_id,
+        org_unit_id=unit_id,
+        competency=competency,
+        authorised_by=current_user.id,
     )
-    authorised = existing is None
-    if authorised:
-        db.add(
-            PractisingCompetency(
-                user_id=user_id,
-                org_unit_id=unit_id,
-                competency=competency,
-                authorised_by=current_user.id,
-            )
-        )
 
     db.flush()
     if granted:
