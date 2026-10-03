@@ -1574,7 +1574,7 @@ stack-update message="":
 
 
 alias stw := stack-watch
-# Redraw the stack with pull request and CI state every minute, until stopped
+# Redraw the stack with PR and CI state every minute; keys ready, sync and move
 stack-watch:
     #!/usr/bin/env bash
     set +x
@@ -1636,23 +1636,36 @@ stack-watch:
         # the window leaves the older copy above the new one and the
         # status line scrolls out of sight with it.
         printf '\033[H\033[2J\033[3J'
-        # printf with the time as an argument, not echo with it inline: the
-        # backticks round each key are literal, and inside double quotes
-        # bash would run them as commands.
-        printf '  updated %s · every 60s · `r` ready all · `s` sync · `any key` updates now · `ctrl-c` to stop\n' \
-            "$(date '+%H:%M:%S')"
+        # The keys, each word carrying the letter that does it: its first,
+        # except for refresh, whose `r` belongs to ready, so it is the `f`.
+        # That letter is bold blue: a colour the drawing below does not use, so
+        # the keys stand apart from the bold yellow of the branch checked
+        # out. Bright blue, 94, because plain blue, 34, is close to
+        # unreadable on a dark terminal. `%b` expands the escapes in the
+        # argument; the time goes in as an argument too, not inline.
+        k='\033[1;94m'
+        n='\033[0m'
+        # The colour codes split each word at its key letter, which the
+        # spelling check reads as fragments.
+        # cspell:disable
+        printf '  updated %s – %b\n' "$(date '+%H:%M:%S')" \
+            "${k}r${n}eady all – ${k}s${n}ync – ${k}u${n}p/${k}d${n}own/${k}t${n}op/${k}b${n}ottom stack – re${k}f${n}resh – ${k}ctrl-c${n} to stop"
+        # cspell:enable
         printf '%s\n' "${drawn}"
 
         # The minute's wait doubles as the keyboard: one keypress ends it
         # early. `r` takes every open pull request in the stack out of
         # draft, which is `stack-ready` and nothing more; `s` is
-        # `stack-sync`, for when a pull request below has merged; any other
-        # key simply redraws now rather than at the end of the minute.
+        # `stack-sync`, for when a pull request below has merged; `u`, `d`,
+        # `t` and `b` are `stack-move` up, down, to the top and to the
+        # bottom, which changes the branch checked out; `f` refreshes the
+        # stack now rather than at the end of the minute, and so does any
+        # key that is none of these.
         #
-        # No confirmation on either, by choice. Marking ready starts the
-        # heavy CI tier on every branch, and a sync rebases and pushes the
-        # branches still open, and that is exactly what pressing the key
-        # here is asking for.
+        # No confirmation on any of them, by choice. Marking ready starts
+        # the heavy CI tier on every branch, a sync rebases and pushes the
+        # branches still open, and a move checks out another branch, and
+        # that is exactly what pressing the key here is asking for.
         #
         # Without a terminal on stdin `read` returns at once, which would
         # turn the loop into a spin against the GitHub API, so that case
@@ -1679,15 +1692,32 @@ stack-watch:
         echo ""
         case "${key}" in
             r|R)
-                recipe="stack-ready"
+                recipe=(stack-ready)
                 start_dots "r · taking every pull request out of draft"
                 ;;
             s|S)
-                recipe="stack-sync"
+                recipe=(stack-sync)
                 start_dots "s · syncing the stack"
                 ;;
+            u|U)
+                recipe=(stack-move up)
+                start_dots "u · moving one up the stack"
+                ;;
+            d|D)
+                recipe=(stack-move down)
+                start_dots "d · moving one down the stack"
+                ;;
+            t|T)
+                recipe=(stack-move top)
+                start_dots "t · moving to the top of the stack"
+                ;;
+            b|B)
+                recipe=(stack-move bottom)
+                start_dots "b · moving to the bottom of the stack"
+                ;;
             *)
-                start_dots "updating"
+                # `f`, and anything else: refresh it now.
+                start_dots "refreshing"
                 continue
                 ;;
         esac
@@ -1705,7 +1735,7 @@ stack-watch:
         # in a `⚠` line. A mark part-way along a line is the drawing's own,
         # a red check or a branch needing a rebase, and is not a failure.
         recipe_status=0
-        recipe_output=$(just "${recipe}" 2>&1) || recipe_status=$?
+        recipe_output=$(just "${recipe[@]}" 2>&1) || recipe_status=$?
         if [ "${recipe_status}" -eq 0 ] \
             && printf '%s\n' "${recipe_output}" | grep -qE '^[[:space:]]*(⚠|✗) '; then
             recipe_status=1
@@ -1713,9 +1743,9 @@ stack-watch:
         if [ "${recipe_status}" -ne 0 ]; then
             stop_dots
             printf '\n%s\n\n' "${recipe_output}"
-            read -rsn1 -p "  ${recipe} did not finish cleanly · any key to carry on" _ || true
+            read -rsn1 -p "  ${recipe[*]} did not finish cleanly · any key to carry on" _ || true
             echo ""
-            start_dots "updating"
+            start_dots "refreshing"
         fi
     done
 
