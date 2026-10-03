@@ -5,8 +5,9 @@
  * - Step 1: Basic details (name, email, username, base profession)
  * - Step 2: Organisation/site assignment
  * - Step 3: Competency editor (add/remove competencies)
- * - Step 4: System permissions + review
- * - Step 5: Confirmation
+ * - Step 4: Practice (where each competency may be used), for a viewer
+ *   who may set it
+ * - Then platform role, review and confirmation
  *
  * @module UserInfoUpdatePage
  */
@@ -43,7 +44,8 @@ import DirtyFormNavigation from "@/components/warnings";
 import PageHeader from "@/components/page-header";
 import type { BaseProfessionId, CompetencyId, Competency } from "@/types/cbac";
 import { getBaseProfessionDetails, ACTIVE_COMPETENCIES } from "@/types/cbac";
-import { useGrantScope } from "@/lib/cbac/hooks";
+import { SCOPED_MANAGER_IDS } from "@/types/cbac";
+import { useGrantScope, useHasAnyCompetency } from "@/lib/cbac/hooks";
 import competenciesData from "@/generated/competencies.json";
 import baseProfessionsData from "@/generated/base-professions.json";
 import { api } from "@/lib/api";
@@ -52,7 +54,18 @@ import PlatformRoleBadge, {
   type PlatformRole,
 } from "@/components/badge/PlatformRoleBadge";
 import ErrorState from "@/components/error-state/ErrorState";
-import { orgUnits, type OrgUnit } from "@/domains/orgUnit";
+import {
+  orgUnits,
+  typeCanHoldCompetencies,
+  type OrgUnit,
+} from "@/domains/orgUnit";
+import {
+  PracticeByPlaceEditor,
+  type PracticeByPlace,
+  type PracticePlace,
+} from "@/components/member-practice";
+import { competencyName } from "@/components/member-practice/competencyRows";
+import { ErrorMessage } from "@/components/typography";
 
 /**
  * An organisation and the org_units inside it, all in place ids.
@@ -104,6 +117,72 @@ interface UserFormData {
    * org_units inside them.
    */
   orgUnitIds: string[];
+  /**
+   * What is switched on in the Practice step, by org_unit id. Kept as
+   * the switches were left: what is shown and sent is narrowed to the
+   * org_units and competencies the earlier steps now hold, by
+   * `practiceToSend`.
+   */
+  practising: PracticeByPlace;
+}
+
+/**
+ * The competencies the person holds, or will once the form is saved:
+ * what the profession gives, with the two lists from the Competencies
+ * step applied. The same sum the server does.
+ */
+function heldCompetencies(formData: UserFormData): string[] {
+  const profession = formData.baseProfession
+    ? getBaseProfessionDetails(formData.baseProfession)
+    : null;
+  const removed = new Set<string>(formData.removedCompetencies);
+  return [
+    ...new Set<string>([
+      ...(profession?.base_competencies ?? []),
+      ...formData.additionalCompetencies,
+    ]),
+  ].filter((id) => !removed.has(id));
+}
+
+/**
+ * The org_units the Practice step shows: the ones the person is being
+ * put at, that the viewer can name. One the viewer cannot see has no
+ * name to show, and is left out of what is sent, so the server leaves
+ * its practice alone.
+ */
+function practicePlaces(
+  formData: UserFormData,
+  placesById: Map<number, OrgUnit>,
+): PracticePlace[] {
+  return formData.orgUnitIds
+    .map((id) => placesById.get(Number(id)))
+    .filter((place): place is OrgUnit => place !== undefined)
+    .map((place) => ({ id: place.id, name: place.name, type: place.type }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * The practice choices as they stand now, for showing and for sending.
+ *
+ * The switches are kept as they were left, and narrowed here: to the
+ * org_units still chosen, and to the competencies still held. So going
+ * back and taking an org_unit or a competency away drops the practice
+ * that hung on it, without the earlier steps having to know.
+ */
+function practiceToSend(
+  formData: UserFormData,
+  places: PracticePlace[],
+): PracticeByPlace {
+  const held = new Set(heldCompetencies(formData));
+  const result: PracticeByPlace = {};
+  for (const place of places) {
+    // Nobody practises at a room; the server refuses a row there.
+    if (!typeCanHoldCompetencies(place.type)) continue;
+    result[place.id] = (formData.practising[place.id] ?? []).filter((id) =>
+      held.has(id),
+    );
+  }
+  return result;
 }
 
 /**
@@ -400,6 +479,57 @@ function Step2Competencies({
 }
 
 /**
+ * Step 4: Practice
+ *
+ * Where each competency may be used. A competency with no practice
+ * behind it authorises nothing anywhere, so without this step a new
+ * starter could do nothing until somebody opened each org_unit's staff
+ * table and switched them on.
+ */
+function StepPractice({
+  formData,
+  setFormData,
+  places,
+}: Pick<StepContentProps, never> & {
+  formData: UserFormData;
+  setFormData: (data: UserFormData) => void;
+  places: PracticePlace[];
+}) {
+  // A scoped manager, such as a teaching admin, switches only what is
+  // on their whitelist; the rest are shown and held still.
+  const { mayGrant } = useGrantScope();
+
+  return (
+    <Stack gap="lg">
+      <BaseCard>
+        <Stack gap="md">
+          <Heading>Where they may practise</Heading>
+          <BodyText>
+            Holding a competency is not enough to use it. Switch on what they
+            may practise at each organisation or site. Anything left off, they
+            cannot do there.
+          </BodyText>
+        </Stack>
+      </BaseCard>
+      <PracticeByPlaceEditor
+        places={places}
+        competencies={heldCompetencies(formData)}
+        value={practiceToSend(formData, places)}
+        onChange={(value) =>
+          setFormData({
+            ...formData,
+            // Merged, so switches at an org_unit not shown just now are
+            // kept as they were.
+            practising: { ...formData.practising, ...value },
+          })
+        }
+        mayChange={mayGrant}
+      />
+    </Stack>
+  );
+}
+
+/**
  * Step 3: System Permissions
  */
 function Step3Permissions({
@@ -466,9 +596,15 @@ function Step3Permissions({
 function Step4Review({
   formData,
   organisations,
+  practice,
 }: Pick<StepContentProps, never> & {
   formData: UserFormData;
   organisations: OrgOption[];
+  /**
+   * The Practice step's answer, when the viewer was offered the step:
+   * the org_units shown, and what was saved for each before this edit.
+   */
+  practice?: { places: PracticePlace[]; saved: PracticeByPlace };
 }) {
   const profession = formData.baseProfession
     ? getBaseProfessionDetails(formData.baseProfession)
@@ -572,7 +708,75 @@ function Step4Review({
           )}
         </Stack>
       </BaseCard>
+
+      {practice && practice.places.length > 0 && (
+        <PracticeReview formData={formData} {...practice} />
+      )}
     </Stack>
+  );
+}
+
+/**
+ * What the save will leave them able to practise, org_unit by org_unit.
+ *
+ * The Review step is this form's confirmation, so this is where a
+ * withdrawal is named: it takes effect the moment the form is saved,
+ * and the member practice page asks before doing the same thing.
+ */
+function PracticeReview({
+  formData,
+  places,
+  saved,
+}: {
+  formData: UserFormData;
+  places: PracticePlace[];
+  saved: PracticeByPlace;
+}) {
+  const chosen = practiceToSend(formData, places);
+  const held = new Set(heldCompetencies(formData));
+  const shown = places.filter((place) => chosen[place.id] !== undefined);
+  // What is authorised now, is still held, and is switched off.
+  const withdrawn = (place: PracticePlace) =>
+    (saved[place.id] ?? []).filter(
+      (id) => held.has(id) && !chosen[place.id].includes(id),
+    );
+  const withdrawsAny = shown.some((place) => withdrawn(place).length > 0);
+
+  if (shown.length === 0) return null;
+
+  return (
+    <BaseCard>
+      <Stack gap="sm">
+        <BodyTextBold>Practice:</BodyTextBold>
+        {shown.map((place) => (
+          <Box key={place.id}>
+            <BodyTextBold>{place.name}</BodyTextBold>
+            <BodyText>
+              {chosen[place.id].length > 0
+                ? `May practise: ${chosen[place.id]
+                    .map(competencyName)
+                    .sort()
+                    .join(", ")}`
+                : "May practise nothing here"}
+            </BodyText>
+            {withdrawn(place).length > 0 && (
+              <BodyText>
+                {`Withdrawn: ${withdrawn(place)
+                  .map(competencyName)
+                  .sort()
+                  .join(", ")}`}
+              </BodyText>
+            )}
+          </Box>
+        ))}
+        {withdrawsAny && (
+          <ErrorMessage>
+            Withdrawing stops them practising it there straight away. They stay
+            qualified, and stay authorised anywhere else.
+          </ErrorMessage>
+        )}
+      </Stack>
+    </BaseCard>
   );
 }
 
@@ -640,6 +844,18 @@ export default function UserInfoUpdatePage() {
   const [loading, setLoading] = useState(isEditMode);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [organisations, setOrganisations] = useState<OrgOption[]>([]);
+  // Every org_unit the viewer can name, for the Practice step's cards.
+  const [placesById, setPlacesById] = useState<Map<number, OrgUnit>>(new Map());
+  // Practice as the server holds it, to say what an edit withdraws.
+  const [savedPractising, setSavedPractising] = useState<PracticeByPlace>({});
+
+  // Setting practice takes its own competency, or a scoped manager's
+  // whitelist: `manage_users` alone does not open the step, and the API
+  // refuses a change sent without one.
+  const maySetPractice = useHasAnyCompetency(
+    "manage_practising_competencies",
+    ...SCOPED_MANAGER_IDS,
+  );
 
   // A new user may arrive already half described: the add-staff page
   // sends somebody here when a lookup finds no account for an address,
@@ -664,6 +880,9 @@ export default function UserInfoUpdatePage() {
     platformRole: "standard",
     orgUnitIds:
       startingOrgUnit && /^\d+$/.test(startingOrgUnit) ? [startingOrgUnit] : [],
+    // Everything off for a new user: a competency authorises nothing
+    // until somebody decides it does.
+    practising: {},
   });
 
   // Fetch user data in edit mode
@@ -684,7 +903,16 @@ export default function UserInfoUpdatePage() {
           platform_role?: PlatformRole;
           org_unit_ids?: number[];
           place_ids?: number[];
+          practising?: { org_unit_id: number; competencies: string[] }[];
         }>(`/users/${userId}`);
+
+        // Absent from a server built before the Practice step, which is
+        // read as nothing saved.
+        const practising: PracticeByPlace = {};
+        for (const entry of data.practising ?? []) {
+          practising[entry.org_unit_id] = entry.competencies;
+        }
+        setSavedPractising(practising);
 
         // Pre-fill form with user data
         setFormData({
@@ -700,6 +928,7 @@ export default function UserInfoUpdatePage() {
           // the older name for the same list, read as a fallback so this
           // page works against a server from before the expand shipped.
           orgUnitIds: (data.org_unit_ids ?? data.place_ids ?? []).map(String),
+          practising,
         });
       } catch (error) {
         console.error("Failed to fetch user:", error);
@@ -721,6 +950,7 @@ export default function UserInfoUpdatePage() {
         const places = await orgUnits.list();
 
         const byId = new Map(places.map((place) => [place.id, place]));
+        setPlacesById(byId);
 
         /**
          * The organisation an org_unit belongs to.
@@ -832,6 +1062,8 @@ export default function UserInfoUpdatePage() {
     return Object.keys(newErrors).length === 0;
   }
 
+  const shownPracticePlaces = practicePlaces(formData, placesById);
+
   async function handleSubmit() {
     if (submitting) return;
 
@@ -847,6 +1079,7 @@ export default function UserInfoUpdatePage() {
         platform_role: PlatformRole;
         password?: string;
         org_unit_ids: number[];
+        practising?: { org_unit_id: number; competencies: string[] }[];
       } = {
         name: formData.name,
         email: formData.email,
@@ -857,6 +1090,17 @@ export default function UserInfoUpdatePage() {
         platform_role: formData.platformRole,
         org_unit_ids: formData.orgUnitIds.map(Number),
       };
+
+      // Sent only by a viewer who was offered the step. Left out, the
+      // API changes nobody's practice.
+      if (maySetPractice) {
+        payload.practising = Object.entries(
+          practiceToSend(formData, shownPracticePlaces),
+        ).map(([orgUnitId, competencies]) => ({
+          org_unit_id: Number(orgUnitId),
+          competencies,
+        }));
+      }
 
       // Only include password if provided (required for create, optional for edit)
       if (formData.password) {
@@ -873,7 +1117,7 @@ export default function UserInfoUpdatePage() {
 
       setSuccess(true);
       setDirty(false); // Clear dirty flag on successful submission
-      setActiveStep(5); // Move to confirmation step
+      setActiveStep(confirmationStep); // Move to confirmation step
     } catch (error) {
       console.error(
         `Failed to ${isEditMode ? "update" : "create"} user:`,
@@ -882,7 +1126,7 @@ export default function UserInfoUpdatePage() {
       setSuccess(false);
       setErrorMessage(error instanceof Error ? error.message : null);
       setDirty(false); // Clear dirty flag even on error (user can retry from admin)
-      setActiveStep(5); // Move to confirmation step even on error
+      setActiveStep(confirmationStep); // Move to confirmation step even on error
     } finally {
       setSubmitting(false);
     }
@@ -926,6 +1170,27 @@ export default function UserInfoUpdatePage() {
         />
       ),
     },
+    // After Competencies, because it is built from the two steps before
+    // it: where they are being put, and what they will hold.
+    ...(maySetPractice
+      ? [
+          {
+            label: "Practice",
+            description: "Where they may practise",
+            content: (props: StepContentProps) => (
+              <StepPractice
+                {...props}
+                formData={formData}
+                setFormData={updateFormData}
+                places={shownPracticePlaces}
+              />
+            ),
+            // The editor draws a card for each org_unit, and a card
+            // inside the step's own card would be a box in a box.
+            hideCard: true,
+          } satisfies StepConfig,
+        ]
+      : []),
     {
       label: "Permissions",
       description: "System permission level",
@@ -945,6 +1210,11 @@ export default function UserInfoUpdatePage() {
           {...props}
           formData={formData}
           organisations={organisations}
+          practice={
+            maySetPractice
+              ? { places: shownPracticePlaces, saved: savedPractising }
+              : undefined
+          }
         />
       ),
       nextButtonLabel: isEditMode ? "Update User" : "Create User",
@@ -966,9 +1236,14 @@ export default function UserInfoUpdatePage() {
     },
   ];
 
-  // Intercept step 4 -> 5 transition to submit form
+  // Found by position, not by number: the Practice step is there for
+  // some viewers and not for others, which moves everything after it.
+  const confirmationStep = steps.length - 1;
+  const reviewStep = confirmationStep - 1;
+
+  // Intercept the review -> confirmation transition to submit the form
   function handleStepChange(newStep: number) {
-    if (activeStep === 4 && newStep === 5) {
+    if (activeStep === reviewStep && newStep === confirmationStep) {
       handleSubmit();
     } else {
       setActiveStep(newStep);
