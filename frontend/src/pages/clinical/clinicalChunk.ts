@@ -1,6 +1,6 @@
 /**
  * The clinical feature's one lazy chunk: every page routed under
- * `<RequireClinical>` in `main.tsx`.
+ * `<RequireClinical>` in `routes.tsx`.
  *
  * The routes all load this module through `loadClinical` in
  * `featureChunks.ts`, so the feature is one download on the way in and

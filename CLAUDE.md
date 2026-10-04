@@ -88,7 +88,7 @@ See the `Justfile` if you want to know more.
 
 - **API**: Use `api.ts` client for all backend calls (auto-retry on 401, CSRF, credentials) – never raw `fetch` (sole exception: `checkHealth()` in `ConnectivityContext.tsx`)
 - **Auth**: `AuthContext.tsx` provides `state`, `login`, `logout`, `reload`
-- **Routing**: React Router v7 with `createBrowserRouter` in `src/main.tsx`
+- **Routing**: React Router v7. The route list is in `src/routes.tsx`; `src/main.tsx` hands it to `createBrowserRouter` and mounts the app
 - **Protection**: `<RequireAuth>` for authenticated routes, `<GuestOnly>` for login/register, `<RequireOperator>` for Quill-operator routes, `<RequireCompetency competency="manage_users">` for CBAC-gated routes, `<RequireClinical>` for FHIR/EHRbase-dependent routes, `<RequireFeature feature="teaching">` for feature-gated routes (all in `src/auth/`). All default to a 404 rather than a 403, hiding a route from somebody who may not use it.
 - **Path aliases**: Defined in `frontend/tsconfig.json` under `compilerOptions.paths` – always use `@/`, `@lib/`, `@components/`, `@test/`, `@domains/` prefixes instead of relative paths
 - **Styling**: Mantine 8.3 + CSS modules, no inline styles
@@ -423,7 +423,8 @@ A position is a slot a place has, in `models.py` as `Position` and
 - `backend/app/org_units/`: the place tree – router, and type capability flags
 - `backend/app/cbac/scoped.py`: what somebody may practise at one place
 - `backend/app/schemas/`: Pydantic request/response models (`auth.py`, `cbac.py`)
-- `frontend/src/main.tsx`: Router config with `createBrowserRouter` and all route definitions
+- `frontend/src/routes.tsx`: All route definitions
+- `frontend/src/main.tsx`: Mounts the app and hands the routes to `createBrowserRouter`
 - `frontend/src/auth/`: AuthContext, RequireAuth, GuestOnly, RequireOperator, RequireCompetency, RequireClinical, RequireFeature
 - `frontend/src/lib/api.ts`: API client (auto-retry 401, CSRF, credential cookies)
 - `frontend/src/types/cbac.ts`: CBAC type definitions

@@ -1,6 +1,6 @@
 /**
  * The admin area's one lazy chunk: every page routed under `/admin` in
- * `main.tsx`, the teaching admin pages included.
+ * `routes.tsx`, the teaching admin pages included.
  *
  * The routes all load this module through `loadAdmin` in
  * `featureChunks.ts`, so admin is one download on the way in and none

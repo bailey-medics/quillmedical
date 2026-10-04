@@ -1,6 +1,6 @@
 /**
  * The safety mock-up's one lazy chunk: every page routed under `/safety`
- * in `main.tsx`.
+ * in `routes.tsx`.
  *
  * The routes all load this module through `loadSafety` in
  * `featureChunks.ts`: one download on the way in and none after. Each

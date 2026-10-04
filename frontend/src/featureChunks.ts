@@ -2,7 +2,7 @@
  * The loader for each feature's one lazy chunk, and who may open it.
  *
  * A feature is a single `import()` target, so Rollup cuts a single chunk
- * for it. Routes in `main.tsx` pass these to `lazyFrom`; nothing else
+ * for it. Routes in `routes.tsx` pass these to `lazyFrom`; nothing else
  * should import a feature's chunk module, statically or otherwise, or the
  * pages are pulled back into first load. See
  * `docs/docs/plans/2026-10-04-lazy-load-one-chunk-per-feature-plan.md`.
@@ -31,10 +31,10 @@ function hasCompetency(user: User, ...competencies: string[]): boolean {
  * Every feature chunk with the test for who may open it, in the order
  * they are fetched in the background (see `lib/prefetchFeatures.ts`).
  *
- * Each `canOpen` mirrors the guard on that feature's routes in `main.tsx`,
+ * Each `canOpen` mirrors the guard on that feature's routes in `routes.tsx`,
  * so nobody downloads a feature they cannot reach. Where a guard lets
  * somebody through on missing information, this does not: an unknown is
- * no reason to fetch. A feature added to `main.tsx` is added here.
+ * no reason to fetch. A feature added to `routes.tsx` is added here.
  */
 export const FEATURE_CHUNKS: readonly PrefetchChunk<User>[] = [
   {

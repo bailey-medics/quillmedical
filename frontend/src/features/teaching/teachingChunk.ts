@@ -1,6 +1,6 @@
 /**
  * The teaching feature's one lazy chunk: every learner page routed under
- * `/teaching` in `main.tsx`. The teaching admin pages are in the admin
+ * `/teaching` in `routes.tsx`. The teaching admin pages are in the admin
  * chunk, not here.
  *
  * The routes all load this module through `loadTeaching` in

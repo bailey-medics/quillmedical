@@ -8,7 +8,7 @@
  * docs/docs/plans/2026-10-02-safety-feature-mock-up-plan.md.
  *
  * Exports `Component` rather than a default, because React Router's
- * `lazy` looks for that name. See the route definition in `main.tsx`.
+ * `lazy` looks for that name. See the route definition in `routes.tsx`.
  */
 
 import { Stack } from "@mantine/core";
