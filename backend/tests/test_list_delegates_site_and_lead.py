@@ -112,10 +112,15 @@ class TestTheDelegatesSite:
         }
         assert found.get("delegate") == "Ward 1"
 
-    def test_a_member_in_another_capacity_has_no_site(
+    def test_a_member_in_another_capacity_is_placed_at_their_site(
         self, authenticated_superadmin_client, db_session, test_superadmin
     ):
-        """Only the delegate capacity places someone at a site here."""
+        """Staff who sit a module are at a site too.
+
+        Only the trainee capacity used to place somebody, so an admin or
+        a nurse who sat an assessment was listed with no site and no
+        clinical lead.
+        """
         org = _org(db_session, "Trust")
         _in_org(db_session, org, test_superadmin)
         site = _site_of(db_session, org, "Ward 1")
@@ -126,7 +131,43 @@ class TestTheDelegatesSite:
             d["name"]: d["site_name"]
             for d in _delegates(authenticated_superadmin_client)
         }
-        assert found.get("nurse") is None
+        assert found.get("nurse") == "Ward 1"
+
+    def test_the_site_they_train_at_wins_over_one_they_staff(
+        self, authenticated_superadmin_client, db_session, test_superadmin
+    ):
+        org = _org(db_session, "Trust")
+        _in_org(db_session, org, test_superadmin)
+        staffed = _site_of(db_session, org, "Ward 1")
+        trained = _site_of(db_session, org, "Ward 2")
+        delegate = _user(
+            db_session, "delegate", profession="teaching_delegate"
+        )
+        _member(db_session, staffed, delegate, "staff")
+        _member(db_session, trained, delegate, "trainee")
+
+        found = {
+            d["name"]: d["site_name"]
+            for d in _delegates(authenticated_superadmin_client)
+        }
+        assert found.get("delegate") == "Ward 2"
+
+    def test_a_member_of_the_organisation_alone_has_no_site(
+        self, authenticated_superadmin_client, db_session, test_superadmin
+    ):
+        """An organisation is not a site."""
+        org = _org(db_session, "Trust")
+        _in_org(db_session, org, test_superadmin)
+        manager = _user(db_session, "manager")
+        add_org_unit_member(db_session, org.id, manager.id, "staff")
+        db_session.commit()
+
+        found = {
+            d["name"]: d["site_name"]
+            for d in _delegates(authenticated_superadmin_client)
+        }
+        assert "manager" in found
+        assert found["manager"] is None
 
 
 class TestTheClinicalLeadShown:

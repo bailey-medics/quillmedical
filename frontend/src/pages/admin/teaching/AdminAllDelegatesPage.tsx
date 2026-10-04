@@ -7,7 +7,8 @@
  *
  * Only shows delegates belonging to the current user's organisation(s).
  *
- * Results are for one module at a time. An organisation serving more than
+ * Results are for one module at a time, and list only the delegates who
+ * have attempted that module. An organisation serving more than
  * one module that has an assessment, a real one and a practice one say,
  * gets a module select under the header. Read together, a practice
  * attempt would hide a real pass and count against a first-time pass.
@@ -303,7 +304,11 @@ export default function AdminAllDelegatesPage() {
         searchFields={searchFields}
         filterPredicate={filterPredicate}
         onFilteredData={handleFilteredData}
-        emptyMessage="No delegates match the selected filters"
+        emptyMessage={
+          bankId && delegates.length === 0
+            ? "Nobody has attempted this module yet"
+            : "No delegates match the selected filters"
+        }
       />
     </Stack>
   );
