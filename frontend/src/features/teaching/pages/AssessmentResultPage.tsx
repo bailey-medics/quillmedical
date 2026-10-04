@@ -41,10 +41,20 @@ export default function AssessmentResultPage() {
         const a = await api.get<Assessment>(`/teaching/assessments/${id}`);
         setAssessment(a);
 
-        const detail = await api.get<QuestionBankDetail>(
-          `/teaching/question-banks/${a.question_bank_id}`,
-        );
-        setBankDetail(detail);
+        // The module is asked for only to offer a retry, and somebody
+        // who keeps their results after losing their way into modules
+        // is refused it. That is not a failure of this page: the title
+        // and the certificate come with the assessment, so the result
+        // is shown without a retry.
+        try {
+          setBankDetail(
+            await api.get<QuestionBankDetail>(
+              `/teaching/question-banks/${a.question_bank_id}`,
+            ),
+          );
+        } catch {
+          setBankDetail(null);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load result");
       } finally {
@@ -57,11 +67,17 @@ export default function AssessmentResultPage() {
   // Where this page sits in the menu: under its module, as "Result".
   // Shown only while the page is open. The module's own link appears once
   // its title has loaded; until then "Result" hangs under Teaching.
+  // The title comes with the assessment. The module's link is offered
+  // only when the module itself could be read, so a results-only person
+  // is not handed a link to a page they would be refused.
+  const bankTitle = assessment?.bank_title ?? bankDetail?.title;
   const sidebarNav = (
     <TeachingMainNav
-      moduleName={bankDetail?.title}
+      moduleName={bankDetail ? bankTitle : undefined}
       moduleHref={
-        assessment ? `/teaching/${assessment.question_bank_id}` : undefined
+        assessment && bankDetail
+          ? `/teaching/${assessment.question_bank_id}`
+          : undefined
       }
       trail={[{ label: "Result", href: `/teaching/assessment/${id}/result` }]}
     />
@@ -100,7 +116,7 @@ export default function AssessmentResultPage() {
           <ResultMessage
             variant="warning"
             title="Incomplete"
-            subtitle={bankDetail?.title}
+            subtitle={bankTitle}
           />
         </Stack>
       </TeachingLayout>
@@ -112,8 +128,12 @@ export default function AssessmentResultPage() {
   const config: QuestionBankConfigYaml = bankDetail?.config_yaml ?? {};
   const allowRetry = config?.assessment?.allow_immediate_retry !== false;
   const bankIsLive = bankDetail?.is_live ?? false;
+  // The assessment says whether its pass earns a certificate, from the
+  // version that was sat. The module's own setting is the fallback for
+  // a server that does not yet send it.
   const showCertificate =
-    assessment.is_passed && config?.results?.certificate_download === true;
+    assessment.certificate_available ??
+    (assessment.is_passed && config?.results?.certificate_download === true);
 
   return (
     <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
@@ -121,7 +141,7 @@ export default function AssessmentResultPage() {
         <AssessmentResult
           isPassed={assessment.is_passed}
           criteria={criteria}
-          bankTitle={bankDetail?.title}
+          bankTitle={bankTitle}
           assessmentId={assessment.id}
           questionResultsHref={`/teaching/assessment/${assessment.id}/question-results`}
           showCertificate={!!showCertificate}

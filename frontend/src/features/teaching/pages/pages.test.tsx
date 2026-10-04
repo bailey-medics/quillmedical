@@ -32,7 +32,12 @@ vi.mock("@/auth/AuthContext", () => ({
       user: {
         username: "test-user",
         enabled_features: ["teaching", "passport"],
-        competencies: ["assess_clinician_passport", "passport_write"],
+        competencies: [
+          "assess_clinician_passport",
+          "passport_write",
+          "view_teaching_results",
+          "take_teaching_modules",
+        ],
       },
     },
     logout: vi.fn(),
@@ -167,6 +172,40 @@ describe("TeachingDashboard", () => {
   });
 });
 
+describe("TeachingDashboard for somebody who may only see results", () => {
+  // The API answers an empty module list to a person without
+  // `take_teaching_modules`, so the page needs no rule of its own: it
+  // shows what it shows an organisation with nothing open, above the
+  // results that are still theirs.
+  it("shows no modules and still shows their history", async () => {
+    (api.get as Mock).mockImplementation((path: string) =>
+      path === "/teaching/question-banks"
+        ? Promise.resolve([])
+        : Promise.resolve([
+            {
+              id: 3,
+              question_bank_id: "test-bank",
+              bank_title: "Test Bank",
+              bank_version: 1,
+              started_at: "2026-09-27T09:00:00Z",
+              completed_at: "2026-09-27T10:00:00Z",
+              is_passed: true,
+              exam_ref: null,
+              score_breakdown: null,
+              total_items: 3,
+            },
+          ]),
+    );
+    renderWithRouter(<TeachingDashboard />);
+
+    expect(
+      await screen.findByText("No assessments are currently open"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("My history")).toBeInTheDocument();
+    expect(screen.getAllByText("Test Bank").length).toBeGreaterThan(0);
+  });
+});
+
 describe("SyncStatus", () => {
   it("shows loading state initially", () => {
     (api.get as Mock).mockReturnValue(new Promise(() => {}));
@@ -269,6 +308,66 @@ describe("AssessmentResultPage", () => {
       "href",
       "/teaching/assessment/7/question-results",
     );
+  });
+});
+
+describe("AssessmentResultPage for somebody refused the module", () => {
+  // Results outlive the way into a module. The module request is
+  // refused, and the title and the certificate come with the assessment.
+  function mockRefusedModule(certificate: boolean) {
+    (api.get as Mock).mockImplementation((path: string) =>
+      path.startsWith("/teaching/assessments/")
+        ? Promise.resolve({
+            id: 7,
+            question_bank_id: "test-bank",
+            bank_version: 2,
+            started_at: "2026-09-27T09:00:00Z",
+            completed_at: "2026-09-27T10:00:00Z",
+            time_limit_minutes: 60,
+            total_items: 3,
+            is_passed: true,
+            score_breakdown: { criteria: [] },
+            bank_title: "Test Bank",
+            certificate_available: certificate,
+          })
+        : Promise.reject(
+            Object.assign(new Error("Forbidden"), { status: 403 }),
+          ),
+    );
+  }
+
+  function renderResult() {
+    renderWithRouter(<AssessmentResultPage />, {
+      routePath: "/teaching/assessment/:id/result",
+      initialRoute: "/teaching/assessment/7/result",
+    });
+  }
+
+  it("still shows the result", async () => {
+    mockRefusedModule(false);
+    renderResult();
+
+    expect(
+      await screen.findByRole("link", { name: "View results by question" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Error loading data")).toBeNull();
+  });
+
+  it("offers the certificate the assessment says it earned", async () => {
+    mockRefusedModule(true);
+    renderResult();
+
+    expect(
+      await screen.findByRole("button", { name: /certificate/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers no certificate where there is none", async () => {
+    mockRefusedModule(false);
+    renderResult();
+
+    await screen.findByRole("link", { name: "View results by question" });
+    expect(screen.queryByRole("button", { name: /certificate/i })).toBeNull();
   });
 });
 

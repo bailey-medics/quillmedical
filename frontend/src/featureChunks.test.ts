@@ -91,8 +91,11 @@ describe("the exam", () => {
     ["assessment/:id", "AssessmentAttempt"],
     ["assessment/:id/result", "AssessmentResultPage"],
   ])("loads %s from the teaching chunk", (routePath, page) => {
+    // The page named may be followed by a guard, `lazyFrom`'s third
+    // argument: the attempt sits behind the competency that opens
+    // modules. What matters here is the loader and the page.
     const route = new RegExp(
-      `path: "${routePath}",\\s*lazy: lazyFrom\\(loadTeaching, "${page}"\\)`,
+      `path: "${routePath}",\\s*lazy: lazyFrom\\(loadTeaching, "${page}"[,)]`,
     );
 
     expect(routesSource).toMatch(route);

@@ -174,6 +174,12 @@ class AssessmentOut(BaseModel):
     is_passed: bool | None
     exam_ref: str | None
     score_breakdown: dict[str, Any] | None
+    #: The module's title and whether a pass earns a certificate, as the
+    #: version sat says. Filled by the detail route only, so the result
+    #: page need not ask for the module itself, which somebody who may
+    #: see their results and not enter modules is refused.
+    bank_title: str | None = None
+    certificate_available: bool = False
 
 
 class AssessmentWithFirstItem(BaseModel):

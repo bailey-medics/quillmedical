@@ -1234,12 +1234,39 @@ def get_assessment(
     assessment_id: int,
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
-) -> Assessment:
-    """Get assessment state."""
+) -> AssessmentOut:
+    """Get assessment state.
+
+    Carries the module's title and whether a pass earns a certificate,
+    read from the version that was sat. The result page needs both, and
+    would otherwise ask for the module, which is behind the modules
+    competency: somebody keeping their results after losing their way
+    into modules would see a result with no title and no certificate.
+    """
     assessment = db.get(Assessment, assessment_id)
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
-    return assessment
+
+    config_row = (
+        db.execute(
+            select(QuestionBankConfig).where(
+                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
+                QuestionBankConfig.question_bank_id
+                == assessment.question_bank_id,
+                QuestionBankConfig.version == assessment.bank_version,
+            )
+        )
+        .scalars()
+        .first()
+    )
+    out = AssessmentOut.model_validate(assessment)
+    if config_row is not None:
+        results = (config_row.config_yaml or {}).get("results") or {}
+        out.bank_title = config_row.title
+        out.certificate_available = bool(
+            assessment.is_passed and results.get("certificate_download")
+        )
+    return out
 
 
 _QUESTION_NUMBER = re.compile(r"(\d+)$")

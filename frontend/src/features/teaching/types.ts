@@ -100,6 +100,10 @@ export interface Assessment {
   total_items: number;
   is_passed: boolean | null;
   score_breakdown: Record<string, unknown> | null;
+  /** The module's title, from the version sat. Detail route only */
+  bank_title?: string | null;
+  /** Whether this pass earns a certificate. Detail route only */
+  certificate_available?: boolean;
 }
 
 /** One question of a finished attempt: right, wrong or unanswered. */

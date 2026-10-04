@@ -59,7 +59,11 @@ describe("HomeRedirect", () => {
     signInAs({
       clinical_services_enabled: false,
       enabled_features: ["teaching", "passport"],
-      competencies: ["assess_clinician_passport", "passport_write"],
+      competencies: [
+        "view_teaching_results",
+        "assess_clinician_passport",
+        "passport_write",
+      ],
     });
 
     renderWithRouter(<HomeRedirect />);
@@ -132,12 +136,24 @@ describe("HomeRedirect", () => {
     signInAs({
       clinical_services_enabled: false,
       enabled_features: ["teaching"],
-      competencies: ["manage_users"],
+      competencies: ["manage_users", "view_teaching_results"],
     });
 
     renderWithRouter(<HomeRedirect />);
 
     expect(window.location.pathname).toBe("/teaching");
+  });
+
+  it("shows the no-access notice when teaching is on but the competency is missing", () => {
+    signInAs({
+      clinical_services_enabled: false,
+      enabled_features: ["teaching"],
+      competencies: [],
+    });
+
+    renderWithRouter(<HomeRedirect />);
+
+    expect(screen.getByText("No access")).toBeInTheDocument();
   });
 
   it("shows the no-access notice when the passport feature is on but the competency is missing", () => {

@@ -175,7 +175,11 @@ export function useFeatureNavItems(): NavItem[] {
   // open beneath it. See the comment on those children.
   const { pathname } = useLocation();
 
-  const hasTeaching = useHasFeature("teaching");
+  // Teaching is gated as the passport is, on the organisation feature
+  // and the competency that opens it, matching its routes and the API.
+  const teachingEnabled = useHasFeature("teaching");
+  const canSeeResults = useHasCompetency("view_teaching_results");
+  const hasTeaching = teachingEnabled && canSeeResults;
 
   // Safety is gated as the passport is, on the organisation feature and
   // the competency its professions carry, matching its routes.
@@ -184,8 +188,7 @@ export function useFeatureNavItems(): NavItem[] {
   const hasSafety = safetyEnabled && canViewSafety;
 
   // The passport routes carry RequireFeature *and* RequireCompetency,
-  // so both are asked here. Teaching gates its entry on the feature
-  // alone, matching its own routes.
+  // so both are asked here.
   // A holder with no org_unit that has the passport still reaches their
   // own record, so they are offered the way in too.
   const passportEnabled = useCanReachPassport();

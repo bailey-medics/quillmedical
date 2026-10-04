@@ -14,11 +14,14 @@ be left open by accident. The rest check the doors from outside.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.features.teaching.models import Assessment, QuestionBankConfig
 from app.features.teaching.router import (
     MODULES_COMPETENCY,
     RESULTS_COMPETENCY,
@@ -265,3 +268,99 @@ class TestTheInnerDoor:
             200
         )
         assert test_client.get("/api/teaching/modules").status_code == 200
+
+
+def _passed_assessment(
+    db: Session, org: OrgUnit, user: User, *, certificate: bool
+) -> Assessment:
+    """A finished, passed attempt at a module whose version is on record."""
+    db.add(
+        QuestionBankConfig(
+            org_unit_id=org.id,
+            question_bank_id="gate-bank",
+            version=1,
+            title="Gate Bank",
+            description="A module.",
+            type="uniform",
+            config_yaml={"results": {"certificate_download": certificate}},
+            synced_by=user.id,
+        )
+    )
+    now = datetime.now(UTC)
+    assessment = Assessment(
+        user_id=user.id,
+        org_unit_id=org.id,
+        question_bank_id="gate-bank",
+        bank_version=1,
+        started_at=now,
+        completed_at=now,
+        time_limit_minutes=30,
+        total_items=3,
+        is_passed=True,
+        score_breakdown={"criteria": []},
+    )
+    db.add(assessment)
+    db.flush()
+    return assessment
+
+
+class TestAResultStandsOnItsOwn:
+    """The result page asks for the assessment and nothing else.
+
+    It used to ask for the module as well, for its title and whether a
+    pass earns a certificate. The module is behind the modules
+    competency, so somebody keeping only their results would have seen a
+    result with no title and no way to their certificate.
+    """
+
+    def test_results_alone_reads_the_title_and_certificate_flag(
+        self, test_client: TestClient, db_session: Session, teaching_org
+    ) -> None:
+        user = _learner(
+            db_session, teaching_org, "results", [RESULTS_COMPETENCY]
+        )
+        assessment = _passed_assessment(
+            db_session, teaching_org, user, certificate=True
+        )
+        db_session.commit()
+        _login(test_client, "results")
+
+        resp = test_client.get(f"/api/teaching/assessments/{assessment.id}")
+
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["bank_title"] == "Gate Bank"
+        assert body["certificate_available"] is True
+
+    def test_no_certificate_where_the_module_gives_none(
+        self, test_client: TestClient, db_session: Session, teaching_org
+    ) -> None:
+        user = _learner(
+            db_session, teaching_org, "results", [RESULTS_COMPETENCY]
+        )
+        assessment = _passed_assessment(
+            db_session, teaching_org, user, certificate=False
+        )
+        db_session.commit()
+        _login(test_client, "results")
+
+        resp = test_client.get(f"/api/teaching/assessments/{assessment.id}")
+
+        assert resp.json()["certificate_available"] is False
+
+    def test_somebody_else_cannot_read_it(
+        self, test_client: TestClient, db_session: Session, teaching_org
+    ) -> None:
+        owner = _learner(
+            db_session, teaching_org, "owner", [RESULTS_COMPETENCY]
+        )
+        _learner(db_session, teaching_org, "other", [RESULTS_COMPETENCY])
+        assessment = _passed_assessment(
+            db_session, teaching_org, owner, certificate=True
+        )
+        db_session.commit()
+        _login(test_client, "other")
+
+        resp = test_client.get(f"/api/teaching/assessments/{assessment.id}")
+
+        assert resp.status_code == 404

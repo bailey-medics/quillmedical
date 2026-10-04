@@ -63,6 +63,8 @@ vi.mock("@/auth/AuthContext", async (importOriginal) => ({
         competencies: [
           "manage_users",
           "manage_teaching",
+          "view_teaching_results",
+          "take_teaching_modules",
           "assess_clinician_passport",
           "passport_write",
           "view_safety_cases",
