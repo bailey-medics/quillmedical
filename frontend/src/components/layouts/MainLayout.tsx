@@ -13,6 +13,7 @@ import type { NavItem } from "@components/navigation/NestedNavLink";
 import NavigationDrawer from "@components/drawers/NavigationDrawer";
 import SideNav from "@components/navigation/SideNav";
 import TopRibbon from "@components/ribbon/TopRibbon";
+import RibbonInbox from "@components/inbox/RibbonInbox";
 import Footer from "@components/footer/Footer";
 import StatusStrip from "@components/status-strip/StatusStrip";
 import OfflineModal from "@components/offline-modal/OfflineModal";
@@ -186,6 +187,10 @@ export default function MainLayout({
           onPatientDoubleClick={handlePatientDoubleClick}
           examMode={examMode}
           showSearch={showSearch}
+          // What is waiting on the person signed in. Not during an exam:
+          // the ribbon shows only the name then, and nothing is fetched
+          // between starting an exam and seeing its result.
+          rightSection={examMode ? undefined : <RibbonInbox />}
         />
       </Box>
 

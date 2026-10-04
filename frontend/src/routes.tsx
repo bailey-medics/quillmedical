@@ -69,6 +69,7 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import Settings from "./pages/Settings";
 import YourFeedbackPage from "./pages/feedback/YourFeedbackPage";
+import InboxPage from "./pages/inbox/InboxPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import VerifyEmailPendingPage from "./pages/VerifyEmailPendingPage";
 import HomeRedirect from "./pages/HomeRedirect";
@@ -706,6 +707,14 @@ export const routes: RouteObject[] = [
       {
         path: "/feedback",
         element: <YourFeedbackPage />,
+        handle: { safeForReload: true },
+      },
+      // What is waiting on the person signed in, from every feature, and
+      // what was lately dealt with. Any signed-in user; the API returns
+      // only what is theirs. Reached from the envelope in the ribbon.
+      {
+        path: "/inbox",
+        element: <InboxPage />,
         handle: { safeForReload: true },
       },
       // Settings

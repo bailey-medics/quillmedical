@@ -88,33 +88,67 @@ that works while nobody is in the application.
 - [x] Tests: an operator's count follows the status, somebody who is not
       an operator gets an empty list, and a signed-out caller is refused.
 
-## Phase 4: The envelope in the ribbon
+## Phase 4: The envelope in the ribbon, and the inbox page
 
-- [ ] Add `frontend/src/lib/inbox/` with the client call and a hook that
-      fetches the summary when the layout mounts and when the route
-      changes. Not polled and not live: the email covers the time away,
-      and a count that is right at each navigation is enough inside the
-      application.
+The envelope was first planned to open a dropdown of counts. Mark saw
+that on 4 October 2026 and asked for a page instead: a general place for
+messages and tasks, with what is waiting and what has been completed. So
+the envelope goes to a page, and the lines the page lists come from the
+same sources as the counts.
 
-- [ ] Build `InboxMenu` in `frontend/src/components/inbox/`, with stories
-      and a test: the envelope, and on pressing it a dropdown listing each
-      source with its count, each a link. A dropdown and not a page,
-      since with one or two sources a page would be mostly empty. The
-      label and the address for each source live in the frontend, keyed
-      on `source`.
+- [x] Give each source its lines as well as its count. `InboxSource` in
+      `backend/app/inbox/sources.py` holds both, and `GET
+      /api/inbox/items` returns them newest first: what is waiting, or
+      with `done=true` what was lately dealt with, at most fifty from
+      each source of either. A line carries a title, a detail, a status
+      and a date. **It never carries what somebody wrote.** For feedback
+      the title is "Feedback from" and the sender's username, the detail
+      is the category, and the message stays on the feedback's own page.
+      The words for a category and a status move to
+      `backend/app/feedback/labels.py`, which the email uses too.
 
-- [ ] Show it through `TopRibbon`'s `rightSection`, from `MainLayout`.
-      `TeachingLayout` already uses that slot for an exam's timer and
-      keeps it: nothing may compete with the timer, and nothing is
-      fetched between starting an exam and seeing its result.
+- [x] Add `frontend/src/lib/inbox/` with the client calls and `useInbox`,
+      a hook that fetches the count when the layout mounts, when the
+      route changes, and when a page calls `inboxChanged()` after dealing
+      with something, as the feedback page does on a change of status.
+      Not polled and not live: the email covers the time away, and a
+      count that is right at each page is enough inside the application.
+      A source this client does not know is left out of the count, and
+      an answer of the wrong shape counts as nothing: the envelope is on
+      every page, so it must never be what breaks one.
 
-- [ ] On a narrow ribbon the envelope stays and the name gives way, which
+- [x] Give `InboxButton` an `onDark` look for the navy ribbon, white when
+      idle and amber when something waits, and let it pass its ref and
+      other props to the button.
+
+- [x] Show it through `TopRibbon`'s `rightSection`, as `RibbonInbox`,
+      from `MainLayout` and from `TeachingLayout`. It is labelled
+      "Inbox", and pressing it opens `/inbox`. It is there whether or not
+      anything is waiting, since an envelope that comes and goes is
+      harder to find when it matters. An exam's timer keeps the slot to
+      itself: `TeachingLayout` shows the envelope only when the page
+      pins nothing there, and `MainLayout` leaves it out in exam mode, so
+      nothing is fetched between starting an exam and seeing its result.
+
+- [x] Add `InboxPage` at `/inbox`, in `frontend/src/pages/inbox/`, for
+      any signed-in user: a "Waiting on you" table and a "Completed"
+      table beneath it. Pressing a line opens the feature's own page.
+      Nothing is dealt with on the inbox page itself, and opening a line
+      does not clear it. It is called "Inbox" and not "Messages", since
+      `/messages` is already the patient messaging page.
+
+- [x] Give the page a link in the side menu that shows only while it is
+      open, in `SideNavContent`, as the page rules ask. The envelope is
+      the way in, so it has no permanent entry.
+
+- [x] On a narrow ribbon the envelope stays and the name gives way, which
       is what `brandYields` in `TopRibbon.module.scss` already does for a
-      right section. Check it at phone width with the hamburger showing.
+      right section.
 
-- [ ] Tests: the envelope shows the total, the dropdown lists what the
-      API returned, it is absent from the exam ribbon, and a failed fetch
-      draws the envelope with no count and no error.
+- [x] Tests: the envelope shows the total and opens the page, it is
+      absent from an exam's ribbon, a failed fetch draws it with no count
+      and no error, and the page lists waiting apart from completed and
+      opens the right address from each line.
 
 ## Phase 5: Tell the sender about a reply
 
@@ -178,6 +212,11 @@ that works while nobody is in the application.
 - **Deferred: web push** – `push.py` and `push_send.py` exist and have
   never been finished or tested. Email covers the time away until they
   are.
+
+- **Rejected: a dropdown behind the envelope** – built first, listing
+  each source with its count. It answered "how many" and nothing else:
+  there was nowhere to see what had been completed, and no room for a
+  message's own line once messages arrive. A page holds both.
 
 - **Rejected: a count on the Feedback link in the admin menu** – only an
   operator opens Admin. An assessor with sign-offs waiting and a sender

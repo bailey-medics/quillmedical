@@ -23,6 +23,14 @@
  * Nothing is drawn when the queue is empty. A zero is a fact nobody
  * needs and it makes an idle button look like it wants attention.
  *
+ * `onDark` is for the top ribbon, which is navy: the idle envelope and
+ * the count are white there, and it sits level with the ribbon's other
+ * controls and not nudged to a heading's baseline.
+ *
+ * It passes its ref and any other props to the button itself, so it can
+ * be the target of a Mantine `Menu`, which adds the press handler and
+ * the `aria-expanded` state that way.
+ *
  * @example
  * ```tsx
  * <InboxButton
@@ -33,13 +41,17 @@
  * ```
  */
 
+import type { ComponentPropsWithRef } from "react";
 import { ActionIcon } from "@mantine/core";
 import Icon from "@/components/icons";
 import { IconMail } from "@/components/icons/appIcons";
 import { BodyText } from "@/components/typography";
 import classes from "./InboxButton.module.css";
 
-export interface InboxButtonProps {
+export interface InboxButtonProps extends Omit<
+  ComponentPropsWithRef<"button">,
+  "color" | "children"
+> {
   /**
    * What is behind the envelope, as a screen reader says it: "Sign-off
    * requests for me to assess". The count is added to it.
@@ -47,42 +59,51 @@ export interface InboxButtonProps {
   label: string;
   /** How many things are waiting on this person. */
   count?: number;
-  /** Called when the button is pressed. */
-  onClick: () => void;
+  /** Draw it for a dark background, such as the top ribbon. */
+  onDark?: boolean;
 }
 
 export default function InboxButton({
   label,
   count = 0,
-  onClick,
+  onDark = false,
+  ref,
+  ...others
 }: InboxButtonProps) {
   // The name carries the count so a screen reader gets what the badge
   // shows visually.
   const name = count > 0 ? `${label} (${count} waiting)` : label;
+  // Amber while anything is waiting, so the envelope itself signals
+  // work and not just the number beside it.
+  const waitingColour = count > 0 ? "var(--brand-secondary)" : undefined;
 
   return (
-    <div className={classes.trigger}>
+    <div className={onDark ? classes.triggerOnDark : classes.trigger}>
       {/* `mlg`, the step for an icon that is the whole control: big
           enough to press and notice, small enough not to compete with
-          the action cards below, which are the page's own content. */}
+          what the page is for. */}
       <ActionIcon
-        variant="subtle"
+        {...others}
+        ref={ref}
+        variant={onDark ? "transparent" : "subtle"}
         color="primary"
         className={classes.button}
-        onClick={onClick}
         aria-label={name}
       >
-        {/* Amber while anything is waiting, so the envelope itself
-            signals work and not just the number beside it. */}
         <Icon
           icon={<IconMail />}
           size="mlg"
-          colour={count > 0 ? "var(--brand-secondary)" : undefined}
+          colour={waitingColour ?? (onDark ? "white" : undefined)}
         />
       </ActionIcon>
       {count > 0 && (
-        <span className={classes.count} data-testid="inbox-count">
-          <BodyText>{count >= 10 ? "9+" : count}</BodyText>
+        <span
+          className={onDark ? classes.countOnDark : classes.count}
+          data-testid="inbox-count"
+        >
+          <BodyText c={onDark ? "white" : undefined}>
+            {count >= 10 ? "9+" : count}
+          </BodyText>
         </span>
       )}
     </div>

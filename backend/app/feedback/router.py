@@ -44,6 +44,7 @@ from app.deps import (
 )
 from app.email.render import render_email, send_args
 from app.email_send import send_email
+from app.feedback.labels import CATEGORY_LABELS
 from app.models import Feedback, User
 from app.rate_limit import limiter
 from app.schemas.feedback import (
@@ -78,15 +79,6 @@ DEP_REQUIRE_CSRF = Depends(_require_csrf)
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
-#: What each category reads as in the notice to an operator. The same
-#: words the sender chose from, in ``sendFeedback.ts``.
-_CATEGORY_LABELS: dict[str, str] = {
-    "broken": "Something is broken",
-    "inaccurate": "Something is wrong or inaccurate",
-    "suggestion": "Suggestion",
-    "other": "Something else",
-}
-
 
 def _notify_operator(
     *, to: str, feedback_id: int, sender: str, category: str | None, route: str
@@ -108,7 +100,7 @@ def _notify_operator(
             "quill",
             {
                 "sender": sender,
-                "category": _CATEGORY_LABELS.get(category or ""),
+                "category": CATEGORY_LABELS.get(category or ""),
                 "route": route,
                 "url": f"{settings.FRONTEND_URL}/admin/feedback/{feedback_id}",
             },

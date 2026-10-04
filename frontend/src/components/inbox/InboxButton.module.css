@@ -53,3 +53,26 @@
   line-height: 1;
   color: var(--mantine-color-text);
 }
+
+/*
+ * On the top ribbon. The same box, without the nudge to a heading's
+ * baseline: the ribbon centres its controls, and the envelope sits level
+ * with them. The margin keeps room for the count, which hangs off the
+ * right-hand edge.
+ */
+.triggerOnDark {
+  position: relative;
+  display: inline-flex;
+  width: fit-content;
+  flex: 0 0 auto;
+  margin-right: 1.25rem;
+}
+
+.countOnDark {
+  position: absolute;
+  top: -8px;
+  left: 100%;
+  margin-left: 0;
+  line-height: 1;
+  color: var(--mantine-color-white);
+}

@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { renderWithMantine } from "@/test/test-utils";
 import TeachingLayout from "./TeachingLayout";
 import type { User } from "@/auth/AuthContext";
@@ -51,6 +51,13 @@ vi.mock("@components/ribbon/TopRibbon", () => ({
       {rightSection}
     </div>
   ),
+}));
+
+// The envelope fetches what is waiting and navigates, neither of which
+// this layout's tests are about. Stood in for, so they can say only
+// whether it is there.
+vi.mock("@/components/inbox/RibbonInbox", () => ({
+  default: () => <div data-testid="ribbon-inbox" />,
 }));
 
 vi.mock("@components/footer/Footer", () => ({
@@ -257,6 +264,30 @@ describe("TeachingLayout", () => {
     const ribbon = screen.getByTestId("top-ribbon");
     expect(ribbon).not.toHaveAttribute("data-patient");
     expect(ribbon).toHaveAttribute("data-show-search", "false");
+  });
+
+  it("shows what is waiting in the ribbon when a page pins nothing there", () => {
+    renderWithMantine(
+      <TeachingLayout>
+        <div>Content</div>
+      </TeachingLayout>,
+    );
+
+    expect(
+      within(screen.getByTestId("top-ribbon")).getByTestId("ribbon-inbox"),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves the ribbon to an exam's controls, with no envelope beside them", () => {
+    // Nothing competes with the timer, and nothing is fetched during
+    // an exam.
+    renderWithMantine(
+      <TeachingLayout ribbonRight={<div>Exam controls</div>}>
+        <div>Content</div>
+      </TeachingLayout>,
+    );
+
+    expect(screen.queryByTestId("ribbon-inbox")).not.toBeInTheDocument();
   });
 
   it("puts ribbonRight in the ribbon, not in the page", () => {
