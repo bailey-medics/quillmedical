@@ -47,6 +47,39 @@ class FakeResend:
         if self.fail_with is not None:
             return httpx.Response(self.fail_with, json={"message": "no"})
 
+        if request.method == "GET" and path == "/contacts":
+            # The list, a page at a time. A contact's id here is its
+            # address, which is enough to page by.
+            segment = request.url.params.get("segment_id")
+            limit = int(request.url.params.get("limit", "100"))
+            after = request.url.params.get("after")
+            emails = sorted(
+                e
+                for e, c in self.contacts.items()
+                if segment in c.get("segments", [])
+            )
+            if after is not None:
+                emails = [e for e in emails if e > after]
+            page = emails[:limit]
+            return httpx.Response(
+                200,
+                json={
+                    "object": "list",
+                    "has_more": len(emails) > limit,
+                    "data": [
+                        {
+                            "id": e,
+                            "email": e,
+                            "unsubscribed": self.contacts[e].get(
+                                "unsubscribed"
+                            )
+                            is True,
+                        }
+                        for e in page
+                    ],
+                },
+            )
+
         if request.method == "POST" and path == "/contacts":
             self.contacts[body["email"]] = {
                 "segments": [s["id"] for s in body["segments"]],

@@ -277,6 +277,18 @@ def marketing_sync() -> int:
     return sync_main()
 
 
+def marketing_reconcile() -> int:
+    """Make Quill match Resend, for anybody the two disagree about.
+
+    The weekly check behind the webhook: a change made on Resend's side
+    that never reached Quill is found and recorded. See
+    ``app.marketing.reconcile``.
+    """
+    from app.marketing.reconcile import main as reconcile_main
+
+    return reconcile_main()
+
+
 def smoke_test() -> int:
     """Check a URL returns 200, from inside the VPC.
 
@@ -568,6 +580,10 @@ def delete_passport() -> int:
 
 
 ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
+    "marketing-reconcile": (
+        marketing_reconcile,
+        "Make Quill's marketing preferences match Resend (weekly)",
+    ),
     "marketing-sync": (
         marketing_sync,
         "Send unsynced marketing preferences to Resend",

@@ -78,6 +78,26 @@ registration form changes, bump `MARKETING_WORDING_VERSION` beside it.
   `just marketing-sync` goes back over those people on the dev stack; in
   production it is the admin job's `marketing-sync` action.
 
+- **Once a week, Quill is checked against Resend.** A webhook call can be
+  lost, and then Quill would show somebody as subscribed for ever after
+  Resend had stopped emailing them. The `Marketing reconcile` workflow
+  runs the admin job's `marketing-reconcile` action every Tuesday at 05:00
+  UTC. It first sends Resend any choice Quill has not yet managed to send,
+  then changes Quill to match Resend wherever the two disagree. **Resend
+  wins**, in both directions, and each correction is recorded with
+  `resend` as its source. A failed run posts to Slack; a clean one says
+  nothing. It can be run by hand from the Actions tab.
+
+Nobody is emailed wrongly while Quill is stale: Resend sends the
+newsletter and honours its own record. The weekly check corrects what
+the Settings switch shows.
+
+**The dev stack and production share one list.** They use different keys
+and the same segment and topic. `just marketing-sync` and
+`just marketing-reconcile` on the dev stack therefore send every verified
+dev account to the real list, as a contact, and should only be run when
+that is meant.
+
 ## Settings
 
 All optional. With any of the first three unset, nothing is sent to

@@ -417,9 +417,12 @@ address of Mark's own for every test account, and plus-addresses
       signed call to the webhook, which was accepted with a 200 and
       recognised as an echo of Quill's own change.
 
-- [ ] **Register a second account with the box ticked.** After verifying,
-      Resend should hold that contact opted **out** of "Newsletter", and
-      its Settings switch should be off.
+- [x] **Register a second account with the box ticked.** Done by Mark on
+      4 October 2026. Registered at 08:25:30 UTC, verified at 08:25:47,
+      and the contact was in Resend the same second: unsubscribed as a
+      contact and opted **out** of "Newsletter", both switches agreeing.
+      So a refusal at registration is held by Resend from the start, as
+      designed.
 
 - [x] **Flip the Settings switch both ways.** Each change reached
       Resend's topic. This is where the two faults in the entry above
@@ -464,21 +467,67 @@ address of Mark's own for every test account, and plus-addresses
       signature and one with a made-up signature both got a 401,
       "Invalid signature.", and neither was logged as an error.
 
-- [ ] **Unsubscribe from Resend's side, and see Quill follow.** Wait at
-      least a minute after the last Settings change, because the route
-      ignores an event within sixty seconds of Quill's own sync as an
-      echo. Then, in Resend, open the first test contact and opt it out
-      of "Newsletter". In Resend's webhook log the delivery should show a
-      200. Reload Settings in Quill: the switch should now be off. This
-      is the step nothing before production could test.
+- [x] **Send a real newsletter and unsubscribe from it.** On 4 October
+      2026 a test broadcast went to the "Newsletter" topic, built from
+      `just email-export quill` with a short test message in place of the
+      campaign content, and created and sent through Resend's API. The
+      segment held only Mark's contact. It arrived, the footer's
+      "Unsubscribe" link opened Resend's own page, and unsubscribing there
+      marked the contact unsubscribed in Resend. **Quill was not told.**
+      The webhook in Resend was subscribed to `contact.created` and
+      `contact.deleted`, where it should have been `contact.updated` and
+      `contact.deleted`: an unsubscribe is an update, so Resend had
+      nothing to send. That also explains the silence noted in the first
+      production run, when a topic was changed through the API. Mark
+      corrected the webhook's events the same day. Nobody could have been
+      emailed wrongly, since Resend held the unsubscribe; the fault was
+      Quill's Settings switch going on showing "on".
 
-- [ ] **Do the same through a real email.** Send a test broadcast to the
-      "Newsletter" topic with only the test contacts opted in, using the
-      template from `just email-export quill`. Check it arrives, looks
-      like Quill's other email, and that its unsubscribe link opens
-      Resend's page. Unsubscribe there, and check the Settings switch
-      goes off as in the step before. This is the path a real person
-      takes.
+- [ ] **Unsubscribe from Resend's side again, and see Quill follow,** now
+      that the webhook reports updates. Very likely done already: at
+      08:21:43 UTC on 4 October, three minutes after the last change made
+      in Quill and so outside the echo window, Resend called the webhook,
+      the route asked Resend for the contact's topics (the call took a
+      quarter of a second where an ignored one takes a few milliseconds)
+      and answered 200, and the contact is now unsubscribed in Resend.
+      What the logs cannot show is the Settings switch itself, so this
+      stays unticked until somebody has looked at it and seen it off. Switch news off and on in Quill
+      first, so the contact is subscribed again in Resend, and wait at
+      least a minute, because the route ignores an event within sixty
+      seconds of Quill's own sync as an echo. Then unsubscribe the contact
+      in Resend. Its webhook log should show a 200, and Settings in Quill
+      should show the switch off after a reload. Still the one step that
+      has never run for real.
+
+- [x] **Check Quill against Resend once a week.** The missed unsubscribe
+      showed what the design had been relying on: if a webhook call is
+      ever lost, Quill stays wrong for good, because nothing goes back to
+      look. `backend/app/marketing/reconcile.py` goes back. It sends
+      Resend any choice Quill has not yet managed to send, then reads the
+      segment's contacts and changes Quill to match wherever the two
+      disagree. **Resend wins**, Mark's decision, in both directions:
+      somebody who re-subscribed on Resend's page is switched on in Quill
+      as surely as somebody who unsubscribed is switched off. The one
+      thing that comes first is a choice Resend has not had yet, which is
+      Quill knowing something newer and not a disagreement. An account
+      with no contact in Resend is switched off and sent again, opted
+      out, by the next run, as the webhook treats a deleted contact. It
+      is the admin job's `marketing-reconcile` action and
+      `just marketing-reconcile` on the dev stack.
+
+      **Run by a scheduled workflow, `.github/workflows/marketing-reconcile.yml`,**
+      every Tuesday at 05:00 UTC, not by Cloud Scheduler as Decisions
+      first suggested. The project has neither the Cloud Scheduler API
+      enabled nor a role for the Terraform identity that could create a
+      schedule, and the deploy already runs this same job for migrations
+      with the identity the workflow uses, so there was nothing new to
+      grant. It posts to Slack only when it fails. Weekly is enough
+      because nobody is emailed wrongly in the meantime.
+
+      **The first run will add contacts.** Every verified, active account
+      Resend has not been told about is sent first, as the retry has
+      always done, so accounts that existed before this plan arrive in
+      Resend as contacts opted out.
 
 - [ ] **Check an admin-created account is left alone.** Create a user at
       `/admin/users/new` with a test address. No contact should appear in
@@ -548,10 +597,19 @@ address of Mark's own for every test account, and plus-addresses
 - **Admin-created accounts are not subscribed** – they were never shown
   the sentence. They can switch news on in Settings.
 
-- **No scheduled retry yet** – `just marketing-sync` is run by hand. With
-  no real users there is nothing to schedule for; a Cloud Scheduler job
-  calling the admin Cloud Run job is the obvious next step once
-  registrations are regular.
+- **The retry is scheduled, weekly, as part of the reconcile** – this
+  bullet first read "no scheduled retry yet", with a Cloud Scheduler job
+  as the obvious next step. The weekly reconcile in Phase 6 runs the
+  retry before it compares anything, from a scheduled workflow, so there
+  is no separate schedule to add.
+
+- **Dev and production share one list** – different keys, the same
+  segment and topic. It made the first tests simple and it means a
+  contact made from the dev stack is a real contact. Running
+  `just marketing-sync` or `just marketing-reconcile` on the dev stack
+  sends every verified dev account to the real list. A second segment
+  for development would end that, and is worth making before anybody
+  else works on this.
 
 - **`email_send.py` logs the address it sends to** – found by Phase 6's
   log check, and left alone here because it is not marketing's code and

@@ -485,6 +485,18 @@ preview-certificate bank="colonoscopy-optical-diagnosis-test":
     open certificate-preview.pdf
 
 
+alias mrc := marketing-reconcile
+# Make Quill's marketing preferences match Resend (dev stack; production runs it weekly)
+marketing-reconcile:
+    #!/usr/bin/env bash
+    {{initialise}} "marketing-reconcile"
+    # Needs the live stack's database, so it carries the worktree guard.
+    # In production the same code runs as the admin job's
+    # `marketing-reconcile` action, from a scheduled workflow.
+    just _worktree-guard quill_backend
+    docker exec quill_backend python -m app.marketing.reconcile
+
+
 alias ms := marketing-sync
 # Send unsynced marketing preferences to Resend (dev stack; retry after a failure)
 marketing-sync:

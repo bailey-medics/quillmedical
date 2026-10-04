@@ -291,6 +291,87 @@ def topic_subscription(email: str) -> str | None:
     return None
 
 
+@dataclass(frozen=True)
+class ListedContact:
+    """One contact as Resend lists it: who, and its own switch."""
+
+    email: str
+    unsubscribed: bool
+
+
+#: How many contacts to ask Resend for at a time. Its most.
+PAGE_SIZE = 100
+
+#: The most pages ``list_contacts`` will read. A stop, not a plan: at a
+#: hundred a page this is fifty thousand contacts, and a list that long
+#: wants a different job from one that reads it all into memory.
+MAX_PAGES = 500
+
+
+def list_contacts() -> list[ListedContact] | None:
+    """Everybody in the newsletter segment, as Resend holds them.
+
+    For the weekly check that Quill still matches Resend. Read a page at
+    a time, each page starting after the last contact of the one before.
+
+    Returns:
+        The contacts, or None when the Resend settings are unset.
+
+    Raises:
+        MarketingSyncError: If Resend could not be reached or refused,
+            or the list did not end within ``MAX_PAGES``.
+    """
+    config = _config()
+    if config is None:
+        return None
+
+    contacts: list[ListedContact] = []
+    after: str | None = None
+    for _ in range(MAX_PAGES):
+        params: dict[str, str | int] = {
+            "segment_id": config.segment_id,
+            "limit": PAGE_SIZE,
+        }
+        if after is not None:
+            params["after"] = after
+
+        def read_page(
+            params: dict[str, str | int] = params,
+        ) -> httpx.Response:
+            with _client(config) as client:
+                return client.get("/contacts", params=params)
+
+        response = _reaching_resend(read_page)
+        _check(response, "listing the contacts")
+        payload = response.json()
+        rows = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(rows, list):
+            raise MarketingSyncError("Resend's contact list was not a list")
+
+        last_id: str | None = None
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            email = row.get("email")
+            if isinstance(email, str) and email:
+                contacts.append(
+                    ListedContact(
+                        email=email,
+                        unsubscribed=row.get("unsubscribed") is True,
+                    )
+                )
+            if isinstance(row.get("id"), str):
+                last_id = row["id"]
+
+        if not payload.get("has_more") or last_id is None:
+            return contacts
+        after = last_id
+
+    raise MarketingSyncError(
+        f"Resend's contact list did not end within {MAX_PAGES} pages"
+    )
+
+
 def remove_contact(email: str) -> bool:
     """Take somebody off the mailing list altogether.
 

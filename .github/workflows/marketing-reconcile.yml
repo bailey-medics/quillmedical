@@ -1,0 +1,93 @@
+# Weekly check that Quill's marketing preferences still match Resend.
+#
+# Resend sends the newsletter, so what it holds for a contact is what
+# happens to them. Quill hears of a change there through a webhook, within
+# a second. A webhook can be lost, or set up wrongly: on 4 October 2026 the
+# first real unsubscribe from a newsletter never reached Quill, because the
+# webhook in Resend was reporting contacts being created and not updated.
+# Resend stopped the emails and Quill went on showing the person as
+# subscribed, with nothing that would ever have gone back to look.
+#
+# This goes back to look. It runs the admin job's `marketing-reconcile`
+# action, which sends Resend any choice Quill has not yet managed to send
+# and then changes Quill to match Resend wherever the two disagree. Resend
+# wins. See backend/app/marketing/reconcile.py and
+# docs/docs/backend/marketing-email.md.
+#
+# A scheduled workflow, not Cloud Scheduler: the project has neither the
+# Cloud Scheduler API enabled nor a role that could create a schedule, and
+# this is how the deploy already runs the same job for migrations, with the
+# same identity. Nothing new to grant.
+#
+# Schedule: Tuesdays at 05:00 UTC, clear of the penetration tests that run
+# on Mondays. Weekly is enough because nobody is emailed
+# wrongly in the meantime: only Quill's own Settings switch is stale.
+name: Marketing reconcile
+
+on:
+  schedule:
+    - cron: "0 5 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # Workload Identity Federation
+
+concurrency:
+  group: marketing-reconcile
+  cancel-in-progress: false
+
+env:
+  GCP_REGION: europe-west2
+
+jobs:
+  reconcile:
+    name: Make Quill match Resend (app)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_APP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v3.0.1
+
+      # The job exits non-zero when anybody could not be read from or sent
+      # to Resend, so this step goes red only when a person should look.
+      # What it found is one line in the job's own logs, by count, with no
+      # names or addresses.
+      - name: Run the reconcile action on the admin job
+        env:
+          GCP_PROJECT: ${{ secrets.GCP_APP_PROJECT_ID }}
+        run: |
+          gcloud run jobs execute quill-admin-app \
+            --project="${GCP_PROJECT}" \
+            --region="${GCP_REGION}" \
+            --update-env-vars=ADMIN_ACTION=marketing-reconcile \
+            --wait
+
+  # ---------- Slack notify ----------
+  #
+  # Only on failure. A weekly "all matched" would be a routine message
+  # people learn to ignore.
+  notify-failure:
+    name: Notify reconcile failure
+    needs: reconcile
+    if: ${{ failure() }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *📬 The weekly marketing reconcile failed (app)*
+
+        Quill could not be checked against Resend, or somebody's
+        preference could not be read or sent. Nobody is emailed wrongly
+        because of this: Resend honours its own record. Quill's Settings
+        switch may be stale for some people until the next good run.
+
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit
