@@ -452,16 +452,17 @@ resource "google_monitoring_alert_policy" "backend_errors" {
 
   documentation {
     mime_type = "text/markdown"
-    subject   = "Backend error: $${log.extracted_label.message} [$${log.extracted_label.status} $${log.extracted_label.request}]"
+    subject   = "Backend error: $${log.extracted_label.message} $${log.extracted_label.platform} [$${log.extracted_label.status} $${log.extracted_label.request}]"
     content   = <<-EOT
       **$${resource.label.service_name}** logged an error.
 
       - **Message:** $${log.extracted_label.message}
       - **Request:** $${log.extracted_label.method} $${log.extracted_label.request}
       - **Answered:** $${log.extracted_label.status}
+      - **Cloud Run said:** $${log.extracted_label.platform}
 
-      An error is logged in one of two ways, and each fills in half of the
-      above. The other half reads "(null)", which means "this entry has
+      An error is logged in one of three ways, and each fills in part of
+      the above. The rest reads "(null)", which means "this entry has
       none", not that anything is missing:
 
       - **The code logged it.** There is a message, and no request.
@@ -469,6 +470,12 @@ resource "google_monitoring_alert_policy" "backend_errors" {
         is a request and what it answered, and no message. The code's own
         account of why is usually a line or two away in the logs, a few
         seconds either side.
+      - **Cloud Run itself reported a fault.** There is only what Cloud
+        Run said, and no message or request. The usual one is "Memory
+        limit of … exceeded": the instance used more memory than it is
+        allowed and was stopped, and whatever it was doing was cut off.
+        Its memory allowance is `memory` on the service in
+        `infra/main.tf`.
 
       Somebody using the app has probably just been failed. The message is
       what the code logged, which never carries patient information; the
@@ -511,11 +518,20 @@ resource "google_monitoring_alert_policy" "backend_errors" {
       # everything from the "?" on is left out, because a query string
       # can hold what somebody typed into a search box, and that can be a
       # patient's name. A path holds route names and ids.
+      #
+      # Cloud Run's own faults are a third kind, with neither: on
+      # 4 October 2026 an instance stopped for exceeding its memory
+      # arrived as "(null)" throughout. Those are plain text, so the
+      # start of the text is quoted too. Everything the code logs is
+      # structured and has no text payload, so this is Cloud Run's
+      # wording and not the app's; it is cut at 200 characters all the
+      # same.
       label_extractors = {
-        message = "EXTRACT(jsonPayload.message)"
-        method  = "EXTRACT(httpRequest.requestMethod)"
-        request = "REGEXP_EXTRACT(httpRequest.requestUrl, \"^([^?]*)\")"
-        status  = "EXTRACT(httpRequest.status)"
+        message  = "EXTRACT(jsonPayload.message)"
+        method   = "EXTRACT(httpRequest.requestMethod)"
+        request  = "REGEXP_EXTRACT(httpRequest.requestUrl, \"^([^?]*)\")"
+        status   = "EXTRACT(httpRequest.status)"
+        platform = "REGEXP_EXTRACT(textPayload, \"^(.{1,200})\")"
       }
     }
   }

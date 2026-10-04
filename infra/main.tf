@@ -307,10 +307,14 @@ module "cloud_run_backend" {
   region                = var.region
   environment           = var.environment
 
+  # Memory was raised from 512Mi on 4 October 2026, when Cloud Run
+  # stopped an instance that had been up three hours for using 547 MiB.
+  # What holds the memory has not been found, so this buys room; it is
+  # not the fix.
   service_name      = "backend"
   image             = var.backend_image
   port              = 8000
-  memory            = "512Mi"
+  memory            = "1Gi"
   cpu               = "1"
   max_instances     = var.cloud_run_max_instances
   vpc_connector_id  = module.networking.vpc_connector_id
