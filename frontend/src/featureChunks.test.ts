@@ -14,6 +14,7 @@ function reExportedModules(chunkFile: string): string[] {
 }
 
 const CHUNKS = [
+  { name: "admin", loader: "loadAdmin", file: "pages/admin/adminChunk.ts" },
   {
     name: "clinical",
     loader: "loadClinical",

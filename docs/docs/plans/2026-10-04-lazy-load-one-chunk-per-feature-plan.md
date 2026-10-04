@@ -153,7 +153,7 @@ arrive.
 
 ## Phase 3: Admin
 
-- [ ] **Create `frontend/src/pages/admin/adminChunk.ts`** re-exporting every
+- [x] **Create `frontend/src/pages/admin/adminChunk.ts`** re-exporting every
       page routed under `/admin`: `AdminPage`, the users, patients,
       organisations, sites, members and feedback pages, the five
       `pages/admin/teaching/` pages, and the two that live outside the
@@ -161,16 +161,51 @@ arrive.
       `UserInfoUpdatePage`. Teaching's admin pages go with admin, not with
       the learner chunk: a learner should not download them, and somebody
       administering teaching is already in Admin.
-- [ ] **Switch the `/admin` subtree to `lazyFrom`** and delete the static
+- [x] **Switch the `/admin` subtree to `lazyFrom`** and delete the static
       imports. The nested `RequireCompetency` and `RequireOperator`
       wrappers are guards, not pages, and stay as static imports with their
       `<Outlet />`. Handles stay on the route objects; the wizard and edit
       routes stay unsafe for reload.
-- [ ] **Measure and record**, as in Phase 2. Admin is the largest area, 31
+      - **Ten admin routes wrap their page in a guard of their own**,
+        inline: `element: <RequireCompetency …><EditSitePage /></…>`. Two
+        of those also pass a prop (`<OrgFeaturesPage parentPath="sites" />`).
+        A bare `lazy` cannot express either. Nesting the page under a
+        guard route would, but it makes the page's route the leaf, and
+        `isRouteSafeForReload` reads `handle` off the leaf only, so every
+        `handle` would have had to move with it. Instead `lazyFrom` takes
+        an optional third argument, a function given the loaded page and
+        returning what the route renders:
+        `lazyFrom(loadAdmin, "EditSitePage", (Page) => <Guard><Page /></Guard>)`.
+        The route tree is unchanged, one route for one route. Without the
+        third argument the page must need no props, checked at compile
+        time.
+      - **The guard now renders after the chunk has loaded**, because the
+        router resolves a route's `lazy` before it renders anything. So
+        somebody without the competency who types an admin address
+        downloads the admin chunk and then sees the 404. That is how
+        passport has behaved since it was split, the code holds no
+        secrets, and the API refuses the data either way.
+- [x] **Measure and record**, as in Phase 2. Admin is the largest area, 31
       page files, so this is where the entry chunk should move most.
+      - **Measured 4 October.** One `adminChunk` file on demand, 145.21 kB
+        raw and 35.89 kB gzipped, holding 33 pages. First load fell from
+        425.87 to **384.46 kB gzipped**, 41.41 kB less, and 50.50 kB less
+        than the baseline. `index` itself is now 159.03 kB gzipped, from
+        209.77 kB. No "also statically imported" warning.
+      - **Nine more small files appeared on demand**, 78 from 69. They are
+        components shared by admin and another lazy feature but not by
+        first load, and they are fetched with the feature that needs
+        them, not one per page.
 - [ ] **Walk the admin area on the dev stack** as a `manage_users` holder
       and as a `manage_teaching` holder, since the scoped manager sees a
       different subset of the same chunk.
+      Not walked by hand in the unattended run. In its place,
+      `just e2e member-practice user-form-practice navigation` ran against
+      a production build of this branch and passed, 11 tests. Those open
+      `/admin/users/new`, a plain lazy route, and
+      `/admin/organisations/:id/members/:userId`, one whose guard is
+      passed to `lazyFrom`, in a real browser. The walk as a
+      `manage_teaching` holder is still to do.
 
 ## Phase 4: Passport and safety become one chunk each
 
