@@ -503,6 +503,13 @@ class EducatorResultOut(BaseModel):
 # ------------------------------------------------------------------
 
 
+class DelegateModuleOut(BaseModel):
+    """One module with an assessment, to narrow the all-delegates view by."""
+
+    bank_id: str
+    title: str
+
+
 class DelegateOut(BaseModel):
     """One delegate row for the admin all-delegates view."""
 

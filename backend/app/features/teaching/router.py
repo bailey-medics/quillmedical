@@ -13,7 +13,14 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+)
 from fastapi.responses import Response
 from pydantic import ValidationError
 from sqlalchemy import func, select
@@ -48,6 +55,7 @@ from app.features.teaching.schemas import (
     CaptionsOut,
     CompletionResultOut,
     CriterionResult,
+    DelegateModuleOut,
     DelegateOut,
     EducatorResultOut,
     EmailTemplateOut,
@@ -2710,12 +2718,77 @@ def list_syncs(
     # ------------------------------------------------------------------
 
 
+# Declared before `/admin/delegates` only to sit beside it: the two paths
+# do not collide.
+@teaching_router.get(
+    "/admin/delegates/modules",
+    response_model=list[DelegateModuleOut],
+    dependencies=[_DEP_MANAGE],
+)
+def list_delegate_modules(
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> list[DelegateModuleOut]:
+    """The modules with an assessment that the caller's organisations serve.
+
+    What the all-delegates view narrows by. An organisation serves a module
+    once it has a ``QuestionBankOrgStatus`` row with an active version,
+    which is the rule the learner's own module list uses. A module that has
+    only been synced is not listed: every organisation's sync may bring in
+    modules it was never given. One closed to new attempts is still listed,
+    since its results are still wanted.
+
+    Each is named by the title of the version being served, and the list
+    is in title order.
+    """
+    caller_org_ids = get_member_org_unit_ids(db, user.id)
+    if not caller_org_ids:
+        return []
+
+    served: dict[str, tuple[int, int]] = {}
+    for status in db.execute(
+        select(QuestionBankOrgStatus).where(
+            QuestionBankOrgStatus.org_unit_id.in_(caller_org_ids),
+            QuestionBankOrgStatus.active_version.is_not(None),
+        )
+    ).scalars():
+        if status.org_unit_id is None or status.active_version is None:
+            continue
+        served.setdefault(
+            status.question_bank_id,
+            (status.org_unit_id, status.active_version),
+        )
+    if not served:
+        return []
+
+    titles: dict[str, str] = {}
+    for config in db.execute(
+        select(QuestionBankConfig).where(
+            QuestionBankConfig.org_unit_id.in_(caller_org_ids),
+            QuestionBankConfig.question_bank_id.in_(served),
+        )
+    ).scalars():
+        if served[config.question_bank_id] == (
+            config.org_unit_id,
+            config.version,
+        ):
+            titles[config.question_bank_id] = config.title
+
+    return [
+        DelegateModuleOut(bank_id=bank_id, title=title)
+        for bank_id, title in sorted(
+            titles.items(), key=lambda item: (item[1].lower(), item[0])
+        )
+    ]
+
+
 @teaching_router.get(
     "/admin/delegates",
     response_model=list[DelegateOut],
     dependencies=[_DEP_MANAGE],
 )
 def list_delegates(
+    bank_id: str | None = Query(default=None, min_length=1, max_length=255),
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> list[DelegateOut]:
@@ -2724,6 +2797,12 @@ def list_delegates(
     Returns all users who are members of the caller's organisations
     (either direct org staff or site staff), with their latest
     assessment result if they have one.
+
+    ``bank_id`` narrows the results to one module's assessments. Without
+    it every module's attempts are read together, so with two modules a
+    delegate's latest attempt may be in either, and an attempt at one
+    counts against a first-time pass in the other. Everybody is still
+    listed either way: somebody who has not sat that module has no result.
     """
     from app.models import org_unit_member
     from app.org_units.tree import descendant_ids
@@ -2789,6 +2868,11 @@ def list_delegates(
             .where(
                 Assessment.org_unit_id.in_(caller_org_ids),
                 Assessment.user_id.in_(user_ids),
+                *(
+                    [Assessment.question_bank_id == bank_id]
+                    if bank_id is not None
+                    else []
+                ),
             )
             .order_by(Assessment.started_at.desc())
         )
