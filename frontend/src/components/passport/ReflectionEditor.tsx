@@ -4,13 +4,6 @@
  * A reflection on a case, a complaint or a significant event: the
  * frontmatter fields, then the writing itself.
  *
- * **Holder-only, and the interface says so.** A reflection is not
- * readable by an assessor, an organisation admin or anyone else. Written
- * reflection can be disclosed in legal proceedings and UK doctors are
- * wary of it for good reason, so the narrower default is the safer one –
- * and somebody deciding how frankly to write deserves to be told who can
- * read it rather than having to infer it.
- *
  * **The anonymisation tick is required, not a reminder.** Reflections
  * are one of only two org_units patient data could enter a passport, and
  * they are the likelier one because they are written about real cases.
@@ -37,8 +30,6 @@ import {
   TextField,
 } from "@components/form";
 import { Heading } from "@/components/typography";
-import StateMessage from "@/components/message-cards/StateMessage";
-import { IconShieldCheck } from "@/components/icons/appIcons";
 import ButtonPair from "@/components/button/ButtonPair";
 import type { Reflection, ReflectionInput } from "@lib/passport";
 
@@ -109,13 +100,6 @@ export default function ReflectionEditor({
         <Heading>
           {initial ? "Edit this reflection" : "Write a reflection"}
         </Heading>
-
-        <StateMessage
-          icon={<IconShieldCheck />}
-          title="Only you can read this"
-          description="Reflections are not shown to assessors, organisation admins or anyone else."
-          colour="update"
-        />
 
         <TextField
           label="Title"

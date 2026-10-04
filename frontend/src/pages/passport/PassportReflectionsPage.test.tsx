@@ -1,8 +1,5 @@
 /**
  * Passport Reflections Page Tests
- *
- * Holder-only, and the page says so. A doctor deciding how frankly to
- * write deserves to be told who can read it.
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -99,13 +96,16 @@ describe("PassportReflectionsPage", () => {
     ).toBeTruthy();
   });
 
-  it("says reflections are private when there are none", async () => {
+  it("says what reflections are for when there are none", async () => {
     fetchReflections.mockResolvedValue([]);
     renderWithRouter(<PassportReflectionsPage />);
 
     expect(
-      await screen.findByText(/no assessor or administrator can read them/),
+      await screen.findByText(/a case, a complaint or a significant event/),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/no assessor or administrator can read them/),
+    ).not.toBeInTheDocument();
   });
 
   it("opens the editor on request", async () => {
@@ -117,7 +117,7 @@ describe("PassportReflectionsPage", () => {
       await screen.findByRole("button", { name: /Write a reflection/ }),
     );
 
-    expect(screen.getByText("Only you can read this")).toBeInTheDocument();
+    expect(screen.getByTestId("reflection-editor")).toBeInTheDocument();
   });
 
   it("explains a failed load", async () => {
