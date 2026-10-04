@@ -8,4 +8,5 @@
  * `docs/docs/plans/2026-10-04-lazy-load-one-chunk-per-feature-plan.md`.
  */
 
+export const loadAdmin = () => import("./pages/admin/adminChunk");
 export const loadClinical = () => import("./pages/clinical/clinicalChunk");

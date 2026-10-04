@@ -66,38 +66,10 @@ import { installPromptCapture } from "@lib/pwa/installPromptEvent";
 import { markInstallFinished } from "@lib/pwa/installPromptSchedule";
 
 import RootLayout from "./RootLayout";
-import { loadClinical } from "./featureChunks";
+import { loadAdmin, loadClinical } from "./featureChunks";
 import { lazyFrom } from "@lib/lazyRoute";
 import ErrorBoundary from "@/components/error-boundary/ErrorBoundary";
-import AdminPage from "./pages/AdminPage";
-import AdminUsersPage from "./pages/admin/users/AdminUsersPage";
-import AdminPatientsPage from "./pages/admin/patients/AdminPatientsPage";
-import AdminOrganisationsPage from "./pages/admin/organisations/AdminOrganisationsPage";
-import UserAdminPage from "./pages/admin/users/UserAdminPage";
-import EditUserPage from "./pages/admin/users/EditUserPage";
-import ViewAllPatientsPage from "./pages/admin/patients/ViewAllPatientsPage";
-import PatientAdminPage from "./pages/admin/patients/PatientAdminPage";
-import EditPatientPage from "./pages/admin/patients/EditPatientPage";
-import DeactivatePatientPage from "./pages/admin/patients/DeactivatePatientPage";
-import ActivatePatientPage from "./pages/admin/patients/ActivatePatientPage";
-import OrganisationAdminPage from "./pages/admin/organisations/OrganisationAdminPage";
 import { SCOPED_MANAGER_IDS } from "@/types/cbac";
-import CreateOrganisationPage from "./pages/admin/organisations/CreateOrganisationPage";
-import AddStaffToOrgPage from "./pages/admin/organisations/AddStaffToOrgPage";
-import AddPatientToOrgPage from "./pages/admin/organisations/AddPatientToOrgPage";
-import AddSiteToOrgPage from "./pages/admin/organisations/AddSiteToOrgPage";
-import AdminSitesPage from "./pages/admin/sites/AdminSitesPage";
-import AdminFeedbackPage from "./pages/admin/feedback/AdminFeedbackPage";
-import FeedbackDetailPage from "./pages/admin/feedback/FeedbackDetailPage";
-import CreateSitePage from "./pages/admin/sites/CreateSitePage";
-import SiteAdminPage from "./pages/admin/sites/SiteAdminPage";
-import EditSitePage from "./pages/admin/sites/EditSitePage";
-import AddStaffToSitePage from "./pages/admin/sites/AddStaffToSitePage";
-import EditOrganisationPage from "./pages/admin/organisations/EditOrganisationPage";
-import OrgFeaturesPage from "./pages/admin/organisations/OrgFeaturesPage";
-import MemberPracticePage from "./pages/admin/members/MemberPracticePage";
-import NewPatientPage from "./pages/NewPatientPage";
-import UserInfoUpdatePage from "./pages/UserInfoUpdatePage";
 import NotFound from "./pages/NotFound";
 import RegisterPage from "./pages/RegisterPage";
 import TeachingRegisterPage from "./pages/TeachingRegisterPage";
@@ -134,11 +106,6 @@ import AssessmentAttempt from "./features/teaching/pages/AssessmentAttempt";
 import AssessmentResultPage from "./features/teaching/pages/AssessmentResultPage";
 import AssessmentQuestionResultsPage from "./features/teaching/pages/AssessmentQuestionResultsPage";
 import SyncStatus from "./features/teaching/pages/SyncStatus";
-import AdminTeachingPage from "./pages/admin/teaching/AdminTeachingPage";
-import AdminTeachingDashboard from "./pages/admin/teaching/AdminTeachingDashboard";
-import AdminAllDelegatesPage from "./pages/admin/teaching/AdminAllDelegatesPage";
-import AdminBankDetailPage from "./pages/admin/teaching/AdminBankDetailPage";
-import AdminBankOrgSettingsPage from "./pages/admin/teaching/AdminBankOrgSettingsPage";
 
 // Learning pages
 import TeachingModuleMain from "./features/teaching/pages/TeachingModuleMain";
@@ -479,6 +446,10 @@ const routes: RouteObject[] = [
       },
 
       // Admin routes – require the competency the API itself requires.
+      // One lazy chunk for the whole area, pages/admin/adminChunk.ts. Where
+      // a page has a guard of its own, the guard is passed to `lazyFrom`
+      // and wrapped round the page, so the route stays the leaf that
+      // carries `handle`.
       // A scoped manager such as `manage_teaching` opens the area too, to
       // sign up people within its whitelist and manage their org_unit's
       // staff; the pages that are not theirs carry `manage_users` again
@@ -496,23 +467,29 @@ const routes: RouteObject[] = [
         children: [
           {
             index: true,
-            element: <AdminPage />,
+            lazy: lazyFrom(loadAdmin, "AdminPage"),
             handle: { safeForReload: true },
           },
           {
             path: "users",
-            element: <AdminUsersPage />,
+            lazy: lazyFrom(loadAdmin, "AdminUsersPage"),
             handle: { safeForReload: true },
           },
           // Wizard/edit forms - not safe to silently reload mid-entry.
-          { path: "users/new", element: <UserInfoUpdatePage /> },
-          { path: "users/edit", element: <EditUserPage /> },
+          {
+            path: "users/new",
+            lazy: lazyFrom(loadAdmin, "UserInfoUpdatePage"),
+          },
+          { path: "users/edit", lazy: lazyFrom(loadAdmin, "EditUserPage") },
           {
             path: "users/:id",
-            element: <UserAdminPage />,
+            lazy: lazyFrom(loadAdmin, "UserAdminPage"),
             handle: { safeForReload: true },
           },
-          { path: "users/:id/edit", element: <UserInfoUpdatePage /> },
+          {
+            path: "users/:id/edit",
+            lazy: lazyFrom(loadAdmin, "UserInfoUpdatePage"),
+          },
           // Patients are not teaching's business.
           {
             element: (
@@ -523,90 +500,99 @@ const routes: RouteObject[] = [
             children: [
               {
                 path: "patients",
-                element: <AdminPatientsPage />,
+                lazy: lazyFrom(loadAdmin, "AdminPatientsPage"),
                 handle: { safeForReload: true },
               },
-              { path: "patients/new", element: <NewPatientPage /> },
+              {
+                path: "patients/new",
+                lazy: lazyFrom(loadAdmin, "NewPatientPage"),
+              },
               {
                 path: "patients/list",
-                element: <ViewAllPatientsPage />,
+                lazy: lazyFrom(loadAdmin, "ViewAllPatientsPage"),
                 handle: { safeForReload: true },
               },
               {
                 path: "patients/:patientId",
-                element: <PatientAdminPage />,
+                lazy: lazyFrom(loadAdmin, "PatientAdminPage"),
                 handle: { safeForReload: true },
               },
               {
                 path: "patients/:patientId/edit",
-                element: <EditPatientPage />,
+                lazy: lazyFrom(loadAdmin, "EditPatientPage"),
               },
               {
                 path: "patients/:patientId/deactivate",
-                element: <DeactivatePatientPage />,
+                lazy: lazyFrom(loadAdmin, "DeactivatePatientPage"),
               },
               {
                 path: "patients/:patientId/activate",
-                element: <ActivatePatientPage />,
+                lazy: lazyFrom(loadAdmin, "ActivatePatientPage"),
               },
-              { path: "patients/edit", element: <EditPatientPage /> },
+              {
+                path: "patients/edit",
+                lazy: lazyFrom(loadAdmin, "EditPatientPage"),
+              },
               {
                 path: "patients/deactivate",
-                element: <DeactivatePatientPage />,
+                lazy: lazyFrom(loadAdmin, "DeactivatePatientPage"),
               },
-              { path: "patients/:id/edit", element: <NewPatientPage /> },
+              {
+                path: "patients/:id/edit",
+                lazy: lazyFrom(loadAdmin, "NewPatientPage"),
+              },
             ],
           },
           {
             path: "organisations",
-            element: <AdminOrganisationsPage />,
+            lazy: lazyFrom(loadAdmin, "AdminOrganisationsPage"),
             handle: { safeForReload: true },
           },
           {
             path: "organisations/new",
-            element: (
+            lazy: lazyFrom(loadAdmin, "CreateOrganisationPage", (Page) => (
               <RequireOperator>
-                <CreateOrganisationPage />
+                <Page />
               </RequireOperator>
-            ),
+            )),
           },
           {
             path: "organisations/:id",
-            element: <OrganisationAdminPage />,
+            lazy: lazyFrom(loadAdmin, "OrganisationAdminPage"),
             handle: { safeForReload: true },
           },
           {
             path: "organisations/:id/edit",
-            element: (
+            lazy: lazyFrom(loadAdmin, "EditOrganisationPage", (Page) => (
               <RequireCompetency competency="manage_users">
-                <EditOrganisationPage />
+                <Page />
               </RequireCompetency>
-            ),
+            )),
           },
           {
             path: "organisations/:id/add-staff",
-            element: <AddStaffToOrgPage />,
+            lazy: lazyFrom(loadAdmin, "AddStaffToOrgPage"),
           },
           {
             path: "organisations/:id/add-patient",
-            element: (
+            lazy: lazyFrom(loadAdmin, "AddPatientToOrgPage", (Page) => (
               <RequireCompetency competency="manage_users">
-                <AddPatientToOrgPage />
+                <Page />
               </RequireCompetency>
-            ),
+            )),
           },
           {
             path: "organisations/:id/members/:userId",
-            element: (
+            lazy: lazyFrom(loadAdmin, "MemberPracticePage", (Page) => (
               <RequireCompetency
                 competency={[
                   "manage_practising_competencies",
                   ...SCOPED_MANAGER_IDS,
                 ]}
               >
-                <MemberPracticePage />
+                <Page />
               </RequireCompetency>
-            ),
+            )),
             handle: { safeForReload: true },
           },
           {
@@ -614,11 +600,11 @@ const routes: RouteObject[] = [
             // organisation, so it takes `manage_users` as editing it
             // does.
             path: "organisations/:id/add-site",
-            element: (
+            lazy: lazyFrom(loadAdmin, "AddSiteToOrgPage", (Page) => (
               <RequireCompetency competency="manage_users">
-                <AddSiteToOrgPage />
+                <Page />
               </RequireCompetency>
-            ),
+            )),
           },
           // The list of sites is open to all of Admin: the API answers
           // with the sites the caller administers, and for somebody who
@@ -627,54 +613,54 @@ const routes: RouteObject[] = [
           // 404s, so the form is not merely refused but invisible.
           {
             path: "sites",
-            element: <AdminSitesPage />,
+            lazy: lazyFrom(loadAdmin, "AdminSitesPage"),
             handle: { safeForReload: true },
           },
           {
             path: "sites/new",
-            element: (
+            lazy: lazyFrom(loadAdmin, "CreateSitePage", (Page) => (
               <RequireOperator>
-                <CreateSitePage />
+                <Page />
               </RequireOperator>
-            ),
+            )),
           },
           {
             path: "sites/:id",
-            element: <SiteAdminPage />,
+            lazy: lazyFrom(loadAdmin, "SiteAdminPage"),
             handle: { safeForReload: true },
           },
           {
             path: "sites/:id/edit",
-            element: (
+            lazy: lazyFrom(loadAdmin, "EditSitePage", (Page) => (
               <RequireCompetency competency="manage_users">
-                <EditSitePage />
+                <Page />
               </RequireCompetency>
-            ),
+            )),
           },
           {
             path: "sites/:id/features",
-            element: (
+            lazy: lazyFrom(loadAdmin, "OrgFeaturesPage", (Page) => (
               <RequireCompetency competency="manage_users">
-                <OrgFeaturesPage parentPath="sites" />
+                <Page parentPath="sites" />
               </RequireCompetency>
-            ),
+            )),
           },
           {
             path: "sites/:id/add-staff",
-            element: <AddStaffToSitePage />,
+            lazy: lazyFrom(loadAdmin, "AddStaffToSitePage"),
           },
           {
             path: "sites/:id/members/:userId",
-            element: (
+            lazy: lazyFrom(loadAdmin, "MemberPracticePage", (Page) => (
               <RequireCompetency
                 competency={[
                   "manage_practising_competencies",
                   ...SCOPED_MANAGER_IDS,
                 ]}
               >
-                <MemberPracticePage />
+                <Page />
               </RequireCompetency>
-            ),
+            )),
             handle: { safeForReload: true },
           },
           // Operator-only: feedback comes from every organisation and may
@@ -689,27 +675,27 @@ const routes: RouteObject[] = [
             children: [
               {
                 path: "feedback",
-                element: <AdminFeedbackPage />,
+                lazy: lazyFrom(loadAdmin, "AdminFeedbackPage"),
                 handle: { safeForReload: true },
               },
               {
                 path: "feedback/:id",
-                element: <FeedbackDetailPage />,
+                lazy: lazyFrom(loadAdmin, "FeedbackDetailPage"),
                 handle: { safeForReload: true },
               },
             ],
           },
           {
             path: "organisations/:id/features",
-            element: (
+            lazy: lazyFrom(loadAdmin, "OrgFeaturesPage", (Page) => (
               <RequireCompetency competency="manage_users">
-                <OrgFeaturesPage />
+                <Page />
               </RequireCompetency>
-            ),
+            )),
           },
           {
             path: "teaching",
-            element: <AdminTeachingDashboard />,
+            lazy: lazyFrom(loadAdmin, "AdminTeachingDashboard"),
             handle: { safeForReload: true },
           },
           {
@@ -721,23 +707,23 @@ const routes: RouteObject[] = [
             children: [
               {
                 path: "teaching/modules",
-                element: <AdminTeachingPage />,
+                lazy: lazyFrom(loadAdmin, "AdminTeachingPage"),
                 handle: { safeForReload: true },
               },
               {
                 path: "teaching/modules/:bankId",
-                element: <AdminBankDetailPage />,
+                lazy: lazyFrom(loadAdmin, "AdminBankDetailPage"),
                 handle: { safeForReload: true },
               },
               {
                 path: "teaching/modules/:bankId/org/:orgId",
-                element: <AdminBankOrgSettingsPage />,
+                lazy: lazyFrom(loadAdmin, "AdminBankOrgSettingsPage"),
               },
             ],
           },
           {
             path: "teaching/all-delegates",
-            element: <AdminAllDelegatesPage />,
+            lazy: lazyFrom(loadAdmin, "AdminAllDelegatesPage"),
             handle: { safeForReload: true },
           },
         ],

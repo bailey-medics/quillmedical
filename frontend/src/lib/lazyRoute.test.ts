@@ -1,4 +1,8 @@
+import { createElement } from "react";
+import type { ReactElement } from "react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { renderWithMantine } from "@test/test-utils";
 import { lazyFrom } from "./lazyRoute";
 
 function UsersPage(): null {
@@ -9,7 +13,11 @@ function SitesPage(): null {
   return null;
 }
 
-const chunk = { UsersPage, SitesPage, SOME_CONSTANT: 3 };
+function FeaturesPage({ parentPath }: { parentPath: string }): ReactElement {
+  return createElement("p", null, `features of ${parentPath}`);
+}
+
+const chunk = { UsersPage, SitesPage, FeaturesPage, SOME_CONSTANT: 3 };
 
 describe("lazyFrom", () => {
   it("resolves to the named page as the route's Component", async () => {
@@ -52,6 +60,40 @@ describe("lazyFrom", () => {
     expect((Component as () => unknown)()).toBeNull();
   });
 
+  it("renders the page inside whatever render wraps round it", async () => {
+    const load = vi.fn().mockResolvedValue(chunk);
+
+    const { Component } = await lazyFrom<typeof chunk, "FeaturesPage">(
+      load,
+      "FeaturesPage",
+      (Page) =>
+        createElement(
+          "section",
+          { "aria-label": "guard" },
+          createElement(Page, { parentPath: "sites" }),
+        ),
+    )();
+    renderWithMantine(createElement(Component));
+
+    expect(screen.getByLabelText("guard")).toHaveTextContent(
+      "features of sites",
+    );
+  });
+
+  it("renders nothing when the import resolves to undefined, render or not", async () => {
+    const load = vi.fn().mockResolvedValue(undefined);
+    const render = vi.fn();
+
+    const { Component } = await lazyFrom<typeof chunk, "FeaturesPage">(
+      load,
+      "FeaturesPage",
+      render,
+    )();
+
+    expect((Component as () => unknown)()).toBeNull();
+    expect(render).not.toHaveBeenCalled();
+  });
+
   it("accepts only the chunk's component exports as a name", () => {
     const load = (): Promise<typeof chunk> => Promise.resolve(chunk);
 
@@ -59,6 +101,8 @@ describe("lazyFrom", () => {
     lazyFrom(load, "UserPage");
     // @ts-expect-error an export, but not a component
     lazyFrom(load, "SOME_CONSTANT");
+    // @ts-expect-error needs a prop, so it must be given a render
+    lazyFrom(load, "FeaturesPage");
 
     expect(lazyFrom(load, "UsersPage")).toBeTypeOf("function");
   });
