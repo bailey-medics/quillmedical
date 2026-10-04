@@ -20,7 +20,7 @@
 # code – it is for the reader.
 
 competencies:
-  # Opens the safety pages, as view_teaching_cases opens teaching and
+  # Opens the safety pages, as view_teaching_results opens teaching and
   # assess_clinician_passport opens the passport. Granted by the safety
   # professions at provisioning.
   - id: view_safety_cases

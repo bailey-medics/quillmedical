@@ -502,7 +502,7 @@ class TestGrantingWriting:
 class TestWhatAPassportAdminMayNotDo:
     @pytest.mark.parametrize(
         "competency",
-        ["manage_users", "prescribe_non_controlled", "view_teaching_cases"],
+        ["manage_users", "prescribe_non_controlled", "take_teaching_modules"],
     )
     def test_grant_outside_the_passport(
         self, client: TestClient, delegate: User, competency: str

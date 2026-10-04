@@ -173,7 +173,7 @@ function ScopeCheck() {
   return (
     <div data-testid="result">
       {[
-        mayGrant("view_teaching_cases"),
+        mayGrant("take_teaching_modules"),
         mayGrant("prescribe_non_controlled"),
         mayAssignProfession("teaching_delegate"),
         mayAssignProfession("consultant"),
@@ -202,7 +202,7 @@ describe("useGrantScope", () => {
         status: "authenticated",
         user: {
           ...authenticatedUser,
-          may_grant: ["view_teaching_cases"],
+          may_grant: ["take_teaching_modules"],
           may_assign_professions: ["teaching_delegate"],
         },
       },

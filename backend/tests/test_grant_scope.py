@@ -33,7 +33,12 @@ from app.models import User
 from app.security import hash_password
 
 TEACHING_COMPETENCIES = frozenset(
-    {"view_teaching_cases", "manage_teaching", "view_teaching_analytics"}
+    {
+        "view_teaching_results",
+        "take_teaching_modules",
+        "manage_teaching",
+        "view_teaching_analytics",
+    }
 )
 TEACHING_PROFESSIONS = frozenset(
     {"teaching_delegate", "teaching_clinical_lead", "teaching_admin"}
@@ -67,7 +72,7 @@ class TestScopeForCompetencies:
         assert scope.professions == TEACHING_PROFESSIONS
 
     def test_a_competency_with_no_lists_gives_nothing(self) -> None:
-        scope = scope_for_competencies(["view_teaching_cases"])
+        scope = scope_for_competencies(["take_teaching_modules"])
 
         assert scope.competencies == frozenset()
         assert scope.professions == frozenset()
@@ -96,11 +101,11 @@ class TestAgainstUsers:
     ) -> None:
         caller = _coordinator(db_session)
 
-        assert may_grant(caller, "view_teaching_cases")
+        assert may_grant(caller, "take_teaching_modules")
         assert not may_grant(caller, "prescribe_controlled_schedule_2")
         assert not may_grant(caller, "manage_users")
         assert out_of_scope_competencies(
-            caller, ["view_teaching_cases", "manage_users", "manage_users"]
+            caller, ["take_teaching_modules", "manage_users", "manage_users"]
         ) == ["manage_users"]
 
     def test_a_teaching_holder_gives_only_teaching_professions(

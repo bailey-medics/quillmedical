@@ -332,7 +332,7 @@ describe("AddStaffToOrgPage", () => {
     });
 
     it("is offered only the teaching professions", async () => {
-      viewer.may_grant = ["view_teaching_cases"];
+      viewer.may_grant = ["take_teaching_modules"];
       viewer.may_assign_professions = ["teaching_delegate", "teaching_admin"];
       vi.spyOn(apiLib.api, "get").mockResolvedValue({ users: [A_PATIENT] });
 

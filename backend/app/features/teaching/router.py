@@ -150,7 +150,18 @@ def _require_csrf(request: Request, db: Session = _DEP_SESSION) -> None:
 
 _DEP_USER = Depends(_get_current_user)
 _DEP_REQUIRE_CSRF = Depends(_require_csrf)
-_DEP_VIEW_CASES = Depends(has_competency("view_teaching_cases"))
+# The two doors a learner goes through. Every learner route carries one
+# of them at its decorator, and `tests/test_teaching_learner_gates.py`
+# fails if a route is added with neither.
+#
+# Results is the outer door: reaching teaching at all, and somebody's
+# own past results and certificates. Modules is the inner one: entering
+# a module to learn and be assessed. They are separate so the inner one
+# can be taken away and leave a certificate reachable.
+RESULTS_COMPETENCY = "view_teaching_results"
+MODULES_COMPETENCY = "take_teaching_modules"
+_DEP_RESULTS = Depends(has_competency(RESULTS_COMPETENCY))
+_DEP_MODULES = Depends(has_competency(MODULES_COMPETENCY))
 
 
 def _get_user_org_ids(user: User, db: Session) -> list[int]:
@@ -330,6 +341,7 @@ def _module_is_servable(
 
 @teaching_router.get(
     "/question-banks",
+    dependencies=[_DEP_RESULTS],
     response_model=list[QuestionBankOut],
 )
 def list_question_banks(
@@ -344,6 +356,13 @@ def list_question_banks(
     configs by bank ID regardless of owning org.
     """
     from app.config import settings
+
+    # The page that lists modules is the one that lists results, so it is
+    # reached with the results competency alone. Somebody who may not
+    # enter a module is told nothing about any: an empty list, which the
+    # page shows as it shows an organisation with nothing open.
+    if MODULES_COMPETENCY not in user.get_final_competencies():
+        return []
 
     org_ids = _get_user_org_ids(user, db)
 
@@ -462,6 +481,7 @@ def list_question_banks(
 
 @teaching_router.get(
     "/question-banks/{bank_id}",
+    dependencies=[_DEP_MODULES],
     response_model=QuestionBankDetailOut,
 )
 def get_question_bank(
@@ -541,17 +561,17 @@ def get_question_bank(
 
 @teaching_router.get(
     "/modules/{module_id}/learning",
+    dependencies=[_DEP_MODULES],
     response_model=LearningContentOut,
 )
 def get_learning_content(
     module_id: str,
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
-    _: None = _DEP_VIEW_CASES,
 ) -> dict[str, Any]:
     """Get parsed learning slides for a module.
 
-    Gated on organisation membership *and* `view_teaching_cases`, the
+    Gated on organisation membership *and* `take_teaching_modules`, the
     two questions this codebase keeps separate: membership says where a
     person is, the competency says what they may do there. The video
     route beside this one already required both; slides required only
@@ -763,16 +783,16 @@ def get_learning_content(
 
 @teaching_router.get(
     "/modules",
+    dependencies=[_DEP_MODULES],
     response_model=list[LearningModuleOut],
 )
 def list_learning_modules(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
-    _: None = _DEP_VIEW_CASES,
 ) -> list[dict[str, Any]]:
     """List the modules with learning content that the user may see.
 
-    Requires `view_teaching_cases`, like the content it points at. A
+    Requires `take_teaching_modules`, like the content it points at. A
     listing looser than the material it links to is how the pair came to
     be half-closed before, so the two are gated alike.
 
@@ -898,6 +918,7 @@ def list_learning_modules(
 
 @teaching_router.post(
     "/modules/{module_id}/video-access",
+    dependencies=[_DEP_MODULES],
     response_model=VideoAccessOut,
 )
 @limiter.limit("10/minute")
@@ -907,7 +928,6 @@ def grant_video_access(
     response: Response,
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
-    _: None = _DEP_VIEW_CASES,
     __: None = _DEP_REQUIRE_CSRF,
 ) -> VideoAccessOut:
     """Mint a Cloud CDN cookie for one module's video.
@@ -1032,6 +1052,7 @@ def grant_video_access(
 
 @teaching_router.post(
     "/assessments",
+    dependencies=[_DEP_MODULES],
     response_model=AssessmentWithFirstItem,
 )
 def start_assessment(
@@ -1165,6 +1186,7 @@ def start_assessment(
 
 @teaching_router.get(
     "/assessments/history",
+    dependencies=[_DEP_RESULTS],
     response_model=list[AssessmentHistoryOut],
 )
 def assessment_history(
@@ -1205,6 +1227,7 @@ def assessment_history(
 
 @teaching_router.get(
     "/assessments/{assessment_id}",
+    dependencies=[_DEP_RESULTS],
     response_model=AssessmentOut,
 )
 def get_assessment(
@@ -1304,6 +1327,7 @@ def scored_criteria(
 
 @teaching_router.get(
     "/assessments/{assessment_id}/question-results",
+    dependencies=[_DEP_RESULTS],
     response_model=AssessmentQuestionResultsOut,
 )
 def get_assessment_question_results(
@@ -1392,6 +1416,7 @@ def get_assessment_question_results(
 
 @teaching_router.get(
     "/assessments/{assessment_id}/current",
+    dependencies=[_DEP_MODULES],
     response_model=CandidateItemOut | None,
 )
 def get_current_item(
@@ -1444,6 +1469,7 @@ def get_current_item(
 
 @teaching_router.get(
     "/assessments/{assessment_id}/item/{display_order}",
+    dependencies=[_DEP_MODULES],
     response_model=CandidateItemOut,
 )
 def get_item_by_order(
@@ -1494,6 +1520,7 @@ def get_item_by_order(
 
 @teaching_router.post(
     "/assessments/{assessment_id}/answer",
+    dependencies=[_DEP_MODULES],
     response_model=AnswerResultOut,
 )
 def submit_answer(
@@ -1599,6 +1626,7 @@ def submit_answer(
 
 @teaching_router.put(
     "/assessments/{assessment_id}/answer/{answer_id}",
+    dependencies=[_DEP_MODULES],
     response_model=CandidateItemOut,
 )
 def update_answer(
@@ -1884,6 +1912,7 @@ def _maybe_enqueue_certificate_emails(
 
 @teaching_router.post(
     "/assessments/{assessment_id}/complete",
+    dependencies=[_DEP_MODULES],
     response_model=CompletionResultOut,
 )
 def complete_assessment(
@@ -1995,6 +2024,7 @@ def complete_assessment(
 # api-schema-check: allow-opaque-permanent
 @teaching_router.get(
     "/assessments/{assessment_id}/certificate",
+    dependencies=[_DEP_RESULTS],
 )
 def download_certificate(
     assessment_id: int,

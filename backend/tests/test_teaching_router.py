@@ -2612,15 +2612,15 @@ class TestLearningContentGate:
         assert resp.json() == []
 
 
-class TestLearningRoutesRequireTheViewCompetency:
+class TestLearningRoutesRequireTheModulesCompetency:
     """Membership says where; the competency says what may be done there.
 
     The organisation gate landed first and answered only the first
     question, so a person at an organisation with a module live could
     read it whatever their competencies said. The video route beside it
-    already required `view_teaching_cases`, which made the slides
-    cheaper to reach than the video of them – the same asymmetry that
-    left the pair half-closed before.
+    already required a competency, which made the slides cheaper to
+    reach than the video of them – the same asymmetry that left the pair
+    half-closed before. Both now ask for `take_teaching_modules`.
     """
 
     def _consultant_in(self, db: Session, org: OrgUnit) -> User:
@@ -2698,7 +2698,7 @@ class TestLearningRoutesRequireTheViewCompetency:
         educator = _make_educator(db_session, org)
         _seed_bank(db_session, org.id, educator.id)
         consultant = self._consultant_in(db_session, org)
-        hold(consultant, "view_teaching_cases")
+        hold(consultant, "take_teaching_modules")
         db_session.commit()
 
         test_client.post(

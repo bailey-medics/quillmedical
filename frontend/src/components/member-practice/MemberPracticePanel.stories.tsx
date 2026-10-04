@@ -72,11 +72,11 @@ export const TeachingAdminView: Story = {
   args: {
     practice: {
       ...practice,
-      qualified: [...practice.qualified, "view_teaching_cases"],
+      qualified: [...practice.qualified, "take_teaching_modules"],
       may_change: [
         "manage_teaching",
         "view_teaching_analytics",
-        "view_teaching_cases",
+        "take_teaching_modules",
       ],
     },
   },

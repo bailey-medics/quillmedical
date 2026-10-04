@@ -194,7 +194,8 @@ class TestEveryUserIsSeeded:
         user = _user(db_session, "constructed", profession="teaching_delegate")
 
         assert _current_grants(db_session, user.id) == {
-            "view_teaching_cases": "profession"
+            "view_teaching_results": "profession",
+            "take_teaching_modules": "profession",
         }
 
     def test_the_profession_is_not_read_afterwards(
@@ -273,7 +274,7 @@ class TestEveryRouteSeeds:
         after_second = _current_grants(db_session, target.id)
 
         assert set(after_first) <= set(after_second)
-        assert after_second["view_teaching_cases"] == "profession"
+        assert after_second["take_teaching_modules"] == "profession"
         assert "access_own_patient_records" in after_second
 
 

@@ -172,13 +172,13 @@ class TestTwoPlacesOnePerson:
         elsewhere = _org(db_session, "Other Trust")
         student = _user(db_session, "student", profession="teaching_delegate")
         _staff(db_session, student, teaching)
-        _authorise(db_session, student, "view_teaching_cases", org=teaching)
+        _authorise(db_session, student, "take_teaching_modules", org=teaching)
 
         assert _can_at_org(
-            db_session, student, teaching.id, "view_teaching_cases"
+            db_session, student, teaching.id, "take_teaching_modules"
         )
         assert not _can_at_org(
-            db_session, student, elsewhere.id, "view_teaching_cases"
+            db_session, student, elsewhere.id, "take_teaching_modules"
         )
 
 
@@ -224,10 +224,10 @@ class TestOneSiteWithinAnOrganisation:
         # Enabled to teach here. Reading the analytics is inside this
         # person's ceiling but not switched on at this site, which is the
         # distinction the whole model turns on.
-        _authorise(db_session, educator, "view_teaching_cases", site=site)
+        _authorise(db_session, educator, "take_teaching_modules", site=site)
 
         assert _can_at_site(
-            db_session, educator, site.id, "view_teaching_cases"
+            db_session, educator, site.id, "take_teaching_modules"
         )
         assert not _can_at_site(
             db_session, educator, site.id, "view_teaching_analytics"

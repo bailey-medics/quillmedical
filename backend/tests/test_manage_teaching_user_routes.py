@@ -155,7 +155,7 @@ class TestWhatATeachingAdminMayDo:
                 "base_profession": "consultant",
                 "platform_role": consultant.platform_role,
                 "org_unit_ids": [trust.id],
-                "additional_competencies": ["view_teaching_cases"],
+                "additional_competencies": ["take_teaching_modules"],
                 "removed_competencies": [],
             },
         )

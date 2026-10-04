@@ -58,7 +58,7 @@ foot as work to come.
 
 ## Phase 2: Split the learner competency in two
 
-- [ ] In `shared/competency-definitions/teaching.yaml`, add
+- [x] In `shared/competency-definitions/teaching.yaml`, add
       `view_teaching_results` ("View own teaching results") and
       `take_teaching_modules` ("Take teaching modules"). Named for what
       the person does; "read" and "write" were set aside because nothing
@@ -67,26 +67,31 @@ foot as work to come.
       it stay readable. Correct the comment in `safety.yaml` that cites
       it.
 
-- [ ] Put both new ids on `manage_teaching`'s `may_grant` list and take
+- [x] Put both new ids on `manage_teaching`'s `may_grant` list and take
       `view_teaching_cases` off it. A teaching admin manages both; a new
       competency can be granted by nobody but `manage_users` until it is
       listed.
 
-- [ ] In `shared/base-professions.yaml`, give `teaching_delegate`,
+- [x] In `shared/base-professions.yaml`, give `teaching_delegate`,
       `teaching_clinical_lead` and `teaching_admin` both new competencies
       in place of `view_teaching_cases`. Then `yarn generate:types` in
       `frontend/`. The profession only seeds rows for accounts made
       afterwards, which is why the next step exists.
 
-- [ ] Write a migration by hand that gives every holder of a current
+- [x] Write a migration by hand that gives every holder of a current
       `view_teaching_cases` grant row a current row for each of the two
       new competencies, carrying the old row's `source`, `granted_by` and
       `org_unit_id`, then closes the old row. Ids as literals: a
       migration cannot read the catalogue. Idempotent, skipping anybody
       who already holds the new one. There is no model change, so
-      `just migrate` has nothing to autogenerate.
+      `just migrate` has nothing to autogenerate. Practising rows are
+      copied the same way. Its test,
+      `tests/test_teaching_competency_split_migration.py`, is an
+      integration test against Postgres, so it runs in the
+      `alembic_drift_check` CI job and not in `just ub`; no recipe runs
+      it locally.
 
-- [ ] In `backend/app/features/teaching/router.py`, replace
+- [x] In `backend/app/features/teaching/router.py`, replace
       `_DEP_VIEW_CASES` with two dependencies and put one on every
       learner route. None may be left with neither:
 
@@ -110,11 +115,12 @@ foot as work to come.
       breaking-change check should stay quiet. Run it on the push and
       read the result before assuming so.
 
-- [ ] Tests in `backend/tests/`: for each learner route, a holder of the
+- [x] Tests in `backend/tests/`: for each learner route, a holder of the
       right competency is served and a holder of only the other is
       refused. One test walks every route on `teaching_router` and fails
       if a learner route carries neither dependency, so a route added
-      later cannot be left open by accident.
+      later cannot be left open by accident. Both are in
+      `tests/test_teaching_learner_gates.py`.
 
 - [ ] In `frontend/src/routes.tsx`, wrap the `/teaching` routes in
       `<RequireCompetency competency="view_teaching_results">` inside the
@@ -136,10 +142,12 @@ foot as work to come.
       list from the API and so sees the existing "No assessments are
       currently open" text above their results. Add a test that says so.
 
-- [ ] Update the tests and stories that name `view_teaching_cases` or
+- [x] Update the tests and stories that name `view_teaching_cases` or
       "Take Teaching Assessments": `MemberPracticePanel`,
       `PracticeByPlaceEditor`, `AddStaffToOrgPage`, `CompetencyBadge` and
-      `src/lib/cbac/hooks.test.tsx`.
+      `src/lib/cbac/hooks.test.tsx`. Also the end-to-end test
+      `frontend/e2e/tests/user-form-practice.spec.ts`, which picks the
+      delegate's competency by its label.
 
 - [ ] Update the CBAC section of `.github/copilot-instructions.md`
       where it lists what a teaching admin may grant, then run
