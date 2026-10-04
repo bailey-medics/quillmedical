@@ -95,6 +95,7 @@ from app.email_send import (
 )
 from app.features.passport import cover as passport_cover
 from app.features.passport.models import Passport
+from app.features.teaching.access import MODULES_COMPETENCY, give_place
 from app.features.teaching.schemas import (
     CaptionCompleteIn,
     CaptionCompleteOut,
@@ -1213,13 +1214,14 @@ def register(
         ),
         email=email,
         password_hash=hash_password(payload.password),
+        # Self-registration is refused above where clinical services are
+        # on, so everybody arriving here is a teaching delegate. Given
+        # to the constructor, not assigned afterwards: the constructor
+        # is what writes a profession's competencies as rows, and it
+        # wrote a patient's for an account that was then relabelled. A
+        # registered delegate held nothing from teaching at all.
+        base_profession="teaching_delegate",
     )
-
-    # When clinical services are disabled (teaching-only deployment),
-    # auto-assign the "teaching_delegate" base profession so the user can
-    # immediately take teaching assessments.
-    if not settings.CLINICAL_SERVICES_ENABLED:
-        user.base_profession = "teaching_delegate"
 
     db.add(user)
     db.flush()  # Assigns user.id so we can create memberships
@@ -1280,6 +1282,18 @@ def register(
                 capacity="trainee",
             )
         )
+
+    # Belonging somewhere is not enough to take its modules: teaching
+    # asks for a row saying where. Registering through a centre's link
+    # is how a delegate arrives, so the row is written here, at the site
+    # they named or else the organisation. Nobody is signed in to be
+    # named as having authorised it; the link admitted them.
+    place_id = payload.site_id or payload.org_unit_id
+    if (
+        place_id is not None
+        and MODULES_COMPETENCY in user.get_final_competencies()
+    ):
+        give_place(db, user, place_id)
 
     # The mail goes before the commit, and a failure abandons the whole
     # registration. An account nobody can verify is worse than no

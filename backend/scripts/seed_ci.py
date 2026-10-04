@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session  # noqa: E402
 from app.cbac.grants import sync_competency_rows  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.db import CoreSessionLocal  # noqa: E402
+from app.features.teaching.access import give_place  # noqa: E402
 from app.features.teaching.models import (  # noqa: E402
     QuestionBankConfig,
     QuestionBankOrgStatus,
@@ -157,6 +158,13 @@ def seed() -> None:
         print("Added educator to organisation")
         add_org_unit_member(db, org.id, two_factor.id, "staff")
         print("Added two-factor user to organisation")
+
+        # Belonging is not enough to take a module: teaching asks for a
+        # place too, the row a centre's door writes. Without it these two
+        # would see no module and every teaching journey would fail.
+        give_place(db, educator, org.id)
+        give_place(db, two_factor, org.id)
+        print("Gave educator and two-factor user a place for modules")
 
         # 5b. A user manager and two people for them to manage, for the
         # member practice journey in e2e/tests/member-practice.spec.ts.

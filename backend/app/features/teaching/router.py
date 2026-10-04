@@ -30,6 +30,11 @@ from app.cbac.positions import clinical_leads_of
 from app.db import get_core_db
 from app.deps import has_competency
 from app.features.gating import requires_feature
+from app.features.teaching.access import (
+    MODULES_COMPETENCY,
+    RESULTS_COMPETENCY,
+    organisations_open_for_modules,
+)
 from app.features.teaching.models import (
     Assessment,
     AssessmentAnswer,
@@ -112,7 +117,6 @@ from app.models import (
 )
 from app.organisations import (
     get_member_org_unit_ids,
-    get_reachable_org_unit_ids,
     media_prefix_of,
     organisation_org_unit_member,
 )
@@ -158,25 +162,39 @@ _DEP_REQUIRE_CSRF = Depends(_require_csrf)
 # own past results and certificates. Modules is the inner one: entering
 # a module to learn and be assessed. They are separate so the inner one
 # can be taken away and leave a certificate reachable.
-RESULTS_COMPETENCY = "view_teaching_results"
-MODULES_COMPETENCY = "take_teaching_modules"
 _DEP_RESULTS = Depends(has_competency(RESULTS_COMPETENCY))
 _DEP_MODULES = Depends(has_competency(MODULES_COMPETENCY))
 
 
 def _get_user_org_ids(user: User, db: Session) -> list[int]:
-    """Return the org_units the user can reach, or raise 403.
+    """Return the organisations whose modules the user may take, or 403.
 
-    Teaching used to carry its own copy of this, walking site membership
-    up into organisation membership because that was the available fudge
-    for letting a site trainee reach their organisation's content. The
-    shared resolver now expresses the same thing as downward reach, so
-    this is a thin wrapper that adds only teaching's 403.
+    Every learner route that serves a module asks this, and only they
+    do. It used to be reach from any membership: belonging anywhere
+    under a teaching organisation opened its modules. It is now reach
+    from the org_units where the person holds a ``practising_competency``
+    row for ``take_teaching_modules``, so a centre's people can have
+    their way in withdrawn while the centre, its members and their
+    results stay where they are. See ``app.features.teaching.access``.
     """
-    place_ids = get_reachable_org_unit_ids(db, user.id)
+    place_ids = organisations_open_for_modules(db, user)
     if not place_ids:
         raise HTTPException(403, "User has no organisation")
     return place_ids
+
+
+def _require_place_for_attempt(
+    db: Session, user: User, assessment: Assessment
+) -> None:
+    """Refuse an attempt whose organisation the user may no longer enter.
+
+    An attempt under way stops when the place it was started through is
+    withdrawn. The same 404 as an attempt that is not theirs, so nothing
+    is confirmed. Reading the finished result does not come through
+    here: results ask for no place.
+    """
+    if assessment.org_unit_id not in organisations_open_for_modules(db, user):
+        raise HTTPException(404, "Assessment not found")
 
 
 def _get_user_org_id(user: User, db: Session) -> int:
@@ -361,10 +379,10 @@ def list_question_banks(
     # reached with the results competency alone. Somebody who may not
     # enter a module is told nothing about any: an empty list, which the
     # page shows as it shows an organisation with nothing open.
-    if MODULES_COMPETENCY not in user.get_final_competencies():
+    # The same answer for somebody with nowhere to take them.
+    org_ids = organisations_open_for_modules(db, user)
+    if not org_ids:
         return []
-
-    org_ids = _get_user_org_ids(user, db)
 
     # Look up status for each bank across the user's orgs
     statuses = (
@@ -1455,6 +1473,7 @@ def get_current_item(
     assessment = db.get(Assessment, assessment_id)
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
+    _require_place_for_attempt(db, user, assessment)
     if assessment.completed_at:
         raise HTTPException(409, "Assessment already completed")
 
@@ -1509,6 +1528,7 @@ def get_item_by_order(
     assessment = db.get(Assessment, assessment_id)
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
+    _require_place_for_attempt(db, user, assessment)
     if assessment.completed_at:
         raise HTTPException(409, "Assessment already completed")
 
@@ -1560,6 +1580,7 @@ def submit_answer(
     assessment = db.get(Assessment, assessment_id)
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
+    _require_place_for_attempt(db, user, assessment)
     if assessment.completed_at:
         raise HTTPException(409, "Assessment already completed")
 
@@ -1667,6 +1688,7 @@ def update_answer(
     assessment = db.get(Assessment, assessment_id)
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
+    _require_place_for_attempt(db, user, assessment)
     if assessment.completed_at:
         raise HTTPException(409, "Assessment already completed")
 
@@ -1952,6 +1974,7 @@ def complete_assessment(
     assessment = db.get(Assessment, assessment_id)
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
+    _require_place_for_attempt(db, user, assessment)
     if assessment.completed_at:
         raise HTTPException(409, "Assessment already completed")
 

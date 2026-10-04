@@ -28,9 +28,9 @@ from app.features.teaching.router import (
     teaching_router,
 )
 from app.models import OrgUnit, OrgUnitFeature, User
-from app.organisations import add_org_unit_member
 from app.security import hash_password
 from tests.competencies import hold
+from tests.competencies import join_for_teaching as add_org_unit_member
 
 #: What each learner route must ask for, by method and path.
 RESULTS_ROUTES = {

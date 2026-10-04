@@ -12,7 +12,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from app.models import User, UserCompetency
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models import PractisingCompetency, User, UserCompetency
+from app.organisations import add_org_unit_member
 
 #: How far back ``lapse`` moves a grant: a year, the length of a
 #: subscription somebody buys for themselves.
@@ -74,3 +78,32 @@ def clear(user: User) -> None:
     for row in user.competency_grants:
         if row.source != "profession" and row.is_current(now):
             row.ends_on = now
+
+
+def join_for_teaching(
+    db: Session, org_unit_id: int, user_id: int, capacity: str
+) -> None:
+    """Join an org_unit and be given a place to take modules there.
+
+    What arriving through a centre's door does: the membership, and the
+    ``practising_competency`` row for ``take_teaching_modules`` that
+    teaching asks for before it serves a module. The row gives nothing
+    to somebody without the competency. The caller commits.
+    """
+    add_org_unit_member(db, org_unit_id, user_id, capacity)
+    already = db.scalar(
+        select(PractisingCompetency.id).where(
+            PractisingCompetency.user_id == user_id,
+            PractisingCompetency.org_unit_id == org_unit_id,
+            PractisingCompetency.competency == "take_teaching_modules",
+        )
+    )
+    if already is None:
+        db.add(
+            PractisingCompetency(
+                user_id=user_id,
+                org_unit_id=org_unit_id,
+                competency="take_teaching_modules",
+            )
+        )
+        db.flush()

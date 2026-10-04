@@ -384,6 +384,26 @@ def get_reachable_org_unit_ids(
         )
 
     org_unit_ids = [int(r[0]) for r in db.execute(member_org_units).all()]
+    return reach_of_org_units(db, org_unit_ids)
+
+
+def reach_of_org_units(db: Session, org_unit_ids: list[int]) -> list[int]:
+    """Return the organisations' org_units reached from *org_unit_ids*.
+
+    The reach itself, apart from the question of which org_units it
+    starts from. :func:`get_reachable_org_unit_ids` starts from every
+    membership; teaching starts from the org_units where somebody may
+    take modules, which is narrower. Both then reach the same way: up to
+    the organisation accountable for each org_unit, and across any link
+    that grants reach.
+
+    Args:
+        db: Core database session.
+        org_unit_ids: The org_units to start from.
+
+    Returns:
+        org_unit IDs of organisations, ascending. Empty for no start.
+    """
     if not org_unit_ids:
         return []
 
