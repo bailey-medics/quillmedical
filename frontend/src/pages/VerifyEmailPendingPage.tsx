@@ -3,17 +3,15 @@
  *
  * Shown after registration to inform the user they need to check
  * their email. Provides a resend button with rate limiting feedback.
+ * Delegates rendering to VerifyEmailPending.
  */
 
-// Auth pages use centred form layout, not Container
+// Auth pages use the logo-and-card layout of the sign-in forms, not Container
 
 import { useState } from "react";
-import PageHeader from "@/components/page-header";
-import { Center, Stack } from "@mantine/core";
 import { useLocation } from "react-router-dom";
 import { api } from "@/lib/api";
-import { BodyText, TextLink } from "@components/typography";
-import IconTextButton from "@components/button/IconTextButton";
+import { VerifyEmailPending } from "@components/registration";
 
 export default function VerifyEmailPendingPage() {
   const location = useLocation();
@@ -35,32 +33,11 @@ export default function VerifyEmailPendingPage() {
   }
 
   return (
-    <Center mih="100vh">
-      <Stack align="center" gap="md" maw={420}>
-        <PageHeader title="Check your email" />
-        <BodyText justify="centre">
-          We&apos;ve sent a verification link to{" "}
-          {email ? <strong>{email}</strong> : "your email address"}. Please
-          click the link to activate your account.
-        </BodyText>
-        <BodyText justify="centre" c="dimmed">
-          The link expires in 60 minutes. Check your spam folder if you
-          don&apos;t see it.
-        </BodyText>
-        {email && !resent && (
-          <IconTextButton
-            icon="refresh"
-            label="Resend verification email"
-            onClick={handleResend}
-            loading={loading}
-            variant="light"
-          />
-        )}
-        {resent && <BodyText c="green">Verification email resent.</BodyText>}
-        <TextLink standalone to="/login">
-          Back to login
-        </TextLink>
-      </Stack>
-    </Center>
+    <VerifyEmailPending
+      email={email}
+      resent={resent}
+      loading={loading}
+      onResend={handleResend}
+    />
   );
 }
