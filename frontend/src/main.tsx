@@ -66,6 +66,8 @@ import { installPromptCapture } from "@lib/pwa/installPromptEvent";
 import { markInstallFinished } from "@lib/pwa/installPromptSchedule";
 
 import RootLayout from "./RootLayout";
+import { loadClinical } from "./featureChunks";
+import { lazyFrom } from "@lib/lazyRoute";
 import ErrorBoundary from "@/components/error-boundary/ErrorBoundary";
 import AdminPage from "./pages/AdminPage";
 import AdminUsersPage from "./pages/admin/users/AdminUsersPage";
@@ -94,20 +96,9 @@ import AddStaffToSitePage from "./pages/admin/sites/AddStaffToSitePage";
 import EditOrganisationPage from "./pages/admin/organisations/EditOrganisationPage";
 import OrgFeaturesPage from "./pages/admin/organisations/OrgFeaturesPage";
 import MemberPracticePage from "./pages/admin/members/MemberPracticePage";
-import Messages from "./pages/Messages";
-import MessageThread from "./pages/MessageThread";
 import NewPatientPage from "./pages/NewPatientPage";
 import UserInfoUpdatePage from "./pages/UserInfoUpdatePage";
 import NotFound from "./pages/NotFound";
-import Patient from "./pages/Patient";
-import PatientAppointments from "./pages/PatientAppointments";
-import PatientLetters from "./pages/PatientLetters";
-import PatientLetterView from "./pages/PatientLetterView";
-import PatientMessages from "./pages/PatientMessages";
-import PatientMessageThread from "./pages/PatientMessageThread";
-import PatientDocuments from "./pages/PatientDocuments";
-import PatientDocumentView from "./pages/PatientDocumentView";
-import PatientNotes from "./pages/PatientNotes";
 import RegisterPage from "./pages/RegisterPage";
 import TeachingRegisterPage from "./pages/TeachingRegisterPage";
 import TotpSetup from "./pages/TotpSetup";
@@ -412,6 +403,10 @@ const routes: RouteObject[] = [
       },
 
       // Clinical routes – require FHIR/EHRbase connectivity
+      // One lazy chunk for the whole subtree, pages/clinical/clinicalChunk.ts.
+      // A deployment with clinical services off never downloads it, and
+      // opening a message thread, which cannot safely reload, never needs
+      // a fetch of its own.
       {
         // Everything under here is patient data, and is deliberately not
         // counted. Declared on the subtree root rather than each leaf so a
@@ -429,53 +424,56 @@ const routes: RouteObject[] = [
             children: [
               {
                 index: true,
-                element: <Patient />,
+                lazy: lazyFrom(loadClinical, "Patient"),
                 handle: { safeForReload: true },
               },
               {
                 path: "letters",
-                element: <PatientLetters />,
+                lazy: lazyFrom(loadClinical, "PatientLetters"),
                 handle: { safeForReload: true },
               },
               {
                 path: "letters/:letterId",
-                element: <PatientLetterView />,
+                lazy: lazyFrom(loadClinical, "PatientLetterView"),
                 handle: { safeForReload: true },
               },
               // Message routes have a reply/compose draft in progress -
               // not safe to silently reload.
-              { path: "messages", element: <PatientMessages /> },
+              {
+                path: "messages",
+                lazy: lazyFrom(loadClinical, "PatientMessages"),
+              },
               {
                 path: "messages/:conversationId",
-                element: <PatientMessageThread />,
+                lazy: lazyFrom(loadClinical, "PatientMessageThread"),
               },
               {
                 path: "documents",
-                element: <PatientDocuments />,
+                lazy: lazyFrom(loadClinical, "PatientDocuments"),
                 handle: { safeForReload: true },
               },
               {
                 path: "documents/:documentId",
-                element: <PatientDocumentView />,
+                lazy: lazyFrom(loadClinical, "PatientDocumentView"),
                 handle: { safeForReload: true },
               },
               {
                 path: "notes",
-                element: <PatientNotes />,
+                lazy: lazyFrom(loadClinical, "PatientNotes"),
                 handle: { safeForReload: true },
               },
               {
                 path: "appointments",
-                element: <PatientAppointments />,
+                lazy: lazyFrom(loadClinical, "PatientAppointments"),
                 handle: { safeForReload: true },
               },
             ],
           },
           // Compose/reply draft in progress - not safe to silently reload.
-          { path: "/messages", element: <Messages /> },
+          { path: "/messages", lazy: lazyFrom(loadClinical, "Messages") },
           {
             path: "/messages/:conversationId",
-            element: <MessageThread />,
+            lazy: lazyFrom(loadClinical, "MessageThread"),
           },
         ],
       },
