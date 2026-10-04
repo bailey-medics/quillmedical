@@ -26,6 +26,11 @@ const CHUNKS = [
     file: "pages/passport/passportChunk.ts",
   },
   { name: "safety", loader: "loadSafety", file: "pages/safety/safetyChunk.ts" },
+  {
+    name: "teaching",
+    loader: "loadTeaching",
+    file: "features/teaching/teachingChunk.ts",
+  },
 ] as const;
 
 // The rule the plan sets: a feature is one lazy chunk, never one per page.
@@ -60,5 +65,29 @@ describe.each(CHUNKS)("the $name chunk", ({ loader, file }) => {
     const module = `"./${file.replace(/\.ts$/, "")}"`;
     expect(mainSource).not.toContain(`from ${module}`);
     expect(mainSource).not.toContain(`import(${module})`);
+  });
+});
+
+// Losing an exam attempt is the one failure here that cannot be put right
+// afterwards. The attempt and its result cannot safely reload, so the
+// result page must already be in memory when the exam starts: both pages
+// in the one teaching chunk, and neither route loading anything else.
+describe("the exam", () => {
+  it("has the attempt and its result in the same chunk", async () => {
+    const chunk = await featureChunks.loadTeaching();
+
+    expect(chunk.AssessmentAttempt).toBeTypeOf("function");
+    expect(chunk.AssessmentResultPage).toBeTypeOf("function");
+  });
+
+  it.each([
+    ["assessment/:id", "AssessmentAttempt"],
+    ["assessment/:id/result", "AssessmentResultPage"],
+  ])("loads %s from the teaching chunk", (routePath, page) => {
+    const route = new RegExp(
+      `path: "${routePath}",\\s*lazy: lazyFrom\\(loadTeaching, "${page}"\\)`,
+    );
+
+    expect(mainSource).toMatch(route);
   });
 });

@@ -285,34 +285,56 @@ this phase and Phase 7 before they do, so the exam path is changed and
 tested while a mistake still reaches no one. If they arrive first, the
 order holds and the checks in both phases matter more, not less.
 
-- [ ] **Create `frontend/src/features/teaching/teachingChunk.ts`** re-exporting the
+- [x] **Create `frontend/src/features/teaching/teachingChunk.ts`** re-exporting the
       eight learner pages `main.tsx` routes: `TeachingDashboard`,
       `TeachingModuleMain`,
       `LearningDashboard`, `SlideReader`, `AssessmentAttempt`,
       `AssessmentResultPage`, `AssessmentQuestionResultsPage` and
       `SyncStatus`.
-- [ ] **Switch the `/teaching` children to `lazyFrom`.** `TeachingLayout`,
+- [x] **Switch the `/teaching` children to `lazyFrom`.** `TeachingLayout`,
       `TeachingMainNav` and `NoAccessLayout` stay static: they are in the
       guard's `fallback`, which renders before any chunk loads.
       `TeachingRegisterPage` stays static too, as a sign-up page outside
       the feature gate.
-- [ ] **Leave `assessment/:id` and `assessment/:id/result` unsafe for
+- [x] **Leave `assessment/:id` and `assessment/:id/result` unsafe for
       reload.** These two routes are why teaching must be one chunk. With
       per-page chunks, finishing an exam would fetch the result page; if a
       deploy landed during the attempt, that fetch fails on a route the
       recovery handler will not reload, and the result page reads
       `location.state.fromExam`, which a reload loses anyway. With one
       chunk the result page is already in memory when the exam starts.
-- [ ] **Check what a first load of `/teaching` shows while the chunk is in
+- [x] **Check what a first load of `/teaching` shows while the chunk is in
       flight.** The router has no `HydrateFallback`, so a cold load of a
       lazy route renders nothing until the chunk arrives. Passport has
       lived with that; teaching is the front door. Throttle the network in
       the browser and look. If there is a visible blank, add a
       `HydrateFallback` to the root route using an existing loading
       component from the catalogue.
-- [ ] **Measure and record**, then run a full exam on the dev stack with
+- [x] **Measure and record**, then run a full exam on the dev stack with
       the network panel open: one teaching chunk on entry, no JavaScript
       fetched between starting the attempt and seeing the result.
+      - **Measured 4 October.** `teachingChunk` is 20.96 kB raw and
+        6.25 kB gzipped, small because most teaching components are also
+        used by the layout and navigation in first load. First load fell
+        from 371.49 to **347.82 kB gzipped**. Against the baseline of
+        434.96 kB that is 87.14 kB less, a fifth of the first download.
+      - **The exam was sat in a real browser, not by hand.** `just e2e`,
+        the whole suite, ran against a production build of this branch
+        and passed, 45 tests. `teaching-journeys.spec.ts` starts an
+        assessment, answers every question and reaches the result page.
+        The network panel check was not done; in its place
+        `featureChunks.test.ts` pins that the attempt and its result are
+        both in `teachingChunk` and that their routes load nothing else.
+      - **One other lazy import exists in teaching, and it is not in the
+        exam.** `VideoPlayer` loads `react-player` on demand, as it did
+        before this plan. It is used only by the video slide layout, in
+        `SlideReader`, which is safe to reload.
+      - **A cold load of a lazy route did render nothing**, as the step
+        above suspected: the router has no fallback until it is given
+        one. The root route now has a `hydrateFallbackElement`, the same
+        centred `LoadingSpinner` that `RequireAuth` shows while it checks
+        the session, so the two read as one wait. It was not looked at
+        under a throttled network.
 
 ## Phase 7: Warm the other features in the background
 
