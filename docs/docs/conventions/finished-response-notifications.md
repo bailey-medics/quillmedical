@@ -105,17 +105,25 @@ the one that finished.
 
 `-execute` stores a command with the notification and runs it when the
 banner is clicked. `scripts/notification-focus.sh` then raises the window
-whose title contains the worktree's directory name: VS Code titles a window
+whose title ends with the worktree's directory name: VS Code titles a window
 `<file> – <folder>`, so the folder name finds it. It uses `AXRaise` through
 System Events, which **needs Accessibility permission**, under System
 Settings, Privacy and Security, Accessibility.
 
-That takes about 330 milliseconds. `code -r <path>` does the same job with
-no permission at all, but takes about 1.3 seconds, because it starts Node
-and boots VS Code's command line machinery before it can speak to the
-running editor. It also *opens* a folder that has no window yet, so
-the script uses it only as a fallback: when no window holds the folder,
-and only for a path that is a real directory.
+The title must *end with* the name, not contain it. The main checkout is
+`quillmedical`, which `quillmedical-3` contains, so a click on its banner
+used to raise whichever worktree was in view and go no further.
+
+That takes about 330 milliseconds, but System Events lists only the windows
+on the Space in view. For a worktree on another Space the script falls back
+to `open -a "Visual Studio Code" <path>`: the editor brings forward the
+window holding that folder and macOS follows to its Space, left or right.
+It also *opens* a folder that has no window yet, in a new window, so it
+runs only for a path that is a real directory. `QUILL_NOTIFY_EDITOR` names
+a different application.
+
+The fallback was once `code -r <path>`. That reuses the window in front
+when nothing holds the path, replacing the worktree open in it.
 
 ### Clear old notifications before testing a click
 

@@ -9,17 +9,26 @@
 # Two ways, fastest first:
 #
 #   1. AXRaise through System Events, about 330ms. VS Code titles a window
-#      "<file> – <folder>", so the folder's basename finds it. Needs
-#      Accessibility permission, and finds nothing when no window holds the
-#      folder, which is the ordinary case once a worktree is closed.
+#      "<file> – <folder>", so a title ending in the folder's basename finds
+#      it. Needs Accessibility permission, and System Events lists only the
+#      windows on the Space in view, so this finds nothing for a worktree on
+#      another Space.
 #
-#   2. `code -r`, about 1.3s, because it starts Node and boots the CLI
-#      before it can speak to the running editor. It needs no permission
-#      and opens the folder when no window has it.
+#   2. `open -a`, which asks macOS to hand the folder to the editor. The
+#      editor brings forward the window already holding it, and macOS
+#      follows to that window's Space, in either direction. With no such
+#      window it opens the folder in a new one.
 #
-# The second only runs for a path that is a real directory. Without that
-# guard a stale or mistyped path opens an empty window for a folder that
-# does not exist, which is how this was first found.
+# The title must end with the folder name, not merely contain it. The main
+# checkout is "quillmedical", which every "quillmedical-3" contains: a click
+# on its banner raised whichever worktree was already in view and stopped
+# there, so the Space never changed.
+#
+# `open -a` rather than `code -r`. `-r` reuses the window in front when no
+# window holds the path, replacing the worktree open in it.
+#
+# The second only runs for a path that is a real directory, so a stale or
+# mistyped path opens nothing.
 #
 # Failure is silent: a click that does nothing is a poor outcome, but an
 # error dialog over whatever the user is doing is worse.
@@ -38,7 +47,8 @@ on run argv
     tell application "System Events"
         if not (exists process "Code") then error "no editor"
         tell process "Code"
-            set matches to every window whose name contains folderName
+            set matches to every window whose name is folderName ¬
+                or name ends with (" " & folderName)
             if (count of matches) is 0 then error "no window"
             perform action "AXRaise" of item 1 of matches
             set frontmost to true
@@ -50,17 +60,11 @@ then
     exit 0
 fi
 
-# 2. No window holds the folder, so open it. Only for a real directory:
-# `code -r` on a path that does not exist opens an empty window for it.
+# 2. No window in view holds the folder, so hand it to the editor. Only for
+# a real directory. QUILL_NOTIFY_EDITOR names another application.
 [ -d "$target" ] || exit 0
 
-code_bin="${QUILL_NOTIFY_CODE_BIN:-}"
-if [ -z "$code_bin" ]; then
-    code_bin="$(command -v code 2>/dev/null || true)"
-fi
-[ -n "$code_bin" ] || \
-    code_bin="/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
-
-[ -x "$code_bin" ] && "$code_bin" -r "$target" >/dev/null 2>&1
+open -a "${QUILL_NOTIFY_EDITOR:-Visual Studio Code}" "$target" \
+    >/dev/null 2>&1
 
 exit 0
