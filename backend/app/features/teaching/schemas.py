@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -853,3 +853,76 @@ class ModuleMediaOut(BaseModel):
     #: still transcoding is complete and not yet servable, and is hidden
     #: from learners until it is. Optional, so the change is additive.
     is_servable: bool = False
+
+
+# ---------------------------------------------------------------------------
+# The door: admitting people to teaching at an org_unit
+# ---------------------------------------------------------------------------
+
+_MODULE_ID = r"^[a-zA-Z0-9_-]+$"
+
+
+class AdmitIn(BaseModel):
+    """Admit a member to teaching at an org_unit.
+
+    Attributes:
+        module_ids: Modules of the organisation above the org_unit to
+            enrol them on. May be empty: they are then given the
+            competencies and the place, and enrolled on nothing.
+        ends_on: When the enrolments stop counting, or None for no end.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    module_ids: list[
+        Annotated[str, Field(max_length=255, pattern=_MODULE_ID)]
+    ] = Field(default_factory=list, max_length=100)
+    ends_on: datetime | None = None
+
+
+class AdmitOut(BaseModel):
+    """What admitting somebody newly wrote.
+
+    Attributes:
+        competencies: The learner competencies they were given, of the
+            two. Empty when they held both already.
+        place: Whether their place at the org_unit was written now, or
+            was already there.
+        enrolled: The modules they were newly enrolled on.
+    """
+
+    competencies: list[str]
+    place: bool
+    enrolled: list[str]
+
+
+class WithdrawOut(BaseModel):
+    """How many people had their place at an org_unit removed."""
+
+    withdrawn: int
+
+
+class ModuleAccessOut(BaseModel):
+    """Whether one person may enter one module, and if not, why.
+
+    Attributes:
+        question_bank_id: The module.
+        title: Its title, as the version served says.
+        may_enter: True when nothing is missing.
+        missing: Which layers are missing, any of ``competency``,
+            ``place`` and ``enrolment``.
+        enrolment_ends_on: When their current enrolment stops counting,
+            or None for no end or no enrolment.
+    """
+
+    question_bank_id: str
+    title: str
+    may_enter: bool
+    missing: list[Literal["competency", "place", "enrolment"]]
+    enrolment_ends_on: datetime | None = None
+
+
+class MemberAccessOut(BaseModel):
+    """One person's way into each module an organisation serves."""
+
+    modules: list[ModuleAccessOut]
