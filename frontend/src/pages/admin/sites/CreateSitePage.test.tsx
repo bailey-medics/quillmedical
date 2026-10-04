@@ -12,6 +12,8 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import CreateSitePage from "./CreateSitePage";
+import * as authContext from "@/auth/AuthContext";
+import type { User } from "@/auth/AuthContext";
 import * as apiLib from "@/lib/api";
 
 const mockNavigate = vi.fn();
@@ -47,10 +49,34 @@ const building = {
   parent_id: 10,
 };
 
+const lead = { id: 4, username: "dr.lead", email: "lead@example.com" };
+
+/** Answer the org_units, and the people behind the clinical lead picker. */
 function mockPlaces() {
   return vi
     .spyOn(apiLib.api, "get")
-    .mockResolvedValue({ org_units: [trust, building] });
+    .mockImplementation((path: string) =>
+      Promise.resolve(
+        path === "/users"
+          ? { users: [lead] }
+          : { org_units: [trust, building] },
+      ),
+    );
+}
+
+function signedInWith(competencies: string[]) {
+  const user: User = {
+    id: "3",
+    username: "admin.user",
+    email: "admin@example.com",
+    competencies,
+  };
+  vi.spyOn(authContext, "useAuth").mockReturnValue({
+    state: { status: "authenticated", user },
+    login: vi.fn(),
+    logout: vi.fn(),
+    reload: vi.fn(),
+  });
 }
 
 async function renderPage() {
@@ -73,24 +99,26 @@ describe("CreateSitePage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockNavigate.mockClear();
+    signedInWith(["manage_users", "manage_staff_membership"]);
   });
 
   describe("Choosing where it sits", () => {
-    it("offers every place, not only the organisations", async () => {
+    it("offers the organisations, and no site to put one inside", async () => {
       const user = userEvent.setup();
       mockPlaces();
       await renderPage();
 
-      await user.click(screen.getByRole("combobox", { name: /inside/i }));
+      await user.click(screen.getByRole("combobox", { name: /organisation/i }));
 
-      // A ward can go inside a building, which the old organisation-side
-      // form could not express.
+      // The tree is two levels for now: a site sits directly inside an
+      // organisation, never inside another site.
+      // By name alone: the field already says they are organisations.
       expect(
-        await screen.findByRole("option", { name: /Main building/ }),
+        await screen.findByRole("option", { name: "Test Trust" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("option", { name: /Test Trust/ }),
-      ).toBeInTheDocument();
+        screen.queryByRole("option", { name: /Main building/ }),
+      ).not.toBeInTheDocument();
     });
 
     it("refuses to create one that sits nowhere", async () => {
@@ -113,6 +141,65 @@ describe("CreateSitePage", () => {
     });
   });
 
+  describe("Naming a clinical lead", () => {
+    it("adds them to the new site, then appoints them", async () => {
+      const user = userEvent.setup();
+      signedInWith(["manage_teaching"]);
+      mockPlaces();
+      const post = vi
+        .spyOn(apiLib.api, "post")
+        .mockResolvedValue({ id: 42, name: "Ward 12" });
+      const put = vi.spyOn(apiLib.api, "put").mockResolvedValue({});
+      await renderPage();
+
+      await pick(user, /organisation/i, /Test Trust/);
+      await user.type(screen.getByLabelText(/^name/i), "Ward 12");
+      await pick(user, /type/i, /^Ward$/);
+      await pick(user, /clinical lead/i, /dr\.lead/);
+      await user.click(screen.getByTestId("submit-button"));
+
+      await waitFor(() =>
+        expect(put).toHaveBeenCalledWith("/org-units/42/clinical-lead", {
+          user_id: 4,
+        }),
+      );
+      expect(post).toHaveBeenCalledWith("/org-units/42/members", {
+        user_id: 4,
+        capacity: "staff",
+      });
+    });
+
+    it("leaves the post vacant when nobody is picked", async () => {
+      const user = userEvent.setup();
+      mockPlaces();
+      const post = vi
+        .spyOn(apiLib.api, "post")
+        .mockResolvedValue({ id: 42, name: "Ward 12" });
+      const put = vi.spyOn(apiLib.api, "put");
+      await renderPage();
+
+      await pick(user, /organisation/i, /Test Trust/);
+      await user.type(screen.getByLabelText(/^name/i), "Ward 12");
+      await pick(user, /type/i, /^Ward$/);
+      await user.click(screen.getByTestId("submit-button"));
+
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+      expect(post).toHaveBeenCalledTimes(1);
+      expect(put).not.toHaveBeenCalled();
+    });
+
+    it("is not offered to somebody who may not appoint one", async () => {
+      signedInWith(["manage_users"]);
+      const get = mockPlaces();
+      await renderPage();
+
+      expect(
+        screen.queryByRole("combobox", { name: /clinical lead/i }),
+      ).not.toBeInTheDocument();
+      expect(get).not.toHaveBeenCalledWith("/users");
+    });
+  });
+
   describe("Creating one", () => {
     it("sends what was filled in, and opens the new site", async () => {
       const user = userEvent.setup();
@@ -122,7 +209,7 @@ describe("CreateSitePage", () => {
         .mockResolvedValue({ id: 42, name: "Ward 12" });
       await renderPage();
 
-      await pick(user, /inside/i, /Main building/);
+      await pick(user, /organisation/i, /Test Trust/);
       await user.type(screen.getByLabelText(/^name/i), "Ward 12");
       await pick(user, /type/i, /^Ward$/);
       await user.type(screen.getByLabelText(/^location/i), "Floor 2");
@@ -132,7 +219,7 @@ describe("CreateSitePage", () => {
         expect(post).toHaveBeenCalledWith("/org-units", {
           name: "Ward 12",
           type: "ward",
-          parent_id: 11,
+          parent_id: 10,
           location: "Floor 2",
         });
       });
@@ -150,7 +237,7 @@ describe("CreateSitePage", () => {
         .mockResolvedValue({ id: 42, name: "Ward 12" });
       await renderPage();
 
-      await pick(user, /inside/i, /Test Trust/);
+      await pick(user, /organisation/i, /Test Trust/);
       await user.type(screen.getByLabelText(/^name/i), "Ward 12");
       await pick(user, /type/i, /^Ward$/);
       await user.click(screen.getByTestId("submit-button"));
@@ -171,7 +258,7 @@ describe("CreateSitePage", () => {
       );
       await renderPage();
 
-      await pick(user, /inside/i, /Test Trust/);
+      await pick(user, /organisation/i, /Test Trust/);
       await user.type(screen.getByLabelText(/^name/i), "Ward 12");
       await pick(user, /type/i, /^Ward$/);
       await user.click(screen.getByTestId("submit-button"));

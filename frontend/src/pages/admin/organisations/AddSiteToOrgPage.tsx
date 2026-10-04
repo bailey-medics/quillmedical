@@ -2,7 +2,13 @@
  * Add Site to Organisation Page
  *
  * Form for creating a new site and linking it to the current organisation.
- * Only accessible to admin/superadmin users.
+ * For somebody with `manage_users`, or a scoped manager such as
+ * `manage_teaching` adding a site inside their own organisation.
+ *
+ * Naming a clinical lead is appointing somebody to a post, which takes
+ * `manage_staff_membership` or a scoped manager: whoever runs teaching
+ * somewhere names its lead. Somebody with neither is not offered the
+ * field, and the site is created with the post vacant.
  */
 
 import { useEffect, useState } from "react";
@@ -23,6 +29,8 @@ import type { FormSubmitResult } from "@/components/form/Form";
 import { api } from "@/lib/api";
 import { orgUnits, placeTypeOptions } from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
+import { useHasAnyCompetency } from "@/lib/cbac/hooks";
+import { SCOPED_MANAGER_IDS } from "@/types/cbac";
 
 interface ApiUser {
   id: number;
@@ -41,10 +49,13 @@ function AddSiteFields({
   orgId,
   users,
   usersLoading,
+  mayNameLead,
 }: {
   orgId: string;
   users: ApiUser[];
   usersLoading: boolean;
+  /** Whether the viewer may appoint the site's clinical lead */
+  mayNameLead: boolean;
 }) {
   const navigate = useNavigate();
   const { methods } = useFormContext();
@@ -100,25 +111,27 @@ function AddSiteFields({
             )}
           />
 
-          <Controller
-            name="clinicalLeadId"
-            control={methods.control}
-            render={({ field, fieldState }) => (
-              <SelectField
-                label="Clinical lead"
-                placeholder="Search for a user"
-                data={users.map((u) => ({
-                  value: String(u.id),
-                  label: `${u.username} (${u.email})`,
-                }))}
-                value={field.value as string | null}
-                onChange={field.onChange}
-                error={fieldState.error?.message}
-                searchable
-                disabled={usersLoading}
-              />
-            )}
-          />
+          {mayNameLead && (
+            <Controller
+              name="clinicalLeadId"
+              control={methods.control}
+              render={({ field, fieldState }) => (
+                <SelectField
+                  label="Clinical lead"
+                  placeholder="Search for a user"
+                  data={users.map((u) => ({
+                    value: String(u.id),
+                    label: `${u.username} (${u.email})`,
+                  }))}
+                  value={field.value as string | null}
+                  onChange={field.onChange}
+                  error={fieldState.error?.message}
+                  searchable
+                  disabled={usersLoading}
+                />
+              )}
+            />
+          )}
 
           <SubmitButton
             onCancel={() => navigate(`/admin/organisations/${orgId}`)}
@@ -133,11 +146,19 @@ function AddSiteFields({
 export default function AddSiteToOrgPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  // The clinical lead picker, and the list of people behind it, are for
+  // somebody who may appoint one, which is what the route that sets the
+  // lead asks for.
+  const mayNameLead = useHasAnyCompetency(
+    "manage_staff_membership",
+    ...SCOPED_MANAGER_IDS,
+  );
   const [users, setUsers] = useState<ApiUser[]>([]);
-  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersLoading, setUsersLoading] = useState(mayNameLead);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!mayNameLead) return;
     async function fetchUsers() {
       try {
         const response = await api.get<{ users: ApiUser[] }>("/users");
@@ -152,7 +173,7 @@ export default function AddSiteToOrgPage() {
     }
 
     fetchUsers();
-  }, []);
+  }, [mayNameLead]);
 
   async function handleSubmit(
     data: AddSiteFormValues,
@@ -172,7 +193,7 @@ export default function AddSiteToOrgPage() {
       // org_unit, and the person holds the post. They used to be one, which
       // meant a post could not be vacant without also removing the
       // person – and a vacancy is a real state worth being able to say.
-      if (data.clinicalLeadId) {
+      if (mayNameLead && data.clinicalLeadId) {
         await orgUnits.addMember(site.id, {
           user_id: Number(data.clinicalLeadId),
           capacity: "staff",
@@ -224,7 +245,12 @@ export default function AddSiteToOrgPage() {
         submitLabel="Create site"
         submittingLabel="Creating…"
       >
-        <AddSiteFields orgId={id!} users={users} usersLoading={usersLoading} />
+        <AddSiteFields
+          orgId={id!}
+          users={users}
+          usersLoading={usersLoading}
+          mayNameLead={mayNameLead}
+        />
       </Form>
     </Stack>
   );

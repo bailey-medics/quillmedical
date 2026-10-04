@@ -21,14 +21,15 @@ import { IconHomePlus } from "@/components/icons/appIcons";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import { orgUnits, type OrgUnit } from "@/domains/orgUnit";
-import { useAuth } from "@/auth/AuthContext";
+import { useHasAnyCompetency } from "@/lib/cbac/hooks";
+import { SCOPED_MANAGER_IDS } from "@/types/cbac";
 
 export default function AdminSitesPage() {
   const navigate = useNavigate();
-  const { state } = useAuth();
-  const isOperator =
-    state.status === "authenticated" &&
-    state.user.platform_role === "superadmin";
+  // Whoever may create a site: the same question the create form's route
+  // and the API ask. A teaching admin adds sites to the organisations
+  // they belong to; the form offers them no others.
+  const mayAddSite = useHasAnyCompetency("manage_users", ...SCOPED_MANAGER_IDS);
   const [places, setPlaces] = useState<OrgUnit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,7 +141,7 @@ export default function AdminSitesPage() {
         action={
           // Matching the route guard on the create form: a link to a
           // page that 404s is worse than no link.
-          isOperator && (
+          mayAddSite && (
             <ExtraButton
               aria-label="Add site"
               icon={<IconHomePlus />}

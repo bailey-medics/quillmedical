@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
+from app.cbac.positions import clinical_leads_of
 from app.models import (
     OrgUnit,
     OrgUnitFeature,
@@ -551,3 +552,263 @@ class TestBeyondTheirWhitelist:
             f"/api/org-units/{trust.id}/practising-competencies"
         ).json()["practising_competencies"]
         assert {r["competency"] for r in rows} == {"view_teaching_cases"}
+
+
+class TestAddingASite:
+    """A teaching admin adds a site inside their own org_unit, and no more.
+
+    A teaching body signs up member hospitals as it signs up their
+    delegates, so creating one does not wait on somebody holding
+    ``manage_users``. Everything else about a site still does.
+    """
+
+    def test_adds_a_site_inside_their_trust(
+        self, client: TestClient, db_session: Session, trust: OrgUnit
+    ) -> None:
+        response = client.post(
+            "/api/org-units",
+            json={"name": "Ward 9", "type": "ward", "parent_id": trust.id},
+        )
+
+        assert response.status_code == 200, response.text
+        site = db_session.get(OrgUnit, response.json()["id"])
+        assert site is not None
+        assert site.parent_id == trust.id
+        assert site.type == "ward"
+
+    def test_can_open_the_site_they_added(
+        self, client: TestClient, trust: OrgUnit
+    ) -> None:
+        created = client.post(
+            "/api/org-units",
+            json={"name": "Ward 9", "type": "ward", "parent_id": trust.id},
+        ).json()
+
+        response = client.get(f"/api/org-units/{created['id']}")
+
+        assert response.status_code == 200
+        assert response.json()["name"] == "Ward 9"
+
+    def test_cannot_add_a_site_inside_another_trust(
+        self, client: TestClient, db_session: Session, elsewhere: OrgUnit
+    ) -> None:
+        response = client.post(
+            "/api/org-units",
+            json={
+                "name": "Ward 9",
+                "type": "ward",
+                "parent_id": elsewhere.id,
+            },
+        )
+
+        assert response.status_code == 404
+        assert (
+            db_session.scalar(
+                select(OrgUnit).where(OrgUnit.parent_id == elsewhere.id)
+            )
+            is None
+        )
+
+    def test_cannot_create_an_organisation(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        response = client.post(
+            "/api/org-units",
+            json={"name": "A new trust", "type": "organisation"},
+        )
+
+        assert response.status_code == 403
+        assert (
+            db_session.scalar(
+                select(OrgUnit).where(OrgUnit.name == "A new trust")
+            )
+            is None
+        )
+
+    def test_still_cannot_delete_a_site(
+        self, client: TestClient, db_session: Session, trust: OrgUnit
+    ) -> None:
+        created = client.post(
+            "/api/org-units",
+            json={"name": "Ward 9", "type": "ward", "parent_id": trust.id},
+        ).json()
+
+        deleted = client.delete(f"/api/org-units/{created['id']}")
+
+        assert deleted.status_code == 403
+        assert db_session.get(OrgUnit, created["id"]) is not None
+
+
+class TestEditingASite:
+    """A teaching admin edits a site they act at, and not an organisation."""
+
+    def _site(self, client: TestClient, trust: OrgUnit) -> int:
+        created = client.post(
+            "/api/org-units",
+            json={"name": "Ward 9", "type": "ward", "parent_id": trust.id},
+        )
+        assert created.status_code == 200, created.text
+        return int(created.json()["id"])
+
+    def test_renames_a_site_of_their_trust(
+        self, client: TestClient, db_session: Session, trust: OrgUnit
+    ) -> None:
+        site_id = self._site(client, trust)
+
+        response = client.put(
+            f"/api/org-units/{site_id}",
+            json={"name": "Ward 10", "type": "clinic", "location": "Floor 2"},
+        )
+
+        assert response.status_code == 200, response.text
+        site = db_session.get(OrgUnit, site_id)
+        assert site is not None
+        assert (site.name, site.type, site.location) == (
+            "Ward 10",
+            "clinic",
+            "Floor 2",
+        )
+
+    def test_puts_a_site_out_of_use_and_back(
+        self, client: TestClient, db_session: Session, trust: OrgUnit
+    ) -> None:
+        site_id = self._site(client, trust)
+
+        response = client.patch(
+            f"/api/org-units/{site_id}/active", json={"is_active": False}
+        )
+
+        assert response.status_code == 200, response.text
+        site = db_session.get(OrgUnit, site_id)
+        assert site is not None
+        assert site.is_active is False
+
+    def test_cannot_edit_their_own_organisation(
+        self, client: TestClient, db_session: Session, trust: OrgUnit
+    ) -> None:
+        renamed = client.put(
+            f"/api/org-units/{trust.id}", json={"name": "Renamed Trust"}
+        )
+        closed = client.patch(
+            f"/api/org-units/{trust.id}/active", json={"is_active": False}
+        )
+
+        assert renamed.status_code == 403
+        assert closed.status_code == 403
+        db_session.refresh(trust)
+        assert trust.name == "Teaching Trust"
+        assert trust.is_active is True
+
+    def test_cannot_edit_a_site_of_another_trust(
+        self, client: TestClient, db_session: Session, elsewhere: OrgUnit
+    ) -> None:
+        theirs = OrgUnit(
+            name="Their ward", type="ward", parent_id=elsewhere.id
+        )
+        db_session.add(theirs)
+        db_session.commit()
+
+        response = client.put(
+            f"/api/org-units/{theirs.id}", json={"name": "Taken over"}
+        )
+
+        assert response.status_code == 404
+        db_session.refresh(theirs)
+        assert theirs.name == "Their ward"
+
+    def test_cannot_move_a_site_into_another_trust(
+        self,
+        client: TestClient,
+        db_session: Session,
+        trust: OrgUnit,
+        elsewhere: OrgUnit,
+    ) -> None:
+        site_id = self._site(client, trust)
+
+        response = client.put(
+            f"/api/org-units/{site_id}", json={"parent_id": elsewhere.id}
+        )
+
+        assert response.status_code == 404
+        site = db_session.get(OrgUnit, site_id)
+        assert site is not None
+        assert site.parent_id == trust.id
+
+
+class TestNamingAClinicalLead:
+    """A teaching admin names the clinical lead where they run teaching."""
+
+    def _lead_of(self, db: Session, unit: OrgUnit) -> int | None:
+        return clinical_leads_of(db, [unit.id]).get(unit.id)
+
+    def test_names_a_lead_at_a_site_of_their_trust(
+        self,
+        client: TestClient,
+        db_session: Session,
+        trust: OrgUnit,
+        delegate: User,
+    ) -> None:
+        site = client.post(
+            "/api/org-units",
+            json={"name": "Ward 9", "type": "ward", "parent_id": trust.id},
+        ).json()
+        client.post(
+            f"/api/org-units/{site['id']}/members",
+            json={"user_id": delegate.id, "capacity": "staff"},
+        )
+
+        response = client.put(
+            f"/api/org-units/{site['id']}/clinical-lead",
+            json={"user_id": delegate.id},
+        )
+
+        assert response.status_code == 200, response.text
+        ward = db_session.get(OrgUnit, site["id"])
+        assert ward is not None
+        assert self._lead_of(db_session, ward) == delegate.id
+
+    def test_names_themselves_lead_of_the_organisation(
+        self,
+        client: TestClient,
+        db_session: Session,
+        trust: OrgUnit,
+        coordinator: User,
+    ) -> None:
+        response = client.put(
+            f"/api/org-units/{trust.id}/clinical-lead",
+            json={"user_id": coordinator.id},
+        )
+
+        assert response.status_code == 200, response.text
+        assert self._lead_of(db_session, trust) == coordinator.id
+
+    def test_cannot_name_a_lead_in_another_trust(
+        self,
+        client: TestClient,
+        db_session: Session,
+        elsewhere: OrgUnit,
+        coordinator: User,
+    ) -> None:
+        response = client.put(
+            f"/api/org-units/{elsewhere.id}/clinical-lead",
+            json={"user_id": coordinator.id},
+        )
+
+        assert response.status_code == 404
+        assert self._lead_of(db_session, elsewhere) is None
+
+    def test_cannot_name_somebody_who_is_not_there(
+        self,
+        client: TestClient,
+        db_session: Session,
+        trust: OrgUnit,
+    ) -> None:
+        outsider = _user(db_session, "outsider", "teaching_delegate", None)
+
+        response = client.put(
+            f"/api/org-units/{trust.id}/clinical-lead",
+            json={"user_id": outsider.id},
+        )
+
+        assert response.status_code == 422
+        assert self._lead_of(db_session, trust) is None

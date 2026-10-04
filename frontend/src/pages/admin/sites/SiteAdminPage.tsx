@@ -49,9 +49,14 @@ export default function SiteAdminPage() {
   );
   // Each action shows for the competency it needs, as on the
   // organisation's page: a scoped manager such as `manage_teaching`
-  // reaches this page too and may add and remove staff, while editing the
-  // site stays `manage_users`, matching the routes behind each button.
+  // reaches this page too, and may add and remove staff and edit the
+  // site, while its features stay `manage_users`, matching the routes
+  // behind each button.
   const mayAdministerSite = useHasCompetency("manage_users");
+  const mayEditSite = useHasAnyCompetency(
+    "manage_users",
+    ...SCOPED_MANAGER_IDS,
+  );
   const mayManageStaff = useHasAnyCompetency(
     "manage_staff_membership",
     ...SCOPED_MANAGER_IDS,
@@ -196,7 +201,7 @@ export default function SiteAdminPage() {
         <Stack gap="md">
           <Group justify="space-between" align="center">
             <Heading>Site information</Heading>
-            {mayAdministerSite && (
+            {mayEditSite && (
               <IconButton
                 icon={<IconPencil />}
                 onClick={() => navigate(`/admin/sites/${id}/edit`)}

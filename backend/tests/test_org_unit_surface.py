@@ -1145,6 +1145,23 @@ class TestMovingAPlace:
     def test_a_move_that_keeps_it_a_tree_still_works(
         self, authenticated_superadmin_client, db_session
     ):
+        """A site may move to another organisation."""
+        org = _org(db_session)
+        other = _org(db_session, "Other Trust")
+        ward = _ward(db_session, org.id, "Ward 1")
+
+        resp = authenticated_superadmin_client.put(
+            f"/api/org-units/{ward.id}", json={"parent_id": other.id}
+        )
+
+        assert resp.status_code == 200
+        db_session.refresh(ward)
+        assert ward.parent_id == other.id
+
+    def test_a_site_cannot_be_moved_inside_another_site(
+        self, authenticated_superadmin_client, db_session
+    ):
+        """The tree is two levels for now: organisation, then site."""
         org = _org(db_session)
         first = _ward(db_session, org.id, "Ward 1")
         second = _ward(db_session, org.id, "Ward 2")
@@ -1153,9 +1170,46 @@ class TestMovingAPlace:
             f"/api/org-units/{first.id}", json={"parent_id": second.id}
         )
 
-        assert resp.status_code == 200
+        assert resp.status_code == 422
         db_session.refresh(first)
-        assert first.parent_id == second.id
+        assert first.parent_id == org.id
+
+    def test_a_site_cannot_be_created_inside_another_site(
+        self, authenticated_superadmin_client, db_session
+    ):
+        org = _org(db_session)
+        ward = _ward(db_session, org.id)
+
+        resp = authenticated_superadmin_client.post(
+            "/api/org-units",
+            json={"name": "Room 4", "type": "room", "parent_id": ward.id},
+        )
+
+        assert resp.status_code == 422
+        assert (
+            db_session.scalar(
+                select(OrgUnit).where(OrgUnit.parent_id == ward.id)
+            )
+            is None
+        )
+
+    def test_a_site_already_deeper_can_still_be_renamed(
+        self, authenticated_superadmin_client, db_session
+    ):
+        """The rule is about what is made or moved now, not what exists."""
+        org = _org(db_session)
+        ward = _ward(db_session, org.id)
+        room = _room(db_session, ward.id)
+
+        resp = authenticated_superadmin_client.put(
+            f"/api/org-units/{room.id}",
+            json={"name": "Room 5", "parent_id": ward.id},
+        )
+
+        assert resp.status_code == 200
+        db_session.refresh(room)
+        assert room.name == "Room 5"
+        assert room.parent_id == ward.id
 
 
 class TestWhatTheAnswerLeavesOut:
@@ -1296,9 +1350,11 @@ class TestNestingStaysInsideOneOrganisation:
 
         assert resp.status_code == 404
 
-    def test_moving_under_a_sibling_still_works(
+    def test_moving_under_a_sibling_is_refused_for_now(
         self, authenticated_admin_client, db_session, test_admin
     ):
+        """Inside their own tree, and still refused: a site sits directly
+        inside an organisation for now, never inside another site."""
         mine = _org(db_session, "My Trust")
         add_org_unit_member(db_session, mine.id, test_admin.id, "staff")
         administers(db_session, test_admin.id, mine.id)
@@ -1314,9 +1370,9 @@ class TestNestingStaysInsideOneOrganisation:
             f"/api/org-units/{first.id}", json={"parent_id": second.id}
         )
 
-        assert resp.status_code == 200
+        assert resp.status_code == 422
         db_session.refresh(first)
-        assert first.parent_id == second.id
+        assert first.parent_id == mine.id
 
 
 class TestAnOrganisationCreatedAsAPlace:

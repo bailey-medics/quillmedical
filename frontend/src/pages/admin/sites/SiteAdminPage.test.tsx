@@ -171,7 +171,7 @@ describe("SiteAdminPage staff members", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/1/members/7");
   });
 
-  it("lets a teaching admin add and remove staff, and not edit the site", async () => {
+  it("lets a teaching admin add and remove staff and edit the site, and not its features", async () => {
     signedIn(["manage_teaching"]);
 
     renderWithRouter(<SiteAdminPage />, { initialRoute: "/admin/sites/1" });
@@ -183,6 +183,20 @@ describe("SiteAdminPage staff members", () => {
     expect(
       screen.getByRole("button", { name: "Actions for dr.lead" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Edit site" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit features" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers Edit site to nobody who holds neither", async () => {
+    signedIn(["manage_patient_membership"]);
+
+    renderWithRouter(<SiteAdminPage />, { initialRoute: "/admin/sites/1" });
+    await screen.findByText("dr.lead");
+
     expect(
       screen.queryByRole("button", { name: "Edit site" }),
     ).not.toBeInTheDocument();

@@ -62,13 +62,16 @@ const clinic = place({
 });
 
 /** Sign in as an operator, or as an admin who is not one. */
-function signInAs(platformRole: "superadmin" | "standard") {
+function signInAs(
+  platformRole: "superadmin" | "standard",
+  competencies: string[] = ["manage_users"],
+) {
   const user: User = {
     id: "3",
     username: "admin.user",
     email: "admin@example.com",
     roles: [],
-    competencies: ["manage_users"],
+    competencies,
     platform_role: platformRole,
   };
   vi.spyOn(authContext, "useAuth").mockReturnValue({
@@ -181,10 +184,35 @@ describe("AdminSitesPage", () => {
       expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/new");
     });
 
-    it("does not offer adding one to an admin who is not an operator", async () => {
-      // The create form is operator-only, and a link to a 404 is worse
-      // than no link.
+    it("offers adding one to a teaching admin", async () => {
+      // They add sites to the organisations they belong to; the form
+      // offers them no others.
+      const user = userEvent.setup();
+      signInAs("standard", ["manage_teaching"]);
+      mockList([trust, ward]);
+
+      renderWithRouter(<AdminSitesPage />);
+
+      await user.click(await screen.findByRole("button", { name: "Add site" }));
+
+      expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/new");
+    });
+
+    it("offers adding one to an admin who is not an operator", async () => {
       signInAs("standard");
+      mockList([trust, ward]);
+
+      renderWithRouter(<AdminSitesPage />);
+
+      expect(
+        await screen.findByRole("button", { name: "Add site" }),
+      ).toBeInTheDocument();
+    });
+
+    it("does not offer adding one to somebody who may not create a site", async () => {
+      // The create form's route would 404, and a link to a 404 is worse
+      // than no link.
+      signInAs("standard", ["manage_staff_membership"]);
       mockList([trust, ward]);
 
       renderWithRouter(<AdminSitesPage />);

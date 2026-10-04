@@ -224,6 +224,57 @@ def _scoped_manager_ids(db: Session, user: User) -> set[int]:
     return org_units_run_by_scoped_manager(db, user.id)
 
 
+def _require_editable(db: Session, user: User, unit_id: int) -> OrgUnit:
+    """Return the org_unit the caller may edit, or refuse.
+
+    ``manage_users`` edits what it administers, as it always has. A
+    scoped manager such as ``manage_teaching`` edits a site they act at:
+    whoever runs teaching there keeps its name, kind, address and whether
+    it is in use right. An organisation is not theirs to edit, since
+    that reshapes more than teaching, and it stays with ``manage_users``.
+
+    Args:
+        db: Core database session.
+        user: The caller.
+        unit_id: The org_unit.
+    """
+    unit = _require_visible(db, user, unit_id, "manage_users")
+    if _through_a_scope(user, "manage_users") and not type_requires_parent(
+        unit.type
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Editing an organisation requires manage_users.",
+        )
+    return unit
+
+
+def _require_parent_is_an_organisation(parent: OrgUnit) -> None:
+    """Refuse a parent that is not an organisation.
+
+    **The tree is two levels for now**: an organisation, and the sites
+    directly inside it. Nothing reads a site inside a site yet, on the
+    organisation and site pages or in teaching, so one made here would be
+    a place nobody could find their way to.
+
+    This is a rule about what may be created or moved today, not about
+    what the tree can hold. ``descendant_ids`` and the type vocabulary
+    still describe any depth, and rows already deeper are left alone.
+    When a third level is wanted, this is the one check to take out.
+
+    Args:
+        parent: The org_unit something is being put inside.
+    """
+    if type_requires_parent(parent.type):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "A site sits directly inside an organisation, not inside "
+                "another site."
+            ),
+        )
+
+
 def _require_visible(
     db: Session, user: User, unit_id: int, *needs: str
 ) -> OrgUnit:
@@ -527,7 +578,7 @@ def list_org_units(
 @router.post(
     "",
     response_model=OrgUnitItem,
-    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS_OR_SCOPED],
 )
 def create_org_unit(
     body: CreateOrgUnitIn,
@@ -545,7 +596,13 @@ def create_org_unit(
     The type decides which of the two is allowed, so neither can be
     produced by accident.
 
-    Requires ``manage_users``.
+    Requires ``manage_users``, or a scoped manager such as
+    ``manage_teaching``. A scoped manager adds a site inside an org_unit
+    they act at: a teaching body signs up member hospitals as it signs up
+    their delegates. They never create an organisation, which stays with
+    an operator whatever the caller holds. They may edit a site too, see
+    ``_require_editable``; deleting one, and its features, still take
+    ``manage_users``.
     """
     unit_type = _known_type(body.type)
 
@@ -574,7 +631,9 @@ def create_org_unit(
                     "inside anything."
                 ),
             )
-        _require_visible(db, current_user, body.parent_id)
+        _require_parent_is_an_organisation(
+            _require_visible(db, current_user, body.parent_id, "manage_users")
+        )
 
     unit = OrgUnit(
         name=body.name.strip(),
@@ -698,7 +757,7 @@ def get_org_unit(
 @router.put(
     "/{unit_id}",
     response_model=OrgUnitItem,
-    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS_OR_SCOPED],
 )
 def update_org_unit(
     unit_id: int,
@@ -711,9 +770,11 @@ def update_org_unit(
     Moving an org_unit is refused if it would put the org_unit inside itself, at
     any depth, and if the new parent is one the caller may not administer.
 
-    Requires ``manage_users``.
+    Requires ``manage_users``, or a scoped manager such as
+    ``manage_teaching`` editing a site they act at. See
+    ``_require_editable``.
     """
-    unit = _require_visible(db, current_user, unit_id)
+    unit = _require_editable(db, current_user, unit_id)
 
     if body.type is not None:
         new_type = _known_type(body.type)
@@ -752,7 +813,11 @@ def update_org_unit(
                 status_code=400,
                 detail="A place cannot sit inside itself",
             )
-        _require_visible(db, current_user, body.parent_id)
+        new_parent = _require_visible(
+            db, current_user, body.parent_id, "manage_users"
+        )
+        if body.parent_id != unit.parent_id:
+            _require_parent_is_an_organisation(new_parent)
         unit.parent_id = body.parent_id
 
     db.flush()
@@ -763,7 +828,7 @@ def update_org_unit(
 @router.patch(
     "/{unit_id}/active",
     response_model=OrgUnitItem,
-    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS_OR_SCOPED],
 )
 def set_org_unit_active(
     unit_id: int,
@@ -771,8 +836,12 @@ def set_org_unit_active(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitItem:
-    """Put an org_unit in or out of use. Requires ``manage_users``."""
-    unit = _require_visible(db, current_user, unit_id)
+    """Put an org_unit in or out of use.
+
+    Requires ``manage_users``, or a scoped manager such as
+    ``manage_teaching`` at a site they act at. See ``_require_editable``.
+    """
+    unit = _require_editable(db, current_user, unit_id)
     unit.is_active = body.is_active
     db.flush()
     db.refresh(unit)
@@ -1119,7 +1188,7 @@ def remove_org_unit_member(
 @router.put(
     "/{unit_id}/clinical-lead",
     response_model=OrgUnitStatusOut,
-    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_STAFF],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_STAFF_OR_SCOPED],
 )
 def set_org_unit_clinical_lead(
     unit_id: int,
@@ -1140,9 +1209,16 @@ def set_org_unit_clinical_lead(
     The person has to be at the org_unit already. Naming somebody who is not
     would make the post say they are involved here when nothing else does.
 
-    Requires ``manage_staff_membership``.
+    Requires ``manage_staff_membership``, or a scoped manager such as
+    ``manage_teaching`` at an org_unit they act at. Whoever runs teaching
+    somewhere names its lead, themselves included, at a site or at the
+    organisation. The site pages already offered a teaching admin the
+    "Clinical lead" role, and this route then refused it after the person
+    had been added.
     """
-    unit = _require_visible(db, current_user, unit_id)
+    unit = _require_visible(
+        db, current_user, unit_id, "manage_staff_membership"
+    )
 
     if not type_can_hold_positions(unit.type):
         raise HTTPException(
