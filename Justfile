@@ -323,6 +323,24 @@ enter-frontend:
     docker exec -it quill_frontend /bin/sh
 
 
+alias fc := frontend-chunks
+# Build the frontend for production and report the size of every chunk
+frontend-chunks:
+    #!/usr/bin/env bash
+    {{initialise}} "frontend-chunks"
+    # Code splitting is proved in the build output, not in the diff: a lazy
+    # route that defers nothing reads the same in review as one that works.
+    # So this runs the real production build and lists each file with its
+    # raw and gzipped size, split by whether index.html asks for it on first
+    # load. Same throwaway container as `uf`, so it works from any worktree
+    # and never touches the dev stack. The build lands in frontend/dist,
+    # which is ignored. NODE_ENV is set because the test container defaults
+    # it to `test`.
+    docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
+        run --rm -e NODE_ENV=production frontend \
+        sh -lc "yarn build && npx tsx scripts/chunkSizes.ts dist"
+
+
 alias fu := frontend-update
 # Update frontend dependencies with yarn up
 frontend-update:
