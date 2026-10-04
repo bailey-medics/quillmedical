@@ -14,94 +14,124 @@ keeps the built-in viewer, which gives search, print, zoom and download for
 nothing. Everything else draws the pages itself with pdf.js, loaded only
 when it is needed.
 
-## Phase 1: Prove pdf.js works under our content security policy
+## Phase 1: Add pdf.js, loaded from our own origin
 
-- [ ] Add `pdfjs-dist` to `frontend/package.json` with Yarn, then run
+- [x] Add `pdfjs-dist` to `frontend/package.json` with Yarn, then run
       `just utr` so the unit-test container picks it up. `pdfjs-dist`
       rather than `react-pdf`: only pages on a canvas are needed, and
       `react-pdf` adds a wrapper, its own text and annotation layers and
-      their stylesheets, none of which this plan uses.
+      their stylesheets, none of which this plan uses. Version 6.3 went
+      in, with `yarn add` on the host, as no `just` recipe adds a
+      package.
 
-- [ ] Bundle the pdf.js worker from our own origin, imported through
-      Vite's `?url` suffix and handed to `GlobalWorkerOptions.workerSrc`.
-      The application's policy in `caddy/prod/Caddyfile` is
-      `script-src 'self'` with no `worker-src`, so a worker falls back to
-      `script-src` and must be a file we serve. A worker from a CDN or a
-      `blob:` URL would be refused.
+- [x] Bundle the pdf.js worker from our own origin, imported through
+      Vite's `?url` suffix and handed to `GlobalWorkerOptions.workerSrc`,
+      in `frontend/src/lib/pdf/openPdf.ts`. The application's policy in
+      `caddy/prod/Caddyfile` is `script-src 'self'` with no `worker-src`,
+      so a worker falls back to `script-src` and must be a file we serve.
+      A worker from a CDN or a `blob:` URL would be refused.
 
-- [ ] Build the frontend and open a multi-page PDF through pdf.js behind
-      the production Caddy policy, watching the console for refusals.
-      Three things are not yet known and each would need the policy
-      loosened or pdf.js configured around it:
+- [x] Serve the image decoders pdf.js loads on demand, and choose the
+      ones the policy allows. Scanned PDFs often hold JBIG2 or JPEG 2000
+      images, which pdf.js decodes with code it fetches only when a
+      document needs it, by a fixed file name from a folder it is told
+      about. It ships each decoder twice: in WebAssembly, and in plain
+      JavaScript as a fallback. Compiling WebAssembly needs
+      `'wasm-unsafe-eval'` in `script-src`. The plain JavaScript ones
+      need nothing, since a script from our own origin is already
+      allowed. So `openPdf.ts` passes `useWasm: false`, and
+      `pdfjsDecoders` in `frontend/vite.config.ts` serves the two
+      JavaScript decoders under `pdfjs/`, in dev and in the build. A
+      slower scan is a better trade than a looser policy, and the policy
+      is unchanged.
 
-    - **WebAssembly decoders** – recent pdf.js versions decode some
-      image formats common in scanned letters (JPEG 2000 is one) with
-      WebAssembly, which `script-src 'self'` refuses unless
-      `'wasm-unsafe-eval'` is added. Try a scanned PDF, not only a
-      generated one.
+      The fixed names are why they cannot go through the bundler, which
+      would add a hash. They are read from the installed package at build
+      time, not copied into the repository, so they cannot drift from the
+      version in use.
 
-    - **Images and fonts** – `img-src` allows `'self'` and `data:` but
-      not `blob:`, and `font-src` is `'self'` only. pdf.js draws to a
-      canvas, so it should need neither, but embedded fonts are the case
-      to try.
+      Not done: no JBIG2 or JPEG 2000 PDF was to hand, so the decoders
+      are served but have not been seen decoding one.
 
-    - **Evaluated code** – pass `isEvalSupported: false`, so pdf.js
-      never tries to build font code with `eval`, which the policy
-      refuses.
+- [x] Evaluated code needs nothing. This plan first said to pass
+      `isEvalSupported: false`, so pdf.js would never build font code
+      with `eval`. Version 6 has no such option and no `eval` left in it.
 
-      Record here what was needed. If the policy has to change, it
-      changes in `caddy/prod/Caddyfile` and the dev Caddyfile together.
-
-- [ ] Check the worker file against the service worker's precache in
-      `frontend/vite.config.ts`. It should be fetched when a PDF is first
-      opened, not downloaded by every visitor on install. Exclude it from
-      the precache if it has been swept in.
+- [x] Check the worker file against the service worker's precache in
+      `frontend/vite.config.ts`. Nothing to change: `globPatterns` there
+      lists the logo and icon files by name and nothing else, so neither
+      the worker nor the decoders are swept in. They are fetched when a
+      PDF is first opened.
 
 ## Phase 2: A component that draws the pages
 
-- [ ] Create `PdfPages` in `frontend/src/components/documents/`, with
+- [x] Create `PdfPages` in `frontend/src/components/documents/`, with
       `PdfPages.module.css`, `PdfPages.stories.tsx` and
       `PdfPages.test.tsx`. It takes the same `name` and `url` that
       `Document` does. It is a new component with nothing existing to
       compose it from, so this plan is the review the component rules
       ask for before one is built.
 
-- [ ] Fetch the file with `api.blob` from `@/lib/api.ts` and hand the
-      bytes to pdf.js, rather than giving pdf.js the URL. pdf.js would
-      otherwise make its own request, which sidesteps the client: no
-      retry on a 401, so a PDF opened just after the access token lapsed
-      would fail where every other request recovers.
+- [x] Fetch a file from the API with `api.blob` from `@/lib/api.ts` and
+      hand the bytes to pdf.js, rather than giving pdf.js the URL. pdf.js
+      would otherwise make its own request, which sidesteps the client:
+      no retry on a 401, so a PDF opened just after the access token
+      lapsed would fail where every other request recovers.
 
-- [ ] Draw each page to a canvas in a column, one under the other, sized
+      Only a URL under `/api/` goes this way. `api.blob` can fetch
+      nothing else, and clinic letters are still demonstration files
+      served beside the application (`frontend/src/data/fakeDocuments.ts`),
+      so any other URL is left to pdf.js to fetch.
+
+- [x] Draw each page to a canvas in a column, one under the other, sized
       to the width of the container and scaled by `devicePixelRatio` so
       text is sharp on a phone screen. Redraw when the width changes, as
-      it does when a tablet is turned.
+      it does when a tablet is turned. The ratio is capped at two: a
+      phone reporting three would hold over thirty megabytes for each A4
+      page, for a difference nobody sees at reading distance.
 
-- [ ] Draw a page only as it nears the viewport, with an
-      `IntersectionObserver`, and hold its place with a box of the right
-      height until then. A long letter drawn all at once is slow and
-      heavy on memory on a phone.
+- [x] Draw a page only as it nears the viewport, with an
+      `IntersectionObserver`, and hold its place until then. A long
+      letter drawn all at once is slow and heavy on memory on a phone.
+      The canvas itself holds the place: it carries the page's width and
+      height as attributes, and `height: auto` keeps that shape, so no
+      separate box and no inline style is needed.
 
-- [ ] Give each canvas `role="img"` and a label such as "Page 2 of 5".
-      A canvas has no text a screen reader can read, so put a link to
-      the file itself above the pages, labelled "Open file". That link
-      is also the way to save or print, since there is no toolbar.
+- [x] Give each canvas `role="img"` and a label such as "Page 2 of 5".
+      A canvas has no text a screen reader can read, so put a way to the
+      file itself above the pages, labelled "Open file". It is also the
+      way to save or print, since there is no toolbar. Built as a button
+      (`IconTextButton`) that opens the file in a new tab, not a link:
+      the only link component, `TextLink`, is for routes inside the
+      application, and a new typography component needs a human to ask
+      for it.
 
-- [ ] Show `ErrorState` when the file cannot be fetched or pdf.js
-      cannot read it, with the same "Open file" link, and a loading
-      state until the first page is drawn.
+- [x] Show `ErrorState` when the file cannot be fetched or pdf.js
+      cannot read it, with "Open file" as its action, and a spinner
+      until the document has opened. A single page that cannot be drawn
+      says so beneath itself and leaves the others showing.
 
-- [ ] Clean up on unmount: cancel any page still drawing and destroy
+- [x] Clean up on unmount: cancel any page still drawing and destroy
       the pdf.js loading task. Without it, leaving the page mid-draw
       leaks the worker's copy of the document.
 
-- [ ] Styling in the CSS module, in `rem`, with colours from the design
-      system. No inline styles.
+- [x] Styling in the CSS module, in `rem`, with colours from the design
+      system. No inline styles. A page is white in both colour schemes,
+      because it is a sheet of paper and a PDF assumes one.
 
-- [ ] Tests mock `pdfjs-dist`, because jsdom cannot draw a canvas. Cover
+- [x] Tests mock `pdfjs-dist`, because jsdom cannot draw a canvas. Cover
       one page and several, the labels, the loading state, a failed fetch,
-      a file pdf.js rejects, and clean-up on unmount. Stories use a small
-      PDF fixture of two or three pages, in light and dark.
+      a file pdf.js rejects, and clean-up on unmount. Stories use a
+      three-page PDF, `frontend/public/mock-documents/6_three_page_letter.pdf`,
+      in light and dark.
+
+- [x] Let Storybook's fetch mock in `frontend/.storybook/preview.tsx`
+      pass real files through. It replaced `fetch` for every request,
+      answered 404 to anything it did not know, and assumed a string, so
+      pdf.js, which passes a `URL`, could not load a PDF in any story.
+      Only `/api/` requests are mocked now. Found by opening the stories
+      in a phone-sized Chromium, where the three-page fixture and a
+      clinic letter both drew every page with a clean console.
 
 ## Phase 3: Choose the viewer in `Document`
 
@@ -134,7 +164,21 @@ when it is needed.
       desktop still frames the API response, so `frame-ancestors 'self'`
       is still needed.
 
-## Phase 4: Check on real devices
+## Phase 4: Prove it behind the production policy
+
+Moved here from Phase 1, where it was first written. There was nothing
+to open until `Document` used the component, so it could not come first.
+
+- [ ] Open a PDF of several pages through pdf.js behind the production
+      Caddy policy, on a touch device profile, and fail on any refusal in
+      the console. `just e2e` runs the built application behind
+      `caddy/prod/Caddyfile`, so an end-to-end test is the proof and
+      keeps proving it. Still unknown until it runs: whether embedded
+      fonts load under `font-src 'self'`. If the policy has to change, it
+      changes in `caddy/prod/Caddyfile` and the dev Caddyfile together,
+      and what was needed is recorded here.
+
+## Phase 5: Check on real devices
 
 - [ ] On the teaching deployment, open a certificate with a PDF of
       several pages on each of these and confirm every page can be
