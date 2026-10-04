@@ -4,7 +4,7 @@
  * Tests for the admin organisations page including:
  * - Loading states
  * - Organisation list display
- * - Add organisation button
+ * - Add organisation icon in the table's row
  * - Organisation navigation
  * - Error handling
  */
@@ -105,7 +105,9 @@ describe("AdminOrganisationsPage", () => {
         expect(screen.getByText("Organisations")).toBeInTheDocument();
       });
 
-      expect(screen.queryByText("Add organisation")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Add organisation" }),
+      ).not.toBeInTheDocument();
     });
 
     it("displays add organisation button for superadmin", async () => {
@@ -125,9 +127,14 @@ describe("AdminOrganisationsPage", () => {
         initialRoute: "/admin/organisations",
       });
 
-      await waitFor(() => {
-        expect(screen.getByText("Add organisation")).toBeInTheDocument();
+      const add = await screen.findByRole("button", {
+        name: "Add organisation",
       });
+      // In the table's row with search and filter, not in the page header.
+      expect(add).toHaveTextContent("");
+      expect(
+        add.querySelector("svg.tabler-icon-home-plus"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -334,11 +341,9 @@ describe("AdminOrganisationsPage", () => {
         initialRoute: "/admin/organisations",
       });
 
-      await waitFor(() => {
-        expect(screen.getByText("Add organisation")).toBeInTheDocument();
+      const addButton = await screen.findByRole("button", {
+        name: "Add organisation",
       });
-
-      const addButton = screen.getByText("Add organisation");
       await user.click(addButton);
 
       expect(mockNavigate).toHaveBeenCalledWith("/admin/organisations/new");

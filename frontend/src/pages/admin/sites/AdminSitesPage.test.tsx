@@ -170,9 +170,13 @@ describe("AdminSitesPage", () => {
 
       renderWithRouter(<AdminSitesPage />);
 
-      await user.click(
-        await screen.findByRole("button", { name: /add site/i }),
-      );
+      const add = await screen.findByRole("button", { name: "Add site" });
+      // An icon in the table's row, not a labelled button in the header.
+      expect(add).toHaveTextContent("");
+      expect(
+        add.querySelector("svg.tabler-icon-home-plus"),
+      ).toBeInTheDocument();
+      await user.click(add);
 
       expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/new");
     });
