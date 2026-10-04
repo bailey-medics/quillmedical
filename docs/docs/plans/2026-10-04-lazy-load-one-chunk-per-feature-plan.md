@@ -576,6 +576,69 @@ that was wrong, and this phase replaces it.
       which imports nothing. It still matters for a tab left open
       across a deploy, in Safari as in any browser.
 
+## Phase 10: Measure the time, not only the bytes
+
+Every earlier phase was proved in bytes. Nobody had timed a page load,
+so the plan's claims about speed were estimates. This phase replaces
+them with figures, and they are less flattering than the estimates were.
+
+- [x] **Time the app before and after the whole plan**, 4 October 2026.
+      Before is the commit `main` was on when Phase 1 began; after is
+      `main` with Phases 1 to 9 merged. Each was built as a production
+      image and served by the E2E stack. A temporary Playwright script,
+      not kept, signed in as `educator`, a teaching user, in Chromium,
+      and timed three things five times each, taking the middle value:
+      a first visit to `/teaching` with an empty cache, until the
+      "Teaching modules" heading showed; a click on Admin after twelve
+      seconds idle, until "Administration" showed; and a second visit to
+      `/teaching` in the same browser. Three connections, set through
+      Chrome's own throttling: none; fast 4G (9 Mbps, 165 ms a round
+      trip); and slow 4G (1.6 Mbps, 562 ms a round trip) with the
+      processor slowed four times, to stand in for a mid-range phone.
+      - **First visit: no faster, and a little slower on a slow
+        connection.** With no throttling, 210 ms before and 210 ms after. Fast
+        4G, 1,628 ms before and 1,605 ms after. Slow 4G, 6,040 ms before
+        and 6,263 ms after: 223 ms slower.
+      - **Why.** A teaching user does not save the headline 86 kB. They
+        fetched 522 kB before and 473 kB after, 49 kB less, because they
+        still need `teachingChunk` and the shared files it imports. And
+        that chunk is now asked for only once the entry file has arrived
+        and run, a second step where there was one. At 562 ms a round
+        trip the extra step costs more than 49 kB fewer bytes saves.
+        Phase 6 noted the extra request and guessed it at a tenth of a
+        second. On a slow connection it is several times that.
+      - **Repeat visit: much faster on fast 4G, the same elsewhere.**
+        Fast 4G, 1,415 ms before and 578 ms after, 837 ms faster. Before,
+        the browser re-checked 35 files with the server; after, none.
+        That is the `/assets/*` cache rule. With no throttling, 121 ms and
+        116 ms. Slow 4G, 1,046 ms and 1,096 ms, no real change.
+      - **The cache rule helps most soon after a deploy.** The slow 4G
+        runs came last, and by then the "before" build was some minutes
+        old. With no cache lifetime given, a browser guesses one from a
+        file's age, about a tenth of it, and had started reusing its
+        copies without asking. So before the fix a file was re-checked
+        on every visit just after a deploy and less often as the deploy
+        aged. After it, never.
+      - **Clicking into Admin: unchanged, which is the result wanted.**
+        Fast 4G, 150 ms before and 152 ms after. Slow 4G, 399 ms and
+        415 ms. No network request either time. Admin has left the first
+        download and opens as quickly as when it was in it, because
+        Phase 9 had already fetched it into the cache.
+      - **What this measured and what it did not.** One role, one
+        browser, a server on the same machine with the delay simulated.
+        Not Safari, not a real phone, not the live site. A user with no
+        teaching, who would save the whole 86 kB and pay for no extra
+        step, was not timed.
+- [ ] **Fetch `teachingChunk` alongside the entry file, not after it.**
+      Not yet decided; recorded here as what the measurement points to.
+      The loss on a slow connection is the second step, and the cure is
+      to start the chunk's download from `index.html` itself, with a
+      preload hint the build writes, so both arrive together. The cost
+      is that somebody who cannot open teaching would fetch it too,
+      about 6 kB for the chunk plus the shared files it imports. On the
+      teaching site that is nobody. A hint added only when the address
+      begins `/teaching` would avoid it altogether.
+
 ## Decisions
 
 - **One chunk per feature, never per page** – per-page chunks save almost
@@ -596,6 +659,16 @@ that was wrong, and this phase replaces it.
   rule. If the Phase 4 measurement shows the chunk is large enough to
   matter on a phone, a second `passport-public` chunk is the answer, and
   it is still a feature-level chunk, not a per-page one.
+
+- **The plan saved bytes, and on its own did not save time** – Phase 10
+  measured it. The first download is a fifth smaller, yet a teaching
+  user's first visit is no quicker, because roughly seventy per cent of
+  what is left is Mantine, React and the router, and because splitting
+  teaching out added a step. The time that was saved came from the cache
+  rule, which was a bug found along the way and not part of the design.
+  What the plan did deliver is that a deployment fetches only the
+  features it uses, at no cost to a click, and that is what will matter
+  when Quill is offered as a package.
 
 - **Chunks are not added to the service worker precache** – precaching
   them would download every feature for everybody on install, which is
