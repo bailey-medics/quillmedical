@@ -381,15 +381,16 @@ describe("PassportPage", () => {
     expect(screen.queryByTestId("inbox-count")).not.toBeInTheDocument();
   });
 
-  it("says reflections are private on the card itself", async () => {
-    // Before a holder clicks into them, not after. Somebody deciding how
-    // frankly to write deserves to know who can read it beforehand.
+  it("makes no claim on the card about who can read reflections", async () => {
     fetchMyPassport.mockResolvedValue(detail);
     renderWithRouter(<PassportPage />);
 
     expect(
-      await screen.findByText(/no assessor or administrator can read them/),
+      await screen.findByText(/a case, a complaint or a significant event/),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/no assessor or administrator can read them/),
+    ).not.toBeInTheDocument();
   });
 
   it("offers to create one when the holder has no passport yet", async () => {

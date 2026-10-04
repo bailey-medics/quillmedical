@@ -33,18 +33,14 @@ export const Submitting: Story = {
 };
 
 /**
- * Holder-only, and the anonymisation tick is required rather than
- * suggested.
+ * The anonymisation tick is required rather than suggested.
  */
-export const HolderOnlyAndAnonymised: Story = {
+export const Anonymised: Story = {
   render: (args) => (
     <Stack gap="sm">
       <ReflectionEditor {...args} />
       <StoryNote>
-        Written reflection can be disclosed in legal proceedings, and UK doctors
-        are wary of it for good reason – so the panel says plainly that nobody
-        else can read this, rather than leaving it to be inferred. The
-        anonymisation declaration is firmer than the logbook&rsquo;s passive
+        The anonymisation declaration is firmer than the logbook&rsquo;s passive
         note and must be ticked: a reflection is written about a real person,
         and the API refuses the write without it.
       </StoryNote>

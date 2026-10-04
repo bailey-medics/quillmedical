@@ -92,7 +92,7 @@ const SECTIONS = [
   {
     icon: <IconPencil />,
     title: "Reflections",
-    subtitle: "Yours alone – no assessor or administrator can read them.",
+    subtitle: "What you took from a case, a complaint or a significant event.",
     label: "Open reflections",
     to: "/passport/reflections",
   },

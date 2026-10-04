@@ -36,3 +36,8 @@ export const OneCompetencyTwice: Story = {
 export const ReadOnly: Story = {
   args: { title: "Sign-offs", signOffs, onSelect: undefined },
 };
+
+/** Placeholder rows, while the sign-offs are being fetched. */
+export const Loading: Story = {
+  args: { title: "Sign-offs", signOffs: [], isLoading: true },
+};

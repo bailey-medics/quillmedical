@@ -276,6 +276,10 @@ export function Component() {
         />
       )}
 
+      {/* Until the fetch returns, so the page is not blank under the
+          button while a passport full of sign-offs is on its way. */}
+      {!loaded && <SignOffList title="Sign-offs" signOffs={[]} isLoading />}
+
       {/* An empty group renders nothing, so only the groups with
           sign-offs in them appear. */}
       {GROUPS.map((group) => (

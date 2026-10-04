@@ -1,9 +1,8 @@
 /**
  * ReflectionEditor Component Tests
  *
- * Most of these guard the anonymisation declaration and the holder-only
- * statement, which are the two things that make a reflection safe to
- * write frankly.
+ * Most of these guard the anonymisation declaration, which is what keeps
+ * patient data out of a reflection.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -28,20 +27,11 @@ describe("ReflectionEditor", () => {
     ).toBeInTheDocument();
   });
 
-  describe("Holder-only", () => {
-    it("says plainly that nobody else can read it", () => {
-      // A doctor deciding how frankly to write deserves to be told who
-      // can read it rather than having to infer it.
-      renderEditor();
-      expect(screen.getByText("Only you can read this")).toBeInTheDocument();
-    });
-
-    it("names who is excluded, not just that it is private", () => {
-      renderEditor();
-      expect(
-        screen.getByText(/not shown to assessors, organisation admins/),
-      ).toBeInTheDocument();
-    });
+  it("makes no claim about who can read it", () => {
+    renderEditor();
+    expect(
+      screen.queryByText("Only you can read this"),
+    ).not.toBeInTheDocument();
   });
 
   describe("The anonymisation declaration", () => {
@@ -104,9 +94,7 @@ describe("ReflectionEditor", () => {
 
   describe("Self-declared", () => {
     it("offers no assessor to send it to", () => {
-      // Nobody countersigns a reflection. The word "assessors" does
-      // appear, in the panel saying they cannot read it – so this checks
-      // for the absence of a field, not of the word.
+      // Nobody countersigns a reflection.
       renderEditor();
       expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     });

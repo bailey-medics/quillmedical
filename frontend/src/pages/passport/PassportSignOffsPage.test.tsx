@@ -128,6 +128,24 @@ describe("PassportSignOffsPage", () => {
     expect(screen.queryByText("No sign-offs yet")).not.toBeInTheDocument();
   });
 
+  it("shows placeholder rows while the sign-offs are on their way", async () => {
+    fetchMyPassport.mockReturnValue(new Promise(() => {}));
+    renderWithRouter(<PassportSignOffsPage />);
+
+    await waitFor(() => expect(fetchMyPassport).toHaveBeenCalled());
+    expect(screen.getByTestId("sign-off-list-loading")).toBeInTheDocument();
+  });
+
+  it("takes the placeholders away once the sign-offs arrive", async () => {
+    fetchMyPassport.mockResolvedValue(detailWith([]));
+    renderWithRouter(<PassportSignOffsPage />);
+
+    await screen.findByText("No sign-offs yet");
+    expect(
+      screen.queryByTestId("sign-off-list-loading"),
+    ).not.toBeInTheDocument();
+  });
+
   it("puts the add button above the message on an empty page", async () => {
     fetchMyPassport.mockResolvedValue(detailWith([]));
     renderWithRouter(<PassportSignOffsPage />);

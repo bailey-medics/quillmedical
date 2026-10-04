@@ -29,6 +29,22 @@ describe("SignOffList", () => {
     expect(screen.queryByTestId("sign-off-list")).not.toBeInTheDocument();
   });
 
+  it("draws placeholders while loading, and no rows", () => {
+    renderWithMantine(
+      <SignOffList title="Sign-offs" signOffs={signOffs} isLoading />,
+    );
+    expect(screen.getByTestId("sign-off-list-loading")).toBeInTheDocument();
+    expect(screen.queryByTestId("sign-off-row")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sign-offs")).not.toBeInTheDocument();
+  });
+
+  it("draws placeholders while loading even with nothing to list", () => {
+    renderWithMantine(
+      <SignOffList title="Sign-offs" signOffs={[]} isLoading />,
+    );
+    expect(screen.getByTestId("sign-off-list-loading")).toBeInTheDocument();
+  });
+
   it("passes a chosen row's name on", async () => {
     const onSelect = vi.fn();
     renderWithMantine(
