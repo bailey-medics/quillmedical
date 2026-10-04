@@ -180,19 +180,37 @@ same sources as the counts.
 
 ## Phase 6: The passport joins
 
-- [ ] Add the source `passport_sign_off`: what `GET
-      /api/passport/requests/inbox` already counts, the sign-off requests
-      waiting on the caller as an assessor.
+- [x] Add the source `passport_sign_off`: the sign-off requests that
+      name the caller as assessor and are still open, which is what `GET
+      /api/passport/requests/inbox` lists. A request names its assessor
+      by the address the holder typed, so it is matched on the caller's
+      email whatever the case. Somebody who may not assess is told
+      nothing: the passport's routes would refuse them, and a count
+      leading to a refusal is worse than no count. A request moves to
+      "Completed" when it is signed off, declined or withdrawn.
 
-- [ ] Take `InboxButton` off the header of `PassportPage`. Two envelopes
-      would count the same requests twice in view of each other.
+- [x] The line reads "Sign-off request from" and the holder's name. The
+      competency asked for, and the evidence, are read in the passport.
+      It opens `/passport/inbox`, the assessor's queue, since a line
+      carries the row's number and the sign-off page is addressed by the
+      record's name.
+
+- [x] Take `InboxButton` off the header of `PassportPage`, and the fetch
+      that counted for it. Two envelopes would count the same requests
+      twice in view of each other.
+
+- [x] Rename the passport menu's "Inbox" entry to "Sign-off requests",
+      in `featureNavItems.ts`. It is the name the page already has, and
+      "Inbox" now means the envelope's page. `PassportPage` had recorded
+      that "inbox" was the wrong name and the right one still to choose.
 
 ## Phase 7: Accessibility journeys
 
-- [ ] The ribbon is on the path of every journey in
-      `docs/docs/frontend/accessibility/journeys.md`. Add journeys 1 to 4
-      to the "Not yet run" list in `testing-log.md` against this change,
-      naming the envelope and its dropdown as what is new to reach.
+- [x] The ribbon is on the path of every journey in
+      `docs/docs/frontend/accessibility/journeys.md`. Journeys 1 to 4 are
+      added to the "Not yet run" list in `testing-log.md` against this
+      change, naming the envelope and the Inbox page as what is new to
+      reach, and the exam's ribbon on journey 3.
 
 ## Decisions
 

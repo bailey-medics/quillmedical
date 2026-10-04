@@ -1020,7 +1020,7 @@ describe("SideNavContent Component", () => {
       expect(screen.queryByText("Sign-off requests")).not.toBeInTheDocument();
     });
 
-    it("hangs Inbox under Passport for a holder", async () => {
+    it("hangs Sign-off requests under Passport for a holder", async () => {
       // A holder's own record is what `/passport` shows, so the
       // requests naming them as an assessor had no way in short of
       // typing the address.
@@ -1034,7 +1034,7 @@ describe("SideNavContent Component", () => {
         expect(screen.getByText("Passport")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Inbox")).toBeInTheDocument();
+      expect(screen.getByText("Sign-off requests")).toBeInTheDocument();
     });
 
     it.each([
@@ -1129,7 +1129,12 @@ describe("SideNavContent Component", () => {
         expect(screen.getByText("Logbook")).toBeInTheDocument();
       });
 
-      for (const other of ["Sign-offs", "CPD", "Certificates", "Inbox"]) {
+      for (const other of [
+        "Sign-offs",
+        "CPD",
+        "Certificates",
+        "Sign-off requests",
+      ]) {
         expect(screen.queryByText(other)).not.toBeInTheDocument();
       }
     });
@@ -1171,7 +1176,7 @@ describe("SideNavContent Component", () => {
       expect(screen.queryByText("CPD date ranges")).not.toBeInTheDocument();
     });
 
-    it("drops Inbox again once the holder is on their passport", async () => {
+    it("drops Sign-off requests again once the holder is on their passport", async () => {
       // The passport is a destination, not a heading, so landing on it
       // should not reveal a page the person did not ask for.
       renderWithAuth(<SideNavContent />, "passport_holder", {
@@ -1182,10 +1187,10 @@ describe("SideNavContent Component", () => {
         expect(screen.getByText("Passport")).toBeInTheDocument();
       });
 
-      expect(screen.queryByText("Inbox")).not.toBeInTheDocument();
+      expect(screen.queryByText("Sign-off requests")).not.toBeInTheDocument();
     });
 
-    it("gives an assessor no Inbox child, because that is their own link", async () => {
+    it("gives an assessor no Sign-off requests child, because that is their own link", async () => {
       // "Sign-off requests" already points at `/passport/inbox`.
       // A child of the same address would offer the page twice.
       renderWithAuth(<SideNavContent />, "passport_assessor_only", {
@@ -1196,7 +1201,8 @@ describe("SideNavContent Component", () => {
         expect(screen.getByText("Sign-off requests")).toBeInTheDocument();
       });
 
-      expect(screen.queryByText("Inbox")).not.toBeInTheDocument();
+      // Once, as their own link, and not again beneath it.
+      expect(screen.getAllByText("Sign-off requests")).toHaveLength(1);
     });
 
     it("hides Passport when the feature is on but the competency is missing", async () => {

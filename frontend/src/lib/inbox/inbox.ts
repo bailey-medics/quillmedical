@@ -55,6 +55,9 @@ const ADDRESSES: Record<string, (id: number) => string> = {
   // A reply is read on the sender's own feedback page, which lists all
   // of theirs: there is no page for one.
   feedback_reply: () => "/feedback",
+  // The assessor's queue, which lists every open request with the
+  // competency asked for. A request is opened from there.
+  passport_sign_off: () => "/passport/inbox",
 };
 
 /** Whether this client knows where a source's things are dealt with. */

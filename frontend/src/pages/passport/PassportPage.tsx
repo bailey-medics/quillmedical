@@ -18,7 +18,6 @@ import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
 import ActionCard from "@/components/action-card";
 import AddButton from "@/components/button/AddButton";
-import InboxButton from "@/components/inbox/InboxButton";
 import SpecialtyField from "@/components/passport/SpecialtyField";
 import PassportRecordTable from "@/components/passport/PassportRecordTable";
 import StateMessage from "@/components/message-cards/StateMessage";
@@ -38,7 +37,6 @@ import {
   createPassport,
   fetchAllCpd,
   fetchCertificates,
-  fetchInbox,
   fetchMyPassport,
   fetchReflections,
   fetchSignOffs,
@@ -106,41 +104,17 @@ const SECTIONS = [
 ];
 
 /**
- * The page title, with the way into the assessor's queue beside it.
+ * The page title.
  *
- * Beside the title rather than among the cards below, because those are
- * the holder's own record and this is not part of it: it is other
- * people's records waiting on this person's judgement. An external
- * assessor may have a queue and no passport at all.
- *
- * Drawn on every state of the page – error, no passport yet, and the
- * ordinary one – since somebody can be asked to assess a colleague
- * whether or not they have started a passport themselves.
- *
- * The plan records that "inbox" is the wrong name for the destination
- * and that the right one is still to be chosen; the label here will
- * change with it.
+ * The way into the assessor's queue used to sit beside it, as an
+ * envelope with how many requests were waiting. That envelope is in the
+ * top ribbon now, on every page, counting sign-off requests with
+ * everything else waiting on the person signed in, and the queue is in
+ * the passport's menu as "Sign-off requests". Two envelopes in view of
+ * each other would count the same requests twice.
  */
-function PassportHeader({
-  waiting,
-  onInbox,
-}: {
-  waiting: number;
-  onInbox: () => void;
-}) {
-  return (
-    <PageHeader
-      title="My passport"
-      action={
-        <InboxButton
-          label="Sign-off requests for me to assess"
-          count={waiting}
-          onClick={onInbox}
-        />
-      }
-      actionAlign="center"
-    />
-  );
+function PassportHeader() {
+  return <PageHeader title="My passport" />;
 }
 
 export function Component() {
@@ -168,11 +142,6 @@ export function Component() {
   // Fetched only once the create step is showing, the one place here
   // that asks the question.
   const specialtyOptions = useSpecialtyChoices(absent);
-  // How many sign-off requests name this person as assessor. Fetched
-  // separately from the passport because it is separate: an external
-  // assessor has a queue and may have no passport at all, so a failed
-  // passport load must not take the count with it.
-  const [waiting, setWaiting] = useState(0);
   // Every record in the passport, newest first, once the passport is
   // known. Null while loading; the table shows its own skeleton.
   const [records, setRecords] = useState<PassportRecord[] | null>(null);
@@ -228,26 +197,6 @@ export function Component() {
       cancelled = true;
     };
   }, [applyResult]);
-
-  // A failure here is silent on purpose. The count is a convenience
-  // beside the title, and an error banner about it would sit above the
-  // holder's own record complaining about somebody else's queue. The
-  // button still works; it simply shows no number.
-  useEffect(() => {
-    let cancelled = false;
-
-    fetchInbox()
-      .then((items) => {
-        if (!cancelled) setWaiting(items.length);
-      })
-      .catch(() => {
-        /* no number rather than a wrong one */
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // The records are fetched kind by kind, from the routes each section
   // page already uses, and flattened here. The passport's own
@@ -306,10 +255,7 @@ export function Component() {
   if (error) {
     return (
       <Stack gap="lg">
-        <PassportHeader
-          waiting={waiting}
-          onInbox={() => navigate("/passport/inbox")}
-        />
+        <PassportHeader />
         <ErrorState message={error} />
       </Stack>
     );
@@ -331,10 +277,7 @@ export function Component() {
   if (loading) {
     return (
       <Stack gap="lg">
-        <PassportHeader
-          waiting={waiting}
-          onInbox={() => navigate("/passport/inbox")}
-        />
+        <PassportHeader />
         <SimpleGrid cols={twoColumns ? 2 : 1}>
           {SECTIONS.map((section) => (
             <Skeleton
@@ -353,10 +296,7 @@ export function Component() {
   if (absent) {
     return (
       <Stack gap="lg">
-        <PassportHeader
-          waiting={waiting}
-          onInbox={() => navigate("/passport/inbox")}
-        />
+        <PassportHeader />
         <StateMessage
           colour="update"
           icon={<IconFileText />}
@@ -388,10 +328,7 @@ export function Component() {
 
   return (
     <Stack gap="lg">
-      <PassportHeader
-        waiting={waiting}
-        onInbox={() => navigate("/passport/inbox")}
-      />
+      <PassportHeader />
       {/* On the way in, not at the point of refusal. Finding out that
           the record has gone read-only half way through typing a
           reflection is the worst possible moment to learn it. */}
