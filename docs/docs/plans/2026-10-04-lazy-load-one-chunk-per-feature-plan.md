@@ -472,17 +472,34 @@ mistake can break it. They are the second, third and fourth steps below.
 
 ## Phase 8: Record the rule
 
-- [ ] **Add the rule to `.github/instructions/pages.instructions.md`** and
+- [x] **Add the rule to `.github/instructions/pages.instructions.md`** and
       run `/sync-copilot-config` so it reaches `.claude/rules/pages.md`: a
       new feature gets one `<feature>Chunk.ts`, a loader and a "can open" test in
       `featureChunks.ts`, and its routes use `lazyFrom`; never
       a bare `lazy: () => import("./pages/...")` per page; `handle` stays
       on the route object.
-- [ ] **Tick off the code-splitting entry in `docs/docs/plans/todo.md`**,
+      - The rule was added to both files by hand, word for word, and
+        `/sync-copilot-config` was not run: it syncs every instruction
+        file and would have widened this unit. Its next run will find
+        the two already agree.
+- [x] **Tick off the code-splitting entry in `docs/docs/plans/todo.md`**,
       pointing at this plan, and note the two items it names that this
       plan leaves alone (see Decisions).
-- [ ] **Write the final figures here**: entry chunk gzipped before and
+- [x] **Write the final figures here**: entry chunk gzipped before and
       after, and each feature chunk's size.
+      - **First load**, every file `index.html` asks for: **434.96 kB
+        gzipped before, 348.62 kB after**. That is 86.34 kB less, a
+        fifth. Raw, 1,645.81 kB to 1,325.84 kB. Files, 34 to 19.
+      - **`adminChunk`** – 35.70 kB gzipped, 33 pages.
+      - **`passportChunk`** – 18.27 kB gzipped, 17 pages.
+      - **`safetyChunk`** – 12.30 kB gzipped, 14 pages.
+      - **`clinicalChunk`** – 11.74 kB gzipped, 11 pages.
+      - **`teachingChunk`** – 6.25 kB gzipped, 8 pages.
+      - **Still for a human**, each noted on its own step above: opening
+        a patient and a message thread with clinical services on (Phase
+        2); walking admin as a `manage_teaching` holder (Phase 3); and
+        whether a failed background fetch stops a later click in Safari
+        or Firefox (Phase 7).
 
 ## Decisions
 
