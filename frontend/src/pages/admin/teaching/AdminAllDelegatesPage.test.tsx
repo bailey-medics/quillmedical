@@ -111,6 +111,18 @@ describe("AdminAllDelegatesPage", () => {
     );
   });
 
+  it("says when nobody has attempted the module", async () => {
+    mockApi([real], {
+      "/teaching/admin/delegates?bank_id=colonoscopy": [],
+    });
+
+    renderWithRouter(<AdminAllDelegatesPage />);
+
+    expect(
+      await screen.findByText("Nobody has attempted this module yet"),
+    ).toBeInTheDocument();
+  });
+
   it("lists delegates without a module when there is none", async () => {
     const get = mockApi([], {
       "/teaching/admin/delegates": [delegate("ada", null)],

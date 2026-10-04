@@ -140,6 +140,13 @@ def _row(
     return next(d for d in resp.json() if d["name"] == name)
 
 
+def _names(client: TestClient, bank_id: str | None = None) -> set[str]:
+    params = {"bank_id": bank_id} if bank_id else None
+    resp = client.get(DELEGATES, params=params)
+    assert resp.status_code == 200, resp.text
+    return {d["name"] for d in resp.json()}
+
+
 class TestNarrowingToOneModule:
     def test_a_later_practice_attempt_does_not_hide_a_real_pass(
         self,
@@ -177,7 +184,7 @@ class TestNarrowingToOneModule:
         assert _row(client, "delegate", REAL)["first_time_pass"] is True
         assert _row(client, "delegate")["first_time_pass"] is False
 
-    def test_somebody_who_has_not_sat_the_module_is_still_listed(
+    def test_somebody_who_has_not_attempted_the_module_is_left_out(
         self,
         authenticated_superadmin_client: TestClient,
         db_session: Session,
@@ -186,13 +193,59 @@ class TestNarrowingToOneModule:
         org = _org(db_session, "Trust")
         _admin_of(db_session, org, test_superadmin)
         delegate = _delegate(db_session, org, "delegate")
+        _delegate(db_session, org, "newcomer")
         _attempt(db_session, org, delegate, PRACTICE, passed=True, days_ago=1)
+        client = authenticated_superadmin_client
+
+        assert _names(client, REAL) == set()
+        assert _names(client, PRACTICE) == {"delegate"}
+        # With no module named, everybody is still listed.
+        assert _names(client) == {"delegate", "newcomer"}
+
+    def test_an_admin_who_attempted_the_module_is_listed_themselves(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        test_superadmin: User,
+    ) -> None:
+        """An admin trying the module out is one of its delegates."""
+        org = _org(db_session, "Trust")
+        _admin_of(db_session, org, test_superadmin)
+        _attempt(
+            db_session, org, test_superadmin, PRACTICE, passed=True, days_ago=1
+        )
+        client = authenticated_superadmin_client
+        me = test_superadmin.full_name or test_superadmin.username
+
+        assert _names(client, PRACTICE) == {me}
+        assert _names(client, REAL) == set()
+        # With no module named, the caller still leaves themselves out.
+        assert _names(client) == set()
+
+    def test_somebody_who_started_and_did_not_finish_is_listed(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        test_superadmin: User,
+    ) -> None:
+        org = _org(db_session, "Trust")
+        _admin_of(db_session, org, test_superadmin)
+        delegate = _delegate(db_session, org, "delegate")
+        db_session.add(
+            Assessment(
+                user_id=delegate.id,
+                org_unit_id=org.id,
+                question_bank_id=REAL,
+                bank_version=1,
+                time_limit_minutes=60,
+                total_items=3,
+            )
+        )
+        db_session.commit()
 
         row = _row(authenticated_superadmin_client, "delegate", REAL)
 
-        assert row["assessment_result"] is None
-        assert row["assessment_date"] is None
-        assert row["first_time_pass"] is False
+        assert row["assessment_result"] == "incomplete"
 
     def test_refuses_an_empty_bank_id(
         self,
