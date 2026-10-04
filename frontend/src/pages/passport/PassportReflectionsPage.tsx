@@ -114,6 +114,11 @@ export function Component() {
         />
       )}
 
+      {/* Until the fetch returns, so the page is not blank under the
+          button while a full record is on its way. Not after a failed
+          load, which has its own message above. */}
+      {!loaded && !error && <ReflectionTable reflections={[]} isLoading />}
+
       {/* Each reflection opens on a page of its own, to read in full
           and rewrite. The table shows titles and dates only. */}
       {reflections.length > 0 && (

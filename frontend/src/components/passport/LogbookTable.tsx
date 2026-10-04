@@ -97,10 +97,14 @@ export default function LogbookTable({
       <Stack gap="md">
         <Heading>{competencyName ?? logbook.competency}</Heading>
 
-        {/* A plain count. No denominator, no percentage, no bar. */}
-        <BodyText c="dimmed">
-          {count} {count === 1 ? "entry" : "entries"}
-        </BodyText>
+        {/* A plain count. No denominator, no percentage, no bar. Left
+            out while loading: "0 entries" over a logbook still on its
+            way would be a count nobody has made. */}
+        {!isLoading && (
+          <BodyText c="dimmed">
+            {count} {count === 1 ? "entry" : "entries"}
+          </BodyText>
+        )}
 
         <DataTable
           data={sorted}

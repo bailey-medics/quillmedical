@@ -85,6 +85,31 @@ describe("PassportReflectionsPage", () => {
     expect(screen.queryByText("Nothing written yet")).not.toBeInTheDocument();
   });
 
+  it("shows a loading table while the list is on its way", async () => {
+    fetchReflections.mockReturnValue(new Promise(() => {}));
+    renderWithRouter(<PassportReflectionsPage />);
+
+    await waitFor(() => expect(fetchReflections).toHaveBeenCalled());
+    expect(screen.getByTestId("reflection-table")).toBeInTheDocument();
+    expect(screen.getByText("Loading")).toBeInTheDocument();
+  });
+
+  it("takes the loading table away once an empty list arrives", async () => {
+    fetchReflections.mockResolvedValue([]);
+    renderWithRouter(<PassportReflectionsPage />);
+
+    await screen.findByText(/^Nothing .* yet$/);
+    expect(screen.queryByTestId("reflection-table")).not.toBeInTheDocument();
+  });
+
+  it("shows no loading table over a failed load", async () => {
+    fetchReflections.mockRejectedValue(new Error("network"));
+    renderWithRouter(<PassportReflectionsPage />);
+
+    await screen.findByText(/could not be loaded/);
+    expect(screen.queryByTestId("reflection-table")).not.toBeInTheDocument();
+  });
+
   it("puts the add button above the message on an empty page", async () => {
     fetchReflections.mockResolvedValue([]);
     renderWithRouter(<PassportReflectionsPage />);
