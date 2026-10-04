@@ -14,7 +14,8 @@ it cannot know, both of which matter in this repository:
   browser.
 
 Exit codes: 0 drew the stack, 1 no stack here, 2 a branch is checked out in
-another worktree (`--check` only, so `just str` can refuse).
+another worktree (`--check` only, so `just str` can refuse). `--spent` has
+its own pair: 0 every branch has merged, 1 anything else.
 """
 
 from __future__ import annotations
@@ -158,6 +159,21 @@ def stack_entries(stack: dict[str, object]) -> list[dict[str, object]]:
     if not isinstance(raw, list):
         return []
     return [entry for entry in raw if isinstance(entry, dict)]
+
+
+def spent_branches(stack: dict[str, object] | None) -> list[str] | None:
+    """The branches of a stack with nothing left to land, or None.
+
+    A stack is spent when every branch in it has merged. None covers the
+    rest: no stack here, or one with a branch still open, which is a
+    stack somebody is working on however many of its others have landed.
+    """
+    if stack is None:
+        return None
+    entries = stack_entries(stack)
+    if not entries or not all(entry.get("isMerged") for entry in entries):
+        return None
+    return [str(entry.get("name", "")) for entry in entries]
 
 
 def read_worktrees() -> dict[str, str]:
@@ -759,6 +775,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--spent",
+        action="store_true",
+        help=(
+            "print this stack's branches and exit 0 when every one has "
+            "merged, exit 1 otherwise, for `just stack-sync` to clear it"
+        ),
+    )
+    parser.add_argument(
         "--numbered",
         action="store_true",
         help="number the open branches, 1 at the bottom, for --branch-at",
@@ -787,6 +811,19 @@ def main() -> int:
     palette = Palette(coloured and not args.no_colour)
 
     stack = read_stack()
+
+    if args.spent:
+        # Asked before the "no stack" message below, which is advice for
+        # somebody reading the screen and not for a recipe asking a
+        # question.
+        spent = spent_branches(stack)
+        if spent is None:
+            return 1
+        for name in spent:
+            if name:
+                print(name)
+        return 0
+
     if stack is None:
         draw_no_stack(palette)
         return 1

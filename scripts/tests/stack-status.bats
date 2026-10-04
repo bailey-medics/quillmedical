@@ -161,3 +161,42 @@ PY
     [[ "$output" == *"j=10"* ]]
     [[ "$output" == *"k=11"* ]]
 }
+
+# Prints the branches of a spent stack, or "not spent", from stack JSON.
+spent_of() {
+    python3 - "$SCRIPT" "$1" <<'PY'
+import importlib.util, json, sys
+
+spec = importlib.util.spec_from_file_location("stack_status", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+sys.modules["stack_status"] = module
+spec.loader.exec_module(module)
+
+spent = module.spent_branches(json.loads(sys.argv[2]))
+print("not spent" if spent is None else " ".join(spent))
+PY
+}
+
+@test "a stack whose every branch has merged is spent" {
+    # What `just stack-sync` clears out, so the watch draws "no stack".
+    run spent_of '{"branches": [
+        {"name": "a", "isMerged": true}, {"name": "b", "isMerged": true}
+    ]}'
+    [ "$status" -eq 0 ]
+    [ "$output" = "a b" ]
+}
+
+@test "a stack with one branch still open is not spent" {
+    run spent_of '{"branches": [
+        {"name": "a", "isMerged": true}, {"name": "b", "isMerged": false}
+    ]}'
+    [ "$status" -eq 0 ]
+    [ "$output" = "not spent" ]
+}
+
+@test "no stack, or one with no branches, is not spent" {
+    run spent_of 'null'
+    [ "$output" = "not spent" ]
+    run spent_of '{"branches": []}'
+    [ "$output" = "not spent" ]
+}
