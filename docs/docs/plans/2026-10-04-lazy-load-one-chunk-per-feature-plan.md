@@ -445,7 +445,7 @@ mistake can break it. They are the second, third and fourth steps below.
         the attempt and the first question, nor between the first
         question and the result page; and the page is never reloaded in
         either stretch. Passes in Chromium and WebKit.
-- [ ] **Check that a failed background fetch does not poison a later
+- [x] **Check that a failed background fetch does not poison a later
       click.** Browsers differ on whether a failed dynamic import is
       retried or remembered as failed. Block one chunk in the network
       panel, let the background fetch fail, unblock it, then click into
@@ -454,7 +454,12 @@ mistake can break it. They are the second, third and fourth steps below.
       recovery reloads from the safe route the person is on, which is
       acceptable. Record what each browser did here.
       Not done in the unattended run: it needs a person at three
-      browsers. Left for a human.
+      browsers.
+      - **Done as an automated test in Phase 9**, in Chromium and WebKit.
+        It found that both remember the failure, and that the recovery
+        described here did not open the feature. Phase 9 replaces the
+        background `import()` with `fetch()` for that reason. Firefox is
+        not in the E2E suite and was not checked.
 - [x] **Run a full exam on the dev stack with the network panel open**: no
       JavaScript requested between starting the attempt and seeing the
       result, and the other features' chunks appear only once back on the
@@ -499,13 +504,109 @@ mistake can break it. They are the second, third and fourth steps below.
       - **`safetyChunk`** – 12.30 kB gzipped, 14 pages.
       - **`clinicalChunk`** – 11.74 kB gzipped, 11 pages.
       - **`teachingChunk`** – 6.25 kB gzipped, 8 pages.
-      - **Still for a human**, each noted on its own step above: walking
-        admin as a `manage_teaching` holder (Phase 3), and whether a
-        failed background fetch stops a later click in Safari or Firefox
-        (Phase 7).
+      - **Still for a human**, noted on its own step above: walking
+        admin as a `manage_teaching` holder (Phase 3). The Phase 7 check
+        on a failed background fetch was automated in Phase 9.
       - **Postponed**: opening a patient and a message thread with
         clinical services on (Phase 2), until patient systems are
         running.
+
+## Phase 9: Fetch features into the cache, not into the page
+
+Phase 7 fetched each feature in the background with the same `import()`
+the route uses. Automating the last open check from that phase showed why
+that was wrong, and this phase replaces it.
+
+- [x] **Automate the check Phase 7 left for a human**, as
+      `frontend/e2e/tests/background-fetch-recovery.spec.ts`: fail the
+      admin chunk's background fetch, restore it, click Admin, expect the
+      Administration page. It found three things.
+      - **A failed `import()` is remembered for the life of the page**, in
+        Chromium and in WebKit alike. Phase 7 assumed browsers differ and
+        that some retry; neither did. So one failed background fetch made
+        the later click fail too, however good the connection was by
+        then. Without background fetching that click would simply have
+        downloaded the file. The feature meant to speed the click up made
+        a moment's failure permanent for the tab.
+      - **The recovery then lost the click.** `wirePreloadErrorRecovery`
+        reloaded the page, which does clear the browser's memory, but the
+        address bar still showed the page the person was on, because the
+        router does not move until the code has loaded. They landed back
+        where they started with nothing to say why. Phase 7 called this
+        outcome "acceptable" on the belief the reload would land on the
+        destination. This is older than background fetching: a tab left
+        open across a deploy has always done it.
+      - **In WebKit even the reload did not help.** It reused the failed
+        copy of the file without asking the server and showed the app's
+        error page. That held for a request that was aborted and for one
+        answered with a 503, and for `location.reload()` and
+        `location.assign()` alike. Whether real Safari does the same, or
+        this is how Playwright's WebKit treats a response the test
+        supplied, is not known.
+- [x] **Make the recovery finish what was asked for.** In
+      `frontend/src/lib/swUpdateGate.ts`, when a chunk fails during a
+      navigation, wait for the router to arrive and then reload, so the
+      reload happens at the destination. The router does arrive: the
+      handler prevents the event, so the import resolves, `lazyFrom`
+      renders nothing for the page, and the navigation completes. A
+      two-second timer reloads anyway if it never does. Only on a page
+      that is safe to reload, as before; the exam is untouched.
+- [x] **Fetch each feature's files with `fetch()`, into the browser's
+      cache, and import nothing.** A failed `fetch()` leaves nothing
+      behind: the browser keeps no note of it, so the click afterwards
+      imports the file as if the background fetch had never been tried.
+      A successful one leaves the file in the HTTP cache, where the
+      click's `import()` finds it without using the network. That relies
+      on the files being kept, which the `/assets/*` cache rule in
+      `caddy/prod/Caddyfile` now makes true.
+      - **The app has to know the file names**, which carry a hash and
+        are only known to the build. Set `build.manifest: true` in
+        `frontend/vite.config.ts`. The build then writes
+        `dist/.vite/manifest.json`, which gives, for each chunk module
+        such as `src/pages/admin/adminChunk.ts`, the file it was built
+        into, its stylesheet, and the shared files it imports. It is 18 kB
+        raw. The app fetches it once, at the first idle moment, and
+        fetches every file a feature needs, the shared ones included.
+      - **Each entry in `FEATURE_CHUNKS` names its chunk module's source
+        path** in place of its loader. A test ties the two together, so a
+        feature cannot be routed without being listed.
+      - **Serve the manifest `no-cache`**, in `caddy/prod/Caddyfile`. Its
+        name is fixed, so a browser must check it on each load or it
+        would go on fetching the last build's file names.
+      - **In development there is no manifest**, and the app's fallback
+        route answers the request with `index.html`. That is not JSON, so
+        the fetch finds nothing to do, which is right: nothing is chunked
+        there either.
+- [x] **Take the background fetch out of the recovery handler.** A
+      `fetch()` cannot fire `vite:preloadError`, so the handler no longer
+      needs to tell a background failure from a real one. Remove
+      `isBackgroundFetchInFlight` and the check that used it. Phase 7
+      listed three guarantees for the exam. The second one, ignoring
+      background failures, is replaced by something stronger: a background
+      fetch cannot reach the handler at all. The other two stand.
+- [x] **Make the recovery test strict.** With `fetch()` the click after a
+      failed background fetch must open the feature with no reload at
+      all, in both browsers. Assert that, not merely that it opens.
+- [x] **Run `just e2e`**, and `just fc` to confirm the manifest is the
+      only new file and first load is unchanged.
+      - **Measured 4 October.** `just e2e`, the whole suite, passed in
+        Chromium and WebKit: 55 tests. The recovery test passes in both
+        with no reload at all, where under `import()` Chromium needed one
+        and WebKit showed the error page. First load is 349.03 kB
+        gzipped, 0.41 kB more than before this phase; `index.html`
+        references no feature chunk. The manifest is 18.2 kB raw and
+        2.2 kB gzipped, fetched once per page load when idle.
+      - **The unit tests** for `prefetchFeatures.ts`, `FeaturePrefetch.tsx`,
+        `swUpdateGate.ts`, `featureChunks.ts` and `lazyRoute.ts`: 129 pass.
+      - **One thing this cannot show**: that the click's `import()` reads
+        the fetched file from the cache without touching the network.
+        Playwright does not report where a response came from. It follows
+        from the `immutable` header on `/assets/*`, which the caching
+        test does check.
+      - **Whether real Safari remembers a failed import across a reload**
+        is still unknown, and no longer matters for background fetching,
+        which imports nothing. It still matters for a tab left open
+        across a deploy, in Safari as in any browser.
 
 ## Decisions
 
@@ -534,12 +635,20 @@ mistake can break it. They are the second, third and fourth steps below.
   the features this person can open, and only when idle. Quill does not
   offer offline working, so nothing is lost by a chunk not being cached.
 
-- **Background fetching calls the same loader, not a `modulepreload`
-  link** – a `<link rel="modulepreload">` fails silently, which would
+- **Superseded by Phase 9: background fetching calls the same loader,
+  not a `modulepreload` link** – a `<link rel="modulepreload">` fails silently, which would
   avoid the recovery handler altogether. But it needs the hashed file
   name, which only the build knows, and calling the loader is the one
   thing guaranteed to warm exactly what the route will ask for. The cost
   is the handler change in Phase 7, which is small and tested.
+
+- **Background fetching uses `fetch()` and the build manifest** – the
+  reasoning above, for calling the loader, missed what a failed
+  `import()` costs: the browser remembers it for the life of the page.
+  `fetch()` warms the cache and remembers nothing. The hashed file names
+  it needs come from Vite's own manifest, which is a build option, not a
+  plugin of ours. The trade is that a warmed feature is in the cache, not
+  in memory, so the click still parses it; that is milliseconds.
 
 - **Three guarantees for the exam, where one would do** – not starting on
   an unsafe route, ignoring background failures, and never reloading an

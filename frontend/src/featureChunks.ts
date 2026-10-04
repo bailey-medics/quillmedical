@@ -31,6 +31,11 @@ function hasCompetency(user: User, ...competencies: string[]): boolean {
  * Every feature chunk with the test for who may open it, in the order
  * they are fetched in the background (see `lib/prefetchFeatures.ts`).
  *
+ * `source` is the chunk module a loader above imports, as a path from the
+ * frontend root. That is its key in the build manifest, which is how the
+ * background fetch learns the hashed file names without importing
+ * anything.
+ *
  * Each `canOpen` mirrors the guard on that feature's routes in `routes.tsx`,
  * so nobody downloads a feature they cannot reach. Where a guard lets
  * somebody through on missing information, this does not: an unknown is
@@ -40,13 +45,13 @@ export const FEATURE_CHUNKS: readonly PrefetchChunk<User>[] = [
   {
     // <RequireFeature feature="teaching">
     name: "teaching",
-    load: loadTeaching,
+    source: "src/features/teaching/teachingChunk.ts",
     canOpen: (user) => hasFeature(user, "teaching"),
   },
   {
     // <RequirePassport> then <RequireCompetency assess_clinician_passport>
     name: "passport",
-    load: loadPassport,
+    source: "src/pages/passport/passportChunk.ts",
     canOpen: (user) =>
       (hasFeature(user, "passport") || user.owns_passport === true) &&
       hasCompetency(user, "assess_clinician_passport"),
@@ -54,21 +59,21 @@ export const FEATURE_CHUNKS: readonly PrefetchChunk<User>[] = [
   {
     // <RequireCompetency competency={["manage_users", ...SCOPED_MANAGER_IDS]}>
     name: "admin",
-    load: loadAdmin,
+    source: "src/pages/admin/adminChunk.ts",
     canOpen: (user) =>
       hasCompetency(user, "manage_users", ...SCOPED_MANAGER_IDS),
   },
   {
     // <RequireFeature feature="safety"> then <RequireCompetency view_safety_cases>
     name: "safety",
-    load: loadSafety,
+    source: "src/pages/safety/safetyChunk.ts",
     canOpen: (user) =>
       hasFeature(user, "safety") && hasCompetency(user, "view_safety_cases"),
   },
   {
     // <RequireClinical>, which lets an unset flag through. This does not.
     name: "clinical",
-    load: loadClinical,
+    source: "src/pages/clinical/clinicalChunk.ts",
     canOpen: (user) => user.clinical_services_enabled === true,
   },
 ];
