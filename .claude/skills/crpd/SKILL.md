@@ -2,7 +2,7 @@
 name: crpd
 description: Commit, rebase, push and describe one stacked branch
 argument-hint: "[repo: eoeeta-teaching|eoeeta-teaching-testing|respiratory-teaching] [ready]"
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git push:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(git switch:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-fresh:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*), Bash(STACK_REPO=* just stack-*), Bash(git -C *), Bash(just validate-teaching:*)
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git push:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(git switch:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-fresh:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr create:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*), Bash(STACK_REPO=* just stack-*), Bash(git -C *), Bash(just validate-teaching:*)
 disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), Bash(git commit:*), Bash(git reset:*), Bash(git cherry-pick:*), Bash(git stash:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 ---
 
@@ -18,9 +18,9 @@ gets its own pull request. Call it again after the next piece of work and it
 stacks another on top.
 
 It is deliberately one act rather than four, because on a stack the four are
-not separable: adding a branch leaves anything above it sitting on an older
-parent, so committing without rebasing pushes a stack that is already
-inconsistent.
+not separable: a stack is pushed as a whole, rebased onto the latest trunk
+first, so a branch committed and pushed on its own leaves the rest of the
+stack behind it.
 
 `/f` calls this once per unit. It is also useful on
 its own, to finish a stacked branch by hand.
@@ -96,6 +96,8 @@ These hold on every run.
 - **Never change labels, reviewers, milestones, or the base branch.** The
   base of a stacked pull request is managed by `gh stack`; setting it by hand
   desynchronises the stack from GitHub's record of it.
+  One exception, and it is not a change: step 5 names the base when it
+  has to create a pull request itself, because something below is queued.
 - **Never mention AI authorship anywhere.** No attribution footer, no
   "Generated with" line, no session link, no `Co-Authored-By` trailer, no
   robot emoji – not in a commit message, not in a pull request description,
@@ -513,17 +515,15 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    deserves committing. Noticing something odd is fine; say it in the
    report, after the work is landed, not instead of landing it.
 
-3. **Bring the branches above back into line.**
+3. **Do not rebase here.** The new branch is always the top of the
+   stack: a stack is one line, and `stack-add` puts the new branch on its
+   end. Nothing sits above it, so nothing has been left on an older
+   parent. The only rebase a run needs is the one onto the latest trunk,
+   and `stack-submit` does that itself in step 5.
 
-   ```bash
-   just stack-rebase
-   ```
-
-   Adding a branch mid-stack leaves any branch that was above it sitting on
-   an older parent. `stack-rebase` cascades onto parents, carries the
-   worktree guard, and verifies afterwards that no branch was silently
-   skipped. Skip it only when the new branch is the top of the stack, which
-   is the usual case – running it then is harmless.
+   If `just stack-log` ever warns that a branch needs rebasing, that is
+   the trunk having moved, and step 5 deals with it. When a pull request
+   in the stack is queued to merge, step 5 skips that rebase too.
 
 4. **Run the targeted tests for what this branch touched** – `just ub -k
    "..."` and `just uf src/path/to/file.test.tsx` – and nothing wider. For
@@ -554,16 +554,52 @@ to start a stack anywhere but the tip of `origin/main`, and says to run
    checks require.
 
    It pushes the *whole* stack, not just this branch – that is unavoidable,
-   because rebasing this branch rewrote the ones above it.
+   because rebasing onto the latest trunk rewrites every branch in it.
 
-   **Do not push while a pull request in the stack is queued to merge.**
-   `gh stack view --json` marks one with `isQueued: true`. `stack-submit`
-   cannot rebase past it, and pushing a queued pull request takes it out
-   of the queue. Stop here instead: the unit is committed on its branch,
-   which is as far as it can go. Say in the report that it is committed
-   and not pushed, and which pull request is queued. The next run pushes
-   it along with its own unit once the queue has drained, and describes
-   both.
+   **When a pull request in the stack is queued to merge, do not run
+   `stack-submit`. Open this branch's pull request on its own instead.**
+   `gh stack view --json` marks a queued one with `isQueued: true`. Check
+   before this step, every run.
+
+   What must not happen is the queued branch being pushed. `stack-submit`
+   rebases the whole stack onto the latest trunk and pushes every branch,
+   and a queued pull request whose branch is force-pushed is dropped from
+   the merge queue and has to be queued again by a human. That is a
+   reason to leave the lower branches alone. It is not a reason to
+   withhold a pull request from a new branch nobody has queued, which
+   needs nothing below it to move.
+
+   So push the new branch alone and open its pull request:
+
+   ```bash
+   git push -u origin "$(git branch --show-current)"
+   gh pr create --draft \
+     --head "$(git branch --show-current)" \
+     --base <the branch below, from just stack-log> \
+     --title "Passport: what this branch does" \
+     --body-file <path to the body>
+   ```
+
+   - **Push this branch and no other**, by name. It is new, so nothing is
+     rewritten. Never `just stack-submit`, `just stack-rebase` or
+     `just stack-sync` here: each can rebase or push the branches below.
+     `stack-sync` skips queued branches today, but it still pushes the
+     rest, and that is more than this step needs.
+   - **The base is the branch directly below**, which is what `gh stack`
+     would have set. This is the one time the command names a base, and
+     only on creation; never change the base of a pull request that
+     already exists.
+   - **Write the title and body first** (step 9), since `gh pr create`
+     takes them. Steps 6 to 8 then have nothing to do: the pull request
+     is new and nobody else has written in it.
+   - **Always a draft**, whatever the arguments. With `ready`, mark it
+     ready in step 10 as usual.
+
+   Say in the report that the stack was not rebased or submitted, and
+   which pull requests are queued. The pull request will not show in the
+   stack on GitHub until the next ordinary run: once the queue has
+   drained, `just stack-sync` drops what merged and `stack-submit`
+   registers the rest.
 
 6. **Find this branch's pull request.**
 
