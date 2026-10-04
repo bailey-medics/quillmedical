@@ -75,7 +75,7 @@ export default function IconTextButton({
       loading={loading}
       classNames={{ root: classes.root }}
       styles={{
-        root: disabled ? { opacity: 0.6, cursor: "not-allowed" } : undefined,
+        root: disabled ? { opacity: 0.6, cursor: "default" } : undefined,
       }}
     >
       {label}

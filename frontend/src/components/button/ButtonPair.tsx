@@ -81,7 +81,7 @@ export default function ButtonPair({
         size="md"
         styles={{
           root: acceptDisabled
-            ? { opacity: 0.6, cursor: "not-allowed" }
+            ? { opacity: 0.6, cursor: "default" }
             : undefined,
         }}
         data-testid={acceptTestId}

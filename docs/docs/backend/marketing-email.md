@@ -102,11 +102,22 @@ Nobody is emailed wrongly while Quill is stale: Resend sends the
 newsletter and honours its own record. The weekly check corrects what
 the Settings switch shows.
 
-**The dev stack and production share one list.** They use different keys
-and the same segment and topic. `just marketing-sync` and
-`just marketing-reconcile` on the dev stack therefore send every verified
-dev account to the real list, as a contact, and should only be run when
-that is meant.
+**Development has a segment and a topic of its own, and that is only
+part of a separation.** The dev stack's `backend/.env` names a "Quill
+Medical (dev)" segment and a "Newsletter (dev)" topic, so a newsletter
+sent to the real topic never reaches a contact made while testing, and
+the weekly check on the dev stack reads only the dev segment.
+
+What it does not separate is the contact. Resend holds one list of
+contacts for the whole account, one entry per address, and a segment is a
+label on an entry, not a list of its own. An address used on both the dev
+stack and the live app is one contact, with one "unsubscribed" switch
+between them, so opting out on the dev stack unsubscribes the real
+person. **Test with addresses nobody real uses**, which is the rule
+chosen over a second Resend account, the only way to two truly separate
+lists. A plus-address (`name+test1@...`) is a different contact from the
+plain one; add it to `EMAIL_ALLOWED_RECIPIENTS` so the dev stack will
+email it.
 
 ## Settings
 

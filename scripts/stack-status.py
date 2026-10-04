@@ -627,6 +627,7 @@ def draw_no_stack(palette: Palette) -> None:
     # is not known until the list is read – hence the two passes.
     recipes = [
         ("just stack-checkout", "stc", "check out an existing stack"),
+        ("just stack-fresh", "stfr", "move to main, carrying your work"),
         ('just stack-new <name> "<message>"', "stn", "start one, from main"),
         ("just stack-help", "sth", "list every stack recipe"),
     ]

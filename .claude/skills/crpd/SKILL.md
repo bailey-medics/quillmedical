@@ -2,7 +2,7 @@
 name: crpd
 description: Commit, rebase, push and describe one stacked branch
 argument-hint: "[repo: eoeeta-teaching|eoeeta-teaching-testing|respiratory-teaching] [ready]"
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git push:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(git switch:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*), Bash(STACK_REPO=* just stack-*), Bash(git -C *), Bash(just validate-teaching:*)
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git push:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(git switch:*), Bash(just stack-add:*), Bash(just stack-new:*), Bash(just stack-fresh:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*), Bash(STACK_REPO=* just stack-*), Bash(git -C *), Bash(just validate-teaching:*)
 disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), Bash(git commit:*), Bash(git reset:*), Bash(git cherry-pick:*), Bash(git stash:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 ---
 
@@ -256,31 +256,40 @@ Four things differ in substance, and nothing else does:
 
 ## Starting again after a stack has merged
 
-Only when step 1 found every branch in the stack marked `merged`. The
-branch checked out is then behind `main` by at least the merge commits of
-the stack's own pull requests, and the working tree holds the next unit.
+Only when step 1 found the stack spent: every branch marked `merged`, or
+GitHub saying the branch checked out has merged. The checkout is then
+behind `main` by at least the merge commits of the stack's own pull
+requests, and the working tree holds the next unit.
 
 ```bash
-just stack-sync
-git switch main
+just stack-fresh
 ```
 
-`stack-sync` reconciles the merged stack with GitHub and fast-forwards
-`main`; `git switch main` carries the uncommitted work across, which git
-does cleanly because the merged branch and `main` no longer differ in the
-files being changed. Then carry on at step 1 of "Steps" and use
-`just stack-new`, exactly as for a first unit.
+It fetches, moves the checkout to the tip of `origin/main`, carries the
+uncommitted work across, and tidies the spent stack's record. Then carry
+on at step 1 of "Steps" and use `just stack-new`, exactly as for a first
+unit.
 
-Two things to check rather than assume:
+**Do not use `just stack-sync` then `git switch main` here**, which is
+what this section used to say. Neither survives the ordinary case:
 
-- **The working tree survived the switch.** `git status --short` should
-  still list the same files. If git refused the switch because the changes
-  conflict with `main`, stop and report it – that means the unit overlaps
-  something merged while it was being built, and a human should look.
-- **`main` is actually current.** `git rev-list --left-right --count
-  HEAD...origin/main` should report `ahead=0 behind=0`. Starting a stack
-  on a stale `main` produces a pull request carrying commits that are
-  already merged.
+- `stack-sync` will not rebase with uncommitted changes in the tree, and
+  the tree is dirty by definition: that is the unit being landed.
+- `main` is usually checked out in another worktree, so this one cannot
+  switch to it. `stack-fresh` detaches at `origin/main` instead, which
+  `stack-new` starts from just the same.
+- A plain switch refuses whenever `main` has changed a file that is also
+  changed locally, and it has if the unit carries on from what just
+  merged. `stack-fresh` carries the work with a three-way merge.
+
+**If `stack-fresh` reports files that overlap, stop and report them.**
+The unit and something merged since have changed the same lines, git has
+left both versions between conflict markers, and choosing between them
+is a human's call. Nothing is lost.
+
+`just stack-new` checks the same thing from the other side: it refuses
+to start a stack anywhere but the tip of `origin/main`, and says to run
+`just stack-fresh`. That refusal means this section was skipped.
 
 ## Steps
 
@@ -425,19 +434,34 @@ Two things to check rather than assume:
    it into the stack is the last thing the recipe does, and it never got
    there.
 
-   **Fix the cause, then run the same recipe again.** It is safe to
-   re-run: the branch already exists and it simply commits onto it and
-   completes the registration.
+   **Fix the cause, then run the recipe again. How depends on which.**
 
-   - **The branch is already checked out**, so run `just stack-add`
-     again exactly as before – same name, same message. Do not switch
-     branches first, and do not create a second one.
+   - **`just stack-new` is safe to re-run as it is.** The branch already
+     exists and is checked out, so the same command, with the same name
+     and message, commits onto it and finishes. Do not switch branches
+     first.
+   - **`just stack-add` is not.** Its guard runs first, finds the
+     half-made branch in no stack, and refuses with "No stack on this
+     branch". Go back to the branch below, delete the empty one, and run
+     it again:
+
+     ```bash
+     git switch <the branch below>
+     git branch -d feature/<name>
+     just stack-add <name> "<message>"
+     ```
+
+     The work is in the working tree throughout, staged, and travels
+     with the switch. `-d`, never `-D`: the branch holds no commit of its
+     own, so git deletes it without being forced, and if it will not, it
+     is not empty and something else is wrong.
    - **Fix the cause the same way `/nst-crp` does.** A hook that rewrote
      files, or a spelling fix, is mechanical: apply it and re-run
-     without pausing. Anything needing you to write or change code –
-     mypy, a lint finding a formatter would not fix, bandit – is a
-     change nobody has reviewed: stop, show the diff and the reason, and
-     wait.
+     without pausing. A formatter that rewrote a file has already fixed
+     it, so the re-run is the whole fix. Anything needing you to write or
+     change code – mypy, a lint finding a formatter would not fix, bandit
+     – is a change nobody has reviewed: stop, show the diff and the
+     reason, and wait.
 
    **Never finish the job with `git commit`.** This is the failure this
    section exists for, and it looks exactly like success: the code is

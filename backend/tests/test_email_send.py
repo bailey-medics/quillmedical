@@ -32,8 +32,11 @@ class TestSendEmailDryRun:
             )
 
         assert "EMAIL DRY RUN" in caplog.text
-        assert "student@example.com" in caplog.text
-        assert "Certificate: Test Exam" in caplog.text
+        # The address is masked: a log is no place for who was emailed.
+        assert "s***@e***.com" in caplog.text
+        assert "student@example.com" not in caplog.text
+        # Nor is the subject logged: a certificate's names the person.
+        assert "Certificate: Test Exam" not in caplog.text
 
     @patch("app.email_send.settings")
     def test_dry_run_logs_attachment_names(
@@ -53,7 +56,10 @@ class TestSendEmailDryRun:
                 attachments=attachments,
             )
 
-        assert "certificate.pdf" in caplog.text
+        # Attachments are counted, not named: a file name can carry a
+        # person's name as surely as a subject can.
+        assert "attachments=1" in caplog.text
+        assert "certificate.pdf" not in caplog.text
 
     @patch("app.email_send.resend")
     @patch("app.email_send.settings")
@@ -546,3 +552,101 @@ class TestTheApiKey:
         assert "[redacted]" in str(raised.value)
         assert raised.value.__cause__ is None
         assert raised.value.__suppress_context__
+
+
+class TestMaskingAnAddress:
+    """An address in a log line is personal data, so most of it is hidden."""
+
+    def test_keeps_a_letter_of_each_half_and_the_ending(self) -> None:
+        from app.email_send import mask_email
+
+        assert mask_email("mark@example.org") == "m***@e***.org"
+
+    def test_keeps_only_the_last_part_of_a_longer_domain(self) -> None:
+        from app.email_send import mask_email
+
+        assert mask_email("a.nurse@ward.trust.nhs.uk") == "a***@w***.uk"
+
+    def test_hides_a_domain_with_no_dot_altogether(self) -> None:
+        from app.email_send import mask_email
+
+        assert mask_email("root@localhost") == "r***@***"
+
+    @pytest.mark.parametrize("value", ["", "not-an-address", "@nobody", "x@"])
+    def test_hides_anything_that_is_not_an_address(self, value: str) -> None:
+        from app.email_send import mask_email
+
+        assert mask_email(value) == "***"
+
+    def test_a_refused_recipient_is_not_named_in_the_rate_limit_error(
+        self,
+    ) -> None:
+        from app import email_send
+
+        email_send._rate_log.clear()
+        for _ in range(email_send._EMAIL_MAX_PER_WINDOW):
+            email_send._record_send("busy@example.com")
+
+        with pytest.raises(email_send.EmailRateLimitError) as caught:
+            email_send._check_rate_limit("busy@example.com")
+
+        assert "busy@example.com" not in str(caught.value)
+        assert "b***@e***.com" in str(caught.value)
+        email_send._rate_log.clear()
+
+
+class TestHowResendIsReached:
+    """Cloud Run has no IPv6 route out, and Resend has IPv6 addresses."""
+
+    def test_the_sdk_uses_the_ipv4_client(self) -> None:
+        import resend
+
+        from app.email_send import _Ipv4Client
+
+        assert isinstance(resend.default_http_client, _Ipv4Client)
+
+    def test_it_gives_up_on_a_connection_quickly(self) -> None:
+        from app.email_send import _Ipv4Client
+
+        assert _Ipv4Client.TIMEOUT.connect == 3.0
+        assert _Ipv4Client.TIMEOUT.read == 20.0
+
+    def test_it_returns_what_the_sdk_expects(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import httpx
+
+        from app import email_send
+
+        seen: dict[str, object] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen["method"] = request.method
+            seen["url"] = str(request.url)
+            seen["auth"] = request.headers.get("authorization")
+            seen["body"] = request.content
+            return httpx.Response(200, json={"id": "email_1"})
+
+        real_client = httpx.Client
+
+        def stub_client(**kwargs: object) -> httpx.Client:
+            seen["local_address"] = kwargs["transport"]._pool._local_address  # type: ignore[attr-defined]
+            return real_client(transport=httpx.MockTransport(handler))
+
+        monkeypatch.setattr(email_send.httpx, "Client", stub_client)
+
+        content, status, headers = email_send._Ipv4Client().request(
+            "post",
+            "https://api.resend.com/emails",
+            {"Authorization": "Bearer re_test"},
+            json={"to": ["a@example.com"]},
+        )
+
+        assert status == 200
+        assert b"email_1" in content
+        assert "content-type" in headers
+        assert seen["method"] == "POST"
+        assert seen["url"] == "https://api.resend.com/emails"
+        assert seen["auth"] == "Bearer re_test"
+        assert b"a@example.com" in seen["body"]  # type: ignore[operator]
+        assert seen["local_address"] == "0.0.0.0"

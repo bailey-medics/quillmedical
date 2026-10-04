@@ -8,13 +8,84 @@ are logged to stdout instead of being sent.
 import logging
 import threading
 import time
-from typing import TypedDict
+from collections.abc import Mapping
+from typing import Any, TypedDict
 
+import httpx
 import resend
+from resend.http_client import HTTPClient
 
 from app.config import settings
+from app.net import IPV4_ONLY
 
 logger = logging.getLogger(__name__)
+
+
+class _Ipv4Client(HTTPClient):
+    """How the ``resend`` SDK reaches Resend: over IPv4, and not for long.
+
+    The SDK's own client waits thirty seconds to connect and tries
+    whichever address the resolver gives first. From Cloud Run, which has
+    no IPv6 route out, each of Resend's two IPv6 addresses cost the whole
+    thirty: "forgot password" took sixty seconds on 4 October 2026, and
+    the page gave up with "Request timed out" although the email arrived.
+    See ``app.net``.
+    """
+
+    #: Seconds. Short to connect, since a connection that has not opened
+    #: in three is not about to; longer to answer, for an attachment.
+    TIMEOUT = httpx.Timeout(20.0, connect=3.0)
+
+    def request(
+        self,
+        method: str,
+        url: str,
+        headers: Mapping[str, str],
+        json: dict[str, object] | list[object] | None = None,
+        files: dict[str, Any] | None = None,
+        data: dict[str, str] | None = None,
+    ) -> tuple[bytes, int, Mapping[str, str]]:
+        with httpx.Client(
+            timeout=self.TIMEOUT,
+            transport=httpx.HTTPTransport(local_address=IPV4_ONLY),
+        ) as client:
+            response = client.request(
+                method,
+                url,
+                headers=dict(headers),
+                json=json if data is None and files is None else None,
+                files=files,
+                data=data,
+            )
+        return response.content, response.status_code, response.headers
+
+
+resend.default_http_client = _Ipv4Client()
+
+
+def mask_email(address: str) -> str:
+    """An email address with most of it hidden, for a log line.
+
+    Enough is kept to tell two addresses apart when reading logs beside
+    a known one, and not enough to read off who somebody is:
+    ``mark@example.org`` becomes ``m***@e***.org``. An address is
+    personal data, and for a patient's account it would sit in the logs
+    beside the fact that they have one.
+
+    Args:
+        address: The address to hide.
+
+    Returns:
+        The masked address, or ``***`` for anything that is not one.
+    """
+    local, at, domain = address.strip().partition("@")
+    if not at or not local or not domain:
+        return "***"
+    name, dot, ending = domain.rpartition(".")
+    if not dot or not name:
+        return f"{local[0]}***@***"
+    return f"{local[0]}***@{name[0]}***.{ending}"
+
 
 # ---------------------------------------------------------------------------
 # Rate limiting: max emails per recipient per window
@@ -97,7 +168,7 @@ def _check_allowed(recipient: str) -> None:
 
     logger.warning(
         "Email refused: recipient=%s is not in EMAIL_ALLOWED_RECIPIENTS",
-        recipient,
+        mask_email(recipient),
     )
     raise EmailNotAllowedError(
         f"Refusing to email {recipient}: not in "
@@ -138,13 +209,14 @@ def _check_rate_limit(recipient: str) -> None:
             logger.warning(
                 "Email rate limit exceeded for recipient=%s "
                 "(%d emails in last %d seconds)",
-                recipient,
+                mask_email(recipient),
                 len(timestamps),
                 _EMAIL_WINDOW_SECONDS,
             )
             raise EmailRateLimitError(
                 f"Rate limit exceeded: max {_EMAIL_MAX_PER_WINDOW} "
-                f"emails per {_EMAIL_WINDOW_SECONDS}s for {recipient}"
+                f"emails per {_EMAIL_WINDOW_SECONDS}s for "
+                f"{mask_email(recipient)}"
             )
 
 
@@ -240,14 +312,16 @@ def send_email(
     sender = _from_header(from_name)
     _check_rate_limit(to)
 
+    # Counted for the log, never named in it. Neither is the subject. A
+    # certificate's subject and its file name both carry the person's
+    # name, and a log line is no place for who was sent what.
     attachment_names = [a["filename"] for a in (attachments or [])]
 
     if settings.EMAIL_DRY_RUN:
         logger.info(
-            "EMAIL DRY RUN – to=%s subject=%r attachments=%s",
-            to,
-            subject,
-            attachment_names,
+            "EMAIL DRY RUN – to=%s attachments=%d",
+            mask_email(to),
+            len(attachment_names),
         )
         _record_send(to)
         return
@@ -294,8 +368,7 @@ def send_email(
     _record_send(to)
 
     logger.info(
-        "Email sent – to=%s subject=%r attachments=%s",
-        to,
-        subject,
-        attachment_names,
+        "Email sent – to=%s attachments=%d",
+        mask_email(to),
+        len(attachment_names),
     )

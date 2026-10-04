@@ -50,9 +50,7 @@ export default function PreviousNextButton({
         aria-disabled={nextDisabled || undefined}
         size="md"
         styles={{
-          root: nextDisabled
-            ? { opacity: 0.6, cursor: "not-allowed" }
-            : undefined,
+          root: nextDisabled ? { opacity: 0.6, cursor: "default" } : undefined,
         }}
       >
         {nextLabel}

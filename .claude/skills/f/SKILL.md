@@ -2,7 +2,7 @@
 name: f
 description: Follow the plan document last mentioned in the chat, building it as a stack, one branch per reviewable unit
 argument-hint: "[path/to/plan.md, or nothing to use the last plan mentioned]"
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git push:*), Bash(git switch:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(just stack-update:*), Bash(just stack-sync:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(just stack-help:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*)
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git branch:*), Bash(git rev-parse:*), Bash(git add:*), Bash(git commit:*), Bash(git fetch:*), Bash(git push:*), Bash(git switch:*), Bash(just stack-log:*), Bash(just stack-log-long:*), Bash(just stack-files:*), Bash(just stack-update:*), Bash(just stack-sync:*), Bash(just stack-fresh:*), Bash(just stack-rebase:*), Bash(just stack-submit:*), Bash(just stack-move:*), Bash(just stack-help:*), Bash(gh stack view:*), Bash(gh pr list:*), Bash(gh pr view:*), Bash(gh pr edit:*), Bash(gh pr ready:*), Bash(python3 scripts/stack-status.py:*)
 disallowed-tools: Bash(gh pr merge:*), Bash(gh stack merge:*), Bash(git rebase:*), mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge
 disable-model-invocation: true
 ---
@@ -204,10 +204,11 @@ What `stack-log` shows decides what happens next:
   - **Branches still open** – the stack continues. `just stack-move top`,
     and the next unit stacks on it as usual.
   - **Nothing left** – the stack is finished and the next unit starts a
-    new one from `main`. The sync leaves `main` checked out; if it did
-    not, `git switch main`. Then check `git rev-list --left-right --count
-    HEAD...origin/main` reports `0 0`. `/crpd` will find no stack on
-    `main` and start one with `just stack-new`.
+    new one from `main`. Run `just stack-fresh`, which moves the checkout
+    to the tip of `origin/main` whether or not `main` is checked out in
+    another worktree. Then check `git rev-list --left-right --count
+    HEAD...origin/main` reports `0 0`. `/crpd` will find no stack there
+    and start one with `just stack-new`.
 
 - **"No stack on this branch", on `main`** – a first unit. `git fetch
   origin main` and make the same `0 0` check; if `main` is behind, stop
@@ -234,8 +235,9 @@ topic on is the stack key:
 
 **If the working tree is dirty**, deal with that first. When the only
 changes are the plan document itself (and its entry in the plans index),
-run the sync anyway: they belong to the first unit and travel with the
-checkout. Anything else either belongs to the current unit or was left
+they belong to the first unit and travel with the checkout: use
+`just stack-fresh`, not `just stack-sync`, which will not rebase with
+uncommitted changes in the tree. Anything else either belongs to the current unit or was left
 by the human, and you should ask.
 
 **If the sync fails, or the move to `main` is refused, stop and report
