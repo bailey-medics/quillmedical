@@ -18,6 +18,7 @@ import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import TopRibbon from "@/components/ribbon/TopRibbon";
+import RibbonInbox from "@/components/inbox/RibbonInbox";
 import Footer from "@/components/footer/Footer";
 import StatusStrip from "@/components/status-strip/StatusStrip";
 import NavigationDrawer from "@/components/drawers/NavigationDrawer";
@@ -118,7 +119,9 @@ export default function TeachingLayout({
           // attempt above all
           isNarrow={hasSidebar && navCollapsed}
           showSearch={false}
-          rightSection={ribbonRight}
+          // An exam's timer has the slot to itself. Anywhere else in
+          // teaching, it shows what is waiting on the person signed in.
+          rightSection={ribbonRight ?? <RibbonInbox />}
         />
       </Box>
 

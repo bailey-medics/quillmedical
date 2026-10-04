@@ -30,6 +30,7 @@ import {
   Heading,
 } from "@/components/typography";
 import { describeDevice } from "@/lib/feedback/device";
+import { inboxChanged } from "@/lib/inbox/inbox";
 import {
   FEEDBACK_STATUSES,
   FEEDBACK_STATUS_LABELS,
@@ -94,6 +95,9 @@ export default function FeedbackDetailPage() {
     setSaving(true);
     try {
       setItem(await setFeedbackStatus(item.id, value));
+      // The envelope in the ribbon counts feedback still new, so it is
+      // told at once, not left to find out at the next page.
+      inboxChanged();
       showMessage({
         variant: "success",
         title: `Marked as ${FEEDBACK_STATUS_LABELS[value].toLowerCase()}`,

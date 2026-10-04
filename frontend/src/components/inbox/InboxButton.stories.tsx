@@ -6,6 +6,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { ReactNode } from "react";
 import { Stack } from "@mantine/core";
 import { StoryNote, VariantRow, VariantStack } from "@/stories/variants";
 import InboxButton from "./InboxButton";
@@ -34,8 +35,9 @@ export const Default: Story = {
     (Story) => (
       <Stack gap="md">
         <StoryNote>
-          The way into the assessor&apos;s queue, with how many requests are
-          waiting
+          An envelope with how many things are waiting behind it. The passport
+          page uses it for sign-off requests, and the top ribbon for everything
+          waiting on the person signed in
         </StoryNote>
         <Story />
       </Stack>
@@ -57,6 +59,37 @@ export const Counts: Story = {
       </VariantRow>
       <VariantRow label="ten and above – capped">
         <InboxButton label="Waiting on me" count={42} onClick={() => {}} />
+      </VariantRow>
+    </VariantStack>
+  ),
+};
+
+/**
+ * A strip of the ribbon's navy for the envelope to sit on. Around the
+ * button alone and not the whole story: the row labels beneath are grey
+ * text meant for the page, and on navy they fail the contrast check.
+ */
+function OnRibbon({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ background: "var(--brand-primary)", padding: "0.5rem 1rem" }}>
+      {children}
+    </div>
+  );
+}
+
+/** As the top ribbon shows it: white when idle, amber when waiting. */
+export const OnDark: Story = {
+  render: () => (
+    <VariantStack>
+      <VariantRow label="nothing waiting">
+        <OnRibbon>
+          <InboxButton label="Waiting on me" count={0} onDark />
+        </OnRibbon>
+      </VariantRow>
+      <VariantRow label="three waiting">
+        <OnRibbon>
+          <InboxButton label="Waiting on me" count={3} onDark />
+        </OnRibbon>
       </VariantRow>
     </VariantStack>
   ),

@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import * as apiLib from "@/lib/api";
 import type { FeedbackItem } from "@/lib/feedback/feedbackAdmin";
+import { onInboxChanged } from "@/lib/inbox/inbox";
 import FeedbackDetailPage from "./FeedbackDetailPage";
 
 vi.mock("react-router-dom", async () => {
@@ -110,6 +111,27 @@ describe("FeedbackDetailPage", () => {
     );
   });
 
+  it("tells the ribbon's envelope when the status changes", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(apiLib.api, "get").mockResolvedValue(feedback);
+    vi.spyOn(apiLib.api, "patch").mockResolvedValue({
+      ...feedback,
+      status: "acknowledged",
+    });
+    const told = vi.fn();
+    const stop = onInboxChanged(told);
+
+    renderWithRouter(<FeedbackDetailPage />);
+
+    await user.click(await screen.findByRole("combobox", { name: "Status" }));
+    await user.click(
+      await screen.findByRole("option", { name: "Acknowledged" }),
+    );
+
+    await waitFor(() => expect(told).toHaveBeenCalledTimes(1));
+    stop();
+  });
+
   it("keeps the old status when the change fails", async () => {
     const user = userEvent.setup();
     vi.spyOn(apiLib.api, "get").mockResolvedValue(feedback);
@@ -130,12 +152,10 @@ describe("FeedbackDetailPage", () => {
   it("saves a comment without touching the status", async () => {
     const user = userEvent.setup();
     vi.spyOn(apiLib.api, "get").mockResolvedValue(feedback);
-    const patch = vi
-      .spyOn(apiLib.api, "patch")
-      .mockResolvedValue({
-        ...feedback,
-        comment: "Fixed in the next release.",
-      });
+    const patch = vi.spyOn(apiLib.api, "patch").mockResolvedValue({
+      ...feedback,
+      comment: "Fixed in the next release.",
+    });
 
     renderWithRouter(<FeedbackDetailPage />);
 

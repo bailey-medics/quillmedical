@@ -10,13 +10,17 @@ from app.inbox import sources
 from app.models import Feedback, User
 
 ENDPOINT = "/api/inbox"
+ITEMS = f"{ENDPOINT}/items"
+
+#: Unmistakable, so finding it in a response means it leaked.
+SECRET_MESSAGE = "The case for Mrs Example-Leak shows the wrong dose"
 
 
 def _feedback(db: Session, user: User | None, status: str = "new") -> Feedback:
     row = Feedback(
         user_id=user.id if user else None,
         category="broken",
-        message="Captions lag behind the video",
+        message=SECRET_MESSAGE,
         route="/teaching",
         release="abc1234",
         viewport="390x844",
@@ -101,6 +105,89 @@ class TestNewFeedback:
         assert resp.json() == {"items": [], "total": 0}
 
 
+class TestTheLines:
+    def test_lists_what_is_waiting_newest_first(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        test_user: User,
+    ) -> None:
+        older = _feedback(db_session, test_user)
+        newer = _feedback(db_session, None)
+        _feedback(db_session, test_user, status="resolved")
+
+        resp = authenticated_superadmin_client.get(ITEMS)
+
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert [item["id"] for item in items] == [newer.id, older.id]
+        assert items[0]["title"] == "Feedback from a deleted user"
+        assert items[1] == {
+            "source": "feedback_new",
+            "id": older.id,
+            "title": f"Feedback from {test_user.username}",
+            "detail": "Something is broken",
+            "status": "New",
+            "created_at": items[1]["created_at"],
+            "done": False,
+        }
+
+    def test_lists_what_was_dealt_with_when_asked(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        test_user: User,
+    ) -> None:
+        _feedback(db_session, test_user)
+        resolved = _feedback(db_session, test_user, status="resolved")
+
+        resp = authenticated_superadmin_client.get(
+            ITEMS, params={"done": True}
+        )
+
+        items = resp.json()["items"]
+        assert [item["id"] for item in items] == [resolved.id]
+        assert items[0]["status"] == "Resolved"
+        assert items[0]["done"] is True
+
+    @pytest.mark.parametrize("done", [False, True])
+    def test_a_line_never_carries_the_message(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        test_user: User,
+        done: bool,
+    ) -> None:
+        _feedback(db_session, test_user)
+        _feedback(db_session, test_user, status="acknowledged")
+
+        resp = authenticated_superadmin_client.get(
+            ITEMS, params={"done": done}
+        )
+
+        assert resp.status_code == 200
+        assert len(resp.json()["items"]) == 1
+        assert "Example-Leak" not in resp.text
+
+    def test_somebody_who_is_not_an_operator_has_no_lines(
+        self,
+        authenticated_client: TestClient,
+        db_session: Session,
+        test_user: User,
+    ) -> None:
+        _feedback(db_session, test_user)
+
+        for done in (False, True):
+            resp = authenticated_client.get(ITEMS, params={"done": done})
+            assert resp.status_code == 200
+            assert resp.json() == {"items": []}
+
+    def test_refuses_a_signed_out_caller(
+        self, test_client: TestClient
+    ) -> None:
+        assert test_client.get(ITEMS).status_code == 401
+
+
 class TestTheRoute:
     def test_refuses_a_signed_out_caller(
         self, test_client: TestClient
@@ -118,7 +205,16 @@ class TestTheRoute:
         def broken(db: Session, user: User) -> int:
             raise RuntimeError("that feature is down")
 
-        monkeypatch.setitem(sources.SOURCES, "broken_source", broken)
+        def broken_lines(
+            db: Session, user: User, done: bool
+        ) -> list[sources.InboxLine]:
+            raise RuntimeError("that feature is down")
+
+        monkeypatch.setitem(
+            sources.SOURCES,
+            "broken_source",
+            sources.InboxSource(count=broken, lines=broken_lines),
+        )
 
         resp = authenticated_superadmin_client.get(ENDPOINT)
 
@@ -127,3 +223,8 @@ class TestTheRoute:
             "items": [{"source": "feedback_new", "count": 1}],
             "total": 1,
         }
+        lines = authenticated_superadmin_client.get(ITEMS)
+        assert lines.status_code == 200
+        assert [item["source"] for item in lines.json()["items"]] == [
+            "feedback_new"
+        ]

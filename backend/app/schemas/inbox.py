@@ -1,5 +1,7 @@
 """Pydantic schemas for the inbox: what is waiting on the caller."""
 
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -25,3 +27,26 @@ class InboxOut(BaseModel):
 
     items: list[InboxSourceOut]
     total: int
+
+
+class InboxItemOut(BaseModel):
+    """One thing that is, or was, waiting on the caller.
+
+    It says who and what kind, never what anybody wrote: the words are on
+    the feature's own page. ``source`` and ``id`` together say where that
+    page is, which the client works out, since the routes are its own.
+    """
+
+    source: str
+    id: int
+    title: str
+    detail: str | None
+    status: str | None
+    created_at: datetime
+    done: bool
+
+
+class InboxItemsOut(BaseModel):
+    """The caller's inbox, newest first: waiting, or lately dealt with."""
+
+    items: list[InboxItemOut]

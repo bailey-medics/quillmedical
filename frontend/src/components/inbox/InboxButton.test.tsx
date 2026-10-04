@@ -87,6 +87,33 @@ describe("InboxButton", () => {
     ).toBeInTheDocument();
   });
 
+  it("is white on a dark background when nothing is waiting", () => {
+    const { container } = renderWithMantine(
+      <InboxButton label={LABEL} count={0} onDark onClick={vi.fn()} />,
+    );
+
+    expect(container.querySelector("svg")).toHaveAttribute("stroke", "white");
+  });
+
+  it("is still amber on a dark background when something is waiting", () => {
+    const { container } = renderWithMantine(
+      <InboxButton label={LABEL} count={2} onDark onClick={vi.fn()} />,
+    );
+
+    expect(container.querySelector("svg")).toHaveAttribute(
+      "stroke",
+      "var(--brand-secondary)",
+    );
+  });
+
+  it("passes other props to the button, as a menu's target must", () => {
+    renderWithMantine(
+      <InboxButton label={LABEL} aria-expanded="true" onClick={vi.fn()} />,
+    );
+
+    expect(screen.getByRole("button")).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("calls back when pressed", async () => {
     const onClick = vi.fn();
     const user = userEvent.setup();
