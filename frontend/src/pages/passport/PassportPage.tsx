@@ -109,9 +109,9 @@ const SECTIONS = [
  * The way into the assessor's queue used to sit beside it, as an
  * envelope with how many requests were waiting. That envelope is in the
  * top ribbon now, on every page, counting sign-off requests with
- * everything else waiting on the person signed in, and the queue is in
- * the passport's menu as "Sign-off requests". Two envelopes in view of
- * each other would count the same requests twice.
+ * everything else waiting on the person signed in, and its page, the
+ * inbox, lists them. Two envelopes in view of each other would count
+ * the same requests twice.
  */
 function PassportHeader() {
   return <PageHeader title="My passport" />;

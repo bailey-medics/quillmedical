@@ -86,6 +86,7 @@ def get_inbox_items(
             InboxItemOut(
                 source=key,
                 id=line.id,
+                ref=line.ref,
                 title=line.title,
                 detail=line.detail,
                 status=line.status,

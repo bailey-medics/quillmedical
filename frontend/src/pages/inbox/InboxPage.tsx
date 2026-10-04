@@ -11,8 +11,9 @@
  * dealt with. Nothing is dealt with here, and opening a line does not
  * clear it. It leaves the top list when the work is done.
  *
- * Feedback is the only source so far. Sign-off requests and messages
- * between clinicians are to follow, each as lines of the same kind. See
+ * Feedback and passport sign-off requests are the sources so far.
+ * Messages between clinicians are to follow, as lines of the same kind.
+ * See
  * docs/docs/plans/2026-10-04-waiting-on-me-inbox-plan.md.
  */
 
@@ -66,6 +67,12 @@ const doneColumns: Column<InboxItem>[] = [
 
 export default function InboxPage() {
   const navigate = useNavigate();
+  // A line with nowhere to go, such as a sign-off request already
+  // answered, stays where it is when pressed.
+  const open = (item: InboxItem) => {
+    const href = inboxItemHref(item);
+    if (href) navigate(href);
+  };
   const [waiting, setWaiting] = useState<InboxItem[]>([]);
   const [done, setDone] = useState<InboxItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,7 +118,7 @@ export default function InboxPage() {
           <DataTableControlled
             data={waiting}
             columns={waitingColumns}
-            onRowClick={(item) => navigate(inboxItemHref(item))}
+            onRowClick={open}
             getRowKey={rowKey}
             loading={loading}
             error={error}
@@ -127,7 +134,7 @@ export default function InboxPage() {
           <DataTableControlled
             data={done}
             columns={doneColumns}
-            onRowClick={(item) => navigate(inboxItemHref(item))}
+            onRowClick={open}
             getRowKey={rowKey}
             loading={loading}
             error={error}

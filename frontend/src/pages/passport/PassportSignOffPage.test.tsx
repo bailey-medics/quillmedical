@@ -13,9 +13,19 @@ import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportSignOffPage } from "./PassportSignOffPage";
 import { inboxItem } from "@/components/passport/fixtures";
+import { onInboxChanged } from "@/lib/inbox/inbox";
 
 const fetchInbox = vi.fn();
 const signOff = vi.fn();
+const mockNavigate = vi.fn();
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 vi.mock("@lib/passport", () => ({
   fetchInbox: (...args: unknown[]) => fetchInbox(...args),
@@ -32,6 +42,7 @@ function renderPage(signOffId = inboxItem.sign_off.id) {
 describe("PassportSignOffPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockNavigate.mockClear();
   });
 
   it("renders the record it finds in the inbox", async () => {
@@ -83,6 +94,28 @@ describe("PassportSignOffPage", () => {
         expect.any(Object),
       );
     });
+  });
+
+  it("goes back to the inbox once signed off, and tells the envelope", async () => {
+    // The inbox is where the request was opened from. The passport's own
+    // queue page, which this used to return to, is gone.
+    const user = userEvent.setup();
+    fetchInbox.mockResolvedValue([inboxItem]);
+    signOff.mockResolvedValue({ name: inboxItem.sign_off.name });
+    const told = vi.fn();
+    const stop = onInboxChanged(told);
+    renderPage();
+
+    await user.click(await screen.findByRole("combobox"));
+    await user.click(await screen.findByText("Directly observed"));
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(
+      screen.getByRole("button", { name: "Sign off competency" }),
+    );
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith("/inbox"));
+    expect(told).toHaveBeenCalledTimes(1);
+    stop();
   });
 
   it("says why a sign-off was refused rather than doing nothing", async () => {

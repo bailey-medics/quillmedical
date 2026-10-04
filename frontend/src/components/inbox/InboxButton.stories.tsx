@@ -77,7 +77,7 @@ function OnRibbon({ children }: { children: ReactNode }) {
   );
 }
 
-/** As the top ribbon shows it: white when idle, amber when waiting. */
+/** As the top ribbon shows it: a mid grey when idle, amber when waiting. */
 export const OnDark: Story = {
   render: () => (
     <VariantStack>

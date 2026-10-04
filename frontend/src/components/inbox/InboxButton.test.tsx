@@ -87,12 +87,17 @@ describe("InboxButton", () => {
     ).toBeInTheDocument();
   });
 
-  it("is white on a dark background when nothing is waiting", () => {
+  it("sits back on a dark background when nothing is waiting", () => {
+    // A mid grey, not white: an idle envelope should not be the
+    // brightest thing on the ribbon.
     const { container } = renderWithMantine(
       <InboxButton label={LABEL} count={0} onDark onClick={vi.fn()} />,
     );
 
-    expect(container.querySelector("svg")).toHaveAttribute("stroke", "white");
+    expect(container.querySelector("svg")).toHaveAttribute(
+      "stroke",
+      "var(--mantine-color-gray-6)",
+    );
   });
 
   it("is still amber on a dark background when something is waiting", () => {

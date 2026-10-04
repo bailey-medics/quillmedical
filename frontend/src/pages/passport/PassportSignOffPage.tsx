@@ -4,10 +4,14 @@
  * One sign-off in full, and the form for signing it.
  *
  * The passport id is not in the route: an assessor reaching this page
- * knows the sign-off id from their inbox, and the inbox says which
- * passport each request belongs to. That keeps the URL from implying an
- * assessor may address a passport directly – they may reach exactly the
- * requests naming them, which is what the inbox returns.
+ * knows the sign-off id from their inbox, and the passport's list of
+ * requests says which passport each belongs to. That keeps the URL from
+ * implying an assessor may address a passport directly – they may reach
+ * exactly the requests naming them, which is what that list returns.
+ *
+ * Reached from `/inbox`, the page of everything waiting on somebody, and
+ * it goes back there. The passport had a queue page of its own,
+ * `/passport/inbox`, until 4 October 2026.
  */
 
 import { useEffect, useState } from "react";
@@ -17,6 +21,7 @@ import PageHeader from "@/components/page-header";
 import SignOffCard from "@/components/passport/SignOffCard";
 import SignOffForm from "@/components/passport/SignOffForm";
 import ErrorState from "@/components/error-state/ErrorState";
+import { INBOX_PATH, inboxChanged } from "@/lib/inbox/inbox";
 import { fetchInbox, signOff as submitSignOff } from "@lib/passport";
 import type { InboxItem, SignOffInput } from "@lib/passport";
 
@@ -67,7 +72,9 @@ export function Component() {
       // identifier and matches no row, so posting it was a 404 every
       // time.
       await submitSignOff(item.passport_id, item.sign_off.name, data);
-      navigate("/passport/inbox");
+      // One fewer thing is waiting, so the envelope is told at once.
+      inboxChanged();
+      navigate(INBOX_PATH);
     } catch (caught) {
       // The server's own words where it gave any: it refuses for
       // reasons an assessor can act on, and "please try again" hides
@@ -95,7 +102,7 @@ export function Component() {
           <SignOffForm
             signOff={item.sign_off}
             onSubmit={handleSignOff}
-            onCancel={() => navigate("/passport/inbox")}
+            onCancel={() => navigate(INBOX_PATH)}
             isSubmitting={submitting}
           />
         </>
