@@ -1,8 +1,10 @@
 /**
  * InboxButton Component
  *
- * The way into the assessor's queue: what other people have asked this
- * person to sign off, with how many are waiting.
+ * An envelope with how many things are waiting behind it. It began as
+ * the way into the passport assessor's queue and is shared now, so that
+ * everything waiting on somebody is shown the same way. `label` says
+ * what this one counts.
  *
  * **The count is the point.** A bare icon tells a holder nothing about
  * whether anybody is waiting on them, so they would have to click to
@@ -23,7 +25,11 @@
  *
  * @example
  * ```tsx
- * <InboxButton count={3} onClick={() => navigate("/passport/inbox")} />
+ * <InboxButton
+ *   label="Sign-off requests for me to assess"
+ *   count={3}
+ *   onClick={() => navigate("/passport/inbox")}
+ * />
  * ```
  */
 
@@ -34,20 +40,25 @@ import { BodyText } from "@/components/typography";
 import classes from "./InboxButton.module.css";
 
 export interface InboxButtonProps {
-  /** How many sign-off requests are waiting on this person. */
+  /**
+   * What is behind the envelope, as a screen reader says it: "Sign-off
+   * requests for me to assess". The count is added to it.
+   */
+  label: string;
+  /** How many things are waiting on this person. */
   count?: number;
   /** Called when the button is pressed. */
   onClick: () => void;
 }
 
-export default function InboxButton({ count = 0, onClick }: InboxButtonProps) {
-  // The label carries the count so a screen reader gets what the badge
-  // shows visually, and says whose work it is: these are other people's
-  // records waiting on this person, not their own sign-offs.
-  const label =
-    count > 0
-      ? `Sign-off requests for me to assess (${count} waiting)`
-      : "Sign-off requests for me to assess";
+export default function InboxButton({
+  label,
+  count = 0,
+  onClick,
+}: InboxButtonProps) {
+  // The name carries the count so a screen reader gets what the badge
+  // shows visually.
+  const name = count > 0 ? `${label} (${count} waiting)` : label;
 
   return (
     <div className={classes.trigger}>
@@ -59,7 +70,7 @@ export default function InboxButton({ count = 0, onClick }: InboxButtonProps) {
         color="primary"
         className={classes.button}
         onClick={onClick}
-        aria-label={label}
+        aria-label={name}
       >
         {/* Amber while anything is waiting, so the envelope itself
             signals work and not just the number beside it. */}

@@ -11,12 +11,13 @@ import { StoryNote, VariantRow, VariantStack } from "@/stories/variants";
 import InboxButton from "./InboxButton";
 
 const meta: Meta<typeof InboxButton> = {
-  title: "Passport/Inbox button",
+  title: "Inbox/Inbox button",
   component: InboxButton,
   parameters: {
     layout: "padded",
   },
   args: {
+    label: "Waiting on me",
     onClick: () => {},
   },
 };
@@ -46,16 +47,16 @@ export const Counts: Story = {
   render: () => (
     <VariantStack>
       <VariantRow label="nothing waiting – no badge">
-        <InboxButton count={0} onClick={() => {}} />
+        <InboxButton label="Waiting on me" count={0} onClick={() => {}} />
       </VariantRow>
       <VariantRow label="one">
-        <InboxButton count={1} onClick={() => {}} />
+        <InboxButton label="Waiting on me" count={1} onClick={() => {}} />
       </VariantRow>
       <VariantRow label="nine">
-        <InboxButton count={9} onClick={() => {}} />
+        <InboxButton label="Waiting on me" count={9} onClick={() => {}} />
       </VariantRow>
       <VariantRow label="ten and above – capped">
-        <InboxButton count={42} onClick={() => {}} />
+        <InboxButton label="Waiting on me" count={42} onClick={() => {}} />
       </VariantRow>
     </VariantStack>
   ),

@@ -4,9 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import InboxButton from "./InboxButton";
 
+const LABEL = "Sign-off requests for me to assess";
+
 describe("InboxButton", () => {
   it("shows how many requests are waiting", () => {
-    renderWithMantine(<InboxButton count={3} onClick={vi.fn()} />);
+    renderWithMantine(
+      <InboxButton label={LABEL} count={3} onClick={vi.fn()} />,
+    );
 
     expect(screen.getByTestId("inbox-count")).toHaveTextContent("3");
   });
@@ -14,20 +18,22 @@ describe("InboxButton", () => {
   it("shows no badge when nothing is waiting", () => {
     // A zero is a fact nobody needs, and it makes an idle button look
     // like it wants attention.
-    renderWithMantine(<InboxButton count={0} onClick={vi.fn()} />);
+    renderWithMantine(
+      <InboxButton label={LABEL} count={0} onClick={vi.fn()} />,
+    );
 
     expect(screen.queryByTestId("inbox-count")).not.toBeInTheDocument();
   });
 
   it("shows no badge when the count is not known yet", () => {
-    renderWithMantine(<InboxButton onClick={vi.fn()} />);
+    renderWithMantine(<InboxButton label={LABEL} onClick={vi.fn()} />);
 
     expect(screen.queryByTestId("inbox-count")).not.toBeInTheDocument();
   });
 
   it("colours the envelope amber when something is waiting", () => {
     const { container } = renderWithMantine(
-      <InboxButton count={2} onClick={vi.fn()} />,
+      <InboxButton label={LABEL} count={2} onClick={vi.fn()} />,
     );
 
     expect(container.querySelector("svg")).toHaveAttribute(
@@ -38,7 +44,7 @@ describe("InboxButton", () => {
 
   it("leaves the envelope its default colour when nothing is waiting", () => {
     const { container } = renderWithMantine(
-      <InboxButton count={0} onClick={vi.fn()} />,
+      <InboxButton label={LABEL} count={0} onClick={vi.fn()} />,
     );
 
     expect(container.querySelector("svg")).not.toHaveAttribute(
@@ -50,13 +56,17 @@ describe("InboxButton", () => {
   it("caps the badge at 9+", () => {
     // Above nine the exact figure stops mattering: what somebody does
     // about eleven and about forty is the same.
-    renderWithMantine(<InboxButton count={42} onClick={vi.fn()} />);
+    renderWithMantine(
+      <InboxButton label={LABEL} count={42} onClick={vi.fn()} />,
+    );
 
     expect(screen.getByTestId("inbox-count")).toHaveTextContent("9+");
   });
 
   it("tells a screen reader the count as well as showing it", () => {
-    renderWithMantine(<InboxButton count={3} onClick={vi.fn()} />);
+    renderWithMantine(
+      <InboxButton label={LABEL} count={3} onClick={vi.fn()} />,
+    );
 
     expect(
       screen.getByRole("button", {
@@ -66,7 +76,9 @@ describe("InboxButton", () => {
   });
 
   it("says what it is when nothing is waiting", () => {
-    renderWithMantine(<InboxButton count={0} onClick={vi.fn()} />);
+    renderWithMantine(
+      <InboxButton label={LABEL} count={0} onClick={vi.fn()} />,
+    );
 
     expect(
       screen.getByRole("button", {
@@ -78,7 +90,9 @@ describe("InboxButton", () => {
   it("calls back when pressed", async () => {
     const onClick = vi.fn();
     const user = userEvent.setup();
-    renderWithMantine(<InboxButton count={1} onClick={onClick} />);
+    renderWithMantine(
+      <InboxButton label={LABEL} count={1} onClick={onClick} />,
+    );
 
     await user.click(screen.getByRole("button"));
 
