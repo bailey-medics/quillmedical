@@ -1521,6 +1521,46 @@ stack-sync scope="":
     # exactly the same treatment as a single run rather than a second, more
     # hastily written copy of it. It returns rather than exits: in a sweep a
     # worktree that has nothing to do must not stop the ones after it.
+    # Clear out a stack with nothing left to land: move the checkout to the
+    # trunk's tip, delete the merged branches and drop them from the record,
+    # so the next drawing is the ordinary "no stack on this branch".
+    # Returns 0 cleared, 1 the stack is not spent, 2 it could not be cleared.
+    #
+    # The move is `stack-fresh`'s: detached, because another worktree may
+    # hold the trunk, and `--merge`, so uncommitted work comes across.
+    # `branch -d`, not `-D`: it refuses a branch with commits the trunk
+    # does not have, and one left behind costs nothing.
+    clear_spent() {
+        local spent=""
+        spent="$(python3 "{{stack_scripts}}"/stack-status.py --spent 2>/dev/null)" || return 1
+
+        local trunk=""
+        trunk="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||' || true)"
+        trunk="${trunk:-main}"
+        if ! git switch --detach --merge "origin/${trunk}" >/dev/null 2>&1; then
+            echo "  ✗ Stack fully merged, but this checkout could not move to origin/${trunk}." >&2
+            return 2
+        fi
+        local conflicted=""
+        conflicted="$(git diff --name-only --diff-filter=U)"
+        if [ -n "${conflicted}" ]; then
+            echo "  ✗ Stack fully merged, but the uncommitted work overlaps it, in:" >&2
+            echo "${conflicted}" | sed 's/^/      /' >&2
+            echo "    Each file holds both versions between conflict markers." >&2
+            return 2
+        fi
+
+        local name=""
+        while IFS= read -r name; do
+            if [ -n "${name}" ]; then
+                git branch -d "${name}" >/dev/null 2>&1 || true
+            fi
+        done <<< "${spent}"
+        python3 "{{stack_scripts}}"/stack-forget-merged.py >/dev/null 2>&1 || true
+        echo "  Stack fully merged – cleared. Now on origin/${trunk} ($(git rev-parse --short HEAD))."
+        return 0
+    }
+
     sync_one() {
         cd "$1" || return 0
 
@@ -1557,10 +1597,29 @@ stack-sync scope="":
         # stack-forget-merged.py see that such a branch is already in
         # the trunk; it leaves an ordinary merge for --prune to delete.
         git fetch origin --quiet || true
+
+        # A stack whose every branch has merged is cleared here and not
+        # handed to gh-stack, which cannot finish the job: the checkout is
+        # on a merged branch, `main` is usually held by another worktree,
+        # so it stays put, warns, and leaves the spent stack drawn.
+        local cleared=0
+        clear_spent || cleared=$?
+        if [ "${cleared}" -ne 1 ]; then
+            return "${cleared}"
+        fi
+
         python3 "{{stack_scripts}}"/stack-forget-merged.py || return 1
         if ! gh stack sync --prune; then
             echo "  ✗ gh stack sync failed here; leaving this worktree alone." >&2
             return 1
+        fi
+
+        # Asked again: the sync is what records a merge, so a stack whose
+        # last pull request landed since the previous run is spent only now.
+        cleared=0
+        clear_spent || cleared=$?
+        if [ "${cleared}" -ne 1 ]; then
+            return "${cleared}"
         fi
 
         # `--prune` deletes the local branch of a merged pull request, which is
@@ -1920,6 +1979,11 @@ stack-watch:
         # branch that has not been submitted yet. Counting those made every
         # sync here end in "did not finish cleanly", and a message shown
         # every time is one nobody reads the day it matters.
+        #
+        # Nor is a sync that ends with the stack cleared a failure,
+        # whatever it warned of on the way: the last branch merged, and
+        # gh's complaint about the merged branch it found checked out
+        # describes a state that has just been put right.
         recipe_status=0
         recipe_output=$(just "${recipe[@]}" 2>&1) || recipe_status=$?
         if [ "${recipe_status}" -eq 0 ] \
@@ -1927,6 +1991,9 @@ stack-watch:
                 | grep -E '^[[:space:]]*(⚠|✗) ' \
                 | grep -vqE 'Could not update local main|has no PR$'; then
             recipe_status=1
+            if printf '%s\n' "${recipe_output}" | grep -q 'Stack fully merged – cleared'; then
+                recipe_status=0
+            fi
         fi
         if [ "${recipe_status}" -ne 0 ]; then
             stop_dots
