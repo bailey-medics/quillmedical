@@ -107,3 +107,57 @@ PY
     [ "$status" -eq 0 ]
     [ "$output" = "fast" ]
 }
+
+# Prints "name=number" for each numbered branch, from a JSON list of
+# branches written top of the stack first, as the script holds them.
+numbers_of() {
+    python3 - "$SCRIPT" "$1" <<'PY'
+import importlib.util, json, sys
+
+spec = importlib.util.spec_from_file_location("stack_status", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+sys.modules["stack_status"] = module
+spec.loader.exec_module(module)
+
+branches = [
+    module.Branch(
+        name=entry["name"],
+        is_current=False,
+        is_merged=entry.get("merged", False),
+        is_queued=False,
+        needs_rebase=False,
+    )
+    for entry in json.loads(sys.argv[2])
+]
+for name, number in module.number_branches(branches).items():
+    print(f"{name}={number}")
+PY
+}
+
+@test "branches are numbered from the bottom of the stack" {
+    # A new branch goes on top, so counting from the bottom leaves the
+    # numbers already on screen where they were.
+    run numbers_of '[{"name": "top"}, {"name": "middle"}, {"name": "bottom"}]'
+    [ "$status" -eq 0 ]
+    [ "$output" = "$(printf 'bottom=1\nmiddle=2\ntop=3')" ]
+}
+
+@test "a merged branch takes no number" {
+    run numbers_of '[{"name": "top"}, {"name": "landed", "merged": true}]'
+    [ "$status" -eq 0 ]
+    [ "$output" = "top=1" ]
+}
+
+@test "a tall stack runs on into two-digit numbers" {
+    # The watch waits for a second digit when one could follow, so a
+    # tenth and eleventh branch must carry a number to reach.
+    run numbers_of '[
+        {"name": "k"}, {"name": "j"}, {"name": "i"}, {"name": "h"},
+        {"name": "g"}, {"name": "f"}, {"name": "e"}, {"name": "d"},
+        {"name": "c"}, {"name": "b"}, {"name": "a"}
+    ]'
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"a=1"* ]]
+    [[ "$output" == *"j=10"* ]]
+    [[ "$output" == *"k=11"* ]]
+}

@@ -1258,9 +1258,19 @@ stack-move direction="":
         top|t)            gh stack top ;;
         bottom|b)         gh stack bottom ;;
         trunk|main)       gh stack trunk ;;
+        [1-9]|[1-9][0-9])
+            # A branch by its number, 1 at the bottom, as `stack-watch`
+            # draws them. The script owns the numbering so that the number
+            # on screen and the branch it reaches cannot drift apart.
+            if ! target="$(python3 "{{stack_scripts}}"/stack-status.py --branch-at "{{direction}}")"; then
+                echo "✗ No open branch numbered {{direction}} in this stack." >&2
+                exit 1
+            fi
+            git switch "${target}"
+            ;;
         *)
             echo "✗ Unknown direction: {{direction}}" >&2
-            echo "  Use: up, down, top, bottom, trunk – or none for a picker." >&2
+            echo "  Use: up, down, top, bottom, trunk, a branch number – or none for a picker." >&2
             exit 1
             ;;
     esac
@@ -1726,7 +1736,7 @@ stack-watch:
         # drops colour when it is not a terminal. `|| true` for the same
         # reason `stack-log` has it: "no stack here" is an ordinary answer,
         # and the loop should keep drawing it rather than dying on it.
-        drawn=$(python3 "{{stack_scripts}}"/stack-status.py --prs --colour 2>&1 || true)
+        drawn=$(python3 "{{stack_scripts}}"/stack-status.py --prs --numbered --colour 2>&1 || true)
 
         # Stop the dots a keypress started, further down.
         stop_dots
@@ -1750,16 +1760,16 @@ stack-watch:
         # spelling check reads as fragments.
         # cspell:disable
         printf '  updated %s – %b\n' "$(date '+%H:%M:%S')" \
-            "${k}r${n}eady all – ${k}s${n}ync – ${k}u${n}p/${k}d${n}own/${k}t${n}op/${k}b${n}ottom stack – re${k}f${n}resh – ${k}ctrl-c${n} to stop"
+            "${k}r${n}eady all – ${k}s${n}ync – ${k}number${n} branch – re${k}f${n}resh – ${k}ctrl-c${n} to stop"
         # cspell:enable
         printf '%s\n' "${drawn}"
 
         # The minute's wait doubles as the keyboard: one keypress ends it
         # early. `r` takes every open pull request in the stack out of
         # draft, which is `stack-ready` and nothing more; `s` is
-        # `stack-sync`, for when a pull request below has merged; `u`, `d`,
-        # `t` and `b` are `stack-move` up, down, to the top and to the
-        # bottom, which changes the branch checked out; `f` refreshes the
+        # `stack-sync`, for when a pull request below has merged; a number
+        # is `stack-move` to the branch drawn with it, which changes the
+        # branch checked out; `f` refreshes the
         # stack now rather than at the end of the minute. Any other key
         # does nothing, so a stray keypress in the wrong window costs no
         # call to GitHub.
@@ -1787,9 +1797,9 @@ stack-watch:
         # for what is left of the minute, counted against a deadline so
         # that leaning on the keyboard cannot put the redraw off for ever.
         # An escape opens the sequence an arrow or function key sends, and
-        # its tail can end in a listed letter (the down arrow is `ESC [ B`,
-        # which would move the checkout to the bottom of the stack), so
-        # the rest of the sequence is drained before reading again.
+        # its tail can hold a listed key (page down is `ESC [ 6 ~`, which
+        # would check out the sixth branch), so the rest of the sequence
+        # is drained before reading again.
         key=""
         deadline=$((SECONDS + 60))
         while true; do
@@ -1805,7 +1815,7 @@ stack-watch:
                 break
             fi
             case "${key}" in
-                r|R|s|S|u|U|d|D|t|T|b|B|f|F)
+                r|R|s|S|[1-9]|f|F)
                     break
                     ;;
                 $'\e')
@@ -1829,21 +1839,41 @@ stack-watch:
                 recipe=(stack-sync)
                 start_dots "s · syncing the stack"
                 ;;
-            u|U)
-                recipe=(stack-move up)
-                start_dots "u · moving one up the stack"
-                ;;
-            d|D)
-                recipe=(stack-move down)
-                start_dots "d · moving one down the stack"
-                ;;
-            t|T)
-                recipe=(stack-move top)
-                start_dots "t · moving to the top of the stack"
-                ;;
-            b|B)
-                recipe=(stack-move bottom)
-                start_dots "b · moving to the bottom of the stack"
+            [1-9])
+                # One digit is the whole number unless the stack is tall
+                # enough for a second: with eleven branches a `1` may be
+                # branch 1 or the start of 10 or 11. Only then is there a
+                # wait, five seconds, for the second digit; any other key,
+                # or none, settles on the first. Numbers run on without a
+                # gap, so "is there a branch ten times this one" answers
+                # whether any two-digit number opens with this digit.
+                number="${key}"
+                if python3 "{{stack_scripts}}"/stack-status.py --branch-at "$((key * 10))" >/dev/null 2>&1; then
+                    printf '  %s · a second digit within 5s for %s0 and up, or any other key for branch %s ' \
+                        "${key}" "${key}" "${key}"
+                    second=""
+                    read -rsn1 -t 5 second || true
+                    echo ""
+                    case "${second}" in
+                        [0-9]) number="${key}${second}" ;;
+                    esac
+                fi
+                # A number with no branch behind it is said in a line, not
+                # handed to the recipe: its refusal comes back with a
+                # trace round it and is then held as a failure to be read.
+                # The line stays up for the few seconds the refresh takes.
+                # So is the branch already checked out: there is nothing
+                # to move to, and "checking out" would say otherwise.
+                if ! target="$(python3 "{{stack_scripts}}"/stack-status.py --branch-at "${number}" 2>/dev/null)"; then
+                    start_dots "${number} · there is no branch ${number}"
+                    continue
+                fi
+                if [ "${target}" = "$(git branch --show-current)" ]; then
+                    start_dots "${number} · already on branch ${number}"
+                    continue
+                fi
+                recipe=(stack-move "${number}")
+                start_dots "${number} · checking out branch ${number}"
                 ;;
             *)
                 # Only `f` reaches here: the read above drops the rest.
