@@ -45,7 +45,7 @@ import "./styles/touch-targets.css";
 import "./styles/disabled-controls.css";
 import ReactDOM from "react-dom/client";
 
-import { MantineProvider } from "@mantine/core";
+import { Center, MantineProvider } from "@mantine/core";
 import {
   createBrowserRouter,
   Navigate,
@@ -62,6 +62,7 @@ import {
 import { persistFormState } from "@lib/compat-generation";
 import { installGlobalErrorReporting } from "@lib/error-reporting/globalHandlers";
 import RouteTracking from "@lib/error-reporting/RouteTracking";
+import FeaturePrefetch from "@lib/FeaturePrefetch";
 import { installPromptCapture } from "@lib/pwa/installPromptEvent";
 import { markInstallFinished } from "@lib/pwa/installPromptSchedule";
 
@@ -71,9 +72,11 @@ import {
   loadClinical,
   loadPassport,
   loadSafety,
+  loadTeaching,
 } from "./featureChunks";
 import { lazyFrom } from "@lib/lazyRoute";
 import ErrorBoundary from "@/components/error-boundary/ErrorBoundary";
+import LoadingSpinner from "@/components/loading-spinner";
 import RouteErrorFallback from "@/components/error-boundary/RouteErrorFallback";
 import { SCOPED_MANAGER_IDS } from "@/types/cbac";
 import NotFound from "./pages/NotFound";
@@ -107,16 +110,8 @@ import VerifyEmailPendingPage from "./pages/VerifyEmailPendingPage";
 import HomeRedirect from "./pages/HomeRedirect";
 
 // Teaching pages
-import TeachingDashboard from "./features/teaching/pages/TeachingDashboard";
-import AssessmentAttempt from "./features/teaching/pages/AssessmentAttempt";
-import AssessmentResultPage from "./features/teaching/pages/AssessmentResultPage";
-import AssessmentQuestionResultsPage from "./features/teaching/pages/AssessmentQuestionResultsPage";
-import SyncStatus from "./features/teaching/pages/SyncStatus";
 
 // Learning pages
-import TeachingModuleMain from "./features/teaching/pages/TeachingModuleMain";
-import LearningDashboard from "./features/teaching/pages/LearningDashboard";
-import SlideReader from "./features/teaching/pages/SlideReader";
 
 const routes: RouteObject[] = [
   // Public routes (login, register) – placed before protected routes so
@@ -587,6 +582,8 @@ const routes: RouteObject[] = [
             )),
           },
           {
+            // The practice switches hold their changes until "Save changes" is
+            // pressed, so a silent reload would drop them. Not safe to reload.
             path: "organisations/:id/members/:userId",
             lazy: lazyFrom(loadAdmin, "MemberPracticePage", (Page) => (
               <RequireCompetency
@@ -598,7 +595,6 @@ const routes: RouteObject[] = [
                 <Page />
               </RequireCompetency>
             )),
-            handle: { safeForReload: true },
           },
           {
             // Adding a site to an organisation is administering the
@@ -655,6 +651,8 @@ const routes: RouteObject[] = [
             lazy: lazyFrom(loadAdmin, "AddStaffToSitePage"),
           },
           {
+            // The practice switches hold their changes until "Save changes" is
+            // pressed, so a silent reload would drop them. Not safe to reload.
             path: "sites/:id/members/:userId",
             lazy: lazyFrom(loadAdmin, "MemberPracticePage", (Page) => (
               <RequireCompetency
@@ -666,7 +664,6 @@ const routes: RouteObject[] = [
                 <Page />
               </RequireCompetency>
             )),
-            handle: { safeForReload: true },
           },
           // Operator-only: feedback comes from every organisation and may
           // hold patient data, so reading it is operating the deployment
@@ -755,6 +752,12 @@ const routes: RouteObject[] = [
 
   // Teaching routes – all use TeachingLayout (not MainLayout).
   // Shared layout route provides RequireAuth + RequireFeature guards once.
+  //
+  // One lazy chunk for all the learner pages,
+  // features/teaching/teachingChunk.ts, and it must stay one. The exam and
+  // its result cannot safely reload, so nothing may be fetched between
+  // starting an attempt and seeing the result: with one chunk the result
+  // page is already in memory when the exam begins.
   {
     path: "/teaching",
     element: (
@@ -783,37 +786,43 @@ const routes: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <TeachingDashboard />,
+        lazy: lazyFrom(loadTeaching, "TeachingDashboard"),
         handle: { safeForReload: true },
       },
       {
         path: ":bankId",
-        element: <TeachingModuleMain />,
+        lazy: lazyFrom(loadTeaching, "TeachingModuleMain"),
         handle: { safeForReload: true },
       },
       {
         path: "learn",
-        element: <LearningDashboard />,
+        lazy: lazyFrom(loadTeaching, "LearningDashboard"),
         handle: { safeForReload: true },
       },
       { path: "learn/:moduleId", element: <Navigate to="slide/0" replace /> },
       {
         path: "learn/:moduleId/slide/:slideIndex",
-        element: <SlideReader />,
+        lazy: lazyFrom(loadTeaching, "SlideReader"),
         handle: { safeForReload: true },
       },
       // In-progress exam attempt - never safe to silently reload.
-      { path: "assessment/:id", element: <AssessmentAttempt /> },
+      {
+        path: "assessment/:id",
+        lazy: lazyFrom(loadTeaching, "AssessmentAttempt"),
+      },
       // Reads location.state.fromExam - not reconstructible from URL alone.
-      { path: "assessment/:id/result", element: <AssessmentResultPage /> },
+      {
+        path: "assessment/:id/result",
+        lazy: lazyFrom(loadTeaching, "AssessmentResultPage"),
+      },
       {
         path: "assessment/:id/question-results",
-        element: <AssessmentQuestionResultsPage />,
+        lazy: lazyFrom(loadTeaching, "AssessmentQuestionResultsPage"),
         handle: { safeForReload: true },
       },
       {
         path: "sync",
-        element: <SyncStatus />,
+        lazy: lazyFrom(loadTeaching, "SyncStatus"),
         handle: { safeForReload: true },
       },
     ],
@@ -852,13 +861,30 @@ const routes: RouteObject[] = [
 // pages, the 404 and the whole /teaching tree – those reported errors with no
 // route at all. Declared here, a tree added later inherits it.
 //
+// `FeaturePrefetch` sits here for the same reason: it fetches the other
+// features' chunks in the background and must see every tree's routes.
+//
 // The same goes for `errorElement`. A lazy chunk that cannot be fetched
 // rejects inside the router, which no <ErrorBoundary> in a layout can
 // catch; without this the router shows its own developer screen.
 const router = createBrowserRouter([
   {
-    element: <RouteTracking />,
+    element: (
+      <>
+        <FeaturePrefetch />
+        <RouteTracking />
+      </>
+    ),
     errorElement: <RouteErrorFallback />,
+    // Shown on a cold load of a lazy route while its chunk is in flight.
+    // Without it the router renders nothing at all until the chunk
+    // arrives. The same spinner RequireAuth shows next, so the two read
+    // as one wait.
+    hydrateFallbackElement: (
+      <Center mih="60dvh">
+        <LoadingSpinner />
+      </Center>
+    ),
     children: routes,
   },
 ]);

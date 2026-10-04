@@ -76,11 +76,27 @@ export default function ConfirmModal({
     }
   }, [onAccept, onClose]);
 
-  const handleTransitionEnd = useCallback(() => {
-    if (!opened) {
-      setLoading(false);
-    }
-  }, [opened]);
+  // `loading` is left on after a successful accept, so the button does not
+  // flick back to its resting label while the modal fades out. It must be
+  // off again by the next time the modal opens, and the same instance is
+  // usually reused: its parent keeps it mounted and only flips `opened`.
+  //
+  // Two resets, because the first has been missed before. This used to
+  // hang off `onTransitionEnd`, which Mantine's Modal does not have: it
+  // fell through to the DOM as the browser's `transitionend` event, and
+  // that races the timer Mantine unmounts the modal on. When the unmount
+  // won, or there was no animation at all (reduced motion), nothing
+  // cleared `loading` and the button came back disabled, reading
+  // "Confirming…", until the page was left.
+  const handleExited = useCallback(() => setLoading(false), []);
+
+  // Adjusted during render rather than in an effect, so the modal never
+  // paints open with the stale state.
+  const [wasOpened, setWasOpened] = useState(opened);
+  if (opened !== wasOpened) {
+    setWasOpened(opened);
+    if (opened) setLoading(false);
+  }
 
   return (
     <Modal
@@ -91,7 +107,7 @@ export default function ConfirmModal({
       withCloseButton={false}
       centered
       size="lg"
-      onTransitionEnd={handleTransitionEnd}
+      onExitTransitionEnd={handleExited}
     >
       <Stack gap="md" py="md">
         {icon && (

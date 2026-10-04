@@ -199,6 +199,7 @@ function makeRouter(safeForReload: boolean): RouterLike & {
   const state: RouterLike["state"] = {
     matches: [{ route: { handle: { safeForReload } } }],
     location: { state: null },
+    navigation: { state: "idle" },
   };
   let listener: (() => void) | undefined;
 
@@ -326,12 +327,14 @@ describe("wireUpdateChecks", () => {
 function makePreloadRouter(
   safeForReload: boolean,
   locationState: unknown = null,
+  navigationState: string = "idle",
 ): RouterLike {
   return {
     subscribe: vi.fn(() => () => {}),
     state: {
       matches: [{ route: { handle: { safeForReload } } }],
       location: { state: locationState },
+      navigation: { state: navigationState },
     },
   };
 }
@@ -636,6 +639,124 @@ describe("wirePreloadErrorRecovery", () => {
     firePreloadError();
 
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Phase 7 of the lazy-load plan: features are fetched in the background,
+// and a failure there must never look like a failed navigation.
+describe("wirePreloadErrorRecovery, with a background fetch in flight", () => {
+  let storage: ReturnType<typeof makeStorage>;
+  let listeners: Map<string, (event: Event) => void>;
+  let addEventListener: typeof window.addEventListener;
+
+  function firePreloadError(): Event {
+    const event = new Event("vite:preloadError", { cancelable: true });
+    listeners.get("vite:preloadError")?.(event);
+    return event;
+  }
+
+  function wire(router: RouterLike, isBackgroundFetch: () => boolean) {
+    const persist = vi.fn();
+    const reload = vi.fn();
+    const onDeferred = vi.fn();
+    wirePreloadErrorRecovery({
+      router,
+      persist,
+      reload,
+      onDeferred,
+      addEventListener,
+      storage,
+      isBackgroundFetch,
+    });
+    return { persist, reload, onDeferred };
+  }
+
+  beforeEach(() => {
+    storage = makeStorage();
+    listeners = new Map();
+    addEventListener = vi.fn((type: string, listener: unknown) => {
+      listeners.set(type, listener as (event: Event) => void);
+    }) as unknown as typeof window.addEventListener;
+  });
+
+  it("does not reload a safe route when a background fetch fails", () => {
+    const { persist, reload, onDeferred } = wire(
+      makePreloadRouter(true),
+      () => true,
+    );
+
+    const event = firePreloadError();
+
+    expect(reload).not.toHaveBeenCalled();
+    expect(persist).not.toHaveBeenCalled();
+    expect(onDeferred).not.toHaveBeenCalled();
+    // Not prevented: the import must reject so the background fetch can
+    // catch it, not resolve to undefined.
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("does not write the reload-loop guard for a background failure", () => {
+    wire(makePreloadRouter(true), () => true);
+
+    firePreloadError();
+
+    // A guard written here would make the next real failure, within the
+    // minute, defer instead of reload.
+    expect(storage.getItem("quill-preload-reloaded")).toBeNull();
+  });
+
+  it("does nothing at all when one fails during an exam", () => {
+    // assessment/:id is not safeForReload.
+    const { persist, reload, onDeferred } = wire(
+      makePreloadRouter(false),
+      () => true,
+    );
+
+    const event = firePreloadError();
+
+    expect(reload).not.toHaveBeenCalled();
+    expect(persist).not.toHaveBeenCalled();
+    expect(onDeferred).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+    expect(storage.getItem("quill-preload-reloaded")).toBeNull();
+  });
+
+  it("still recovers a navigation that fails while one is in flight", () => {
+    // The router is mid-navigation, so the failure is the click's.
+    const { reload } = wire(
+      makePreloadRouter(true, null, "loading"),
+      () => true,
+    );
+
+    const event = firePreloadError();
+
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("recovers as before when no background fetch is in flight", () => {
+    const { reload } = wire(makePreloadRouter(true), () => false);
+
+    firePreloadError();
+
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  // The third guarantee, which holds with the first two taken away: no
+  // background flag, a real failure, and the exam still is not reloaded.
+  it("never reloads an exam, whatever asked for the chunk", () => {
+    for (const navigationState of ["idle", "loading"]) {
+      const { reload, persist } = wire(
+        makePreloadRouter(false, null, navigationState),
+        () => false,
+      );
+
+      const event = firePreloadError();
+
+      expect(reload, navigationState).not.toHaveBeenCalled();
+      expect(persist, navigationState).not.toHaveBeenCalled();
+      expect(event.defaultPrevented, navigationState).toBe(false);
+    }
   });
 });
 

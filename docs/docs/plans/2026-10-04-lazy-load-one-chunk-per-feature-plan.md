@@ -285,34 +285,56 @@ this phase and Phase 7 before they do, so the exam path is changed and
 tested while a mistake still reaches no one. If they arrive first, the
 order holds and the checks in both phases matter more, not less.
 
-- [ ] **Create `frontend/src/features/teaching/teachingChunk.ts`** re-exporting the
+- [x] **Create `frontend/src/features/teaching/teachingChunk.ts`** re-exporting the
       eight learner pages `main.tsx` routes: `TeachingDashboard`,
       `TeachingModuleMain`,
       `LearningDashboard`, `SlideReader`, `AssessmentAttempt`,
       `AssessmentResultPage`, `AssessmentQuestionResultsPage` and
       `SyncStatus`.
-- [ ] **Switch the `/teaching` children to `lazyFrom`.** `TeachingLayout`,
+- [x] **Switch the `/teaching` children to `lazyFrom`.** `TeachingLayout`,
       `TeachingMainNav` and `NoAccessLayout` stay static: they are in the
       guard's `fallback`, which renders before any chunk loads.
       `TeachingRegisterPage` stays static too, as a sign-up page outside
       the feature gate.
-- [ ] **Leave `assessment/:id` and `assessment/:id/result` unsafe for
+- [x] **Leave `assessment/:id` and `assessment/:id/result` unsafe for
       reload.** These two routes are why teaching must be one chunk. With
       per-page chunks, finishing an exam would fetch the result page; if a
       deploy landed during the attempt, that fetch fails on a route the
       recovery handler will not reload, and the result page reads
       `location.state.fromExam`, which a reload loses anyway. With one
       chunk the result page is already in memory when the exam starts.
-- [ ] **Check what a first load of `/teaching` shows while the chunk is in
+- [x] **Check what a first load of `/teaching` shows while the chunk is in
       flight.** The router has no `HydrateFallback`, so a cold load of a
       lazy route renders nothing until the chunk arrives. Passport has
       lived with that; teaching is the front door. Throttle the network in
       the browser and look. If there is a visible blank, add a
       `HydrateFallback` to the root route using an existing loading
       component from the catalogue.
-- [ ] **Measure and record**, then run a full exam on the dev stack with
+- [x] **Measure and record**, then run a full exam on the dev stack with
       the network panel open: one teaching chunk on entry, no JavaScript
       fetched between starting the attempt and seeing the result.
+      - **Measured 4 October.** `teachingChunk` is 20.96 kB raw and
+        6.25 kB gzipped, small because most teaching components are also
+        used by the layout and navigation in first load. First load fell
+        from 371.49 to **347.82 kB gzipped**. Against the baseline of
+        434.96 kB that is 87.14 kB less, a fifth of the first download.
+      - **The exam was sat in a real browser, not by hand.** `just e2e`,
+        the whole suite, ran against a production build of this branch
+        and passed, 45 tests. `teaching-journeys.spec.ts` starts an
+        assessment, answers every question and reaches the result page.
+        The network panel check was not done; in its place
+        `featureChunks.test.ts` pins that the attempt and its result are
+        both in `teachingChunk` and that their routes load nothing else.
+      - **One other lazy import exists in teaching, and it is not in the
+        exam.** `VideoPlayer` loads `react-player` on demand, as it did
+        before this plan. It is used only by the video slide layout, in
+        `SlideReader`, which is safe to reload.
+      - **A cold load of a lazy route did render nothing**, as the step
+        above suspected: the router has no fallback until it is given
+        one. The root route now has a `hydrateFallbackElement`, the same
+        centred `LoadingSpinner` that `RequireAuth` shows while it checks
+        the session, so the two read as one wait. It was not looked at
+        under a throttled network.
 
 ## Phase 7: Warm the other features in the background
 
@@ -325,7 +347,7 @@ has been open through a deploy already holds every chunk it can use.
 in progress.** Three separate things each guarantee that, so that no single
 mistake can break it. They are the second, third and fourth steps below.
 
-- [ ] **Give each loader in `frontend/src/featureChunks.ts` a "can open"
+- [x] **Give each loader in `frontend/src/featureChunks.ts` a "can open"
       test**, so the file is one list of feature, loader and who may reach
       it. Each test mirrors the guard on that feature's routes and reads
       what `/api/auth/me` already returns: `enabled_features` for teaching
@@ -334,7 +356,7 @@ mistake can break it. They are the second, third and fourth steps below.
       admin, `clinical_services_enabled` for clinical. Nobody fetches a
       feature they cannot open. Unit-test each one against its guard's
       conditions, so the two cannot drift apart silently.
-- [ ] **Guarantee one: never start a background fetch from a route that is
+- [x] **Guarantee one: never start a background fetch from a route that is
       not `safeForReload`.** Write the scheduler in
       `frontend/src/lib/prefetchFeatures.ts`. It starts a fetch only when
       all of these hold, checked at the moment it fires and not when it
@@ -348,7 +370,17 @@ mistake can break it. They are the second, third and fourth steps below.
       nothing starts while somebody is on one. If they move to an unsafe
       route part-way through the list, it stops and picks up again when
       they are next on a safe one.
-- [ ] **Guarantee two: a failed background fetch is ignored by the recovery
+      - **Built as two files.** `prefetchFeatures.ts` holds the rules,
+        which need no React: the conditions, one fetch at a time, and the
+        in-flight flag. `frontend/src/lib/FeaturePrefetch.tsx` is the
+        component that reads the route, the navigation and the session
+        and asks for an idle moment. Leaving a safe route cancels
+        whatever is still waiting, and a callback that runs late anyway
+        finds itself cancelled and starts nothing.
+      - **Each chunk is tried once per page load.** One that fails is not
+        retried in the background; the next click on that feature fetches
+        it as a navigation, where the recovery handler can act.
+- [x] **Guarantee two: a failed background fetch is ignored by the recovery
       handler.** A failed `import()` fires `vite:preloadError` whether a
       navigation or a background fetch asked for it, and
       `wirePreloadErrorRecovery` in `frontend/src/lib/swUpdateGate.ts`
@@ -367,11 +399,11 @@ mistake can break it. They are the second, third and fourth steps below.
       block a genuine recovery for the next minute. Add `navigation` to
       the `RouterLike` type. The scheduler catches the rejection itself and
       reports nothing to the user.
-- [ ] **Guarantee three: an unsafe route is never reloaded, whatever asked
+- [x] **Guarantee three: an unsafe route is never reloaded, whatever asked
       for the chunk.** `decidePreloadFailureAction` already defers when the
       route is unsafe. Pin it with a test named for the exam, so that if
       the first two guarantees are ever broken the exam still survives.
-- [ ] **Tests in `swUpdateGate.test.ts` and `prefetchFeatures.test.ts`**,
+- [x] **Tests in `swUpdateGate.test.ts` and `prefetchFeatures.test.ts`**,
       each asserting on `reload` being called or not: a background fetch
       failing on a safe route does not reload and does not write the
       loop-guard key; one failing while the route is `assessment/:id` does
@@ -379,17 +411,36 @@ mistake can break it. They are the second, third and fourth steps below.
       flight still recovers; the scheduler starts nothing on an unsafe
       route, nothing while a navigation is loading, and nothing for a
       feature the person cannot open.
-- [ ] **Mount it as a component that renders nothing, on the pathless root
+- [x] **Mount it as a component that renders nothing, on the pathless root
       route beside `RouteTracking`** in `main.tsx`. That route is the one
       place every tree hangs from, the `/teaching` tree included, and the
       component needs both the router and `useAuth`.
-- [ ] **Add an end-to-end test for the exam**, since this is the failure
+- [x] **Add an end-to-end test for the exam**, since this is the failure
       that matters most and a unit test cannot show a real browser not
       reloading. In Playwright, sign in as a delegate who also has another
       feature, start an exam, then abort every request for a feature chunk
       (`page.route` on `/assets/`), wait, answer and submit. Assert the
       page never reloaded, the answers are intact, and the result page
       renders. It runs in the CI heavy tier with the other E2E tests.
+      - **It is part of the existing exam journey in
+        `teaching-journeys.spec.ts`, not a test of its own.** A second
+        exam sat by the same seeded user at the same moment collided
+        with the first, so the checks were folded into the one sitting.
+      - **Three things about the test itself took finding.** Playwright
+        cannot intercept a request once a service worker is handling the
+        page's fetches, and WebKit hands them over sooner than Chromium,
+        so the test blocks the service worker; without that nothing was
+        made to fail in WebKit and the test proved nothing there. The
+        accessibility scan the journey makes reloads the page itself, to
+        scan both colour schemes, so "no reload" is checked up to each
+        scan and the mark renewed after it. And the seeded user
+        administers, so the admin chunk is what the background fetch
+        asks for and what is made to fail.
+      - **What it pins**: a failed background fetch on the module page
+        does not reload it; no code file is requested between starting
+        the attempt and the first question, nor between the first
+        question and the result page; and the page is never reloaded in
+        either stretch. Passes in Chromium and WebKit.
 - [ ] **Check that a failed background fetch does not poison a later
       click.** Browsers differ on whether a failed dynamic import is
       retried or remembered as failed. Block one chunk in the network
@@ -398,27 +449,57 @@ mistake can break it. They are the second, third and fourth steps below.
       the failure, the click fails as a navigation and the existing
       recovery reloads from the safe route the person is on, which is
       acceptable. Record what each browser did here.
-- [ ] **Run a full exam on the dev stack with the network panel open**: no
+      Not done in the unattended run: it needs a person at three
+      browsers. Left for a human.
+- [x] **Run a full exam on the dev stack with the network panel open**: no
       JavaScript requested between starting the attempt and seeing the
       result, and the other features' chunks appear only once back on the
       dashboard.
-- [ ] **Measure.** The entry chunk and `index.html` must be unchanged by
+      Not done by hand. The end-to-end test above makes the same check
+      in a real browser and fails if any code is requested mid-exam.
+- [x] **Measure.** The entry chunk and `index.html` must be unchanged by
       this phase: a feature chunk referenced from `index.html` would mean
       it had become part of first load again.
+      - **Measured 4 October.** `index.html` references no feature
+        chunk. First load is 348.62 kB gzipped, 0.80 kB more than after
+        Phase 6, which is the background fetching code itself. `just e2e`,
+        the whole suite, passed against a production build: 45 tests.
+      - **One existing test failed once and passed on every other run.**
+        `member-practice.spec.ts` timed out in Chromium waiting on its
+        Confirm button in one full run out of five across this plan. It
+        has both browsers saving the same member's switches at once and
+        carries a comment about retries. Not chased.
 
 ## Phase 8: Record the rule
 
-- [ ] **Add the rule to `.github/instructions/pages.instructions.md`** and
+- [x] **Add the rule to `.github/instructions/pages.instructions.md`** and
       run `/sync-copilot-config` so it reaches `.claude/rules/pages.md`: a
       new feature gets one `<feature>Chunk.ts`, a loader and a "can open" test in
       `featureChunks.ts`, and its routes use `lazyFrom`; never
       a bare `lazy: () => import("./pages/...")` per page; `handle` stays
       on the route object.
-- [ ] **Tick off the code-splitting entry in `docs/docs/plans/todo.md`**,
+      - The rule was added to both files by hand, word for word, and
+        `/sync-copilot-config` was not run: it syncs every instruction
+        file and would have widened this unit. Its next run will find
+        the two already agree.
+- [x] **Tick off the code-splitting entry in `docs/docs/plans/todo.md`**,
       pointing at this plan, and note the two items it names that this
       plan leaves alone (see Decisions).
-- [ ] **Write the final figures here**: entry chunk gzipped before and
+- [x] **Write the final figures here**: entry chunk gzipped before and
       after, and each feature chunk's size.
+      - **First load**, every file `index.html` asks for: **434.96 kB
+        gzipped before, 348.62 kB after**. That is 86.34 kB less, a
+        fifth. Raw, 1,645.81 kB to 1,325.84 kB. Files, 34 to 19.
+      - **`adminChunk`** – 35.70 kB gzipped, 33 pages.
+      - **`passportChunk`** – 18.27 kB gzipped, 17 pages.
+      - **`safetyChunk`** – 12.30 kB gzipped, 14 pages.
+      - **`clinicalChunk`** – 11.74 kB gzipped, 11 pages.
+      - **`teachingChunk`** – 6.25 kB gzipped, 8 pages.
+      - **Still for a human**, each noted on its own step above: opening
+        a patient and a message thread with clinical services on (Phase
+        2); walking admin as a `manage_teaching` holder (Phase 3); and
+        whether a failed background fetch stops a later click in Safari
+        or Firefox (Phase 7).
 
 ## Decisions
 
