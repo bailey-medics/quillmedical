@@ -149,7 +149,11 @@ arrive.
       services on, to see the chunk fetched once and the pages render.
       Not done in the unattended run that built this phase: it needs a
       browser and a dev stack with clinical services on, and the E2E
-      stack runs with them off. Left for a human before merging.
+      stack runs with them off.
+      - **Postponed, 4 October 2026.** Quill is not running patient
+        systems at present, so there is nowhere this chunk is used and
+        nothing to open. To be done when clinical services are first
+        switched on, before anybody relies on those pages.
 
 ## Phase 3: Admin
 
@@ -495,11 +499,13 @@ mistake can break it. They are the second, third and fourth steps below.
       - **`safetyChunk`** – 12.30 kB gzipped, 14 pages.
       - **`clinicalChunk`** – 11.74 kB gzipped, 11 pages.
       - **`teachingChunk`** – 6.25 kB gzipped, 8 pages.
-      - **Still for a human**, each noted on its own step above: opening
-        a patient and a message thread with clinical services on (Phase
-        2); walking admin as a `manage_teaching` holder (Phase 3); and
-        whether a failed background fetch stops a later click in Safari
-        or Firefox (Phase 7).
+      - **Still for a human**, each noted on its own step above: walking
+        admin as a `manage_teaching` holder (Phase 3), and whether a
+        failed background fetch stops a later click in Safari or Firefox
+        (Phase 7).
+      - **Postponed**: opening a patient and a message thread with
+        clinical services on (Phase 2), until patient systems are
+        running.
 
 ## Decisions
 
