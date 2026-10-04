@@ -1738,6 +1738,11 @@ class Feedback(Base):
         operator_comment: What an operator wrote back, shown to the sender
             beside the status. None until somebody writes one. It may
             quote the message, so it is never logged either.
+        operator_comment_at: When the comment was last written or
+            changed. None while there is none.
+        comment_seen_at: When the sender last opened their feedback page.
+            A reply is waiting on them while there is a comment written
+            since then, or never seen at all.
         created_at: When it was sent.
     """
 
@@ -1773,6 +1778,12 @@ class Feedback(Base):
     )
     operator_comment: Mapped[str | None] = mapped_column(
         String(2000), nullable=True
+    )
+    operator_comment_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    comment_seen_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

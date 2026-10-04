@@ -2,7 +2,7 @@
 
 import logging
 import typing
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -783,3 +783,167 @@ class TestReadingYourOwn:
 
         assert resp.status_code == 200
         assert "items" in resp.json()
+
+
+class TestRepliesWaitingOnTheSender:
+    """A reply waits from when it is written until the sender looks."""
+
+    MINE_SEEN = f"{ENDPOINT}/mine/seen"
+    INBOX = "/api/inbox"
+
+    @pytest.fixture
+    def sent(self, monkeypatch: pytest.MonkeyPatch) -> list[dict[str, object]]:
+        calls: list[dict[str, object]] = []
+        monkeypatch.setattr(
+            "app.feedback.router.send_email",
+            lambda **kwargs: calls.append(kwargs),
+        )
+        return calls
+
+    def _reply(
+        self, db: Session, row: Feedback, text: str = "Fixed, thank you."
+    ) -> None:
+        """Write a reply the way the route does, without signing in twice."""
+        row.operator_comment = text
+        row.operator_comment_at = datetime.now(UTC)
+        db.commit()
+
+    def _waiting(self, client: TestClient) -> int:
+        body = client.get(self.INBOX).json()
+        return sum(
+            item["count"]
+            for item in body["items"]
+            if item["source"] == "feedback_reply"
+        )
+
+    def test_saving_a_comment_stamps_it_and_emails_the_sender(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        test_user: User,
+        sent: list[dict[str, object]],
+    ) -> None:
+        row = add_feedback(db_session, test_user, SECRET_MESSAGE)
+
+        resp = authenticated_superadmin_client.patch(
+            f"{ENDPOINT}/{row.id}", json={"comment": "Fixed: Example-Reply"}
+        )
+
+        assert resp.status_code == 200
+        db_session.refresh(row)
+        assert row.operator_comment_at is not None
+        assert len(sent) == 1
+        assert sent[0]["to"] == test_user.email
+        assert "/feedback" in str(sent[0]["text_body"])
+        for value in sent[0].values():
+            assert "Example-Reply" not in str(value)
+            assert "Example-Leak" not in str(value)
+
+    def test_saving_the_same_comment_again_tells_nobody(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        test_user: User,
+        sent: list[dict[str, object]],
+    ) -> None:
+        row = add_feedback(db_session, test_user, "x")
+        for _ in range(2):
+            authenticated_superadmin_client.patch(
+                f"{ENDPOINT}/{row.id}", json={"comment": "Fixed."}
+            )
+
+        assert len(sent) == 1
+
+    def test_a_change_of_status_alone_tells_nobody(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        test_user: User,
+        sent: list[dict[str, object]],
+    ) -> None:
+        row = add_feedback(db_session, test_user, "x")
+
+        authenticated_superadmin_client.patch(
+            f"{ENDPOINT}/{row.id}", json={"status": "resolved"}
+        )
+
+        assert sent == []
+        db_session.refresh(row)
+        assert row.operator_comment_at is None
+
+    def test_a_reply_waits_until_the_sender_looks(
+        self, client: TestClient, db_session: Session, test_user: User
+    ) -> None:
+        row = add_feedback(db_session, test_user, "x")
+        assert self._waiting(client) == 0
+
+        self._reply(db_session, row)
+        assert self._waiting(client) == 1
+
+        resp = client.post(self.MINE_SEEN)
+
+        assert resp.status_code == 200
+        assert resp.json() == {"seen": 1}
+        assert self._waiting(client) == 0
+
+    def test_a_reply_changed_afterwards_waits_again(
+        self, client: TestClient, db_session: Session, test_user: User
+    ) -> None:
+        row = add_feedback(db_session, test_user, "x")
+        self._reply(db_session, row)
+        client.post(self.MINE_SEEN)
+        assert self._waiting(client) == 0
+
+        db_session.refresh(row)
+        row.operator_comment = "Fixed.\nUpdate: released today."
+        row.operator_comment_at = datetime.now(UTC) + timedelta(seconds=5)
+        db_session.commit()
+
+        assert self._waiting(client) == 1
+
+    def test_looking_stamps_only_the_callers_own(
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_user: User,
+        test_superadmin: User,
+    ) -> None:
+        theirs = add_feedback(db_session, test_superadmin, "x")
+        self._reply(db_session, theirs)
+
+        resp = client.post(self.MINE_SEEN)
+
+        assert resp.json() == {"seen": 0}
+        db_session.refresh(theirs)
+        assert theirs.comment_seen_at is None
+
+    def test_the_lines_say_there_is_a_reply_and_never_what_it_says(
+        self, client: TestClient, db_session: Session, test_user: User
+    ) -> None:
+        row = add_feedback(db_session, test_user, SECRET_MESSAGE, "resolved")
+        self._reply(db_session, row, "Fixed: Example-Reply")
+
+        waiting = client.get(f"{self.INBOX}/items")
+
+        items = waiting.json()["items"]
+        assert [item["source"] for item in items] == ["feedback_reply"]
+        assert items[0]["title"] == "Reply to your feedback"
+        assert items[0]["status"] == "Fixed"
+        assert "Example-Reply" not in waiting.text
+        assert "Example-Leak" not in waiting.text
+
+        client.post(self.MINE_SEEN)
+
+        assert client.get(f"{self.INBOX}/items").json() == {"items": []}
+        done = client.get(f"{self.INBOX}/items", params={"done": True})
+        assert [item["id"] for item in done.json()["items"]] == [row.id]
+
+    def test_looking_needs_a_csrf_token(
+        self, authenticated_client: TestClient
+    ) -> None:
+        assert authenticated_client.post(self.MINE_SEEN).status_code == 403
+
+    def test_looking_refuses_a_signed_out_caller(
+        self, test_client: TestClient
+    ) -> None:
+        assert test_client.post(self.MINE_SEEN).status_code == 401

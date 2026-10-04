@@ -39,6 +39,15 @@ export interface MyFeedbackItem {
   created_at: string;
 }
 
+/**
+ * Say that the caller has opened their feedback page, so that replies
+ * waiting on them stop waiting. Returns how many did.
+ */
+export async function markRepliesSeen(): Promise<number> {
+  const res = await api.post<{ seen: number }>("/feedback/mine/seen", {});
+  return res.seen;
+}
+
 /** The caller's own feedback, newest first. */
 export async function listMyFeedback(): Promise<MyFeedbackItem[]> {
   const res = await api.get<{ items: MyFeedbackItem[] }>("/feedback/mine");

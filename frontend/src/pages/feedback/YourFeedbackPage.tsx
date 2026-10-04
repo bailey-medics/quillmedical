@@ -26,7 +26,12 @@ import {
   EmptyState,
 } from "@/components/typography";
 import { categoryLabel } from "@/lib/feedback/feedbackAdmin";
-import { listMyFeedback, type MyFeedbackItem } from "@/lib/feedback/myFeedback";
+import {
+  listMyFeedback,
+  markRepliesSeen,
+  type MyFeedbackItem,
+} from "@/lib/feedback/myFeedback";
+import { inboxChanged } from "@/lib/inbox/inbox";
 
 export default function YourFeedbackPage() {
   const [items, setItems] = useState<MyFeedbackItem[]>([]);
@@ -36,7 +41,18 @@ export default function YourFeedbackPage() {
   useEffect(() => {
     async function fetchItems() {
       try {
-        setItems(await listMyFeedback());
+        const found = await listMyFeedback();
+        setItems(found);
+        // Opening this page is reading every reply on it, so any that
+        // were waiting on the sender stop waiting, and the envelope in
+        // the ribbon is told. A failure here costs only a stale count.
+        if (found.some((item) => item.comment)) {
+          void markRepliesSeen()
+            .then((seen) => {
+              if (seen > 0) inboxChanged();
+            })
+            .catch(() => undefined);
+        }
       } catch {
         setError(true);
       } finally {

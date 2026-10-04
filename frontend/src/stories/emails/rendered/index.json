@@ -108,6 +108,24 @@
     }
   },
   {
+    "id": "feedback-reply",
+    "label": "Feedback reply",
+    "quill": {
+      "file": "feedback-reply--quill.html",
+      "subject": "Your feedback has a reply",
+      "preheader": "Open Quill to read it.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "feedback-reply--ldd.html",
+      "subject": "Your feedback has a reply",
+      "preheader": "Open Quill to read it.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
     "id": "certificate",
     "label": "EoEETA certificate",
     "quill": {

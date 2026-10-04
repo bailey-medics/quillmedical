@@ -18,6 +18,7 @@ and links to it, and leaves the words in Quill, for the same reason. See
 """
 
 import logging
+from datetime import UTC, datetime
 
 from fastapi import (
     APIRouter,
@@ -26,7 +27,7 @@ from fastapi import (
     HTTPException,
     Request,
 )
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.analytics.router import (
@@ -45,6 +46,7 @@ from app.deps import (
 from app.email.render import render_email, send_args
 from app.email_send import send_email
 from app.feedback.labels import CATEGORY_LABELS
+from app.feedback.replies import reply_is_unseen
 from app.models import Feedback, User
 from app.rate_limit import limiter
 from app.schemas.feedback import (
@@ -52,6 +54,7 @@ from app.schemas.feedback import (
     FeedbackIn,
     FeedbackItemOut,
     FeedbackListOut,
+    FeedbackSeenOut,
     FeedbackStatus,
     FeedbackUpdateIn,
     MyFeedbackItemOut,
@@ -111,6 +114,28 @@ def _notify_operator(
         # tell but the log. The id only, as everywhere in this module.
         logger.exception(
             "feedback notice not sent", extra={"feedback_id": feedback_id}
+        )
+
+
+def _notify_sender(*, to: str, feedback_id: int) -> None:
+    """Email somebody that their feedback has a reply.
+
+    Run as a background task. It says there is a reply and links to their
+    feedback page. Neither the reply nor what they wrote goes in it. A
+    failure is logged and swallowed, as in :func:`_notify_operator`: the
+    reply is saved, and they will see it when they next look.
+    """
+    try:
+        rendered = render_email(
+            "feedback_reply.html.j2",
+            "quill",
+            {"url": f"{settings.FRONTEND_URL}/feedback"},
+        )
+        send_email(to=to, **send_args(rendered))
+    except Exception:
+        logger.exception(
+            "feedback reply notice not sent",
+            extra={"feedback_id": feedback_id},
         )
 
 
@@ -264,6 +289,34 @@ def list_my_feedback(
     )
 
 
+# Beside `/mine`, and before `/{feedback_id}` for the same reason.
+@router.post(
+    "/mine/seen",
+    response_model=FeedbackSeenOut,
+    dependencies=[DEP_REQUIRE_CSRF],
+)
+def mark_my_replies_seen(
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> FeedbackSeenOut:
+    """Record that the caller has opened their feedback page.
+
+    Every reply waiting on them stops waiting: the page shows them all at
+    once, so seeing it is seeing each. Only ever their own rows. A reply
+    changed afterwards waits again.
+    """
+    result = db.execute(
+        update(Feedback)
+        .where(Feedback.user_id == current_user.id, reply_is_unseen())
+        .values(comment_seen_at=datetime.now(UTC))
+    )
+    # An UPDATE gives a cursor result, which has the count; the type
+    # SQLAlchemy declares for `execute` is the wider one. As in the
+    # org_units router.
+    seen = int(result.rowcount or 0)  # type: ignore[attr-defined]
+    return FeedbackSeenOut(seen=seen)
+
+
 def _require_feedback(db: Session, feedback_id: int) -> Feedback:
     """Return the feedback, or refuse with a 404."""
     feedback = db.get(Feedback, feedback_id)
@@ -293,6 +346,7 @@ def get_feedback(
 def update_feedback(
     feedback_id: int,
     body: FeedbackUpdateIn,
+    background_tasks: BackgroundTasks,
     operator: User = DEP_REQUIRE_OPERATOR,
     db: Session = _DEP_SESSION,
 ) -> FeedbackItemOut:
@@ -306,13 +360,21 @@ def update_feedback(
     The comment is shown to the sender on their own feedback page. It is
     not logged, for the reason the message is not: an operator answering
     a report will quote it. The log says only that one was written.
+
+    A comment that is new or changed waits on the sender until they next
+    open their feedback page, and they are emailed that there is one.
     """
     feedback = _require_feedback(db, feedback_id)
     changed = body.model_fields_set
     if body.status is not None:
         feedback.status = body.status
-    if "comment" in changed:
+    replied = False
+    if "comment" in changed and body.comment != feedback.operator_comment:
         feedback.operator_comment = body.comment
+        feedback.operator_comment_at = (
+            datetime.now(UTC) if body.comment is not None else None
+        )
+        replied = body.comment is not None
     db.flush()
     logger.info(
         "feedback updated",
@@ -323,4 +385,9 @@ def update_feedback(
             "changed_by": operator.id,
         },
     )
+    sender = feedback.user
+    if replied and sender is not None and sender.email:
+        background_tasks.add_task(
+            _notify_sender, to=sender.email, feedback_id=feedback.id
+        )
     return _item(feedback)

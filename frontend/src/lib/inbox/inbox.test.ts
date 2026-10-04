@@ -53,6 +53,12 @@ describe("inboxItemHref", () => {
   it("gives the page a piece of feedback is dealt with on", () => {
     expect(inboxItemHref(item)).toBe("/admin/feedback/7");
   });
+
+  it("sends a reply to the sender's own feedback page", () => {
+    expect(inboxItemHref({ ...item, source: "feedback_reply" })).toBe(
+      "/feedback",
+    );
+  });
 });
 
 describe("getInboxItems", () => {

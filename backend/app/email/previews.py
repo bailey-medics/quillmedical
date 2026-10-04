@@ -193,6 +193,12 @@ def previews() -> list[Preview]:
             },
         ),
         Preview(
+            id="feedback-reply",
+            label="Feedback reply",
+            template="feedback_reply.html.j2",
+            context={"url": "https://quill-medical.com/feedback"},
+        ),
+        Preview(
             id="certificate",
             label="EoEETA certificate",
             template="teaching_certificate.html.j2",
