@@ -9,7 +9,14 @@ anything the other would refuse.
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
+from pydantic.json_schema import SkipJsonSchema
 
 from app.schemas.analytics import (
     ERROR_CODE_PATTERN,
@@ -27,6 +34,10 @@ from app.schemas.analytics import (
 #: Longest message accepted. Room for a careful description of what went
 #: wrong, and a bound on what one request can store.
 MAX_MESSAGE = 5000
+
+#: Longest comment an operator may write back. A few sentences saying what
+#: was done, not a second report.
+MAX_COMMENT = 2000
 
 #: What the sender may say the feedback is about. Kept in step with
 #: ``FEEDBACK_CATEGORIES`` in ``app.models`` by a test.
@@ -89,10 +100,12 @@ class FeedbackItemOut(BaseModel):
 
     Carries the message, so only an operator route returns this shape.
     ``sender`` is the username, or None once that user has been deleted.
+    ``comment`` is what an operator wrote back, or None if nobody has.
     """
 
     id: int
     status: FeedbackStatus
+    comment: str | None
     category: FeedbackCategory | None
     message: str
     sender: str | None
@@ -115,12 +128,14 @@ class FeedbackListOut(BaseModel):
 class MyFeedbackItemOut(BaseModel):
     """One piece of the caller's own feedback, as they see it.
 
-    Only what they wrote and where it has got to. None of the context
-    captured alongside it: they did not type that, and do not need it back.
+    Only what they wrote, where it has got to and what an operator wrote
+    back. None of the context captured alongside it: they did not type
+    that, and do not need it back.
     """
 
     id: int
     status: FeedbackStatus
+    comment: str | None
     category: FeedbackCategory | None
     message: str
     created_at: datetime
@@ -132,9 +147,41 @@ class MyFeedbackListOut(BaseModel):
     items: list[MyFeedbackItemOut]
 
 
-class FeedbackStatusIn(BaseModel):
-    """Move a piece of feedback to another status. Nothing else changes."""
+class FeedbackUpdateIn(BaseModel):
+    """An operator's answer to a piece of feedback: a status, a comment
+    or both.
+
+    Each is left alone unless the body names it, so the status select and
+    the comment box save separately. ``comment`` as null or blank removes
+    the comment. What the sender wrote is not here, so it cannot be edited.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
-    status: FeedbackStatus
+    # None stands for "not named" here and is refused when sent, so it is
+    # kept out of the published schema. Left in, the schema wraps the
+    # statuses in an anyOf, and the breaking-change check reads that as
+    # every status having been removed from the request.
+    status: FeedbackStatus | SkipJsonSchema[None] = None
+    comment: str | None = Field(default=None, max_length=MAX_COMMENT)
+
+    @field_validator("comment")
+    @classmethod
+    def _comment_trimmed(cls, value: str | None) -> str | None:
+        """Trim the comment, and store a blank one as no comment."""
+        if value is None:
+            return None
+        return value.strip() or None
+
+    @model_validator(mode="after")
+    def _changes_something(self) -> "FeedbackUpdateIn":
+        """Refuse a body that names neither field, or a null status.
+
+        ``status`` is optional so the comment can be saved alone, but
+        the column is not nullable: naming it means giving one.
+        """
+        if not self.model_fields_set:
+            raise ValueError("give a status, a comment or both")
+        if "status" in self.model_fields_set and self.status is None:
+            raise ValueError("status must not be null")
+        return self

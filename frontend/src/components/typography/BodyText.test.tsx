@@ -17,4 +17,20 @@ describe("BodyText", () => {
     renderWithMantine(<BodyText>Paragraph</BodyText>);
     expect(screen.getByText("Paragraph").tagName).toBe("P");
   });
+
+  it("collapses line breaks unless asked to keep them", () => {
+    renderWithMantine(<BodyText>{"First line\nSecond line"}</BodyText>);
+    expect(screen.getByText("First line Second line")).not.toHaveStyle({
+      whiteSpace: "pre-wrap",
+    });
+  });
+
+  it("keeps line breaks with preserveLines", () => {
+    renderWithMantine(
+      <BodyText preserveLines>{"First line\nSecond line"}</BodyText>,
+    );
+    expect(screen.getByText("First line Second line")).toHaveStyle({
+      whiteSpace: "pre-wrap",
+    });
+  });
 });

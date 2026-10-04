@@ -6,7 +6,8 @@
  * somebody who reported a broken case can see it was fixed, and so has a
  * reason to report the next one.
  *
- * Read-only. There is no reply channel yet; the status is the answer.
+ * Read-only. The status is the answer, with a comment from whoever dealt
+ * with it when they wrote one. The sender cannot reply to that here.
  * Reached from links in the feedback modal, not the sidebar – sending is
  * the sidebar's job, and it happens far more often than checking.
  */
@@ -18,7 +19,12 @@ import FeedbackStatusBadge from "@/components/badge/FeedbackStatusBadge";
 import FormattedDate from "@/components/data/Date";
 import ErrorState from "@/components/error-state/ErrorState";
 import PageHeader from "@/components/page-header";
-import { BodyText, BodyTextInline, EmptyState } from "@/components/typography";
+import {
+  BodyText,
+  BodyTextBold,
+  BodyTextInline,
+  EmptyState,
+} from "@/components/typography";
 import { categoryLabel } from "@/lib/feedback/feedbackAdmin";
 import { listMyFeedback, type MyFeedbackItem } from "@/lib/feedback/myFeedback";
 
@@ -84,7 +90,13 @@ export default function YourFeedbackPage() {
                 </Group>
                 <FeedbackStatusBadge status={item.status} audience="sender" />
               </Group>
-              <BodyText>{item.message}</BodyText>
+              <BodyText preserveLines>{item.message}</BodyText>
+              {item.comment && (
+                <Stack gap="xs">
+                  <BodyTextBold>Our reply</BodyTextBold>
+                  <BodyText preserveLines>{item.comment}</BodyText>
+                </Stack>
+              )}
             </Stack>
           </BaseCard>
         ))

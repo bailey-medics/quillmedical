@@ -11,9 +11,11 @@ from sqlalchemy.orm import Session
 
 from app.models import FEEDBACK_CATEGORIES, FEEDBACK_STATUSES, Feedback, User
 from app.schemas.feedback import (
+    MAX_COMMENT,
     MAX_MESSAGE,
     FeedbackCategory,
     FeedbackStatus,
+    FeedbackUpdateIn,
 )
 
 ENDPOINT = "/api/feedback"
@@ -219,6 +221,19 @@ def test_schema_categories_match_the_model() -> None:
     assert set(typing.get_args(FeedbackCategory)) == set(FEEDBACK_CATEGORIES)
 
 
+def test_update_schema_still_lists_the_statuses() -> None:
+    """``status`` is optional, but its statuses stay a plain list.
+
+    The breaking-change check compares this schema with the one on
+    ``main``. A nullable ``status`` would hide the list inside an anyOf,
+    which it reports as every status having been removed.
+    """
+    schema = FeedbackUpdateIn.model_json_schema()
+
+    assert schema["properties"]["status"]["enum"] == list(FEEDBACK_STATUSES)
+    assert "status" not in schema.get("required", [])
+
+
 def test_schema_statuses_match_the_model() -> None:
     assert set(typing.get_args(FeedbackStatus)) == set(FEEDBACK_STATUSES)
 
@@ -404,6 +419,32 @@ class TestChangingStatus:
         db_session.refresh(row)
         assert row.message == "original"
 
+    def test_refuses_a_null_status(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+    ) -> None:
+        row = add_feedback(db_session, None, "x")
+
+        resp = authenticated_superadmin_client.patch(
+            f"{ENDPOINT}/{row.id}", json={"status": None}
+        )
+
+        assert resp.status_code == 422
+
+    def test_refuses_a_body_that_changes_nothing(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+    ) -> None:
+        row = add_feedback(db_session, None, "x")
+
+        resp = authenticated_superadmin_client.patch(
+            f"{ENDPOINT}/{row.id}", json={}
+        )
+
+        assert resp.status_code == 422
+
     def test_says_not_found_for_a_missing_id(
         self, authenticated_superadmin_client: TestClient
     ) -> None:
@@ -425,6 +466,160 @@ class TestChangingStatus:
         assert resp.status_code == 403
         db_session.refresh(row)
         assert row.status == "new"
+
+
+class TestCommenting:
+    def test_saves_a_comment_and_leaves_the_status_alone(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        test_user: User,
+    ) -> None:
+        row = add_feedback(
+            db_session, test_user, "Captions lag", status="acknowledged"
+        )
+
+        resp = authenticated_superadmin_client.patch(
+            f"{ENDPOINT}/{row.id}",
+            json={"comment": "  Fixed in the next release.  "},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["comment"] == "Fixed in the next release."
+        assert resp.json()["status"] == "acknowledged"
+        db_session.refresh(row)
+        assert row.operator_comment == "Fixed in the next release."
+        assert row.status == "acknowledged"
+        assert row.message == "Captions lag"
+
+    def test_keeps_the_line_breaks_inside_a_comment(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+    ) -> None:
+        """An update is added as a new line, so the lines are the content."""
+        row = add_feedback(db_session, None, "x")
+        comment = "We will look into this.\nUpdate 05/10/26: fixed."
+
+        resp = authenticated_superadmin_client.patch(
+            f"{ENDPOINT}/{row.id}", json={"comment": f"{comment}\n"}
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["comment"] == comment
+
+    def test_changing_the_status_leaves_the_comment_alone(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+    ) -> None:
+        row = add_feedback(db_session, None, "x")
+        row.operator_comment = "Looking into it."
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.patch(
+            f"{ENDPOINT}/{row.id}", json={"status": "resolved"}
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["comment"] == "Looking into it."
+
+    def test_saves_a_status_and_a_comment_together(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+    ) -> None:
+        row = add_feedback(db_session, None, "x")
+
+        resp = authenticated_superadmin_client.patch(
+            f"{ENDPOINT}/{row.id}",
+            json={"status": "wont_fix", "comment": "Works as designed."},
+        )
+
+        assert resp.status_code == 200
+        db_session.refresh(row)
+        assert row.status == "wont_fix"
+        assert row.operator_comment == "Works as designed."
+
+    @pytest.mark.parametrize("blank", [None, "", "   "])
+    def test_a_blank_comment_removes_it(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        blank: str | None,
+    ) -> None:
+        row = add_feedback(db_session, None, "x")
+        row.operator_comment = "Looking into it."
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.patch(
+            f"{ENDPOINT}/{row.id}", json={"comment": blank}
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["comment"] is None
+        db_session.refresh(row)
+        assert row.operator_comment is None
+
+    def test_refuses_a_comment_that_is_too_long(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+    ) -> None:
+        row = add_feedback(db_session, None, "x")
+
+        resp = authenticated_superadmin_client.patch(
+            f"{ENDPOINT}/{row.id}", json={"comment": "x" * (MAX_COMMENT + 1)}
+        )
+
+        assert resp.status_code == 422
+
+    def test_refuses_somebody_who_is_not_an_operator(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        row = add_feedback(db_session, None, "x")
+
+        resp = client.patch(
+            f"{ENDPOINT}/{row.id}", json={"comment": "Not mine to write"}
+        )
+
+        assert resp.status_code == 403
+        db_session.refresh(row)
+        assert row.operator_comment is None
+
+    def test_never_logs_the_comment(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        row = add_feedback(db_session, None, "x")
+
+        with caplog.at_level(logging.DEBUG):
+            resp = authenticated_superadmin_client.patch(
+                f"{ENDPOINT}/{row.id}", json={"comment": SECRET_MESSAGE}
+            )
+
+        assert resp.status_code == 200
+        for record in caplog.records:
+            assert SECRET_MESSAGE not in record.getMessage()
+            assert SECRET_MESSAGE not in str(record.__dict__)
+
+    def test_the_sender_sees_the_comment(
+        self,
+        authenticated_client: TestClient,
+        db_session: Session,
+        test_user: User,
+    ) -> None:
+        row = add_feedback(db_session, test_user, "x")
+        row.operator_comment = "Fixed in the next release."
+        db_session.commit()
+
+        resp = authenticated_client.get(f"{ENDPOINT}/mine")
+
+        assert resp.json()["items"][0]["comment"] == (
+            "Fixed in the next release."
+        )
 
 
 class TestReadingYourOwn:
@@ -470,6 +665,7 @@ class TestReadingYourOwn:
         assert set(resp.json()["items"][0]) == {
             "id",
             "status",
+            "comment",
             "category",
             "message",
             "created_at",

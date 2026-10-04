@@ -1,8 +1,8 @@
 /**
  * Reading and closing feedback
  *
- * The operator's half of user feedback: every submission, and the status
- * each has reached. Operator-only on the server, because feedback comes from
+ * The operator's half of user feedback: every submission, the status
+ * each has reached, and the comment an operator wrote back. Operator-only on the server, because feedback comes from
  * every organisation and may contain patient data.
  */
 
@@ -35,6 +35,8 @@ export const FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = {
 export interface FeedbackItem {
   id: number;
   status: FeedbackStatus;
+  /** What an operator wrote back to the sender, or null if nothing yet */
+  comment: string | null;
   category: FeedbackCategory | null;
   message: string;
   /** The sender's username, or null once they have been deleted */
@@ -74,4 +76,18 @@ export function setFeedbackStatus(
   status: FeedbackStatus,
 ): Promise<FeedbackItem> {
   return api.patch<FeedbackItem>(`/feedback/${id}`, { status });
+}
+
+/** Longest comment the server accepts. Matches `MAX_COMMENT` there. */
+export const MAX_FEEDBACK_COMMENT = 2000;
+
+/**
+ * Write, change or remove the comment the sender sees beside the status.
+ * A blank comment removes it. The status is left alone.
+ */
+export function setFeedbackComment(
+  id: number,
+  comment: string,
+): Promise<FeedbackItem> {
+  return api.patch<FeedbackItem>(`/feedback/${id}`, { comment });
 }

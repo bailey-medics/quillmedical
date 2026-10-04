@@ -39,7 +39,7 @@ from app.schemas.feedback import (
     FeedbackItemOut,
     FeedbackListOut,
     FeedbackStatus,
-    FeedbackStatusIn,
+    FeedbackUpdateIn,
     MyFeedbackItemOut,
     MyFeedbackListOut,
 )
@@ -120,6 +120,7 @@ def _item(feedback: Feedback) -> FeedbackItemOut:
         {
             "id": feedback.id,
             "status": feedback.status,
+            "comment": feedback.operator_comment,
             "category": feedback.category,
             "message": feedback.message,
             "sender": feedback.user.username if feedback.user else None,
@@ -171,7 +172,8 @@ def list_my_feedback(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> MyFeedbackListOut:
-    """The caller's own feedback, newest first, with where each has got to.
+    """The caller's own feedback, newest first, with where each has got to
+    and what an operator wrote back.
 
     This is what closes the loop for the sender: somebody who reported a
     broken case can see it was fixed, and so has a reason to report the
@@ -188,6 +190,7 @@ def list_my_feedback(
                 {
                     "id": row.id,
                     "status": row.status,
+                    "comment": row.operator_comment,
                     "category": row.category,
                     "message": row.message,
                     "created_at": row.created_at,
@@ -224,25 +227,36 @@ def get_feedback(
     response_model=FeedbackItemOut,
     dependencies=[DEP_REQUIRE_CSRF],
 )
-def update_feedback_status(
+def update_feedback(
     feedback_id: int,
-    body: FeedbackStatusIn,
+    body: FeedbackUpdateIn,
     operator: User = DEP_REQUIRE_OPERATOR,
     db: Session = _DEP_SESSION,
 ) -> FeedbackItemOut:
-    """Move a piece of feedback to another status. Operator-only.
+    """Answer a piece of feedback: a status, a comment or both.
+    Operator-only.
 
-    The status is the only thing that changes: what somebody sent is
-    their record of it, and is never edited.
+    Only what the body names changes, so saving a comment leaves the
+    status alone and the other way round. What somebody sent is their
+    record of it, and is never edited.
+
+    The comment is shown to the sender on their own feedback page. It is
+    not logged, for the reason the message is not: an operator answering
+    a report will quote it. The log says only that one was written.
     """
     feedback = _require_feedback(db, feedback_id)
-    feedback.status = body.status
+    changed = body.model_fields_set
+    if body.status is not None:
+        feedback.status = body.status
+    if "comment" in changed:
+        feedback.operator_comment = body.comment
     db.flush()
     logger.info(
-        "feedback status changed",
+        "feedback updated",
         extra={
             "feedback_id": feedback.id,
             "status": feedback.status,
+            "comment_changed": "comment" in changed,
             "changed_by": operator.id,
         },
     )

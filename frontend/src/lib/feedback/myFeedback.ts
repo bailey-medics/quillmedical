@@ -1,7 +1,8 @@
 /**
  * Your own feedback
  *
- * What somebody has sent, and where each piece has got to. This is the
+ * What somebody has sent, where each piece has got to, and what an
+ * operator wrote back. This is the
  * sender's half of the loop: without it a learner who reports a broken case
  * never finds out it was fixed, and stops reporting.
  */
@@ -31,6 +32,8 @@ export const FEEDBACK_STATUS_SENDER_LABELS: Record<FeedbackStatus, string> = {
 export interface MyFeedbackItem {
   id: number;
   status: FeedbackStatus;
+  /** What an operator wrote back, or null if nothing yet */
+  comment: string | null;
   category: FeedbackCategory | null;
   message: string;
   created_at: string;

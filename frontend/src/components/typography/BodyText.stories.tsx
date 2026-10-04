@@ -28,6 +28,15 @@ export const Default: Story = {
   },
 };
 
+/** Text typed into a text area, with the lines it was written in. */
+export const PreservedLines: Story = {
+  args: {
+    children:
+      "We will look into this for you.\nUpdate 05/10/26: fixed in the next release.",
+    preserveLines: true,
+  },
+};
+
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },

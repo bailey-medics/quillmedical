@@ -27,6 +27,7 @@ function item(over: Partial<FeedbackItem>): FeedbackItem {
   return {
     id: 1,
     status: "new",
+    comment: null,
     category: "broken",
     message: "Captions lag behind the video",
     sender: "delegate.one",
@@ -46,6 +47,7 @@ const open = item({ id: 1 });
 const done = item({
   id: 2,
   status: "resolved",
+  comment: null,
   category: null,
   message: "The dose in case 4 was wrong",
   sender: null,

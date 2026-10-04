@@ -4,6 +4,10 @@
  * Primary body text component for the application. Renders block-level
  * text at `md` size (19px) with standard body weight (500).
  * Inherits the theme text colour (navy) via `--mantine-color-text`.
+ *
+ * Line breaks collapse into spaces, as in any paragraph. Set
+ * `preserveLines` for text somebody typed into a text area, so the lines
+ * they wrote stay the lines that are read.
  */
 
 import { Text } from "@mantine/core";
@@ -18,6 +22,8 @@ export interface BodyTextProps {
   c?: MantineColor;
   /** Text alignment. Defaults to "left". */
   justify?: "left" | "centre" | "right";
+  /** Keep the line breaks in the text, for something typed in a text area */
+  preserveLines?: boolean;
 }
 
 const alignMap = {
@@ -36,6 +42,7 @@ export default function BodyText({
   children,
   c,
   justify = "left",
+  preserveLines = false,
 }: BodyTextProps) {
   return (
     <Text
@@ -43,6 +50,7 @@ export default function BodyText({
       fw={typographyTokens.fontWeights.body}
       c={c}
       ta={alignMap[justify]}
+      style={preserveLines ? { whiteSpace: "pre-wrap" } : undefined}
     >
       {children}
     </Text>
