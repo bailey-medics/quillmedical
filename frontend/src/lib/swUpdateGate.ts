@@ -179,10 +179,12 @@ export interface PreloadErrorWiring {
  * `preventDefault()` stops Vite rethrowing, and it does more than that: the
  * failed `import()` then *resolves to undefined*. So it is called only when
  * this handler reloads the page. When it defers, the error is let through,
- * so the import rejects and the nearest `ErrorBoundary` shows its fallback
- * with a reload button. Suppressing it there handed `React.lazy` an
- * undefined module and crashed the page with "Cannot read properties of
- * undefined (reading 'default')" on 2026-09-24.
+ * so the import rejects and the router renders the root route's
+ * `errorElement`, `RouteErrorFallback`, which is the app's own fallback
+ * with a reload button. (A rejected route `lazy` is caught by the router,
+ * not by an `ErrorBoundary` in a layout.) Suppressing it there handed
+ * `React.lazy` an undefined module and crashed the page with "Cannot read
+ * properties of undefined (reading 'default')" on 2026-09-24.
  *
  * Form state is persisted before reloading, reusing the same helper the
  * API-compatibility forced reload uses. That helper is best-effort and
