@@ -73,6 +73,10 @@ class Palette:
     def blue(self, text: str) -> str:
         return self._wrap("34", text)
 
+    def key(self, text: str) -> str:
+        """A key to press: bold bright blue, as in the watch's header."""
+        return self._wrap("1;94", text)
+
     def link(self, url: str, text: str) -> str:
         """Make *text* clickable, with *url* hidden behind it.
 
@@ -440,12 +444,30 @@ def build_branches(
     return branches
 
 
+def number_branches(branches: list[Branch]) -> dict[str, int]:
+    """Give each branch still open a number, 1 at the bottom of the stack.
+
+    Counted from the bottom because that end stays put: a new branch goes
+    on top and takes the next number, where counting from the top would
+    renumber every branch each time one was added. Merged branches get
+    none, as there is nothing to go back to on them.
+    """
+    numbers: dict[str, int] = {}
+    # `branches` is top-first, so the bottom is at the end.
+    for branch in reversed(branches):
+        if branch.is_merged or not branch.name:
+            continue
+        numbers[branch.name] = len(numbers) + 1
+    return numbers
+
+
 def draw(
     branches: list[Branch],
     trunk: str,
     palette: Palette,
     show_prs: bool,
     hide_merged: bool = False,
+    numbered: bool = False,
 ) -> None:
     """Print the stack.
 
@@ -454,8 +476,13 @@ def draw(
     long-lived stack accumulates them – five merged against ten live, on
     2026-09-19 – and the part still being worked on is what a watch loop
     is for. The count is still reported, so nothing disappears silently.
+
+    `numbered` puts each open branch's number before its name, in the
+    colour the watch gives its keys, because there it is one: pressing
+    the digit checks that branch out.
     """
     print()
+    numbers = number_branches(branches) if numbered else {}
     merged_hidden = 0
     for branch in branches:
         if hide_merged and branch.is_merged:
@@ -534,7 +561,16 @@ def draw(
             cells.append(palette.green("merged"))
 
         suffix = "   ".join(cells)
-        line = f"  {glyph} {name}"
+        if numbered:
+            # Every row keeps the column, numbered or not and one digit
+            # or two, so the names line up. Padded before colouring: the
+            # escape codes would otherwise count towards the width.
+            width = len(str(len(numbers))) if numbers else 1
+            number = numbers.get(branch.name)
+            tag = str(number).rjust(width) if number else " " * width
+            line = f"  {glyph} {palette.key(tag)} {name}"
+        else:
+            line = f"  {glyph} {name}"
         if suffix:
             line = f"{line}   {suffix}"
         print(line)
@@ -723,6 +759,17 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--numbered",
+        action="store_true",
+        help="number the open branches, 1 at the bottom, for --branch-at",
+    )
+    parser.add_argument(
+        "--branch-at",
+        type=int,
+        metavar="N",
+        help="print the name of the branch --numbered draws as N",
+    )
+    parser.add_argument(
         "--no-colour", action="store_true", help="disable ANSI colour"
     )
     parser.add_argument(
@@ -765,6 +812,15 @@ def main() -> int:
     branches = build_branches(stack, occupied, pull_requests)
     trunk = str(stack.get("trunk", "main"))
 
+    if args.branch_at is not None:
+        # For `just stack-move <number>`: the name only, so the recipe can
+        # hand it to git. Exit 1 when no branch carries that number.
+        for name, number in number_branches(branches).items():
+            if number == args.branch_at:
+                print(name)
+                return 0
+        return 1
+
     if args.files:
         draw_files(stack, occupied, palette, patch=args.patch)
     elif not args.check:
@@ -774,6 +830,7 @@ def main() -> int:
             palette,
             show_prs=args.prs,
             hide_merged=args.hide_merged,
+            numbered=args.numbered,
         )
         # The drawing goes to stdout and the warning to stderr; flushing
         # between them keeps the warning under the stack it refers to
