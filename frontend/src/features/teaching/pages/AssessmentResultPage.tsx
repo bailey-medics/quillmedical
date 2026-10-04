@@ -54,7 +54,18 @@ export default function AssessmentResultPage() {
     load();
   }, [id]);
 
-  const sidebarNav = <TeachingMainNav />;
+  // Where this page sits in the menu: under its module, as "Result".
+  // Shown only while the page is open. The module's own link appears once
+  // its title has loaded; until then "Result" hangs under Teaching.
+  const sidebarNav = (
+    <TeachingMainNav
+      moduleName={bankDetail?.title}
+      moduleHref={
+        assessment ? `/teaching/${assessment.question_bank_id}` : undefined
+      }
+      trail={[{ label: "Result", href: `/teaching/assessment/${id}/result` }]}
+    />
+  );
 
   if (loading) {
     return (

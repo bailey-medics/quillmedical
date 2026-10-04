@@ -343,7 +343,29 @@ describe("AssessmentQuestionResultsPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Exam reference: EX-0007")).toBeInTheDocument();
     expect(screen.getByText("Overall: Not passed")).toBeInTheDocument();
-    expect(screen.getByText("Test Bank")).toBeInTheDocument();
+    // The module's name is now in the menu as well, as the link this
+    // page is nested under, so the one being checked is the one on the
+    // page itself.
+    const onThePage = screen
+      .getAllByText("Test Bank")
+      .filter((element) => !element.closest(".mantine-NavLink-root"));
+    expect(onThePage).toHaveLength(1);
+  });
+
+  it("is nested in the menu under its result and its module", async () => {
+    (api.get as Mock).mockResolvedValue(results);
+    renderPage();
+
+    await screen.findByText("Question bank version: 2");
+    // The sidebar and the drawer each draw the menu, so each link is
+    // found at least once.
+    const inTheMenu = (label: string) =>
+      screen
+        .getAllByText(label)
+        .filter((element) => element.closest(".mantine-NavLink-root"));
+    expect(inTheMenu("Test Bank").length).toBeGreaterThan(0);
+    expect(inTheMenu("Result").length).toBeGreaterThan(0);
+    expect(inTheMenu("Results by question").length).toBeGreaterThan(0);
   });
 
   it("says the table is in stored order, not the order the questions were seen", async () => {
