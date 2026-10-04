@@ -10,7 +10,7 @@
 
 import { Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
-import AddIconButton from "@/components/button/AddIconButton";
+import ExtraButton from "@/components/button/ExtraButton";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import PlaceholderTable from "@/components/safety/PlaceholderTable";
 import { BodyText } from "@/components/typography";
@@ -39,7 +39,7 @@ export function Component() {
         // Phases 15 and 17 of the plan. The edit page at
         // `/safety/:caseId/placeholders/edit` still exists; nothing on
         // this page links to it now.
-        action={<AddIconButton aria-label="Add placeholder" />}
+        action={<ExtraButton aria-label="Add placeholder" />}
         placeholders={placeholders}
       />
     </Stack>

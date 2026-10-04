@@ -98,7 +98,7 @@ export default tseslint.config(
         "src/components/button/IconButton.tsx",
         "src/components/button/BurgerButton.tsx",
         "src/components/button/SearchButton.tsx",
-        "src/components/button/AddIconButton.tsx",
+        "src/components/button/ExtraButton.tsx",
         "src/components/ellipsis-menu/EllipsisMenu.tsx",
         "src/components/form/FilterSelect.tsx",
         "src/components/passport/InboxButton.tsx",

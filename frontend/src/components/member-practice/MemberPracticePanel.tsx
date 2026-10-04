@@ -32,7 +32,7 @@ import {
 } from "@/components/typography";
 import { ConfirmModal } from "@/components/confirm-modal";
 import AddButton from "@/components/button/AddButton";
-import AddIconButton from "@/components/button/AddIconButton";
+import ExtraButton from "@/components/button/ExtraButton";
 import IconButton from "@/components/button/IconButton";
 import Icon from "@/components/icons/Icon";
 import { IconTagPlus, IconTrash, IconUser } from "@/components/icons/appIcons";
@@ -353,14 +353,14 @@ export default function MemberPracticePanel({
                 action={
                   <>
                     {practice.may_grant && (
-                      <AddIconButton
+                      <ExtraButton
                         aria-label="Grant competency"
                         icon={<IconTagPlus />}
                         onClick={() => setGranting(null)}
                       />
                     )}
                     {onOpenUserAccount && (
-                      <AddIconButton
+                      <ExtraButton
                         aria-label="Their user account"
                         icon={<IconUser />}
                         onClick={onOpenUserAccount}
