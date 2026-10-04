@@ -55,11 +55,24 @@ const PASSPORT_PAGES: readonly (NavItem & { detail?: string })[] = [
   { label: "Inbox", href: "/passport/inbox" },
 ];
 
+/** Where an assessor signs off one request: `/passport/sign-off/:id`. */
+const SIGN_OFF_PREFIX = "/passport/sign-off/";
+
 /**
  * The passport page this address is, or sits beneath, if any, with the
  * record's own link beneath it on the page of one record.
  */
 function passportPageAt(pathname: string): NavItem | undefined {
+  // Signing somebody off is reached from the inbox and its address is
+  // not beneath it, so it is hung there by hand.
+  if (pathname.startsWith(SIGN_OFF_PREFIX)) {
+    return {
+      label: "Inbox",
+      href: "/passport/inbox",
+      children: [{ label: "Sign off", href: pathname }],
+    };
+  }
+
   const page = PASSPORT_PAGES.find(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   );
@@ -93,33 +106,47 @@ const SAFETY_PAGES: readonly {
 ];
 
 /**
- * The safety case page this address is, or sits beneath, if any:
- * `/safety/:caseId/:segment`, with the record's own link beneath it on
- * `/safety/:caseId/:segment/:recordId`, as the passport's does. The case
- * page itself and the landing page hang nothing beneath Safety.
+ * The safety case this address is, or sits within, if any. The case has
+ * a link of its own, `/safety/:caseId`, with the open page of the case
+ * beneath it, `/safety/:caseId/:segment`, and the record's own link
+ * beneath that on `/safety/:caseId/:segment/:recordId`, as the
+ * passport's does. The landing page hangs nothing beneath Safety.
  */
 function safetyPageAt(pathname: string): NavItem | undefined {
   const match = pathname.match(
-    /^\/safety\/([^/]+)\/([^/]+)(\/[^/]+)?(\/edit)?\/?$/,
+    /^\/safety\/([^/]+)(?:\/([^/]+)(\/[^/]+)?(\/edit)?)?\/?$/,
   );
   if (!match) return undefined;
+  const caseLink = { label: "Case", href: `/safety/${match[1]}` };
+
   const page = SAFETY_PAGES.find((item) => item.segment === match[2]);
-  if (!page) return undefined;
+  if (!page) return caseLink;
   const link = {
     label: page.label,
     href: `/safety/${match[1]}/${page.segment}`,
   };
-  if (!page.detail || !match[3]) return link;
+  if (!page.detail || !match[3]) return { ...caseLink, children: [link] };
   // Editing a record hangs "Edit" where the record would be: one child,
-  // so the menu does not grow a third level for a form.
+  // so the menu does not grow a further level for a form.
   const label = match[4] ? "Edit" : page.detail;
-  return { ...link, children: [{ label, href: pathname }] };
+  return {
+    ...caseLink,
+    children: [{ ...link, children: [{ label, href: pathname }] }],
+  };
 }
 
 /**
- * Settings pages shown as a child of Settings while open. Only those
- * with no link of their own on the settings page's cards need it, and
- * today that is the passport's CPD date ranges.
+ * Settings pages open to everybody, each shown as a child of Settings
+ * while open.
+ */
+const SETTINGS_PAGES: readonly NavItem[] = [
+  { label: "Account", href: "/settings/account" },
+  { label: "Two-factor setup", href: "/settings/totp" },
+];
+
+/**
+ * Settings pages that sit inside the passport's gates, shown the same
+ * way to a holder.
  */
 const PASSPORT_SETTINGS_PAGES: readonly NavItem[] = [
   { label: "CPD date ranges", href: "/settings/cpd-date-ranges" },
@@ -217,7 +244,14 @@ export function useFeatureNavItems(): NavItem[] {
       // own address matches. That is right for Admin, where landing on
       // `/admin` should reveal what is under it, and wrong here, where
       // the passport itself is a destination rather than a heading.
-      children: !assessesOnly && openPage ? [openPage] : undefined,
+      //
+      // The one exception is signing somebody off, which is an
+      // assessor's page whether or not they hold a passport.
+      children: !assessesOnly
+        ? openPage && [openPage]
+        : pathname.startsWith(SIGN_OFF_PREFIX)
+          ? [{ label: "Sign off", href: pathname }]
+          : undefined,
     });
   }
 
@@ -233,15 +267,15 @@ export function useFeatureNavItems(): NavItem[] {
     });
   }
 
-  // As under Passport: the open page only, attached by route. Offered
-  // only to a holder, because the page sits inside the passport's gates.
-  const openSettingsPage =
-    hasPassport && !assessesOnly
-      ? PASSPORT_SETTINGS_PAGES.find(
-          (item) =>
-            pathname === item.href || pathname.startsWith(`${item.href}/`),
-        )
-      : undefined;
+  // As under Passport: the open page only, attached by route. The
+  // passport's own settings pages are offered only to a holder, because
+  // they sit inside the passport's gates.
+  const openSettingsPage = [
+    ...SETTINGS_PAGES,
+    ...(hasPassport && !assessesOnly ? PASSPORT_SETTINGS_PAGES : []),
+  ].find(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+  );
 
   items.push({
     label: "Settings",

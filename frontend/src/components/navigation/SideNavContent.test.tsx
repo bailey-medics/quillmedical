@@ -813,22 +813,38 @@ describe("SideNavContent Component", () => {
       });
     });
 
-    it.each(["/admin/sites", "/admin/sites/new"])(
-      "highlights Sites at %s",
-      async (route) => {
-        renderWithAuth(<SideNavContent />, "superadmin", {
-          initialRoute: route,
-        });
+    it("highlights Sites at /admin/sites", async () => {
+      renderWithAuth(<SideNavContent />, "superadmin", {
+        initialRoute: "/admin/sites",
+      });
 
-        await waitFor(() => {
-          expect(screen.getByText("Sites")).toBeInTheDocument();
-        });
-        expect(screen.getByText("Sites").closest("a")).toHaveAttribute(
-          "data-active",
-          "true",
-        );
-      },
-    );
+      await waitFor(() => {
+        expect(screen.getByText("Sites")).toBeInTheDocument();
+      });
+      expect(screen.getByText("Sites").closest("a")).toHaveAttribute(
+        "data-active",
+        "true",
+      );
+    });
+
+    it("names the create form under Sites, and highlights that", async () => {
+      // Sites itself used to stay lit here, so the menu could not tell
+      // the form from the list.
+      renderWithAuth(<SideNavContent />, "superadmin", {
+        initialRoute: "/admin/sites/new",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("New site")).toBeInTheDocument();
+      });
+      expect(screen.getByText("New site").closest("a")).toHaveAttribute(
+        "data-active",
+        "true",
+      );
+      expect(screen.getByText("Sites").closest("a")).not.toHaveAttribute(
+        "data-active",
+      );
+    });
 
     // One site's pages are named under its organisation, which is the
     // entry that lights up. Sites lit as well said you were in two places.

@@ -9,6 +9,7 @@
 import { SimpleGrid, Stack, Center, Skeleton } from "@mantine/core";
 import { useEffect, useState } from "react";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
+import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import PageHeader from "@components/typography/PageHeader";
 import ActionCard from "@/components/action-card/ActionCard";
 import { BodyText } from "@/components/typography";
@@ -72,9 +73,17 @@ export default function LearningDashboard() {
     load();
   }, []);
 
+  // The teaching menu, with this page named under Teaching while it is
+  // open. The page had no sidebar at all, so nothing said where it was.
+  const sidebarNav = (
+    <TeachingMainNav
+      trail={[{ label: "Learning materials", href: "/teaching/learn" }]}
+    />
+  );
+
   if (loading) {
     return (
-      <TeachingLayout>
+      <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
         <Stack gap="lg">
           <Skeleton height={36} width={200} />
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -88,7 +97,7 @@ export default function LearningDashboard() {
 
   if (error) {
     return (
-      <TeachingLayout>
+      <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error loading modules"
@@ -100,7 +109,7 @@ export default function LearningDashboard() {
   }
 
   return (
-    <TeachingLayout>
+    <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
       <Stack gap="lg">
         <PageHeader title="Learning materials" />
 

@@ -13,10 +13,9 @@
  *    where the address does not say it, from `NESTS_UNDER`.
  *
  * A route added to `routes.tsx` is checked without being named here, so
- * a new page fails this test until the menu knows about it. The three
+ * a new page fails this test until the menu knows about it. The two
  * lists below are the only ways out, and each is checked for entries
- * that have stopped being true. `KNOWN_GAPS` is the list of pages that
- * fail today: it is there to shrink, not to grow.
+ * that have stopped being true.
  *
  * The menu comes from three places, and the test renders each as the
  * app does:
@@ -201,7 +200,7 @@ import { routes } from "@/routes";
 import SideNavContent from "./SideNavContent";
 
 // ---------------------------------------------------------------------
-// The three ways out. Keys are route patterns, as `routes.tsx` joins
+// The two ways out. Keys are route patterns, as `routes.tsx` joins
 // them: "/admin/users/:id/edit".
 // ---------------------------------------------------------------------
 
@@ -230,46 +229,6 @@ const NO_LINK: Record<string, string> = {
 };
 
 /**
- * Pages that fail today, and how. Each is a fault somebody has yet to
- * fix, written down so the test can pass and still catch the next one.
- * The test fails when one of these starts working, so that it is taken
- * off the list and stays fixed.
- *
- * **Nothing new belongs here.** Give the page a link instead.
- */
-type Gap =
-  /** The page above is lit, and nothing names this page. */
-  | "lit by the page above"
-  /** The page shows no menu, or a menu with nothing lit. */
-  | "nothing lit"
-  /** Two links are lit, so the menu says somebody is in two places. */
-  | "two links lit";
-
-const KNOWN_GAPS: Record<string, Gap> = {
-  "/admin/users/new": "lit by the page above",
-  "/admin/users/edit": "lit by the page above",
-  "/admin/users/:id/edit": "lit by the page above",
-  "/admin/patients/new": "lit by the page above",
-  "/admin/patients/list": "lit by the page above",
-  "/admin/patients/edit": "lit by the page above",
-  "/admin/patients/deactivate": "lit by the page above",
-  "/admin/patients/:patientId/edit": "lit by the page above",
-  "/admin/patients/:patientId/deactivate": "lit by the page above",
-  "/admin/patients/:patientId/activate": "lit by the page above",
-  "/admin/organisations/new": "lit by the page above",
-  "/admin/sites/new": "lit by the page above",
-  "/admin/feedback/:id": "lit by the page above",
-  "/admin/teaching/modules/:bankId/org/:orgId": "lit by the page above",
-  "/passport/sign-off/:signOffId": "lit by the page above",
-  "/safety/:caseId": "lit by the page above",
-  "/settings/account": "lit by the page above",
-  "/settings/totp": "lit by the page above",
-  "/messages/:conversationId": "two links lit",
-  "/teaching/learn": "nothing lit",
-  "/teaching/sync": "nothing lit",
-};
-
-/**
  * Pages whose place in the menu is not the one their address gives.
  * The value is the page they sit under.
  */
@@ -288,6 +247,8 @@ const NESTS_UNDER: Record<string, string> = {
   // be, so the menu does not grow a third level for a form.
   "/safety/:caseId/documentation/:documentId/edit":
     "/safety/:caseId/documentation",
+  // Signing somebody off is opened from the inbox.
+  "/passport/sign-off/:signOffId": "/passport/inbox",
 };
 
 /**
@@ -350,7 +311,7 @@ const PATTERNS = new Set(flatten(routes).map((page) => page.pattern));
 
 /** Whether the menu is expected to hold a link to this page. */
 function hasLink(pattern: string): boolean {
-  return !(pattern in NO_LINK) && !(pattern in KNOWN_GAPS);
+  return !(pattern in NO_LINK);
 }
 
 /** The page this one sits under, if any. */
@@ -479,17 +440,12 @@ describe("the side navigation covers every page", () => {
 
   it.each([
     ["NO_LINK", Object.keys(NO_LINK)],
-    ["KNOWN_GAPS", Object.keys(KNOWN_GAPS)],
     [
       "NESTS_UNDER",
       [...Object.keys(NESTS_UNDER), ...Object.values(NESTS_UNDER)],
     ],
   ])("%s names only pages that exist", (_list, patterns) => {
     expect(patterns.filter((pattern) => !PATTERNS.has(pattern))).toEqual([]);
-  });
-
-  it("lists no page as both rightly unlinked and a known gap", () => {
-    expect(Object.keys(KNOWN_GAPS).filter((p) => p in NO_LINK)).toEqual([]);
   });
 
   const checked = PAGES.filter((page) => !(page.pattern in NO_LINK));
@@ -502,27 +458,14 @@ describe("the side navigation covers every page", () => {
       const lit = links.filter((link) => link.lit);
       const own = lit.find((link) => link.href === page.address);
 
-      const found: Gap | undefined =
+      const found =
         lit.length === 0
-          ? "nothing lit"
+          ? "nothing is lit"
           : !own
-            ? "lit by the page above"
+            ? "only the page above is lit"
             : lit.length > 1
-              ? "two links lit"
+              ? "two links are lit"
               : undefined;
-
-      const known = KNOWN_GAPS[page.pattern];
-      if (known !== undefined) {
-        expect(
-          found,
-          found === undefined
-            ? `${page.pattern} now has a lit link of its own: take it off ` +
-                `KNOWN_GAPS.${menu}`
-            : `${page.pattern} is listed in KNOWN_GAPS as "${known}" and ` +
-                `the menu now shows something else.${menu}`,
-        ).toBe(known);
-        return;
-      }
 
       expect(
         found,
