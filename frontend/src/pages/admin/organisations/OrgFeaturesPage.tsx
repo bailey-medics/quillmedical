@@ -5,6 +5,9 @@
  * a site may carry features of its own since 1 October 2026, so the
  * passport can be on for one team without its whole trust. `parentPath`
  * says which admin area the page sits in, for the way back.
+ *
+ * Teaching is the exception: a module is opened for an organisation and
+ * reaches its sites from there, so a site is not offered the switch.
  * Toggles are managed by React Hook Form. Save requires confirmation
  * listing what will change.
  *
@@ -92,22 +95,52 @@ const PASSPORT_COVER = {
     "Staff and trainees here can add to their passport, paid for by this place",
 };
 
+/**
+ * Features that belong to an organisation and mean nothing on a site.
+ * Matches `ORGANISATION_ONLY_FEATURES` on the server, which refuses to
+ * switch one on anywhere else.
+ */
+const ORGANISATION_ONLY_FEATURES = new Set(["teaching"]);
+
+/**
+ * The feature switches shown in one admin area.
+ *
+ * A site is not offered an organisation-only feature. One already on
+ * there is still shown, so that it can be switched off.
+ */
+function availableFeatures(
+  parentPath: FeaturesParentPath,
+  savedKeys: Set<string>,
+) {
+  if (parentPath !== "sites") return AVAILABLE_FEATURES;
+  return AVAILABLE_FEATURES.filter(
+    (feature) =>
+      !ORGANISATION_ONLY_FEATURES.has(feature.key) ||
+      savedKeys.has(feature.key),
+  );
+}
+
 /** The switches this viewer may set, cover included for an operator. */
-function trackedFeatures(canSetCover: boolean) {
-  return canSetCover
-    ? [...AVAILABLE_FEATURES, PASSPORT_COVER]
-    : AVAILABLE_FEATURES;
+function trackedFeatures(
+  parentPath: FeaturesParentPath,
+  savedKeys: Set<string>,
+  canSetCover: boolean,
+) {
+  const features = availableFeatures(parentPath, savedKeys);
+  return canSetCover ? [...features, PASSPORT_COVER] : features;
 }
 
 type FeatureFormValues = Record<string, boolean>;
 
 function ConfirmContent({
   orgName,
+  parentPath,
   savedKeys,
   canSetCover,
   coveredCount,
 }: {
   orgName: string;
+  parentPath: FeaturesParentPath;
   savedKeys: Set<string>;
   canSetCover: boolean;
   /** How many people hold writing through this place's cover */
@@ -115,7 +148,7 @@ function ConfirmContent({
 }) {
   const { methods } = useFormContext();
   const values = methods.getValues() as FeatureFormValues;
-  const changes = trackedFeatures(canSetCover).filter(
+  const changes = trackedFeatures(parentPath, savedKeys, canSetCover).filter(
     (f) => savedKeys.has(f.key) !== values[f.key],
   );
   const hasDisables = changes.some((f) => !values[f.key]);
@@ -157,11 +190,14 @@ function ConfirmContent({
 function FeatureFields({
   orgId,
   parentPath,
+  savedKeys,
   canSetCover,
   afterFeatures,
 }: {
   orgId: string;
   parentPath: FeaturesParentPath;
+  /** The features switched on here when the page loaded */
+  savedKeys: Set<string>;
   /** Whether the viewer may set the passport's cover */
   canSetCover: boolean;
   /** Shown between the feature switches and the buttons */
@@ -184,7 +220,7 @@ function FeatureFields({
             for these changes to take effect.
           </BodyTextInline>
 
-          {AVAILABLE_FEATURES.map((feature) => (
+          {availableFeatures(parentPath, savedKeys).map((feature) => (
             <Controller
               key={feature.key}
               name={feature.key}
@@ -359,16 +395,16 @@ export default function OrgFeaturesPage({
 
   const defaultValues = useMemo(() => {
     const values: FeatureFormValues = {};
-    for (const feature of trackedFeatures(canSetCover)) {
+    for (const feature of trackedFeatures(parentPath, savedKeys, canSetCover)) {
       values[feature.key] = savedKeys.has(feature.key);
     }
     return values;
-  }, [savedKeys, canSetCover]);
+  }, [parentPath, savedKeys, canSetCover]);
 
   async function handleSubmit(
     data: FeatureFormValues,
   ): Promise<FormSubmitResult> {
-    const tracked = trackedFeatures(canSetCover);
+    const tracked = trackedFeatures(parentPath, savedKeys, canSetCover);
     const changes = tracked.filter((f) => savedKeys.has(f.key) !== data[f.key]);
     // The API refuses cover without the passport, and turning the
     // passport off ends cover itself. So the cover change is sent last
@@ -450,6 +486,7 @@ export default function OrgFeaturesPage({
           children: (
             <ConfirmContent
               orgName={orgName}
+              parentPath={parentPath}
               savedKeys={savedKeys}
               canSetCover={canSetCover}
               coveredCount={coveredCount}
@@ -460,6 +497,7 @@ export default function OrgFeaturesPage({
         <FeatureFields
           orgId={id!}
           parentPath={parentPath}
+          savedKeys={savedKeys}
           canSetCover={canSetCover}
           afterFeatures={
             passportOn && (

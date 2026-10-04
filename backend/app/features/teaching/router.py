@@ -3374,7 +3374,15 @@ def list_bank_organisations(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> list[BankOrgRow]:
-    """List all organisations with teaching enabled and their status for this bank."""
+    """List all organisations with teaching enabled and their status for this bank.
+
+    Organisations only. A site may have teaching switched on as well, but
+    a bank is set live for an organisation and reaches its sites from
+    there, so ``_update_bank_org_settings`` refuses anything else. A site
+    listed here was a row whose settings could never be saved.
+    """
+    from app.org_units.tree import organisation_org_unit_ids
+
     # Verify caller has an organisation (i.e. is an educator)
     _get_user_org_id(user, db)
 
@@ -3386,7 +3394,10 @@ def list_bank_organisations(
                 OrgUnitFeature,
                 OrgUnitFeature.org_unit_id == OrgUnit.id,
             )
-            .where(OrgUnitFeature.feature_key == "teaching")
+            .where(
+                OrgUnitFeature.feature_key == "teaching",
+                OrgUnit.id.in_(organisation_org_unit_ids()),
+            )
             .order_by(OrgUnit.name)
         )
         .scalars()

@@ -655,12 +655,16 @@ class TestFeatures:
     def test_a_ward_carries_its_own(
         self, authenticated_superadmin_client, db_session
     ):
-        """Any org_unit may, since the site screens offer it."""
+        """Any org_unit may, since the site screens offer it.
+
+        The passport rather than teaching, which is the one feature that
+        is switched on for an organisation alone.
+        """
         org = _org(db_session)
         ward = _ward(db_session, org.id)
 
         resp = authenticated_superadmin_client.put(
-            f"/api/org-units/{ward.id}/features/teaching",
+            f"/api/org-units/{ward.id}/features/passport",
             json={"enabled": True},
         )
 
@@ -675,7 +679,7 @@ class TestFeatures:
         room = _room(db_session, org.id)
 
         resp = authenticated_superadmin_client.put(
-            f"/api/org-units/{room.id}/features/teaching",
+            f"/api/org-units/{room.id}/features/passport",
             json={"enabled": True},
         )
 

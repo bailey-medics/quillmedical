@@ -381,6 +381,91 @@ class TestFeatureEndpoints:
         # ---------------------------------------------------------------------------
 
 
+def _make_site(db_session, org: OrgUnit, name: str = "Ward 1") -> OrgUnit:
+    site = OrgUnit(name=name, type="ward", parent_id=org.id)
+    db_session.add(site)
+    db_session.commit()
+    db_session.refresh(site)
+    return site
+
+
+class TestOrganisationOnlyFeatures:
+    """Teaching is switched on for an organisation, never for a site."""
+
+    def _sign_in(self, test_client, db_session, org: OrgUnit) -> str:
+        _make_admin(db_session, org)
+        test_client.post(
+            "/api/auth/login",
+            json={
+                "username": "featureadmin",
+                "password": "AdminPassword123!",
+            },
+        )
+        return test_client.cookies.get("XSRF-TOKEN", "")
+
+    def test_teaching_cannot_be_switched_on_at_a_site(
+        self, test_client, db_session
+    ):
+        org = _make_org(db_session)
+        site = _make_site(db_session, org)
+        csrf = self._sign_in(test_client, db_session, org)
+
+        resp = test_client.put(
+            f"/api/org-units/{site.id}/features/teaching",
+            json={"enabled": True},
+            headers={"X-CSRF-Token": csrf},
+        )
+
+        assert resp.status_code == 422
+        assert (
+            db_session.scalar(
+                select(OrgUnitFeature).where(
+                    OrgUnitFeature.org_unit_id == site.id
+                )
+            )
+            is None
+        )
+
+    def test_teaching_already_on_at_a_site_can_be_switched_off(
+        self, test_client, db_session
+    ):
+        """A site that has it from before the rule can be put right."""
+        org = _make_org(db_session)
+        site = _make_site(db_session, org)
+        db_session.add(
+            OrgUnitFeature(
+                org_unit_id=site.id, feature_key="teaching", enabled_by=1
+            )
+        )
+        db_session.commit()
+        csrf = self._sign_in(test_client, db_session, org)
+
+        resp = test_client.put(
+            f"/api/org-units/{site.id}/features/teaching",
+            json={"enabled": False},
+            headers={"X-CSRF-Token": csrf},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "disabled"
+
+    def test_another_feature_can_still_be_switched_on_at_a_site(
+        self, test_client, db_session
+    ):
+        org = _make_org(db_session)
+        site = _make_site(db_session, org)
+        csrf = self._sign_in(test_client, db_session, org)
+
+        resp = test_client.put(
+            f"/api/org-units/{site.id}/features/passport",
+            json={"enabled": True},
+            headers={"X-CSRF-Token": csrf},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "enabled"
+
+
 class TestMeEnabledFeatures:
     """Verify /auth/me returns enabled_features."""
 
