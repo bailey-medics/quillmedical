@@ -86,12 +86,19 @@ class ResetPasswordIn(BaseModel):
     Attributes:
         token: Password reset token from the email link.
         new_password: Desired new password (min 8 characters).
+        marketing_opt_out: Sent only by somebody setting their first
+            password from an invite, who is shown the marketing sentence
+            there because they never saw a registration form. False means
+            they left the box alone and are sent news; true means they
+            refused. Null, which is every ordinary password reset, means
+            they were not asked and nothing about marketing changes.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     token: str
     new_password: str
+    marketing_opt_out: bool | None = None
 
 
 class TotpDisableIn(BaseModel):

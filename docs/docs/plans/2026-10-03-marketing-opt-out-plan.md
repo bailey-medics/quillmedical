@@ -483,21 +483,21 @@ address of Mark's own for every test account, and plus-addresses
       emailed wrongly, since Resend held the unsubscribe; the fault was
       Quill's Settings switch going on showing "on".
 
-- [ ] **Unsubscribe from Resend's side again, and see Quill follow,** now
-      that the webhook reports updates. Very likely done already: at
-      08:21:43 UTC on 4 October, three minutes after the last change made
-      in Quill and so outside the echo window, Resend called the webhook,
-      the route asked Resend for the contact's topics (the call took a
-      quarter of a second where an ignored one takes a few milliseconds)
-      and answered 200, and the contact is now unsubscribed in Resend.
-      What the logs cannot show is the Settings switch itself, so this
-      stays unticked until somebody has looked at it and seen it off. Switch news off and on in Quill
-      first, so the contact is subscribed again in Resend, and wait at
-      least a minute, because the route ignores an event within sixty
-      seconds of Quill's own sync as an echo. Then unsubscribe the contact
-      in Resend. Its webhook log should show a 200, and Settings in Quill
-      should show the switch off after a reload. Still the one step that
-      has never run for real.
+- [x] **Unsubscribe from Resend's side again, and see Quill follow,** now
+      that the webhook reports updates. Done on 4 October 2026, with a
+      second test newsletter. Mark switched news back on in Quill at
+      08:40:16 UTC; Resend repeated that change back a second later and
+      the route ignored it as an echo, so the choice was not undone. The
+      newsletter went to the "Newsletter" topic at 08:40:53 and reached
+      only the subscribed contact: the second test account, which had
+      ticked the box at registration, was skipped. Mark pressed
+      "Unsubscribe" in its footer and unsubscribed on Resend's page. At
+      08:42:01 Resend called the webhook, the route answered 200, Resend
+      showed the contact unsubscribed, and Quill's Settings switch was off
+      after a reload. This was the one step that had never run for real,
+      and with it every path in this plan has run on the live app: both
+      answers at registration, the Settings switch in both directions, a
+      real newsletter, and an unsubscribe coming back.
 
 - [x] **Check Quill against Resend once a week.** The missed unsubscribe
       showed what the design had been relying on: if a webhook call is
@@ -529,21 +529,55 @@ address of Mark's own for every test account, and plus-addresses
       always done, so accounts that existed before this plan arrive in
       Resend as contacts opted out.
 
-- [ ] **Check an admin-created account is left alone.** Create a user at
-      `/admin/users/new` with a test address. No contact should appear in
-      Resend, even after they set a password and sign in, until they
-      switch news on in Settings themselves.
+- [x] **Ask somebody whose account was made for them, when they set
+      their first password.** This step first read "check an
+      admin-created account is left alone", and Mark's question about it
+      changed the design: Quill is sold as a service, the people a
+      customer's admin creates accounts for are exactly the people worth
+      telling about new features, and leaving them unsubscribed for want
+      of being asked loses them. What they had not had was the sentence
+      and the way to refuse, so they are now given both. An invite's link
+      carries `invite=1`, and `/reset-password` then shows the same
+      unticked box, in the same words, as the registration form. The
+      answer goes to `POST /api/auth/reset-password` as
+      `marketing_opt_out`, is recorded with a new source, `invite`, and
+      is sent to Resend straight away, since a link that arrived by email
+      proves the address. An ordinary forgotten-password link asks
+      nothing, sends nothing and changes nothing. Until they set that
+      first password, a created account is still unsubscribed.
 
-- [ ] **Deactivate a test account, and see the contact go.** Deactivate
-      the second test account from the admin users page. Its contact
-      should be gone from Resend.
+- [ ] **Invite a test account on production, and see it asked.** Create
+      a user at `/admin/users/new` with a test address and send the
+      invite. The page the email leads to should show the marketing box,
+      unticked. Set the password and leave the box alone: the contact in
+      Resend should be opted in. A forgotten-password link for the same
+      account should show no box.
 
-- [ ] **Run the retry once, and expect nothing to do.** Execute the admin
-      job with `ADMIN_ACTION=marketing-sync`, the way `just migrate-remote`
-      runs `run-migrations`. It should print `Synced 0, failed 0.` or
-      sync only the reactivated or unverified-then-verified accounts from
-      the steps above. If it is worth running often, add a
-      `marketing-sync-remote` recipe beside `migrate-remote` then.
+- [x] **Leave the mailing list alone when an account is deactivated.**
+      This step first read "deactivate a test account, and see the
+      contact go", and `deactivate_user` did remove the contact. Mark's
+      point was that closing an account is not the person saying "stop
+      emailing me": it is usually an admin who does it, and somebody who
+      has left may still want to hear what would bring them back. So
+      deactivating no longer touches Resend, and the weekly check and the
+      retry treat a closed account like any other. The person keeps the
+      unsubscribe link in every newsletter, and it still reaches Quill.
+      `remove_contact` stays, for a request to erase somebody's data,
+      which is a different thing and has no route yet.
+
+- [ ] **Deactivate a test account on production, and see the contact
+      stay.** Deactivate a test account from the admin users page. Its
+      contact in Resend should be exactly as it was.
+
+- [x] **Run the weekly check once by hand.** Done on 4 October 2026,
+      from the Actions tab, and it passed. The job reported: sent first
+      4, still unsent 0, matched 2, corrected 0, missing from Resend 0,
+      left for next time 4, failed 0. The four sent first are accounts
+      from before this plan, now in Resend as contacts opted out, and the
+      four left for next time are the same four, inside the five minute
+      settling window. The two matched are the test accounts. This
+      replaces the step that ran `marketing-sync` on its own: the weekly
+      check runs that retry first.
 
 - [x] **Read the logs for addresses.** Searched the backend's logs for
       the test address. Nothing from `app.marketing` names it: that code
@@ -558,24 +592,25 @@ address of Mark's own for every test account, and plus-addresses
       test accounts, so the first real broadcast goes to nobody who did
       not register for real.
 
-- [ ] **Before the first real broadcast, settle the soft opt-in
-      question** in Decisions. Everything above proves the machinery
-      works. It does not prove an opt-out is the right basis for emailing
-      people who registered for free.
+- [x] **Settle the soft opt-in question before the first real
+      broadcast.** Settled by Mark on 4 October 2026: registration stays
+      an opt-out, as built. See Decisions.
 
 ## Decisions
 
-- **Opt-out, not opt-in** – Mark's decision. UK rules (PECR) allow
-  marketing email without prior consent only under the "soft opt-in":
-  the address was given in the course of a sale or negotiation for a
-  service, the marketing is for the sender's own similar services, and the
-  person was given a simple way to refuse when the address was collected
-  and in every message. This plan supplies the last two. Whether a free
-  registration counts as the first is a legal question this plan does not
-  settle, and it is worth one check with whoever advises on data protection
-  before the first broadcast is sent. If the answer is no, the fix is small:
-  flip the checkbox to an unticked "Send me news and updates" and bump the
-  wording version. Nothing else in the plan changes.
+- **Opt-out, not opt-in** – Mark's decision, made at the start and
+  confirmed on 4 October 2026 once the whole of it had run on the live
+  app. UK rules (PECR) allow marketing email without prior consent only
+  under the "soft opt-in": the address was given in the course of a sale
+  or negotiation for a service, the marketing is for the sender's own
+  similar services, and the person was given a simple way to refuse when
+  the address was collected and in every message. This plan supplies the
+  last two, for somebody who registers and, through the invite, for
+  somebody whose account was made for them. Whether a free registration
+  counts as the first is a judgement, and the judgement taken is that it
+  does. Should that ever change, the fix is small: flip the checkbox to
+  an unticked "Send me news and updates" and bump the wording version.
+  Nothing else in the plan changes.
 
 - **An unticked "rather not" box, not a pre-ticked "yes" box** – both are
   opt-outs. A pre-ticked box is the pattern regulators single out as
@@ -594,8 +629,17 @@ address of Mark's own for every test account, and plus-addresses
   whichever side it is on, and the webhook and the retry bring them back
   together.
 
-- **Admin-created accounts are not subscribed** – they were never shown
-  the sentence. They can switch news on in Settings.
+- **Somebody whose account was made for them is asked, not skipped** –
+  this first read "admin-created accounts are not subscribed". They are
+  still not subscribed on the strength of a default, because they have
+  not seen the sentence. They see it when they set their first password
+  from the invite, and are then subscribed unless they refuse, the same
+  as somebody who registered.
+
+- **Closing an account does not unsubscribe anybody** – deactivation
+  says nothing about what the person wants to hear. The contact stays in
+  Resend as it was, and only the person, through Settings or an
+  unsubscribe link, changes it. Removal is for erasure.
 
 - **The retry is scheduled, weekly, as part of the reconcile** – this
   bullet first read "no scheduled retry yet", with a Cloud Scheduler job

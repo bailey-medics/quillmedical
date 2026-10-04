@@ -263,7 +263,7 @@ export default function Settings() {
         <ActionCard
           icon={<IconChartBar />}
           title="Help improve Quill"
-          subtitle="Count which pages get used, so the parts people rely on can be improved. Patient pages are never counted, and nothing recorded identifies you."
+          subtitle="We use anonymous page view tracking to improve Quill. If you wish to not help with this improvement, you can opt out below."
           action={
             <SolidSwitch
               // The card's title is not associated with the switch, so

@@ -108,8 +108,9 @@ def _resend_wants(contact: ListedContact) -> bool | None:
 def _synced_users(db: Session) -> list[User]:
     """Everybody whose current choice Resend has been told.
 
-    Verified and active, as the sync requires, and with a sync mark:
-    somebody without one has a choice Resend has not had yet.
+    Verified, as the sync requires, and with a sync mark: somebody
+    without one has a choice Resend has not had yet. A closed account is
+    checked like any other, because closing it took nobody off the list.
 
     Args:
         db: Database session.
@@ -122,7 +123,6 @@ def _synced_users(db: Session) -> list[User]:
             select(User)
             .where(
                 User.email_verified.is_(True),
-                User.is_active.is_(True),
                 User.marketing_synced_at.is_not(None),
             )
             .order_by(User.id)

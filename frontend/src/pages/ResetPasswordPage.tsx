@@ -15,8 +15,15 @@ import { useSearchParams } from "react-router-dom";
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
+  // An invite's link says so. Somebody whose account was made for them
+  // never saw the registration form, so the marketing question is asked
+  // here. A forgotten-password link does not, and is not asked.
+  const isInvite = searchParams.get("invite") === "1";
 
-  async function handleSubmit(newPassword: string): Promise<FormSubmitResult> {
+  async function handleSubmit(
+    newPassword: string,
+    marketingOptOut?: boolean,
+  ): Promise<FormSubmitResult> {
     if (!token) {
       return {
         state: "error",
@@ -30,6 +37,11 @@ export default function ResetPasswordPage() {
       await api.post("/auth/reset-password", {
         token,
         new_password: newPassword,
+        // Sent only when the question was on the page. Left out, the
+        // API changes nothing about marketing.
+        ...(isInvite && marketingOptOut !== undefined
+          ? { marketing_opt_out: marketingOptOut }
+          : {}),
       });
       window.location.assign("/login");
       return {
@@ -46,5 +58,7 @@ export default function ResetPasswordPage() {
     }
   }
 
-  return <ResetPasswordForm onSubmit={handleSubmit} />;
+  return (
+    <ResetPasswordForm onSubmit={handleSubmit} askAboutMarketing={isInvite} />
+  );
 }

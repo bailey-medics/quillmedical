@@ -206,17 +206,27 @@ class TestWhoIsLeftAlone:
         assert result == reconcile_module.Reconciled()
         assert "visitor@example.com" in fake_resend.contacts
 
-    def test_an_unverified_or_closed_account(self, db_session, fake_resend):
+    def test_an_unverified_account(self, db_session, fake_resend):
         unverified = _person(db_session, "unverified", verified=False)
-        closed = _person(db_session, "closed", active=False)
 
         result = reconcile(db_session)
 
         assert result.missing == 0
         db_session.refresh(unverified)
-        db_session.refresh(closed)
         assert unverified.marketing_emails is True
-        assert closed.marketing_emails is True
+
+    def test_a_closed_account_is_checked_like_any_other(
+        self, db_session, fake_resend
+    ):
+        """Closing it took nobody off the list, so it can still drift."""
+        closed = _person(db_session, "closed", active=False)
+        _in_resend(fake_resend, "closed", unsubscribed=True)
+
+        result = reconcile(db_session)
+
+        assert result.corrected == 1
+        db_session.refresh(closed)
+        assert closed.marketing_emails is False
 
     def test_a_topic_resend_holds_no_answer_for(self, db_session, fake_resend):
         user = _person(db_session, "ada")
