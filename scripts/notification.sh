@@ -39,6 +39,13 @@ if [ -n "$payload" ]; then
 fi
 [ -n "$cwd" ] || cwd="$PWD"
 
+# `cwd` also follows Claude into a subdirectory after a `cd frontend`, and
+# the banner would then be titled "frontend", spoken as "frontend", and a
+# click would open that folder over the worktree's window. Climb back to the
+# worktree root; outside a repository the directory stands as it is.
+root="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)"
+[ -n "$root" ] && cwd="$root"
+
 worktree="$(basename "$cwd")"
 branch="$(git -C "$cwd" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
 
