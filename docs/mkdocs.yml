@@ -146,6 +146,9 @@ nav:
   - Learnings:
       - Overview: learnings/index.md
       - FHIR & EHRbase Staging Issues: learnings/fhir-ehrbase-issues.md
+  - Research:
+      - Overview: research/index.md
+      - ePortfolio Market Research: research/2026-10-04-eportfolio-market-research.md
   - Code Documentation:
       - Frontend TypeDoc: code/frontend/README.md
       - Storybook: code/storybook/index.html
