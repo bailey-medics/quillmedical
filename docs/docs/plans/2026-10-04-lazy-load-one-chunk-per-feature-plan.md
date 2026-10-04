@@ -64,7 +64,7 @@ on the first click into each one.
 
       ```ts
       // frontend/src/featureChunks.ts
-      export const loadAdmin = () => import("./pages/admin/chunk");
+      export const loadAdmin = () => import("./pages/admin/adminChunk");
 
       // frontend/src/main.tsx
       { path: "users", lazy: lazyFrom(loadAdmin, "AdminUsersPage") }
@@ -101,14 +101,14 @@ First because it is the furthest from use: the teaching environment has
 clinical content off, so a mistake here reaches no one even once delegates
 arrive.
 
-- [ ] **Create `frontend/src/pages/clinical/chunk.ts`** re-exporting the
+- [x] **Create `frontend/src/pages/clinical/clinicalChunk.ts`** re-exporting the
       eleven pages routed under `<RequireClinical>`: `Patient`,
       `PatientLetters`, `PatientLetterView`, `PatientMessages`,
       `PatientMessageThread`, `PatientDocuments`, `PatientDocumentView`,
       `PatientNotes`, `PatientAppointments`, `Messages` and `MessageThread`.
       The page files stay where they are in `pages/`; moving them is a
       separate tidy-up and would bury this change in renames.
-- [ ] **Switch the clinical subtree in `main.tsx` to `lazyFrom`** and delete
+- [x] **Switch the clinical subtree in `main.tsx` to `lazyFrom`** and delete
       the eleven static imports. Each `handle` stays on the route object
       exactly as it is: `isRouteSafeForReload` reads it synchronously,
       before the chunk has loaded. The four message routes stay without
@@ -116,21 +116,44 @@ arrive.
       root is untouched. One chunk matters here for the same reason it does
       in teaching: opening a message thread must not need a fetch that can
       fail on a route that cannot safely reload.
-- [ ] **Leave `NewPatientPage` out.** It lives beside the patient pages but
+- [x] **Leave `NewPatientPage` out.** It lives beside the patient pages but
       is routed only under `/admin/patients`, so it belongs to Phase 3.
-- [ ] **Measure with the Phase 1 recipe and record the result here**: one
+- [x] **Measure with the Phase 1 recipe and record the result here**: one
       clinical chunk exists, `index.html` does not reference it, no
       per-page clinical chunks exist, the entry chunk is smaller, and the
       build prints no "dynamically imported but also statically imported"
       warning for any of the eleven. Rollup may also cut a shared chunk for
       components that two lazy features use and the entry chunk does not.
       That is fine: it loads with the feature, not mid-flow.
+      - **Measured 4 October.** One `clinicalChunk` file on demand,
+        41.64 kB raw and 11.83 kB gzipped, with a 0.15 kB stylesheet, and
+        no per-page clinical chunk. `index.html` references neither.
+        First load fell from 434.96 to **425.87 kB gzipped**, 9.09 kB
+        less. No "also statically imported" warning.
+      - **The module is `clinicalChunk.ts`, not `chunk.ts`.** The bundler
+        names a chunk after the file it starts from, so five features
+        each with a `chunk.ts` would build five files all called
+        `chunk-<hash>.js`, and the size report could not tell them apart.
+        Every later phase names its module after its feature for the
+        same reason.
+      - **First load went from 34 files to 39.** Moving the pages changed
+        which components are shared between first load and a lazy chunk,
+        so the bundler cut `ErrorState`, `MultiSelectField`,
+        `SolidSwitch` and `message-cards` into files of their own. They
+        are still first load and are counted in the total above.
+      - **A guard test, `frontend/src/featureChunks.test.ts`**, reads
+        `main.tsx` and fails if a page in a chunk is also imported there
+        statically, or if the chunk module is imported any way but
+        through its loader. Each later phase adds its chunk to the list.
 - [ ] **Open a patient and a message thread on the dev stack** with clinical
       services on, to see the chunk fetched once and the pages render.
+      Not done in the unattended run that built this phase: it needs a
+      browser and a dev stack with clinical services on, and the E2E
+      stack runs with them off. Left for a human before merging.
 
 ## Phase 3: Admin
 
-- [ ] **Create `frontend/src/pages/admin/chunk.ts`** re-exporting every
+- [ ] **Create `frontend/src/pages/admin/adminChunk.ts`** re-exporting every
       page routed under `/admin`: `AdminPage`, the users, patients,
       organisations, sites, members and feedback pages, the five
       `pages/admin/teaching/` pages, and the two that live outside the
@@ -151,7 +174,7 @@ arrive.
 
 ## Phase 4: Passport and safety become one chunk each
 
-- [ ] **Create `frontend/src/pages/passport/chunk.ts`** re-exporting each
+- [ ] **Create `frontend/src/pages/passport/passportChunk.ts`** re-exporting each
       page's `Component` under its own name
       (`export { Component as PassportPage } from "./PassportPage"`), and
       point all sixteen passport routes at it with `lazyFrom`. Include
@@ -160,7 +183,7 @@ arrive.
       pages keep exporting `Component`, so their tests do not change.
 - [ ] **Include the two public routes, `/passport/assessors/accept` and
       `/passport/verify/:signOffId`**, in the same chunk. See Decisions.
-- [ ] **Do the same for safety** in `frontend/src/pages/safety/chunk.ts`,
+- [ ] **Do the same for safety** in `frontend/src/pages/safety/safetyChunk.ts`,
       for its fourteen routes. It is a throwaway mock-up, but leaving it
       per page would leave the one counter-example somebody copies next.
 - [ ] **Rewrite the passport comments in `main.tsx`** that call it "the
@@ -178,7 +201,7 @@ this phase and Phase 6 before they do, so the exam path is changed and
 tested while a mistake still reaches no one. If they arrive first, the
 order holds and the checks in both phases matter more, not less.
 
-- [ ] **Create `frontend/src/features/teaching/chunk.ts`** re-exporting the
+- [ ] **Create `frontend/src/features/teaching/teachingChunk.ts`** re-exporting the
       eight learner pages `main.tsx` routes: `TeachingDashboard`,
       `TeachingModuleMain`,
       `LearningDashboard`, `SlideReader`, `AssessmentAttempt`,
@@ -303,7 +326,7 @@ mistake can break it. They are the second, third and fourth steps below.
 
 - [ ] **Add the rule to `.github/instructions/pages.instructions.md`** and
       run `/sync-copilot-config` so it reaches `.claude/rules/pages.md`: a
-      new feature gets one `chunk.ts`, a loader and a "can open" test in
+      new feature gets one `<feature>Chunk.ts`, a loader and a "can open" test in
       `featureChunks.ts`, and its routes use `lazyFrom`; never
       a bare `lazy: () => import("./pages/...")` per page; `handle` stays
       on the route object.
@@ -360,6 +383,6 @@ mistake can break it. They are the second, third and fourth steps below.
   every feature use. Neither fits the rule, and both are small.
 
 - **Page files do not move** – the clinical pages sit flat in `pages/`
-  and `NewPatientPage` sits outside `pages/admin/`. A `chunk.ts` can
+  and `NewPatientPage` sits outside `pages/admin/`. A chunk module can
   re-export from anywhere, so tidying the folders is not needed and is
   kept out of these diffs.
