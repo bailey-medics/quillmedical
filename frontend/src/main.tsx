@@ -42,6 +42,7 @@ import "@mantine/notifications/styles.css";
 import "./styles/typography.css";
 import "./styles/dark-overrides.css";
 import "./styles/touch-targets.css";
+import "./styles/disabled-controls.css";
 import ReactDOM from "react-dom/client";
 
 import { MantineProvider } from "@mantine/core";

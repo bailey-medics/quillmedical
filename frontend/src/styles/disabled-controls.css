@@ -1,0 +1,20 @@
+/*
+ * A disabled button keeps the ordinary pointer.
+ *
+ * Mantine gives a disabled button `cursor: not-allowed`, the "no entry"
+ * sign. It reads as a refusal: "you are not allowed". But a button here
+ * is disabled far more often because something is under way (an email
+ * being sent, a form being saved) or already done, and to somebody
+ * waiting for "Sending…" to finish, the sign says the wrong thing. The
+ * greyed-out look already says the button will not act.
+ *
+ * Mantine's own rule sits inside `:where()`, so it carries the weight of
+ * one class and this, with an attribute beside the class, wins without
+ * `!important`.
+ */
+.mantine-Button-root:disabled,
+.mantine-Button-root[data-disabled],
+.mantine-ActionIcon-root:disabled,
+.mantine-ActionIcon-root[data-disabled] {
+  cursor: default;
+}

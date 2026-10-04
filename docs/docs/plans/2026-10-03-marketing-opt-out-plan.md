@@ -647,24 +647,43 @@ address of Mark's own for every test account, and plus-addresses
   retry before it compares anything, from a scheduled workflow, so there
   is no separate schedule to add.
 
-- **Dev and production share one list** – different keys, the same
-  segment and topic. It made the first tests simple and it means a
-  contact made from the dev stack is a real contact. Running
-  `just marketing-sync` or `just marketing-reconcile` on the dev stack
-  sends every verified dev account to the real list. A second segment
-  for development would end that, and is worth making before anybody
-  else works on this.
+- **Development has its own segment and topic, which is half a
+  separation** – this first read "dev and production share one list". On
+  4 October 2026 a "Quill Medical (dev)" segment and a "Newsletter (dev)"
+  topic were made and the dev stack's `backend/.env` pointed at them, so a
+  real newsletter cannot reach a test contact. But Resend keeps one list
+  of contacts for the whole account, one entry per address, with one
+  "unsubscribed" switch each; a segment is a label, not a list. An
+  address used in both places is one contact, so opting out on the dev
+  stack unsubscribes the real person. Two truly separate lists need a
+  second Resend account. Mark's decision, 4 October 2026: keep the dev
+  segment and topic as they are, and test only with addresses nobody
+  real uses. A plus-address (`name+test1@...`) is a different contact
+  from the plain one, and has to be added to `EMAIL_ALLOWED_RECIPIENTS`
+  before the dev stack will email it.
 
-- **`email_send.py` logs the address it sends to** – found by Phase 6's
-  log check, and left alone here because it is not marketing's code and
-  changing it is a decision about what the logs are for. It wants its own
-  small change: log the user id, or nothing, as the rest of the
-  application does.
+- **A segment's contacts are read from the segment's own route** –
+  `GET /segments/{id}/contacts`. `GET /contacts?segment_id=...` looks the
+  same and is not: Resend ignores the filter and returns every contact in
+  the account. Found when the new, empty dev segment came back holding
+  all six production contacts. The stub in the tests had honoured the
+  filter, which is why nothing caught it; it now ignores it too.
 
-- **`email_send.py` may be slowed by IPv6 as the sync was** – it reaches
-  the same host through the `resend` SDK. Not measured and not changed.
-  If a password reset is ever seen to take ten seconds, this is the first
-  place to look.
+- **`email_send.py` no longer logs the address it sends to** – found by
+  Phase 6's log check: every email logged `to=<address>`. It now logs a
+  masked form, `m***@e***.org`, enough to tell two addresses apart
+  beside a known one and not enough to read off who somebody is. The
+  subject is no longer logged either, Mark's decision: a certificate
+  email's subject names the person. Attachments are counted, not named,
+  for the same reason.
+
+- **`email_send.py` was slowed by IPv6, as the sync was** – confirmed on
+  4 October 2026, when "forgot password" took 60 seconds on the live app
+  and the page gave up with "Request timed out", though the email
+  arrived. The `resend` SDK's own client waits thirty seconds to connect
+  and Resend has two IPv6 addresses. The SDK is now given a client that
+  connects over IPv4 only and gives up on a connection after three
+  seconds. `app/net.py` holds the reason once, for both.
 
 - **No existing users to migrate** – nobody is registered in production,
   so there is no backfill, and no question of what an existing person

@@ -57,7 +57,7 @@ export default function PublicButton({
           ? {
               root: {
                 opacity: 0.6,
-                cursor: "not-allowed",
+                cursor: "default",
               },
             }
           : undefined

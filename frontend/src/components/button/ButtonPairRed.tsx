@@ -66,7 +66,7 @@ export default function ButtonPairRed({
         size="md"
         styles={{
           root: acceptDisabled
-            ? { opacity: 0.6, cursor: "not-allowed" }
+            ? { opacity: 0.6, cursor: "default" }
             : undefined,
         }}
       >

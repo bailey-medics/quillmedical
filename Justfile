@@ -1046,6 +1046,51 @@ stack-files patch="":
     fi
 
 
+alias stfr := stack-fresh
+# Move this checkout to current main, carrying uncommitted work, ready for stack-new
+stack-fresh:
+    #!/usr/bin/env bash
+    {{initialise}} "stack-fresh"
+    {{stack_repo}}
+    set -euo pipefail
+    # For the moment after a stack has merged: the branch checked out is
+    # spent, the trunk has moved, and the working tree holds the next unit.
+    # Until this existed the way across was `just stack-sync` then
+    # `git switch main`, and neither survives the ordinary case. The sync
+    # will not rebase with uncommitted changes in the tree, `main` is
+    # usually checked out in another worktree, and a plain switch refuses
+    # whenever the trunk has changed a file that is also changed locally,
+    # which it has if the work carries on from what just merged. On
+    # 3 and 4 October 2026 that was worked round by hand six times.
+    #
+    # So: detach at the trunk's tip rather than switch to the branch, which
+    # another worktree may hold, and carry the work with a three-way merge.
+    # `--merge` keeps every local change and combines it with what the
+    # trunk changed in the same file. If the two cannot be combined git
+    # leaves conflict markers, nothing is lost, and this stops and says
+    # which files.
+    trunk="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||' || true)"
+    trunk="${trunk:-main}"
+    git fetch origin "${trunk}" --quiet
+    if ! git switch --detach --merge "origin/${trunk}" >/dev/null; then
+        echo "✗ Could not move this checkout to origin/${trunk}." >&2
+        exit 1
+    fi
+    conflicted="$(git diff --name-only --diff-filter=U)"
+    if [ -n "${conflicted}" ]; then
+        echo "✗ The uncommitted work overlaps what has merged, in:" >&2
+        echo "${conflicted}" | sed 's/^/    /' >&2
+        echo "  Each file holds both versions between conflict markers." >&2
+        echo "  Settle them by hand, then run: just stack-new <name> \"<message>\"" >&2
+        exit 1
+    fi
+    # The spent stack's record still names its merged branches, and a new
+    # stack started beside it would be drawn underneath them.
+    python3 "{{stack_scripts}}"/stack-forget-merged.py >/dev/null 2>&1 || true
+    echo "  On origin/${trunk} ($(git rev-parse --short HEAD)), with the uncommitted work carried across."
+    echo "  Next: just stack-new <name> \"<message>\""
+
+
 alias sth := stack-help
 # List the stack commands, one per line, with their arguments
 stack-help:
@@ -1243,6 +1288,18 @@ stack-new name message:
             git switch "${branch}"
         fi
     else
+        # A new stack is cut from wherever the checkout is, so it has to be
+        # at the trunk's tip. Cut from a branch that has merged, the new
+        # branch sits behind the trunk and its pull request carries the old
+        # stack's merge commits; nothing warns of it, and it looks like any
+        # other branch until somebody reads the diff.
+        git fetch origin main --quiet || true
+        if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+            echo "✗ Refusing to start a stack here: this checkout is not at origin/main." >&2
+            echo "  Move to it first, carrying any uncommitted work across:" >&2
+            echo "    just stack-fresh" >&2
+            exit 1
+        fi
         git switch -c "${branch}"
         gh stack init "${branch}"
     fi
@@ -1778,10 +1835,20 @@ stack-watch:
         # failing to move the checkout off a merged branch and says so only
         # in a `⚠` line. A mark part-way along a line is the drawing's own,
         # a red check or a branch needing a rebase, and is not a failure.
+        #
+        # Two warnings are left out, because neither is anything going
+        # wrong. "Could not update local main" is printed on every sync from
+        # a worktree that does not hold `main`, which is every worktree but
+        # one, and gh rebases onto origin/main instead. "has no PR" is a
+        # branch that has not been submitted yet. Counting those made every
+        # sync here end in "did not finish cleanly", and a message shown
+        # every time is one nobody reads the day it matters.
         recipe_status=0
         recipe_output=$(just "${recipe[@]}" 2>&1) || recipe_status=$?
         if [ "${recipe_status}" -eq 0 ] \
-            && printf '%s\n' "${recipe_output}" | grep -qE '^[[:space:]]*(⚠|✗) '; then
+            && printf '%s\n' "${recipe_output}" \
+                | grep -E '^[[:space:]]*(⚠|✗) ' \
+                | grep -vqE 'Could not update local main|has no PR$'; then
             recipe_status=1
         fi
         if [ "${recipe_status}" -ne 0 ]; then

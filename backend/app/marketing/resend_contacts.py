@@ -32,6 +32,7 @@ import httpx
 
 from app.config import settings
 from app.models import User
+from app.net import IPV4_ONLY
 
 logger = logging.getLogger(__name__)
 
@@ -41,16 +42,6 @@ RESEND_API_URL = "https://api.resend.com"
 #: person waiting for a page, and shorter still to connect: a connection
 #: that has not opened in two seconds is not about to.
 TIMEOUT = httpx.Timeout(5.0, connect=2.0)
-
-#: The address the client connects *from*, which is how ``httpx`` is told
-#: to use IPv4 only. Resend's API has two IPv6 addresses and two IPv4
-#: ones, and the backend on Cloud Run has no IPv6 route out. Tried in the
-#: order the resolver gives, each IPv6 address hangs for the whole connect
-#: timeout before an IPv4 one is reached. On 3 October 2026, the first day
-#: this ran in production, two of three saves from the Settings switch
-#: took 10.5 seconds, which is two five-second connect timeouts and one
-#: ordinary request; the third took one second.
-IPV4_ONLY = "0.0.0.0"  # nosec B104 - a source address, not a listener
 
 
 class MarketingSyncError(Exception):
@@ -328,18 +319,22 @@ def list_contacts() -> list[ListedContact] | None:
     contacts: list[ListedContact] = []
     after: str | None = None
     for _ in range(MAX_PAGES):
-        params: dict[str, str | int] = {
-            "segment_id": config.segment_id,
-            "limit": PAGE_SIZE,
-        }
+        params: dict[str, str | int] = {"limit": PAGE_SIZE}
         if after is not None:
             params["after"] = after
 
+        # The segment's own list. `GET /contacts?segment_id=...` looks
+        # like the same thing and is not: Resend ignores the filter there
+        # and answers with every contact in the account, which is how a
+        # development segment with nobody in it came back holding all six
+        # production contacts on 4 October 2026.
         def read_page(
             params: dict[str, str | int] = params,
         ) -> httpx.Response:
             with _client(config) as client:
-                return client.get("/contacts", params=params)
+                return client.get(
+                    f"/segments/{config.segment_id}/contacts", params=params
+                )
 
         response = _reaching_resend(read_page)
         _check(response, "listing the contacts")

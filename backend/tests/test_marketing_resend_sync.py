@@ -48,9 +48,29 @@ class FakeResend:
             return httpx.Response(self.fail_with, json={"message": "no"})
 
         if request.method == "GET" and path == "/contacts":
-            # The list, a page at a time. A contact's id here is its
-            # address, which is enough to page by.
-            segment = request.url.params.get("segment_id")
+            # Every contact in the account, whatever `segment_id` says:
+            # the real service ignores that filter here, and a stub that
+            # honoured it is how the wrong route went unnoticed.
+            return httpx.Response(
+                200,
+                json={
+                    "object": "list",
+                    "has_more": False,
+                    "data": [
+                        {"id": e, "email": e, "unsubscribed": False}
+                        for e in sorted(self.contacts)
+                    ],
+                },
+            )
+
+        if (
+            request.method == "GET"
+            and path.startswith("/segments/")
+            and path.endswith("/contacts")
+        ):
+            # One segment's list, a page at a time. A contact's id here
+            # is its address, which is enough to page by.
+            segment = path.split("/")[2]
             limit = int(request.url.params.get("limit", "100"))
             after = request.url.params.get("after")
             emails = sorted(

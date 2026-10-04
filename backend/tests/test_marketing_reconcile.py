@@ -319,7 +319,12 @@ class TestListingContacts:
             f"{n}@example.com" for n in ("a", "b", "c", "d", "e", "f")
         ]
         assert [c.unsubscribed for c in listed][-1] is True
-        assert len([c for c in fake_resend.calls if c[1] == "/contacts"]) == 3
+        pages = [
+            c
+            for c in fake_resend.calls
+            if c[1] == f"/segments/{SEGMENT}/contacts"
+        ]
+        assert len(pages) == 3
 
     def test_leaves_out_contacts_in_other_segments(self, fake_resend):
         _in_resend(fake_resend, "ours")
