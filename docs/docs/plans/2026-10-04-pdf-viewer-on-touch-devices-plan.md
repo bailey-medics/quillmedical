@@ -203,18 +203,30 @@ to open until `Document` used the component, so it could not come first.
 
 ## Phase 5: Check on real devices
 
-- [ ] On the teaching deployment, open a certificate with a PDF of
-      several pages on each of these and confirm every page can be
-      reached:
+On the live application, open a certificate with a PDF of several pages
+and confirm every page can be reached. One step for each device, so what
+has and has not been seen is plain.
 
-    - **Galaxy tablet, Chrome and Samsung Internet** – pdf.js path.
-    - **iPhone, Safari** – pdf.js path.
-    - **iPad, Safari** – pdf.js path. Not checked before this plan; it
-      is assumed to behave as the iPhone does.
-    - **MacBook, Chrome and Safari** – the iframe, unchanged.
+- [x] **Galaxy tablet** – pdf.js path. Confirmed on 4 October 2026:
+      the pages draw, and "Open file" downloads the PDF. Which of Chrome
+      and Samsung Internet it was tried in was not recorded.
 
-- [ ] Confirm on a desktop, in the network panel, that no pdf.js file
-      is requested.
+- [x] **iPhone, Safari** – pdf.js path. Confirmed on 4 October 2026:
+      every page can be reached, and "Open file" works.
+
+- [-] **iPad, Safari** – pdf.js path. Not checked: there is no iPad to
+  try it on. It is assumed to behave as the iPhone does. If it turns
+  out to report a mouse as its main pointer, as it may with a
+  keyboard case attached, it would get the frame and show one page,
+  and the gate in `useNativePdfViewer` would need another look.
+
+- [x] **MacBook** – the frame, unchanged. Confirmed on 4 October
+      2026: a PDF shows in the browser's own viewer as it did before.
+      Which of Chrome and Safari it was tried in was not recorded.
+
+- [x] Confirm on a desktop, in the network panel, that no pdf.js file
+      is requested. Confirmed on the MacBook on 4 October 2026: with a
+      PDF open, nothing from pdf.js is fetched.
 
 ## Decisions
 
