@@ -230,10 +230,13 @@ resource "github_repository_ruleset" "protected_branches" {
     #
     # max_entries_to_build is parallelism, not batching: how many queued PRs
     # are speculatively tested at once, each assuming the ones ahead of it
-    # will merge. Held at 3 rather than the usual 5 because CI here is
-    # expensive (Docker image builds, Playwright E2E), and every speculative
-    # run is thrown away and repeated when a PR ahead of it fails. Raise it
-    # if PRs start queueing up waiting for a build slot.
+    # will merge. It was 3 while a queue run took six to seven minutes; at
+    # 6 a whole stack, usually five or six pull requests queued together,
+    # is tested in one round of about four minutes rather than two. The
+    # cost is unchanged in kind: every speculative run is thrown away and
+    # repeated when a PR ahead of it fails, so a failure near the front of
+    # a full queue now wastes up to five runs rather than two. Lower it if
+    # that starts to happen often.
     #
     # check_response_timeout_minutes is how long the queue waits for the
     # required checks to report before dropping the entry. The slowest chain
@@ -249,7 +252,7 @@ resource "github_repository_ruleset" "protected_branches" {
       content {
         check_response_timeout_minutes    = 60
         grouping_strategy                 = "ALLGREEN"
-        max_entries_to_build              = 3
+        max_entries_to_build              = 6
         max_entries_to_merge              = 1
         merge_method                      = "MERGE"
         min_entries_to_merge              = 1
