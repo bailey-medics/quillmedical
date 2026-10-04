@@ -8,6 +8,7 @@
 import { Badge, Skeleton, Stack, Table } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
+import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import { useEffect, useState } from "react";
@@ -46,9 +47,17 @@ export default function SyncStatus() {
     load();
   }, []);
 
+  // The teaching menu, with this page named under Teaching while it is
+  // open. The page had no sidebar at all, so nothing said where it was.
+  const sidebarNav = (
+    <TeachingMainNav
+      trail={[{ label: "Sync status", href: "/teaching/sync" }]}
+    />
+  );
+
   if (loading) {
     return (
-      <TeachingLayout>
+      <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
         <Stack gap="lg">
           <Skeleton height={30} width={200} />
           <Skeleton height={50} />
@@ -61,7 +70,7 @@ export default function SyncStatus() {
 
   if (error) {
     return (
-      <TeachingLayout>
+      <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
         <StateMessage
           icon={<IconAlertCircle />}
           title="Error loading data"
@@ -73,7 +82,7 @@ export default function SyncStatus() {
   }
 
   return (
-    <TeachingLayout>
+    <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
       <Stack gap="lg">
         <PageHeader title="Sync status" />
 

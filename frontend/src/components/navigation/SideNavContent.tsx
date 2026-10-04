@@ -102,10 +102,27 @@ export default function SideNavContent({
   const isLoading = state.status === "loading";
 
   // Extract patient ID from URL if on patient admin page
-  const patientIdMatch = location.pathname.match(
-    /^\/admin\/patients\/([^/]+)$/,
-  );
+  const patientIdMatch = location.pathname.match(/^\/admin\/patients\/([^/]+)/);
   const patientId = patientIdMatch ? patientIdMatch[1] : null;
+
+  // The page open beneath one patient or one user: editing them, or
+  // putting a patient in or out of use.
+  const recordSubPage =
+    location.pathname.match(
+      /^\/admin\/(?:patients|users)\/[^/]+\/(edit|deactivate|activate)$/,
+    )?.[1] ?? null;
+  const recordSubPageItem: NavItem[] | undefined = recordSubPage
+    ? [
+        {
+          label: {
+            edit: "Edit",
+            deactivate: "Deactivate",
+            activate: "Activate",
+          }[recordSubPage] as string,
+          href: location.pathname,
+        },
+      ]
+    : undefined;
 
   // Extract user ID from URL if on user admin page
   const userIdMatch = location.pathname.match(/^\/admin\/users\/([^/]+)/);
@@ -344,6 +361,25 @@ export default function SideNavContent({
     fetchBankTitle();
   }, [bankId]);
 
+  // Pages under Users and Patients that are not one record: the forms
+  // and lists reached from the section's own page. Named here so each
+  // has a link of its own while open; without one the section stayed
+  // lit and the menu could not tell its pages apart.
+  const fixedPages: Record<string, string> = {
+    "/admin/users/new": "New user",
+    "/admin/users/edit": "Edit user",
+    "/admin/patients/new": "New patient",
+    "/admin/patients/list": "All patients",
+    "/admin/patients/edit": "Edit patient",
+    "/admin/patients/deactivate": "Deactivate patient",
+    "/admin/organisations/new": "New organisation",
+    "/admin/sites/new": "New site",
+  };
+  const fixedPageLabel = fixedPages[location.pathname];
+  const fixedPageItem: NavItem[] | undefined = fixedPageLabel
+    ? [{ label: fixedPageLabel, href: location.pathname }]
+    : undefined;
+
   // Build Users nav item with optional username child
   const usersNavItem: NavItem = {
     label: "Users",
@@ -354,9 +390,12 @@ export default function SideNavContent({
           {
             label: username,
             href: `/admin/users/${userId}`,
+            children: recordSubPageItem,
           },
         ]
-      : undefined,
+      : location.pathname.startsWith("/admin/users/")
+        ? fixedPageItem
+        : undefined,
   };
 
   // Build Patients nav item with optional patient name child
@@ -369,9 +408,12 @@ export default function SideNavContent({
           {
             label: patientName,
             href: `/admin/patients/${patientId}`,
+            children: recordSubPageItem,
           },
         ]
-      : undefined,
+      : location.pathname.startsWith("/admin/patients/")
+        ? fixedPageItem
+        : undefined,
   };
 
   // The breadcrumb for the open org_unit. Under Organisations it starts
@@ -427,7 +469,7 @@ export default function SideNavContent({
               label: "Organisations",
               href: "/admin/organisations",
               icon: showIcons ? "building-community" : undefined,
-              children: orgNavEffective,
+              children: orgId === "new" ? fixedPageItem : orgNavEffective,
             } satisfies NavItem,
           ]
         : []),
@@ -443,9 +485,11 @@ export default function SideNavContent({
         // under it, so Sites stays lit for the list and the create form
         // only: lit on both, the menu said you were in two places.
         // Without it, the site's pages hang here instead.
-        ...(showsOrganisations
-          ? { exact: siteId !== null && /^\d+$/.test(siteId) }
-          : { children: orgNavEffective }),
+        ...(siteId === "new"
+          ? { children: fixedPageItem }
+          : showsOrganisations
+            ? { exact: siteId !== null && /^\d+$/.test(siteId) }
+            : { children: orgNavEffective }),
       } satisfies NavItem,
       // Operator-only, matching the route guard and the API: feedback
       // spans every organisation. Shares its label with the top-level
@@ -457,6 +501,10 @@ export default function SideNavContent({
               label: "Feedback",
               href: "/admin/feedback",
               icon: showIcons ? "feedback" : undefined,
+              // One submission, named while it is open.
+              children: /^\/admin\/feedback\/[^/]+$/.test(location.pathname)
+                ? [{ label: "Submission", href: location.pathname }]
+                : undefined,
             } satisfies NavItem,
           ]
         : []),
@@ -487,6 +535,19 @@ export default function SideNavContent({
                                       ? `${bankTitle.slice(0, 8)}…`
                                       : bankTitle,
                                   href: `/admin/teaching/modules/${bankId}`,
+                                  // The module's settings for one
+                                  // organisation.
+                                  children:
+                                    /^\/admin\/teaching\/modules\/[^/]+\/org\/[^/]+$/.test(
+                                      location.pathname,
+                                    )
+                                      ? [
+                                          {
+                                            label: "Organisation",
+                                            href: location.pathname,
+                                          },
+                                        ]
+                                      : undefined,
                                 },
                               ]
                             : undefined,
@@ -506,10 +567,27 @@ export default function SideNavContent({
     ],
   };
 
+  // A message thread hands its trail over the same way a patient page
+  // does, starting at Messages. That part is hung under the Messages
+  // entry below rather than shown as a block of its own: as a block it
+  // put Messages in the menu twice, and lit one of them and the thread
+  // together.
+  const isMessagesTrail = patientNav?.[0]?.href === "/messages";
+  const threadItems: NavItem[] = isMessagesTrail
+    ? (patientNav ?? [])
+        .slice(1)
+        .reduceRight<NavItem[]>(
+          (inner, page) => [
+            { ...page, ...(inner.length > 0 ? { children: inner } : {}) },
+          ],
+          [],
+        )
+    : [];
+
   // Build nested patient nav item from flat patientNav array
   // [a, b, c] → a { children: [b { children: [c] }] }
   let patientNavItem: NavItem | null = null;
-  if (patientNav && patientNav.length > 0) {
+  if (patientNav && patientNav.length > 0 && !isMessagesTrail) {
     // Build from the deepest item upward
     let current: NavItem = { ...patientNav[patientNav.length - 1] };
     for (let i = patientNav.length - 2; i >= 0; i--) {
@@ -552,16 +630,15 @@ export default function SideNavContent({
         />
       )}
       {hasClinicalServices && (
-        <NavLink
-          component={Link}
-          to="/messages"
-          label="Messages"
-          styles={navLinkStyles}
-          active={location.pathname.startsWith("/messages")}
-          onClick={() => {
-            if (onNavigate) onNavigate();
+        <NestedNavLink
+          item={{
+            label: "Messages",
+            href: "/messages",
+            icon: showIcons ? "message" : undefined,
+            children: threadItems.length > 0 ? threadItems : undefined,
           }}
-          leftSection={showIcons ? <NavIcon name="message" /> : undefined}
+          onNavigate={onNavigate}
+          showIcons={showIcons}
         />
       )}
       {/* The cross-feature entries, from the one module that owns them.
