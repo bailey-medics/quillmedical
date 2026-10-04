@@ -7,6 +7,7 @@ from app.marketing import router as marketing_router
 from app.marketing.preferences import MARKETING_WORDING_VERSION
 from app.marketing.resend_contacts import MarketingSyncError
 from app.models import MarketingPreferenceChange, User
+from app.security import create_password_reset_token
 
 PREFERENCE_URL = "/api/marketing/preference"
 
@@ -132,6 +133,140 @@ class TestAnAccountAnAdminMade:
         user = _user(db_session, "made")
         assert user.marketing_emails is False
         assert _changes(db_session, user) == []
+
+
+class TestSettingAFirstPasswordFromAnInvite:
+    """Somebody whose account was made for them is asked here instead."""
+
+    URL = "/api/auth/reset-password"
+
+    def _reset(self, test_client, user, **extra):
+        return test_client.post(
+            self.URL,
+            json={
+                "token": create_password_reset_token(user.email),
+                "new_password": "ANewPassword123!",
+                **extra,
+            },
+        )
+
+    @pytest.fixture
+    def synced(self, monkeypatch):
+        """Record what the route tells Resend, without calling it."""
+        from app import main
+
+        told: list[tuple[int, bool]] = []
+        monkeypatch.setattr(
+            main,
+            "sync_contact",
+            lambda user: told.append((user.id, user.marketing_emails)),
+        )
+        return told
+
+    def test_leaving_the_box_unticked_means_news_is_sent(
+        self, test_client, db_session, test_user, synced
+    ):
+        test_user.email_verified = True
+        db_session.commit()
+
+        response = self._reset(test_client, test_user, marketing_opt_out=False)
+
+        assert response.status_code == 200, response.text
+        db_session.refresh(test_user)
+        assert test_user.marketing_emails is True
+        [row] = _changes(db_session, test_user)
+        assert row.source == "invite"
+        assert row.wants_marketing is True
+        assert row.wording_version == MARKETING_WORDING_VERSION
+        # The link came by email, so Resend is told straight away.
+        assert synced == [(test_user.id, True)]
+
+    def test_ticking_the_box_is_recorded_as_a_refusal(
+        self, test_client, db_session, test_user, synced
+    ):
+        test_user.email_verified = True
+        db_session.commit()
+
+        response = self._reset(test_client, test_user, marketing_opt_out=True)
+
+        assert response.status_code == 200, response.text
+        db_session.refresh(test_user)
+        assert test_user.marketing_emails is False
+        [row] = _changes(db_session, test_user)
+        assert row.source == "invite"
+        assert row.wants_marketing is False
+
+    def test_an_ordinary_reset_asks_nothing_and_changes_nothing(
+        self, test_client, db_session, test_user, synced
+    ):
+        test_user.marketing_emails = True
+        test_user.email_verified = True
+        db_session.commit()
+
+        response = self._reset(test_client, test_user)
+
+        assert response.status_code == 200, response.text
+        db_session.refresh(test_user)
+        assert test_user.marketing_emails is True
+        assert _changes(db_session, test_user) == []
+        assert synced == []
+
+    def test_an_unverified_address_is_not_sent_to_resend(
+        self, test_client, db_session, test_user, synced
+    ):
+        test_user.email_verified = False
+        db_session.commit()
+
+        self._reset(test_client, test_user, marketing_opt_out=False)
+
+        db_session.refresh(test_user)
+        assert test_user.marketing_emails is True
+        assert synced == []
+
+    def test_a_bad_token_changes_nothing(
+        self, test_client, db_session, test_user, synced
+    ):
+        response = test_client.post(
+            self.URL,
+            json={
+                "token": "forged",
+                "new_password": "ANewPassword123!",
+                "marketing_opt_out": False,
+            },
+        )
+
+        assert response.status_code == 400
+        db_session.refresh(test_user)
+        assert test_user.marketing_emails is False
+        assert _changes(db_session, test_user) == []
+
+
+class TestTheInviteEmail:
+    def test_its_link_says_it_is_an_invite(
+        self, authenticated_superadmin_client, db_session, monkeypatch
+    ):
+        """That is what makes the page ask the marketing question."""
+        from app import main
+
+        sent: list[dict] = []
+        monkeypatch.setattr(main, "send_email", lambda **kw: sent.append(kw))
+        user = User(
+            username="invited",
+            email="invited@example.com",
+            password_hash="x",
+            email_verified=True,
+        )
+        db_session.add(user)
+        db_session.commit()
+
+        response = authenticated_superadmin_client.post(
+            f"/api/users/{user.id}/send-invite"
+        )
+
+        assert response.status_code == 200, response.text
+        [email] = sent
+        assert "/reset-password?token=" in email["html_body"]
+        assert "invite=1" in email["html_body"]
 
 
 class TestMe:

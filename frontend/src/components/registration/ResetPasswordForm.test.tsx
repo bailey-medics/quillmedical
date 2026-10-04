@@ -142,4 +142,92 @@ describe("ResetPasswordForm", () => {
       );
     });
   });
+
+  describe("the marketing question", () => {
+    const box = () =>
+      screen.queryByRole("checkbox", {
+        name: "I would rather not get news and updates",
+      });
+
+    async function fillIn(user: ReturnType<typeof userEvent.setup>) {
+      await user.type(
+        screen.getByLabelText("New password *"),
+        "NewSecurePass123!",
+      );
+      await user.type(
+        screen.getByLabelText("Confirm password *"),
+        "NewSecurePass123!",
+      );
+    }
+
+    it("is not asked on an ordinary reset", () => {
+      renderWithRouter(
+        <ResetPasswordForm onSubmit={() => new Promise(() => {})} />,
+      );
+
+      expect(box()).not.toBeInTheDocument();
+    });
+
+    it("gives no answer on an ordinary reset", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn().mockResolvedValue(successResult);
+      renderWithRouter(<ResetPasswordForm onSubmit={onSubmit} />);
+
+      await fillIn(user);
+      await user.click(screen.getByTestId("submit-button"));
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      expect(onSubmit.mock.calls[0]).toEqual(["NewSecurePass123!"]);
+    });
+
+    it("is asked, unticked, of somebody setting a first password", () => {
+      renderWithRouter(
+        <ResetPasswordForm
+          askAboutMarketing
+          onSubmit={() => new Promise(() => {})}
+        />,
+      );
+
+      expect(box()).toBeInTheDocument();
+      expect(box()).not.toBeChecked();
+      expect(
+        screen.getByText(
+          /We'll email you news and updates about Quill Medical/,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("sends the box as left alone when it is not ticked", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn().mockResolvedValue(successResult);
+      renderWithRouter(
+        <ResetPasswordForm askAboutMarketing onSubmit={onSubmit} />,
+      );
+
+      await fillIn(user);
+      await user.click(screen.getByTestId("submit-button"));
+
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenCalledWith("NewSecurePass123!", false),
+      );
+    });
+
+    it("sends the refusal when it is ticked", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn().mockResolvedValue(successResult);
+      renderWithRouter(
+        <ResetPasswordForm askAboutMarketing onSubmit={onSubmit} />,
+      );
+
+      await fillIn(user);
+      const checkbox = box();
+      if (!checkbox) throw new Error("the marketing box is missing");
+      await user.click(checkbox);
+      await user.click(screen.getByTestId("submit-button"));
+
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenCalledWith("NewSecurePass123!", true),
+      );
+    });
+  });
 });

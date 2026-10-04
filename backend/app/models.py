@@ -755,12 +755,15 @@ class PushSubscription(Base):
 #: column. Reusing the word here would have put two unrelated ideas behind
 #: one term, which is the mistake this column exists to undo.
 #: Where a change to somebody's marketing preference came from.
-#: ``registration`` and ``settings`` are pages the person answered on;
-#: ``resend`` is the mailing service telling Quill, after an unsubscribe
-#: link in an email. Validated in code, as ``PLATFORM_ROLES`` is, so a new
+#: ``registration``, ``invite`` and ``settings`` are pages the person
+#: answered on: registering themselves, first setting a password on an
+#: account somebody made for them, and the Settings switch. ``resend`` is
+#: the mailing service telling Quill, after an unsubscribe link in an
+#: email. Validated in code, as ``PLATFORM_ROLES`` is, so a new
 #: source needs no migration.
 MARKETING_PREFERENCE_SOURCES: tuple[str, ...] = (
     "registration",
+    "invite",
     "settings",
     "resend",
 )

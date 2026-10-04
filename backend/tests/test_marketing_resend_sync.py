@@ -514,17 +514,18 @@ class TestVerifyingAnAddress:
 
 
 class TestTheRetry:
-    def test_picks_up_only_verified_active_unsynced_people(
+    def test_picks_up_only_verified_unsynced_people(
         self, db_session, fake_resend
     ):
         waiting = _person(db_session, "waiting")
         _person(db_session, "unverified", verified=False)
-        _person(db_session, "closed", active=False)
+        # A closed account counts: closing it changed nothing they chose.
+        closed = _person(db_session, "closed", active=False)
         done = _person(db_session, "done")
         done.marketing_synced_at = datetime.now(UTC)
         db_session.commit()
 
-        assert unsynced_users(db_session) == [waiting]
+        assert unsynced_users(db_session) == [waiting, closed]
 
     def test_syncs_them_and_counts(self, db_session, fake_resend):
         _person(db_session, "one")
@@ -546,23 +547,32 @@ class TestTheRetry:
 
 
 class TestClosingAnAccount:
-    def test_takes_the_person_off_the_list(
+    """Deactivating is not the person saying "stop emailing me"."""
+
+    def test_leaves_the_person_on_the_list_as_they_were(
         self, authenticated_superadmin_client, db_session, fake_resend
     ):
         user = _person(db_session, "ada")
         sync_contact(user)
         db_session.commit()
+        fake_resend.calls.clear()
 
         response = authenticated_superadmin_client.post(
             f"/api/users/{user.id}/deactivate"
         )
 
         assert response.status_code == 200
-        assert fake_resend.contacts == {}
+        contact = fake_resend.contacts["ada@example.com"]
+        assert contact["topics"] == {TOPIC: "opt_in"}
+        assert contact["unsubscribed"] is False
+        # Resend is not even asked.
+        assert fake_resend.calls == []
         db_session.refresh(user)
-        assert user.marketing_synced_at is None
+        assert user.is_active is False
+        assert user.marketing_emails is True
+        assert user.marketing_synced_at is not None
 
-    def test_still_closes_when_resend_is_down(
+    def test_closes_whether_or_not_resend_is_up(
         self, authenticated_superadmin_client, db_session, fake_resend
     ):
         user = _person(db_session, "ada")

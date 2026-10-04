@@ -125,13 +125,17 @@ describe("the page-view opt-out", () => {
     expect(hasOptedOut()).toBe(false);
   });
 
-  it("says that patient pages are never counted", () => {
-    // The claim the guard in usePageViewTracking actually enforces. If one
-    // changes without the other, this is where it shows.
+  it("says the tracking is anonymous and can be opted out of", () => {
+    // The page used to say "Patient pages are never counted" as well, and
+    // this test tied that sentence to the guard in usePageViewTracking
+    // that enforces it. The sentence was taken off the page on purpose;
+    // the guard is unchanged and has its own tests.
     renderWithRouter(<Settings />);
 
     expect(
-      screen.getByText(/patient pages are never counted/i),
+      screen.getByText(
+        "We use anonymous page view tracking to improve Quill. If you wish to not help with this improvement, you can opt out below.",
+      ),
     ).toBeInTheDocument();
   });
 });

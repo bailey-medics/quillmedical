@@ -121,7 +121,6 @@ from app.marketing.preferences import (
 )
 from app.marketing.resend_contacts import (
     MarketingSyncError,
-    remove_contact,
     sync_contact,
 )
 from app.marketing.router import router as marketing_router
@@ -1511,6 +1510,25 @@ def reset_password(
     user.password_hash = hash_password(data.new_password)
     user.token_version += 1  # Invalidate all existing sessions
     db.add(user)
+
+    # Somebody whose account was made for them never saw a registration
+    # form, so the invite's page asks the marketing question and the
+    # answer arrives here. It is the same opt-out as registration: left
+    # unticked, they are sent news. An ordinary reset sends nothing and
+    # changes nothing. The link came by email, so the address is theirs,
+    # and Resend is told straight away if the account is verified.
+    if data.marketing_opt_out is not None:
+        set_marketing_preference(
+            db,
+            user,
+            wants=not data.marketing_opt_out,
+            source="invite",
+            wording_version=MARKETING_WORDING_VERSION,
+            first_answer=True,
+        )
+        if user.email_verified:
+            _sync_marketing_contact(user)
+
     return DetailResponse(detail="Password reset successfully")
 
 
@@ -2536,18 +2554,13 @@ def deactivate_user(
 
     user.is_active = False
 
-    # A closed account comes off the mailing list. Best effort: the
-    # account is closed whether or not Resend answers, and the sync mark
-    # is cleared so a reactivated account is sent again.
-    try:
-        remove_contact(user.email)
-    except MarketingSyncError as exc:
-        logger.warning(
-            "Could not remove user %s from the mailing list: %s",
-            user.id,
-            exc,
-        )
-    user.marketing_synced_at = None
+    # The mailing list is deliberately left alone. Closing an account is
+    # not the person saying "stop emailing me": it is usually an admin
+    # who does it, and somebody who has left may still want to hear what
+    # would bring them back. They keep the unsubscribe link in every
+    # newsletter. Taking somebody off the list altogether is for a
+    # request to erase their data, which is `remove_contact`'s job and
+    # has no route yet.
 
     return UserIdActionOut(
         detail="deactivated",
@@ -2660,7 +2673,11 @@ def send_invite_email(
     _require_account_in_scope(current_user, user)
 
     token = create_password_reset_token(user.email)
-    reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+    # `invite=1` is what makes the page ask the marketing question: the
+    # same page serves a forgotten password, where it is not asked.
+    reset_url = (
+        f"{settings.FRONTEND_URL}/reset-password?token={token}&invite=1"
+    )
     send_email(
         to=user.email,
         **send_args(

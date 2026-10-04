@@ -375,8 +375,9 @@ def list_contacts() -> list[ListedContact] | None:
 def remove_contact(email: str) -> bool:
     """Take somebody off the mailing list altogether.
 
-    For an account that is being closed. Removing a contact Resend does
-    not have is not an error.
+    For somebody who asks for their data to be erased, which nothing
+    does yet: closing an account deliberately leaves the list alone.
+    Removing a contact Resend does not have is not an error.
 
     Args:
         email: The address to remove.

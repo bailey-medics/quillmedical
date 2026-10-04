@@ -51,6 +51,17 @@ export const WithError: Story = {
   play: async ({ canvasElement }) => fillAndSubmit(canvasElement),
 };
 
+/**
+ * Setting a first password from an invite. The account was made for this
+ * person, so the marketing question a registration form would have asked
+ * is asked here, unticked.
+ */
+export const FromAnInvite: Story = {
+  args: {
+    askAboutMarketing: true,
+  },
+};
+
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },

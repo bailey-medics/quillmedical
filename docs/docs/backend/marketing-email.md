@@ -26,18 +26,28 @@ updates". Left alone, the person is sent news. The words are in
 
 - **Somebody who registers** – subscribed unless they tick the box.
 
-- **An account an admin creates** – not subscribed. They were never shown
-  the sentence. They can switch news on in Settings.
+- **Somebody whose account an admin created** – asked when they set
+  their first password. The invite's link carries `invite=1`, and
+  `/reset-password` then shows the same sentence and box. Until then they
+  are not subscribed, because they have not been shown it. A
+  forgotten-password link asks nothing.
 
 - **Anybody, later** – the "News and updates by email" switch in
   Settings, or the unsubscribe link in any newsletter.
+
+**Closing an account changes none of this.** Deactivating somebody does
+not take them off the list: it is usually an admin who does it, and it
+says nothing about what the person wants to hear. They keep the
+unsubscribe link in every newsletter. Taking a contact off the list
+altogether is for a request to erase somebody's data.
 
 ## Where it is held
 
 - **`users.marketing_emails`** – the current answer.
 
 - **`marketing_preference_change`** – one row for every answer given:
-  what they chose, when, where (`registration`, `settings` or `resend`)
+  what they chose, when, where (`registration`, `invite`, `settings` or
+  `resend`)
   and which wording was on screen. This is the evidence that somebody
   was offered the choice. Rows are never updated.
 

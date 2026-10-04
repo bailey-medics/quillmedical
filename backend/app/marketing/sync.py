@@ -29,9 +29,9 @@ logger = logging.getLogger(__name__)
 def unsynced_users(db: Session) -> list[User]:
     """Everybody Resend should know about and does not.
 
-    Verified and active only. An unverified address has not been shown to
-    belong to the person who typed it, and a closed account is taken off
-    the list, not put on it.
+    Verified only: an unverified address has not been shown to belong to
+    the person who typed it. Whether the account is active plays no part.
+    Closing an account does not change what somebody chose about news.
 
     Args:
         db: Database session.
@@ -44,7 +44,6 @@ def unsynced_users(db: Session) -> list[User]:
             select(User)
             .where(
                 User.email_verified.is_(True),
-                User.is_active.is_(True),
                 User.marketing_synced_at.is_(None),
             )
             .order_by(User.id)
