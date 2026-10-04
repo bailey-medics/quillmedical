@@ -1,10 +1,13 @@
 /**
- * AddIconButton Component
+ * ExtraButton Component
  *
- * An icon-only add control for the row above a table, beside its search
- * and filter icons: `DataTableControlled`'s `action` slot. Subtle and
- * primary, at the same size and stroke as those two, so it sits with
- * them rather than shouting over them.
+ * An icon-only control for the row above a table, beside its search and
+ * filter icons: `DataTableControlled`'s `action` slot. It is the extra
+ * thing a table can do, whatever that is: add a record, add a person,
+ * grant a competency, open somebody's account. It was called
+ * `AddIconButton` until it came to be used for things that add nothing.
+ * Subtle and primary, at the same size and stroke as the other two, so
+ * it sits with them rather than shouting over them.
  *
  * The label is required because the button shows only an icon: without
  * it a screen reader announces "button" and nothing else. The same words
@@ -13,7 +16,7 @@
  * @example
  * ```tsx
  * <DataTableControlled
- *   action={<AddIconButton aria-label="Add hazard" onClick={add} />}
+ *   action={<ExtraButton aria-label="Add hazard" onClick={add} />}
  *   ...
  * />
  * ```
@@ -25,8 +28,8 @@ import { useMediaQuery } from "@mantine/hooks";
 import { IconFilePlus } from "@/components/icons/appIcons";
 import AppTooltip from "@/components/tooltip/AppTooltip";
 
-interface AddIconButtonProps {
-  /** What the button adds, read out by screen readers: "Add hazard" */
+interface ExtraButtonProps {
+  /** What the button does, read out by screen readers: "Add hazard" */
   "aria-label": string;
   /**
    * The icon, from `appIcons.ts`. Defaults to `IconFilePlus`, a new
@@ -44,12 +47,12 @@ interface AddIconButtonProps {
  * thinner stroke and a different footprint, which is why `ActionIcon` is
  * used directly here, with the aria-label still required.
  */
-export default function AddIconButton({
+export default function ExtraButton({
   "aria-label": label,
   icon = <IconFilePlus />,
   onClick,
   disabled = false,
-}: AddIconButtonProps) {
+}: ExtraButtonProps) {
   const theme = useMantineTheme();
   const isMobile = useMediaQuery(
     `(max-width: ${theme.breakpoints.sm})`,

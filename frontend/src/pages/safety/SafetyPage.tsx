@@ -15,7 +15,7 @@
 import { Stack } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
-import AddIconButton from "@/components/button/AddIconButton";
+import ExtraButton from "@/components/button/ExtraButton";
 import SafetyCaseTable from "@/components/safety/SafetyCaseTable";
 import { BodyText } from "@/components/typography";
 import { SAFETY_CASES } from "@lib/safety";
@@ -33,7 +33,7 @@ export function Component() {
       <SafetyCaseTable
         // For show only, by request: there is no form behind it. See
         // Phases 15 and 17 of the plan.
-        action={<AddIconButton aria-label="Add safety case" />}
+        action={<ExtraButton aria-label="Add safety case" />}
         cases={SAFETY_CASES}
         onSelect={(safetyCase) => navigate(`/safety/${safetyCase.id}`)}
       />

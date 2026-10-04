@@ -546,12 +546,9 @@ address of Mark's own for every test account, and plus-addresses
       nothing, sends nothing and changes nothing. Until they set that
       first password, a created account is still unsubscribed.
 
-- [ ] **Invite a test account on production, and see it asked.** Create
-      a user at `/admin/users/new` with a test address and send the
-      invite. The page the email leads to should show the marketing box,
-      unticked. Set the password and leave the box alone: the contact in
-      Resend should be opted in. A forgotten-password link for the same
-      account should show no box.
+- [x] **Invite a test account on production, and see it asked.** Done by
+      Mark on 4 October 2026, and it passed: the page the invite leads to
+      showed the marketing box, unticked.
 
 - [x] **Leave the mailing list alone when an account is deactivated.**
       This step first read "deactivate a test account, and see the
@@ -565,9 +562,9 @@ address of Mark's own for every test account, and plus-addresses
       `remove_contact` stays, for a request to erase somebody's data,
       which is a different thing and has no route yet.
 
-- [ ] **Deactivate a test account on production, and see the contact
-      stay.** Deactivate a test account from the admin users page. Its
-      contact in Resend should be exactly as it was.
+- [x] **Deactivate a test account on production, and see the contact
+      stay.** Done by Mark on 4 October 2026: the account was deactivated
+      and its contact stayed in Resend exactly as it was, unsubscribed.
 
 - [x] **Run the weekly check once by hand.** Done on 4 October 2026,
       from the Actions tab, and it passed. The job reported: sent first
@@ -588,9 +585,16 @@ address of Mark's own for every test account, and plus-addresses
       sit beside the fact that they have one. Outside this plan, and
       older than it, but found by this check; see Decisions.
 
-- [ ] **Tidy up.** Delete the test contacts in Resend and deactivate the
-      test accounts, so the first real broadcast goes to nobody who did
-      not register for real.
+- [x] **Tidy up.** Done on 4 October 2026, and it came to less than this
+      step first expected. The one contact with no account behind it, a
+      made-up address added to the dev segment to show it working, was
+      removed. The other six all belong to accounts that exist in Quill,
+      and every one is unsubscribed, so a real broadcast reaches none of
+      them. They were left: the weekly check sends any verified account
+      Resend does not hold, closed accounts included, so a contact deleted
+      here would be back within the week, opted out. Resend holding a
+      refusal is the intended state, not clutter. The list starts with
+      nobody subscribed.
 
 - [x] **Settle the soft opt-in question before the first real
       broadcast.** Settled by Mark on 4 October 2026: registration stays

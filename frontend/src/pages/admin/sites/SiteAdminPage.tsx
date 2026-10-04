@@ -19,7 +19,7 @@ import {
 } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
-import AddIconButton from "@/components/button/AddIconButton";
+import ExtraButton from "@/components/button/ExtraButton";
 import IconButton from "@/components/button/IconButton";
 import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import type { Column } from "@/components/tables/DataTable";
@@ -270,7 +270,7 @@ export default function SiteAdminPage() {
             columns={staffTableColumns}
             action={
               mayManageStaff && (
-                <AddIconButton
+                <ExtraButton
                   aria-label="Add staff"
                   icon={<IconUserPlus />}
                   onClick={() => navigate(`/admin/sites/${id}/add-staff`)}

@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
-import AddIconButton from "@/components/button/AddIconButton";
+import ExtraButton from "@/components/button/ExtraButton";
 import { IconUserPlus } from "@/components/icons/appIcons";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
@@ -130,7 +130,7 @@ export default function AdminUsersPage() {
         // Adding sits with the table's own search and filter icons, as
         // the safety tables do, rather than as a button in the header.
         action={
-          <AddIconButton
+          <ExtraButton
             aria-label="Add user"
             icon={<IconUserPlus />}
             onClick={() => navigate("/admin/users/new")}

@@ -221,7 +221,7 @@ export default function SignOffRequestForm({
 
         <EmailField
           label="Who should assess this?"
-          description="Name, username or email address"
+          description="Username or email address"
           placeholder="assessor@example.nhs.uk"
           value={assessorEmail}
           onChange={(event) => setAssessorEmail(event.currentTarget.value)}
