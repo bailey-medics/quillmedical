@@ -22,8 +22,10 @@ answered, and when, stays in ``marketing_preference_change``.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import TypeVar
 from urllib.parse import quote
 
 import httpx
@@ -103,6 +105,53 @@ def _names(user: User) -> dict[str, str]:
     return names
 
 
+# A TypeVar rather than PEP 695 type parameters, for the reason
+# ``app/features/passport/serialise.py`` gives: mypy in this repository
+# does not read the newer syntax.
+_T = TypeVar("_T")
+
+
+def _reaching_resend(  # noqa: UP047 - see the TypeVar note above
+    call: Callable[[], _T],
+) -> _T:
+    """Make some calls to Resend, once more from the top if one stalls.
+
+    Resend now and then takes longer than ``TIMEOUT`` to answer one
+    request and is back to normal on the next: seen once from the dev
+    stack on 3 October 2026 and once in production the day after, in
+    about thirty calls. A save from Settings is four calls in a row, so
+    one stall failed the whole save and the person was told to try again.
+    A second try does that for them.
+
+    Only a timeout is tried again. A refusal would be refused again, and
+    a connection that cannot be made at all is not a stall.
+
+    Everything passed here must be safe to run twice, which every caller
+    is: each looks at what Resend holds before changing it.
+
+    Args:
+        call: The calls to make.
+
+    Returns:
+        Whatever ``call`` returns.
+
+    Raises:
+        MarketingSyncError: If Resend stalled twice, or could not be
+            reached at all. The message never holds an address.
+    """
+    try:
+        try:
+            return call()
+        except httpx.TimeoutException:
+            return call()
+    except httpx.HTTPError as exc:
+        # The exception's own text may quote the URL, which holds the
+        # address, so only its type is kept.
+        raise MarketingSyncError(
+            f"Resend could not be reached: {type(exc).__name__}"
+        ) from None
+
+
 def _check(response: httpx.Response, doing: str) -> None:
     """Raise if Resend refused, naming the step and never the address."""
     if response.is_success:
@@ -150,7 +199,7 @@ def sync_contact(user: User) -> bool:
     unsubscribed = not user.marketing_emails
     contact = quote(user.email, safe="")
 
-    try:
+    def tell_resend() -> None:
         with _client(config) as client:
             found = client.get(f"/contacts/{contact}")
             if found.status_code == 404:
@@ -192,12 +241,8 @@ def sync_contact(user: User) -> bool:
                     client.patch(f"/contacts/{contact}/topics", json=topics),
                     "setting the contact's topic",
                 )
-    except httpx.HTTPError as exc:
-        # The exception's own text may quote the URL, which holds the
-        # address, so only its type is kept.
-        raise MarketingSyncError(
-            f"Resend could not be reached: {type(exc).__name__}"
-        ) from None
+
+    _reaching_resend(tell_resend)
 
     user.marketing_synced_at = datetime.now(UTC)
     return True
@@ -224,13 +269,12 @@ def topic_subscription(email: str) -> str | None:
         return None
 
     contact = quote(email, safe="")
-    try:
+
+    def read_topics() -> httpx.Response:
         with _client(config) as client:
-            response = client.get(f"/contacts/{contact}/topics")
-    except httpx.HTTPError as exc:
-        raise MarketingSyncError(
-            f"Resend could not be reached: {type(exc).__name__}"
-        ) from None
+            return client.get(f"/contacts/{contact}/topics")
+
+    response = _reaching_resend(read_topics)
     if response.status_code == 404:
         return None
     _check(response, "reading the contact's topics")
@@ -267,13 +311,12 @@ def remove_contact(email: str) -> bool:
         return False
 
     contact = quote(email, safe="")
-    try:
+
+    def remove() -> None:
         with _client(config) as client:
             response = client.delete(f"/contacts/{contact}")
             if response.status_code != 404:
                 _check(response, "removing the contact")
-    except httpx.HTTPError as exc:
-        raise MarketingSyncError(
-            f"Resend could not be reached: {type(exc).__name__}"
-        ) from None
+
+    _reaching_resend(remove)
     return True

@@ -31,10 +31,15 @@ class FakeResend:
         self.calls: list[tuple[str, str, object]] = []
         self.fail_with: int | None = None
         self.unreachable = False
+        #: How many of the next requests stall before one answers.
+        self.stalls = 0
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         if self.unreachable:
             raise httpx.ConnectError("no route", request=request)
+        if self.stalls > 0:
+            self.stalls -= 1
+            raise httpx.ReadTimeout("too slow", request=request)
         body: Any = json.loads(request.content) if request.content else None
         path = request.url.path
         self.calls.append((request.method, path, body))
@@ -296,6 +301,124 @@ class TestWhenResendCannotBeTold:
         assert sync_contact(user) is False
         assert fake_resend.calls == []
         assert user.marketing_synced_at is None
+
+
+class TestWhenResendStalls:
+    """Seen in production: one request in thirty takes too long, once."""
+
+    def test_one_stall_is_tried_again_and_the_sync_succeeds(
+        self, db_session, fake_resend
+    ):
+        user = _person(db_session, "ada", wants=False)
+        fake_resend.stalls = 1
+
+        assert sync_contact(user) is True
+
+        contact = fake_resend.contacts["ada@example.com"]
+        assert contact["topics"] == {TOPIC: "opt_out"}
+        assert contact["unsubscribed"] is True
+        assert user.marketing_synced_at is not None
+
+    def test_a_stall_part_way_through_starts_again_from_the_top(
+        self, db_session, fake_resend, monkeypatch
+    ):
+        """The second try looks first, so nothing is done twice over."""
+        user = _person(db_session, "ada")
+        sync_contact(user)
+        user.marketing_emails = False
+        fake_resend.calls.clear()
+
+        # Let the look-up and the segment through, then stall once.
+        answered = {"count": 0}
+        real = fake_resend.handler
+
+        def stall_on_the_third(request):
+            answered["count"] += 1
+            if answered["count"] == 3:
+                raise httpx.ReadTimeout("too slow", request=request)
+            return real(request)
+
+        monkeypatch.setattr(
+            resend_contacts,
+            "_client",
+            lambda config: httpx.Client(
+                base_url=resend_contacts.RESEND_API_URL,
+                headers={"Authorization": f"Bearer {config.api_key}"},
+                transport=httpx.MockTransport(stall_on_the_third),
+            ),
+        )
+
+        assert sync_contact(user) is True
+
+        contact = fake_resend.contacts["ada@example.com"]
+        assert contact["topics"] == {TOPIC: "opt_out"}
+        assert contact["unsubscribed"] is True
+        assert contact["segments"].count(SEGMENT) >= 1
+
+    def test_two_stalls_give_up(self, db_session, fake_resend):
+        user = _person(db_session, "ada")
+        fake_resend.stalls = 2
+
+        with pytest.raises(MarketingSyncError, match="ReadTimeout"):
+            sync_contact(user)
+
+        assert user.marketing_synced_at is None
+
+    def test_a_refusal_is_not_tried_again(self, db_session, fake_resend):
+        fake_resend.fail_with = 500
+        user = _person(db_session, "ada")
+
+        with pytest.raises(MarketingSyncError, match="HTTP 500"):
+            sync_contact(user)
+
+        assert len(fake_resend.calls) == 1
+
+    def test_a_connection_that_cannot_be_made_is_not_tried_again(
+        self, db_session, fake_resend, monkeypatch
+    ):
+        fake_resend.unreachable = True
+        attempts = {"count": 0}
+        real = fake_resend.handler
+
+        def counting(request):
+            attempts["count"] += 1
+            return real(request)
+
+        monkeypatch.setattr(
+            resend_contacts,
+            "_client",
+            lambda config: httpx.Client(
+                base_url=resend_contacts.RESEND_API_URL,
+                transport=httpx.MockTransport(counting),
+            ),
+        )
+        user = _person(db_session, "ada")
+
+        with pytest.raises(MarketingSyncError, match="ConnectError"):
+            sync_contact(user)
+
+        assert attempts["count"] == 1
+
+    def test_reading_a_topic_is_tried_again_too(self, fake_resend):
+        from app.marketing.resend_contacts import topic_subscription
+
+        fake_resend.contacts["ada@example.com"] = {
+            "segments": [SEGMENT],
+            "topics": {TOPIC: "opt_out"},
+        }
+        fake_resend.stalls = 1
+
+        assert topic_subscription("ada@example.com") == "opt_out"
+
+    def test_removing_a_contact_is_tried_again_too(
+        self, db_session, fake_resend
+    ):
+        user = _person(db_session, "ada")
+        sync_contact(user)
+        fake_resend.stalls = 1
+
+        assert remove_contact(user.email) is True
+        assert fake_resend.contacts == {}
 
 
 class TestRemovingAContact:

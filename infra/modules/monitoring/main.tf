@@ -452,11 +452,23 @@ resource "google_monitoring_alert_policy" "backend_errors" {
 
   documentation {
     mime_type = "text/markdown"
-    subject   = "Backend error: $${log.extracted_label.message}"
+    subject   = "Backend error: $${log.extracted_label.message} [$${log.extracted_label.status} $${log.extracted_label.request}]"
     content   = <<-EOT
-      **$${resource.label.service_name}** logged an error:
+      **$${resource.label.service_name}** logged an error.
 
-      > $${log.extracted_label.message}
+      - **Message:** $${log.extracted_label.message}
+      - **Request:** $${log.extracted_label.method} $${log.extracted_label.request}
+      - **Answered:** $${log.extracted_label.status}
+
+      An error is logged in one of two ways, and each fills in half of the
+      above. The other half reads "(null)", which means "this entry has
+      none", not that anything is missing:
+
+      - **The code logged it.** There is a message, and no request.
+      - **Cloud Run recorded a request that answered 500 or above.** There
+        is a request and what it answered, and no message. The code's own
+        account of why is usually a line or two away in the logs, a few
+        seconds either side.
 
       Somebody using the app has probably just been failed. The message is
       what the code logged, which never carries patient information; the
@@ -489,11 +501,21 @@ resource "google_monitoring_alert_policy" "backend_errors" {
         NOT jsonPayload."@type" = "type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent"
       EOT
 
-      # The logged message, so the alert says what went wrong without
-      # opening anything. A request-log entry for a 5xx has no message,
-      # so the label is empty there and the logs link is the way in.
+      # What the alert quotes, so it says what went wrong without opening
+      # anything. An entry the code logged has a message. Cloud Run's own
+      # record of a request that answered 500 or above has none, and the
+      # alert used to read "(null)" and nothing else for those: on
+      # 4 October 2026 a refused marketing opt-out arrived that way, and
+      # which request had failed could only be found by reading the logs.
+      # So the request and its answer are quoted as well. Only the path:
+      # everything from the "?" on is left out, because a query string
+      # can hold what somebody typed into a search box, and that can be a
+      # patient's name. A path holds route names and ids.
       label_extractors = {
         message = "EXTRACT(jsonPayload.message)"
+        method  = "EXTRACT(httpRequest.requestMethod)"
+        request = "REGEXP_EXTRACT(httpRequest.requestUrl, \"^([^?]*)\")"
+        status  = "EXTRACT(httpRequest.status)"
       }
     }
   }
