@@ -6,6 +6,11 @@
  * delegates with learning and assessment status.
  *
  * Only shows delegates belonging to the current user's organisation(s).
+ *
+ * Results are for one module at a time. An organisation serving more than
+ * one module that has an assessment, a real one and a practice one say,
+ * gets a module select under the header. Read together, a practice
+ * attempt would hide a real pass and count against a first-time pass.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -14,6 +19,7 @@ import PageHeader from "@/components/typography/PageHeader";
 import StatCard from "@/components/stats-card/StatCard";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
+import SelectField from "@/components/form/SelectField";
 import AssessmentResultBadge from "@/components/badge/AssessmentResultBadge";
 import FormattedDate from "@/components/data/Date";
 import { StateMessage } from "@/components/message-cards";
@@ -32,6 +38,19 @@ interface Delegate {
   assessment_result: "pass" | "fail" | "incomplete" | null;
   assessment_date: string | null;
   first_time_pass: boolean;
+}
+
+/** A module with an assessment, to narrow the results by. */
+interface DelegateModule {
+  bank_id: string;
+  title: string;
+}
+
+/** The delegates, with results from one module when one is named. */
+function delegatesPath(bankId: string | null): string {
+  return bankId
+    ? `/teaching/admin/delegates?bank_id=${encodeURIComponent(bankId)}`
+    : "/teaching/admin/delegates";
 }
 
 // ── Columns ─────────────────────────────────────────────────────────
@@ -89,15 +108,26 @@ function calcFirstPassRate(delegates: Delegate[]): number {
 export default function AdminAllDelegatesPage() {
   const [delegates, setDelegates] = useState<Delegate[]>([]);
   const [filteredDelegates, setFilteredDelegates] = useState<Delegate[]>([]);
+  const [modules, setModules] = useState<DelegateModule[]>([]);
+  const [bankId, setBankId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [switching, setSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    async function fetchDelegates() {
+    async function fetchPage() {
       try {
-        const data = await api.get<Delegate[]>("/teaching/admin/delegates");
+        // The modules first: the results asked for depend on which there
+        // are. The first is shown to begin with, never all of them mixed.
+        const found = await api.get<DelegateModule[]>(
+          "/teaching/admin/delegates/modules",
+        );
+        const first = found[0]?.bank_id ?? null;
+        const data = await api.get<Delegate[]>(delegatesPath(first));
         if (!cancelled) {
+          setModules(found);
+          setBankId(first);
           setDelegates(data);
         }
       } catch (err) {
@@ -110,11 +140,30 @@ export default function AdminAllDelegatesPage() {
         if (!cancelled) setLoading(false);
       }
     }
-    fetchDelegates();
+    fetchPage();
     return () => {
       cancelled = true;
     };
   }, []);
+
+  async function changeModule(value: string | null) {
+    if (!value || value === bankId) return;
+    setSwitching(true);
+    try {
+      const data = await api.get<Delegate[]>(delegatesPath(value));
+      setBankId(value);
+      setDelegates(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load delegates");
+    } finally {
+      setSwitching(false);
+    }
+  }
+
+  const moduleOptions = useMemo(
+    () => modules.map((m) => ({ value: m.bank_id, label: m.title })),
+    [modules],
+  );
 
   // Build filter options from loaded data
   const filterOptions = useMemo(() => {
@@ -219,6 +268,17 @@ export default function AdminAllDelegatesPage() {
     <Stack gap="md">
       <PageHeader title="All delegates" />
 
+      {modules.length > 1 && (
+        <SelectField
+          label="Module"
+          data={moduleOptions}
+          value={bankId}
+          onChange={(value) => void changeModule(value)}
+          disabled={switching}
+          allowDeselect={false}
+        />
+      )}
+
       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
         <StatCard title="Total delegates" value={filteredDelegates.length} />
         <StatCard
@@ -235,6 +295,7 @@ export default function AdminAllDelegatesPage() {
         data={delegates}
         columns={columns}
         getRowKey={(d) => d.id}
+        loading={switching}
         pageSize={10}
         filterData={filterOptions}
         filterLabel="Filter delegates"
