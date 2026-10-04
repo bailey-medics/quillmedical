@@ -141,6 +141,24 @@ class TestLayout:
         assert "You asked for this." in html
         assert "Quill Medical is a trading name of Bailey Medics Ltd." in html
 
+    def test_headings_shrink_on_a_phone(self, env: Environment) -> None:
+        html = _render(env)["html_body"]
+
+        phone = re.search(
+            r"@media \(max-width: 480px\) \{(.*?)\n      \}", html, re.S
+        )
+        assert phone is not None
+        assert re.search(r"\.em-h1 \{\s*font-size: 28px !important", phone[1])
+        assert re.search(r"\.em-h2 \{\s*font-size: 24px !important", phone[1])
+        # The rule only bites if the headings carry the classes, and the
+        # desktop size stays inline for clients that drop the stylesheet.
+        assert re.search(
+            r'<h1 class="em-h1" style="[^"]*font-size: 40px', html
+        )
+        assert re.search(
+            r'<h2 class="em-h2" style="[^"]*font-size: 30px', html
+        )
+
     def test_gives_classic_outlook_its_fixed_width(
         self, env: Environment
     ) -> None:
