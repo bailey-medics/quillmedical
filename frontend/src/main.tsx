@@ -62,6 +62,7 @@ import {
 import { persistFormState } from "@lib/compat-generation";
 import { installGlobalErrorReporting } from "@lib/error-reporting/globalHandlers";
 import RouteTracking from "@lib/error-reporting/RouteTracking";
+import FeaturePrefetch from "@lib/FeaturePrefetch";
 import { installPromptCapture } from "@lib/pwa/installPromptEvent";
 import { markInstallFinished } from "@lib/pwa/installPromptSchedule";
 
@@ -858,12 +859,20 @@ const routes: RouteObject[] = [
 // pages, the 404 and the whole /teaching tree – those reported errors with no
 // route at all. Declared here, a tree added later inherits it.
 //
+// `FeaturePrefetch` sits here for the same reason: it fetches the other
+// features' chunks in the background and must see every tree's routes.
+//
 // The same goes for `errorElement`. A lazy chunk that cannot be fetched
 // rejects inside the router, which no <ErrorBoundary> in a layout can
 // catch; without this the router shows its own developer screen.
 const router = createBrowserRouter([
   {
-    element: <RouteTracking />,
+    element: (
+      <>
+        <FeaturePrefetch />
+        <RouteTracking />
+      </>
+    ),
     errorElement: <RouteErrorFallback />,
     // Shown on a cold load of a lazy route while its chunk is in flight.
     // Without it the router renders nothing at all until the chunk

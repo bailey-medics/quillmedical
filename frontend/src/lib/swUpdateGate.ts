@@ -12,6 +12,8 @@
  * A route with no `handle.safeForReload` is unsafe by default (fail-safe).
  */
 
+import { isBackgroundFetchInFlight } from "./prefetchFeatures";
+
 const RELOADED_ONCE_KEY = "quill-sw-update-reloaded";
 
 export interface RouteHandle {
@@ -73,6 +75,8 @@ export interface RouterLike {
   state: {
     matches: RouteMatchLike[];
     location: { state: unknown };
+    /** `idle` unless the router is part-way through a navigation. */
+    navigation: { state: string };
   };
 }
 
@@ -169,6 +173,11 @@ export interface PreloadErrorWiring {
   addEventListener?: typeof window.addEventListener;
   currentPathname?: () => string;
   storage?: Pick<Storage, "getItem" | "setItem">;
+  /**
+   * Whether a background fetch of a feature chunk is under way. Defaults
+   * to the real answer from `prefetchFeatures.ts`; tests pass their own.
+   */
+  isBackgroundFetch?: () => boolean;
 }
 
 /**
@@ -196,7 +205,32 @@ export function wirePreloadErrorRecovery(wiring: PreloadErrorWiring): void {
     wiring.addEventListener ?? window.addEventListener.bind(window);
   const pathname = wiring.currentPathname ?? (() => window.location.pathname);
 
+  const isBackgroundFetch =
+    wiring.isBackgroundFetch ?? isBackgroundFetchInFlight;
+
   listen("vite:preloadError", (event: Event) => {
+    // A chunk being fetched in the background, for a feature nobody has
+    // opened, has failed. Nobody is waiting on it, so there is nothing to
+    // recover: leave the page exactly as it is. This matters most in an
+    // exam. An `import()` cannot be cancelled, so a background fetch
+    // started on the dashboard can fail after the attempt has begun.
+    //
+    // The navigation check keeps real recovery working. A click that
+    // fails while a background fetch happens to be in flight is a
+    // navigation in the `loading` state, and is handled below as ever.
+    //
+    // Returning here, before `decidePreloadFailureAction`, is deliberate:
+    // that function writes the reload-loop guard, and a guard written for
+    // a failure nobody saw would block a genuine recovery for a minute.
+    // Not prevented either, so the import rejects and the background
+    // fetch catches it.
+    if (
+      isBackgroundFetch() &&
+      wiring.router.state.navigation.state === "idle"
+    ) {
+      return;
+    }
+
     const hasFlash = Boolean(
       (wiring.router.state.location.state as { flash?: unknown } | null)?.flash,
     );

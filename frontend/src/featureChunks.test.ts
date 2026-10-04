@@ -2,6 +2,9 @@ import fs from "fs";
 import path from "path";
 import { describe, expect, it } from "vitest";
 import * as featureChunks from "./featureChunks";
+import { FEATURE_CHUNKS } from "./featureChunks";
+import type { User } from "./auth/AuthContext";
+import { SCOPED_MANAGER_IDS } from "@/types/cbac";
 
 const mainSource = fs.readFileSync(path.join(__dirname, "main.tsx"), "utf8");
 
@@ -89,5 +92,90 @@ describe("the exam", () => {
     );
 
     expect(mainSource).toMatch(route);
+  });
+});
+
+describe("who may open each feature", () => {
+  const nobody = { enabled_features: [], competencies: [] } as unknown as User;
+
+  function canOpen(name: string, user: Partial<User>): boolean {
+    const chunk = FEATURE_CHUNKS.find((candidate) => candidate.name === name);
+    if (chunk === undefined) throw new Error(`no chunk called ${name}`);
+    return chunk.canOpen({ ...nobody, ...user } as User);
+  }
+
+  it("lists every loader, so none is left out of the background fetch", () => {
+    const loaders = Object.entries(featureChunks)
+      .filter(([name]) => name.startsWith("load"))
+      .map(([, loader]) => loader);
+
+    expect(FEATURE_CHUNKS.map((chunk) => chunk.load).sort()).toEqual(
+      loaders.sort(),
+    );
+  });
+
+  it("lets nobody with nothing open anything", () => {
+    expect(FEATURE_CHUNKS.filter((chunk) => chunk.canOpen(nobody))).toEqual([]);
+  });
+
+  it("opens teaching on the feature alone", () => {
+    expect(canOpen("teaching", { enabled_features: ["teaching"] })).toBe(true);
+  });
+
+  it("opens passport on the feature and the competency together", () => {
+    const competencies = ["assess_clinician_passport"] as User["competencies"];
+
+    expect(canOpen("passport", { enabled_features: ["passport"] })).toBe(false);
+    expect(canOpen("passport", { competencies })).toBe(false);
+    expect(
+      canOpen("passport", { enabled_features: ["passport"], competencies }),
+    ).toBe(true);
+  });
+
+  it("opens passport for a holder the feature does not reach", () => {
+    const competencies = ["assess_clinician_passport"] as User["competencies"];
+
+    expect(canOpen("passport", { owns_passport: true, competencies })).toBe(
+      true,
+    );
+  });
+
+  it("opens admin for manage_users and for every scoped manager", () => {
+    for (const competency of ["manage_users", ...SCOPED_MANAGER_IDS]) {
+      const competencies = [competency] as User["competencies"];
+      expect(canOpen("admin", { competencies }), competency).toBe(true);
+    }
+  });
+
+  it("opens safety on the feature and the competency together", () => {
+    const competencies = ["view_safety_cases"] as User["competencies"];
+
+    expect(canOpen("safety", { enabled_features: ["safety"] })).toBe(false);
+    expect(canOpen("safety", { competencies })).toBe(false);
+    expect(
+      canOpen("safety", { enabled_features: ["safety"], competencies }),
+    ).toBe(true);
+  });
+
+  it("opens clinical only when the flag says so, never when it is unset", () => {
+    expect(canOpen("clinical", { clinical_services_enabled: true })).toBe(true);
+    expect(canOpen("clinical", { clinical_services_enabled: false })).toBe(
+      false,
+    );
+    expect(canOpen("clinical", {})).toBe(false);
+  });
+
+  // Each test above restates a guard. This ties them to main.tsx, so a
+  // guard changed there without the list being changed fails here.
+  it.each([
+    'feature="teaching"',
+    'competency="assess_clinician_passport"',
+    'competency={["manage_users", ...SCOPED_MANAGER_IDS]}',
+    'feature="safety"',
+    'competency="view_safety_cases"',
+    "<RequireClinical>",
+    "<RequirePassport>",
+  ])("mirrors a guard main.tsx still has: %s", (guard) => {
+    expect(mainSource.replace(/\s+/g, " ")).toContain(guard);
   });
 });
