@@ -2,21 +2,25 @@
  * Feedback Detail Page
  *
  * One piece of feedback in full: the message, who sent it and from where,
- * and its status, which an operator changes here as they deal with it.
- * The list shows only the start of each message, and deciding what to do
- * about one means reading all of it.
+ * and the operator's answer to it, a status and a comment, both of which
+ * the sender sees on their own feedback page. The list shows only the
+ * start of each message, and deciding what to do about one means reading
+ * all of it.
  *
- * The message is never edited. Only the status changes.
+ * The message is never edited. The status saves when it is chosen; the
+ * comment saves from its own button, since it is typed rather than picked.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Group, Skeleton, Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
+import ButtonPair from "@/components/button/ButtonPair";
 import FeedbackStatusBadge from "@/components/badge/FeedbackStatusBadge";
 import FormattedDate from "@/components/data/Date";
 import ErrorState from "@/components/error-state/ErrorState";
 import SelectField from "@/components/form/SelectField";
+import TextAreaField from "@/components/form/TextAreaField";
 import PageHeader from "@/components/page-header";
 import { usePageMessage } from "@/components/page-message";
 import {
@@ -25,11 +29,14 @@ import {
   BodyTextInline,
   Heading,
 } from "@/components/typography";
+import { describeDevice } from "@/lib/feedback/device";
 import {
   FEEDBACK_STATUSES,
   FEEDBACK_STATUS_LABELS,
+  MAX_FEEDBACK_COMMENT,
   categoryLabel,
   getFeedback,
+  setFeedbackComment,
   setFeedbackStatus,
   type FeedbackItem,
   type FeedbackStatus,
@@ -60,11 +67,15 @@ export default function FeedbackDetailPage() {
   const [loading, setLoading] = useState(Boolean(id));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [comment, setComment] = useState("");
+  const [savingComment, setSavingComment] = useState(false);
 
   const fetchItem = useCallback(async () => {
     if (!id) return;
     try {
-      setItem(await getFeedback(Number(id)));
+      const fetched = await getFeedback(Number(id));
+      setItem(fetched);
+      setComment(fetched.comment ?? "");
     } catch {
       setError("Feedback not found");
     } finally {
@@ -91,6 +102,27 @@ export default function FeedbackDetailPage() {
       showMessage({ variant: "error", title: "The status was not changed" });
     } finally {
       setSaving(false);
+    }
+  }
+
+  const commentChanged = comment.trim() !== (item?.comment ?? "");
+
+  async function saveComment() {
+    if (!item || !commentChanged) return;
+    setSavingComment(true);
+    try {
+      const saved = await setFeedbackComment(item.id, comment.trim());
+      setItem(saved);
+      setComment(saved.comment ?? "");
+      showMessage({
+        variant: "success",
+        title: saved.comment ? "Comment saved" : "Comment removed",
+      });
+    } catch {
+      // What was typed stays in the box, to be tried again.
+      showMessage({ variant: "error", title: "The comment was not saved" });
+    } finally {
+      setSavingComment(false);
     }
   }
 
@@ -123,13 +155,13 @@ export default function FeedbackDetailPage() {
             <Heading>Message</Heading>
             <FeedbackStatusBadge status={item.status} />
           </Group>
-          <BodyText>{item.message}</BodyText>
+          <BodyText preserveLines>{item.message}</BodyText>
         </Stack>
       </BaseCard>
 
       <BaseCard>
         <Stack gap="md">
-          <Heading>Status</Heading>
+          <Heading>Response</Heading>
           <SelectField
             label="Status"
             data={STATUS_OPTIONS}
@@ -137,6 +169,22 @@ export default function FeedbackDetailPage() {
             onChange={(value) => void changeStatus(value)}
             disabled={saving}
             allowDeselect={false}
+          />
+          <TextAreaField
+            label="Comment"
+            description="The sender sees this beside the status on their feedback page. Add a new line for each update."
+            value={comment}
+            onChange={(event) => setComment(event.currentTarget.value)}
+            maxLength={MAX_FEEDBACK_COMMENT}
+            autosize
+            minRows={3}
+            disabled={savingComment}
+          />
+          <ButtonPair
+            acceptLabel="Save comment"
+            onAccept={() => void saveComment()}
+            acceptDisabled={!commentChanged}
+            acceptLoading={savingComment}
           />
         </Stack>
       </BaseCard>
@@ -163,6 +211,10 @@ export default function FeedbackDetailPage() {
               />
             )}
             <Detail label="Release" value={item.release || "Not known"} />
+            <Detail
+              label="Device"
+              value={describeDevice(item.user_agent) ?? "Not known"}
+            />
             <Detail label="Screen" value={item.viewport || "Not known"} />
             <Detail label="Browser" value={item.user_agent || "Not known"} />
           </Stack>

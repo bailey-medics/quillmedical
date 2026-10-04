@@ -231,6 +231,26 @@ Last, because rendering the modal inside a failed tree is the fiddliest part.
 - [x] Tests: the fallback offers both actions; a story for the
       error-boundary variant of the modal.
 
+## Phase 7: Operator comment
+
+The status says where a report has got to; it cannot say what was done
+about it. An operator can now write one comment on a piece of feedback,
+which the sender reads beside the status. One way only: the sender still
+cannot reply.
+
+- [x] Add a nullable `operator_comment` column to `feedback`, up to 2000
+      characters. One comment per piece of feedback, overwritten when it
+      is edited, not a thread.
+- [x] `PATCH /api/feedback/{id}` takes `status`, `comment` or both, and
+      changes only what the body names. A blank or null `comment` removes
+      it. The comment is never logged, for the reason the message is not.
+- [x] Return `comment` from the operator routes and from
+      `GET /api/feedback/mine`.
+- [x] `FeedbackDetailPage` gains a comment box with its own save button,
+      in one "Response" card with the status select.
+- [x] `YourFeedbackPage` shows the comment under the message as "Our
+      reply", where one was written.
+
 ## Decisions
 
 - **A nav link, not a floating widget.** The audience is always signed in,
@@ -263,8 +283,8 @@ Last, because rendering the modal inside a failed tree is the fiddliest part.
   built yet. Until it is, senders only see an outcome if they go to
   `/feedback`.
 
-- **Deferred: replying in-app.** The status records the outcome; a reply
-  channel needs the messaging feature.
+- **Deferred: a two-way reply channel.** An operator can write one comment
+  back (phase 7), but a conversation needs the messaging feature.
 
 - **Rejected: screenshots.** A screenshot of a clinical screen is patient
   data by default, and the consent and retention questions outweigh the

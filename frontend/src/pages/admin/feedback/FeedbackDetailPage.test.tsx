@@ -1,7 +1,8 @@
 /**
  * FeedbackDetailPage tests
  *
- * One piece of feedback in full, and changing its status.
+ * One piece of feedback in full, changing its status and writing the
+ * comment the sender sees.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -23,6 +24,7 @@ vi.mock("react-router-dom", async () => {
 const feedback: FeedbackItem = {
   id: 5,
   status: "new",
+  comment: null,
   category: "inaccurate",
   message: "The dose in case 4 is ten times too high.",
   sender: "delegate.one",
@@ -57,6 +59,20 @@ describe("FeedbackDetailPage", () => {
     expect(screen.getByText("/teaching/:bankId")).toBeInTheDocument();
     expect(screen.getByText("TypeError (BANK_NOT_FOUND)")).toBeInTheDocument();
     expect(screen.getByText("Mozilla/5.0 (Macintosh)")).toBeInTheDocument();
+    expect(screen.getByText("Mac, macOS")).toBeInTheDocument();
+  });
+
+  it("says the device is not known when the browser names none", async () => {
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      ...feedback,
+      user_agent: "",
+    });
+
+    renderWithRouter(<FeedbackDetailPage />);
+
+    await screen.findByText("The dose in case 4 is ten times too high.");
+    // Device and browser both.
+    expect(screen.getAllByText("Not known")).toHaveLength(2);
   });
 
   it("leaves the error out when it was not sent from one", async () => {
@@ -108,6 +124,104 @@ describe("FeedbackDetailPage", () => {
       expect(screen.getByRole("combobox", { name: "Status" })).toHaveValue(
         "New",
       ),
+    );
+  });
+
+  it("saves a comment without touching the status", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(apiLib.api, "get").mockResolvedValue(feedback);
+    const patch = vi
+      .spyOn(apiLib.api, "patch")
+      .mockResolvedValue({
+        ...feedback,
+        comment: "Fixed in the next release.",
+      });
+
+    renderWithRouter(<FeedbackDetailPage />);
+
+    await user.type(
+      await screen.findByRole("textbox", { name: "Comment" }),
+      "  Fixed in the next release. ",
+    );
+    await user.click(screen.getByRole("button", { name: "Save comment" }));
+
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/feedback/5", {
+        comment: "Fixed in the next release.",
+      }),
+    );
+    expect(screen.getByRole("textbox", { name: "Comment" })).toHaveValue(
+      "Fixed in the next release.",
+    );
+  });
+
+  it("shows the comment already written", async () => {
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      ...feedback,
+      comment: "Looking into it.",
+    });
+
+    renderWithRouter(<FeedbackDetailPage />);
+
+    expect(await screen.findByRole("textbox", { name: "Comment" })).toHaveValue(
+      "Looking into it.",
+    );
+  });
+
+  it("does not save a comment that has not changed", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      ...feedback,
+      comment: "Looking into it.",
+    });
+    const patch = vi.spyOn(apiLib.api, "patch");
+
+    renderWithRouter(<FeedbackDetailPage />);
+
+    await screen.findByRole("textbox", { name: "Comment" });
+    await user.click(screen.getByRole("button", { name: "Save comment" }));
+
+    expect(patch).not.toHaveBeenCalled();
+  });
+
+  it("removes the comment when the box is emptied", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      ...feedback,
+      comment: "Looking into it.",
+    });
+    const patch = vi
+      .spyOn(apiLib.api, "patch")
+      .mockResolvedValue({ ...feedback, comment: null });
+
+    renderWithRouter(<FeedbackDetailPage />);
+
+    await user.clear(await screen.findByRole("textbox", { name: "Comment" }));
+    await user.click(screen.getByRole("button", { name: "Save comment" }));
+
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith("/feedback/5", { comment: "" }),
+    );
+  });
+
+  it("keeps what was typed when saving the comment fails", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(apiLib.api, "get").mockResolvedValue(feedback);
+    vi.spyOn(apiLib.api, "patch").mockRejectedValue(new Error("HTTP 500"));
+
+    renderWithRouter(<FeedbackDetailPage />);
+
+    await user.type(
+      await screen.findByRole("textbox", { name: "Comment" }),
+      "Thanks",
+    );
+    await user.click(screen.getByRole("button", { name: "Save comment" }));
+
+    expect(
+      await screen.findByText("The comment was not saved"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Comment" })).toHaveValue(
+      "Thanks",
     );
   });
 

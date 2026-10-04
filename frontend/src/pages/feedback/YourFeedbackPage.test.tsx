@@ -15,6 +15,7 @@ import YourFeedbackPage from "./YourFeedbackPage";
 const fixed: MyFeedbackItem = {
   id: 2,
   status: "resolved",
+  comment: "Corrected, thank you for spotting it.",
   category: "inaccurate",
   message: "The dose in case 4 was wrong.",
   created_at: "2026-09-21T10:00:00Z",
@@ -23,6 +24,7 @@ const fixed: MyFeedbackItem = {
 const received: MyFeedbackItem = {
   id: 1,
   status: "new",
+  comment: null,
   category: null,
   message: "Captions lag behind the video.",
   created_at: "2026-09-20T10:00:00Z",
@@ -39,6 +41,38 @@ describe("YourFeedbackPage", () => {
     renderWithRouter(<YourFeedbackPage />);
 
     await waitFor(() => expect(get).toHaveBeenCalledWith("/feedback/mine"));
+  });
+
+  it("shows the operator's reply only where one was written", async () => {
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      items: [fixed, received],
+    });
+
+    renderWithRouter(<YourFeedbackPage />);
+
+    expect(
+      await screen.findByText("Corrected, thank you for spotting it."),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Our reply")).toHaveLength(1);
+  });
+
+  it("keeps the lines of a reply written as several updates", async () => {
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      items: [
+        {
+          ...fixed,
+          comment: "We will look into this.\nUpdate 05/10/26: fixed.",
+        },
+      ],
+    });
+
+    renderWithRouter(<YourFeedbackPage />);
+
+    expect(
+      await screen.findByText(
+        "We will look into this. Update 05/10/26: fixed.",
+      ),
+    ).toHaveStyle({ whiteSpace: "pre-wrap" });
   });
 
   it("shows each message with its status in the sender's words", async () => {

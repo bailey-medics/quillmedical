@@ -1735,6 +1735,9 @@ class Feedback(Base):
             boundary.
         error_code: That error's code, when it had one.
         status: One of ``FEEDBACK_STATUSES``.
+        operator_comment: What an operator wrote back, shown to the sender
+            beside the status. None until somebody writes one. It may
+            quote the message, so it is never logged either.
         created_at: When it was sent.
     """
 
@@ -1767,6 +1770,9 @@ class Feedback(Base):
     error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="new", index=True
+    )
+    operator_comment: Mapped[str | None] = mapped_column(
+        String(2000), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
