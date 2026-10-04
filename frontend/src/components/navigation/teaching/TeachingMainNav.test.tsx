@@ -153,4 +153,94 @@ describe("TeachingMainNav", () => {
       "Logout",
     );
   });
+
+  describe("pages beneath a module", () => {
+    const trail = [
+      { label: "Result", href: "/teaching/assessment/7/result" },
+      {
+        label: "Results by question",
+        href: "/teaching/assessment/7/question-results",
+      },
+    ];
+
+    it("shows a result under its module while the result is open", () => {
+      renderWithRouter(
+        <TeachingMainNav
+          moduleName="Colonoscopy"
+          moduleHref="/teaching/colonoscopy"
+          trail={trail.slice(0, 1)}
+        />,
+        { routePath: "*", initialRoute: "/teaching/assessment/7/result" },
+      );
+
+      expect(screen.getByText("Colonoscopy")).toBeInTheDocument();
+      const result = screen.getByText("Result").closest("a, button");
+      expect(result).toHaveAttribute("data-active", "true");
+    });
+
+    it("nests results by question inside the result, and marks only it", () => {
+      renderWithRouter(
+        <TeachingMainNav
+          moduleName="Colonoscopy"
+          moduleHref="/teaching/colonoscopy"
+          trail={trail}
+        />,
+        {
+          routePath: "*",
+          initialRoute: "/teaching/assessment/7/question-results",
+        },
+      );
+
+      const byQuestion = screen
+        .getByText("Results by question")
+        .closest("a, button");
+      expect(byQuestion).toHaveAttribute("data-active", "true");
+      // Its parent is shown, to say where you are, and is not itself
+      // marked: two entries must not both claim to be the open page.
+      const result = screen.getByText("Result").closest("a, button");
+      expect(result).toBeInTheDocument();
+      expect(result).not.toHaveAttribute("data-active", "true");
+    });
+
+    it("hangs the trail under Teaching until the module is known", () => {
+      renderWithRouter(<TeachingMainNav trail={trail.slice(0, 1)} />, {
+        routePath: "*",
+        initialRoute: "/teaching/assessment/7/result",
+      });
+
+      expect(screen.getByText("Result")).toBeInTheDocument();
+    });
+
+    it("goes to the result when it is pressed from results by question", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(
+        <TeachingMainNav
+          moduleName="Colonoscopy"
+          moduleHref="/teaching/colonoscopy"
+          trail={trail}
+        />,
+        {
+          routePath: "*",
+          initialRoute: "/teaching/assessment/7/question-results",
+        },
+      );
+
+      await user.click(screen.getByText("Result"));
+
+      const result = screen.getByText("Result").closest("a, button");
+      expect(result).toHaveAttribute("data-active", "true");
+    });
+
+    it("shows no trail when none is given", () => {
+      renderWithRouter(
+        <TeachingMainNav
+          moduleName="Colonoscopy"
+          moduleHref="/teaching/colonoscopy"
+        />,
+        { routePath: "*", initialRoute: "/teaching/colonoscopy" },
+      );
+
+      expect(screen.queryByText("Result")).not.toBeInTheDocument();
+    });
+  });
 });

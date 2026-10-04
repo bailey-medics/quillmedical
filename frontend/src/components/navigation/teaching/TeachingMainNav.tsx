@@ -20,6 +20,14 @@ export interface TeachingMainNavProps {
   moduleName?: string;
   /** href for the module child link (e.g. /teaching/bank-id) */
   moduleHref?: string;
+  /**
+   * Pages below the module, each nested inside the one before: a result,
+   * then its results by question. Shown only while one of them is open,
+   * so somebody can see where they are in the menu without the menu
+   * gaining a permanent entry. Hung under the module when it is known,
+   * and straight under Teaching while it is still loading.
+   */
+  trail?: { label: string; href: string }[];
   /** Called after any navigation (e.g. to close mobile drawer) */
   onNavigate?: () => void;
 }
@@ -27,6 +35,7 @@ export interface TeachingMainNavProps {
 export default function TeachingMainNav({
   moduleName,
   moduleHref,
+  trail,
   onNavigate,
 }: TeachingMainNavProps) {
   const { logout } = useAuth();
@@ -41,11 +50,40 @@ export default function TeachingMainNav({
       ? `${moduleName.slice(0, 15)}…`
       : moduleName;
 
+  // The trail as one chain, last page innermost: each link is the only
+  // child of the one before it.
+  const trailItems = (trail ?? []).reduceRight<NavItem[]>(
+    (inner, page) => [
+      {
+        label: page.label,
+        href: page.href,
+        // A page in the trail is marked only on its own address. Its
+        // children's addresses are not beneath it in the URL, and without
+        // this "Result" would stay highlighted on "Results by question".
+        exact: true,
+        ...(inner.length > 0 ? { children: inner } : {}),
+      },
+    ],
+    [],
+  );
+
   // The one thing genuinely local to here: the module being worked on,
-  // hung under the Teaching entry the shared list already provides.
+  // and any pages open beneath it, hung under the Teaching entry the
+  // shared list already provides.
+  const moduleItems: NavItem[] =
+    truncatedName && moduleHref
+      ? [
+          {
+            label: truncatedName,
+            href: moduleHref,
+            ...(trailItems.length > 0 ? { children: trailItems } : {}),
+          },
+        ]
+      : trailItems;
+
   const navItems: NavItem[] = featureItems.map((item) =>
-    item.href === "/teaching" && truncatedName && moduleHref
-      ? { ...item, children: [{ label: truncatedName, href: moduleHref }] }
+    item.href === "/teaching" && moduleItems.length > 0
+      ? { ...item, children: moduleItems }
       : item,
   );
 

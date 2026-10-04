@@ -67,7 +67,21 @@ export default function AssessmentQuestionResultsPage() {
     load();
   }, [id]);
 
-  const sidebarNav = <TeachingMainNav />;
+  // Where this page sits in the menu: under the result it breaks down,
+  // which sits under its module. Shown only while the page is open.
+  const sidebarNav = (
+    <TeachingMainNav
+      moduleName={results?.bank_title ?? undefined}
+      moduleHref={results ? `/teaching/${results.question_bank_id}` : undefined}
+      trail={[
+        { label: "Result", href: `/teaching/assessment/${id}/result` },
+        {
+          label: "Results by question",
+          href: `/teaching/assessment/${id}/question-results`,
+        },
+      ]}
+    />
+  );
 
   if (loading) {
     return (
