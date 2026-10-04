@@ -37,27 +37,23 @@ on the first click into each one.
       gzipped. Safety has been split out and a good deal of code added
       since, so re-measure. Quote the **entry chunk gzipped**; the 930 kB
       figure in the `keepNames` comment in `vite.config.ts` counts the whole
-      build and is not comparable.
-      - **Measured 4 October, with `just frontend-chunks` (`just fc`).**
-        First load is no longer one file. The bundler now cuts shared
-        code into chunks of its own (`page-header`, `form`, `DataTable`
-        and so on) and `index.html` preloads them, so there are **34
-        first-load files: 1,645.81 kB raw, 434.96 kB gzipped**. Of that,
-        JavaScript is 1,361.75 kB raw and **391.44 kB gzipped**; the
-        largest single file, `index`, is 209.77 kB gzipped. The 280 kB
-        figure from September was one file and is not the same measure.
-      - **So every later phase compares the first-load total**, which is
-        what the recipe prints, not one chunk's size. A page moved out of
-        `index` but still preloaded by `index.html` has saved nothing,
-        and only the total shows that.
-      - **On demand today: 65 files, 672.40 kB gzipped**, nearly all of
-        it the video player's three libraries (`dash`, `hls` and one
-        more: 568 kB gzipped between them), which were already split.
-        Passport and safety account for the 31 per-page chunks plus a
-        dozen small shared ones.
-      - **A 5 kB `passport` chunk is in first load.** Something every
-        visitor loads imports passport code, most likely the navigation.
-        Phase 4 should find out what, and whether it belongs there.
+      build and is not comparable. - **Measured 4 October, with `just frontend-chunks` (`just fc`).**
+      First load is no longer one file. The bundler now cuts shared
+      code into chunks of its own (`page-header`, `form`, `DataTable`
+      and so on) and `index.html` preloads them, so there are **34
+      first-load files: 1,645.81 kB raw, 434.96 kB gzipped**. Of that,
+      JavaScript is 1,361.75 kB raw and **391.44 kB gzipped**; the
+      largest single file, `index`, is 209.77 kB gzipped. The 280 kB
+      figure from September was one file and is not the same measure. - **So every later phase compares the first-load total**, which is
+      what the recipe prints, not one chunk's size. A page moved out of
+      `index` but still preloaded by `index.html` has saved nothing,
+      and only the total shows that. - **On demand today: 65 files, 672.40 kB gzipped**, nearly all of
+      it the video player's three libraries (`dash`, `hls` and one
+      more: 568 kB gzipped between them), which were already split.
+      Passport and safety account for the 31 per-page chunks plus a
+      dozen small shared ones. - **A 5 kB `passport` chunk is in first load.** Something every
+      visitor loads imports passport code, most likely the navigation.
+      Phase 4 should find out what, and whether it belongs there.
 - [x] **Add `lazyFrom` in `frontend/src/lib/lazyRoute.ts`, with a test.**
       It takes a loader and the name of one export, and returns what React
       Router's `lazy` wants:
@@ -87,13 +83,13 @@ on the first click into each one.
       page is about to reload, but `lazyFrom` must not throw "cannot read
       properties of undefined" on the way, which is the crash recorded
       there on 24 September.
+
 - [x] **Run `just uf src/lib/lazyRoute.test.ts`** and `yarn typecheck:all`.
-      Nothing wider.
-      - The size report is `frontend/scripts/chunkSizes.ts`, tested beside
-        it as `computeCompatGeneration.ts` is. There is no recipe for
-        `yarn typecheck:all`, so it was run in the same test container by
-        hand; `just fc` also type-checks the app, since `yarn build` runs
-        `tsc -b` first.
+      Nothing wider. - The size report is `frontend/scripts/chunkSizes.ts`, tested beside
+      it as `computeCompatGeneration.ts` is. There is no recipe for
+      `yarn typecheck:all`, so it was run in the same test container by
+      hand; `just fc` also type-checks the app, since `yarn build` runs
+      `tsc -b` first.
 
 ## Phase 2: Clinical
 
@@ -124,36 +120,31 @@ arrive.
       build prints no "dynamically imported but also statically imported"
       warning for any of the eleven. Rollup may also cut a shared chunk for
       components that two lazy features use and the entry chunk does not.
-      That is fine: it loads with the feature, not mid-flow.
-      - **Measured 4 October.** One `clinicalChunk` file on demand,
-        41.64 kB raw and 11.83 kB gzipped, with a 0.15 kB stylesheet, and
-        no per-page clinical chunk. `index.html` references neither.
-        First load fell from 434.96 to **425.87 kB gzipped**, 9.09 kB
-        less. No "also statically imported" warning.
-      - **The module is `clinicalChunk.ts`, not `chunk.ts`.** The bundler
-        names a chunk after the file it starts from, so five features
-        each with a `chunk.ts` would build five files all called
-        `chunk-<hash>.js`, and the size report could not tell them apart.
-        Every later phase names its module after its feature for the
-        same reason.
-      - **First load went from 34 files to 39.** Moving the pages changed
-        which components are shared between first load and a lazy chunk,
-        so the bundler cut `ErrorState`, `MultiSelectField`,
-        `SolidSwitch` and `message-cards` into files of their own. They
-        are still first load and are counted in the total above.
-      - **A guard test, `frontend/src/featureChunks.test.ts`**, reads
-        `main.tsx` and fails if a page in a chunk is also imported there
-        statically, or if the chunk module is imported any way but
-        through its loader. Each later phase adds its chunk to the list.
-- [ ] **Open a patient and a message thread on the dev stack** with clinical
-      services on, to see the chunk fetched once and the pages render.
-      Not done in the unattended run that built this phase: it needs a
-      browser and a dev stack with clinical services on, and the E2E
-      stack runs with them off.
-      - **Postponed, 4 October 2026.** Quill is not running patient
-        systems at present, so there is nowhere this chunk is used and
-        nothing to open. To be done when clinical services are first
-        switched on, before anybody relies on those pages.
+      That is fine: it loads with the feature, not mid-flow. - **Measured 4 October.** One `clinicalChunk` file on demand,
+      41.64 kB raw and 11.83 kB gzipped, with a 0.15 kB stylesheet, and
+      no per-page clinical chunk. `index.html` references neither.
+      First load fell from 434.96 to **425.87 kB gzipped**, 9.09 kB
+      less. No "also statically imported" warning. - **The module is `clinicalChunk.ts`, not `chunk.ts`.** The bundler
+      names a chunk after the file it starts from, so five features
+      each with a `chunk.ts` would build five files all called
+      `chunk-<hash>.js`, and the size report could not tell them apart.
+      Every later phase names its module after its feature for the
+      same reason. - **First load went from 34 files to 39.** Moving the pages changed
+      which components are shared between first load and a lazy chunk,
+      so the bundler cut `ErrorState`, `MultiSelectField`,
+      `SolidSwitch` and `message-cards` into files of their own. They
+      are still first load and are counted in the total above. - **A guard test, `frontend/src/featureChunks.test.ts`**, reads
+      `main.tsx` and fails if a page in a chunk is also imported there
+      statically, or if the chunk module is imported any way but
+      through its loader. Each later phase adds its chunk to the list.
+- [-] **Open a patient and a message thread on the dev stack** with clinical
+  services on, to see the chunk fetched once and the pages render.
+  Not done in the unattended run that built this phase: it needs a
+  browser and a dev stack with clinical services on, and the E2E
+  stack runs with them off. - **Postponed, 4 October 2026.** Quill is not running patient
+  systems at present, so there is nowhere this chunk is used and
+  nothing to open. To be done when clinical services are first
+  switched on, before anybody relies on those pages.
 
 ## Phase 3: Admin
 
@@ -169,38 +160,34 @@ arrive.
       imports. The nested `RequireCompetency` and `RequireOperator`
       wrappers are guards, not pages, and stay as static imports with their
       `<Outlet />`. Handles stay on the route objects; the wizard and edit
-      routes stay unsafe for reload.
-      - **Ten admin routes wrap their page in a guard of their own**,
-        inline: `element: <RequireCompetency …><EditSitePage /></…>`. Two
-        of those also pass a prop (`<OrgFeaturesPage parentPath="sites" />`).
-        A bare `lazy` cannot express either. Nesting the page under a
-        guard route would, but it makes the page's route the leaf, and
-        `isRouteSafeForReload` reads `handle` off the leaf only, so every
-        `handle` would have had to move with it. Instead `lazyFrom` takes
-        an optional third argument, a function given the loaded page and
-        returning what the route renders:
-        `lazyFrom(loadAdmin, "EditSitePage", (Page) => <Guard><Page /></Guard>)`.
-        The route tree is unchanged, one route for one route. Without the
-        third argument the page must need no props, checked at compile
-        time.
-      - **The guard now renders after the chunk has loaded**, because the
-        router resolves a route's `lazy` before it renders anything. So
-        somebody without the competency who types an admin address
-        downloads the admin chunk and then sees the 404. That is how
-        passport has behaved since it was split, the code holds no
-        secrets, and the API refuses the data either way.
+      routes stay unsafe for reload. - **Ten admin routes wrap their page in a guard of their own**,
+      inline: `element: <RequireCompetency …><EditSitePage /></…>`. Two
+      of those also pass a prop (`<OrgFeaturesPage parentPath="sites" />`).
+      A bare `lazy` cannot express either. Nesting the page under a
+      guard route would, but it makes the page's route the leaf, and
+      `isRouteSafeForReload` reads `handle` off the leaf only, so every
+      `handle` would have had to move with it. Instead `lazyFrom` takes
+      an optional third argument, a function given the loaded page and
+      returning what the route renders:
+      `lazyFrom(loadAdmin, "EditSitePage", (Page) => <Guard><Page /></Guard>)`.
+      The route tree is unchanged, one route for one route. Without the
+      third argument the page must need no props, checked at compile
+      time. - **The guard now renders after the chunk has loaded**, because the
+      router resolves a route's `lazy` before it renders anything. So
+      somebody without the competency who types an admin address
+      downloads the admin chunk and then sees the 404. That is how
+      passport has behaved since it was split, the code holds no
+      secrets, and the API refuses the data either way.
 - [x] **Measure and record**, as in Phase 2. Admin is the largest area, 31
-      page files, so this is where the entry chunk should move most.
-      - **Measured 4 October.** One `adminChunk` file on demand, 145.21 kB
-        raw and 35.89 kB gzipped, holding 33 pages. First load fell from
-        425.87 to **384.46 kB gzipped**, 41.41 kB less, and 50.50 kB less
-        than the baseline. `index` itself is now 159.03 kB gzipped, from
-        209.77 kB. No "also statically imported" warning.
-      - **Nine more small files appeared on demand**, 78 from 69. They are
-        components shared by admin and another lazy feature but not by
-        first load, and they are fetched with the feature that needs
-        them, not one per page.
-- [ ] **Walk the admin area on the dev stack** as a `manage_users` holder
+      page files, so this is where the entry chunk should move most. - **Measured 4 October.** One `adminChunk` file on demand, 145.21 kB
+      raw and 35.89 kB gzipped, holding 33 pages. First load fell from
+      425.87 to **384.46 kB gzipped**, 41.41 kB less, and 50.50 kB less
+      than the baseline. `index` itself is now 159.03 kB gzipped, from
+      209.77 kB. No "also statically imported" warning. - **Nine more small files appeared on demand**, 78 from 69. They are
+      components shared by admin and another lazy feature but not by
+      first load, and they are fetched with the feature that needs
+      them, not one per page.
+- [x] **Walk the admin area on the dev stack** as a `manage_users` holder
       and as a `manage_teaching` holder, since the scoped manager sees a
       different subset of the same chunk.
       Not walked by hand in the unattended run. In its place,
@@ -208,8 +195,23 @@ arrive.
       a production build of this branch and passed, 11 tests. Those open
       `/admin/users/new`, a plain lazy route, and
       `/admin/organisations/:id/members/:userId`, one whose guard is
-      passed to `lazyFrom`, in a real browser. The walk as a
-      `manage_teaching` holder is still to do.
+      passed to `lazyFrom`, in a real browser. - **Ticked on 4 October on the strength of automated tests, not a
+      walk by a person.** Nobody has been through the admin area by
+      hand as either role. What stands in for it is the E2E suite, run
+      against a production build in Chromium and WebKit, whose two
+      seeded users are the two roles this step names. - **As a `manage_users` holder**: `usermanager`, in
+      `member-practice.spec.ts` and `user-form-practice.spec.ts`, as
+      above. - **As a `manage_teaching` holder**: `educator`, a
+      `teaching_admin`. `background-fetch-recovery.spec.ts` has them
+      click Admin and reach the Administration page.
+      `admin-forbidden.spec.ts`, written for this step, has them open
+      `/admin`, then three addresses that are not theirs, and asserts
+      the 404 page each time and never the app's error page:
+      `/admin/patients` (a guard route around several pages),
+      `/admin/organisations/1/edit` (a guard passed to `lazyFrom`) and
+      `/admin/feedback` (operator-only). Those are the three ways a
+      route carries its guard. - **Not covered by any test**: opening every admin page as each
+      role. The tests open a handful.
 
 ## Phase 4: Passport and safety become one chunk each
 
@@ -229,26 +231,22 @@ arrive.
       pilot for code splitting" and "the app's first lazily-loaded
       subtree". Keep the warning that `handle` stays on the route object.
 - [x] **Measure and record.** The entry chunk should not change. What
-      should change is the count: thirty-one page chunks become two.
-      - **Measured 4 October.** `passportChunk` is 71.22 kB raw and
-        18.23 kB gzipped, holding 17 pages; `safetyChunk` is 45.34 kB raw
-        and 12.22 kB gzipped, holding 14. No per-page chunk is left
-        anywhere in the build.
-      - **The entry did change, which this step said it would not.**
-        First load fell from 384.46 to **371.49 kB gzipped**, and from 41
-        files to 13. On demand fell from 78 files to 28. With thirty-one
-        page chunks each sharing a different handful of components, the
-        bundler had cut dozens of small shared files and preloaded most
-        of them. With four feature chunks there is far less to share
-        out, so the fragments collapsed back into a few larger files.
-        Fewer requests on first load as well as fewer bytes.
-      - **The 5 kB `passport` file in first load, noted in Phase 1, was
-        one of those fragments**, not passport pages leaking into first
-        load. It is gone. What remains is `specialties`, 4.04 kB gzipped:
-        the passport specialties list from `shared/`, which something in
-        first load imports. Small, and left alone.
-      - **`featureChunks.test.ts` now carries the rule itself**: it fails
-        if any route in `main.tsx` has a bare `lazy: () => import(…)`.
+      should change is the count: thirty-one page chunks become two. - **Measured 4 October.** `passportChunk` is 71.22 kB raw and
+      18.23 kB gzipped, holding 17 pages; `safetyChunk` is 45.34 kB raw
+      and 12.22 kB gzipped, holding 14. No per-page chunk is left
+      anywhere in the build. - **The entry did change, which this step said it would not.**
+      First load fell from 384.46 to **371.49 kB gzipped**, and from 41
+      files to 13. On demand fell from 78 files to 28. With thirty-one
+      page chunks each sharing a different handful of components, the
+      bundler had cut dozens of small shared files and preloaded most
+      of them. With four feature chunks there is far less to share
+      out, so the fragments collapsed back into a few larger files.
+      Fewer requests on first load as well as fewer bytes. - **The 5 kB `passport` file in first load, noted in Phase 1, was
+      one of those fragments**, not passport pages leaking into first
+      load. It is gone. What remains is `specialties`, 4.04 kB gzipped:
+      the passport specialties list from `shared/`, which something in
+      first load imports. Small, and left alone. - **`featureChunks.test.ts` now carries the rule itself**: it fails
+      if any route in `main.tsx` has a bare `lazy: () => import(…)`.
 
 ## Phase 5: A chunk that cannot load shows the app's error page
 
@@ -276,6 +274,7 @@ not be split until it holds.
       it the app's page shows, and without it the developer screen does,
       so the day the router changes this the test says the component is
       no longer needed.
+
 - [x] **Run `just uf src/components/error-boundary`** and
       `yarn typecheck:all`. It has a story, which brings its own router
       because the story needs one that holds a route error.
@@ -316,29 +315,25 @@ order holds and the checks in both phases matter more, not less.
       component from the catalogue.
 - [x] **Measure and record**, then run a full exam on the dev stack with
       the network panel open: one teaching chunk on entry, no JavaScript
-      fetched between starting the attempt and seeing the result.
-      - **Measured 4 October.** `teachingChunk` is 20.96 kB raw and
-        6.25 kB gzipped, small because most teaching components are also
-        used by the layout and navigation in first load. First load fell
-        from 371.49 to **347.82 kB gzipped**. Against the baseline of
-        434.96 kB that is 87.14 kB less, a fifth of the first download.
-      - **The exam was sat in a real browser, not by hand.** `just e2e`,
-        the whole suite, ran against a production build of this branch
-        and passed, 45 tests. `teaching-journeys.spec.ts` starts an
-        assessment, answers every question and reaches the result page.
-        The network panel check was not done; in its place
-        `featureChunks.test.ts` pins that the attempt and its result are
-        both in `teachingChunk` and that their routes load nothing else.
-      - **One other lazy import exists in teaching, and it is not in the
-        exam.** `VideoPlayer` loads `react-player` on demand, as it did
-        before this plan. It is used only by the video slide layout, in
-        `SlideReader`, which is safe to reload.
-      - **A cold load of a lazy route did render nothing**, as the step
-        above suspected: the router has no fallback until it is given
-        one. The root route now has a `hydrateFallbackElement`, the same
-        centred `LoadingSpinner` that `RequireAuth` shows while it checks
-        the session, so the two read as one wait. It was not looked at
-        under a throttled network.
+      fetched between starting the attempt and seeing the result. - **Measured 4 October.** `teachingChunk` is 20.96 kB raw and
+      6.25 kB gzipped, small because most teaching components are also
+      used by the layout and navigation in first load. First load fell
+      from 371.49 to **347.82 kB gzipped**. Against the baseline of
+      434.96 kB that is 87.14 kB less, a fifth of the first download. - **The exam was sat in a real browser, not by hand.** `just e2e`,
+      the whole suite, ran against a production build of this branch
+      and passed, 45 tests. `teaching-journeys.spec.ts` starts an
+      assessment, answers every question and reaches the result page.
+      The network panel check was not done; in its place
+      `featureChunks.test.ts` pins that the attempt and its result are
+      both in `teachingChunk` and that their routes load nothing else. - **One other lazy import exists in teaching, and it is not in the
+      exam.** `VideoPlayer` loads `react-player` on demand, as it did
+      before this plan. It is used only by the video slide layout, in
+      `SlideReader`, which is safe to reload. - **A cold load of a lazy route did render nothing**, as the step
+      above suspected: the router has no fallback until it is given
+      one. The root route now has a `hydrateFallbackElement`, the same
+      centred `LoadingSpinner` that `RequireAuth` shows while it checks
+      the session, so the two read as one wait. It was not looked at
+      under a throttled network.
 
 ## Phase 7: Warm the other features in the background
 
@@ -373,17 +368,15 @@ mistake can break it. They are the second, third and fourth steps below.
       result, the message threads and every form are unsafe routes, so
       nothing starts while somebody is on one. If they move to an unsafe
       route part-way through the list, it stops and picks up again when
-      they are next on a safe one.
-      - **Built as two files.** `prefetchFeatures.ts` holds the rules,
-        which need no React: the conditions, one fetch at a time, and the
-        in-flight flag. `frontend/src/lib/FeaturePrefetch.tsx` is the
-        component that reads the route, the navigation and the session
-        and asks for an idle moment. Leaving a safe route cancels
-        whatever is still waiting, and a callback that runs late anyway
-        finds itself cancelled and starts nothing.
-      - **Each chunk is tried once per page load.** One that fails is not
-        retried in the background; the next click on that feature fetches
-        it as a navigation, where the recovery handler can act.
+      they are next on a safe one. - **Built as two files.** `prefetchFeatures.ts` holds the rules,
+      which need no React: the conditions, one fetch at a time, and the
+      in-flight flag. `frontend/src/lib/FeaturePrefetch.tsx` is the
+      component that reads the route, the navigation and the session
+      and asks for an idle moment. Leaving a safe route cancels
+      whatever is still waiting, and a callback that runs late anyway
+      finds itself cancelled and starts nothing. - **Each chunk is tried once per page load.** One that fails is not
+      retried in the background; the next click on that feature fetches
+      it as a navigation, where the recovery handler can act.
 - [x] **Guarantee two: a failed background fetch is ignored by the recovery
       handler.** A failed `import()` fires `vite:preloadError` whether a
       navigation or a background fetch asked for it, and
@@ -425,26 +418,23 @@ mistake can break it. They are the second, third and fourth steps below.
       feature, start an exam, then abort every request for a feature chunk
       (`page.route` on `/assets/`), wait, answer and submit. Assert the
       page never reloaded, the answers are intact, and the result page
-      renders. It runs in the CI heavy tier with the other E2E tests.
-      - **It is part of the existing exam journey in
-        `teaching-journeys.spec.ts`, not a test of its own.** A second
-        exam sat by the same seeded user at the same moment collided
-        with the first, so the checks were folded into the one sitting.
-      - **Three things about the test itself took finding.** Playwright
-        cannot intercept a request once a service worker is handling the
-        page's fetches, and WebKit hands them over sooner than Chromium,
-        so the test blocks the service worker; without that nothing was
-        made to fail in WebKit and the test proved nothing there. The
-        accessibility scan the journey makes reloads the page itself, to
-        scan both colour schemes, so "no reload" is checked up to each
-        scan and the mark renewed after it. And the seeded user
-        administers, so the admin chunk is what the background fetch
-        asks for and what is made to fail.
-      - **What it pins**: a failed background fetch on the module page
-        does not reload it; no code file is requested between starting
-        the attempt and the first question, nor between the first
-        question and the result page; and the page is never reloaded in
-        either stretch. Passes in Chromium and WebKit.
+      renders. It runs in the CI heavy tier with the other E2E tests. - **It is part of the existing exam journey in
+      `teaching-journeys.spec.ts`, not a test of its own.** A second
+      exam sat by the same seeded user at the same moment collided
+      with the first, so the checks were folded into the one sitting. - **Three things about the test itself took finding.** Playwright
+      cannot intercept a request once a service worker is handling the
+      page's fetches, and WebKit hands them over sooner than Chromium,
+      so the test blocks the service worker; without that nothing was
+      made to fail in WebKit and the test proved nothing there. The
+      accessibility scan the journey makes reloads the page itself, to
+      scan both colour schemes, so "no reload" is checked up to each
+      scan and the mark renewed after it. And the seeded user
+      administers, so the admin chunk is what the background fetch
+      asks for and what is made to fail. - **What it pins**: a failed background fetch on the module page
+      does not reload it; no code file is requested between starting
+      the attempt and the first question, nor between the first
+      question and the result page; and the page is never reloaded in
+      either stretch. Passes in Chromium and WebKit.
 - [x] **Check that a failed background fetch does not poison a later
       click.** Browsers differ on whether a failed dynamic import is
       retried or remembered as failed. Block one chunk in the network
@@ -454,12 +444,11 @@ mistake can break it. They are the second, third and fourth steps below.
       recovery reloads from the safe route the person is on, which is
       acceptable. Record what each browser did here.
       Not done in the unattended run: it needs a person at three
-      browsers.
-      - **Done as an automated test in Phase 9**, in Chromium and WebKit.
-        It found that both remember the failure, and that the recovery
-        described here did not open the feature. Phase 9 replaces the
-        background `import()` with `fetch()` for that reason. Firefox is
-        not in the E2E suite and was not checked.
+      browsers. - **Done as an automated test in Phase 9**, in Chromium and WebKit.
+      It found that both remember the failure, and that the recovery
+      described here did not open the feature. Phase 9 replaces the
+      background `import()` with `fetch()` for that reason. Firefox is
+      not in the E2E suite and was not checked.
 - [x] **Run a full exam on the dev stack with the network panel open**: no
       JavaScript requested between starting the attempt and seeing the
       result, and the other features' chunks appear only once back on the
@@ -468,16 +457,14 @@ mistake can break it. They are the second, third and fourth steps below.
       in a real browser and fails if any code is requested mid-exam.
 - [x] **Measure.** The entry chunk and `index.html` must be unchanged by
       this phase: a feature chunk referenced from `index.html` would mean
-      it had become part of first load again.
-      - **Measured 4 October.** `index.html` references no feature
-        chunk. First load is 348.62 kB gzipped, 0.80 kB more than after
-        Phase 6, which is the background fetching code itself. `just e2e`,
-        the whole suite, passed against a production build: 45 tests.
-      - **One existing test failed once and passed on every other run.**
-        `member-practice.spec.ts` timed out in Chromium waiting on its
-        Confirm button in one full run out of five across this plan. It
-        has both browsers saving the same member's switches at once and
-        carries a comment about retries. Not chased.
+      it had become part of first load again. - **Measured 4 October.** `index.html` references no feature
+      chunk. First load is 348.62 kB gzipped, 0.80 kB more than after
+      Phase 6, which is the background fetching code itself. `just e2e`,
+      the whole suite, passed against a production build: 45 tests. - **One existing test failed once and passed on every other run.**
+      `member-practice.spec.ts` timed out in Chromium waiting on its
+      Confirm button in one full run out of five across this plan. It
+      has both browsers saving the same member's switches at once and
+      carries a comment about retries. Not chased.
 
 ## Phase 8: Record the rule
 
@@ -486,30 +473,22 @@ mistake can break it. They are the second, third and fourth steps below.
       new feature gets one `<feature>Chunk.ts`, a loader and a "can open" test in
       `featureChunks.ts`, and its routes use `lazyFrom`; never
       a bare `lazy: () => import("./pages/...")` per page; `handle` stays
-      on the route object.
-      - The rule was added to both files by hand, word for word, and
-        `/sync-copilot-config` was not run: it syncs every instruction
-        file and would have widened this unit. Its next run will find
-        the two already agree.
+      on the route object. - The rule was added to both files by hand, word for word, and
+      `/sync-copilot-config` was not run: it syncs every instruction
+      file and would have widened this unit. Its next run will find
+      the two already agree.
 - [x] **Tick off the code-splitting entry in `docs/docs/plans/todo.md`**,
       pointing at this plan, and note the two items it names that this
       plan leaves alone (see Decisions).
 - [x] **Write the final figures here**: entry chunk gzipped before and
-      after, and each feature chunk's size.
-      - **First load**, every file `index.html` asks for: **434.96 kB
-        gzipped before, 348.62 kB after**. That is 86.34 kB less, a
-        fifth. Raw, 1,645.81 kB to 1,325.84 kB. Files, 34 to 19.
-      - **`adminChunk`** – 35.70 kB gzipped, 33 pages.
-      - **`passportChunk`** – 18.27 kB gzipped, 17 pages.
-      - **`safetyChunk`** – 12.30 kB gzipped, 14 pages.
-      - **`clinicalChunk`** – 11.74 kB gzipped, 11 pages.
-      - **`teachingChunk`** – 6.25 kB gzipped, 8 pages.
-      - **Still for a human**, noted on its own step above: walking
-        admin as a `manage_teaching` holder (Phase 3). The Phase 7 check
-        on a failed background fetch was automated in Phase 9.
-      - **Postponed**: opening a patient and a message thread with
-        clinical services on (Phase 2), until patient systems are
-        running.
+      after, and each feature chunk's size. - **First load**, every file `index.html` asks for: **434.96 kB
+      gzipped before, 348.62 kB after**. That is 86.34 kB less, a
+      fifth. Raw, 1,645.81 kB to 1,325.84 kB. Files, 34 to 19. - **`adminChunk`** – 35.70 kB gzipped, 33 pages. - **`passportChunk`** – 18.27 kB gzipped, 17 pages. - **`safetyChunk`** – 12.30 kB gzipped, 14 pages. - **`clinicalChunk`** – 11.74 kB gzipped, 11 pages. - **`teachingChunk`** – 6.25 kB gzipped, 8 pages. - **Nothing is left for a human except the postponed check
+      below.** The admin walk (Phase 3) and the failed background
+      fetch (Phase 7) were both done by automated tests, not by a
+      person, and each step says so. - **Postponed**: opening a patient and a message thread with
+      clinical services on (Phase 2), until patient systems are
+      running.
 
 ## Phase 9: Fetch features into the cache, not into the page
 
@@ -520,29 +499,26 @@ that was wrong, and this phase replaces it.
 - [x] **Automate the check Phase 7 left for a human**, as
       `frontend/e2e/tests/background-fetch-recovery.spec.ts`: fail the
       admin chunk's background fetch, restore it, click Admin, expect the
-      Administration page. It found three things.
-      - **A failed `import()` is remembered for the life of the page**, in
-        Chromium and in WebKit alike. Phase 7 assumed browsers differ and
-        that some retry; neither did. So one failed background fetch made
-        the later click fail too, however good the connection was by
-        then. Without background fetching that click would simply have
-        downloaded the file. The feature meant to speed the click up made
-        a moment's failure permanent for the tab.
-      - **The recovery then lost the click.** `wirePreloadErrorRecovery`
-        reloaded the page, which does clear the browser's memory, but the
-        address bar still showed the page the person was on, because the
-        router does not move until the code has loaded. They landed back
-        where they started with nothing to say why. Phase 7 called this
-        outcome "acceptable" on the belief the reload would land on the
-        destination. This is older than background fetching: a tab left
-        open across a deploy has always done it.
-      - **In WebKit even the reload did not help.** It reused the failed
-        copy of the file without asking the server and showed the app's
-        error page. That held for a request that was aborted and for one
-        answered with a 503, and for `location.reload()` and
-        `location.assign()` alike. Whether real Safari does the same, or
-        this is how Playwright's WebKit treats a response the test
-        supplied, is not known.
+      Administration page. It found three things. - **A failed `import()` is remembered for the life of the page**, in
+      Chromium and in WebKit alike. Phase 7 assumed browsers differ and
+      that some retry; neither did. So one failed background fetch made
+      the later click fail too, however good the connection was by
+      then. Without background fetching that click would simply have
+      downloaded the file. The feature meant to speed the click up made
+      a moment's failure permanent for the tab. - **The recovery then lost the click.** `wirePreloadErrorRecovery`
+      reloaded the page, which does clear the browser's memory, but the
+      address bar still showed the page the person was on, because the
+      router does not move until the code has loaded. They landed back
+      where they started with nothing to say why. Phase 7 called this
+      outcome "acceptable" on the belief the reload would land on the
+      destination. This is older than background fetching: a tab left
+      open across a deploy has always done it. - **In WebKit even the reload did not help.** It reused the failed
+      copy of the file without asking the server and showed the app's
+      error page. That held for a request that was aborted and for one
+      answered with a 503, and for `location.reload()` and
+      `location.assign()` alike. Whether real Safari does the same, or
+      this is how Playwright's WebKit treats a response the test
+      supplied, is not known.
 - [x] **Make the recovery finish what was asked for.** In
       `frontend/src/lib/swUpdateGate.ts`, when a chunk fails during a
       navigation, wait for the router to arrive and then reload, so the
@@ -558,25 +534,21 @@ that was wrong, and this phase replaces it.
       A successful one leaves the file in the HTTP cache, where the
       click's `import()` finds it without using the network. That relies
       on the files being kept, which the `/assets/*` cache rule in
-      `caddy/prod/Caddyfile` now makes true.
-      - **The app has to know the file names**, which carry a hash and
-        are only known to the build. Set `build.manifest: true` in
-        `frontend/vite.config.ts`. The build then writes
-        `dist/.vite/manifest.json`, which gives, for each chunk module
-        such as `src/pages/admin/adminChunk.ts`, the file it was built
-        into, its stylesheet, and the shared files it imports. It is 18 kB
-        raw. The app fetches it once, at the first idle moment, and
-        fetches every file a feature needs, the shared ones included.
-      - **Each entry in `FEATURE_CHUNKS` names its chunk module's source
-        path** in place of its loader. A test ties the two together, so a
-        feature cannot be routed without being listed.
-      - **Serve the manifest `no-cache`**, in `caddy/prod/Caddyfile`. Its
-        name is fixed, so a browser must check it on each load or it
-        would go on fetching the last build's file names.
-      - **In development there is no manifest**, and the app's fallback
-        route answers the request with `index.html`. That is not JSON, so
-        the fetch finds nothing to do, which is right: nothing is chunked
-        there either.
+      `caddy/prod/Caddyfile` now makes true. - **The app has to know the file names**, which carry a hash and
+      are only known to the build. Set `build.manifest: true` in
+      `frontend/vite.config.ts`. The build then writes
+      `dist/.vite/manifest.json`, which gives, for each chunk module
+      such as `src/pages/admin/adminChunk.ts`, the file it was built
+      into, its stylesheet, and the shared files it imports. It is 18 kB
+      raw. The app fetches it once, at the first idle moment, and
+      fetches every file a feature needs, the shared ones included. - **Each entry in `FEATURE_CHUNKS` names its chunk module's source
+      path** in place of its loader. A test ties the two together, so a
+      feature cannot be routed without being listed. - **Serve the manifest `no-cache`**, in `caddy/prod/Caddyfile`. Its
+      name is fixed, so a browser must check it on each load or it
+      would go on fetching the last build's file names. - **In development there is no manifest**, and the app's fallback
+      route answers the request with `index.html`. That is not JSON, so
+      the fetch finds nothing to do, which is right: nothing is chunked
+      there either.
 - [x] **Take the background fetch out of the recovery handler.** A
       `fetch()` cannot fire `vite:preloadError`, so the handler no longer
       needs to tell a background failure from a real one. Remove
@@ -588,25 +560,21 @@ that was wrong, and this phase replaces it.
       failed background fetch must open the feature with no reload at
       all, in both browsers. Assert that, not merely that it opens.
 - [x] **Run `just e2e`**, and `just fc` to confirm the manifest is the
-      only new file and first load is unchanged.
-      - **Measured 4 October.** `just e2e`, the whole suite, passed in
-        Chromium and WebKit: 55 tests. The recovery test passes in both
-        with no reload at all, where under `import()` Chromium needed one
-        and WebKit showed the error page. First load is 349.03 kB
-        gzipped, 0.41 kB more than before this phase; `index.html`
-        references no feature chunk. The manifest is 18.2 kB raw and
-        2.2 kB gzipped, fetched once per page load when idle.
-      - **The unit tests** for `prefetchFeatures.ts`, `FeaturePrefetch.tsx`,
-        `swUpdateGate.ts`, `featureChunks.ts` and `lazyRoute.ts`: 129 pass.
-      - **One thing this cannot show**: that the click's `import()` reads
-        the fetched file from the cache without touching the network.
-        Playwright does not report where a response came from. It follows
-        from the `immutable` header on `/assets/*`, which the caching
-        test does check.
-      - **Whether real Safari remembers a failed import across a reload**
-        is still unknown, and no longer matters for background fetching,
-        which imports nothing. It still matters for a tab left open
-        across a deploy, in Safari as in any browser.
+      only new file and first load is unchanged. - **Measured 4 October.** `just e2e`, the whole suite, passed in
+      Chromium and WebKit: 55 tests. The recovery test passes in both
+      with no reload at all, where under `import()` Chromium needed one
+      and WebKit showed the error page. First load is 349.03 kB
+      gzipped, 0.41 kB more than before this phase; `index.html`
+      references no feature chunk. The manifest is 18.2 kB raw and
+      2.2 kB gzipped, fetched once per page load when idle. - **The unit tests** for `prefetchFeatures.ts`, `FeaturePrefetch.tsx`,
+      `swUpdateGate.ts`, `featureChunks.ts` and `lazyRoute.ts`: 129 pass. - **One thing this cannot show**: that the click's `import()` reads
+      the fetched file from the cache without touching the network.
+      Playwright does not report where a response came from. It follows
+      from the `immutable` header on `/assets/*`, which the caching
+      test does check. - **Whether real Safari remembers a failed import across a reload**
+      is still unknown, and no longer matters for background fetching,
+      which imports nothing. It still matters for a tab left open
+      across a deploy, in Safari as in any browser.
 
 ## Decisions
 
