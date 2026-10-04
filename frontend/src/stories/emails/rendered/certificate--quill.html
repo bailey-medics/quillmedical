@@ -39,6 +39,16 @@
           display: block !important;
         }
       }
+      /* A phone: the desktop headings wrap and fill the screen. Inline
+         sizes win unless overridden, hence the !important. */
+      @media (max-width: 480px) {
+        .em-h1 {
+          font-size: 28px !important;
+        }
+        .em-h2 {
+          font-size: 24px !important;
+        }
+      }
       @media (prefers-color-scheme: dark) {
         .em-bg {
           background-color: #000d1f !important;

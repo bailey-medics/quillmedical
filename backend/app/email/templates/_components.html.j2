@@ -10,11 +10,11 @@
 
 {#- The main heading. Words in *asterisks* are set in the accent colour. -#}
 {% macro heading(text) -%}
-<h1 style="margin: 0 0 20px; font-family: {{ t.heading_font_family }}; font-size: {{ t.h1_size }}; line-height: 1.2; font-weight: {{ t.heading_weight }}; color: {{ t.heading }}">{{ text | accent(t.heading_accent) }}</h1>
+<h1 class="em-h1" style="margin: 0 0 20px; font-family: {{ t.heading_font_family }}; font-size: {{ t.h1_size }}; line-height: 1.2; font-weight: {{ t.heading_weight }}; color: {{ t.heading }}">{{ text | accent(t.heading_accent) }}</h1>
 {%- endmacro %}
 
 {% macro subheading(text, colour=None) -%}
-<h2 style="margin: 0 0 8px; font-family: {{ t.heading_font_family }}; font-size: {{ t.h2_size }}; line-height: 1.25; font-weight: {{ t.heading_weight }}; color: {{ colour or t.heading }}">{{ text | accent(t.heading_accent) }}</h2>
+<h2 class="em-h2" style="margin: 0 0 8px; font-family: {{ t.heading_font_family }}; font-size: {{ t.h2_size }}; line-height: 1.25; font-weight: {{ t.heading_weight }}; color: {{ colour or t.heading }}">{{ text | accent(t.heading_accent) }}</h2>
 {%- endmacro %}
 
 {#- Body text. Call with a block to hold markup: {% call c.paragraph() %} -#}

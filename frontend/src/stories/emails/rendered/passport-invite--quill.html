@@ -39,6 +39,16 @@
           display: block !important;
         }
       }
+      /* A phone: the desktop headings wrap and fill the screen. Inline
+         sizes win unless overridden, hence the !important. */
+      @media (max-width: 480px) {
+        .em-h1 {
+          font-size: 28px !important;
+        }
+        .em-h2 {
+          font-size: 24px !important;
+        }
+      }
       @media (prefers-color-scheme: dark) {
         .em-bg {
           background-color: #000d1f !important;
@@ -135,7 +145,7 @@ Chest drain insertion (Seldinger), recorded in their clinician passport.&#847;&z
                 class="em-text em-pad"
                 style="padding: 36px 40px 32px; font-family: &#39;Atkinson Hyperlegible Next&#39;, Arial, sans-serif; font-size: 19px; line-height: 1.5; color: #212b36"
               >
-<h1 style="margin: 0 0 20px; font-family: &#39;Cormorant Garamond&#39;, Georgia, serif; font-size: 40px; line-height: 1.2; font-weight: 700; color: #001a36">You have been asked to assess a <em style="font-style: italic; color: #a87b2f">competency</em></h1>
+<h1 class="em-h1" style="margin: 0 0 20px; font-family: &#39;Cormorant Garamond&#39;, Georgia, serif; font-size: 40px; line-height: 1.2; font-weight: 700; color: #001a36">You have been asked to assess a <em style="font-style: italic; color: #a87b2f">competency</em></h1>
 <p style="margin: 0 0 16px">Dear Dr James Okafor,</p>
 <p style="margin: 0 0 16px">Dr Priya Shah has asked you to assess <strong>Chest drain insertion (Seldinger)</strong> and record the outcome in their clinician passport.</p><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 8px 0 24px; border-collapse: separate">
   <tr>
