@@ -173,14 +173,33 @@ when it is needed.
 Moved here from Phase 1, where it was first written. There was nothing
 to open until `Document` used the component, so it could not come first.
 
-- [ ] Open a PDF of several pages through pdf.js behind the production
-      Caddy policy, on a touch device profile, and fail on any refusal in
-      the console. `just e2e` runs the built application behind
-      `caddy/prod/Caddyfile`, so an end-to-end test is the proof and
-      keeps proving it. Still unknown until it runs: whether embedded
-      fonts load under `font-src 'self'`. If the policy has to change, it
-      changes in `caddy/prod/Caddyfile` and the dev Caddyfile together,
-      and what was needed is recorded here.
+- [x] Open a PDF of several pages through pdf.js behind the production
+      Caddy policy, and fail on any refusal. `just e2e` runs the built
+      application behind `caddy/prod/Caddyfile`, so an end-to-end test,
+      `frontend/e2e/tests/pdf-pages.spec.ts`, is the proof and keeps
+      proving it. It opens a certificate page with the browser made to
+      report no PDF viewer, in Chromium and in WebKit, the engine
+      Safari on an iPhone uses.
+
+      The result: nothing pdf.js does is refused, and the policy needed
+      no change. The worker starts, a three-page PDF draws every page,
+      and a PDF carrying its own font draws too, which settles the
+      `font-src 'self'` question. The test also checks the two decoders
+      are served as scripts under `pdfjs/`.
+
+      The stack seeds no passport, so the test supplies the three API
+      answers the page needs and the PDF bytes. The app, its worker and
+      its policy are real.
+
+- [x] Found on the way, and fixed: the inline script in
+      `frontend/index.html` that sets the colour scheme before the
+      styles load was refused by `script-src 'self'` on every page, so
+      in production it never ran, and somebody using dark mode saw a
+      light flash on each load. It had nothing to do with pdf.js. It is
+      now a file of its own, `frontend/public/colour-scheme.js`, which
+      the policy allows. `frontend/e2e/tests/colour-scheme.spec.ts`
+      checks it runs behind the policy, and the PDF test no longer sets
+      any refusal aside.
 
 ## Phase 5: Check on real devices
 
