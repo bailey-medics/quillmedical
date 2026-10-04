@@ -96,6 +96,13 @@ describe("learning-data", () => {
       const detail = await getModuleDetail("nonexistent-module");
       expect(detail).toBeNull();
     });
+
+    it("throws a refusal instead of returning null", async () => {
+      const refusal = Object.assign(new Error("Forbidden"), { status: 403 });
+      mockGet.mockRejectedValueOnce(refusal);
+
+      await expect(getModuleDetail("module-a")).rejects.toBe(refusal);
+    });
   });
 
   describe("getModuleSlides", () => {

@@ -17,8 +17,11 @@ import SlideViewer from "@/components/teaching/slide-viewer/SlideViewer";
 import { TeachingProgressBar } from "@/components/teaching/teaching-progress-bar/TeachingProgressBar";
 import PreviousNextButton from "@/components/button/PreviousNextButton";
 import TeachingLearningNav from "@/components/navigation/teaching/TeachingLearningNav";
+import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
-import { getModuleSlides } from "@/features/teaching/learning-data";
+import { IconAlertCircle } from "@/components/icons/appIcons";
+import { StateMessage } from "@/components/message-cards";
+import { getModuleSlides, isRefused } from "@/features/teaching/learning-data";
 import type { CompiledSlide } from "@/features/teaching/types";
 
 export default function SlideReader() {
@@ -32,6 +35,7 @@ export default function SlideReader() {
 
   const [slides, setSlides] = useState<CompiledSlide[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refused, setRefused] = useState(false);
 
   useEffect(() => {
     if (!moduleId) {
@@ -39,6 +43,12 @@ export default function SlideReader() {
     }
     getModuleSlides(moduleId)
       .then((data) => setSlides(data ?? []))
+      // The slides stay empty either way, which is the state the message
+      // below is written for. A refusal gets its own wording.
+      .catch((err: unknown) => {
+        setSlides([]);
+        setRefused(isRefused(err));
+      })
       .finally(() => setLoading(false));
   }, [moduleId]);
 
@@ -135,8 +145,34 @@ export default function SlideReader() {
     );
   }
 
+  // No slides: the module has none, they could not be fetched, or this
+  // person may not read them. This returned null, which left a wholly
+  // white screen with no ribbon, no menu and nothing to say why.
   if (!currentSlide) {
-    return null;
+    const mainNav = (
+      <TeachingMainNav
+        trail={[{ label: "Learning materials", href: "/teaching/learn" }]}
+      />
+    );
+    return (
+      <TeachingLayout sidebar={mainNav} drawerContent={mainNav}>
+        {refused ? (
+          <StateMessage
+            icon={<IconAlertCircle />}
+            title="You do not have access to this lesson"
+            description="Your account is not set up to view teaching material. Ask whoever manages your account to add it."
+            colour="alert"
+          />
+        ) : (
+          <StateMessage
+            icon={<IconAlertCircle />}
+            title="This lesson could not be loaded"
+            description="Check your connection and try again. If it keeps happening, the lesson may have no slides yet."
+            colour="alert"
+          />
+        )}
+      </TeachingLayout>
+    );
   }
 
   const sidebarNav = (

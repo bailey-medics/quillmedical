@@ -12,7 +12,8 @@ import type { ReactNode } from "react";
 import { renderWithRouter } from "@test/test-utils";
 import type { CompiledSlide } from "@/features/teaching/types";
 
-vi.mock("@/features/teaching/learning-data", () => ({
+vi.mock("@/features/teaching/learning-data", async (original) => ({
+  ...(await original<typeof import("@/features/teaching/learning-data")>()),
   getModuleSlides: vi.fn(),
 }));
 
@@ -23,6 +24,10 @@ vi.mock("@/components/layouts/TeachingLayout", () => ({
 }));
 vi.mock("@/components/teaching/slide-viewer/SlideViewer", () => ({
   default: ({ slide }: { slide: CompiledSlide }) => <h1>{slide.title}</h1>,
+}));
+
+vi.mock("@/components/navigation/teaching/TeachingMainNav", () => ({
+  default: () => null,
 }));
 
 import { getModuleSlides } from "@/features/teaching/learning-data";
@@ -77,5 +82,45 @@ describe("SlideReader buttons on a desktop", () => {
       await screen.findByRole("button", { name: "Finish" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+  });
+});
+
+describe("SlideReader with no slides to show", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("says the lesson could not be loaded when the module is not found", async () => {
+    (getModuleSlides as Mock).mockResolvedValue(null);
+    renderAt(0);
+    expect(
+      await screen.findByText("This lesson could not be loaded"),
+    ).toBeInTheDocument();
+  });
+
+  it("says so when the module has no slides", async () => {
+    (getModuleSlides as Mock).mockResolvedValue([]);
+    renderAt(0);
+    expect(
+      await screen.findByText("This lesson could not be loaded"),
+    ).toBeInTheDocument();
+  });
+
+  it("says so when the fetch fails", async () => {
+    (getModuleSlides as Mock).mockRejectedValue(new Error("network"));
+    renderAt(0);
+    expect(
+      await screen.findByText("This lesson could not be loaded"),
+    ).toBeInTheDocument();
+  });
+
+  it("says the lesson is not theirs when the backend refuses", async () => {
+    (getModuleSlides as Mock).mockRejectedValue(
+      Object.assign(new Error("Forbidden"), { status: 403 }),
+    );
+    renderAt(0);
+    expect(
+      await screen.findByText("You do not have access to this lesson"),
+    ).toBeInTheDocument();
   });
 });

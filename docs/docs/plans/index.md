@@ -91,3 +91,4 @@
 - [Lazy Load One Chunk per Feature](2026-10-04-lazy-load-one-chunk-per-feature-plan.md)
 - [PDF Viewer on Touch Devices](2026-10-04-pdf-viewer-on-touch-devices-plan.md)
 - [Waiting on Me Inbox](2026-10-04-waiting-on-me-inbox-plan.md)
+- [Teaching Access: Results, Modules and Enrolment](2026-10-04-teaching-access-results-modules-and-enrolment-plan.md)

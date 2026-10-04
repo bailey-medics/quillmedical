@@ -19,8 +19,22 @@ export async function getModules(): Promise<LearningModule[]> {
   return api.get<LearningModule[]>("/teaching/modules");
 }
 
+/** True for the error `api` throws when the backend refuses with a 403. */
+export function isRefused(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "status" in err &&
+    err.status === 403
+  );
+}
+
 /**
  * Returns full learning content (slides) for a module, or null if not found.
+ *
+ * A refusal (403) is thrown, not turned into null: it means the person
+ * lacks `view_teaching_cases`, and the page has to say that. Folded into
+ * null it read as "no such module" and the slide page showed nothing.
  */
 export async function getModuleDetail(
   moduleId: string,
@@ -29,7 +43,8 @@ export async function getModuleDetail(
     return await api.get<LearningContentResponse>(
       `/teaching/modules/${moduleId}/learning`,
     );
-  } catch {
+  } catch (err) {
+    if (isRefused(err)) throw err;
     return null;
   }
 }
@@ -77,7 +92,8 @@ function toCompiledSlide(s: ApiSlide): CompiledSlide {
 }
 
 /**
- * Returns compiled slides for a module, or null if not found.
+ * Returns compiled slides for a module, or null if not found. Throws when
+ * the backend refuses, as `getModuleDetail` does.
  */
 export async function getModuleSlides(
   moduleId: string,
