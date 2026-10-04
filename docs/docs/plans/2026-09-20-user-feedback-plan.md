@@ -277,7 +277,9 @@ cannot reply.
   earlier draft gated on `system_permissions`, which no longer exists.
 
 - **Deferred: email on submission.** Polling the admin page is enough at
-  current volumes.
+  current volumes. Since taken up in the
+  [waiting on me inbox plan](2026-10-04-waiting-on-me-inbox-plan.md),
+  with the sender's notice of a reply.
 
 - **Deferred: notifying the sender when status changes.** Push is not fully
   built yet. Until it is, senders only see an outcome if they go to

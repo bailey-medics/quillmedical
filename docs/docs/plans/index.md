@@ -90,3 +90,4 @@
 - [Marketing Opt-out](2026-10-03-marketing-opt-out-plan.md)
 - [Lazy Load One Chunk per Feature](2026-10-04-lazy-load-one-chunk-per-feature-plan.md)
 - [PDF Viewer on Touch Devices](2026-10-04-pdf-viewer-on-touch-devices-plan.md)
+- [Waiting on Me Inbox](2026-10-04-waiting-on-me-inbox-plan.md)

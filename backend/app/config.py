@@ -333,6 +333,15 @@ class Settings(BaseSettings):
             "while the app is deployed, not the app itself."
         ),
     )
+    FEEDBACK_NOTIFY_EMAIL: str = Field(
+        "",
+        description=(
+            "The address told when somebody sends feedback. Empty, the "
+            "default, sends nothing, which is what development and the "
+            "tests want. One address, not every operator: test operator "
+            "accounts exist in every environment and should get no mail."
+        ),
+    )
     EMAIL_DRY_RUN: bool = Field(
         True,
         description=(

@@ -428,6 +428,10 @@ module "cloud_run_backend" {
     {
       EMAIL_FROM    = "info@quill-medical.com"
       EMAIL_DRY_RUN = "false"
+      # Who is told when somebody sends feedback. The notice carries a
+      # link and never the message. An address, not a secret, so it sits
+      # here in the open with the sender's.
+      FEEDBACK_NOTIFY_EMAIL = "info@quill-medical.com"
     },
     local.resend_newsletter_env_vars
   )
