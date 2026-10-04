@@ -3,7 +3,9 @@
  *
  * Centralised page-level message system. Provides a context and hook
  * for displaying status messages (success, error, partial_success)
- * above page content in MainLayout.
+ * beneath the page's header, so the title stays the first thing on the
+ * page. A page with no `PageHeader` has them above its content instead,
+ * from MainLayout.
  *
  * Also ingests flash state from React Router navigation, making it
  * backward-compatible with pages that navigate with `state.flash`.
@@ -30,6 +32,8 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -54,6 +58,13 @@ interface PageMessageContextValue {
   showMessage: (msg: Omit<PageMessage, "id">) => void;
   dismiss: (id: string) => void;
   clearAll: () => void;
+  /**
+   * The page header showing the messages, or null when the page has
+   * none and MainLayout shows them instead.
+   */
+  headerId: string | null;
+  /** Put a page header forward to show the messages; returns the undo. */
+  claimHeader: (id: string) => () => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -74,6 +85,27 @@ export function usePageMessage(): PageMessageContextValue {
   return ctx;
 }
 
+/**
+ * Whether the calling page header is the one to show the messages.
+ *
+ * The first header on the page is. False outside a provider, so a
+ * header in a story or a test renders as it always did.
+ */
+export function usePageMessageSlot(): boolean {
+  const ctx = useContext(PageMessageContext);
+  const id = useId();
+  const claimHeader = ctx?.claimHeader;
+
+  // A layout effect, so a message is never painted above the header
+  // and then moved beneath it.
+  useLayoutEffect(() => {
+    if (!claimHeader) return;
+    return claimHeader(id);
+  }, [claimHeader, id]);
+
+  return ctx?.headerId === id;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Provider                                                           */
 /* ------------------------------------------------------------------ */
@@ -84,6 +116,9 @@ interface PageMessageProviderProps {
 
 export function PageMessageProvider({ children }: PageMessageProviderProps) {
   const [messages, setMessages] = useState<PageMessage[]>([]);
+  // Every page header mounted, in the order they came. The first shows
+  // the messages.
+  const [headerIds, setHeaderIds] = useState<string[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
   const prevPathnameRef = useRef(location.pathname);
@@ -139,9 +174,21 @@ export function PageMessageProvider({ children }: PageMessageProviderProps) {
     setMessages([]);
   }, []);
 
+  const claimHeader = useCallback((id: string) => {
+    setHeaderIds((prev) => [...prev, id]);
+    return () => setHeaderIds((prev) => prev.filter((h) => h !== id));
+  }, []);
+
   return (
     <PageMessageContext.Provider
-      value={{ messages, showMessage, dismiss, clearAll }}
+      value={{
+        messages,
+        showMessage,
+        dismiss,
+        clearAll,
+        headerId: headerIds[0] ?? null,
+        claimHeader,
+      }}
     >
       {children}
     </PageMessageContext.Provider>

@@ -270,7 +270,7 @@ export default function MainLayout({
                     </Stack>
                   ) : (
                     <PageMessageProvider>
-                      <PageMessageDisplay />
+                      <PageMessageDisplay fallback />
                       {children}
                     </PageMessageProvider>
                   )}

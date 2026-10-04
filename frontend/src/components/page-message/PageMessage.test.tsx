@@ -8,6 +8,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
 import { PageMessageProvider, usePageMessage } from "./PageMessageContext";
 import PageMessageDisplay from "./PageMessageDisplay";
+import PageHeader from "@/components/page-header";
 
 const mockNavigate = vi.fn();
 let mockLocation = {
@@ -210,6 +211,88 @@ describe("PageMessage", () => {
       renderWithProvider();
 
       expect(mockNavigate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Beneath the page header", () => {
+    /** The layout's fallback display above a page, as MainLayout has it. */
+    function renderPage(page: React.ReactNode) {
+      return renderWithMantine(
+        <PageMessageProvider>
+          <div data-testid="above-page">
+            <PageMessageDisplay fallback />
+          </div>
+          <TestConsumer />
+          {page}
+        </PageMessageProvider>,
+      );
+    }
+
+    it("shows a message after the header, not above the page", async () => {
+      const user = userEvent.setup();
+      renderPage(<PageHeader title="Edit user" />);
+
+      await user.click(screen.getByText("Show success"));
+
+      const message = screen.getByText("Test success");
+      const heading = screen.getByRole("heading", { name: "Edit user" });
+      expect(screen.getAllByText("Test success")).toHaveLength(1);
+      expect(screen.getByTestId("above-page")).toBeEmptyDOMElement();
+      expect(
+        heading.compareDocumentPosition(message) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it("shows a message above a page that has no header", async () => {
+      const user = userEvent.setup();
+      renderPage(<p>No header here</p>);
+
+      await user.click(screen.getByText("Show success"));
+
+      expect(screen.getByTestId("above-page")).toHaveTextContent(
+        "Test success",
+      );
+    });
+
+    it("shows a message once when a page has two headers", async () => {
+      const user = userEvent.setup();
+      renderPage(
+        <>
+          <PageHeader title="First" />
+          <PageHeader title="Second" />
+        </>,
+      );
+
+      await user.click(screen.getByText("Show success"));
+
+      const message = screen.getByText("Test success");
+      const second = screen.getByRole("heading", { name: "Second" });
+      expect(screen.getAllByText("Test success")).toHaveLength(1);
+      // Under the first header, so before the second.
+      expect(
+        second.compareDocumentPosition(message) &
+          Node.DOCUMENT_POSITION_PRECEDING,
+      ).toBeTruthy();
+    });
+
+    it("goes back above the page when the header is taken away", async () => {
+      const user = userEvent.setup();
+      const { rerender } = renderPage(<PageHeader title="Edit user" />);
+      await user.click(screen.getByText("Show success"));
+
+      rerender(
+        <PageMessageProvider>
+          <div data-testid="above-page">
+            <PageMessageDisplay fallback />
+          </div>
+          <TestConsumer />
+        </PageMessageProvider>,
+      );
+
+      expect(screen.getByTestId("above-page")).toHaveTextContent(
+        "Test success",
+      );
     });
   });
 

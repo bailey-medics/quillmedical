@@ -57,7 +57,7 @@ function RouterAndMantineWrapper({ children }: { children: ReactNode }) {
         env="test"
       >
         <PageMessageProvider>
-          <PageMessageDisplay />
+          <PageMessageDisplay fallback />
           {children}
         </PageMessageProvider>
       </MantineProvider>
@@ -113,7 +113,7 @@ export function renderWithRouter(
           path: routePath,
           element: (
             <PageMessageProvider>
-              <PageMessageDisplay />
+              <PageMessageDisplay fallback />
               {ui}
             </PageMessageProvider>
           ),

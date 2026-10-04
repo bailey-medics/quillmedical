@@ -1,0 +1,19 @@
+.stepIcon {
+  font-size: var(--mantine-font-size-md);
+  color: var(--mantine-color-text);
+}
+
+/*
+ * The step being worked on: a white circle inside its darker border, so
+ * it stands apart from the grey circles of the steps still to come. The
+ * root class is there to outrank Mantine's own rule for the same
+ * attribute, whichever stylesheet happens to load first.
+ */
+.root .stepIcon[data-progress] {
+  background-color: var(--mantine-color-white);
+
+  /* The number is light in dark mode, and would vanish on white. */
+  @mixin dark {
+    color: var(--mantine-color-black);
+  }
+}

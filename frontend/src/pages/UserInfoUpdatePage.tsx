@@ -796,6 +796,9 @@ export default function UserInfoUpdatePage() {
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(isEditMode);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // The username as the server holds it, for the page header. Kept apart
+  // from the form's, so the header does not change as the field is typed in.
+  const [loadedUsername, setLoadedUsername] = useState("");
   const [organisations, setOrganisations] = useState<OrgOption[]>([]);
   // Every org_unit the viewer can name, for the Practice step's cards.
   const [placesById, setPlacesById] = useState<Map<number, OrgUnit>>(new Map());
@@ -866,6 +869,7 @@ export default function UserInfoUpdatePage() {
           practising[entry.org_unit_id] = entry.competencies;
         }
         setSavedPractising(practising);
+        setLoadedUsername(data.username || "");
 
         // Pre-fill form with user data
         setFormData({
@@ -1209,7 +1213,15 @@ export default function UserInfoUpdatePage() {
   return (
     <>
       <Stack gap="lg">
-        <PageHeader title={isEditMode ? "Edit user" : "Create new user"} />
+        <PageHeader
+          title={
+            !isEditMode
+              ? "Create new user"
+              : loadedUsername
+                ? `Edit user: ${loadedUsername}`
+                : "Edit user"
+          }
+        />
 
         {loading ? (
           <Center>
