@@ -23,8 +23,6 @@ foot as work to come.
 
 ## Phase 1: Say why a lesson cannot be shown
 
-Done in the working tree on 4 October 2026, not yet committed.
-
 - [x] In `frontend/src/features/teaching/pages/SlideReader.tsx`, replace
       the `return null` for "no slide to show" with `TeachingLayout`, the
       teaching menu and a `StateMessage`. Returning null drew no ribbon
@@ -43,7 +41,7 @@ Done in the working tree on 4 October 2026, not yet committed.
       missing module, an empty one, a failed fetch and a refusal. Ran
       `just uf` on those two files: 16 passed.
 
-- [ ] Show the 404 page for a lesson somebody may not have, in place of
+- [x] Show the 404 page for a lesson somebody may not have, in place of
       "You do not have access to this lesson". The app's rule is that a
       page a person may not use looks as if it does not exist: every
       route guard shows `NotFoundLayout`, and the API already answers
@@ -53,7 +51,10 @@ Done in the working tree on 4 October 2026, not yet committed.
       loaded" is kept for a real failure, a network or server error,
       which is worth retrying. `getModuleDetail` has to tell the three
       apart, where it now knows only "refused" and "anything else".
-      Update the two test files to match.
+      Update the two test files to match. Done: a module with no
+      slides gets the 404 too, since the API already answers 404 for
+      one, and `getModuleDetail` returns null for a 403 or a 404 and
+      throws the rest.
 
 ## Phase 2: Split the learner competency in two
 
