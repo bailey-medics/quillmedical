@@ -135,29 +135,33 @@ when it is needed.
 
 ## Phase 3: Choose the viewer in `Document`
 
-- [ ] Add a hook beside `Document`, `useNativePdfViewer`, true only when
+- [x] Add a hook beside `Document`, `useNativePdfViewer`, true only when
       both hold: `navigator.pdfViewerEnabled` is true, and the main
       pointer is a mouse (`pointer: fine`). Neither is enough alone.
       Android answers the first with "no", which is right. iOS Safari
       answers "yes" and then draws one page, so the pointer check is
       what catches it. No device is named: an iPad announces itself as a
-      Mac, so matching on names would miss it.
+      Mac, so matching on names would miss it. The pointer is read on the
+      first render, not after it: starting from "no" would have every
+      desktop browser begin loading pdf.js and then drop it.
 
-- [ ] In `Document`, keep the iframe when the hook is true and render
+- [x] In `Document`, keep the iframe when the hook is true and render
       `PdfPages` otherwise. Import `PdfPages` with `React.lazy`, so a
       desktop browser never downloads pdf.js.
 
-- [ ] Delete the phone workaround in `Document`: the iframe scaled to
+- [x] Delete the phone workaround in `Document`: the iframe scaled to
       two thirds inside a clipped box, and the `#toolbar=0&navpanes=0`
       parameters added to the URL. Both only ever tidied the iframe on a
       small touch screen, which no longer gets an iframe. Move the one
       remaining iframe's inline style into a CSS module while there.
 
-- [ ] Update `Document.test.tsx` and `Document.stories.tsx`: the iframe
+- [x] Update `Document.test.tsx` and `Document.stories.tsx`: the iframe
       when the hook is true, `PdfPages` when it is false, and a story
-      that forces the pdf.js path so it can be seen on a desktop.
+      that forces the pdf.js path so it can be seen on a desktop. The
+      story does it by making the browser report no viewer, so
+      `Document` gains no prop that exists only for Storybook.
 
-- [ ] Correct the docstring in
+- [x] Correct the docstring in
       `frontend/src/pages/passport/PassportCertificatePage.tsx`, which
       says a PDF is shown "in the browser's own viewer". Leave the
       framing comment in `infra/modules/load-balancer/main.tf` alone:

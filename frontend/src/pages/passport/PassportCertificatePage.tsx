@@ -10,9 +10,10 @@
  * record card or, while editing, the form in its place.
  *
  * Beneath the card, each attached file is shown by `Document`, the
- * viewer clinic letters use: a PDF in the browser's own viewer, an image
- * as it is. The file comes from the API through the certificate, never
- * by its hash alone.
+ * viewer clinic letters use: a PDF in the browser's own viewer on a
+ * desktop and drawn page by page on a phone or tablet, an image as it
+ * is. The file comes from the API through the certificate, never by its
+ * hash alone.
  *
  * Read from the list of certificates rather than a route of its own, as
  * the logbook and CPD record pages read theirs. What the form does not
@@ -242,8 +243,8 @@ export function Component() {
             ]}
           />
 
-          {/* The certificate itself, beneath what was recorded about it:
-              a PDF in the browser's own viewer, an image as it is. */}
+          {/* The certificate itself, beneath what was recorded about it.
+              `Document` chooses how a PDF is shown; an image is as it is. */}
           {passportId &&
             name &&
             certificate.attachments.map((attachment) => (
