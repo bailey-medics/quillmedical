@@ -2801,8 +2801,12 @@ def list_delegates(
     ``bank_id`` narrows the results to one module's assessments. Without
     it every module's attempts are read together, so with two modules a
     delegate's latest attempt may be in either, and an attempt at one
-    counts against a first-time pass in the other. Everybody is still
-    listed either way: somebody who has not sat that module has no result.
+    counts against a first-time pass in the other.
+
+    With ``bank_id``, only somebody who has started that module's
+    assessment is listed, whether or not they finished it, and that
+    includes the caller if they have. Without it, every member but the
+    caller is listed, a result or none.
     """
     from app.models import org_unit_member
     from app.org_units.tree import descendant_ids
@@ -2835,8 +2839,11 @@ def list_delegates(
     )
 
     member_ids = org_member_ids | site_member_ids
-    # Exclude the caller themselves
-    member_ids.discard(user.id)
+    # Listing every member, the caller leaves themselves out: they are
+    # looking at the people below them. Asked about one module, the list
+    # is of who has attempted it, and an admin who sat it is one of them.
+    if bank_id is None:
+        member_ids.discard(user.id)
 
     if not member_ids:
         return []
@@ -2898,8 +2905,15 @@ def list_delegates(
             )
             .where(
                 org_unit_member.c.user_id == uid,
-                org_unit_member.c.capacity == "trainee",
                 OrgUnit.id.in_(caller_site_ids),
+            )
+            # Where they are a trainee, if anywhere. Failing that, a site
+            # they belong to in another capacity: an admin or a nurse who
+            # sat the module is at a site as staff, and used to be shown
+            # with no site and so no clinical lead.
+            .order_by(
+                (org_unit_member.c.capacity != "trainee"),
+                OrgUnit.id,
             )
         ).first()
 
@@ -2931,6 +2945,11 @@ def list_delegates(
             continue
 
         latest = latest_by_user.get(uid)
+
+        # Asked about one module, the list is of who has attempted it.
+        # Somebody who never started it is not a delegate of that module.
+        if bank_id is not None and latest is None:
+            continue
 
         # Determine assessment result
         result: str | None = None
