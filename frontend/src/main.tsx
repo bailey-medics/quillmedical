@@ -74,6 +74,7 @@ import {
 } from "./featureChunks";
 import { lazyFrom } from "@lib/lazyRoute";
 import ErrorBoundary from "@/components/error-boundary/ErrorBoundary";
+import RouteErrorFallback from "@/components/error-boundary/RouteErrorFallback";
 import { SCOPED_MANAGER_IDS } from "@/types/cbac";
 import NotFound from "./pages/NotFound";
 import RegisterPage from "./pages/RegisterPage";
@@ -850,8 +851,16 @@ const routes: RouteObject[] = [
 // RootLayout, which sits inside RequireAuth and therefore missed the sign-in
 // pages, the 404 and the whole /teaching tree – those reported errors with no
 // route at all. Declared here, a tree added later inherits it.
+//
+// The same goes for `errorElement`. A lazy chunk that cannot be fetched
+// rejects inside the router, which no <ErrorBoundary> in a layout can
+// catch; without this the router shows its own developer screen.
 const router = createBrowserRouter([
-  { element: <RouteTracking />, children: routes },
+  {
+    element: <RouteTracking />,
+    errorElement: <RouteErrorFallback />,
+    children: routes,
+  },
 ]);
 
 // Before the tree mounts, so a failure during the first render is reported

@@ -71,7 +71,7 @@ on the first click into each one.
       ```
 
       The loaders live together in `frontend/src/featureChunks.ts`, one
-      added per phase, because Phase 6 calls the same functions to warm a
+      added per phase, because Phase 7 calls the same functions to warm a
       feature in the background.
 
       Type the name as a key of the loaded module, so a misspelt page is a
@@ -246,12 +246,42 @@ arrive.
       - **`featureChunks.test.ts` now carries the rule itself**: it fails
         if any route in `main.tsx` has a bare `lazy: () => import(…)`.
 
-## Phase 5: Teaching
+## Phase 5: A chunk that cannot load shows the app's error page
+
+Found while preparing teaching, and done first because teaching should
+not be split until it holds.
+
+- [x] **Show the app's own error page when a lazy chunk cannot be
+      fetched.** The recovery handler in `swUpdateGate.ts` reloads the page
+      when the route somebody is on is safe to reload. When it is not, it
+      lets the import reject, and its comment says "the nearest
+      `ErrorBoundary` shows its fallback". For a route's `lazy` that is
+      not what happens. The router catches the rejection itself and
+      renders the nearest route's `errorElement`, and no route in
+      `main.tsx` had one, so it showed React Router's developer screen,
+      "Unexpected Application Error!", in production. A probe test
+      confirmed it, with an `<ErrorBoundary>` in the layout's element and
+      all. Passport and safety have had this gap since they were split.
+
+      The fix is `RouteErrorFallback` in
+      `frontend/src/components/error-boundary/`, set as the `errorElement`
+      of the root route beside `RouteTracking`, so every tree inherits it.
+      It reads the error with `useRouteError`, reports it as the boundary
+      does, and renders the same `ErrorFallback`: the message, "Reload
+      page" and "Tell us what happened". Its test pins both halves: with
+      it the app's page shows, and without it the developer screen does,
+      so the day the router changes this the test says the component is
+      no longer needed.
+- [x] **Run `just uf src/components/error-boundary`** and
+      `yarn typecheck:all`. It has a story, which brings its own router
+      because the story needs one that holds a route error.
+
+## Phase 6: Teaching
 
 Last, because it is the area real users will arrive on, and by now the
 pattern has been proved four times. Nobody uses Quill yet, but the first
 delegates are expected within weeks of 4 October 2026. The aim is to land
-this phase and Phase 6 before they do, so the exam path is changed and
+this phase and Phase 7 before they do, so the exam path is changed and
 tested while a mistake still reaches no one. If they arrive first, the
 order holds and the checks in both phases matter more, not less.
 
@@ -284,7 +314,7 @@ order holds and the checks in both phases matter more, not less.
       the network panel open: one teaching chunk on entry, no JavaScript
       fetched between starting the attempt and seeing the result.
 
-## Phase 6: Warm the other features in the background
+## Phase 7: Warm the other features in the background
 
 Without this, the first click into each feature waits on a fetch. With it,
 a teaching delegate who also has a passport lands on teaching and has the
@@ -376,7 +406,7 @@ mistake can break it. They are the second, third and fourth steps below.
       this phase: a feature chunk referenced from `index.html` would mean
       it had become part of first load again.
 
-## Phase 7: Record the rule
+## Phase 8: Record the rule
 
 - [ ] **Add the rule to `.github/instructions/pages.instructions.md`** and
       run `/sync-copilot-config` so it reaches `.claude/rules/pages.md`: a
@@ -413,7 +443,7 @@ mistake can break it. They are the second, third and fourth steps below.
 
 - **Chunks are not added to the service worker precache** – precaching
   them would download every feature for everybody on install, which is
-  the cost this plan removes. Phase 6 does the selective version: only
+  the cost this plan removes. Phase 7 does the selective version: only
   the features this person can open, and only when idle. Quill does not
   offer offline working, so nothing is lost by a chunk not being cached.
 
@@ -422,7 +452,7 @@ mistake can break it. They are the second, third and fourth steps below.
   avoid the recovery handler altogether. But it needs the hashed file
   name, which only the build knows, and calling the loader is the one
   thing guaranteed to warm exactly what the route will ask for. The cost
-  is the handler change in Phase 6, which is small and tested.
+  is the handler change in Phase 7, which is small and tested.
 
 - **Three guarantees for the exam, where one would do** – not starting on
   an unsafe route, ignoring background failures, and never reloading an
