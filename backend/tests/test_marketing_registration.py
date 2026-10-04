@@ -180,7 +180,7 @@ class TestChangingItInSettings:
         assert resend["synced"] == [(test_user.id, False)]
 
     def test_an_opt_out_resend_did_not_get_is_refused_and_undone(
-        self, signed_in, db_session, test_user, resend
+        self, signed_in, db_session, test_user, resend, caplog
     ):
         """Resend sends the mail, so an opt-out it never heard stops nothing."""
         test_user.marketing_emails = True
@@ -197,9 +197,16 @@ class TestChangingItInSettings:
         db_session.refresh(test_user)
         assert test_user.marketing_emails is True
         assert _changes(db_session, test_user) == []
+        # Logged as an error that says why, which is what the alert on
+        # backend errors quotes. As a warning, the alert read "(null)".
+        [record] = [r for r in caplog.records if r.levelname == "ERROR"]
+        assert "opted out of marketing" in record.getMessage()
+        assert "HTTP 500" in record.getMessage()
+        assert str(test_user.id) in record.getMessage()
+        assert test_user.email not in record.getMessage()
 
     def test_an_opt_in_resend_did_not_get_still_saves(
-        self, signed_in, db_session, test_user, resend
+        self, signed_in, db_session, test_user, resend, caplog
     ):
         """A late opt-in costs nothing; the retry sends it."""
         test_user.email_verified = True
@@ -213,6 +220,9 @@ class TestChangingItInSettings:
         assert response.status_code == 200, response.text
         db_session.refresh(test_user)
         assert test_user.marketing_emails is True
+        # Nobody was failed, so it is a warning and raises no alert.
+        assert [r for r in caplog.records if r.levelname == "ERROR"] == []
+        assert [r for r in caplog.records if r.levelname == "WARNING"]
 
     def test_an_unverified_address_is_not_sent_to_resend(
         self, signed_in, db_session, test_user, resend

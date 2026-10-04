@@ -118,10 +118,25 @@ def set_my_marketing_preference(
         try:
             sync_contact(current_user)
         except MarketingSyncError as exc:
-            logger.warning(
-                "Marketing sync failed for user %s: %s", current_user.id, exc
-            )
-            if not payload.wants_marketing:
+            if payload.wants_marketing:
+                # Saved anyway and left for the retry: nobody was failed.
+                logger.warning(
+                    "Marketing sync failed for user %s: %s",
+                    current_user.id,
+                    exc,
+                )
+            else:
+                # The person is about to be told it did not work, so this
+                # is an error and says why. The alert on backend errors
+                # quotes the message; logged as a warning, the only
+                # error-level entry was Cloud Run's own record of the 502,
+                # which has no message, and the alert read "(null)".
+                logger.error(
+                    "Could not tell Resend that user %s opted out of "
+                    "marketing, so the change was refused: %s",
+                    current_user.id,
+                    exc,
+                )
                 raise HTTPException(
                     status_code=502,
                     detail=(

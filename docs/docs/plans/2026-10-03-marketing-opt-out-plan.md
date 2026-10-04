@@ -27,11 +27,11 @@ them; the other ticks them off.
       topic public with a default of opt-out, so a contact that arrives
       some other way gets nothing until something opts it in.
 
-- [ ] **Make two API keys that can manage contacts,** with Full access:
+- [x] **Make two API keys that can manage contacts,** with Full access:
       a "Sending access" key cannot. One for the dev stack, kept in
       `backend/.env`, and one for production, so either can be revoked
       without the other. The sending key the backend already holds stays
-      as it is.
+      as it is. Both made on 3 October 2026.
 
 - [x] **Create the two secret containers, in `infra/main.tf`:**
       `resend-contacts-api-key` and `resend-webhook-secret`, added to the
@@ -43,32 +43,42 @@ them; the other ticks them off.
       wait is mounting them, the step after next, because Cloud Run
       refuses a revision that mounts a secret with no version.
 
-- [ ] **Put the production key in, by hand, once the change above has
+- [x] **Put the production key in, by hand, once the change above has
       applied:**
-      `printf '%s' '<key>' | gcloud secrets versions add resend-contacts-api-key --data-file=- --project=<project>`.
+      `printf '%s' '<key>' | gcloud secrets versions add resend-contacts-api-key --data-file=- --project=quill-medical-app`.
       `printf`, not `echo`: a trailing newline in `resend-api-key` is
-      what stopped every email in September. The webhook secret goes in
-      the same way, later, once the webhook exists.
+      what stopped every email in September. Done on 3 October 2026, at
+      the third attempt: the first two versions hold the command's own
+      placeholder text, run as written, and are disabled. Check a stored
+      secret before anything is told to read it: its length, its prefix,
+      whether it holds whitespace, and one harmless call with it. None of
+      that needs the value printed. `pbpaste | tr -d '\n' | gcloud ...`
+      takes it from the clipboard and keeps it out of the shell history.
 
-- [ ] **Mount the settings on the backend and the admin job, in
+- [x] **Mount the settings on the backend and the admin job, in
       `infra/`.** `RESEND_CONTACTS_API_KEY` joins `backend_secret_env_vars`
       and `admin_secret_env_vars` in `infra/runtime-identities.tf`, which
       also grants each service account access. The admin job needs it
       because `marketing-sync` runs there. `RESEND_NEWSLETTER_SEGMENT_ID`
       and `RESEND_NEWSLETTER_TOPIC_ID` are not secrets and go in as plain
-      environment variables beside `EMAIL_FROM` in `infra/main.tf`. Only
-      after the key has a version. Until this is done the code is inert
-      in production: with the settings unset nothing is sent to Resend,
-      and people still register.
+      values, shared with the dev stack: there is one list. Done only
+      after the key had a version. **Merging it did not make it live.**
+      Terraform made a new revision carrying the settings and left traffic
+      on the one before, which had none. Re-running `deploy.yml` is what
+      moves traffic, as it is for a changed secret. Check which revision
+      is serving, not only that the apply passed.
 
-- [ ] **Add a webhook for contact changes,** once Phase 4 has deployed,
+- [x] **Add a webhook for contact changes,** once Phase 4 has deployed,
       since the address does not exist until then:
-      `https://<host>/api/marketing/resend-webhook`, subscribed to
-      `contact.updated` and `contact.deleted`. Put its signing secret
-      into `resend-webhook-secret` as above, then
-      mount it as `RESEND_WEBHOOK_SECRET` on the backend in a last
-      `infra/` change. Without it the webhook answers 503 and everything
-      else works.
+      `https://app.quill-medical.com/api/marketing/resend-webhook`,
+      subscribed to `contact.updated` and `contact.deleted` and nothing
+      else. Its signing secret went into `resend-webhook-secret` as above,
+      and is mounted as `RESEND_WEBHOOK_SECRET` on the backend alone: the
+      admin job receives no webhooks. Until it was mounted the route
+      answered 503, and a single test request to it raised the "a user
+      has been failed" alert, because Cloud Run logs any 5xx as an error.
+      With the secret in place an unsigned request gets a 401, which does
+      not.
 
 ## Phase 2: The record in Quill
 
@@ -377,60 +387,82 @@ address of Mark's own for every test account, and plus-addresses
       Whether it sends one when a person changes their own topic on
       Resend's page is still to be tested, below.
 
-- [ ] **Merge and deploy the stack, and check the migration ran.** The
+- [x] **Merge and deploy the stack, and check the migration ran.** The
       deploy runs migrations itself before the new revision takes
-      traffic. In the `deploy.yml` run, the migration job should show
-      `add marketing preference`. Then load the login page and sign in:
-      a missing `users.marketing_emails` column fails every sign-in, as
+      traffic. Mark signed in to the live app afterwards, which reads
+      `users.marketing_emails`: a missing column fails every sign-in, as
       it did on the dev stack before `just migrate-local` was run.
 
-- [ ] **Finish Phase 1 for production, with its own key.** Make a second
-      contacts API key in Resend for production, not the one in the dev
-      stack's `backend/.env`, so either can be revoked without the other.
-      Store it and wire the settings as Phase 1 says, merge the `infra/`
-      change, and check the `terraform.yml` run applied. The segment and
-      topic are the ones already made: dev and production share one list,
-      which is why every test contact below is removed afterwards.
+- [x] **Finish Phase 1 for production, with its own key.** Done as
+      Phase 1 now records. The segment and topic are the ones already
+      made: dev and production share one list, which is why every test
+      contact below is removed afterwards.
 
-- [ ] **Check the running service has the three sync settings.** By
-      name, never by value: in the Cloud Run console the backend revision
-      should list `RESEND_CONTACTS_API_KEY`, `RESEND_NEWSLETTER_SEGMENT_ID`
-      and `RESEND_NEWSLETTER_TOPIC_ID`. If a secret was changed after the
-      last deploy, re-run `deploy.yml`, which is what makes a new revision
-      read it; do not use `gcloud run services update`.
+- [x] **Check the running service has the sync settings.** By name, never
+      by value. The serving revision lists `RESEND_CONTACTS_API_KEY`,
+      `RESEND_NEWSLETTER_SEGMENT_ID`, `RESEND_NEWSLETTER_TOPIC_ID` and
+      `RESEND_WEBHOOK_SECRET`, and the admin job the first three. It took
+      a re-run of `deploy.yml` to get there; see Phase 1.
 
-- [ ] **Register, and see that nothing reaches Resend yet.** On the live
-      site, go through `/register` to the account form and register with
-      the marketing box left unticked. Before clicking the verification
-      link, search Resend's contacts for the address. It should not be
-      there: an unverified address never joins the list.
+- [x] **Register, and see that nothing reaches Resend until the address
+      is verified.** Mark registered `mark.bailey.teaching.delegate` with
+      the box unticked. Not checked by looking in Resend before verifying,
+      as this step first asked, but shown by the times: registered at
+      20:33:00 UTC, verified at 20:33:29, and the contact's own creation
+      time in Resend is 20:33:29.
 
-- [ ] **Verify, and see the contact arrive.** Click the link in the
-      verification email. Within a few seconds Resend should have the
-      contact, with the name, in the "Quill Medical" segment, opted in
-      to "Newsletter". Sign in and check the Settings switch "News and
-      updates by email" is on.
+- [x] **Verify, and see the contact arrive.** Half a second after the
+      verification, the contact was in the "Quill Medical" segment, named,
+      opted in to "Newsletter". A second later Resend made its first
+      signed call to the webhook, which was accepted with a 200 and
+      recognised as an echo of Quill's own change.
 
 - [ ] **Register a second account with the box ticked.** After verifying,
       Resend should hold that contact opted **out** of "Newsletter", and
       its Settings switch should be off.
 
-- [ ] **Flip the Settings switch both ways.** On the first account,
-      switch news off, wait a few seconds, and check Resend shows opted
-      out. Switch it on again and check Resend shows opted in. Resend's
-      reads lag its writes by a second or two, so reload its page before
-      deciding a change has not arrived.
+- [x] **Flip the Settings switch both ways.** Each change reached
+      Resend's topic. This is where the two faults in the entry above
+      showed: saves of ten seconds, and "Subscribed" on Resend's Audience
+      page for somebody opted out. Both fixes deployed at 21:01 UTC on
+      3 October.
 
-- [ ] **Add the webhook in Resend, as Phase 1's last step says,** now that
-      the address exists: `https://<teaching host>/api/marketing/resend-webhook`,
-      events `contact.updated` and `contact.deleted`. Store the signing
-      secret, wire `RESEND_WEBHOOK_SECRET`, and re-run `deploy.yml`.
+- [x] **Flip it again after the fix, and read the times.** Done on
+      4 October 2026. Six saves took between 0.8 and 1.6 seconds and none
+      took ten, so the IPv6 account of the slow saves holds. Resend's
+      Audience page shows the contact's true status. One save in seven
+      failed: Resend took longer than five seconds to answer one request,
+      and because it was an opt-out the change was refused with a 502 and
+      the person asked to try again, as designed. Three things followed
+      from that one failure:
 
-- [ ] **Check the webhook refuses a stranger.** From a terminal:
-      `curl -i -X POST https://<teaching host>/api/marketing/resend-webhook -d '{}'`
-      should answer 401. A 503 means the secret has not reached the
-      running revision. A 200 would mean anybody can change a preference,
-      and is a reason to take the route down.
+      **A stalled call is tried once more.** A save is four calls to
+      Resend in a row, so one stall failed the whole save. Resend has now
+      stalled twice in about thirty calls and been back to normal on the
+      next each time. `_reaching_resend` in
+      `backend/app/marketing/resend_contacts.py` runs the calls again from
+      the top on a timeout, and only on a timeout: a refusal would be
+      refused again. Safe to repeat, because the sync looks at what Resend
+      holds before changing it.
+
+      **The alert that fired said "(null)".** The backend error alert
+      quotes the message of the entry that set it off. That entry was
+      Cloud Run's own record of the 502, which has no message; the code's
+      account of why was a line away, logged as a warning. A refused
+      opt-out is now logged as an error that says why, and a late opt-in,
+      which fails nobody, stays a warning.
+
+      **The alert now names the request.** In
+      `infra/modules/monitoring/main.tf` it quotes the method, the path
+      and the status as well as the message, so an entry with no message
+      still says which request failed. The path only, without its query
+      string, which can hold what somebody typed into a search box.
+
+- [x] **Add the webhook in Resend,** as Phase 1 records.
+
+- [x] **Check the webhook refuses a stranger.** A request with no
+      signature and one with a made-up signature both got a 401,
+      "Invalid signature.", and neither was logged as an error.
 
 - [ ] **Unsubscribe from Resend's side, and see Quill follow.** Wait at
       least a minute after the last Settings change, because the route
@@ -464,10 +496,14 @@ address of Mark's own for every test account, and plus-addresses
       the steps above. If it is worth running often, add a
       `marketing-sync-remote` recipe beside `migrate-remote` then.
 
-- [ ] **Read the logs for addresses.** In Cloud Logging, search the
-      backend's logs for the test addresses. The marketing code logs a
-      user id and an HTTP status, never an address; a hit from
-      `app.marketing` is a bug to fix before real people register.
+- [x] **Read the logs for addresses.** Searched the backend's logs for
+      the test address. Nothing from `app.marketing` names it: that code
+      logs a user id and an HTTP status. One entry does, and it is not
+      marketing's: `email_send.py` logs `Email sent – to=<address>` for
+      every email it sends, the verification email here. An email address
+      in the logs is personal data, and for a patient's account it would
+      sit beside the fact that they have one. Outside this plan, and
+      older than it, but found by this check; see Decisions.
 
 - [ ] **Tidy up.** Delete the test contacts in Resend and deactivate the
       test accounts, so the first real broadcast goes to nobody who did
@@ -516,6 +552,17 @@ address of Mark's own for every test account, and plus-addresses
   no real users there is nothing to schedule for; a Cloud Scheduler job
   calling the admin Cloud Run job is the obvious next step once
   registrations are regular.
+
+- **`email_send.py` logs the address it sends to** – found by Phase 6's
+  log check, and left alone here because it is not marketing's code and
+  changing it is a decision about what the logs are for. It wants its own
+  small change: log the user id, or nothing, as the rest of the
+  application does.
+
+- **`email_send.py` may be slowed by IPv6 as the sync was** – it reaches
+  the same host through the `resend` SDK. Not measured and not changed.
+  If a password reset is ever seen to take ten seconds, this is the first
+  place to look.
 
 - **No existing users to migrate** – nobody is registered in production,
   so there is no backfill, and no question of what an existing person
