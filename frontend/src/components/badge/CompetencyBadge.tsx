@@ -6,7 +6,7 @@
  *
  * @example
  * ```tsx
- * <CompetencyBadge label="Take Teaching Assessments" />
+ * <CompetencyBadge label="Take Teaching Modules" />
  * <CompetencyBadge label="Manage Teaching Content" removed />
  * ```
  */

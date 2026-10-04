@@ -106,7 +106,7 @@ class TestTheOldCompetenciesSurvive:
     ) -> None:
         """Fails on a bare assignment.
 
-        ``teaching_delegate`` grants ``view_teaching_cases`` and nothing
+        ``teaching_delegate`` grants ``take_teaching_modules`` and nothing
         else, so a replacement would leave this person unable to see
         their own record – by being given teaching access.
         """
@@ -125,7 +125,7 @@ class TestTheOldCompetenciesSurvive:
         db_session.refresh(target)
         final = target.get_final_competencies()
         assert "access_own_patient_records" in final
-        assert "view_teaching_cases" in final
+        assert "take_teaching_modules" in final
 
     def test_the_new_profession_is_granted_too(
         self,
@@ -166,7 +166,7 @@ class TestTheOldCompetenciesSurvive:
             db_session,
             "has_extras",
             profession="patient",
-            additional=["view_teaching_cases"],
+            additional=["take_teaching_modules"],
         )
         _place(db_session, org, target)
 
@@ -180,7 +180,7 @@ class TestTheOldCompetenciesSurvive:
         assert response.status_code == 200, response.text
         db_session.refresh(target)
         final = target.get_final_competencies()
-        assert "view_teaching_cases" in final
+        assert "take_teaching_modules" in final
         assert "access_clinic_admin" in final
         assert "access_own_patient_records" in final
 

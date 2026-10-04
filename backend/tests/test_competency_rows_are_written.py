@@ -518,14 +518,14 @@ class TestEveryWriterWritesRows:
 
         response = client.patch(
             "/api/cbac/my-competencies",
-            json={"additional_competencies": ["view_teaching_cases"]},
+            json={"additional_competencies": ["take_teaching_modules"]},
             headers=_csrf(client),
         )
 
         assert response.status_code == 200, response.text
         rows = _rows(db_session, operator.id)
         assert [(r.competency_id, r.source, r.granted_by) for r in rows] == [
-            ("view_teaching_cases", "operator", operator.id)
+            ("take_teaching_modules", "operator", operator.id)
         ]
 
     def test_onboarding_writes_rows_through_the_org_unit(

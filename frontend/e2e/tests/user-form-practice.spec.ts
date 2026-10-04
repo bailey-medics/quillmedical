@@ -20,7 +20,7 @@ import { test, expect } from "../fixtures/axe";
 
 const ORGANISATION = "CI Teaching Hospital";
 const PROFESSION = "Teaching delegate";
-const COMPETENCY = "Take Teaching Assessments";
+const COMPETENCY = "Take Teaching Modules";
 
 async function signInAsUserManager(page: Page) {
   await page.goto("/login");

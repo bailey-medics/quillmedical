@@ -26,7 +26,7 @@ type Story = StoryObj<typeof CompetencyBadge>;
 export const Default: Story = {
   render: () => (
     <Group gap="md">
-      <CompetencyBadge label="Take Teaching Assessments" />
+      <CompetencyBadge label="Take Teaching Modules" />
       <CompetencyBadge label="Manage Teaching Content" />
       <CompetencyBadge label="View Teaching Analytics" />
     </Group>
@@ -39,7 +39,7 @@ export const Default: Story = {
 export const Removed: Story = {
   render: () => (
     <Group gap="md">
-      <CompetencyBadge label="Take Teaching Assessments" removed />
+      <CompetencyBadge label="Take Teaching Modules" removed />
       <CompetencyBadge label="Manage Teaching Content" removed />
     </Group>
   ),

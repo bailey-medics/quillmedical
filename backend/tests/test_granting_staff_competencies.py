@@ -176,7 +176,7 @@ class TestThePatientBecomingStaff:
             json={
                 "user_id": starter.id,
                 "base_profession": "healthcare_assistant",
-                "additional_competencies": ["view_teaching_cases"],
+                "additional_competencies": ["take_teaching_modules"],
             },
             headers=_csrf(client),
         )
@@ -184,7 +184,7 @@ class TestThePatientBecomingStaff:
         assert response.status_code == 200, response.text
         db_session.refresh(starter)
         held = starter.get_final_competencies()
-        assert "view_teaching_cases" in held
+        assert "take_teaching_modules" in held
         assert "perform_venepuncture" in held
 
     def test_competencies_alone_without_a_profession(
@@ -202,14 +202,14 @@ class TestThePatientBecomingStaff:
             f"/api/org-units/{org.id}/members",
             json={
                 "user_id": starter.id,
-                "additional_competencies": ["view_teaching_cases"],
+                "additional_competencies": ["take_teaching_modules"],
             },
             headers=_csrf(client),
         )
 
         assert response.status_code == 200, response.text
         db_session.refresh(starter)
-        assert "view_teaching_cases" in starter.get_final_competencies()
+        assert "take_teaching_modules" in starter.get_final_competencies()
         assert starter.base_profession == "patient"
 
 

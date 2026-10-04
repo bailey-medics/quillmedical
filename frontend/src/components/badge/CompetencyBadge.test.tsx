@@ -6,8 +6,8 @@ import CompetencyBadge from "./CompetencyBadge";
 describe("CompetencyBadge", () => {
   describe("Rendering", () => {
     it("displays the label text", () => {
-      renderWithMantine(<CompetencyBadge label="Take Teaching Assessments" />);
-      expect(screen.getByText("Take Teaching Assessments")).toBeInTheDocument();
+      renderWithMantine(<CompetencyBadge label="Take Teaching Modules" />);
+      expect(screen.getByText("Take Teaching Modules")).toBeInTheDocument();
     });
 
     it("renders as a badge element", () => {

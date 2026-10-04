@@ -306,12 +306,12 @@ describe("MemberPracticePanel", () => {
       qualified: [
         "perform_venepuncture",
         "certify_death",
-        "view_teaching_cases",
+        "take_teaching_modules",
       ],
       may_change: [
         "manage_teaching",
         "view_teaching_analytics",
-        "view_teaching_cases",
+        "take_teaching_modules",
       ],
     };
 
@@ -320,7 +320,7 @@ describe("MemberPracticePanel", () => {
 
       expect(switchFor("Certify Death")).toBeDisabled();
       expect(switchFor("Perform Venepuncture")).toBeDisabled();
-      expect(switchFor("Take Teaching Assessments")).toBeEnabled();
+      expect(switchFor("Take Teaching Modules")).toBeEnabled();
     });
 
     it("offers to grant only what they may change", async () => {

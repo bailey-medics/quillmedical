@@ -53,8 +53,8 @@ export const Default: Story = {};
 /** A teaching admin's view of a clinician who also sits teaching. */
 export const SomeSwitchesNotTheirs: Story = {
   args: {
-    competencies: [...competencies, "view_teaching_cases"],
-    mayChange: (competency) => competency === "view_teaching_cases",
+    competencies: [...competencies, "take_teaching_modules"],
+    mayChange: (competency) => competency === "take_teaching_modules",
   },
   render: (args) => (
     <>

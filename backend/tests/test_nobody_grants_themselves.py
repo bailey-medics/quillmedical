@@ -168,13 +168,13 @@ class TestTheAdminRouteRefusesSelf:
         client = _login(test_client, "the_operator")
         response = client.patch(
             f"/api/users/{operator.id}",
-            json={"additional_competencies": ["view_teaching_cases"]},
+            json={"additional_competencies": ["take_teaching_modules"]},
             headers=_csrf(client),
         )
 
         assert response.status_code == 200, response.text
         db_session.refresh(operator)
-        assert "view_teaching_cases" in operator.get_final_competencies()
+        assert "take_teaching_modules" in operator.get_final_competencies()
 
 
 class TestSomebodyElseStillCan:
@@ -194,13 +194,13 @@ class TestSomebodyElseStillCan:
         client = _login(test_client, "the_admin")
         response = client.patch(
             f"/api/users/{colleague.id}",
-            json={"additional_competencies": ["view_teaching_cases"]},
+            json={"additional_competencies": ["take_teaching_modules"]},
             headers=_csrf(client),
         )
 
         assert response.status_code == 200, response.text
         db_session.refresh(colleague)
-        assert "view_teaching_cases" in colleague.get_final_competencies()
+        assert "take_teaching_modules" in colleague.get_final_competencies()
 
     def test_an_admin_may_still_edit_their_own_email(
         self,
@@ -245,13 +245,13 @@ class TestTheSelfRouteRefusesEveryoneButOperators:
         client = _login(test_client, "the_operator")
         response = client.patch(
             "/api/cbac/my-competencies",
-            json={"additional_competencies": ["view_teaching_cases"]},
+            json={"additional_competencies": ["take_teaching_modules"]},
             headers=_csrf(client),
         )
 
         assert response.status_code == 200, response.text
         db_session.refresh(operator)
-        assert "view_teaching_cases" in operator.get_final_competencies()
+        assert "take_teaching_modules" in operator.get_final_competencies()
 
     def test_a_user_without_manage_users_is_refused(
         self, test_client: TestClient, db_session: Session, org: OrgUnit
@@ -265,7 +265,7 @@ class TestTheSelfRouteRefusesEveryoneButOperators:
         client = _login(test_client, "front_desk")
         response = client.patch(
             "/api/cbac/my-competencies",
-            json={"additional_competencies": ["view_teaching_cases"]},
+            json={"additional_competencies": ["take_teaching_modules"]},
             headers=_csrf(client),
         )
 

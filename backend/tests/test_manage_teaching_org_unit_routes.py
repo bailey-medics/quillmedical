@@ -158,17 +158,17 @@ class TestAtTheirOwnOrgUnit:
             f"/api/org-units/{trust.id}/practising-competencies",
             json={
                 "user_id": consultant.id,
-                "competency": "view_teaching_cases",
+                "competency": "take_teaching_modules",
             },
         )
         assert resp.status_code == 200, resp.text
-        assert "view_teaching_cases" in _practising(
+        assert "take_teaching_modules" in _practising(
             db_session, consultant, trust
         )
 
         resp = client.delete(
             f"/api/org-units/{trust.id}/practising-competencies/"
-            f"{consultant.id}/view_teaching_cases"
+            f"{consultant.id}/take_teaching_modules"
         )
         assert resp.status_code == 200, resp.text
         assert _practising(db_session, consultant, trust) == set()
@@ -185,7 +185,8 @@ class TestAtTheirOwnOrgUnit:
         assert body["may_grant"] is True
         assert body["may_change"] == sorted(
             [
-                "view_teaching_cases",
+                "view_teaching_results",
+                "take_teaching_modules",
                 "manage_teaching",
                 "view_teaching_analytics",
             ]
@@ -538,7 +539,10 @@ class TestBeyondTheirWhitelist:
         consultant: User,
         db_session: Session,
     ) -> None:
-        for competency in ("prescribe_non_controlled", "view_teaching_cases"):
+        for competency in (
+            "prescribe_non_controlled",
+            "take_teaching_modules",
+        ):
             db_session.add(
                 PractisingCompetency(
                     user_id=consultant.id,
@@ -551,7 +555,7 @@ class TestBeyondTheirWhitelist:
         rows = client.get(
             f"/api/org-units/{trust.id}/practising-competencies"
         ).json()["practising_competencies"]
-        assert {r["competency"] for r in rows} == {"view_teaching_cases"}
+        assert {r["competency"] for r in rows} == {"take_teaching_modules"}
 
 
 class TestAddingASite:

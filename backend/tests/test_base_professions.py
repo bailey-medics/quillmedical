@@ -258,7 +258,8 @@ def test_teaching_admin_runs_teaching_without_the_root() -> None:
     ``docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md``.
     """
     assert get_profession_base_competencies("teaching_admin") == [
-        "view_teaching_cases",
+        "view_teaching_results",
+        "take_teaching_modules",
         "manage_teaching",
         "view_teaching_analytics",
     ]

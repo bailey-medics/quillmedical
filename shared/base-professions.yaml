@@ -386,14 +386,16 @@ base_professions:
     description: "External delegate with teaching assessment access only (no clinical access)"
     requires_clinical_services: false
     base_competencies:
-      - view_teaching_cases
+      - view_teaching_results
+      - take_teaching_modules
 
   - id: teaching_clinical_lead
     display_name: "Teaching clinical lead"
     description: "Clinical lead participating in teaching assessments (no additional platform permissions)"
     requires_clinical_services: false
     base_competencies:
-      - view_teaching_cases
+      - view_teaching_results
+      - take_teaching_modules
 
   # Runs teaching at an organisation or site: curates the question banks
   # and signs up the delegates who sit them. manage_teaching carries both,
@@ -407,7 +409,8 @@ base_professions:
     description: "Teaching coordinator who curates content and signs up delegates at their own organisation or site"
     requires_clinical_services: false
     base_competencies:
-      - view_teaching_cases
+      - view_teaching_results
+      - take_teaching_modules
       - manage_teaching
       - view_teaching_analytics
 
