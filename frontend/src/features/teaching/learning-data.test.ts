@@ -90,18 +90,31 @@ describe("learning-data", () => {
       expect(detail!.slides.length).toBe(3);
     });
 
-    it("returns null when API returns error", async () => {
-      mockGet.mockRejectedValueOnce(new Error("Not found"));
+    it("returns null when the module is not found", async () => {
+      mockGet.mockRejectedValueOnce(
+        Object.assign(new Error("Not found"), { status: 404 }),
+      );
 
       const detail = await getModuleDetail("nonexistent-module");
       expect(detail).toBeNull();
     });
 
-    it("throws a refusal instead of returning null", async () => {
-      const refusal = Object.assign(new Error("Forbidden"), { status: 403 });
-      mockGet.mockRejectedValueOnce(refusal);
+    it("returns null when the backend refuses", async () => {
+      mockGet.mockRejectedValueOnce(
+        Object.assign(new Error("Forbidden"), { status: 403 }),
+      );
 
-      await expect(getModuleDetail("module-a")).rejects.toBe(refusal);
+      const detail = await getModuleDetail("module-a");
+      expect(detail).toBeNull();
+    });
+
+    it("throws any other failure instead of returning null", async () => {
+      const failure = Object.assign(new Error("Server error"), {
+        status: 500,
+      });
+      mockGet.mockRejectedValueOnce(failure);
+
+      await expect(getModuleDetail("module-a")).rejects.toBe(failure);
     });
   });
 
@@ -116,7 +129,9 @@ describe("learning-data", () => {
     });
 
     it("returns null when module not found", async () => {
-      mockGet.mockRejectedValueOnce(new Error("Not found"));
+      mockGet.mockRejectedValueOnce(
+        Object.assign(new Error("Not found"), { status: 404 }),
+      );
 
       const slides = await getModuleSlides("nonexistent-module");
       expect(slides).toBeNull();

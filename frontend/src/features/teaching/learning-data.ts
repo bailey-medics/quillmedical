@@ -19,22 +19,28 @@ export async function getModules(): Promise<LearningModule[]> {
   return api.get<LearningModule[]>("/teaching/modules");
 }
 
-/** True for the error `api` throws when the backend refuses with a 403. */
-export function isRefused(err: unknown): boolean {
+/**
+ * True when the backend says this person may not have something, or that
+ * it is not there: a 403 or a 404. The two are treated alike on purpose,
+ * as the API itself does for a module that is not theirs.
+ */
+function isNotTheirs(err: unknown): boolean {
   return (
     typeof err === "object" &&
     err !== null &&
     "status" in err &&
-    err.status === 403
+    (err.status === 403 || err.status === 404)
   );
 }
 
 /**
- * Returns full learning content (slides) for a module, or null if not found.
+ * Returns full learning content (slides) for a module, or null when the
+ * module is not there for this person: no such module, not theirs, or
+ * refused. The page shows a 404 for all three, so nothing confirms that
+ * a lesson exists to somebody who may not read it.
  *
- * A refusal (403) is thrown, not turned into null: it means the person
- * lacks `view_teaching_cases`, and the page has to say that. Folded into
- * null it read as "no such module" and the slide page showed nothing.
+ * Anything else is thrown: a network or server failure is worth saying
+ * so and retrying, and folded into null it read as "no such module".
  */
 export async function getModuleDetail(
   moduleId: string,
@@ -44,8 +50,8 @@ export async function getModuleDetail(
       `/teaching/modules/${moduleId}/learning`,
     );
   } catch (err) {
-    if (isRefused(err)) throw err;
-    return null;
+    if (isNotTheirs(err)) return null;
+    throw err;
   }
 }
 
@@ -92,8 +98,8 @@ function toCompiledSlide(s: ApiSlide): CompiledSlide {
 }
 
 /**
- * Returns compiled slides for a module, or null if not found. Throws when
- * the backend refuses, as `getModuleDetail` does.
+ * Returns compiled slides for a module, or null if it is not there for
+ * this person. Throws on a real failure, as `getModuleDetail` does.
  */
 export async function getModuleSlides(
   moduleId: string,
