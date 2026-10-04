@@ -145,6 +145,11 @@ export function Component() {
         />
       )}
 
+      {/* Until the fetch returns, so the page is not blank under the
+          button while a full record is on its way. Not after a failed
+          load, which has its own message above. */}
+      {!loaded && !error && <CertificateTable certificates={[]} isLoading />}
+
       {/* Each certificate opens on a page of its own, to read in full
           and correct. */}
       {certificates.length > 0 && (

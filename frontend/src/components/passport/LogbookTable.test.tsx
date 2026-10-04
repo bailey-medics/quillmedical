@@ -19,6 +19,12 @@ describe("LogbookTable", () => {
       expect(screen.getByText("38 entries")).toBeInTheDocument();
     });
 
+    it("gives no count while the logbook is still loading", () => {
+      // "0 entries" before the answer would be a count nobody made.
+      renderWithMantine(<LogbookTable logbook={emptyLogbook} isLoading />);
+      expect(screen.queryByText(/entries/)).not.toBeInTheDocument();
+    });
+
     it("reads 'entry' rather than 'entries' for a count of one", () => {
       renderWithMantine(<LogbookTable logbook={singleEntryLogbook} />);
       expect(screen.getByText("1 entry")).toBeInTheDocument();

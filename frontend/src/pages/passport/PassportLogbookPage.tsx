@@ -245,6 +245,17 @@ export function Component() {
         />
       )}
 
+      {/* Until the fetch returns, so the page is not blank under the
+          button while a full logbook is on its way. Not after a failed
+          load, which has its own message above. */}
+      {!loaded && !error && (
+        <LogbookTable
+          logbook={{ competency: "", count: 0, entries: [] }}
+          competencyName="Logbook"
+          isLoading
+        />
+      )}
+
       {/* Narrowing the view, which is reading. Offered whatever the
           entitlement says, and only where there is more than one
           competency to choose between. */}

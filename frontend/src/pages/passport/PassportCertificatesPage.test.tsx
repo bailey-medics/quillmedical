@@ -98,6 +98,31 @@ describe("PassportCertificatesPage", () => {
     expect(screen.queryByText("Nothing recorded yet")).not.toBeInTheDocument();
   });
 
+  it("shows a loading table while the list is on its way", async () => {
+    fetchCertificates.mockReturnValue(new Promise(() => {}));
+    renderWithRouter(<PassportCertificatesPage />);
+
+    await waitFor(() => expect(fetchCertificates).toHaveBeenCalled());
+    expect(screen.getByTestId("certificate-table")).toBeInTheDocument();
+    expect(screen.getByText("Loading")).toBeInTheDocument();
+  });
+
+  it("takes the loading table away once an empty list arrives", async () => {
+    fetchCertificates.mockResolvedValue([]);
+    renderWithRouter(<PassportCertificatesPage />);
+
+    await screen.findByText(/^Nothing .* yet$/);
+    expect(screen.queryByTestId("certificate-table")).not.toBeInTheDocument();
+  });
+
+  it("shows no loading table over a failed load", async () => {
+    fetchCertificates.mockRejectedValue(new Error("network"));
+    renderWithRouter(<PassportCertificatesPage />);
+
+    await screen.findByText(/could not be loaded/);
+    expect(screen.queryByTestId("certificate-table")).not.toBeInTheDocument();
+  });
+
   it("puts the add button above the message on an empty page", async () => {
     fetchCertificates.mockResolvedValue([]);
     renderWithRouter(<PassportCertificatesPage />);
