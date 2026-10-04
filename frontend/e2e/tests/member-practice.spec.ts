@@ -87,7 +87,12 @@ test.describe("Member practice", () => {
         .filter({ hasText: "Confirm practice changes" });
       await expect(dialog).toBeVisible();
       if (warning) await expect(dialog).toContainText(warning);
-      await dialog.getByRole("button", { name: "Confirm" }).click();
+      // Exact, or it also matches "Confirming…", the label the button
+      // carries while disabled. A stuck button then waits out the whole
+      // timeout instead of failing here.
+      await dialog
+        .getByRole("button", { name: "Confirm", exact: true })
+        .click();
       await expect(dialog).toBeHidden();
       await expect(page.getByText(outcome)).toBeVisible();
     }

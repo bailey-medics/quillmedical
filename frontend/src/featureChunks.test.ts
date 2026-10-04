@@ -179,3 +179,19 @@ describe("who may open each feature", () => {
     expect(mainSource.replace(/\s+/g, " ")).toContain(guard);
   });
 });
+
+// `handle.safeForReload` lets the app reload a page silently: for an
+// update, or to recover a chunk it could not fetch. A page holding work
+// that has not been saved must not carry it.
+describe("pages holding unsaved work", () => {
+  it.each(["organisations/:id/members/:userId", "sites/:id/members/:userId"])(
+    "does not mark %s safe to reload, since its switches wait for Save changes",
+    (routePath) => {
+      const start = mainSource.indexOf(`path: "${routePath}"`);
+      const nextRoute = mainSource.indexOf("path: ", start + 1);
+
+      expect(start).toBeGreaterThan(-1);
+      expect(mainSource.slice(start, nextRoute)).not.toContain("safeForReload");
+    },
+  );
+});

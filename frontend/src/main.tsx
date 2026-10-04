@@ -582,6 +582,8 @@ const routes: RouteObject[] = [
             )),
           },
           {
+            // The practice switches hold their changes until "Save changes" is
+            // pressed, so a silent reload would drop them. Not safe to reload.
             path: "organisations/:id/members/:userId",
             lazy: lazyFrom(loadAdmin, "MemberPracticePage", (Page) => (
               <RequireCompetency
@@ -593,7 +595,6 @@ const routes: RouteObject[] = [
                 <Page />
               </RequireCompetency>
             )),
-            handle: { safeForReload: true },
           },
           {
             // Adding a site to an organisation is administering the
@@ -650,6 +651,8 @@ const routes: RouteObject[] = [
             lazy: lazyFrom(loadAdmin, "AddStaffToSitePage"),
           },
           {
+            // The practice switches hold their changes until "Save changes" is
+            // pressed, so a silent reload would drop them. Not safe to reload.
             path: "sites/:id/members/:userId",
             lazy: lazyFrom(loadAdmin, "MemberPracticePage", (Page) => (
               <RequireCompetency
@@ -661,7 +664,6 @@ const routes: RouteObject[] = [
                 <Page />
               </RequireCompetency>
             )),
-            handle: { safeForReload: true },
           },
           // Operator-only: feedback comes from every organisation and may
           // hold patient data, so reading it is operating the deployment

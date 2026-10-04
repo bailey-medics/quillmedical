@@ -11,6 +11,7 @@
  * - Error handling (stays open on reject)
  */
 
+import { useState } from "react";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi, describe, it, expect } from "vitest";
@@ -116,6 +117,57 @@ describe("ConfirmModal", () => {
     resolve!();
     await waitFor(() => {
       expect(defaultProps.onClose).not.toHaveBeenCalled(); // our local onClose mock was not passed
+    });
+  });
+
+  // The same instance is reused: a parent keeps it mounted and flips
+  // `opened`. It once came back with the button still disabled, reading
+  // "Confirming…", because the reset after closing was missed.
+  describe("opened a second time", () => {
+    function Reused({ onAccept }: { onAccept: () => Promise<void> }) {
+      const [opened, setOpened] = useState(false);
+      return (
+        <>
+          <button onClick={() => setOpened(true)}>Save changes</button>
+          <ConfirmModal
+            {...defaultProps}
+            opened={opened}
+            onClose={() => setOpened(false)}
+            onAccept={onAccept}
+          />
+        </>
+      );
+    }
+
+    async function confirmOnce(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+      await user.click(await screen.findByRole("button", { name: "Confirm" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    }
+
+    it("offers Confirm again, enabled, after a successful accept", async () => {
+      const user = userEvent.setup();
+      const onAccept = vi.fn().mockResolvedValue(undefined);
+      renderWithMantine(<Reused onAccept={onAccept} />);
+
+      await confirmOnce(user);
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      const confirm = await screen.findByRole("button", { name: "Confirm" });
+      expect(confirm).not.toHaveAttribute("aria-disabled", "true");
+      expect(screen.queryByRole("button", { name: "Confirming…" })).toBeNull();
+    });
+
+    it("can be accepted a second and a third time", async () => {
+      const user = userEvent.setup();
+      const onAccept = vi.fn().mockResolvedValue(undefined);
+      renderWithMantine(<Reused onAccept={onAccept} />);
+
+      await confirmOnce(user);
+      await confirmOnce(user);
+      await confirmOnce(user);
+
+      expect(onAccept).toHaveBeenCalledTimes(3);
     });
   });
 
