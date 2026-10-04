@@ -16,8 +16,25 @@ import { theme, cssVariablesResolver } from "../src/theme";
 import { EXTRA_RULES, WCAG_TAGS } from "../src/lib/accessibility/axeConfig";
 
 // Mock the API to prevent real backend calls in Storybook
+const realFetch = globalThis.fetch.bind(globalThis);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-(globalThis as any).fetch = async (url: string) => {
+(globalThis as any).fetch = async (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) => {
+  // A caller may pass a string, a URL or a Request. pdf.js passes a URL.
+  const url =
+    typeof input === "string"
+      ? input
+      : input instanceof URL
+        ? input.href
+        : input.url;
+  // Only the API is mocked. Anything else is a file Storybook itself
+  // serves, such as the PDFs in public/mock-documents, and is fetched
+  // for real.
+  if (!url.includes("/api/")) {
+    return realFetch(input, init);
+  }
   console.log("[Storybook Mock] Fetch called for:", url);
   // Mock /auth/me endpoint to return authenticated user
   if (url.includes("/auth/me")) {

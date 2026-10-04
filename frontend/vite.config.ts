@@ -1,8 +1,9 @@
 import react from "@vitejs/plugin-react-swc";
 import { execSync } from "child_process";
+import { readFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { computeRequiredClientGeneration } from "./scripts/computeCompatGeneration";
@@ -42,6 +43,48 @@ const APP_VERSION: string =
       return "dev";
     }
   })();
+
+// pdf.js decodes two image formats found in scanned PDFs, JBIG2 and
+// JPEG 2000, with code it loads only when a document needs it, from a
+// folder it is told about (`wasmUrl` in src/lib/pdf/openPdf.ts). It asks
+// for each file by a fixed name, so they cannot go through the bundler,
+// which would add a hash. This serves the two plain JavaScript decoders
+// under `pdfjs/`, from the installed package, in dev and in the build.
+//
+// The WebAssembly decoders beside them are deliberately left out: the
+// content security policy refuses to compile WebAssembly, and openPdf.ts
+// says why that is not being loosened.
+const PDFJS_DECODERS = [
+  "jbig2_nowasm_fallback.js",
+  "openjpeg_nowasm_fallback.js",
+];
+
+function pdfjsDecoders(): Plugin {
+  const dir = path.resolve(__dirname, "node_modules/pdfjs-dist/wasm");
+  return {
+    name: "pdfjs-decoders",
+    configureServer(server) {
+      server.middlewares.use("/pdfjs", (req, res, next) => {
+        const name = (req.url ?? "").split("?")[0].replace(/^\//, "");
+        if (!PDFJS_DECODERS.includes(name)) {
+          next();
+          return;
+        }
+        res.setHeader("Content-Type", "text/javascript");
+        res.end(readFileSync(path.join(dir, name)));
+      });
+    },
+    generateBundle() {
+      for (const name of PDFJS_DECODERS) {
+        this.emitFile({
+          type: "asset",
+          fileName: `pdfjs/${name}`,
+          source: readFileSync(path.join(dir, name)),
+        });
+      }
+    },
+  };
+}
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -84,6 +127,7 @@ export default defineConfig({
   plugins: [
     react(),
     tsconfigPaths(),
+    pdfjsDecoders(),
     VitePWA({
       strategies: "injectManifest",
       srcDir: "src",

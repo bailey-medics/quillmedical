@@ -1,0 +1,19 @@
+/* PdfPages – a column of pages, each a canvas as wide as the column.
+   The canvas carries the page's own width and height as attributes, so
+   `height: auto` keeps its shape before and after it is drawn. */
+
+.pages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+}
+
+/* White in both colour schemes: it is a sheet of paper, and a PDF
+   assumes one. The border is what separates it from a light page. */
+.page {
+  display: block;
+  width: 100%;
+  height: auto;
+  background-color: var(--mantine-color-white);
+  border: 0.0625rem solid var(--mantine-color-gray-3);
+}
