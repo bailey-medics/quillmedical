@@ -9,3 +9,7 @@ export type {
 } from "./RegistrationForm";
 export { default as ResetPasswordForm } from "./ResetPasswordForm";
 export type { ResetPasswordFormProps } from "./ResetPasswordForm";
+export { default as VerifyEmail } from "./VerifyEmail";
+export type { VerifyEmailProps, VerifyEmailStatus } from "./VerifyEmail";
+export { default as VerifyEmailPending } from "./VerifyEmailPending";
+export type { VerifyEmailPendingProps } from "./VerifyEmailPending";

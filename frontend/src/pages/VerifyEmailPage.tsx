@@ -3,23 +3,20 @@
  *
  * Handles the email verification token from the link sent to
  * the user's email. Calls the backend to mark the email as verified.
+ * Delegates rendering to VerifyEmail.
  */
 
-// Auth pages use centred form layout, not Container
+// Auth pages use the logo-and-card layout of the sign-in forms, not Container
 
 import { useEffect, useState } from "react";
-import PageHeader from "@/components/page-header";
-import { Center, Stack } from "@mantine/core";
 import { useSearchParams } from "react-router-dom";
 import { api } from "@/lib/api";
-import { BodyText, TextLink } from "@components/typography";
-import { ResultMessage, StateMessage } from "@components/message-cards";
-import { IconClock, IconAlertCircle } from "@components/icons/appIcons";
+import { VerifyEmail, type VerifyEmailStatus } from "@components/registration";
 
 export default function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
-  const [status, setStatus] = useState<"loading" | "success" | "error">(
+  const [status, setStatus] = useState<VerifyEmailStatus>(
     token ? "loading" : "error",
   );
 
@@ -34,49 +31,5 @@ export default function VerifyEmailPage() {
       .catch(() => setStatus("error"));
   }, [token]);
 
-  if (status === "loading") {
-    return (
-      <Center mih="100vh">
-        <PageHeader title="Verify your email" />
-        <StateMessage
-          icon={<IconClock />}
-          title="Verifying your email…"
-          description="Please wait while we verify your email address."
-          colour="info"
-        />
-      </Center>
-    );
-  }
-
-  if (status === "success") {
-    return (
-      <Center mih="100vh">
-        <PageHeader title="Verify your email" />
-        <Stack align="center" gap="md">
-          <ResultMessage variant="success" title="Email verified" />
-          <BodyText>Your email has been verified. You can now log in.</BodyText>
-          <TextLink standalone to="/login">
-            Go to login
-          </TextLink>
-        </Stack>
-      </Center>
-    );
-  }
-
-  return (
-    <Center mih="100vh">
-      <PageHeader title="Verify your email" />
-      <Stack align="center" gap="md">
-        <StateMessage
-          icon={<IconAlertCircle />}
-          title="Verification failed"
-          description="This link is invalid or has expired. Please request a new verification email."
-          colour="alert"
-        />
-        <TextLink standalone to="/verify-email-pending">
-          Resend verification email
-        </TextLink>
-      </Stack>
-    </Center>
-  );
+  return <VerifyEmail status={status} />;
 }
