@@ -840,6 +840,80 @@ describe("UserInfoUpdatePage", () => {
     }, 30000);
   });
 
+  describe("Page header", () => {
+    /** Answer the user fetch with this account, and put it back after. */
+    function serveUser(account: Record<string, unknown>) {
+      onTestFinished(() => window.history.pushState({}, "", "/"));
+      const get = vi.mocked(apiModule.api.get);
+      const usual = get.getMockImplementation();
+      onTestFinished(() => {
+        get.mockImplementation(usual!);
+      });
+      get.mockImplementation((url: string) =>
+        Promise.resolve(
+          url === "/org-units"
+            ? { org_units: PLACES }
+            : url === "/users/7"
+              ? account
+              : {},
+        ),
+      );
+    }
+
+    it("says create new user when there is nobody to name", () => {
+      renderWithRouter(<UserInfoUpdatePage />);
+
+      expect(
+        screen.getByRole("heading", { name: "Create new user" }),
+      ).toBeInTheDocument();
+    });
+
+    it("names the user being edited", async () => {
+      serveUser({ name: "Dr Jane Smith", username: "janesmith" });
+
+      renderWithRouter(<UserInfoUpdatePage />, {
+        routePath: "/admin/users/:id/edit",
+        initialRoute: "/admin/users/7/edit",
+      });
+
+      expect(
+        await screen.findByRole("heading", { name: "Edit user: janesmith" }),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps the saved username while the field is retyped", async () => {
+      serveUser({ name: "Dr Jane Smith", username: "janesmith" });
+      const user = userEvent.setup();
+
+      renderWithRouter(<UserInfoUpdatePage />, {
+        routePath: "/admin/users/:id/edit",
+        initialRoute: "/admin/users/7/edit",
+      });
+
+      const field = await screen.findByLabelText(/username/i);
+      await user.clear(field);
+      await user.type(field, "other");
+
+      expect(
+        screen.getByRole("heading", { name: "Edit user: janesmith" }),
+      ).toBeInTheDocument();
+    });
+
+    it("falls back to the plain title when no username comes back", async () => {
+      serveUser({ name: "Dr Jane Smith" });
+
+      renderWithRouter(<UserInfoUpdatePage />, {
+        routePath: "/admin/users/:id/edit",
+        initialRoute: "/admin/users/7/edit",
+      });
+
+      await screen.findByLabelText(/full name/i);
+      expect(
+        screen.getByRole("heading", { name: "Edit user" }),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("Practice", () => {
     // Offered to somebody who may set where a competency is used.
     //

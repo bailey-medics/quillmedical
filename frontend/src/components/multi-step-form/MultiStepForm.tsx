@@ -17,6 +17,7 @@ import { IconCheck } from "@/components/icons/appIcons";
 import BaseCard from "@/components/base-card/BaseCard";
 import ButtonPair from "@/components/button/ButtonPair";
 import BodyText from "@/components/typography/BodyText";
+import classes from "./MultiStepForm.module.css";
 
 /**
  * Individual step configuration
@@ -156,13 +157,10 @@ export default function MultiStepForm({
               color="var(--mantine-color-secondary-4)"
             />
           }
+          classNames={{ root: classes.root, stepIcon: classes.stepIcon }}
           styles={{
             stepLabel: {
               fontSize: "var(--mantine-font-size-md)",
-            },
-            stepIcon: {
-              fontSize: "var(--mantine-font-size-md)",
-              color: "var(--mantine-color-text)",
             },
             // No line between one step and the next.
             separator: {
