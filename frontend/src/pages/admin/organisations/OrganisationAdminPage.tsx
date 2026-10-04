@@ -13,9 +13,12 @@ import { Stack, Group, Skeleton } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import { BodyTextInline, BodyTextBold, Heading } from "@/components/typography";
 import {
+  IconHeartPlus,
+  IconHomePlus,
   IconPencil,
   IconTrash,
   IconUserMinus,
+  IconUserPlus,
 } from "@components/icons/appIcons";
 import PageHeader from "@/components/page-header";
 import { usePageMessage } from "@/components/page-message";
@@ -24,7 +27,7 @@ import IconButton from "@/components/button/IconButton";
 import { ConfirmModal } from "@/components/confirm-modal";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
-import AddButton from "@/components/button/AddButton";
+import ExtraButton from "@/components/button/ExtraButton";
 import EnabledFeaturesCard from "@/components/enabled-features-card";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
@@ -75,6 +78,11 @@ export default function OrganisationAdminPage() {
   // routes behind each button. See
   // docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md.
   const mayAdministerOrg = useHasCompetency("manage_users");
+  // Adding a site is the one piece of administering the organisation a
+  // scoped manager shares: a teaching body signs up member hospitals as
+  // it signs up their delegates. Editing and removing a site stay with
+  // `manage_users`.
+  const mayAddSite = useHasAnyCompetency("manage_users", ...SCOPED_MANAGER_IDS);
   const mayManageStaff = useHasAnyCompetency(
     "manage_staff_membership",
     ...SCOPED_MANAGER_IDS,
@@ -361,19 +369,24 @@ export default function OrganisationAdminPage() {
       {/* Staff Members */}
       <BaseCard>
         <Stack gap="md">
-          <Group justify="space-between" align="center">
-            <Heading>Organisation staff members</Heading>
-            {mayManageStaff && (
-              <AddButton
-                label="Add staff"
-                onClick={() => navigate(`/admin/organisations/${id}/add-staff`)}
-              />
-            )}
-          </Group>
+          <Heading>Organisation staff members</Heading>
 
           <DataTableControlled<OrgUnitMember>
             data={staffMembers}
             columns={staffColumns}
+            // Adding sits with the table's own search and filter icons,
+            // as it does on a site's page, not as a button by the heading.
+            action={
+              mayManageStaff && (
+                <ExtraButton
+                  aria-label="Add staff"
+                  icon={<IconUserPlus />}
+                  onClick={() =>
+                    navigate(`/admin/organisations/${id}/add-staff`)
+                  }
+                />
+              )
+            }
             onRowClick={(member) =>
               navigate(
                 mayManagePractice
@@ -391,21 +404,22 @@ export default function OrganisationAdminPage() {
       {clinicalServicesEnabled && maySeePatients && (
         <BaseCard>
           <Stack gap="md">
-            <Group justify="space-between" align="center">
-              <Heading>Patients</Heading>
-              {mayAdministerOrg && (
-                <AddButton
-                  label="Add patient"
-                  onClick={() =>
-                    navigate(`/admin/organisations/${id}/add-patient`)
-                  }
-                />
-              )}
-            </Group>
+            <Heading>Patients</Heading>
 
             <DataTableControlled<PatientRow>
               data={patientRows}
               columns={patientColumns}
+              action={
+                mayAdministerOrg && (
+                  <ExtraButton
+                    aria-label="Add patient"
+                    icon={<IconHeartPlus />}
+                    onClick={() =>
+                      navigate(`/admin/organisations/${id}/add-patient`)
+                    }
+                  />
+                )
+              }
               onRowClick={(patient) =>
                 navigate(`/admin/patients/${patient.patient_id}`)
               }
@@ -426,19 +440,22 @@ export default function OrganisationAdminPage() {
       {/* Sites */}
       <BaseCard>
         <Stack gap="md">
-          <Group justify="space-between" align="center">
-            <Heading>Sites</Heading>
-            {mayAdministerOrg && (
-              <AddButton
-                label="Add site"
-                onClick={() => navigate(`/admin/organisations/${id}/add-site`)}
-              />
-            )}
-          </Group>
+          <Heading>Sites</Heading>
 
           <DataTableControlled<OrgUnitChild>
             data={org.children}
             columns={siteColumns}
+            action={
+              mayAddSite && (
+                <ExtraButton
+                  aria-label="Add site"
+                  icon={<IconHomePlus />}
+                  onClick={() =>
+                    navigate(`/admin/organisations/${id}/add-site`)
+                  }
+                />
+              )
+            }
             onRowClick={(site) => navigate(`/admin/sites/${site.id}`)}
             getRowKey={(site) => site.id}
             emptyMessage="No sites linked"

@@ -149,17 +149,44 @@ describe("OrganisationAdminPage", () => {
       expect(mockNavigate).toHaveBeenCalledWith("/admin/sites/7");
     });
 
-    it("offers Add site to an administrator", async () => {
+    it("offers Add site to an administrator, as an icon in the table's row", async () => {
       mockOrgApi(withSite);
       renderPage();
 
+      const add = await screen.findByRole("button", { name: "Add site" });
+      expect(add).toHaveTextContent("");
       expect(
-        await screen.findByRole("button", { name: /add site/i }),
+        add.querySelector("svg.tabler-icon-home-plus"),
       ).toBeInTheDocument();
     });
 
-    it("hides Add site from a teaching admin", async () => {
+    it("offers Add staff as an icon in the table's row", async () => {
+      mockOrgApi(withSite);
+      renderPage();
+
+      const add = await screen.findByRole("button", { name: "Add staff" });
+      expect(add).toHaveTextContent("");
+      expect(
+        add.querySelector("svg.tabler-icon-user-plus"),
+      ).toBeInTheDocument();
+    });
+
+    it("offers Add site to a teaching admin too", async () => {
       signedInWith(["manage_teaching"]);
+      mockOrgApi(withSite);
+      renderPage();
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: /add site/i }),
+      );
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/admin/organisations/1/add-site",
+      );
+    });
+
+    it("hides Add site from somebody who manages neither", async () => {
+      signedInWith(["manage_staff_membership"]);
       mockOrgApi(withSite);
       renderPage();
 
@@ -480,11 +507,12 @@ describe("OrganisationAdminPage", () => {
         initialRoute: "/admin/organisations/1",
       });
 
-      await waitFor(() => {
-        expect(
-          screen.getByRole("button", { name: /Add patient/ }),
-        ).toBeInTheDocument();
-      });
+      // An icon in the patients table's row, as staff and sites have.
+      const add = await screen.findByRole("button", { name: "Add patient" });
+      expect(add).toHaveTextContent("");
+      expect(
+        add.querySelector("svg.tabler-icon-heart-plus"),
+      ).toBeInTheDocument();
     });
 
     it("navigates to edit page on edit icon click", async () => {
@@ -1024,7 +1052,9 @@ describe("OrganisationAdminPage", () => {
 
     it("may add and remove staff", async () => {
       await screen.findByText("delegate");
-      expect(screen.getByText("Add staff")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Add staff" }),
+      ).toBeInTheDocument();
       expect(screen.getByLabelText("Actions for delegate")).toBeInTheDocument();
     });
 

@@ -557,12 +557,14 @@ export const routes: RouteObject[] = [
             )),
           },
           {
-            // Adding a site to an organisation is administering the
-            // organisation, so it takes `manage_users` as editing it
-            // does.
+            // Adding a site takes `manage_users`, or a scoped manager
+            // such as `manage_teaching`, who adds one inside their own
+            // organisation. Editing the organisation stays `manage_users`.
             path: "organisations/:id/add-site",
             lazy: lazyFrom(loadAdmin, "AddSiteToOrgPage", (Page) => (
-              <RequireCompetency competency="manage_users">
+              <RequireCompetency
+                competency={["manage_users", ...SCOPED_MANAGER_IDS]}
+              >
                 <Page />
               </RequireCompetency>
             )),
@@ -570,8 +572,10 @@ export const routes: RouteObject[] = [
           // The list of sites is open to all of Admin: the API answers
           // with the sites the caller administers, and for somebody who
           // administers a site but no organisation it is the only way
-          // in. Creating one from it stays operator-only. `RequireOperator`
-          // 404s, so the form is not merely refused but invisible.
+          // in. Creating one from it takes what the API asks of whoever
+          // creates a site: `manage_users`, or a scoped manager such as
+          // `manage_teaching`. The form offers only the org_units the
+          // caller may put a site inside, and the API refuses any other.
           {
             path: "sites",
             lazy: lazyFrom(loadAdmin, "AdminSitesPage"),
@@ -580,9 +584,11 @@ export const routes: RouteObject[] = [
           {
             path: "sites/new",
             lazy: lazyFrom(loadAdmin, "CreateSitePage", (Page) => (
-              <RequireOperator>
+              <RequireCompetency
+                competency={["manage_users", ...SCOPED_MANAGER_IDS]}
+              >
                 <Page />
-              </RequireOperator>
+              </RequireCompetency>
             )),
           },
           {
@@ -591,9 +597,13 @@ export const routes: RouteObject[] = [
             handle: { safeForReload: true },
           },
           {
+            // A scoped manager such as `manage_teaching` edits a site
+            // they act at; the API refuses any other, and an organisation.
             path: "sites/:id/edit",
             lazy: lazyFrom(loadAdmin, "EditSitePage", (Page) => (
-              <RequireCompetency competency="manage_users">
+              <RequireCompetency
+                competency={["manage_users", ...SCOPED_MANAGER_IDS]}
+              >
                 <Page />
               </RequireCompetency>
             )),

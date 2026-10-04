@@ -2,14 +2,20 @@
  * Create Site Page
  *
  * Creating a site used to be possible only from the organisation it sits
- * in, which quietly decided the answer to "what does it sit inside?"
- * before the question was asked. Here the org_unit above is picked like any
- * other field, so a ward can be put inside a building rather than only
- * inside a trust.
+ * in. Here the organisation is picked like any other field, so a site can
+ * be added from the list of sites.
  *
- * Who leads the site is deliberately not asked here. The person has to be
- * at the org_unit before they can hold the post there, and both are one act
- * on the site's own pages once it exists.
+ * Only organisations are offered. The tree is two levels for now, an
+ * organisation and the sites directly inside it, and the API refuses a
+ * site inside a site. Which organisations are offered is whatever the API
+ * lists for the caller: every one for an operator, and for a teaching
+ * admin the ones they belong to.
+ *
+ * A clinical lead may be named as the site is made. The person has to be
+ * at the org_unit before they can hold the post there, so once the site
+ * exists they are added to it as staff and then appointed. The field is
+ * for whoever may appoint one: `manage_staff_membership`, or a scoped
+ * manager such as `manage_teaching`.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -27,34 +33,51 @@ import {
   useFormContext,
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
+import { api } from "@/lib/api";
 import { orgUnits, placeTypeOptions, type OrgUnit } from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
+import { useHasAnyCompetency } from "@/lib/cbac/hooks";
+import { SCOPED_MANAGER_IDS } from "@/types/cbac";
+
+interface ApiUser {
+  id: number;
+  username: string;
+  email: string;
+}
 
 interface CreateSiteFormValues {
   parentId: string | null;
   name: string;
   type: string | null;
   location: string;
+  clinicalLeadId: string | null;
 }
 
 function CreateSiteFields({
   places,
   placesLoading,
+  users,
+  mayNameLead,
 }: {
   places: OrgUnit[];
   placesLoading: boolean;
+  users: ApiUser[];
+  /** Whether the viewer may appoint the site's clinical lead */
+  mayNameLead: boolean;
 }) {
   const navigate = useNavigate();
   const { methods } = useFormContext();
 
-  // An org_unit is offered by name and kind together, because two wards in
-  // different hospitals are often called the same thing.
+  // Organisations only: a site sits directly inside one. Offered by
+  // name alone, since the field already says they are organisations.
   const parentOptions = useMemo(
     () =>
-      places.map((place) => ({
-        value: String(place.id),
-        label: `${place.name} (${place.type_display_name})`,
-      })),
+      places
+        .filter((place) => place.is_root)
+        .map((place) => ({
+          value: String(place.id),
+          label: place.name,
+        })),
     [places],
   );
 
@@ -66,11 +89,11 @@ function CreateSiteFields({
           <Controller
             name="parentId"
             control={methods.control}
-            rules={{ required: "Please select the place it sits inside" }}
+            rules={{ required: "Please select an organisation" }}
             render={({ field, fieldState }) => (
               <SelectField
-                label="Inside"
-                placeholder="Search for a place"
+                label="Organisation"
+                placeholder="Search for an organisation"
                 data={parentOptions}
                 value={field.value as string | null}
                 onChange={field.onChange}
@@ -128,6 +151,28 @@ function CreateSiteFields({
             )}
           />
 
+          {mayNameLead && (
+            <Controller
+              name="clinicalLeadId"
+              control={methods.control}
+              render={({ field, fieldState }) => (
+                <SelectField
+                  label="Clinical lead"
+                  placeholder="Search for a user"
+                  data={users.map((u) => ({
+                    value: String(u.id),
+                    label: `${u.username} (${u.email})`,
+                  }))}
+                  value={field.value as string | null}
+                  onChange={field.onChange}
+                  error={fieldState.error?.message}
+                  searchable
+                  disabled={placesLoading}
+                />
+              )}
+            />
+          )}
+
           <SubmitButton
             onCancel={() => navigate("/admin/sites")}
             disabled={placesLoading}
@@ -140,14 +185,28 @@ function CreateSiteFields({
 
 export default function CreateSitePage() {
   const navigate = useNavigate();
+  // The clinical lead picker, and the people behind it, are for somebody
+  // who may appoint one, which is what the route that sets the lead asks.
+  const mayNameLead = useHasAnyCompetency(
+    "manage_staff_membership",
+    ...SCOPED_MANAGER_IDS,
+  );
   const [places, setPlaces] = useState<OrgUnit[]>([]);
+  const [users, setUsers] = useState<ApiUser[]>([]);
   const [placesLoading, setPlacesLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchPlaces() {
       try {
-        setPlaces(await orgUnits.list());
+        const [found, people] = await Promise.all([
+          orgUnits.list(),
+          mayNameLead
+            ? api.get<{ users: ApiUser[] }>("/users")
+            : Promise.resolve({ users: [] }),
+        ]);
+        setPlaces(found);
+        setUsers(people.users);
       } catch (err) {
         setLoadError(
           err instanceof Error ? err.message : "Failed to load places",
@@ -158,7 +217,7 @@ export default function CreateSitePage() {
     }
 
     fetchPlaces();
-  }, []);
+  }, [mayNameLead]);
 
   async function handleSubmit(
     data: CreateSiteFormValues,
@@ -170,6 +229,16 @@ export default function CreateSitePage() {
         parent_id: Number(data.parentId),
         location: data.location.trim() || null,
       });
+
+      // Naming a clinical lead is two acts: the person is at the
+      // org_unit, and the person holds the post there.
+      if (mayNameLead && data.clinicalLeadId) {
+        await orgUnits.addMember(site.id, {
+          user_id: Number(data.clinicalLeadId),
+          capacity: "staff",
+        });
+        await orgUnits.setClinicalLead(site.id, Number(data.clinicalLeadId));
+      }
 
       navigate(`/admin/sites/${site.id}`, {
         state: {
@@ -207,12 +276,18 @@ export default function CreateSitePage() {
           name: "",
           type: null,
           location: "",
+          clinicalLeadId: null,
         }}
         onSubmit={handleSubmit}
         submitLabel="Create site"
         submittingLabel="Creating…"
       >
-        <CreateSiteFields places={places} placesLoading={placesLoading} />
+        <CreateSiteFields
+          places={places}
+          placesLoading={placesLoading}
+          users={users}
+          mayNameLead={mayNameLead}
+        />
       </Form>
     </Stack>
   );

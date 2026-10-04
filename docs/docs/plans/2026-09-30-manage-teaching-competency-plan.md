@@ -404,6 +404,52 @@ until a row was written there.
       pages, so "The site page as a teaching admin" is added to "Not yet
       run" in `testing-log.md` as a named page.
 
+## Phase 8: A scoped manager adds a site
+
+Phase 3 left every org unit write on `manage_users`. Adding a site turned
+out to be part of the job: a teaching body signs up member hospitals as it
+signs up their delegates, and its coordinator had to ask an operator each
+time. Creating a site, and only that, now opens to a scoped manager.
+
+- [x] `POST /api/org-units` admits `manage_users` or any scoped manager.
+      A scoped manager names a parent among the `org_unit`s they act at,
+      the same set `_scoped_manager_ids` gives the read routes. Naming no
+      parent, which creates an organisation, stays with an operator.
+- [x] `PUT /api/org-units/{id}` and `PATCH /api/org-units/{id}/active`
+      admit a scoped manager too, for a site they act at: its name, kind,
+      address, and whether it is in use. An organisation is refused them,
+      and so is moving a site into an `org_unit` they do not act at.
+- [x] Deleting an `org_unit`, and its features, stay on `manage_users`
+      alone.
+- [x] The site page offers "Edit site" to a scoped manager, and the
+      `sites/:id/edit` route admits one.
+- [x] The organisation page offers "Add site" to a scoped manager, and the
+      `organisations/:id/add-site` route admits one.
+- [x] The sites list, `/admin/sites`, offers "Add site" to whoever may
+      create one, and `sites/new` admits `manage_users` or a scoped
+      manager where it was operator-only. `CreateSitePage` asks for an
+      "Organisation" and offers only the organisations the API lists for
+      the caller, so a teaching admin picks among the ones they belong to.
+      It offers a clinical lead as well, to whoever may appoint one.
+- [x] **The tree is two levels for now**: an organisation, and the sites
+      directly inside it. `POST /api/org-units` and a move through
+      `PUT /api/org-units/{id}` refuse a parent that is not an
+      organisation. The model and `descendant_ids` still describe any
+      depth, and a row already deeper is left alone; the rule is one
+      check, `_require_parent_is_an_organisation`, to take out when a
+      third level is wanted.
+- [x] `PUT /api/org-units/{id}/clinical-lead` admits
+      `manage_staff_membership` or any scoped manager, at an `org_unit`
+      they act at: whoever runs teaching somewhere names its lead,
+      themselves included, at a site or at the organisation. The site's
+      add-staff page already offered a teaching admin the "Clinical lead"
+      role, and the route refused it after the person had been added.
+- [x] `AddSiteToOrgPage` offers the clinical lead picker to the same
+      people. Anybody else creates the site with the post vacant.
+- [x] Tests: a teaching admin adds a site in their own trust and can open
+      it, edits it and puts it out of use, and cannot add or edit one in
+      another trust, create or edit an organisation, or delete a site.
+
 ## Decisions
 
 - **One competency for content and people** – `manage_teaching` replaces

@@ -15,7 +15,7 @@ vi.mock("@/auth/AuthContext", () => ({
 import AdminTeachingDashboard from "./AdminTeachingDashboard";
 
 describe("AdminTeachingDashboard", () => {
-  it("shows Modules card when user has manage_teaching competency", () => {
+  it("shows Modules card to an operator who manages teaching", () => {
     mockUseAuth.mockReturnValue({
       state: {
         status: "authenticated",
@@ -23,6 +23,7 @@ describe("AdminTeachingDashboard", () => {
           id: "1",
           username: "admin",
           email: "admin@example.com",
+          platform_role: "superadmin",
           competencies: ["manage_teaching"],
         },
       },
@@ -30,6 +31,41 @@ describe("AdminTeachingDashboard", () => {
     renderWithRouter(<AdminTeachingDashboard />);
     expect(screen.getByText("Modules")).toBeInTheDocument();
     expect(screen.getByText("All delegates")).toBeInTheDocument();
+  });
+
+  it("hides Modules card from a teaching admin who is not an operator", () => {
+    // The modules pages are operator-only, so the card led to a 404.
+    mockUseAuth.mockReturnValue({
+      state: {
+        status: "authenticated",
+        user: {
+          id: "1",
+          username: "coordinator",
+          email: "coordinator@example.com",
+          competencies: ["manage_teaching"],
+        },
+      },
+    });
+    renderWithRouter(<AdminTeachingDashboard />);
+    expect(screen.queryByText("Modules")).not.toBeInTheDocument();
+    expect(screen.getByText("All delegates")).toBeInTheDocument();
+  });
+
+  it("hides Modules card from an operator who does not manage teaching", () => {
+    mockUseAuth.mockReturnValue({
+      state: {
+        status: "authenticated",
+        user: {
+          id: "1",
+          username: "operator",
+          email: "operator@example.com",
+          platform_role: "superadmin",
+          competencies: [],
+        },
+      },
+    });
+    renderWithRouter(<AdminTeachingDashboard />);
+    expect(screen.queryByText("Modules")).not.toBeInTheDocument();
   });
 
   it("hides Modules card when user lacks manage_teaching competency", () => {
