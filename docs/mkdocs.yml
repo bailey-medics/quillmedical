@@ -246,7 +246,6 @@ nav:
           - Plans: llm/rules/plans.md
           - Workflows: llm/rules/workflows.md
       - Skills:
-          - create-plan: llm/skills/create-plan.md
           - crpd: llm/skills/crpd.md
           - e: llm/skills/e.md
           - f: llm/skills/f.md
@@ -256,6 +255,7 @@ nav:
           - nst-crp: llm/skills/nst-crp.md
           - nst-crpf: llm/skills/nst-crpf.md
           - nst-follow-the-plan-document: llm/skills/nst-follow-the-plan-document.md
+          - p: llm/skills/p.md
           - play-finished-sound: llm/skills/play-finished-sound.md
           - read-project-instructions: llm/skills/read-project-instructions.md
           - run-all-tests: llm/skills/run-all-tests.md

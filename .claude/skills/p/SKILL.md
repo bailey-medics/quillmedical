@@ -1,5 +1,5 @@
 ---
-name: create-plan
+name: p
 description: Turn the decisions just made in the conversation into a new plan document in docs/docs/plans/
 ---
 
