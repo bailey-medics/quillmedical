@@ -305,6 +305,15 @@ email-preview:
         run --rm backend sh -lc "python -m app.email.previews"
 
 
+alias etm := enrol-teaching-members
+# Enrol an organisation's people on one teaching module (add --dry-run to only list them)
+enrol-teaching-members org_unit_id module_id *ARGS:
+    #!/usr/bin/env bash
+    {{initialise}} "enrol-teaching-members"
+    just _worktree-guard quill_backend
+    docker exec -it quill_backend sh -lc "python scripts/enrol_teaching_members.py {{org_unit_id}} {{module_id}} {{ARGS}}"
+
+
 alias eb := enter-backend
 # Enter the backend container shell
 enter-backend:

@@ -35,6 +35,7 @@ from app.features.teaching.access import (
     RESULTS_COMPETENCY,
     organisations_open_for_modules,
 )
+from app.features.teaching.enrolment import enrolled_on_offer, is_enrolled
 from app.features.teaching.models import (
     Assessment,
     AssessmentAnswer,
@@ -186,14 +187,21 @@ def _get_user_org_ids(user: User, db: Session) -> list[int]:
 def _require_place_for_attempt(
     db: Session, user: User, assessment: Assessment
 ) -> None:
-    """Refuse an attempt whose organisation the user may no longer enter.
+    """Refuse an attempt at a module the user may no longer enter.
 
     An attempt under way stops when the place it was started through is
-    withdrawn. The same 404 as an attempt that is not theirs, so nothing
-    is confirmed. Reading the finished result does not come through
-    here: results ask for no place.
+    withdrawn, or the enrolment on its module ends. The same 404 as an
+    attempt that is not theirs, so nothing is confirmed. Reading the
+    finished result does not come through here: results ask for neither.
     """
     if assessment.org_unit_id not in organisations_open_for_modules(db, user):
+        raise HTTPException(404, "Assessment not found")
+    if not is_enrolled(
+        db,
+        user.id,
+        org_unit_id=assessment.org_unit_id,
+        question_bank_id=assessment.question_bank_id,
+    ):
         raise HTTPException(404, "Assessment not found")
 
 
@@ -263,6 +271,7 @@ def resolve_visible_module(user: User, db: Session, module_id: str) -> int:
         db.execute(
             select(QuestionBankOrgStatus).where(
                 QuestionBankOrgStatus.org_unit_id.in_(org_ids),
+                enrolled_on_offer(user.id),
                 QuestionBankOrgStatus.question_bank_id == module_id,
             )
         )
@@ -389,6 +398,7 @@ def list_question_banks(
         db.execute(
             select(QuestionBankOrgStatus).where(
                 QuestionBankOrgStatus.org_unit_id.in_(org_ids),
+                enrolled_on_offer(user.id),
             )
         )
         .scalars()
@@ -521,6 +531,7 @@ def get_question_bank(
         db.execute(
             select(QuestionBankOrgStatus).where(
                 QuestionBankOrgStatus.org_unit_id.in_(org_ids),
+                enrolled_on_offer(user.id),
                 QuestionBankOrgStatus.question_bank_id == bank_id,
             )
         )
@@ -856,6 +867,7 @@ def list_learning_modules(
         db.execute(
             select(QuestionBankOrgStatus).where(
                 QuestionBankOrgStatus.org_unit_id.in_(org_ids),
+                enrolled_on_offer(user.id),
             )
         )
         .scalars()
@@ -1086,6 +1098,7 @@ def start_assessment(
         db.execute(
             select(QuestionBankOrgStatus).where(
                 QuestionBankOrgStatus.org_unit_id.in_(org_ids),
+                enrolled_on_offer(user.id),
                 QuestionBankOrgStatus.question_bank_id
                 == body.question_bank_id,
                 QuestionBankOrgStatus.is_live.is_(True),

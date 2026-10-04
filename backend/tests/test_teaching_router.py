@@ -37,7 +37,7 @@ from app.organisations import (
     remove_org_unit_memberships,
 )
 from app.security import hash_password
-from tests.competencies import hold
+from tests.competencies import enrol_members_on, hold
 
 # Joining, in these tests, is arriving through a centre's door: the
 # membership and the place to take modules there. Teaching serves no
@@ -211,6 +211,10 @@ def _seed_bank(
             created_by=user_id,
         )
         db.add(item)
+    db.flush()
+    # Whoever is already at the organisation is enrolled on the module,
+    # as the door would have done had the module been there first.
+    enrol_members_on(db, org_unit_id, "test-bank")
     db.commit()
     return config
 

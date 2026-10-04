@@ -96,6 +96,8 @@ from app.email_send import (
 from app.features.passport import cover as passport_cover
 from app.features.passport.models import Passport
 from app.features.teaching.access import MODULES_COMPETENCY, give_place
+from app.features.teaching.enrolment import enrol as enrol_on_module
+from app.features.teaching.models import QuestionBankOrgStatus
 from app.features.teaching.schemas import (
     CaptionCompleteIn,
     CaptionCompleteOut,
@@ -1294,6 +1296,39 @@ def register(
         and MODULES_COMPETENCY in user.get_final_competencies()
     ):
         give_place(db, user, place_id)
+
+    # The join link names a module, and arriving through it enrols the
+    # person on that module and no other. Only where the organisation
+    # has opened the module to registration, which is what the public
+    # module list reads: otherwise a crafted request could enrol
+    # somebody on anything the organisation serves.
+    if payload.teaching_module_id is not None:
+        if payload.org_unit_id is None:
+            raise HTTPException(
+                status_code=400,
+                detail="org_unit_id required when teaching_module_id "
+                "is provided",
+            )
+        open_to_registration = db.scalar(
+            select(QuestionBankOrgStatus.id).where(
+                QuestionBankOrgStatus.org_unit_id == payload.org_unit_id,
+                QuestionBankOrgStatus.question_bank_id
+                == payload.teaching_module_id,
+                QuestionBankOrgStatus.site_registration.is_(True),
+            )
+        )
+        if open_to_registration is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Module is not open to registration",
+            )
+        enrol_on_module(
+            db,
+            user.id,
+            org_unit_id=payload.org_unit_id,
+            question_bank_id=payload.teaching_module_id,
+            source="registration",
+        )
 
     # The mail goes before the commit, and a failure abandons the whole
     # registration. An account nobody can verify is worse than no

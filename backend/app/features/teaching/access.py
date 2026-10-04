@@ -3,10 +3,12 @@
 
 Teaching runs on the layers clinical work runs on. A competency says
 *what* somebody may do: ``take_teaching_modules``. A
-``practising_competency`` row says *where*: at this centre. This module
-is the whole of the second question for teaching, so every route that
-serves a module asks one place, as every other read of a place goes
-through ``app.cbac.scoped``.
+``practising_competency`` row says *where*: at this centre. A
+``module_enrolment`` row says *which* module, and that table is read
+and written by ``app.features.teaching.enrolment``. This module is the
+whole of the second question for teaching, and puts the three together
+in ``may_enter_module``, so every route that serves a module asks one
+place, as every other read of a place goes through ``app.cbac.scoped``.
 
 - **A row counts only while the person belongs there.** Leaving a
   centre closes its modules to them without anybody remembering to
@@ -30,6 +32,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.cbac.scoped import authorise_practice
+from app.features.teaching.enrolment import enrol, is_enrolled
 from app.models import PractisingCompetency, User, org_unit_member
 from app.organisations import reach_of_org_units
 
@@ -120,3 +123,93 @@ def give_place(
         competency=MODULES_COMPETENCY,
         authorised_by=authorised_by,
     )
+
+
+def may_enter_module(
+    db: Session, user: User, *, org_unit_id: int, question_bank_id: str
+) -> bool:
+    """Whether *user* may enter one module an organisation serves.
+
+    All three layers: they hold ``take_teaching_modules``, they have a
+    place whose reach includes the organisation, and they hold a current
+    enrolment on the module there. Whether the organisation serves the
+    module at all, and has it open, is the caller's question.
+
+    Args:
+        db: Core database session.
+        user: The person asked about.
+        org_unit_id: The organisation serving the module.
+        question_bank_id: The module.
+
+    Returns:
+        True only when all three hold.
+    """
+    if org_unit_id not in organisations_open_for_modules(db, user):
+        return False
+    return is_enrolled(
+        db,
+        user.id,
+        org_unit_id=org_unit_id,
+        question_bank_id=question_bank_id,
+    )
+
+
+def enrol_everyone_with_a_place(
+    db: Session,
+    *,
+    org_unit_id: int,
+    question_bank_id: str,
+    source: str,
+    dry_run: bool = False,
+) -> list[User]:
+    """Enrol on one module everybody who may take the organisation's.
+
+    For a module added after its people arrived: every module needs an
+    enrolment, so a new one starts with nobody on it. Everybody holding
+    a place whose reach includes the organisation is enrolled, unless
+    they already are.
+
+    Args:
+        db: Core database session. The caller commits.
+        org_unit_id: The organisation serving the module.
+        question_bank_id: The module.
+        source: How it came about, one of ``ENROLMENT_SOURCES``.
+        dry_run: When True, nothing is written and the list is who
+            would have been enrolled.
+
+    Returns:
+        The people enrolled, or who would be, in id order.
+    """
+    candidate_ids = sorted(
+        set(
+            db.scalars(
+                select(PractisingCompetency.user_id).where(
+                    PractisingCompetency.competency == MODULES_COMPETENCY
+                )
+            ).all()
+        )
+    )
+    enrolled: list[User] = []
+    for user_id in candidate_ids:
+        user = db.get(User, user_id)
+        if user is None:
+            continue
+        if org_unit_id not in organisations_open_for_modules(db, user):
+            continue
+        if is_enrolled(
+            db,
+            user.id,
+            org_unit_id=org_unit_id,
+            question_bank_id=question_bank_id,
+        ):
+            continue
+        if not dry_run:
+            enrol(
+                db,
+                user.id,
+                org_unit_id=org_unit_id,
+                question_bank_id=question_bank_id,
+                source=source,
+            )
+        enrolled.append(user)
+    return enrolled

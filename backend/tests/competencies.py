@@ -15,8 +15,10 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.features.teaching.enrolment import enrol
+from app.features.teaching.models import QuestionBankOrgStatus
 from app.models import PractisingCompetency, User, UserCompetency
-from app.organisations import add_org_unit_member
+from app.organisations import add_org_unit_member, organisation_org_units_of
 
 #: How far back ``lapse`` moves a grant: a year, the length of a
 #: subscription somebody buys for themselves.
@@ -83,12 +85,14 @@ def clear(user: User) -> None:
 def join_for_teaching(
     db: Session, org_unit_id: int, user_id: int, capacity: str
 ) -> None:
-    """Join an org_unit and be given a place to take modules there.
+    """Join an org_unit, with a place there and its modules to take.
 
-    What arriving through a centre's door does: the membership, and the
+    What arriving through a centre's door does: the membership, the
     ``practising_competency`` row for ``take_teaching_modules`` that
-    teaching asks for before it serves a module. The row gives nothing
-    to somebody without the competency. The caller commits.
+    teaching asks for before it serves a module, and an enrolment on
+    every module the organisation above serves at that moment. None of
+    it gives anything to somebody without the competency. A module
+    seeded afterwards needs ``enrol_members_on``. The caller commits.
     """
     add_org_unit_member(db, org_unit_id, user_id, capacity)
     already = db.scalar(
@@ -107,3 +111,37 @@ def join_for_teaching(
             )
         )
         db.flush()
+    for org_id in organisation_org_units_of(db, [org_unit_id]):
+        for bank_id in db.scalars(
+            select(QuestionBankOrgStatus.question_bank_id).where(
+                QuestionBankOrgStatus.org_unit_id == org_id
+            )
+        ).all():
+            enrol(
+                db,
+                user_id,
+                org_unit_id=org_id,
+                question_bank_id=bank_id,
+                source="admin",
+            )
+
+
+def enrol_members_on(db: Session, org_unit_id: int, bank_id: str) -> None:
+    """Enrol everybody with a place at *org_unit_id* on one module.
+
+    For a module seeded after its learners arrived, which is the order
+    most tests use. The caller commits.
+    """
+    for user_id in db.scalars(
+        select(PractisingCompetency.user_id).where(
+            PractisingCompetency.org_unit_id == org_unit_id,
+            PractisingCompetency.competency == "take_teaching_modules",
+        )
+    ).all():
+        enrol(
+            db,
+            user_id,
+            org_unit_id=org_unit_id,
+            question_bank_id=bank_id,
+            source="admin",
+        )

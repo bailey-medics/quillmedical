@@ -46,6 +46,25 @@ describe("TeachingRegisterPage", () => {
     );
   });
 
+  it("sends the module its link names, so they are enrolled on it", async () => {
+    const user = userEvent.setup();
+    renderWithRouter(<TeachingRegisterPage />, {
+      routePath: "/teaching/register/:module",
+      initialRoute: "/teaching/register/colonoscopy-optical-diagnosis",
+    });
+
+    await fillIn(user);
+    await user.click(screen.getByTestId("submit-button"));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalled());
+    expect(api.post).toHaveBeenCalledWith(
+      "/auth/register",
+      expect.objectContaining({
+        teaching_module_id: "colonoscopy-optical-diagnosis",
+      }),
+    );
+  });
+
   it("sends the refusal when the box is ticked", async () => {
     const user = userEvent.setup();
     renderWithRouter(<TeachingRegisterPage />);
