@@ -10,3 +10,5 @@
 
 export const loadAdmin = () => import("./pages/admin/adminChunk");
 export const loadClinical = () => import("./pages/clinical/clinicalChunk");
+export const loadPassport = () => import("./pages/passport/passportChunk");
+export const loadSafety = () => import("./pages/safety/safetyChunk");
