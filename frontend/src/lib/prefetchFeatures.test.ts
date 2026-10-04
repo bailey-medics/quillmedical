@@ -1,27 +1,78 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  isBackgroundFetchInFlight,
+  filesFor,
   mayPrefetch,
+  MANIFEST_ADDRESS,
   prefetchNextFeature,
   readConnection,
+  readManifest,
   resetPrefetchStateForTests,
   whenIdle,
-  type PrefetchConditions,
+  type BuildManifest,
   type PrefetchChunk,
+  type PrefetchConditions,
+  type PrefetchIo,
 } from "./prefetchFeatures";
 
 interface TestUser {
   features: string[];
 }
 
-function chunk(
-  name: string,
-  load: () => Promise<unknown> = () => Promise.resolve({}),
-): PrefetchChunk<TestUser> & { load: ReturnType<typeof vi.fn> } {
+function chunk(name: string): PrefetchChunk<TestUser> {
   return {
     name,
-    load: vi.fn(load),
+    source: `src/${name}Chunk.ts`,
     canOpen: (user) => user.features.includes(name),
+  };
+}
+
+/** A build with two features that share one file. */
+const manifest: BuildManifest = {
+  "src/teachingChunk.ts": {
+    file: "assets/teachingChunk-aaaa1111.js",
+    imports: ["_shared.js"],
+    css: ["assets/teachingChunk-aaaa1111.css"],
+  },
+  "src/passportChunk.ts": {
+    file: "assets/passportChunk-bbbb2222.js",
+    imports: ["_shared.js"],
+  },
+  "_shared.js": {
+    file: "assets/shared-cccc3333.js",
+    imports: ["_deep.js"],
+    css: ["assets/shared-cccc3333.css"],
+  },
+  "_deep.js": { file: "assets/deep-dddd4444.js", imports: ["_shared.js"] },
+};
+
+function response(body: unknown, ok = true): Response {
+  return {
+    ok,
+    status: ok ? 200 : 503,
+    json: () => Promise.resolve(body),
+  } as unknown as Response;
+}
+
+/**
+ * Answers the manifest, and every other address with success, unless the
+ * address is in `failing`.
+ */
+function makeIo(
+  failing: string[] = [],
+  served: unknown = manifest,
+): PrefetchIo & { fetch: ReturnType<typeof vi.fn>; files: () => string[] } {
+  const fetch = vi.fn((address: string) => {
+    if (address === MANIFEST_ADDRESS) return Promise.resolve(response(served));
+    if (failing.includes(address))
+      return Promise.resolve(response(null, false));
+    return Promise.resolve(response(null));
+  });
+  return {
+    fetch,
+    files: () =>
+      fetch.mock.calls
+        .map(([address]) => address as string)
+        .filter((address) => address !== MANIFEST_ADDRESS),
   };
 }
 
@@ -84,116 +135,228 @@ describe("readConnection", () => {
   });
 });
 
+describe("filesFor", () => {
+  it("lists a chunk's file, its stylesheets and everything it imports", () => {
+    expect(filesFor(manifest, "src/teachingChunk.ts").sort()).toEqual([
+      "/assets/deep-dddd4444.js",
+      "/assets/shared-cccc3333.css",
+      "/assets/shared-cccc3333.js",
+      "/assets/teachingChunk-aaaa1111.css",
+      "/assets/teachingChunk-aaaa1111.js",
+    ]);
+  });
+
+  it("copes with files that import each other, and lists each once", () => {
+    const files = filesFor(manifest, "_shared.js");
+
+    expect(files).toHaveLength(new Set(files).size);
+    expect(files).toContain("/assets/deep-dddd4444.js");
+  });
+
+  it("finds nothing for a chunk the manifest does not know", () => {
+    expect(filesFor(manifest, "src/adminChunk.ts")).toEqual([]);
+  });
+
+  it("skips an entry that is not shaped like one", () => {
+    const odd = { "src/x.ts": { imports: ["_shared.js"] } } as unknown;
+
+    expect(filesFor(odd as BuildManifest, "src/x.ts")).toEqual([]);
+  });
+});
+
+describe("readManifest", () => {
+  it("reads the manifest, asking the browser to check it is current", async () => {
+    const io = makeIo();
+
+    await expect(readManifest(io)).resolves.toEqual(manifest);
+    expect(io.fetch).toHaveBeenCalledWith(MANIFEST_ADDRESS, {
+      cache: "no-cache",
+    });
+  });
+
+  // The dev server, and any server with a fallback route, answers a file
+  // that is not there with index.html.
+  it("finds none when the answer is not JSON", async () => {
+    const io: PrefetchIo = {
+      fetch: () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.reject(new SyntaxError("Unexpected token <")),
+        } as unknown as Response),
+    };
+
+    await expect(readManifest(io)).resolves.toBeNull();
+  });
+
+  it("finds none when the request fails or is refused", async () => {
+    await expect(
+      readManifest({ fetch: () => Promise.reject(new TypeError("offline")) }),
+    ).resolves.toBeNull();
+    await expect(
+      readManifest({ fetch: () => Promise.resolve(response(null, false)) }),
+    ).resolves.toBeNull();
+  });
+
+  it("finds none when the JSON is not an object", async () => {
+    await expect(readManifest(makeIo([], "nope"))).resolves.toBeNull();
+  });
+});
+
 describe("prefetchNextFeature", () => {
   const user: TestUser = { features: ["teaching", "passport"] };
+  const chunks = [chunk("admin"), chunk("teaching"), chunk("passport")];
 
-  it("fetches the first chunk the person can open", async () => {
-    const admin = chunk("admin");
-    const teaching = chunk("teaching");
+  it("fetches every file of the first feature the person can open", async () => {
+    const io = makeIo();
 
-    const outcome = await prefetchNextFeature(
-      [admin, teaching],
-      user,
-      () => true,
-    );
+    const outcome = await prefetchNextFeature(chunks, user, () => true, io);
 
     expect(outcome).toBe("fetched");
-    expect(teaching.load).toHaveBeenCalledTimes(1);
+    expect(io.files().sort()).toEqual(
+      filesFor(manifest, "src/teachingChunk.ts").sort(),
+    );
+  });
+
+  it("asks at low priority, so it never competes with the page", async () => {
+    const io = makeIo();
+
+    await prefetchNextFeature(chunks, user, () => true, io);
+
+    expect(io.fetch).toHaveBeenCalledWith("/assets/teachingChunk-aaaa1111.js", {
+      priority: "low",
+    });
   });
 
   it("never fetches a feature the person cannot open", async () => {
-    const admin = chunk("admin");
+    const io = makeIo();
 
-    const outcome = await prefetchNextFeature([admin], user, () => true);
+    const outcome = await prefetchNextFeature(
+      [chunk("admin")],
+      user,
+      () => true,
+      io,
+    );
 
     expect(outcome).toBe("nothing-left");
-    expect(admin.load).not.toHaveBeenCalled();
+    expect(io.fetch).not.toHaveBeenCalled();
   });
 
-  it("fetches one chunk per call, in order, and each only once", async () => {
-    const teaching = chunk("teaching");
-    const passport = chunk("passport");
-    const chunks = [teaching, passport];
+  it("fetches one feature per call, in order, and each only once", async () => {
+    const io = makeIo();
 
-    expect(await prefetchNextFeature(chunks, user, () => true)).toBe("fetched");
-    expect(passport.load).not.toHaveBeenCalled();
-    expect(await prefetchNextFeature(chunks, user, () => true)).toBe("fetched");
-    expect(await prefetchNextFeature(chunks, user, () => true)).toBe(
+    expect(await prefetchNextFeature(chunks, user, () => true, io)).toBe(
+      "fetched",
+    );
+    expect(io.files()).not.toContain("/assets/passportChunk-bbbb2222.js");
+    expect(await prefetchNextFeature(chunks, user, () => true, io)).toBe(
+      "fetched",
+    );
+    expect(await prefetchNextFeature(chunks, user, () => true, io)).toBe(
       "nothing-left",
     );
 
-    expect(teaching.load).toHaveBeenCalledTimes(1);
-    expect(passport.load).toHaveBeenCalledTimes(1);
+    expect(
+      io.files().filter((file) => file.includes("passportChunk")),
+    ).toHaveLength(1);
+  });
+
+  it("reads the manifest once, however many features there are", async () => {
+    const io = makeIo();
+
+    await prefetchNextFeature(chunks, user, () => true, io);
+    await prefetchNextFeature(chunks, user, () => true, io);
+
+    expect(
+      io.fetch.mock.calls.filter(([address]) => address === MANIFEST_ADDRESS),
+    ).toHaveLength(1);
   });
 
   // Guarantee one. The caller passes the conditions as they are at this
   // moment; on an exam route they say no, and nothing is fetched.
   it("starts nothing when now is not the moment, and can try again later", async () => {
-    const teaching = chunk("teaching");
+    const io = makeIo();
 
-    expect(await prefetchNextFeature([teaching], user, () => false)).toBe(
+    expect(await prefetchNextFeature(chunks, user, () => false, io)).toBe(
       "blocked",
     );
-    expect(teaching.load).not.toHaveBeenCalled();
-    expect(isBackgroundFetchInFlight()).toBe(false);
+    expect(io.fetch).not.toHaveBeenCalled();
 
-    expect(await prefetchNextFeature([teaching], user, () => true)).toBe(
+    expect(await prefetchNextFeature(chunks, user, () => true, io)).toBe(
       "fetched",
     );
   });
 
-  it("swallows a failed fetch, and does not try that chunk again", async () => {
-    const teaching = chunk("teaching", () =>
-      Promise.reject(new Error("Failed to fetch dynamically imported module")),
-    );
-    const passport = chunk("passport");
-    const chunks = [teaching, passport];
+  // Reading the manifest takes a moment, and an exam can start in it.
+  it("fetches no files if the moment has passed while the manifest was read", async () => {
+    const io = makeIo();
+    let asked = 0;
+    const onlyTheFirstTime = (): boolean => (asked += 1) === 1;
 
-    await expect(prefetchNextFeature(chunks, user, () => true)).resolves.toBe(
+    const outcome = await prefetchNextFeature(
+      chunks,
+      user,
+      onlyTheFirstTime,
+      io,
+    );
+
+    expect(outcome).toBe("blocked");
+    expect(io.files()).toEqual([]);
+    // Not counted as tried: it is fetched when the moment comes again.
+    expect(await prefetchNextFeature(chunks, user, () => true, io)).toBe(
+      "fetched",
+    );
+  });
+
+  it("does nothing where there is no manifest, as in development", async () => {
+    const io: PrefetchIo & { fetch: ReturnType<typeof vi.fn> } = {
+      fetch: vi.fn(() => Promise.resolve(response(null, false))),
+    };
+
+    expect(await prefetchNextFeature(chunks, user, () => true, io)).toBe(
+      "nothing-left",
+    );
+    expect(io.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("swallows a file that fails, and does not try that feature again", async () => {
+    const io = makeIo(["/assets/teachingChunk-aaaa1111.js"]);
+
+    await expect(
+      prefetchNextFeature(chunks, user, () => true, io),
+    ).resolves.toBe("failed");
+    await expect(
+      prefetchNextFeature(chunks, user, () => true, io),
+    ).resolves.toBe("fetched");
+
+    expect(
+      io.files().filter((file) => file.includes("teachingChunk-aaaa1111.js")),
+    ).toHaveLength(1);
+  });
+
+  it("swallows a request that throws, as when the connection drops", async () => {
+    const io: PrefetchIo = {
+      fetch: (address) =>
+        address === MANIFEST_ADDRESS
+          ? Promise.resolve(response(manifest))
+          : Promise.reject(new TypeError("Failed to fetch")),
+    };
+
+    await expect(
+      prefetchNextFeature(chunks, user, () => true, io),
+    ).resolves.toBe("failed");
+  });
+
+  it("counts a feature the manifest does not know as failed, and moves on", async () => {
+    const io = makeIo();
+    const both = [chunk("teaching"), chunk("passport")];
+    const unknownFirst = [{ ...both[0]!, source: "src/gone.ts" }, both[1]!];
+
+    expect(await prefetchNextFeature(unknownFirst, user, () => true, io)).toBe(
       "failed",
     );
-    await expect(prefetchNextFeature(chunks, user, () => true)).resolves.toBe(
+    expect(await prefetchNextFeature(unknownFirst, user, () => true, io)).toBe(
       "fetched",
     );
-
-    expect(teaching.load).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("isBackgroundFetchInFlight", () => {
-  const user: TestUser = { features: ["teaching"] };
-
-  it("is true only while a background fetch is under way", async () => {
-    let finish: (value: unknown) => void = () => {};
-    const teaching = chunk(
-      "teaching",
-      () => new Promise((resolve) => (finish = resolve)),
-    );
-
-    expect(isBackgroundFetchInFlight()).toBe(false);
-    const pending = prefetchNextFeature([teaching], user, () => true);
-    expect(isBackgroundFetchInFlight()).toBe(true);
-
-    finish({});
-    await pending;
-    expect(isBackgroundFetchInFlight()).toBe(false);
-  });
-
-  // The recovery handler runs when Vite fires `vite:preloadError`, which
-  // is before the import's promise rejects. So the flag must still be up
-  // at the moment of failure, or the handler would take a failed
-  // background fetch for a failed navigation and reload the page.
-  it("is still true at the moment the fetch fails", async () => {
-    let seenAtFailure: boolean | undefined;
-    const teaching = chunk("teaching", () => {
-      seenAtFailure = isBackgroundFetchInFlight();
-      return Promise.reject(new Error("chunk gone"));
-    });
-
-    await prefetchNextFeature([teaching], user, () => true);
-
-    expect(seenAtFailure).toBe(true);
-    expect(isBackgroundFetchInFlight()).toBe(false);
   });
 });
 

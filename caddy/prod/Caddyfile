@@ -94,6 +94,13 @@
 		@built path /assets/*
 		header @built Cache-Control "public, max-age=31536000, immutable"
 
+		# The build's list of its own file names, which the app reads to
+		# fetch other features into the cache in the background. Its name
+		# is fixed, so it must be checked on every load: kept, it would
+		# name the last build's files.
+		@buildManifest path /.vite/manifest.json
+		header @buildManifest Cache-Control "no-cache"
+
 		# HTML and other non-hashed files – always revalidate
 		@html path *.html /
 		header @html Cache-Control "no-cache"

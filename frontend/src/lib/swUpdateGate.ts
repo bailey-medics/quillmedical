@@ -12,8 +12,6 @@
  * A route with no `handle.safeForReload` is unsafe by default (fail-safe).
  */
 
-import { isBackgroundFetchInFlight } from "./prefetchFeatures";
-
 const RELOADED_ONCE_KEY = "quill-sw-update-reloaded";
 
 export interface RouteHandle {
@@ -173,11 +171,29 @@ export interface PreloadErrorWiring {
   addEventListener?: typeof window.addEventListener;
   currentPathname?: () => string;
   storage?: Pick<Storage, "getItem" | "setItem">;
-  /**
-   * Whether a background fetch of a feature chunk is under way. Defaults
-   * to the real answer from `prefetchFeatures.ts`; tests pass their own.
-   */
-  isBackgroundFetch?: () => boolean;
+}
+
+/** How long to wait for a navigation to finish before reloading anyway. */
+export const ARRIVAL_TIMEOUT_MS = 2000;
+
+/**
+ * Reloads once the router has finished the navigation it is part-way
+ * through, or after `ARRIVAL_TIMEOUT_MS` if it never does. Exactly once.
+ */
+function reloadOnceArrived(router: RouterLike, reload: () => void): void {
+  let done = false;
+  let unsubscribe = (): void => {};
+  const finish = (): void => {
+    if (done) return;
+    done = true;
+    unsubscribe();
+    reload();
+  };
+
+  unsubscribe = router.subscribe(() => {
+    if (router.state.navigation.state === "idle") finish();
+  });
+  window.setTimeout(finish, ARRIVAL_TIMEOUT_MS);
 }
 
 /**
@@ -205,32 +221,7 @@ export function wirePreloadErrorRecovery(wiring: PreloadErrorWiring): void {
     wiring.addEventListener ?? window.addEventListener.bind(window);
   const pathname = wiring.currentPathname ?? (() => window.location.pathname);
 
-  const isBackgroundFetch =
-    wiring.isBackgroundFetch ?? isBackgroundFetchInFlight;
-
   listen("vite:preloadError", (event: Event) => {
-    // A chunk being fetched in the background, for a feature nobody has
-    // opened, has failed. Nobody is waiting on it, so there is nothing to
-    // recover: leave the page exactly as it is. This matters most in an
-    // exam. An `import()` cannot be cancelled, so a background fetch
-    // started on the dashboard can fail after the attempt has begun.
-    //
-    // The navigation check keeps real recovery working. A click that
-    // fails while a background fetch happens to be in flight is a
-    // navigation in the `loading` state, and is handled below as ever.
-    //
-    // Returning here, before `decidePreloadFailureAction`, is deliberate:
-    // that function writes the reload-loop guard, and a guard written for
-    // a failure nobody saw would block a genuine recovery for a minute.
-    // Not prevented either, so the import rejects and the background
-    // fetch catches it.
-    if (
-      isBackgroundFetch() &&
-      wiring.router.state.navigation.state === "idle"
-    ) {
-      return;
-    }
-
     const hasFlash = Boolean(
       (wiring.router.state.location.state as { flash?: unknown } | null)?.flash,
     );
@@ -250,6 +241,28 @@ export function wirePreloadErrorRecovery(wiring: PreloadErrorWiring): void {
     // Reloading, so ours to handle, and Vite must not also rethrow it.
     event.preventDefault();
     wiring.persist(pathname());
+
+    // A chunk fails because somebody clicked through to a page whose code
+    // could not be fetched. The address bar still shows the page they were
+    // on, because the router does not move until the code has loaded. A
+    // reload now would put them back where they started, with the click
+    // lost and nothing to say why.
+    //
+    // So wait for the router to arrive first. It will: the import was
+    // prevented above, so it resolves, `lazyFrom` renders nothing for the
+    // page, and the navigation completes. Then reload, at the destination.
+    //
+    // A reload, not `location.assign(destination)`. WebKit kept the failed
+    // file in its cache across an ordinary page load and failed again
+    // without asking the server; a reload makes it ask.
+    //
+    // Features are fetched in the background too, but with `fetch()`, into
+    // the cache, never with `import()`: see lib/prefetchFeatures.ts. So
+    // nothing arriving here was asked for in the background.
+    if (wiring.router.state.navigation.state !== "idle") {
+      reloadOnceArrived(wiring.router, wiring.reload);
+      return;
+    }
     wiring.reload();
   });
 }

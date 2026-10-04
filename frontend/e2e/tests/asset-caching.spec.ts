@@ -42,6 +42,19 @@ test.describe("Caching of the app's own files", () => {
     expect(response.headers()["cache-control"]).toBe("no-cache");
   });
 
+  // The app reads this to learn the hashed file names of the features it
+  // fetches in the background. Kept, it would name the last build's files.
+  test("the build manifest is served, and always re-checked", async ({
+    request,
+  }) => {
+    const response = await request.get("/.vite/manifest.json");
+
+    expect(response.status()).toBe(200);
+    expect(response.headers()["cache-control"]).toBe("no-cache");
+    const manifest = (await response.json()) as Record<string, unknown>;
+    expect(Object.keys(manifest)).toContain("src/pages/admin/adminChunk.ts");
+  });
+
   test("a file with a fixed name is not kept for a year", async ({
     request,
   }) => {

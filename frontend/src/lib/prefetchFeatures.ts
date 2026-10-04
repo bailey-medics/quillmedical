@@ -1,30 +1,41 @@
 /**
  * prefetchFeatures
  *
- * Fetches, in the background, the lazy chunks of the features somebody can
- * open but has not opened yet, so the first click into each is instant.
- * See Phase 7 of
+ * Fetches, in the background, the files of the features somebody can open
+ * but has not opened yet, so the first click into each needs no download.
+ * See Phases 7 and 9 of
  * `docs/docs/plans/2026-10-04-lazy-load-one-chunk-per-feature-plan.md`.
  *
+ * The files are fetched with `fetch()`, into the browser's HTTP cache.
+ * Nothing is imported. That is deliberate, and it is the second attempt:
+ * the first called each feature's `import()`, and a failed `import()` is
+ * remembered by the browser for the life of the page. One background
+ * failure then made the later click fail too, however good the connection
+ * was by then. A failed `fetch()` leaves nothing behind, so the click
+ * imports the file as if nothing had been tried. A successful one leaves
+ * the file in the cache, where the click's `import()` finds it.
+ *
+ * The file names carry a hash that only the build knows, so they are read
+ * from the manifest the build writes (`build.manifest` in vite.config.ts).
+ *
  * The rule over all of it: nothing here may disturb an exam in progress.
- * Three things each guarantee that on their own, so no single mistake can
- * break it:
  *
  * 1. Nothing is started unless every condition in `mayPrefetch` holds at
  *    the moment of starting, and one of them is that the route is safe to
  *    reload. The exam is not, so nothing starts during one.
- * 2. `isBackgroundFetchInFlight` lets the `vite:preloadError` recovery in
- *    `swUpdateGate.ts` tell a failed background fetch from a failed
- *    navigation, and ignore it. An `import()` cannot be cancelled, so one
- *    started on a safe route can still fail after the exam has begun.
- * 3. That recovery never reloads an unsafe route, whatever asked for the
- *    chunk.
+ * 2. A `fetch()` that fails cannot fire `vite:preloadError`, so it can
+ *    never reach the recovery in `swUpdateGate.ts` that reloads the page.
+ * 3. That recovery never reloads an unsafe route in any case.
  */
 
 /** One feature's lazy chunk, and who may open the feature. */
 export interface PrefetchChunk<U> {
   name: string;
-  load: () => Promise<unknown>;
+  /**
+   * The chunk module's path from the frontend root, which is its key in
+   * the build manifest: `src/pages/admin/adminChunk.ts`.
+   */
+  source: string;
   canOpen: (user: U) => boolean;
 }
 
@@ -76,40 +87,127 @@ export function readConnection(
   };
 }
 
-let inFlight = 0;
-const attempted = new Set<string>();
+/* ------------------------------------------------------------------ *
+ * The build manifest
+ * ------------------------------------------------------------------ */
 
-/**
- * True while a background fetch is under way. Read by the
- * `vite:preloadError` recovery, which must not reload the page because a
- * fetch nobody asked for has failed.
- */
-export function isBackgroundFetchInFlight(): boolean {
-  return inFlight > 0;
+/** Where the production build writes its manifest. */
+export const MANIFEST_ADDRESS = "/.vite/manifest.json";
+
+/** One entry of Vite's build manifest, as far as this module reads it. */
+interface ManifestEntry {
+  file: string;
+  /** Keys of other entries this one imports. */
+  imports?: string[];
+  css?: string[];
 }
 
-export type PrefetchOutcome =
-  /** A chunk was fetched; there may be more. */
-  | "fetched"
-  /** A chunk failed. It is not tried again; a click will fetch it. */
-  | "failed"
-  /** There is a chunk to fetch, but now is not the moment. */
-  | "blocked"
-  /** Every chunk this person can open has been tried. */
-  | "nothing-left";
+export type BuildManifest = Record<string, ManifestEntry>;
+
+function isManifestEntry(value: unknown): value is ManifestEntry {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "file" in value &&
+    typeof value.file === "string"
+  );
+}
 
 /**
- * Fetches the next chunk this person can open, if `mayStart` says so.
+ * Every file a chunk needs: its own, its stylesheets, and those of
+ * everything it imports, however deep. As addresses, without repeats.
+ * Empty if the manifest does not know the chunk.
+ */
+export function filesFor(manifest: BuildManifest, source: string): string[] {
+  const files = new Set<string>();
+  const seen = new Set<string>();
+
+  const collect = (key: string): void => {
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    const entry = manifest[key];
+    if (!isManifestEntry(entry)) return;
+
+    files.add(`/${entry.file}`);
+    (entry.css ?? []).forEach((stylesheet) => files.add(`/${stylesheet}`));
+    (entry.imports ?? []).forEach(collect);
+  };
+  collect(source);
+
+  return [...files];
+}
+
+/** The parts of the browser this module uses, so tests can stand in. */
+export interface PrefetchIo {
+  fetch: (address: string, init?: RequestInit) => Promise<Response>;
+}
+
+const browserIo: PrefetchIo = {
+  // Not the `api` client: these are the app's own static files, not
+  // backend calls, and they need neither CSRF nor a retry on 401.
+  fetch: (address, init) => fetch(address, init),
+};
+
+/**
+ * Reads the build manifest, or returns null if there is none to read.
  *
- * One chunk per call, so the caller re-checks every condition before the
- * next. Each chunk is tried once per page load: a failure is left for an
- * ordinary navigation to retry, where the recovery handler can act on it.
- * Never throws.
+ * There is none in development: the dev server answers with `index.html`,
+ * which is not JSON. That is right, since nothing is chunked there.
+ * Asked for with `no-cache` so a new build's manifest is seen.
+ */
+export async function readManifest(
+  io: PrefetchIo = browserIo,
+): Promise<BuildManifest | null> {
+  try {
+    const response = await io.fetch(MANIFEST_ADDRESS, { cache: "no-cache" });
+    if (!response.ok) return null;
+
+    const manifest: unknown = await response.json();
+    if (typeof manifest !== "object" || manifest === null) return null;
+    return manifest as BuildManifest;
+  } catch {
+    return null;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Fetching
+ * ------------------------------------------------------------------ */
+
+const attempted = new Set<string>();
+let manifestRead: Promise<BuildManifest | null> | undefined;
+
+export type PrefetchOutcome =
+  /** A feature's files were fetched; there may be more features. */
+  | "fetched"
+  /** A feature's files could not all be fetched. A click will fetch them. */
+  | "failed"
+  /** There is a feature to fetch, but now is not the moment. */
+  | "blocked"
+  /** Every feature this person can open has been tried, or none can be. */
+  | "nothing-left";
+
+async function fetchIntoCache(io: PrefetchIo, address: string): Promise<void> {
+  // `low`, where the browser understands it, so this never competes with
+  // what the page itself is asking for.
+  const response = await io.fetch(address, { priority: "low" });
+  if (!response.ok) throw new Error(`${response.status} for ${address}`);
+}
+
+/**
+ * Fetches the files of the next feature this person can open, if
+ * `mayStart` says so.
+ *
+ * One feature per call, so the caller re-checks every condition before
+ * the next. Each feature is tried once per page load: a failure is left
+ * for the click itself to fetch. Never throws.
  */
 export async function prefetchNextFeature<U>(
   chunks: readonly PrefetchChunk<U>[],
   user: U,
   mayStart: () => boolean,
+  io: PrefetchIo = browserIo,
 ): Promise<PrefetchOutcome> {
   const next = chunks.find(
     (chunk) => !attempted.has(chunk.name) && chunk.canOpen(user),
@@ -117,16 +215,23 @@ export async function prefetchNextFeature<U>(
   if (next === undefined) return "nothing-left";
   if (!mayStart()) return "blocked";
 
+  manifestRead ??= readManifest(io);
+  const manifest = await manifestRead;
+  if (manifest === null) return "nothing-left";
+
+  // Reading the manifest took time, and an exam may have started in it.
+  if (!mayStart()) return "blocked";
+
   attempted.add(next.name);
-  inFlight += 1;
+  const files = filesFor(manifest, next.source);
+  if (files.length === 0) return "failed";
+
   try {
-    await next.load();
+    await Promise.all(files.map((file) => fetchIntoCache(io, file)));
     return "fetched";
   } catch {
     // Said nowhere: nobody asked for this, so nobody is told it failed.
     return "failed";
-  } finally {
-    inFlight -= 1;
   }
 }
 
@@ -161,6 +266,6 @@ export function whenIdle(
 }
 
 export function resetPrefetchStateForTests(): void {
-  inFlight = 0;
   attempted.clear();
+  manifestRead = undefined;
 }

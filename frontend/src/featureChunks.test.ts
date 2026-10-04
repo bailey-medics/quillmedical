@@ -108,14 +108,31 @@ describe("who may open each feature", () => {
     return chunk.canOpen({ ...nobody, ...user } as User);
   }
 
-  it("lists every loader, so none is left out of the background fetch", () => {
-    const loaders = Object.entries(featureChunks)
-      .filter(([name]) => name.startsWith("load"))
-      .map(([, loader]) => loader);
-
-    expect(FEATURE_CHUNKS.map((chunk) => chunk.load).sort()).toEqual(
-      loaders.sort(),
+  // The background fetch finds a feature's files by its chunk module's
+  // path. A loader with no entry would be routed and never fetched early;
+  // an entry naming the wrong path would fetch nothing, in silence.
+  it("names, for every loader, the module that loader imports", () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, "featureChunks.ts"),
+      "utf8",
     );
+    const imported = [...source.matchAll(/import\("\.\/(.+Chunk)"\)/g)].map(
+      (match) => `src/${match[1]}.ts`,
+    );
+
+    expect(imported.length).toBe(
+      Object.keys(featureChunks).filter((name) => name.startsWith("load"))
+        .length,
+    );
+    expect(FEATURE_CHUNKS.map((chunk) => chunk.source).sort()).toEqual(
+      imported.sort(),
+    );
+    for (const chunk of FEATURE_CHUNKS) {
+      expect(
+        fs.existsSync(path.join(__dirname, "..", chunk.source)),
+        chunk.source,
+      ).toBe(true);
+    }
   });
 
   it("lets nobody with nothing open anything", () => {

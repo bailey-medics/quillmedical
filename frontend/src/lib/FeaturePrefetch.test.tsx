@@ -5,8 +5,10 @@ import { useAuth, type User } from "@/auth/AuthContext";
 import { renderWithMantine } from "@test/test-utils";
 import FeaturePrefetch from "./FeaturePrefetch";
 import {
+  MANIFEST_ADDRESS,
   resetPrefetchStateForTests,
   type PrefetchChunk,
+  type PrefetchIo,
 } from "./prefetchFeatures";
 
 vi.mock("@/auth/AuthContext", () => ({ useAuth: vi.fn() }));
@@ -23,12 +25,40 @@ function signIn(user: User | null): void {
   );
 }
 
-function chunk(name: string, load = () => Promise.resolve({})) {
+function chunk(name: string): PrefetchChunk<User> {
   return {
     name,
-    load: vi.fn(load),
+    source: `src/${name}Chunk.ts`,
     canOpen: (user: User) => user.enabled_features?.includes(name) ?? false,
-  } satisfies PrefetchChunk<User>;
+  };
+}
+
+/** One file per feature, named after it: `/assets/teaching.js`. */
+function fileOf(name: string): string {
+  return `/assets/${name}.js`;
+}
+
+/** Serves a manifest for the given features; `failing` files answer 503. */
+function makeIo(names: string[], failing: string[] = []) {
+  const manifest = Object.fromEntries(
+    names.map((name) => [`src/${name}Chunk.ts`, { file: `assets/${name}.js` }]),
+  );
+  const fetch = vi.fn((address: string) =>
+    Promise.resolve({
+      ok: !failing.includes(address),
+      status: failing.includes(address) ? 503 : 200,
+      json: () => Promise.resolve(manifest),
+    } as unknown as Response),
+  );
+  const io: PrefetchIo = { fetch };
+  return {
+    io,
+    /** The files asked for, the manifest aside. */
+    fetched: () =>
+      fetch.mock.calls
+        .map(([address]) => address)
+        .filter((address) => address !== MANIFEST_ADDRESS),
+  };
 }
 
 /** Stands in for the browser's idle moment: nothing runs until `idle()`. */
@@ -50,7 +80,8 @@ function makeSchedule() {
       const due = waiting.splice(0);
       await act(async () => {
         due.forEach((callback) => callback());
-        await Promise.resolve();
+        // The manifest is read, then the files: several turns.
+        for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
       });
     },
     waiting,
@@ -61,13 +92,14 @@ function renderAt(
   path: string,
   chunks: PrefetchChunk<User>[],
   schedule: (callback: () => void) => () => void,
+  io: PrefetchIo,
 ) {
   const router = createMemoryRouter(
     [
       {
         element: (
           <>
-            <FeaturePrefetch chunks={chunks} schedule={schedule} />
+            <FeaturePrefetch chunks={chunks} schedule={schedule} io={io} />
             <Outlet />
           </>
         ),
@@ -94,57 +126,56 @@ beforeEach(() => {
 });
 
 describe("FeaturePrefetch", () => {
+  const all = ["teaching", "passport", "admin"];
+
   it("fetches, one at a time, the features the person can open", async () => {
     signIn(learner);
-    const teaching = chunk("teaching");
-    const passport = chunk("passport");
-    const admin = chunk("admin");
+    const { io, fetched } = makeIo(all);
     const { schedule, idle } = makeSchedule();
 
-    renderAt("/teaching", [teaching, passport, admin], schedule);
-    expect(teaching.load).not.toHaveBeenCalled();
+    renderAt("/teaching", all.map(chunk), schedule, io);
+    expect(fetched()).toEqual([]);
 
     await idle();
-    expect(teaching.load).toHaveBeenCalledTimes(1);
-    expect(passport.load).not.toHaveBeenCalled();
+    expect(fetched()).toEqual([fileOf("teaching")]);
 
     await idle();
-    expect(passport.load).toHaveBeenCalledTimes(1);
+    expect(fetched()).toEqual([fileOf("teaching"), fileOf("passport")]);
 
     await idle();
-    expect(admin.load).not.toHaveBeenCalled();
+    expect(fetched()).not.toContain(fileOf("admin"));
   });
 
   it("starts nothing when nobody is signed in", async () => {
     signIn(null);
-    const teaching = chunk("teaching");
+    const { io } = makeIo(all);
     const { schedule, idle } = makeSchedule();
 
-    renderAt("/teaching", [teaching], schedule);
+    renderAt("/teaching", [chunk("teaching")], schedule, io);
     await idle();
 
     expect(schedule).not.toHaveBeenCalled();
-    expect(teaching.load).not.toHaveBeenCalled();
+    expect(io.fetch).not.toHaveBeenCalled();
   });
 
-  it("starts nothing during an exam", async () => {
+  it("starts nothing during an exam, not even reading the manifest", async () => {
     signIn(learner);
-    const passport = chunk("passport");
+    const { io } = makeIo(all);
     const { schedule, idle } = makeSchedule();
 
-    renderAt("/teaching/assessment/1", [passport], schedule);
+    renderAt("/teaching/assessment/1", [chunk("passport")], schedule, io);
     await idle();
 
     expect(schedule).not.toHaveBeenCalled();
-    expect(passport.load).not.toHaveBeenCalled();
+    expect(io.fetch).not.toHaveBeenCalled();
   });
 
   it("drops what was waiting when the exam starts", async () => {
     signIn(learner);
-    const passport = chunk("passport");
+    const { io } = makeIo(all);
     const { schedule, cancel, idle, waiting } = makeSchedule();
 
-    const router = renderAt("/teaching", [passport], schedule);
+    const router = renderAt("/teaching", [chunk("passport")], schedule, io);
     expect(waiting).toHaveLength(1);
 
     await act(() => router.navigate("/teaching/assessment/1"));
@@ -152,54 +183,56 @@ describe("FeaturePrefetch", () => {
     expect(cancel).toHaveBeenCalled();
     expect(waiting).toHaveLength(0);
     await idle();
-    expect(passport.load).not.toHaveBeenCalled();
+    expect(io.fetch).not.toHaveBeenCalled();
   });
 
   // The browser may run an idle callback it was asked to cancel a moment
   // too late. Being cancelled must be enough on its own.
   it("starts nothing if the idle moment comes after the exam began", async () => {
     signIn(learner);
-    const passport = chunk("passport");
+    const { io } = makeIo(all);
     const late: Array<() => void> = [];
     const schedule = (callback: () => void) => {
       late.push(callback);
       return () => {};
     };
 
-    const router = renderAt("/teaching", [passport], schedule);
+    const router = renderAt("/teaching", [chunk("passport")], schedule, io);
     await act(() => router.navigate("/teaching/assessment/1"));
     await act(async () => {
       late.forEach((callback) => callback());
-      await Promise.resolve();
+      for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
     });
 
-    expect(passport.load).not.toHaveBeenCalled();
+    expect(io.fetch).not.toHaveBeenCalled();
   });
 
   it("picks up again once back on a safe page", async () => {
     signIn(learner);
-    const passport = chunk("passport");
+    const { io, fetched } = makeIo(all);
     const { schedule, idle } = makeSchedule();
 
-    const router = renderAt("/teaching/assessment/1", [passport], schedule);
+    const router = renderAt(
+      "/teaching/assessment/1",
+      [chunk("passport")],
+      schedule,
+      io,
+    );
     await act(() => router.navigate("/teaching"));
     await idle();
 
-    await waitFor(() => expect(passport.load).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(fetched()).toEqual([fileOf("passport")]));
   });
 
   it("carries on to the next feature when one fails", async () => {
     signIn(learner);
-    const teaching = chunk("teaching", () =>
-      Promise.reject(new Error("chunk gone")),
-    );
-    const passport = chunk("passport");
+    const { io, fetched } = makeIo(all, [fileOf("teaching")]);
     const { schedule, idle } = makeSchedule();
 
-    renderAt("/teaching", [teaching, passport], schedule);
+    renderAt("/teaching", [chunk("teaching"), chunk("passport")], schedule, io);
     await idle();
     await idle();
 
-    expect(passport.load).toHaveBeenCalledTimes(1);
+    expect(fetched()).toContain(fileOf("passport"));
   });
 });

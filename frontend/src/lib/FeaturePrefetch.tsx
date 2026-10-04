@@ -2,9 +2,10 @@
  * FeaturePrefetch
  *
  * Renders nothing. While somebody is signed in, on a page that is safe to
- * reload, with the router and the browser both idle, it fetches the lazy
- * chunks of the other features they can open, one at a time. The rules
- * and the reasons are in `prefetchFeatures.ts`.
+ * reload, with the router and the browser both idle, it fetches the files
+ * of the other features they can open into the browser's cache, one
+ * feature at a time. It imports nothing. The rules and the reasons are in
+ * `prefetchFeatures.ts`.
  *
  * Mounted once, on the root route in `main.tsx`, so it covers every tree,
  * `/teaching` included.
@@ -12,8 +13,8 @@
  * It starts nothing during an exam. The effect below runs only on a route
  * that is `safeForReload`, and the exam is not. Arriving at the exam
  * re-runs the effect, whose clean-up cancels anything still waiting for an
- * idle moment. A fetch already in flight cannot be cancelled; if it then
- * fails, the recovery handler in `swUpdateGate.ts` ignores it.
+ * idle moment. A fetch already in flight is left to finish; if it fails,
+ * nothing notices, because a failed `fetch()` reaches no handler.
  */
 
 import { useEffect } from "react";
@@ -26,6 +27,7 @@ import {
   readConnection,
   whenIdle,
   type PrefetchChunk,
+  type PrefetchIo,
 } from "./prefetchFeatures";
 
 /** The leaf route's `handle.safeForReload`, as `isRouteSafeForReload` reads it. */
@@ -44,11 +46,14 @@ interface FeaturePrefetchProps {
   chunks?: readonly PrefetchChunk<User>[];
   /** Schedules work for an idle moment. Tests pass their own. */
   schedule?: (callback: () => void) => () => void;
+  /** How files are fetched. Defaults to the browser; tests pass their own. */
+  io?: PrefetchIo;
 }
 
 export default function FeaturePrefetch({
   chunks = FEATURE_CHUNKS,
   schedule = whenIdle,
+  io,
 }: FeaturePrefetchProps) {
   const { state } = useAuth();
   const matches = useMatches();
@@ -78,7 +83,7 @@ export default function FeaturePrefetch({
 
     const fetchNext = (): void => {
       cancelScheduled = schedule(() => {
-        void prefetchNextFeature(chunks, user, mayStart).then((outcome) => {
+        void prefetchNextFeature(chunks, user, mayStart, io).then((outcome) => {
           const more = outcome === "fetched" || outcome === "failed";
           if (more && !cancelled) fetchNext();
         });
@@ -90,7 +95,7 @@ export default function FeaturePrefetch({
       cancelled = true;
       cancelScheduled();
     };
-  }, [user, routeIsSafe, navigationIdle, chunks, schedule]);
+  }, [user, routeIsSafe, navigationIdle, chunks, schedule, io]);
 
   return null;
 }

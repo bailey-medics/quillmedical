@@ -90,6 +90,12 @@ function pdfjsDecoders(): Plugin {
 export default defineConfig({
   base: "/",
   build: {
+    // Writes dist/.vite/manifest.json: for each source module that starts
+    // a chunk, the file it was built into and the files that one imports.
+    // The app reads it at run time to learn the names of the feature
+    // chunks, so it can fetch them into the browser's cache in the
+    // background without importing them. See lib/prefetchFeatures.ts.
+    manifest: true,
     rollupOptions: {
       output: {
         // Keep function names through minification, so an error report names
