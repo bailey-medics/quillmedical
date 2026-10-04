@@ -493,8 +493,25 @@ export const theme = createTheme({
       defaultProps: {
         size: "lg",
       },
+      // A badge is never cut short, and never changes to fit. Mantine
+      // lets it shrink below its text and ends the label in an
+      // ellipsis; a status that reads "Awaiting sig…" tells nobody
+      // anything. So a badge is always exactly as wide as its text, on
+      // one line, at its usual height: it does not shrink, wrap or
+      // clip. When a row runs out of room it is the layout around the
+      // badge that has to give way, not the badge.
       styles: {
-        label: { fontSize: "1.1875rem" }, // 19px – GOV.UK minimum
+        root: {
+          minWidth: "max-content",
+          flexShrink: 0,
+          overflow: "visible",
+        },
+        label: {
+          fontSize: "1.1875rem", // 19px – GOV.UK minimum
+          whiteSpace: "nowrap",
+          overflow: "visible",
+          textOverflow: "clip",
+        },
       },
     },
   },

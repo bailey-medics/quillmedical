@@ -5,7 +5,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Badge, Stack } from "@mantine/core";
+import { Badge, Box, Stack } from "@mantine/core";
 import { badgeColours, BADGE_VARIANT, type BadgeColour } from "./badgeColours";
 import BadgeSkeleton from "./BadgeSkeleton";
 import ActiveStatusBadge from "./ActiveStatusBadge";
@@ -42,6 +42,36 @@ export const AllColours: Story = {
 /** Loading skeleton. */
 export const Loading: Story = {
   render: () => <ActiveStatusBadge active={true} isLoading />,
+};
+
+/**
+ * A badge in a container narrower than its text stays whole: one line,
+ * its usual size, no ellipsis. It runs past the container rather than
+ * shrinking to fit it.
+ */
+export const NarrowContainer: Story = {
+  render: () => (
+    <Box w={160}>
+      <Stack gap="md" align="flex-start">
+        <Badge
+          color={badgeColours.warning.bg}
+          c={badgeColours.warning.text}
+          variant={BADGE_VARIANT}
+          radius="xl"
+        >
+          Awaiting supervisor sign-off
+        </Badge>
+        <Badge
+          color={badgeColours.info.bg}
+          c={badgeColours.info.text}
+          variant={BADGE_VARIANT}
+          radius="xl"
+        >
+          Electroencephalography
+        </Badge>
+      </Stack>
+    </Box>
+  ),
 };
 
 export const DarkMode: Story = {
