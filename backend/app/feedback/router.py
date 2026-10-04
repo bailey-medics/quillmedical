@@ -11,11 +11,21 @@ somebody describing a bug pastes what they were looking at. The analytics
 routes log what they receive, and copying that habit here is the easy way
 to undo the whole position. See
 ``docs/docs/plans/2026-09-20-user-feedback-plan.md``.
+
+**Nor is it emailed.** The notice an operator gets says who sent feedback
+and links to it, and leaves the words in Quill, for the same reason. See
+``docs/docs/plans/2026-10-04-waiting-on-me-inbox-plan.md``.
 """
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Request,
+)
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -25,12 +35,15 @@ from app.analytics.router import (
     redact,
     redact_code,
 )
+from app.config import settings
 from app.db import get_core_db
 from app.deps import (
     DEP_CURRENT_USER,
     DEP_REQUIRE_OPERATOR,
     get_current_user,
 )
+from app.email.render import render_email, send_args
+from app.email_send import send_email
 from app.models import Feedback, User
 from app.rate_limit import limiter
 from app.schemas.feedback import (
@@ -65,6 +78,49 @@ DEP_REQUIRE_CSRF = Depends(_require_csrf)
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
+#: What each category reads as in the notice to an operator. The same
+#: words the sender chose from, in ``sendFeedback.ts``.
+_CATEGORY_LABELS: dict[str, str] = {
+    "broken": "Something is broken",
+    "inaccurate": "Something is wrong or inaccurate",
+    "suggestion": "Suggestion",
+    "other": "Something else",
+}
+
+
+def _notify_operator(
+    *, to: str, feedback_id: int, sender: str, category: str | None, route: str
+) -> None:
+    """Email the configured address that feedback has arrived.
+
+    Run as a background task, after the response has gone. It takes what
+    it needs by value, never the row and never the message: the notice
+    says who and what kind and links to the feedback, and the words stay
+    in Quill.
+
+    A failure is logged and swallowed. The feedback is already stored,
+    and a mail service being down must not look, to anybody, like the
+    feedback having been lost.
+    """
+    try:
+        rendered = render_email(
+            "feedback_received.html.j2",
+            "quill",
+            {
+                "sender": sender,
+                "category": _CATEGORY_LABELS.get(category or ""),
+                "route": route,
+                "url": f"{settings.FRONTEND_URL}/admin/feedback/{feedback_id}",
+            },
+        )
+        send_email(to=to, **send_args(rendered))
+    except Exception:
+        # Broad on purpose: whatever went wrong, there is nobody left to
+        # tell but the log. The id only, as everywhere in this module.
+        logger.exception(
+            "feedback notice not sent", extra={"feedback_id": feedback_id}
+        )
+
 
 @router.post(
     "",
@@ -76,6 +132,7 @@ router = APIRouter(prefix="/feedback", tags=["feedback"])
 def submit_feedback(
     request: Request,
     body: FeedbackIn,
+    background_tasks: BackgroundTasks,
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> FeedbackCreatedOut:
@@ -92,6 +149,9 @@ def submit_feedback(
     The captured context gets the same server-side backstop the error
     reports do, since the browser's sanitising is not something this end
     can trust. The message itself is stored as typed.
+
+    Where ``FEEDBACK_NOTIFY_EMAIL`` is set, that address is told once the
+    response has gone, with a link and without the message.
     """
     feedback = Feedback(
         user_id=current_user.id,
@@ -111,6 +171,17 @@ def submit_feedback(
 
     # The id and nothing else. See the module docstring.
     logger.info("feedback received", extra={"feedback_id": feedback.id})
+
+    notify = settings.FEEDBACK_NOTIFY_EMAIL.strip()
+    if notify:
+        background_tasks.add_task(
+            _notify_operator,
+            to=notify,
+            feedback_id=feedback.id,
+            sender=current_user.username,
+            category=feedback.category,
+            route=feedback.route,
+        )
     return FeedbackCreatedOut(id=feedback.id)
 
 

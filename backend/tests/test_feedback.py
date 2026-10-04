@@ -129,6 +129,98 @@ class TestSubmitting:
         assert "943" not in row.route
 
 
+class TestTellingAnOperator:
+    """The configured address is told, with a link and without the words."""
+
+    @pytest.fixture
+    def sent(self, monkeypatch: pytest.MonkeyPatch) -> list[dict[str, object]]:
+        """Capture what would be sent, in place of sending it."""
+        calls: list[dict[str, object]] = []
+        monkeypatch.setattr(
+            "app.feedback.router.send_email",
+            lambda **kwargs: calls.append(kwargs),
+        )
+        return calls
+
+    def test_tells_the_configured_address(
+        self,
+        client: TestClient,
+        test_user: User,
+        sent: list[dict[str, object]],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(
+            "app.feedback.router.settings.FEEDBACK_NOTIFY_EMAIL",
+            "ops@example.test",
+        )
+
+        resp = client.post(ENDPOINT, json=VALID)
+
+        assert resp.status_code == 201
+        assert len(sent) == 1
+        email = sent[0]
+        assert email["to"] == "ops@example.test"
+        assert test_user.username in str(email["subject"])
+        text = str(email["text_body"])
+        assert f"/admin/feedback/{resp.json()['id']}" in text
+        assert "Something is wrong or inaccurate" in text
+        assert "/teaching/:bankId" in text
+
+    def test_the_email_never_carries_the_message(
+        self,
+        client: TestClient,
+        sent: list[dict[str, object]],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Not in the subject, the HTML or the plain text."""
+        monkeypatch.setattr(
+            "app.feedback.router.settings.FEEDBACK_NOTIFY_EMAIL",
+            "ops@example.test",
+        )
+
+        resp = client.post(ENDPOINT, json=VALID)
+
+        assert resp.status_code == 201
+        assert len(sent) == 1
+        for value in sent[0].values():
+            assert SECRET_MESSAGE not in str(value)
+            assert "Example-Leak" not in str(value)
+
+    def test_tells_nobody_when_no_address_is_set(
+        self, client: TestClient, sent: list[dict[str, object]]
+    ) -> None:
+        resp = client.post(ENDPOINT, json=VALID)
+
+        assert resp.status_code == 201
+        assert sent == []
+
+    def test_a_failure_to_send_leaves_the_feedback_stored(
+        self,
+        client: TestClient,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        monkeypatch.setattr(
+            "app.feedback.router.settings.FEEDBACK_NOTIFY_EMAIL",
+            "ops@example.test",
+        )
+
+        def fail(**kwargs: object) -> None:
+            raise RuntimeError("mail service down")
+
+        monkeypatch.setattr("app.feedback.router.send_email", fail)
+
+        with caplog.at_level(logging.DEBUG):
+            resp = client.post(ENDPOINT, json=VALID)
+
+        assert resp.status_code == 201
+        assert len(stored(db_session)) == 1
+        for record in caplog.records:
+            assert SECRET_MESSAGE not in record.getMessage()
+            assert SECRET_MESSAGE not in str(record.__dict__)
+
+
 class TestRefusing:
     def test_refuses_a_signed_out_caller(
         self, test_client: TestClient, db_session: Session

@@ -1,0 +1,41 @@
+{#-
+  Tells an operator that somebody has sent feedback. It says who, what it
+  is about and where it was sent from, and links to it.
+
+  Never the message. Somebody describing a fault pastes what they were
+  looking at, so the message may hold patient data, and an email would
+  copy it into a system outside Quill. It stays behind the application's
+  own access checks, one press away. Context:
+    sender    the username of whoever sent it
+    category  what they said it was about, in words, or None
+    route     the page it was sent from, as a route pattern, or ""
+    url       the link to the feedback in the admin area
+-#}
+{% extends "base.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+{% block subject %}New feedback from {{ sender }}{% endblock %}
+{% block preheader %}
+{%- if category %}{{ category }}.{% else %}Open it in Quill to read it.{% endif -%}
+{% endblock %}
+{% block body %}
+{{ c.heading("New *feedback*") }}
+{{ c.paragraph(sender ~ " has sent feedback through Quill.") }}
+{% if category %}{{ c.paragraph("About: " ~ category) }}{% endif %}
+{% if route %}{{ c.paragraph("Sent from: " ~ route) }}{% endif %}
+{{ c.button("Read the feedback", url) }}
+{{ c.small("The message is not in this email. It may hold patient details, so it stays in Quill.") }}
+{% endblock %}
+{% block reason %}You are receiving this because this address is set to be told of new feedback on Quill.{% endblock %}
+{% block text %}
+{{ sender }} has sent feedback through Quill.
+{% if category %}
+About: {{ category }}
+{% endif %}
+{% if route %}
+Sent from: {{ route }}
+{% endif %}
+
+Read the feedback: {{ url }}
+
+The message is not in this email. It may hold patient details, so it stays in Quill.
+{% endblock %}
