@@ -1,6 +1,6 @@
 /**
  * The passport feature's one lazy chunk: every passport page routed in
- * `main.tsx`, the two public ones included (the invite landing and the
+ * `routes.tsx`, the two public ones included (the invite landing and the
  * verify page a printed QR code opens), and `CpdDateRangesPage`, which
  * lives under `pages/settings/` but is routed inside the passport block.
  *

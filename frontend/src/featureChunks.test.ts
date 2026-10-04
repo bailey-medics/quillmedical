@@ -6,7 +6,11 @@ import { FEATURE_CHUNKS } from "./featureChunks";
 import type { User } from "./auth/AuthContext";
 import { SCOPED_MANAGER_IDS } from "@/types/cbac";
 
-const mainSource = fs.readFileSync(path.join(__dirname, "main.tsx"), "utf8");
+// The routes live in routes.tsx. main.tsx is read with it, because a
+// page imported there would be bundled into first load just the same.
+const routesSource = ["routes.tsx", "main.tsx"]
+  .map((file) => fs.readFileSync(path.join(__dirname, file), "utf8"))
+  .join("\n");
 
 /** The module each `export … from "…"` line of a chunk re-exports. */
 function reExportedModules(chunkFile: string): string[] {
@@ -38,8 +42,8 @@ const CHUNKS = [
 
 // The rule the plan sets: a feature is one lazy chunk, never one per page.
 // A bare `import()` in a route is a per-page chunk.
-it("gives no route in main.tsx a lazy import of its own", () => {
-  expect(mainSource).not.toMatch(/lazy:\s*\(\)\s*=>\s*import\(/);
+it("gives no route in routes.tsx a lazy import of its own", () => {
+  expect(routesSource).not.toMatch(/lazy:\s*\(\)\s*=>\s*import\(/);
 });
 
 describe.each(CHUNKS)("the $name chunk", ({ loader, file }) => {
@@ -52,22 +56,22 @@ describe.each(CHUNKS)("the $name chunk", ({ loader, file }) => {
     }
   });
 
-  // A page main.tsx also imports statically is bundled into first load,
+  // A page routes.tsx also imports statically is bundled into first load,
   // and its `lazy` then defers nothing. The build says so only in a
   // warning nobody reads.
-  it("holds no page that main.tsx still imports statically", () => {
+  it("holds no page that routes.tsx still imports statically", () => {
     const stillStatic = reExportedModules(file).filter((module) =>
-      mainSource.includes(`from "./${module}"`),
+      routesSource.includes(`from "./${module}"`),
     );
 
     expect(stillStatic).toEqual([]);
   });
 
-  it("is loaded by main.tsx only through its loader", () => {
-    expect(mainSource).toContain(`lazyFrom(${loader}, `);
+  it("is loaded by routes.tsx only through its loader", () => {
+    expect(routesSource).toContain(`lazyFrom(${loader}, `);
     const module = `"./${file.replace(/\.ts$/, "")}"`;
-    expect(mainSource).not.toContain(`from ${module}`);
-    expect(mainSource).not.toContain(`import(${module})`);
+    expect(routesSource).not.toContain(`from ${module}`);
+    expect(routesSource).not.toContain(`import(${module})`);
   });
 });
 
@@ -91,7 +95,7 @@ describe("the exam", () => {
       `path: "${routePath}",\\s*lazy: lazyFrom\\(loadTeaching, "${page}"\\)`,
     );
 
-    expect(mainSource).toMatch(route);
+    expect(routesSource).toMatch(route);
   });
 });
 
@@ -165,7 +169,7 @@ describe("who may open each feature", () => {
     expect(canOpen("clinical", {})).toBe(false);
   });
 
-  // Each test above restates a guard. This ties them to main.tsx, so a
+  // Each test above restates a guard. This ties them to routes.tsx, so a
   // guard changed there without the list being changed fails here.
   it.each([
     'feature="teaching"',
@@ -175,8 +179,8 @@ describe("who may open each feature", () => {
     'competency="view_safety_cases"',
     "<RequireClinical>",
     "<RequirePassport>",
-  ])("mirrors a guard main.tsx still has: %s", (guard) => {
-    expect(mainSource.replace(/\s+/g, " ")).toContain(guard);
+  ])("mirrors a guard routes.tsx still has: %s", (guard) => {
+    expect(routesSource.replace(/\s+/g, " ")).toContain(guard);
   });
 });
 
@@ -187,11 +191,13 @@ describe("pages holding unsaved work", () => {
   it.each(["organisations/:id/members/:userId", "sites/:id/members/:userId"])(
     "does not mark %s safe to reload, since its switches wait for Save changes",
     (routePath) => {
-      const start = mainSource.indexOf(`path: "${routePath}"`);
-      const nextRoute = mainSource.indexOf("path: ", start + 1);
+      const start = routesSource.indexOf(`path: "${routePath}"`);
+      const nextRoute = routesSource.indexOf("path: ", start + 1);
 
       expect(start).toBeGreaterThan(-1);
-      expect(mainSource.slice(start, nextRoute)).not.toContain("safeForReload");
+      expect(routesSource.slice(start, nextRoute)).not.toContain(
+        "safeForReload",
+      );
     },
   );
 });

@@ -10,7 +10,8 @@ There are three separate mechanisms. No single file shows all three, and they
 fail in opposite directions on purpose.
 
 It was written from `frontend/src/lib/swUpdateGate.ts`, `frontend/src/sw.ts`,
-`frontend/src/main.tsx`, `frontend/src/lib/compat-generation/`,
+`frontend/src/main.tsx`, `frontend/src/routes.tsx`,
+`frontend/src/lib/compat-generation/`,
 `frontend/src/lib/api.ts` and `frontend/vite.config.ts`.
 
 ## The rule for a new route
@@ -24,7 +25,7 @@ asking?**
 - **Unsafe** means the page holds something the user would lose: an exam in
   progress, a half-written sign-off.
 
-A safe route says so on its route object in `frontend/src/main.tsx`:
+A safe route says so on its route object in `frontend/src/routes.tsx`:
 
 ```tsx
 {

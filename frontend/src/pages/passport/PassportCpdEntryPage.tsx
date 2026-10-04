@@ -18,7 +18,7 @@
  * only worked when arrived at from the table would break on a refresh.
  *
  * Exports `Component` rather than a default, because React Router's
- * `lazy` looks for that name. See the route definition in `main.tsx`.
+ * `lazy` looks for that name. See the route definition in `routes.tsx`.
  */
 
 import { useCallback, useEffect, useState } from "react";

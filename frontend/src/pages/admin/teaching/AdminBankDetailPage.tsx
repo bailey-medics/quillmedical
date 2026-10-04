@@ -305,7 +305,7 @@ export default function AdminBankDetailPage() {
         of step with the slides.
 
         No route guard of its own: the whole /admin subtree sits under
-        one <RequireCompetency competency="manage_users"> in main.tsx,
+        one <RequireCompetency competency="manage_users"> in routes.tsx,
         and this page is inside it.
       */}
       {media?.references?.length ? (
