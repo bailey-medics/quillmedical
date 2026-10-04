@@ -27,6 +27,24 @@ vi.mock("@lib/passport", () => ({
     `/api/passport/${passportId}/certificates/${name}/attachments/${hash}`,
 }));
 
+// How a PDF is shown depends on the browser: its own viewer in a frame
+// on a desktop, pages drawn by `PdfPages` on a phone or tablet. jsdom is
+// neither, so each test says which it is. `PdfPages` has its own tests;
+// here it only matters that the file reached it.
+const { useNativePdfViewer } = vi.hoisted(() => ({
+  useNativePdfViewer: vi.fn(),
+}));
+
+vi.mock("@/components/documents/useNativePdfViewer", () => ({
+  useNativePdfViewer,
+}));
+
+vi.mock("@/components/documents/PdfPages", () => ({
+  default: ({ name, url }: { name: string; url: string }) => (
+    <div data-testid="pdf-pages" data-name={name} data-url={url} />
+  ),
+}));
+
 // The record the page is opened on: the second fixture, which carries a
 // competency the form does not show.
 const opened = certificates[1];
@@ -80,7 +98,8 @@ describe("PassportCertificatePage", () => {
     expect(screen.getByTestId("passport-record-card")).toBeInTheDocument();
   });
 
-  it("shows an attached PDF in the browser's viewer", async () => {
+  it("frames an attached PDF in the browser's viewer on a desktop", async () => {
+    useNativePdfViewer.mockReturnValue(true);
     certificatesWith({
       hash: "sha256:ab12",
       filename: "als.pdf",
@@ -96,6 +115,26 @@ describe("PassportCertificatePage", () => {
         `/api/passport/3f2a8c1e/certificates/${opened.name}/attachments/sha256:ab12`,
       ),
     );
+    expect(screen.queryByTestId("pdf-pages")).not.toBeInTheDocument();
+  });
+
+  it("draws an attached PDF page by page on a phone or tablet", async () => {
+    useNativePdfViewer.mockReturnValue(false);
+    certificatesWith({
+      hash: "sha256:ab12",
+      filename: "als.pdf",
+      size_bytes: 1024,
+      media_type: "application/pdf",
+    });
+    renderWithRouter(<PassportCertificatePage />);
+
+    const pages = await screen.findByTestId("pdf-pages");
+    expect(pages).toHaveAttribute("data-name", "als.pdf");
+    expect(pages).toHaveAttribute(
+      "data-url",
+      `/api/passport/3f2a8c1e/certificates/${opened.name}/attachments/sha256:ab12`,
+    );
+    expect(screen.queryByTitle("als.pdf")).not.toBeInTheDocument();
   });
 
   it("shows an attached image as an image", async () => {

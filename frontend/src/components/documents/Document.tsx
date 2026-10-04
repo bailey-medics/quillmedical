@@ -2,14 +2,33 @@
  * Document Component
  *
  * Displays a single document (PDF, Word, image) with an inline viewer.
- * Adjusts PDF display based on screen size for a cleaner mobile experience.
+ *
+ * A PDF is shown one of two ways. A desktop browser frames it in its own
+ * viewer, which brings search, print, zoom and download for nothing.
+ * Phones and tablets cannot do that: Chrome on Android has no viewer
+ * that works in a frame, and Safari on an iPhone draws the first page
+ * only. There the pages are drawn by `PdfPages`, with pdf.js.
+ * `useNativePdfViewer` makes the choice, and `PdfPages` is loaded only
+ * when it is chosen, so a desktop browser never downloads pdf.js.
  */
 
-import React from "react";
-import { Box, Image, Stack, Paper, useMantineTheme } from "@mantine/core";
+import React, { Suspense, lazy } from "react";
+import {
+  Box,
+  Center,
+  Image,
+  Stack,
+  Paper,
+  useMantineTheme,
+} from "@mantine/core";
 import Heading from "@/components/typography/Heading";
 import BodyText from "@/components/typography/BodyText";
+import LoadingSpinner from "@/components/loading-spinner";
 import { useMediaQuery } from "@mantine/hooks";
+import { useNativePdfViewer } from "./useNativePdfViewer";
+import classes from "./Document.module.css";
+
+const PdfPages = lazy(() => import("./PdfPages"));
 
 export interface DocumentProps {
   name: string;
@@ -21,18 +40,13 @@ export interface DocumentProps {
 /**
  * Document component displays a single document (PDF, Word, image, etc.)
  *
- * On smaller screens (below md breakpoint), the browser PDF toolbar is
- * hidden via URL parameters for a cleaner view.
+ * On smaller screens (below md breakpoint) the bordered panel around the
+ * document is dropped, so the document has the full width.
  */
 export const Document: React.FC<DocumentProps> = ({ name, type, url }) => {
   const theme = useMantineTheme();
   const isSmallScreen = useMediaQuery(`(max-width: ${theme.breakpoints.md})`);
-  const isTouchDevice = useMediaQuery("(pointer: coarse)");
-
-  const pdfUrl =
-    type === "pdf" && isSmallScreen
-      ? `${url}#toolbar=0&navpanes=0&view=FitH`
-      : url;
+  const nativePdfViewer = useNativePdfViewer();
 
   const content = (innerChildren: React.ReactNode) =>
     isSmallScreen ? (
@@ -49,41 +63,23 @@ export const Document: React.FC<DocumentProps> = ({ name, type, url }) => {
       {type === "image" ? (
         <Image src={url} alt={name} radius="sm" />
       ) : type === "pdf" ? (
-        isSmallScreen && isTouchDevice ? (
-          <Box
-            style={{
-              overflow: "hidden",
-              width: "100%",
-              height: "calc((100vh - 200px) * 0.667)",
-              minHeight: 267,
-            }}
-          >
-            <Box
-              component="iframe"
-              src={pdfUrl}
-              title={name}
-              style={{
-                width: "150%",
-                height: "calc(100vh - 200px)",
-                minHeight: 400,
-                border: 0,
-                transform: "scale(0.667)",
-                transformOrigin: "top left",
-              }}
-            />
-          </Box>
-        ) : (
+        nativePdfViewer ? (
           <Box
             component="iframe"
-            src={pdfUrl}
+            src={url}
             title={name}
-            style={{
-              width: "100%",
-              height: "calc(100vh - 200px)",
-              minHeight: 400,
-              border: 0,
-            }}
+            className={classes.frame}
           />
+        ) : (
+          <Suspense
+            fallback={
+              <Center>
+                <LoadingSpinner label={`Loading ${name}`} />
+              </Center>
+            }
+          >
+            <PdfPages name={name} url={url} />
+          </Suspense>
         )
       ) : type === "word" ? (
         <Box>
