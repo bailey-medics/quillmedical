@@ -66,7 +66,12 @@ import { installPromptCapture } from "@lib/pwa/installPromptEvent";
 import { markInstallFinished } from "@lib/pwa/installPromptSchedule";
 
 import RootLayout from "./RootLayout";
-import { loadAdmin, loadClinical } from "./featureChunks";
+import {
+  loadAdmin,
+  loadClinical,
+  loadPassport,
+  loadSafety,
+} from "./featureChunks";
 import { lazyFrom } from "@lib/lazyRoute";
 import ErrorBoundary from "@/components/error-boundary/ErrorBoundary";
 import { SCOPED_MANAGER_IDS } from "@/types/cbac";
@@ -183,11 +188,10 @@ const routes: RouteObject[] = [
     children: [
       { path: "/", element: <HomeRedirect /> },
 
-      // Passport – lazily loaded, and gated twice: the organisation
-      // feature, or holding a passport of your own, and the CBAC
-      // competency. Most people who download the
-      // app can never open these, which is why this subtree is the
-      // pilot for code splitting rather than the largest one.
+      // Passport – gated twice: the organisation feature, or holding a
+      // passport of your own, and the CBAC competency. Most people who
+      // download the app can never open these, so the whole feature is
+      // one lazy chunk, pages/passport/passportChunk.ts.
       {
         element: (
           <RequirePassport>
@@ -199,52 +203,52 @@ const routes: RouteObject[] = [
         children: [
           {
             path: "/passport",
-            lazy: () => import("./pages/passport/PassportPage"),
+            lazy: lazyFrom(loadPassport, "PassportPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/passport/sign-offs",
-            lazy: () => import("./pages/passport/PassportSignOffsPage"),
+            lazy: lazyFrom(loadPassport, "PassportSignOffsPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/passport/sign-offs/:name",
-            lazy: () => import("./pages/passport/PassportSignOffDetailPage"),
+            lazy: lazyFrom(loadPassport, "PassportSignOffDetailPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/passport/download",
-            lazy: () => import("./pages/passport/PassportDownloadPage"),
+            lazy: lazyFrom(loadPassport, "PassportDownloadPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/passport/logbook",
-            lazy: () => import("./pages/passport/PassportLogbookPage"),
+            lazy: lazyFrom(loadPassport, "PassportLogbookPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/passport/logbook/:competencyId/:stem",
-            lazy: () => import("./pages/passport/PassportLogbookEntryPage"),
+            lazy: lazyFrom(loadPassport, "PassportLogbookEntryPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/passport/cpd",
-            lazy: () => import("./pages/passport/PassportCpdPage"),
+            lazy: lazyFrom(loadPassport, "PassportCpdPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/passport/cpd/:year/:stem",
-            lazy: () => import("./pages/passport/PassportCpdEntryPage"),
+            lazy: lazyFrom(loadPassport, "PassportCpdEntryPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/passport/reflections",
-            lazy: () => import("./pages/passport/PassportReflectionsPage"),
+            lazy: lazyFrom(loadPassport, "PassportReflectionsPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/passport/reflections/:name",
-            lazy: () => import("./pages/passport/PassportReflectionPage"),
+            lazy: lazyFrom(loadPassport, "PassportReflectionPage"),
             handle: { safeForReload: true },
           },
           // Under Settings in the address and the navigation, but a
@@ -252,29 +256,29 @@ const routes: RouteObject[] = [
           // passport's gates.
           {
             path: "/settings/cpd-date-ranges",
-            lazy: () => import("./pages/settings/CpdDateRangesPage"),
+            lazy: lazyFrom(loadPassport, "CpdDateRangesPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/passport/certificates",
-            lazy: () => import("./pages/passport/PassportCertificatesPage"),
+            lazy: lazyFrom(loadPassport, "PassportCertificatesPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/passport/certificates/:name",
-            lazy: () => import("./pages/passport/PassportCertificatePage"),
+            lazy: lazyFrom(loadPassport, "PassportCertificatePage"),
             handle: { safeForReload: true },
           },
           {
             path: "/passport/inbox",
-            lazy: () => import("./pages/passport/PassportInboxPage"),
+            lazy: lazyFrom(loadPassport, "PassportInboxPage"),
             handle: { safeForReload: true },
           },
           {
             // An in-progress sign-off holds a half-written assessment,
             // so a silent reload would discard it.
             path: "/passport/sign-off/:signOffId",
-            lazy: () => import("./pages/passport/PassportSignOffPage"),
+            lazy: lazyFrom(loadPassport, "PassportSignOffPage"),
           },
         ],
       },
@@ -296,74 +300,74 @@ const routes: RouteObject[] = [
         children: [
           {
             path: "/safety",
-            lazy: () => import("./pages/safety/SafetyPage"),
+            lazy: lazyFrom(loadSafety, "SafetyPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/safety/:caseId",
-            lazy: () => import("./pages/safety/SafetyCasePage"),
+            lazy: lazyFrom(loadSafety, "SafetyCasePage"),
             handle: { safeForReload: true },
           },
           {
             path: "/safety/:caseId/documentation",
-            lazy: () => import("./pages/safety/SafetyDocumentationPage"),
+            lazy: lazyFrom(loadSafety, "SafetyDocumentationPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/safety/:caseId/documentation/:documentId",
-            lazy: () => import("./pages/safety/SafetyDocumentPage"),
+            lazy: lazyFrom(loadSafety, "SafetyDocumentPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/safety/:caseId/documentation/:documentId/edit",
-            lazy: () => import("./pages/safety/SafetyDocumentEditPage"),
+            lazy: lazyFrom(loadSafety, "SafetyDocumentEditPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/safety/:caseId/hazards",
-            lazy: () => import("./pages/safety/SafetyHazardsPage"),
+            lazy: lazyFrom(loadSafety, "SafetyHazardsPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/safety/:caseId/hazards/:hazardId",
-            lazy: () => import("./pages/safety/SafetyHazardPage"),
+            lazy: lazyFrom(loadSafety, "SafetyHazardPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/safety/:caseId/incidents",
-            lazy: () => import("./pages/safety/SafetyIncidentsPage"),
+            lazy: lazyFrom(loadSafety, "SafetyIncidentsPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/safety/:caseId/incidents/:incidentId",
-            lazy: () => import("./pages/safety/SafetyIncidentPage"),
+            lazy: lazyFrom(loadSafety, "SafetyIncidentPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/safety/:caseId/officers",
-            lazy: () => import("./pages/safety/SafetyOfficersPage"),
+            lazy: lazyFrom(loadSafety, "SafetyOfficersPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/safety/:caseId/sign-off",
-            lazy: () => import("./pages/safety/SafetySignOffPage"),
+            lazy: lazyFrom(loadSafety, "SafetySignOffPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/safety/:caseId/sign-off/:sectionId",
-            lazy: () => import("./pages/safety/SafetySignOffDetailPage"),
+            lazy: lazyFrom(loadSafety, "SafetySignOffDetailPage"),
             handle: { safeForReload: true },
           },
           {
             path: "/safety/:caseId/placeholders",
-            lazy: () => import("./pages/safety/SafetyPlaceholdersPage"),
+            lazy: lazyFrom(loadSafety, "SafetyPlaceholdersPage"),
             handle: { safeForReload: true },
           },
           {
             // A form, but one that starts from the stored values, so a
             // reload loses nothing that was not already lost.
             path: "/safety/:caseId/placeholders/edit",
-            lazy: () => import("./pages/safety/SafetyPlaceholdersEditPage"),
+            lazy: lazyFrom(loadSafety, "SafetyPlaceholdersEditPage"),
             handle: { safeForReload: true },
           },
         ],
@@ -814,7 +818,7 @@ const routes: RouteObject[] = [
     ],
   },
 
-  // Passport – the app's first lazily-loaded subtree.
+  // Passport – the two public pages, in the same lazy chunk as the rest.
   //
   // Two routes sit out here rather than inside RequireAuth: the invite
   // landing, which somebody with no Quill account at all must be able to
@@ -828,12 +832,12 @@ const routes: RouteObject[] = [
   // unsafe-by-default and stop it receiving updates.
   {
     path: "/passport/assessors/accept",
-    lazy: () => import("./pages/passport/PassportAcceptInvitePage"),
+    lazy: lazyFrom(loadPassport, "PassportAcceptInvitePage"),
     handle: { safeForReload: true },
   },
   {
     path: "/passport/verify/:signOffId",
-    lazy: () => import("./pages/passport/PassportVerifyPage"),
+    lazy: lazyFrom(loadPassport, "PassportVerifyPage"),
     handle: { safeForReload: true },
   },
 

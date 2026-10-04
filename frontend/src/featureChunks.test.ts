@@ -20,7 +20,19 @@ const CHUNKS = [
     loader: "loadClinical",
     file: "pages/clinical/clinicalChunk.ts",
   },
+  {
+    name: "passport",
+    loader: "loadPassport",
+    file: "pages/passport/passportChunk.ts",
+  },
+  { name: "safety", loader: "loadSafety", file: "pages/safety/safetyChunk.ts" },
 ] as const;
+
+// The rule the plan sets: a feature is one lazy chunk, never one per page.
+// A bare `import()` in a route is a per-page chunk.
+it("gives no route in main.tsx a lazy import of its own", () => {
+  expect(mainSource).not.toMatch(/lazy:\s*\(\)\s*=>\s*import\(/);
+});
 
 describe.each(CHUNKS)("the $name chunk", ({ loader, file }) => {
   it("exports nothing but page components", async () => {

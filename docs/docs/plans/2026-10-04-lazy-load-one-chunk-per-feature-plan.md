@@ -209,23 +209,42 @@ arrive.
 
 ## Phase 4: Passport and safety become one chunk each
 
-- [ ] **Create `frontend/src/pages/passport/passportChunk.ts`** re-exporting each
+- [x] **Create `frontend/src/pages/passport/passportChunk.ts`** re-exporting each
       page's `Component` under its own name
       (`export { Component as PassportPage } from "./PassportPage"`), and
       point all sixteen passport routes at it with `lazyFrom`. Include
       `CpdDateRangesPage` from `pages/settings/`, which is routed inside the
       passport block and is the only other per-page chunk in the app. The
       pages keep exporting `Component`, so their tests do not change.
-- [ ] **Include the two public routes, `/passport/assessors/accept` and
+- [x] **Include the two public routes, `/passport/assessors/accept` and
       `/passport/verify/:signOffId`**, in the same chunk. See Decisions.
-- [ ] **Do the same for safety** in `frontend/src/pages/safety/safetyChunk.ts`,
+- [x] **Do the same for safety** in `frontend/src/pages/safety/safetyChunk.ts`,
       for its fourteen routes. It is a throwaway mock-up, but leaving it
       per page would leave the one counter-example somebody copies next.
-- [ ] **Rewrite the passport comments in `main.tsx`** that call it "the
+- [x] **Rewrite the passport comments in `main.tsx`** that call it "the
       pilot for code splitting" and "the app's first lazily-loaded
       subtree". Keep the warning that `handle` stays on the route object.
-- [ ] **Measure and record.** The entry chunk should not change. What
+- [x] **Measure and record.** The entry chunk should not change. What
       should change is the count: thirty-one page chunks become two.
+      - **Measured 4 October.** `passportChunk` is 71.22 kB raw and
+        18.23 kB gzipped, holding 17 pages; `safetyChunk` is 45.34 kB raw
+        and 12.22 kB gzipped, holding 14. No per-page chunk is left
+        anywhere in the build.
+      - **The entry did change, which this step said it would not.**
+        First load fell from 384.46 to **371.49 kB gzipped**, and from 41
+        files to 13. On demand fell from 78 files to 28. With thirty-one
+        page chunks each sharing a different handful of components, the
+        bundler had cut dozens of small shared files and preloaded most
+        of them. With four feature chunks there is far less to share
+        out, so the fragments collapsed back into a few larger files.
+        Fewer requests on first load as well as fewer bytes.
+      - **The 5 kB `passport` file in first load, noted in Phase 1, was
+        one of those fragments**, not passport pages leaking into first
+        load. It is gone. What remains is `specialties`, 4.04 kB gzipped:
+        the passport specialties list from `shared/`, which something in
+        first load imports. Small, and left alone.
+      - **`featureChunks.test.ts` now carries the rule itself**: it fails
+        if any route in `main.tsx` has a bare `lazy: () => import(…)`.
 
 ## Phase 5: Teaching
 
