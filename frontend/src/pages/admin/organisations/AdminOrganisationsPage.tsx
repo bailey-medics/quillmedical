@@ -3,7 +3,7 @@
  *
  * Displays all registered organisations in a table format.
  * Allows administrators to view organisation details and navigate to organisation admin pages.
- * Includes an "Add organisation" button to create new organisations.
+ * An operator gets an "Add organisation" icon in the table's own row.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -12,10 +12,10 @@ import { Skeleton, Stack } from "@mantine/core";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import PageHeader from "@/components/page-header";
 import { usePageMessage } from "@/components/page-message";
-import AddButton from "@/components/button/AddButton";
+import ExtraButton from "@/components/button/ExtraButton";
 import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import { ConfirmModal } from "@/components/confirm-modal";
-import { IconTrash } from "@/components/icons/appIcons";
+import { IconHomePlus, IconTrash } from "@/components/icons/appIcons";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import { orgUnits, type OrgUnit } from "@/domains/orgUnit";
@@ -183,19 +183,20 @@ export default function AdminOrganisationsPage() {
 
   return (
     <Stack gap="lg">
-      <PageHeader
-        title="Organisations"
+      <PageHeader title="Organisations" />
+
+      <DataTableControlled
+        // Adding sits with the table's own search and filter icons, as
+        // it does for users, rather than as a button in the header.
         action={
           isSuperadmin && (
-            <AddButton
-              label="Add organisation"
+            <ExtraButton
+              aria-label="Add organisation"
+              icon={<IconHomePlus />}
               onClick={() => navigate("/admin/organisations/new")}
             />
           )
         }
-      />
-
-      <DataTableControlled
         data={organisations}
         columns={columns}
         onRowClick={(org) => navigate(`/admin/organisations/${org.id}`)}

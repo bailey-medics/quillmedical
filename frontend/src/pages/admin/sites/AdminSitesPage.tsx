@@ -16,7 +16,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
-import AddButton from "@/components/button/AddButton";
+import ExtraButton from "@/components/button/ExtraButton";
+import { IconHomePlus } from "@/components/icons/appIcons";
 import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import { orgUnits, type OrgUnit } from "@/domains/orgUnit";
@@ -131,21 +132,22 @@ export default function AdminSitesPage() {
 
   return (
     <Stack gap="lg">
-      <PageHeader
-        title="Sites"
+      <PageHeader title="Sites" />
+
+      <DataTableControlled
+        // Adding sits with the table's own search and filter icons, as
+        // it does for users, rather than as a button in the header.
         action={
           // Matching the route guard on the create form: a link to a
           // page that 404s is worse than no link.
           isOperator && (
-            <AddButton
-              label="Add site"
+            <ExtraButton
+              aria-label="Add site"
+              icon={<IconHomePlus />}
               onClick={() => navigate("/admin/sites/new")}
             />
           )
         }
-      />
-
-      <DataTableControlled
         data={sites}
         columns={columns}
         onRowClick={(place) => navigate(`/admin/sites/${place.id}`)}
