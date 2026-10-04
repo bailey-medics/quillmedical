@@ -1760,8 +1760,9 @@ stack-watch:
         # `stack-sync`, for when a pull request below has merged; `u`, `d`,
         # `t` and `b` are `stack-move` up, down, to the top and to the
         # bottom, which changes the branch checked out; `f` refreshes the
-        # stack now rather than at the end of the minute, and so does any
-        # key that is none of these.
+        # stack now rather than at the end of the minute. Any other key
+        # does nothing, so a stray keypress in the wrong window costs no
+        # call to GitHub.
         #
         # No confirmation on any of them, by choice. Marking ready starts
         # the heavy CI tier on every branch, a sync rebases and pushes the
@@ -1781,10 +1782,38 @@ stack-watch:
         # which a keypress that showed nothing read as one that was missed.
         # Silent reading also keeps an arrow key from printing its escape
         # sequence. A timeout is not a keypress, so it says nothing.
+        #
+        # A key that is not listed is thrown away and the wait carries on
+        # for what is left of the minute, counted against a deadline so
+        # that leaning on the keyboard cannot put the redraw off for ever.
+        # An escape opens the sequence an arrow or function key sends, and
+        # its tail can end in a listed letter (the down arrow is `ESC [ B`,
+        # which would move the checkout to the bottom of the stack), so
+        # the rest of the sequence is drained before reading again.
         key=""
-        pressed=0
-        read -rsn1 -t 60 key || pressed=$?
-        if [ "${pressed}" -ne 0 ]; then
+        deadline=$((SECONDS + 60))
+        while true; do
+            remaining=$((deadline - SECONDS))
+            if [ "${remaining}" -le 0 ]; then
+                key=""
+                break
+            fi
+            pressed=0
+            read -rsn1 -t "${remaining}" key || pressed=$?
+            if [ "${pressed}" -ne 0 ]; then
+                key=""
+                break
+            fi
+            case "${key}" in
+                r|R|s|S|u|U|d|D|t|T|b|B|f|F)
+                    break
+                    ;;
+                $'\e')
+                    while read -rsn1 -t 1 _; do :; done
+                    ;;
+            esac
+        done
+        if [ -z "${key}" ]; then
             continue
         fi
         # Whichever key it was, the dots run on into the fetch at the top
@@ -1817,8 +1846,8 @@ stack-watch:
                 start_dots "b · moving to the bottom of the stack"
                 ;;
             *)
-                # `f`, and anything else: refresh it now.
-                start_dots "refreshing"
+                # Only `f` reaches here: the read above drops the rest.
+                start_dots "f · refreshing"
                 continue
                 ;;
         esac
