@@ -63,6 +63,7 @@ from app.org_units.relations import (
     validate_org_unit_relation,
 )
 from app.org_units.tree import (
+    organisation_org_unit_ids,
     would_make_a_cycle,
 )
 from app.org_units.types import (
@@ -155,6 +156,15 @@ DEP_REQUIRE_MANAGE_PRACTISING_OR_SCOPED = Depends(
 
 
 router = APIRouter(prefix="/org-units", tags=["org-units"])
+
+#: Features that are switched on for an organisation and nowhere else.
+#:
+#: Teaching: a question bank is set live for an organisation and reaches
+#: its sites from there, and assessments are recorded against it. On a
+#: site the switch let its members in and gave them nothing, with no way
+#: to open a bank for them. Kept in step with the same list in the
+#: frontend's ``OrgFeaturesPage``.
+ORGANISATION_ONLY_FEATURES: frozenset[str] = frozenset({"teaching"})
 
 
 # ------------------------------------------------------------------
@@ -1616,6 +1626,10 @@ def set_org_unit_feature(
     reaches is decided by who is a member there, not by what the org_unit
     is called.
 
+    ``ORGANISATION_ONLY_FEATURES`` are the exception: one of those is
+    switched on for an organisation alone. Switching one off is allowed
+    anywhere, so a site that already has it can be put right.
+
     Requires ``manage_users`` at an org_unit the caller may administer, which
     is what the organisations surface has always asked. An operator-only
     gate here would have taken a working thing away from every admin the
@@ -1646,6 +1660,20 @@ def set_org_unit_feature(
     if body.enabled:
         if existing is not None:
             return OrgUnitStatusOut(status="already_enabled")
+        if (
+            feature_key in ORGANISATION_ONLY_FEATURES
+            and db.scalar(
+                organisation_org_unit_ids().where(OrgUnit.id == unit_id)
+            )
+            is None
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "That feature is switched on for an organisation, "
+                    "and reaches its sites from there."
+                ),
+            )
         if feature_key == COVER_FEATURE and not _has_feature(
             db, unit_id, "passport"
         ):

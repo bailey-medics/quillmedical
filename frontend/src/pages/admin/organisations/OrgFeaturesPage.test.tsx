@@ -661,6 +661,78 @@ describe("OrgFeaturesPage", () => {
     });
   });
 
+  describe("Teaching on a site", () => {
+    const site = {
+      ...mockOrg,
+      name: "Cheltenham oncology",
+      type: "site",
+      is_root: false,
+      parent_id: 1,
+    };
+
+    function renderSitePage() {
+      renderWithRouter(<OrgFeaturesPage parentPath="sites" />, {
+        routePath: "/admin/sites/:id/features",
+        initialRoute: "/admin/sites/3/features",
+      });
+    }
+
+    it("is not offered, since it is switched on for an organisation", async () => {
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ ...site, features: [] });
+
+      renderSitePage();
+
+      expect(await screen.findByText("Clinician passport")).toBeInTheDocument();
+      expect(screen.queryByText("Teaching")).not.toBeInTheDocument();
+    });
+
+    it("is still shown where it is already on, so it can be switched off", async () => {
+      const user = userEvent.setup();
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({
+        ...site,
+        features: ["teaching"],
+      });
+      const put = vi
+        .spyOn(apiLib.api, "put")
+        .mockResolvedValue({ status: "disabled" });
+
+      renderSitePage();
+
+      await user.click(
+        await screen.findByRole("switch", { name: "Toggle Teaching" }),
+      );
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+      await user.click(await screen.findByRole("button", { name: "Confirm" }));
+
+      await waitFor(() =>
+        expect(put).toHaveBeenCalledWith("/org-units/3/features/teaching", {
+          enabled: false,
+        }),
+      );
+    });
+
+    it("leaves the other switches saving as before", async () => {
+      const user = userEvent.setup();
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({ ...site, features: [] });
+      const put = vi
+        .spyOn(apiLib.api, "put")
+        .mockResolvedValue({ status: "enabled" });
+
+      renderSitePage();
+
+      await user.click(
+        await screen.findByRole("switch", { name: "Toggle Messaging" }),
+      );
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+      await user.click(await screen.findByRole("button", { name: "Confirm" }));
+
+      await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
+      expect(put).toHaveBeenCalledWith("/org-units/3/features/messaging", {
+        enabled: true,
+      });
+    });
+  });
+
   describe("On a site", () => {
     it("goes back to the site on cancel", async () => {
       const user = userEvent.setup();
