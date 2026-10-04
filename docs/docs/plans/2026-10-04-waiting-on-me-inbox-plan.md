@@ -55,37 +55,37 @@ that works while nobody is in the application.
 
 ## Phase 2: A shared envelope
 
-- [ ] Move `InboxButton` from `frontend/src/components/passport/` to
+- [x] Move `InboxButton` from `frontend/src/components/passport/` to
       `frontend/src/components/inbox/`, with its stylesheet, stories and
       test. It already does what is wanted: an envelope that turns amber
       while anything waits, a count capped at "9+", and nothing drawn at
       zero.
 
-- [ ] Replace its fixed label, "Sign-off requests for me to assess", with
+- [x] Replace its fixed label, "Sign-off requests for me to assess", with
       a `label` prop, and keep the count in the accessible name. The
       passport page passes its present wording, so that page does not
       change in this phase.
 
 ## Phase 3: One answer to "what is waiting on me?"
 
-- [ ] Add `GET /api/inbox`, in a new `backend/app/inbox/` module, for any
+- [x] Add `GET /api/inbox`, in a new `backend/app/inbox/` module, for any
       signed-in user. It returns a typed list of sources, each with a
       `source` key and a `count`, and the total. A source with nothing
       waiting is left out.
 
-- [ ] Each source is a function registered in that module, taking the
+- [x] Each source is a function registered in that module, taking the
       user and the session and returning a count. **Nothing is copied
       into an inbox table.** Each feature already knows what is waiting
       and answers from its own rows, so the count cannot drift from the
       thing it counts. Something is waiting until it is dealt with, and
       each source says what "dealt with" means.
 
-- [ ] The first source is `feedback_new`: for an operator, the number of
+- [x] The first source is `feedback_new`: for an operator, the number of
       `feedback` rows whose status is `new`. Anybody else gets nothing
       from it. It clears when the item is acknowledged, resolved or
       marked won't fix, never merely by being opened.
 
-- [ ] Tests: an operator's count follows the status, somebody who is not
+- [x] Tests: an operator's count follows the status, somebody who is not
       an operator gets an empty list, and a signed-out caller is refused.
 
 ## Phase 4: The envelope in the ribbon

@@ -18,7 +18,7 @@ import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/page-header";
 import ActionCard from "@/components/action-card";
 import AddButton from "@/components/button/AddButton";
-import InboxButton from "@/components/passport/InboxButton";
+import InboxButton from "@/components/inbox/InboxButton";
 import SpecialtyField from "@/components/passport/SpecialtyField";
 import PassportRecordTable from "@/components/passport/PassportRecordTable";
 import StateMessage from "@/components/message-cards/StateMessage";
@@ -131,7 +131,13 @@ function PassportHeader({
   return (
     <PageHeader
       title="My passport"
-      action={<InboxButton count={waiting} onClick={onInbox} />}
+      action={
+        <InboxButton
+          label="Sign-off requests for me to assess"
+          count={waiting}
+          onClick={onInbox}
+        />
+      }
       actionAlign="center"
     />
   );
