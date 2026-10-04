@@ -29,6 +29,18 @@ paths:
   - For standalone buttons, wrap in `<Group justify="flex-end">` to right-align.
   - Page-header actions (`AddButton`, or any button or badge beside the title) go in `PageHeader`'s `action` prop, never in a hand-built `<Group justify="space-between">`. `PageHeader` keeps the action on the right, including when a narrow screen wraps it under the title, which a `space-between` group does not. Pass `actionAlign="center"` for something shorter than the title, such as a badge. Actions stay fixed-width at all viewports.
   - A table's own action (an "Add" or "Grant" button that acts on that table) goes in `DataTableControlled`'s `action` prop, which puts it in the row with search and filter, before them. The row wraps on a narrow screen and stays right-aligned.
+- **A disabled control keeps the ordinary pointer.** Never give one
+  `cursor: not-allowed`, the "no entry" sign: not a button, an input, a
+  checkbox, a radio, a switch, an option in a list, a tab or anything
+  else. A control here is disabled far more often because something is
+  under way or already done ("Sending…", "Sent", a list still loading)
+  than because somebody may not use it, and the sign reads as a refusal.
+  The greyed-out look already says it will not act.
+  `src/styles/disabled-controls.css` overrides Mantine's default for
+  every Mantine control, by state, and is loaded by the app and by
+  Storybook. A component that styles its own disabled state sets
+  `cursor: "default"`. Something in progress is better shown with a
+  button's `loading` state than by disabling it.
 
 ## Colours
 
