@@ -251,16 +251,26 @@ screenshots are made by a script and never by hand.
       path rules are one list, and a mistake there has taken the API down
       before.
 
-- [ ] Add a workflow that runs after a merge to `main` touching
-      `frontend/src/**` or `frontend/e2e/guides/**`: bring up the CI
-      stack, run the project, sync the images to the bucket. Separate from
+- [x] Add `.github/workflows/guide-screenshots.yml`, which runs after a
+      merge to `main` that touches `frontend/src/**`, the guide specs, the
+      seed or the workflow itself, and by hand. It brings up the CI stack,
+      takes the screenshots in Microsoft's Playwright image as the
+      end-to-end job does, and mirrors them to the bucket with
+      `.github/scripts/guide-screenshots/upload-to-gcs.sh`. Separate from
       `deploy.yml`, so a broken screenshot script never blocks a release.
-      Authenticate with Workload Identity Federation as
-      `public-site.yml` does.
+      It authenticates with Workload Identity Federation as
+      `public-site.yml` does. The upload removes what no guide shows any
+      more, so the script refuses to run on an empty set, and its `.bats`
+      test holds it to that.
 
-- [ ] A failed run posts to Slack through `slack-notify.yml`. It is
+- [x] A failed run posts to Slack through `slack-notify.yml`. It is
       worth reading: a spec that can no longer find a button means the
       words of that guide are out of date too.
+
+- [ ] The workflow cannot be tried before it merges: a workflow file runs
+      only from `main`. After the merge, run it once by hand, open
+      `/guides/join-a-course` on the live site and check the pictures are
+      there. Until then every image is its alt text in a dashed box.
 
 ## Phase 4: Write the guides
 
