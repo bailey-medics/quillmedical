@@ -14,6 +14,7 @@
 
 import { Stack } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
+import { GuideLink } from "@/components/guides";
 import PageHeader from "@/components/page-header";
 import ExtraButton from "@/components/button/ExtraButton";
 import SafetyCaseTable from "@/components/safety/SafetyCaseTable";
@@ -30,6 +31,7 @@ export function Component() {
         Demonstration safety cases. Nothing here is a real system, person or
         incident.
       </BodyText>
+      <GuideLink slug="find-your-way-round-a-safety-case" />
       <SafetyCaseTable
         // For show only, by request: there is no form behind it. See
         // Phases 15 and 17 of the plan.
