@@ -1,12 +1,12 @@
 # See delegates' results
 
-The **All delegates** page shows who has attempted a module, how far they
+The [**All delegates**](/admin/teaching/all-delegates) page shows who has attempted a module, how far they
 have got and whether they passed. It lists the delegates in your own
 organisations.
 
 ## Open the page
 
-1. In the side menu, choose **Admin**, then **Teaching**.
+1. In the side menu, choose [**Admin**](/admin), then [**Teaching**](/admin/teaching).
    ![The Teaching page under Admin, with the All delegates card](see-delegates-results/teaching-admin.png)
 2. On the **All delegates** card, press **View delegates**.
    ![The All delegates page](see-delegates-results/all-delegates.png)

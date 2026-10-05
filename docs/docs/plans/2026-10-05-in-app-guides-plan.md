@@ -211,7 +211,7 @@ screenshots are made by a script and never by hand.
       teaching admin the end-to-end tests already use. Every name on
       screen is then seeded and fake by construction.
 
-- [ ] The seed has an organisation and no site, so the screenshot of the
+- [x] The seed has an organisation and no site, so the screenshot of the
       "Organisation/site" step shows an organisation chosen where the
       guide's words say to choose a site, and everything is named "CI
       Teaching Hospital". Seeding a site and friendlier names would fix
@@ -303,7 +303,7 @@ not revisited.
       And `register` stores an email as typed while `resend-verification`
       looks it up in lower case, so a mixed-case address may never be sent
       a second link. The last was not traced to the end.
-- [ ] "See delegates' results" has less to describe than its title
+- [x] "See delegates' results" has less to describe than its title
       suggests: a row of the All delegates table does not open anything,
       so there is no page of one delegate's results to send an admin to.
 - [x] Enrolment landed on `main` while this plan was being built, from
@@ -318,7 +318,7 @@ not revisited.
       later. Found only because the next run read `seed_ci.py`: nothing
       failed, since the specs are not run in CI. The workflow of Phase 3
       is what would have said so, once it is on `main`.
-- [ ] Setting up a superadmin is deliberately not a guide. It happens at a
+- [x] Setting up a superadmin is deliberately not a guide. It happens at a
       command line before anybody can sign in, and is already written up in
       `docs/docs/infrastructure/admin.md`.
 
@@ -600,7 +600,7 @@ a clinical lead. Whichever phase is built first adds the seed.
       CI can clone without a token. The guide says so in a line above the
       first exam picture.
 
-- [ ] Link every page a guide names to that page. Asked for on 5 October
+- [x] Link every page a guide names to that page. Asked for on 5 October
       2026. Where a guide says "choose **Admin**, then **Users**", **Users**
       becomes a link to `/admin/users`, so a reader who knows where they
       are going gets there in one press, and one who does not still has
@@ -611,23 +611,24 @@ a clinical lead. Whichever phase is built first adds the seed.
       `/teaching/learn/*`; and an assessment, `/teaching/assessment/*`,
       which must never be entered by a stray press on a link.
 
-- [ ] Keep the bold with the link, `[**Users**](/admin/users)`, so a
+- [x] Keep the bold with the link, `[**Users**](/admin/users)`, so a
       page's name still reads as what is on the screen. Check
       `MarkdownView` draws bold inside a link; its link pass runs before
       its bold pass, so it should.
 
-- [ ] Hold the links to the route list with a test in
+- [x] Hold the links to the route list with a test in
       `frontend/src/guides/`: every link in a guide that starts with `/`
       matches a route in `frontend/src/routes.tsx`, and none matches a
       route with a `:parameter` in it or one under `/teaching/learn` or
       `/teaching/assessment`. A page that is renamed or removed then
       fails the build where a guide still points at it.
 
-- [ ] A link in the public guide to a signed-in page sends a signed-out
+- [x] A link in the public guide to a signed-in page sends a signed-out
       reader to the login form, which is right. "Join a course" links
-      only to `/register` and `/login` today and needs nothing more.
+      to `/register`, `/login` and, for where a delegate lands after
+      signing in, `/teaching`.
 
-- [ ] Add the rule to `docs/docs/frontend/guides.md`, under writing the
+- [x] Add the rule to `docs/docs/frontend/guides.md`, under writing the
       markdown file.
 
 - [ ] `just guide-screenshots` was run and every picture looked at. Read

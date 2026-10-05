@@ -1,6 +1,6 @@
 # Add a delegate by hand
 
-Most delegates register themselves. Use this guide for somebody who
+Most delegates [register themselves](/guides/join-a-course). Use this guide for somebody who
 cannot, or whose account you would rather set up for them.
 
 ## Before you start
@@ -14,10 +14,10 @@ Have these to hand:
 
 ## Open the new user form
 
-1. In the side menu, choose **Admin**, then **Users**.
+1. In the side menu, choose [**Admin**](/admin), then [**Users**](/admin/users).
 2. Press the **Add user** button, beside the search box above the list. It is an icon with no words.
    ![The list of users, with the Add user button above it](add-a-delegate-by-hand/users.png)
-3. The **Create new user** page opens.
+3. The [**Create new user**](/admin/users/new) page opens.
 
 ## Fill in the six steps
 
@@ -41,13 +41,13 @@ You are taken back to the list of users, with the message **User created**.
 Quill does not email a new delegate by itself. Do one of these:
 
 - Give them the username and the initial password yourself.
-- Send an invite. In **Users**, choose the delegate, then under **Actions** press **Send** on the **Send invite email** card. They are emailed a link to set up their own password.
+- Send an invite. In [**Users**](/admin/users), choose the delegate, then under **Actions** press **Send** on the **Send invite email** card. They are emailed a link to set up their own password.
 
 Once signed in, the delegate sees the modules you ticked.
 
 ## Add a module later
 
-1. Choose **Admin**, then **Sites**, and open the delegate's site.
+1. Choose [**Admin**](/admin), then [**Sites**](/admin/sites), and open the delegate's site.
 2. Choose the delegate from the list of staff.
 3. Tick the module, then press **Save enrolment**.
 
@@ -58,4 +58,4 @@ reason.
 
 - **Choose at least one organisation or site.** Press **Back** until you reach step 2, and choose the delegate's site.
 - **Username already exists.** Choose a different username.
-- **Email already exists.** They already have a Quill account. Add them to the site as staff instead: choose **Admin**, then **Sites**, open the site and press **Add staff**.
+- **Email already exists.** They already have a Quill account. Add them to the site as staff instead: choose [**Admin**](/admin), then [**Sites**](/admin/sites), open the site and press **Add staff**.

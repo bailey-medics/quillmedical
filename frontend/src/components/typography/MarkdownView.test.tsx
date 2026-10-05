@@ -155,6 +155,15 @@ describe("MarkdownView", () => {
       expect(link?.getAttribute("href")).toBe("https://example.com");
     });
 
+    it("keeps bold inside a link, as a guide names a page", () => {
+      const { container } = renderWithMantine(
+        <MarkdownView source="Choose [**Users**](/admin/users)." />,
+      );
+      const link = container.querySelector("a");
+      expect(link?.getAttribute("href")).toBe("/admin/users");
+      expect(link?.querySelector("strong")?.textContent).toBe("Users");
+    });
+
     it("adds security attributes to links", () => {
       const { container } = renderWithMantine(
         <MarkdownView source="[Link](https://example.com)" />,

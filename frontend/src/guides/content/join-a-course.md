@@ -9,7 +9,7 @@ things:
 
 ## Choose your module
 
-1. Open the [register page](/register). You can also reach it from the sign-in page, by choosing **Don't have an account? Register**.
+1. Open the [register page](/register). You can also reach it from the [sign-in page](/login), by choosing **Don't have an account? Register**.
 2. Under **Teaching module**, choose the module you are joining.
 3. Under **Clinical lead email address**, type your clinical lead's email address. This is how Quill knows which site you belong to.
 4. Press **Continue**.
@@ -41,4 +41,4 @@ emails you a fresh link.
 
 1. Enter your **Username** and **Password**, and press **Sign in**.
    ![The sign-in page](join-a-course/sign-in.png)
-2. You arrive at **Teaching modules**. Press **View module** to begin.
+2. You arrive at [**Teaching modules**](/teaching). Press **View module** to begin.
