@@ -210,6 +210,8 @@ import SideNavContent from "./SideNavContent";
  */
 const SIGNED_OUT = "Shown to somebody who is not signed in: there is no menu.";
 const NO_LINK: Record<string, string> = {
+  "/inbox":
+    "Reached from the envelope in the top ribbon, which is on every page. A menu link that came and went with the page was tried and taken out.",
   "/login": SIGNED_OUT,
   "/register": SIGNED_OUT,
   "/teaching/register/:module": SIGNED_OUT,
@@ -248,7 +250,6 @@ const NESTS_UNDER: Record<string, string> = {
   "/safety/:caseId/documentation/:documentId/edit":
     "/safety/:caseId/documentation",
   // Signing somebody off is opened from the inbox.
-  "/passport/sign-off/:signOffId": "/passport/inbox",
 };
 
 /**

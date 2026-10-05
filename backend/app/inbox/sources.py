@@ -18,6 +18,7 @@ and its address in the frontend's ``lib/inbox``. See
 ``docs/docs/plans/2026-10-04-waiting-on-me-inbox-plan.md``.
 """
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -25,6 +26,7 @@ from datetime import datetime
 from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.features.passport import definitions, service
 from app.features.passport.models import Passport, PassportSignOffRequest
 from app.feedback.labels import (
     CATEGORY_LABELS,
@@ -33,6 +35,9 @@ from app.feedback.labels import (
 )
 from app.feedback.replies import reply_is_unseen
 from app.models import Feedback, User
+from app.passport_storage import get_passport_store
+
+logger = logging.getLogger(__name__)
 
 #: The most lines one source gives of either kind. The inbox is for what
 #: is in hand and what was lately done, not an archive: each feature's
@@ -52,6 +57,8 @@ class InboxLine:
         status: Where it has got to, in words, or None.
         created_at: When it arrived.
         done: Whether it has been dealt with.
+        ref: The feature's own name for it, where its page is addressed
+            by a name and not by ``id``.
     """
 
     id: int
@@ -60,6 +67,7 @@ class InboxLine:
     status: str | None
     created_at: datetime
     done: bool
+    ref: str | None = None
 
 
 @dataclass(frozen=True)
@@ -185,6 +193,42 @@ _REQUEST_STATUS_LABELS: dict[str, str] = {
 }
 
 
+def _competency_name(competency_id: str) -> str | None:
+    """A passport competency's name, or None for one since retired."""
+    try:
+        return definitions.competency_ref(competency_id).name
+    except definitions.UnknownCompetencyError:
+        return None
+
+
+def _record_id(request: PassportSignOffRequest) -> str | None:
+    """The sign-off record's own id, which its page is addressed by.
+
+    The request row holds the record's folder name, and that is unique
+    only within one passport: two holders asking about the same
+    competency on the same day have the same name. The record's own id
+    is unique across all of them, and it is inside the record, so the
+    record is read for it, as the passport's own list of requests does.
+
+    None when the record cannot be read. The line is still listed, with
+    nowhere to go: one broken request must not hide the rest, and the
+    assessor should still see they were asked.
+    """
+    try:
+        record = service.read_sign_off(
+            get_passport_store(), request.passport_id, request.signoff_id
+        )
+    except Exception:
+        # Broad on purpose: a missing record and a store that cannot be
+        # reached end the same way for a line in a list.
+        logger.warning(
+            "Sign-off request %s names a record that could not be read",
+            request.id,
+        )
+        return None
+    return record.id
+
+
 def _asked_of(user: User) -> ColumnElement[bool] | None:
     """The sign-off requests that name *user* as assessor, or None.
 
@@ -226,8 +270,11 @@ def _sign_off_count(db: Session, user: User) -> int:
 def _sign_off_lines(db: Session, user: User, done: bool) -> list[InboxLine]:
     """Sign-off requests asked of the caller: open, or already answered.
 
-    The line names the clinician who asked. What they asked to be signed
-    off for, and the evidence, are read in the passport itself.
+    The line names the clinician who asked and the competency they
+    asked about, as the catalogue names it. The evidence is read on the
+    sign-off page, which ``ref`` addresses by the record's own id. Only
+    an open request has one: once it is answered there is no page for
+    the assessor to open, and no record is read.
     """
     asked = _asked_of(user)
     if asked is None:
@@ -256,8 +303,9 @@ def _sign_off_lines(db: Session, user: User, done: bool) -> list[InboxLine]:
         InboxLine(
             id=request.id,
             title=f"Sign-off request from {full_name or username}",
-            detail=None,
+            detail=_competency_name(request.competency_id),
             status=_REQUEST_STATUS_LABELS.get(request.status),
+            ref=None if done else _record_id(request),
             created_at=(
                 (request.resolved_at or request.created_at)
                 if done

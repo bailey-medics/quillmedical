@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -130,6 +131,7 @@ class TestTheLines:
         assert items[1] == {
             "source": "feedback_new",
             "id": older.id,
+            "ref": None,
             "title": f"Feedback from {test_user.username}",
             "detail": "Something is broken",
             "status": "New",
@@ -271,22 +273,51 @@ class TestSignOffRequests:
         authenticated_client: TestClient,
         db_session: Session,
         assessor: User,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         passport = _holder(db_session)
         row = _request(db_session, passport, assessor.email)
+        read: list[tuple[str, str]] = []
+
+        def record(store: object, passport_id: str, name: str) -> object:
+            read.append((passport_id, name))
+            return SimpleNamespace(id="20261003T045520.838Z-ee579e99")
+
+        monkeypatch.setattr(sources.service, "read_sign_off", record)
 
         items = authenticated_client.get(ITEMS).json()["items"]
 
+        assert read == [(passport.id, "chest-drain")]
         assert items == [
             {
                 "source": self.SOURCE,
                 "id": row.id,
+                # The record's own id, read from the holder's passport:
+                # the sign-off page is addressed by it.
+                "ref": "20261003T045520.838Z-ee579e99",
                 "title": "Sign-off request from Dr Priya Shah",
+                # No such competency in the catalogue, so no name for it.
                 "detail": None,
                 "status": "Waiting",
                 "created_at": items[0]["created_at"],
                 "done": False,
             }
+        ]
+
+    def test_a_request_whose_record_cannot_be_read_is_still_listed(
+        self,
+        authenticated_client: TestClient,
+        db_session: Session,
+        assessor: User,
+    ) -> None:
+        """With nowhere to go, and not hiding the rest."""
+        passport = _holder(db_session)
+        row = _request(db_session, passport, assessor.email)
+
+        items = authenticated_client.get(ITEMS).json()["items"]
+
+        assert [(item["id"], item["ref"]) for item in items] == [
+            (row.id, None)
         ]
 
     @pytest.mark.parametrize(
@@ -312,6 +343,8 @@ class TestSignOffRequests:
         assert authenticated_client.get(ITEMS).json() == {"items": []}
         done = authenticated_client.get(ITEMS, params={"done": True})
         assert [item["status"] for item in done.json()["items"]] == [label]
+        # Answered, so there is no page for it and no record is read.
+        assert done.json()["items"][0]["ref"] is None
 
     def test_somebody_who_may_not_assess_is_told_nothing(
         self, db_session: Session

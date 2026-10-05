@@ -42,22 +42,32 @@ export interface InboxItem {
   status: string | null;
   created_at: string;
   done: boolean;
+  /**
+   * The feature's own name for it, where its page is addressed by a name
+   * and not by `id`, as a passport sign-off is
+   */
+  ref?: string | null;
 }
 
 /**
- * Where each source's things are dealt with.
+ * Where each source's things are dealt with, or null where there is
+ * nowhere to go.
  *
  * Kept here and not sent by the server, since they are this client's
  * routes. A new source on the server needs an entry.
  */
-const ADDRESSES: Record<string, (id: number) => string> = {
-  feedback_new: (id) => `/admin/feedback/${id}`,
+const ADDRESSES: Record<string, (item: InboxItem) => string | null> = {
+  feedback_new: (item) => `/admin/feedback/${item.id}`,
   // A reply is read on the sender's own feedback page, which lists all
   // of theirs: there is no page for one.
   feedback_reply: () => "/feedback",
-  // The assessor's queue, which lists every open request with the
-  // competency asked for. A request is opened from there.
-  passport_sign_off: () => "/passport/inbox",
+  // The page where an assessor signs the request off, addressed by the
+  // record's own name. Once it is answered there is no page for it: the
+  // sign-off page shows only what is still asked of them.
+  passport_sign_off: (item) =>
+    !item.done && item.ref
+      ? `/passport/sign-off/${encodeURIComponent(item.ref)}`
+      : null,
 };
 
 /** Whether this client knows where a source's things are dealt with. */
@@ -65,9 +75,9 @@ function known(source: unknown): source is string {
   return typeof source === "string" && source in ADDRESSES;
 }
 
-/** The page one item is dealt with on. */
-export function inboxItemHref(item: InboxItem): string {
-  return ADDRESSES[item.source]?.(item.id) ?? INBOX_PATH;
+/** The page one item is dealt with on, or null where it has none. */
+export function inboxItemHref(item: InboxItem): string | null {
+  return ADDRESSES[item.source]?.(item) ?? null;
 }
 
 /**

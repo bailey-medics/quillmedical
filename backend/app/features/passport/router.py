@@ -1160,9 +1160,10 @@ def _email_sign_off_request(
     if assessor is not None:
         # They can already sign in, so no invitation and no token: the
         # request is waiting in their inbox when they arrive. The page is
-        # `/passport/inbox`; this once linked `/passport/requests`, which
-        # is only half the address of the API behind it, and was a 404.
-        url = f"{settings.FRONTEND_URL.rstrip('/')}/passport/inbox"
+        # `/inbox`, which lists everything waiting on them, sign-off
+        # requests among it. It was `/passport/inbox` until the passport's
+        # own queue folded into the one inbox on 4 October 2026.
+        url = f"{settings.FRONTEND_URL.rstrip('/')}/inbox"
         expires_in_days = PASSPORT_INVITE_TTL_DAYS
     else:
         invite = PassportAssessorInvite(

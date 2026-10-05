@@ -881,10 +881,11 @@ class TestAnExistingAccountAskedToAssess:
         learner: User,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """`/passport/inbox` is the page; `/passport/requests` was a 404."""
+        """`/inbox` is the page: it lists what is waiting on the assessor."""
         _, sent = self._ask(holder_client, learner.email, monkeypatch)
 
-        assert "/passport/inbox" in sent[0]["text"]
+        assert "/inbox" in sent[0]["text"]
+        assert "/passport/inbox" not in sent[0]["text"]
         assert "/passport/requests" not in sent[0]["text"]
 
     def test_a_failed_email_gives_them_nothing(

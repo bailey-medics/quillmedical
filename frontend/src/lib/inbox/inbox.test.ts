@@ -54,10 +54,32 @@ describe("inboxItemHref", () => {
     expect(inboxItemHref(item)).toBe("/admin/feedback/7");
   });
 
-  it("sends a sign-off request to the assessor's queue", () => {
-    expect(inboxItemHref({ ...item, source: "passport_sign_off" })).toBe(
-      "/passport/inbox",
+  it("sends an open sign-off request to the page where it is signed off", () => {
+    expect(
+      inboxItemHref({
+        ...item,
+        source: "passport_sign_off",
+        ref: "20261003T045520.838Z-ee579e9947f54c48811ae0f197d96f80",
+      }),
+    ).toBe(
+      "/passport/sign-off/20261003T045520.838Z-ee579e9947f54c48811ae0f197d96f80",
     );
+  });
+
+  it("gives an answered sign-off request nowhere to go", () => {
+    // The sign-off page shows only what is still asked of the assessor.
+    expect(
+      inboxItemHref({
+        ...item,
+        source: "passport_sign_off",
+        ref: "chest-drain",
+        done: true,
+      }),
+    ).toBeNull();
+  });
+
+  it("gives a line from an unknown source nowhere to go", () => {
+    expect(inboxItemHref({ ...item, source: "something_new" })).toBeNull();
   });
 
   it("sends a reply to the sender's own feedback page", () => {

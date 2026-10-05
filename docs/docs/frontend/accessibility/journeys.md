@@ -97,8 +97,9 @@ Who walks it: delegates on the teaching platform.
 
 Who walks it: assessors signing off a clinician's competency.
 
-1. Open `/passport/inbox`. Hear "Sign-off requests" (level 1) and each
-   request, announced by the competency's name.
+1. Open `/inbox`, from the envelope in the top ribbon. Hear "Inbox"
+   (level 1), then "Waiting on you" and each request as a table row:
+   "Sign-off request from" and the holder's name, then the competency.
 2. Activate a request. Hear "Sign off" (level 1) and the competency.
 3. Read the request's evidence with the reading command: observed date,
    the holder's details, the evidence. Each field is announced with its

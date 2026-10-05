@@ -19,7 +19,6 @@ import { api } from "@/lib/api";
 import { orgUnits } from "@/domains/orgUnit";
 import NavIcon from "../icons/NavIcon";
 import SendFeedbackNavLink from "@/components/feedback/SendFeedbackNavLink";
-import { INBOX_PATH } from "@/lib/inbox/inbox";
 import NestedNavLink, { type NavItem } from "./NestedNavLink";
 import { useFeatureNavItems } from "./featureNavItems";
 import { navLinkStyles } from "./navStyles";
@@ -667,22 +666,6 @@ export default function SideNavContent({
           showIcons={showIcons}
         />
       ))}
-      {/* The inbox is reached from the envelope in the ribbon, so it has
-          no entry of its own. Its link appears only while it is open, to
-          say where in the menu the page is. */}
-      {location.pathname === INBOX_PATH && (
-        <NavLink
-          component={Link}
-          to={INBOX_PATH}
-          label="Inbox"
-          styles={navLinkStyles}
-          active
-          onClick={() => {
-            if (onNavigate) onNavigate();
-          }}
-          leftSection={showIcons ? <NavIcon name="mail" /> : undefined}
-        />
-      )}
       <SendFeedbackNavLink showIcons={showIcons} onNavigate={onNavigate} />
       <NavLink
         label="Logout"

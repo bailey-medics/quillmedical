@@ -212,6 +212,53 @@ same sources as the counts.
       change, naming the envelope and the Inbox page as what is new to
       reach, and the exam's ribbon on journey 3.
 
+## Phase 8: The passport's queue folds into the inbox
+
+Phase 6 left the passport's own queue page, `/passport/inbox`, standing,
+with an inbox line that opened it. That made two pages listing the same
+requests. Mark asked on 4 October 2026 for the one inbox to be the
+queue, and for the menu link that appeared while it was open to go.
+
+- [x] Remove `PassportInboxPage`, its route and its place in the
+      passport chunk. `GET /api/passport/requests/inbox` stays: the
+      sign-off page reads the request from it.
+
+- [x] An open sign-off line opens `/passport/sign-off/{id}`, the page
+      where it is signed off. That page is addressed by the record's own
+      id, which is inside the record and not on the request row: the row
+      holds the folder name, unique only within one passport. So the
+      source reads each open request's record from the holder's passport
+      for its id, as the passport's own list does, and sends it as `ref`,
+      a new optional field on a line. A record that cannot be read leaves
+      the line listed with nowhere to go. An answered request has no
+      `ref`: there is no page for it, and no record is read.
+
+- [x] The line carries the competency's name as its detail, from the
+      catalogue, now that there is no queue page to show it.
+
+- [x] `PassportSignOffPage` goes back to `/inbox` after signing off and
+      on cancel, and tells the envelope when a request is signed off.
+
+- [x] The email to an assessor who already has an account links to
+      `/inbox`.
+
+- [x] Take the inbox's link out of the side menu, in `SideNavContent`.
+      It showed only while the page was open, and the envelope in the
+      ribbon is the way in from every page. `/inbox` goes on
+      `navCoverage.test.tsx`'s `NO_LINK` list with that reason.
+
+- [x] The passport menu loses "Sign-off requests", and "Sign off" hangs
+      straight under Passport while a request is open. Somebody who can
+      only assess keeps a top-level "Sign-off requests" link, which now
+      opens `/inbox`, and is where they land at `/`.
+
+- [x] The idle envelope on the ribbon is grey 6, not white, so that it
+      sits back while nothing is waiting. White drew the eye, and a blue
+      from the navy ramp looked muddy. Grey 6 is about 5.3:1 against the
+      navy, where an icon that is the whole control needs 3:1.
+
+- [x] Journey 4 in `journeys.md` starts at `/inbox`.
+
 ## Decisions
 
 - **Messages and tasks carry the same weight** – for a clinician a

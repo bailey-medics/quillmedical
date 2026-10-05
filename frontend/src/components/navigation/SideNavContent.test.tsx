@@ -994,17 +994,20 @@ describe("SideNavContent Component", () => {
       });
     });
 
-    it("offers the sign-off queue to somebody who can only assess", async () => {
-      // Their one page is other people's records awaiting their
-      // judgement. `/passport` would greet them with an offer to start
-      // a passport they have no way to create, and hide the queue
-      // behind a button in the corner.
+    it("sends somebody who can only assess to the inbox for their requests", async () => {
+      // What they come for is other people's records awaiting their
+      // judgement, and those are listed in the inbox. `/passport` would
+      // greet them with an offer to start a passport they have no way
+      // to create.
       renderWithAuth(<SideNavContent />, "passport_assessor_only");
 
       await waitFor(() => {
         expect(screen.getByText("Sign-off requests")).toBeInTheDocument();
       });
 
+      expect(
+        screen.getByText("Sign-off requests").closest("a"),
+      ).toHaveAttribute("href", "/inbox");
       expect(screen.queryByText("Passport")).not.toBeInTheDocument();
     });
 
@@ -1020,21 +1023,21 @@ describe("SideNavContent Component", () => {
       expect(screen.queryByText("Sign-off requests")).not.toBeInTheDocument();
     });
 
-    it("hangs Sign-off requests under Passport for a holder", async () => {
-      // A holder's own record is what `/passport` shows, so the
-      // requests naming them as an assessor had no way in short of
-      // typing the address.
-      // Rendered on the inbox itself, because a nested link is only
-      // drawn once its parent is the active route.
+    it("hangs Sign off straight under Passport for a holder who assesses", async () => {
+      // Signing somebody off is reached from the inbox, which has no
+      // entry in the menu, so there is no page between it and Passport.
       renderWithAuth(<SideNavContent />, "passport_holder", {
-        initialRoute: "/passport/inbox",
+        initialRoute: "/passport/sign-off/abc",
       });
 
       await waitFor(() => {
         expect(screen.getByText("Passport")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Sign-off requests")).toBeInTheDocument();
+      const child = screen.getByText("Sign off").closest("a");
+      expect(child).toHaveAttribute("href", "/passport/sign-off/abc");
+      expect(child).toHaveAttribute("data-active", "true");
+      expect(screen.queryByText("Sign-off requests")).not.toBeInTheDocument();
     });
 
     it.each([
@@ -1176,7 +1179,7 @@ describe("SideNavContent Component", () => {
       expect(screen.queryByText("CPD date ranges")).not.toBeInTheDocument();
     });
 
-    it("drops Sign-off requests again once the holder is on their passport", async () => {
+    it("hangs nothing under Passport on the passport page itself", async () => {
       // The passport is a destination, not a heading, so landing on it
       // should not reveal a page the person did not ask for.
       renderWithAuth(<SideNavContent />, "passport_holder", {
@@ -1187,22 +1190,36 @@ describe("SideNavContent Component", () => {
         expect(screen.getByText("Passport")).toBeInTheDocument();
       });
 
+      expect(screen.queryByText("Sign off")).not.toBeInTheDocument();
       expect(screen.queryByText("Sign-off requests")).not.toBeInTheDocument();
     });
 
-    it("gives an assessor no Sign-off requests child, because that is their own link", async () => {
-      // "Sign-off requests" already points at `/passport/inbox`.
-      // A child of the same address would offer the page twice.
+    it("hangs Sign off under an assessor's own link while they sign one off", async () => {
       renderWithAuth(<SideNavContent />, "passport_assessor_only", {
-        initialRoute: "/passport/inbox",
+        initialRoute: "/passport/sign-off/abc",
       });
 
       await waitFor(() => {
         expect(screen.getByText("Sign-off requests")).toBeInTheDocument();
       });
 
-      // Once, as their own link, and not again beneath it.
-      expect(screen.getAllByText("Sign-off requests")).toHaveLength(1);
+      expect(screen.getByText("Sign off").closest("a")).toHaveAttribute(
+        "href",
+        "/passport/sign-off/abc",
+      );
+    });
+
+    it("draws no menu link for the inbox itself", async () => {
+      // It is reached from the envelope in the ribbon, on every page.
+      renderWithAuth(<SideNavContent />, "passport_holder", {
+        initialRoute: "/inbox",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Passport")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("Inbox")).not.toBeInTheDocument();
     });
 
     it("hides Passport when the feature is on but the competency is missing", async () => {

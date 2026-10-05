@@ -23,6 +23,7 @@
  */
 
 import { useLocation } from "react-router-dom";
+import { INBOX_PATH } from "@/lib/inbox/inbox";
 
 import { useCanReachPassport, useHasFeature } from "@/lib/features";
 import { useHasAnyCompetency, useHasCompetency } from "@/lib/cbac/hooks";
@@ -52,9 +53,6 @@ const PASSPORT_PAGES: readonly (NavItem & { detail?: string })[] = [
   },
   { label: "Reflections", href: "/passport/reflections", detail: "Reflection" },
   { label: "Download", href: "/passport/download" },
-  // Not "Inbox": that is the envelope in the ribbon, for everything
-  // waiting on somebody. This is the assessor's queue, by its own name.
-  { label: "Sign-off requests", href: "/passport/inbox" },
 ];
 
 /** Where an assessor signs off one request: `/passport/sign-off/:id`. */
@@ -65,14 +63,12 @@ const SIGN_OFF_PREFIX = "/passport/sign-off/";
  * record's own link beneath it on the page of one record.
  */
 function passportPageAt(pathname: string): NavItem | undefined {
-  // Signing somebody off is reached from the inbox and its address is
-  // not beneath it, so it is hung there by hand.
+  // Signing somebody off is reached from the inbox, the page of
+  // everything waiting on somebody, which has no entry in the menu. So
+  // the sign-off hangs straight under Passport. The passport had a queue
+  // page of its own between the two until 4 October 2026.
   if (pathname.startsWith(SIGN_OFF_PREFIX)) {
-    return {
-      label: "Sign-off requests",
-      href: "/passport/inbox",
-      children: [{ label: "Sign off", href: pathname }],
-    };
+    return { label: "Sign off", href: pathname };
   }
 
   const page = PASSPORT_PAGES.find(
@@ -197,9 +193,9 @@ export function useFeatureNavItems(): NavItem[] {
 
   // Somebody who can only assess has no passport of their own and no
   // way to start one, so `/passport` would greet them with an offer to
-  // create one and hide the sign-off queue behind a button in the
-  // corner. Their one page is the queue, so the link goes straight
-  // there.
+  // create one. What they come for is the requests naming them, which
+  // are listed in the inbox with everything else waiting on them, so
+  // their link goes straight there. It is also where they land at `/`.
   //
   // Holding `passport_write` as well means the holder's own record is
   // the right landing place, whether or not they have created it yet.
@@ -225,7 +221,7 @@ export function useFeatureNavItems(): NavItem[] {
     const openPage = passportPageAt(pathname);
     items.push({
       label: assessesOnly ? "Sign-off requests" : "Passport",
-      href: assessesOnly ? "/passport/inbox" : "/passport",
+      href: assessesOnly ? INBOX_PATH : "/passport",
       icon: "passport",
       // The one passport page that is open, so the side navigation
       // says where in the passport somebody is without listing every

@@ -23,9 +23,14 @@
  * Nothing is drawn when the queue is empty. A zero is a fact nobody
  * needs and it makes an idle button look like it wants attention.
  *
- * `onDark` is for the top ribbon, which is navy: the idle envelope and
- * the count are white there, and it sits level with the ribbon's other
- * controls and not nudged to a heading's baseline.
+ * `onDark` is for the top ribbon, which is navy. The idle envelope is
+ * grey 6 there, so that it sits back in the ribbon while nothing is
+ * waiting. White drew the eye, and a blue from the navy ramp looked
+ * muddy. Grey 6 is about 5.3:1 against the navy: an icon that is the
+ * whole control needs 3:1 (WCAG 1.4.11), and the darkest grey that
+ * meets it, `#666666`, all but vanishes on a phone in daylight. The
+ * count is white, and the button sits level with the ribbon's other
+ * controls, not nudged to a heading's baseline.
  *
  * It passes its ref and any other props to the button itself, so it can
  * be the target of a Mantine `Menu`, which adds the press handler and
@@ -36,7 +41,7 @@
  * <InboxButton
  *   label="Sign-off requests for me to assess"
  *   count={3}
- *   onClick={() => navigate("/passport/inbox")}
+ *   onClick={() => navigate("/inbox")}
  * />
  * ```
  */
@@ -47,6 +52,9 @@ import Icon from "@/components/icons";
 import { IconMail } from "@/components/icons/appIcons";
 import { BodyText } from "@/components/typography";
 import classes from "./InboxButton.module.css";
+
+/** The idle envelope on navy: quiet, and well clear of 3:1 against it. */
+const IDLE_ON_DARK = "var(--mantine-color-gray-6)";
 
 export interface InboxButtonProps extends Omit<
   ComponentPropsWithRef<"button">,
@@ -93,7 +101,7 @@ export default function InboxButton({
         <Icon
           icon={<IconMail />}
           size="mlg"
-          colour={waitingColour ?? (onDark ? "white" : undefined)}
+          colour={waitingColour ?? (onDark ? IDLE_ON_DARK : undefined)}
         />
       </ActionIcon>
       {count > 0 && (

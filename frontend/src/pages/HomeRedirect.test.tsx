@@ -88,7 +88,9 @@ describe("HomeRedirect", () => {
 
     renderWithRouter(<HomeRedirect />);
 
-    expect(window.location.pathname).toBe("/passport/inbox");
+    // The requests naming them are listed there, with everything else
+    // waiting on them.
+    expect(window.location.pathname).toBe("/inbox");
   });
 
   it("shows the no-access notice when no feature is available", () => {

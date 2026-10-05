@@ -227,11 +227,6 @@ export const routes: RouteObject[] = [
             handle: { safeForReload: true },
           },
           {
-            path: "/passport/inbox",
-            lazy: lazyFrom(loadPassport, "PassportInboxPage"),
-            handle: { safeForReload: true },
-          },
-          {
             // An in-progress sign-off holds a half-written assessment,
             // so a silent reload would discard it.
             path: "/passport/sign-off/:signOffId",

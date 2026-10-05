@@ -49,7 +49,7 @@ export function Component() {
   const missingToken = !token;
 
   // Step 6 of the flow, as far as it can go here: registering creates
-  // an account but not a session, so `/passport/inbox` would bounce
+  // an account but not a session, so `/inbox` would bounce
   // straight off `RequireAuth` to the login page anyway. Going there
   // directly, carrying the confirmation, says what happened and what to
   // do next in one move rather than two.

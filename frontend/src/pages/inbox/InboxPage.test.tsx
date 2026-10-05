@@ -107,6 +107,56 @@ describe("InboxPage", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/admin/feedback/7");
   });
 
+  it("opens the sign-off page for a sign-off request", async () => {
+    const user = userEvent.setup();
+    mockInbox(
+      [
+        {
+          ...fresh,
+          source: "passport_sign_off",
+          id: 4,
+          ref: "20261003T045520.838Z-ee579e9947f54c48811ae0f197d96f80",
+          title: "Sign-off request from Dr Priya Shah",
+          detail: "Chest drain insertion (Seldinger)",
+          status: "Waiting",
+        },
+      ],
+      [],
+    );
+
+    renderWithRouter(<InboxPage />);
+    await user.click(
+      await screen.findByText("Sign-off request from Dr Priya Shah"),
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      "/passport/sign-off/20261003T045520.838Z-ee579e9947f54c48811ae0f197d96f80",
+    );
+  });
+
+  it("goes nowhere from a sign-off request already answered", async () => {
+    const user = userEvent.setup();
+    mockInbox(
+      [],
+      [
+        {
+          ...resolved,
+          source: "passport_sign_off",
+          ref: "chest-drain",
+          title: "Sign-off request from Dr Priya Shah",
+          status: "Signed off",
+        },
+      ],
+    );
+
+    renderWithRouter(<InboxPage />);
+    await user.click(
+      await screen.findByText("Sign-off request from Dr Priya Shah"),
+    );
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
   it("says so when nothing is waiting and nothing is done", async () => {
     mockInbox([], []);
 
