@@ -497,7 +497,7 @@ so the form is the wizard and an admin learns nothing new.
       ticks it opens with, what it sends, and the Review step's
       wording. A story for the step.
 
-- [ ] Put enrolment on the member page too. Agreed on 5 October 2026.
+- [x] Put enrolment on the member page too. Agreed on 5 October 2026.
       `MemberPracticePage`, at `/admin/sites/:id/members/:userId` and
       `/admin/organisations/:id/members/:userId`, is one person at one
       org unit, with switches for what they may practise there. The
@@ -510,10 +510,20 @@ so the form is the wizard and an admin learns nothing new.
       in both places, so the two cannot drift apart. Shown under the
       rule the step uses: that organisation has teaching on and serves
       at least one module, and the admin holds `manage_teaching` or is
-      an operator.
+      an operator. The page does not ask who the viewer is: it asks the
+      two door routes, and a refusal or an organisation serving nothing
+      leaves the page as it was. Built as `MemberTeachingPanel` in
+      `frontend/src/components/teaching/member-teaching-panel/`, with
+      the routes behind `frontend/src/domains/teachingDoor.ts`.
 
-- [ ] Ticks on this page are held until "Save changes", as its
-      practice switches are: the route is marked unsafe to reload for
+- [x] Ticks on this page are held until saved, as its practice switches
+      are. They have a button of their own, "Save enrolment", and not
+      the practice switches' "Save changes": the switches live in
+      `MemberPracticePanel`'s form, with its own confirmation and its
+      own way of saying what failed, and folding a second kind of
+      change into it would have one button reporting two different
+      failures. Two forms, one under the other, each saying what it
+      saves. As first written this step had them share a button: the route is marked unsafe to reload for
       that reason, and enrolment follows the page it is on. On save,
       each module newly ticked calls the `admit` route from Phase 5 for
       this org unit, so the place is written here, at the centre the
@@ -529,16 +539,22 @@ so the form is the wizard and an admin learns nothing new.
       admin set it, so pressing save again finishes the job. `admit`
       and `unenrol` both change nothing when asked twice.
 
-- [ ] Show on the same page what the `access` route from Phase 5
+- [x] Show on the same page what the `access` route from Phase 5
       answers: beside each module, that the person may enter it, or
       the missing layer in plain words ("not enrolled", "no place at
       this centre", "may not take modules"). It is the page about
       exactly this person at exactly this centre, so it is where a
-      half set up account is noticed. Add a "Withdraw access here"
-      action for the one person, calling the `withdraw` route, which
-      removes their place at this org unit and leaves the rest.
+      half set up account is noticed. The
+      line is shown under a module they are enrolled on: "Can enter
+      this module", or "Enrolled, but cannot enter yet" and the missing
+      layers. A module they are simply not on has no line; the empty
+      tick box says it. A "Withdraw access here" button, which took
+      away the person's place at the org unit, was built and removed on
+      5 October 2026 before it merged, with its route: it left their
+      modules ticked and doing nothing, and unticking a module already
+      stops them. The tick is the one switch an admin has.
 
-- [ ] Tests for the member page: the card shows and does not, a tick
+- [x] Tests for the member page: the card shows and does not, a tick
       calls nothing until "Save changes", a tick then calls `admit`
       with this org unit, an untick ends the enrolment, the missing
       layer is worded for each case, and a failed save names the
