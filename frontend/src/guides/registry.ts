@@ -73,3 +73,13 @@ export function findGuide(slug: string | undefined): Guide | undefined {
 export function guidePath(slug: GuideSlug): string {
   return `/guides/${slug}`;
 }
+
+/**
+ * Where a guide's screenshots are served from. A guide names an image by
+ * its place beneath this: `![The form](add-a-delegate-by-hand/form.png)`.
+ *
+ * The images are not in the repository. Playwright retakes them from
+ * seeded data; in production they live in a bucket routed to this path,
+ * and locally in `frontend/public/guide-assets/`, which is ignored by git.
+ */
+export const GUIDE_ASSETS_PATH = "/guide-assets";
