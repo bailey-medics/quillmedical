@@ -888,7 +888,8 @@ def login(
             - user: {username: str, roles: list[str]}
 
     Raises:
-        HTTPException: 400 if credentials invalid, 2FA required, or TOTP code invalid.
+        HTTPException: 400 if credentials invalid, the account is
+            deactivated, 2FA required, or TOTP code invalid.
     """
 
     user = db.scalar(
@@ -896,6 +897,13 @@ def login(
     )
 
     if not user or not verify_password(data.password, user.password_hash):
+        raise HTTPException(400, "Invalid credentials")
+
+    # A deactivated account answers exactly as a wrong password does, so
+    # the reply says nothing about whether the account exists. Checked
+    # after the password, so both replies take the same time, and before
+    # the verification step, so no email goes to a closed account.
+    if not user.is_active:
         raise HTTPException(400, "Invalid credentials")
 
     if not user.email_verified:
@@ -1494,7 +1502,7 @@ def forgot_password(
 ) -> dict[str, str]:
     """Request a password reset email.
 
-    Accepts an email address and, if a matching account exists, sends a
+    Accepts an email address and, if a matching active account exists, sends a
     password reset link. Always returns a success response regardless of
     whether the email exists, to prevent account enumeration.
 
@@ -1509,7 +1517,9 @@ def forgot_password(
     """
     email = data.email.strip().lower()
     user = db.scalar(select(User).where(User.email == email))
-    if user:
+    # A deactivated account is treated as an unknown address: no email,
+    # and the same reply.
+    if user and user.is_active:
         token = create_password_reset_token(email)
         reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
         send_email(
@@ -1564,7 +1574,9 @@ def reset_password(
             detail="New password must be at least 8 characters",
         )
     user = db.scalar(select(User).where(User.email == email))
-    if not user:
+    # A link sent before the account was deactivated is refused as an
+    # expired one would be.
+    if not user or not user.is_active:
         raise HTTPException(
             status_code=400,
             detail="Invalid or expired reset link",

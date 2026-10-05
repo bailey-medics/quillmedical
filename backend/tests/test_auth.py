@@ -208,8 +208,7 @@ class TestLogin:
     def test_login_inactive_user(
         self, test_client: TestClient, test_user: User, db_session
     ):
-        """Test login with inactive user."""
-        # Make user inactive
+        """A deactivated account answers exactly as a wrong password does."""
         test_user.is_active = False
         db_session.commit()
 
@@ -217,10 +216,41 @@ class TestLogin:
             "/api/auth/login",
             json={"username": "testuser", "password": "TestPassword123!"},
         )
-        # The current implementation allows login even if is_active is False
-        # Adjust test to reflect current behaviour: login succeeds
-        assert response.status_code == 200
-        assert response.json()["detail"] == "ok"
+        wrong_password = test_client.post(
+            "/api/auth/login",
+            json={"username": "testuser", "password": "WrongPassword123!"},
+        )
+
+        assert response.status_code == 400
+        assert response.json() == wrong_password.json()
+        assert "access_token" not in response.cookies
+        assert "refresh_token" not in response.cookies
+
+    def test_login_inactive_unverified_user_sends_no_email(
+        self,
+        test_client: TestClient,
+        test_user: User,
+        db_session,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """No verification email goes to a deactivated account."""
+        test_user.is_active = False
+        test_user.email_verified = False
+        db_session.commit()
+
+        sent: list[object] = []
+        monkeypatch.setattr(
+            main, "send_email", lambda **kwargs: sent.append(kwargs)
+        )
+
+        response = test_client.post(
+            "/api/auth/login",
+            json={"username": "testuser", "password": "TestPassword123!"},
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Invalid credentials"
+        assert sent == []
 
     def test_login_with_totp_not_provided(
         self, test_client: TestClient, test_user: User, db_session
@@ -549,9 +579,55 @@ class TestForgotPassword:
         assert response.status_code == 200
         assert response.json() == {"detail": "ok"}
 
+    def test_forgot_password_inactive_user_sends_no_email(
+        self,
+        test_client: TestClient,
+        test_user: User,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """A deactivated account is treated as an unknown address."""
+        test_user.is_active = False
+        db_session.commit()
+
+        sent: list[object] = []
+        monkeypatch.setattr(
+            main, "send_email", lambda **kwargs: sent.append(kwargs)
+        )
+
+        response = test_client.post(
+            "/api/auth/forgot-password",
+            json={"email": test_user.email},
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"detail": "ok"}
+        assert sent == []
+
 
 class TestResetPassword:
     """Test reset-password endpoint."""
+
+    def test_reset_password_inactive_user(
+        self, test_client: TestClient, test_user: User, db_session: Session
+    ):
+        """A link sent before deactivation is refused as an expired one."""
+        from app.security import create_password_reset_token
+
+        token = create_password_reset_token(test_user.email)
+        test_user.is_active = False
+        db_session.commit()
+        old_hash = test_user.password_hash
+
+        response = test_client.post(
+            "/api/auth/reset-password",
+            json={"token": token, "new_password": "NewSecurePass123!"},
+        )
+
+        assert response.status_code == 400
+        assert "invalid or expired" in response.json()["detail"].lower()
+        db_session.refresh(test_user)
+        assert test_user.password_hash == old_hash
 
     def test_reset_password_success(
         self, test_client: TestClient, test_user: User
