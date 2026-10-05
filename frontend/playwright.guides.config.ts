@@ -14,8 +14,7 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./e2e",
-  // One at a time: the specs sign in as the same seeded person, and a
-  // screenshot is not worth a race.
+  // One at a time: some specs write, and a screenshot is not worth a race.
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,
@@ -27,12 +26,8 @@ export default defineConfig({
   },
   projects: [
     {
-      // The same sign-in the end-to-end tests use: `educator`, a teaching
-      // admin seeded by `backend/scripts/seed_ci.py`.
-      name: "setup",
-      testMatch: /auth\.setup\.ts/,
-    },
-    {
+      // No shared sign-in: each spec signs in as the seeded person its
+      // guide is about, with `signIn` from `e2e/guides/signIn.ts`.
       name: "guides",
       testDir: "./e2e/guides",
       use: {
@@ -40,9 +35,7 @@ export default defineConfig({
         viewport: { width: 1280, height: 800 },
         deviceScaleFactor: 2,
         colorScheme: "light",
-        storageState: "e2e/.auth/user.json",
       },
-      dependencies: ["setup"],
     },
   ],
 });

@@ -7,8 +7,7 @@
 
 import { test, expect } from "@playwright/test";
 import { shot } from "./shot";
-
-test.use({ storageState: { cookies: [], origins: [] } });
+import { SEEDED } from "./signIn";
 
 test("join a course", async ({ page }) => {
   await page.goto("/register");
@@ -18,15 +17,16 @@ test("join a course", async ({ page }) => {
       name: "Register for Quill Teaching",
     }),
   ).toBeVisible();
+  await page.getByRole("combobox", { name: "Teaching module" }).click();
+  await page.getByRole("option").first().click();
   await page
     .getByLabel("Clinical lead email address")
-    .fill("clinical.lead@example.org");
+    .fill(SEEDED.clinicalLeadEmail);
   await shot(page, "join-a-course/choose-module");
 
-  // The second step, opened directly: the form is the same however it is
-  // reached, and getting here through the first would need a clinical
-  // lead the seed does not have.
-  await page.goto("/teaching/register/module");
+  // On to the second step the way a delegate gets there: the clinical
+  // lead is in post at the seeded site, so the first step accepts them.
+  await page.getByRole("button", { name: "Continue" }).click();
   await expect(
     page.getByRole("heading", { name: "Create an account" }),
   ).toBeVisible();

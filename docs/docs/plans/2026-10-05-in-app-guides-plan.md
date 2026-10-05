@@ -503,24 +503,52 @@ Numbered after Phase 8 because it was asked for after it, but its first
 step is wanted by Phase 8 too: the joining guide's screenshot there needs
 a clinical lead. Whichever phase is built first adds the seed.
 
-- [ ] Give the guides a seed of their own, `backend/scripts/seed_guides.py`,
+- [x] Give the guides a seed of their own, `backend/scripts/seed_guides.py`,
       run after `seed_ci.py` by `just guide-screenshots` and by
       `.github/workflows/guide-screenshots.yml`, and by nothing else. Not
       more rows in `seed_ci.py`: that file is shared with the end-to-end
       tests, which count on what it holds, and a page of invented
       delegates would change what several of them see. It seeds, with
-      plainly invented names: a trust and a site beneath it with a
-      clinical lead in post; an operator holding `superadmin_profession`;
-      a teaching admin; and half a dozen delegates at the site. This also
-      closes the open step in Phase 3, where the screenshots are all named
-      "CI Teaching Hospital" and show no site.
+      plainly invented names: "Northfield Endoscopy Academy" and a site
+      beneath it, "Northfield General Hospital", with a clinical lead in
+      post; an operator holding `superadmin_profession`; a teaching admin;
+      and seven delegates at the site. `compose.ci.yml` mounts the file
+      beside `seed_ci.py`, because the image CI runs holds no scripts.
+      This also closes the open step in Phase 3, where the screenshots
+      were all named "CI Teaching Hospital" and showed no site.
 
-- [ ] Let a spec write. `docs/docs/frontend/guides.md` tells a spec to
+- [x] Seed the delegates' attempts in the same script: two passed first
+      time, one passed at a second attempt, one not passed, one left
+      unfinished and one who has opened nothing. The rows are written
+      directly and scored by the application's own functions in
+      `app/features/teaching/scoring.py`, not made by the routes that sit
+      an exam, which pick questions at random and stamp the present
+      moment: a seeded attempt has to be the same on every run, or every
+      retaken screenshot differs.
+
+- [x] Every spec signs in as the seeded person its guide is about, with
+      `signIn` in `frontend/e2e/guides/signIn.ts`, so a picture shows what
+      that reader would see. The shared sign-in as `educator` is gone from
+      `playwright.guides.config.ts`.
+
+- [x] Let a spec write. `docs/docs/frontend/guides.md` told a spec to
       "change nothing", so a second run finds what the first did. That
       was stricter than needed: the stack is made fresh for every run and
       thrown away after it, locally and in the workflow alike. The rule
-      that matters is that specs do not depend on each other, so give each
-      spec that writes a seeded person of its own. Reword the page.
+      that matters is that specs do not depend on each other, so a spec
+      that writes has a seeded person of its own. The page is reworded.
+
+- [x] The joining guide's spec now goes through the first registration
+      step, with the seeded clinical lead's address, and reaches the
+      second as a delegate does. Phase 8's redirect needed this.
+
+- [x] "Learning" on the All delegates page cannot be seeded, because
+      nothing stores it: the column is always a dash, and the slide
+      reader records no progress. Found while writing the seed.
+      "See delegates' results" says the column "says whether they have
+      finished the learning materials", which is what the page promises
+      and not what it does. The guide now says the column is not filled
+      in yet. Building the progress itself is not this plan's.
 
 - [ ] Screenshots for "Assign a teaching admin", which has none. The spec
       signs in as the seeded operator and takes: the organisation's page

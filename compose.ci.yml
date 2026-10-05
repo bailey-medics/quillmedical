@@ -36,6 +36,9 @@ services:
       VAPID_PRIVATE: ci-placeholder-vapid-key-not-real
     volumes:
       - ./backend/scripts/seed_ci.py:/app/scripts/seed_ci.py:ro
+      # The guides' own seed, run only when their screenshots are taken
+      # (`just guide-screenshots`). The end-to-end tests never run it.
+      - ./backend/scripts/seed_guides.py:/app/scripts/seed_guides.py:ro
       # Teaching content for seed_ci.py to sync, fetched by
       # .github/scripts/ci/fetch-e2e-teaching.sh before the stack starts
       - ./.e2e-teaching:/teaching-repos:ro
