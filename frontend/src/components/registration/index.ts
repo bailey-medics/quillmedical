@@ -1,5 +1,6 @@
 export { default as ForgotPasswordForm } from "./ForgotPasswordForm";
 export type { ForgotPasswordFormProps } from "./ForgotPasswordForm";
+export { default as LegalNotice } from "./LegalNotice";
 export { default as LoginForm } from "./LoginForm";
 export type { LoginFormData, LoginFormProps } from "./LoginForm";
 export { default as RegistrationForm } from "./RegistrationForm";
