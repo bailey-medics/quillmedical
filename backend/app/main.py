@@ -155,6 +155,7 @@ from app.models import (
     OrgUnitFeature,
     PatientMetadata,
     User,
+    normalise_email,
     org_unit_member,
     validate_platform_role,
 )
@@ -1081,7 +1082,7 @@ def validate_clinical_lead(
     """
     from app.features.teaching.models import QuestionBankOrgStatus
 
-    email = payload.email.lower().strip()
+    email = normalise_email(payload.email)
 
     # Find the user by email (case-insensitive)
     user = (
@@ -1201,7 +1202,7 @@ def register(
             detail="Self-registration is not available in this environment",
         )
     username = payload.username.strip()
-    email = payload.email.strip()
+    email = normalise_email(payload.email)
     if not username or not email or not payload.password:
         raise HTTPException(status_code=400, detail="Missing fields")
 
@@ -1480,7 +1481,7 @@ def resend_verification(
     Returns:
         dict: Always returns ``{"detail": "ok"}``.
     """
-    email = data.email.strip().lower()
+    email = normalise_email(data.email)
     user = db.scalar(select(User).where(User.email == email))
     if user and not user.email_verified:
         token = create_email_verify_token(email)
@@ -1515,7 +1516,7 @@ def forgot_password(
     Returns:
         dict: Always returns ``{"detail": "ok"}`` to prevent enumeration.
     """
-    email = data.email.strip().lower()
+    email = normalise_email(data.email)
     user = db.scalar(select(User).where(User.email == email))
     # A deactivated account is treated as an unknown address: no email,
     # and the same reply.
@@ -2318,7 +2319,7 @@ def create_user_with_cbac(
     """
     # Check authorization
     # Validation
-    email = payload.email.strip()
+    email = normalise_email(payload.email)
     password = payload.password
     username = (
         payload.username or payload.name.strip().replace(" ", "").lower()
@@ -2596,7 +2597,7 @@ def update_user(
 
         # Validate and update email
     if payload.email is not None:
-        email = payload.email.strip()
+        email = normalise_email(payload.email)
         if email != user.email:
             if not email:
                 raise HTTPException(
@@ -3348,7 +3349,7 @@ def update_profile(
         current_user.full_name = data.full_name.strip()
 
     if data.email is not None:
-        new_email = data.email.strip().lower()
+        new_email = normalise_email(data.email)
         if new_email != (current_user.email or "").strip().lower():
             existing = db.execute(
                 select(User.id).where(
@@ -4932,7 +4933,7 @@ def accept_invite(
         ) from err
 
     patient_id: str = payload["patient_id"]
-    email: str = payload["email"]
+    email: str = normalise_email(payload["email"])
     user_type: str = payload["user_type"]
 
     # Check if user already exists

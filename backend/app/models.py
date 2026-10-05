@@ -118,6 +118,18 @@ class User(Base):
     email: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=False
     )
+
+    @validates("email")
+    def _email_as_held(self, _key: str, value: str) -> str:
+        """Hold every address trimmed and in lower case.
+
+        On the model so that it covers every write there is, the
+        scripts and seeds included, and any route added later. The
+        column is unique, so this is also what refuses a second account
+        differing only by capitals: both arrive here as the same string.
+        """
+        return normalise_email(value)
+
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
 
     # TOTP (optional) - base32 secret string
@@ -833,6 +845,31 @@ class MarketingPreferenceChange(Base):
     def _source_is_known(self, _key: str, value: str) -> str:
         """Reject a source that is not in ``MARKETING_PREFERENCE_SOURCES``."""
         return validate_marketing_preference_source(value)
+
+
+def normalise_email(value: str) -> str:
+    """Return an email address as Quill holds it: trimmed and lower case.
+
+    Every address is held in lower case, whoever typed it and wherever.
+    The part before the ``@`` may be case-sensitive by the letter of the
+    standard, but no mail provider anybody uses treats it so, and people
+    do not remember which letters they capitalised: somebody who
+    registered as ``Jane.Smith@nhs.net`` and later asked for a new
+    verification link as ``jane.smith@nhs.net`` was told one had been
+    sent, and never received it.
+
+    ``User`` calls this on every write to ``email``, so no route, script
+    or seed can store capitals. A route that looks somebody up by an
+    address it was given must call it too, or it compares what was typed
+    against a column that is always lower case.
+
+    Args:
+        value: The address as it was typed or received.
+
+    Returns:
+        str: The address with surrounding space removed, in lower case.
+    """
+    return value.strip().lower()
 
 
 PLATFORM_ROLES: tuple[str, ...] = ("standard", "superadmin")

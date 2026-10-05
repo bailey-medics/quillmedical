@@ -71,6 +71,7 @@ from app.models import (
     ProfessionalRegistration,
     User,
     UserCompetency,
+    normalise_email,
     org_unit_member,
 )
 from app.org_units.tree import descendant_ids
@@ -3303,7 +3304,9 @@ def preview_assessor_invite(
     holder = db.get(Passport, invite.passport_id)
     holder_user = db.get(User, holder.user_id) if holder else None
 
-    existing = db.scalar(select(User).where(User.email == email))
+    existing = db.scalar(
+        select(User).where(User.email == normalise_email(email))
+    )
 
     return InvitePreviewOut(
         holder_name=(
@@ -3356,7 +3359,9 @@ def accept_assessor_invite(
             ),
         )
 
-    existing = db.scalar(select(User).where(User.email == email))
+    existing = db.scalar(
+        select(User).where(User.email == normalise_email(email))
+    )
 
     if existing is not None:
         user = existing
