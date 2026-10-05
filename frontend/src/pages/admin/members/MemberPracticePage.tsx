@@ -21,6 +21,12 @@ import {
   type PracticeChanges,
 } from "@/components/member-practice";
 import { orgUnits, type MemberPractice } from "@/domains/orgUnit";
+import {
+  MemberTeachingPanel,
+  type EnrolmentChanges,
+} from "@/components/teaching/member-teaching-panel";
+import type { EnrolmentOrganisation } from "@/components/teaching/module-enrolment-editor";
+import { teachingDoor, type ModuleAccess } from "@/domains/teachingDoor";
 
 /**
  * Show and change what one member may practise at one org_unit.
@@ -38,7 +44,6 @@ export default function MemberPracticePage() {
   const [loading, setLoading] = useState(valid);
   const [failed, setFailed] = useState(false);
   const { showMessage } = usePageMessage();
-
   const load = useCallback(async () => {
     if (!valid) return;
     try {
@@ -109,6 +114,90 @@ export default function MemberPracticePage() {
     [unitId, memberId, load],
   );
 
+  // Teaching at this org_unit, where the organisation above it serves
+  // modules and the viewer runs teaching. The API decides both: a
+  // refusal, or an organisation serving nothing, leaves this null and
+  // the page as it was.
+  const [teaching, setTeaching] = useState<{
+    organisation: EnrolmentOrganisation;
+    access: ModuleAccess[];
+  } | null>(null);
+
+  const loadTeaching = useCallback(async () => {
+    if (!valid) return;
+    try {
+      const served = await teachingDoor.modules(unitId);
+      if (served.organisation_id === null || served.modules.length === 0) {
+        setTeaching(null);
+        return;
+      }
+      const { modules } = await teachingDoor.access(unitId, memberId);
+      setTeaching({
+        organisation: {
+          id: served.organisation_id,
+          name: served.organisation_name ?? "",
+          modules: served.modules.map((module) => ({
+            id: module.question_bank_id,
+            title: module.title,
+          })),
+        },
+        access: modules,
+      });
+    } catch {
+      setTeaching(null);
+    }
+  }, [valid, unitId, memberId]);
+
+  useEffect(() => {
+    void (async () => {
+      await loadTeaching();
+    })();
+  }, [loadTeaching]);
+
+  // Each module is its own request, so one may fail after another has
+  // landed. Taken off first, then enrolled: a module whose end date
+  // changed is in both lists. A failure names the module, and the tick
+  // stays as it was set, so saving again finishes the job; both routes
+  // change nothing when asked twice.
+  const saveEnrolment = useCallback(
+    async ({ enrol, unenrol }: EnrolmentChanges) => {
+      const title = (moduleId: string) =>
+        teaching?.organisation.modules.find((m) => m.id === moduleId)?.title ??
+        moduleId;
+      const failed = new Set<string>();
+      for (const moduleId of unenrol) {
+        try {
+          await teachingDoor.unenrol(unitId, memberId, moduleId);
+        } catch {
+          failed.add(title(moduleId));
+        }
+      }
+      for (const { moduleId, endsOn } of enrol) {
+        if (failed.has(title(moduleId))) continue;
+        try {
+          await teachingDoor.admit(
+            unitId,
+            memberId,
+            [moduleId],
+            // The whole of the day chosen.
+            endsOn ? `${endsOn}T23:59:59Z` : null,
+          );
+        } catch {
+          failed.add(title(moduleId));
+        }
+      }
+      // Admitting may have given a competency and a place, which the
+      // practice switches above show.
+      await Promise.all([loadTeaching(), load()]);
+      if (failed.size > 0) {
+        throw new Error(
+          `Could not save: ${[...failed].sort().join(", ")}. Please try again.`,
+        );
+      }
+    },
+    [teaching, unitId, memberId, loadTeaching, load],
+  );
+
   if (loading) {
     return (
       <Stack gap="lg">
@@ -146,6 +235,13 @@ export default function MemberPracticePage() {
           )
         }
       />
+      {teaching && (
+        <MemberTeachingPanel
+          organisation={teaching.organisation}
+          access={teaching.access}
+          onSave={saveEnrolment}
+        />
+      )}
     </Stack>
   );
 }

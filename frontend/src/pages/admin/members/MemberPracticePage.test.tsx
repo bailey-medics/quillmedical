@@ -13,6 +13,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { orgUnits, type MemberPractice } from "@/domains/orgUnit";
+import { teachingDoor } from "@/domains/teachingDoor";
 import MemberPracticePage from "./MemberPracticePage";
 
 const practice: MemberPractice = {
@@ -234,5 +235,124 @@ describe("MemberPracticePage", () => {
     expect(
       await screen.findByRole("heading", { name: "404 – Page not found" }),
     ).toBeInTheDocument();
+  });
+
+  describe("teaching", () => {
+    const served = {
+      organisation_id: 1,
+      organisation_name: "Academy",
+      modules: [
+        { question_bank_id: "colonoscopy", title: "Colonoscopy" },
+        { question_bank_id: "chest-xray", title: "Chest X-ray" },
+      ],
+    };
+    const access = {
+      modules: [
+        {
+          question_bank_id: "colonoscopy",
+          title: "Colonoscopy",
+          may_enter: true,
+          missing: [],
+          enrolment_ends_on: null,
+        },
+        {
+          question_bank_id: "chest-xray",
+          title: "Chest X-ray",
+          may_enter: false,
+          missing: ["enrolment" as const],
+          enrolment_ends_on: null,
+        },
+      ],
+    };
+
+    function serve() {
+      vi.spyOn(orgUnits, "memberPractice").mockResolvedValue(practice);
+      vi.spyOn(teachingDoor, "modules").mockResolvedValue(served);
+      vi.spyOn(teachingDoor, "access").mockResolvedValue(access);
+    }
+
+    it("shows the module card where the organisation serves modules", async () => {
+      serve();
+
+      renderPage("sites");
+
+      const box = await screen.findByRole("checkbox", {
+        name: "Colonoscopy at Academy",
+      });
+      expect(box).toBeChecked();
+      expect(teachingDoor.modules).toHaveBeenCalledWith(3);
+      expect(teachingDoor.access).toHaveBeenCalledWith(3, 4);
+    });
+
+    it("shows no card where the viewer is refused or nothing is served", async () => {
+      vi.spyOn(orgUnits, "memberPractice").mockResolvedValue(practice);
+      vi.spyOn(teachingDoor, "modules").mockRejectedValue(new Error("403"));
+      const read = vi.spyOn(teachingDoor, "access");
+
+      renderPage();
+
+      await screen.findByRole("heading", { name: "Anita Patel", level: 1 });
+      expect(screen.queryByText("Teaching")).toBeNull();
+      expect(read).not.toHaveBeenCalled();
+    });
+
+    it("admits to a module ticked, at this org unit, on save", async () => {
+      serve();
+      const admit = vi
+        .spyOn(teachingDoor, "admit")
+        .mockResolvedValue({ competencies: [], place: false, enrolled: [] });
+      renderPage("sites");
+
+      await userEvent.click(
+        await screen.findByRole("checkbox", { name: "Chest X-ray at Academy" }),
+      );
+      // Held until its own save is pressed.
+      expect(admit).not.toHaveBeenCalled();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Save enrolment" }),
+      );
+
+      await waitFor(() =>
+        expect(admit).toHaveBeenCalledWith(3, 4, ["chest-xray"], null),
+      );
+    });
+
+    it("ends the enrolment of a module unticked, on save", async () => {
+      serve();
+      const unenrol = vi
+        .spyOn(teachingDoor, "unenrol")
+        .mockResolvedValue({ withdrawn: 1 });
+      renderPage("sites");
+
+      await userEvent.click(
+        await screen.findByRole("checkbox", { name: "Colonoscopy at Academy" }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Save enrolment" }),
+      );
+
+      await waitFor(() =>
+        expect(unenrol).toHaveBeenCalledWith(3, 4, "colonoscopy"),
+      );
+    });
+
+    it("names the module that could not be saved", async () => {
+      serve();
+      vi.spyOn(teachingDoor, "admit").mockRejectedValue(new Error("500"));
+      renderPage("sites");
+
+      await userEvent.click(
+        await screen.findByRole("checkbox", { name: "Chest X-ray at Academy" }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Save enrolment" }),
+      );
+
+      expect(
+        await screen.findByText(
+          "Could not save: Chest X-ray. Please try again.",
+        ),
+      ).toBeInTheDocument();
+    });
   });
 });
