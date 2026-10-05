@@ -79,6 +79,14 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   and that a picture which has not loaded reads as its alt text. Signed
   out, check the page has a main landmark and that "Sign in to Quill" is
   reached last.
+- **Journey 1 again, for registration and verification** – added on
+  5 October 2026 by phase 8 of the
+  [in-app guides plan](../../plans/2026-10-05-in-app-guides-plan.md).
+  The second registration step now goes back to the first when it is
+  opened without it, with no message: check a screen reader user who
+  refreshes there is told where they have landed by the page's title.
+  The failed-verification page now says to sign in for a new link:
+  check the message and its link are read together and in that order.
 - **JAWS and Dragon** – deferred to a commissioned audit.
 - **Journeys 1 to 4 on a phone, by touch** – the
   [touch target sizes plan](../../plans/2026-09-28-touch-target-sizes-plan.md)

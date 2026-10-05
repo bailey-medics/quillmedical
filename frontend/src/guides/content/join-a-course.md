@@ -27,10 +27,6 @@ yet. Ask them, or whoever runs the course, to sort that out first.
 5. Press **Register**.
    ![The form for creating an account](join-a-course/create-account.png)
 
-Do not refresh this page or come back to it from a bookmark. If you need
-to start again, go back to the [register page](/register), or your account
-will not be linked to your site.
-
 ## Confirm your email address
 
 1. Open the email called **Verify your Quill email address** and press **Verify your email**. The link lasts 60 minutes. Look in your spam folder if it has not arrived.
