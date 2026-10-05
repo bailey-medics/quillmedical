@@ -52,7 +52,9 @@ const PASSPORT_PAGES: readonly (NavItem & { detail?: string })[] = [
   },
   { label: "Reflections", href: "/passport/reflections", detail: "Reflection" },
   { label: "Download", href: "/passport/download" },
-  { label: "Inbox", href: "/passport/inbox" },
+  // Not "Inbox": that is the envelope in the ribbon, for everything
+  // waiting on somebody. This is the assessor's queue, by its own name.
+  { label: "Sign-off requests", href: "/passport/inbox" },
 ];
 
 /** Where an assessor signs off one request: `/passport/sign-off/:id`. */
@@ -67,7 +69,7 @@ function passportPageAt(pathname: string): NavItem | undefined {
   // not beneath it, so it is hung there by hand.
   if (pathname.startsWith(SIGN_OFF_PREFIX)) {
     return {
-      label: "Inbox",
+      label: "Sign-off requests",
       href: "/passport/inbox",
       children: [{ label: "Sign off", href: pathname }],
     };

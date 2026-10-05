@@ -22,9 +22,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.features.passport.models import Passport, PassportSignOffRequest
 from app.feedback.labels import (
     CATEGORY_LABELS,
     SENDER_STATUS_LABELS,
@@ -175,6 +176,99 @@ def _feedback_reply_lines(
     ]
 
 
+#: Where a sign-off request has got to, as its assessor reads it.
+_REQUEST_STATUS_LABELS: dict[str, str] = {
+    "open": "Waiting",
+    "signed_off": "Signed off",
+    "declined": "Declined",
+    "withdrawn": "Withdrawn",
+}
+
+
+def _asked_of(user: User) -> ColumnElement[bool] | None:
+    """The sign-off requests that name *user* as assessor, or None.
+
+    The same question the passport's own queue asks: a holder types an
+    address, so a request names its assessor by email, whatever the case.
+    None for somebody with no address, or who may not assess, since the
+    passport's routes would refuse them and a count leading to a refusal
+    is worse than no count.
+    """
+    if not user.email:
+        return None
+    if "assess_clinician_passport" not in user.get_final_competencies():
+        return None
+    return (
+        func.lower(PassportSignOffRequest.assessor_email)
+        == user.email.strip().lower()
+    )
+
+
+def _sign_off_count(db: Session, user: User) -> int:
+    """Sign-off requests waiting on the caller as an assessor.
+
+    A request waits until it is signed off or declined, or its holder
+    withdraws it.
+    """
+    asked = _asked_of(user)
+    if asked is None:
+        return 0
+    return int(
+        db.scalar(
+            select(func.count())
+            .select_from(PassportSignOffRequest)
+            .where(asked, PassportSignOffRequest.status == "open")
+        )
+        or 0
+    )
+
+
+def _sign_off_lines(db: Session, user: User, done: bool) -> list[InboxLine]:
+    """Sign-off requests asked of the caller: open, or already answered.
+
+    The line names the clinician who asked. What they asked to be signed
+    off for, and the evidence, are read in the passport itself.
+    """
+    asked = _asked_of(user)
+    if asked is None:
+        return []
+    is_open = PassportSignOffRequest.status == "open"
+    when = (
+        func.coalesce(
+            PassportSignOffRequest.resolved_at,
+            PassportSignOffRequest.created_at,
+        )
+        if done
+        else PassportSignOffRequest.created_at
+    )
+    rows = db.execute(
+        # The holder's name alone, not the user: loading a user brings
+        # their competencies with it, which a list of lines has no use
+        # for.
+        select(PassportSignOffRequest, User.full_name, User.username)
+        .join(Passport, Passport.id == PassportSignOffRequest.passport_id)
+        .join(User, User.id == Passport.user_id)
+        .where(asked, ~is_open if done else is_open)
+        .order_by(when.desc(), PassportSignOffRequest.id.desc())
+        .limit(MAX_ITEMS)
+    ).all()
+    return [
+        InboxLine(
+            id=request.id,
+            title=f"Sign-off request from {full_name or username}",
+            detail=None,
+            status=_REQUEST_STATUS_LABELS.get(request.status),
+            created_at=(
+                (request.resolved_at or request.created_at)
+                if done
+                else request.created_at
+            ),
+            done=request.status != "open",
+        )
+        for request, full_name, username in rows
+    ]
+
+
 #: Every source, in the order the inbox counts them. The key is what the
 #: API returns and what the frontend keys its addresses on, so it is part
 #: of the API: renaming one is a breaking change.
@@ -184,5 +278,8 @@ SOURCES: dict[str, InboxSource] = {
     ),
     "feedback_reply": InboxSource(
         count=_feedback_reply_count, lines=_feedback_reply_lines
+    ),
+    "passport_sign_off": InboxSource(
+        count=_sign_off_count, lines=_sign_off_lines
     ),
 }

@@ -326,59 +326,18 @@ describe("PassportPage", () => {
     }
   });
 
-  it("offers a way into the assessor's queue", async () => {
-    // `/passport/inbox` was built and tested and nothing linked to it,
-    // so a request to assess somebody sat where only a typed URL
-    // reached it – and the person who asked could not tell.
+  it("has no envelope of its own, now that the ribbon carries one", async () => {
+    // The way into the assessor's queue used to sit beside the title.
+    // The envelope in the top ribbon counts sign-off requests with
+    // everything else waiting, and two in view would count them twice.
     fetchMyPassport.mockResolvedValue(detail);
-    renderWithRouter(<PassportPage />);
-
-    expect(
-      await screen.findByRole("button", {
-        name: "Sign-off requests for me to assess",
-      }),
-    ).toBeInTheDocument();
-  });
-
-  it("keeps that queue reachable without a passport of your own", async () => {
-    // Being asked to assess a colleague does not depend on having
-    // started a passport, so the way in survives the empty state.
-    fetchMyPassport.mockRejectedValue(httpError(404));
-    renderWithRouter(<PassportPage />);
-
-    await screen.findByText("You do not have a passport yet");
-
-    expect(
-      screen.getByRole("button", {
-        name: "Sign-off requests for me to assess",
-      }),
-    ).toBeInTheDocument();
-  });
-
-  it("shows how many sign-off requests are waiting", async () => {
-    // A bare icon says nothing about whether anybody is waiting, so a
-    // holder would have to click to find out and would soon stop.
-    fetchMyPassport.mockResolvedValue(detail);
-    fetchInbox.mockResolvedValue([{}, {}, {}]);
-    renderWithRouter(<PassportPage />);
-
-    expect(
-      await screen.findByRole("button", {
-        name: "Sign-off requests for me to assess (3 waiting)",
-      }),
-    ).toBeInTheDocument();
-  });
-
-  it("keeps the passport readable when the count cannot be fetched", async () => {
-    // The count is a convenience beside the title. An error banner
-    // about somebody else's queue has no business sitting above the
-    // holder's own record.
-    fetchMyPassport.mockResolvedValue(detail);
-    fetchInbox.mockRejectedValue(new Error("network"));
     renderWithRouter(<PassportPage />);
 
     expect(await screen.findByText("Records")).toBeInTheDocument();
-    expect(screen.queryByTestId("inbox-count")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /sign-off requests for me/i }),
+    ).not.toBeInTheDocument();
+    expect(fetchInbox).not.toHaveBeenCalled();
   });
 
   it("makes no claim on the card about who can read reflections", async () => {

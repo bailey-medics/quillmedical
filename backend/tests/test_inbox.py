@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.features.passport.models import Passport, PassportSignOffRequest
 from app.inbox import sources
 from app.models import Feedback, User
+from app.security import hash_password
+from tests.competencies import hold
 
 ENDPOINT = "/api/inbox"
 ITEMS = f"{ENDPOINT}/items"
@@ -186,6 +191,157 @@ class TestTheLines:
         self, test_client: TestClient
     ) -> None:
         assert test_client.get(ITEMS).status_code == 401
+
+
+def _holder(db: Session, username: str = "holder") -> Passport:
+    """A clinician with a passport, for somebody to be asked to assess."""
+    user = User(
+        username=username,
+        email=f"{username}@example.test",
+        full_name="Dr Priya Shah",
+        password_hash=hash_password("Password123!"),
+        is_active=True,
+        email_verified=True,
+    )
+    db.add(user)
+    db.commit()
+    # A passport's id is thirty-two hex characters.
+    passport = Passport(id=f"{user.id:032x}", user_id=user.id)
+    db.add(passport)
+    db.commit()
+    return passport
+
+
+def _request(
+    db: Session,
+    passport: Passport,
+    assessor_email: str,
+    status: str = "open",
+    name: str = "chest-drain",
+) -> PassportSignOffRequest:
+    row = PassportSignOffRequest(
+        passport_id=passport.id,
+        signoff_id=name,
+        competency_id="chest_drain_insertion",
+        assessor_email=assessor_email,
+        status=status,
+        resolved_at=None if status == "open" else datetime.now(UTC),
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def _count(client: TestClient, source: str) -> int:
+    return sum(
+        item["count"]
+        for item in client.get(ENDPOINT).json()["items"]
+        if item["source"] == source
+    )
+
+
+class TestSignOffRequests:
+    """Requests to assess a colleague wait on the assessor they name."""
+
+    SOURCE = "passport_sign_off"
+
+    @pytest.fixture
+    def assessor(self, db_session: Session, test_user: User) -> User:
+        hold(test_user, "assess_clinician_passport")
+        db_session.commit()
+        return test_user
+
+    def test_counts_the_open_requests_that_name_the_caller(
+        self,
+        authenticated_client: TestClient,
+        db_session: Session,
+        assessor: User,
+    ) -> None:
+        passport = _holder(db_session)
+        # Named by address, whatever its case: the holder typed it.
+        _request(db_session, passport, assessor.email.upper())
+        _request(db_session, passport, assessor.email, "signed_off", "b")
+        _request(db_session, passport, "somebody.else@example.test", name="c")
+
+        assert _count(authenticated_client, self.SOURCE) == 1
+
+    def test_the_line_names_who_asked_and_nothing_of_the_evidence(
+        self,
+        authenticated_client: TestClient,
+        db_session: Session,
+        assessor: User,
+    ) -> None:
+        passport = _holder(db_session)
+        row = _request(db_session, passport, assessor.email)
+
+        items = authenticated_client.get(ITEMS).json()["items"]
+
+        assert items == [
+            {
+                "source": self.SOURCE,
+                "id": row.id,
+                "title": "Sign-off request from Dr Priya Shah",
+                "detail": None,
+                "status": "Waiting",
+                "created_at": items[0]["created_at"],
+                "done": False,
+            }
+        ]
+
+    @pytest.mark.parametrize(
+        ("status", "label"),
+        [
+            ("signed_off", "Signed off"),
+            ("declined", "Declined"),
+            ("withdrawn", "Withdrawn"),
+        ],
+    )
+    def test_an_answered_request_moves_to_completed(
+        self,
+        authenticated_client: TestClient,
+        db_session: Session,
+        assessor: User,
+        status: str,
+        label: str,
+    ) -> None:
+        passport = _holder(db_session)
+        _request(db_session, passport, assessor.email, status)
+
+        assert _count(authenticated_client, self.SOURCE) == 0
+        assert authenticated_client.get(ITEMS).json() == {"items": []}
+        done = authenticated_client.get(ITEMS, params={"done": True})
+        assert [item["status"] for item in done.json()["items"]] == [label]
+
+    def test_somebody_who_may_not_assess_is_told_nothing(
+        self, db_session: Session
+    ) -> None:
+        """The passport would refuse them, so the count would lead nowhere.
+
+        Asked of the source itself, with a teaching delegate, who holds
+        nothing that lets them assess.
+        """
+        delegate = User(
+            username="delegate",
+            email="delegate@example.test",
+            password_hash=hash_password("Password123!"),
+            is_active=True,
+            email_verified=True,
+            base_profession="teaching_delegate",
+        )
+        db_session.add(delegate)
+        db_session.commit()
+        assert (
+            "assess_clinician_passport"
+            not in delegate.get_final_competencies()
+        )
+        passport = _holder(db_session)
+        _request(db_session, passport, delegate.email)
+        source = sources.SOURCES[self.SOURCE]
+
+        assert source.count(db_session, delegate) == 0
+        assert source.lines(db_session, delegate, False) == []
+        assert source.lines(db_session, delegate, True) == []
 
 
 class TestTheRoute:

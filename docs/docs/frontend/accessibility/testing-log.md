@@ -55,6 +55,14 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
 - **Journeys 1 to 4 at 200% and 400% zoom.**
 - **Journey 3 with people with access needs** – a screen reader user and
   someone with a motor impairment or cognitive difference.
+- **Journeys 1 to 4 again, for the envelope in the top ribbon** – added
+  on 4 October 2026 by the
+  [waiting on me inbox plan](../../plans/2026-10-04-waiting-on-me-inbox-plan.md).
+  Every journey passes through the ribbon, which now ends in an "Inbox"
+  button whose name carries how many things are waiting. Check that it
+  is reached and announced with its count, that it does not come between
+  the skip link and the page, and that the Inbox page's two tables read
+  in order. On journey 3, check the ribbon holds the exam's timer alone.
 - **JAWS and Dragon** – deferred to a commissioned audit.
 - **Journeys 1 to 4 on a phone, by touch** – the
   [touch target sizes plan](../../plans/2026-09-28-touch-target-sizes-plan.md)

@@ -54,6 +54,12 @@ describe("inboxItemHref", () => {
     expect(inboxItemHref(item)).toBe("/admin/feedback/7");
   });
 
+  it("sends a sign-off request to the assessor's queue", () => {
+    expect(inboxItemHref({ ...item, source: "passport_sign_off" })).toBe(
+      "/passport/inbox",
+    );
+  });
+
   it("sends a reply to the sender's own feedback page", () => {
     expect(inboxItemHref({ ...item, source: "feedback_reply" })).toBe(
       "/feedback",
