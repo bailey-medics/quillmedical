@@ -3,6 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@test/test-utils";
 import type { FormSubmitResult } from "@/components/form/Form";
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@lib/legal/links";
 import ResetPasswordForm from "./ResetPasswordForm";
 
 const successResult: FormSubmitResult = {
@@ -182,10 +183,7 @@ describe("ResetPasswordForm", () => {
 
     it("is asked, unticked, of somebody setting a first password", () => {
       renderWithRouter(
-        <ResetPasswordForm
-          askAboutMarketing
-          onSubmit={() => new Promise(() => {})}
-        />,
+        <ResetPasswordForm isInvite onSubmit={() => new Promise(() => {})} />,
       );
 
       expect(box()).toBeInTheDocument();
@@ -200,9 +198,7 @@ describe("ResetPasswordForm", () => {
     it("sends the box as left alone when it is not ticked", async () => {
       const user = userEvent.setup();
       const onSubmit = vi.fn().mockResolvedValue(successResult);
-      renderWithRouter(
-        <ResetPasswordForm askAboutMarketing onSubmit={onSubmit} />,
-      );
+      renderWithRouter(<ResetPasswordForm isInvite onSubmit={onSubmit} />);
 
       await fillIn(user);
       await user.click(screen.getByTestId("submit-button"));
@@ -215,9 +211,7 @@ describe("ResetPasswordForm", () => {
     it("sends the refusal when it is ticked", async () => {
       const user = userEvent.setup();
       const onSubmit = vi.fn().mockResolvedValue(successResult);
-      renderWithRouter(
-        <ResetPasswordForm askAboutMarketing onSubmit={onSubmit} />,
-      );
+      renderWithRouter(<ResetPasswordForm isInvite onSubmit={onSubmit} />);
 
       await fillIn(user);
       const checkbox = box();
@@ -228,6 +222,33 @@ describe("ResetPasswordForm", () => {
       await waitFor(() =>
         expect(onSubmit).toHaveBeenCalledWith("NewSecurePass123!", true),
       );
+    });
+  });
+  describe("the legal notice", () => {
+    it("is not shown on an ordinary reset", () => {
+      renderWithRouter(
+        <ResetPasswordForm onSubmit={() => new Promise(() => {})} />,
+      );
+
+      expect(
+        screen.queryByRole("link", { name: /terms of service/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: /privacy policy/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("links both policies for somebody setting a first password", () => {
+      renderWithRouter(
+        <ResetPasswordForm isInvite onSubmit={() => new Promise(() => {})} />,
+      );
+
+      expect(
+        screen.getByRole("link", { name: /terms of service/ }),
+      ).toHaveAttribute("href", TERMS_OF_SERVICE_URL);
+      expect(
+        screen.getByRole("link", { name: /privacy policy/ }),
+      ).toHaveAttribute("href", PRIVACY_POLICY_URL);
     });
   });
 });

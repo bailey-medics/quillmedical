@@ -16,6 +16,7 @@ import {
 } from "@lib/marketing/wording";
 import { QuillLogo } from "@components/images";
 import { TextLink } from "@components/typography";
+import LegalNotice from "./LegalNotice";
 import {
   Form,
   FormStatusNarrow,
@@ -40,19 +41,15 @@ export interface ResetPasswordFormProps {
     marketingOptOut?: boolean,
   ) => Promise<FormSubmitResult>;
   /**
-   * Ask the marketing question. For somebody setting their first password
-   * from an invite: their account was made for them, so this is the only
-   * form they see, and the question a registration form would have asked
-   * is asked here. Never for an ordinary reset.
+   * Somebody is setting their first password from an invite. Their
+   * account was made for them, so this is the only form they see, and
+   * what a registration form would have shown is shown here: the
+   * marketing question, and the legal notice. Never for an ordinary reset.
    */
-  askAboutMarketing?: boolean;
+  isInvite?: boolean;
 }
 
-function ResetPasswordFields({
-  askAboutMarketing,
-}: {
-  askAboutMarketing: boolean;
-}) {
+function ResetPasswordFields({ isInvite }: { isInvite: boolean }) {
   const { methods } = useFormContext();
 
   return (
@@ -79,13 +76,16 @@ function ResetPasswordFields({
       />
       {/* The same opt-out, in the same words, as the registration form:
           left unticked, they are sent news. Never pre-ticked. */}
-      {askAboutMarketing && (
+      {isInvite && (
         <CheckboxField
           label={MARKETING_OPT_OUT_LABEL}
           description={MARKETING_OPT_OUT_DESCRIPTION}
           {...methods.register("marketingOptOut")}
         />
       )}
+      {/* An invite is this person's sign-up, so the policies are linked
+          here as they are on the registration form. */}
+      {isInvite && <LegalNotice />}
       <FormStatusNarrow />
       <SubmitButton />
       <Group justify="flex-end">
@@ -99,14 +99,14 @@ function ResetPasswordFields({
 
 export default function ResetPasswordForm({
   onSubmit,
-  askAboutMarketing = false,
+  isInvite = false,
 }: ResetPasswordFormProps) {
   async function handleSubmit(
     data: ResetPasswordFormValues,
   ): Promise<FormSubmitResult> {
     // An answer is passed on only when the question was on the page, so
     // an ordinary reset can never be read as "shown it and did not tick".
-    return askAboutMarketing
+    return isInvite
       ? onSubmit(data.password, data.marketingOptOut)
       : onSubmit(data.password);
   }
@@ -124,7 +124,7 @@ export default function ResetPasswordForm({
           submitLabel="Reset password"
           submittingLabel="Resetting…"
         >
-          <ResetPasswordFields askAboutMarketing={askAboutMarketing} />
+          <ResetPasswordFields isInvite={isInvite} />
         </Form>
       </BaseCard>
     </>

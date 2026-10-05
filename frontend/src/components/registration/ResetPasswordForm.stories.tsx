@@ -54,11 +54,11 @@ export const WithError: Story = {
 /**
  * Setting a first password from an invite. The account was made for this
  * person, so the marketing question a registration form would have asked
- * is asked here, unticked.
+ * is asked here, unticked, and the legal notice is shown above the button.
  */
 export const FromAnInvite: Story = {
   args: {
-    askAboutMarketing: true,
+    isInvite: true,
   },
 };
 

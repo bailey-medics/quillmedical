@@ -45,6 +45,12 @@ our terms" beside a page with no terms on it is worse than no sentence.
 
 ## Phase 2: The sentence on the forms
 
+Built on 5 October 2026, ahead of Phase 1, as two stacked pull requests.
+The first adds the components and shows them nowhere, so it can merge at
+any time. The second puts the sentence on the forms and **must not be
+merged until Phase 1 is done**: merging deploys, and the links would lead
+to the placeholders.
+
 - [x] **Add an external link component, `ExternalTextLink`,** in
       `frontend/src/components/typography/`, with its `.stories.tsx` and
       `.test.tsx`. `TextLink` cannot do this job: it wraps React Router's
@@ -77,20 +83,22 @@ our terms" beside a page with no terms on it is worse than no sentence.
       uses it yet, which is what makes this safe to merge before Phase 1
       is done.
 
-- [ ] **Show it above the submit button in `RegistrationForm.tsx`,**
+- [x] **Show it above the submit button in `RegistrationForm.tsx`,**
       under the marketing tick box. This covers self-registration through
       `TeachingRegisterPage.tsx`. The first step in `RegisterPage.tsx`,
       which only checks the clinical lead's email, collects nothing about
       the person registering and stays as it is.
 
-- [ ] **Show it in `ResetPasswordForm.tsx` when `askAboutMarketing` is
+- [x] **Show it in `ResetPasswordForm.tsx` when `askAboutMarketing` is
       set,** which is how the form already knows it is an invite. Somebody
       whose account was made for them never saw the registration form, so
       setting their first password is their moment of collection. An
       ordinary password reset does not show it. Rename the prop if it now
       reads wrongly: it has come to mean "this is a first sign-up".
+      Renamed to `isInvite`, the name `ResetPasswordPage.tsx` already
+      used for the same fact.
 
-- [ ] **Update the tests and stories** for both forms: the sentence and
+- [x] **Update the tests and stories** for both forms: the sentence and
       both links are present on registration and on an invite, and absent
       on a plain reset. Run `just uf
       src/components/registration/` and the two page tests.
