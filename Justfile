@@ -373,6 +373,20 @@ gcp-login:
     gcloud auth application-default login
 
 
+alias gsh := guide-screenshots
+# Retake the screenshots the in-app guides show, into frontend/public/guide-assets
+guide-screenshots *ARGS:
+    #!/usr/bin/env bash
+    {{initialise}} "guide-screenshots"
+    # Not a test of the application: a build step that walks each guide's
+    # flow and photographs it, so it has a Playwright config of its own and
+    # `just e2e` never runs it. It drives this worktree's own compose.ci.yml
+    # stack, so every name in a screenshot is one seed_ci.py made up. The
+    # images land in frontend/public/guide-assets/, which git ignores and the
+    # Vite dev server serves. See docs/docs/plans/2026-10-05-in-app-guides-plan.md.
+    just _e2e-run --config playwright.guides.config.ts {{ARGS}}
+
+
 alias h32 := hex-32
 # Generate a random 32 character hex string
 hex-32:

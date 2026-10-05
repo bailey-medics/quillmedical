@@ -194,28 +194,43 @@ screenshots are made by a script and never by hand.
       change to `MarkdownView`, and until the bucket exists it is what
       every image looks like.
 
-- [ ] Add a Playwright project `guide-screenshots` in
-      `frontend/playwright.config.ts`, with its specs in
-      `frontend/e2e/guides/`, one per guide. Each walks the flow against
-      the seeded stack and calls `page.screenshot` at the steps the guide
-      shows, writing to `<slug>/<name>.png`. One desktop viewport, light
-      theme. Keep it out of the default `just e2e` run: it is a build
-      step, not a test of the application.
+- [x] Add a Playwright config of its own, `frontend/playwright.guides.config.ts`,
+      with its specs in `frontend/e2e/guides/`, one per guide and named for
+      its slug. Each walks the flow against the seeded stack and calls
+      `shot(page, "<slug>/<name>")` at the steps the guide shows. One
+      desktop viewport, light theme, twice the pixel density. This was to
+      be a project inside `playwright.config.ts`, kept out of the default
+      run by hand. A separate config cannot be run by `just e2e` or by CI's
+      end-to-end job at all, which is the point: it is a build step, not a
+      test of the application.
 
-- [ ] Check `backend/scripts/seed_ci.py` gives each flow what it needs (an
-      admin holding `manage_teaching`, a module to enrol on) and extend it
-      if not. Every name on screen is then seeded and fake by construction.
+- [x] No spec submits anything: the admin spec stops at the review step
+      and the joining spec never presses Register. So a second run finds
+      the stack as the first did, and nothing needed adding to
+      `backend/scripts/seed_ci.py`. The specs sign in as `educator`, the
+      teaching admin the end-to-end tests already use. Every name on
+      screen is then seeded and fake by construction.
 
-- [ ] Add a `just` recipe, following `.claude/rules/just.md`, that runs
-      the project on the per-worktree `compose.ci.yml` stack through
-      `_e2e-run` and leaves the images in a gitignored
-      `frontend/public/guide-assets/`, where the Vite dev server serves
-      them. A guide can then be written and looked at locally with its
-      real screenshots.
+- [ ] The seed has an organisation and no site, so the screenshot of the
+      "Organisation/site" step shows an organisation chosen where the
+      guide's words say to choose a site, and everything is named "CI
+      Teaching Hospital". Seeding a site and friendlier names would fix
+      both. Left alone here because `seed_ci.py` is shared with the
+      end-to-end tests, which this run does not exercise.
 
-- [ ] A test ties the two halves together: every image a guide refers to
-      is produced by a spec, and every image a spec produces is referred
-      to. Without it a renamed step silently leaves a broken image.
+- [x] Add `just guide-screenshots` (`just gsh`), which runs the config on
+      the per-worktree `compose.ci.yml` stack through `_e2e-run` and
+      leaves the images in a gitignored `frontend/public/guide-assets/`,
+      where the Vite dev server serves them. A guide can then be written
+      and looked at locally with its real screenshots.
+
+- [x] `frontend/src/guides/screenshots.test.ts` ties the two halves
+      together: every image a guide names is taken by its spec, and every
+      image a spec takes is named. It reads the `shot` calls out of the
+      spec files. Without it a renamed step silently leaves a broken image.
+
+- [x] Put the screenshots into the two guides written so far, each under
+      the step it shows.
 
 - [ ] Add a public bucket for the images and route `/guide-assets/*` to it
       on the load balancer in `infra/`, beside the `/videos/*` backend
@@ -257,9 +272,9 @@ not revisited.
       of it. The form should say so on the step, in
       `frontend/src/pages/UserInfoUpdatePage.tsx`; then take the warning
       out of the guide.
-- [ ] Three things found in the registration flow while writing "Join a
-      course", none of them fixed here. Each wants its own small change,
-      and the guide works round the first two:
+- [x] Three things found in the registration flow while writing "Join a
+      course", none of them fixed in this phase. The guide works round the
+      first two, and Phase 8 fixes all three:
       `/teaching/register/:module` takes the delegate's site from router
       state set by the step before, so refreshing it, or opening it from a
       bookmark, creates an account that belongs nowhere. The "Resend
@@ -321,6 +336,64 @@ everything it would otherwise have to explain is written down.
       list in `testing-log.md`, with a note that a guide page itself (its
       heading order, image alt text and the captioned video) wants a pass
       of its own.
+
+## Phase 8: Fix the registration faults the joining guide works round
+
+"Join a course" tells a delegate not to refresh the second registration
+page. That is a guide apologising for the application. These are the three
+faults found while writing it, in the order a delegate would meet them.
+Last in the plan because the guides do not depend on them, and each is a
+small change of its own.
+
+- [ ] Keep the delegate's site across a refresh. `RegisterPage.tsx`
+      validates the clinical lead and hands the organisation and site it
+      gets back to `/teaching/register/:module` as router state, which a
+      refresh, a bookmark or a link opened in a new tab all lose.
+      `TeachingRegisterPage.tsx` then posts to `/auth/register` with
+      neither, and the account is created belonging nowhere: the delegate
+      signs in to "No access" and nobody is told. Carry what the second
+      step needs in something that survives, and decide which: the address
+      itself, or `sessionStorage`. The address is the more honest, since
+      `:module` is already in it and is read by nothing.
+
+- [ ] Whichever is chosen, the server must not take the browser's word
+      for the site. Today `org_unit_id` and `site_id` arrive in the
+      request body from router state, so anybody can already name a site
+      they have no clinical lead at. Have `/auth/register` work the site
+      out again from the module and the clinical lead's email, as
+      `validate_clinical_lead` in `backend/app/main.py` does, and refuse a
+      mismatch. This changes who can end up a member where, so it wants a
+      careful read.
+
+- [ ] Refuse the orphan. When the second step is opened with nothing to
+      say where the delegate belongs, send them back to `/register` with
+      a message saying why, and have `/auth/register` refuse a teaching
+      registration that names no site. An account that belongs nowhere
+      should be impossible to make by accident.
+
+- [ ] Then take the "Do not refresh this page" paragraph out of
+      `frontend/src/guides/content/join-a-course.md`.
+
+- [ ] Give the failed-verification page a way forward. "Resend
+      verification email" on `VerifyEmail.tsx` leads to
+      `/verify-email-pending`, whose resend button is drawn only when the
+      page knows the address, and arriving this way it does not. Either
+      ask for the address there, or send the delegate to sign in, which
+      already sends a fresh link to an unverified account. The guide says
+      to sign in; the page should say the same.
+
+- [ ] Look up an email address the same way everywhere. `register`
+      stores it as typed and `resend-verification` looks it up in lower
+      case, so somebody who typed capitals may never be sent a second link
+      while the page says one was sent. Not traced to the end: check
+      `/auth/verify-email`, login and password reset for the same
+      mismatch first, then store and compare in one case. Existing rows
+      need a migration to match, and two accounts that differ only by
+      case need a decision before it runs.
+
+- [ ] These change the registration and login flow, so they touch
+      journey 1 in `docs/docs/frontend/accessibility/journeys.md`. Add it
+      to the "Not yet run" list in `testing-log.md`.
 
 ## Decisions
 
