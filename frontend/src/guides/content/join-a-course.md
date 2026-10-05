@@ -36,8 +36,9 @@ will not be linked to your site.
 1. Open the email called **Verify your Quill email address** and press **Verify your email**. The link lasts 60 minutes. Look in your spam folder if it has not arrived.
 2. When you see **Email verified**, choose **Go to login**.
 
-If the link has run out, sign in with your username and password anyway.
-Quill sends you a fresh link.
+If the link has run out, you see **Verification failed**. Choose **Sign
+in for a new link** and sign in with your username and password. Quill
+emails you a fresh link.
 
 ## Sign in
 

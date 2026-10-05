@@ -55,7 +55,7 @@ describe("VerifyEmailPage", () => {
     );
   });
 
-  it("shows failure and a resend link when the token is refused", async () => {
+  it("shows failure and the way to a new link when the token is refused", async () => {
     post.mockRejectedValue(new Error("expired"));
     renderWithRouter(<VerifyEmailPage />, {
       initialRoute: "/verify-email?token=abc",
@@ -65,8 +65,8 @@ describe("VerifyEmailPage", () => {
       expect(screen.getByText("Verification failed")).toBeInTheDocument();
     });
     expect(
-      screen.getByRole("link", { name: "Resend verification email" }),
-    ).toHaveAttribute("href", "/verify-email-pending");
+      screen.getByRole("link", { name: "Sign in for a new link" }),
+    ).toHaveAttribute("href", "/login");
   });
 
   it("fails without calling the backend when there is no token", () => {
