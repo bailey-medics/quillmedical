@@ -4,6 +4,7 @@ export { default as BodyTextClamp } from "./BodyTextClamp";
 export { default as BodyTextInline } from "./BodyTextInline";
 export { default as EmptyState } from "./EmptyState";
 export { default as ErrorMessage } from "./ErrorMessage";
+export { default as ExternalTextLink } from "./ExternalTextLink";
 export { default as FieldDescription } from "./FieldDescription";
 export { default as Heading } from "./Heading";
 export { default as TextLink } from "./TextLink";
