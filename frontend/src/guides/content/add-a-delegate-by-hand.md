@@ -29,8 +29,9 @@ Press **Next** to move on from each step.
    ![The organisation and site step](add-a-delegate-by-hand/organisation-site.png)
 3. **Competencies.** Leave both boxes empty. The profession already gives a delegate what they need.
 4. **Practice.** Leave the switches as they are.
-5. **Permissions.** Leave **Platform role** as **Standard**.
-6. **Review.** Check the details, then press **Create user**.
+5. **Enrolment.** Tick each module the delegate is to take. An end date is optional: leave it empty and the enrolment has no end.
+   ![The enrolment step, with a module ticked](add-a-delegate-by-hand/enrolment.png)
+6. **Review.** Check the details, including the modules under **Enrolment**, then press **Create user**.
    ![The review step, with the Create user button](add-a-delegate-by-hand/review.png)
 
 You are taken back to the list of users, with the message **User created**.
@@ -42,8 +43,13 @@ Quill does not email a new delegate by itself. Do one of these:
 - Give them the username and the initial password yourself.
 - Send an invite. In **Users**, choose the delegate, then under **Actions** press **Send** on the **Send invite email** card. They are emailed a link to set up their own password.
 
-Once signed in, the delegate sees the modules that are live for their
-site's organisation. There is nothing more to switch on.
+Once signed in, the delegate sees the modules you ticked.
+
+## Add a module later
+
+1. Choose **Admin**, then **Sites**, and open the delegate's site.
+2. Choose the delegate from the list of staff.
+3. Tick the module, then press **Save enrolment**.
 
 ## If the account is not created
 
