@@ -152,20 +152,31 @@ same sources as the counts.
 
 ## Phase 5: Tell the sender about a reply
 
-- [ ] Add a nullable `comment_seen_at` to `feedback`, with
-      `just migrate`. A reply is waiting when `operator_comment` is set
-      and `comment_seen_at` is empty. Saving a changed comment clears it,
-      so an update added as a new line counts as new again.
+- [x] Add two nullable times to `feedback`, with `just migrate`:
+      `operator_comment_at`, when the comment was last written or
+      changed, and `comment_seen_at`, when the sender last opened their
+      feedback page. A reply is waiting when there is a comment written
+      since they last looked, or never seen at all. Two times and not
+      one cleared on each edit: the line in the inbox needs the reply's
+      own date, and comparing them needs no write when a comment is
+      saved. `reply_is_unseen` in `backend/app/feedback/replies.py` is
+      the one place that says it. A comment written before this change
+      has no time and has never been seen, so it counts as waiting once.
 
-- [ ] Add `POST /api/feedback/mine/seen`, which stamps the caller's own
-      rows, and call it when `YourFeedbackPage` loads.
+- [x] Add `POST /api/feedback/mine/seen`, which stamps the caller's own
+      rows, and call it when `YourFeedbackPage` loads with a reply on it.
+      The page shows every reply at once, so opening it is reading each.
 
-- [ ] Add the source `feedback_reply`: the number of the caller's own
-      feedback rows with an unseen reply. Its link is `/feedback`.
+- [x] Add the source `feedback_reply`: the caller's own feedback with an
+      unseen reply, and under "Completed" the replies already read. Its
+      line reads "Reply to your feedback", with the category and where
+      the feedback has got to in the sender's words. It opens
+      `/feedback`.
 
-- [ ] Email the sender when a comment is saved, on the same rule as
-      phase 1: that there is a reply, and a link. Neither the comment
-      nor their own message goes in it.
+- [x] Email the sender when a comment is written or changed, on the same
+      rule as phase 1: that there is a reply, and a link. Neither the
+      comment nor their own message goes in it. Saving the same comment
+      again, or changing the status alone, sends nothing.
 
 ## Phase 6: The passport joins
 

@@ -10,6 +10,7 @@ import { screen, waitFor } from "@testing-library/react";
 import { renderWithRouter } from "@/test/test-utils";
 import * as apiLib from "@/lib/api";
 import type { MyFeedbackItem } from "@/lib/feedback/myFeedback";
+import { onInboxChanged } from "@/lib/inbox/inbox";
 import YourFeedbackPage from "./YourFeedbackPage";
 
 const fixed: MyFeedbackItem = {
@@ -41,6 +42,31 @@ describe("YourFeedbackPage", () => {
     renderWithRouter(<YourFeedbackPage />);
 
     await waitFor(() => expect(get).toHaveBeenCalledWith("/feedback/mine"));
+  });
+
+  it("records that the replies have been seen, and tells the envelope", async () => {
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({ items: [fixed] });
+    const post = vi.spyOn(apiLib.api, "post").mockResolvedValue({ seen: 1 });
+    const told = vi.fn();
+    const stop = onInboxChanged(told);
+
+    renderWithRouter(<YourFeedbackPage />);
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/feedback/mine/seen", {}),
+    );
+    await waitFor(() => expect(told).toHaveBeenCalledTimes(1));
+    stop();
+  });
+
+  it("records nothing when there is no reply to have seen", async () => {
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({ items: [received] });
+    const post = vi.spyOn(apiLib.api, "post");
+
+    renderWithRouter(<YourFeedbackPage />);
+
+    await screen.findByText("Captions lag behind the video.");
+    expect(post).not.toHaveBeenCalled();
   });
 
   it("shows the operator's reply only where one was written", async () => {

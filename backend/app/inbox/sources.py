@@ -25,7 +25,12 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.feedback.labels import CATEGORY_LABELS, STATUS_LABELS
+from app.feedback.labels import (
+    CATEGORY_LABELS,
+    SENDER_STATUS_LABELS,
+    STATUS_LABELS,
+)
+from app.feedback.replies import reply_is_unseen
 from app.models import Feedback, User
 
 #: The most lines one source gives of either kind. The inbox is for what
@@ -122,11 +127,62 @@ def _feedback_lines(db: Session, user: User, done: bool) -> list[InboxLine]:
     ]
 
 
+def _feedback_reply_count(db: Session, user: User) -> int:
+    """Replies to the caller's own feedback that they have not seen.
+
+    A reply waits from when an operator writes or changes it until the
+    sender next opens their feedback page. Reading is the whole of
+    dealing with it: there is nothing for them to do but know.
+    """
+    return int(
+        db.scalar(
+            select(func.count())
+            .select_from(Feedback)
+            .where(Feedback.user_id == user.id, reply_is_unseen())
+        )
+        or 0
+    )
+
+
+def _feedback_reply_lines(
+    db: Session, user: User, done: bool
+) -> list[InboxLine]:
+    """Replies to the caller's own feedback: unseen, or already read.
+
+    The line says there is a reply and where the feedback has got to.
+    Neither the reply nor what they wrote is in it.
+    """
+    replied = Feedback.operator_comment.is_not(None)
+    rows = db.scalars(
+        select(Feedback)
+        .where(
+            Feedback.user_id == user.id,
+            (replied & ~reply_is_unseen()) if done else reply_is_unseen(),
+        )
+        .order_by(Feedback.operator_comment_at.desc(), Feedback.id.desc())
+        .limit(MAX_ITEMS)
+    )
+    return [
+        InboxLine(
+            id=row.id,
+            title="Reply to your feedback",
+            detail=CATEGORY_LABELS.get(row.category or ""),
+            status=SENDER_STATUS_LABELS.get(row.status),
+            created_at=row.operator_comment_at or row.created_at,
+            done=done,
+        )
+        for row in rows
+    ]
+
+
 #: Every source, in the order the inbox counts them. The key is what the
 #: API returns and what the frontend keys its addresses on, so it is part
 #: of the API: renaming one is a breaking change.
 SOURCES: dict[str, InboxSource] = {
     "feedback_new": InboxSource(
         count=_feedback_new_count, lines=_feedback_lines
+    ),
+    "feedback_reply": InboxSource(
+        count=_feedback_reply_count, lines=_feedback_reply_lines
     ),
 }

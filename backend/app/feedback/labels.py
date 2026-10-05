@@ -14,6 +14,17 @@ CATEGORY_LABELS: dict[str, str] = {
     "other": "Something else",
 }
 
+#: Where a piece of feedback has got to, as its sender reads it. The same
+#: words as ``FEEDBACK_STATUS_SENDER_LABELS`` in ``myFeedback.ts``:
+#: ``acknowledged`` means something to whoever is triaging, and to the
+#: sender what matters is that somebody is looking at it.
+SENDER_STATUS_LABELS: dict[str, str] = {
+    "new": "Received",
+    "acknowledged": "Being looked at",
+    "resolved": "Fixed",
+    "wont_fix": "Won't fix",
+}
+
 #: Where a piece of feedback has got to, as an operator reads it. The
 #: same words as ``FEEDBACK_STATUS_LABELS`` in ``feedbackAdmin.ts``.
 STATUS_LABELS: dict[str, str] = {

@@ -52,6 +52,9 @@ export interface InboxItem {
  */
 const ADDRESSES: Record<string, (id: number) => string> = {
   feedback_new: (id) => `/admin/feedback/${id}`,
+  // A reply is read on the sender's own feedback page, which lists all
+  // of theirs: there is no page for one.
+  feedback_reply: () => "/feedback",
 };
 
 /** Whether this client knows where a source's things are dealt with. */

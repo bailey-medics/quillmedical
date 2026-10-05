@@ -147,6 +147,12 @@ class MyFeedbackListOut(BaseModel):
     items: list[MyFeedbackItemOut]
 
 
+class FeedbackSeenOut(BaseModel):
+    """How many replies stopped waiting when the caller opened their page."""
+
+    seen: int
+
+
 class FeedbackUpdateIn(BaseModel):
     """An operator's answer to a piece of feedback: a status, a comment
     or both.
