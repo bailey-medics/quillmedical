@@ -926,3 +926,38 @@ class MemberAccessOut(BaseModel):
     """One person's way into each module an organisation serves."""
 
     modules: list[ModuleAccessOut]
+
+
+class UnenrolIn(BaseModel):
+    """End a member's enrolment on one module.
+
+    Attributes:
+        module_id: The module.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    module_id: str = Field(max_length=255, pattern=_MODULE_ID)
+
+
+class ServedModuleOut(BaseModel):
+    """One module an organisation serves."""
+
+    question_bank_id: str
+    title: str
+
+
+class ServedModulesOut(BaseModel):
+    """The modules the organisation above an org_unit serves.
+
+    Attributes:
+        organisation_id: That organisation, as an org_unit, or None for
+            an org_unit under no organisation.
+        organisation_name: Its name.
+        modules: What it serves, in id order. Empty where it has
+            teaching off or nothing promoted.
+    """
+
+    organisation_id: int | None
+    organisation_name: str | None
+    modules: list[ServedModuleOut]

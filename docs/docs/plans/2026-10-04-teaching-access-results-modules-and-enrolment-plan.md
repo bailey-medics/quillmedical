@@ -392,28 +392,178 @@ one at a time. Arriving does all three; leaving undoes the right one.
       the caller themselves are refused; giving the place back restores
       what somebody had; the access route names each missing layer.
 
-## Phase 6: The admin pages
+## Phase 6: An Enrolment step on the user form
 
-- [ ] On the admin module page for an organisation, list who is
-      enrolled, with dates, and an action to enrol or withdraw one
-      person. Reuse `DataTableControlled` with its `action` slot and
-      the existing member picker before building anything; a new
-      component needs a plan and a person's agreement first.
+Decided on 5 October 2026, replacing the admin pages this phase first
+described. The user form, `frontend/src/pages/UserInfoUpdatePage.tsx`
+at `/admin/users/new` and `/admin/users/:id/edit`, already has a
+Competencies step and a Practice step, which are the first two of
+teaching's layers. An Enrolment step after them is the third, in order,
+so the form is the wizard and an admin learns nothing new.
 
-- [ ] An "Add to teaching" action on a member of an org unit: a short
-      form of the org unit (fixed), the modules as ticks and an optional
-      end date, calling `admit`. This is the wizard. It is a form, not
-      a multi-step flow, because there is one decision in it.
+- [x] Let the user routes carry enrolments. `POST /api/users` and
+      `PATCH /api/users/{id}` in `backend/app/main.py` gain an optional
+      `teaching_enrolments`, beside `practising` and shaped like it:
+      one entry per organisation, holding its modules, each with an
+      optional end date. Left out, enrolments are untouched, and so is
+      an organisation that is not sent; an entry is the whole list for
+      its organisation, so a module not named there has its enrolment
+      ended and an empty list ends them all. A changed end date ends
+      the old row and writes a new one, so the table says who changed
+      the term. Written in the
+      same transaction as the rest of the save, which is the only way
+      it can work for somebody new, who has no id until then.
 
-- [ ] On the same member, show the access route's answer: each module
-      with a yes, or the missing layer in plain words ("not enrolled",
-      "no place at this centre", "may not take modules").
+- [x] Naming a module does everything. For each enrolment named, the
+      save goes through `admit` in `access.py`: the two learner
+      competencies if they lack them, a place, and the enrolment. An
+      admin who ticks a module and forgets the Competencies or Practice
+      step still leaves somebody able to enter it, which is the half
+      set up account this plan began with. The place is written at
+      every org unit the person belongs to under that organisation, as
+      the Phase 3 migration did; the Practice step is where it is made
+      narrower. Unticking a module ends that enrolment and nothing
+      else: the place and the competencies stay.
 
-- [ ] A "Withdraw everyone's access" action on an org unit, behind a
-      confirmation that says how many people it affects, that the
-      centre itself is not removed, and that their results are kept.
+- [x] Only somebody who runs teaching may send it. `teaching_enrolments`
+      needs `manage_teaching`, or an operator, and each organisation
+      named must be one whose people the caller may act on
+      (`org_units_whose_people_reached_by`). A holder of `manage_users`
+      alone is refused, with a 403 naming nothing. A module the
+      organisation does not serve is a 422 and nothing is saved, as is
+      an organisation the person does not belong to and an end date
+      already passed. Nobody enrols themselves where that would give
+      them a competency.
 
-- [ ] Tests and stories for each, and tests for the pages.
+- [x] Admit an operator to the door routes. Found while building this:
+      the router from Phase 5 asked for the teaching feature at one of
+      the caller's organisations and for `manage_teaching`, and an
+      operator has neither, belonging to no organisation. The step is
+      meant for them too, so `door.py` now has one dependency,
+      `require_runs_teaching`, which passes an operator outright and
+      asks everybody else for both.
+
+- [x] Tell the form what it needs. `UserOut` gains
+      `teaching_enrolments`, the person's current ones with their end
+      dates, so the step opens with them ticked. And
+      `GET /api/teaching/admin/org-units/{unit_id}/modules`, in
+      `door.py`, lists the modules the organisation above an org unit
+      serves, by id and title, and names that organisation, so the step
+      can be drawn for somebody who does not exist yet and a form
+      holding several org units of one organisation shows its modules
+      once. `UserOut` lists enrolments only to somebody who runs
+      teaching. Both additive. The `unenrol` route the member page
+      needs, described below, was built here with them. Backend tests
+      for all of this are in
+      `tests/test_teaching_enrolment_on_the_user_form.py`.
+
+- [ ] Add the step, fifth: after Practice, before Permissions, with
+      the label "Enrolment". It is shown when both hold, and is
+      decided by the person being edited, not by the admin: the org
+      units chosen in the Organisation/site step sit under an
+      organisation with teaching switched on, and the admin holds
+      `manage_teaching` or is an operator. An operator belongs to no org
+      unit, so a rule read from the admin's own memberships would hide
+      it from them. It follows the Practice step's pattern, a
+      conditional entry in the `steps` list.
+
+- [ ] What the step shows: for each teaching organisation the person
+      belongs to, its modules as tick boxes with an optional end date
+      beside each. Modules they are enrolled on come ticked. Build it
+      from existing components first, the checkbox and date fields the
+      form already uses and one card per organisation as
+      `PracticeByPlaceEditor` draws one per org unit. If that does not
+      fit and a new component is wanted, stop and agree it: this plan
+      is not that agreement.
+
+- [ ] Say it on the Review step: the modules they will be enrolled on,
+      any they will be taken off, and, where ticking a module is about
+      to give a competency or a place they did not have, that it will.
+      Nothing is granted that the Review step did not show.
+
+- [ ] Tests: backend, for the routes (a new user enrolled in the one
+      save; competencies and place given when missing; unticking ends
+      the enrolment and leaves the place; `manage_users` alone refused;
+      an organisation out of reach refused; a module not served saves
+      nothing). Frontend, for when the step shows and does not, the
+      ticks it opens with, what it sends, and the Review step's
+      wording. A story for the step.
+
+- [ ] Put enrolment on the member page too. Agreed on 5 October 2026.
+      `MemberPracticePage`, at `/admin/sites/:id/members/:userId` and
+      `/admin/organisations/:id/members/:userId`, is one person at one
+      org unit, with switches for what they may practise there. The
+      user form is for setting somebody up across every place they
+      belong to; this page is for a quick change by whoever runs one
+      centre, who should not walk a six-step form to add a module. It
+      shows the same card the Enrolment step draws, for the
+      organisation above this org unit: its modules as tick boxes with
+      an optional end date, current enrolments ticked. One card, used
+      in both places, so the two cannot drift apart. Shown under the
+      rule the step uses: that organisation has teaching on and serves
+      at least one module, and the admin holds `manage_teaching` or is
+      an operator.
+
+- [ ] Ticks on this page are held until "Save changes", as its
+      practice switches are: the route is marked unsafe to reload for
+      that reason, and enrolment follows the page it is on. On save,
+      each module newly ticked calls the `admit` route from Phase 5 for
+      this org unit, so the place is written here, at the centre the
+      admin is looking at, and the competencies are given if missing.
+      Each module unticked needs the one thing Phase 5 did not build:
+      add
+      `POST /api/teaching/admin/org-units/{unit_id}/members/{user_id}/unenrol`
+      to `door.py`, taking a module and ending that enrolment through
+      `enrolment.withdraw`, under the same gate and scope as `admit`.
+      The form does not need it, because it sends the whole list. The
+      saves are separate requests, so one may fail after another has
+      landed: say which module was not saved and leave its tick as the
+      admin set it, so pressing save again finishes the job. `admit`
+      and `unenrol` both change nothing when asked twice.
+
+- [ ] Show on the same page what the `access` route from Phase 5
+      answers: beside each module, that the person may enter it, or
+      the missing layer in plain words ("not enrolled", "no place at
+      this centre", "may not take modules"). It is the page about
+      exactly this person at exactly this centre, so it is where a
+      half set up account is noticed. Add a "Withdraw access here"
+      action for the one person, calling the `withdraw` route, which
+      removes their place at this org unit and leaves the rest.
+
+- [ ] Tests for the member page: the card shows and does not, a tick
+      calls nothing until "Save changes", a tick then calls `admit`
+      with this org unit, an untick ends the enrolment, the missing
+      layer is worded for each case, and a failed save names the
+      module and keeps the tick. Backend tests for the new route:
+      it ends one enrolment and leaves the place, a module they are
+      not on changes nothing, and it is refused out of scope.
+
+- [ ] Rename the Permissions step to "Platform role", and show it to
+      an operator only. Asked for on 5 October 2026, and done with the
+      Enrolment step because both change which steps the form has. The
+      step holds one field, the platform role, under a heading that
+      already reads "Platform role"; only its label in the stepper says
+      "Permissions", with the description "System permission level",
+      which is the vocabulary of the hierarchy this replaced. Somebody
+      who is not a superadmin has one option in it, "Standard", and
+      nothing to decide, so for them the step goes: a conditional entry
+      in the `steps` list, as Practice is, read from
+      `state.user.platform_role`. The backend already refuses a
+      platform role set by anybody but an operator, so hiding the step
+      removes nothing they could do. With it hidden the form must send
+      what it sends now, the role the person already has or "standard"
+      for somebody new, and the Review step drops its platform role
+      line for the same people. Rename the `Step3Permissions`
+      component and its comment to match. Tests: an operator sees the
+      step under its new name; a user manager and a teaching admin do
+      not; saving without it leaves an existing operator's role alone.
+
+- [ ] A "Withdraw everyone's access" action for a centre, on the site
+      and organisation admin pages, calling the `withdraw-everyone`
+      route from Phase 5. It is about a centre and not a person, so it
+      does not belong on the user form. Behind a confirmation that
+      says how many people it affects, that the centre itself is not
+      removed, and that their results are kept.
 
 - [ ] Add journey 3, "open and complete a teaching lecture", to the
       "Not yet run" list in
@@ -488,6 +638,19 @@ Not built by this plan. Each needs its own plan when its time comes.
 - **An organisation per product was rejected** – it works today with
   no code, but ten modules is ten organisations and a buyer's results
   are split across them.
+
+- **Enrolment is a step on the user form, not a page of its own** –
+  an "Add to teaching" form on a member, and a list of who is enrolled
+  on each module, were planned first. The user form already walks an
+  admin through what somebody holds and where, so the third layer was
+  put after those two. The per-module list is left out for now:
+  nothing depends on it once enrolment is done per person.
+
+- **Ticking a module gives the other two layers** – it could have
+  refused, and sent the admin back to the Competencies and Practice
+  steps. Doing all three was chosen because an account with two layers
+  of three looks set up and is not, and the Review step says what will
+  be given before it is.
 
 - **No cohorts** – enrolling a group with shared dates is a layer on
   top of rows, left until a course is run that way.
