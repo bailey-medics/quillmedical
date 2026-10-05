@@ -28,13 +28,19 @@ See
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.cbac.base_professions import get_profession_base_competencies
+from app.cbac.grants import sync_competency_rows
 from app.cbac.scoped import authorise_practice
 from app.features.teaching.enrolment import enrol, is_enrolled
+from app.features.teaching.models import QuestionBankOrgStatus
 from app.models import PractisingCompetency, User, org_unit_member
-from app.organisations import reach_of_org_units
+from app.organisations import organisation_org_units_of, reach_of_org_units
 
 #: The competency that opens teaching and somebody's own results.
 RESULTS_COMPETENCY = "view_teaching_results"
@@ -60,7 +66,16 @@ def places_for_modules(db: Session, user: User) -> list[int]:
     """
     if MODULES_COMPETENCY not in user.get_final_competencies():
         return []
+    return _rows_where_they_belong(db, user)
 
+
+def _rows_where_they_belong(db: Session, user: User) -> list[int]:
+    """The org_units holding a row for *user*, whatever their ceiling.
+
+    The second layer on its own, for ``why_not`` to tell a missing place
+    from a missing competency. ``places_for_modules`` is the one to ask
+    for what somebody may actually do.
+    """
     rows = db.execute(
         select(PractisingCompetency.org_unit_id)
         .join(
@@ -213,3 +228,182 @@ def enrol_everyone_with_a_place(
             )
         enrolled.append(user)
     return enrolled
+
+
+#: The three layers, as ``why_not`` names a missing one.
+MISSING_COMPETENCY = "competency"
+MISSING_PLACE = "place"
+MISSING_ENROLMENT = "enrolment"
+
+
+def why_not(
+    db: Session, user: User, *, org_unit_id: int, question_bank_id: str
+) -> list[str]:
+    """Return which of the three layers stop *user* entering a module.
+
+    Empty when nothing does. Each layer is tested on its own, so
+    somebody missing two is told of both, and an administrator can see
+    what to put right without reading the database.
+
+    Args:
+        db: Core database session.
+        user: The person asked about.
+        org_unit_id: The organisation serving the module.
+        question_bank_id: The module.
+
+    Returns:
+        Any of ``MISSING_COMPETENCY``, ``MISSING_PLACE`` and
+        ``MISSING_ENROLMENT``, in that order.
+    """
+    missing: list[str] = []
+    if MODULES_COMPETENCY not in user.get_final_competencies():
+        missing.append(MISSING_COMPETENCY)
+    if org_unit_id not in reach_of_org_units(
+        db, _rows_where_they_belong(db, user)
+    ):
+        missing.append(MISSING_PLACE)
+    if not is_enrolled(
+        db,
+        user.id,
+        org_unit_id=org_unit_id,
+        question_bank_id=question_bank_id,
+    ):
+        missing.append(MISSING_ENROLMENT)
+    return missing
+
+
+def modules_served_by(db: Session, org_unit_id: int) -> list[str]:
+    """Return the modules an organisation serves, by id, in id order.
+
+    Served means a version has been promoted there: an
+    ``active_version`` that is not null. Open or closed to new attempts
+    makes no difference; a closed module is still one its people hold.
+    """
+    return sorted(
+        db.scalars(
+            select(QuestionBankOrgStatus.question_bank_id).where(
+                QuestionBankOrgStatus.org_unit_id == org_unit_id,
+                QuestionBankOrgStatus.active_version.is_not(None),
+            )
+        ).all()
+    )
+
+
+def organisation_serving(db: Session, org_unit_id: int) -> int | None:
+    """Return the organisation above an org_unit, or None if it has none."""
+    organisations = organisation_org_units_of(db, [org_unit_id])
+    return min(organisations) if organisations else None
+
+
+@dataclass(frozen=True)
+class Admitted:
+    """What ``admit`` did, for the caller to report."""
+
+    #: The competencies it gave, of the two. Empty if they held both.
+    competencies: list[str]
+    #: Whether the place row was written, or was already there.
+    place: bool
+    #: The modules they were newly enrolled on.
+    enrolled: list[str]
+
+
+class NotServed(ValueError):
+    """A module was named that the organisation does not serve."""
+
+
+def admit(
+    db: Session,
+    user: User,
+    *,
+    org_unit_id: int,
+    module_ids: list[str],
+    admitted_by: int | None,
+    source: str,
+    ends_on: datetime | None = None,
+) -> Admitted:
+    """Give *user* everything needed to take modules at one org_unit.
+
+    All three layers in one act, so nobody is left holding two of them:
+    the two learner competencies if they lack them, the place at the
+    org_unit, and an enrolment on each module named. Either all of it is
+    written or none, since the caller commits once. Asking again writes
+    nothing new.
+
+    The person must already be a member of the org_unit: a place counts
+    only where somebody belongs, so admitting a non-member would write
+    rows that do nothing. That check is the caller's, with the others
+    that decide whether the caller may act on this person at all.
+
+    Args:
+        db: Core database session. The caller commits.
+        user: The person being admitted.
+        org_unit_id: The org_unit they are to take modules through.
+        module_ids: Modules of the organisation above it to enrol on.
+        admitted_by: Who decided it, or None where nobody is signed in.
+        source: How it came about, one of ``ENROLMENT_SOURCES``.
+        ends_on: When the enrolments stop counting, or None.
+
+    Returns:
+        What was newly written.
+
+    Raises:
+        NotServed: If a module is named that the organisation above the
+            org_unit does not serve, or the org_unit has no organisation.
+            Nothing is written.
+    """
+    organisation_id = organisation_serving(db, org_unit_id)
+    served = (
+        set(modules_served_by(db, organisation_id))
+        if organisation_id is not None
+        else set()
+    )
+    unknown = sorted(set(module_ids) - served)
+    if organisation_id is None or unknown:
+        raise NotServed(", ".join(unknown) or "no organisation")
+
+    held = set(user.get_final_competencies())
+    wanted = [
+        c for c in (RESULTS_COMPETENCY, MODULES_COMPETENCY) if c not in held
+    ]
+    if wanted:
+        # A competency their profession gives is restored by taking it
+        # off the removed list; anything else is added beyond it. The
+        # same rule ``grant_and_authorise`` follows for one competency.
+        template = set(get_profession_base_competencies(user.base_profession))
+        additional = set(user.additional_competency_ids)
+        removed = set(user.removed_competency_ids)
+        for competency in wanted:
+            removed.discard(competency)
+            if competency not in template:
+                additional.add(competency)
+        sync_competency_rows(
+            user,
+            additional=sorted(additional),
+            removed=sorted(removed),
+            source="admin",
+            granted_by=admitted_by,
+            org_unit_id=org_unit_id,
+        )
+
+    place = authorise_practice(
+        db,
+        user_id=user.id,
+        org_unit_id=org_unit_id,
+        competency=MODULES_COMPETENCY,
+        authorised_by=admitted_by,
+    )
+
+    enrolled = [
+        module_id
+        for module_id in sorted(set(module_ids))
+        if enrol(
+            db,
+            user.id,
+            org_unit_id=organisation_id,
+            question_bank_id=module_id,
+            source=source,
+            granted_by=admitted_by,
+            ends_on=ends_on,
+        )
+    ]
+    return Admitted(competencies=wanted, place=place, enrolled=enrolled)

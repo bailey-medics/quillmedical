@@ -5302,6 +5302,10 @@ from app.features.teaching.router import teaching_router  # noqa: E402
 router.include_router(org_units_router)
 router.include_router(teaching_router)
 
+from app.features.teaching.door import door_router  # noqa: E402
+
+router.include_router(door_router)
+
 from app.features.passport.router import (  # noqa: E402
     passport_public_router,
     passport_router,

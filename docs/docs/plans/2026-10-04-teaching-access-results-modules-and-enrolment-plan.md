@@ -336,41 +336,61 @@ row at the centre can.
 Three layers are three things to forget, so nobody is asked to do them
 one at a time. Arriving does all three; leaving undoes the right one.
 
-- [ ] Add `admit` to `access.py`: for one person, one org unit and a
+- [x] Add `admit` to `access.py`: for one person, one org unit and a
       list of modules, give `view_teaching_results` and
       `take_teaching_modules` if they lack them, write the practising
       row for `take_teaching_modules` at the org unit, and enrol them
       on each module, with an optional end date. One transaction: all
       of it or none, the rule `grant_and_authorise` in
       `backend/app/org_units/router.py` already follows for two of the
-      three. Asking again changes nothing.
+      three. Asking again changes nothing. A module the organisation
+      does not serve is refused before anything is written. The routes
+      are in a new `backend/app/features/teaching/door.py`, on a router
+      of their own whose dependencies are the teaching feature and
+      `manage_teaching`, so a route cannot be added without them.
 
-- [ ] Add `POST /api/teaching/admin/org-units/{unit_id}/members/{user_id}/admit`,
+- [x] Add `POST /api/teaching/admin/org-units/{unit_id}/members/{user_id}/admit`,
       gated on `_DEP_MANAGE` and scoped to the caller's org units in
       the body, taking the modules and an optional end date. For
-      somebody already a member who is to be given teaching.
+      somebody already a member who is to be given teaching. The
+      scope is `org_units_whose_people_reached_by`, the same answer the
+      people routes use. Admitting gives competencies, so it keeps
+      their rules: only an operator changes an operator, and nobody
+      admits themselves. An end date already past is refused.
 
-- [ ] Add the two ways out, under the same gate and scope:
-      `.../members/{user_id}/withdraw` removes one person's practising
-      row at the org unit, and
-      `POST /api/teaching/admin/org-units/{unit_id}/withdraw-everyone`
-      does the same for every member there at once, for a centre
-      leaving the programme. It is people's access that is withdrawn,
-      never the centre: the org unit, its memberships and its place in
-      the tree stay exactly as they are, so everybody can still open
-      their results. Neither route touches a competency, a result or an
-      enrolment: the enrolment stays as a record of what was bought,
-      and does nothing without a place.
+- [x] No route takes a place away. `.../members/{user_id}/withdraw`,
+      which removed one person's practising row at an org unit, was
+      built here and taken out on 5 October 2026 before it merged, for
+      the reasons its whole-centre sibling below was. It left their
+      modules ticked and doing nothing, it left in anybody who also
+      held a place at the organisation above, and ending an enrolment
+      already stops somebody, with a record. An admin has one switch:
+      the module's tick.
 
-- [ ] Add `GET /api/teaching/admin/org-units/{unit_id}/members/{user_id}/access`:
+- [x] Withdrawing everybody at a centre at once was built here and
+      taken out again on 5 October 2026, before it merged. Nobody had
+      asked for it: it came from one "what if a centre leaves the
+      programme". Closing a module to registration already stops new
+      people, an end date on an enrolment already handles a term
+      running out, and those already enrolled have usually been put
+      forward and are meant to finish. What was left was one request
+      that locks out a whole centre, with no undo and no record of who
+      had a place, which is likelier to be made by mistake than needed.
+      It also did not do what it said for most people: the Phase 3
+      migration and the user form write a place at the organisation as
+      well as the site, so withdrawing at the site left them in.
+
+- [x] Add `GET /api/teaching/admin/org-units/{unit_id}/members/{user_id}/access`:
       for each module the organisation serves, whether the person may
       enter, and if not which of the three is missing. Three layers are
       only workable if the missing one can be named without reading
       the database, which is how this plan began.
 
-- [ ] Tests: `admit` twice writes nothing new; withdrawing a centre closes its people's modules and leaves
-      another centre's untouched; the access route names each missing
-      layer.
+- [x] Tests, in `tests/test_teaching_door.py`: `admit` gives all
+      three layers; `admit` twice writes nothing new; a module not
+      served writes nothing; a non-member, an org unit out of reach and
+      the caller themselves are refused; giving the place back restores
+      what somebody had; the access route names each missing layer.
 
 ## Phase 6: The admin pages
 
