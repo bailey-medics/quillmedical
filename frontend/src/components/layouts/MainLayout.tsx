@@ -11,6 +11,7 @@ import LiveStatus from "@/components/live-status";
 import { SkipLink, SkipLinkTarget } from "@/components/navigation/skip-link";
 import type { NavItem } from "@components/navigation/NestedNavLink";
 import NavigationDrawer from "@components/drawers/NavigationDrawer";
+import { asksForOpenDrawer } from "@components/navigation/navDrawerState";
 import SideNav from "@components/navigation/SideNav";
 import TopRibbon from "@components/ribbon/TopRibbon";
 import RibbonInbox from "@components/inbox/RibbonInbox";
@@ -84,7 +85,13 @@ export default function MainLayout({
   examMode = false,
   fluid = false,
 }: Props) {
-  const [opened, { toggle, close }] = useDisclosure(false);
+  const location = useLocation();
+  // Shut, unless the link that led here asked for it open: Admin pressed
+  // in another layout's drawer, which this one replaces. Read once, as
+  // the layout mounts.
+  const [opened, { toggle, close }] = useDisclosure(
+    asksForOpenDrawer(location.state),
+  );
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
   const navCollapsed = useNavCollapsed();
@@ -92,7 +99,6 @@ export default function MainLayout({
   const { showSearch } = useSearch();
   const navigate = useNavigate();
   const mainRef = useRef<HTMLDivElement>(null);
-  const location = useLocation();
 
   // Reset scroll position when navigating to a new page
   useEffect(() => {

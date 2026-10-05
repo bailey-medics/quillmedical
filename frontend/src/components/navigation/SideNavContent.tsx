@@ -457,8 +457,7 @@ export default function SideNavContent({
     label: "Admin",
     href: "/admin",
     icon: showIcons ? "adjustments" : undefined,
-    // Admin is pressed to reach what is under it, so on a narrow screen
-    // the drawer stays open to offer those pages.
+    // As the shared entry this one replaces has it: see `featureNavItems`.
     keepsDrawerOpen: true,
     children: [
       usersNavItem,

@@ -290,6 +290,10 @@ export function useFeatureNavItems(): NavItem[] {
       label: "Admin",
       href: "/admin",
       icon: "adjustments",
+      // Admin is pressed to reach what is under it, so on a narrow screen
+      // the drawer stays open to offer those pages. Said here so it holds
+      // from the teaching sidebar too.
+      keepsDrawerOpen: true,
     });
   }
 

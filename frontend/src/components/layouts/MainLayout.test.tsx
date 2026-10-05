@@ -108,7 +108,9 @@ vi.mock("@components/offline-modal/OfflineModal", () => ({
   default: () => null,
 }));
 
-const mockLocation: { pathname: string } = { pathname: "/" };
+const mockLocation: { pathname: string; state?: unknown } = {
+  pathname: "/",
+};
 
 vi.mock("react-router-dom", () => ({
   useNavigate: () => vi.fn(),
@@ -214,6 +216,7 @@ describe("MainLayout", () => {
     mockConnectivity.lastSyncedAt = null;
     mockForcedReload.phase = "idle";
     mockLocation.pathname = "/";
+    mockLocation.state = undefined;
     mockIsSm.value = false;
   });
 
@@ -293,6 +296,36 @@ describe("MainLayout", () => {
   });
 
   describe("Navigation drawer interaction", () => {
+    it("starts with the drawer open when the link that led here asked for it", () => {
+      // Admin pressed in the teaching layout's drawer: this layout
+      // replaces that one, and would otherwise start shut.
+      mockLocation.state = { navDrawerOpen: true };
+      renderWithMantine(
+        <MainLayout patient={null}>
+          <div>Content</div>
+        </MainLayout>,
+      );
+
+      expect(screen.getByTestId("navigation-drawer")).toHaveAttribute(
+        "data-opened",
+        "true",
+      );
+    });
+
+    it("starts with the drawer shut for any other router state", () => {
+      mockLocation.state = { from: "/teaching" };
+      renderWithMantine(
+        <MainLayout patient={null}>
+          <div>Content</div>
+        </MainLayout>,
+      );
+
+      expect(screen.getByTestId("navigation-drawer")).toHaveAttribute(
+        "data-opened",
+        "false",
+      );
+    });
+
     it("opens drawer when burger menu clicked", async () => {
       const user = userEvent.setup();
       renderWithMantine(
