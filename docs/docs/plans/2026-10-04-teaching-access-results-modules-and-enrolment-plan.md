@@ -11,15 +11,14 @@ the one competency a teaching admin can take away guards the wrong half,
 and nothing says which person may enter which module: an organisation's
 modules are open to all of its members or to none.
 
-The outcome wanted is two doors and a list. The outer door, a results
-competency, lets somebody reach `/teaching` and keep their past results
-and certificates. The inner door, a modules competency, lets them into
-modules to learn and be assessed, the way `passport_write` can lapse and
-leave the passport readable. The list is an enrolment row per person per
-module. Every module starts "open to all members", which is all EoEETA
-needs; an organisation that switches that off for a module can sell or
-assign it one person at a time, with an end date where access is timed. Selling to the public is not built here; it is recorded at the
-foot as work to come.
+The outcome wanted is teaching run on the same three layers as clinical
+work. A competency says what somebody may do: see their own results, or
+take modules. A practising row says where: at this centre. An enrolment
+row says which module. All three are given in one act when somebody
+arrives, so the layers cost nobody any extra steps, and each can be taken
+away alone: a centre that leaves the programme loses its practising rows,
+and its people keep their results. Selling to the public is not built
+here; it is recorded at the foot as work to come.
 
 ## Phase 1: Say why a lesson cannot be shown
 
@@ -122,7 +121,17 @@ foot as work to come.
       later cannot be left open by accident. Both are in
       `tests/test_teaching_learner_gates.py`.
 
-- [ ] In `frontend/src/routes.tsx`, wrap the `/teaching` routes in
+- [x] Let the result page stand on the assessment alone. It asks for
+      the module as well (`GET /question-banks/{id}`), for its title and
+      whether a pass earns a certificate, and the module is behind the
+      modules competency. Somebody keeping only their results would see
+      a result with no title and no certificate button. So
+      `GET /assessments/{id}` gains `bank_title` and
+      `certificate_available`, read from the version that was sat, and
+      `AssessmentResultPage.tsx` uses them and treats a refused module
+      as "no retry on offer", not as an error. Both fields are additive.
+
+- [x] In `frontend/src/routes.tsx`, wrap the `/teaching` routes in
       `<RequireCompetency competency="view_teaching_results">` inside the
       existing `RequireFeature`, and the module, lesson and assessment
       routes beneath it in a second guard for `take_teaching_modules`.
@@ -131,13 +140,13 @@ foot as work to come.
       third argument of `lazyFrom` for the guard, as
       `frontend/src/lib/lazyRoute.ts` explains.
 
-- [ ] In `frontend/src/components/navigation/featureNavItems.ts`, show
+- [x] In `frontend/src/components/navigation/featureNavItems.ts`, show
       the Teaching link only with the feature and
       `view_teaching_results`, matching the route. Somebody with neither
       then lands on `NoAccessLayout` through `HomeRedirect`, which
       already reads the same list.
 
-- [ ] In `frontend/src/features/teaching/pages/TeachingDashboard.tsx`,
+- [x] In `frontend/src/features/teaching/pages/TeachingDashboard.tsx`,
       nothing new to build: a results-only person gets an empty module
       list from the API and so sees the existing "No assessments are
       currently open" text above their results. Add a test that says so.
@@ -149,90 +158,201 @@ foot as work to come.
       `frontend/e2e/tests/user-form-practice.spec.ts`, which picks the
       delegate's competency by its label.
 
-- [ ] Update the CBAC section of `.github/copilot-instructions.md`
+- [x] Update the CBAC section of `.github/copilot-instructions.md`
       where it lists what a teaching admin may grant, then run
-      `/sync-copilot-config`.
+      `/sync-copilot-config`. Nothing to change: the instructions name
+      no teaching learner competency, and what they say of
+      `RequireFeature` and `RequireCompetency` still holds.
 
-## Phase 3: Enrolment rows
+## Phase 3: Check the place
+
+Decided on 4 October 2026, after Phase 2's backend half had landed:
+teaching uses practising rows as clinical work does, in place of the
+"open to all members" switch this plan first described. That switch sat
+on an organisation's offer of a module, so it could not say "this centre
+has left the programme and the organisation carries on". A practising
+row at the centre can.
+
+- [ ] Add `may_take_modules_through` to a new
+      `backend/app/features/teaching/access.py`: the org units through
+      which a person may take an organisation's modules. That is the
+      organisation itself and everything beneath it where
+      `can_practise_at(db, user, "take_teaching_modules", ...)` holds.
+      Nothing is inherited, as everywhere else: a row at a centre says
+      nothing about the organisation, so the function looks at each org
+      unit the person belongs to under that organisation. Every teaching
+      read of "where" goes through this module, as every other read of
+      a place goes through `cbac/scoped.py`.
+
+- [ ] Use it in `resolve_visible_module`, `get_question_bank`,
+      `list_question_banks`, `list_learning_modules` and
+      `start_assessment` in `router.py`: an organisation's module is
+      there for somebody only if they may take modules through one of
+      its org units. The refusal stays the 404 those routes already
+      give. The routes that sit an attempt check it too, so an attempt
+      under way stops when the row goes. Nobody uses production yet, so
+      the simple rule is taken over a grace period.
+
+- [ ] Results ask for no place. `view_teaching_results` and ownership
+      of the attempt are the whole check, so results survive leaving a
+      centre, a centre leaving the programme, and an enrolment ending.
+
+- [ ] Check which org unit types may hold the row. `can_hold_competencies`
+      in `shared/org-unit-types.yaml` decides, read through
+      `type_can_hold_competencies`. Every type a delegate registers at
+      must allow it; if one does not, that is a finding to bring back,
+      not a flag to flip quietly.
+
+- [ ] Write a migration by hand so nobody loses their way in: for every
+      member of an org unit under a teaching organisation who holds a
+      current `take_teaching_modules` grant, write a practising row for
+      it at each such org unit they belong to, unless one is there.
+      Idempotent, ids as literals. It lands in the same unit as the
+      check, or the deploy between them locks everyone out.
+
+- [ ] Leaving takes the row with it. Find what removing a membership
+      does to practising rows today, in `backend/app/organisations.py`
+      and the org-unit routes; if it leaves them, remove the
+      `take_teaching_modules` row at that org unit when the membership
+      goes. The competency and `view_teaching_results` are untouched.
+
+- [ ] Tests: a row at the centre opens the organisation's modules; a
+      row at another organisation does not; no row, with the competency,
+      opens nothing; removing the row closes lessons, video and a
+      running attempt and leaves results and the certificate reachable;
+      leaving the centre removes the row.
+
+## Phase 4: Enrolment rows
 
 - [ ] Add `ModuleEnrolment` to `backend/app/features/teaching/models.py`
       and generate the migration with `just migrate`. Columns: `user_id`,
-      `org_unit_id`, `question_bank_id`, `starts_on`, `ends_on`
-      (nullable), `source`, `granted_by` (nullable), each a foreign key
-      where it names a row. A row means enrolled; there is no boolean,
-      and withdrawing somebody sets `ends_on`, as `user_competency` and
-      `practising_competency` do. One table with foreign keys, not a
-      list on the user: an enrolment is a relationship between three
-      things, and something will need to point at it.
+      `org_unit_id` (the organisation serving the module),
+      `question_bank_id`, `starts_on`, `ends_on` (nullable), `source`,
+      `granted_by` (nullable), each a foreign key where it names a row.
+      A row means enrolled; there is no boolean, and withdrawing somebody
+      sets `ends_on`, as `user_competency` does. One table with foreign
+      keys, not a list on the user: an enrolment is a relationship
+      between three things, and something will need to point at it.
 
-- [ ] Add an `open_to_all_members` boolean to `QuestionBankOrgStatus`,
-      default true, in the same migration. True is today's behaviour:
-      any member of the organisation or one of its sites may enter the
-      module, so EoEETA changes nothing and clicks nothing. Named for
-      what it allows, not what it withholds, so the switch reads the
-      same way round as its label. It sits beside `is_live` because it
-      is the same kind of fact: how this organisation offers this
-      module.
+- [ ] Enrolment is required for every module. There is no module open
+      to all comers and no switch to make one so: the rule is the same
+      everywhere, and "why can this person enter?" always has a row for
+      an answer. The cost is that a module added later has nobody
+      enrolled, which the script below pays.
 
 - [ ] Write `backend/app/features/teaching/enrolment.py` with
-      `is_enrolled`, `enrol` and `withdraw`, and one function,
-      `may_enter_module`, that answers the whole question: the
-      organisation serves the module, and either it is open to all
-      members or the person holds a current row. Every read goes
-      through this module, as every read of a place goes through
-      `cbac/scoped.py`.
+      `is_enrolled`, `enrol` and `withdraw`, and add the check to
+      `access.py` so one function, `may_enter_module`, answers the
+      whole question: the organisation serves the module, the person
+      may take modules through one of its org units, and they hold a
+      current enrolment. The routes from Phase 3 call that.
+      `list_question_banks` lists only what may be entered.
 
-- [ ] Call `may_enter_module` from `resolve_visible_module` in
-      `router.py`, which is already the single gate for lessons and
-      video, and from `get_question_bank` and `start_assessment`. Filter
-      `list_question_banks` by it too. The refusal is the 404 those
-      routes already give, so "not enrolled" cannot be told from "no
-      such module".
+- [ ] In the same migration, enrol everybody who can enter a module
+      today: each person with a practising row from Phase 3, on every
+      module their organisation serves (an `active_version` that is not
+      null). `source` `migration`. Without it the deploy closes every
+      module to every delegate.
 
-- [ ] An attempt already started is stopped when its enrolment ends.
-      Check `may_enter_module` on the routes that sit an attempt. Nobody
-      uses production yet, so the simple rule is taken over a grace
-      period.
+- [ ] Write `backend/scripts/enrol_teaching_members.py`: given an
+      organisation and a module, enrol everybody who may take modules
+      through that organisation's org units and is not yet enrolled.
+      Prints who it enrolled; `--dry-run` prints and writes nothing.
+      This is how a new module reaches the people already there. Add a
+      `just` recipe for it, following `.claude/rules/just.md`. How it is
+      run against production is deliberately left for later: nothing
+      needs it until a module is added to an organisation with people
+      already in it.
 
-- [ ] Results are untouched by enrolment. The results routes ask only
-      for `view_teaching_results` and ownership of the attempt, so a
-      certificate outlives the enrolment that earned it.
+- [ ] Tests: no row, a current row, a row not yet started, a row ended,
+      a row at another organisation, the module list hiding what cannot
+      be entered, and the script enrolling only those with a place.
 
-- [ ] Tests: an open module with no row, a module not open to all with
-      and without a row, a row not yet started, a row ended, a row at
-      another organisation, and the module list hiding what cannot be
-      entered.
+## Phase 5: One act at the door
 
-## Phase 4: Let a teaching admin enrol people
+Three layers are three things to forget, so nobody is asked to do them
+one at a time. Arriving does all three; leaving undoes the right one.
 
-- [ ] Add routes under `/api/teaching/admin`, gated on `_DEP_MANAGE` and
-      scoped to the caller's own organisations in the body: list a
-      module's enrolments, enrol a member with an optional end date,
-      withdraw one. Refuse to enrol somebody who is not a member of the
-      organisation. All additive.
+- [ ] Add `admit` to `access.py`: for one person, one org unit and a
+      list of modules, give `view_teaching_results` and
+      `take_teaching_modules` if they lack them, write the practising
+      row for `take_teaching_modules` at the org unit, and enrol them
+      on each module, with an optional end date. One transaction: all
+      of it or none, the rule `grant_and_authorise` in
+      `backend/app/org_units/router.py` already follows for two of the
+      three. Asking again changes nothing.
 
-- [ ] Add an "Open to all members" switch, on by default, to the
-      module's organisation settings route and page, beside "Open for
-      assessments"
-      (`PUT /admin/banks/{bank_id}/org-units/{org_unit_id}/settings`).
-      Its description says who that is: any member of the organisation
-      or its sites. Turning it off is what makes the enrolment list
-      below it matter, so the list is shown only then.
+- [ ] Public registration admits. `/teaching/register/:module` is the
+      join link and already exists; `POST /api/auth/register` already
+      takes the organisation and the site and adds the person as a
+      trainee of both. It does not take the module. Add an optional
+      `teaching_module_id` to its body, sent by
+      `frontend/src/pages/TeachingRegisterPage.tsx` from the address,
+      and call `admit` for the site (or the organisation when no site
+      is named) and that module. Accept it only where the organisation
+      has `site_registration` on for that module, which is what the
+      public module list already reads; anything else is refused, so a
+      crafted request cannot enrol somebody on a module that is not
+      open to registration.
 
-- [ ] On the admin module page for an organisation, when the module is
-      not open to all members, show who is enrolled, with the dates, and an action to add or withdraw. Reuse
-      `DataTableControlled` with its `action` slot and the existing
-      member picker before building anything; a new component needs a
-      plan and a person's agreement first.
+- [ ] Add `POST /api/teaching/admin/org-units/{unit_id}/members/{user_id}/admit`,
+      gated on `_DEP_MANAGE` and scoped to the caller's org units in
+      the body, taking the modules and an optional end date. For
+      somebody already a member who is to be given teaching.
 
-- [ ] Tests for the routes (scope, non-member, end date in the past)
-      and for the page.
+- [ ] Add the two ways out, under the same gate and scope:
+      `.../members/{user_id}/withdraw` removes one person's practising
+      row at the org unit, and
+      `POST /api/teaching/admin/org-units/{unit_id}/withdraw-everyone`
+      does the same for every member there at once, for a centre
+      leaving the programme. It is people's access that is withdrawn,
+      never the centre: the org unit, its memberships and its place in
+      the tree stay exactly as they are, so everybody can still open
+      their results. Neither route touches a competency, a result or an
+      enrolment: the enrolment stays as a record of what was bought,
+      and does nothing without a place.
+
+- [ ] Add `GET /api/teaching/admin/org-units/{unit_id}/members/{user_id}/access`:
+      for each module the organisation serves, whether the person may
+      enter, and if not which of the three is missing. Three layers are
+      only workable if the missing one can be named without reading
+      the database, which is how this plan began.
+
+- [ ] Tests: registration through the link leaves somebody able to
+      enter that module and no other; registration naming a module not
+      open to registration is refused; `admit` twice writes nothing
+      new; withdrawing a centre closes its people's modules and leaves
+      another centre's untouched; the access route names each missing
+      layer.
+
+## Phase 6: The admin pages
+
+- [ ] On the admin module page for an organisation, list who is
+      enrolled, with dates, and an action to enrol or withdraw one
+      person. Reuse `DataTableControlled` with its `action` slot and
+      the existing member picker before building anything; a new
+      component needs a plan and a person's agreement first.
+
+- [ ] An "Add to teaching" action on a member of an org unit: a short
+      form of the org unit (fixed), the modules as ticks and an optional
+      end date, calling `admit`. This is the wizard. It is a form, not
+      a multi-step flow, because there is one decision in it.
+
+- [ ] On the same member, show the access route's answer: each module
+      with a yes, or the missing layer in plain words ("not enrolled",
+      "no place at this centre", "may not take modules").
+
+- [ ] A "Withdraw everyone's access" action on an org unit, behind a
+      confirmation that says how many people it affects, that the
+      centre itself is not removed, and that their results are kept.
+
+- [ ] Tests and stories for each, and tests for the pages.
 
 - [ ] Add journey 3, "open and complete a teaching lecture", to the
       "Not yet run" list in
       `docs/docs/frontend/accessibility/testing-log.md`. This plan
-      changes who is offered the Teaching link and adds two refusal
-      states on the way to a lesson.
+      changes who is offered the Teaching link and adds refusal states
+      on the way to a lesson.
 
 ## To do later: selling to the public
 
@@ -244,19 +364,23 @@ Not built by this plan. Each needs its own plan when its time comes.
       a selling organisation needs the opposite, so the two have to be
       reconciled per organisation, not app-wide.
 
-- [ ] **Self-registration into a selling organisation** – a buyer has
-      no account and belongs nowhere. `TeachingRegisterPage` is the
-      starting point.
-
-- [ ] **Online payment** – a successful checkout writes a
-      `ModuleEnrolment` row with `source` naming the sale. Prices, VAT,
-      receipts and refunds come with it. Until then an admin enrols by
-      hand and the sale is invoiced.
+- [ ] **Online payment** – a successful checkout calls `admit`, with
+      `source` naming the sale. Prices, VAT, receipts and refunds come
+      with it. Until then an admin admits by hand and the sale is
+      invoiced.
 
 - [ ] **Bundles and subscriptions** – undecided. A bundle can be
-      several rows; a subscription may want a different shape.
+      several enrolment rows; a subscription may want a different
+      shape.
 
 ## Decisions
+
+- **Teaching uses the three layers clinical work uses** – competency,
+  practising row, and a row for the thing itself. It is more to set up
+  than a single switch, and it was chosen anyway: it is the model the
+  rest of the app already explains, it answers "why could this person
+  do that?" with one row per layer, and teaching is a good place to
+  prove it on something lower-stakes than prescribing.
 
 - **Two competencies, kept separate** – holding the modules competency
   without the results one reaches nothing, because `/teaching` is the
@@ -264,37 +388,39 @@ Not built by this plan. Each needs its own plan when its time comes.
   include "results": one competency meaning two things is what caused
   the confusion this plan starts from. The professions carry both.
 
+- **A centre leaves by its people losing their practising rows, not by
+  a switch and not by removing the centre** –
+  the first version of this plan had an "open to all members" switch
+  per organisation per module, then a passport-style cover was
+  considered. Both were dropped for the practising row, which already
+  exists, belongs to the centre and not the organisation, and leaves
+  the competency and the results alone. The centre stays where it is.
+
+- **Results are given at the door and never taken back** – a result
+  records something done. Leaving, a centre withdrawing and an
+  enrolment ending all leave `view_teaching_results` in place.
+
+- **Enrolment for every module, with a script for the bulk case** – a
+  module marked "by enrolment" beside modules open to everyone at a
+  centre was the alternative, and would spare a customer the script
+  when a module is added. One rule everywhere was preferred to two.
+
+- **The enrolment outlives the place** – withdrawing people's access at
+  a centre removes practising rows and leaves enrolments. If the centre returns, giving
+  the place back restores exactly what each person had.
+
 - **A results-only person sees no module names** – the module area
   shows the same text as an organisation with nothing open. Showing the
   modules they once sat, with a renewal date, was considered and set
   aside for now.
 
-- **An enrolment row per person per module, not an organisation per
-  product** – making one organisation for each thing sold works today
-  with no code, but ten modules is ten organisations and a buyer's
-  results are split across them. A competency per module was rejected
-  too: competencies are a hand-written catalogue and modules arrive by
-  sync.
+- **A competency per module was rejected** – competencies are a
+  hand-written catalogue and modules arrive by sync, so every new
+  module would need a catalogue edit and a release.
 
-- **The competency says "may take modules", the row says "which"** –
-  the same split as competencies and practising competencies. Removing
-  the competency closes every module at once without a row being
-  touched.
-
-- **Any organisation may close a module to enrolled people** – the
-  seller may be Quill or a customer. It is a setting on the
-  organisation's offer of a module, not a property of the module.
-
-- **The switch is per module, not one for the whole organisation** – a
-  seller can leave a taster module open and charge for the rest, which
-  a single organisation-wide switch could not do. The cost is one
-  switch per paid module. Because every module starts open, an
-  organisation like EoEETA never meets it. An organisation-wide default
-  can be added on top if flipping them one by one becomes a chore.
-
-- **Enrolment can end; the modules competency cannot yet** – an end
-  date on the row covers timed access. A term on the competency itself,
-  as `passport_write` has, waits until somebody asks for it.
+- **An organisation per product was rejected** – it works today with
+  no code, but ten modules is ten organisations and a buyer's results
+  are split across them.
 
 - **No cohorts** – enrolling a group with shared dates is a layer on
   top of rows, left until a course is run that way.

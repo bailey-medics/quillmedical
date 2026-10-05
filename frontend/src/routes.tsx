@@ -37,6 +37,7 @@
  */
 
 import { Navigate, Outlet } from "react-router-dom";
+import type { ComponentType, ReactElement } from "react";
 import type { RouteObject } from "react-router-dom";
 import RootLayout from "./RootLayout";
 import {
@@ -73,6 +74,18 @@ import InboxPage from "./pages/inbox/InboxPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import VerifyEmailPendingPage from "./pages/VerifyEmailPendingPage";
 import HomeRedirect from "./pages/HomeRedirect";
+
+/**
+ * A teaching page inside a module, behind the competency that opens
+ * modules. Passed to `lazyFrom` so the page keeps its one route.
+ */
+function modulesOnly(Page: ComponentType): ReactElement {
+  return (
+    <RequireCompetency competency="take_teaching_modules">
+      <Page />
+    </RequireCompetency>
+  );
+}
 
 export const routes: RouteObject[] = [
   // Public routes (login, register) – placed before protected routes so
@@ -751,9 +764,14 @@ export const routes: RouteObject[] = [
               own boundary. Without it a crash here fell through to React
               Router's built-in developer screen ("Hey developer"), shown in
               production as well, rather than the app's own fallback. */}
-          <ErrorBoundary>
-            <Outlet />
-          </ErrorBoundary>
+          {/* The outer door, as the API asks on the same pages: reaching
+              teaching at all, and somebody's own results. Without it the
+              pages loaded and then every request they made was refused. */}
+          <RequireCompetency competency="view_teaching_results">
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
+          </RequireCompetency>
         </RequireFeature>
       </RequireAuth>
     ),
@@ -763,26 +781,37 @@ export const routes: RouteObject[] = [
         lazy: lazyFrom(loadTeaching, "TeachingDashboard"),
         handle: { safeForReload: true },
       },
+      // The inner door: everything inside a module. Each page carries
+      // the guard itself, through `lazyFrom`, so it stays the leaf route
+      // and keeps its `handle`. The result pages below do not: a result
+      // outlives the way into the module it came from.
       {
         path: ":bankId",
-        lazy: lazyFrom(loadTeaching, "TeachingModuleMain"),
+        lazy: lazyFrom(loadTeaching, "TeachingModuleMain", modulesOnly),
         handle: { safeForReload: true },
       },
       {
         path: "learn",
-        lazy: lazyFrom(loadTeaching, "LearningDashboard"),
+        lazy: lazyFrom(loadTeaching, "LearningDashboard", modulesOnly),
         handle: { safeForReload: true },
       },
-      { path: "learn/:moduleId", element: <Navigate to="slide/0" replace /> },
+      {
+        path: "learn/:moduleId",
+        element: (
+          <RequireCompetency competency="take_teaching_modules">
+            <Navigate to="slide/0" replace />
+          </RequireCompetency>
+        ),
+      },
       {
         path: "learn/:moduleId/slide/:slideIndex",
-        lazy: lazyFrom(loadTeaching, "SlideReader"),
+        lazy: lazyFrom(loadTeaching, "SlideReader", modulesOnly),
         handle: { safeForReload: true },
       },
       // In-progress exam attempt - never safe to silently reload.
       {
         path: "assessment/:id",
-        lazy: lazyFrom(loadTeaching, "AssessmentAttempt"),
+        lazy: lazyFrom(loadTeaching, "AssessmentAttempt", modulesOnly),
       },
       // Reads location.state.fromExam - not reconstructible from URL alone.
       {
