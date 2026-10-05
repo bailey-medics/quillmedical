@@ -30,6 +30,7 @@ yet. Ask them, or whoever runs the course, to sort that out first.
 ## Confirm your email address
 
 1. Open the email called **Verify your Quill email address** and press **Verify your email**. The link lasts 60 minutes. Look in your spam folder if it has not arrived.
+   ![The email Quill sends, with the Verify your email button](join-a-course/verification-email.png)
 2. When you see **Email verified**, choose **Go to login**.
 
 If the link has run out, you see **Verification failed**. Choose **Sign

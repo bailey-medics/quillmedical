@@ -550,57 +550,55 @@ a clinical lead. Whichever phase is built first adds the seed.
       and not what it does. The guide now says the column is not filled
       in yet. Building the progress itself is not this plan's.
 
-- [ ] Screenshots for "Assign a teaching admin", which has none. The spec
+- [x] Screenshots for "Assign a teaching admin", which had none. The spec
       signs in as the seeded operator and takes: the organisation's page
-      with its **Enabled features** card, the **Features** page with
-      **Teaching** switched on, the **Basic details** step with
-      **Teaching admin** chosen, and a user's page showing the **Edit
-      user** and **Send invite email** cards.
+      with its **Enabled features** card, the **Features** page, the
+      **Basic details** step with **Teaching admin** chosen, and a user's
+      page showing the **Edit user** and **Send invite email** cards.
 
-- [ ] Delegates and results for "See delegates' results". The seed gives
-      the delegates attempts at the module: some passed first time, one
-      passed at a second attempt, one not passed, one part way through
-      the learning materials and one who has not started, so every column
-      and all three figures show something. Seed the attempts through the
-      teaching models as `seed_teaching` in `seed_ci.py` syncs its module,
-      and retake both of the guide's screenshots. Add a third with
-      **Filter delegates** open.
+- [x] Delegates and results for "See delegates' results", from the seed
+      above, so every column but Learning and all three figures show
+      something. A third picture shows **Filter delegates** open.
 
-- [ ] An example email in "Join a course", under "Confirm your email
+- [x] An example email in "Join a course", under "Confirm your email
       address". The verification email is already rendered with sample
       values for Storybook, at
       `frontend/src/stories/emails/rendered/email-verification--quill.html`,
       and `tests/test_email_previews.py` keeps that file true to the
       template. The spec loads it with `page.setContent` and photographs
       it, so the picture is of what is really sent and no email has to be
-      sent to take it. Its images are relative paths under
-      `frontend/public/email/`, so open a page of the app first for them
-      to resolve against.
+      sent to take it. Its images are named from the site's root, so the
+      spec opens a page of the app first for them to come from.
 
-- [ ] A walk through the learning materials in "Take a module and its
-      assessment". The guide gives the section three lines and no
-      picture. Take: a slide with **Next**, the side menu with the list
-      of slides and **Slide progress**, a video slide if the seeded
-      module has one, and the last slide with **Finish**. Write the steps
-      out to match. Reading slides records progress, which is why this
-      waits on the step above that lets a spec write.
+- [x] A walk through the learning materials in "Take a module and its
+      assessment": a slide with the list of slides beside it, and the
+      last slide with **Finish**, with the steps written out to match.
+      No picture of the video slide: it is a YouTube player, which a
+      screenshot run cannot count on reaching or on looking the same
+      twice. Nothing records progress through the slides, so the guide no
+      longer says a place is kept.
 
-- [ ] Example exam views in the same guide. The spec sits the assessment
+- [x] Example exam views in the same guide. The spec sits the assessment
       as its own seeded delegate and takes: the introduction with
-      **Begin**, a question with **Next** and the progress bar, the
-      countdown in the ribbon if the module is timed, the **End exam**
-      confirmation, the closing page with **View results**, the result,
-      and **Results by question**. For the result, seed a passed attempt
-      and photograph that, with its **Download certificate** card: a spec
-      cannot be relied on to pass an exam, and should not hold the
-      answers.
+      **Begin**, a question with the countdown and **End exam** above it,
+      the **End exam** confirmation, and the page shown when every
+      question is answered. The result and **Results by question** are
+      photographed from the passed attempt the seed gives its first
+      delegate, with its **Download certificate** card: a spec cannot be
+      relied on to pass an exam, and should not hold the answers.
 
-- [ ] The module in every one of these is the public respiratory module
+- [ ] The questions are drawn at random, so the picture of a question
+      differs from run to run and is uploaded afresh each time. Harmless,
+      but it is the one picture that changes when no screen has. Pinning
+      it would need the application to take a seed for its choice of
+      questions, which is not worth building for a screenshot.
+
+- [x] The module in every one of these is the public respiratory module
       that `.github/scripts/ci/fetch-e2e-teaching.sh` pins, so the
       guides' pictures show chest X-ray questions to EoEETA's
       colonoscopists. Accepted for now: it is public, and the only module
-      CI can clone without a token. Say so in a line under the first exam
-      picture, or the reader will look for a module they do not have.
+      CI can clone without a token. The guide says so in a line above the
+      first exam picture.
 
 - [ ] Link every page a guide names to that page. Asked for on 5 October
       2026. Where a guide says "choose **Admin**, then **Users**", **Users**
@@ -632,8 +630,9 @@ a clinical lead. Whichever phase is built first adds the seed.
 - [ ] Add the rule to `docs/docs/frontend/guides.md`, under writing the
       markdown file.
 
-- [ ] Run `just guide-screenshots` and read every guide through locally
-      before landing, as was done for the first set.
+- [ ] `just guide-screenshots` was run and every picture looked at. Read
+      each guide through locally as a reader would, as was done for the
+      first set: that is a person's job.
 
 ## Decisions
 

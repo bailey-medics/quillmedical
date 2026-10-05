@@ -27,4 +27,13 @@ test("see delegates' results", async ({ page }) => {
   await expect(page.getByText("Total delegates")).toBeVisible();
   await expect(page.getByRole("cell", { name: "Aisha Rahman" })).toBeVisible();
   await shot(page, "see-delegates-results/all-delegates");
+
+  await page.getByRole("button", { name: "Filter delegates" }).click();
+  // The filter's groups open folded, so there is no one line of it to
+  // wait for by name. Its opening is a short animation.
+  await page.waitForTimeout(600);
+  // Open the list inside it, so the picture shows what can be chosen.
+  await page.getByPlaceholder(/Select items/).click();
+  await page.waitForTimeout(400);
+  await shot(page, "see-delegates-results/filter");
 });
