@@ -21,7 +21,7 @@ import PageHeader from "@/components/page-header";
 import { MarkdownView, TextLink } from "@/components/typography";
 import { useAuth } from "@/auth/AuthContext";
 import { guideBody } from "@/guides/content";
-import { GUIDE_ASSETS_PATH } from "@/guides/registry";
+import { guideImageBase } from "@/guides/registry";
 import { useReadableGuide } from "@lib/guides/useGuideTier";
 
 export function Component() {
@@ -40,7 +40,7 @@ export function Component() {
       <PageHeader title={guide.title} />
       <MarkdownView
         source={body}
-        imageBase={GUIDE_ASSETS_PATH}
+        imageBase={guideImageBase(guide)}
         onLinkClick={(href) => {
           // A link to a page of Quill moves within the app, keeping what
           // is loaded. Anything else is left to the browser.

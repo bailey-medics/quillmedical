@@ -271,11 +271,41 @@ export function guidePath(slug: GuideSlug): string {
 }
 
 /**
- * Where a guide's screenshots are served from. A guide names an image by
- * its place beneath this: `![The form](add-a-delegate-by-hand/form.png)`.
+ * Where the screenshots of a public guide are served from: a public
+ * bucket, routed to this path by the load balancer. A guide names an
+ * image by its place beneath it:
+ * `![The form](join-a-course/create-account.png)`.
  *
  * The images are not in the repository. Playwright retakes them from
- * seeded data; in production they live in a bucket routed to this path,
- * and locally in `frontend/public/guide-assets/`, which is ignored by git.
+ * seeded data. Locally they are all in `frontend/public/guide-assets/`,
+ * which is ignored by git and which the dev server serves at this path.
  */
 export const GUIDE_ASSETS_PATH = "/guide-assets";
+
+/**
+ * Where the screenshots of every other guide are served from: the API,
+ * which reads them from a private bucket for somebody with a session.
+ * They show what an admin's or an operator's screens look like, so they
+ * are kept from anybody who is not signed in.
+ */
+export const GUIDE_PRIVATE_ASSETS_PATH = "/api/guides/assets";
+
+/**
+ * Where one guide's screenshots are served from.
+ *
+ * A public guide's are public, since its reader may have no account. Any
+ * other guide's come through the API. In development everything is in
+ * the one local folder, so everything is read from there.
+ *
+ * @param guide - The guide
+ * @param isDevelopment - Whether this is the dev server; for tests
+ * @returns The base an image's own path is put beneath
+ */
+export function guideImageBase(
+  guide: Pick<Guide, "public">,
+  isDevelopment: boolean = import.meta.env.DEV,
+): string {
+  return guide.public || isDevelopment
+    ? GUIDE_ASSETS_PATH
+    : GUIDE_PRIVATE_ASSETS_PATH;
+}
