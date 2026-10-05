@@ -259,6 +259,27 @@ queue, and for the menu link that appeared while it was open to go.
 
 - [x] Journey 4 in `journeys.md` starts at `/inbox`.
 
+## Phase 9: The count keeps up while a page is left open
+
+Phase 4 fetched the count on load, on a change of page, and when a page
+dealt with something. So somebody who left Quill open on one screen saw
+nothing new arrive until they moved. The email covers being away from
+Quill; it does not cover sitting in it.
+
+- [x] In `useInbox`, ask again every 60 seconds while the tab is
+      visible, and once straight away when the tab comes back into view.
+      Nothing is asked while it is hidden: a tab in the background has
+      nobody to show a count to, and coming back to it asks at once, so
+      the count is never older than a minute in front of somebody.
+      `INBOX_REFRESH_MS` in `frontend/src/lib/inbox/inbox.ts` holds the
+      interval.
+
+- [x] No timer during an exam. The envelope is not drawn there, so the
+      hook is not mounted and nothing is asked, as before.
+
+- [x] Tests: the count is asked for again after a minute, not while the
+      tab is hidden, and at once when it becomes visible again.
+
 ## Decisions
 
 - **Messages and tasks carry the same weight** – for a clinician a
@@ -284,6 +305,13 @@ queue, and for the menu link that appeared while it was open to go.
 - **Deferred: clinician-to-clinician messages** – they arrive as a
   source in phase 3's list, with read and done held apart as above. The
   existing patient messaging feature is not changed here.
+
+- **Deferred: updating the instant something arrives** – that needs the
+  server to push to the browser over a connection held open, which the
+  application does not have. A check each minute is one small request,
+  and a minute is soon enough for feedback, a reply or a sign-off
+  request. The Inbox page's own tables are still fetched when it is
+  opened, and not while it is being read.
 
 - **Deferred: web push** – `push.py` and `push_send.py` exist and have
   never been finished or tested. Email covers the time away until they

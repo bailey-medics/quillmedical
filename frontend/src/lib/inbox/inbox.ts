@@ -117,6 +117,13 @@ export async function getInboxItems(done: boolean): Promise<InboxItem[]> {
   return res.items.filter((item) => known(item.source));
 }
 
+/**
+ * How often the envelope asks again while its tab is visible. A minute:
+ * soon enough for feedback, a reply or a sign-off request, and one small
+ * request each time.
+ */
+export const INBOX_REFRESH_MS = 60_000;
+
 /** The event a page fires once it has dealt with something. */
 const CHANGED = "quill:inbox-changed";
 
