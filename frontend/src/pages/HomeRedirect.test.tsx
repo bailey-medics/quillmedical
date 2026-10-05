@@ -134,6 +134,20 @@ describe("HomeRedirect", () => {
     expect(window.location.pathname).toBe("/admin");
   });
 
+  // Guides sit before Admin in the menu, and describe the features: they
+  // are never where somebody starts.
+  it("passes over the guides when choosing where to land", () => {
+    signInAs({
+      clinical_services_enabled: false,
+      enabled_features: ["teaching"],
+      competencies: ["manage_teaching"],
+    });
+
+    renderWithRouter(<HomeRedirect />);
+
+    expect(window.location.pathname).toBe("/admin");
+  });
+
   it("lands an administrator with teaching on teaching, not admin", () => {
     signInAs({
       clinical_services_enabled: false,

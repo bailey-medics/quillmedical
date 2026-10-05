@@ -10,10 +10,12 @@
 
 import type { User } from "./auth/AuthContext";
 import type { PrefetchChunk } from "@lib/prefetchFeatures";
+import { guidesVisibleTo } from "@lib/guides/useGuideTier";
 import { SCOPED_MANAGER_IDS } from "@/types/cbac";
 
 export const loadAdmin = () => import("./pages/admin/adminChunk");
 export const loadClinical = () => import("./pages/clinical/clinicalChunk");
+export const loadGuides = () => import("./pages/guides/guidesChunk");
 export const loadPassport = () => import("./pages/passport/passportChunk");
 export const loadSafety = () => import("./pages/safety/safetyChunk");
 export const loadTeaching = () => import("./features/teaching/teachingChunk");
@@ -69,6 +71,14 @@ export const FEATURE_CHUNKS: readonly PrefetchChunk<User>[] = [
     source: "src/pages/safety/safetyChunk.ts",
     canOpen: (user) =>
       hasFeature(user, "safety") && hasCompetency(user, "view_safety_cases"),
+  },
+  {
+    // No guard beyond signing in: the pages show what `guidesVisibleTo`
+    // gives, so somebody it gives nothing has no link and no reason to
+    // fetch. Small, and read on purpose, so it goes after the features.
+    name: "guides",
+    source: "src/pages/guides/guidesChunk.ts",
+    canOpen: (user) => guidesVisibleTo(user).length > 0,
   },
   {
     // <RequireClinical>, which lets an unset flag through. This does not.

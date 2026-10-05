@@ -17,7 +17,10 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { NoAccessLayout } from "@/components/layouts";
-import { useFeatureNavItems } from "@/components/navigation/featureNavItems";
+import {
+  GUIDES_PATH,
+  useFeatureNavItems,
+} from "@/components/navigation/featureNavItems";
 import Home from "./Home";
 
 export default function HomeRedirect() {
@@ -40,7 +43,11 @@ export default function HomeRedirect() {
   // first link other than it is. That is a feature where there is one,
   // and Admin for somebody who administers Quill but uses none of it.
   // With neither, or a link with nowhere to go, they are told so.
-  const landing = featureItems.find((item) => item.href !== "/settings")?.href;
+  // Guides are the same: they describe the features, so they are read
+  // on the way to one and are never where somebody starts.
+  const landing = featureItems.find(
+    (item) => item.href !== "/settings" && item.href !== GUIDES_PATH,
+  )?.href;
   if (!landing) {
     return <NoAccessLayout />;
   }

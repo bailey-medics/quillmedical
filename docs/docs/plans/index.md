@@ -93,3 +93,4 @@
 - [Waiting on Me Inbox](2026-10-04-waiting-on-me-inbox-plan.md)
 - [Teaching Access: Results, Modules and Enrolment](2026-10-04-teaching-access-results-modules-and-enrolment-plan.md)
 - [Legal Links at Registration](2026-10-05-legal-links-at-registration-plan.md)
+- [In-app Guides](2026-10-05-in-app-guides-plan.md)

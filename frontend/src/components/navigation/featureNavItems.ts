@@ -29,6 +29,10 @@ import { useCanReachPassport, useHasFeature } from "@/lib/features";
 import { useHasAnyCompetency, useHasCompetency } from "@/lib/cbac/hooks";
 import type { NavItem } from "./NestedNavLink";
 import { SCOPED_MANAGER_IDS } from "@/types/cbac";
+import { useVisibleGuides } from "@lib/guides/useGuideTier";
+
+/** Where the list of guides lives; one guide is `/guides/:slug`. */
+export const GUIDES_PATH = "/guides";
 
 /**
  * The passport's own pages, each shown as a child of Passport while it is
@@ -204,6 +208,9 @@ export function useFeatureNavItems(): NavItem[] {
   // the right landing place, whether or not they have created it yet.
   const assessesOnly = canAssess && !canWrite;
 
+  // The guides written for this reader. See `lib/guides/useGuideTier.ts`.
+  const guides = useVisibleGuides();
+
   const items: NavItem[] = [];
 
   if (hasTeaching) {
@@ -265,6 +272,23 @@ export function useFeatureNavItems(): NavItem[] {
       // As under Passport: the one open page, attached by route, so the
       // navigation says which part of a case is open.
       children: openPage ? [openPage] : undefined,
+    });
+  }
+
+  // Offered only when there is a guide to read, which is the same list
+  // the page shows: a link to an empty page is worse than no link.
+  if (guides.length > 0) {
+    // As under Passport: the one guide that is open, attached by route.
+    const openGuide = guides.find(
+      (guide) => pathname === `${GUIDES_PATH}/${guide.slug}`,
+    );
+    items.push({
+      label: "Guides",
+      href: GUIDES_PATH,
+      icon: "book",
+      children: openGuide
+        ? [{ label: openGuide.title, href: pathname }]
+        : undefined,
     });
   }
 
