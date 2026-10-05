@@ -39,7 +39,7 @@ import calendar
 from datetime import UTC, date, datetime
 
 from . import definitions, hashing, ids, index, paths, records, serialise
-from .commits import Actor
+from .commits import Actor, fit_summary
 from .commits import build as build_message
 from .schemas import (
     SCHEMA_VERSION,
@@ -848,9 +848,12 @@ def _commit_with_index(
     return store.write(
         passport_id,
         staged,  # type: ignore[arg-type]
+        # Cut to fit, as the self-declared records' summaries are: this
+        # one names a competency by its id, and an id added to the
+        # catalogue later should not be what stops a sign-off saving.
         build_message(
             action,  # type: ignore[arg-type]
-            summary,
+            fit_summary(action, summary),  # type: ignore[arg-type]
             actor,
             competency=competency,
             sign_off=sign_off,

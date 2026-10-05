@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pygit2
 import pytest
+import yaml
 
 from app.features.passport import (
     commits,
@@ -349,6 +350,55 @@ class TestReflections:
             passport.read(PASSPORT_ID, paths.reflection_file(name))
         )
         assert stored == body
+
+    def test_a_reflection_with_a_long_title_is_saved(
+        self, passport: store.LocalPassportStore, actor: commits.Actor
+    ) -> None:
+        """Its file is named for its title, and the name went into the
+        commit's subject, which may hold 72 characters: a title of about
+        forty was refused, and the holder saw only that it could not be
+        saved. The title is kept whole; the subject is what is cut."""
+        title = (
+            "What I took from a long night on the acute medical unit "
+            "when three admissions arrived together"
+        )
+
+        name, _ = records.add_reflection(
+            passport,
+            PASSPORT_ID,
+            actor,
+            schemas.Reflection(title=title, written_on=date(2026, 3, 14)),
+            "Invented.",
+            now=NOW,
+        )
+
+        stored, _ = serialise.reflection_from_markdown(
+            passport.read(PASSPORT_ID, paths.reflection_file(name))
+        )
+        assert stored.title == title
+
+    def test_a_certificate_with_a_long_title_is_saved(
+        self, passport: store.LocalPassportStore, actor: commits.Actor
+    ) -> None:
+        """The same fault, since a certificate's file is named the same
+        way."""
+        title = (
+            "Postgraduate Certificate in Medical Education and Clinical "
+            "Supervision for Trainers"
+        )
+
+        name, _ = records.add_certificate(
+            passport,
+            PASSPORT_ID,
+            actor,
+            _certificate(title=title),
+            now=NOW,
+        )
+
+        stored = yaml.safe_load(
+            passport.read(PASSPORT_ID, paths.certificate_file(name))
+        )
+        assert stored["title"] == title
 
     def test_a_reflection_does_not_reach_the_index(
         self, passport: store.LocalPassportStore, actor: commits.Actor

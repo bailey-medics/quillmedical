@@ -39,6 +39,49 @@ class TestSubject:
         with pytest.raises(CommitMessageError, match="over the"):
             commits.build("sign-off", "x" * 100, _actor())
 
+    def test_a_summary_that_fits_is_left_alone(self) -> None:
+        assert commits.fit_summary("create", "add reflection x") == (
+            "add reflection x"
+        )
+
+    def test_a_summary_too_long_is_cut_to_fit_the_subject(self) -> None:
+        """A record is named for what its holder typed, and the name goes
+        in the summary, so a long title must shorten the line and not
+        refuse the write."""
+        fitted = commits.fit_summary("create", "add reflection " + "x" * 100)
+
+        message = commits.build("create", fitted, _actor())
+        assert len(message.subject) == 72
+        assert message.subject.endswith("...")
+        assert message.subject.startswith("passport:create: add reflection x")
+
+    @pytest.mark.parametrize(
+        "action", ["create", "amend", "remove", "sign-off", "supersede"]
+    )
+    def test_the_cut_allows_for_the_action(self, action: str) -> None:
+        """A longer action leaves less of the line for the summary."""
+        fitted = commits.fit_summary(action, "y" * 200)  # type: ignore[arg-type]
+
+        subject = commits.build(action, fitted, _actor()).subject  # type: ignore[arg-type]
+        assert len(subject) == 72
+
+    def test_the_cut_does_not_end_on_a_hyphen(self) -> None:
+        """Names are words joined by hyphens, so a cut often lands on
+        one, and "word-..." reads as a mistake."""
+        name = "-".join(["word"] * 30)
+        room = 72 - len("passport:create: ")
+        # Find a summary whose cut would land just after a hyphen.
+        summary = next(
+            f"{'a' * pad} {name}"
+            for pad in range(1, 6)
+            if f"{'a' * pad} {name}"[room - 4] == "-"
+        )
+
+        fitted = commits.fit_summary("create", summary)
+
+        assert not fitted.removesuffix("...").endswith("-")
+        assert len(commits.build("create", fitted, _actor()).subject) <= 72
+
     def test_refuses_a_multi_line_summary(self) -> None:
         """A newline would put the rest of the summary in the body, where
         it would read as narrative the record does not hold."""

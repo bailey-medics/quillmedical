@@ -157,6 +157,37 @@ class CommitMessage:
         return f"{self.subject}\n\n{lines}\n"
 
 
+def fit_summary(action: CommitAction, summary: str) -> str:
+    """Shorten a summary so its subject line fits, where it would not.
+
+    ``build`` refuses a subject over the length a git subject should
+    hold, and for a summary written in code that refusal is right: it is
+    a mistake to fix. A summary that carries a name somebody typed is
+    another matter. A reflection's file is named for its title, the name
+    goes in the summary, and a title of some forty characters was enough
+    to have the write refused, which a holder saw only as "Your
+    reflection could not be saved".
+
+    The subject is for a person reading the log. Nothing is lost by
+    shortening it: the title is held whole in the record the commit
+    writes, and the record's own name is in the paths it changes.
+
+    Args:
+        action: What kind of change this is, which takes its own share
+            of the line.
+        summary: The summary a caller built.
+
+    Returns:
+        The summary unchanged where it fits, and otherwise cut to fit
+        with ``...`` in place of what was cut.
+    """
+    room = _SUMMARY_MAX - len(f"passport:{action}: ")
+    if len(summary) <= room:
+        return summary
+    marker = "..."
+    return summary[: room - len(marker)].rstrip(" -_") + marker
+
+
 def build(
     action: CommitAction,
     summary: str,
