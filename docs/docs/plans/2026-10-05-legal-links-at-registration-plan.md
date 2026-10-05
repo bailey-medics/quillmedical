@@ -17,8 +17,10 @@ terms.
 
 ## Phase 1: Write the policies (Mark)
 
-Nothing in Phase 2 may ship before this. A sentence saying "you agree to
-our terms" beside a page with no terms on it is worse than no sentence.
+This was written to come first, and Phase 2 was merged ahead of it on
+purpose (see Phase 2). So the forms now link to the placeholders, and
+these steps must be done **before the first real users register**: from
+then on the sentence tells people they agree to terms that do not exist.
 
 - [ ] **Write the privacy policy,** replacing the placeholder in
       `frontend/public_pages/src/pages/privacy-policy.tsx`. It has to say
@@ -47,9 +49,11 @@ our terms" beside a page with no terms on it is worse than no sentence.
 
 Built on 5 October 2026, ahead of Phase 1, as two stacked pull requests.
 The first adds the components and shows them nowhere, so it can merge at
-any time. The second puts the sentence on the forms and **must not be
-merged until Phase 1 is done**: merging deploys, and the links would lead
-to the placeholders.
+any time. The second puts the sentence on the forms, and was written up
+as not to be merged until Phase 1 was done, because merging deploys and
+the links lead to the placeholders. Mark merged both the same day,
+knowingly: nobody uses the app yet, so nobody is misled, and the
+placeholders are acceptable until somebody does.
 
 - [x] **Add an external link component, `ExternalTextLink`,** in
       `frontend/src/components/typography/`, with its `.stories.tsx` and
