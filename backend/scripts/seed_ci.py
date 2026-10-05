@@ -22,7 +22,10 @@ from sqlalchemy.orm import Session  # noqa: E402
 from app.cbac.grants import sync_competency_rows  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.db import CoreSessionLocal  # noqa: E402
-from app.features.teaching.access import give_place  # noqa: E402
+from app.features.teaching.access import (  # noqa: E402
+    enrol_everyone_with_a_place,
+    give_place,
+)
 from app.features.teaching.models import (  # noqa: E402
     QuestionBankConfig,
     QuestionBankOrgStatus,
@@ -320,8 +323,18 @@ def seed_teaching(db: Session, org_unit_id: int, admin_id: int) -> None:
         status.active_version = version
         status.active_version_set_by = admin_id
         status.active_version_set_at = datetime.now(UTC)
+        db.flush()
+        # Every module needs an enrolment, so the people already given a
+        # place are enrolled on each one as it opens.
+        enrolled = enrol_everyone_with_a_place(
+            db,
+            org_unit_id=org_unit_id,
+            question_bank_id=bank_id,
+            source="script",
+        )
         db.commit()
         print(f"Opened teaching module {bank_id} at version {version}")
+        print(f"Enrolled {len(enrolled)} on {bank_id}")
 
 
 if __name__ == "__main__":

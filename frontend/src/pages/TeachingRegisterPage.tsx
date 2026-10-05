@@ -14,7 +14,7 @@ import {
   RegistrationForm,
   type RegistrationFormData,
 } from "@components/registration";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 interface LocationState {
   organisationId?: number | null;
@@ -25,6 +25,9 @@ export default function TeachingRegisterPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state as LocationState) || {};
+  // The module whose join link this is. Registering through it enrols
+  // the person on that module, so they arrive able to open it.
+  const { module } = useParams<{ module: string }>();
 
   async function handleSubmit(
     data: RegistrationFormData,
@@ -37,6 +40,7 @@ export default function TeachingRegisterPage() {
         password: data.password,
         org_unit_id: state.organisationId ?? undefined,
         site_id: state.siteId ?? undefined,
+        teaching_module_id: module,
         // Always sent, ticked or not: an answer of "not ticked" is what
         // says the person was shown the question.
         marketing_opt_out: data.marketingOptOut,

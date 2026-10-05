@@ -261,49 +261,75 @@ row at the centre can.
 
 ## Phase 4: Enrolment rows
 
-- [ ] Add `ModuleEnrolment` to `backend/app/features/teaching/models.py`
+- [x] Add `ModuleEnrolment` to `backend/app/features/teaching/models.py`
       and generate the migration with `just migrate`. Columns: `user_id`,
       `org_unit_id` (the organisation serving the module),
       `question_bank_id`, `starts_on`, `ends_on` (nullable), `source`,
-      `granted_by` (nullable), each a foreign key where it names a row.
-      A row means enrolled; there is no boolean, and withdrawing somebody
-      sets `ends_on`, as `user_competency` does. One table with foreign
-      keys, not a list on the user: an enrolment is a relationship
-      between three things, and something will need to point at it.
+      `granted_by` (nullable). A row means enrolled; there is no boolean,
+      and withdrawing somebody sets `ends_on`, as `user_competency` does.
+      One table with foreign keys, not a list on the user: an enrolment
+      is a relationship between three things, and something will need
+      to point at it. The module is named by `question_bank_id`, a
+      string, as `Assessment` and `QuestionBankOrgStatus` name it: a
+      module is synced content with no table of its own to point at.
+      `source` is one of `ENROLMENT_SOURCES`, checked in code.
 
-- [ ] Enrolment is required for every module. There is no module open
+- [x] Enrolment is required for every module. There is no module open
       to all comers and no switch to make one so: the rule is the same
       everywhere, and "why can this person enter?" always has a row for
       an answer. The cost is that a module added later has nobody
       enrolled, which the script below pays.
 
-- [ ] Write `backend/app/features/teaching/enrolment.py` with
-      `is_enrolled`, `enrol` and `withdraw`, and add the check to
-      `access.py` so one function, `may_enter_module`, answers the
-      whole question: the organisation serves the module, the person
-      may take modules through one of its org units, and they hold a
-      current enrolment. The routes from Phase 3 call that.
-      `list_question_banks` lists only what may be entered.
+- [x] Write `backend/app/features/teaching/enrolment.py` with
+      `is_enrolled`, `enrol` and `withdraw`, and add `may_enter_module`
+      to `access.py`, which answers the whole question: the person may
+      take modules through a place that reaches the organisation, and
+      holds a current enrolment there. In `router.py` the five queries
+      that find which modules to serve somebody all read
+      `QuestionBankOrgStatus`, so one clause, `enrolled_on_offer`, is
+      added to each and leaves only the modules they are enrolled on.
+      The routes that sit an attempt check the enrolment too.
 
-- [ ] In the same migration, enrol everybody who can enter a module
-      today: each person with a practising row from Phase 3, on every
-      module their organisation serves (an `active_version` that is not
-      null). `source` `migration`. Without it the deploy closes every
-      module to every delegate.
+- [x] In the same migration, `13369e6db053`, enrol everybody who can
+      enter a module today: each person with a place, on every module
+      the organisation above it serves (an `active_version` that is not
+      null), and on the modules of an organisation their place is
+      linked to by `teaches_at`. `source` `migration`. Without it the
+      deploy closes every module to every delegate.
 
-- [ ] Write `backend/scripts/enrol_teaching_members.py`: given an
+- [x] Registration enrols. `/teaching/register/:module` is the join
+      link and already exists. `POST /api/auth/register` gains an
+      optional `teaching_module_id`, sent by
+      `frontend/src/pages/TeachingRegisterPage.tsx` from the address,
+      and enrols the person on that module and no other. Accepted only
+      where the organisation has `site_registration` on for that
+      module, which is what the public module list already reads; any
+      other is refused with a 400 and no account is made, so a crafted
+      request cannot enrol somebody on a module that is not open to
+      registration. Moved here from Phase 5, for the reason
+      registration's place moved to Phase 3: without it this phase
+      deployed alone would let a new delegate into nothing.
+
+- [x] Write `backend/scripts/enrol_teaching_members.py`: given an
       organisation and a module, enrol everybody who may take modules
       through that organisation's org units and is not yet enrolled.
-      Prints who it enrolled; `--dry-run` prints and writes nothing.
-      This is how a new module reaches the people already there. Add a
-      `just` recipe for it, following `.claude/rules/just.md`. How it is
-      run against production is deliberately left for later: nothing
-      needs it until a module is added to an organisation with people
-      already in it.
+      Prints the usernames it enrolled; `--dry-run` prints and writes
+      nothing. The work is `enrol_everyone_with_a_place` in `access.py`,
+      so it is tested without the script. This is how a new module
+      reaches the people already there. `just enrol-teaching-members`
+      (`just etm`) runs it against the dev stack. How it is run against
+      production is deliberately left for later: nothing needs it until
+      a module is added to an organisation with people already in it.
 
-- [ ] Tests: no row, a current row, a row not yet started, a row ended,
-      a row at another organisation, the module list hiding what cannot
-      be entered, and the script enrolling only those with a place.
+- [x] `backend/scripts/seed_ci.py` enrols its teaching users on each
+      module as it opens it.
+
+- [x] Tests, in `tests/test_teaching_enrolment.py`: no row, a current
+      row, a row not yet started, a row ended, a row with an end to
+      come, a row at another organisation, a row without a place, the
+      module list hiding what cannot be entered, an attempt stopping
+      when the enrolment ends, a result outliving it, the bulk enrol
+      and its dry run, and registration through a module's link.
 
 ## Phase 5: One act at the door
 
@@ -318,20 +344,6 @@ one at a time. Arriving does all three; leaving undoes the right one.
       of it or none, the rule `grant_and_authorise` in
       `backend/app/org_units/router.py` already follows for two of the
       three. Asking again changes nothing.
-
-- [ ] Public registration admits. `/teaching/register/:module` is the
-      join link and already exists; `POST /api/auth/register` already
-      takes the organisation and the site, adds the person as a trainee
-      of both and, since Phase 3, gives them their place. It does not
-      take the module. Add an optional
-      `teaching_module_id` to its body, sent by
-      `frontend/src/pages/TeachingRegisterPage.tsx` from the address,
-      and call `admit` for the site (or the organisation when no site
-      is named) and that module. Accept it only where the organisation
-      has `site_registration` on for that module, which is what the
-      public module list already reads; anything else is refused, so a
-      crafted request cannot enrol somebody on a module that is not
-      open to registration.
 
 - [ ] Add `POST /api/teaching/admin/org-units/{unit_id}/members/{user_id}/admit`,
       gated on `_DEP_MANAGE` and scoped to the caller's org units in
@@ -356,10 +368,7 @@ one at a time. Arriving does all three; leaving undoes the right one.
       only workable if the missing one can be named without reading
       the database, which is how this plan began.
 
-- [ ] Tests: registration through the link leaves somebody able to
-      enter that module and no other; registration naming a module not
-      open to registration is refused; `admit` twice writes nothing
-      new; withdrawing a centre closes its people's modules and leaves
+- [ ] Tests: `admit` twice writes nothing new; withdrawing a centre closes its people's modules and leaves
       another centre's untouched; the access route names each missing
       layer.
 

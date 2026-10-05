@@ -20,6 +20,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -356,6 +357,106 @@ class TeachingOrgSettings(Base):
 # ------------------------------------------------------------------
 # QuestionBankOrgStatus
 # ------------------------------------------------------------------
+
+
+#: How an enrolment came about. Validated in code, not by a database
+#: enum, so the list grows without a migration.
+ENROLMENT_SOURCES: tuple[str, ...] = (
+    # Somebody registered through a centre's own link for the module.
+    "registration",
+    # A teaching admin enrolled them by hand.
+    "admin",
+    # The script that enrols a centre's people on a module added later.
+    "script",
+    # Written by a migration, for people who could already enter.
+    "migration",
+)
+
+
+class ModuleEnrolment(Base):
+    """One person enrolled on one module an organisation serves.
+
+    The third of teaching's three layers. A competency says somebody may
+    take modules at all, a ``practising_competency`` row says where, and
+    a row here says which module. Every module needs one: there is no
+    module open to all comers.
+
+    **A row means enrolled. There is no boolean.** Withdrawing somebody
+    sets ``ends_on``, so the history of who was enrolled, when and by
+    whom stays in the table, as it does for ``user_competency``.
+
+    Keyed as ``Assessment`` and ``QuestionBankOrgStatus`` are: the
+    organisation's org_unit and the module's id. A module has no table
+    of its own to point at; it is content, synced in versions, and
+    ``question_bank_id`` is what names it everywhere here.
+
+    An enrolment does nothing without a place. Withdrawing a person's
+    way in at a centre leaves this row, so giving the place back
+    restores exactly what they had.
+    """
+
+    __tablename__ = "module_enrolment"
+    __table_args__ = (
+        Index(
+            "ix_module_enrolment_user_module",
+            "user_id",
+            "org_unit_id",
+            "question_bank_id",
+        ),
+        Index(
+            "ix_module_enrolment_module",
+            "org_unit_id",
+            "question_bank_id",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    #: The organisation serving the module, as an org_unit.
+    org_unit_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    question_bank_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    starts_on: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    #: When the enrolment stops counting. Null for no end.
+    ends_on: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    #: One of ``ENROLMENT_SOURCES``.
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    #: Who enrolled them, where a person did.
+    granted_by: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+
+    def is_current(self, now: datetime) -> bool:
+        """Whether this enrolment counts at *now*.
+
+        SQLite hands a timezone-aware column back without its timezone,
+        so a naive value is read as UTC, which is what was written.
+        """
+
+        def aware(value: datetime) -> datetime:
+            return value if value.tzinfo else value.replace(tzinfo=UTC)
+
+        if aware(self.starts_on) > now:
+            return False
+        return self.ends_on is None or aware(self.ends_on) > now
 
 
 class QuestionBankOrgStatus(Base):
