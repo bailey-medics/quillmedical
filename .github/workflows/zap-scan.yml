@@ -54,14 +54,14 @@ jobs:
   # ---------- Slack notify ----------
 
   notify-success:
-    name: Notify success (teaching)
+    name: Notify success
     needs: zap-baseline
     if: ${{ success() }}
     uses: ./.github/workflows/slack-notify.yml
     with:
       channel: teaching
       text: |
-        *✅ Weekly ZAP scan completed (teaching)*
+        *✅ Weekly ZAP scan completed*
 
         Passive scan ran; any findings are filed as GitHub issues.
         *Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
@@ -70,14 +70,14 @@ jobs:
   # ---------- Notify: weekly scan failed ----------
   # Fires only on genuine breakage (fail_action is false, so findings stay green).
   notify-failure:
-    name: Notify failure (teaching)
+    name: Notify failure
     needs: zap-baseline
     if: ${{ failure() }}
     uses: ./.github/workflows/slack-notify.yml
     with:
       channel: teaching
       text: |
-        *❌ Weekly ZAP scan failed (teaching)*
+        *❌ Weekly ZAP scan failed*
 
         The scan job did not complete – the security control may not have run.
         *Logs:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run>
