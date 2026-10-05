@@ -37,7 +37,13 @@ from sqlalchemy.orm import Session
 from app.cbac.base_professions import get_profession_base_competencies
 from app.cbac.grants import sync_competency_rows
 from app.cbac.scoped import authorise_practice
-from app.features.teaching.enrolment import enrol, is_enrolled
+from app.features.teaching.enrolment import (
+    current_enrolments,
+    enrol,
+    is_enrolled,
+    set_end,
+    withdraw,
+)
 from app.features.teaching.models import QuestionBankOrgStatus
 from app.models import PractisingCompetency, User, org_unit_member
 from app.organisations import organisation_org_units_of, reach_of_org_units
@@ -407,3 +413,79 @@ def admit(
         )
     ]
     return Admitted(competencies=wanted, place=place, enrolled=enrolled)
+
+
+def settle_enrolments(
+    db: Session,
+    user: User,
+    *,
+    organisation_id: int,
+    wanted: dict[str, datetime | None],
+    settled_by: int | None,
+) -> None:
+    """Make somebody's enrolments at one organisation match a list.
+
+    The list is the whole answer for that organisation: a module named
+    is enrolled on, with the end given, and a module they are on and
+    not named has its enrolment ended. Naming a module does everything,
+    through ``admit``: the two learner competencies if they lack them,
+    and a place at every org_unit they belong to under the organisation,
+    so nobody is left enrolled and unable to enter. Ending an enrolment
+    ends that and nothing else.
+
+    Args:
+        db: Core database session. The caller commits.
+        user: The person, with their memberships already settled.
+        organisation_id: The organisation serving the modules.
+        wanted: Each module to be enrolled on, and when it ends.
+        settled_by: Who is making the change.
+
+    Raises:
+        NotServed: If a module is named that the organisation does not
+            serve. Nothing is written.
+    """
+    unknown = sorted(set(wanted) - set(modules_served_by(db, organisation_id)))
+    if unknown:
+        raise NotServed(", ".join(unknown))
+
+    for row in current_enrolments(db, user.id, org_unit_id=organisation_id):
+        if row.question_bank_id not in wanted:
+            withdraw(
+                db,
+                user.id,
+                org_unit_id=organisation_id,
+                question_bank_id=row.question_bank_id,
+            )
+    if not wanted:
+        return
+
+    member_of = db.scalars(
+        select(org_unit_member.c.org_unit_id).where(
+            org_unit_member.c.user_id == user.id
+        )
+    ).all()
+    places = sorted(
+        int(unit_id)
+        for unit_id in member_of
+        if organisation_serving(db, int(unit_id)) == organisation_id
+    )
+    for module_id, ends_on in sorted(wanted.items()):
+        for unit_id in places:
+            admit(
+                db,
+                user,
+                org_unit_id=unit_id,
+                module_ids=[module_id],
+                admitted_by=settled_by,
+                source="admin",
+                ends_on=ends_on,
+            )
+        set_end(
+            db,
+            user.id,
+            org_unit_id=organisation_id,
+            question_bank_id=module_id,
+            ends_on=ends_on,
+            source="admin",
+            granted_by=settled_by,
+        )

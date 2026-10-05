@@ -4,6 +4,8 @@ This module defines request and response models for user authentication,
 registration, and two-factor authentication (TOTP) operations.
 """
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
@@ -431,6 +433,32 @@ class PractisingAtOut(BaseModel):
     competencies: list[str]
 
 
+class TeachingModuleOut(BaseModel):
+    """One teaching module somebody is enrolled on.
+
+    Attributes:
+        module_id: The module.
+        ends_on: When the enrolment stops counting, or None for no end.
+    """
+
+    module_id: str
+    ends_on: datetime | None = None
+
+
+class TeachingEnrolmentsAtOut(BaseModel):
+    """Somebody's current teaching enrolments at one organisation.
+
+    The shape the user form sends back as ``teaching_enrolments``.
+
+    Attributes:
+        org_unit_id: The organisation serving the modules.
+        modules: What they are enrolled on there.
+    """
+
+    org_unit_id: int
+    modules: list[TeachingModuleOut]
+
+
 class UserOut(BaseModel):
     """Detailed user profile response.
 
@@ -461,6 +489,9 @@ class UserOut(BaseModel):
     is_active: bool
     org_unit_ids: list[int] = []
     practising: list[PractisingAtOut] = []
+    #: Their teaching enrolments at each organisation they belong to
+    #: that the caller reaches. Empty unless the caller runs teaching.
+    teaching_enrolments: list[TeachingEnrolmentsAtOut] = []
 
 
 class LinkPatientIn(BaseModel):

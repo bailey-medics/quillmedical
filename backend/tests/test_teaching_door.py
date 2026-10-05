@@ -22,7 +22,7 @@ from app.features.teaching.access import (
     may_enter_module,
     places_for_modules,
 )
-from app.features.teaching.door import door_router
+from app.features.teaching.door import door_router, require_runs_teaching
 from app.features.teaching.enrolment import is_enrolled
 from app.features.teaching.models import ModuleEnrolment
 from app.models import OrgUnit, PractisingCompetency, User
@@ -377,13 +377,9 @@ class TestSayingWhatIsMissing:
         assert resp.status_code == 404
 
 
-def test_every_door_route_asks_for_manage_teaching() -> None:
+def test_every_door_route_asks_who_runs_teaching() -> None:
     """The router's own dependency, so a route cannot be added without it."""
-    asked: set[str] = set()
-    for dependency in door_router.dependencies:
-        call = dependency.dependency
-        for cell in getattr(call, "__closure__", None) or ():
-            if isinstance(cell.cell_contents, str):
-                asked.add(cell.cell_contents)
-    assert "manage_teaching" in asked
+    assert [d.dependency for d in door_router.dependencies] == [
+        require_runs_teaching
+    ]
     assert all(isinstance(route, APIRoute) for route in door_router.routes)

@@ -172,3 +172,95 @@ def withdraw(
         row.ends_on = now
     db.flush()
     return len(rows)
+
+
+def current_enrolments(
+    db: Session, user_id: int, *, org_unit_id: int
+) -> list[ModuleEnrolment]:
+    """Return somebody's current enrolments at one organisation.
+
+    Args:
+        db: Core database session.
+        user_id: The person.
+        org_unit_id: The organisation serving the modules.
+
+    Returns:
+        The current rows, in module order.
+    """
+    return list(
+        db.scalars(
+            select(ModuleEnrolment)
+            .where(
+                ModuleEnrolment.user_id == user_id,
+                ModuleEnrolment.org_unit_id == org_unit_id,
+                _current(datetime.now(UTC)),
+            )
+            .order_by(ModuleEnrolment.question_bank_id, ModuleEnrolment.id)
+        ).all()
+    )
+
+
+def _same_moment(left: datetime | None, right: datetime | None) -> bool:
+    """Whether two end dates say the same thing.
+
+    SQLite hands a timezone-aware column back without its timezone, so
+    a naive value is read as UTC, which is what was written.
+    """
+    if left is None or right is None:
+        return left is right
+
+    def aware(value: datetime) -> datetime:
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
+
+    return aware(left) == aware(right)
+
+
+def set_end(
+    db: Session,
+    user_id: int,
+    *,
+    org_unit_id: int,
+    question_bank_id: str,
+    ends_on: datetime | None,
+    source: str,
+    granted_by: int | None,
+) -> bool:
+    """Give a current enrolment a different end, if it has one.
+
+    The old row is ended and a new one written, so the table says what
+    happened: who changed the term, and when. An enrolment whose end is
+    already what was asked is left alone, keeping who enrolled them.
+
+    Args:
+        db: Core database session. Flushed, not committed.
+        user_id: The person.
+        org_unit_id: The organisation serving the module.
+        question_bank_id: The module.
+        ends_on: The end wanted, or None for no end.
+        source: How it came about, one of ``ENROLMENT_SOURCES``.
+        granted_by: Who changed it.
+
+    Returns:
+        True if the end changed, False if it was already so or they
+        hold no current enrolment.
+    """
+    rows = [
+        row
+        for row in current_enrolments(db, user_id, org_unit_id=org_unit_id)
+        if row.question_bank_id == question_bank_id
+    ]
+    if not rows or all(_same_moment(row.ends_on, ends_on) for row in rows):
+        return False
+    withdraw(
+        db, user_id, org_unit_id=org_unit_id, question_bank_id=question_bank_id
+    )
+    enrol(
+        db,
+        user_id,
+        org_unit_id=org_unit_id,
+        question_bank_id=question_bank_id,
+        source=source,
+        granted_by=granted_by,
+        ends_on=ends_on,
+    )
+    return True

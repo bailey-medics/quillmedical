@@ -40,7 +40,7 @@ from fastapi import (
     Response,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import select
@@ -95,7 +95,16 @@ from app.email_send import (
 )
 from app.features.passport import cover as passport_cover
 from app.features.passport.models import Passport
-from app.features.teaching.access import MODULES_COMPETENCY, give_place
+from app.features.teaching.access import (
+    MODULES_COMPETENCY,
+    give_place,
+    settle_enrolments,
+)
+from app.features.teaching.access import (
+    RESULTS_COMPETENCY as TEACHING_RESULTS_COMPETENCY,
+)
+from app.features.teaching.access import NotServed as TeachingNotServed
+from app.features.teaching.enrolment import current_enrolments
 from app.features.teaching.enrolment import enrol as enrol_on_module
 from app.features.teaching.models import QuestionBankOrgStatus
 from app.features.teaching.schemas import (
@@ -194,7 +203,9 @@ from app.schemas.auth import (
     RegisterIn,
     ResendVerificationIn,
     ResetPasswordIn,
+    TeachingEnrolmentsAtOut,
     TeachingModuleItem,
+    TeachingModuleOut,
     TeachingModulesOut,
     TotpDisableIn,
     UpdateProfileIn,
@@ -1583,6 +1594,66 @@ def reset_password(
     return DetailResponse(detail="Password reset successfully")
 
 
+class TeachingModuleIn(BaseModel):
+    """One teaching module somebody is to be enrolled on.
+
+    Attributes:
+        module_id: The module.
+        ends_on: When the enrolment stops counting, or None for no end.
+    """
+
+    model_config = {"extra": "forbid"}
+
+    module_id: str = Field(max_length=255, pattern=r"^[a-zA-Z0-9_-]+$")
+    ends_on: datetime | None = None
+
+
+class TeachingEnrolmentsAtIn(BaseModel):
+    """Somebody's teaching enrolments at one organisation, from the user form.
+
+    The whole answer for that organisation: the modules listed are
+    enrolled on, and one they are on and is not listed has its enrolment
+    ended. An organisation that is not sent is not touched.
+
+    Attributes:
+        org_unit_id: The organisation serving the modules.
+        modules: The modules they are to be enrolled on there.
+    """
+
+    model_config = {"extra": "forbid"}
+
+    org_unit_id: int
+    modules: list[TeachingModuleIn] = Field(
+        default_factory=list, max_length=100
+    )
+
+    @field_validator("modules")
+    @classmethod
+    def _each_module_once(
+        cls, value: list[TeachingModuleIn]
+    ) -> list[TeachingModuleIn]:
+        ids = [entry.module_id for entry in value]
+        if len(ids) != len(set(ids)):
+            raise ValueError("Each module may be named once.")
+        return value
+
+
+def _one_entry_per_organisation(
+    value: list[TeachingEnrolmentsAtIn] | None,
+) -> list[TeachingEnrolmentsAtIn] | None:
+    """Reject a list naming one organisation twice.
+
+    Each entry is the whole answer for its organisation, so two for the
+    same one would contradict each other.
+    """
+    if value is None:
+        return None
+    ids = [entry.org_unit_id for entry in value]
+    if len(ids) != len(set(ids)):
+        raise ValueError("Each organisation may be named once.")
+    return value
+
+
 class PractisingAtIn(BaseModel):
     """What somebody may practise at one org_unit, as the user form sends it.
 
@@ -1672,6 +1743,16 @@ class AdminUserCreateIn(BaseModel):
     # about practice", which is what a client built before the field
     # sends, and it leaves a new account authorised nowhere.
     practising: list[PractisingAtIn] | None = None
+    # Their teaching enrolments at each organisation sent. Absent leaves
+    # every enrolment as it is, as does an organisation left out.
+    teaching_enrolments: list[TeachingEnrolmentsAtIn] | None = None
+
+    @field_validator("teaching_enrolments")
+    @classmethod
+    def _enrolments_once_each(
+        cls, value: list[TeachingEnrolmentsAtIn] | None
+    ) -> list[TeachingEnrolmentsAtIn] | None:
+        return _one_entry_per_organisation(value)
 
     @field_validator("practising")
     @classmethod
@@ -1751,6 +1832,16 @@ class AdminUserUpdateIn(BaseModel):
     # What they may practise at each org_unit sent. Absent leaves every
     # practice row as it is, as does an org_unit left out of the list.
     practising: list[PractisingAtIn] | None = None
+    # Their teaching enrolments at each organisation sent. Absent leaves
+    # every enrolment as it is, as does an organisation left out.
+    teaching_enrolments: list[TeachingEnrolmentsAtIn] | None = None
+
+    @field_validator("teaching_enrolments")
+    @classmethod
+    def _enrolments_once_each(
+        cls, value: list[TeachingEnrolmentsAtIn] | None
+    ) -> list[TeachingEnrolmentsAtIn] | None:
+        return _one_entry_per_organisation(value)
 
     @field_validator("practising")
     @classmethod
@@ -1842,6 +1933,120 @@ def _org_units_the_caller_places_people_in(
             db, current_user.id
         )
     return allowed
+
+
+def _settle_teaching_enrolments(
+    db: Session,
+    current_user: User,
+    person: User,
+    enrolments: list[TeachingEnrolmentsAtIn],
+) -> None:
+    """Make a person's teaching enrolments match what the user form sent.
+
+    Called once their membership and competencies are settled and
+    flushed, in the same transaction, so somebody new is enrolled in the
+    one save that creates them. Every entry is checked before any is
+    written, and one refusal refuses the save.
+
+    Naming a module does everything: ``settle_enrolments`` gives the two
+    learner competencies and a place if they are missing, so an admin
+    who skipped those steps does not leave somebody enrolled and unable
+    to enter.
+
+    Args:
+        db: Core database session.
+        current_user: The caller.
+        person: Whose enrolments they are, with membership settled.
+        enrolments: One entry per organisation to settle.
+
+    Raises:
+        HTTPException: 403 unless the caller runs teaching
+            (``manage_teaching``, or an operator), is somebody other
+            than the person where a competency would be given, and
+            reaches each organisation named. 422 for an organisation
+            the person does not belong to or beneath, a module it does
+            not serve, or an end date already passed.
+    """
+    is_operator = current_user.platform_role == "superadmin"
+    if (
+        not is_operator
+        and "manage_teaching" not in current_user.get_final_competencies()
+    ):
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    member_of = [
+        int(unit_id)
+        for unit_id in db.execute(
+            select(org_unit_member.c.org_unit_id).where(
+                org_unit_member.c.user_id == person.id
+            )
+        )
+        .scalars()
+        .all()
+    ]
+    theirs = organisation_org_units_of(db, member_of)
+    reached = org_units_whose_people_reached_by(db, current_user)
+    now = datetime.now(UTC)
+    held = set(person.get_final_competencies())
+    gives_a_competency = (
+        not {
+            TEACHING_RESULTS_COMPETENCY,
+            MODULES_COMPETENCY,
+        }
+        <= held
+    )
+
+    for entry in enrolments:
+        if entry.org_unit_id not in theirs:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Enrolment can be set only at an organisation they "
+                    "belong to."
+                ),
+            )
+        if reached is not None and entry.org_unit_id not in reached:
+            raise HTTPException(status_code=403, detail="Not allowed")
+        for module in entry.modules:
+            if module.ends_on is None:
+                continue
+            ends_on = module.ends_on
+            if ends_on.tzinfo is None:
+                ends_on = ends_on.replace(tzinfo=UTC)
+            if ends_on <= now:
+                raise HTTPException(
+                    status_code=422,
+                    detail="An enrolment's end date has already passed.",
+                )
+        # Nobody gives themselves a competency, here as on every other
+        # route. Changing their own enrolments, holding both already,
+        # gives nothing and is allowed.
+        if (
+            entry.modules
+            and gives_a_competency
+            and person.id == current_user.id
+            and not is_operator
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="Somebody else must enrol you in teaching.",
+            )
+
+    try:
+        for entry in enrolments:
+            settle_enrolments(
+                db,
+                person,
+                organisation_id=entry.org_unit_id,
+                wanted={m.module_id: m.ends_on for m in entry.modules},
+                settled_by=current_user.id,
+            )
+    except TeachingNotServed:
+        raise HTTPException(
+            status_code=422,
+            detail="A module was named that the organisation does not serve.",
+        ) from None
+    db.flush()
 
 
 def _settle_practice(
@@ -2202,6 +2407,13 @@ def create_user_with_cbac(
     if payload.practising:
         _settle_practice(db, current_user, user, payload.practising)
 
+    # After practice, so a place the form set is already there and
+    # naming a module adds only what is still missing.
+    if payload.teaching_enrolments:
+        _settle_teaching_enrolments(
+            db, current_user, user, payload.teaching_enrolments
+        )
+
     return UserActionOut(
         detail="created",
         id=user.id,
@@ -2537,6 +2749,15 @@ def update_user(
     # against both as they now stand.
     if payload.practising:
         _settle_practice(db, current_user, user, payload.practising)
+
+    # After practice, so a place the form set is already there and
+    # naming a module adds only what is still missing. An empty list for
+    # an organisation is an answer, ending what they are on, so the
+    # test is for the field and not for its truth.
+    if payload.teaching_enrolments is not None:
+        _settle_teaching_enrolments(
+            db, current_user, user, payload.teaching_enrolments
+        )
 
     return UserActionOut(
         detail="updated",
@@ -3420,6 +3641,32 @@ def get_user(
             # practice at an org_unit they could not open.
             if reached is None or unit_id in reached
         ],
+        # For the form's Enrolment step, and only for somebody who runs
+        # teaching: what they are enrolled on at each organisation they
+        # belong to that the caller reaches.
+        teaching_enrolments=(
+            [
+                TeachingEnrolmentsAtOut(
+                    org_unit_id=organisation_id,
+                    modules=[
+                        TeachingModuleOut(
+                            module_id=row.question_bank_id,
+                            ends_on=row.ends_on,
+                        )
+                        for row in current_enrolments(
+                            db, user.id, org_unit_id=organisation_id
+                        )
+                    ],
+                )
+                for organisation_id in sorted(
+                    organisation_org_units_of(db, user_org_unit_ids)
+                )
+                if reached is None or organisation_id in reached
+            ]
+            if current_user.platform_role == "superadmin"
+            or "manage_teaching" in current_user.get_final_competencies()
+            else []
+        ),
     )
 
 
