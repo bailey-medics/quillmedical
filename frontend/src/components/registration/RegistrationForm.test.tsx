@@ -3,6 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import type { FormSubmitResult } from "@/components/form/Form";
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@lib/legal/links";
 import RegistrationForm from "./RegistrationForm";
 
 vi.mock("@lib/connectivity", () => ({
@@ -214,6 +215,35 @@ describe("RegistrationForm", () => {
         "aria-disabled",
         "true",
       );
+    });
+  });
+  describe("the legal notice", () => {
+    it("links the terms of service and the privacy policy", () => {
+      renderWithMantine(
+        <RegistrationForm onSubmit={() => new Promise(() => {})} />,
+      );
+
+      expect(
+        screen.getByText(/By creating an account you agree to our/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /terms of service/ }),
+      ).toHaveAttribute("href", TERMS_OF_SERVICE_URL);
+      expect(
+        screen.getByRole("link", { name: /privacy policy/ }),
+      ).toHaveAttribute("href", PRIVACY_POLICY_URL);
+    });
+
+    it("sits above the submit button", () => {
+      renderWithMantine(
+        <RegistrationForm onSubmit={() => new Promise(() => {})} />,
+      );
+
+      const link = screen.getByRole("link", { name: /privacy policy/ });
+      const submit = screen.getByTestId("submit-button");
+      expect(
+        link.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     });
   });
 });

@@ -48,6 +48,28 @@ describe("ResetPasswordPage", () => {
     });
   });
 
+  it("links the policies on an invite link only", () => {
+    const { unmount } = renderWithRouter(<ResetPasswordPage />, {
+      routePath: "/reset-password",
+      initialRoute: "/reset-password?token=abc",
+    });
+    expect(
+      screen.queryByRole("link", { name: /privacy policy/ }),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    renderWithRouter(<ResetPasswordPage />, {
+      routePath: "/reset-password",
+      initialRoute: "/reset-password?token=abc&invite=1",
+    });
+    expect(
+      screen.getByRole("link", { name: /terms of service/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /privacy policy/ }),
+    ).toBeInTheDocument();
+  });
+
   it("asks on an invite link, and sends the box as not ticked", async () => {
     const user = userEvent.setup();
     renderWithRouter(<ResetPasswordPage />, {

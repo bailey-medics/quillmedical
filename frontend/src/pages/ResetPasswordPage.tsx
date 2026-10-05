@@ -58,7 +58,5 @@ export default function ResetPasswordPage() {
     }
   }
 
-  return (
-    <ResetPasswordForm onSubmit={handleSubmit} askAboutMarketing={isInvite} />
-  );
+  return <ResetPasswordForm onSubmit={handleSubmit} isInvite={isInvite} />;
 }

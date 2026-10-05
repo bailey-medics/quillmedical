@@ -20,6 +20,7 @@ import {
   MARKETING_OPT_OUT_LABEL,
 } from "@lib/marketing/wording";
 import { Heading } from "@components/typography";
+import LegalNotice from "./LegalNotice";
 import StateMessage from "@components/message-cards/StateMessage";
 import { IconWifiOff } from "@/components/icons/appIcons";
 import { useConnectivity } from "@lib/connectivity";
@@ -138,6 +139,9 @@ function RegistrationFields({
         description={MARKETING_OPT_OUT_DESCRIPTION}
         {...methods.register("marketingOptOut")}
       />
+      {/* A notice, not a question: registering is the moment their name
+          and email are collected, so the policies are linked here. */}
+      <LegalNotice />
       <FormStatusNarrow />
       <SubmitButton />
     </Stack>
