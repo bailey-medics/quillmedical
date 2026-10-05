@@ -94,16 +94,19 @@ const scope = vi.hoisted(() => ({
   // asks for `manage_practising_competencies`, is not offered and the
   // rest of these tests walk the form as it was before the step.
   competencies: [] as string[],
+  // Whether the viewer operates Quill. An operator by default, so these
+  // tests walk every step the form has: the Platform role step is shown
+  // to an operator only. A test of what anybody else sees sets
+  // `standard` first.
+  platform_role: "superadmin" as "superadmin" | "standard",
 }));
 
 vi.mock("@/auth/AuthContext", () => ({
   useAuth: () => ({
     state: {
       status: "authenticated",
-      // A plain admin: `standard` on the platform, so the superadmin
-      // option is absent from the permissions list.
       user: {
-        platform_role: "standard",
+        platform_role: scope.platform_role,
         may_assign_professions: scope.may_assign_professions,
         competencies: scope.competencies,
       },
@@ -1123,6 +1126,315 @@ describe("UserInfoUpdatePage", () => {
           }),
         );
       });
+    }, 30000);
+  });
+
+  /** Fill Basic details, choose Test Org, and stop on Competencies. */
+  async function walkToCompetencies(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByLabelText(/full name/i), "Dr Jane Smith");
+    await user.type(screen.getByLabelText(/email/i), "jane.smith@example.com");
+    await user.type(screen.getByLabelText(/username/i), "janesmith");
+    await user.type(screen.getByLabelText(/initial password/i), "password123");
+    await user.click(
+      screen.getByRole("combobox", { name: /base profession/i }),
+    );
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("button", { name: /^next$/i }));
+    await user.click(
+      await screen.findByRole("combobox", { name: /^organisation/i }),
+    );
+    await user.click(await screen.findByRole("option", { name: "Test Org" }));
+    await user.click(screen.getByRole("button", { name: /^next$/i }));
+    await screen.findByRole("heading", { name: "Competency configuration" });
+  }
+
+  /** Sign the viewer in as somebody else for one test. */
+  function viewAs(
+    platformRole: "superadmin" | "standard",
+    competencies: string[],
+  ) {
+    const before = {
+      platform_role: scope.platform_role,
+      competencies: scope.competencies,
+    };
+    scope.platform_role = platformRole;
+    scope.competencies = competencies;
+    onTestFinished(() => {
+      scope.platform_role = before.platform_role;
+      scope.competencies = before.competencies;
+    });
+  }
+
+  /** Make Test Org serve one teaching module, for one test. */
+  function serveAModule(user?: Record<string, unknown>) {
+    const get = vi.mocked(apiModule.api.get);
+    const usual = get.getMockImplementation();
+    onTestFinished(() => {
+      get.mockImplementation(usual!);
+    });
+    get.mockImplementation((url: string) =>
+      Promise.resolve(
+        url === "/org-units"
+          ? { org_units: PLACES }
+          : url === "/teaching/admin/org-units/1/modules"
+            ? {
+                organisation_id: 1,
+                organisation_name: "Test Org",
+                modules: [
+                  { question_bank_id: "colonoscopy", title: "Colonoscopy" },
+                  { question_bank_id: "chest-xray", title: "Chest X-ray" },
+                ],
+              }
+            : url === "/users/7" && user
+              ? user
+              : {},
+      ),
+    );
+  }
+
+  describe("Platform role", () => {
+    it("is not offered to somebody who is not an operator", async () => {
+      viewAs("standard", ["manage_users"]);
+      const user = userEvent.setup();
+      const mockPost = vi.fn().mockResolvedValue({ data: { id: 1 } });
+      (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
+      renderWithRouter(<UserInfoUpdatePage />);
+      await walkToCompetencies(user);
+
+      // Competencies → Review: there is nothing for them to choose.
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+
+      expect(
+        await screen.findByRole("heading", { name: "Review" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Platform role")).toBeNull();
+      // Nor a line in the review about a choice they were not shown.
+      expect(screen.queryByText("Platform role:")).toBeNull();
+
+      await user.click(screen.getByRole("button", { name: /create user/i }));
+      await waitFor(() => expect(mockPost).toHaveBeenCalled());
+      expect(mockPost).toHaveBeenCalledWith(
+        "/users",
+        expect.objectContaining({ platform_role: "standard" }),
+      );
+    }, 30000);
+
+    it("is offered to an operator, under that name", async () => {
+      viewAs("superadmin", []);
+      const user = userEvent.setup();
+      renderWithRouter(<UserInfoUpdatePage />);
+      await walkToCompetencies(user);
+
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+
+      expect(
+        await screen.findByRole("heading", { name: "Platform role" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Permissions")).toBeNull();
+    }, 30000);
+
+    it("leaves an operator's role as it was when the step is hidden", async () => {
+      onTestFinished(() => window.history.pushState({}, "", "/"));
+      viewAs("standard", ["manage_users"]);
+      serveAModule({
+        name: "An Operator",
+        email: "operator@example.com",
+        username: "operator",
+        base_profession: "consultant",
+        additional_competencies: [],
+        removed_competencies: [],
+        platform_role: "superadmin",
+        org_unit_ids: [1],
+        practising: [],
+      });
+      const mockPatch = vi.fn().mockResolvedValue({});
+      (apiModule.api.patch as ReturnType<typeof vi.fn>) = mockPatch;
+      const user = userEvent.setup();
+      renderWithRouter(<UserInfoUpdatePage />, {
+        routePath: "/admin/users/:id/edit",
+        initialRoute: "/admin/users/7/edit",
+      });
+
+      // Basic details → Organisation/site → Competencies → Review
+      await screen.findByLabelText(/full name/i);
+      for (let step = 0; step < 3; step += 1) {
+        await user.click(screen.getByRole("button", { name: /^next$/i }));
+      }
+      await user.click(
+        await screen.findByRole("button", { name: /update user/i }),
+      );
+
+      await waitFor(() => expect(mockPatch).toHaveBeenCalled());
+      expect(mockPatch).toHaveBeenCalledWith(
+        "/users/7",
+        expect.objectContaining({ platform_role: "superadmin" }),
+      );
+    }, 30000);
+  });
+
+  describe("Enrolment", () => {
+    it("is offered to a teaching admin where the organisation serves modules", async () => {
+      viewAs("standard", ["manage_teaching"]);
+      serveAModule();
+      const user = userEvent.setup();
+      const mockPost = vi.fn().mockResolvedValue({ data: { id: 1 } });
+      (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
+      renderWithRouter(<UserInfoUpdatePage />);
+      await walkToCompetencies(user);
+
+      // Competencies → Practice (a scoped manager sets it) → Enrolment
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+
+      const box = await screen.findByRole("checkbox", {
+        name: "Colonoscopy at Test Org",
+      });
+      expect(box).not.toBeChecked();
+      await user.click(box);
+
+      // Enrolment → Review: no Platform role step for them.
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+      expect(
+        await screen.findByText("Enrolled on: Colonoscopy"),
+      ).toBeInTheDocument();
+      // The profession chosen holds neither learner competency, so the
+      // review says the save will give them.
+      expect(
+        screen.getByText(
+          "Enrolling also gives them: View Own Teaching Results, Take Teaching Modules",
+        ),
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: /create user/i }));
+      await waitFor(() => expect(mockPost).toHaveBeenCalled());
+      expect(mockPost).toHaveBeenCalledWith(
+        "/users",
+        expect.objectContaining({
+          teaching_enrolments: [
+            {
+              org_unit_id: 1,
+              modules: [{ module_id: "colonoscopy", ends_on: null }],
+            },
+          ],
+        }),
+      );
+    }, 30000);
+
+    it("is not offered where the organisation serves nothing", async () => {
+      viewAs("standard", ["manage_teaching"]);
+      const user = userEvent.setup();
+      const mockPost = vi.fn().mockResolvedValue({ data: { id: 1 } });
+      (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
+      renderWithRouter(<UserInfoUpdatePage />);
+      await walkToCompetencies(user);
+
+      // Competencies → Practice → Review
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+
+      expect(
+        await screen.findByRole("heading", { name: "Review" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Enrolment")).toBeNull();
+      await user.click(screen.getByRole("button", { name: /create user/i }));
+      await waitFor(() => expect(mockPost).toHaveBeenCalled());
+      // Nothing is said about enrolments, so the server leaves them.
+      expect(mockPost.mock.calls[0][1]).not.toHaveProperty(
+        "teaching_enrolments",
+      );
+    }, 30000);
+
+    it("is not offered to a user manager who does not run teaching", async () => {
+      viewAs("standard", ["manage_users"]);
+      serveAModule();
+      const user = userEvent.setup();
+      renderWithRouter(<UserInfoUpdatePage />);
+      await walkToCompetencies(user);
+
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+
+      expect(
+        await screen.findByRole("heading", { name: "Review" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Enrolment")).toBeNull();
+      expect(apiModule.api.get).not.toHaveBeenCalledWith(
+        "/teaching/admin/org-units/1/modules",
+      );
+    }, 30000);
+
+    it("opens an edit as saved, and names what it will take them off", async () => {
+      onTestFinished(() => window.history.pushState({}, "", "/"));
+      viewAs("superadmin", []);
+      serveAModule({
+        name: "Dr Jane Smith",
+        email: "jane.smith@example.com",
+        username: "janesmith",
+        base_profession: "teaching_delegate",
+        additional_competencies: [],
+        removed_competencies: [],
+        platform_role: "standard",
+        org_unit_ids: [1],
+        practising: [],
+        teaching_enrolments: [
+          {
+            org_unit_id: 1,
+            modules: [
+              { module_id: "colonoscopy", ends_on: null },
+              { module_id: "chest-xray", ends_on: "2027-03-01T23:59:59Z" },
+            ],
+          },
+        ],
+      });
+      const mockPatch = vi.fn().mockResolvedValue({});
+      (apiModule.api.patch as ReturnType<typeof vi.fn>) = mockPatch;
+      const user = userEvent.setup();
+      renderWithRouter(<UserInfoUpdatePage />, {
+        routePath: "/admin/users/:id/edit",
+        initialRoute: "/admin/users/7/edit",
+      });
+
+      // Basic details → Organisation/site → Competencies → Enrolment
+      await screen.findByLabelText(/full name/i);
+      for (let step = 0; step < 3; step += 1) {
+        await user.click(screen.getByRole("button", { name: /^next$/i }));
+      }
+      const colonoscopy = await screen.findByRole("checkbox", {
+        name: "Colonoscopy at Test Org",
+      });
+      expect(colonoscopy).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "Chest X-ray at Test Org" }),
+      ).toBeChecked();
+      await user.click(colonoscopy);
+
+      // Enrolment → Platform role → Review
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+      await user.click(screen.getByRole("button", { name: /^next$/i }));
+      expect(
+        await screen.findByText("Taken off: Colonoscopy"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Enrolled on: Chest X-ray (until 1 March 2027)"),
+      ).toBeInTheDocument();
+      // A delegate holds both learner competencies already.
+      expect(screen.queryByText(/Enrolling also gives them/)).toBeNull();
+
+      await user.click(screen.getByRole("button", { name: /update user/i }));
+      await waitFor(() => expect(mockPatch).toHaveBeenCalled());
+      expect(mockPatch).toHaveBeenCalledWith(
+        "/users/7",
+        expect.objectContaining({
+          teaching_enrolments: [
+            {
+              org_unit_id: 1,
+              modules: [
+                { module_id: "chest-xray", ends_on: "2027-03-01T23:59:59Z" },
+              ],
+            },
+          ],
+        }),
+      );
     }, 30000);
   });
 });
