@@ -83,4 +83,12 @@ describe("TeachingRegisterPage", () => {
       expect.objectContaining({ marketing_opt_out: true }),
     );
   });
+
+  it("links to the guide to joining", () => {
+    renderWithRouter(<TeachingRegisterPage />);
+
+    expect(
+      screen.getByRole("link", { name: "How to join a course" }),
+    ).toHaveAttribute("href", "/guides/join-a-course");
+  });
 });

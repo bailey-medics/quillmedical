@@ -44,6 +44,11 @@ export interface LoginFormProps {
   registerPath?: string | null;
   /** Path for the forgot password link (set to null to hide) */
   forgotPasswordPath?: string | null;
+  /**
+   * Where the guide to joining lives, to offer under the form. Left out
+   * where nobody registers for themselves, so there is nothing to explain.
+   */
+  guidePath?: string | null;
   /** Heading text displayed above the form */
   title?: string;
 }
@@ -52,11 +57,13 @@ function LoginFields({
   requireTotp,
   registerPath,
   forgotPasswordPath,
+  guidePath,
   title,
 }: {
   requireTotp: boolean;
   registerPath: string | null;
   forgotPasswordPath: string | null;
+  guidePath: string | null;
   title: string;
 }) {
   const { methods } = useFormContext();
@@ -129,6 +136,13 @@ function LoginFields({
           </TextLink>
         </Group>
       )}
+      {guidePath && (
+        <Group justify="flex-end">
+          <TextLink standalone to={guidePath}>
+            How to join a course
+          </TextLink>
+        </Group>
+      )}
     </Stack>
   );
 }
@@ -138,6 +152,7 @@ export default function LoginForm({
   requireTotp = false,
   registerPath = "/register",
   forgotPasswordPath = "/forgot-password",
+  guidePath = null,
   title = "Sign in to Quill",
 }: LoginFormProps) {
   async function handleSubmit(
@@ -168,6 +183,7 @@ export default function LoginForm({
             requireTotp={requireTotp}
             registerPath={registerPath ?? null}
             forgotPasswordPath={forgotPasswordPath ?? null}
+            guidePath={guidePath ?? null}
             title={title}
           />
         </Form>

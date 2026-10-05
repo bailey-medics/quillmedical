@@ -12,7 +12,9 @@ import { SCOPED_MANAGER_IDS } from "@/types/cbac";
 import {
   guidesVisibleTo,
   guideTierOf,
+  publicGuides,
   useGuideTier,
+  useReadableGuide,
   useVisibleGuides,
 } from "./useGuideTier";
 
@@ -161,5 +163,71 @@ describe("the hooks", () => {
 
     expect(renderHook(() => useGuideTier()).result.current).toBeNull();
     expect(renderHook(() => useVisibleGuides()).result.current).toEqual([]);
+  });
+});
+
+describe("publicGuides", () => {
+  it("gives only the guides marked public", () => {
+    const sample = [guide("open", { public: true }), guide("closed")];
+
+    expect(publicGuides(sample).map((item) => item.slug)).toEqual(["open"]);
+  });
+
+  // Nobody signed out has a feature, so a public guide is public whatever
+  // feature it belongs to.
+  it("does not ask for the guide's feature", () => {
+    const sample = [guide("open", { public: true, feature: "teaching" })];
+
+    expect(publicGuides(sample)).toHaveLength(1);
+  });
+});
+
+describe("useReadableGuide", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function read(slug: string | undefined) {
+    return renderHook(() => useReadableGuide(slug)).result.current?.slug;
+  }
+
+  it("gives somebody signed out a public guide and no other", () => {
+    signInAs(null);
+
+    expect(read("join-a-course")).toBe("join-a-course");
+    expect(read("add-a-delegate-by-hand")).toBeUndefined();
+  });
+
+  it("gives somebody signed in the guides of their tier", () => {
+    signInAs(
+      someone({
+        competencies: ["manage_teaching"],
+        enabled_features: ["teaching"],
+      }),
+    );
+
+    expect(read("add-a-delegate-by-hand")).toBe("add-a-delegate-by-hand");
+    expect(read("join-a-course")).toBe("join-a-course");
+  });
+
+  // Signed in, a public guide is one of theirs like any other, so it
+  // still needs its feature: a clinical deployment shows no joining guide.
+  it("holds a signed-in reader to the guide's feature, public or not", () => {
+    signInAs(someone());
+
+    expect(read("join-a-course")).toBeUndefined();
+  });
+
+  it("gives nothing while the session is being checked", () => {
+    signInAs("loading");
+
+    expect(read("join-a-course")).toBeUndefined();
+  });
+
+  it("gives nothing for an unknown slug or none", () => {
+    signInAs(null);
+
+    expect(read("no-such-guide")).toBeUndefined();
+    expect(read(undefined)).toBeUndefined();
   });
 });

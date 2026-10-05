@@ -49,6 +49,14 @@ export const GUIDES = [
     public: false,
     feature: "teaching",
   },
+  {
+    slug: "join-a-course",
+    title: "Join a course",
+    summary: "Register, confirm your email address and sign in.",
+    audience: "delegate",
+    public: true,
+    feature: "teaching",
+  },
 ] as const satisfies readonly Guide[];
 
 export type GuideSlug = (typeof GUIDES)[number]["slug"];
@@ -56,4 +64,12 @@ export type GuideSlug = (typeof GUIDES)[number]["slug"];
 /** The guide at this slug, whoever is asking. */
 export function findGuide(slug: string | undefined): Guide | undefined {
   return GUIDES.find((guide) => guide.slug === slug);
+}
+
+/**
+ * The address of a guide. Takes a slug from the registry and nothing
+ * else, so a link to a guide that has been removed fails the typecheck.
+ */
+export function guidePath(slug: GuideSlug): string {
+  return `/guides/${slug}`;
 }

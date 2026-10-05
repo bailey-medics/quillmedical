@@ -8,6 +8,7 @@
 // Auth pages use centred form layout, not Container
 
 import { api } from "@/lib/api";
+import { guidePath } from "@/guides/registry";
 import type { FormSubmitResult } from "@/components/form/Form";
 import { registrationError } from "@/lib/auth/registrationError";
 import {
@@ -53,5 +54,10 @@ export default function TeachingRegisterPage() {
     }
   }
 
-  return <RegistrationForm onSubmit={handleSubmit} />;
+  return (
+    <RegistrationForm
+      onSubmit={handleSubmit}
+      guidePath={guidePath("join-a-course")}
+    />
+  );
 }

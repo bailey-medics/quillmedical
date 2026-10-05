@@ -9,6 +9,7 @@
 // Auth pages use centred form layout, not Container
 
 import { LoginForm, type LoginFormData } from "@components/registration";
+import { guidePath } from "@/guides/registry";
 import type { FormSubmitResult } from "@/components/form/Form";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -161,6 +162,9 @@ export default function LoginPage() {
         onSubmit={handleSubmit}
         requireTotp={requireTotp}
         registerPath={isClinical ? null : "/register"}
+        // Offered with the register link: where nobody registers for
+        // themselves there is nothing to explain.
+        guidePath={isClinical ? null : guidePath("join-a-course")}
         title={title}
       />
     </Stack>

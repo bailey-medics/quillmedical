@@ -75,6 +75,7 @@ import InboxPage from "./pages/inbox/InboxPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import VerifyEmailPendingPage from "./pages/VerifyEmailPendingPage";
 import HomeRedirect from "./pages/HomeRedirect";
+import GuideShell from "./pages/guides/GuideShell";
 
 /**
  * A teaching page inside a module, behind the competency that opens
@@ -147,6 +148,24 @@ export const routes: RouteObject[] = [
         <VerifyEmailPendingPage />
       </GuestOnly>
     ),
+  },
+
+  // One guide. Outside RequireAuth because some guides are read before
+  // there is an account to sign in to: how to join is the first. The
+  // address is the same signed in or out, so there is one copy of each
+  // guide to keep right; `GuideShell` chooses what goes round it, and the
+  // page shows somebody signed out the guides marked `public` and a 404
+  // for the rest. The list at `/guides` stays signed-in only.
+  {
+    path: "/guides/:slug",
+    element: <GuideShell />,
+    children: [
+      {
+        index: true,
+        lazy: lazyFrom(loadGuides, "GuidePage"),
+        handle: { safeForReload: true },
+      },
+    ],
   },
 
   // Everything below here requires auth
@@ -419,14 +438,10 @@ export const routes: RouteObject[] = [
       // guides somebody is shown is decided in the pages, for relevance
       // and not as a guard: see `lib/guides/useGuideTier.ts`. One lazy
       // chunk, pages/guides/guidesChunk.ts, which holds the words too.
+      // One guide, `/guides/:slug`, is routed above, outside RequireAuth.
       {
         path: "/guides",
         lazy: lazyFrom(loadGuides, "GuidesPage"),
-        handle: { safeForReload: true },
-      },
-      {
-        path: "/guides/:slug",
-        lazy: lazyFrom(loadGuides, "GuidePage"),
         handle: { safeForReload: true },
       },
 

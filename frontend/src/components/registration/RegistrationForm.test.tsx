@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithMantine } from "@test/test-utils";
+import { renderWithMantine, renderWithRouter } from "@test/test-utils";
 import type { FormSubmitResult } from "@/components/form/Form";
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@lib/legal/links";
 import RegistrationForm from "./RegistrationForm";
@@ -42,6 +42,27 @@ describe("RegistrationForm", () => {
     expect(screen.getByText("Password")).toBeInTheDocument();
     expect(screen.getByText("Confirm password")).toBeInTheDocument();
     expect(screen.getByTestId("submit-button")).toBeInTheDocument();
+  });
+
+  it("offers no guide to joining unless given one", () => {
+    renderWithMantine(
+      <RegistrationForm onSubmit={() => new Promise(() => {})} />,
+    );
+
+    expect(screen.queryByText("How to join a course")).not.toBeInTheDocument();
+  });
+
+  it("links to the guide to joining when given its address", () => {
+    renderWithRouter(
+      <RegistrationForm
+        onSubmit={() => new Promise(() => {})}
+        guidePath="/guides/join-a-course"
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "How to join a course" }),
+    ).toHaveAttribute("href", "/guides/join-a-course");
   });
 
   it("disables submit when passwords do not match", async () => {

@@ -8,11 +8,13 @@
 
 // Auth pages use centred form layout, not Container
 
-import { Center, Stack } from "@mantine/core";
+import { Center, Group, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import { QuillLogo } from "@components/images";
 import BaseCard from "@components/base-card/BaseCard";
 import { SelectField, TextField } from "@components/form";
+import { TextLink } from "@components/typography";
+import { guidePath } from "@/guides/registry";
 import { api } from "@/lib/api";
 import {
   Form,
@@ -23,7 +25,7 @@ import {
 import type { FormSubmitResult } from "@/components/form/Form";
 import { useEffect, useState } from "react";
 import { Controller } from "react-hook-form";
-import { Navigate, useNavigate } from "react-router";
+import { Navigate, useNavigate } from "react-router-dom";
 
 interface TeachingRegisterFormValues {
   module: string;
@@ -75,6 +77,13 @@ function TeachingRegisterFields({
         )}
       />
       <SubmitButton />
+      {/* This is the step people stall at: it asks for somebody else's
+          email address and does not say why. The guide does. */}
+      <Group justify="flex-end">
+        <TextLink standalone to={guidePath("join-a-course")}>
+          How to join a course
+        </TextLink>
+      </Group>
     </Stack>
   );
 }
