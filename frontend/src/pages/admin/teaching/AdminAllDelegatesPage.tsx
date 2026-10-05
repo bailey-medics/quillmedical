@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Skeleton, SimpleGrid, Stack } from "@mantine/core";
+import { GuideLink } from "@/components/guides";
 import PageHeader from "@/components/typography/PageHeader";
 import StatCard from "@/components/stats-card/StatCard";
 import type { Column } from "@/components/tables/DataTable";
@@ -268,6 +269,7 @@ export default function AdminAllDelegatesPage() {
   return (
     <Stack gap="md">
       <PageHeader title="All delegates" />
+      <GuideLink slug="see-delegates-results" />
 
       {modules.length > 1 && (
         <SelectField

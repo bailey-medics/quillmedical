@@ -317,19 +317,38 @@ not revisited.
 
 ## Phase 5: Link each page to its guide
 
-- [ ] Build `GuideLink`, taking a `slug`, and place it in the page header
-      of the pages the guides describe: the user form under
-      `frontend/src/pages/admin/`, the delegates page, the teaching
-      dashboard. It matters more than the navigation entry, because
-      somebody stuck looks at the page they are on.
-- [ ] `GuideLink` takes its slug as a union of the registry's slugs, so a
-      link to a guide that has been removed fails the typecheck.
-- [ ] It renders nothing when the reader's tier cannot see the guide.
+- [x] Build `GuideLink` in `frontend/src/components/guides/`, with stories
+      and a test. It is `TextLink` in a right-aligned `Group`, reading
+      "Guide: " and the guide's title, so it is put together from what
+      existed and needed no review as a new component. It matters more
+      than the navigation entry, because somebody stuck looks at the page
+      they are on.
+- [x] It takes its slug as a union of the registry's slugs, so a link to
+      a guide that has been removed fails the typecheck.
+- [x] It draws the link only when the guide is one the signed-in reader
+      is shown, and nothing otherwise. One component and not two: an
+      ungated `GuideLink` beside a gated `ReaderGuideLink` left the
+      obvious name as the one a page must not use. Its stories name the
+      reader they are drawn for through `parameters.mockUser`, which
+      `frontend/.storybook/preview.tsx` lays over its signed-in user.
+- [x] Place it under the page's title on the three pages the guides
+      describe: the new user form in `frontend/src/pages/UserInfoUpdatePage.tsx`
+      (when creating, not editing), All delegates, and the teaching
+      dashboard. Not in `PageHeader`'s `action` slot: that draws a box for
+      whatever it is given, and would leave an empty one for a reader who
+      is shown no link.
+- [x] `AdminAllDelegatesPage.test.tsx` had no signed-in user, because the
+      page never asked for one. It does now, through the link, so the test
+      mocks `useAuth` as its neighbours do. No other test renders one of
+      the three pages without one.
 
 ## Phase 6: A welcome video for new admins
 
 Last, and the only video: film costs the most to redo, so it is added once
 everything it would otherwise have to explain is written down.
+
+Not started. Every step below waits on the first: there is no film yet,
+and a player with nothing to play is not worth landing.
 
 - [ ] Record one short film, under two minutes, of Mark talking about the
       service. No screen recordings in it, so it does not date when a
@@ -349,13 +368,16 @@ everything it would otherwise have to explain is written down.
 
 ## Phase 7: Accessibility log
 
-- [ ] This plan adds a navigation entry and public pages, so it touches
-      journeys 1 to 4 in `docs/docs/frontend/accessibility/journeys.md`,
-      all of which pass through the navigation. Add "Journeys 1 to 4
-      again, for the Guides link in the navigation" to the "Not yet run"
-      list in `testing-log.md`, with a note that a guide page itself (its
-      heading order, image alt text and the captioned video) wants a pass
-      of its own.
+- [x] This plan adds a navigation entry and pages read signed out, so it
+      touches journeys 1 to 4 in
+      `docs/docs/frontend/accessibility/journeys.md`, all of which pass
+      through the navigation, and journey 1 again at the login form.
+      "Journeys 1 to 4 again, for the Guides link in the navigation" is
+      added to the "Not yet run" list in `testing-log.md`, with a second
+      entry for a guide page by itself: its heading order, its numbered
+      steps, its image alt text and the signed-out page's landmark. Done
+      ahead of Phase 6, which is waiting on a recording; add the captioned
+      video to that entry when it lands.
 
 ## Phase 8: Fix the registration faults the joining guide works round
 
