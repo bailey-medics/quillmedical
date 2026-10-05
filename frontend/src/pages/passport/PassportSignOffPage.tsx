@@ -17,6 +17,7 @@
 import { useEffect, useState } from "react";
 import { Stack } from "@mantine/core";
 import { useNavigate, useParams } from "react-router-dom";
+import { GuideLink } from "@/components/guides";
 import PageHeader from "@/components/page-header";
 import SignOffCard from "@/components/passport/SignOffCard";
 import SignOffForm from "@/components/passport/SignOffForm";
@@ -93,6 +94,7 @@ export function Component() {
   return (
     <Stack gap="lg">
       <PageHeader title="Sign off" />
+      <GuideLink slug="sign-somebody-off" />
 
       {error && <ErrorState message={error} />}
 

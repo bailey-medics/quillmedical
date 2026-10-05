@@ -17,6 +17,14 @@ export const PEOPLE = {
   teachingAdmin: "guide_admin",
   /** A delegate with no attempts, for specs that take a module. */
   learner: "guide_learner",
+  /** Holds a passport with something in each of its parts. */
+  passportHolder: "guide_holder",
+  /** May keep a passport and has not started one. */
+  passportStarter: "guide_starter",
+  /** Named on the holder's sign-off requests, one of them still waiting. */
+  passportAssessor: "guide_assessor",
+  /** Runs the passport at the organisation. */
+  passportAdmin: "guide_passport_admin",
   /** A safety officer, where the safety mock-up is switched on. */
   safetyOfficer: "guide_safety",
   /** A delegate who has passed, for the result and its certificate. */
