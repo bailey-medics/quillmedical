@@ -32,14 +32,17 @@ from app.models import (
     OrgUnit,
     OrgUnitFeature,
     User,
-    org_unit_member,
 )
 from app.organisations import (
-    add_org_unit_member,
     remove_org_unit_memberships,
 )
 from app.security import hash_password
 from tests.competencies import hold
+
+# Joining, in these tests, is arriving through a centre's door: the
+# membership and the place to take modules there. Teaching serves no
+# module on membership alone.
+from tests.competencies import join_for_teaching as add_org_unit_member
 
 # ------------------------------------------------------------------
 # Fixtures
@@ -2578,13 +2581,10 @@ class TestLearningContentGate:
             .where(OrgUnit.id == site.id)
             .values(parent_id=org.id)
         )
-        db_session.execute(
-            org_unit_member.insert().values(
-                org_unit_id=site.id,
-                user_id=learner.id,
-                capacity="staff",
-            )
-        )
+        # Joined as arriving at the ward does: the membership, and the
+        # place to take modules there. The row is at the ward, and it is
+        # the ward's reach that opens the trust's module.
+        add_org_unit_member(db_session, site.id, learner.id, "staff")
         db_session.commit()
 
         # A place id: teaching's own tables answer in those now, and

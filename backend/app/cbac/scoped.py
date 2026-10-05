@@ -197,7 +197,7 @@ def authorise_practice(
     user_id: int,
     org_unit_id: int,
     competency: str,
-    authorised_by: int,
+    authorised_by: int | None,
 ) -> bool:
     """Record that somebody may practise a competency at one org_unit.
 
@@ -215,7 +215,9 @@ def authorise_practice(
         user_id: The person being authorised.
         org_unit_id: Where.
         competency: A competency id from ``shared/competency-definitions/``.
-        authorised_by: The user making the decision.
+        authorised_by: The user making the decision, or None where
+            nobody is signed in to be named: somebody registering
+            through a centre's own link is admitted by the link.
 
     Returns:
         True if a row was written, False if it was already there.

@@ -173,54 +173,91 @@ on an organisation's offer of a module, so it could not say "this centre
 has left the programme and the organisation carries on". A practising
 row at the centre can.
 
-- [ ] Add `may_take_modules_through` to a new
-      `backend/app/features/teaching/access.py`: the org units through
-      which a person may take an organisation's modules. That is the
-      organisation itself and everything beneath it where
-      `can_practise_at(db, user, "take_teaching_modules", ...)` holds.
-      Nothing is inherited, as everywhere else: a row at a centre says
-      nothing about the organisation, so the function looks at each org
-      unit the person belongs to under that organisation. Every teaching
-      read of "where" goes through this module, as every other read of
-      a place goes through `cbac/scoped.py`.
+- [x] Add `places_for_modules` and `organisations_open_for_modules` to
+      a new `backend/app/features/teaching/access.py`: the org units
+      where a person holds a `practising_competency` row for
+      `take_teaching_modules`, and the organisations reached from them.
+      Nothing is inherited, as everywhere else: the row is at the centre
+      and it is the centre's reach, the same reach membership always
+      had, that opens its organisation's modules. `reach_of_org_units`
+      was split out of `get_reachable_org_unit_ids` in
+      `backend/app/organisations.py` so both start the same walk from
+      different places. Every teaching read of "where" goes through
+      this module, as every other read of a place goes through
+      `cbac/scoped.py`.
 
-- [ ] Use it in `resolve_visible_module`, `get_question_bank`,
-      `list_question_banks`, `list_learning_modules` and
-      `start_assessment` in `router.py`: an organisation's module is
-      there for somebody only if they may take modules through one of
-      its org units. The refusal stays the 404 those routes already
-      give. The routes that sit an attempt check it too, so an attempt
-      under way stops when the row goes. Nobody uses production yet, so
-      the simple rule is taken over a grace period.
+- [x] A row counts only while the person still belongs there. Removing
+      a membership does not remove practising rows, and memberships are
+      removed in several places, some by a bare delete on the table. So
+      the rule is in the read, where it cannot be missed: the row is
+      joined to `org_unit_member`. Leaving a centre closes its modules
+      with nobody remembering to remove anything, a row left behind has
+      no effect, and rejoining restores it.
 
-- [ ] Results ask for no place. `view_teaching_results` and ownership
+- [x] Use it in `router.py`. `_get_user_org_ids`, which all five
+      learner routes that serve a module already ask
+      (`resolve_visible_module`, `get_question_bank`,
+      `list_question_banks`, `list_learning_modules`,
+      `start_assessment`), now answers from
+      `organisations_open_for_modules`. The module list answers empty,
+      not 403, for somebody with no place, as it does for somebody
+      without the competency. The five routes that sit an attempt check
+      the attempt's organisation too, so an attempt under way stops
+      when the row goes. Nobody uses production yet, so the simple rule
+      is taken over a grace period.
+
+- [x] Results ask for no place. `view_teaching_results` and ownership
       of the attempt are the whole check, so results survive leaving a
-      centre, a centre leaving the programme, and an enrolment ending.
+      centre, a centre's people having their access withdrawn, and an
+      enrolment ending.
 
-- [ ] Check which org unit types may hold the row. `can_hold_competencies`
-      in `shared/org-unit-types.yaml` decides, read through
-      `type_can_hold_competencies`. Every type a delegate registers at
-      must allow it; if one does not, that is a finding to bring back,
-      not a flag to flip quietly.
+- [x] Check which org unit types may hold the row. Every type in
+      `shared/org-unit-types.yaml` has `can_hold_competencies` true
+      except `room`, which cannot have members either, so nobody can
+      register at one. Nothing to change.
 
-- [ ] Write a migration by hand so nobody loses their way in: for every
-      member of an org unit under a teaching organisation who holds a
-      current `take_teaching_modules` grant, write a practising row for
-      it at each such org unit they belong to, unless one is there.
-      Idempotent, ids as literals. It lands in the same unit as the
-      check, or the deploy between them locks everyone out.
+- [x] Registration gives the place. `POST /api/auth/register` is how a
+      delegate arrives, through a centre's own link, and it adds them
+      as a trainee of the organisation and the site. It now writes the
+      row too, at the site named or else the organisation, with nobody
+      named as having authorised it: the link admitted them. Moved here
+      from Phase 5, because without it this phase deployed alone would
+      let nobody new in. `authorise_practice` accepts an empty
+      `authorised_by` for this, which the column always allowed.
 
-- [ ] Leaving takes the row with it. Find what removing a membership
-      does to practising rows today, in `backend/app/organisations.py`
-      and the org-unit routes; if it leaves them, remove the
-      `take_teaching_modules` row at that org unit when the membership
-      goes. The competency and `view_teaching_results` are untouched.
+- [x] Found while doing that, and fixed: a self-registered delegate held
+      no teaching competency at all. Registration built the `User` and
+      then assigned `base_profession`, and the constructor is what
+      writes a profession's competencies as rows, so each got a
+      patient's row and nothing from teaching. Until Phase 2 that showed
+      only as a blank lesson, which is the white screen this plan
+      started from; after it they would have been refused everything.
+      The profession is now given to the constructor.
 
-- [ ] Tests: a row at the centre opens the organisation's modules; a
-      row at another organisation does not; no row, with the competency,
-      opens nothing; removing the row closes lessons, video and a
-      running attempt and leaves results and the certificate reachable;
-      leaving the centre removes the row.
+- [x] Write a migration by hand, `3d7a91c5e6f2`, so nobody loses their
+      way in. First it gives both competencies to teaching accounts
+      that never had a row for any teaching learner competency, current
+      or closed: the self-registered delegates above. Somebody an
+      administrator took it from has a closed row and is left alone.
+      Then it writes a practising row at every org unit each holder is a
+      member of, unless one is there, which is exactly what membership
+      gave them before. Idempotent, ids as literals. Its test,
+      `tests/test_teaching_place_migration.py`, is an integration test
+      and runs in the `alembic_drift_check` CI job only.
+
+- [x] `backend/scripts/seed_ci.py` gives its two teaching users a
+      place, or every end-to-end teaching journey would find no module.
+
+- [x] Tests, in `tests/test_teaching_place.py`: a row at the centre
+      opens the organisation's modules; membership alone opens nothing;
+      a row outliving the membership opens nothing; a row without the
+      competency opens nothing; leaving one centre leaves another open;
+      withdrawing the row closes the module list, lessons, starting an
+      assessment and an attempt under way, and leaves the result and
+      the history reachable; registering gives the place and both
+      competencies. The teaching tests' members now join through a
+      helper that writes the row, `join_for_teaching` in
+      `tests/competencies.py`, as arriving through the door does.
 
 ## Phase 4: Enrolment rows
 
@@ -284,8 +321,9 @@ one at a time. Arriving does all three; leaving undoes the right one.
 
 - [ ] Public registration admits. `/teaching/register/:module` is the
       join link and already exists; `POST /api/auth/register` already
-      takes the organisation and the site and adds the person as a
-      trainee of both. It does not take the module. Add an optional
+      takes the organisation and the site, adds the person as a trainee
+      of both and, since Phase 3, gives them their place. It does not
+      take the module. Add an optional
       `teaching_module_id` to its body, sent by
       `frontend/src/pages/TeachingRegisterPage.tsx` from the address,
       and call `admit` for the site (or the organisation when no site
