@@ -85,7 +85,15 @@ test.describe("User form practice", () => {
     // scanned in Storybook, as `PracticeByPlaceEditor`'s stories.
     await next.click();
 
-    // Platform role, then the review names what was switched on.
+    // Enrolment: the organisation serves teaching modules and the user
+    // manager runs teaching, so the step is offered. Nothing is ticked.
+    // There is no Platform role step for them: they are not an operator.
+    await expect(
+      page
+        .getByRole("checkbox", { name: new RegExp(` at ${ORGANISATION}$`) })
+        .first(),
+    ).toBeVisible();
+    // Then the review names what was switched on.
     await next.click();
     await expect(page.getByText(`May practise: ${COMPETENCY}`)).toBeVisible();
     await page.getByRole("button", { name: "Create user" }).click();

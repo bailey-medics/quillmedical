@@ -457,7 +457,7 @@ so the form is the wizard and an admin learns nothing new.
       for all of this are in
       `tests/test_teaching_enrolment_on_the_user_form.py`.
 
-- [ ] Add the step, fifth: after Practice, before Permissions, with
+- [x] Add the step, fifth: after Practice, before Permissions, with
       the label "Enrolment". It is shown when both hold, and is
       decided by the person being edited, not by the admin: the org
       units chosen in the Organisation/site step sit under an
@@ -465,23 +465,31 @@ so the form is the wizard and an admin learns nothing new.
       `manage_teaching` or is an operator. An operator belongs to no org
       unit, so a rule read from the admin's own memberships would hide
       it from them. It follows the Practice step's pattern, a
-      conditional entry in the `steps` list.
+      conditional entry in the `steps` list. "Teaching switched on" is
+      read as "serves at least one module": the form asks the `modules`
+      route about each org unit chosen, once, and an organisation that
+      answers with none has nothing to enrol on.
 
-- [ ] What the step shows: for each teaching organisation the person
+- [x] What the step shows: for each teaching organisation the person
       belongs to, its modules as tick boxes with an optional end date
-      beside each. Modules they are enrolled on come ticked. Build it
-      from existing components first, the checkbox and date fields the
-      form already uses and one card per organisation as
-      `PracticeByPlaceEditor` draws one per org unit. If that does not
-      fit and a new component is wanted, stop and agree it: this plan
-      is not that agreement.
+      beside each. Modules they are enrolled on come ticked. Built as
+      `ModuleEnrolmentEditor` in
+      `frontend/src/components/teaching/module-enrolment-editor/`, with
+      stories and tests: a composition of `BaseCard`, `CheckboxField`
+      and `DateField`, one card per organisation as
+      `PracticeByPlaceEditor` draws one per org unit. It is its own
+      component because the member page shows the same card. An end
+      date is a day, and the end of that day is what is sent.
 
-- [ ] Say it on the Review step: the modules they will be enrolled on,
+- [x] Say it on the Review step: the modules they will be enrolled on,
       any they will be taken off, and, where ticking a module is about
       to give a competency or a place they did not have, that it will.
-      Nothing is granted that the Review step did not show.
+      Nothing is granted that the Review step did not show. The place
+      is named only where the Practice step was offered too: without
+      it the form does not know what they may practise where, and says
+      nothing rather than guess.
 
-- [ ] Tests: backend, for the routes (a new user enrolled in the one
+- [x] Tests: backend, for the routes (a new user enrolled in the one
       save; competencies and place given when missing; unticking ends
       the enrolment and leaves the place; `manage_users` alone refused;
       an organisation out of reach refused; a module not served saves
@@ -538,7 +546,7 @@ so the form is the wizard and an admin learns nothing new.
       it ends one enrolment and leaves the place, a module they are
       not on changes nothing, and it is refused out of scope.
 
-- [ ] Rename the Permissions step to "Platform role", and show it to
+- [x] Rename the Permissions step to "Platform role", and show it to
       an operator only. Asked for on 5 October 2026, and done with the
       Enrolment step because both change which steps the form has. The
       step holds one field, the platform role, under a heading that
@@ -557,6 +565,9 @@ so the form is the wizard and an admin learns nothing new.
       component and its comment to match. Tests: an operator sees the
       step under its new name; a user manager and a teaching admin do
       not; saving without it leaves an existing operator's role alone.
+      The form's own tests signed in a `standard` viewer and walked
+      through this step, so their viewer is now an operator by default
+      and the tests of what anybody else sees say so.
 
 - [ ] A "Withdraw everyone's access" action for a centre, on the site
       and organisation admin pages, calling the `withdraw-everyone`

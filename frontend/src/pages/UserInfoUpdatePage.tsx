@@ -17,7 +17,7 @@
 // sat its title lower and its content narrower than every other page.
 
 import { Box, Group, Stack, Alert, Loader, Center } from "@mantine/core";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   useNavigate,
   useBlocker,
@@ -46,7 +46,11 @@ import PageHeader from "@/components/page-header";
 import type { BaseProfessionId, CompetencyId, Competency } from "@/types/cbac";
 import { getBaseProfessionDetails, ACTIVE_COMPETENCIES } from "@/types/cbac";
 import { SCOPED_MANAGER_IDS } from "@/types/cbac";
-import { useGrantScope, useHasAnyCompetency } from "@/lib/cbac/hooks";
+import {
+  useGrantScope,
+  useHasAnyCompetency,
+  useHasCompetency,
+} from "@/lib/cbac/hooks";
 import competenciesData from "@/generated/competencies.json";
 import baseProfessionsData from "@/generated/base-professions.json";
 import { api } from "@/lib/api";
@@ -67,6 +71,11 @@ import {
 } from "@/components/member-practice";
 import { competencyName } from "@/components/member-practice/competencyRows";
 import { ErrorMessage } from "@/components/typography";
+import {
+  ModuleEnrolmentEditor,
+  type EnrolmentByOrganisation,
+  type EnrolmentOrganisation,
+} from "@/components/teaching/module-enrolment-editor";
 
 /**
  * An organisation and the org_units inside it, all in place ids.
@@ -125,6 +134,60 @@ interface UserFormData {
    * `practiceToSend`.
    */
   practising: PracticeByPlace;
+  /**
+   * What is ticked in the Enrolment step, by organisation and module,
+   * with each tick's end date. Kept as the ticks were left, and
+   * narrowed by `enrolmentsToSend` to the organisations the earlier
+   * steps still put them at.
+   */
+  enrolments: EnrolmentByOrganisation;
+}
+
+/** A `YYYY-MM-DD` day as it is read aloud: "1 March 2027". */
+function formatDay(day: string): string {
+  const [year, month, date] = day.split("-").map(Number);
+  return new Date(year, month - 1, date).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+/** The two competencies a teaching learner needs, by id. */
+const LEARNER_COMPETENCIES = [
+  "view_teaching_results",
+  "take_teaching_modules",
+] as const;
+
+/**
+ * A teaching organisation the person is being put at, for the Enrolment
+ * step: what it serves, and which of their org_units sit under it.
+ */
+interface TeachingOrganisation extends EnrolmentOrganisation {
+  /** The chosen org_units that belong to it, itself included */
+  orgUnitIds: number[];
+}
+
+/**
+ * The enrolments as they stand now, for showing and for sending:
+ * narrowed to the organisations still chosen and the modules each
+ * serves. So taking somebody out of an organisation drops the ticks
+ * that hung on it, without the earlier steps having to know.
+ */
+function enrolmentsToSend(
+  formData: UserFormData,
+  organisations: TeachingOrganisation[],
+): EnrolmentByOrganisation {
+  const result: EnrolmentByOrganisation = {};
+  for (const organisation of organisations) {
+    const served = new Set(organisation.modules.map((module) => module.id));
+    result[organisation.id] = Object.fromEntries(
+      Object.entries(formData.enrolments[organisation.id] ?? {}).filter(
+        ([moduleId]) => served.has(moduleId),
+      ),
+    );
+  }
+  return result;
 }
 
 /**
@@ -523,9 +586,43 @@ function StepPractice({
 }
 
 /**
- * Step 3: System Permissions
+ * The Enrolment step: which teaching modules they are enrolled on.
+ *
+ * The third of teaching's layers, after what they hold (Competencies)
+ * and where (Practice). Ticking a module here is enough on its own: the
+ * save gives the two learner competencies and a place where they are
+ * missing, and the Review step says so before anything is saved.
  */
-function Step3Permissions({
+function StepEnrolment({
+  formData,
+  setFormData,
+  organisations,
+}: Pick<StepContentProps, never> & {
+  formData: UserFormData;
+  setFormData: (data: UserFormData) => void;
+  organisations: TeachingOrganisation[];
+}) {
+  return (
+    <ModuleEnrolmentEditor
+      organisations={organisations}
+      value={enrolmentsToSend(formData, organisations)}
+      onChange={(value) =>
+        setFormData({
+          ...formData,
+          // Merged, so ticks at an organisation not shown just now are
+          // kept as they were.
+          enrolments: { ...formData.enrolments, ...value },
+        })
+      }
+    />
+  );
+}
+
+/**
+ * The Platform role step. Shown to an operator only: anybody else has
+ * the one option, "Standard", and nothing to decide.
+ */
+function StepPlatformRole({
   formData,
   setFormData,
 }: Pick<StepContentProps, never> & {
@@ -590,6 +687,8 @@ function Step4Review({
   formData,
   organisations,
   practice,
+  enrolment,
+  showPlatformRole,
 }: Pick<StepContentProps, never> & {
   formData: UserFormData;
   organisations: OrgOption[];
@@ -598,6 +697,17 @@ function Step4Review({
    * the org_units shown, and what was saved for each before this edit.
    */
   practice?: { places: PracticePlace[]; saved: PracticeByPlace };
+  /**
+   * The Enrolment step's answer, when the viewer was offered the step:
+   * the organisations shown, and what was saved for each before this
+   * edit.
+   */
+  enrolment?: {
+    organisations: TeachingOrganisation[];
+    saved: EnrolmentByOrganisation;
+  };
+  /** Whether the viewer was offered the Platform role step */
+  showPlatformRole: boolean;
 }) {
   const profession = formData.baseProfession
     ? getBaseProfessionDetails(formData.baseProfession)
@@ -642,14 +752,18 @@ function Step4Review({
             the plain text carries the standard case – a label pointing
             at an empty space reads as a fault rather than as an answer.
           */}
-          <Group justify="space-between">
-            <BodyTextBold>Platform role:</BodyTextBold>
-            {formData.platformRole === "superadmin" ? (
-              <PlatformRoleBadge platformRole={formData.platformRole} />
-            ) : (
-              <BodyTextInline>Standard</BodyTextInline>
-            )}
-          </Group>
+          {/* Only for somebody offered the step: a line about a choice
+              they were never shown reads as theirs to have made. */}
+          {showPlatformRole && (
+            <Group justify="space-between">
+              <BodyTextBold>Platform role:</BodyTextBold>
+              {formData.platformRole === "superadmin" ? (
+                <PlatformRoleBadge platformRole={formData.platformRole} />
+              ) : (
+                <BodyTextInline>Standard</BodyTextInline>
+              )}
+            </Group>
+          )}
           {selectedOrgs.length > 0 && (
             <Group justify="space-between">
               <BodyTextBold>Organisations:</BodyTextBold>
@@ -705,7 +819,112 @@ function Step4Review({
       {practice && practice.places.length > 0 && (
         <PracticeReview formData={formData} {...practice} />
       )}
+
+      {enrolment && enrolment.organisations.length > 0 && (
+        <EnrolmentReview
+          formData={formData}
+          {...enrolment}
+          practice={practice}
+        />
+      )}
     </Stack>
+  );
+}
+
+/**
+ * What the save will enrol them on, organisation by organisation, what
+ * it will take them off, and anything else it will give them.
+ *
+ * Ticking a module gives the two learner competencies and a place to
+ * take modules where they are missing. That is said here, before the
+ * save, so nothing is granted that this step did not show.
+ */
+function EnrolmentReview({
+  formData,
+  organisations,
+  saved,
+  practice,
+}: {
+  formData: UserFormData;
+  organisations: TeachingOrganisation[];
+  saved: EnrolmentByOrganisation;
+  practice?: { places: PracticePlace[]; saved: PracticeByPlace };
+}) {
+  const chosen = enrolmentsToSend(formData, organisations);
+  const held = new Set(heldCompetencies(formData));
+  const missingCompetencies = LEARNER_COMPETENCIES.filter(
+    (id) => !held.has(id),
+  );
+  // Where practice is being set on this form, a place they will not
+  // have by the Practice step's own answer. Otherwise the form cannot
+  // know, and says nothing rather than guess.
+  const practising = practice
+    ? practiceToSend(formData, practice.places)
+    : undefined;
+  const title = (organisation: TeachingOrganisation, moduleId: string) =>
+    organisation.modules.find((module) => module.id === moduleId)?.title ??
+    moduleId;
+
+  return (
+    <BaseCard>
+      <Stack gap="sm">
+        <BodyTextBold>Enrolment:</BodyTextBold>
+        {organisations.map((organisation) => {
+          const now = Object.keys(chosen[organisation.id] ?? {});
+          const takenOff = Object.keys(saved[organisation.id] ?? {}).filter(
+            (moduleId) => !now.includes(moduleId),
+          );
+          const placesGiven = practising
+            ? organisation.orgUnitIds.filter(
+                (unitId) =>
+                  practising[unitId] !== undefined &&
+                  !practising[unitId].includes("take_teaching_modules"),
+              )
+            : [];
+          const gives = now.length > 0;
+          return (
+            <Box key={organisation.id}>
+              <BodyTextBold>{organisation.name}</BodyTextBold>
+              <BodyText>
+                {now.length > 0
+                  ? `Enrolled on: ${now
+                      .map((moduleId) => {
+                        const ends = chosen[organisation.id][moduleId];
+                        const name = title(organisation, moduleId);
+                        return ends
+                          ? `${name} (until ${formatDay(ends)})`
+                          : name;
+                      })
+                      .sort()
+                      .join(", ")}`
+                  : "Enrolled on nothing here"}
+              </BodyText>
+              {takenOff.length > 0 && (
+                <BodyText>
+                  {`Taken off: ${takenOff
+                    .map((moduleId) => title(organisation, moduleId))
+                    .sort()
+                    .join(", ")}`}
+                </BodyText>
+              )}
+              {gives && missingCompetencies.length > 0 && (
+                <BodyText>
+                  {`Enrolling also gives them: ${missingCompetencies
+                    .map(competencyName)
+                    .join(", ")}`}
+                </BodyText>
+              )}
+              {gives && placesGiven.length > 0 && (
+                <BodyText>
+                  Enrolling also lets them take modules at each place they
+                  belong to here.
+                </BodyText>
+              )}
+            </Box>
+          );
+        })}
+      </Stack>
+    </BaseCard>
   );
 }
 
@@ -813,6 +1032,34 @@ export default function UserInfoUpdatePage() {
     ...SCOPED_MANAGER_IDS,
   );
 
+  // An operator runs Quill itself, and is the only one with a platform
+  // role to choose; a teaching admin or an operator runs teaching, and
+  // is offered the Enrolment step.
+  const { state: authState } = useAuth();
+  const isOperator =
+    authState.status === "authenticated" &&
+    authState.user.platform_role === "superadmin";
+  const holdsManageTeaching = useHasCompetency("manage_teaching");
+  const mayRunTeaching = isOperator || holdsManageTeaching;
+  // What each chosen org_unit's organisation serves, as the API
+  // answered, so an org_unit is asked about once.
+  const servedByUnit = useRef(
+    new Map<
+      number,
+      {
+        organisationId: number | null;
+        name: string | null;
+        modules: { id: string; title: string }[];
+      }
+    >(),
+  );
+  const [teachingOrganisations, setTeachingOrganisations] = useState<
+    TeachingOrganisation[]
+  >([]);
+  // Enrolments as the server holds them, to say what an edit takes off.
+  const [savedEnrolments, setSavedEnrolments] =
+    useState<EnrolmentByOrganisation>({});
+
   // A new user may arrive already half described: the add-staff page
   // sends somebody here when a lookup finds no account for an address,
   // with that address or username and the org_unit they were being
@@ -839,6 +1086,7 @@ export default function UserInfoUpdatePage() {
     // Everything off for a new user: a competency authorises nothing
     // until somebody decides it does.
     practising: {},
+    enrolments: {},
   });
 
   // Fetch user data in edit mode
@@ -860,6 +1108,10 @@ export default function UserInfoUpdatePage() {
           org_unit_ids?: number[];
           place_ids?: number[];
           practising?: { org_unit_id: number; competencies: string[] }[];
+          teaching_enrolments?: {
+            org_unit_id: number;
+            modules: { module_id: string; ends_on: string | null }[];
+          }[];
         }>(`/users/${userId}`);
 
         // Absent from a server built before the Practice step, which is
@@ -869,6 +1121,18 @@ export default function UserInfoUpdatePage() {
           practising[entry.org_unit_id] = entry.competencies;
         }
         setSavedPractising(practising);
+        const enrolments: EnrolmentByOrganisation = {};
+        for (const entry of data.teaching_enrolments ?? []) {
+          enrolments[entry.org_unit_id] = Object.fromEntries(
+            entry.modules.map((module) => [
+              module.module_id,
+              // The date alone: the field holds a day, and the end of
+              // that day is what is sent back.
+              module.ends_on ? module.ends_on.slice(0, 10) : null,
+            ]),
+          );
+        }
+        setSavedEnrolments(enrolments);
         setLoadedUsername(data.username || "");
 
         // Pre-fill form with user data
@@ -886,6 +1150,7 @@ export default function UserInfoUpdatePage() {
           // page works against a server from before the expand shipped.
           orgUnitIds: (data.org_unit_ids ?? data.place_ids ?? []).map(String),
           practising,
+          enrolments,
         });
       } catch (error) {
         console.error("Failed to fetch user:", error);
@@ -965,6 +1230,71 @@ export default function UserInfoUpdatePage() {
   }, []);
 
   // Block navigation when form is dirty and not yet submitted
+  // The Enrolment step is decided by the person being edited: which of
+  // the org_units they are being put at sit under an organisation that
+  // serves teaching modules. Each chosen org_unit is asked about once.
+  const chosenUnits = formData.orgUnitIds.join(",");
+  useEffect(() => {
+    if (!mayRunTeaching) return;
+    let active = true;
+    async function load() {
+      const unitIds = chosenUnits ? chosenUnits.split(",").map(Number) : [];
+      await Promise.all(
+        unitIds
+          .filter((unitId) => !servedByUnit.current.has(unitId))
+          .map(async (unitId) => {
+            try {
+              const data = await api.get<{
+                organisation_id: number | null;
+                organisation_name: string | null;
+                modules: { question_bank_id: string; title: string }[];
+              }>(`/teaching/admin/org-units/${unitId}/modules`);
+              servedByUnit.current.set(unitId, {
+                organisationId: data.organisation_id,
+                name: data.organisation_name,
+                modules: data.modules.map((module) => ({
+                  id: module.question_bank_id,
+                  title: module.title,
+                })),
+              });
+            } catch {
+              // An org_unit the viewer may not ask about, or teaching
+              // not on there: no step for it, and nothing is sent.
+              servedByUnit.current.set(unitId, {
+                organisationId: null,
+                name: null,
+                modules: [],
+              });
+            }
+          }),
+      );
+      if (!active) return;
+      const byOrganisation = new Map<number, TeachingOrganisation>();
+      for (const unitId of unitIds) {
+        const served = servedByUnit.current.get(unitId);
+        if (!served || served.organisationId === null) continue;
+        if (served.modules.length === 0) continue;
+        const organisation = byOrganisation.get(served.organisationId) ?? {
+          id: served.organisationId,
+          name: served.name ?? "",
+          modules: served.modules,
+          orgUnitIds: [],
+        };
+        organisation.orgUnitIds.push(unitId);
+        byOrganisation.set(served.organisationId, organisation);
+      }
+      setTeachingOrganisations(
+        [...byOrganisation.values()].sort((a, b) =>
+          a.name.localeCompare(b.name),
+        ),
+      );
+    }
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [chosenUnits, mayRunTeaching]);
+
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       dirty && !success && currentLocation.pathname !== nextLocation.pathname,
@@ -1020,6 +1350,7 @@ export default function UserInfoUpdatePage() {
   }
 
   const shownPracticePlaces = practicePlaces(formData, placesById);
+  const showEnrolment = mayRunTeaching && teachingOrganisations.length > 0;
 
   async function save() {
     if (submitting) return;
@@ -1037,6 +1368,10 @@ export default function UserInfoUpdatePage() {
         password?: string;
         org_unit_ids: number[];
         practising?: { org_unit_id: number; competencies: string[] }[];
+        teaching_enrolments?: {
+          org_unit_id: number;
+          modules: { module_id: string; ends_on: string | null }[];
+        }[];
       } = {
         name: formData.name,
         email: formData.email,
@@ -1060,6 +1395,22 @@ export default function UserInfoUpdatePage() {
       }
 
       // Only include password if provided (required for create, optional for edit)
+      // Only when the step was offered, so somebody who never saw it
+      // does not end enrolments by saving. An organisation with every
+      // module unticked is still sent: that is an answer.
+      if (showEnrolment) {
+        payload.teaching_enrolments = Object.entries(
+          enrolmentsToSend(formData, teachingOrganisations),
+        ).map(([organisationId, modules]) => ({
+          org_unit_id: Number(organisationId),
+          modules: Object.entries(modules).map(([moduleId, endsOn]) => ({
+            module_id: moduleId,
+            // The whole of the day chosen, so "until the 5th" includes
+            // the 5th.
+            ends_on: endsOn ? `${endsOn}T23:59:59Z` : null,
+          })),
+        }));
+      }
       if (formData.password) {
         payload.password = formData.password;
       }
@@ -1173,17 +1524,45 @@ export default function UserInfoUpdatePage() {
           } satisfies StepConfig,
         ]
       : []),
-    {
-      label: "Permissions",
-      description: "System permission level",
-      content: (props) => (
-        <Step3Permissions
-          {...props}
-          formData={formData}
-          setFormData={updateFormData}
-        />
-      ),
-    },
+    // After Practice: the third of teaching's layers, after what they
+    // hold and where. Decided by the person being edited, not by who is
+    // editing them.
+    ...(showEnrolment
+      ? [
+          {
+            label: "Enrolment",
+            description: "Teaching modules",
+            content: (props: StepContentProps) => (
+              <StepEnrolment
+                {...props}
+                formData={formData}
+                setFormData={updateFormData}
+                organisations={teachingOrganisations}
+              />
+            ),
+            // One card for each organisation, as Practice has one for
+            // each org_unit.
+            hideCard: true,
+          } satisfies StepConfig,
+        ]
+      : []),
+    // An operator only. Anybody else has one option here and nothing to
+    // decide, and the API refuses a platform role they set.
+    ...(isOperator
+      ? [
+          {
+            label: "Platform role",
+            description: "Whether they operate Quill",
+            content: (props: StepContentProps) => (
+              <StepPlatformRole
+                {...props}
+                formData={formData}
+                setFormData={updateFormData}
+              />
+            ),
+          } satisfies StepConfig,
+        ]
+      : []),
     {
       label: "Review",
       description: "Review and submit",
@@ -1197,6 +1576,12 @@ export default function UserInfoUpdatePage() {
               ? { places: shownPracticePlaces, saved: savedPractising }
               : undefined
           }
+          enrolment={
+            showEnrolment
+              ? { organisations: teachingOrganisations, saved: savedEnrolments }
+              : undefined
+          }
+          showPlatformRole={isOperator}
         />
       ),
       nextButtonLabel: isEditMode ? "Update user" : "Create user",
