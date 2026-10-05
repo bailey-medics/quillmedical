@@ -37,6 +37,12 @@ vi.mock("@/auth/AuthContext", () => ({
   }),
 }));
 
+// Whether the navigation is folded behind the hamburger. Wide by default.
+const mockNavCollapsed = { value: false };
+vi.mock("@/components/layouts/useNavCollapsed", () => ({
+  useNavCollapsed: () => mockNavCollapsed.value,
+}));
+
 describe("TeachingMainNav", () => {
   it("renders Teaching link highlighted on /teaching", () => {
     renderWithRouter(<TeachingMainNav />, {
@@ -53,6 +59,23 @@ describe("TeachingMainNav", () => {
     });
     expect(screen.getByText("Settings")).toBeTruthy();
     expect(screen.getByText("Logout")).toBeTruthy();
+  });
+
+  it("asks the admin layout to open its drawer when Admin is pressed on a narrow screen", async () => {
+    // Admin leaves this layout for the main one, which mounts with its
+    // own drawer. Without this it started shut, hiding the admin pages
+    // the press was for.
+    mockNavCollapsed.value = true;
+    const user = userEvent.setup();
+    renderWithRouter(<TeachingMainNav />, { initialRoute: "/teaching" });
+
+    await user.click(screen.getByText("Admin"));
+
+    expect(window.location.pathname).toBe("/admin");
+    expect(window.history.state).toMatchObject({
+      usr: { navDrawerOpen: true },
+    });
+    mockNavCollapsed.value = false;
   });
 
   it("renders Admin link for admin users", () => {

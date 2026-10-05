@@ -15,6 +15,20 @@ import { renderWithRouter } from "@test/test-utils";
 import userEvent from "@testing-library/user-event";
 import NestedNavLink, { type NavItem } from "./NestedNavLink";
 
+// Whether the navigation is folded behind the hamburger. Wide by default.
+const mockNavCollapsed = { value: false };
+vi.mock("@/components/layouts/useNavCollapsed", () => ({
+  useNavCollapsed: () => mockNavCollapsed.value,
+}));
+
+/** The router state the last navigation carried, as the browser holds it. */
+function lastLinkState(): unknown {
+  const held: unknown = window.history.state;
+  return typeof held === "object" && held !== null && "usr" in held
+    ? held.usr
+    : undefined;
+}
+
 // Sample navigation items for testing
 const singleNavItem: NavItem = {
   label: "Dashboard",
@@ -326,6 +340,51 @@ describe("NestedNavLink Component", () => {
 
       await waitFor(() => {
         expect(onNavigate).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe("across a change of layout", () => {
+      beforeEach(() => {
+        mockNavCollapsed.value = false;
+        window.history.pushState(null, "Test page", "/");
+      });
+
+      it("asks the next layout to open its drawer when the navigation is folded away", async () => {
+        mockNavCollapsed.value = true;
+        const user = userEvent.setup();
+        renderWithRouter(<NestedNavLink item={heading} />);
+
+        await user.click(screen.getByText("Patients"));
+
+        await waitFor(() => {
+          expect(window.location.pathname).toBe("/patients");
+        });
+        expect(lastLinkState()).toEqual({ navDrawerOpen: true });
+      });
+
+      it("asks for nothing on a wide screen, where there is no drawer", async () => {
+        const user = userEvent.setup();
+        renderWithRouter(<NestedNavLink item={heading} />);
+
+        await user.click(screen.getByText("Patients"));
+
+        await waitFor(() => {
+          expect(window.location.pathname).toBe("/patients");
+        });
+        expect(lastLinkState()).toBeNull();
+      });
+
+      it("asks for nothing from an ordinary link", async () => {
+        mockNavCollapsed.value = true;
+        const user = userEvent.setup();
+        renderWithRouter(<NestedNavLink item={navItemWithChildren} />);
+
+        await user.click(screen.getByText("Patients"));
+
+        await waitFor(() => {
+          expect(window.location.pathname).toBe("/patients");
+        });
+        expect(lastLinkState()).toBeNull();
       });
     });
 

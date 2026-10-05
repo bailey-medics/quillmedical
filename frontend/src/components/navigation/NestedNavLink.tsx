@@ -17,6 +17,8 @@ import NavIcon from "../icons/NavIcon";
 // hand-rolled as a bare `NavLink` in the sidebar. Importing the real
 // type means the next icon added there works here unremarked.
 import type { IconName } from "../icons/NavIcon";
+import { useNavCollapsed } from "@/components/layouts/useNavCollapsed";
+import { NAV_DRAWER_OPEN_STATE } from "./navDrawerState";
 import { navLinkStyles } from "./navStyles";
 
 /**
@@ -122,6 +124,15 @@ export default function NestedNavLink({
 
   const afterNavigate = item.keepsDrawerOpen ? undefined : onNavigate;
 
+  // Not calling `onNavigate` keeps the drawer open only while the layout
+  // stays the same. Where the link leads to another layout, that one
+  // mounts with its own drawer, so the link asks it to start open. Only
+  // while the navigation is folded away: on a wide screen the link is in
+  // the side bar, and there is no drawer to carry.
+  const navCollapsed = useNavCollapsed();
+  const linkState =
+    item.keepsDrawerOpen && navCollapsed ? NAV_DRAWER_OPEN_STATE : undefined;
+
   const handleClick = () => {
     if (item.href) {
       navigate(item.href);
@@ -160,6 +171,7 @@ export default function NestedNavLink({
         <NavLink
           component={Link}
           to={item.href}
+          state={linkState}
           label={item.label}
           styles={nestedStyles}
           active={isActive}
