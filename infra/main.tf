@@ -424,6 +424,12 @@ module "cloud_run_backend" {
       # Cloud Run does not durably have. There is deliberately no companion
       # PASSPORT_STORAGE_BACKEND – see the comment in backend/app/config.py.
       PASSPORT_GCS_BUCKET = module.passport_storage.bucket_name
+
+      # Where the pictures of the signed-in guides are kept. The backend
+      # reads them from here and serves them at /api/guides/assets/* to
+      # somebody with a session; unset, it has none to serve and the guides
+      # show each picture's description in its place.
+      GUIDE_ASSETS_GCS_BUCKET = module.guide_assets.private_bucket_name
     },
     {
       EMAIL_FROM    = "info@quill-medical.com"
@@ -642,6 +648,20 @@ module "load_balancer" {
 
   # Null outside teaching, so prod and staging render an unchanged URL map.
   videos_backend_bucket_id = local.is_teaching_product ? module.teaching_video_pipeline[0].backend_bucket_id : null
+
+  guide_assets_backend_bucket_id = module.guide_assets.backend_bucket_id
+}
+
+# ---------- Cloud Storage: screenshots for the in-app guides ----------
+# Every environment that serves the application serves its guides, so this
+# is not gated on the product as the teaching buckets are.
+module "guide_assets" {
+  source      = "./modules/guide-assets"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
+
+  backend_service_account_email = google_service_account.runtime["backend"].email
 }
 
 # ---------- Cloud Storage: teaching images (teaching only) ----------

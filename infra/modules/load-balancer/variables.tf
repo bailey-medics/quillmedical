@@ -47,3 +47,9 @@ variable "videos_backend_bucket_id" {
   type        = string
   default     = null
 }
+
+variable "guide_assets_backend_bucket_id" {
+  description = "Backend bucket ID for the in-app guides' screenshots, routed at /guide-assets/*. Null renders an unchanged URL map."
+  type        = string
+  default     = null
+}
