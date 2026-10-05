@@ -106,3 +106,18 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   named page rather than a journey: by keyboard and screen reader, check
   that a site row is reached and announced as something that opens, and
   that the site page's heading is read on arrival.
+- **Journey 3, and the pages that let somebody into teaching** – the
+  [teaching access plan](../../plans/2026-10-04-teaching-access-results-modules-and-enrolment-plan.md)
+  changes who is offered the Teaching entry in the side navigation, which
+  now needs the `view_teaching_results` competency as well as the
+  feature, and shows the 404 page for a lesson somebody may not have.
+  Walk journey 3 as a delegate enrolled on one module: check the module
+  list names only that module, and that a lesson they are not enrolled on
+  is announced as not found. No journey covers the admin pages, so these
+  are named pages: on the user form, check the Enrolment step is
+  announced in the stepper, that each module's tick box is announced
+  with its organisation, and that an end date field appears and is
+  reached after ticking; and on a member's page at a site, check the
+  "Save enrolment" button is told apart from "Save changes", and that
+  the line under a module saying whether they can enter it is read
+  with that module.

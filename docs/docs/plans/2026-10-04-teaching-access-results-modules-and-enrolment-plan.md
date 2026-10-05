@@ -585,18 +585,18 @@ so the form is the wizard and an admin learns nothing new.
       through this step, so their viewer is now an operator by default
       and the tests of what anybody else sees say so.
 
-- [ ] A "Withdraw everyone's access" action for a centre, on the site
-      and organisation admin pages, calling the `withdraw-everyone`
-      route from Phase 5. It is about a centre and not a person, so it
-      does not belong on the user form. Behind a confirmation that
-      says how many people it affects, that the centre itself is not
-      removed, and that their results are kept.
+- [-] A "Withdraw everyone's access" action for a centre, on the site
+  and organisation admin pages. Built, then dropped on 5 October 2026
+  before it merged, with the route behind it: see the step in Phase 5
+  that says why. Somebody is stopped by unticking a module, on their
+  page at a centre or on the user form.
 
-- [ ] Add journey 3, "open and complete a teaching lecture", to the
+- [x] Add journey 3, "open and complete a teaching lecture", to the
       "Not yet run" list in
       `docs/docs/frontend/accessibility/testing-log.md`. This plan
       changes who is offered the Teaching link and adds refusal states
-      on the way to a lesson.
+      on the way to a lesson. The entry also names the admin pages this
+      phase changed, which no journey covers.
 
 ## To do later: selling to the public
 
@@ -612,6 +612,14 @@ Not built by this plan. Each needs its own plan when its time comes.
       `source` naming the sale. Prices, VAT, receipts and refunds come
       with it. Until then an admin admits by hand and the sale is
       invoiced.
+
+- [ ] **Withdrawing many people at once** – only if somebody asks, and
+      then as a script for an operator, beside
+      `enrol_teaching_members.py`, not a button on a page. It should
+      end enrolments, which keep a record and show on the user form,
+      and not remove places. It should let an attempt under way finish.
+      Before it is built, the place needs settling: today somebody may
+      hold one at their site and at the organisation above it.
 
 - [ ] **Bundles and subscriptions** – undecided. A bundle can be
       several enrolment rows; a subscription may want a different
@@ -639,6 +647,10 @@ Not built by this plan. Each needs its own plan when its time comes.
   considered. Both were dropped for the practising row, which already
   exists, belongs to the centre and not the organisation, and leaves
   the competency and the results alone. The centre stays where it is.
+  In the end no button or route takes a place away, for one person or
+  a whole centre: both were built and dropped, see Phase 5. A place is
+  given on arrival and lapses when somebody leaves, and what an admin
+  switches on and off is the enrolment.
 
 - **Results are given at the door and never taken back** – a result
   records something done. Leaving, a centre withdrawing and an
