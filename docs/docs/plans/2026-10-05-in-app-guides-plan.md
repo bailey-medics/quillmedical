@@ -443,52 +443,50 @@ small change of its own.
       to rate-limit, and it is the path the joining guide already
       describes. Update `VerifyEmail`'s stories and tests with it.
 
-- [ ] Hold every email address in lower case, wherever it is written.
+- [x] Hold every email address in lower case, wherever it is written.
       Decided on 5 October 2026: always, including addresses typed inside
-      the application on the user pages, not only at registration. Today
-      `register` stores an address as typed while `resend-verification`
-      looks it up in lower case, so somebody who typed capitals may never
-      be sent a second link while the page says one was sent.
+      the application on the user pages, not only at registration.
+      `register` stored an address as typed while `resend-verification`
+      looked it up in lower case, so somebody who typed capitals might
+      never be sent a second link while the page said one was sent.
 
-- [ ] Lower-case in one place and call it from every write. Add a single
-      helper beside the other user validation in `backend/app/`, strip
-      and lower-case in it, and use it on each path that sets
-      `User.email`: `register`, `create_user_with_cbac` and `update_user`
-      in `backend/app/main.py`, the account page's own change of address,
-      the create-user scripts in `backend/scripts/`, and
-      `backend/scripts/seed_ci.py`. Find them by searching for
-      assignments to `email`, not from this list, which is from memory of
-      one reading.
+- [x] Lower-case on the model. `normalise_email` in
+      `backend/app/models.py` trims and lower-cases, and `User` calls it
+      from a validator on `email`, so every write goes through it: the
+      routes, the passport's invitations, the create-user scripts and the
+      seeds, and any route added later. This replaced the plan's first
+      idea, a helper each write path had to remember to call, which
+      needed a test walking every route to catch the one that forgot.
 
-- [ ] Lower-case in the same helper on every read that takes an address
-      from somebody: login where it accepts an email,
-      `resend-verification`, `verify-email`, forgot password, the member
-      lookup behind "Find somebody by username or email", and
-      `validate_clinical_lead`. Each compares against a column that is
-      now always lower case, so each must lower-case what it was given.
+- [x] Lower-case what a route is given before it looks somebody up.
+      `register`, `create_user_with_cbac`, `update_user`, the invitation
+      route, `validate_clinical_lead`, `resend-verification`,
+      `forgot-password` and `update_profile` in `backend/app/main.py` all
+      call `normalise_email`, as do the two passport invitation lookups.
+      Three of them lower-cased already, each in its own words. The
+      member lookup, the marketing webhook and two passport searches
+      compare with `func.lower` and were left as they are.
 
-- [ ] No migration. Mark confirmed on 5 October 2026 that neither the
+- [x] No migration. Mark confirmed on 5 October 2026 that neither the
       development nor the live database holds an address with a capital
       in it, so there are no rows to lower-case and nothing that could
       collide. Nor is a unique index on `lower(email)` added: `User.email`
-      is already unique, and once every write goes through the helper a
-      plain unique column refuses a second address differing only by
-      case, because both arrive lower case. The cost is that a later path
-      which forgets the helper could store capitals and nothing in the
-      database would object; the tests below are what catch that.
+      is already unique, and with the validator both of two addresses
+      differing only by case arrive as the same string, so the column
+      refuses the second.
 
-- [ ] Show an address as it is stored. The user pages and the admin
-      forms lower-case what is typed as it is saved, so what somebody
-      reads back is what Quill holds. Do not lower-case as they type: a
-      field that changes under the cursor reads as a fault.
+- [x] An address is shown as it is stored. Nothing lower-cases as
+      somebody types, which would move the text under the cursor; the
+      forms send what was typed and read back what Quill holds.
 
-- [ ] Tests: an address registered with capitals is stored lower case and
-      is found by resend, login and password reset typed in any case; an
-      admin creating or editing somebody stores lower case; a second
-      account differing only by case is refused by the API with a
-      message. One test walks every route that takes an email address in
-      its body and asserts what reaches the database is lower case, so a
-      new route that forgets the helper fails it.
+- [x] Tests, in `backend/tests/test_email_addresses_are_lower_case.py`:
+      the model holds a new and a changed address lower case and refuses
+      a second differing only by case; registration stores capitals lower
+      case, emails the lower-case address and treats the other case as a
+      duplicate; a new verification link and a password reset are sent
+      whatever case is typed; and changing your own address stores it
+      lower case. The full backend suite was run, because `models.py`
+      changed.
 
 - [ ] These change the registration and login flow, so they touch
       journey 1 in `docs/docs/frontend/accessibility/journeys.md`. Add it
