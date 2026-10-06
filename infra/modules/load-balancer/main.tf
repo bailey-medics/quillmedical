@@ -209,6 +209,15 @@ resource "google_compute_url_map" "https" {
           # checks that before this rewrite, so the module boundary is
           # exactly where it was.
           rewrite = "/"
+        }] : [],
+        # Screenshots for the in-app guides, public and unsigned. Rewritten
+        # to `/` for the reason above: the workflow uploads
+        # `<guide>/<name>.png`, and without the rewrite the bucket would be
+        # asked for `guide-assets/<guide>/<name>.png`.
+        var.guide_assets_backend_bucket_id != null ? [{
+          paths   = ["/guide-assets/*"]
+          service = var.guide_assets_backend_bucket_id
+          rewrite = "/"
         }] : []
       )
       content {

@@ -232,13 +232,24 @@ screenshots are made by a script and never by hand.
 - [x] Put the screenshots into the two guides written so far, each under
       the step it shows.
 
-- [ ] Add a public bucket for the images and route `/guide-assets/*` to it
-      on the load balancer in `infra/`, beside the `/videos/*` backend
-      bucket. Public and unsigned, unlike video: the images hold only
-      seeded data, and the joining guide shows them to somebody with no
-      session. Add the matching route to the dev and production Caddy
-      files where they need one. This applies on merge through
-      `terraform.yml`; check the run.
+- [x] Add a public bucket for the images, in a module of its own at
+      `infra/modules/guide-assets/`, and route `/guide-assets/*` to it on
+      the load balancer in `infra/modules/load-balancer/main.tf`, beside
+      the `/videos/*` backend bucket and with the same rewrite to `/`.
+      Public and unsigned, unlike video: the images hold only seeded data,
+      and the joining guide shows them to somebody with no session. Cached
+      for five minutes, because a retaken screenshot keeps its name. The
+      account GitHub Actions deploys as may write to this bucket and no
+      other. No Caddy route was needed: in production the request never
+      reaches Caddy, and locally Vite serves the folder from `public/`.
+
+- [ ] This applies on merge through `terraform.yml`; read the plan it
+      posts on the pull request before merging, and check the run after.
+      It was not validated locally: `terraform fmt` passes, but the
+      machine's Terraform is older than `infra/versions.tf` asks for, so
+      `validate` could not be run. The URL map is the part to read: its
+      path rules are one list, and a mistake there has taken the API down
+      before.
 
 - [ ] Add a workflow that runs after a merge to `main` touching
       `frontend/src/**` or `frontend/e2e/guides/**`: bring up the CI
