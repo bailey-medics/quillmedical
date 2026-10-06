@@ -14,8 +14,6 @@ event. It sits in your passport beside the record it relates to.
 5. Tick **I confirm this reflection is anonymised**.
 6. Press **Save reflection**.
 
-Keep the title short. A long one is refused when you save.
-
 ## Keep it anonymous
 
 A reflection must hold nothing that could identify a patient: no name,

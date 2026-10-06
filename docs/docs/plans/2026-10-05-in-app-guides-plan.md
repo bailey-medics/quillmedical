@@ -797,14 +797,20 @@ page is reloaded. See `2026-10-02-safety-feature-mock-up-plan.md`.
       passport yet, for the picture of starting one; the assessor named
       on both requests; and a passport admin.
 
-- [ ] Found while seeding: a reflection with a long title cannot be
-      saved. Its title goes into the subject line of the commit that
-      records it, and a subject over 72 characters is refused with an
-      error, which a holder would see as "Your reflection could not be
-      saved". A title of about forty characters is enough to do it. The
-      guide tells the reader to keep the title short. The fix is in
-      `backend/app/features/passport/`, to shorten the subject and not
-      the title, and is not this plan's.
+- [x] Found while seeding, and fixed: a reflection with a long title
+      could not be saved. A record's file is named for its title, the name
+      went into the subject line of the commit that records it, and a
+      subject over 72 characters was refused, which a holder saw only as
+      "Your reflection could not be saved". A title of about forty
+      characters was enough, and a certificate's title did the same.
+      `fit_summary` in `backend/app/features/passport/commits.py` now cuts
+      the summary to fit, with `...` where it was cut, and both write
+      paths call it: `_write` in `records.py` and the sign-offs' in
+      `service.py`. The title is still held whole in the record; only the
+      line in the log is shorter. `build` still refuses an over-long
+      subject, since for a summary written in code that is a mistake to
+      fix. The line telling readers to keep a title short is taken out of
+      "Write a reflection".
 
 - [x] Reflections are not secret here: a guide may show one in a picture
       without hedging. The one photographed is invented, and "Write a

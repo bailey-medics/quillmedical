@@ -31,7 +31,7 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import PurePosixPath
 
 from . import ids, index, paths, serialise
-from .commits import Actor, CommitAction
+from .commits import Actor, CommitAction, fit_summary
 from .commits import build as build_message
 from .schemas import (
     AppraisalPeriod,
@@ -209,7 +209,14 @@ def _write(
     return store.write(
         passport_id,
         staged,
-        build_message(action, summary, actor, competency=competency),
+        # A summary here names a record, and a record is named for what
+        # its holder typed, so it is cut to fit and never refused.
+        build_message(
+            action,
+            fit_summary(action, summary),
+            actor,
+            competency=competency,
+        ),
         actor,
         head,
         delete=delete,
