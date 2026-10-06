@@ -883,13 +883,15 @@ those pictures. The rest is a branch of its own.
       `frontend/public/guide-assets/`, whatever the guide: there is no
       bucket there, and `just guide-screenshots` puts them all in it.
 
-- [ ] A picture is asked for by the browser as an image, not by the API
-      client, so it does not get the client's retry when the session's
-      fifteen-minute cookie has just run out. A reader who opens a guide
-      after sitting idle may see descriptions in place of pictures until
-      something else on the page renews the session. Not seen in practice
-      yet; if it is, have the guide page make one call through the client
-      before it draws.
+- [x] A picture is asked for by the browser as an image, not by the API
+      client, so it did not get the client's retry when the session's
+      fifteen-minute cookie had just run out. A reader who sat on a page
+      and then opened a guide saw descriptions in place of pictures, and
+      a guide page made no other call that would renew the session.
+      `frontend/src/pages/guides/GuidePage.tsx` now asks `/auth/me`
+      through the client before it draws a guide whose pictures come
+      through the API, once for each guide opened. A public guide, and
+      every guide in development, makes no call.
 
 - [ ] After merging: the backend's new setting arrives by Terraform,
       which makes a revision that takes no traffic. Re-run `deploy.yml`
