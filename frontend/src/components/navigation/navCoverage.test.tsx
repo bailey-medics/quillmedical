@@ -260,6 +260,7 @@ const NESTS_UNDER: Record<string, string> = {
  */
 const SAMPLE_PARAMS: Record<string, string> = {
   letterId: "letter-1",
+  slug: "add-a-delegate-by-hand",
   slideIndex: "0",
 };
 

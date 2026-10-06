@@ -43,6 +43,7 @@ import RootLayout from "./RootLayout";
 import {
   loadAdmin,
   loadClinical,
+  loadGuides,
   loadPassport,
   loadSafety,
   loadTeaching,
@@ -412,6 +413,21 @@ export const routes: RouteObject[] = [
             lazy: lazyFrom(loadClinical, "MessageThread"),
           },
         ],
+      },
+
+      // Guides – task instructions, open to anybody signed in. Which
+      // guides somebody is shown is decided in the pages, for relevance
+      // and not as a guard: see `lib/guides/useGuideTier.ts`. One lazy
+      // chunk, pages/guides/guidesChunk.ts, which holds the words too.
+      {
+        path: "/guides",
+        lazy: lazyFrom(loadGuides, "GuidesPage"),
+        handle: { safeForReload: true },
+      },
+      {
+        path: "/guides/:slug",
+        lazy: lazyFrom(loadGuides, "GuidePage"),
+        handle: { safeForReload: true },
       },
 
       // Admin routes – require the competency the API itself requires.

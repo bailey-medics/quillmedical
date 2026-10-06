@@ -27,6 +27,7 @@ const CHUNKS = [
     loader: "loadClinical",
     file: "pages/clinical/clinicalChunk.ts",
   },
+  { name: "guides", loader: "loadGuides", file: "pages/guides/guidesChunk.ts" },
   {
     name: "passport",
     loader: "loadPassport",
