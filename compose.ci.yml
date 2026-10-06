@@ -32,6 +32,12 @@ services:
       TEACHING_QUESTION_BANK_PATH: /teaching-repos
       TEACHING_IMAGES_BASE_URL: /api/teaching/images
       EMAIL_DRY_RUN: "true"
+      # Where a passport's repository is kept. The default, /data/passports,
+      # does not exist in the prod image this stack runs, so the first
+      # passport made here failed with "Permission denied". Somewhere the
+      # image's own user may write, and gone with the container. Only the
+      # guides' seed makes a passport: the end-to-end tests mock theirs.
+      PASSPORT_LOCAL_ROOT: /tmp/passports
       # Required by push_send.py (imported unconditionally at startup)
       VAPID_PRIVATE: ci-placeholder-vapid-key-not-real
     volumes:

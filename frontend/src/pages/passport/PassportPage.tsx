@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Group, SimpleGrid, Skeleton, Stack } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useNavigate } from "react-router-dom";
+import { GuideLink } from "@/components/guides";
 import PageHeader from "@/components/page-header";
 import ActionCard from "@/components/action-card";
 import AddButton from "@/components/button/AddButton";
@@ -114,7 +115,12 @@ const SECTIONS = [
  * the same requests twice.
  */
 function PassportHeader() {
-  return <PageHeader title="My passport" />;
+  return (
+    <>
+      <PageHeader title="My passport" />
+      <GuideLink slug="start-your-passport" />
+    </>
+  );
 }
 
 export function Component() {

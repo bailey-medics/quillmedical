@@ -19,6 +19,23 @@ const fetchInbox = vi.fn();
 const signOff = vi.fn();
 const mockNavigate = vi.fn();
 
+// The page links to its guide, which is shown only to a reader the guide
+// is written for: here, somebody who keeps and assesses passports.
+vi.mock("@/auth/AuthContext", () => ({
+  useAuth: () => ({
+    state: {
+      status: "authenticated",
+      user: {
+        id: "1",
+        username: "holder",
+        email: "holder@example.test",
+        enabled_features: ["passport"],
+        competencies: ["assess_clinician_passport", "passport_write"],
+      },
+    },
+  }),
+}));
+
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
   return {
@@ -52,6 +69,14 @@ describe("PassportSignOffPage", () => {
     expect(
       await screen.findAllByText("Perform thoracic ultrasound"),
     ).not.toHaveLength(0);
+  });
+
+  it("links to the guide to signing somebody off", async () => {
+    renderPage();
+
+    expect(
+      await screen.findByRole("link", { name: "Guide: Sign somebody off" }),
+    ).toHaveAttribute("href", "/guides/sign-somebody-off");
   });
 
   it("offers the sign-off form for a record in the inbox", async () => {

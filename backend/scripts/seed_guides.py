@@ -19,7 +19,9 @@ It seeds one teaching establishment with a site beneath it, and at them:
   guide's registration step is given,
 - six delegates with between them every result the All delegates page can
   show, and
-- one delegate with no attempts, for the specs that take a module, and
+- one delegate with no attempts, for the specs that take a module,
+- a clinician with a passport that has something in each of its parts,
+  another with none yet, an assessor and a passport admin, and
 - a safety officer, at the same organisation with safety switched on.
 
 Non-interactive, with hardcoded credentials suitable only for a throwaway
@@ -35,7 +37,7 @@ from __future__ import annotations
 import os
 import sys
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 sys.path.insert(0, "/app")
 
@@ -44,6 +46,24 @@ from sqlalchemy.orm import Session  # noqa: E402
 
 from app.cbac.positions import set_clinical_lead  # noqa: E402
 from app.db import CoreSessionLocal  # noqa: E402
+from app.features.passport import (  # noqa: E402
+    cover,
+    ids,
+    records,
+    service,
+    specialties,
+)
+from app.features.passport.commits import Actor  # noqa: E402
+from app.features.passport.models import (  # noqa: E402
+    Passport,
+    PassportSignOffRequest,
+)
+from app.features.passport.schemas import (  # noqa: E402
+    Certificate,
+    CpdEntry,
+    LogbookEntry,
+    Reflection,
+)
 from app.features.teaching.access import admit, give_place  # noqa: E402
 from app.features.teaching.models import (  # noqa: E402
     Assessment,
@@ -58,6 +78,7 @@ from app.features.teaching.scoring import (  # noqa: E402
 )
 from app.models import OrgUnit, OrgUnitFeature, User  # noqa: E402
 from app.organisations import add_org_unit_member  # noqa: E402
+from app.passport_storage import get_passport_store  # noqa: E402
 from app.security import hash_password  # noqa: E402
 from scripts.seed_ci import seed_teaching  # noqa: E402
 
@@ -70,6 +91,13 @@ CLINICAL_LEAD = "guide_lead"
 #: Uses the safety cases. Those are a mock-up whose cases live in the
 #: browser, so this account is all the safety guides need seeded.
 SAFETY_OFFICER = "guide_safety"
+#: Holds a passport with something in each of its parts.
+PASSPORT_HOLDER = "guide_holder"
+#: Has no passport yet, for the picture of starting one.
+PASSPORT_STARTER = "guide_starter"
+#: Named on the holder's sign-off requests: one signed, one still waiting.
+PASSPORT_ASSESSOR = "guide_assessor"
+PASSPORT_ADMIN = "guide_passport_admin"
 #: Takes a module in the specs, so starts with no attempts of their own.
 LEARNER = "guide_learner"
 
@@ -281,6 +309,203 @@ def _seed_attempt(
         assessment.exam_ref = f"{prefix}{assessment.id}"
 
 
+def _actor(user: User) -> Actor:
+    """Who a passport's commit is made by, as the passport's routes say."""
+    return Actor(
+        name=user.full_name or user.username,
+        role=user.base_profession,
+        email=user.email,
+        registrations=tuple(
+            f"{r.authority} {r.number}" for r in user.current_registrations
+        ),
+    )
+
+
+def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
+    """Give one invented clinician a passport with something in each part.
+
+    A passport is a row and a git repository, and every page reads the
+    repository, so this makes both, through the functions the passport's
+    own routes call: ``service`` and ``records`` in
+    ``app.features.passport``. Every moment is pinned, so a date on a
+    page is the same from run to run.
+
+    Args:
+        db: Database session.
+        org_unit_id: The organisation the passport's people belong to.
+        operator: Named as having switched the passport on.
+    """
+    store = get_passport_store()
+
+    # The passport itself, and the organisation's cover, which is what
+    # gives its staff the right to write to theirs.
+    for key in ("passport", cover.COVER_FEATURE):
+        on = db.scalar(
+            select(OrgUnitFeature.id).where(
+                OrgUnitFeature.org_unit_id == org_unit_id,
+                OrgUnitFeature.feature_key == key,
+            )
+        )
+        if on is None:
+            db.add(
+                OrgUnitFeature(
+                    org_unit_id=org_unit_id,
+                    feature_key=key,
+                    enabled_by=operator.id,
+                )
+            )
+    db.flush()
+
+    holder = _user(
+        db, PASSPORT_HOLDER, "Dr Maya Collins", "specialty_trainee_3_plus"
+    )
+    starter = _user(
+        db, PASSPORT_STARTER, "Dr Owen Price", "specialty_trainee_3_plus"
+    )
+    assessor = _user(db, PASSPORT_ASSESSOR, "Dr Helen Marsh", "consultant")
+    admin = _user(db, PASSPORT_ADMIN, "Alex Turner", "passport_admin")
+    for person in (holder, starter, assessor, admin):
+        add_org_unit_member(db, org_unit_id, person.id, "staff")
+    cover.switch_on(db, org_unit_id, operator)
+    db.flush()
+
+    if db.scalar(select(Passport.id).where(Passport.user_id == holder.id)):
+        print("Passport already seeded")
+        return
+
+    made = datetime(2026, 9, 1, 9, 0, tzinfo=UTC)
+    passport_id = ids.new_passport_id()
+    commit = service.create_passport(
+        store,
+        passport_id,
+        _actor(holder),
+        user_id=str(holder.id),
+        registrations=[],
+        specialties=specialties.specialty_refs(["general_medicine"]),
+        now=made,
+    )
+    row = Passport(id=passport_id, user_id=holder.id, head_commit=commit)
+    db.add(row)
+    db.flush()
+
+    _, row.head_commit = records.add_logbook_entry(
+        store,
+        passport_id,
+        _actor(holder),
+        "perform_lumbar_puncture",
+        LogbookEntry(
+            performed_on=date(2026, 9, 18),
+            setting="Acute medical unit",
+            supervision="supervised",
+            supervisor="Dr Helen Marsh",
+            indication="Suspected subarachnoid haemorrhage",
+            outcome="Successful at first pass",
+        ),
+        now=made + timedelta(days=17),
+    )
+
+    _, row.head_commit = records.add_cpd_entry(
+        store,
+        passport_id,
+        _actor(holder),
+        CpdEntry(
+            activity_on=date(2026, 9, 10),
+            title="Regional acute medicine teaching day",
+            activity_type="teaching day",
+            points=6,
+        ),
+        now=made + timedelta(days=9),
+    )
+
+    _, row.head_commit = records.add_reflection(
+        store,
+        passport_id,
+        _actor(holder),
+        Reflection(
+            title="Consent when time is short",
+            written_on=date(2026, 9, 20),
+        ),
+        "I rushed the explanation because the unit was busy, and the "
+        "consent conversation took longer for it. Next time I will ask a "
+        "colleague to hold my bleep for ten minutes first.",
+        now=made + timedelta(days=19),
+    )
+
+    _, row.head_commit = records.add_certificate(
+        store,
+        passport_id,
+        _actor(holder),
+        Certificate(
+            id=service.next_id(made + timedelta(days=2)),
+            title="Advanced Life Support",
+            issuer="Northfield Resuscitation Training",
+            awarded_on=date(2026, 3, 4),
+            expires_on=date(2030, 3, 4),
+        ),
+        now=made + timedelta(days=2),
+    )
+    db.flush()
+
+    def ask(competency_id: str, observed_on: date, asked: datetime) -> str:
+        name, row.head_commit = service.request_sign_off(
+            store,
+            passport_id,
+            _actor(holder),
+            competency_id=competency_id,
+            observed_on=observed_on,
+            comments="My third supervised procedure this month.",
+            now=asked,
+        )
+        db.add(
+            PassportSignOffRequest(
+                passport_id=passport_id,
+                signoff_id=name,
+                competency_id=competency_id,
+                assessor_email=assessor.email,
+                assessor_user_id=None,
+                status="open",
+            )
+        )
+        db.flush()
+        return name
+
+    # One left waiting, so the assessor has something in their inbox, and
+    # one signed, so the holder has a finished sign-off to show.
+    ask(
+        "perform_lumbar_puncture", date(2026, 9, 18), made + timedelta(days=18)
+    )
+    to_sign = ask(
+        "perform_chest_drain", date(2026, 9, 12), made + timedelta(days=12)
+    )
+
+    signed_at = made + timedelta(days=14)
+    row.head_commit = service.sign_off(
+        store,
+        passport_id,
+        _actor(assessor),
+        name=to_sign,
+        assessor_user_id=str(assessor.id),
+        holder_user_id=str(holder.id),
+        meaning="directly observed",
+        declaration_confirmed=True,
+        assessment="Competent and safe throughout.",
+        registrations=[],
+        now=signed_at,
+    )
+    request = db.scalar(
+        select(PassportSignOffRequest).where(
+            PassportSignOffRequest.passport_id == passport_id,
+            PassportSignOffRequest.signoff_id == to_sign,
+        )
+    )
+    if request is not None:
+        request.status = "signed_off"
+        request.resolved_at = signed_at
+        request.assessor_user_id = assessor.id
+    db.commit()
+    print("Seeded a passport")
+
+
 def seed() -> None:
     """Create the guides' organisation, its people and their results."""
     db = CoreSessionLocal()
@@ -414,6 +639,8 @@ def seed() -> None:
             print(f"Seeded attempts at {bank_id}")
 
         db.commit()
+
+        seed_passport(db, organisation.id, operator)
         print("Guide seed complete")
     except Exception:
         db.rollback()

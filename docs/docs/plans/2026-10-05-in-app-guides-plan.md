@@ -748,54 +748,90 @@ page is reloaded. See `2026-10-02-safety-feature-mock-up-plan.md`.
 
 ## Phase 12: Passport guides
 
-- [ ] The guides proposed, each `feature: "passport"`, and each to be
-      confirmed before it is written. For a holder, `passport_write`:
-      "Start your passport"; "Ask for a sign-off"; "Keep your logbook";
-      "Record CPD", with the date ranges under Settings; "Add a
-      certificate"; "Write a reflection"; "Download your passport"; and
-      "Set your specialty". For an assessor, `assess_clinician_passport`:
-      "Accept an invitation to assess", which is read before there is an
-      account and so is public, as "Join a course" is; and "Sign somebody
-      off", from the inbox. For a passport admin, `manage_passport`: "Add
-      a passport holder" and "Give somebody the right to write to their
-      passport".
+- [x] Ten guides, each `feature: "passport"`. For a holder, asking for
+      `passport_write`: "Start your passport", which also covers changing
+      a specialty; "Ask for a sign-off"; "Keep your logbook"; "Record
+      CPD", with the date ranges under Settings; "Add a certificate"; and
+      "Write a reflection". For anybody who can open a passport,
+      `assess_clinician_passport`: "Download your passport", which works
+      read-only too; "Sign somebody off", from the inbox; and "Accept an
+      invitation to assess", which is read before there is an account and
+      so is public, as "Join a course" is. For a passport admin,
+      `manage_passport`: "Add somebody to the passport".
 
-- [ ] One more for anybody at all, public and with no account: "Check a
-      sign-off from a printed passport", for whoever scans the QR code and
-      lands on `/passport/verify/:signOffId`.
+- [x] Two of the guides proposed were not written, because the screens
+      for them do not exist. There is no page for a passport admin to
+      give somebody the right to write: it is the `passport_write`
+      competency on the ordinary user form, or the organisation's cover,
+      and "Add somebody to the passport" says both. And an assessor
+      cannot decline a request: the route exists and no page calls it, so
+      "Sign somebody off" says to press Cancel and tell the colleague.
+
+- [ ] "Check a sign-off from a printed passport" was not written, because
+      it would not work for the reader it is for. The page at
+      `/passport/verify/:signOffId` opens without an account, but the
+      request it makes is refused unless the reader is signed in, holds
+      `assess_clinician_passport` and is the holder or the assessor of
+      that sign-off. Somebody scanning the QR code on a printed passport
+      is none of those and is told the record "could not be checked".
+      Whether a stranger should be able to verify is a decision about the
+      passport, not about its guides.
 
 - [x] A holder with no organisation that has the passport can still read
-      and export their own, through `owns_passport`. Done in Phase 10. The feature check
-      would hide every passport guide from them. Use `useCanReachPassport`
-      for these guides and not the bare feature, in the manner of the
-      side navigation.
+      and export their own, through `owns_passport`. Done in Phase 10.
 
-- [ ] Work out how to seed a passport before writing a spec. A passport
-      is not rows in the core database: each is a `git bundle` in a
-      bucket, read through `backend/app/passport_storage.py`. Find what
-      `compose.ci.yml` gives the backend for that, and whether
-      `seed_guides.py` can make a passport with a sign-off, a logbook
-      entry and a certificate in it by calling the same functions the
-      routes do. If the CI stack has no passport storage at all, that
-      comes first and is its own unit.
+- [x] Seed a passport. A passport is a row and a git repository, and
+      every page reads the repository. `compose.ci.yml` gave the backend
+      nowhere to keep one: the default, `/data/passports`, does not exist
+      in the image that stack runs. It now sets `PASSPORT_LOCAL_ROOT` to
+      a directory the image's user may write. `seed_passport` in
+      `backend/scripts/seed_guides.py` then makes the passport through the
+      functions the passport's own routes call, `service` and `records`
+      in `app.features.passport`, with every moment pinned so a date on a
+      page is the same from run to run.
 
-- [ ] The seed then needs: an organisation with the passport feature on,
-      a holder with a filled passport, an assessor with a request waiting
-      in their inbox, and a passport admin. Each spec that writes has a
-      person of its own.
+- [x] The seed holds: the passport feature and the organisation's cover
+      switched on at the guides' organisation; a holder whose passport
+      has a logbook entry, a CPD activity, a certificate, a reflection,
+      one sign-off signed and one still waiting; a clinician with no
+      passport yet, for the picture of starting one; the assessor named
+      on both requests; and a passport admin.
 
-- [ ] Reflections are not secret here: others routinely review them, so
-      a guide may show one in a picture and say who sees it, without
-      hedging. The reflection photographed is still an invented one.
+- [ ] Found while seeding: a reflection with a long title cannot be
+      saved. Its title goes into the subject line of the commit that
+      records it, and a subject over 72 characters is refused with an
+      error, which a holder would see as "Your reflection could not be
+      saved". A title of about forty characters is enough to do it. The
+      guide tells the reader to keep the title short. The fix is in
+      `backend/app/features/passport/`, to shorten the subject and not
+      the title, and is not this plan's.
 
-- [ ] Link the pages the guides name, and place `GuideLink` on the
-      passport's own page, the inbox for an assessor, and the sign-off
-      page.
+- [x] Reflections are not secret here: a guide may show one in a picture
+      without hedging. The one photographed is invented, and "Write a
+      reflection" says only what the page itself asks: that it be
+      anonymous.
 
-- [ ] Both phases add pages people move through, so add the passport
-      journey, journey 4 in `docs/docs/frontend/accessibility/journeys.md`,
-      to the "Not yet run" list in `testing-log.md` for the guide links on
-      those pages.
+- [x] Screenshots for all ten. Forms are opened and left unsaved, so the
+      assessor's request is still waiting on the next run. The invitation
+      email is photographed from the copy rendered for Storybook, as the
+      verification email is. No picture of the page the invitation leads
+      to, which needs a real invitation's token to open.
+
+- [x] Link the pages the guides name.
+
+- [x] Place `GuideLink` on the passport's own page, to "Start your
+      passport", and on the sign-off page, to "Sign somebody off". Their
+      tests rendered the pages with no signed-in user, as All delegates'
+      did, so each is given one.
+
+- [x] Both phases add pages people move through, so journey 4 in
+      `docs/docs/frontend/accessibility/journeys.md`, the passport's, is
+      added to the "Not yet run" list in `testing-log.md` for the guide
+      links on those pages.
+
+- [ ] One thing for that round to look at: following the guide link from
+      a half-filled sign-off form leaves the page. Whether the form asks
+      before letting go, as an exam does, was not checked.
 
 ## Decisions
 
