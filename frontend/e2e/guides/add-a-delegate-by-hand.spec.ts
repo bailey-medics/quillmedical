@@ -54,11 +54,21 @@ test("add a delegate by hand", async ({ page }) => {
   ).toBeVisible();
   await next.click();
 
-  // Practice, then platform role: both left as they are.
+  // Practice: left as it is.
   await expect(
     page.getByRole("heading", { name: ORGANISATION, level: 2 }),
   ).toBeVisible();
   await next.click();
+
+  // Enrolment: the first module the organisation serves.
+  await expect(
+    page.getByText("Tick each module they are to be enrolled on."),
+  ).toBeVisible();
+  const module = page.getByRole("checkbox").first();
+  // The box itself is visually hidden, so click its label.
+  await page.locator(`label[for="${await module.getAttribute("id")}"]`).click();
+  await expect(module).toBeChecked();
+  await shot(page, "add-a-delegate-by-hand/enrolment");
   await next.click();
 
   await expect(page.getByRole("button", { name: "Create user" })).toBeVisible();

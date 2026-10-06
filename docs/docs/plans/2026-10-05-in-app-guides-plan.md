@@ -306,11 +306,18 @@ not revisited.
 - [ ] "See delegates' results" has less to describe than its title
       suggests: a row of the All delegates table does not open anything,
       so there is no page of one delegate's results to send an admin to.
-- [ ] There is no enrolment yet: phases 3 to 6 of
-      `2026-10-04-teaching-access-results-modules-and-enrolment-plan.md`
-      are unbuilt. A delegate sees whatever is live for their site's
-      organisation, and the guides say that. When enrolment lands, "Add a
-      delegate by hand" and "Take a module and its assessment" both change.
+- [x] Enrolment landed on `main` while this plan was being built, from
+      `2026-10-04-teaching-access-results-modules-and-enrolment-plan.md`.
+      The new user form gained an "Enrolment" step and lost "Permissions"
+      for anybody but an operator, who has "Platform role" in its place;
+      a member's page at a site gained a "Save enrolment" card; and a
+      delegate now sees the modules they are enrolled on, not every
+      module live for their organisation. "Add a delegate by hand" and
+      "Assign a teaching admin" are rewritten to match, the first with a
+      screenshot of the new step and a short section on adding a module
+      later. Found only because the next run read `seed_ci.py`: nothing
+      failed, since the specs are not run in CI. The workflow of Phase 3
+      is what would have said so, once it is on `main`.
 - [ ] Setting up a superadmin is deliberately not a guide. It happens at a
       command line before anybody can sign in, and is already written up in
       `docs/docs/infrastructure/admin.md`.
@@ -387,55 +394,220 @@ faults found while writing it, in the order a delegate would meet them.
 Last in the plan because the guides do not depend on them, and each is a
 small change of its own.
 
-- [ ] Keep the delegate's site across a refresh. `RegisterPage.tsx`
-      validates the clinical lead and hands the organisation and site it
-      gets back to `/teaching/register/:module` as router state, which a
-      refresh, a bookmark or a link opened in a new tab all lose.
-      `TeachingRegisterPage.tsx` then posts to `/auth/register` with
-      neither, and the account is created belonging nowhere: the delegate
-      signs in to "No access" and nobody is told. Carry what the second
-      step needs in something that survives, and decide which: the address
-      itself, or `sessionStorage`. The address is the more honest, since
-      `:module` is already in it and is read by nothing.
+- [ ] Send the delegate back when the second step has lost their site.
+      `RegisterPage.tsx` validates the clinical lead and hands the
+      organisation and site it gets back to `/teaching/register/:module`
+      as router state, which a refresh, a bookmark or a link opened in a
+      new tab all lose. So when the second step opens with no organisation
+      in its state, go straight back to `/register`. No message: the first
+      step is self-explanatory, and the delegate retypes one email
+      address. Nothing is stored, which is why this was chosen over
+      carrying the site in the address or in `sessionStorage`.
 
-- [ ] Whichever is chosen, the server must not take the browser's word
-      for the site. Today `org_unit_id` and `site_id` arrive in the
-      request body from router state, so anybody can already name a site
-      they have no clinical lead at. Have `/auth/register` work the site
-      out again from the module and the clinical lead's email, as
-      `validate_clinical_lead` in `backend/app/main.py` does, and refuse a
-      mismatch. This changes who can end up a member where, so it wants a
-      careful read.
+- [x] Refuse the orphan on the server too. Already done, by the enrolment
+      work that merged on 5 October 2026: `TeachingRegisterPage.tsx` now
+      sends the module from the address as `teaching_module_id`, and
+      `/auth/register` answers a module with no `org_unit_id` with a 400
+      before anything is saved. So a refresh no longer makes an account
+      that belongs nowhere, as it did when this phase was written. What
+      is left is the step above: today the delegate fills in the whole
+      form and is then shown "org_unit_id required when
+      teaching_module_id is provided".
 
-- [ ] Refuse the orphan. When the second step is opened with nothing to
-      say where the delegate belongs, send them back to `/register` with
-      a message saying why, and have `/auth/register` refuse a teaching
-      registration that names no site. An account that belongs nowhere
-      should be impossible to make by accident.
+- [ ] The joining guide's screenshot spec,
+      `frontend/e2e/guides/join-a-course.spec.ts`, opens the second step
+      directly to photograph it, which the redirect stops. Have the spec
+      go through the first step, using the clinical lead that the guides'
+      own seed in Phase 9 holds.
+
+- [ ] Separately, the server should not take the browser's word for the
+      site. `org_unit_id` and `site_id` arrive in the request body, so
+      anybody can name a site they have no clinical lead at. Have
+      `/auth/register` work the site out again from the module and the
+      clinical lead's email, as `validate_clinical_lead` in
+      `backend/app/main.py` does, and refuse a mismatch. This changes who
+      can end up a member where, so it wants a careful read, and is a
+      unit of its own.
 
 - [ ] Then take the "Do not refresh this page" paragraph out of
       `frontend/src/guides/content/join-a-course.md`.
 
-- [ ] Give the failed-verification page a way forward. "Resend
-      verification email" on `VerifyEmail.tsx` leads to
-      `/verify-email-pending`, whose resend button is drawn only when the
-      page knows the address, and arriving this way it does not. Either
-      ask for the address there, or send the delegate to sign in, which
-      already sends a fresh link to an unverified account. The guide says
-      to sign in; the page should say the same.
+- [ ] Give the failed-verification page a way forward, by sending the
+      delegate to sign in. "Resend verification email" on
+      `VerifyEmail.tsx` leads to `/verify-email-pending`, whose resend
+      button is drawn only when the page knows the address, and arriving
+      this way it does not. Replace the link with one to `/login`, and
+      reword the message to say that signing in sends a new link, which it
+      already does for an unverified account. Chosen over asking for the
+      address on the pending page: it needs no new form, no new endpoint
+      to rate-limit, and it is the path the joining guide already
+      describes. Update `VerifyEmail`'s stories and tests with it.
 
-- [ ] Look up an email address the same way everywhere. `register`
-      stores it as typed and `resend-verification` looks it up in lower
-      case, so somebody who typed capitals may never be sent a second link
-      while the page says one was sent. Not traced to the end: check
-      `/auth/verify-email`, login and password reset for the same
-      mismatch first, then store and compare in one case. Existing rows
-      need a migration to match, and two accounts that differ only by
-      case need a decision before it runs.
+- [ ] Hold every email address in lower case, wherever it is written.
+      Decided on 5 October 2026: always, including addresses typed inside
+      the application on the user pages, not only at registration. Today
+      `register` stores an address as typed while `resend-verification`
+      looks it up in lower case, so somebody who typed capitals may never
+      be sent a second link while the page says one was sent.
+
+- [ ] Lower-case in one place and call it from every write. Add a single
+      helper beside the other user validation in `backend/app/`, strip
+      and lower-case in it, and use it on each path that sets
+      `User.email`: `register`, `create_user_with_cbac` and `update_user`
+      in `backend/app/main.py`, the account page's own change of address,
+      the create-user scripts in `backend/scripts/`, and
+      `backend/scripts/seed_ci.py`. Find them by searching for
+      assignments to `email`, not from this list, which is from memory of
+      one reading.
+
+- [ ] Lower-case in the same helper on every read that takes an address
+      from somebody: login where it accepts an email,
+      `resend-verification`, `verify-email`, forgot password, the member
+      lookup behind "Find somebody by username or email", and
+      `validate_clinical_lead`. Each compares against a column that is
+      now always lower case, so each must lower-case what it was given.
+
+- [ ] No migration. Mark confirmed on 5 October 2026 that neither the
+      development nor the live database holds an address with a capital
+      in it, so there are no rows to lower-case and nothing that could
+      collide. Nor is a unique index on `lower(email)` added: `User.email`
+      is already unique, and once every write goes through the helper a
+      plain unique column refuses a second address differing only by
+      case, because both arrive lower case. The cost is that a later path
+      which forgets the helper could store capitals and nothing in the
+      database would object; the tests below are what catch that.
+
+- [ ] Show an address as it is stored. The user pages and the admin
+      forms lower-case what is typed as it is saved, so what somebody
+      reads back is what Quill holds. Do not lower-case as they type: a
+      field that changes under the cursor reads as a fault.
+
+- [ ] Tests: an address registered with capitals is stored lower case and
+      is found by resend, login and password reset typed in any case; an
+      admin creating or editing somebody stores lower case; a second
+      account differing only by case is refused by the API with a
+      message. One test walks every route that takes an email address in
+      its body and asserts what reaches the database is lower case, so a
+      new route that forgets the helper fails it.
 
 - [ ] These change the registration and login flow, so they touch
       journey 1 in `docs/docs/frontend/accessibility/journeys.md`. Add it
       to the "Not yet run" list in `testing-log.md`.
+
+## Phase 9: Fuller screenshots, from a seed of the guides' own
+
+Asked for on 5 October 2026, after the guides were read through locally
+with their first screenshots. Five additions, and all but one need data
+the end-to-end seed does not hold: a site, delegates with results, an
+operator who can open Admin. So the seed comes first.
+
+Numbered after Phase 8 because it was asked for after it, but its first
+step is wanted by Phase 8 too: the joining guide's screenshot there needs
+a clinical lead. Whichever phase is built first adds the seed.
+
+- [ ] Give the guides a seed of their own, `backend/scripts/seed_guides.py`,
+      run after `seed_ci.py` by `just guide-screenshots` and by
+      `.github/workflows/guide-screenshots.yml`, and by nothing else. Not
+      more rows in `seed_ci.py`: that file is shared with the end-to-end
+      tests, which count on what it holds, and a page of invented
+      delegates would change what several of them see. It seeds, with
+      plainly invented names: a trust and a site beneath it with a
+      clinical lead in post; an operator holding `superadmin_profession`;
+      a teaching admin; and half a dozen delegates at the site. This also
+      closes the open step in Phase 3, where the screenshots are all named
+      "CI Teaching Hospital" and show no site.
+
+- [ ] Let a spec write. `docs/docs/frontend/guides.md` tells a spec to
+      "change nothing", so a second run finds what the first did. That
+      was stricter than needed: the stack is made fresh for every run and
+      thrown away after it, locally and in the workflow alike. The rule
+      that matters is that specs do not depend on each other, so give each
+      spec that writes a seeded person of its own. Reword the page.
+
+- [ ] Screenshots for "Assign a teaching admin", which has none. The spec
+      signs in as the seeded operator and takes: the organisation's page
+      with its **Enabled features** card, the **Features** page with
+      **Teaching** switched on, the **Basic details** step with
+      **Teaching admin** chosen, and a user's page showing the **Edit
+      user** and **Send invite email** cards.
+
+- [ ] Delegates and results for "See delegates' results". The seed gives
+      the delegates attempts at the module: some passed first time, one
+      passed at a second attempt, one not passed, one part way through
+      the learning materials and one who has not started, so every column
+      and all three figures show something. Seed the attempts through the
+      teaching models as `seed_teaching` in `seed_ci.py` syncs its module,
+      and retake both of the guide's screenshots. Add a third with
+      **Filter delegates** open.
+
+- [ ] An example email in "Join a course", under "Confirm your email
+      address". The verification email is already rendered with sample
+      values for Storybook, at
+      `frontend/src/stories/emails/rendered/email-verification--quill.html`,
+      and `tests/test_email_previews.py` keeps that file true to the
+      template. The spec loads it with `page.setContent` and photographs
+      it, so the picture is of what is really sent and no email has to be
+      sent to take it. Its images are relative paths under
+      `frontend/public/email/`, so open a page of the app first for them
+      to resolve against.
+
+- [ ] A walk through the learning materials in "Take a module and its
+      assessment". The guide gives the section three lines and no
+      picture. Take: a slide with **Next**, the side menu with the list
+      of slides and **Slide progress**, a video slide if the seeded
+      module has one, and the last slide with **Finish**. Write the steps
+      out to match. Reading slides records progress, which is why this
+      waits on the step above that lets a spec write.
+
+- [ ] Example exam views in the same guide. The spec sits the assessment
+      as its own seeded delegate and takes: the introduction with
+      **Begin**, a question with **Next** and the progress bar, the
+      countdown in the ribbon if the module is timed, the **End exam**
+      confirmation, the closing page with **View results**, the result,
+      and **Results by question**. For the result, seed a passed attempt
+      and photograph that, with its **Download certificate** card: a spec
+      cannot be relied on to pass an exam, and should not hold the
+      answers.
+
+- [ ] The module in every one of these is the public respiratory module
+      that `.github/scripts/ci/fetch-e2e-teaching.sh` pins, so the
+      guides' pictures show chest X-ray questions to EoEETA's
+      colonoscopists. Accepted for now: it is public, and the only module
+      CI can clone without a token. Say so in a line under the first exam
+      picture, or the reader will look for a module they do not have.
+
+- [ ] Link every page a guide names to that page. Asked for on 5 October
+      2026. Where a guide says "choose **Admin**, then **Users**", **Users**
+      becomes a link to `/admin/users`, so a reader who knows where they
+      are going gets there in one press, and one who does not still has
+      the words. Three kinds of page are left as words, because there is
+      no one address to give:
+      pages of one person or one record, such as `/admin/users/:id` or an
+      organisation's own page; the learning materials,
+      `/teaching/learn/*`; and an assessment, `/teaching/assessment/*`,
+      which must never be entered by a stray press on a link.
+
+- [ ] Keep the bold with the link, `[**Users**](/admin/users)`, so a
+      page's name still reads as what is on the screen. Check
+      `MarkdownView` draws bold inside a link; its link pass runs before
+      its bold pass, so it should.
+
+- [ ] Hold the links to the route list with a test in
+      `frontend/src/guides/`: every link in a guide that starts with `/`
+      matches a route in `frontend/src/routes.tsx`, and none matches a
+      route with a `:parameter` in it or one under `/teaching/learn` or
+      `/teaching/assessment`. A page that is renamed or removed then
+      fails the build where a guide still points at it.
+
+- [ ] A link in the public guide to a signed-in page sends a signed-out
+      reader to the login form, which is right. "Join a course" links
+      only to `/register` and `/login` today and needs nothing more.
+
+- [ ] Add the rule to `docs/docs/frontend/guides.md`, under writing the
+      markdown file.
+
+- [ ] Run `just guide-screenshots` and read every guide through locally
+      before landing, as was done for the first set.
 
 ## Decisions
 

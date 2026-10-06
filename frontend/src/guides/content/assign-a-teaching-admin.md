@@ -20,8 +20,10 @@ on for one site.
 1. Choose **Admin**, then **Users**, and press the **Add user** button.
 2. On **Basic details**, enter their name, email, username and an initial password. For **Base profession**, choose **Teaching admin**.
 3. On **Organisation/site**, choose their organisation under **Organisation**. The page calls this optional, but a teaching admin can only act where they belong, so do not leave it empty.
-4. Press **Next** through **Competencies**, **Practice** and **Permissions** without changing anything. Leave **Platform role** as **Standard**.
-5. On **Review**, check the details and press **Create user**.
+4. Press **Next** through **Competencies** and **Practice** without changing anything.
+5. On **Enrolment**, tick a module only if they are to take it themselves. A teaching admin does not need to be enrolled to add delegates or see results.
+6. On **Platform role**, leave **Standard** chosen.
+7. On **Review**, check the details and press **Create user**.
 
 ## Give somebody who already has an account the role
 
