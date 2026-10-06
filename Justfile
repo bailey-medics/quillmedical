@@ -384,7 +384,19 @@ guide-screenshots *ARGS:
     # stack, so every name in a screenshot is one seed_ci.py made up. The
     # images land in frontend/public/guide-assets/, which git ignores and the
     # Vite dev server serves. See docs/docs/plans/2026-10-05-in-app-guides-plan.md.
-    just _e2e-run --config playwright.guides.config.ts {{ARGS}}
+    #
+    # Not `_e2e-run`: the guides have a seed of their own, which goes in
+    # between the stack coming up and Playwright starting. It is kept out of
+    # seed_ci.py, which the end-to-end tests count on staying as it is.
+    set -euo pipefail
+    # Runs on failure too, so a red run never leaves a stack behind.
+    trap 'just _e2e-down' EXIT
+    base_url=$(just _e2e-up)
+    docker compose -p "$(just _e2e-project)" -f compose.ci.yml \
+        exec -T backend python scripts/seed_guides.py >&2
+    echo "Guide stack is up at ${base_url}" >&2
+    cd frontend && E2E_BASE_URL="${base_url}" \
+        npx playwright test --config playwright.guides.config.ts {{ARGS}}
 
 
 alias h32 := hex-32

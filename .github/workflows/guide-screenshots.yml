@@ -22,10 +22,10 @@ on:
       # Any screen may be in a guide, so any frontend change may move one.
       - "frontend/src/**"
       - "frontend/e2e/guides/**"
-      - "frontend/e2e/auth.setup.ts"
       - "frontend/playwright.guides.config.ts"
       # What the screenshots are of.
       - "backend/scripts/seed_ci.py"
+      - "backend/scripts/seed_guides.py"
       - "shared/brand.yaml"
       # How they are taken and published, not just what is in them.
       - ".github/scripts/guide-screenshots/**"
@@ -64,6 +64,11 @@ jobs:
 
       - name: Seed test data
         run: docker compose -f compose.ci.yml exec -T backend python scripts/seed_ci.py
+
+      # The people and results the screenshots show. Apart from seed_ci.py,
+      # which the end-to-end tests count on staying as it is.
+      - name: Seed the guides' own data
+        run: docker compose -f compose.ci.yml exec -T backend python scripts/seed_guides.py
 
       - name: Set up frontend
         uses: ./.github/actions/setup-frontend

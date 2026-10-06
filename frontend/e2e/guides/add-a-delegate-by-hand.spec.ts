@@ -1,21 +1,20 @@
 /**
  * Screenshots for the guide "Add a delegate by hand".
  *
- * Walks the new user form as `educator`, the seeded teaching admin, and
- * stops at the review step. Nobody is created, so a second run finds the
- * stack exactly as the first did.
+ * Walks the new user form as the seeded teaching admin and stops at the
+ * review step: the guide ends there, and the pictures need nobody made.
  */
 
 import { test, expect } from "@playwright/test";
 import { shot } from "./shot";
-
-const ORGANISATION = "CI Teaching Hospital";
+import { PEOPLE, SEEDED, signIn } from "./signIn";
 
 test("add a delegate by hand", async ({ page }) => {
   // The stepper's own button, matched whole: a table on a later step
   // pages its rows, and its "next page" button would match a looser name.
   const next = page.getByRole("button", { name: "Next", exact: true });
 
+  await signIn(page, PEOPLE.teachingAdmin);
   await page.goto("/admin/users");
   await expect(
     page.getByRole("heading", { level: 1, name: "Users" }),
@@ -42,8 +41,8 @@ test("add a delegate by hand", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Organisation/site" }),
   ).toBeVisible();
-  await page.getByRole("combobox", { name: /^Organisation/ }).click();
-  await page.getByRole("option", { name: ORGANISATION }).click();
+  await page.getByRole("combobox", { name: /^Site/ }).click();
+  await page.getByRole("option", { name: new RegExp(SEEDED.site) }).click();
   // Close the list, which stays open over the button for more choices.
   await page.keyboard.press("Escape");
   await shot(page, "add-a-delegate-by-hand/organisation-site");
@@ -56,7 +55,7 @@ test("add a delegate by hand", async ({ page }) => {
 
   // Practice: left as it is.
   await expect(
-    page.getByRole("heading", { name: ORGANISATION, level: 2 }),
+    page.getByRole("heading", { name: SEEDED.site, level: 2 }),
   ).toBeVisible();
   await next.click();
 

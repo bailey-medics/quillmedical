@@ -1,15 +1,15 @@
 /**
  * Screenshots for the guide "Take a module and its assessment".
  *
- * Taken as `educator`, who may take modules as a delegate may. It stops at
- * the module's page: starting an assessment would write an attempt, and a
- * second run would then find a different history.
+ * Taken as the seeded delegate who has no attempts of their own.
  */
 
 import { test, expect } from "@playwright/test";
 import { shot } from "./shot";
+import { PEOPLE, signIn } from "./signIn";
 
 test("take a module and its assessment", async ({ page }) => {
+  await signIn(page, PEOPLE.learner);
   await page.goto("/teaching");
   await expect(
     page.getByRole("heading", { level: 1, name: "Teaching modules" }),

@@ -94,8 +94,10 @@ Then take it, in `frontend/e2e/guides/<slug>.spec.ts`:
 ```ts
 import { test, expect } from "@playwright/test";
 import { shot } from "./shot";
+import { PEOPLE, signIn } from "./signIn";
 
 test("add a delegate by hand", async ({ page }) => {
+  await signIn(page, PEOPLE.teachingAdmin);
   await page.goto("/admin/users");
   await expect(
     page.getByRole("heading", { level: 1, name: "Users" }),
@@ -108,11 +110,25 @@ test("add a delegate by hand", async ({ page }) => {
   picture of a spinner is still a picture.
 - **Pass the name as a plain string.** The test that matches pictures to
   guides reads it out of the file.
-- **Change nothing.** Stop before the button that saves. A spec that
-  creates somebody leaves the next run a different list to photograph.
-- **Signed in or out.** A spec runs as `educator`, the teaching admin that
-  `backend/scripts/seed_ci.py` seeds. For a signed-out page, add
-  `test.use({ storageState: { cookies: [], origins: [] } })`.
+- **A spec may write.** The stack is made fresh for every run and thrown
+  away after it, so sitting an assessment or saving a form is safe. What
+  matters is that specs do not depend on each other: a spec that writes
+  signs in as a seeded person nobody else uses.
+- **Sign in as the reader.** `signIn(page, PEOPLE.teachingAdmin)` from
+  `./signIn` signs in as one of the people `backend/scripts/seed_guides.py`
+  makes up, so a picture shows what that reader would see. A signed-out
+  page needs no sign-in at all.
+
+### The people in the pictures
+
+`backend/scripts/seed_guides.py` seeds an invented teaching establishment,
+a site, an operator, a teaching admin, a clinical lead and a handful of
+delegates with results. It runs after `seed_ci.py`, only when the
+screenshots are taken. It is apart from `seed_ci.py` on purpose: the
+end-to-end tests count on what that file holds.
+
+Add to it when a guide needs something to show. **Everything in it must be
+made up**, because the pictures are published.
 
 ### 4. Look at it
 
@@ -120,8 +136,8 @@ test("add a delegate by hand", async ({ page }) => {
 just guide-screenshots     # or: just gsh
 ```
 
-This brings up a throwaway stack from `compose.ci.yml`, takes every
-guide's pictures into `frontend/public/guide-assets/` and takes the stack
+This brings up a throwaway stack from `compose.ci.yml`, seeds it, takes
+every guide's pictures into `frontend/public/guide-assets/` and takes the stack
 down. Git ignores that folder and the dev server serves it, so the guide
 at `/guides/<slug>` then shows its real pictures locally.
 
@@ -139,7 +155,7 @@ mirrors them to a bucket, which the load balancer serves at
   the spec can no longer find something on it, so the guide's words want
   reading too.
 - **Every picture is of seeded data.** The bucket is public. Nothing real
-  may be added to `seed_ci.py`.
+  may be added to `seed_ci.py` or `seed_guides.py`.
 
 ## Linking to a guide from a page
 
