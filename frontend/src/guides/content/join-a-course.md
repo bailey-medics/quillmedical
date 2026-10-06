@@ -13,6 +13,7 @@ things:
 2. Under **Teaching module**, choose the module you are joining.
 3. Under **Clinical lead email address**, type your clinical lead's email address. This is how Quill knows which site you belong to.
 4. Press **Continue**.
+   ![The first registration step, asking for a module and a clinical lead](join-a-course/choose-module.png)
 
 If you see **Clinical lead not found**, your clinical lead is not on Quill
 yet. Ask them, or whoever runs the course, to sort that out first.
@@ -24,6 +25,7 @@ yet. Ask them, or whoever runs the course, to sort that out first.
 3. Choose a **Password** of at least 8 characters, and type it again under **Confirm password**.
 4. Tick the box if you would rather not get news and updates.
 5. Press **Register**.
+   ![The form for creating an account](join-a-course/create-account.png)
 
 Do not refresh this page or come back to it from a bookmark. If you need
 to start again, go back to the [register page](/register), or your account
@@ -40,4 +42,5 @@ Quill sends you a fresh link.
 ## Sign in
 
 1. Enter your **Username** and **Password**, and press **Sign in**.
+   ![The sign-in page](join-a-course/sign-in.png)
 2. You arrive at **Teaching modules**. Press **View module** to begin.

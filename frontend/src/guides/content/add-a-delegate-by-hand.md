@@ -16,6 +16,7 @@ Have these to hand:
 
 1. In the side menu, choose **Admin**, then **Users**.
 2. Press the **Add user** button, beside the search box above the list. It is an icon with no words.
+   ![The list of users, with the Add user button above it](add-a-delegate-by-hand/users.png)
 3. The **Create new user** page opens.
 
 ## Fill in the six steps
@@ -23,11 +24,14 @@ Have these to hand:
 Press **Next** to move on from each step.
 
 1. **Basic details.** Enter the full name, email, username and initial password. For **Base profession**, choose **Teaching delegate**.
+   ![The basic details step, filled in for a teaching delegate](add-a-delegate-by-hand/basic-details.png)
 2. **Organisation/site.** Under **Site**, choose the delegate's site. The page calls this optional, but the account is not created unless you choose at least one site or organisation.
+   ![The organisation and site step](add-a-delegate-by-hand/organisation-site.png)
 3. **Competencies.** Leave both boxes empty. The profession already gives a delegate what they need.
 4. **Practice.** Leave the switches as they are.
 5. **Permissions.** Leave **Platform role** as **Standard**.
 6. **Review.** Check the details, then press **Create user**.
+   ![The review step, with the Create user button](add-a-delegate-by-hand/review.png)
 
 You are taken back to the list of users, with the message **User created**.
 

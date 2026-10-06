@@ -51,3 +51,6 @@ dist-ssr
 !.yarn/sdks
 !.yarn/versions
 .pnp.*
+
+# Screenshots for the in-app guides, retaken by `just guide-screenshots`
+public/guide-assets/
