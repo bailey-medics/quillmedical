@@ -216,6 +216,21 @@ describe("api.request", () => {
       expect(seen.to).toBeNull();
     });
 
+    it("leaves a signed-out reader on a guide", async () => {
+      // How to join is linked from the public site and read before
+      // there is an account. `/guides/:slug` is routed outside
+      // RequireAuth, so this handler was the only thing sending the
+      // reader to /login.
+      const seen = watchNavigation("/guides/join-a-course");
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ detail: "Not authenticated" }, 401),
+      );
+
+      await expect(api.get("/auth/me")).rejects.toThrow();
+
+      expect(seen.to).toBeNull();
+    });
+
     it("still sends an ordinary page to login", async () => {
       const seen = watchNavigation("/passport");
       vi.mocked(fetch).mockResolvedValue(
