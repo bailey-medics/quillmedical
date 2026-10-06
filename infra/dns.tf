@@ -120,6 +120,38 @@ locals {
       rrdatas = ["\"v=spf1 include:amazonses.com ~all\""]
     }
 
+    # ---------- Outbound mail: Amazon SES in London (eu-west-2) ----------
+    # Quill's own SES account, beside Resend while both run. Easy DKIM: the
+    # three selectors point at keys Amazon holds and rotates. Resend signs
+    # with its own selector above, so both can sign for the domain.
+    "CNAME:4gokzlgrzm6qgcqfqz6ydpg5cxp66len._domainkey" = {
+      type    = "CNAME"
+      ttl     = 18000
+      rrdatas = ["4gokzlgrzm6qgcqfqz6ydpg5cxp66len.dkim.amazonses.com."]
+    }
+    "CNAME:kuwt7r63pp53gwgbvbcdxznxcvhjgze6._domainkey" = {
+      type    = "CNAME"
+      ttl     = 18000
+      rrdatas = ["kuwt7r63pp53gwgbvbcdxznxcvhjgze6.dkim.amazonses.com."]
+    }
+    "CNAME:tqnk6jq5pksxcrmgdwrtecxxtj2l4y5s._domainkey" = {
+      type    = "CNAME"
+      ttl     = 18000
+      rrdatas = ["tqnk6jq5pksxcrmgdwrtecxxtj2l4y5s.dkim.amazonses.com."]
+    }
+    # The MAIL FROM name, where bounces come back. `mail`, not `send`:
+    # `send` is Resend's and points at Ireland, and is removed with Resend.
+    "MX:mail" = {
+      type    = "MX"
+      ttl     = 18000
+      rrdatas = ["10 feedback-smtp.eu-west-2.amazonses.com."]
+    }
+    "TXT:mail" = {
+      type    = "TXT"
+      ttl     = 18000
+      rrdatas = ["\"v=spf1 include:amazonses.com ~all\""]
+    }
+
     # Not carried over: staging.quill-medical.com, which pointed at
     # 35.186.223.130, an address that stopped answering when staging's load
     # balancer was destroyed.
