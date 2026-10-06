@@ -219,6 +219,12 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
       // and this handler sends an invited assessor to /login before
       // they can register.
       "/passport/assessors/accept",
+      // Some guides are read before there is an account to sign in to:
+      // how to join is linked from the public site. The same 401 from
+      // /api/auth/me would otherwise send that reader to /login. The
+      // list at `/guides` is still kept signed-in by RequireAuth, and
+      // GuidePage shows a 404 for a guide not marked `public`.
+      "/guides",
     ];
     const currentPath = window.location.pathname;
     const isGuestPath = guestPaths.some(
