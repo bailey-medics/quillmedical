@@ -108,7 +108,7 @@ who could each be equally lazy.
   rebase, and the gate did not run on stacked pull requests at all. See
   [Stacked gate approvals](../plans/2026-09-25-stacked-gate-approvals-plan.md)._
 - **Notification**: a breaking-change finding posts to Slack (via the
-  reusable `.github/workflows/slack-notify.yml`, `channel: teaching`) with
+  reusable `.github/workflows/slack-notify.yml`, `channel: app`) with
   the `oasdiff` change lines under **Breaking changes:**, so the approval
   prompt shows _what_ is being confirmed rather than a bare "approve?". Each
   line is the string `backend/scripts/new_compat_decision.py` asks to be

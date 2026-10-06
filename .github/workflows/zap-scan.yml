@@ -59,7 +59,7 @@ jobs:
     if: ${{ success() }}
     uses: ./.github/workflows/slack-notify.yml
     with:
-      channel: teaching
+      channel: app
       text: |
         *✅ Weekly ZAP scan completed*
 
@@ -75,7 +75,7 @@ jobs:
     if: ${{ failure() }}
     uses: ./.github/workflows/slack-notify.yml
     with:
-      channel: teaching
+      channel: app
       text: |
         *❌ Weekly ZAP scan failed*
 

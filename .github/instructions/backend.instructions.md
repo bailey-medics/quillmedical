@@ -145,7 +145,7 @@ the baseline included – is held to the full standard below.
   `db-destructive-migration-review` environment – a required-reviewer GitHub
   Actions environment with `can_admins_bypass: false`. The environment's
   sole reviewer is accountable for approving destructive database changes.
-- A Slack notification lands in `#teaching`, summarising the migration(s) and
+- A Slack notification lands in `#cicd`, summarising the migration(s) and
   the operations detected, and linking to "Review pending deployments" for the
   environment approval. It is raised once per distinct set of destructive
   migrations, not once per push – a later commit that leaves the same
@@ -291,7 +291,7 @@ depends on the current response/request shape for as long as it stays open.
   trailer, or PR label. Those are just text/metadata an AI coding agent
   produces as routinely as the code itself, so none of them prove a human
   actually decided the change was intentional.
-- A breaking-change finding posts to Slack (`channel: teaching`, via the
+- A breaking-change finding posts to Slack (`channel: app`, via the
   reusable `.github/workflows/slack-notify.yml`) with `oasdiff`'s changelog
   summary, so the approval prompt shows *what* is being confirmed rather
   than a bare "approve?".

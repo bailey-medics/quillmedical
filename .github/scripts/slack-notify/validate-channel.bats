@@ -5,12 +5,12 @@
 
 setup() {
   source "${BATS_TEST_DIRNAME}/validate-channel.sh"
-  WEBHOOKS='{"teaching":"https://hooks.slack.com/services/AAA/BBB/CCC"}'
-  UNSET_WEBHOOKS='{"teaching":""}'
+  WEBHOOKS='{"app":"https://hooks.slack.com/services/AAA/BBB/CCC"}'
+  UNSET_WEBHOOKS='{"app":""}'
 }
 
 @test "accepts a known channel with a configured webhook" {
-  run validate_channel "$WEBHOOKS" "teaching"
+  run validate_channel "$WEBHOOKS" "app"
   [ "$status" -eq 0 ]
 }
 
@@ -21,9 +21,9 @@ setup() {
 }
 
 @test "rejects a known channel whose webhook secret is unset" {
-  run validate_channel "$UNSET_WEBHOOKS" "teaching"
+  run validate_channel "$UNSET_WEBHOOKS" "app"
   [ "$status" -ne 0 ]
-  [[ "$output" == *"No webhook secret configured for Slack channel 'teaching'"* ]]
+  [[ "$output" == *"No webhook secret configured for Slack channel 'app'"* ]]
 }
 
 @test "rejects an empty channel name" {

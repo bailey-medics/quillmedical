@@ -151,7 +151,7 @@ jobs:
     if: ${{ always() && (needs.take.result == 'failure' || needs.publish.result == 'failure') }}
     uses: ./.github/workflows/slack-notify.yml
     with:
-      channel: teaching
+      channel: app
       text: |
         *❌ Guide screenshots failed*
 

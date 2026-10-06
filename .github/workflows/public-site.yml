@@ -97,7 +97,7 @@ jobs:
     if: ${{ always() && (needs.build.result == 'failure' || needs.deploy.result == 'failure') }}
     uses: ./.github/workflows/slack-notify.yml
     with:
-      channel: teaching
+      channel: app
       text: |
         *❌ Public site deploy failed*
 

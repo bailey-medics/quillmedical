@@ -6,7 +6,7 @@
 #     if: ${{ needs.some-job.result == 'success' }}
 #     uses: ./.github/workflows/slack-notify.yml
 #     with:
-#       channel: teaching
+#       channel: app
 #       text: |
 #         *✅ Deployed to teaching*
 #         *Commit:* <...|sha>
@@ -40,7 +40,7 @@ jobs:
     env:
       CHANNEL_WEBHOOKS: >-
         {
-          "teaching": "${{ secrets.SLACK_WEBHOOK_URL }}"
+          "app": "${{ secrets.SLACK_WEBHOOK_URL }}"
         }
     steps:
       # Quill explicitly, not the default checkout. A bare checkout takes the
