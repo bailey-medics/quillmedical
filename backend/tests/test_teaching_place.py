@@ -293,6 +293,10 @@ class TestRegisteringGivesAPlace:
                 "password": "Secure123!",
                 "org_unit_id": org.id,
                 "site_id": site.id,
+                # A site is reached through its clinical lead and a
+                # module they offer, which registration checks again.
+                "teaching_module_id": "test-bank",
+                "clinical_lead_email": "lead@test.local",
             },
         )
 
@@ -337,6 +341,10 @@ class TestRegisteringGivesAPlace:
                 "password": "Secure123!",
                 "org_unit_id": org.id,
                 "site_id": site.id,
+                # A site is reached through its clinical lead and a
+                # module they offer, which registration checks again.
+                "teaching_module_id": "test-bank",
+                "clinical_lead_email": "lead@test.local",
             },
         )
 

@@ -1,9 +1,14 @@
 /**
  * Registration Page Module
  *
- * User registration page for creating new accounts. Delegates form rendering
- * to the RegistrationForm component and handles API submission and navigation.
- * Teaching environments show a placeholder pending bespoke registration flow.
+ * Joining a teaching module, on one page with two views. The first asks
+ * for the module and a clinical lead's email, and checks the lead. The
+ * second is the account form. One request is sent at the end, naming the
+ * module and the lead and no site: the server works the site out.
+ *
+ * Nothing is kept between the views but this page's own state, so a
+ * refresh shows the first view again. A clinical deployment has no
+ * self-registration and is sent to sign in.
  */
 
 // Auth pages use centred form layout, not Container
@@ -23,6 +28,11 @@ import {
   useFormContext,
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
+import { registrationError } from "@/lib/auth/registrationError";
+import {
+  RegistrationForm,
+  type RegistrationFormData,
+} from "@components/registration";
 import { useEffect, useState } from "react";
 import { Controller } from "react-hook-form";
 import { Navigate, useNavigate } from "react-router-dom";
@@ -31,6 +41,9 @@ interface TeachingRegisterFormValues {
   module: string;
   clinicalLeadEmail: string;
 }
+
+/** What the first view found out, which the second sends with the account. */
+type Joining = TeachingRegisterFormValues;
 
 function TeachingRegisterFields({
   modules,
@@ -107,7 +120,11 @@ function TeachingRegisterPage() {
       });
   }, []);
 
-  async function handleSubmit(
+  // Null until a clinical lead has been checked: the first view. Then the
+  // module and the lead the second view registers with.
+  const [joining, setJoining] = useState<Joining | null>(null);
+
+  async function checkClinicalLead(
     data: TeachingRegisterFormValues,
   ): Promise<FormSubmitResult> {
     try {
@@ -121,7 +138,10 @@ function TeachingRegisterPage() {
         bank_id: data.module,
       });
 
-      if (!result.valid) {
+      // A lead at a site whose organisation does not offer the module
+      // comes back valid with no organisation. Registration would refuse
+      // them once the whole form was filled in, so say so here.
+      if (!result.valid || result.org_unit_id == null) {
         return {
           state: "error",
           message: {
@@ -132,17 +152,10 @@ function TeachingRegisterPage() {
         };
       }
 
-      navigate(`/teaching/register/${data.module}`, {
-        state: {
-          // The org_unit the organisation is, which is what registration
-          // sends back. The organisation id beside it is on its way out.
-          organisationId: result.org_unit_id,
-          siteId: result.site_id,
-        },
-      });
+      setJoining(data);
       return {
         state: "success",
-        message: { title: "Redirecting…" },
+        message: { title: "Clinical lead found" },
       };
     } catch {
       return {
@@ -156,12 +169,47 @@ function TeachingRegisterPage() {
     }
   }
 
+  async function register(
+    data: RegistrationFormData,
+    { module, clinicalLeadEmail }: Joining,
+  ): Promise<FormSubmitResult> {
+    try {
+      await api.post("/auth/register", {
+        username: data.username,
+        full_name: data.fullName || undefined,
+        email: data.email,
+        password: data.password,
+        // No organisation and no site: the server works both out from
+        // these two, and would not take the browser's word for them.
+        teaching_module_id: module,
+        clinical_lead_email: clinicalLeadEmail,
+        // Always sent, ticked or not: an answer of "not ticked" is what
+        // says the person was shown the question.
+        marketing_opt_out: data.marketingOptOut,
+      });
+
+      navigate("/verify-email-pending", { state: { email: data.email } });
+      return { state: "success", message: { title: "Account created" } };
+    } catch (err: unknown) {
+      return { state: "error", message: registrationError(err) };
+    }
+  }
+
+  if (joining) {
+    return (
+      <RegistrationForm
+        onSubmit={(data) => register(data, joining)}
+        guidePath={guidePath("join-a-course")}
+      />
+    );
+  }
+
   return (
     <Center mih="100dvh">
       <BaseCard w={400}>
         <Form<TeachingRegisterFormValues>
           defaultValues={{ module: "", clinicalLeadEmail: "" }}
-          onSubmit={handleSubmit}
+          onSubmit={checkClinicalLead}
           submitLabel="Continue"
           submittingLabel="Validating…"
         >

@@ -234,6 +234,8 @@ class TestRegisterWithSiteMembership:
                 "full_name": "New Trainee",
                 "org_unit_id": org.id,
                 "site_id": site.id,
+                "teaching_module_id": "test-bank",
+                "clinical_lead_email": "lead@test.local",
             },
         )
         assert resp.status_code == 200
@@ -267,8 +269,15 @@ class TestRegisterWithSiteMembership:
         assert site_row is not None
         assert site_row.capacity == "trainee"
 
-    def test_register_site_without_org_fails(self, test_client, db_session):
-        """Providing site_id without org_unit_id returns 400."""
+    def test_register_site_without_a_clinical_lead_fails(
+        self, test_client, db_session
+    ):
+        """A site named on its own returns 400.
+
+        This used to be refused for lacking an organisation. It is now
+        refused sooner, for naming no clinical lead: the organisation is
+        worked out from the lead and is no longer the browser's to give.
+        """
         _org, site, _lead = _setup_org_with_site_and_lead(db_session)
 
         resp = test_client.post(
@@ -281,7 +290,7 @@ class TestRegisterWithSiteMembership:
             },
         )
         assert resp.status_code == 400
-        assert "org_unit_id required" in resp.json()["detail"]
+        assert "clinical lead" in resp.json()["detail"]
 
     def test_register_site_not_linked_to_org_fails(
         self, test_client, db_session
@@ -302,7 +311,11 @@ class TestRegisterWithSiteMembership:
                 "password": "Secure123!",
                 "org_unit_id": org.id,
                 "site_id": unlinked_site.id,
+                "teaching_module_id": "test-bank",
+                "clinical_lead_email": "lead@test.local",
             },
         )
         assert resp.status_code == 400
-        assert "Site not found" in resp.json()["detail"]
+        # Refused for not being the lead's site, before it is ever looked
+        # up in the tree.
+        assert "does not match" in resp.json()["detail"]

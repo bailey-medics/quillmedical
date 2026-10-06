@@ -420,14 +420,10 @@ small change of its own.
       go through the first step, using the clinical lead that the guides'
       own seed in Phase 9 holds.
 
-- [ ] Separately, the server should not take the browser's word for the
+- [x] Separately, the server should not take the browser's word for the
       site. `org_unit_id` and `site_id` arrive in the request body, so
-      anybody can name a site they have no clinical lead at. Have
-      `/auth/register` work the site out again from the module and the
-      clinical lead's email, as `validate_clinical_lead` in
-      `backend/app/main.py` does, and refuse a mismatch. This changes who
-      can end up a member where, so it wants a careful read, and is a
-      unit of its own.
+      anybody could name a site they have no clinical lead at. Done in
+      Phase 14, as a unit of its own.
 
 - [x] Then take the "Do not refresh this page" paragraph out of
       `frontend/src/guides/content/join-a-course.md`.
@@ -732,8 +728,9 @@ page is reloaded. See `2026-10-02-safety-feature-mock-up-plan.md`.
       in as. The specs photograph "Results acknowledgement service", the
       fullest of the five cases.
 
-- [ ] Check the mock-up's invented names before the pictures are
-      published. `frontend/src/lib/safety/fixtures.ts` says everything in
+- [ ] Check the mock-up's invented names. The pictures are not
+      published: every safety guide is read signed in, so its pictures
+      go to the private bucket, and only signed-in readers see them. `frontend/src/lib/safety/fixtures.ts` says everything in
       it is made up, and the people plainly are. Three of its suppliers
       and products are close to real ones: "Northgate Digital" (near
       Northgate Public Services, a real health IT supplier), "MyCare
@@ -899,6 +896,75 @@ those pictures. The rest is a branch of its own.
       and check the serving revision has `GUIDE_ASSETS_GCS_BUCKET`, then
       run the screenshot workflow once by hand and open a signed-in guide
       and the joining guide on the live site.
+
+## Phase 14: Registration checks the clinical lead again
+
+The first step of joining checks a clinical lead's email and tells the
+browser which organisation and site that means. `/auth/register` then
+took those two ids back unchecked. Somebody who skipped the first step
+and sent the request by hand, with a guessed site id, became a trainee
+at that site and was enrolled on its module with no clinical lead
+involved.
+
+- [x] `clinical_lead_site` in `backend/app/main.py` is the one place the
+      rule lives. `validate_clinical_lead` asks it for the first step,
+      and `register` asks it again.
+- [x] `RegisterIn` gains `clinical_lead_email`. A registration naming a
+      `site_id` or a `teaching_module_id` must send it, and a module with
+      it. The server works the organisation and site out from the two,
+      and uses its own answer from there on.
+- [x] An `org_unit_id` or `site_id` that disagrees with that answer is
+      refused. Either may be left out: the lead and the module are
+      enough.
+- [x] A site named with no module is refused. A clinical lead admits
+      somebody for a module, so without one there is nothing to check.
+- [x] The frontend sends the lead's email with the registration. It
+      first carried it between the two pages in the router's state;
+      Phase 15 then made them one page.
+- [x] One deploy, not two. A tab left open on the second step across the
+      deploy sends no lead and is refused, and nobody is using the site
+      yet.
+- [ ] Left as it was, and a human's call: a registration naming only an
+      `org_unit_id`, with no site and no module, still joins that
+      organisation as a trainee and is given a place there, with nothing
+      checked. No page sends that request. It enrols on no module, so it
+      opens no teaching, but it is the same fault one level up. Refusing
+      it would change `test_registering_at_an_organisation_gives_the_place_there`
+      on purpose.
+- [ ] Where a clinical lead holds the post at more than one site, the
+      first is chosen, as it was before. Whether the delegate should
+      choose is not decided.
+
+## Phase 15: One registration page
+
+With Phase 14 done the two ids the browser sent are no longer needed:
+the lead's email and the module say everything.
+
+- [x] `/register` is one page with two views, in
+      `frontend/src/pages/RegisterPage.tsx`. The first asks for the
+      module and the clinical lead and calls `validate_clinical_lead`.
+      The second is the account form. `TeachingRegisterPage.tsx` is
+      gone.
+- [x] One request is sent at the end, with the module and the lead's
+      email and no `org_unit_id` or `site_id`. Nothing travels between
+      pages in the router's state, and the redirect Phase 8 added for a
+      refresh went with the second page: a refresh shows the first view.
+- [x] `/register` is the address that stays, as Mark confirmed.
+      `/teaching/register/:module` is gone and answers with the 404, with
+      no redirect, also as Mark decided. Nothing in the application, an
+      email or a guide linked to it.
+- [x] A lead who is valid but whose organisation does not offer the
+      module is told "Clinical lead not found" at the first view. The
+      second page used to bounce them back with no explanation.
+- [x] "Join a course" and its screenshot spec needed no rewrite. They
+      describe two steps on the register page and a **Continue** button
+      between them, which is still what a delegate sees.
+- [ ] The second view has no way back to the first but a refresh. On
+      two pages the browser's back button did that. Add a "Change
+      module or clinical lead" control if anybody misses it.
+- [ ] The second view does not say which site is being joined, though
+      `validate_clinical_lead` returns its name. `RegistrationForm` has
+      nowhere to show it.
 
 ## Decisions
 

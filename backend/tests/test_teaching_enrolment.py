@@ -26,7 +26,7 @@ from app.features.teaching.models import (
     ModuleEnrolment,
     QuestionBankOrgStatus,
 )
-from app.models import OrgUnit, User
+from app.models import OrgUnit, User, org_unit_member
 from tests.test_teaching_router import (
     _login,
     _make_educator,
@@ -390,6 +390,7 @@ class TestRegisteringThroughAModulesLink:
             org_unit_id=org.id,
             site_id=site.id,
             teaching_module_id="joined",
+            clinical_lead_email="lead@test.local",
         )
 
         assert resp.status_code == 200, resp.text  # type: ignore[attr-defined]
@@ -422,6 +423,7 @@ class TestRegisteringThroughAModulesLink:
             org_unit_id=org.id,
             site_id=site.id,
             teaching_module_id="closed",
+            clinical_lead_email="lead@test.local",
         )
 
         assert resp.status_code == 400  # type: ignore[attr-defined]
@@ -438,3 +440,171 @@ class TestRegisteringThroughAModulesLink:
         )
 
         assert resp.status_code == 400  # type: ignore[attr-defined]
+
+
+class TestRegistrationChecksTheClinicalLeadAgain:
+    """The server works the site out; the browser's word is not taken.
+
+    The first step of joining checks a clinical lead's email and tells
+    the browser which organisation and site that means. Registration
+    used to accept those two ids back unchecked, so a crafted request
+    could name any site with no clinical lead involved.
+    """
+
+    def _register(
+        self, client: TestClient, name: str, **extra: object
+    ) -> object:
+        return client.post(
+            "/api/auth/register",
+            json={
+                "username": name,
+                "email": f"{name}@example.com",
+                "password": "Secure123!",
+                **extra,
+            },
+        )
+
+    def _exists(self, db: Session, name: str) -> bool:
+        return (
+            db.scalar(select(User.id).where(User.username == name)) is not None
+        )
+
+    def _other_site(self, db: Session, org: OrgUnit) -> OrgUnit:
+        """A second site beneath the organisation, with no clinical lead."""
+        other = OrgUnit(name="Other Hospital", type="hospital")
+        db.add(other)
+        db.flush()
+        other.parent_id = org.id
+        db.flush()
+        return other
+
+    def _member_of(self, db: Session, name: str) -> set[int]:
+        user_id = db.scalar(select(User.id).where(User.username == name))
+        rows = db.execute(
+            select(org_unit_member.c.org_unit_id).where(
+                org_unit_member.c.user_id == user_id
+            )
+        ).scalars()
+        return {int(row) for row in rows}
+
+    def test_a_site_with_no_clinical_lead_named_is_refused(
+        self, test_client: TestClient, db_session: Session
+    ) -> None:
+        org, site, _lead = _setup_org_with_site_and_lead(db_session)
+
+        resp = self._register(
+            test_client,
+            "crafted",
+            org_unit_id=org.id,
+            site_id=site.id,
+            teaching_module_id="test-bank",
+        )
+
+        assert resp.status_code == 400  # type: ignore[attr-defined]
+        assert not self._exists(db_session, "crafted")
+
+    def test_a_site_with_no_module_is_refused(
+        self, test_client: TestClient, db_session: Session
+    ) -> None:
+        """The lead is a lead for a module, so there is nothing to check."""
+        org, site, _lead = _setup_org_with_site_and_lead(db_session)
+
+        resp = self._register(
+            test_client,
+            "no_module",
+            org_unit_id=org.id,
+            site_id=site.id,
+            clinical_lead_email="lead@test.local",
+        )
+
+        assert resp.status_code == 400  # type: ignore[attr-defined]
+        assert not self._exists(db_session, "no_module")
+
+    def test_an_email_that_is_no_clinical_lead_is_refused(
+        self, test_client: TestClient, db_session: Session
+    ) -> None:
+        org, site, _lead = _setup_org_with_site_and_lead(db_session)
+
+        resp = self._register(
+            test_client,
+            "guesser",
+            org_unit_id=org.id,
+            site_id=site.id,
+            teaching_module_id="test-bank",
+            clinical_lead_email="nobody@test.local",
+        )
+
+        assert resp.status_code == 400  # type: ignore[attr-defined]
+        assert not self._exists(db_session, "guesser")
+
+    def test_a_site_the_clinical_lead_does_not_lead_is_refused(
+        self, test_client: TestClient, db_session: Session
+    ) -> None:
+        """A real lead's email does not open the site next door."""
+        org, _site, _lead = _setup_org_with_site_and_lead(db_session)
+        other = self._other_site(db_session, org)
+
+        resp = self._register(
+            test_client,
+            "next_door",
+            org_unit_id=org.id,
+            site_id=other.id,
+            teaching_module_id="test-bank",
+            clinical_lead_email="lead@test.local",
+        )
+
+        assert resp.status_code == 400  # type: ignore[attr-defined]
+        assert not self._exists(db_session, "next_door")
+
+    def test_an_organisation_the_clinical_lead_is_not_under_is_refused(
+        self, test_client: TestClient, db_session: Session
+    ) -> None:
+        _org, site, _lead = _setup_org_with_site_and_lead(db_session)
+        elsewhere = OrgUnit(name="Elsewhere", type="hospital_team")
+        db_session.add(elsewhere)
+        db_session.flush()
+
+        resp = self._register(
+            test_client,
+            "elsewhere",
+            org_unit_id=elsewhere.id,
+            site_id=site.id,
+            teaching_module_id="test-bank",
+            clinical_lead_email="lead@test.local",
+        )
+
+        assert resp.status_code == 400  # type: ignore[attr-defined]
+        assert not self._exists(db_session, "elsewhere")
+
+    def test_the_site_is_worked_out_when_the_request_names_none(
+        self, test_client: TestClient, db_session: Session
+    ) -> None:
+        """The lead and the module are enough: the ids add nothing."""
+        org, site, _lead = _setup_org_with_site_and_lead(db_session)
+
+        resp = self._register(
+            test_client,
+            "derived",
+            teaching_module_id="test-bank",
+            clinical_lead_email="lead@test.local",
+        )
+
+        assert resp.status_code == 200, resp.text  # type: ignore[attr-defined]
+        assert self._member_of(db_session, "derived") == {org.id, site.id}
+
+    def test_the_clinical_lead_is_matched_whatever_its_case(
+        self, test_client: TestClient, db_session: Session
+    ) -> None:
+        org, site, _lead = _setup_org_with_site_and_lead(db_session)
+
+        resp = self._register(
+            test_client,
+            "shouty",
+            org_unit_id=org.id,
+            site_id=site.id,
+            teaching_module_id="test-bank",
+            clinical_lead_email="LEAD@TEST.LOCAL",
+        )
+
+        assert resp.status_code == 200, resp.text  # type: ignore[attr-defined]
+        assert self._member_of(db_session, "shouty") == {org.id, site.id}
