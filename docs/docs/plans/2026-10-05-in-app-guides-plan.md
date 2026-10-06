@@ -118,22 +118,52 @@ are an addition to it and not a precondition.
 A delegate has to read how to join before they have an account, so the
 joining guide cannot sit behind `<RequireAuth>`.
 
-- [ ] Move `/guides/:slug` outside `<RequireAuth>`. Signed out, a guide
-      marked `public` renders inside `PublicLayout`; anything else is the
-      public 404. Signed in, nothing changes. One address for each guide
-      and not a second public copy, so there is one thing to keep right.
-      The list at `/guides` stays signed-in only.
+- [x] Move `/guides/:slug` outside `<RequireAuth>`, in
+      `frontend/src/routes.tsx`. One address for each guide and not a
+      second public copy, so there is one thing to keep right. The route's
+      element is `GuideShell` in `frontend/src/pages/guides/`, which puts
+      `RootLayout` round the guide for somebody signed in, so nothing
+      changes for them. The list at `/guides` stays signed-in only.
 
-- [ ] Write "Join a course", audience `delegate`, `public: true`, covering
-      self-registration through `TeachingRegisterPage`, the verification
-      email and first login.
+- [x] Signed out, the guide is shown as a plain page with no ribbon and no
+      menu, and a link to sign in beneath it. This was to be `PublicLayout`,
+      and is not: that is the shell of the marketing site, with the
+      marketing site's links in it, and nothing in the application uses it.
+      The application's own signed-out pages (the login form, the printed
+      passport's verification page) are bare, and the guide matches them.
 
-- [ ] Link to it from `TeachingRegisterPage.tsx` and `LoginPage.tsx`, and
-      from the public site in `frontend/public_pages/`, which is a separate
-      build and needs the full application address.
+- [x] Signed out, a guide marked `public` is shown and anything else is
+      the 404, through `useReadableGuide` in `useGuideTier.ts`. A public
+      guide is public whatever feature it belongs to, since nobody signed
+      out has a feature; signed in, it is held to its feature like any
+      other.
 
-- [ ] Tests: a public guide renders signed out, a non-public one gives the
-      404 signed out, and both render signed in.
+- [x] Write "Join a course", audience `delegate`, `public: true`, covering
+      the two registration steps, the verification email and first login.
+      Its steps and labels were read from `RegisterPage.tsx`,
+      `RegistrationForm.tsx` and the email templates.
+
+- [x] Link to it as "How to join a course" from the three pages a
+      delegate passes on the way in: `LoginPage.tsx` (on a teaching
+      deployment only, beside the register link), `RegisterPage.tsx` and
+      `TeachingRegisterPage.tsx`. `LoginForm` and `RegistrationForm` take
+      the address as an optional `guidePath` prop, each with a story.
+      `guidePath()` in the registry builds the address from a slug the
+      compiler checks, which is the idea Phase 5 wanted, brought forward.
+
+- [x] Link to it from the public site, as a "How to join" button beside
+      "Log in" on `frontend/public_pages/src/pages/optical-diagnosis-polyps.tsx`.
+      The public site is a separate build, so the address is written out
+      in full, on the host its "Log in" button already uses.
+
+- [x] `RegisterPage.tsx` imported its router hooks from `react-router`
+      where every other page uses `react-router-dom`. Under test the two
+      are separate copies, so the page could not be rendered and had no
+      test. Changed to match, and given one.
+
+- [x] Tests: a public guide renders signed out with a way to sign in, a
+      non-public one gives the 404 signed out, both render signed in, and
+      the shell shows neither while the session is being checked.
 
 ## Phase 3: Screenshots retaken by Playwright
 
@@ -216,6 +246,20 @@ not revisited.
       of it. The form should say so on the step, in
       `frontend/src/pages/UserInfoUpdatePage.tsx`; then take the warning
       out of the guide.
+- [ ] Three things found in the registration flow while writing "Join a
+      course", none of them fixed here. Each wants its own small change,
+      and the guide works round the first two:
+      `/teaching/register/:module` takes the delegate's site from router
+      state set by the step before, so refreshing it, or opening it from a
+      bookmark, creates an account that belongs nowhere. The "Resend
+      verification email" link on a failed verification leads to a page
+      with no resend button, because that page does not know the address.
+      And `register` stores an email as typed while `resend-verification`
+      looks it up in lower case, so a mixed-case address may never be sent
+      a second link. The last was not traced to the end.
+- [ ] "See delegates' results" has less to describe than its title
+      suggests: a row of the All delegates table does not open anything,
+      so there is no page of one delegate's results to send an admin to.
 - [ ] There is no enrolment yet: phases 3 to 6 of
       `2026-10-04-teaching-access-results-modules-and-enrolment-plan.md`
       are unbuilt. A delegate sees whatever is live for their site's

@@ -71,6 +71,12 @@ export const NoOrganisations: Story = {
   },
 };
 
+export const WithGuideLink: Story = {
+  args: {
+    guidePath: "/guides/join-a-course",
+  },
+};
+
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },

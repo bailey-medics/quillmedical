@@ -26,6 +26,15 @@ function signInAs(user: Partial<User>): void {
   });
 }
 
+function signOut(): void {
+  vi.spyOn(authContext, "useAuth").mockReturnValue({
+    state: { status: "unauthenticated", user: null },
+    login: vi.fn(),
+    logout: vi.fn(),
+    reload: vi.fn(),
+  });
+}
+
 function renderGuide(slug: string) {
   return renderWithRouter(<Page />, {
     routePath: "/guides/:slug",
@@ -89,5 +98,42 @@ describe("GuidePage", () => {
     renderGuide("no-such-guide");
 
     expect(screen.getByText(/404|not found/i)).toBeInTheDocument();
+  });
+
+  describe("signed out", () => {
+    it("shows a public guide, with a way to sign in", () => {
+      signOut();
+
+      renderGuide("join-a-course");
+
+      expect(
+        screen.getByRole("heading", { level: 1, name: "Join a course" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Sign in to Quill" }),
+      ).toHaveAttribute("href", "/login");
+    });
+
+    it("answers a guide that is not public with a 404", () => {
+      signOut();
+
+      renderGuide(SLUG);
+
+      expect(
+        screen.queryByRole("heading", { name: "Add a delegate by hand" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText(/404|not found/i)).toBeInTheDocument();
+    });
+  });
+
+  it("offers no sign-in link to somebody already signed in", () => {
+    signInAs(teachingAdmin);
+
+    renderGuide("join-a-course");
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Join a course" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Sign in to Quill" })).toBeNull();
   });
 });

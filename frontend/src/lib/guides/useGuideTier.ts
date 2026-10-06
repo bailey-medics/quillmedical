@@ -57,6 +57,15 @@ export function guidesVisibleTo(
   );
 }
 
+/**
+ * The guides anybody may read without signing in, such as how to join.
+ * A reader has to be able to find out how to get an account before they
+ * have one.
+ */
+export function publicGuides(guides: readonly Guide[] = GUIDES): Guide[] {
+  return guides.filter((guide) => guide.public);
+}
+
 /** The signed-in reader's tier, or null for somebody not signed in. */
 export function useGuideTier(): GuideAudience | null {
   const { state } = useAuth();
@@ -67,4 +76,20 @@ export function useGuideTier(): GuideAudience | null {
 export function useVisibleGuides(): Guide[] {
   const { state } = useAuth();
   return state.status === "authenticated" ? guidesVisibleTo(state.user) : [];
+}
+
+/**
+ * The guide at this slug, if this reader may be shown it: one of their
+ * own when signed in, a public one when not. Nothing while the session
+ * is still being checked, so a signed-in reader is never shown the 404
+ * for a moment on the way to their guide.
+ */
+export function useReadableGuide(slug: string | undefined): Guide | undefined {
+  const { state } = useAuth();
+  if (state.status === "loading") return undefined;
+  const guides =
+    state.status === "authenticated"
+      ? guidesVisibleTo(state.user)
+      : publicGuides();
+  return guides.find((guide) => guide.slug === slug);
 }

@@ -5,7 +5,7 @@
  * organisation/site selection. Handles validation and API submission.
  */
 
-import { Stack } from "@mantine/core";
+import { Group, Stack } from "@mantine/core";
 import BaseCard from "@components/base-card/BaseCard";
 import {
   EmailField,
@@ -19,7 +19,7 @@ import {
   MARKETING_OPT_OUT_DESCRIPTION,
   MARKETING_OPT_OUT_LABEL,
 } from "@lib/marketing/wording";
-import { Heading } from "@components/typography";
+import { Heading, TextLink } from "@components/typography";
 import LegalNotice from "./LegalNotice";
 import StateMessage from "@components/message-cards/StateMessage";
 import { IconWifiOff } from "@/components/icons/appIcons";
@@ -58,12 +58,16 @@ export interface RegistrationFormProps {
   organisations?: { value: string; label: string }[];
   /** Called when the form is submitted with valid data – should return a FormSubmitResult */
   onSubmit: (data: RegistrationFormData) => Promise<FormSubmitResult>;
+  /** Where the guide to joining lives, to offer under the form */
+  guidePath?: string | null;
 }
 
 function RegistrationFields({
   organisations,
+  guidePath,
 }: {
   organisations?: { value: string; label: string }[];
+  guidePath: string | null;
 }) {
   const { methods } = useFormContext();
   const { isOnline } = useConnectivity();
@@ -144,6 +148,13 @@ function RegistrationFields({
       <LegalNotice />
       <FormStatusNarrow />
       <SubmitButton />
+      {guidePath && (
+        <Group justify="flex-end">
+          <TextLink standalone to={guidePath}>
+            How to join a course
+          </TextLink>
+        </Group>
+      )}
     </Stack>
   );
 }
@@ -151,6 +162,7 @@ function RegistrationFields({
 export default function RegistrationForm({
   organisations,
   onSubmit,
+  guidePath = null,
 }: RegistrationFormProps) {
   async function handleSubmit(
     data: RegistrationFormValues,
@@ -181,7 +193,10 @@ export default function RegistrationForm({
         submitLabel="Register"
         submittingLabel="Registering…"
       >
-        <RegistrationFields organisations={organisations} />
+        <RegistrationFields
+          organisations={organisations}
+          guidePath={guidePath}
+        />
       </Form>
     </BaseCard>
   );

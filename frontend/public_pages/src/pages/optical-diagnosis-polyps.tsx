@@ -122,6 +122,15 @@ createRoot(document.getElementById("root")!).render(
               <PublicButton href="https://app.quill-medical.com">
                 Log in
               </PublicButton>
+              {/* A guide inside the application, readable without an
+                  account. The address is written out because this site is
+                  a separate build with no access to the app's routes. */}
+              <PublicButton
+                href="https://app.quill-medical.com/guides/join-a-course"
+                variant="outline"
+              >
+                How to join
+              </PublicButton>
               <PublicButton href="/contact" variant="outline">
                 Talk to us
               </PublicButton>

@@ -47,6 +47,25 @@ describe("LoginForm", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("offers no guide to joining unless given one", () => {
+    renderWithRouter(<LoginForm onSubmit={() => new Promise(() => {})} />);
+
+    expect(screen.queryByText("How to join a course")).not.toBeInTheDocument();
+  });
+
+  it("links to the guide to joining when given its address", () => {
+    renderWithRouter(
+      <LoginForm
+        onSubmit={() => new Promise(() => {})}
+        guidePath="/guides/join-a-course"
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "How to join a course" }),
+    ).toHaveAttribute("href", "/guides/join-a-course");
+  });
+
   it("calls onSubmit with username and password", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(successResult);
