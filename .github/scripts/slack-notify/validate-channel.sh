@@ -4,9 +4,9 @@
 # Usage: CHANNEL=<name> CHANNEL_WEBHOOKS=<json> validate-channel.sh
 #
 # Environment:
-#   CHANNEL           Requested channel name, e.g. "teaching".
+#   CHANNEL           Requested channel name, e.g. "app".
 #   CHANNEL_WEBHOOKS  JSON object mapping channel name -> webhook secret, e.g.
-#                     '{"teaching":"https://hooks.slack.com/..."}'. A missing key
+#                     '{"app":"https://hooks.slack.com/..."}'. A missing key
 #                     means the channel is unknown; an empty value means the
 #                     channel's webhook secret is not configured.
 #

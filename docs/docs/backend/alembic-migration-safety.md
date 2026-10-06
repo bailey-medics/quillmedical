@@ -166,7 +166,7 @@ rejection of code comments as proof of a human approval.
 ### Slack notification
 
 When destructive migrations are detected, a Slack notification lands in
-`#teaching` (the same channel used for API breaking-change warnings) with:
+`#cicd` (the same channel used for API breaking-change warnings) with:
 
 - The migration's revision ID and description
 - The destructive operations found (`drop_column`, `drop_table`, or

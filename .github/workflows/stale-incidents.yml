@@ -69,7 +69,7 @@ jobs:
     if: ${{ needs.check.outputs.stale != '' }}
     uses: ./.github/workflows/slack-notify.yml
     with:
-      channel: teaching
+      channel: app
       text: |
         *⏳ Alert incidents stuck open (teaching)*
 

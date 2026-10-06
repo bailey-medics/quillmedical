@@ -95,7 +95,7 @@ jobs:
     if: ${{ needs.check.outputs.due == 'true' }}
     uses: ./.github/workflows/slack-notify.yml
     with:
-      channel: teaching
+      channel: app
       text: |
         *📋 Accessibility statement review due by ${{ needs.check.outputs.due_by }}*
 

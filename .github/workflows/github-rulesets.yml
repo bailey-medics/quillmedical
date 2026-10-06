@@ -36,7 +36,7 @@ jobs:
     name: Notify
     uses: ./.github/workflows/slack-notify.yml
     with:
-      channel: teaching
+      channel: app
       text: |
         *⚠️ GitHub rulesets changed – manual terraform apply required*
 

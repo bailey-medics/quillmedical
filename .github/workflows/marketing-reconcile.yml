@@ -80,7 +80,7 @@ jobs:
     if: ${{ failure() }}
     uses: ./.github/workflows/slack-notify.yml
     with:
-      channel: teaching
+      channel: app
       text: |
         *📬 The weekly marketing reconcile failed (app)*
 

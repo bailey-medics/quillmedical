@@ -440,7 +440,7 @@ jobs:
     if: ${{ !cancelled() && needs.api_schema_diff.result != 'skipped' && needs.api_schema_diff.outputs.breaking == 'true' && needs.api_breaking_change_gate_notify.outputs.should_notify == 'true' }}
     uses: ./.github/workflows/slack-notify.yml
     with:
-      channel: teaching
+      channel: app
       # Body comes from api_breaking_change_gate_notify, the same text the
       # PR comment carries. Only this footer is Slack-only.
       text: |
@@ -680,7 +680,7 @@ jobs:
             "$GATE_ALL_CLEAR_MESSAGE"
 
   # ---------- Slack notification on destructive DB migration ----------
-  # Posts to #teaching with the flagged migration(s), the ops found, the PR
+  # Posts to #cicd with the flagged migration(s), the ops found, the PR
   # link, and a link to "Review pending deployments" so the reviewer can jump
   # straight to the approval environment.
   db_destructive_migration_notify:
@@ -694,7 +694,7 @@ jobs:
     uses: ./.github/workflows/slack-notify.yml
     secrets: inherit
     with:
-      channel: teaching
+      channel: app
       # Body comes from db_destructive_migration_gate_notify, the same
       # text the PR comment carries. Only this footer is Slack-only.
       text: |
