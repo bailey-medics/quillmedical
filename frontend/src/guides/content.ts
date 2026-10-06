@@ -41,3 +41,18 @@ export function guideBody(slug: string): string | undefined {
     ?.replace(/^# .+$/m, "")
     .trim();
 }
+
+/** One image a guide shows: its alt text and its place under the assets. */
+export interface GuideImage {
+  alt: string;
+  path: string;
+}
+
+/** Every image a guide's markdown names, in the order it names them. */
+export function guideImages(slug: string): GuideImage[] {
+  const source = sources.get(slug) ?? "";
+  return [...source.matchAll(/!\[([^\]]*)\]\(([^)]+)\)/g)].map((match) => ({
+    alt: (match[1] ?? "").trim(),
+    path: (match[2] ?? "").trim(),
+  }));
+}

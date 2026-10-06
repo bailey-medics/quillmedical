@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { CONTENT_SLUGS, guideBody, guideHeading } from "./content";
+import { CONTENT_SLUGS, guideBody, guideHeading, guideImages } from "./content";
 import { findGuide, GUIDES } from "./registry";
 
 describe("the guide registry", () => {
@@ -43,5 +43,21 @@ describe("the guide registry", () => {
   it("has no words for a slug with no file", () => {
     expect(guideBody("no-such-guide")).toBeUndefined();
     expect(guideHeading("no-such-guide")).toBeUndefined();
+  });
+
+  // `MarkdownView` leaves out an image that breaks either rule, silently.
+  // Said here instead, where it fails the build.
+  describe.each(GUIDES)("the images of $slug", (guide) => {
+    const images = guideImages(guide.slug);
+
+    it("all have alt text", () => {
+      expect(images.filter((image) => image.alt === "")).toEqual([]);
+    });
+
+    it("all live in the guide's own folder", () => {
+      const own = new RegExp(`^${guide.slug}/[a-z0-9-]+\\.png$`);
+
+      expect(images.filter((image) => !own.test(image.path))).toEqual([]);
+    });
   });
 });

@@ -171,14 +171,28 @@ Hand-taken screenshots would be stale within weeks at the rate the screens
 change. The seeded CI stack and Playwright already exist, so the
 screenshots are made by a script and never by hand.
 
-- [ ] Let a guide name its screenshots as ordinary markdown images with a
-      relative address, `![The add delegate form](add-delegate/form.png)`.
-      `MarkdownView` allows no `img` today. Add an opt-in prop that allows
-      it and rewrites the address to sit under `/guide-assets/`, refusing
-      anything absolute, so the letters and messages that also use
-      `MarkdownView` gain nothing and a guide cannot pull an image from
-      elsewhere. Alt text is required: a test fails any guide image without
-      it.
+- [x] Let a guide name its screenshots as ordinary markdown images with a
+      relative address, `![The add delegate form](add-a-delegate-by-hand/form.png)`.
+      `MarkdownView` allowed no `img`. It now takes an `imageBase` prop
+      that allows images and puts each beneath that base; a guide's is
+      `GUIDE_ASSETS_PATH`, `/guide-assets`. The address must be lower case
+      words, hyphens and slashes ending in an image type, so it cannot
+      point anywhere else, and the letters, slides and messages that also
+      use `MarkdownView` gain nothing. An image with no alt text is left
+      out; `registry.test.ts` fails the build for one, and for an image
+      outside its guide's own folder.
+
+- [x] Let a numbered step carry its screenshot. In `MarkdownView` a blank
+      line or any other line ends a list, and the next list starts again
+      at 1, so a picture between two steps would renumber every guide.
+      With images allowed, an image indented under a list item belongs to
+      that item.
+
+- [x] When an image will not load, show its alt text in a plain box and
+      not a broken image, since the first deploy runs before the first
+      sync. Brought forward from the end of this phase: it is the same
+      change to `MarkdownView`, and until the bucket exists it is what
+      every image looks like.
 
 - [ ] Add a Playwright project `guide-screenshots` in
       `frontend/playwright.config.ts`, with its specs in
@@ -221,9 +235,6 @@ screenshots are made by a script and never by hand.
 - [ ] A failed run posts to Slack through `slack-notify.yml`. It is
       worth reading: a spec that can no longer find a button means the
       words of that guide are out of date too.
-
-- [ ] When an image is missing, show its alt text in a plain box and not a
-      broken image, since the first deploy runs before the first sync.
 
 ## Phase 4: Write the guides
 

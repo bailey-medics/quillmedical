@@ -80,6 +80,28 @@ export const Loading: Story = {
   },
 };
 
+/**
+ * With images
+ *
+ * Images are off unless the caller gives an `imageBase`, as a guide does.
+ * The first step's image loads; the second's does not exist, so its alt
+ * text is shown in its place.
+ */
+export const WithImages: Story = {
+  args: {
+    imageBase: ".",
+    source: [
+      "## Find the logo",
+      "",
+      "1. Look at the top of the page.",
+      "   ![The Quill logo](quill-logo.png)",
+      "2. Look for a picture that is not there.",
+      "   ![A screenshot that has not been taken yet](missing/shot.png)",
+      "3. Carry on.",
+    ].join("\n"),
+  },
+};
+
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },

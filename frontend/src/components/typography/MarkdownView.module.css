@@ -75,3 +75,26 @@
   font-weight: 700;
   margin: 0 0 0.5em;
 }
+
+/* Images are off unless the caller gives an `imageBase`: a guide's
+   screenshots. Block, so one under a numbered step sits beneath its
+   words, and bordered, because a screenshot of a white page on a white
+   page has no edge of its own. */
+.markdown img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.5em 0 0.75em;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+}
+
+/* What an image that will not load is swapped for: its alt text. */
+.missingImage {
+  display: block;
+  margin: 0.5em 0 0.75em;
+  padding: 0.75em;
+  color: var(--mantine-color-dimmed);
+  border: 1px dashed var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+}

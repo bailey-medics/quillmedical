@@ -350,4 +350,136 @@ Another paragraph.`;
       expect(paragraphs.length).toBeGreaterThan(0);
     });
   });
+
+  describe("Images", () => {
+    it("leaves an image out unless the caller allows images", () => {
+      const { container } = renderWithMantine(
+        <MarkdownView source="![The form](add-a-delegate/form.png)" />,
+      );
+
+      expect(container.querySelector("img")).toBeNull();
+      expect(container.textContent).not.toContain("form.png");
+    });
+
+    it("shows an image beneath the base it is given", () => {
+      renderWithMantine(
+        <MarkdownView
+          source="![The form](add-a-delegate/form.png)"
+          imageBase="/guide-assets"
+        />,
+      );
+
+      const image = screen.getByRole("img", { name: "The form" });
+      expect(image).toHaveAttribute(
+        "src",
+        "/guide-assets/add-a-delegate/form.png",
+      );
+      expect(image).toHaveAttribute("loading", "lazy");
+    });
+
+    it("does not double the slash when the base ends in one", () => {
+      renderWithMantine(
+        <MarkdownView source="![The form](a/form.png)" imageBase="/assets/" />,
+      );
+
+      expect(screen.getByRole("img")).toHaveAttribute(
+        "src",
+        "/assets/a/form.png",
+      );
+    });
+
+    it.each([
+      ["an absolute address", "https://example.com/x.png"],
+      ["a protocol-relative address", "//example.com/x.png"],
+      ["a root address", "/elsewhere/x.png"],
+      ["a climb out of the base", "../secrets/x.png"],
+      ["a script address", "javascript:alert(1)"],
+      ["a file that is not an image", "a/form.svg"],
+    ])("leaves out an image with %s", (_name, path) => {
+      const { container } = renderWithMantine(
+        <MarkdownView source={`![Alt](${path})`} imageBase="/guide-assets" />,
+      );
+
+      expect(container.querySelector("img")).toBeNull();
+    });
+
+    it("leaves out an image with no alt text", () => {
+      const { container } = renderWithMantine(
+        <MarkdownView source="![](a/form.png)" imageBase="/guide-assets" />,
+      );
+
+      expect(container.querySelector("img")).toBeNull();
+    });
+
+    it("keeps alt text from breaking out of its attribute", () => {
+      const { container } = renderWithMantine(
+        <MarkdownView
+          source={'![A "quoted" <b>name</b>](a/form.png)'}
+          imageBase="/guide-assets"
+        />,
+      );
+
+      const image = container.querySelector("img");
+      expect(image?.getAttribute("alt")).toContain("quoted");
+      expect(image?.getAttribute("onerror")).toBeNull();
+      expect(container.querySelector("b")).toBeNull();
+    });
+
+    it("does not read underscores in alt text as italics", () => {
+      renderWithMantine(
+        <MarkdownView
+          source="![The _first_ step](a/form.png)"
+          imageBase="/guide-assets"
+        />,
+      );
+
+      expect(
+        screen.getByRole("img", { name: "The _first_ step" }),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps a numbered list whole when a step carries an image", () => {
+      const source = [
+        "1. Open the form",
+        "   ![The form](a/form.png)",
+        "2. Press save",
+      ].join("\n");
+
+      const { container } = renderWithMantine(
+        <MarkdownView source={source} imageBase="/guide-assets" />,
+      );
+
+      expect(container.querySelectorAll("ol")).toHaveLength(1);
+      const steps = container.querySelectorAll("ol > li");
+      expect(steps).toHaveLength(2);
+      expect(steps[0].querySelector("img")).not.toBeNull();
+      expect(steps[1].querySelector("img")).toBeNull();
+    });
+
+    it("ends a list at an indented image when images are off", () => {
+      const source = ["1. Open the form", "   ![The form](a/form.png)"].join(
+        "\n",
+      );
+
+      const { container } = renderWithMantine(<MarkdownView source={source} />);
+
+      expect(container.querySelector("img")).toBeNull();
+      expect(container.querySelectorAll("ol > li")).toHaveLength(1);
+    });
+
+    it("shows the alt text in place of an image that will not load", () => {
+      const { container } = renderWithMantine(
+        <MarkdownView
+          source="![The form](a/form.png)"
+          imageBase="/guide-assets"
+        />,
+      );
+
+      const image = container.querySelector("img");
+      image?.dispatchEvent(new Event("error"));
+
+      expect(container.querySelector("img")).toBeNull();
+      expect(screen.getByText("The form")).toBeInTheDocument();
+    });
+  });
 });
