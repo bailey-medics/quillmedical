@@ -839,6 +839,67 @@ page is reloaded. See `2026-10-02-safety-feature-mock-up-plan.md`.
       a half-filled sign-off form leaves the page. Whether the form asks
       before letting go, as an exam does, was not checked.
 
+## Phase 13: Keep the pictures of signed-in guides behind login
+
+Decided on 6 October 2026, on reading the pull request for the bucket. A
+public bucket for every picture showed anybody what an admin's and an
+operator's screens look like. Nothing in a picture is real, so this keeps
+the look of those screens from the public and not anybody's data.
+
+The first two steps were folded into the branches that made the bucket and
+the workflow, so that neither can be merged in a state that publishes
+those pictures. The rest is a branch of its own.
+
+- [x] Two buckets, in `infra/modules/guide-assets/`. The public one holds
+      only the pictures of guides marked `public`, and the load balancer
+      still serves it at `/guide-assets/*`. A second, private one holds the
+      rest: it has no backend bucket, and `public_access_prevention`
+      refuses a public grant even if somebody adds one later. The backend
+      may read it and is told its name as `GUIDE_ASSETS_GCS_BUCKET`.
+
+- [x] Sort the pictures when they are uploaded.
+      `frontend/scripts/list-public-guides.ts` prints the slug of each
+      public guide from the registry, the workflow writes that beside the
+      screenshots, and `upload-to-gcs.sh` sends a guide's folder to the
+      public bucket only if the list names it. Private unless listed, and
+      with no list nothing is uploaded: a mistake hides a picture that
+      should be seen, and never publishes one that should not. Both
+      buckets are mirrored, so a guide that stops being public has its
+      pictures taken out of the public bucket on the next run.
+
+- [x] Serve the private ones to somebody signed in.
+      `GET /api/guides/assets/{guide}/{name}.png`, in
+      `backend/app/guides/router.py`, reads the picture from the private
+      bucket for anybody with a session. Being signed in is the whole
+      check: which guides a reader is shown is still decided in the
+      browser, for relevance, and this does not try to keep one member of
+      staff's guide from another. The two parts of the address must each
+      be lower case words joined by hyphens, so nothing outside
+      `<guide>/<name>.png` can be asked for.
+
+- [x] Point each guide at the right place. `guideImageBase` in
+      `frontend/src/guides/registry.ts` gives a public guide `/guide-assets`
+      and any other `/api/guides/assets`, and the guide page hands that to
+      `MarkdownView`. A guide's markdown names its pictures as before.
+
+- [x] In development every picture is read from the one local folder,
+      `frontend/public/guide-assets/`, whatever the guide: there is no
+      bucket there, and `just guide-screenshots` puts them all in it.
+
+- [ ] A picture is asked for by the browser as an image, not by the API
+      client, so it does not get the client's retry when the session's
+      fifteen-minute cookie has just run out. A reader who opens a guide
+      after sitting idle may see descriptions in place of pictures until
+      something else on the page renews the session. Not seen in practice
+      yet; if it is, have the guide page make one call through the client
+      before it draws.
+
+- [ ] After merging: the backend's new setting arrives by Terraform,
+      which makes a revision that takes no traffic. Re-run `deploy.yml`
+      and check the serving revision has `GUIDE_ASSETS_GCS_BUCKET`, then
+      run the screenshot workflow once by hand and open a signed-in guide
+      and the joining guide on the live site.
+
 ## Decisions
 
 - **Guides, not a FAQ** – every example that prompted this is a task with

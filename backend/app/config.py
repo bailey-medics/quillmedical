@@ -268,6 +268,17 @@ class Settings(BaseSettings):
         ),
     )
 
+    # --- In-app guides ---
+    GUIDE_ASSETS_GCS_BUCKET: str | None = Field(
+        None,
+        description=(
+            "Private GCS bucket holding the screenshots of the guides "
+            "that are read signed in, served at /api/guides/assets/. "
+            "Unset in development and in the test stack, where the "
+            "guides show each picture's description in its place."
+        ),
+    )
+
     # --- Clinician passport ---
     # One setting decides the backend, deliberately. The teaching feature
     # carries a second TEACHING_STORAGE_BACKEND naming "local" or "gcs"

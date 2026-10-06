@@ -156,18 +156,35 @@ at `/guides/<slug>` then shows its real pictures locally.
 ## Where the pictures live
 
 They are not in the repository. After a merge to `main` that could change
-a screen, `.github/workflows/guide-screenshots.yml` retakes all of them and
-mirrors them to a bucket, which the load balancer serves at
-`/guide-assets/*`. A picture is at most one merge behind the application.
+a screen, `.github/workflows/guide-screenshots.yml` retakes all of them
+and sorts them into two buckets. A picture is at most one merge behind the
+application.
 
+- **A public guide's pictures are public.** A guide with `public: true` is
+  read by somebody with no account, so its pictures go to a public bucket,
+  which the load balancer serves at `/guide-assets/*`.
+- **Every other guide's pictures are behind login.** They show what an
+  admin's or an operator's screens look like, so they go to a private
+  bucket that nothing serves. The backend reads them and hands them out at
+  `/api/guides/assets/*` to somebody signed in.
+  `guideImageBase` in the registry picks the right one for a guide, so a
+  guide's markdown names its pictures the same way either way.
+- **Private unless the registry says otherwise.** The workflow asks the
+  registry which guides are public, and anything it does not list goes to
+  the private bucket. Marking a guide `public` publishes its pictures as
+  well as its words.
+- **In development every picture is local.** `just guide-screenshots`
+  leaves them all in `frontend/public/guide-assets/`, and the dev server
+  serves that folder, so no bucket is needed to read a guide with its
+  pictures.
 - **A picture that will not load** is replaced by its alt text in a dashed
   box. A new guide looks like that in production for the few minutes
   between the deploy and the screenshot run.
 - **A failed run posts to Slack.** It usually means a screen changed and
   the spec can no longer find something on it, so the guide's words want
   reading too.
-- **Every picture is of seeded data.** The bucket is public. Nothing real
-  may be added to `seed_ci.py` or `seed_guides.py`.
+- **Every picture is of seeded data**, in both buckets. Nothing real may
+  be added to `seed_ci.py` or `seed_guides.py`.
 
 ## Linking to a guide from a page
 

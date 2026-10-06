@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { CONTENT_SLUGS, guideBody, guideHeading, guideImages } from "./content";
-import { findGuide, GUIDES } from "./registry";
+import { findGuide, guideImageBase, GUIDES } from "./registry";
 
 describe("the guide registry", () => {
   it("has a markdown file for every entry and an entry for every file", () => {
@@ -60,4 +60,29 @@ describe("the guide registry", () => {
       expect(images.filter((image) => !own.test(image.path))).toEqual([]);
     });
   });
+});
+
+// A guide read signed in shows what an admin's screens look like, so its
+// pictures come through the API, which asks for a session. Only a guide
+// anybody may read has pictures anybody may fetch.
+describe("where a guide's pictures come from", () => {
+  it("is the public path for a public guide", () => {
+    expect(guideImageBase({ public: true }, false)).toBe("/guide-assets");
+  });
+
+  it("is the API for a guide that is read signed in", () => {
+    expect(guideImageBase({ public: false }, false)).toBe("/api/guides/assets");
+  });
+
+  it("is the one local folder for every guide in development", () => {
+    expect(guideImageBase({ public: false }, true)).toBe("/guide-assets");
+    expect(guideImageBase({ public: true }, true)).toBe("/guide-assets");
+  });
+
+  it.each(GUIDES.filter((guide) => !guide.public))(
+    "keeps $slug's pictures behind the API",
+    (guide) => {
+      expect(guideImageBase(guide, false)).toBe("/api/guides/assets");
+    },
+  );
 });

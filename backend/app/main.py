@@ -125,6 +125,7 @@ from app.fhir_client import (
     read_fhir_patient,
     update_fhir_patient,
 )
+from app.guides.router import router as guides_router
 from app.inbox.router import router as inbox_router
 from app.log_context import request_id_var, user_id_var
 from app.logging_config import setup_logging
@@ -314,6 +315,7 @@ router = APIRouter(prefix=settings.API_PREFIX)
 
 router.include_router(analytics_router)
 router.include_router(feedback_router)
+router.include_router(guides_router)
 router.include_router(inbox_router)
 router.include_router(marketing_router)
 router.include_router(push_router)
