@@ -58,12 +58,16 @@ export default function VerifyEmail({ status }: VerifyEmailProps) {
               <StateMessage
                 icon={<IconAlertCircle />}
                 title="Verification failed"
-                description="This link is invalid or has expired. Please request a new verification email."
+                description="This link is invalid or has expired. Sign in with your username and password and we will email you a new one."
                 colour="alert"
               />
+              {/* To the login form, not to the page that offers to resend:
+                  that page draws its button only when it knows the
+                  address, and arriving from here it does not. Signing in
+                  with an unverified account sends a fresh link by itself. */}
               <Group justify="flex-end">
-                <TextLink standalone to="/verify-email-pending">
-                  Resend verification email
+                <TextLink standalone to="/login">
+                  Sign in for a new link
                 </TextLink>
               </Group>
             </>

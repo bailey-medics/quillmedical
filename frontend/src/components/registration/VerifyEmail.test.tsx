@@ -32,13 +32,22 @@ describe("VerifyEmail", () => {
     expect(screen.queryByText("Verification failed")).not.toBeInTheDocument();
   });
 
-  it("shows the failure and a resend link on error", () => {
+  // It used to link to the page that offers to resend, which has no
+  // button to press when it is reached this way: it does not know the
+  // address. Signing in sends a new link by itself.
+  it("shows the failure and sends them to sign in for a new link", () => {
     renderWithRouter(<VerifyEmail status="error" />);
 
     expect(screen.getByText("Verification failed")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Resend verification email" }),
-    ).toHaveAttribute("href", "/verify-email-pending");
+      screen.getByText(/Sign in with your username and password/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Sign in for a new link" }),
+    ).toHaveAttribute("href", "/login");
+    expect(
+      screen.queryByRole("link", { name: "Resend verification email" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("Email verified")).not.toBeInTheDocument();
   });
 });

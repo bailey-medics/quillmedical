@@ -432,7 +432,7 @@ small change of its own.
 - [ ] Then take the "Do not refresh this page" paragraph out of
       `frontend/src/guides/content/join-a-course.md`.
 
-- [ ] Give the failed-verification page a way forward, by sending the
+- [x] Give the failed-verification page a way forward, by sending the
       delegate to sign in. "Resend verification email" on
       `VerifyEmail.tsx` leads to `/verify-email-pending`, whose resend
       button is drawn only when the page knows the address, and arriving
