@@ -187,6 +187,28 @@ abbreviate-just:
     echo "source ~/.zshrc"
 
 
+alias al := aws-login
+# Sign in to the AWS account that sends email (Quill Medical Emails, London)
+aws-login:
+    #!/usr/bin/env bash
+    {{initialise}} "aws-login"
+    # `aws login` opens the browser and keeps short-lived credentials that
+    # renew themselves, so no access key is left on disk. Choose the Quill
+    # Medical Emails account there, never the management one: organisation
+    # policies do not apply to that, so anything made in it escapes the
+    # London-only rule.
+    #
+    # The region is set first. Without one `aws login` stops to ask, and
+    # everything in SES is per region: a resource made outside eu-west-2 is
+    # email data outside the UK.
+    aws configure set region eu-west-2 --profile quill-emails
+    aws login --profile quill-emails
+    echo "Signed in as:"
+    aws sts get-caller-identity --profile quill-emails \
+        --query Arn --output text
+    echo "Use it with: AWS_PROFILE=quill-emails aws ..."
+
+
 alias ii := initial-install
 # Clone all *-teaching repos into local dirs (safe to re-run)
 initial-install:

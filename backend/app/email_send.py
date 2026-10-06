@@ -1,18 +1,25 @@
 """Email sending module.
 
-Uses Resend (https://resend.com) to deliver transactional email.
+Delivers transactional email through Resend (https://resend.com) or
+Amazon SES in London, whichever ``EMAIL_PROVIDER`` names. Both stand
+while email moves to SES; see
+docs/docs/plans/2026-10-06-amazon-ses-email-plan.md.
 When ``EMAIL_DRY_RUN`` is True (the default in development), emails
 are logged to stdout instead of being sent.
 """
 
 import logging
+import mimetypes
 import threading
 import time
 from collections.abc import Mapping
+from email.message import EmailMessage
 from typing import Any, TypedDict
 
+import boto3
 import httpx
 import resend
+from botocore.config import Config
 from resend.http_client import HTTPClient
 
 from app.config import settings
@@ -276,6 +283,123 @@ def _from_header(from_name: str | None) -> str:
     return f'"{from_name}" <{settings.EMAIL_FROM}>'
 
 
+#: How long SES is given. Short to connect and one retry, for the reason
+#: ``_Ipv4Client`` gives: a caller is a person waiting on a page.
+_SES_CONFIG = Config(
+    connect_timeout=3,
+    read_timeout=20,
+    retries={"max_attempts": 2, "mode": "standard"},
+)
+
+
+def _mime_message(
+    *,
+    sender: str,
+    to: str,
+    subject: str,
+    html_body: str,
+    text_body: str | None,
+    reply_to: str | None,
+    attachments: list[Attachment],
+) -> bytes:
+    """The email as a raw MIME message, which is what SES is handed.
+
+    Raw, not SES's simpler form of a subject and two bodies, because that
+    form cannot carry an attachment and a certificate is one.
+
+    Args:
+        sender: The From header, already checked by :func:`_from_header`.
+        to: Recipient email address.
+        subject: Email subject line.
+        html_body: HTML content of the email body.
+        text_body: A plain-text version of the same email, if there is one.
+        reply_to: Where a reply goes, when not to the sender.
+        attachments: Files to attach.
+
+    Returns:
+        The message, encoded and ready to send.
+    """
+    message = EmailMessage()
+    message["From"] = sender
+    message["To"] = to
+    message["Subject"] = subject
+    if reply_to is not None:
+        message["Reply-To"] = reply_to
+
+    if text_body is None:
+        message.set_content(html_body, subtype="html")
+    else:
+        message.set_content(text_body)
+        message.add_alternative(html_body, subtype="html")
+
+    for attachment in attachments:
+        guessed, _ = mimetypes.guess_type(attachment["filename"])
+        content_type = guessed or "application/octet-stream"
+        maintype, _, subtype = content_type.partition("/")
+        message.add_attachment(
+            attachment["content"],
+            maintype=maintype,
+            subtype=subtype,
+            filename=attachment["filename"],
+        )
+
+    return message.as_bytes()
+
+
+def _send_with_ses(*, sender: str, to: str, raw_message: bytes) -> bool:
+    """Send one raw message through Amazon SES.
+
+    The client is pinned to ``settings.SES_REGION``. Everything in SES is
+    per region, and a send from another one is email data outside the UK.
+
+    Args:
+        sender: The From header.
+        to: Recipient email address.
+        raw_message: The MIME message from :func:`_mime_message`.
+
+    Returns:
+        True once SES has accepted the message. False if the credentials
+        are not configured, when nothing is sent.
+
+    Raises:
+        EmailSendError: If SES refuses the send or cannot be reached.
+    """
+    key_id = settings.SES_ACCESS_KEY_ID
+    secret = settings.SES_SECRET_ACCESS_KEY
+    if not key_id or not secret:
+        logger.error(
+            "Cannot send email: SES_ACCESS_KEY_ID and "
+            "SES_SECRET_ACCESS_KEY are not configured"
+        )
+        return False
+
+    # Stripped for the reason the Resend key is: stored with `echo`, a
+    # value ends in a newline, and a signature made with it is refused.
+    key_id_value = key_id.get_secret_value().strip()
+    secret_value = secret.get_secret_value().strip()
+
+    try:
+        client = boto3.client(
+            "sesv2",
+            region_name=settings.SES_REGION,
+            aws_access_key_id=key_id_value,
+            aws_secret_access_key=secret_value,
+            config=_SES_CONFIG,
+        )
+        client.send_email(
+            FromEmailAddress=sender,
+            Destination={"ToAddresses": [to]},
+            Content={"Raw": {"Data": raw_message}},
+        )
+    except Exception as exc:
+        # `from None`, as for Resend: nothing that may quote a credential
+        # is attached to the exception callers log.
+        message = _redact(_redact(str(exc), secret_value), key_id_value)
+        raise EmailSendError(message) from None
+
+    return True
+
+
 def send_email(
     *,
     to: str,
@@ -306,6 +430,8 @@ def send_email(
         EmailRateLimitError: If the recipient has exceeded the hourly limit.
         EmailNotAllowedError: If an allow-list is set and the recipient is
             not on it.
+        EmailSendError: If the mail provider refuses the send or cannot
+            be reached.
         ValueError: If *from_name* could break the From header.
     """
     _check_allowed(to)
@@ -324,6 +450,30 @@ def send_email(
             len(attachment_names),
         )
         _record_send(to)
+        return
+
+    if settings.EMAIL_PROVIDER == "ses":
+        sent = _send_with_ses(
+            sender=sender,
+            to=to,
+            raw_message=_mime_message(
+                sender=sender,
+                to=to,
+                subject=subject,
+                html_body=html_body,
+                text_body=text_body,
+                reply_to=reply_to,
+                attachments=attachments or [],
+            ),
+        )
+        if not sent:
+            return
+        _record_send(to)
+        logger.info(
+            "Email sent – to=%s attachments=%d",
+            mask_email(to),
+            len(attachment_names),
+        )
         return
 
     api_key = settings.RESEND_API_KEY
