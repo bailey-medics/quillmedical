@@ -5,6 +5,8 @@
  * submitted, so nobody is registered.
  */
 
+import fs from "fs";
+import path from "path";
 import { test, expect } from "@playwright/test";
 import { shot } from "./shot";
 import { SEEDED } from "./signIn";
@@ -38,4 +40,28 @@ test("join a course", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByLabel("Username")).toBeVisible();
   await shot(page, "join-a-course/sign-in");
+});
+
+// The verification email, as it is really sent. Rendered with sample
+// values by `just email-preview` for Storybook, and held true to the
+// template by `backend/tests/test_email_previews.py`, so this is a
+// picture of the real thing with no email sent to take it.
+test("the verification email", async ({ page }) => {
+  const rendered = path.join(
+    "src",
+    "stories",
+    "emails",
+    "rendered",
+    "email-verification--quill.html",
+  );
+  // A page of the app first, so the email's images, which it names from
+  // the site's root, have a site to come from.
+  await page.goto("/login");
+  await page.setContent(fs.readFileSync(rendered, "utf8"), {
+    waitUntil: "networkidle",
+  });
+  await expect(
+    page.getByRole("link", { name: "Verify your email" }),
+  ).toBeVisible();
+  await shot(page, "join-a-course/verification-email");
 });

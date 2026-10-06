@@ -35,6 +35,7 @@ Somebody who has an account but has not opened the module is not listed.
 
 - Type in the search box to find a delegate by name, email or site.
 - Press **Filter delegates** to narrow the list to a site or a clinical lead, or to **1st time passers only**.
+  ![The filter, open over the list of delegates](see-delegates-results/filter.png)
 
 The three figures follow the filter, so they describe what the list is
 showing.
