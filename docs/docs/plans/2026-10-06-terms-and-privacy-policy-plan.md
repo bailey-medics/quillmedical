@@ -334,13 +334,39 @@ SES in its London region is the one mainstream service that keeps email
 data in the UK, at $0.10 per 1,000 emails with no daily cap, so it makes
 the claim true as written. Google Cloud has no email service of its own.
 
-- [ ] **Confirm what SES keeps in London** before building on it: read
-      Amazon's current documentation for where message content, delivery
-      logs, suppression lists and event data are stored when the London
-      region (`eu-west-2`) is used, and whether anything is processed
-      elsewhere. The choice of SES rests on this, and it was made from
-      memory, not from the documentation. If something does leave the
-      UK, say so here and decide again.
+- [x] **Confirm what SES keeps in London** before building on it.
+      Checked against Amazon's documentation on 6 October 2026, and the
+      choice holds, with one exception to state openly.
+
+      - **London is a full SES region.** `eu-west-2` has its own API,
+        SMTP, receiving and feedback endpoints, and Amazon's general
+        commitment applies: "You choose the AWS Region(s) in which your
+        content is stored" and "We will not move or replicate your
+        content outside of your chosen AWS Region(s) without your
+        agreement".
+      - **Everything Quill would set up is per region.** Verified
+        domains, sandbox status, sending limits, credentials, and the
+        account-level suppression list, which "applies to your AWS
+        account only in the current AWS Region". Notification topics
+        "have to be in the same region where you use SES". So the rule
+        for the build is simple: create every SES and notification
+        resource in `eu-west-2` and nothing anywhere else.
+      - **The exception is the global suppression list.** When an email
+        hard-bounces, SES adds that address to a list that "applies to
+        all SES customers", for up to 14 days. It "is enabled by default
+        for all SES accounts. You can't disable it", and the
+        documentation does not say where it is held. It holds only the
+        address that bounced, briefly, and only for addresses that do not
+        work. The privacy policy should mention it in a sentence.
+      - **Not answered by the documentation:** where the contact list is
+        held is not stated in terms, though it is a resource of the
+        regional API; and Amazon's account information (the AWS account
+        holder's own name, email and billing details) is handled
+        separately from content and is not tied to the region. Ask AWS
+        support about the first when the account is open.
+      - **Amazon scans what it sends.** "We scan all messages that
+        contain attachments to check for viruses", and filters for spam.
+        Normal for a mail service, and worth knowing.
 
 - [ ] **Open the AWS account and ask for production access early.** A
       new SES account starts in a sandbox that sends only to verified
