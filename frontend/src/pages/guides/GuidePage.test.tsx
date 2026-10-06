@@ -6,11 +6,15 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { renderWithRouter } from "@/test/test-utils";
 import * as authContext from "@/auth/AuthContext";
 import type { User } from "@/auth/AuthContext";
+import * as registry from "@/guides/registry";
+import { api } from "@/lib/api";
 import { Component as Page } from "./GuidePage";
+
+vi.mock("@/lib/api", () => ({ api: { get: vi.fn() } }));
 
 const SLUG = "add-a-delegate-by-hand";
 
@@ -50,6 +54,7 @@ const teachingAdmin: Partial<User> = {
 describe("GuidePage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.mocked(api.get).mockReset();
   });
 
   it("shows the guide under its title, once", () => {
@@ -124,6 +129,69 @@ describe("GuidePage", () => {
       ).not.toBeInTheDocument();
       expect(screen.getByText(/404|not found/i)).toBeInTheDocument();
     });
+  });
+
+  // The browser asks for a picture as an image, which gets none of the
+  // API client's renewing of a session that has just run out. So a guide
+  // whose pictures come through the API makes one call through the client
+  // first. Under test the pictures are local, as in development, so these
+  // say where they come from.
+  describe("a guide whose pictures come through the API", () => {
+    function picturesFromTheApi(): void {
+      vi.spyOn(registry, "guideImageBase").mockReturnValue(
+        registry.GUIDE_PRIVATE_ASSETS_PATH,
+      );
+    }
+
+    it("renews the session through the client before it draws", async () => {
+      let answer: (value: unknown) => void = () => undefined;
+      vi.mocked(api.get).mockReturnValue(
+        new Promise((resolve) => {
+          answer = resolve;
+        }),
+      );
+      signInAs(teachingAdmin);
+      picturesFromTheApi();
+
+      const { container } = renderGuide(SLUG);
+
+      expect(api.get).toHaveBeenCalledWith("/auth/me");
+      expect(
+        screen.getByRole("heading", {
+          level: 1,
+          name: "Add a delegate by hand",
+        }),
+      ).toBeInTheDocument();
+      expect(container.querySelector("ol li")).toBeNull();
+
+      answer({});
+
+      await waitFor(() =>
+        expect(container.querySelector("ol li")).not.toBeNull(),
+      );
+      expect(api.get).toHaveBeenCalledTimes(1);
+    });
+
+    it("draws the guide all the same when that call fails", async () => {
+      vi.mocked(api.get).mockRejectedValue(new Error("offline"));
+      signInAs(teachingAdmin);
+      picturesFromTheApi();
+
+      const { container } = renderGuide(SLUG);
+
+      await waitFor(() =>
+        expect(container.querySelector("ol li")).not.toBeNull(),
+      );
+    });
+  });
+
+  it("makes no call for a guide whose pictures are public", () => {
+    signOut();
+
+    const { container } = renderGuide("join-a-course");
+
+    expect(api.get).not.toHaveBeenCalled();
+    expect(container.querySelector("ol li")).not.toBeNull();
   });
 
   it("offers no sign-in link to somebody already signed in", () => {
