@@ -19,7 +19,8 @@ It seeds one teaching establishment with a site beneath it, and at them:
   guide's registration step is given,
 - six delegates with between them every result the All delegates page can
   show, and
-- one delegate with no attempts, for the specs that take a module.
+- one delegate with no attempts, for the specs that take a module, and
+- a safety officer, at the same organisation with safety switched on.
 
 Non-interactive, with hardcoded credentials suitable only for a throwaway
 database: the password of each account is its username followed by
@@ -66,6 +67,9 @@ SITE = "Northfield General Hospital"
 OPERATOR = "guide_operator"
 TEACHING_ADMIN = "guide_admin"
 CLINICAL_LEAD = "guide_lead"
+#: Uses the safety cases. Those are a mock-up whose cases live in the
+#: browser, so this account is all the safety guides need seeded.
+SAFETY_OFFICER = "guide_safety"
 #: Takes a module in the specs, so starts with no attempts of their own.
 LEARNER = "guide_learner"
 
@@ -306,6 +310,23 @@ def seed() -> None:
                     enabled_by=operator.id,
                 )
             )
+
+        has_safety = db.scalar(
+            select(OrgUnitFeature.id).where(
+                OrgUnitFeature.org_unit_id == organisation.id,
+                OrgUnitFeature.feature_key == "safety",
+            )
+        )
+        if has_safety is None:
+            db.add(
+                OrgUnitFeature(
+                    org_unit_id=organisation.id,
+                    feature_key="safety",
+                    enabled_by=operator.id,
+                )
+            )
+        officer = _user(db, SAFETY_OFFICER, "Jo Fletcher", "safety_officer")
+        add_org_unit_member(db, organisation.id, officer.id, "staff")
 
         # The teaching admin belongs to the organisation itself, which is
         # what the All delegates page asks of whoever opens it.

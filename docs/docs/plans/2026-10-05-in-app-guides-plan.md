@@ -693,37 +693,58 @@ page is reloaded. See `2026-10-02-safety-feature-mock-up-plan.md`.
       showing it. Somebody handed the mock-up with a guide beside it sees
       a feature; handed it bare, they see some screens.
 
-- [ ] Say once, at the top of each safety guide, that this is a preview:
+- [x] Say once, at the top of each safety guide, that this is a preview:
       the cases are examples and a change lasts until the page is
       reloaded. One line, not a warning on every step, and worded as what
       the reader is looking at and not as an apology. Take it out when
       the feature is built.
 
-- [ ] Write them to show the feature off as well as to instruct. A reader
+- [x] Write them to show the feature off as well as to instruct. A reader
       here is being shown round, so each guide opens with what the page is
       for and why a safety officer would want it, before the steps.
 
-- [ ] The guides, each `feature: "safety"` and
-      `competency: "view_safety_cases"`, each to be confirmed before it
-      is written:
-      "Find your way round a safety case" (the case page and its six
-      parts); "Read and edit the documentation"; "Record a hazard";
-      "Record an incident"; "Name the safety officers"; and "Sign off a
-      section for compliance".
+- [x] Six guides, each `feature: "safety"` and
+      `competency: "view_safety_cases"`. Not quite the six proposed: the
+      mock-up shows far more than it lets anybody do. Hazards and
+      incidents cannot be added or changed, and nothing can be signed, so
+      a guide called "Record a hazard" would describe a button that does
+      nothing. What was written is what the mock-up can honestly show:
+      "Find your way round a safety case"; "Read and edit a safety
+      document"; "Read the hazard log"; "Read an incident report";
+      "Change a safety officer"; and "Check what has been signed off".
+      The last says plainly that **Record signature** is there to show
+      where signing will happen.
 
-- [ ] These guides will need rewriting when the feature is built, since
+- [x] Only three things in the mock-up can be changed: an officer, a
+      document's text, and the placeholders. The first two are in the
+      guides. The placeholders' edit page is reached only by typing its
+      address, with nothing on any page leading to it, so no guide sends
+      a reader there.
+
+- [x] These guides will need rewriting when the feature is built, since
       the steps will change with it. Accepted: add a step to the plan
       that builds safety to revisit them, and let `links.test.ts` and the
       screenshot specs say which have broken.
 
-- [ ] Screenshots need no seed, because the data is the mock-up's own. The
-      spec needs somebody to sign in as: add a `safety_officer` to
-      `backend/scripts/seed_guides.py`, at an organisation with the safety
-      feature on. Check the mock-up's sample names are plainly invented
-      before they are published in a picture.
+- [x] Screenshots need no seeded cases, because the data is the
+      mock-up's own. `backend/scripts/seed_guides.py` switches safety on
+      at the guides' organisation and adds one `safety_officer` to sign
+      in as. The specs photograph "Results acknowledgement service", the
+      fullest of the five cases.
 
-- [ ] Link the pages the guides name, and place `ReaderGuideLink` on the
-      safety case page.
+- [ ] Check the mock-up's invented names before the pictures are
+      published. `frontend/src/lib/safety/fixtures.ts` says everything in
+      it is made up, and the people plainly are. Three of its suppliers
+      and products are close to real ones: "Northgate Digital" (near
+      Northgate Public Services, a real health IT supplier), "MyCare
+      portal" (a name real NHS patient portals use) and "MedScribe". The
+      first picture, of the list of cases, shows "MedScribe EPMA 4.2" and
+      "MyCare portal 2.0". Renaming them is a change to the mock-up and
+      its tests, and Mark's to decide; it was not done here.
+
+- [x] Link the pages the guides name, and place `GuideLink` on the
+      safety landing page. Only `/safety` itself can be linked: every
+      other safety page has a case's id in its address.
 
 ## Phase 12: Passport guides
 
@@ -767,7 +788,7 @@ page is reloaded. See `2026-10-02-safety-feature-mock-up-plan.md`.
       a guide may show one in a picture and say who sees it, without
       hedging. The reflection photographed is still an invented one.
 
-- [ ] Link the pages the guides name, and place `ReaderGuideLink` on the
+- [ ] Link the pages the guides name, and place `GuideLink` on the
       passport's own page, the inbox for an assessor, and the sign-off
       page.
 

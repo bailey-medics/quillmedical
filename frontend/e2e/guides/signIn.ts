@@ -17,6 +17,8 @@ export const PEOPLE = {
   teachingAdmin: "guide_admin",
   /** A delegate with no attempts, for specs that take a module. */
   learner: "guide_learner",
+  /** A safety officer, where the safety mock-up is switched on. */
+  safetyOfficer: "guide_safety",
   /** A delegate who has passed, for the result and its certificate. */
   passedDelegate: "guide_delegate_1",
 } as const;
