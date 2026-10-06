@@ -1,0 +1,158 @@
+# Retake the in-app guides' screenshots and publish them.
+#
+# The guides at /guides show screenshots of the application. Taken by hand
+# they would be out of date within weeks, so Playwright retakes them after
+# each merge that could have changed a screen, from the same seeded stack the
+# end-to-end tests drive. Every name in a screenshot is therefore one
+# backend/scripts/seed_ci.py made up. See
+# docs/docs/plans/2026-10-05-in-app-guides-plan.md.
+#
+# Deliberately apart from deploy.yml: a screenshot spec that can no longer
+# find a button must never block a release. It is still worth reading when it
+# fails, because the words of that guide are then out of date too.
+#
+# Locally the same run is `just guide-screenshots`.
+name: Guide screenshots
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      # Any screen may be in a guide, so any frontend change may move one.
+      - "frontend/src/**"
+      - "frontend/e2e/guides/**"
+      - "frontend/e2e/auth.setup.ts"
+      - "frontend/playwright.guides.config.ts"
+      # What the screenshots are of.
+      - "backend/scripts/seed_ci.py"
+      - "shared/brand.yaml"
+      # How they are taken and published, not just what is in them.
+      - ".github/scripts/guide-screenshots/**"
+      - ".github/workflows/guide-screenshots.yml"
+
+permissions:
+  contents: read
+  id-token: write # Workload Identity Federation
+
+# One at a time, newest wins: the bucket is mirrored, so two runs finishing
+# out of order would leave the older set published.
+concurrency:
+  group: guide-screenshots
+  cancel-in-progress: true
+
+jobs:
+  take:
+    name: Take screenshots
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      # A module for the teaching pages to show. seed_ci.py syncs it.
+      - name: Fetch E2E teaching content
+        run: .github/scripts/ci/fetch-e2e-teaching.sh
+
+      # Built here, where ci.yml's end-to-end job pulls images it prebuilt
+      # for a pull request: on a push to main there are none to pull.
+      - name: Start CI stack
+        run: docker compose -f compose.ci.yml up --build --wait --wait-timeout 120
+
+      - name: Run database migrations
+        run: docker compose -f compose.ci.yml exec -T backend alembic upgrade head
+
+      - name: Seed test data
+        run: docker compose -f compose.ci.yml exec -T backend python scripts/seed_ci.py
+
+      - name: Set up frontend
+        uses: ./.github/actions/setup-frontend
+
+      # Microsoft's Playwright image, tagged by the version yarn.lock
+      # resolved, as ci.yml's end-to-end job uses and for the same reason:
+      # it carries the browsers, so nothing is installed here.
+      - name: Read Playwright version
+        id: playwright_version
+        working-directory: frontend
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Pull Playwright image
+        run: docker pull "mcr.microsoft.com/playwright:v${{ steps.playwright_version.outputs.version }}-noble"
+
+      # --network host so localhost is the CI stack. The runner's own user,
+      # so what it writes stays readable by the upload step.
+      - name: Take the screenshots
+        working-directory: frontend
+        run: >-
+          docker run --rm --network host --ipc host
+          --user "$(id -u):$(id -g)"
+          -e CI -e HOME=/tmp
+          -v "$PWD:/work" -w /work
+          "mcr.microsoft.com/playwright:v${{ steps.playwright_version.outputs.version }}-noble"
+          npx playwright test --config playwright.guides.config.ts
+
+      # Which guides may be read without an account, from the registry
+      # itself. The upload sorts by it: these guides' pictures go to the
+      # public bucket and every other guide's to the private one.
+      - name: List the public guides
+        working-directory: frontend
+        run: npx tsx scripts/list-public-guides.ts > public/guide-assets/public-guides.txt
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: guide-assets
+          path: frontend/public/guide-assets/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker compose -f compose.ci.yml logs --tail=100
+
+  publish:
+    name: Publish to app
+    runs-on: ubuntu-24.04
+    needs: take
+    # The environment that holds the GCP_APP_* secrets read below, as
+    # public-site.yml's deploy job uses. It deploys from main only.
+    environment:
+      name: app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Download screenshots
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: guide-assets
+          path: guide-assets/
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_APP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v3.0.1
+
+      - name: Upload to GCS
+        run: bash .github/scripts/guide-screenshots/upload-to-gcs.sh "${{ secrets.GCP_APP_PROJECT_ID }}"
+
+  notify-failure:
+    name: Notify guide screenshots failure
+    needs: [take, publish]
+    if: ${{ always() && (needs.take.result == 'failure' || needs.publish.result == 'failure') }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: teaching
+      text: |
+        *❌ Guide screenshots failed*
+
+        The guides still show the last set that was published. A screenshot that could not be taken usually means a screen has changed, so that guide's words are probably out of date too.
+
+        *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+        *Author:* ${{ github.actor }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit
