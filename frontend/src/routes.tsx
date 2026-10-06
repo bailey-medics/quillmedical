@@ -53,7 +53,6 @@ import ErrorBoundary from "@/components/error-boundary/ErrorBoundary";
 import { SCOPED_MANAGER_IDS } from "@/types/cbac";
 import NotFound from "./pages/NotFound";
 import RegisterPage from "./pages/RegisterPage";
-import TeachingRegisterPage from "./pages/TeachingRegisterPage";
 import TotpSetup from "./pages/TotpSetup";
 import AccountPage from "./pages/settings/AccountPage";
 import GuestOnly from "./auth/GuestOnly";
@@ -106,14 +105,6 @@ export const routes: RouteObject[] = [
     element: (
       <GuestOnly>
         <RegisterPage />
-      </GuestOnly>
-    ),
-  },
-  {
-    path: "/teaching/register/:module",
-    element: (
-      <GuestOnly>
-        <TeachingRegisterPage />
       </GuestOnly>
     ),
   },

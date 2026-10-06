@@ -216,7 +216,6 @@ const NO_LINK: Record<string, string> = {
     "Reached from the envelope in the top ribbon, which is on every page. A menu link that came and went with the page was tried and taken out.",
   "/login": SIGNED_OUT,
   "/register": SIGNED_OUT,
-  "/teaching/register/:module": SIGNED_OUT,
   "/forgot-password": SIGNED_OUT,
   "/reset-password": SIGNED_OUT,
   "/verify-email": SIGNED_OUT,

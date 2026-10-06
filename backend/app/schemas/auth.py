@@ -46,6 +46,12 @@ class RegisterIn(BaseModel):
         teaching_module_id: The teaching module whose join link they
             registered through (optional). They are enrolled on it,
             where the organisation has opened it to registration.
+        clinical_lead_email: The clinical lead whose email admitted them
+            (required with a site or a module). The server works the
+            site and organisation out from it, and refuses a request
+            whose own ``org_unit_id`` or ``site_id`` says otherwise. A
+            plain string, as the check before it takes: a lead's stored
+            address need not pass ``EmailStr``.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -60,6 +66,7 @@ class RegisterIn(BaseModel):
     teaching_module_id: str | None = Field(
         default=None, max_length=255, pattern=r"^[a-zA-Z0-9_-]+$"
     )
+    clinical_lead_email: str | None = Field(default=None, max_length=320)
 
 
 class ChangePasswordIn(BaseModel):
