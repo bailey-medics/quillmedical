@@ -27,7 +27,7 @@ function guide(slug: string, extra: Partial<Guide> = {}): Guide {
     slug,
     title: slug,
     summary: "",
-    audience: "delegate",
+    audience: "everyone",
     public: false,
     ...extra,
   };
@@ -60,7 +60,7 @@ function signInAs(user: User | null | "loading"): void {
 
 describe("guideTierOf", () => {
   it("reads somebody with nothing as a delegate", () => {
-    expect(guideTierOf(someone())).toBe("delegate");
+    expect(guideTierOf(someone())).toBe("everyone");
   });
 
   it("reads a holder of manage_users as an admin", () => {
@@ -76,7 +76,7 @@ describe("guideTierOf", () => {
   it("does not read an unrelated competency as an admin", () => {
     expect(
       guideTierOf(someone({ competencies: ["take_teaching_modules"] })),
-    ).toBe("delegate");
+    ).toBe("everyone");
   });
 
   // The reason the ladder is the guides' own: an operator may hold no
@@ -89,7 +89,7 @@ describe("guideTierOf", () => {
 
   it("does not read any other platform role as a superadmin", () => {
     expect(guideTierOf(someone({ platform_role: "standard" }))).toBe(
-      "delegate",
+      "everyone",
     );
   });
 });
@@ -136,6 +136,91 @@ describe("guidesVisibleTo", () => {
     );
 
     expect(all.map((item) => item.slug)).toContain("add-a-delegate-by-hand");
+  });
+});
+
+describe("a guide that asks for a competency", () => {
+  const ASSESSORS: readonly Guide[] = [
+    guide("for-assessors", {
+      feature: "passport",
+      competency: "assess_clinician_passport",
+    }),
+  ];
+
+  function shown(user: User): string[] {
+    return guidesVisibleTo(user, ASSESSORS).map((item) => item.slug);
+  }
+
+  it("is shown to somebody who holds it", () => {
+    expect(
+      shown(
+        someone({
+          enabled_features: ["passport"],
+          competencies: ["assess_clinician_passport"],
+        }),
+      ),
+    ).toEqual(["for-assessors"]);
+  });
+
+  it("is hidden from somebody who does not", () => {
+    expect(
+      shown(
+        someone({
+          enabled_features: ["passport"],
+          competencies: ["passport_write"],
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("is hidden from an admin who does not hold it", () => {
+    expect(
+      shown(
+        someone({
+          enabled_features: ["passport"],
+          competencies: ["manage_teaching"],
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("is shown to an operator whatever they hold", () => {
+    expect(
+      shown(
+        someone({
+          platform_role: "superadmin",
+          enabled_features: ["passport"],
+        }),
+      ),
+    ).toEqual(["for-assessors"]);
+  });
+
+  it("still needs its feature, even for an operator", () => {
+    expect(shown(someone({ platform_role: "superadmin" }))).toEqual([]);
+  });
+});
+
+describe("the passport's guides", () => {
+  const PASSPORT: readonly Guide[] = [guide("mine", { feature: "passport" })];
+
+  // Reading and exporting your own passport come from owning it, never
+  // from where you work, so its guides follow the holder too.
+  it("reach a holder at an organisation without the passport", () => {
+    expect(
+      guidesVisibleTo(someone({ owns_passport: true }), PASSPORT),
+    ).toHaveLength(1);
+  });
+
+  it("do not reach somebody with neither the feature nor a passport", () => {
+    expect(guidesVisibleTo(someone(), PASSPORT)).toEqual([]);
+  });
+
+  it("owning a passport opens no other feature's guides", () => {
+    const teaching = [guide("teach", { feature: "teaching" })];
+
+    expect(guidesVisibleTo(someone({ owns_passport: true }), teaching)).toEqual(
+      [],
+    );
   });
 });
 

@@ -12,15 +12,21 @@
  * been removed fails the typecheck.
  */
 
+import type { CompetencyId } from "@/types/cbac";
+
 /**
  * Who a guide is written for. A reader sees their own audience and every
- * one below it: `delegate`, then `admin`, then `superadmin`.
+ * one below it: `everyone`, then `admin`, then `superadmin`.
+ *
+ * The lowest was `delegate` while every guide was teaching's. A passport
+ * holder and a safety officer are not delegates, and the list already
+ * headed the group "For everyone".
  */
-export type GuideAudience = "delegate" | "admin" | "superadmin";
+export type GuideAudience = "everyone" | "admin" | "superadmin";
 
 /** Lowest first. A reader's tier is their place in this list. */
 export const GUIDE_AUDIENCES: readonly GuideAudience[] = [
-  "delegate",
+  "everyone",
   "admin",
   "superadmin",
 ];
@@ -36,8 +42,28 @@ export interface Guide {
   /** Whether it may be read by somebody who is not signed in. */
   public: boolean;
   /** Shown only where this feature is switched on, when given. */
-  feature?: string;
+  feature?: GuideFeature;
+  /**
+   * Shown only to somebody holding this competency, when given. A feature
+   * says whether an organisation has the passport at all; within it, a
+   * guide to signing somebody off is an assessor's and a guide to keeping
+   * a logbook is a holder's, and tier does not tell those apart. An
+   * operator is shown the guide whatever they hold.
+   */
+  competency?: CompetencyId;
 }
+
+/**
+ * The features that have guides, in the order the list shows them, each
+ * with the name its group is headed by.
+ */
+export const GUIDE_FEATURES = {
+  teaching: "Teaching",
+  passport: "Passport",
+  safety: "Safety",
+} as const;
+
+export type GuideFeature = keyof typeof GUIDE_FEATURES;
 
 export const GUIDES = [
   {
@@ -53,7 +79,7 @@ export const GUIDES = [
     slug: "join-a-course",
     title: "Join a course",
     summary: "Register, confirm your email address and sign in.",
-    audience: "delegate",
+    audience: "everyone",
     public: true,
     feature: "teaching",
   },
@@ -62,7 +88,7 @@ export const GUIDES = [
     title: "Take a module and its assessment",
     summary:
       "Read the learning materials, sit the assessment and see how you did.",
-    audience: "delegate",
+    audience: "everyone",
     public: false,
     feature: "teaching",
   },

@@ -36,24 +36,41 @@ export function guideTierOf(user: User): GuideAudience {
   if (ADMIN_COMPETENCIES.some((competency) => held.includes(competency))) {
     return "admin";
   }
-  return "delegate";
+  return "everyone";
+}
+
+/**
+ * Whether a feature's guides reach this person. As the feature itself
+ * does, with one exception the side navigation makes too: somebody who
+ * holds a passport of their own may read and export it wherever they
+ * work, so its guides follow them.
+ */
+function reachesFeature(user: User, feature: string): boolean {
+  if ((user.enabled_features ?? []).includes(feature)) return true;
+  return feature === "passport" && user.owns_passport === true;
 }
 
 /**
  * The guides this person is shown: those at or below their tier, less any
- * that belong to a feature they do not have. `guides` is every guide
- * there is unless a test says otherwise.
+ * that belong to a feature that does not reach them or that ask for a
+ * competency they do not hold. An operator is not asked for the
+ * competency: they are shown round everything their deployment has.
+ * `guides` is every guide there is unless a test says otherwise.
  */
 export function guidesVisibleTo(
   user: User,
   guides: readonly Guide[] = GUIDES,
 ): Guide[] {
-  const tier = GUIDE_AUDIENCES.indexOf(guideTierOf(user));
-  const features = user.enabled_features ?? [];
+  const reader = guideTierOf(user);
+  const tier = GUIDE_AUDIENCES.indexOf(reader);
+  const held: readonly string[] = user.competencies ?? [];
   return guides.filter(
     (guide) =>
       GUIDE_AUDIENCES.indexOf(guide.audience) <= tier &&
-      (guide.feature === undefined || features.includes(guide.feature)),
+      (guide.feature === undefined || reachesFeature(user, guide.feature)) &&
+      (guide.competency === undefined ||
+        reader === "superadmin" ||
+        held.includes(guide.competency)),
   );
 }
 

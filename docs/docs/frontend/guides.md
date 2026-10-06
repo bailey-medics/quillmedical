@@ -38,13 +38,20 @@ two, a picture nobody takes and a picture nobody shows each fail the build.
   `/guides/<slug>`, and the name of the markdown file.
 - **`title`** – sentence case, and a task: "Add a delegate by hand", not
   "Delegates".
-- **`audience`** – `delegate`, `admin` or `superadmin`. A reader sees their
+- **`audience`** – `everyone`, `admin` or `superadmin`. A reader sees their
   own audience and every one below it.
 - **`public`** – `true` lets somebody who is not signed in read it. Only
   for a guide somebody needs before they have an account. It publishes the
   guide to the internet.
 - **`feature`** – leave it out for a guide about Quill as a whole. Given, the
   guide is shown only where that feature is switched on.
+- **`competency`** – optional. Given, the guide is shown only to somebody
+  who holds it. Use it where one feature has readers who do different
+  things: a guide to signing somebody off names
+  `assess_clinician_passport`, so a holder who cannot assess is not shown
+  it. An admin's guide names the competency that makes them that
+  feature's admin, such as `manage_passport`, so a teaching admin is not
+  shown the passport's.
 
 The audience decides what a reader is shown. It is not a guard, and nothing
 sensitive belongs in a guide.

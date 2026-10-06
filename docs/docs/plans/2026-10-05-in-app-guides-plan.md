@@ -635,6 +635,147 @@ a clinical lead. Whichever phase is built first adds the seed.
       each guide through locally as a reader would, as was done for the
       first set: that is a person's job.
 
+## Phase 10: Make the guides fit features other than teaching
+
+Asked for on 5 October 2026: guides for safety and for the passport. The
+five guides so far are all teaching's, and two things about how guides are
+filed were shaped by that. Both want settling before a guide for another
+feature is written, or the new guides inherit teaching's words.
+
+- [x] Rename the lowest audience. It was `delegate`, which is teaching's
+      word for a learner; a passport holder or a safety officer is not
+      one. The list already headed that group "For everyone". It is now
+      `everyone`, in `frontend/src/guides/registry.ts` and
+      `frontend/src/lib/guides/useGuideTier.ts`. Nothing outside the
+      guides read it.
+
+- [x] Let a guide name a competency as well as a feature. A feature says
+      whether an organisation has the passport at all; within it, a guide
+      to signing somebody off is for an assessor and a guide to keeping a
+      logbook is for a holder, and those are told apart by
+      `assess_clinician_passport` and `passport_write`, not by tier. The
+      registry entry takes an optional `competency`, checked in
+      `guidesVisibleTo` beside the feature. Still relevance and not a
+      guard. An operator is shown every guide of a feature they have,
+      whatever they hold.
+
+- [x] Group the list by feature once there is more than one. A reader at
+      an organisation with teaching and the passport would otherwise get
+      one run of cards with nothing to say which is which. Feature first,
+      then audience within it, in `GuidesPage.tsx`. With one feature its
+      name is left out and the page looks as it did. `GUIDE_FEATURES` in
+      the registry names the features that have guides and sets their
+      order, and a guide's `feature` is now one of them and not any
+      string.
+
+- [x] Give each feature's guides to whoever administers it. An admin is
+      anybody holding `manage_users` or a scoped manager, so a teaching
+      admin would be shown the passport admin's guides wherever both
+      features are on. The `competency` field is what narrows that: a
+      passport admin's guide names `manage_passport`. The two admin guides
+      teaching has are left without one, since both `manage_users` and
+      `manage_teaching` may add a delegate and no other admin exists yet
+      where teaching is on.
+
+- [x] The passport's guides reach somebody who owns a passport at an
+      organisation without the feature, as the side navigation offers
+      them the passport itself. Brought forward from Phase 12, because it
+      is the same few lines.
+
+## Phase 11: Safety guides
+
+The safety feature is a mock-up with no backend: its cases, hazards and
+officers are sample data held in the browser, and an edit lasts until the
+page is reloaded. See `2026-10-02-safety-feature-mock-up-plan.md`.
+
+- [x] Write them now. Decided on 5 October 2026: the mock-up exists to
+      show colleagues what is possible, and the guides are part of
+      showing it. Somebody handed the mock-up with a guide beside it sees
+      a feature; handed it bare, they see some screens.
+
+- [ ] Say once, at the top of each safety guide, that this is a preview:
+      the cases are examples and a change lasts until the page is
+      reloaded. One line, not a warning on every step, and worded as what
+      the reader is looking at and not as an apology. Take it out when
+      the feature is built.
+
+- [ ] Write them to show the feature off as well as to instruct. A reader
+      here is being shown round, so each guide opens with what the page is
+      for and why a safety officer would want it, before the steps.
+
+- [ ] The guides, each `feature: "safety"` and
+      `competency: "view_safety_cases"`, each to be confirmed before it
+      is written:
+      "Find your way round a safety case" (the case page and its six
+      parts); "Read and edit the documentation"; "Record a hazard";
+      "Record an incident"; "Name the safety officers"; and "Sign off a
+      section for compliance".
+
+- [ ] These guides will need rewriting when the feature is built, since
+      the steps will change with it. Accepted: add a step to the plan
+      that builds safety to revisit them, and let `links.test.ts` and the
+      screenshot specs say which have broken.
+
+- [ ] Screenshots need no seed, because the data is the mock-up's own. The
+      spec needs somebody to sign in as: add a `safety_officer` to
+      `backend/scripts/seed_guides.py`, at an organisation with the safety
+      feature on. Check the mock-up's sample names are plainly invented
+      before they are published in a picture.
+
+- [ ] Link the pages the guides name, and place `ReaderGuideLink` on the
+      safety case page.
+
+## Phase 12: Passport guides
+
+- [ ] The guides proposed, each `feature: "passport"`, and each to be
+      confirmed before it is written. For a holder, `passport_write`:
+      "Start your passport"; "Ask for a sign-off"; "Keep your logbook";
+      "Record CPD", with the date ranges under Settings; "Add a
+      certificate"; "Write a reflection"; "Download your passport"; and
+      "Set your specialty". For an assessor, `assess_clinician_passport`:
+      "Accept an invitation to assess", which is read before there is an
+      account and so is public, as "Join a course" is; and "Sign somebody
+      off", from the inbox. For a passport admin, `manage_passport`: "Add
+      a passport holder" and "Give somebody the right to write to their
+      passport".
+
+- [ ] One more for anybody at all, public and with no account: "Check a
+      sign-off from a printed passport", for whoever scans the QR code and
+      lands on `/passport/verify/:signOffId`.
+
+- [x] A holder with no organisation that has the passport can still read
+      and export their own, through `owns_passport`. Done in Phase 10. The feature check
+      would hide every passport guide from them. Use `useCanReachPassport`
+      for these guides and not the bare feature, in the manner of the
+      side navigation.
+
+- [ ] Work out how to seed a passport before writing a spec. A passport
+      is not rows in the core database: each is a `git bundle` in a
+      bucket, read through `backend/app/passport_storage.py`. Find what
+      `compose.ci.yml` gives the backend for that, and whether
+      `seed_guides.py` can make a passport with a sign-off, a logbook
+      entry and a certificate in it by calling the same functions the
+      routes do. If the CI stack has no passport storage at all, that
+      comes first and is its own unit.
+
+- [ ] The seed then needs: an organisation with the passport feature on,
+      a holder with a filled passport, an assessor with a request waiting
+      in their inbox, and a passport admin. Each spec that writes has a
+      person of its own.
+
+- [ ] Reflections are not secret here: others routinely review them, so
+      a guide may show one in a picture and say who sees it, without
+      hedging. The reflection photographed is still an invented one.
+
+- [ ] Link the pages the guides name, and place `ReaderGuideLink` on the
+      passport's own page, the inbox for an assessor, and the sign-off
+      page.
+
+- [ ] Both phases add pages people move through, so add the passport
+      journey, journey 4 in `docs/docs/frontend/accessibility/journeys.md`,
+      to the "Not yet run" list in `testing-log.md` for the guide links on
+      those pages.
+
 ## Decisions
 
 - **Guides, not a FAQ** – every example that prompted this is a task with

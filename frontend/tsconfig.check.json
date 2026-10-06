@@ -18,7 +18,8 @@
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*.stories.ts",
-    "**/*.stories.tsx"
+    "**/*.stories.tsx",
+    "scripts/list-public-guides.ts"
   ],
   "exclude": ["node_modules", "dist", "public_pages"]
 }
