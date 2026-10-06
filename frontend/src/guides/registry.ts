@@ -57,6 +57,32 @@ export const GUIDES = [
     public: true,
     feature: "teaching",
   },
+  {
+    slug: "take-a-module-and-its-assessment",
+    title: "Take a module and its assessment",
+    summary:
+      "Read the learning materials, sit the assessment and see how you did.",
+    audience: "delegate",
+    public: false,
+    feature: "teaching",
+  },
+  {
+    slug: "see-delegates-results",
+    title: "See delegates' results",
+    summary: "Find who has attempted a module, and who has passed.",
+    audience: "admin",
+    public: false,
+    feature: "teaching",
+  },
+  {
+    slug: "assign-a-teaching-admin",
+    title: "Assign a teaching admin",
+    summary:
+      "Give somebody the role that adds delegates and sees their results.",
+    audience: "superadmin",
+    public: false,
+    feature: "teaching",
+  },
 ] as const satisfies readonly Guide[];
 
 export type GuideSlug = (typeof GUIDES)[number]["slug"];

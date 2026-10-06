@@ -277,22 +277,21 @@ screenshots are made by a script and never by hand.
 After the screenshots, so each guide is written once with its pictures and
 not revisited.
 
-- [ ] "Assign a teaching admin", audience `superadmin`.
-- [ ] "Add a delegate by hand", audience `admin`: add its screenshots to
-      the Phase 1 text.
-- [ ] "Join a course", audience `delegate`, public: add its screenshots.
-- [ ] "Take a module and its assessment", audience `delegate`.
-- [ ] "See delegates' results", audience `admin`.
-- [ ] Add `docs/docs/frontend/guides.md` on how to write a guide: the
+- [x] "Assign a teaching admin", audience `superadmin`. Words only: the
+      seed's `admin` operates Quill but holds no profession, so cannot
+      open Admin, and there is nobody to photograph it as. A seeded
+      superadmin with `superadmin_profession` would allow it.
+- [x] "Add a delegate by hand", audience `admin`: its screenshots went in
+      with Phase 3.
+- [x] "Join a course", audience `delegate`, public: likewise.
+- [x] "Take a module and its assessment", audience `delegate`. Two
+      screenshots, of the list of modules and of one module. None of the
+      assessment itself, because starting one writes an attempt and the
+      next run would then photograph a different history.
+- [x] "See delegates' results", audience `admin`.
+- [x] Add `docs/docs/frontend/guides.md` on how to write a guide: the
       registry entry, the markdown file, the screenshot spec and the
-      recipe. Register it in `docs/mkdocs.yml`.
-- [ ] The new user form calls its "Organisation/site" step optional, and
-      for a scoped manager it is not: the API answers "Choose at least one
-      organisation or site." only after "Create user" is pressed on the
-      last step. Found while writing "Add a delegate by hand", which warns
-      of it. The form should say so on the step, in
-      `frontend/src/pages/UserInfoUpdatePage.tsx`; then take the warning
-      out of the guide.
+      recipe. Registered in `docs/mkdocs.yml`.
 - [x] Three things found in the registration flow while writing "Join a
       course", none of them fixed in this phase. The guide works round the
       first two, and Phase 8 fixes all three:
