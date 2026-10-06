@@ -63,6 +63,22 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   is reached and announced with its count, that it does not come between
   the skip link and the page, and that the Inbox page's two tables read
   in order. On journey 3, check the ribbon holds the exam's timer alone.
+- **Journeys 1 to 4 again, for the Guides link in the navigation** –
+  added on 5 October 2026 by the
+  [in-app guides plan](../../plans/2026-10-05-in-app-guides-plan.md).
+  Every journey passes through the side navigation, which now holds a
+  "Guides" link for anybody with a guide to read, with the open guide
+  named beneath it. Check it is reached in order and announced, and on
+  journey 1 that "How to join a course" under the login form is reached
+  after "Don't have an account? Register".
+- **A guide page, by itself** – not one of the four journeys. Open
+  `/guides/join-a-course` signed out and
+  `/guides/add-a-delegate-by-hand` signed in. Check the headings read in
+  order under one h1, that each numbered step is announced with its
+  number, that every screenshot's alt text says what the picture shows,
+  and that a picture which has not loaded reads as its alt text. Signed
+  out, check the page has a main landmark and that "Sign in to Quill" is
+  reached last.
 - **JAWS and Dragon** – deferred to a commissioned audit.
 - **Journeys 1 to 4 on a phone, by touch** – the
   [touch target sizes plan](../../plans/2026-09-28-touch-target-sizes-plan.md)

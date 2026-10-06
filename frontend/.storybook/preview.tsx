@@ -15,6 +15,12 @@ import React, { useEffect } from "react";
 import { theme, cssVariablesResolver } from "../src/theme";
 import { EXTRA_RULES, WCAG_TAGS } from "../src/lib/accessibility/axeConfig";
 
+// What one story lays over the signed-in user below, from its
+// `parameters.mockUser`. A story of something that depends on who is
+// reading names that reader here, such as `{ enabled_features: [] }` for
+// somebody without a feature. Set by the decorator before each story.
+let storyUser: Record<string, unknown> = {};
+
 // Mock the API to prevent real backend calls in Storybook
 const realFetch = globalThis.fetch.bind(globalThis);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -48,6 +54,7 @@ const realFetch = globalThis.fetch.bind(globalThis);
       platform_role: "superadmin",
       // Components gated on a competency render nothing without it.
       competencies: ["manage_practising_competencies"],
+      ...storyUser,
     };
     return new Response(JSON.stringify(mockUser), {
       status: 200,
@@ -129,6 +136,10 @@ const decorators = [
     // Read colour scheme from Storybook toolbar
     const colorScheme: "light" | "dark" =
       context.globals.colorScheme ?? "light";
+
+    // Before the router below mounts AuthProvider, which asks who is
+    // signed in.
+    storyUser = context.parameters.mockUser ?? {};
 
     // Allow stories to opt out of the default router wrapper
     // by setting parameters.disableDefaultRouter = true

@@ -12,6 +12,23 @@ import { renderWithRouter } from "@/test/test-utils";
 import * as apiLib from "@/lib/api";
 import AdminAllDelegatesPage from "./AdminAllDelegatesPage";
 
+// The page links to its guide, which is shown only to a reader the guide
+// is written for: a teaching admin, where teaching is switched on.
+vi.mock("@/auth/AuthContext", () => ({
+  useAuth: () => ({
+    state: {
+      status: "authenticated",
+      user: {
+        id: "1",
+        username: "teaching.admin",
+        email: "teaching.admin@example.test",
+        enabled_features: ["teaching"],
+        competencies: ["manage_teaching"],
+      },
+    },
+  }),
+}));
+
 const MODULES_PATH = "/teaching/admin/delegates/modules";
 
 const real = { bank_id: "colonoscopy", title: "Colonoscopy" };
@@ -145,5 +162,17 @@ describe("AdminAllDelegatesPage", () => {
     await waitFor(() =>
       expect(screen.getByText("Error loading delegates")).toBeInTheDocument(),
     );
+  });
+
+  it("links to the guide that explains the page", async () => {
+    mockApi([real], { "/teaching/admin/delegates?bank_id=colonoscopy": [] });
+
+    renderWithRouter(<AdminAllDelegatesPage />);
+
+    expect(
+      await screen.findByRole("link", {
+        name: "Guide: See delegates' results",
+      }),
+    ).toHaveAttribute("href", "/guides/see-delegates-results");
   });
 });

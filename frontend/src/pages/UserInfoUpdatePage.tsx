@@ -42,6 +42,7 @@ import MultiStepForm, {
   type StepContentProps,
 } from "@/components/multi-step-form";
 import DirtyFormNavigation from "@/components/warnings";
+import { GuideLink } from "@/components/guides";
 import PageHeader from "@/components/page-header";
 import type { BaseProfessionId, CompetencyId, Competency } from "@/types/cbac";
 import { getBaseProfessionDetails, ACTIVE_COMPETENCIES } from "@/types/cbac";
@@ -1607,6 +1608,9 @@ export default function UserInfoUpdatePage() {
                 : "Edit user"
           }
         />
+        {/* The commonest reason to be here. Shown only to a reader the
+            guide is written for, and not when editing somebody. */}
+        {!isEditMode && <GuideLink slug="add-a-delegate-by-hand" />}
 
         {loading ? (
           <Center>
