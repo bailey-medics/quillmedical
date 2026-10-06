@@ -72,7 +72,12 @@ links, bulleted and numbered lists, and images. So:
 - **A list cannot nest.**
 - **A blank line ends a list**, and the next numbered list starts again
   at 1. Use a `##` heading where a guide has more than one run of steps.
-- **Link to a page of Quill by its path**: `[register page](/register)`.
+- **Link every page you name to that page**, keeping the bold:
+  `[**Users**](/admin/users)`. A reader who knows where they are going
+  gets there in one press. Three kinds of page stay as plain words: a page
+  of one person or one record, the learning materials, and an assessment.
+  `links.test.ts` fails the build for a link to a page that does not
+  exist, or to one of those.
 
 ### 3. Add the pictures
 

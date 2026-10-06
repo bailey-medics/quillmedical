@@ -6,7 +6,7 @@ assessment is sat in one go.
 
 ## Open your module
 
-1. Sign in. You arrive at **Teaching modules**. If you are somewhere else, choose **Teaching** in the side menu.
+1. Sign in. You arrive at [**Teaching modules**](/teaching). If you are somewhere else, choose **Teaching** in the side menu.
    ![The Teaching modules page, with a card for each module](take-a-module-and-its-assessment/teaching-modules.png)
 2. Press **View module** on the module you want.
    ![A module's page, with its learning materials and its assessment](take-a-module-and-its-assessment/module.png)
@@ -64,5 +64,5 @@ score.
 - Press **Download certificate** to keep a copy of your certificate. It is offered when you pass a module that gives one.
 - Press **Try again** to sit the assessment again. It is offered straight after an attempt you did not pass, where the module allows another.
 
-Every attempt is listed under **My history** on the **Teaching modules**
-page. Choose one to open its result again.
+Every attempt is listed under **My history** on the
+[**Teaching modules**](/teaching) page. Choose one to open its result again.
