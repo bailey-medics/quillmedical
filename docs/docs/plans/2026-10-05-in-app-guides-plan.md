@@ -394,7 +394,7 @@ faults found while writing it, in the order a delegate would meet them.
 Last in the plan because the guides do not depend on them, and each is a
 small change of its own.
 
-- [ ] Send the delegate back when the second step has lost their site.
+- [x] Send the delegate back when the second step has lost their site.
       `RegisterPage.tsx` validates the clinical lead and hands the
       organisation and site it gets back to `/teaching/register/:module`
       as router state, which a refresh, a bookmark or a link opened in a
@@ -414,7 +414,7 @@ small change of its own.
       form and is then shown "org_unit_id required when
       teaching_module_id is provided".
 
-- [ ] The joining guide's screenshot spec,
+- [x] The joining guide's screenshot spec,
       `frontend/e2e/guides/join-a-course.spec.ts`, opens the second step
       directly to photograph it, which the redirect stops. Have the spec
       go through the first step, using the clinical lead that the guides'
@@ -429,7 +429,7 @@ small change of its own.
       can end up a member where, so it wants a careful read, and is a
       unit of its own.
 
-- [ ] Then take the "Do not refresh this page" paragraph out of
+- [x] Then take the "Do not refresh this page" paragraph out of
       `frontend/src/guides/content/join-a-course.md`.
 
 - [x] Give the failed-verification page a way forward, by sending the
@@ -488,7 +488,7 @@ small change of its own.
       lower case. The full backend suite was run, because `models.py`
       changed.
 
-- [ ] These change the registration and login flow, so they touch
+- [x] These change the registration and login flow, so they touch
       journey 1 in `docs/docs/frontend/accessibility/journeys.md`. Add it
       to the "Not yet run" list in `testing-log.md`.
 

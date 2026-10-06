@@ -15,7 +15,12 @@ import {
   RegistrationForm,
   type RegistrationFormData,
 } from "@components/registration";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import {
+  Navigate,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 
 interface LocationState {
   organisationId?: number | null;
@@ -52,6 +57,16 @@ export default function TeachingRegisterPage() {
     } catch (err: unknown) {
       return { state: "error", message: registrationError(err) };
     }
+  }
+
+  // Where they belong comes from the step before, which checked their
+  // clinical lead, and it is held only in the router's state. A refresh,
+  // a bookmark or a link opened in a new tab arrives without it, and the
+  // API would refuse the registration once the whole form was filled in.
+  // So go back to the first step, which says what it needs, with no
+  // message: there is nothing to explain that the step does not show.
+  if (state.organisationId == null) {
+    return <Navigate to="/register" replace />;
   }
 
   return (
