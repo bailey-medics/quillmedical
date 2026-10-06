@@ -6,9 +6,10 @@ which stores names, email addresses and message content in the United
 States. The transfer is lawful, but the promise is not kept, and the
 privacy policy drafted on 6 October 2026 has to contradict the site to be
 honest. Amazon Simple Email Service (SES) in its London region,
-`eu-west-2`, keeps email data in the UK, costs $0.10 per 1,000 emails
-with no daily cap, and keeps a contact list with topics and its own
-unsubscribe handling, so the newsletter arrangement carries over.
+`eu-west-2`, keeps email data in the UK, costs $0.16 per 1,000 emails
+with no monthly fee and no daily cap, and keeps a contact list with
+topics and its own unsubscribe handling, so the newsletter arrangement
+carries over.
 
 The outcome is every email Quill sends, service and newsletter, going
 through SES in London, the newsletter list held there, Resend closed, and
@@ -75,7 +76,7 @@ screens.
       authenticator is added under Security credentials. Root is for
       being locked out and nothing else. Daily work is `mark@`.
 
-- [ ] **Confirm `mark@quill-medical.com` has two-factor sign-in too.**
+- [x] **Confirm `mark@quill-medical.com` has two-factor sign-in too.**
       It is the login that is used every day and reaches all three
       accounts. It is managed from AWS Settings.
 
@@ -112,18 +113,21 @@ screens.
       Organizations, AWS accounts, Actions, "Update account name". A new
       name can take four hours to show everywhere.
 
-- [ ] **Put the company on the working account's contact details.** The
+- [x] **Put the company on the working account's contact details.** The
       account page (the account name at the top right, then Account)
       shows a primary contact with no company name. Set it to Bailey
       Medics Ltd, with the registered address and the website. The legal
       name already went in with the billing and tax details.
 
-- [ ] **Choose pay as you go, not a plan,** if SES asks. SES offers
-      Essentials, Pro and Enterprise bundles. Pay as you go is $0.10 per
-      1,000 emails with no monthly fee. Pro ($105 a month) and Enterprise
-      ($500 a month) add dedicated sending addresses and multi-region
-      sending, which a few thousand emails a month does not need, and
-      multi-region sending would take email out of London.
+- [x] **Stay on the Essentials plan.** A new SES account starts on it,
+      and it is the pay as you go one: no monthly fee, $0.16 per 1,000
+      emails, with the deliverability dashboard included. À la carte
+      pricing is a little cheaper per email, which is pennies a month at
+      a few thousand emails. Pro ($105 a month) and Enterprise ($500 a
+      month) are the ones to avoid: they add dedicated sending addresses
+      and, on Enterprise, global endpoints, which a few thousand emails a
+      month does not need, and sending from more than one region would
+      take email out of London.
 
 - [x] **Add `quill-medical.com` as a domain identity in SES,** in the
       working account with the top bar reading Europe (London): under
@@ -142,7 +146,9 @@ screens.
       break Resend's bounce handling while both run side by side. Amazon
       shows an MX and a TXT record for the new name; copy those too.
 
-- [ ] **Request production access, early.** A new account is in a
+- [x] **Request production access, early.** Requested on 6 October
+      2026, once the domain had verified; the form is locked until then.
+      Amazon granted it the same evening. A new account is in a
       sandbox: 200 emails a day, and only to verified addresses. On the
       SES account dashboard choose "Request production access", mail type
       Transactional, website `https://quill-medical.com`. Describe it
@@ -154,19 +160,29 @@ screens.
       Amazon usually answers within a day. This is the only step with a
       wait, so do it weeks before go-live.
 
-- [ ] **Accept Amazon's data processing addendum** and note where it
-      applies from. AWS's standard terms include it; record the date and
-      the link in the step below that updates the privacy policy.
+- [x] **Record Amazon's data processing terms.** There is nothing to
+      sign. AWS's Data Processing Addendum, and the UK GDPR Addendum to
+      it, are part of the AWS Service Terms and apply automatically to
+      every customer. They have applied to Quill since the account was
+      opened on 6 October 2026. The terms are at
+      <https://aws.amazon.com/service-terms/>; use that date and link in
+      the step below that updates the privacy policy.
 
-- [ ] **Ask AWS support where the contact list is held.** The
-      documentation makes the list part of the regional service but does
-      not say in so many words that its contents stay in the region. One
-      question in a support case settles it. If the answer is not
-      London, stop and rethink Phase 4 before building it.
+- [x] **Settle where the contact list is held.** No AWS page names
+      contact lists, so the first draft of this step was a support case.
+      It was not needed. AWS's Data Privacy FAQ commits that "You choose
+      the AWS Region(s) in which your content is stored" and that "We
+      will not move or replicate your content outside of your chosen AWS
+      Region(s), except as necessary to provide the services you
+      initiated, or as necessary to comply with the law". A contact list
+      is content under its definition. The SES documentation makes every
+      other part of the service regional, the account's own suppression
+      list among them, and nothing describes the contact list as global.
+      Decided on 6 October 2026 that this is enough to build Phase 4 on.
 
 ## Phase 2: DNS and credentials
 
-- [ ] **Add the SES records in `infra/dns.tf`,** beside the Resend ones,
+- [x] **Add the SES records in `infra/dns.tf`,** beside the Resend ones,
       under a comment saying they are SES in London: the three Easy DKIM
       CNAMEs, and the MX and SPF TXT for `mail`. The MX value is
       `feedback-smtp.eu-west-2.amazonses.com`. Leave every Resend and
@@ -175,12 +191,18 @@ screens.
       merge; check the run, then wait for SES to show the domain as
       verified.
 
-- [ ] **Create an AWS user that can only send from London.** One IAM
-      user for the backend, in the Quill Medical Emails account and not
-      the management one, with a policy allowing `ses:SendEmail` and the
-      contact-list actions Phase 4 needs, restricted to `eu-west-2` with
-      a condition on `aws:RequestedRegion`, and nothing else. Create its
-      access key.
+- [x] **Create an AWS user that can only send from London.** The IAM
+      user `quill-backend-ses`, in the Quill Medical Emails account and
+      not the management one, with one policy,
+      `quill-backend-ses-london`: `ses:SendEmail`, `ses:SendRawEmail` and
+      the six contact-list actions Phase 4 needs, each allowed only where
+      `aws:RequestedRegion` is `eu-west-2`. Made from the command line,
+      signed in with `aws login --profile quill-emails`, which keeps
+      short-lived credentials and no key on disk. Its access key was
+      created the same way and written straight into the local
+      `backend/.env`, never shown. Checked with that key: a send from
+      London is accepted, the same send from Ireland is refused, and so
+      is listing identities.
 
 - [ ] **Put the key in Secret Manager, never in a chat or a file.** Add
       `ses-access-key-id` and `ses-secret-access-key` to the secrets list
@@ -197,17 +219,22 @@ screens.
 This phase alone gets verification emails, password resets, invitations
 and certificates out of the United States.
 
-- [ ] **Add `boto3` to `backend/pyproject.toml`** and rebuild the test
+- [x] **Add `boto3` to `backend/pyproject.toml`** and rebuild the test
       image with `just utr`, because dependencies are baked into it.
+      `mypy --strict` needs its types as well: `boto3-stubs[sesv2]` in
+      the dev group, and in the mypy hook's own list in
+      `.pre-commit-config.yaml`, which has a separate environment. The
+      API schema hook imports the app from the host's Poetry
+      environment, so that needs `poetry install` after the change.
 
-- [ ] **Add the settings in `backend/app/config.py`:**
+- [x] **Add the settings in `backend/app/config.py`:**
       `SES_ACCESS_KEY_ID` and `SES_SECRET_ACCESS_KEY` as `SecretStr`,
       `SES_REGION` defaulting to `eu-west-2`, and `EMAIL_PROVIDER`, a
       `Literal["resend", "ses"]` defaulting to `resend`. The switch lets
       SES be turned on in one environment at a time and turned back off
       without a deploy of code.
 
-- [ ] **Send through SES in `backend/app/email_send.py`.** Everything in
+- [x] **Send through SES in `backend/app/email_send.py`.** Everything in
       `send_email` above the provider call stays as it is: the
       allow-list, the rate limit, the dry run, the sender header. Only
       the last part is Resend's: setting the key, building
@@ -218,9 +245,11 @@ and certificates out of the United States.
       (certificates) need it. Keep the two properties the Resend path
       has: strip the key of whitespace, and raise `EmailSendError` with
       the secret redacted and `from None`, so a key can never reach a
-      log.
+      log. And a third: a short wait. The Resend client gives three
+      seconds to connect, after "forgot password" hung for sixty; the
+      SES client is given the same, twenty to answer, and one retry.
 
-- [ ] **Test it** in `backend/tests/test_email_send.py`: the SES path
+- [x] **Test it** in `backend/tests/test_email_send.py`: the SES path
       sends to the pinned region, carries the attachment, the reply-to
       and the text body, redacts the secret on failure, and is not
       reached under `EMAIL_DRY_RUN` or for a recipient outside

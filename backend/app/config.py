@@ -12,6 +12,7 @@ The configuration is organized into sections:
 - VAPID keys for push notifications
 """
 
+from typing import Literal
 from urllib.parse import quote_plus
 
 from pydantic import (
@@ -331,6 +332,33 @@ class Settings(BaseSettings):
     RESEND_WEBHOOK_SECRET: SecretStr | None = Field(
         None,
         description="Signing secret for the Resend contact webhook",
+    )
+    # Amazon SES in London, which replaces Resend so that email data stays
+    # in the UK. See docs/docs/plans/2026-10-06-amazon-ses-email-plan.md.
+    EMAIL_PROVIDER: Literal["resend", "ses"] = Field(
+        "resend",
+        description=(
+            "Which service sends email. A switch, so SES can be turned on "
+            "in one environment at a time and off again without new code. "
+            "Removed once Resend is closed."
+        ),
+    )
+    SES_ACCESS_KEY_ID: SecretStr | None = Field(
+        None,
+        description="Access key id of the AWS user that sends through SES",
+    )
+    SES_SECRET_ACCESS_KEY: SecretStr | None = Field(
+        None,
+        description="Secret access key of the AWS user that sends "
+        "through SES",
+    )
+    SES_REGION: str = Field(
+        "eu-west-2",
+        description=(
+            "AWS region SES is used in. London: every SES resource is "
+            "per region, and one made elsewhere is email data outside "
+            "the UK."
+        ),
     )
     EMAIL_FROM: str = Field(
         "noreply@quillmedical.com",

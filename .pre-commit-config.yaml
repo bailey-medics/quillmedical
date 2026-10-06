@@ -49,6 +49,7 @@ repos:
             types-requests,
             types-pyyaml,
             types-Markdown,
+            "boto3-stubs[sesv2]",
           ]
 
   - repo: https://github.com/PyCQA/bandit

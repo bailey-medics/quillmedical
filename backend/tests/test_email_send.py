@@ -1,6 +1,8 @@
 """Tests for email sending module."""
 
 import logging
+from email import message_from_bytes, policy
+from email.message import EmailMessage
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -552,6 +554,236 @@ class TestTheApiKey:
         assert "[redacted]" in str(raised.value)
         assert raised.value.__cause__ is None
         assert raised.value.__suppress_context__
+
+
+def _ses_settings(mock_settings: MagicMock) -> None:
+    """Settings for a live send through SES, with working credentials."""
+    mock_settings.EMAIL_DRY_RUN = False
+    mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
+    mock_settings.EMAIL_PROVIDER = "ses"
+    mock_settings.EMAIL_FROM = "info@quill-medical.com"
+    mock_settings.SES_REGION = "eu-west-2"
+    mock_settings.SES_ACCESS_KEY_ID.get_secret_value.return_value = (
+        "test-key-id"
+    )
+    mock_settings.SES_SECRET_ACCESS_KEY.get_secret_value.return_value = (
+        "ses_secret_value"
+    )
+
+
+def _sent_message(mock_boto3: MagicMock) -> EmailMessage:
+    """The MIME message the mocked SES client was handed, parsed."""
+    send = mock_boto3.client.return_value.send_email
+    raw = send.call_args.kwargs["Content"]["Raw"]["Data"]
+    parsed = message_from_bytes(raw, policy=policy.default)
+    assert isinstance(parsed, EmailMessage)
+    return parsed
+
+
+class TestSendingThroughSes:
+    """``EMAIL_PROVIDER`` set to ``ses``: Amazon SES in London."""
+
+    def setup_method(self) -> None:
+        _rate_log.clear()
+
+    @patch("app.email_send.resend")
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_sends_from_the_pinned_region_and_not_through_resend(
+        self,
+        mock_settings: MagicMock,
+        mock_boto3: MagicMock,
+        mock_resend: MagicMock,
+    ) -> None:
+        """Every SES resource is per region. A client made anywhere but
+        London would be email data outside the UK."""
+        _ses_settings(mock_settings)
+
+        send_email(
+            to="student@example.com",
+            subject="Verify your email",
+            html_body="<p>Hello</p>",
+        )
+
+        client_call = mock_boto3.client.call_args
+        assert client_call.args == ("sesv2",)
+        assert client_call.kwargs["region_name"] == "eu-west-2"
+        send = mock_boto3.client.return_value.send_email
+        send.assert_called_once()
+        assert send.call_args.kwargs["FromEmailAddress"] == (
+            "info@quill-medical.com"
+        )
+        assert send.call_args.kwargs["Destination"] == {
+            "ToAddresses": ["student@example.com"]
+        }
+        mock_resend.Emails.send.assert_not_called()
+
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_html_alone_is_sent_as_an_html_message(
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
+    ) -> None:
+        _ses_settings(mock_settings)
+
+        send_email(
+            to="student@example.com",
+            subject="Verify your email",
+            html_body="<p>Hello</p>",
+        )
+
+        message = _sent_message(mock_boto3)
+        assert message["Subject"] == "Verify your email"
+        assert message["To"] == "student@example.com"
+        assert message["Reply-To"] is None
+        assert message.get_content_type() == "text/html"
+        assert "<p>Hello</p>" in message.get_content()
+
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_carries_the_text_body_the_reply_to_and_the_sender_name(
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
+    ) -> None:
+        _ses_settings(mock_settings)
+
+        send_email(
+            to="student@example.com",
+            subject="Your invitation",
+            html_body="<p>Rich</p>",
+            text_body="Plain",
+            reply_to="coordinator@example.org",
+            from_name="EoEETA via Quill Medical",
+        )
+
+        message = _sent_message(mock_boto3)
+        assert message["Reply-To"] == "coordinator@example.org"
+        assert "EoEETA via Quill Medical" in message["From"]
+        assert "info@quill-medical.com" in message["From"]
+        plain = message.get_body(preferencelist=("plain",))
+        rich = message.get_body(preferencelist=("html",))
+        assert plain is not None
+        assert rich is not None
+        assert plain.get_content().strip() == "Plain"
+        assert "<p>Rich</p>" in rich.get_content()
+
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_carries_an_attachment(
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
+    ) -> None:
+        """Why the message is raw MIME: a certificate is an attachment."""
+        _ses_settings(mock_settings)
+        pdf = b"%PDF-1.4 certificate"
+
+        send_email(
+            to="student@example.com",
+            subject="Your certificate",
+            html_body="<p>Attached</p>",
+            attachments=[Attachment(filename="certificate.pdf", content=pdf)],
+        )
+
+        attached = list(_sent_message(mock_boto3).iter_attachments())
+        assert len(attached) == 1
+        assert attached[0].get_filename() == "certificate.pdf"
+        assert attached[0].get_content_type() == "application/pdf"
+        assert attached[0].get_content() == pdf
+
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_trailing_newlines_on_the_credentials_are_ignored(
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
+    ) -> None:
+        _ses_settings(mock_settings)
+        mock_settings.SES_ACCESS_KEY_ID.get_secret_value.return_value = (
+            "test-key-id\n"
+        )
+        mock_settings.SES_SECRET_ACCESS_KEY.get_secret_value.return_value = (
+            "ses_secret_value\n"
+        )
+
+        send_email(to="a@example.com", subject="Hi", html_body="<p>x</p>")
+
+        kwargs = mock_boto3.client.call_args.kwargs
+        assert kwargs["aws_access_key_id"] == "test-key-id"
+        assert kwargs["aws_secret_access_key"] == "ses_secret_value"
+
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_a_failed_send_never_carries_the_credentials(
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
+    ) -> None:
+        _ses_settings(mock_settings)
+        mock_boto3.client.return_value.send_email.side_effect = RuntimeError(
+            "Refused for test-key-id signed with ses_secret_value"
+        )
+
+        with pytest.raises(EmailSendError) as raised:
+            send_email(to="a@example.com", subject="Hi", html_body="<p>x</p>")
+
+        assert "ses_secret_value" not in str(raised.value)
+        assert "test-key-id" not in str(raised.value)
+        assert "[redacted]" in str(raised.value)
+        assert raised.value.__cause__ is None
+        assert raised.value.__suppress_context__
+
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_a_failed_send_is_not_charged_to_the_allowance(
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
+    ) -> None:
+        _ses_settings(mock_settings)
+        mock_boto3.client.return_value.send_email.side_effect = RuntimeError(
+            "unreachable"
+        )
+
+        with pytest.raises(EmailSendError):
+            send_email(to="a@example.com", subject="Hi", html_body="<p>x</p>")
+
+        assert _rate_log.get("a@example.com", []) == []
+
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_missing_credentials_send_nothing_and_say_so(
+        self,
+        mock_settings: MagicMock,
+        mock_boto3: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        _ses_settings(mock_settings)
+        mock_settings.SES_SECRET_ACCESS_KEY = None
+
+        with caplog.at_level(logging.ERROR, logger="app.email_send"):
+            send_email(to="a@example.com", subject="Hi", html_body="<p>x</p>")
+
+        assert "SES_SECRET_ACCESS_KEY are not configured" in caplog.text
+        mock_boto3.client.assert_not_called()
+        assert _rate_log.get("a@example.com", []) == []
+
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_a_dry_run_does_not_reach_ses(
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
+    ) -> None:
+        _ses_settings(mock_settings)
+        mock_settings.EMAIL_DRY_RUN = True
+
+        send_email(to="a@example.com", subject="Hi", html_body="<p>x</p>")
+
+        mock_boto3.client.assert_not_called()
+
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_a_recipient_off_the_allow_list_does_not_reach_ses(
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
+    ) -> None:
+        _ses_settings(mock_settings)
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = "mark@example.org"
+
+        with pytest.raises(EmailNotAllowedError):
+            send_email(
+                to="stranger@example.com", subject="Hi", html_body="<p>x</p>"
+            )
+
+        mock_boto3.client.assert_not_called()
 
 
 class TestMaskingAnAddress:

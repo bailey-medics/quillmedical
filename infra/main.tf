@@ -73,6 +73,14 @@ module "secrets" {
       "resend-contacts-api-key",
       "resend-webhook-secret",
 
+      # Amazon SES in London, which replaces Resend: the access key of the
+      # AWS user that may send from eu-west-2 and nowhere else. Only the
+      # containers are made here, for the reason given above. The values
+      # go in by hand, then a second change mounts them. See
+      # docs/docs/plans/2026-10-06-amazon-ses-email-plan.md, Phase 2.
+      "ses-access-key-id",
+      "ses-secret-access-key",
+
       # Alerting. These reach Terraform from GitHub today, which makes GitHub
       # a custodian of a credential no workflow actually uses – it only relays
       # them. Creating the containers here is the first half of moving them:
