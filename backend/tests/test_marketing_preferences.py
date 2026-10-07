@@ -1,7 +1,5 @@
 """Recording whether somebody is sent news and updates."""
 
-from datetime import UTC, datetime
-
 import pytest
 from sqlalchemy import select
 
@@ -28,7 +26,6 @@ class TestANewAccount:
     def test_is_not_sent_marketing_until_somebody_says_so(self, test_user):
         """The default is off: only registration switches it on."""
         assert test_user.marketing_emails is False
-        assert test_user.marketing_synced_at is None
 
 
 class TestAChange:
@@ -50,31 +47,19 @@ class TestAChange:
         assert row.wording_version == MARKETING_WORDING_VERSION
         assert row.created_at is not None
 
-    def test_clears_the_sync_mark(self, db_session, test_user):
-        """Resend now holds the old answer, so it has to be told again."""
-        test_user.marketing_synced_at = datetime.now(UTC)
-        db_session.commit()
-
-        set_marketing_preference(
-            db_session, test_user, wants=True, source="settings"
-        )
-        db_session.commit()
-
-        assert test_user.marketing_synced_at is None
-
     def test_each_change_is_its_own_row(self, db_session, test_user):
         set_marketing_preference(
             db_session, test_user, wants=True, source="registration"
         )
         set_marketing_preference(
-            db_session, test_user, wants=False, source="resend"
+            db_session, test_user, wants=False, source="unsubscribe_link"
         )
         db_session.commit()
 
         rows = _changes(db_session, test_user)
         assert [(r.wants_marketing, r.source) for r in rows] == [
             (True, "registration"),
-            (False, "resend"),
+            (False, "unsubscribe_link"),
         ]
         assert rows[1].wording_version is None
         assert test_user.marketing_emails is False
@@ -82,10 +67,6 @@ class TestAChange:
 
 class TestAnUnchangedAnswer:
     def test_writes_nothing(self, db_session, test_user):
-        synced = datetime.now(UTC)
-        test_user.marketing_synced_at = synced
-        db_session.commit()
-
         changed = set_marketing_preference(
             db_session, test_user, wants=False, source="settings"
         )
@@ -93,7 +74,6 @@ class TestAnUnchangedAnswer:
 
         assert changed is False
         assert _changes(db_session, test_user) == []
-        assert test_user.marketing_synced_at is not None
 
     def test_a_repeat_keeps_the_first_row(self, db_session, test_user):
         set_marketing_preference(

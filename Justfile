@@ -329,20 +329,6 @@ docker-daemon-start:
     echo "Docker is running."
 
 
-alias ebx := email-export
-# Export the newsletter layout for Resend, as email-broadcast-<theme>.html
-email-export theme="quill":
-    #!/usr/bin/env bash
-    {{initialise}} "email-export"
-    # Rendered in the backend unit-test container, printed, and written here
-    # at the repository root (gitignored). Paste the file into a Resend
-    # broadcast's HTML editor, then replace the marked campaign content.
-    out="email-broadcast-{{theme}}.html"
-    docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
-        run --rm -T backend sh -lc "python -m app.email.broadcast {{theme}}" > "$out"
-    echo "Wrote $out"
-
-
 alias ep := email-preview
 # Render every email with sample values, for the Storybook email previews
 email-preview:
@@ -587,30 +573,6 @@ preview-certificate bank="colonoscopy-optical-diagnosis-test":
     docker exec quill_backend python -m scripts.preview_certificate --bank "{{bank}}"
     docker cp quill_backend:/tmp/certificate-preview.pdf .
     open certificate-preview.pdf
-
-
-alias mrc := marketing-reconcile
-# Make Quill's marketing preferences match Resend (dev stack; production runs it weekly)
-marketing-reconcile:
-    #!/usr/bin/env bash
-    {{initialise}} "marketing-reconcile"
-    # Needs the live stack's database, so it carries the worktree guard.
-    # In production the same code runs as the admin job's
-    # `marketing-reconcile` action, from a scheduled workflow.
-    just _worktree-guard quill_backend
-    docker exec quill_backend python -m app.marketing.reconcile
-
-
-alias ms := marketing-sync
-# Send unsynced marketing preferences to Resend (dev stack; retry after a failure)
-marketing-sync:
-    #!/usr/bin/env bash
-    {{initialise}} "marketing-sync"
-    # Needs the live stack's database, so it carries the worktree guard.
-    # In production the same code runs as the admin job's
-    # `marketing-sync` action.
-    just _worktree-guard quill_backend
-    docker exec quill_backend python -m app.marketing.sync
 
 
 alias m := migrate

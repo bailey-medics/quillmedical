@@ -274,29 +274,6 @@ def run_migrations() -> int:
         return 1
 
 
-def marketing_sync() -> int:
-    """Tell Resend about everybody it has not yet been told about.
-
-    The retry for a marketing preference that could not reach Resend when
-    it was made. See ``app.marketing.sync``.
-    """
-    from app.marketing.sync import main as sync_main
-
-    return sync_main()
-
-
-def marketing_reconcile() -> int:
-    """Make Quill match Resend, for anybody the two disagree about.
-
-    The weekly check behind the webhook: a change made on Resend's side
-    that never reached Quill is found and recorded. See
-    ``app.marketing.reconcile``.
-    """
-    from app.marketing.reconcile import main as reconcile_main
-
-    return reconcile_main()
-
-
 def accessibility_reminder() -> int:
     """Email the yearly reminder to review the accessibility statement.
 
@@ -613,10 +590,6 @@ def delete_passport() -> int:
 
 
 ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
-    "marketing-reconcile": (
-        marketing_reconcile,
-        "Make Quill's marketing preferences match Resend (weekly)",
-    ),
     "accessibility-reminder": (
         accessibility_reminder,
         "Email the accessibility statement review reminder",
@@ -624,10 +597,6 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "send-newsletter": (
         send_newsletter,
         "Send a newsletter campaign (a dry run without CONFIRM)",
-    ),
-    "marketing-sync": (
-        marketing_sync,
-        "Send unsynced marketing preferences to Resend",
     ),
     "check-competency-seeding": (
         check_competency_seeding,

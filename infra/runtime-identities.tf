@@ -30,18 +30,10 @@ locals {
       CORE_DB_PASSWORD = "core-db-password"
       VAPID_PRIVATE    = "vapid-private"
       RESEND_API_KEY   = "resend-api-key"
-      # The mailing list: a second Resend key, allowed to manage
-      # contacts, and the signing secret of the webhook Resend calls when
-      # a contact unsubscribes. Each was mounted only once its secret had
-      # a version, which Cloud Run insists on. The backend alone gets the
-      # webhook secret: the admin job receives no webhooks. See
-      # docs/docs/plans/2026-10-03-marketing-opt-out-plan.md, Phase 1.
-      RESEND_CONTACTS_API_KEY = "resend-contacts-api-key"
-      RESEND_WEBHOOK_SECRET   = "resend-webhook-secret"
       # Amazon SES in London, which replaces Resend: the access key of
       # the AWS user that may send from eu-west-2 and nowhere else.
-      # Mounted once each secret had a version, as above. Nothing reads
-      # them until EMAIL_PROVIDER is set to "ses". See
+      # Mounted once each secret had a version, which Cloud Run insists
+      # on. See
       # docs/docs/plans/2026-10-06-amazon-ses-email-plan.md, Phase 2.
       SES_ACCESS_KEY_ID     = "ses-access-key-id"
       SES_SECRET_ACCESS_KEY = "ses-secret-access-key"
@@ -64,21 +56,10 @@ locals {
   admin_secret_env_vars = {
     CORE_DB_PASSWORD = "core-db-password"
     JWT_SECRET       = "jwt-secret"
-    # For the `marketing-sync` action, which retries telling Resend about
-    # people it could not be told about at the time.
-    RESEND_CONTACTS_API_KEY = "resend-contacts-api-key"
     # For the `send-newsletter` action, which sends through Amazon SES
     # in London as the backend does.
     SES_ACCESS_KEY_ID     = "ses-access-key-id"
     SES_SECRET_ACCESS_KEY = "ses-secret-access-key"
-  }
-
-  # Where the mailing list is in Resend. Identifiers, not secrets: they
-  # name the "Quill Medical" segment and the "Newsletter" topic, and are
-  # no use without the key above. One list, shared by every environment.
-  resend_newsletter_env_vars = {
-    RESEND_NEWSLETTER_SEGMENT_ID = "1ab63c23-c71b-4dfc-982c-33ffe995eb73"
-    RESEND_NEWSLETTER_TOPIC_ID   = "c386f074-318f-4134-bc9e-0ab123bea4e5"
   }
 
   transcode_secret_env_vars = {
