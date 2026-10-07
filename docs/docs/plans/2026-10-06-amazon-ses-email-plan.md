@@ -832,6 +832,22 @@ mailing list, and are stored as one. This phase does not wait on Phase
       a newsletter. Whether the import needs that as a fourth column is
       not decided.
 
+      **The routes are built; the page is the step above's.** Two, both
+      under `/api/newsletter`: `mailing-list/check`, which changes
+      nothing, and `mailing-list/import`, which takes the file again
+      with a fingerprint the check gave. The fingerprint covers the
+      file and what importing it would do, so a different file, or the
+      same one after the mailing list has changed, is refused. Three
+      things came from looking at the shape of the real export, its
+      headings and counts only, never a row. **The columns are found by
+      their headings**, not their order, and the address column may be
+      headed "Subscriber", which is what MailerLite calls it. **A first
+      name and a last name are joined** into the one name. **A file
+      with no opt in or out column is taken as everybody opted in**,
+      and the check says so plainly: the real export has no such column,
+      being a list of current subscribers. Where the column is there,
+      it is still read strictly.
+
 - [ ] **Send the first newsletter in batches.** Amazon watches how many
       emails bounce and how many are reported as spam, and pauses an
       account that goes over its limits. The SES account dates from 6
