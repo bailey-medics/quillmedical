@@ -6,7 +6,7 @@ import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
-import CompetencySummary from "./CompetencySummary";
+import CompetencySummary, { NO_FRAMEWORK_GROUP } from "./CompetencySummary";
 import { competencies } from "./fixtures";
 
 describe("CompetencySummary", () => {
@@ -82,6 +82,55 @@ describe("CompetencySummary", () => {
       );
 
       expect(onSelect).toHaveBeenCalledWith("perform_bronchoscopy");
+    });
+  });
+
+  describe("Grouped by framework", () => {
+    const row = {
+      status: "signed_off" as const,
+      level: null,
+      signed_on: "2026-03-14",
+      signed_off_by: "Dr Amara Okonkwo",
+      expires_on: null,
+      sign_off: "2026-03-14-x",
+      previous_sign_offs: [],
+      logbook_entries: 0,
+      certificates: [],
+    };
+
+    it("puts each competency under the framework it belongs to", () => {
+      renderWithMantine(
+        <CompetencySummary
+          competencies={[
+            { ...row, id: "perform_cannulation", name: "Insert a cannula" },
+            {
+              ...row,
+              id: "deliver_palliative_radiotherapy",
+              name: "Deliver palliative radiotherapy",
+            },
+          ]}
+        />,
+      );
+
+      expect(screen.getByText("General clinical skills")).toBeInTheDocument();
+      expect(
+        screen.getByText("Oncology (proof of concept)"),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps a competency in no framework, under its own heading", () => {
+      // Retired from its framework since, or from a catalogue this
+      // build no longer has. The record is the holder's all the same.
+      renderWithMantine(
+        <CompetencySummary
+          competencies={[
+            { ...row, id: "not_in_the_catalogue", name: "An older skill" },
+          ]}
+        />,
+      );
+
+      expect(screen.getByText(NO_FRAMEWORK_GROUP)).toBeInTheDocument();
+      expect(screen.getByText("An older skill")).toBeInTheDocument();
     });
   });
 });

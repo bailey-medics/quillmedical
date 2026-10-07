@@ -29,9 +29,9 @@ import { api } from "@/lib/api";
 import { appFeatureFlags } from "@/lib/featureFlags";
 import { useHasFeature } from "@/lib/features";
 import { useHasCompetency } from "@/lib/cbac/hooks";
-import PassportSpecialtyCard from "@/components/passport/PassportSpecialtyCard";
-import { fetchMyPassport, setPassportSpecialties } from "@lib/passport";
-import { useSpecialtyChoices } from "@lib/passport/useSpecialtyChoices";
+import PassportFrameworksCard from "@/components/passport/PassportFrameworksCard";
+import { fetchMyPassport, setPassportFrameworks } from "@lib/passport";
+import { useFrameworkChoices } from "@lib/passport/useFrameworkChoices";
 import { hasOptedOut, setOptedOut } from "@/lib/page-views/optOut";
 import { useInstallRoute } from "@lib/pwa/useInstallRoute";
 import { layoutTokens } from "@/theme";
@@ -109,7 +109,7 @@ export default function Settings() {
     "idle" | "busy" | "ok" | "denied" | "err"
   >("idle");
 
-  // The passport specialty card, for somebody who has a passport. Asked
+  // The passport frameworks card, for somebody who has a passport. Asked
   // only of those who could reach one, the same test the side navigation
   // uses; a 404 then means they have not created one, and there is no
   // card rather than an error.
@@ -117,12 +117,12 @@ export default function Settings() {
   const canReachPassport = useHasCompetency("assess_clinician_passport");
   const [passport, setPassport] = useState<{
     id: string;
-    specialties: string[];
+    frameworks: string[];
     canWrite: boolean;
   } | null>(null);
-  const [specialtyError, setSpecialtyError] = useState<string | undefined>();
+  const [frameworksError, setFrameworksError] = useState<string | undefined>();
   // Fetched only once the card is showing, for somebody with a passport.
-  const specialtyOptions = useSpecialtyChoices(passport !== null);
+  const frameworkOptions = useFrameworkChoices(passport !== null);
 
   useEffect(() => {
     if (!passportEnabled || !canReachPassport) return;
@@ -133,7 +133,7 @@ export default function Settings() {
         if (cancelled) return;
         setPassport({
           id: detail.passport.passport_id,
-          specialties: detail.passport.specialties.map((s) => s.id),
+          frameworks: (detail.passport.frameworks ?? []).map((f) => f.id),
           canWrite: detail.entitlement?.can_write !== false,
         });
       })
@@ -146,20 +146,22 @@ export default function Settings() {
     };
   }, [passportEnabled, canReachPassport]);
 
-  function saveSpecialties(next: string[]) {
+  function saveFrameworks(next: string[]) {
     if (passport === null) return;
-    const previous = passport.specialties;
+    const previous = passport.frameworks;
 
     // Shown at once, and put back if the save fails, so the field never
-    // claims a specialty the record does not hold.
-    setPassport({ ...passport, specialties: next });
-    setSpecialtyError(undefined);
+    // claims a framework the record does not hold.
+    setPassport({ ...passport, frameworks: next });
+    setFrameworksError(undefined);
 
-    setPassportSpecialties(passport.id, next).catch(() => {
+    setPassportFrameworks(passport.id, next).catch(() => {
       setPassport((current) =>
-        current ? { ...current, specialties: previous } : current,
+        current ? { ...current, frameworks: previous } : current,
       );
-      setSpecialtyError("Your specialty could not be saved. Please try again.");
+      setFrameworksError(
+        "Your frameworks could not be saved. Please try again.",
+      );
     });
   }
 
@@ -324,12 +326,12 @@ export default function Settings() {
         {/* Last: only passport holders see it, so it follows the cards
             everybody has rather than shifting them around */}
         {passport && (
-          <PassportSpecialtyCard
-            options={specialtyOptions}
-            value={passport.specialties}
-            onChange={saveSpecialties}
+          <PassportFrameworksCard
+            options={frameworkOptions}
+            value={passport.frameworks}
+            onChange={saveFrameworks}
             disabled={!passport.canWrite}
-            error={specialtyError}
+            error={frameworksError}
           />
         )}
       </SimpleGrid>

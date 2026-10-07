@@ -57,6 +57,7 @@ from pydantic import ValidationError
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.cbac.competencies import get_competency_details
 from app.config import settings
 from app.db import get_core_db
 from app.deps import has_competency
@@ -1635,7 +1636,7 @@ def request_sign_off(
     # must not reach an assessor's inbox. Nor may one the service would
     # then refuse, such as a scaled competency asked for with no level,
     # which is what an assessor was once emailed about on the live site.
-    _assessable_refs([competency_id])
+    _offered_refs(store, row.id, [competency_id])
     requested_level = _checked_request(
         competency_id, body.level_id, body.scope_id
     )
@@ -2183,6 +2184,47 @@ def _assessable_refs(ids_given: list[str]) -> list[CompetencyRef]:
         raise HTTPException(400, str(error)) from None
 
 
+#: Said to a holder asking to record something outside their frameworks.
+#: Plain English, and it says what to do about it.
+OUTSIDE_FRAMEWORKS_MESSAGE = (
+    "That is not in a framework you work to. Add its framework under "
+    "Clinician passport in Settings, then try again."
+)
+
+
+def _offered_refs(
+    store: PassportStore, passport_id: str, ids_given: list[str]
+) -> list[CompetencyRef]:
+    """Resolve competency ids for a record being created in a passport.
+
+    Each must be one the passport may record, as :func:`_assessable_refs`
+    requires, and must belong to a framework the holder works to. A
+    passport offers its holder the competencies in their frameworks and
+    no others, and there is no way round: somebody who wants one that is
+    not there adds its framework first.
+
+    Only on creating. Amending keeps the looser check and reading never
+    checks, so dropping a framework hides and freezes nothing already
+    recorded under it.
+
+    Raises:
+        HTTPException: 404 if any id is not in the catalogue, 400 if one
+            is not assessable or is outside the holder's frameworks.
+    """
+    refs = _assessable_refs(ids_given)
+    working_to = {
+        framework.id
+        for framework in _read_profile(store, passport_id).frameworks
+    }
+
+    for ref in refs:
+        entry = get_competency_details(ref.id)
+        if entry is None or entry.framework_id not in working_to:
+            raise HTTPException(400, OUTSIDE_FRAMEWORKS_MESSAGE)
+
+    return refs
+
+
 def _attachments(
     blobs: BlobStore | GcsBlobStore,
     passport_id: str,
@@ -2400,7 +2442,7 @@ def add_certificate(
         issuer=body.issuer,
         awarded_on=body.awarded_on,
         expires_on=body.expires_on,
-        competencies=_assessable_refs(body.competencies),
+        competencies=_offered_refs(store, row.id, body.competencies),
         description=body.description,
         attachments=_attachments(blobs, row.id, body.attachments),
     )
@@ -2788,7 +2830,7 @@ def add_logbook_entry(
     lives inside the file.
     """
     row = _require_writer(db, passport_id, user, store)
-    _assessable_refs([competency_id])
+    _offered_refs(store, row.id, [competency_id])
     scope = _logbook_scope(competency_id, body.scope_id)
 
     # Before the entry is written, for the reason a sign-off request
@@ -3072,7 +3114,7 @@ def add_reflection(
     reflection = Reflection(
         title=body.title,
         written_on=body.written_on,
-        competencies=_assessable_refs(body.competencies),
+        competencies=_offered_refs(store, row.id, body.competencies),
         attachments=_attachments(blobs, row.id, body.attachments),
     )
 
@@ -3238,7 +3280,7 @@ def add_cpd_entry(
         title=body.title,
         activity_type=body.activity_type,
         points=body.points,
-        competencies=_assessable_refs(body.competencies),
+        competencies=_offered_refs(store, row.id, body.competencies),
         certificate=body.certificate,
         notes=body.notes,
         attachments=_attachments(blobs, row.id, body.attachments),

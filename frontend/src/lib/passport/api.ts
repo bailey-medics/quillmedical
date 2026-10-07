@@ -57,6 +57,7 @@ import type {
   ReflectionInput,
   SignOff,
   SignOffDeclineInput,
+  FrameworkChoice,
   LogbookConfirmation,
   LogbookConfirmationAnswer,
   SignOffInput,
@@ -81,6 +82,7 @@ export const PASSPORT_PATHS = [
   "/passport/assessor-invites/accept",
   "/passport/assessor-invites/preview",
   "/passport/assessors/{assessor_user_id}/membership",
+  "/passport/frameworks",
   "/passport/requests/inbox",
   "/passport/requests/logbook-confirmations/{request_id}",
   "/passport/specialties",
@@ -110,6 +112,7 @@ export const PASSPORT_PATHS = [
   "/passport/{passport_id}/sign-offs/{signoff_id}/sign-off",
   "/passport/{passport_id}/sign-offs/{signoff_id}/verify",
   "/passport/{passport_id}/sign-offs/{signoff_id}/withdraw",
+  "/passport/{passport_id}/frameworks",
   "/passport/{passport_id}/specialties",
 ] as const;
 
@@ -131,13 +134,37 @@ function segment(value: string | number): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Creates the caller's own passport.
+ * Creates the caller's own passport, with the frameworks they work to.
  *
- * `specialties` orders their competency picker; an empty list is
- * Generic, meaning no specialty order.
+ * The passport offers a holder the competencies in their frameworks and
+ * no others, so one created with none can record nothing until some are
+ * chosen in Settings.
  */
-export function createPassport(specialties: string[] = []): Promise<Passport> {
-  return api.post<Passport>("/passport", { specialties });
+export function createPassport(frameworks: string[] = []): Promise<Passport> {
+  return api.post<Passport>("/passport", { frameworks });
+}
+
+/**
+ * Changes the frameworks the holder works to. Dropping one removes
+ * nothing recorded under it.
+ *
+ * Needs the right to write, like any other change to the record.
+ */
+export function setPassportFrameworks(
+  passportId: string,
+  frameworks: string[],
+): Promise<Passport> {
+  return api.put<Passport>(`/passport/${segment(passportId)}/frameworks`, {
+    frameworks,
+  });
+}
+
+/**
+ * Every framework the caller may choose, in the order to offer them: their
+ * organisations' lead frameworks first, then the rest alphabetically.
+ */
+export function fetchPassportFrameworks(): Promise<FrameworkChoice[]> {
+  return api.get<FrameworkChoice[]>("/passport/frameworks");
 }
 
 /**

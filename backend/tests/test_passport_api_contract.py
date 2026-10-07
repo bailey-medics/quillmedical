@@ -48,6 +48,10 @@ from tests.competencies import clear, hold, lapse
 from tests.registrations import declare
 
 COMPETENCY = "prescribe_sact"
+# The frameworks a test holder works to. A passport offers the
+# competencies in its holder's frameworks and no others, so one made with
+# none could record nothing.
+WORKING_TO = {"frameworks": ["clinical", "oncology"]}
 LEVEL = "review_and_authorise"
 
 #: Every passport path, as the router declares them. Listed so a new
@@ -223,7 +227,7 @@ def passport(
     org: OrgUnit,
 ) -> str:
     client = _login(test_client, "holder")
-    response = client.post("/api/passport")
+    response = client.post("/api/passport", json=WORKING_TO)
     assert response.status_code == 201, response.text
     return str(response.json()["passport_id"])
 
@@ -297,7 +301,7 @@ class TestTheAdminRow:
         """
         client = _login(test_client, "orgadmin")
 
-        response = client.post("/api/passport")
+        response = client.post("/api/passport", json=WORKING_TO)
 
         # They get their own, not the holder's.
         assert response.status_code == 201

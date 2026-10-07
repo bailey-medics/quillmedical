@@ -19,7 +19,7 @@ import { GuideLink } from "@/components/guides";
 import PageHeader from "@/components/page-header";
 import ActionCard from "@/components/action-card";
 import AddButton from "@/components/button/AddButton";
-import SpecialtyField from "@/components/passport/SpecialtyField";
+import FrameworkField from "@/components/passport/FrameworkField";
 import PassportRecordTable from "@/components/passport/PassportRecordTable";
 import StateMessage from "@/components/message-cards/StateMessage";
 import ErrorState from "@/components/error-state/ErrorState";
@@ -45,7 +45,7 @@ import {
 } from "@lib/passport";
 import type { PassportRecord } from "@lib/passport";
 import { entitlementWarning } from "@lib/passport/entitlementWarning";
-import { useSpecialtyChoices } from "@lib/passport/useSpecialtyChoices";
+import { useFrameworkChoices } from "@lib/passport/useFrameworkChoices";
 import type { PassportDetail } from "@lib/passport";
 
 /**
@@ -142,12 +142,13 @@ export function Component() {
   // page on the way to your own.
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  // Asked before the passport is made, with nothing preselected: `null`
-  // until answered, `[]` for Generic. Only orders the competency picker.
-  const [specialties, setSpecialties] = useState<string[] | null>(null);
+  // Asked before the passport is made, with nothing preselected. The
+  // passport offers the competencies in these and no others, so one made
+  // with none could record nothing: at least one is needed to create it.
+  const [frameworks, setFrameworks] = useState<string[]>([]);
   // Fetched only once the create step is showing, the one place here
   // that asks the question.
-  const specialtyOptions = useSpecialtyChoices(absent);
+  const frameworkOptions = useFrameworkChoices(absent);
   // Every record in the passport, newest first, once the passport is
   // known. Null while loading; the table shows its own skeleton.
   const [records, setRecords] = useState<PassportRecord[] | null>(null);
@@ -245,12 +246,12 @@ export function Component() {
   }, [passportId, competencies]);
 
   const handleCreate = () => {
-    if (specialties === null) return;
+    if (frameworks.length === 0) return;
 
     setCreating(true);
     setError(null);
 
-    createPassport(specialties)
+    createPassport(frameworks)
       .then(() => applyResult(fetchMyPassport(), () => false))
       .catch(() => {
         setError("Your passport could not be created. Please try again.");
@@ -312,18 +313,18 @@ export function Component() {
             " and track your progress over time."
           }
         />
-        <SpecialtyField
-          options={specialtyOptions}
-          value={specialties}
-          onChange={setSpecialties}
-          description="Choose one or more"
+        <FrameworkField
+          options={frameworkOptions}
+          value={frameworks}
+          onChange={setFrameworks}
+          description="Choose one or more. Your passport offers the competencies in these, and you can change them later in Settings."
           required
         />
         <Group justify="flex-end">
           <AddButton
             label="Create my passport"
             onClick={handleCreate}
-            disabled={creating || specialties === null}
+            disabled={creating || frameworks.length === 0}
           />
         </Group>
       </Stack>
@@ -344,6 +345,21 @@ export function Component() {
           icon={<IconAlertTriangle />}
           title={warning.title}
           description={warning.description}
+        />
+      )}
+      {/* A passport offers the competencies in its holder's frameworks
+          and no others. With none chosen nothing can be recorded, and
+          every passport made before frameworks existed has none, so it
+          says where to choose them. */}
+      {passport && (passport.passport.frameworks ?? []).length === 0 && (
+        <StateMessage
+          colour="update"
+          icon={<IconFileText />}
+          title="Choose the frameworks you work to"
+          description={
+            "Your passport offers the competencies in your frameworks. " +
+            "Choose them under Clinician passport in Settings."
+          }
         />
       )}
       {/* The ways in come first, and the list of records after.

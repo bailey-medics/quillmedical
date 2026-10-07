@@ -100,6 +100,11 @@ function detailWith(
       holder_name: "Dr Mark Bailey",
       registrations: [],
       specialties: [],
+      // The picker lists the competencies in these and no others.
+      frameworks: [
+        { id: "clinical", name: "General clinical skills" },
+        { id: "oncology", name: "Oncology (proof of concept)" },
+      ],
       created_at: "2026-09-10",
       head_commit: null,
     },
@@ -321,14 +326,14 @@ describe("PassportSignOffsPage", () => {
     expect(screen.queryByText(/Request sign-off for/)).not.toBeInTheDocument();
   });
 
-  it("lists the holder's specialty competencies first", async () => {
+  it("lists only the competencies in the holder's frameworks", async () => {
     const user = userEvent.setup();
     const detail = detailWith([]);
     fetchMyPassport.mockResolvedValue({
       ...detail,
       passport: {
         ...detail.passport,
-        specialties: [{ id: "oncology", name: "Oncology" }],
+        frameworks: [{ id: "clinical", name: "General clinical skills" }],
       },
     });
     renderWithRouter(<PassportSignOffsPage />);
@@ -338,11 +343,32 @@ describe("PassportSignOffsPage", () => {
     );
     await user.click(await screen.findByRole("combobox"));
 
-    // The group headings, inside the dropdown: the page names the holder's
-    // specialty elsewhere too
+    // The framework's own heading, and nothing from one not chosen.
     const listbox = await screen.findByRole("listbox");
-    expect(within(listbox).getByText("Oncology")).toBeInTheDocument();
-    expect(within(listbox).getByText("Others")).toBeInTheDocument();
+    expect(
+      within(listbox).getByText("General clinical skills"),
+    ).toBeInTheDocument();
+    expect(
+      within(listbox).queryByText("Oncology (proof of concept)"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("lists nothing, and says where to go, with no framework chosen", async () => {
+    const user = userEvent.setup();
+    const detail = detailWith([]);
+    fetchMyPassport.mockResolvedValue({
+      ...detail,
+      passport: { ...detail.passport, frameworks: [] },
+    });
+    renderWithRouter(<PassportSignOffsPage />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Ask for a sign-off" }),
+    );
+
+    expect(
+      await screen.findByText(/Choose the frameworks you work to in Settings/),
+    ).toBeInTheDocument();
   });
 
   it("refuses the holder's own address before anything is sent", async () => {

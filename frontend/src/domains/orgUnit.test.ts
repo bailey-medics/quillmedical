@@ -241,6 +241,34 @@ describe("what a place carries", () => {
     expect(await orgUnits.passportSpecialties(6)).toEqual([]);
   });
 
+  it("reads the lead passport frameworks, in order", async () => {
+    mocked.get.mockResolvedValue({ framework_ids: ["oncology"] });
+
+    expect(await orgUnits.passportFrameworks(6)).toEqual(["oncology"]);
+    expect(mocked.get).toHaveBeenCalledWith("/org-units/6/passport-frameworks");
+  });
+
+  it("reads no lead frameworks from a reply without the list", async () => {
+    mocked.get.mockResolvedValue({});
+
+    expect(await orgUnits.passportFrameworks(6)).toEqual([]);
+  });
+
+  it("replaces the lead passport frameworks", async () => {
+    mocked.put.mockResolvedValue({ framework_ids: ["clinical", "oncology"] });
+
+    const saved = await orgUnits.setPassportFrameworks(6, [
+      "clinical",
+      "oncology",
+    ]);
+
+    expect(mocked.put).toHaveBeenCalledWith(
+      "/org-units/6/passport-frameworks",
+      { framework_ids: ["clinical", "oncology"] },
+    );
+    expect(saved).toEqual(["clinical", "oncology"]);
+  });
+
   it("reads the passport cover and how many it covers", async () => {
     mocked.get.mockResolvedValue({ enabled: true, covered_count: 4 });
 

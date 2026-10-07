@@ -9,7 +9,7 @@ you, and you can download all of it at any time.
 
 1. In the side menu, choose [**Passport**](/passport). The page is called **My passport**.
    ![The My passport page before a passport has been created](start-your-passport/create.png)
-2. Under **Your specialty**, choose one or more. Choose **Generic** if none fits. This only decides which competencies are listed first when you pick one, and you can change it later.
+2. Under **Frameworks you work to**, choose one or more. A framework is a published set of competencies, such as a national curriculum or your own hospital's sign-off sheet. Type to find one by its name or its publisher, or choose a **Specialty** above to narrow the list. Your passport offers the competencies in the frameworks you choose, and you can change them later.
 3. Press **Create my passport**. The page changes to your passport.
 
 ## Find your way round
@@ -28,10 +28,14 @@ Your passport has a card for each of its six parts:
 Below the cards, **Records** lists everything in your passport, newest
 first. Choose a row to open it.
 
-## Change your specialty later
+## Change your frameworks later
 
 1. Choose [**Settings**](/settings) in the side menu.
-2. On the **Clinician passport** card, change **Specialities**. It is saved as you change it.
+2. On the **Clinician passport** card, change **Frameworks you work to**. It is saved as you change it.
+
+Add a framework when a competency you want is not offered: it belongs to a
+framework you have not chosen. Removing a framework keeps everything you
+have already recorded under it.
 
 ## If your passport is read-only
 

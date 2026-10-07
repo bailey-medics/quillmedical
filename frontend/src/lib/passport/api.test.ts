@@ -27,6 +27,8 @@ import {
   fetchLogbookConfirmation,
   amendReflection,
   createPassport,
+  fetchPassportFrameworks,
+  setPassportFrameworks,
   declineSignOff,
   fetchCertificates,
   fetchAllCpd,
@@ -98,6 +100,8 @@ describe("passport paths", () => {
       "/api/passport/{passport_id}/cpd/{year}",
       "/api/passport/{passport_id}/cpd/{year}/{stem}",
       "/api/passport/requests/logbook-confirmations/{request_id}",
+      "/api/passport/frameworks",
+      "/api/passport/{passport_id}/frameworks",
       "/api/passport/{passport_id}/logbook",
       "/api/passport/{passport_id}/logbook/{competency_id}",
       "/api/passport/{passport_id}/logbook/{competency_id}/{stem}",
@@ -121,16 +125,29 @@ describe("passport paths", () => {
 });
 
 describe("passport", () => {
-  it("creates a Generic passport when no specialty is given", async () => {
+  it("creates a passport with no frameworks when none is given", async () => {
     await createPassport();
-    expect(api.post).toHaveBeenCalledWith("/passport", { specialties: [] });
+    expect(api.post).toHaveBeenCalledWith("/passport", { frameworks: [] });
   });
 
-  it("creates a passport with the chosen specialties", async () => {
+  it("creates a passport with the frameworks the holder works to", async () => {
     await createPassport(["oncology"]);
     expect(api.post).toHaveBeenCalledWith("/passport", {
-      specialties: ["oncology"],
+      frameworks: ["oncology"],
     });
+  });
+
+  it("fetches the frameworks in the order to offer them", async () => {
+    await fetchPassportFrameworks();
+    expect(api.get).toHaveBeenCalledWith("/passport/frameworks");
+  });
+
+  it("changes the frameworks the holder works to", async () => {
+    await setPassportFrameworks(PASSPORT_ID, ["clinical"]);
+    expect(api.put).toHaveBeenCalledWith(
+      `/passport/${PASSPORT_ID}/frameworks`,
+      { frameworks: ["clinical"] },
+    );
   });
 
   it("fetches the specialties in the order to offer them", async () => {
