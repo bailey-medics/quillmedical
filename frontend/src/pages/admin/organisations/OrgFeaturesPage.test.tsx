@@ -392,15 +392,15 @@ describe("OrgFeaturesPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  describe("the passport lead specialties card", () => {
-    // The org_unit, and its lead specialties, answered by URL
+  describe("the passport lead frameworks card", () => {
+    // The org_unit, and its lead frameworks, answered by URL
     function getWithLeads(features: string[], leads: string[]) {
       return vi
         .spyOn(apiLib.api, "get")
         .mockImplementation((url: string) =>
           Promise.resolve(
-            url.endsWith("/passport-specialties")
-              ? { specialty_ids: leads }
+            url.endsWith("/passport-frameworks")
+              ? { framework_ids: leads }
               : { ...mockOrg, features },
           ),
         );
@@ -424,25 +424,27 @@ describe("OrgFeaturesPage", () => {
       renderPage();
 
       await screen.findByRole("heading", { name: "Features" });
-      expect(
-        screen.queryByText("Passport specialties"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Passport frameworks")).not.toBeInTheDocument();
     });
 
     it("shows the saved leads while the passport is on", async () => {
       const get = getWithLeads(["passport"], ["oncology"]);
       const { container } = renderPage();
 
-      await screen.findByText("Passport specialties");
-      await waitFor(() => expect(pills(container)).toEqual(["Oncology"]));
-      expect(get).toHaveBeenCalledWith("/org-units/3/passport-specialties");
+      await screen.findByText("Passport frameworks");
+      await waitFor(() =>
+        expect(pills(container)).toEqual([
+          "Oncology (proof of concept) (Quill Medical, 2026)",
+        ]),
+      );
+      expect(get).toHaveBeenCalledWith("/org-units/3/passport-frameworks");
     });
 
     it("sits above the save and cancel buttons", async () => {
       getWithLeads(["passport"], ["oncology"]);
       renderPage();
 
-      const card = await screen.findByText("Passport specialties");
+      const card = await screen.findByText("Passport frameworks");
       const save = screen.getByTestId("submit-button");
 
       expect(
@@ -457,7 +459,11 @@ describe("OrgFeaturesPage", () => {
       getWithLeads(["passport"], ["oncology"]);
       const put = vi.spyOn(apiLib.api, "put");
       const { container } = renderPage();
-      await waitFor(() => expect(pills(container)).toEqual(["Oncology"]));
+      await waitFor(() =>
+        expect(pills(container)).toEqual([
+          "Oncology (proof of concept) (Quill Medical, 2026)",
+        ]),
+      );
       // An unsaved switch change, so the form could submit if asked
       await user.click(
         screen.getByRole("switch", { name: "Toggle Messaging" }),
@@ -476,22 +482,28 @@ describe("OrgFeaturesPage", () => {
       );
     });
 
-    it("saves a picked specialty straight away, at the end", async () => {
+    it("saves a picked framework straight away, at the end", async () => {
       const user = userEvent.setup();
       getWithLeads(["passport"], ["oncology"]);
       const put = vi.spyOn(apiLib.api, "put").mockResolvedValue({
-        specialty_ids: ["oncology", "general_surgery"],
+        framework_ids: ["oncology", "clinical"],
       });
       const { container } = renderPage();
-      await waitFor(() => expect(pills(container)).toEqual(["Oncology"]));
+      await waitFor(() =>
+        expect(pills(container)).toEqual([
+          "Oncology (proof of concept) (Quill Medical, 2026)",
+        ]),
+      );
 
       await user.click(screen.getByRole("combobox"));
       await user.click(
-        await screen.findByRole("option", { name: "General surgery" }),
+        await screen.findByRole("option", {
+          name: "General clinical skills (Quill Medical, 2026)",
+        }),
       );
 
-      expect(put).toHaveBeenCalledWith("/org-units/3/passport-specialties", {
-        specialty_ids: ["oncology", "general_surgery"],
+      expect(put).toHaveBeenCalledWith("/org-units/3/passport-frameworks", {
+        framework_ids: ["oncology", "clinical"],
       });
     });
 
@@ -500,30 +512,38 @@ describe("OrgFeaturesPage", () => {
       getWithLeads(["passport"], ["oncology"]);
       vi.spyOn(apiLib.api, "put").mockRejectedValue(new Error("network"));
       const { container } = renderPage();
-      await waitFor(() => expect(pills(container)).toEqual(["Oncology"]));
+      await waitFor(() =>
+        expect(pills(container)).toEqual([
+          "Oncology (proof of concept) (Quill Medical, 2026)",
+        ]),
+      );
 
       await user.click(screen.getByRole("combobox"));
       await user.click(
-        await screen.findByRole("option", { name: "General surgery" }),
+        await screen.findByRole("option", {
+          name: "General clinical skills (Quill Medical, 2026)",
+        }),
       );
 
       expect(
         await screen.findByText(
-          "The lead specialties could not be saved. Please try again.",
+          "The lead frameworks could not be saved. Please try again.",
         ),
       ).toBeInTheDocument();
-      expect(pills(container)).toEqual(["Oncology"]);
+      expect(pills(container)).toEqual([
+        "Oncology (proof of concept) (Quill Medical, 2026)",
+      ]);
     });
   });
 
   describe("Passport cover", () => {
     const COVER = "Toggle Cover members' writing";
 
-    // The org_unit, its lead specialties and its cover, answered by URL
+    // The org_unit, its lead frameworks and its cover, answered by URL
     function getWith(features: string[], coveredCount = 0) {
       return vi.spyOn(apiLib.api, "get").mockImplementation((url: string) => {
-        if (url.endsWith("/passport-specialties")) {
-          return Promise.resolve({ specialty_ids: [] });
+        if (url.endsWith("/passport-frameworks")) {
+          return Promise.resolve({ framework_ids: [] });
         }
         if (url.endsWith("/passport-cover")) {
           return Promise.resolve({

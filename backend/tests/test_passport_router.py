@@ -74,6 +74,10 @@ from tests.registrations import declare
 #: the UK SACT Board's four levels, so the level paths are exercised
 #: rather than only the bare signed-off-or-not case.
 COMPETENCY = "prescribe_sact"
+# The frameworks a test holder works to. A passport offers the
+# competencies in its holder's frameworks and no others, so one made with
+# none could record nothing.
+WORKING_TO = {"frameworks": ["clinical", "oncology"]}
 # What a sign-off for it covers. It is signed off one tumour site at a
 # time, so every request names one.
 SCOPE = "lung"
@@ -220,7 +224,7 @@ def holder_client(
 
 def _create_passport(client: TestClient) -> str:
     """Create the caller's passport and return its id."""
-    response = client.post("/api/passport")
+    response = client.post("/api/passport", json=WORKING_TO)
     assert response.status_code == 201, response.text
     return str(response.json()["passport_id"])
 
@@ -229,7 +233,7 @@ class TestCreate:
     def test_a_holder_can_create_their_passport(
         self, holder_client: TestClient
     ) -> None:
-        response = holder_client.post("/api/passport")
+        response = holder_client.post("/api/passport", json=WORKING_TO)
 
         assert response.status_code == 201
         body = response.json()
@@ -242,7 +246,7 @@ class TestCreate:
         """One per person. A second would be a partial second career."""
         _create_passport(holder_client)
 
-        response = holder_client.post("/api/passport")
+        response = holder_client.post("/api/passport", json=WORKING_TO)
 
         assert response.status_code == 409
 
@@ -250,7 +254,7 @@ class TestCreate:
         self, holder_client: TestClient
     ) -> None:
         """Quill checks no register, and the response says so."""
-        response = holder_client.post("/api/passport")
+        response = holder_client.post("/api/passport", json=WORKING_TO)
 
         registrations = response.json()["registrations"]
         assert registrations
@@ -4181,7 +4185,7 @@ class TestFeatureGate:
         db_session.commit()
 
         client = _login(test_client, "ungated")
-        response = client.post("/api/passport")
+        response = client.post("/api/passport", json=WORKING_TO)
 
         assert response.status_code == 403
 
@@ -4480,7 +4484,7 @@ class TestSpecialties:
     def test_a_passport_created_with_no_body_is_generic(
         self, holder_client: TestClient
     ) -> None:
-        response = holder_client.post("/api/passport")
+        response = holder_client.post("/api/passport", json=WORKING_TO)
 
         assert response.status_code == 201, response.text
         assert response.json()["specialties"] == []

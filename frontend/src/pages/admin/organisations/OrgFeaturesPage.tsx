@@ -12,7 +12,7 @@
  * listing what will change.
  *
  * While the passport is on, a second card sets the organisation's lead
- * passport specialties. It sits above the form's buttons, so they close
+ * passport frameworks. It sits above the form's buttons, so they close
  * the page, but it saves as it changes rather than through them: it only
  * reorders a list and removes nobody's access, so it needs no
  * confirmation.
@@ -42,8 +42,8 @@ import type { FormSubmitResult } from "@/components/form/Form";
 import { useAuth } from "@/auth/AuthContext";
 import { orgUnits } from "@/domains/orgUnit";
 import ErrorState from "@/components/error-state/ErrorState";
-import PassportLeadSpecialtiesCard from "@/components/passport/PassportLeadSpecialtiesCard";
-import { PASSPORT_SPECIALTIES } from "@lib/passport/specialties";
+import PassportLeadFrameworksCard from "@/components/passport/PassportLeadFrameworksCard";
+import { FRAMEWORK_OPTIONS } from "@lib/passport/frameworks";
 
 /** Known features that can be toggled on an organisation. */
 const AVAILABLE_FEATURES: {
@@ -312,7 +312,7 @@ export default function OrgFeaturesPage({
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // The saved lead specialties; null until loaded
+  // The saved lead frameworks; null until loaded
   const [leads, setLeads] = useState<string[] | null>(null);
   const [leadsError, setLeadsError] = useState<string | undefined>();
   const passportOn = savedKeys.has("passport");
@@ -339,13 +339,13 @@ export default function OrgFeaturesPage({
     if (!id || !passportOn) return;
     let cancelled = false;
     orgUnits
-      .passportSpecialties(Number(id))
+      .passportFrameworks(Number(id))
       .then((ids) => {
         if (!cancelled) setLeads(ids);
       })
       .catch(() => {
         if (!cancelled) {
-          setLeadsError("The lead specialties could not be loaded.");
+          setLeadsError("The lead frameworks could not be loaded.");
         }
       });
     return () => {
@@ -362,10 +362,10 @@ export default function OrgFeaturesPage({
     setLeads(next);
     setLeadsError(undefined);
 
-    orgUnits.setPassportSpecialties(Number(id), next).catch(() => {
+    orgUnits.setPassportFrameworks(Number(id), next).catch(() => {
       setLeads(previous);
       setLeadsError(
-        "The lead specialties could not be saved. Please try again.",
+        "The lead frameworks could not be saved. Please try again.",
       );
     });
   }
@@ -501,8 +501,8 @@ export default function OrgFeaturesPage({
           canSetCover={canSetCover}
           afterFeatures={
             passportOn && (
-              <PassportLeadSpecialtiesCard
-                options={PASSPORT_SPECIALTIES}
+              <PassportLeadFrameworksCard
+                options={FRAMEWORK_OPTIONS}
                 value={leads ?? []}
                 onChange={saveLeads}
                 disabled={leads === null}

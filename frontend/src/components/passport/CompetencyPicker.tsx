@@ -1,57 +1,43 @@
 /**
  * CompetencyPicker Component
  *
- * Chooses a competency from a searchable list, with the holder's
- * specialties' common competencies first.
+ * Chooses a competency from the frameworks the holder works to.
  *
- * **A specialty orders, it never restricts.** Each chosen specialty's
- * common competencies come first under the specialty's name, in the
- * order its file lists them, and every other assessable competency
- * follows alphabetically under "Others". No heading says "required": a
- * list presented as the set that matters becomes a syllabus, which is
- * the sufficiency judgement the passport refuses to make. With no specialty, Generic, there is one
- * flat alphabetical list.
+ * **A framework limits, where a specialty only ordered.** The list holds
+ * the competencies in the holder's own frameworks, each framework under
+ * its own name and in the order its document gives them, and nothing
+ * else. Quill holds many frameworks for many specialties, several of them
+ * describing the same act in their own words, so one list of every
+ * competency could not be read. Somebody who wants one that is not here
+ * adds the framework it belongs to, in Settings.
  *
- * **Only competencies somebody can be assessed on.** `manage_users` is a
- * software permission, not a skill, so it is never offered; the API
- * refuses it too. Among the assessable ones nothing is hidden, so
- * somebody signed off on something unusual can still find it.
+ * **With no framework chosen there is nothing to pick**, and the field
+ * says where to choose one. It does not fall back to listing everything:
+ * that would be the long list coming back by a side door.
  *
- * **The catalogue comes from the generated bundle, for now.** There is
- * no endpoint serving competency definitions; `GET
- * /api/passport/competencies` is described in the plan but was never
- * built, so this reads `src/generated/competencies.json` like the admin
- * pages do. The plan already lists replacing that with an endpoint as a
- * deferred item, because every competency ever defined currently ships
- * to every browser.
+ * **No heading says "required".** A framework's items are listed, never
+ * counted or ticked off: how much is enough is the assessor's judgement.
+ *
+ * **Only competencies somebody can be assessed on.** A framework's file
+ * may hold permissions beside its skills, and those are never offered.
  *
  * @example
  * ```tsx
  * <CompetencyPicker
  *   value={competencyId}
  *   onChange={setCompetencyId}
- *   specialties={["oncology"]}
+ *   frameworks={["oncology"]}
  * />
  * ```
  */
 
 import { useMemo } from "react";
 import { SelectField } from "@components/form";
-import { ASSESSABLE_COMPETENCIES } from "@/types/cbac";
-import {
-  getPassportSpecialty,
-  type PassportSpecialtyDefinition,
-} from "@lib/passport/specialties";
-import { specialtyGroup } from "./specialtyChoice";
+import { frameworkItems, getFramework } from "@lib/passport/frameworks";
 
-/** One competency, as the generated catalogue holds it. */
-interface CatalogueEntry {
-  id: string;
-  display_name: string;
-}
-
-/** The heading everything outside the holder's specialties sits under. */
-export const EVERYTHING_ELSE_GROUP = "Others";
+/** What the field says when the holder works to no framework yet. */
+export const NO_FRAMEWORKS_MESSAGE =
+  "Choose the frameworks you work to in Settings, then pick from their competencies here.";
 
 export interface CompetencyPickerProps {
   /** The chosen competency id, or null */
@@ -59,10 +45,10 @@ export interface CompetencyPickerProps {
   /** Called with the chosen competency id */
   onChange: (competencyId: string | null) => void;
   /**
-   * The holder's specialty ids, in their order. Their common
-   * competencies are listed first. Empty or absent is Generic.
+   * The ids of the frameworks the holder works to, in their order. Only
+   * their competencies are listed. Empty or absent lists nothing.
    */
-  specialties?: string[];
+  frameworks?: string[];
   /** Field label */
   label?: string;
   /** Helper text below the field */
@@ -78,7 +64,7 @@ export interface CompetencyPickerProps {
 export default function CompetencyPicker({
   value,
   onChange,
-  specialties = [],
+  frameworks = [],
   label = "Competency",
   description,
   error,
@@ -87,66 +73,43 @@ export default function CompetencyPicker({
 }: CompetencyPickerProps) {
   // Joined into a string so a new array with the same ids, as a parent
   // re-rendering passes, does not rebuild the list.
-  const specialtyKey = specialties.join(",");
+  const frameworkKey = frameworks.join(",");
 
   const data = useMemo(() => {
-    // Active and assessable only, matching what the API accepts.
-    const catalogue = ASSESSABLE_COMPETENCIES as CatalogueEntry[];
-    const byId = new Map(catalogue.map((entry) => [entry.id, entry]));
-    const toOption = (entry: CatalogueEntry) => ({
-      value: entry.id,
-      label: entry.display_name,
-    });
-
-    // A competency common to two chosen specialties appears once, under
-    // the first, since Mantine's select needs every value to be unique.
-    const placed = new Set<string>();
-    const groups = specialtyKey
+    // A competency belongs to one framework, since its file is its
+    // framework, so no value can appear under two headings.
+    return frameworkKey
       .split(",")
-      .map((id) => (id ? getPassportSpecialty(id) : undefined))
-      .filter(
-        (specialty): specialty is PassportSpecialtyDefinition =>
-          specialty !== undefined,
-      )
-      .map((specialty) => ({
-        group: specialtyGroup(specialty.display_name),
-        items: specialty.common_competencies
-          .filter((id) => !placed.has(id))
-          .map((id) => byId.get(id))
-          .filter((entry): entry is CatalogueEntry => entry !== undefined)
-          .map((entry) => {
-            placed.add(entry.id);
-            return toOption(entry);
-          }),
+      .filter((id) => id !== "")
+      .map((id) => ({
+        // A framework Quill no longer holds has no items, and is dropped
+        // below with the others that list nothing.
+        group: getFramework(id)?.name ?? id,
+        items: frameworkItems(id).map((competency) => ({
+          value: competency.id,
+          label: competency.display_name,
+        })),
       }))
       .filter((group) => group.items.length > 0);
+  }, [frameworkKey]);
 
-    // Alphabetical, since no other order means anything to a reader.
-    const rest = catalogue
-      .filter((entry) => !placed.has(entry.id))
-      .map(toOption)
-      .sort((a, b) => a.label.localeCompare(b.label));
-
-    // Generic, or a specialty naming nothing: one flat list reads
-    // better than a group of one.
-    if (groups.length === 0) return rest;
-
-    return [...groups, { group: EVERYTHING_ELSE_GROUP, items: rest }];
-  }, [specialtyKey]);
+  const nothingToPick = data.length === 0;
 
   return (
     <SelectField
       label={label}
-      description={description}
+      description={nothingToPick ? NO_FRAMEWORKS_MESSAGE : description}
       error={error}
-      placeholder="Search competencies"
+      placeholder={
+        nothingToPick ? "No frameworks chosen" : "Search competencies"
+      }
       data={data}
       value={value}
       onChange={onChange}
       searchable
-      nothingFoundMessage="No competency found"
+      nothingFoundMessage="No competency found in your frameworks"
       required={required}
-      disabled={disabled}
+      disabled={disabled || nothingToPick}
     />
   );
 }

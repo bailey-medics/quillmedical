@@ -375,6 +375,135 @@ class TestTheHoldersRoutes:
         assert logbook["count"] == 1
 
 
+class TestOnlyWhatTheFrameworksHold:
+    """There is no way round: a competency outside them is refused."""
+
+    @pytest.fixture
+    def holder_client(
+        self,
+        db_session: Session,
+        test_client: TestClient,
+        passport_store: LocalPassportStore,
+    ) -> TestClient:
+        holder = _make_user(db_session, "holder", writes=True)
+        _organisation(db_session, "Mixed Trust", members=(holder,))
+        return _login(test_client, "holder")
+
+    def _passport(self, client: TestClient, *frameworks: str) -> str:
+        response = client.post(
+            "/api/passport", json={"frameworks": list(frameworks)}
+        )
+        assert response.status_code == 201, response.text
+        return str(response.json()["passport_id"])
+
+    def test_a_competency_in_a_chosen_framework_can_be_logged(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = self._passport(holder_client, GENERAL)
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/logbook/perform_cannulation",
+            json={"performed_on": "2026-03-12"},
+        )
+
+        assert response.status_code == 201, response.text
+
+    def test_a_competency_outside_them_is_refused_in_plain_words(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = self._passport(holder_client, GENERAL)
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/logbook/prescribe_sact",
+            json={"performed_on": "2026-03-12"},
+        )
+
+        assert response.status_code == 400, response.text
+        detail = response.json()["detail"]
+        assert "Settings" in detail
+        assert "prescribe_sact" not in detail
+
+    def test_a_holder_with_no_frameworks_can_record_nothing(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = self._passport(holder_client)
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/logbook/perform_cannulation",
+            json={"performed_on": "2026-03-12"},
+        )
+
+        assert response.status_code == 400, response.text
+
+    def test_every_kind_of_record_is_held_to_it(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = self._passport(holder_client, GENERAL)
+        base = f"/api/passport/{passport_id}"
+        outside = "prescribe_sact"
+
+        attempts = [
+            holder_client.post(
+                f"{base}/competencies/{outside}/requests",
+                json={
+                    "assessor_email": "somebody@example.nhs.uk",
+                    "observed_on": "2026-03-12",
+                    "level_id": "review_and_authorise",
+                    "scope_id": "lung",
+                },
+            ),
+            holder_client.post(
+                f"{base}/certificates",
+                json={
+                    "title": "A course",
+                    "issuer": "UKONS",
+                    "awarded_on": "2026-02-11",
+                    "competencies": [outside],
+                },
+            ),
+            holder_client.post(
+                f"{base}/cpd",
+                json={
+                    "activity_on": "2026-02-11",
+                    "title": "A study day",
+                    "activity_type": "teaching day",
+                    "competencies": [outside],
+                },
+            ),
+            holder_client.post(
+                f"{base}/reflections",
+                json={
+                    "title": "A reflection",
+                    "written_on": "2026-02-11",
+                    "body": "What I learned.",
+                    "competencies": [outside],
+                    "anonymised_confirmed": True,
+                },
+            ),
+        ]
+
+        assert [r.status_code for r in attempts] == [400, 400, 400, 400]
+
+    def test_amending_a_record_whose_framework_was_dropped_still_works(
+        self, holder_client: TestClient
+    ) -> None:
+        """Dropping a framework freezes nothing recorded under it."""
+        passport_id = self._passport(holder_client, GENERAL)
+        url = f"/api/passport/{passport_id}/logbook/perform_cannulation"
+        stem = holder_client.post(
+            url, json={"performed_on": "2026-03-12"}
+        ).json()["name"]
+        holder_client.put(
+            f"/api/passport/{passport_id}/frameworks", json={"frameworks": []}
+        )
+
+        response = holder_client.patch(
+            f"{url}/{stem}", json={"performed_on": "2026-03-13"}
+        )
+
+        assert response.status_code == 200, response.text
+
+
 def _admin_of(db: Session, org: OrgUnit, username: str = "admin") -> User:
     """Somebody with ``manage_users``, authorised to administer *org*."""
     admin = _make_user(db, username, profession="system_administrator")

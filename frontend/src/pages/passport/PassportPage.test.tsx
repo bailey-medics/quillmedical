@@ -9,7 +9,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
-import { PASSPORT_SPECIALTIES } from "@lib/passport/specialties";
+import type { FrameworkOption } from "@lib/passport/frameworks";
 import { Component as PassportPage } from "./PassportPage";
 import {
   certificates,
@@ -29,9 +29,9 @@ const fetchAllCpd = vi.fn();
 const fetchCertificates = vi.fn();
 const fetchReflections = vi.fn();
 
-// The specialty order comes from the API through this hook; each test
-// sets what it returns, and useSpecialtyChoices.test.ts covers the fetch.
-const specialtyChoices = vi.fn();
+// The framework order comes from the API through this hook; each test
+// sets what it returns.
+const frameworkChoices = vi.fn();
 // The page links to its guide, which is shown only to a reader the guide
 // is written for: here, somebody who keeps and assesses passports.
 vi.mock("@/auth/AuthContext", () => ({
@@ -49,8 +49,8 @@ vi.mock("@/auth/AuthContext", () => ({
   }),
 }));
 
-vi.mock("@lib/passport/useSpecialtyChoices", () => ({
-  useSpecialtyChoices: (enabled: boolean) => specialtyChoices(enabled),
+vi.mock("@lib/passport/useFrameworkChoices", () => ({
+  useFrameworkChoices: (enabled: boolean) => frameworkChoices(enabled),
 }));
 
 vi.mock("@lib/passport", async () => {
@@ -79,14 +79,36 @@ vi.mock("react-router-dom", async () => {
   return { ...actual, useNavigate: () => navigate };
 });
 
-const ONCOLOGY_FIRST = [
-  { id: "oncology", display_name: "Oncology" },
-  { id: "general_medicine", display_name: "General medicine" },
-  { id: "general_surgery", display_name: "General surgery" },
+const FRAMEWORKS: FrameworkOption[] = [
+  {
+    id: "clinical",
+    name: "General clinical skills",
+    publisher: "Quill Medical",
+    version: "2026",
+    specialties: [],
+  },
+  {
+    id: "oncology",
+    name: "Oncology (proof of concept)",
+    publisher: "Quill Medical",
+    version: "2026",
+    specialties: ["oncology"],
+  },
 ];
 
+/** A lead framework first, as an oncology department would have it. */
+const ONCOLOGY_FIRST: FrameworkOption[] = [FRAMEWORKS[1], FRAMEWORKS[0]];
+
+const ONCOLOGY_LABEL = "Oncology (proof of concept) (Quill Medical, 2026)";
+const GENERAL_LABEL = "General clinical skills (Quill Medical, 2026)";
+
+/** The field the frameworks are chosen in, on the create step. */
+function frameworksField(): HTMLElement {
+  return screen.getByRole("combobox", { name: /Frameworks you work to/ });
+}
+
 beforeEach(() => {
-  specialtyChoices.mockReturnValue(PASSPORT_SPECIALTIES);
+  frameworkChoices.mockReturnValue(FRAMEWORKS);
   fetchSignOffs.mockResolvedValue([]);
   fetchWholeLogbook.mockResolvedValue({ competencies: [], count: 0 });
   fetchAllCpd.mockResolvedValue([]);
@@ -106,7 +128,7 @@ function serveRecords() {
   fetchReflections.mockResolvedValue(reflections);
 }
 
-/** What the specialty options read, top to bottom, once open. */
+/** What the framework options read, top to bottom, once open. */
 function optionLabels(): string[] {
   return screen.getAllByRole("option").map((o) => o.textContent ?? "");
 }
@@ -125,6 +147,7 @@ const detail = {
     holder_name: "Dr Mark Bailey",
     registrations: [],
     specialties: [],
+    frameworks: [{ id: "clinical", name: "General clinical skills" }],
     created_at: "2026-09-10",
     head_commit: null,
   },
@@ -418,8 +441,9 @@ describe("PassportPage", () => {
 
     renderWithRouter(<PassportPage />);
 
-    await user.click(await screen.findByRole("combobox"));
-    await user.click(await screen.findByText("Oncology"));
+    await screen.findByText("You do not have a passport yet");
+    await user.click(frameworksField());
+    await user.click(await screen.findByText(ONCOLOGY_LABEL));
     await user.click(
       await screen.findByRole("button", { name: "Create my passport" }),
     );
@@ -428,27 +452,22 @@ describe("PassportPage", () => {
     expect(await screen.findByText("Records")).toBeInTheDocument();
   });
 
-  it("offers the specialties in the order the API gives", async () => {
+  it("offers the frameworks in the order the API gives", async () => {
     const user = userEvent.setup();
-    specialtyChoices.mockReturnValue(ONCOLOGY_FIRST);
+    frameworkChoices.mockReturnValue(ONCOLOGY_FIRST);
     fetchMyPassport.mockRejectedValue(httpError(404));
     renderWithRouter(<PassportPage />);
 
     await screen.findByText("You do not have a passport yet");
-    expect(specialtyChoices).toHaveBeenLastCalledWith(true);
-    await user.click(screen.getByRole("combobox"));
+    expect(frameworkChoices).toHaveBeenLastCalledWith(true);
+    await user.click(frameworksField());
 
-    expect(optionLabels()).toEqual([
-      "Oncology",
-      "General medicine",
-      "General surgery",
-      "Generic",
-    ]);
+    expect(optionLabels()).toEqual([ONCOLOGY_LABEL, GENERAL_LABEL]);
   });
 
-  it("asks for a specialty before the passport can be created", async () => {
-    // Nothing is preselected, so Generic is a choice rather than a
-    // default somebody missed.
+  it("asks for a framework before the passport can be created", async () => {
+    // A passport offers the competencies in its holder's frameworks and
+    // no others, so one made with none could record nothing.
     const user = userEvent.setup();
     fetchMyPassport.mockRejectedValue(httpError(404));
     renderWithRouter(<PassportPage />);
@@ -462,25 +481,31 @@ describe("PassportPage", () => {
     expect(create).toHaveAttribute("aria-disabled", "true");
     await user.click(create);
     expect(createPassport).not.toHaveBeenCalled();
-    expect(screen.getByText("Your specialty")).toBeInTheDocument();
-    expect(screen.getByText("Choose one or more")).toBeInTheDocument();
+    expect(frameworksField()).toBeInTheDocument();
+    expect(screen.getByText(/Choose one or more/)).toBeInTheDocument();
   });
 
-  it("creates a Generic passport when Generic is chosen", async () => {
-    const user = userEvent.setup();
-    fetchMyPassport.mockRejectedValueOnce(httpError(404));
-    createPassport.mockResolvedValue(detail.passport);
-    fetchMyPassport.mockResolvedValueOnce(detail);
-
+  it("tells a holder with no frameworks where to choose them", async () => {
+    // Every passport made before frameworks existed has none.
+    fetchMyPassport.mockResolvedValue({
+      ...detail,
+      passport: { ...detail.passport, frameworks: [] },
+    });
     renderWithRouter(<PassportPage />);
 
-    await user.click(await screen.findByRole("combobox"));
-    await user.click(await screen.findByText("Generic"));
-    await user.click(
-      await screen.findByRole("button", { name: "Create my passport" }),
-    );
+    expect(
+      await screen.findByText("Choose the frameworks you work to"),
+    ).toBeInTheDocument();
+  });
 
-    expect(createPassport).toHaveBeenCalledWith([]);
+  it("says nothing about frameworks to a holder who has chosen some", async () => {
+    fetchMyPassport.mockResolvedValue(detail);
+    renderWithRouter(<PassportPage />);
+
+    await screen.findByText("Records");
+    expect(
+      screen.queryByText("Choose the frameworks you work to"),
+    ).not.toBeInTheDocument();
   });
 
   it("explains a failed creation rather than leaving the button silent", async () => {
@@ -490,8 +515,9 @@ describe("PassportPage", () => {
 
     renderWithRouter(<PassportPage />);
 
-    await user.click(await screen.findByRole("combobox"));
-    await user.click(await screen.findByText("Oncology"));
+    await screen.findByText("You do not have a passport yet");
+    await user.click(frameworksField());
+    await user.click(await screen.findByText(ONCOLOGY_LABEL));
     await user.click(
       await screen.findByRole("button", { name: "Create my passport" }),
     );

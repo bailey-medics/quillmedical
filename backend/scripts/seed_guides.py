@@ -48,10 +48,10 @@ from app.cbac.positions import set_clinical_lead  # noqa: E402
 from app.db import CoreSessionLocal  # noqa: E402
 from app.features.passport import (  # noqa: E402
     cover,
+    frameworks,
     ids,
     records,
     service,
-    specialties,
 )
 from app.features.passport.commits import Actor  # noqa: E402
 from app.features.passport.models import (  # noqa: E402
@@ -381,7 +381,10 @@ def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
         _actor(holder),
         user_id=str(holder.id),
         registrations=[],
-        specialties=specialties.specialty_refs(["general_medicine"]),
+        # A passport offers the competencies in its holder's frameworks
+        # and no others, so the guides' holder works to the general one,
+        # which holds everything seeded below.
+        frameworks=frameworks.framework_refs(["clinical"]),
         now=made,
     )
     row = Passport(id=passport_id, user_id=holder.id, head_commit=commit)

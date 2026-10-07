@@ -114,6 +114,32 @@ export interface Specialty {
 }
 
 /**
+ * A framework the holder works to, with its name as stored in their
+ * record. The passport offers them the competencies in these and no
+ * others.
+ */
+export interface FrameworkRef {
+  id: string;
+  name: string;
+}
+
+/**
+ * A framework a holder may choose, at its place in the order to offer it.
+ *
+ * `lead` is true when one of their organisations named it to come first,
+ * and `items` is how many competencies it holds.
+ */
+export interface FrameworkChoice {
+  id: string;
+  name: string;
+  publisher: string;
+  version: string;
+  specialties: string[];
+  lead: boolean;
+  items: number;
+}
+
+/**
  * One of the holder's appraisal years, shown to them as a "CPD date
  * range". Both dates are ISO `YYYY-MM-DD`, and `ends_on` is on or after
  * `starts_on`. The backend refuses two that overlap, so an activity
@@ -181,6 +207,8 @@ export interface Passport {
   holder_name: string;
   registrations: Registration[];
   specialties: Specialty[];
+  /** The frameworks they work to. Empty means none chosen yet. */
+  frameworks?: FrameworkRef[];
   created_at: IsoDate;
   head_commit: string | null;
 }

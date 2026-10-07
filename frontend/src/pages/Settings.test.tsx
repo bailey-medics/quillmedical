@@ -1,5 +1,5 @@
 /**
- * Settings page: the page-view opt-out, the passport specialty card, the
+ * Settings page: the page-view opt-out, the passport frameworks card, the
  * install app card and the two-factor card.
  *
  * The rest of Settings (notifications, dark mode) is untested here and
@@ -9,9 +9,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
-import { fetchMyPassport, setPassportSpecialties } from "@lib/passport";
+import { fetchMyPassport, setPassportFrameworks } from "@lib/passport";
 import { hasOptedOut, setOptedOut } from "@/lib/page-views/optOut";
-import { PASSPORT_SPECIALTIES } from "@lib/passport/specialties";
+import type { FrameworkOption } from "@lib/passport/frameworks";
 import { api } from "@/lib/api";
 import Settings from "./Settings";
 
@@ -45,29 +45,50 @@ vi.mock("@lib/pwa/useInstallRoute", () => ({
   useInstallRoute: () => installRouteState,
 }));
 
-// The specialty order comes from the API through this hook; each test
-// sets what it returns, and useSpecialtyChoices.test.ts covers the fetch.
-const specialtyChoices = vi.fn();
-vi.mock("@lib/passport/useSpecialtyChoices", () => ({
-  useSpecialtyChoices: (enabled: boolean) => specialtyChoices(enabled),
+// The framework order comes from the API through this hook; each test
+// sets what it returns.
+const frameworkChoices = vi.fn();
+vi.mock("@lib/passport/useFrameworkChoices", () => ({
+  useFrameworkChoices: (enabled: boolean) => frameworkChoices(enabled),
 }));
 
 vi.mock("@lib/passport", () => ({
   fetchMyPassport: vi.fn(),
-  setPassportSpecialties: vi.fn(),
+  setPassportFrameworks: vi.fn(),
 }));
 
-const ONCOLOGY_FIRST = [
-  { id: "oncology", display_name: "Oncology" },
-  { id: "general_medicine", display_name: "General medicine" },
-  { id: "general_surgery", display_name: "General surgery" },
+const FRAMEWORKS: FrameworkOption[] = [
+  {
+    id: "clinical",
+    name: "General clinical skills",
+    publisher: "Quill Medical",
+    version: "2026",
+    specialties: [],
+  },
+  {
+    id: "oncology",
+    name: "Oncology (proof of concept)",
+    publisher: "Quill Medical",
+    version: "2026",
+    specialties: ["oncology"],
+  },
 ];
 
+const ONCOLOGY_FIRST: FrameworkOption[] = [FRAMEWORKS[1], FRAMEWORKS[0]];
+
+const ONCOLOGY_LABEL = "Oncology (proof of concept) (Quill Medical, 2026)";
+const GENERAL_LABEL = "General clinical skills (Quill Medical, 2026)";
+
+/** The field on the passport card that the frameworks are chosen in. */
+function frameworksField(): HTMLElement {
+  return screen.getByRole("combobox", { name: /Frameworks you work to/ });
+}
+
 beforeEach(() => {
-  specialtyChoices.mockReturnValue(PASSPORT_SPECIALTIES);
+  frameworkChoices.mockReturnValue(FRAMEWORKS);
 });
 
-/** What the specialty options read, top to bottom, once open. */
+/** What the framework options read, top to bottom, once open. */
 function optionLabels(): string[] {
   return screen.getAllByRole("option").map((o) => o.textContent ?? "");
 }
@@ -254,7 +275,8 @@ describe("the clinician passport card", () => {
       holder_user_id: "42",
       holder_name: "Dr Mark Bailey",
       registrations: [],
-      specialties: [{ id: "oncology", name: "Oncology" }],
+      specialties: [],
+      frameworks: [{ id: "oncology", name: "Oncology (proof of concept)" }],
       created_at: "2026-09-10",
       head_commit: null,
     },
@@ -263,7 +285,7 @@ describe("the clinician passport card", () => {
 
   beforeEach(() => {
     vi.mocked(fetchMyPassport).mockReset();
-    vi.mocked(setPassportSpecialties).mockReset();
+    vi.mocked(setPassportFrameworks).mockReset();
     authUser.enabled_features = ["passport"];
     authUser.competencies = ["assess_clinician_passport", "passport_write"];
   });
@@ -277,30 +299,25 @@ describe("the clinician passport card", () => {
     ).toBeInTheDocument();
   });
 
-  it("offers the specialties in the order the API gives", async () => {
+  it("offers the frameworks in the order the API gives", async () => {
     const user = userEvent.setup();
-    specialtyChoices.mockReturnValue(ONCOLOGY_FIRST);
+    frameworkChoices.mockReturnValue(ONCOLOGY_FIRST);
     vi.mocked(fetchMyPassport).mockResolvedValue(detail);
     renderWithRouter(<Settings />);
 
     await screen.findByRole("heading", { name: "Clinician passport" });
-    await user.click(screen.getByRole("combobox"));
+    await user.click(frameworksField());
 
-    expect(optionLabels()).toEqual([
-      "Oncology",
-      "General medicine",
-      "General surgery",
-      "Generic",
-    ]);
+    expect(optionLabels()).toEqual([ONCOLOGY_LABEL, GENERAL_LABEL]);
   });
 
   it("asks for the order only once the card is showing", async () => {
     vi.mocked(fetchMyPassport).mockResolvedValue(detail);
     renderWithRouter(<Settings />);
 
-    expect(specialtyChoices).toHaveBeenCalledWith(false);
+    expect(frameworkChoices).toHaveBeenCalledWith(false);
     await screen.findByRole("heading", { name: "Clinician passport" });
-    expect(specialtyChoices).toHaveBeenLastCalledWith(true);
+    expect(frameworkChoices).toHaveBeenLastCalledWith(true);
   });
 
   it("comes last, after the cards everybody sees", async () => {
@@ -341,33 +358,34 @@ describe("the clinician passport card", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("saves a change to Generic", async () => {
+  it("saves a framework as soon as it is added", async () => {
     const user = userEvent.setup();
     vi.mocked(fetchMyPassport).mockResolvedValue(detail);
-    vi.mocked(setPassportSpecialties).mockResolvedValue(detail.passport);
+    vi.mocked(setPassportFrameworks).mockResolvedValue(detail.passport);
     renderWithRouter(<Settings />);
 
     await screen.findByRole("heading", { name: "Clinician passport" });
-    await user.click(screen.getByRole("combobox"));
+    await user.click(frameworksField());
     await user.click(
-      await screen.findByRole("option", {
-        name: "Generic",
-      }),
+      await screen.findByRole("option", { name: GENERAL_LABEL }),
     );
 
-    expect(setPassportSpecialties).toHaveBeenCalledWith("3f2a8c1e", []);
+    expect(setPassportFrameworks).toHaveBeenCalledWith("3f2a8c1e", [
+      "oncology",
+      "clinical",
+    ]);
   });
 
   it("says so when a change could not be saved", async () => {
     const user = userEvent.setup();
     vi.mocked(fetchMyPassport).mockResolvedValue(detail);
-    vi.mocked(setPassportSpecialties).mockRejectedValue(new Error("network"));
+    vi.mocked(setPassportFrameworks).mockRejectedValue(new Error("network"));
     renderWithRouter(<Settings />);
 
     await screen.findByRole("heading", { name: "Clinician passport" });
-    await user.click(screen.getByRole("combobox"));
+    await user.click(frameworksField());
     await user.click(
-      await screen.findByRole("option", { name: "General surgery" }),
+      await screen.findByRole("option", { name: GENERAL_LABEL }),
     );
 
     expect(await screen.findByText(/could not be saved/)).toBeInTheDocument();
@@ -381,7 +399,7 @@ describe("the clinician passport card", () => {
     renderWithRouter(<Settings />);
 
     await screen.findByRole("heading", { name: "Clinician passport" });
-    expect(screen.getByRole("combobox")).toBeDisabled();
+    expect(frameworksField()).toBeDisabled();
   });
 });
 

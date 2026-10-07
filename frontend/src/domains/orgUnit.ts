@@ -232,6 +232,7 @@ export interface PassportCover {
   covered_count: number;
 }
 type PassportSpecialtiesResponse = { specialty_ids: string[] };
+type PassportFrameworksResponse = { framework_ids: string[] };
 type LinksResponse = { links: OrgUnitLink[] };
 type StatusResponse = { status: string };
 
@@ -441,6 +442,31 @@ export const orgUnits = {
       covered_count:
         typeof data?.covered_count === "number" ? data.covered_count : 0,
     };
+  },
+
+  /**
+   * An organisation's lead passport frameworks, in order: the ones its
+   * people are offered first when they choose their own.
+   */
+  passportFrameworks: async (id: number): Promise<string[]> => {
+    const data = await api.get<PassportFrameworksResponse>(
+      `/org-units/${id}/passport-frameworks`,
+    );
+    return Array.isArray(data?.framework_ids) ? data.framework_ids : [];
+  },
+
+  /** Replace the lead passport frameworks; an empty list clears them. */
+  setPassportFrameworks: async (
+    id: number,
+    frameworkIds: string[],
+  ): Promise<string[]> => {
+    const data = await api.put<PassportFrameworksResponse>(
+      `/org-units/${id}/passport-frameworks`,
+      { framework_ids: frameworkIds },
+    );
+    return Array.isArray(data?.framework_ids)
+      ? data.framework_ids
+      : frameworkIds;
   },
 
   /**

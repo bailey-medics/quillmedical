@@ -45,6 +45,10 @@ from tests.competencies import hold
 from tests.registrations import declare
 
 COMPETENCY = "prescribe_sact"
+# The frameworks a test holder works to. A passport offers the
+# competencies in its holder's frameworks and no others, so one made with
+# none could record nothing.
+WORKING_TO = {"frameworks": ["clinical", "oncology"]}
 # What a sign-off for it covers. It is signed off one tumour site at a
 # time, so every request names one.
 SCOPE = "lung"
@@ -140,7 +144,7 @@ def passport(
 ) -> tuple[TestClient, str]:
     """A holder with a passport, signed in."""
     client = _login(test_client, "holder")
-    response = client.post("/api/passport")
+    response = client.post("/api/passport", json=WORKING_TO)
     assert response.status_code == 201, response.text
     return client, str(response.json()["passport_id"])
 

@@ -564,14 +564,7 @@ Phase 8.
 
 ## Phase 8: The picker and the summaries follow the frameworks
 
-- [ ] **Turn the specialty card into a frameworks card.**
-      `PassportSpecialtyCard` and `SpecialtyField` become their framework
-      equivalents, with a search box and a specialty filter, on the create
-      step and in Settings. The holder is no longer asked for a specialty
-      anywhere.
-- [ ] **Turn the lead specialties card into lead frameworks**, on the
-      organisation's features page: `PassportLeadSpecialtiesCard`.
-- [ ] **Refuse a new record outside the holder's frameworks**, where
+- [x] **Refuse a new record outside the holder's frameworks**, where
       `definitions.assessable_ref` already refuses one that is not
       assessable: a sign-off request, logbook entry, certificate,
       reflection or CPD entry. Amending keeps the looser check and reading
@@ -579,13 +572,37 @@ Phase 8.
       recorded. Moved here from Phase 7 while building: no existing holder
       has chosen a framework, so refusing before the card to choose one
       exists would have stopped everybody recording anything.
-- [ ] **Show only the holder's frameworks in `CompetencyPicker`**, grouped
-      under each. With none chosen it shows a prompt to add one. The
-      "Common in" ordering goes.
-- [ ] **Group `CompetencySummary` by framework.** A competency already
+- [x] **Turn the specialty card into a frameworks card.**
+      `PassportSpecialtyCard` and `SpecialtyField` become
+      `PassportFrameworksCard` and `FrameworkField`, with a specialty
+      filter above a field that finds a framework by typing its name or
+      its publisher, on the create step and in Settings. The holder is no
+      longer asked for a specialty anywhere. A passport cannot be created
+      with no framework, since it could then record nothing.
+- [x] **Turn the lead specialties card into lead frameworks**, on the
+      organisation's features page: `PassportLeadFrameworksCard`.
+- [x] **Show only the holder's frameworks in `CompetencyPicker`**, grouped
+      under each, in the order each document lists them. With none chosen
+      it lists nothing and says to choose some in Settings. The "Common
+      in" ordering goes.
+- [x] **Tell a holder with no frameworks where to choose them**, on the
+      passport page. Found while building: every passport made before
+      today has none, so its holder would otherwise meet an empty picker
+      with no explanation on the page they start from.
+- [x] **Group `CompetencySummary` by framework.** A competency already
       recorded whose framework the holder has dropped is still listed,
-      under its own heading.
-- [ ] **Tests and stories** for each, the renamed ones included.
+      under its framework's name, and one in no framework Quill holds
+      under "Other records".
+- [x] **Update the guide and its seed data.** "Start your passport" in
+      `frontend/src/guides/content/` described choosing a specialty, and
+      `backend/scripts/seed_guides.py` made the guides' holder with one.
+      Found while building: the guides' screenshot scripts pick a
+      competency, which now needs the holder to work to a framework.
+- [x] **Tests and stories** for each, the renamed ones included.
+
+The plan had a step here to retire `common_competencies` from the specialty
+files. It is left to Phase 10, which deletes those files and their loader
+whole: trimming them first would be work thrown away a release later.
 
 ## Phase 9: The three frameworks
 

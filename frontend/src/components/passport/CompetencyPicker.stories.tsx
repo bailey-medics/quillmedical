@@ -2,8 +2,8 @@
  * CompetencyPicker Storybook Stories
  */
 
+import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
 import CompetencyPicker from "./CompetencyPicker";
 
 const meta: Meta<typeof CompetencyPicker> = {
@@ -15,50 +15,31 @@ const meta: Meta<typeof CompetencyPicker> = {
 export default meta;
 type Story = StoryObj<typeof CompetencyPicker>;
 
-export const Default: Story = {
-  args: {
-    value: null,
-    onChange: fn(),
-  },
+function Controlled({ frameworks }: { frameworks: string[] }) {
+  const [value, setValue] = useState<string | null>(null);
+  return (
+    <CompetencyPicker
+      value={value}
+      onChange={setValue}
+      frameworks={frameworks}
+    />
+  );
+}
+
+/** One framework: its competencies, in its document's order. */
+export const OneFramework: Story = {
+  render: () => <Controlled frameworks={["clinical"]} />,
+};
+
+/** Two frameworks, each under its own heading. Nothing else is listed. */
+export const TwoFrameworks: Story = {
+  render: () => <Controlled frameworks={["clinical", "oncology"]} />,
 };
 
 /**
- * An oncologist: the oncology list first, in its file's order, then
- * every other assessable competency. Nothing is hidden.
+ * No framework chosen. The field lists nothing and says where to choose
+ * one: it does not fall back to every competency Quill knows.
  */
-export const OncologySpecialty: Story = {
-  args: {
-    value: null,
-    onChange: fn(),
-    specialties: ["oncology"],
-  },
-};
-
-/**
- * Two specialties, each under its own heading. A competency on both
- * lists appears once, under the first.
- */
-export const TwoSpecialties: Story = {
-  args: {
-    value: null,
-    onChange: fn(),
-    specialties: ["general_medicine", "general_surgery"],
-  },
-};
-
-export const WithDescription: Story = {
-  args: {
-    value: null,
-    onChange: fn(),
-    description: "What you are asking to be signed off for.",
-    required: true,
-  },
-};
-
-export const Disabled: Story = {
-  args: {
-    value: "perform_cannulation",
-    onChange: fn(),
-    disabled: true,
-  },
+export const NoFrameworks: Story = {
+  render: () => <Controlled frameworks={[]} />,
 };
