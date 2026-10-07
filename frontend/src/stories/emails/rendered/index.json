@@ -90,6 +90,24 @@
     }
   },
   {
+    "id": "accessibility-review",
+    "label": "Accessibility statement review",
+    "quill": {
+      "file": "accessibility-review--quill.html",
+      "subject": "Accessibility statement review due by 25 September 2027",
+      "preheader": "It was last reviewed on 25 September 2026.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "accessibility-review--ldd.html",
+      "subject": "Accessibility statement review due by 25 September 2027",
+      "preheader": "It was last reviewed on 25 September 2026.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
     "id": "feedback-received",
     "label": "Feedback received",
     "quill": {

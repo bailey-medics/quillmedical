@@ -136,20 +136,13 @@ resource "google_secret_manager_secret_iam_member" "runtime" {
 }
 
 # ---------- The CI account's secrets ----------
-# The yearly accessibility statement reminder
-# (.github/workflows/accessibility-review.yml) emails through Amazon SES, as
-# the app does, with the app's own send-only key. It reads the key here at
-# run time rather than GitHub holding a second copy, so the grant is these two
-# secrets and not Secret Manager at large. It read the Resend key until the
-# reminder moved to SES.
-resource "google_secret_manager_secret_iam_member" "ci_ses" {
-  for_each = toset(["ses-access-key-id", "ses-secret-access-key"])
-
-  project   = var.project_id
-  secret_id = module.secrets.secret_ids[each.key]
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:github-actions@${var.project_id}.iam.gserviceaccount.com"
-}
+# None. The CI service account, github-actions@, reads no runtime secret.
+# It did: the yearly accessibility statement reminder emailed from its
+# workflow, first with the Resend key and then with the SES one. The app
+# sends that email now, through the admin job's `accessibility-reminder`
+# action, so the mail key is opened only by the workloads that send mail.
+# A workflow that needs something done with a runtime secret should ask
+# the admin job for it in the same way, and not be granted the secret.
 
 # ---------- Buckets ----------
 # The backend reads published question banks. Silent when missing: an
