@@ -20,7 +20,7 @@ os.environ.setdefault("VAPID_PRIVATE", "test_vapid_private_key")
 os.environ.setdefault("COMPANY_EMAIL", "test@example.com")
 os.environ.setdefault("CORE_DB_PASSWORD", "test_auth_password")
 os.environ.setdefault("CLINICAL_SERVICES_ENABLED", "false")
-# Force dry-run to prevent tests from sending real emails via Resend
+# Force dry-run to prevent tests from sending real emails
 os.environ["EMAIL_DRY_RUN"] = "true"
 
 from argon2 import PasswordHasher

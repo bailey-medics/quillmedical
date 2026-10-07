@@ -17,6 +17,29 @@ from app.email_send import (
 )
 
 
+def _ses_settings(mock_settings: MagicMock) -> None:
+    """Settings for a live send through SES, with working credentials."""
+    mock_settings.EMAIL_DRY_RUN = False
+    mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
+    mock_settings.EMAIL_FROM = "info@quill-medical.com"
+    mock_settings.SES_REGION = "eu-west-2"
+    mock_settings.SES_ACCESS_KEY_ID.get_secret_value.return_value = (
+        "test-key-id"
+    )
+    mock_settings.SES_SECRET_ACCESS_KEY.get_secret_value.return_value = (
+        "ses_secret_value"
+    )
+
+
+def _sent_message(mock_boto3: MagicMock) -> EmailMessage:
+    """The MIME message the mocked SES client was handed, parsed."""
+    send = mock_boto3.client.return_value.send_email
+    raw = send.call_args.kwargs["Content"]["Raw"]["Data"]
+    parsed = message_from_bytes(raw, policy=policy.default)
+    assert isinstance(parsed, EmailMessage)
+    return parsed
+
+
 class TestSendEmailDryRun:
     """Test email dry-run mode (default in development)."""
 
@@ -62,96 +85,6 @@ class TestSendEmailDryRun:
         # person's name as surely as a subject can.
         assert "attachments=1" in caplog.text
         assert "certificate.pdf" not in caplog.text
-
-    @patch("app.email_send.resend")
-    @patch("app.email_send.settings")
-    def test_dry_run_does_not_call_resend(
-        self, mock_settings: MagicMock, mock_resend: MagicMock
-    ) -> None:
-        mock_settings.EMAIL_DRY_RUN = True
-
-        send_email(
-            to="test@example.com",
-            subject="Test",
-            html_body="<p>Test</p>",
-        )
-
-        mock_resend.Emails.send.assert_not_called()
-
-
-class TestSendEmailLive:
-    """Test email sending with Resend API."""
-
-    @patch("app.email_send.resend")
-    @patch("app.email_send.settings")
-    def test_missing_api_key_logs_error(
-        self,
-        mock_settings: MagicMock,
-        mock_resend: MagicMock,
-        caplog: pytest.LogCaptureFixture,
-    ) -> None:
-        mock_settings.EMAIL_DRY_RUN = False
-        mock_settings.RESEND_API_KEY = None
-
-        with caplog.at_level(logging.ERROR, logger="app.email_send"):
-            send_email(
-                to="test@example.com",
-                subject="Test",
-                html_body="<p>Test</p>",
-            )
-
-        assert "RESEND_API_KEY is not configured" in caplog.text
-        mock_resend.Emails.send.assert_not_called()
-
-    @patch("app.email_send.resend")
-    @patch("app.email_send.settings")
-    def test_sends_email_via_resend(
-        self, mock_settings: MagicMock, mock_resend: MagicMock
-    ) -> None:
-        mock_settings.EMAIL_DRY_RUN = False
-        mock_settings.RESEND_API_KEY.get_secret_value.return_value = (
-            "re_test_key"
-        )
-        mock_settings.EMAIL_FROM = "noreply@quillmedical.com"
-
-        send_email(
-            to="student@example.com",
-            subject="Your certificate",
-            html_body="<p>Attached</p>",
-        )
-
-        mock_resend.Emails.send.assert_called_once()
-        call_args = mock_resend.Emails.send.call_args[0][0]
-        assert call_args["to"] == ["student@example.com"]
-        assert call_args["subject"] == "Your certificate"
-        assert call_args["html"] == "<p>Attached</p>"
-        assert call_args["from"] == "noreply@quillmedical.com"
-
-    @patch("app.email_send.resend")
-    @patch("app.email_send.settings")
-    def test_sends_with_attachment(
-        self, mock_settings: MagicMock, mock_resend: MagicMock
-    ) -> None:
-        mock_settings.EMAIL_DRY_RUN = False
-        mock_settings.RESEND_API_KEY.get_secret_value.return_value = (
-            "re_test_key"
-        )
-        mock_settings.EMAIL_FROM = "noreply@quillmedical.com"
-
-        attachments: list[Attachment] = [
-            {"filename": "cert.pdf", "content": b"\x00\x01\x02"},
-        ]
-
-        send_email(
-            to="student@example.com",
-            subject="Certificate",
-            html_body="<p>Here</p>",
-            attachments=attachments,
-        )
-
-        call_args = mock_resend.Emails.send.call_args[0][0]
-        assert "attachments" in call_args
-        assert len(call_args["attachments"]) == 1
 
 
 class TestEmailRateLimiting:
@@ -283,16 +216,15 @@ class TestFailedSendsDoNotCountAgainstTheLimit:
     def setup_method(self) -> None:
         _rate_log.clear()
 
-    @patch("app.email_send.resend.Emails.send")
+    @patch("app.email_send.boto3")
     @patch("app.email_send.settings")
     def test_a_failed_send_is_not_charged(
-        self, mock_settings: MagicMock, mock_send: MagicMock
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
     ) -> None:
-        mock_settings.EMAIL_DRY_RUN = False
-        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
-        mock_settings.RESEND_API_KEY = MagicMock()
-        mock_settings.RESEND_API_KEY.get_secret_value.return_value = "key"
-        mock_send.side_effect = RuntimeError("mail server unreachable")
+        _ses_settings(mock_settings)
+        mock_boto3.client.return_value.send_email.side_effect = RuntimeError(
+            "mail server unreachable"
+        )
 
         for _ in range(20):
             with pytest.raises(RuntimeError):
@@ -304,17 +236,15 @@ class TestFailedSendsDoNotCountAgainstTheLimit:
 
         assert _rate_log.get("unreachable@example.com", []) == []
 
-    @patch("app.email_send.resend.Emails.send")
+    @patch("app.email_send.boto3")
     @patch("app.email_send.settings")
     def test_the_allowance_survives_an_outage(
-        self, mock_settings: MagicMock, mock_send: MagicMock
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
     ) -> None:
         """Retrying through an outage must not lock the address out."""
-        mock_settings.EMAIL_DRY_RUN = False
-        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
-        mock_settings.RESEND_API_KEY = MagicMock()
-        mock_settings.RESEND_API_KEY.get_secret_value.return_value = "key"
-        mock_send.side_effect = RuntimeError("down")
+        _ses_settings(mock_settings)
+        send = mock_boto3.client.return_value.send_email
+        send.side_effect = RuntimeError("down")
 
         for _ in range(15):
             with pytest.raises(RuntimeError):
@@ -326,7 +256,7 @@ class TestFailedSendsDoNotCountAgainstTheLimit:
 
         # The outage ends. The next one must go out rather than be
         # refused for an hour on the strength of failures alone.
-        mock_send.side_effect = None
+        send.side_effect = None
         send_email(
             to="patient@example.com",
             subject="At last",
@@ -435,50 +365,25 @@ class TestAllowedRecipients:
 
 
 class TestTextReplyToAndSenderName:
-    """The parts a branded email adds: plain text, reply-to, display name."""
+    """The parts a branded email adds: plain text, reply-to, display name.
 
-    @patch("app.email_send.resend")
-    @patch("app.email_send.settings")
-    def test_passes_text_reply_to_and_a_named_sender(
-        self, mock_settings: MagicMock, mock_resend: MagicMock
-    ) -> None:
-        mock_settings.EMAIL_DRY_RUN = False
-        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
-        mock_settings.RESEND_API_KEY.get_secret_value.return_value = "re_k"
-        mock_settings.EMAIL_FROM = "info@quill-medical.com"
+    That they are carried when given is in ``TestSendingThroughSes``.
+    """
 
-        send_email(
-            to="trainee@example.com",
-            subject="Your certificate",
-            html_body="<p>Well done</p>",
-            text_body="Well done",
-            reply_to="coordinator@partner.example",
-            from_name="EoEETA via Quill Medical",
-        )
-
-        params = mock_resend.Emails.send.call_args[0][0]
-        assert params["text"] == "Well done"
-        assert params["reply_to"] == "coordinator@partner.example"
-        assert params["from"] == (
-            '"EoEETA via Quill Medical" <info@quill-medical.com>'
-        )
-
-    @patch("app.email_send.resend")
+    @patch("app.email_send.boto3")
     @patch("app.email_send.settings")
     def test_leaves_them_out_when_not_given(
-        self, mock_settings: MagicMock, mock_resend: MagicMock
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
     ) -> None:
-        mock_settings.EMAIL_DRY_RUN = False
-        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
-        mock_settings.RESEND_API_KEY.get_secret_value.return_value = "re_k"
-        mock_settings.EMAIL_FROM = "info@quill-medical.com"
+        _ses_settings(mock_settings)
+        _rate_log.clear()
 
         send_email(to="a@example.com", subject="S", html_body="<p>B</p>")
 
-        params = mock_resend.Emails.send.call_args[0][0]
-        assert "text" not in params
-        assert "reply_to" not in params
-        assert params["from"] == "info@quill-medical.com"
+        message = _sent_message(mock_boto3)
+        assert message["Reply-To"] is None
+        assert message["From"] == "info@quill-medical.com"
+        assert not message.is_multipart()
 
     @pytest.mark.parametrize(
         "name",
@@ -506,94 +411,16 @@ class TestTextReplyToAndSenderName:
             )
 
 
-class TestTheApiKey:
-    """The Resend key, as it arrives from Secret Manager."""
-
-    def setup_method(self) -> None:
-        _rate_log.clear()
-
-    @patch("app.email_send.resend")
-    @patch("app.email_send.settings")
-    def test_a_trailing_newline_is_ignored(
-        self, mock_settings: MagicMock, mock_resend: MagicMock
-    ) -> None:
-        """Stored with `echo`, the key ends in a newline, which `requests`
-        refuses in a header. Every production email failed this way."""
-        mock_settings.EMAIL_DRY_RUN = False
-        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
-        mock_settings.RESEND_API_KEY.get_secret_value.return_value = (
-            "re_test_key\n"
-        )
-        mock_settings.EMAIL_FROM = "noreply@quillmedical.com"
-
-        send_email(to="a@example.com", subject="Hi", html_body="<p>x</p>")
-
-        assert mock_resend.api_key == "re_test_key"
-
-    @patch("app.email_send.resend.Emails.send")
-    @patch("app.email_send.settings")
-    def test_a_failed_send_never_carries_the_key(
-        self, mock_settings: MagicMock, mock_send: MagicMock
-    ) -> None:
-        """The error callers log must not quote the key, and must not
-        carry the original exception, whose message does."""
-        mock_settings.EMAIL_DRY_RUN = False
-        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
-        mock_settings.RESEND_API_KEY = MagicMock()
-        mock_settings.RESEND_API_KEY.get_secret_value.return_value = (
-            "re_secret_value"
-        )
-        mock_send.side_effect = RuntimeError(
-            "Invalid header value: 'Bearer re_secret_value'"
-        )
-
-        with pytest.raises(EmailSendError) as raised:
-            send_email(to="a@example.com", subject="Hi", html_body="<p>x</p>")
-
-        assert "re_secret_value" not in str(raised.value)
-        assert "[redacted]" in str(raised.value)
-        assert raised.value.__cause__ is None
-        assert raised.value.__suppress_context__
-
-
-def _ses_settings(mock_settings: MagicMock) -> None:
-    """Settings for a live send through SES, with working credentials."""
-    mock_settings.EMAIL_DRY_RUN = False
-    mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
-    mock_settings.EMAIL_PROVIDER = "ses"
-    mock_settings.EMAIL_FROM = "info@quill-medical.com"
-    mock_settings.SES_REGION = "eu-west-2"
-    mock_settings.SES_ACCESS_KEY_ID.get_secret_value.return_value = (
-        "test-key-id"
-    )
-    mock_settings.SES_SECRET_ACCESS_KEY.get_secret_value.return_value = (
-        "ses_secret_value"
-    )
-
-
-def _sent_message(mock_boto3: MagicMock) -> EmailMessage:
-    """The MIME message the mocked SES client was handed, parsed."""
-    send = mock_boto3.client.return_value.send_email
-    raw = send.call_args.kwargs["Content"]["Raw"]["Data"]
-    parsed = message_from_bytes(raw, policy=policy.default)
-    assert isinstance(parsed, EmailMessage)
-    return parsed
-
-
 class TestSendingThroughSes:
-    """``EMAIL_PROVIDER`` set to ``ses``: Amazon SES in London."""
+    """A live send, which goes through Amazon SES in London."""
 
     def setup_method(self) -> None:
         _rate_log.clear()
 
-    @patch("app.email_send.resend")
     @patch("app.email_send.boto3")
     @patch("app.email_send.settings")
-    def test_sends_from_the_pinned_region_and_not_through_resend(
-        self,
-        mock_settings: MagicMock,
-        mock_boto3: MagicMock,
-        mock_resend: MagicMock,
+    def test_sends_from_the_pinned_region(
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
     ) -> None:
         """Every SES resource is per region. A client made anywhere but
         London would be email data outside the UK."""
@@ -616,7 +443,6 @@ class TestSendingThroughSes:
         assert send.call_args.kwargs["Destination"] == {
             "ToAddresses": ["student@example.com"]
         }
-        mock_resend.Emails.send.assert_not_called()
 
     @patch("app.email_send.boto3")
     @patch("app.email_send.settings")
@@ -819,39 +645,18 @@ class TestExtraHeaders:
             "List-Unsubscribe=One-Click"
         )
 
-    @patch("app.email_send.resend")
-    @patch("app.email_send.settings")
-    def test_resend_is_given_them(
-        self, mock_settings: MagicMock, mock_resend: MagicMock
-    ) -> None:
-        mock_settings.EMAIL_DRY_RUN = False
-        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
-        mock_settings.RESEND_API_KEY.get_secret_value.return_value = "re_k"
-        mock_settings.EMAIL_FROM = "info@quill-medical.com"
-
-        send_email(
-            to="a@example.com",
-            subject="News",
-            html_body="<p>x</p>",
-            headers=self.HEADERS,
-        )
-
-        params = mock_resend.Emails.send.call_args[0][0]
-        assert params["headers"] == self.HEADERS
-
-    @patch("app.email_send.resend")
+    @patch("app.email_send.boto3")
     @patch("app.email_send.settings")
     def test_none_are_sent_when_none_are_given(
-        self, mock_settings: MagicMock, mock_resend: MagicMock
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
     ) -> None:
-        mock_settings.EMAIL_DRY_RUN = False
-        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
-        mock_settings.RESEND_API_KEY.get_secret_value.return_value = "re_k"
-        mock_settings.EMAIL_FROM = "info@quill-medical.com"
+        _ses_settings(mock_settings)
 
         send_email(to="a@example.com", subject="Hi", html_body="<p>x</p>")
 
-        assert "headers" not in mock_resend.Emails.send.call_args[0][0]
+        message = _sent_message(mock_boto3)
+        assert message["List-Unsubscribe"] is None
+        assert message["List-Unsubscribe-Post"] is None
 
     @pytest.mark.parametrize(
         "headers",
@@ -983,60 +788,3 @@ class TestMaskingAnAddress:
         assert "busy@example.com" not in str(caught.value)
         assert "b***@e***.com" in str(caught.value)
         email_send._rate_log.clear()
-
-
-class TestHowResendIsReached:
-    """Cloud Run has no IPv6 route out, and Resend has IPv6 addresses."""
-
-    def test_the_sdk_uses_the_ipv4_client(self) -> None:
-        import resend
-
-        from app.email_send import _Ipv4Client
-
-        assert isinstance(resend.default_http_client, _Ipv4Client)
-
-    def test_it_gives_up_on_a_connection_quickly(self) -> None:
-        from app.email_send import _Ipv4Client
-
-        assert _Ipv4Client.TIMEOUT.connect == 3.0
-        assert _Ipv4Client.TIMEOUT.read == 20.0
-
-    def test_it_returns_what_the_sdk_expects(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        import httpx
-
-        from app import email_send
-
-        seen: dict[str, object] = {}
-
-        def handler(request: httpx.Request) -> httpx.Response:
-            seen["method"] = request.method
-            seen["url"] = str(request.url)
-            seen["auth"] = request.headers.get("authorization")
-            seen["body"] = request.content
-            return httpx.Response(200, json={"id": "email_1"})
-
-        real_client = httpx.Client
-
-        def stub_client(**kwargs: object) -> httpx.Client:
-            seen["local_address"] = kwargs["transport"]._pool._local_address  # type: ignore[attr-defined]
-            return real_client(transport=httpx.MockTransport(handler))
-
-        monkeypatch.setattr(email_send.httpx, "Client", stub_client)
-
-        content, status, headers = email_send._Ipv4Client().request(
-            "post",
-            "https://api.resend.com/emails",
-            {"Authorization": "Bearer re_test"},
-            json={"to": ["a@example.com"]},
-        )
-
-        assert status == 200
-        assert b"email_1" in content
-        assert "content-type" in headers
-        assert seen["method"] == "POST"
-        assert seen["url"] == "https://api.resend.com/emails"
-        assert seen["auth"] == "Bearer re_test"
-        assert b"a@example.com" in seen["body"]  # type: ignore[operator]
-        assert seen["local_address"] == "0.0.0.0"

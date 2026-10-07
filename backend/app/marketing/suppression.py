@@ -72,14 +72,10 @@ class Marked:
 def is_configured() -> bool:
     """Whether there is an Amazon account to ask.
 
-    Only when email goes through SES and its key is set. A development
-    stack on another provider, and the tests, have nobody to ask.
+    Only when the SES key is set. A development stack without one, and
+    the tests, have nobody to ask.
     """
-    return bool(
-        settings.EMAIL_PROVIDER == "ses"
-        and settings.SES_ACCESS_KEY_ID
-        and settings.SES_SECRET_ACCESS_KEY
-    )
+    return bool(settings.SES_ACCESS_KEY_ID and settings.SES_SECRET_ACCESS_KEY)
 
 
 def suppressed_addresses() -> dict[str, Reason]:

@@ -50,7 +50,7 @@ app/
 ├── ehrbase_client.py    # OpenEHR integration
 ├── messaging.py         # Messaging CQRS coordination layer
 ├── organisations.py     # Organisation access control helpers
-├── email_send.py        # Email sending via Resend
+├── email_send.py        # Email sending via Amazon SES
 ├── log_context.py       # Request logging context
 ├── logging_config.py    # Structured JSON logging configuration
 ├── push.py              # Web push notification endpoints

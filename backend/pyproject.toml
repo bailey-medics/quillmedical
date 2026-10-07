@@ -49,9 +49,8 @@ google-cloud-storage = ">=3.15.0,<3.16.0"
 # job – see the trigger decision in the video auth gate plan.
 google-cloud-run = ">=0.16.1,<0.17.0"
 reportlab = ">=5.0.1,<5.1.0"
-resend = ">=2.0.0,<3.0.0"
-# Amazon SES in London, which replaces Resend. Both stand until the move
-# is finished; see docs/docs/plans/2026-10-06-amazon-ses-email-plan.md.
+# Amazon SES in London, which sends every email; see
+# docs/docs/plans/2026-10-06-amazon-ses-email-plan.md.
 boto3 = ">=1.40.0,<2.0.0"
 markdown = ">=3.7,<4.0"
 nh3 = "^0.3.4"

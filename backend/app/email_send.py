@@ -1,9 +1,7 @@
 """Email sending module.
 
-Delivers transactional email through Resend (https://resend.com) or
-Amazon SES in London, whichever ``EMAIL_PROVIDER`` names. Both stand
-while email moves to SES; see
-docs/docs/plans/2026-10-06-amazon-ses-email-plan.md.
+Delivers email through Amazon SES in London, so that email data stays in
+the UK; see docs/docs/plans/2026-10-06-amazon-ses-email-plan.md.
 When ``EMAIL_DRY_RUN`` is True (the default in development), emails
 are logged to stdout instead of being sent.
 """
@@ -14,60 +12,14 @@ import threading
 import time
 from collections.abc import Mapping
 from email.message import EmailMessage
-from typing import Any, TypedDict
+from typing import TypedDict
 
 import boto3
-import httpx
-import resend
 from botocore.config import Config
-from resend.http_client import HTTPClient
 
 from app.config import settings
-from app.net import IPV4_ONLY
 
 logger = logging.getLogger(__name__)
-
-
-class _Ipv4Client(HTTPClient):
-    """How the ``resend`` SDK reaches Resend: over IPv4, and not for long.
-
-    The SDK's own client waits thirty seconds to connect and tries
-    whichever address the resolver gives first. From Cloud Run, which has
-    no IPv6 route out, each of Resend's two IPv6 addresses cost the whole
-    thirty: "forgot password" took sixty seconds on 4 October 2026, and
-    the page gave up with "Request timed out" although the email arrived.
-    See ``app.net``.
-    """
-
-    #: Seconds. Short to connect, since a connection that has not opened
-    #: in three is not about to; longer to answer, for an attachment.
-    TIMEOUT = httpx.Timeout(20.0, connect=3.0)
-
-    def request(
-        self,
-        method: str,
-        url: str,
-        headers: Mapping[str, str],
-        json: dict[str, object] | list[object] | None = None,
-        files: dict[str, Any] | None = None,
-        data: dict[str, str] | None = None,
-    ) -> tuple[bytes, int, Mapping[str, str]]:
-        with httpx.Client(
-            timeout=self.TIMEOUT,
-            transport=httpx.HTTPTransport(local_address=IPV4_ONLY),
-        ) as client:
-            response = client.request(
-                method,
-                url,
-                headers=dict(headers),
-                json=json if data is None and files is None else None,
-                files=files,
-                data=data,
-            )
-        return response.content, response.status_code, response.headers
-
-
-resend.default_http_client = _Ipv4Client()
 
 
 def mask_email(address: str) -> str:
@@ -119,10 +71,10 @@ class EmailNotAllowedError(Exception):
 class EmailSendError(RuntimeError):
     """Raised when the mail provider refuses a send or cannot be reached.
 
-    Carries the provider's message with the API key taken out, and not
-    the exception it came from: the ``requests`` error for a malformed
-    header quotes the header, key and all, so anything that logged the
-    original traceback would write the key into the logs.
+    Carries the provider's message with the credentials taken out, and
+    not the exception it came from: an error for a malformed header can
+    quote the header, key and all, so anything that logged the original
+    traceback would write the key into the logs.
     """
 
 
@@ -329,8 +281,9 @@ def _from_header(
     return f'"{from_name}" <{address}>'
 
 
-#: How long SES is given. Short to connect and one retry, for the reason
-#: ``_Ipv4Client`` gives: a caller is a person waiting on a page.
+#: How long SES is given. Short to connect and one retry, because a
+#: caller is a person waiting on a page, and a connection that has not
+#: opened in three seconds is not about to.
 _SES_CONFIG = Config(
     connect_timeout=3,
     read_timeout=20,
@@ -424,8 +377,8 @@ def _send_with_ses(*, sender: str, to: str, raw_message: bytes) -> bool:
         )
         return False
 
-    # Stripped for the reason the Resend key is: stored with `echo`, a
-    # value ends in a newline, and a signature made with it is refused.
+    # Stripped because a value stored with `echo` ends in a newline, and
+    # a signature made with it is refused.
     key_id_value = key_id.get_secret_value().strip()
     secret_value = secret.get_secret_value().strip()
 
@@ -443,8 +396,8 @@ def _send_with_ses(*, sender: str, to: str, raw_message: bytes) -> bool:
             Content={"Raw": {"Data": raw_message}},
         )
     except Exception as exc:
-        # `from None`, as for Resend: nothing that may quote a credential
-        # is attached to the exception callers log.
+        # `from None`, so nothing that may quote a credential is attached
+        # to the exception callers log.
         message = _redact(_redact(str(exc), secret_value), key_id_value)
         raise EmailSendError(message) from None
 
@@ -513,72 +466,22 @@ def send_email(
         _record_send(to)
         return
 
-    if settings.EMAIL_PROVIDER == "ses":
-        sent = _send_with_ses(
+    sent = _send_with_ses(
+        sender=sender,
+        to=to,
+        raw_message=_mime_message(
             sender=sender,
             to=to,
-            raw_message=_mime_message(
-                sender=sender,
-                to=to,
-                subject=subject,
-                html_body=html_body,
-                text_body=text_body,
-                reply_to=reply_to,
-                attachments=attachments or [],
-                headers=extra_headers,
-            ),
-        )
-        if not sent:
-            return
-        _record_send(to)
-        logger.info(
-            "Email sent – to=%s attachments=%d",
-            mask_email(to),
-            len(attachment_names),
-        )
+            subject=subject,
+            html_body=html_body,
+            text_body=text_body,
+            reply_to=reply_to,
+            attachments=attachments or [],
+            headers=extra_headers,
+        ),
+    )
+    if not sent:
         return
-
-    api_key = settings.RESEND_API_KEY
-    if not api_key:
-        logger.error("Cannot send email: RESEND_API_KEY is not configured")
-        return
-
-    # Stripped because a key stored with a trailing newline, as `echo`
-    # leaves one, makes `requests` refuse the Authorization header, and
-    # every send fails. Found in production on 27 September 2026.
-    key = api_key.get_secret_value().strip()
-    resend.api_key = key
-
-    resend_attachments: list[resend.Attachment | resend.RemoteAttachment] = [
-        resend.Attachment(
-            filename=att["filename"],
-            content=list(att["content"]),
-        )
-        for att in (attachments or [])
-    ]
-
-    params: resend.Emails.SendParams = {
-        "from": sender,
-        "to": [to],
-        "subject": subject,
-        "html": html_body,
-    }
-    if text_body is not None:
-        params["text"] = text_body
-    if reply_to is not None:
-        params["reply_to"] = reply_to
-    if resend_attachments:
-        params["attachments"] = resend_attachments
-    if extra_headers:
-        params["headers"] = extra_headers
-
-    try:
-        resend.Emails.send(params)
-    except Exception as exc:
-        # `from None`, so the original exceptions, which may quote the
-        # key, are not attached to the one callers log.
-        raise EmailSendError(_redact(str(exc), key)) from None
-
     _record_send(to)
 
     logger.info(

@@ -1314,8 +1314,7 @@ def register(
 
     # Registration is an opt-out: somebody shown the sentence who leaves
     # the box unticked is sent news. A form that never showed it sends
-    # nothing here, and that person is left unsubscribed. Resend is told
-    # when the address is verified, not now.
+    # nothing here, and that person is left unsubscribed.
     if payload.marketing_opt_out is not None:
         set_marketing_preference(
             db,
@@ -1631,8 +1630,7 @@ def reset_password(
     # form, so the invite's page asks the marketing question and the
     # answer arrives here. It is the same opt-out as registration: left
     # unticked, they are sent news. An ordinary reset sends nothing and
-    # changes nothing. The link came by email, so the address is theirs,
-    # and Resend is told straight away if the account is verified.
+    # changes nothing. The link came by email, so the address is theirs.
     if data.marketing_opt_out is not None:
         set_marketing_preference(
             db,

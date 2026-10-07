@@ -619,6 +619,19 @@ in the command that sends, and the tests have to pin it down.
       its job. The newsletter's share of Resend went at the cut-over in
       Phase 4.
 
+      Brought forward on 7 October 2026, the day after the switch: with
+      no real users, a fallback is worth little, and if SES misbehaved
+      the fix would be to SES. It goes in three parts, in this order.
+      **The backend first, done**: the Resend path, the `resend`
+      dependency, `RESEND_API_KEY` and `EMAIL_PROVIDER` are gone, and
+      `send_email` has one way out, SES. `backend/app/net.py` went with
+      them, since forcing IPv4 was only ever for Resend's API. The
+      running service is still handed `EMAIL_PROVIDER` and the Resend
+      key until the next part, and ignores both. **Then Terraform**,
+      once that has deployed, because the revision serving until then
+      still mounts the secret. **Then the account**, which is Mark's to
+      close.
+
 - [ ] **Update the privacy policy** in `docs/docs/legal/privacy-policy.md`
       as a new version: section 5 names Amazon Web Services, London, in
       place of Resend; section 8 loses the transfer to the United States;
