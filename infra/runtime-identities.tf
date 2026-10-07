@@ -29,8 +29,7 @@ locals {
       JWT_SECRET       = "jwt-secret"
       CORE_DB_PASSWORD = "core-db-password"
       VAPID_PRIVATE    = "vapid-private"
-      RESEND_API_KEY   = "resend-api-key"
-      # Amazon SES in London, which replaces Resend: the access key of
+      # Amazon SES in London, which sends every email: the access key of
       # the AWS user that may send from eu-west-2 and nowhere else.
       # Mounted once each secret had a version, which Cloud Run insists
       # on. See
