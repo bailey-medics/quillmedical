@@ -211,6 +211,14 @@ export function Component() {
               { label: "Indication", value: entry.indication },
               { label: "Outcome", value: entry.outcome },
               { label: "Notes", value: entry.notes, prose: true },
+              {
+                label: "Confirmed by",
+                value: entry.confirmed_by?.name ?? null,
+              },
+              {
+                label: "Waiting to be confirmed by",
+                value: entry.confirmation_asked_of ?? null,
+              },
             ]}
           />
         </>

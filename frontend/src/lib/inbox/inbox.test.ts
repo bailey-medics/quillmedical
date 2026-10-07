@@ -78,6 +78,22 @@ describe("inboxItemHref", () => {
     ).toBeNull();
   });
 
+  it("sends a logbook entry to confirm to the page it is confirmed on", () => {
+    expect(
+      inboxItemHref({ ...item, source: "passport_logbook_confirmation" }),
+    ).toBe("/passport/logbook-confirmation/7");
+  });
+
+  it("gives an answered logbook confirmation nowhere to go", () => {
+    expect(
+      inboxItemHref({
+        ...item,
+        source: "passport_logbook_confirmation",
+        done: true,
+      }),
+    ).toBeNull();
+  });
+
   it("gives a line from an unknown source nowhere to go", () => {
     expect(inboxItemHref({ ...item, source: "something_new" })).toBeNull();
   });

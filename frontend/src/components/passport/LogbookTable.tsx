@@ -72,6 +72,21 @@ const columns: Column<LogbookEntry>[] = [
  * Most competencies are assessed as a whole, and a column of dashes on
  * every one of their logbooks would be noise.
  */
+/**
+ * Who confirmed each entry, or who has been asked to. Shown only where
+ * some entry has either: most logbooks are the holder's own claim from
+ * end to end, and a column of dashes would suggest something is missing.
+ */
+const confirmationColumn: Column<LogbookEntry> = {
+  header: "Confirmed by",
+  render: (entry) =>
+    entry.confirmed_by
+      ? entry.confirmed_by.name
+      : entry.confirmation_asked_of
+        ? `Asked: ${entry.confirmation_asked_of}`
+        : "–",
+};
+
 const scopeColumn: Column<LogbookEntry> = {
   header: "Counts towards",
   render: (entry) => entry.scope?.name ?? "–",
@@ -119,11 +134,16 @@ export default function LogbookTable({
 
         <DataTable
           data={sorted}
-          columns={
-            entries.some((entry) => entry.scope)
-              ? [columns[0], scopeColumn, ...columns.slice(1)]
-              : columns
-          }
+          columns={[
+            columns[0],
+            ...(entries.some((entry) => entry.scope) ? [scopeColumn] : []),
+            ...columns.slice(1),
+            ...(entries.some(
+              (entry) => entry.confirmed_by || entry.confirmation_asked_of,
+            )
+              ? [confirmationColumn]
+              : []),
+          ]}
           getRowKey={(entry) => entry.filename}
           onRowClick={onSelect ? (entry) => onSelect(entry) : undefined}
           loading={isLoading}

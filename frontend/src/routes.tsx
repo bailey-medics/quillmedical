@@ -265,6 +265,13 @@ export const routes: RouteObject[] = [
             path: "/passport/sign-off/:signOffId",
             lazy: lazyFrom(loadPassport, "PassportSignOffPage"),
           },
+          {
+            // Reached from the inbox by a supervisor asked to confirm one
+            // logbook entry. A reload loses only an unticked box.
+            path: "/passport/logbook-confirmation/:requestId",
+            lazy: lazyFrom(loadPassport, "PassportLogbookConfirmationPage"),
+            handle: { safeForReload: true },
+          },
         ],
       },
 

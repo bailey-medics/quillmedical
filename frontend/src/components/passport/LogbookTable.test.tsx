@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import LogbookTable from "./LogbookTable";
 import {
+  confirmedLogbook,
   logbook,
   emptyLogbook,
   scopedLogbook,
@@ -65,6 +66,24 @@ describe("LogbookTable", () => {
       renderWithMantine(<LogbookTable logbook={logbook} />);
       expect(
         screen.queryByRole("columnheader", { name: /Counts towards/ }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Confirmation", () => {
+    it("names who confirmed an entry, and who another is waiting on", () => {
+      renderWithMantine(<LogbookTable logbook={confirmedLogbook} />);
+      expect(
+        screen.getByRole("columnheader", { name: /Confirmed by/ }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Dr Amara Okonkwo")).toBeInTheDocument();
+      expect(screen.getByText("Asked: a.okonkwo@nhs.net")).toBeInTheDocument();
+    });
+
+    it("shows no such column where nothing is confirmed or asked", () => {
+      renderWithMantine(<LogbookTable logbook={scopedLogbook} />);
+      expect(
+        screen.queryByRole("columnheader", { name: /Confirmed by/ }),
       ).not.toBeInTheDocument();
     });
   });

@@ -18,6 +18,7 @@ export { Component as PassportCertificatesPage } from "./PassportCertificatesPag
 export { Component as PassportCpdEntryPage } from "./PassportCpdEntryPage";
 export { Component as PassportCpdPage } from "./PassportCpdPage";
 export { Component as PassportDownloadPage } from "./PassportDownloadPage";
+export { Component as PassportLogbookConfirmationPage } from "./PassportLogbookConfirmationPage";
 export { Component as PassportLogbookEntryPage } from "./PassportLogbookEntryPage";
 export { Component as PassportLogbookPage } from "./PassportLogbookPage";
 export { Component as PassportPage } from "./PassportPage";

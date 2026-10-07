@@ -57,6 +57,8 @@ import type {
   ReflectionInput,
   SignOff,
   SignOffDeclineInput,
+  LogbookConfirmation,
+  LogbookConfirmationAnswer,
   SignOffInput,
   SignOffRequestInput,
   WholeLogbook,
@@ -80,6 +82,7 @@ export const PASSPORT_PATHS = [
   "/passport/assessor-invites/preview",
   "/passport/assessors/{assessor_user_id}/membership",
   "/passport/requests/inbox",
+  "/passport/requests/logbook-confirmations/{request_id}",
   "/passport/specialties",
   "/passport/{passport_id}",
   "/passport/{passport_id}/appraisal-periods",
@@ -458,6 +461,33 @@ export function addLogbookEntry(
   return api.post<RecordResult>(
     `/passport/${segment(passportId)}/logbook/${segment(competencyId)}`,
     data,
+  );
+}
+
+/**
+ * One logbook entry the caller has been asked to confirm. The entry and
+ * nothing else of the holder's passport.
+ */
+export function fetchLogbookConfirmation(
+  requestId: number,
+): Promise<LogbookConfirmation> {
+  return api.get<LogbookConfirmation>(
+    `/passport/requests/logbook-confirmations/${requestId}`,
+  );
+}
+
+/**
+ * Confirms a logbook entry, or says it is not the caller's to confirm.
+ * Confirming records their name on the entry; declining closes the ask
+ * and leaves the entry as the holder wrote it.
+ */
+export function answerLogbookConfirmation(
+  requestId: number,
+  confirmed: boolean,
+): Promise<LogbookConfirmationAnswer> {
+  return api.post<LogbookConfirmationAnswer>(
+    `/passport/requests/logbook-confirmations/${requestId}`,
+    { confirmed },
   );
 }
 

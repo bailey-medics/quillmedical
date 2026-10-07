@@ -465,16 +465,25 @@ in that order.
 - [x] **Tests**: the ask, the confirmation, self-confirmation refused, an
       amended entry losing its confirmation, a stranger told nothing, the
       inbox listing the new source.
-- [ ] **Offer the ask on `LogbookEntryForm`**, as an optional address, and
-      warn that saving a confirmed entry removes its confirmation.
-- [ ] **Add the page a supervisor confirms on**, reached from the inbox,
+- [x] **Offer the ask on `LogbookEntryForm`**, as an optional address, and
+      warn that saving a confirmed entry removes its confirmation. A
+      half-typed address holds the form back, since the server would refuse
+      it only after everything else was filled in.
+- [x] **Add the page a supervisor confirms on**, at
+      `/passport/logbook-confirmation/:requestId`, reached from the inbox,
       with a tickbox against the entry. A tickbox and not a switch: it is
       saved with the form like any other field, where a switch implies it
-      takes effect at once.
-- [ ] **Mark confirmed entries** in `LogbookTable` and on the entry's own
+      takes effect at once. Built as `LogbookConfirmationForm`, composed
+      from the record card, the checkbox and the button pair already in
+      Storybook. The side navigation names the page "Confirm entry"
+      beneath Passport, as it names "Sign off": the navigation coverage
+      test failed in CI until it did. That changes the navigation, so
+      journey 4 is added to the "Not yet run" list in
+      `docs/docs/frontend/accessibility/testing-log.md`.
+- [x] **Mark confirmed entries** in `LogbookTable` and on the entry's own
       page, with the supervisor's name, and say who an entry is waiting
-      on.
-- [ ] **Tests and stories** for each.
+      on. The column appears only where some entry has either.
+- [x] **Tests and stories** for each.
 
 ## Phase 6: Frameworks in the catalogue
 
