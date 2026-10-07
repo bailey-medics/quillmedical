@@ -475,6 +475,238 @@ class TestScope:
         assert not hashing.matches(record.model_copy(update={"scope": None}))
 
 
+class TestOneStatePerScope:
+    """Lung and breast are both true at once, so neither replaces the
+    other as where the holder stands."""
+
+    def _signed(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+        *,
+        scope_id: str,
+        level_id: str,
+        observed_on: date = date(2026, 3, 12),
+    ) -> str:
+        name = _request(
+            passport,
+            holder,
+            competency_id=SCALED,
+            scope_id=scope_id,
+            level_id=level_id,
+            observed_on=observed_on,
+        )
+        _sign(passport, assessor, name)
+        return name
+
+    def _entries(
+        self, passport: store.LocalPassportStore
+    ) -> dict[str | None, index.IndexEntry]:
+        return {
+            entry.scope.id if entry.scope is not None else None: entry
+            for entry in index.build(passport, PASSPORT_ID).competencies
+            if entry.id == SCALED
+        }
+
+    def test_two_scopes_give_two_entries_each_with_its_own_level(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        self._signed(
+            passport,
+            holder,
+            assessor,
+            scope_id="lung",
+            level_id="prescribe_subsequent_cycles",
+        )
+        self._signed(
+            passport,
+            holder,
+            assessor,
+            scope_id="breast",
+            level_id="review_and_authorise",
+            observed_on=date(2026, 6, 1),
+        )
+
+        entries = self._entries(passport)
+
+        assert set(entries) == {"lung", "breast"}
+        lung, breast = entries["lung"], entries["breast"]
+        assert lung.level is not None and breast.level is not None
+        assert lung.level.id == "prescribe_subsequent_cycles"
+        assert breast.level.id == "review_and_authorise"
+        assert lung.scope is not None and lung.scope.name == "Lung"
+
+    def test_each_scope_keeps_its_own_history(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        first_lung = self._signed(
+            passport,
+            holder,
+            assessor,
+            scope_id="lung",
+            level_id="review_and_authorise",
+        )
+        self._signed(
+            passport,
+            holder,
+            assessor,
+            scope_id="breast",
+            level_id="review_and_authorise",
+            observed_on=date(2026, 6, 1),
+        )
+        second_lung = self._signed(
+            passport,
+            holder,
+            assessor,
+            scope_id="lung",
+            level_id="prescribe_subsequent_cycles",
+            observed_on=date(2026, 9, 1),
+        )
+
+        entries = self._entries(passport)
+
+        assert entries["lung"].sign_off == second_lung
+        assert entries["lung"].previous_sign_offs == [first_lung]
+        assert entries["breast"].previous_sign_offs == []
+
+    def test_a_first_sign_off_for_a_new_scope_is_initial(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        """Not a reassessment below the level held for another scope."""
+        self._signed(
+            passport,
+            holder,
+            assessor,
+            scope_id="lung",
+            level_id="prescribe_subsequent_cycles",
+        )
+
+        breast = _request(
+            passport,
+            holder,
+            competency_id=SCALED,
+            scope_id="breast",
+            level_id="review_and_authorise",
+            observed_on=date(2026, 6, 1),
+        )
+
+        assert (
+            service.read_sign_off(passport, PASSPORT_ID, breast).kind
+            == "initial"
+        )
+
+    def test_a_higher_level_for_the_same_scope_is_a_progression(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        """Judged against its own scope, whatever came between."""
+        self._signed(
+            passport,
+            holder,
+            assessor,
+            scope_id="lung",
+            level_id="review_and_authorise",
+        )
+        self._signed(
+            passport,
+            holder,
+            assessor,
+            scope_id="breast",
+            level_id="prescribe_first_cycle",
+            observed_on=date(2026, 6, 1),
+        )
+
+        lung_again = _request(
+            passport,
+            holder,
+            competency_id=SCALED,
+            scope_id="lung",
+            level_id="prescribe_subsequent_cycles",
+            observed_on=date(2026, 9, 1),
+        )
+
+        assert (
+            service.read_sign_off(passport, PASSPORT_ID, lung_again).kind
+            == "progression"
+        )
+
+    def test_the_kind_at_signing_is_judged_within_the_scope_too(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        self._signed(
+            passport,
+            holder,
+            assessor,
+            scope_id="lung",
+            level_id="prescribe_first_cycle",
+        )
+        breast = self._signed(
+            passport,
+            holder,
+            assessor,
+            scope_id="breast",
+            level_id="review_and_authorise",
+            observed_on=date(2026, 6, 1),
+        )
+
+        assert (
+            service.read_sign_off(passport, PASSPORT_ID, breast).kind
+            == "initial"
+        )
+
+    def test_a_competency_with_no_scopes_still_has_one_entry(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        first = _request(passport, holder)
+        _sign(passport, assessor, first)
+        _request(passport, holder, observed_on=date(2026, 9, 1))
+
+        entries = [
+            entry
+            for entry in index.build(passport, PASSPORT_ID).competencies
+            if entry.id == UNSCALED
+        ]
+
+        assert len(entries) == 1
+        assert entries[0].scope is None
+
+    def test_the_status_of_a_competency_covers_every_scope(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        self._signed(
+            passport,
+            holder,
+            assessor,
+            scope_id="lung",
+            level_id="review_and_authorise",
+        )
+
+        assert service.status_for(passport, PASSPORT_ID, SCALED) == (
+            "signed_off"
+        )
+
+
 class TestKind:
     def test_the_first_sign_off_is_initial(
         self,

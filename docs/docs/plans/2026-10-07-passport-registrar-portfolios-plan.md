@@ -352,20 +352,28 @@ declares no scopes behaves exactly as it does today.
 
 ## Phase 2: One state per competency and scope
 
-- [ ] **Key the derived index by competency and scope**, in
+- [x] **Key the derived index by competency and scope**, in
       `backend/app/features/passport/index.py`, and add `scope` to
       `IndexEntry`. Today there is one entry per competency, so a breast
       sign-off replaces a lung one as the current state. Sign-offs with no
       scope keep one entry, as now. The index is derived, so existing
-      passports are rebuilt and nothing is migrated.
-- [ ] **Judge the kind within a scope**, in `_kind_for` in `service.py`: it
+      passports are rebuilt and nothing is migrated. Logbook entries and
+      certificates name no scope yet, so each of a competency's entries
+      reports all of them until Phase 4 counts the logbook by scope.
+- [x] **Judge the kind within a scope**, in `_kind_for` in `service.py`: it
       compares against earlier sign-offs for the same competency and the
       same scope only. A first breast sign-off is `initial`, not a
-      reassessment below lung. A correction keeps the scope of the record
-      it corrects.
-- [ ] **Carry the scope on each competency's state** in the API response.
-      Additive.
-- [ ] **Tests**: two scopes on one competency give two index entries, each
+      reassessment below lung. Nothing was needed for a correction:
+      `supersede_sign_off` marks the earlier record and writes no new one,
+      so there is no scope to carry across.
+- [x] **Carry the scope on each competency's state** in the API response.
+      Additive. `GET /{passport_id}/competencies/{competency_id}` returns
+      one state, so it takes an optional `scope_id` to say which.
+- [x] **Key the rows of `CompetencySummary` by competency and scope.** A
+      competency now appears once for each scope, and rows keyed by id
+      alone would repeat a key. Found while building. Showing the scope on
+      the row is Phase 3.
+- [x] **Tests**: two scopes on one competency give two index entries, each
       with its own level and history; the kind is worked out per scope in
       each direction; an unscoped competency still gives one entry.
 

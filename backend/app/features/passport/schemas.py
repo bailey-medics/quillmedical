@@ -515,6 +515,11 @@ class IndexEntry(PassportModel):
     Regenerated on every write and never hand-edited. If it disagrees
     with the directories beneath, they win and it is rebuilt.
 
+    One entry per competency and scope. A competency signed off for
+    lung and for breast has two, each with its own level and history,
+    so the later never replaces the earlier as the current state. A
+    competency assessed as a whole has one, with no scope.
+
     Carries counts and never comparisons: ``logbook_entries: 38`` and no
     target, no percentage, no ready-or-not. How many is enough is a
     judgement belonging to the assessor, and a system that appears to
@@ -523,6 +528,9 @@ class IndexEntry(PassportModel):
 
     id: CompetencyIdField
     name: NonEmptyText
+    #: What this entry's sign-offs cover, where the competency is signed
+    #: off scope by scope. With ``id`` it is what identifies an entry.
+    scope: ScopeRef | None = None
     status: SignOffStatus
     level: LevelRef | None = None
     #: What the holder asked for on the latest sign-off. Differs from

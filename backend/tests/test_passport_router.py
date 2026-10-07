@@ -699,6 +699,44 @@ class TestRequestSignOff:
         assert response.status_code == 400, response.text
         assert mailed == []
 
+    def test_a_competency_reports_where_it_stands_for_one_scope(
+        self, holder_client: TestClient, assessor: User
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        for scope_id in ("lung", "breast"):
+            response = holder_client.post(
+                f"/api/passport/{passport_id}/competencies/{COMPETENCY}"
+                "/requests",
+                json={
+                    "assessor_email": assessor.email,
+                    "observed_on": "2026-03-14",
+                    "level_id": LEVEL,
+                    "scope_id": scope_id,
+                },
+            )
+            assert response.status_code == 201, response.text
+
+        detail = holder_client.get(f"/api/passport/{passport_id}").json()
+        scopes = [
+            entry["scope"]["id"]
+            for entry in detail["competencies"]
+            if entry["id"] == COMPETENCY
+        ]
+        assert sorted(scopes) == ["breast", "lung"]
+
+        one = holder_client.get(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}",
+            params={"scope_id": "lung"},
+        )
+        assert one.status_code == 200, one.text
+        assert one.json()["scope"] == {"id": "lung", "name": "Lung"}
+
+        missing = holder_client.get(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}",
+            params={"scope_id": "skin"},
+        )
+        assert missing.status_code == 404, missing.text
+
     def test_the_scope_comes_back_on_the_record(
         self, holder_client: TestClient, assessor: User
     ) -> None:
