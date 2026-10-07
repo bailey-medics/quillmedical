@@ -20,6 +20,11 @@ declare module "@/generated/competencies.json" {
     name: string;
   }
 
+  interface CompetencyScope {
+    id: string;
+    name: string;
+  }
+
   interface Competency {
     id: string;
     display_name: string;
@@ -28,6 +33,9 @@ declare module "@/generated/competencies.json" {
     // Order is the scale. Used by the clinician passport; CBAC ignores
     // both of these, since holding a competency is a yes or no.
     levels?: CompetencyLevel[];
+    // What a sign-off or logbook entry may cover, such as a tumour
+    // site. Absent where a competency is assessed as a whole.
+    scopes?: CompetencyScope[];
     expires_after_months?: number;
     // Whether the clinician passport may record something against it.
     // Opt-in: absent means a software permission rather than a skill.

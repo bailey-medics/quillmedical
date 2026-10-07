@@ -3,12 +3,19 @@
  *
  * The holder's half of a sign-off: naming an assessor, saying when the
  * work was observed, choosing the level they ask for where the competency
- * has a scale, and optionally adding a reflection.
+ * has a scale, saying what the sign-off covers where the competency is
+ * signed off scope by scope, and optionally adding a reflection.
  *
  * **The level is required wherever there is a scale.** The server refuses
  * a scaled request without one, and before this was enforced here the
  * field was never even shown, so no such request could succeed. The
  * holder asks; the assessor decides, and may sign a different level.
+ *
+ * **The scope is required wherever the competency declares scopes**, for
+ * the same reason: the server refuses the request without one. It is
+ * picked from the competency's own list and never typed, because a signed
+ * record cannot be edited and the scope decides which sign-offs form one
+ * history. The assessor cannot change it, so a wrong one is declined.
  *
  * **The assessor is named by email address, not picked from a list.**
  * The consultant who observed the work is often at another trust, or
@@ -48,6 +55,7 @@ import {
   TextAreaField,
 } from "@components/form";
 import type { LevelOption } from "@lib/passport/levels";
+import type { ScopeOption } from "@lib/passport/scopes";
 import { BodyText, Heading } from "@/components/typography";
 import ButtonPair from "@/components/button/ButtonPair";
 import ConfirmModal from "@/components/confirm-modal/ConfirmModal";
@@ -59,13 +67,15 @@ import type {
   SignOffRequestInput,
 } from "@lib/passport";
 
-export type { LevelOption };
+export type { LevelOption, ScopeOption };
 
 export interface SignOffRequestFormProps {
   /** The competency being requested */
   competency: CompetencyState;
   /** Levels this competency declares, if it has any */
   levels?: LevelOption[];
+  /** What a sign-off for this competency may cover, if it declares scopes */
+  scopes?: ScopeOption[];
   /**
    * The holder's own email address, so the form can refuse it.
    *
@@ -96,12 +106,13 @@ export interface SignOffRequestFormProps {
  * SignOffRequestForm
  *
  * Renders the request. Submission is refused until an assessor is named,
- * an observed date given and, where the competency has a scale, a level
- * chosen.
+ * an observed date given, a level chosen where the competency has a scale
+ * and a scope chosen where it declares scopes.
  */
 export default function SignOffRequestForm({
   competency,
   levels,
+  scopes,
   holderEmail,
   holderUsername,
   onSubmit,
@@ -111,6 +122,7 @@ export default function SignOffRequestForm({
   const [assessorEmail, setAssessorEmail] = useState("");
   const [observedOn, setObservedOn] = useState<string | null>(null);
   const [levelId, setLevelId] = useState<string | null>(null);
+  const [scopeId, setScopeId] = useState<string | null>(null);
   const [comments, setComments] = useState("");
   const [reflection, setReflection] = useState("");
 
@@ -187,11 +199,13 @@ export default function SignOffRequestForm({
   const namesSomebody = !isSelf && (found !== null || looksLikeEmail);
 
   const needsLevel = (levels?.length ?? 0) > 0;
+  const needsScope = (scopes?.length ?? 0) > 0;
 
   const canSubmit =
     namesSomebody &&
     observedOn !== null &&
     (!needsLevel || levelId !== null) &&
+    (!needsScope || scopeId !== null) &&
     !isSubmitting;
 
   // Asking is the last moment the holder can catch naming the wrong
@@ -209,6 +223,7 @@ export default function SignOffRequestForm({
       assessor_email: (found?.email ?? typed).toLowerCase(),
       observed_on: observedOn,
       level_id: levelId,
+      scope_id: scopeId,
       comments: comments.trim() || null,
       reflection: reflection.trim() || null,
     });
@@ -259,6 +274,21 @@ export default function SignOffRequestForm({
           maxLevel="year"
           required
         />
+
+        {scopes && scopes.length > 0 && (
+          <SelectField
+            label="What this sign-off covers"
+            description="Each one is signed off on its own. Choose Other if yours is not listed, and say which in the box below."
+            placeholder="Choose one"
+            required
+            data={scopes.map((scope) => ({
+              value: scope.id,
+              label: scope.name,
+            }))}
+            value={scopeId}
+            onChange={setScopeId}
+          />
+        )}
 
         {levels && levels.length > 0 && (
           <SelectField

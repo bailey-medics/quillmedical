@@ -74,6 +74,9 @@ from tests.registrations import declare
 #: the UK SACT Board's four levels, so the level paths are exercised
 #: rather than only the bare signed-off-or-not case.
 COMPETENCY = "prescribe_sact"
+# What a sign-off for it covers. It is signed off one tumour site at a
+# time, so every request names one.
+SCOPE = "lung"
 
 #: One of that competency's levels, quoted from the framework.
 LEVEL = "review_and_authorise"
@@ -490,6 +493,7 @@ class TestRequestSignOff:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -525,6 +529,7 @@ class TestRequestSignOff:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -560,6 +565,7 @@ class TestRequestSignOff:
                 "/requests",
                 json={
                     "assessor_email": assessor.email,
+                    "scope_id": SCOPE,
                     "observed_on": "2026-03-14",
                 },
             )
@@ -594,6 +600,7 @@ class TestRequestSignOff:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": "not_a_level",
             },
@@ -602,6 +609,116 @@ class TestRequestSignOff:
         assert response.status_code == 400, response.text
         assert "not_a_level" not in response.json()["detail"]
         assert mailed == []
+
+    def test_a_scoped_competency_asked_for_with_no_scope_is_refused(
+        self,
+        holder_client: TestClient,
+        assessor: User,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Refused before the email, as a missing level is."""
+        passport_id = _create_passport(holder_client)
+        mailed: list[str] = []
+        monkeypatch.setattr(
+            router, "send_email", lambda **kw: mailed.append(str(kw["to"]))
+        )
+
+        with caplog.at_level(logging.ERROR, logger=router.logger.name):
+            response = holder_client.post(
+                f"/api/passport/{passport_id}/competencies/{COMPETENCY}"
+                "/requests",
+                json={
+                    "assessor_email": assessor.email,
+                    "observed_on": "2026-03-14",
+                    "level_id": LEVEL,
+                },
+            )
+
+        assert response.status_code == 400, response.text
+        assert response.json()["detail"] == (
+            "Choose what this sign-off covers."
+        )
+        assert mailed == []
+        assert (
+            holder_client.get(f"/api/passport/{passport_id}/sign-offs").json()
+            == []
+        )
+        assert any(
+            record.levelno == logging.ERROR for record in caplog.records
+        )
+
+    def test_a_scope_the_competency_does_not_declare_is_refused(
+        self,
+        holder_client: TestClient,
+        assessor: User,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        mailed: list[str] = []
+        monkeypatch.setattr(
+            router, "send_email", lambda **kw: mailed.append(str(kw["to"]))
+        )
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
+            json={
+                "assessor_email": assessor.email,
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
+                "scope_id": "left_elbow",
+            },
+        )
+
+        assert response.status_code == 400, response.text
+        assert "left_elbow" not in response.json()["detail"]
+        assert mailed == []
+
+    def test_a_scope_on_a_competency_with_none_is_refused(
+        self,
+        holder_client: TestClient,
+        assessor: User,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        mailed: list[str] = []
+        monkeypatch.setattr(
+            router, "send_email", lambda **kw: mailed.append(str(kw["to"]))
+        )
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/competencies/perform_cannulation"
+            "/requests",
+            json={
+                "assessor_email": assessor.email,
+                "observed_on": "2026-03-14",
+                "scope_id": SCOPE,
+            },
+        )
+
+        assert response.status_code == 400, response.text
+        assert mailed == []
+
+    def test_the_scope_comes_back_on_the_record(
+        self, holder_client: TestClient, assessor: User
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
+            json={
+                "assessor_email": assessor.email,
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
+                "scope_id": SCOPE,
+            },
+        )
+
+        assert response.status_code == 201, response.text
+        listed = holder_client.get(
+            f"/api/passport/{passport_id}/sign-offs"
+        ).json()
+        assert listed[0]["scope"] == {"id": SCOPE, "name": "Lung"}
 
     def test_the_email_names_the_level_asked_for(
         self,
@@ -621,6 +738,7 @@ class TestRequestSignOff:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -652,6 +770,7 @@ class TestRequestSignOff:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -677,6 +796,7 @@ class TestRequestSignOff:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -694,6 +814,7 @@ class TestRequestSignOff:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": holder.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -733,6 +854,7 @@ class TestRequestSignOff:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -777,6 +899,7 @@ class TestAnExistingAccountAskedToAssess:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -948,6 +1071,7 @@ class TestSignOff:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -1233,6 +1357,7 @@ class TestDeclineAndWithdraw:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -1292,6 +1417,7 @@ class TestListingSignOffs:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": email,
+                "scope_id": SCOPE,
                 "observed_on": on,
                 "level_id": LEVEL,
             },
@@ -1417,6 +1543,7 @@ class TestInbox:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -1447,6 +1574,7 @@ class TestInbox:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -1473,6 +1601,7 @@ class TestVerify:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -1512,6 +1641,7 @@ class TestVerify:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -1570,6 +1700,7 @@ class TestTheInvitationAnAskSends:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -1717,6 +1848,7 @@ class TestAcceptingAnInvitation:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -2294,6 +2426,7 @@ class TestTheGateResolvesForAnAcceptedAssessor:
             f"{COMPETENCY}/requests",
             json={
                 "assessor_email": "okafor@other-trust.nhs.uk",
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -2588,6 +2721,7 @@ class TestAdminRevoke:
             f"{COMPETENCY}/requests",
             json={
                 "assessor_email": "okafor@other-trust.nhs.uk",
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -3580,6 +3714,7 @@ class TestExport:
             "/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -3636,6 +3771,7 @@ class TestWhatAnExternalAssessorCannotReach:
             f"{COMPETENCY}/requests",
             json={
                 "assessor_email": email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -3721,6 +3857,7 @@ class TestWhatAnExternalAssessorCannotReach:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -3810,6 +3947,7 @@ class TestWhatAnExternalAssessorCannotReach:
             f"{COMPETENCY}/requests",
             json={
                 "assessor_email": "late@other-trust.nhs.uk",
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },
@@ -3883,6 +4021,7 @@ class TestWhatAnExternalAssessorCannotReach:
             f"{COMPETENCY}/requests",
             json={
                 "assessor_email": "stale@other-trust.nhs.uk",
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },

@@ -87,6 +87,12 @@ export interface LevelRef {
   name: string;
 }
 
+/** What a record covers, such as a tumour site, as it read at the time. */
+export interface ScopeRef {
+  id: string;
+  name: string;
+}
+
 /**
  * A professional registration, as declared. Quill checks no register, so
  * this is what the person stated and nothing more.
@@ -258,6 +264,8 @@ export interface SignOff {
   level: LevelRef | null;
   /** What the holder asked for. Null on records from before 27 Sep 2026 */
   requested_level?: LevelRef | null;
+  /** What it covers, where the competency is signed off scope by scope */
+  scope?: ScopeRef | null;
   observed_on: IsoDate;
   signed_at: IsoDateTime | null;
   expires_on: IsoDate | null;
@@ -341,6 +349,8 @@ export interface SignOffRequestInput {
   assessor_email: string;
   observed_on: IsoDate;
   level_id?: string | null;
+  /** Required where the competency declares scopes, refused otherwise */
+  scope_id?: string | null;
   comments?: string | null;
   reflection?: string | null;
   attachments?: AttachmentInput[];

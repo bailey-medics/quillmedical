@@ -96,3 +96,4 @@
 - [In-app Guides](2026-10-05-in-app-guides-plan.md)
 - [Terms and Privacy Policy](2026-10-06-terms-and-privacy-policy-plan.md)
 - [Amazon SES Email](2026-10-06-amazon-ses-email-plan.md)
+- [Passport Registrar Portfolios](2026-10-07-passport-registrar-portfolios-plan.md)

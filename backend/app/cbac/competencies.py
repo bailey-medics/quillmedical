@@ -44,6 +44,36 @@ class CompetencyLevel(BaseModel):
     name: str
 
 
+class CompetencyScope(BaseModel):
+    """One thing a sign-off for a competency may cover.
+
+    Some competencies are signed off one part of practice at a time:
+    prescribing chemotherapy for lung cancer is assessed apart from
+    prescribing it for breast cancer, though both are the one act. A
+    scope names the part, so the two sit side by side rather than the
+    later replacing the earlier.
+
+    Picked from this list and never typed, because a signed record
+    cannot be edited and the scope decides which sign-offs form one
+    history: "Breast" and "breast cancer" would be two.
+
+    Attributes:
+        id: Stable identifier for this scope, referenced by a record.
+        name: What a reader is shown.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    name: str
+
+
+#: The scope every list must offer, so somebody whose part of practice
+#: is not listed yet is never blocked. The detail goes in the record's
+#: comment, and the real entry is added when it comes up.
+OTHER_SCOPE_ID: str = "other"
+
+
 class CompetencyEntry(BaseModel):
     """A single competency definition, validated from YAML.
 
@@ -61,6 +91,10 @@ class CompetencyEntry(BaseModel):
             while prescribing SACT has real intermediate states. Used by
             the clinician passport; CBAC ignores it entirely, since
             holding a competency is a yes or no question.
+        scopes: What a sign-off or a logbook entry for this competency
+            may cover, or None where it is assessed as a whole. Must
+            include ``other``. Used by the clinician passport; CBAC
+            ignores it, since somebody holds a competency or does not.
         expires_after_months: How long a sign-off stands before it wants
             revisiting, or None where nothing expires. Recorded and
             shown; nothing acts on it, because what a lapsed sign-off
@@ -89,6 +123,7 @@ class CompetencyEntry(BaseModel):
     display_name: str
     retired_on: date | None = None
     levels: list[CompetencyLevel] | None = None
+    scopes: list[CompetencyScope] | None = None
     expires_after_months: int | None = None
     assessable: bool = False
     may_grant: list[str] | None = None
@@ -160,6 +195,8 @@ def _load_competencies(directory: Path) -> list[CompetencyEntry]:
                         "competency is simply signed off or not."
                     )
 
+            _check_scopes(entry, path)
+
             if entry.id in seen:
                 raise ValueError(
                     f"Duplicate competency id {entry.id!r}: defined in "
@@ -171,6 +208,44 @@ def _load_competencies(directory: Path) -> list[CompetencyEntry]:
 
     _check_may_grant(entries)
     return entries
+
+
+def _check_scopes(entry: CompetencyEntry, path: Path) -> None:
+    """Refuse a scope list a record could not rely on.
+
+    Args:
+        entry: The competency being loaded.
+        path: The file it came from, named in the refusal.
+
+    Raises:
+        ValueError: If the list is empty, repeats an id, or leaves out
+            ``other``. A record stores the scope id, so two scopes
+            sharing one would make it ambiguous what was signed off.
+    """
+    if entry.scopes is None:
+        return
+
+    scope_ids = [scope.id for scope in entry.scopes]
+
+    if not scope_ids:
+        raise ValueError(
+            f"Competency {entry.id!r} in {path.name} declares an empty "
+            "scope list. Omit scopes entirely where a competency is "
+            "assessed as a whole."
+        )
+
+    if len(set(scope_ids)) != len(scope_ids):
+        raise ValueError(
+            f"Competency {entry.id!r} in {path.name} has duplicate scope "
+            "ids: " + ", ".join(sorted(scope_ids)) + "."
+        )
+
+    if OTHER_SCOPE_ID not in scope_ids:
+        raise ValueError(
+            f"Competency {entry.id!r} in {path.name} declares scopes with "
+            f"no {OTHER_SCOPE_ID!r}. Every list needs one, so nobody is "
+            "blocked by a missing entry."
+        )
 
 
 #: The root competency. Its holder may grant anything, so naming it in

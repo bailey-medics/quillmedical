@@ -43,6 +43,9 @@ from tests.competencies import hold
 from tests.registrations import declare
 
 COMPETENCY = "prescribe_sact"
+# What a sign-off for it covers. It is signed off one tumour site at a
+# time, so every request names one.
+SCOPE = "lung"
 LEVEL = "review_and_authorise"
 
 
@@ -494,6 +497,7 @@ class TestReflections:
             f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
             json={
                 "assessor_email": assessor.email,
+                "scope_id": SCOPE,
                 "observed_on": "2026-03-14",
                 "level_id": LEVEL,
             },

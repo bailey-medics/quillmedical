@@ -159,6 +159,89 @@ def test_load_rejects_an_empty_level_list(tmp_path: Path) -> None:
         _load_competencies(tmp_path)
 
 
+def test_scopes_are_optional(tmp_path: Path) -> None:
+    """Most competencies are assessed as a whole."""
+    (tmp_path / "clinical.yaml").write_text(
+        'competencies:\n  - id: plain\n    display_name: "Plain"\n'
+    )
+
+    assert _load_competencies(tmp_path)[0].scopes is None
+
+
+def test_scopes_keep_their_declared_order(tmp_path: Path) -> None:
+    (tmp_path / "clinical.yaml").write_text(
+        "competencies:\n"
+        "  - id: scoped\n"
+        '    display_name: "Scoped"\n'
+        "    scopes:\n"
+        '      - id: lung\n        name: "Lung"\n'
+        '      - id: breast\n        name: "Breast"\n'
+        '      - id: other\n        name: "Other"\n'
+    )
+
+    loaded = _load_competencies(tmp_path)
+
+    assert loaded[0].scopes is not None
+    assert [scope.id for scope in loaded[0].scopes] == [
+        "lung",
+        "breast",
+        "other",
+    ]
+
+
+def test_load_rejects_duplicate_scope_ids(tmp_path: Path) -> None:
+    """A record stores the scope id, so two the same is ambiguous."""
+    (tmp_path / "clinical.yaml").write_text(
+        "competencies:\n"
+        "  - id: scoped\n"
+        '    display_name: "Scoped"\n'
+        "    scopes:\n"
+        '      - id: lung\n        name: "One"\n'
+        '      - id: lung\n        name: "Two"\n'
+        '      - id: other\n        name: "Other"\n'
+    )
+
+    with pytest.raises(ValueError, match="duplicate scope ids"):
+        _load_competencies(tmp_path)
+
+
+def test_load_rejects_an_empty_scope_list(tmp_path: Path) -> None:
+    """Omitting scopes and declaring none must not be different things."""
+    (tmp_path / "clinical.yaml").write_text(
+        "competencies:\n"
+        "  - id: scoped\n"
+        '    display_name: "Scoped"\n'
+        "    scopes: []\n"
+    )
+
+    with pytest.raises(ValueError, match="empty scope list"):
+        _load_competencies(tmp_path)
+
+
+def test_load_rejects_scopes_with_no_other(tmp_path: Path) -> None:
+    """Without it, somebody whose scope is not listed cannot ask at all."""
+    (tmp_path / "clinical.yaml").write_text(
+        "competencies:\n"
+        "  - id: scoped\n"
+        '    display_name: "Scoped"\n'
+        "    scopes:\n"
+        '      - id: lung\n        name: "Lung"\n'
+    )
+
+    with pytest.raises(ValueError, match="no 'other'"):
+        _load_competencies(tmp_path)
+
+
+def test_the_real_catalogue_has_a_scoped_competency() -> None:
+    """Guards the field against being quietly dropped, as for levels."""
+    scoped = [c for c in COMPETENCIES if c.scopes]
+
+    assert scoped, "Expected at least one competency to declare scopes"
+    assert all(
+        "other" in [scope.id for scope in c.scopes or []] for c in scoped
+    )
+
+
 def test_expires_after_months_is_read(tmp_path: Path) -> None:
     (tmp_path / "clinical.yaml").write_text(
         "competencies:\n"

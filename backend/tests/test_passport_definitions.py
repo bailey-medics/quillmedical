@@ -23,6 +23,8 @@ from app.features.passport.definitions import (
 )
 
 LEVELLED = "prescribe_sact"
+# Signed off one tumour site at a time.
+SCOPED = "prescribe_sact"
 NO_SCALE = "perform_cannulation"
 
 
@@ -108,6 +110,38 @@ class TestLevels:
         for level in definitions.levels(LEVELLED):
             assert level.name
             assert level.name != level.id
+
+
+class TestScopes:
+    def test_a_scoped_competency_reports_its_scopes(self) -> None:
+        assert definitions.has_scopes(SCOPED) is True
+        assert "other" in [scope.id for scope in definitions.scopes(SCOPED)]
+
+    def test_a_competency_assessed_as_a_whole_has_none(self) -> None:
+        assert definitions.has_scopes(NO_SCALE) is False
+        assert definitions.scopes(NO_SCALE) == []
+
+    def test_a_scope_ref_carries_both_halves(self) -> None:
+        ref = definitions.scope_ref(SCOPED, "lung")
+
+        assert ref.id == "lung"
+        assert ref.name == "Lung"
+
+    def test_an_undeclared_scope_is_refused_naming_the_real_ones(
+        self,
+    ) -> None:
+        with pytest.raises(definitions.UnknownScopeError, match="other"):
+            definitions.scope_ref(SCOPED, "left_elbow")
+
+    def test_a_scope_on_a_competency_with_none_is_refused(self) -> None:
+        with pytest.raises(
+            definitions.UnknownScopeError, match="declares no scopes"
+        ):
+            definitions.scope_ref(NO_SCALE, "lung")
+
+    def test_an_unknown_competency_is_refused(self) -> None:
+        with pytest.raises(UnknownCompetencyError):
+            definitions.has_scopes("not_a_competency")
 
 
 class TestLevelRef:

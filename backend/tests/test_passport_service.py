@@ -19,6 +19,7 @@ import pytest
 from app.features.passport import (
     blobs,
     commits,
+    definitions,
     hashing,
     index,
     paths,
@@ -46,6 +47,9 @@ ASSESSOR_USER = "u-assessor"
 # A competency with a scale, and one without. Named here so a change to
 # the catalogue surfaces as one failure rather than twenty.
 SCALED = "prescribe_sact"
+# What a sign-off for it covers. It is signed off one tumour site at a
+# time, so every request names one.
+SCOPE = "lung"
 UNSCALED = "perform_cannulation"
 
 
@@ -84,6 +88,7 @@ def _request(
     *,
     competency_id: str = UNSCALED,
     level_id: str | None = None,
+    scope_id: str | None = None,
     observed_on: date = date(2026, 3, 12),
 ) -> str:
     name, _ = service.request_sign_off(
@@ -93,6 +98,7 @@ def _request(
         competency_id=competency_id,
         observed_on=observed_on,
         level_id=level_id,
+        scope_id=scope_id,
         now=NOW,
     )
     return name
@@ -327,14 +333,14 @@ class TestLevels:
         self, passport: store.LocalPassportStore, holder: commits.Actor
     ) -> None:
         with pytest.raises(SignOffError, match="Choose the level"):
-            _request(passport, holder, competency_id=SCALED)
+            _request(passport, holder, competency_id=SCALED, scope_id=SCOPE)
 
     def test_the_refusal_is_plain_english_without_ids(
         self, passport: store.LocalPassportStore, holder: commits.Actor
     ) -> None:
         """The holder reads it. The route logs the ids for the team."""
         with pytest.raises(SignOffError) as raised:
-            _request(passport, holder, competency_id=SCALED)
+            _request(passport, holder, competency_id=SCALED, scope_id=SCOPE)
 
         assert "observation_only" not in str(raised.value)
         assert SCALED not in str(raised.value)
@@ -354,12 +360,119 @@ class TestLevels:
             passport,
             holder,
             competency_id=SCALED,
+            scope_id=SCOPE,
             level_id="review_and_authorise",
         )
 
         record = service.read_sign_off(passport, PASSPORT_ID, name)
         assert record.level is not None
         assert record.level.name
+
+
+class TestScope:
+    """A sign-off says what it covers, where its competency asks."""
+
+    def test_a_scoped_competency_needs_a_scope(
+        self, passport: store.LocalPassportStore, holder: commits.Actor
+    ) -> None:
+        with pytest.raises(SignOffError, match="Choose what this"):
+            _request(
+                passport,
+                holder,
+                competency_id=SCALED,
+                level_id="observation_only",
+            )
+
+    def test_the_refusal_is_plain_english_without_ids(
+        self, passport: store.LocalPassportStore, holder: commits.Actor
+    ) -> None:
+        with pytest.raises(SignOffError) as raised:
+            _request(
+                passport,
+                holder,
+                competency_id=SCALED,
+                level_id="observation_only",
+            )
+
+        assert SCALED not in str(raised.value)
+        assert SCOPE not in str(raised.value)
+
+    def test_a_scope_it_does_not_declare_is_refused(
+        self, passport: store.LocalPassportStore, holder: commits.Actor
+    ) -> None:
+        with pytest.raises(definitions.UnknownScopeError):
+            _request(
+                passport,
+                holder,
+                competency_id=SCALED,
+                level_id="observation_only",
+                scope_id="left_elbow",
+            )
+
+    def test_a_scope_on_a_competency_with_none_is_refused(
+        self, passport: store.LocalPassportStore, holder: commits.Actor
+    ) -> None:
+        """Naming lung on cannulation claims a distinction nobody made."""
+        with pytest.raises(definitions.UnknownScopeError):
+            _request(passport, holder, competency_id=UNSCALED, scope_id=SCOPE)
+
+    def test_a_refused_scope_writes_nothing(
+        self, passport: store.LocalPassportStore, holder: commits.Actor
+    ) -> None:
+        before = passport.head(PASSPORT_ID)
+
+        with pytest.raises(SignOffError):
+            _request(
+                passport,
+                holder,
+                competency_id=SCALED,
+                level_id="observation_only",
+            )
+
+        assert passport.head(PASSPORT_ID) == before
+
+    def test_a_competency_with_no_scopes_needs_none(
+        self, passport: store.LocalPassportStore, holder: commits.Actor
+    ) -> None:
+        name = _request(passport, holder)
+
+        assert service.read_sign_off(passport, PASSPORT_ID, name).scope is None
+
+    def test_the_scope_wording_is_copied_into_the_record(
+        self, passport: store.LocalPassportStore, holder: commits.Actor
+    ) -> None:
+        name = _request(
+            passport,
+            holder,
+            competency_id=SCALED,
+            level_id="observation_only",
+            scope_id=SCOPE,
+        )
+
+        scope = service.read_sign_off(passport, PASSPORT_ID, name).scope
+        assert scope is not None
+        assert scope.id == SCOPE
+        assert scope.name == "Lung"
+
+    def test_signing_keeps_the_scope_and_fingerprints_it(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+        assessor: commits.Actor,
+    ) -> None:
+        name = _request(
+            passport,
+            holder,
+            competency_id=SCALED,
+            level_id="observation_only",
+            scope_id=SCOPE,
+        )
+        _sign(passport, assessor, name)
+
+        record = service.read_sign_off(passport, PASSPORT_ID, name)
+        assert record.scope is not None and record.scope.id == SCOPE
+        assert hashing.matches(record)
+        assert not hashing.matches(record.model_copy(update={"scope": None}))
 
 
 class TestKind:
@@ -388,6 +501,7 @@ class TestKind:
             passport,
             holder,
             competency_id=SCALED,
+            scope_id=SCOPE,
             level_id="review_and_authorise",
         )
         _sign(passport, assessor, first)
@@ -396,6 +510,7 @@ class TestKind:
             passport,
             holder,
             competency_id=SCALED,
+            scope_id=SCOPE,
             level_id="prescribe_first_cycle",
             observed_on=date(2026, 9, 1),
         )
@@ -415,6 +530,7 @@ class TestKind:
             passport,
             holder,
             competency_id=SCALED,
+            scope_id=SCOPE,
             level_id="review_and_authorise",
         )
         _sign(passport, assessor, first)
@@ -423,6 +539,7 @@ class TestKind:
             passport,
             holder,
             competency_id=SCALED,
+            scope_id=SCOPE,
             level_id="review_and_authorise",
             observed_on=date(2026, 9, 1),
         )
@@ -444,6 +561,7 @@ class TestKind:
             passport,
             holder,
             competency_id=SCALED,
+            scope_id=SCOPE,
             level_id="review_and_authorise",
         )
         _sign(passport, assessor, first)
@@ -452,6 +570,7 @@ class TestKind:
             passport,
             holder,
             competency_id=SCALED,
+            scope_id=SCOPE,
             level_id="prescribe_first_cycle",
             observed_on=date(2026, 9, 1),
         )
@@ -480,6 +599,7 @@ class TestTheAssessorDecidesTheLevel:
             passport,
             holder,
             competency_id=SCALED,
+            scope_id=SCOPE,
             level_id="review_and_authorise",
         )
         _sign(passport, assessor, first)
@@ -487,6 +607,7 @@ class TestTheAssessorDecidesTheLevel:
             passport,
             holder,
             competency_id=SCALED,
+            scope_id=SCOPE,
             level_id="prescribe_first_cycle",
             observed_on=date(2026, 9, 1),
         )
@@ -495,7 +616,11 @@ class TestTheAssessorDecidesTheLevel:
         self, passport: store.LocalPassportStore, holder: commits.Actor
     ) -> None:
         name = _request(
-            passport, holder, competency_id=SCALED, level_id="observation_only"
+            passport,
+            holder,
+            competency_id=SCALED,
+            scope_id=SCOPE,
+            level_id="observation_only",
         )
 
         record = service.read_sign_off(passport, PASSPORT_ID, name)
@@ -628,6 +753,7 @@ class TestTheAssessorDecidesTheLevel:
             passport,
             holder,
             competency_id=SCALED,
+            scope_id=SCOPE,
             level_id="review_and_authorise",
         )
         _sign(passport, assessor, first)
@@ -635,6 +761,7 @@ class TestTheAssessorDecidesTheLevel:
             passport,
             holder,
             competency_id=SCALED,
+            scope_id=SCOPE,
             level_id="review_and_authorise",
             observed_on=date(2026, 9, 1),
         )

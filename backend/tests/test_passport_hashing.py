@@ -145,6 +145,21 @@ class TestWhatMustMoveTheHash:
             _sign_off()
         )
 
+    def test_the_scope(self) -> None:
+        """Lung and breast are different claims."""
+        lung = _sign_off(scope=schemas.ScopeRef(id="lung", name="Lung"))
+        breast = _sign_off(scope=schemas.ScopeRef(id="breast", name="Breast"))
+
+        assert hashing.content_hash(lung) != hashing.content_hash(breast)
+
+    def test_taking_the_scope_off_a_record(self) -> None:
+        """Contributing only when present must not make it removable."""
+        scoped = _sign_off(scope=schemas.ScopeRef(id="lung", name="Lung"))
+
+        assert hashing.content_hash(scoped) != hashing.content_hash(
+            _sign_off()
+        )
+
     def test_the_observed_date(self) -> None:
         assert hashing.content_hash(
             _sign_off(observed_on=date(2026, 3, 13))
@@ -264,6 +279,14 @@ class TestWhatMustNotMoveTheHash:
             )
         ) == hashing.content_hash(_sign_off())
 
+    def test_a_scope_display_name(self) -> None:
+        one = _sign_off(scope=schemas.ScopeRef(id="lung", name="Lung"))
+        other = _sign_off(
+            scope=schemas.ScopeRef(id="lung", name="Lung cancer")
+        )
+
+        assert hashing.content_hash(one) == hashing.content_hash(other)
+
     def test_a_level_display_name(self) -> None:
         assert hashing.content_hash(
             _sign_off(
@@ -378,6 +401,34 @@ class TestCanonicalForm:
         ).decode()
 
         assert "\u2014" in rendered
+
+    def test_a_record_with_no_scope_has_no_scope_in_its_payload(
+        self,
+    ) -> None:
+        """What keeps every sign-off signed before scopes verifying.
+
+        A key holding null would have changed the bytes of all of them.
+        """
+        payload = hashing.canonical_payload(_sign_off())
+
+        assert not set(payload) & set(hashing.CONTRIBUTING_WHEN_PRESENT)
+
+    def test_a_record_with_a_scope_carries_it_in_its_payload(self) -> None:
+        payload = hashing.canonical_payload(
+            _sign_off(scope=schemas.ScopeRef(id="lung", name="Lung"))
+        )
+
+        assert payload["scope.id"] == "lung"
+
+    def test_a_field_contributes_always_or_when_present_never_both(
+        self,
+    ) -> None:
+        assert not set(hashing.CONTRIBUTING) & set(
+            hashing.CONTRIBUTING_WHEN_PRESENT
+        )
+        assert not set(hashing.CONTRIBUTING_WHEN_PRESENT) & set(
+            hashing.NON_CONTRIBUTING
+        )
 
     def test_the_payload_covers_every_contributing_field(self) -> None:
         payload = hashing.canonical_payload(_sign_off())

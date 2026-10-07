@@ -59,6 +59,19 @@ CONTRIBUTING: tuple[str, ...] = (
     "attachments",
 )
 
+#: Fields that contribute only when the record carries them.
+#:
+#: A path added to :data:`CONTRIBUTING` after records were signed would
+#: change the canonical payload of every one of them, and none would
+#: verify. A path here adds nothing to the payload of a record without
+#: the field, so those hash byte for byte as they always did. It is no
+#: weaker for a record that has the field: taking the field off a signed
+#: record removes a key from the payload, so the fingerprint still moves.
+#:
+#: ``scope.id`` is what the assessor attested the sign-off covers. Lung
+#: and breast are different claims, and must fingerprint differently.
+CONTRIBUTING_WHEN_PRESENT: tuple[str, ...] = ("scope.id",)
+
 #: The fields deliberately left out, and why. Not used by the code –
 #: :data:`CONTRIBUTING` is what the hashing reads – but kept beside it
 #: because a reader's first question is always "what about X", and an
@@ -70,6 +83,7 @@ NON_CONTRIBUTING: dict[str, str] = {
         "Rewording a display name must not look like tampering."
     ),
     "level.name": "A convenience copy of level.id, which does contribute.",
+    "scope.name": "A convenience copy of scope.id, which does contribute.",
     "requested_level": (
         "What the holder asked for, which is context. What the assessor "
         "attested is level.id, which does contribute. Adding it would "
@@ -204,6 +218,12 @@ def canonical_payload(record: SignOff) -> dict[str, Any]:
             continue
 
         payload[path] = _canonical(value)
+
+    for path in CONTRIBUTING_WHEN_PRESENT:
+        value = _resolve(record, path)
+
+        if value is not None:
+            payload[path] = _canonical(value)
 
     return payload
 

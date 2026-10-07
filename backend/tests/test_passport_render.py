@@ -42,6 +42,9 @@ from app.features.passport.store import LocalPassportStore
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
 COMPETENCY = "prescribe_sact"
+# What a sign-off for it covers. It is signed off one tumour site at a
+# time, so every request names one.
+SCOPE = "lung"
 LEVEL = "review_and_authorise"
 
 #: Words that would mean the document had formed a view on whether
@@ -99,6 +102,7 @@ def _sign_off(
         PASSPORT_ID,
         holder,
         competency_id=COMPETENCY,
+        scope_id=SCOPE,
         observed_on=date(2026, 3, 14),
         level_id=LEVEL,
     )
@@ -175,6 +179,7 @@ class TestCompetencyTable:
             PASSPORT_ID,
             holder,
             competency_id=COMPETENCY,
+            scope_id=SCOPE,
             observed_on=date(2026, 3, 14),
             level_id=LEVEL,
         )
