@@ -532,7 +532,7 @@ in the command that sends, and the tests have to pin it down.
 
 ## Phase 5: Close Resend and make the documents true
 
-- [ ] **Move the accessibility review reminder off Resend.** The
+- [x] **Move the accessibility review reminder off Resend.** The
       yearly reminder to review the accessibility statement is a GitHub
       job of its own, `.github/workflows/accessibility-review.yml`. Once
       the review is eleven months old it nags weekly, by Slack and by
@@ -550,7 +550,21 @@ in the command that sends, and the tests have to pin it down.
       new credential. Run it once with `force` to see both arrive,
       before the step below removes the Resend secret. **The change is
       written; the run with `force` is what is left**, and is why this
-      is not ticked. The script sends with the AWS command line tool,
+      was not ticked at first. Run with `force` on 7 October 2026: the
+      email went through SES and the Slack message was posted, both jobs
+      green. **Then changed the same day, because it was wrong.** Giving
+      the CI service account the SES key broke the rule this
+      repository already had: a secret lives where it is used, and
+      GitHub should hold nothing it does not need. The app sends the
+      email now. The workflow starts the admin job's
+      `accessibility-reminder` action, as `marketing-reconcile.yml`
+      starts its own, and holds no mail credential: the grant `ci_ses`
+      is gone and the CI account reads no runtime secret at all. The
+      email is a template, `accessibility_review.html.j2`, in the Quill
+      layout, with a Storybook preview. `send-reminder.sh` and its
+      tests are deleted. Slack stays in the workflow: its webhook is
+      one GitHub itself uses. What follows describes the first version.
+      The script sent with the AWS command line tool,
       which is part of GitHub's runner image and takes the key from the
       environment, so the key is never in an argument where the process
       list would show it. The grant is `ci_ses`, on the two SES secrets.

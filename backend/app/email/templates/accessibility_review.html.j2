@@ -1,0 +1,44 @@
+{#-
+  Reminds an operator that the accessibility statement is due its yearly
+  review. Sent by the `accessibility-reminder` admin action, which the
+  accessibility-review workflow runs each Monday once the review is
+  eleven months old. Context:
+    reviewed       when the statement was last reviewed, in words
+    due_by         when the next review is due, in words
+    statement_url  where the statement is published
+-#}
+{% extends "base.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+{% block subject %}Accessibility statement review due by {{ due_by }}{% endblock %}
+{% block preheader %}It was last reviewed on {{ reviewed }}.{% endblock %}
+{% block body %}
+{{ c.heading("Accessibility statement *review*") }}
+{{ c.paragraph("The accessibility statement is due its yearly review by " ~ due_by ~ ". It was last reviewed on " ~ reviewed ~ ".") }}
+{{ c.paragraph("The Public Sector Bodies Accessibility Regulations 2018 require the statement to be reviewed at least once a year, and NHS organisations that buy Quill are bound by them.") }}
+{{ c.button("Read the statement", statement_url) }}
+{{ c.subheading("To review it") }}
+{{ c.paragraph("1. Read the statement against the testing log, docs/docs/frontend/accessibility/testing-log.md. Is everything it says still true?") }}
+{{ c.paragraph("2. Update the known issues: remove anything fixed, and add anything the testing log or users have found since.") }}
+{{ c.paragraph("3. Check the compliance status. Only move beyond \"partially compliant\" if testing by people supports it.") }}
+{{ c.paragraph("4. Check that info@quill-medical.com, the contact the statement gives, is still read.") }}
+{{ c.paragraph("5. Move the REVIEWED date in frontend/public_pages/src/pages/accessibility-statement.tsx to today, and deploy the public site. That stops these reminders.") }}
+{{ c.small("This reminder is sent every Monday until the date is moved.") }}
+{% endblock %}
+{% block reason %}You are receiving this because this address is set to be reminded of Quill's accessibility statement review.{% endblock %}
+{% block text %}
+The accessibility statement is due its yearly review by {{ due_by }}. It was last reviewed on {{ reviewed }}.
+
+The Public Sector Bodies Accessibility Regulations 2018 require the statement to be reviewed at least once a year, and NHS organisations that buy Quill are bound by them.
+
+The statement: {{ statement_url }}
+
+To review it:
+
+1. Read the statement against the testing log (docs/docs/frontend/accessibility/testing-log.md). Is everything it says still true?
+2. Update the known issues: remove anything fixed, and add anything the testing log or users have found since.
+3. Check the compliance status. Only move beyond "partially compliant" if testing by people supports it.
+4. Check that info@quill-medical.com, the contact the statement gives, is still read.
+5. Move the REVIEWED date in frontend/public_pages/src/pages/accessibility-statement.tsx to today, and deploy the public site. That stops these reminders.
+
+This reminder is sent every Monday until the date is moved, by the accessibility-review workflow.
+{% endblock %}

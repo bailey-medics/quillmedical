@@ -28,7 +28,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write # Workload Identity Federation, to read the SES key
+  id-token: write # Workload Identity Federation, to start the admin job
 
 concurrency:
   group: accessibility-review
@@ -36,8 +36,7 @@ concurrency:
 
 env:
   RECIPIENT: mark@quill-medical.com
-  # The address the app sends from, on the domain SES has verified
-  SENDER: info@quill-medical.com
+  GCP_REGION: europe-west2
 
 jobs:
   check:
@@ -60,39 +59,38 @@ jobs:
     needs: check
     if: ${{ needs.check.outputs.due == 'true' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7.0.1
-
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
-          service_account: ${{ secrets.GCP_APP_SERVICE_ACCOUNT }}
+          service_account: ${{ secrets.GCP_APP_DEPLOY_SERVICE_ACCOUNT }}
 
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v3.0.1
 
-      # The key is read at run time from Secret Manager, where the app's
-      # own copy lives, rather than kept as a GitHub secret as well. It is
-      # read and used in one step so it never becomes a step output. It is
-      # the app's Amazon SES key, which can send from London and do nothing
-      # else. The AWS command line tool is part of the runner image.
-      - name: Send the reminder
+      # The app sends the email, not this workflow. The admin job renders
+      # it in Quill's own layout and sends it with the app's mail key,
+      # which never leaves the app: GitHub may start the job and nothing
+      # more. This workflow used to read that key from Secret Manager and
+      # send the email itself, which made GitHub a holder of a credential
+      # it did not need.
+      #
+      # The dates go by the environment, never spliced into the script,
+      # and `^|^` makes `|` the separator so that nothing in a value can
+      # start another variable. The job checks each value again.
+      - name: Run the reminder action on the admin job
         env:
           GCP_PROJECT: ${{ secrets.GCP_APP_PROJECT_ID }}
+          REVIEWED: ${{ needs.check.outputs.reviewed }}
+          DUE_BY: ${{ needs.check.outputs.due_by }}
         run: |
-          AWS_ACCESS_KEY_ID="$(gcloud secrets versions access latest \
-            --secret=ses-access-key-id --project="$GCP_PROJECT")"
-          AWS_SECRET_ACCESS_KEY="$(gcloud secrets versions access latest \
-            --secret=ses-secret-access-key --project="$GCP_PROJECT")"
-          echo "::add-mask::$AWS_ACCESS_KEY_ID"
-          echo "::add-mask::$AWS_SECRET_ACCESS_KEY"
-          export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
-          bash .github/scripts/accessibility-review/send-reminder.sh \
-            "$RECIPIENT" "$SENDER" \
-            "${{ needs.check.outputs.reviewed }}" \
-            "${{ needs.check.outputs.due_by }}"
+          gcloud run jobs execute quill-admin-app \
+            --project="${GCP_PROJECT}" \
+            --region="${GCP_REGION}" \
+            --update-env-vars="^|^ADMIN_ACTION=accessibility-reminder|ACCESSIBILITY_RECIPIENT=${RECIPIENT}|ACCESSIBILITY_REVIEWED=${REVIEWED}|ACCESSIBILITY_DUE_BY=${DUE_BY}" \
+            --wait
 
   slack:
     name: Post the reminder to Slack

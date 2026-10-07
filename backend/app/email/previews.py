@@ -182,6 +182,18 @@ def previews() -> list[Preview]:
             },
         ),
         Preview(
+            id="accessibility-review",
+            label="Accessibility statement review",
+            template="accessibility_review.html.j2",
+            context={
+                "reviewed": "25 September 2026",
+                "due_by": "25 September 2027",
+                "statement_url": (
+                    "https://quill-medical.com/accessibility-statement"
+                ),
+            },
+        ),
+        Preview(
             id="feedback-received",
             label="Feedback received",
             template="feedback_received.html.j2",

@@ -10,7 +10,7 @@ Environment Variables:
     ADMIN_ACTION:     Required.  One of: create-superadmin, add-role,
                       verify-email, run-migrations,
                       check-competency-seeding, delete-passport,
-                      send-newsletter.
+                      send-newsletter, accessibility-reminder.
     ADMIN_USERNAME:   Required.  Target username.
     ADMIN_EMAIL:      Required for create-superadmin.
     ADMIN_PASSWORD:   Required for create-superadmin.
@@ -21,6 +21,9 @@ Environment Variables:
     NEWSLETTER_CAMPAIGN:  Required for send-newsletter. The campaign's
                       name, a template under app/email/templates/campaigns/.
     NEWSLETTER_ONLY_TO:   send-newsletter only. One address, for a trial.
+    ACCESSIBILITY_RECIPIENT, ACCESSIBILITY_REVIEWED, ACCESSIBILITY_DUE_BY:
+                      Required for accessibility-reminder. Who is
+                      reminded, and the two dates in words.
 
     delete-passport also reads PASSPORT_DELETABLE_USERNAMES, a
     comma-separated list of usernames set in Terraform, and
@@ -292,6 +295,19 @@ def marketing_reconcile() -> int:
     from app.marketing.reconcile import main as reconcile_main
 
     return reconcile_main()
+
+
+def accessibility_reminder() -> int:
+    """Email the yearly reminder to review the accessibility statement.
+
+    Run by the accessibility-review workflow when the review is due, so
+    that the app sends the email and GitHub holds no mail credential.
+    Reads ``ACCESSIBILITY_RECIPIENT``, ``ACCESSIBILITY_REVIEWED`` and
+    ``ACCESSIBILITY_DUE_BY``. See ``app.email.accessibility_reminder``.
+    """
+    from app.email.accessibility_reminder import main as reminder_main
+
+    return reminder_main()
 
 
 def send_newsletter() -> int:
@@ -600,6 +616,10 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "marketing-reconcile": (
         marketing_reconcile,
         "Make Quill's marketing preferences match Resend (weekly)",
+    ),
+    "accessibility-reminder": (
+        accessibility_reminder,
+        "Email the accessibility statement review reminder",
     ),
     "send-newsletter": (
         send_newsletter,
