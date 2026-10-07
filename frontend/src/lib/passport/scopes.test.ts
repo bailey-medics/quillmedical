@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scopesFor } from "./scopes";
+import { nameWithScope, scopesFor } from "./scopes";
 
 describe("scopesFor", () => {
   it("gives a scoped competency's scopes in the catalogue's order", () => {
@@ -21,5 +21,18 @@ describe("scopesFor", () => {
 
   it("gives nothing for an unknown competency", () => {
     expect(scopesFor("not_a_competency")).toEqual([]);
+  });
+});
+
+describe("nameWithScope", () => {
+  it("puts the scope after the name", () => {
+    expect(nameWithScope("Prescribe", { name: "Lung" })).toBe(
+      "Prescribe: Lung",
+    );
+  });
+
+  it("leaves the name alone where there is no scope", () => {
+    expect(nameWithScope("Cannulate", null)).toBe("Cannulate");
+    expect(nameWithScope("Cannulate", undefined)).toBe("Cannulate");
   });
 });

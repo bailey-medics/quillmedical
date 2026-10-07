@@ -30,6 +30,7 @@ import {
   BodyTextInline,
 } from "@/components/typography";
 import type { SignOff } from "@lib/passport";
+import { nameWithScope } from "@lib/passport/scopes";
 import classes from "./SignOffRow.module.css";
 
 export interface SignOffRowProps {
@@ -111,7 +112,9 @@ export default function SignOffRow({ signOff, onSelect }: SignOffRowProps) {
   const content = isMobile ? (
     <Stack gap="xs" w="100%">
       <Group justify="space-between" wrap="nowrap" align="flex-start">
-        <BodyTextBold>{signOff.competency.name}</BodyTextBold>
+        <BodyTextBold>
+          {nameWithScope(signOff.competency.name, signOff.scope)}
+        </BodyTextBold>
         {badge}
       </Group>
       <SignOffDetail signOff={signOff} />
@@ -119,7 +122,9 @@ export default function SignOffRow({ signOff, onSelect }: SignOffRowProps) {
   ) : (
     <Group justify="space-between" wrap="nowrap" align="flex-start" w="100%">
       <Stack gap={2}>
-        <BodyTextBold>{signOff.competency.name}</BodyTextBold>
+        <BodyTextBold>
+          {nameWithScope(signOff.competency.name, signOff.scope)}
+        </BodyTextBold>
         <SignOffDetail signOff={signOff} />
       </Stack>
       {badge}
@@ -139,7 +144,7 @@ export default function SignOffRow({ signOff, onSelect }: SignOffRowProps) {
       className={classes.row}
       data-testid="sign-off-row"
       onClick={() => onSelect(signOff.name)}
-      aria-label={signOff.competency.name}
+      aria-label={nameWithScope(signOff.competency.name, signOff.scope)}
     >
       {content}
     </UnstyledButton>

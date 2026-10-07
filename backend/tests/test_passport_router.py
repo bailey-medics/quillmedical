@@ -789,6 +789,9 @@ class TestRequestSignOff:
             if level.id == LEVEL
         )
         assert level_name in bodies[0]
+        # And what it covers, since the competency is signed off one
+        # tumour site at a time.
+        assert 'for "Lung"' in bodies[0]
 
     def test_a_rate_limited_address_is_a_429(
         self,

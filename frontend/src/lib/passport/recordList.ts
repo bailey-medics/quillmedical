@@ -16,6 +16,7 @@ import type {
   SignOffStatus,
   WholeLogbook,
 } from "./types";
+import { nameWithScope } from "./scopes";
 
 export type PassportRecordKind =
   "sign_off" | "logbook" | "cpd" | "certificate" | "reflection";
@@ -65,7 +66,7 @@ export function collectRecords(sources: RecordSources): PassportRecord[] {
       key: `sign_off:${signOff.name}`,
       kind: "sign_off",
       on: signOff.observed_on,
-      title: signOff.competency.name,
+      title: nameWithScope(signOff.competency.name, signOff.scope),
       status: signOff.status,
       href: `/passport/sign-offs/${enc(signOff.name)}`,
     });

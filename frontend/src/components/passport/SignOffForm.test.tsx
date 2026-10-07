@@ -10,7 +10,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import SignOffForm from "./SignOffForm";
-import { requested } from "./fixtures";
+import { requested, requestedForLung } from "./fixtures";
 
 /** Chooses a basis, which is required before the form will submit. */
 async function chooseBasis(user: ReturnType<typeof userEvent.setup>) {
@@ -24,6 +24,33 @@ describe("SignOffForm", () => {
     expect(
       screen.getByText(/Sign off Perform thoracic ultrasound/),
     ).toBeInTheDocument();
+  });
+
+  describe("Scope", () => {
+    it("shows what the holder asked to be signed off for", () => {
+      renderWithMantine(
+        <SignOffForm signOff={requestedForLung} onSubmit={vi.fn()} />,
+      );
+      expect(
+        screen.getByRole("textbox", { name: /What this sign-off covers/ }),
+      ).toHaveValue("Lung");
+    });
+
+    it("does not let the assessor change it", () => {
+      renderWithMantine(
+        <SignOffForm signOff={requestedForLung} onSubmit={vi.fn()} />,
+      );
+      expect(
+        screen.getByRole("textbox", { name: /What this sign-off covers/ }),
+      ).toHaveAttribute("readonly");
+    });
+
+    it("shows nothing for a sign-off with no scope", () => {
+      renderWithMantine(<SignOffForm signOff={requested} onSubmit={vi.fn()} />);
+      expect(
+        screen.queryByRole("textbox", { name: /What this sign-off covers/ }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("names the act on the button rather than saying 'Save'", () => {

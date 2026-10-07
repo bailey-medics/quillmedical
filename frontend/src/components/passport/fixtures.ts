@@ -77,6 +77,40 @@ export const declinedCompetency: CompetencyState = {
   certificates: [],
 };
 
+/**
+ * The same competency signed off for two scopes, as a competency signed
+ * off one tumour site at a time comes back: one entry for each, at its
+ * own level.
+ */
+export const lungCompetency: CompetencyState = {
+  id: "prescribe_sact",
+  name: "Review and prescribe systemic anti-cancer therapy",
+  scope: { id: "lung", name: "Lung" },
+  status: "signed_off",
+  level: {
+    id: "prescribe_subsequent_cycles",
+    name: "Prescribe second cycle onwards",
+  },
+  signed_on: "2026-03-14",
+  signed_off_by: "Dr Amara Okonkwo",
+  expires_on: null,
+  sign_off: "2026-03-12-prescribe-sact",
+  previous_sign_offs: [],
+  logbook_entries: 12,
+  certificates: [],
+};
+
+export const breastCompetency: CompetencyState = {
+  ...lungCompetency,
+  scope: { id: "breast", name: "Breast" },
+  level: {
+    id: "review_and_authorise",
+    name: "Review and authorise administration",
+  },
+  signed_on: "2026-06-02",
+  sign_off: "2026-06-01-prescribe-sact",
+};
+
 export const competencies: CompetencyState[] = [
   signedOffCompetency,
   requestedCompetency,
@@ -156,6 +190,27 @@ export const declined: SignOff = {
   requested_level: { id: "supervised", name: "Can perform under supervision" },
   observed_on: "2026-02-09",
   comments: "Not yet ready for this level.",
+};
+
+/** A request that says what it covers: one tumour site. */
+export const requestedForLung: SignOff = {
+  ...requested,
+  name: "2026-03-12-prescribe-sact",
+  id: "20260312T091044.000Z-2a7c4e19",
+  competency: {
+    id: "prescribe_sact",
+    name: "Review and prescribe systemic anti-cancer therapy",
+  },
+  scope: { id: "lung", name: "Lung" },
+  level: {
+    id: "review_and_authorise",
+    name: "Review and authorise administration",
+  },
+  requested_level: {
+    id: "review_and_authorise",
+    name: "Review and authorise administration",
+  },
+  observed_on: "2026-03-12",
 };
 
 /** One of each, newest first, as the sign-offs route returns them. */

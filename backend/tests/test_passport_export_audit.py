@@ -287,7 +287,7 @@ This is a record of assessed clinical competence: what this person has been sign
 
 | Competency | Level | Status | Signed off by | Date | Expires |
 | --- | --- | --- | --- | --- | --- |
-| Review and prescribe systemic anti-cancer therapy | Review and authorise administration | signed off | Dr Amara Okonkwo | 2026-03-20 | – |
+| Review and prescribe systemic anti-cancer therapy: Lung | Review and authorise administration | signed off | Dr Amara Okonkwo | 2026-03-20 | – |
 
 ## Logbook
 
@@ -315,7 +315,7 @@ No CPD date ranges have been set, so these run June to June by convention rather
 
 ## Sign-offs in full
 
-### Review and prescribe systemic anti-cancer therapy
+### Review and prescribe systemic anti-cancer therapy: Lung
 
 **Level:** Review and authorise administration
 

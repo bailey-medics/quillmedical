@@ -6,7 +6,7 @@ import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import SignOffCard from "./SignOffCard";
-import { requested, signedOff } from "./fixtures";
+import { requested, requestedForLung, signedOff } from "./fixtures";
 
 describe("SignOffCard", () => {
   describe("Content", () => {
@@ -14,6 +14,15 @@ describe("SignOffCard", () => {
       renderWithMantine(<SignOffCard signOff={signedOff} />);
       expect(screen.getByText("Perform bronchoscopy")).toBeInTheDocument();
       expect(screen.getByText("Can perform independently")).toBeInTheDocument();
+    });
+
+    it("says what the sign-off covers, where it has a scope", () => {
+      renderWithMantine(<SignOffCard signOff={requestedForLung} />);
+      expect(
+        screen.getByText(
+          "Review and prescribe systemic anti-cancer therapy: Lung",
+        ),
+      ).toBeInTheDocument();
     });
 
     it("names the level asked for when a different one was signed", () => {

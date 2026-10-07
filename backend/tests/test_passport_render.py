@@ -171,6 +171,43 @@ class TestCompetencyTable:
         assert "Review and authorise administration" in output
         assert "signed off" in output
 
+    def test_a_scoped_competency_is_named_with_its_scope(
+        self,
+        store: LocalPassportStore,
+        holder: Actor,
+        assessor: Actor,
+    ) -> None:
+        """In the table and on the sign-off itself."""
+        _sign_off(store, holder, assessor)
+
+        output = render.render(store, PASSPORT_ID)
+
+        named = "Review and prescribe systemic anti-cancer therapy: Lung"
+        assert f"| {named} |" in output
+        assert f"### {named}" in output
+
+    def test_two_scopes_are_two_rows(
+        self,
+        store: LocalPassportStore,
+        holder: Actor,
+        assessor: Actor,
+    ) -> None:
+        _sign_off(store, holder, assessor)
+        service.request_sign_off(
+            store,
+            PASSPORT_ID,
+            holder,
+            competency_id=COMPETENCY,
+            scope_id="breast",
+            observed_on=date(2026, 6, 1),
+            level_id=LEVEL,
+        )
+
+        output = render.render(store, PASSPORT_ID)
+
+        assert "anti-cancer therapy: Lung |" in output
+        assert "anti-cancer therapy: Breast |" in output
+
     def test_a_requested_competency_reads_as_awaiting(
         self, store: LocalPassportStore, holder: Actor
     ) -> None:
@@ -209,6 +246,35 @@ class TestLogbook:
         output = render.render(store, PASSPORT_ID)
 
         assert "3 recorded." in output
+
+    def test_a_logbook_is_listed_once_however_many_scopes_are_signed(
+        self,
+        store: LocalPassportStore,
+        holder: Actor,
+        assessor: Actor,
+    ) -> None:
+        """Two scopes are two index entries and still one logbook."""
+        records.add_logbook_entry(
+            store,
+            PASSPORT_ID,
+            holder,
+            COMPETENCY,
+            LogbookEntry(performed_on=date(2026, 3, 12)),
+        )
+        _sign_off(store, holder, assessor)
+        service.request_sign_off(
+            store,
+            PASSPORT_ID,
+            holder,
+            competency_id=COMPETENCY,
+            scope_id="breast",
+            observed_on=date(2026, 6, 1),
+            level_id=LEVEL,
+        )
+
+        output = render.render(store, PASSPORT_ID)
+
+        assert output.count("1 recorded.") == 1
 
     def test_entries_sort_by_the_clinical_date(
         self, store: LocalPassportStore, holder: Actor

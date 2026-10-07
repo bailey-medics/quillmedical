@@ -6,7 +6,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Stack } from "@mantine/core";
 import { fn } from "storybook/test";
 import SignOffForm from "./SignOffForm";
-import { requested } from "./fixtures";
+import { requested, requestedForLung } from "./fixtures";
 import { StoryNote } from "@/stories/variants";
 
 const meta: Meta<typeof SignOffForm> = {
@@ -79,6 +79,18 @@ export const TheDeclarationIsTheSignature: Story = {
   ),
   args: {
     signOff: requested,
+    onSubmit: fn(),
+    onCancel: fn(),
+  },
+};
+
+/**
+ * A request that says what it covers. The assessor sees it and cannot
+ * change it: one who assessed something else declines.
+ */
+export const WithAScope: Story = {
+  args: {
+    signOff: requestedForLung,
     onSubmit: fn(),
     onCancel: fn(),
   },

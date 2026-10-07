@@ -480,3 +480,16 @@ class TestManifestAndProfile:
     def test_a_specialty_needs_its_name(self) -> None:
         with pytest.raises(ValidationError):
             schemas.SpecialtyRef(id="oncology")  # type: ignore[call-arg]
+
+
+class TestNameWithScope:
+    def test_the_scope_follows_the_name(self) -> None:
+        assert (
+            schemas.name_with_scope(
+                "Prescribe", schemas.ScopeRef(id="lung", name="Lung")
+            )
+            == "Prescribe: Lung"
+        )
+
+    def test_a_name_with_no_scope_is_left_alone(self) -> None:
+        assert schemas.name_with_scope("Cannulate", None) == "Cannulate"

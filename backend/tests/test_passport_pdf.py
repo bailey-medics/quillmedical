@@ -408,6 +408,24 @@ class TestTheCompetencyTable:
 
         assert len(story) == 2  # heading and table, not "nothing recorded"
 
+    def test_a_scoped_competency_is_named_with_its_scope(
+        self,
+        store: LocalPassportStore,
+        holder: Actor,
+        assessor: Actor,
+    ) -> None:
+        from app.features.passport import paths as passport_paths
+        from app.features.passport.schemas import Index
+        from app.features.passport.serialise import from_yaml
+
+        _signed(store, holder, assessor)
+        index = from_yaml(Index, store.read(PASSPORT_ID, passport_paths.INDEX))
+
+        table = pdf._competency_table(index, pdf._styles())[1]
+
+        # Row 0 is the header.
+        assert table._cellvalues[1][0].text.endswith(": Lung")
+
     def test_an_empty_index_says_so(self) -> None:
         from app.features.passport.schemas import Index
 
