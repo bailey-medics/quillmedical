@@ -623,3 +623,56 @@ def verify_email_verify_token(token: str) -> str | None:
         return data.get("email")
     except (SignatureExpired, BadSignature):
         return None
+
+
+# --- Marketing unsubscribe links ---
+# Signed and never timed, unlike the two above. A newsletter is read
+# months after it was sent, and a link that has stopped working is an
+# unsubscribe refused. It names the user by id, so the address is not in
+# the link, and it opens one thing: that person's marketing preference.
+_marketing_unsubscribe = URLSafeSerializer(
+    settings.JWT_SECRET.get_secret_value(), salt="marketing-unsubscribe"
+)
+
+
+def create_marketing_unsubscribe_token(user_id: int) -> str:
+    """Create the token an unsubscribe link in a newsletter carries.
+
+    It does not expire. It can be used to read and change one person's
+    marketing preference and nothing else.
+
+    Args:
+        user_id: The person the link is for.
+
+    Returns:
+        URL-safe signed token.
+
+    Raises:
+        ValueError: If the id is not a positive whole number.
+    """
+    if isinstance(user_id, bool) or not isinstance(user_id, int):
+        raise ValueError("User id must be a whole number")
+    if user_id <= 0:
+        raise ValueError("User id must be positive")
+    return _marketing_unsubscribe.dumps({"user_id": user_id})
+
+
+def verify_marketing_unsubscribe_token(token: str) -> int | None:
+    """Verify an unsubscribe token and return whose it is.
+
+    Args:
+        token: The token from the link.
+
+    Returns:
+        The user's id if the signature is good, None otherwise.
+    """
+    try:
+        data = _marketing_unsubscribe.loads(token)
+    except BadSignature:
+        return None
+    if not isinstance(data, dict):
+        return None
+    user_id = data.get("user_id")
+    if isinstance(user_id, bool) or not isinstance(user_id, int):
+        return None
+    return user_id if user_id > 0 else None

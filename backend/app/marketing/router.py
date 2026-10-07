@@ -1,12 +1,15 @@
 # cspell:ignore svix whsec
 """Marketing email routes.
 
-Two: the Settings switch that changes a person's own preference, and the
-webhook Resend calls when a contact changes. Somebody who clicks
-"unsubscribe" in a newsletter changes their entry in Resend, and without
-the webhook Quill would go on showing their Settings switch as on.
+The Settings switch that changes a person's own preference; the two
+routes behind the unsubscribe link in a newsletter Quill sends, which
+need no login; and the webhook Resend calls when a contact changes.
+Somebody who clicks "unsubscribe" in a newsletter Resend sent changes
+their entry in Resend, and without the webhook Quill would go on showing
+their Settings switch as on.
 
-See ``docs/docs/plans/2026-10-03-marketing-opt-out-plan.md``.
+See ``docs/docs/plans/2026-10-03-marketing-opt-out-plan.md``, and Phase 4
+of ``docs/docs/plans/2026-10-06-amazon-ses-email-plan.md`` for the link.
 """
 
 import logging
@@ -15,13 +18,15 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import resend
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_core_db
 from app.deps import DEP_CURRENT_USER, get_current_user
+from app.email_send import mask_email
 from app.marketing.preferences import (
     MARKETING_WORDING_VERSION,
     set_marketing_preference,
@@ -37,8 +42,10 @@ from app.rate_limit import limiter
 from app.schemas.marketing import (
     MarketingPreferenceIn,
     MarketingPreferenceOut,
+    MarketingUnsubscribeOut,
     ResendWebhookOut,
 )
+from app.security import verify_marketing_unsubscribe_token
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +163,156 @@ async def _raw_body(request: Request) -> bytes:
 
 
 _DEP_RAW_BODY = Depends(_raw_body)
+
+#: The token in an unsubscribe link. Long enough for any real one, and
+#: bounded so that a request cannot hand the verifier megabytes to hash.
+_UNSUBSCRIBE_TOKEN = Query(min_length=1, max_length=512)
+
+
+def _unsubscribe_user(token: str, db: Session) -> User:
+    """Whose unsubscribe link this is.
+
+    The signature is the whole of these routes' authentication: there is
+    no session and no CSRF token, because the person may be signed out,
+    or may be a mailbox pressing the link for them.
+
+    Args:
+        token: The token from the link.
+        db: Database session.
+
+    Returns:
+        The person the link was made for.
+
+    Raises:
+        HTTPException: 404 for a bad signature and for an account that
+            is gone, alike, so the reply says nothing about which.
+    """
+    user_id = verify_marketing_unsubscribe_token(token)
+    user = db.get(User, user_id) if user_id is not None else None
+    if user is None:
+        raise HTTPException(status_code=404, detail="Not found.")
+    return user
+
+
+def _is_json(request: Request) -> bool:
+    """Whether a request says its body is JSON."""
+    content_type = request.headers.get("content-type", "")
+    return content_type.split(";")[0].strip().lower() == "application/json"
+
+
+def _wanted_by_link(request: Request, raw: bytes) -> bool:
+    """What a ``POST`` to the unsubscribe link asks for.
+
+    Two callers. Quill's own unsubscribe page sends JSON saying which way
+    to set the preference, since the page can also turn news back on. A
+    mailbox doing a one-click unsubscribe (RFC 8058) sends a form body of
+    ``List-Unsubscribe=One-Click``, and means off.
+
+    Anything that is not JSON is read as that one-click: the link is
+    already proven by its signature, and off is the safe way to be wrong
+    about an unsubscribe.
+
+    Args:
+        request: The request, for its content type.
+        raw: The body as sent.
+
+    Returns:
+        Whether the person wants marketing email.
+
+    Raises:
+        HTTPException: 422 if the body claims to be JSON and is not the
+            shape the page sends.
+    """
+    if not _is_json(request):
+        return False
+    try:
+        payload = MarketingPreferenceIn.model_validate_json(raw)
+    except ValidationError:
+        raise HTTPException(
+            status_code=422, detail="Invalid request body."
+        ) from None
+    return payload.wants_marketing
+
+
+# Public and without a CSRF token on purpose, both of them: see
+# ``_unsubscribe_user``.
+@router.get("/unsubscribe", response_model=MarketingUnsubscribeOut)
+@limiter.limit("60/minute")
+def read_unsubscribe_link(
+    request: Request,
+    token: str = _UNSUBSCRIBE_TOKEN,
+    db: Session = _DEP_SESSION,
+) -> MarketingUnsubscribeOut:
+    """Say whose unsubscribe link this is, and what they now receive.
+
+    For the unsubscribe page, which shows it before anything is changed.
+
+    Args:
+        request: The request, for the rate limiter.
+        token: The token from the link.
+        db: Database session.
+
+    Returns:
+        The address, mostly hidden, and the preference as it stands.
+
+    Raises:
+        HTTPException: 404 if the link is not a real one.
+    """
+    user = _unsubscribe_user(token, db)
+    return MarketingUnsubscribeOut(
+        email=mask_email(user.email),
+        marketing_emails=user.marketing_emails,
+    )
+
+
+@router.post("/unsubscribe", response_model=MarketingUnsubscribeOut)
+@limiter.limit("60/minute")
+def use_unsubscribe_link(
+    request: Request,
+    token: str = _UNSUBSCRIBE_TOKEN,
+    raw: bytes = _DEP_RAW_BODY,
+    db: Session = _DEP_SESSION,
+) -> MarketingUnsubscribeOut:
+    """Change somebody's marketing preference from their unsubscribe link.
+
+    Never fails because Resend cannot be reached. The Settings switch
+    refuses an opt-out Resend has not heard, because Resend is what
+    sends; this link only exists in a newsletter Quill sent itself, where
+    Quill's own record is what stops the next one. Resend is still told
+    while it holds a list, and a failure is left for the retry.
+
+    Args:
+        request: The request, for its content type and the rate limiter.
+        token: The token from the link.
+        raw: The body as sent.
+        db: Database session.
+
+    Returns:
+        The address, mostly hidden, and the preference as it now stands.
+
+    Raises:
+        HTTPException: 404 if the link is not a real one, 422 if a JSON
+            body is not the shape the page sends.
+    """
+    user = _unsubscribe_user(token, db)
+    wants = _wanted_by_link(request, raw)
+    changed = set_marketing_preference(
+        db, user, wants=wants, source="unsubscribe_link"
+    )
+    if changed and user.email_verified:
+        try:
+            sync_contact(user)
+        except MarketingSyncError as exc:
+            logger.warning(
+                "Marketing sync failed for user %s after their "
+                "unsubscribe link was used: %s",
+                user.id,
+                exc,
+            )
+    return MarketingUnsubscribeOut(
+        email=mask_email(user.email),
+        marketing_emails=user.marketing_emails,
+    )
 
 
 def _verified_event(request: Request, raw: bytes) -> dict[str, Any]:

@@ -769,14 +769,18 @@ class PushSubscription(Base):
 #: Where a change to somebody's marketing preference came from.
 #: ``registration``, ``invite`` and ``settings`` are pages the person
 #: answered on: registering themselves, first setting a password on an
-#: account somebody made for them, and the Settings switch. ``resend`` is
-#: the mailing service telling Quill, after an unsubscribe link in an
-#: email. Validated in code, as ``PLATFORM_ROLES`` is, so a new
-#: source needs no migration.
+#: account somebody made for them, and the Settings switch.
+#: ``unsubscribe_link`` is the link in a newsletter Quill sends, which
+#: opens Quill's own page or is pressed for the person by their mailbox.
+#: ``resend`` is the mailing service telling Quill, after an unsubscribe
+#: link in an email it sent; kept while rows written with it exist.
+#: Validated in code, as ``PLATFORM_ROLES`` is, so a new source needs no
+#: migration.
 MARKETING_PREFERENCE_SOURCES: tuple[str, ...] = (
     "registration",
     "invite",
     "settings",
+    "unsubscribe_link",
     "resend",
 )
 
