@@ -115,6 +115,14 @@ available to send.
   Worth using for a first send to an old list: the mail provider pauses
   an account whose emails bounce too often.
 
+- **Bounces and complaints** – Amazon keeps a list of addresses that
+  hard-bounced, and of people who reported an email as spam, and will
+  not send to them again. The command reads that list before each run,
+  dry or not, and marks those people: a subscriber is unsubscribed, and
+  an account holder's newsletters are switched off, with a history row
+  saying `bounce` or `complaint`. If the list cannot be read it says so
+  and carries on.
+
 - **A trial to one address** – the last argument sends to one person
   who may be sent newsletters, and records nothing, so the real send
   still reaches them.

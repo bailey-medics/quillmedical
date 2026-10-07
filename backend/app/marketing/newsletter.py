@@ -51,6 +51,7 @@ from app.email_send import (
     mask_email,
     send_email,
 )
+from app.marketing.suppression import hear_from_amazon
 from app.models import NewsletterSend, NewsletterSubscriber, User
 from app.security import (
     create_marketing_unsubscribe_token,
@@ -477,6 +478,21 @@ def main() -> int:
 
     db = CoreSessionLocal()
     try:
+        # Before anybody is counted, dry run or not: Amazon knows which
+        # addresses bounced or complained since the last send, and they
+        # are not to be listed as people a newsletter would reach.
+        marked = hear_from_amazon(db)
+        if marked is None:
+            print(
+                "Amazon's list of bounces and complaints could not be "
+                "read. Carrying on: Amazon refuses those addresses itself."
+            )
+        elif marked.subscribers or marked.accounts:
+            print(
+                f"Marked from Amazon's bounces and complaints: "
+                f"{marked.subscribers} subscribers unsubscribed, "
+                f"{marked.accounts} accounts switched off."
+            )
         result = send_campaign(
             db, campaign, confirm=confirm, only_to=only_to, limit=limit
         )
