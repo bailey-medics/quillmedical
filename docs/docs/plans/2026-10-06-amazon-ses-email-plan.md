@@ -7,14 +7,14 @@ States. The transfer is lawful, but the promise is not kept, and the
 privacy policy drafted on 6 October 2026 has to contradict the site to be
 honest. Amazon Simple Email Service (SES) in its London region,
 `eu-west-2`, keeps email data in the UK, costs $0.16 per 1,000 emails
-with no monthly fee and no daily cap, and keeps a contact list with
-topics and its own unsubscribe handling, so the newsletter arrangement
-carries over.
+with no monthly fee and no daily cap. It also keeps a contact list with
+its own unsubscribe handling, which this plan first meant to use and
+then set aside: see Phase 4.
 
 The outcome is every email Quill sends, service and newsletter, going
-through SES in London, the newsletter list held there, Resend closed, and
-the privacy policy and the site saying the same true thing. It has to be
-done, or the site reworded, before the EoEETA service goes live, which is
+through SES in London, the newsletter list held by Quill itself, Resend
+closed, and the privacy policy and the site saying the same true thing.
+It has to be done, or the site reworded, before the EoEETA service goes live, which is
 expected between late October and mid November 2026. This plan was
 written in one worktree and is meant to be worked from the primary one,
 which controls the dev containers. It stands on its own; the reasoning
@@ -216,7 +216,15 @@ screens.
       Resend secrets went in as two changes. After the infra change,
       re-run `deploy.yml` and check the serving revision. The values went
       in on 7 October 2026 and were checked by fingerprint against the
-      local copy, with no trailing newline; the mount followed.
+      local copy, with no trailing newline; the mount followed. The
+      warning about the serving revision held: merging the mount left
+      App production on the revision from the night before, and the one
+      Terraform made, with the secrets, had no traffic. The deploy run
+      on that merge finished green without moving it. Re-running
+      `deploy.yml` by hand did, on the second try: the first failed in
+      the frontend image build with "error writing layer blob:
+      not_found", a fault in storing the image and nothing in the code,
+      and re-running the failed jobs passed.
 
 ## Phase 3: Send service email through SES
 
@@ -279,24 +287,78 @@ and certificates out of the United States.
       because the unit tests read that file, and tests that mock Resend
       would try SES.
 
-- [ ] **Switch teaching production to SES** once production access is
-      granted: set `EMAIL_PROVIDER` to `ses` in `infra/main.tf`, re-run
-      `deploy.yml`, and send one real email of each kind. Resend stays
-      configured, so the switch can be reversed.
+- [x] **Switch App production to SES.** `EMAIL_PROVIDER` set to `ses`
+      in the backend's environment in `infra/main.tf`, merged on 7
+      October 2026 once the serving revision was seen to have the key.
+      As with the mount, the merge alone changed nothing: Terraform's
+      revision had no traffic until `deploy.yml` was re-run by hand.
+      After that the serving revision read `EMAIL_PROVIDER=ses`, the app
+      answered healthy, and a password reset requested through
+      `POST /api/auth/forgot-password` on the live app was logged as
+      sent, the whole request taking about a second. Resend stays
+      configured, so removing the line reverses it. Only the backend is
+      switched: the admin job has no key and keeps the default. Still
+      to see in App production: a verification email from a real
+      registration, and a certificate from a passed assessment.
 
-## Phase 4: Move the newsletter list to SES
+- [ ] **Give development its own AWS account.** First placed after the
+      production switch, and brought forward on 7 October 2026, so that
+      Phase 4's send command is never tried with a key that can email
+      anybody. Quill Medical Emails Dev is a third working account in
+      the organisation, made from the management account with
+      `aws organizations create-account`, under
+      `aws-dev@quill-medical.com`. That address did not exist when the
+      account was made: an account made inside an organisation is not
+      asked to verify it, so nothing failed, and the alias was created
+      and tested afterwards. It is the account's recovery address, so
+      make it first next time. No root password is set for the account,
+      and none is needed. Done so far: the region policy is
+      attached to the organisation's root, so it reached the new account
+      unasked, and SES there answers in London and is refused in
+      Stockholm and Ireland; `quill-medical.com` is added with Easy DKIM
+      and the same `mail` MAIL FROM name, whose record serves every
+      account in London; a user, `quill-backend-ses-dev`, may send from
+      London and do nothing else; and its key has replaced the
+      production one in the local `backend/.env`, so the production key
+      now exists only in Secret Manager. The account is in the sandbox,
+      which suits development: 200 emails a day, to verified addresses
+      only. **Still to do**: merge the three DKIM records added to
+      `infra/dns.tf`, wait for the domain to verify, and send one email.
+      SES took about three minutes to answer in the new account at all,
+      refusing with "needs a subscription for the service" until then.
 
-SES keeps a list much as Resend does: one contact list for the account
-with up to 20 topics, an opt-in or opt-out per person per topic, and
-"subscription management ... fully managed by Amazon SES", meaning it
-adds the unsubscribe link and the one-click header, hosts the page where
-somebody changes their preferences, and refuses to send to somebody who
-opted out. So the shape Quill has carries over: Quill's database is the
-record of every answer, and the provider holds the list.
+- [x] **Make signing in from the command line check where it landed.**
+      `aws login` does not ask which account: it takes whichever AWS
+      console session is active in the browser. Twice on 7 October 2026
+      it signed a profile in to the sign-in directory account without a
+      word. `just al` now takes `emails` or `management`, checks the
+      account number afterwards and refuses the wrong one. The numbers
+      it checks against are in the local `backend/.env`, as
+      `AWS_EMAILS_ACCOUNT_ID`, `AWS_MANAGEMENT_ACCOUNT_ID` and
+      `AWS_EMAILS_DEV_ACCOUNT_ID`, and not in the Justfile: this
+      repository is public. `backend/.env-sample` names them, with no
+      values, regenerated by `scripts/env-samples-update.sh`. The
+      development account needs no sign-in: its profile,
+      `quill-emails-dev`, reaches it through the management one, by the
+      role AWS makes in every account it creates.
 
-What does not carry over is a screen. Resend showed the list and who was
-subscribed; the SES console has nothing for contact lists, which are
-reached through the API alone. That is accepted: see Decisions.
+## Phase 4: Send the newsletter from Quill's own list
+
+This phase was first written as moving the list to SES: a contact list
+there, a sync to keep it in step, and a route to hear of unsubscribes. It
+was rewritten on 7 October 2026, after one step of that had been done,
+because of two things found on the way. Amazon's unsubscribe page cannot
+be themed: it is a fixed page at an Amazon address,
+`eu-west-2.user-subscription.com`, showing only the topic's name and
+description. And an AWS account has one contact list, which the dev stack
+would have shared with production.
+
+So Quill keeps the list itself. `users.marketing_emails` is already the
+record of every answer; it becomes the only one. The link in a
+newsletter goes to a page of Quill's own, and there is no list at
+Amazon, no sync and nothing to drift. What is given up is Amazon
+refusing a send to somebody who opted out: Quill has to do that itself,
+in the command that sends, and the tests have to pin it down.
 
 - [x] **Create the contact list in London** with one topic, whose
       default is opted out, so nobody is subscribed by being added. The
@@ -306,66 +368,85 @@ reached through the API alone. That is accepted: see Decisions.
       worth adding for one resource. An account has one contact list.
       The SES console has no screen for it; `aws sesv2 get-contact-list
       --contact-list-name quill-newsletter --profile quill-emails` shows
-      it. It is empty until the list is moved, below.
+      it. **Superseded the next day**: nothing uses it, and the last
+      step of this phase deletes it.
 
-- [ ] **Rewrite the contact sync against SES.** Today
-      `backend/app/marketing/resend_contacts.py` does four things over
-      Resend's HTTP API: `sync_contact`, `topic_subscription`,
-      `list_contacts` and `remove_contact`. Write
-      `backend/app/marketing/ses_contacts.py` with the same four, on
-      `create_contact`, `update_contact`, `get_contact`, `list_contacts`
-      and `delete_contact`, and point `sync.py`, `reconcile.py` and the
-      `marketing-reconcile.yml` workflow at it. Replace
-      `RESEND_NEWSLETTER_SEGMENT_ID` and `RESEND_NEWSLETTER_TOPIC_ID`
-      with `SES_CONTACT_LIST_NAME` and `SES_NEWSLETTER_TOPIC`, set to
-      `quill-newsletter` and `Newsletter`. Resend's two switches, a
-      topic and a contact-level "subscribed" status, become SES's topic
-      preference and `UnsubscribeAll`; set both to match, as now. Only
-      the address and the name are sent, as now. Adapt
-      `test_marketing_resend_sync.py` and `test_marketing_reconcile.py`.
-      The `marketing-sync` and `marketing-reconcile` actions in
-      `backend/scripts/admin_cli.py`, and the two `just` recipes that
-      run them, are written for Resend and move with it.
+- [ ] **Make the unsubscribe link and its routes.** A link signed with
+      `itsdangerous`, as the verification and password reset links in
+      `backend/app/security.py` are, under its own salt, naming the user
+      by id and never by address. It does not expire: a newsletter is
+      read months later, and a link that has stopped working is an
+      unsubscribe refused. It can do one thing, change that person's
+      marketing preference, so a leaked one costs little. Two public
+      routes in `backend/app/marketing/router.py`, rate limited, with no
+      session and no CSRF token, because the signature is the whole of
+      their authentication: `GET /api/marketing/unsubscribe` answers
+      what the person's preference now is, and `POST` to the same path
+      sets it. The `POST` must also take what a mailbox sends for a
+      one-click unsubscribe, a form body of `List-Unsubscribe=One-Click`
+      (RFC 8058), and turn the preference off. Both go through
+      `set_marketing_preference`, with a new source `unsubscribe_link`
+      added to `MARKETING_PREFERENCE_SOURCES`. `resend` stays in that
+      list: rows already written carry it. A bad signature answers 404,
+      as the route guards do, and says nothing about whether the user
+      exists.
 
-- [ ] **Receive unsubscribes from SES.** Resend calls
-      `POST /api/marketing/resend-webhook`, signed with svix headers that
-      `_verified_event` in `backend/app/marketing/router.py` checks. SES
-      reports a subscription change as an event on a configuration set,
-      delivered through an SNS topic, which must also be in `eu-west-2`,
-      to an HTTPS endpoint. Add `POST /api/marketing/ses-events`: confirm
-      the SNS subscription, verify each message's signature against
-      Amazon's signing certificate, and reject anything else. It is a
-      public endpoint, so the signature check is the whole of its
-      authentication. Then do what the old receiver did: one
-      `set_marketing_preference` call, with a new source `ses` added to
-      `MARKETING_PREFERENCE_SOURCES` in place of `resend`. The echo
-      guard, `_is_echo`, still matters: Quill's own update comes back as
-      an event. Adapt `test_marketing_webhook.py`.
+- [ ] **Build the unsubscribe page.** A page in the app that needs no
+      login, at `/unsubscribe`, in the Quill layout: it reads the link,
+      says which address it is for with most of it hidden, shows whether
+      news is on or off, and turns it off or back on with one button.
+      Somebody signed out must be able to use it, so it sits outside
+      `<RequireAuth>`. Compose it from the Storybook components there
+      are, with a story and a test, and put any new component to Mark
+      before building it. The newsletter's "Update your preferences"
+      link goes to the same page.
 
-- [ ] **Write the command that sends a newsletter.** This is the one
-      thing SES lacks: there is no screen to compose a broadcast and
-      press send. Add an admin action that takes a subject and a body,
-      renders `newsletter_broadcast.html.j2`, lists the contacts opted in
-      to the topic, and sends each one separately with
-      `ListManagementOptions` naming the list and topic, so SES puts the
-      unsubscribe link at the `{{amazonSESUnsubscribeUrl}}` placeholder.
-      One recipient per send, because SES adds the link only then. Two
-      things SES does on such a send, from its documentation: an address
-      not on the list is added to it, so the command must send only to
-      the contacts it listed; and a send to somebody who has opted out
-      is refused and reported as a bounce. Give
-      it a dry run that prints who would receive it, and a required
-      confirmation, because a newsletter cannot be unsent. Rewrite
+- [ ] **Write the command that sends a newsletter.** SES has no screen
+      to compose a broadcast and press send, so this is an admin action.
+      It takes a subject and a body, renders `newsletter.html.j2` for
+      each person with their own unsubscribe link, and sends through
+      `send_email`, which gains a way to set extra headers:
+      `List-Unsubscribe`, pointing at the `POST` route, and
+      `List-Unsubscribe-Post: List-Unsubscribe=One-Click`. Mailbox
+      providers require both on bulk mail. **Who it sends to is the
+      part that matters**: verified, active users whose
+      `marketing_emails` is true, read when the command starts and read
+      again for each person just before their send, so somebody who
+      unsubscribes while it runs is not emailed. Nothing else stops a
+      send to somebody who refused. Give it a dry run that prints who
+      would receive it, and a required confirmation, because a
+      newsletter cannot be unsent. It runs in the admin job, which
+      needs the SES key and `EMAIL_PROVIDER` in
+      `admin_secret_env_vars` and its environment in `infra/`. Rewrite
       `docs/docs/backend/marketing-email.md`, which describes sending by
       hand from Resend. `backend/app/email/broadcast.py` and `just
-      email-export` exist only to paste the layout into Resend's editor,
-      with Resend's unsubscribe placeholder; this command replaces
-      them.
+      email-export` exist only to paste the layout into Resend's editor;
+      this command replaces them.
 
-- [ ] **Move the list.** Import from Quill's database, not from Resend,
-      so Quill stays the source: every verified user with their current
-      `users.marketing_emails` answer. Then run the reconcile and check
-      that nobody who refused is opted in.
+- [ ] **Send one to Mark alone, and try every way out.** In App
+      production, to one address. Check the mailbox shows its own
+      unsubscribe button and that pressing it turns the preference off;
+      that the footer link opens the themed page; that turning news back on there works;
+      and that each change wrote a `marketing_preference_change` row
+      with the right source.
+
+- [ ] **Cut over: stop telling Resend.** One change, with no switch.
+      Take the `sync_contact` calls out of the Settings route and
+      registration, so a choice is saved in Quill and nowhere else, and
+      opting out no longer fails when Resend cannot be reached. Turn
+      off `marketing-reconcile.yml`: it makes Quill match Resend, and
+      after this Resend is stale, so one run would undo every choice
+      made since. **Keep the Resend webhook route.** Newsletters already
+      sent carry Resend's unsubscribe link, and somebody pressing one
+      next month still has to be heard. The rest of the Resend code
+      goes in Phase 5. From here newsletters are sent by the command
+      above and never from Resend.
+
+- [ ] **Delete the contact list and narrow the key.** `aws sesv2
+      delete-contact-list --contact-list-name quill-newsletter`, and
+      take the six contact actions out of the `quill-backend-ses-london`
+      policy, leaving `ses:SendEmail` and `ses:SendRawEmail`. The key
+      should be able to do what the backend does and no more.
 
 ## Phase 5: Close Resend and make the documents true
 
@@ -377,7 +458,15 @@ reached through the API alone. That is accepted: see Decisions.
       keep its Slack message, before the step below removes the secret.
 
 - [ ] **Run both for a week, then remove Resend.** Delete the contacts
-      from Resend and close the account. Remove the `resend` dependency,
+      from Resend and close the account. Unsubscribe links in
+      newsletters sent from Resend stop working when it closes; anybody
+      who meets one still has Settings, and the link in every newsletter
+      since. Remove what Phase 4 left: `resend_contacts.py`, `sync.py`,
+      `reconcile.py`, the webhook route, the `marketing-sync` and
+      `marketing-reconcile` actions in `backend/scripts/admin_cli.py`
+      with their `just` recipes, the `marketing-reconcile.yml` workflow,
+      and `users.marketing_synced_at`, which only the sync read, by a
+      migration of its own. Remove the `resend` dependency,
       `RESEND_API_KEY`, `RESEND_CONTACTS_API_KEY`,
       `RESEND_WEBHOOK_SECRET` and the two newsletter identifiers from
       `config.py`, `infra/main.tf` and `infra/runtime-identities.tf`,
@@ -388,7 +477,9 @@ reached through the API alone. That is accepted: see Decisions.
 - [ ] **Update the privacy policy** in `docs/docs/legal/privacy-policy.md`
       as a new version: section 5 names Amazon Web Services, London, in
       place of Resend; section 8 loses the transfer to the United States;
-      section 3 loses its mentions of Resend. Add one sentence about the
+      section 3 loses its mentions of Resend, and says the newsletter
+      list is Quill's own, with no copy at the email provider. Add one
+      sentence about the
       shared suppression list: an address that hard-bounces is held by
       Amazon on a list shared across its customers for up to 14 days,
       and Amazon does not say where. Update the public pages when they
@@ -425,10 +516,26 @@ reached through the API alone. That is accepted: see Decisions.
   a mistake made by hand in the console; the key's own limit is what
   holds if the policy is ever loosened.
 
-- **No screen for the newsletter list** – SES has none, and Quill has
-  no view of its own. A `just` recipe and an admin page were considered
-  on 6 October 2026 and left out. The list can be read from the command
-  line, and Quill's database stays the record of every answer.
+- **Quill keeps the newsletter list, not Amazon** – decided on 7
+  October 2026. Amazon's unsubscribe page cannot be themed and sits at
+  an Amazon address, and one contact list per account would have been
+  shared by development and production. With the list in Quill's own
+  database there is one record, a page in Quill's layout, less personal
+  data at Amazon, and no sync to fail. The price is that nothing but
+  Quill's send command stops an email to somebody who refused. The
+  missing list screen, which SES has none of, stops mattering for the
+  same reason: the list is the users table.
+
+- **No webhook from Amazon, and no daily check** – both were ways of
+  hearing what Amazon's list held. A webhook would have been a public
+  route with a signature check written by hand, since Amazon publishes
+  no Python tool for it; a daily read of the list was chosen in its
+  place, and then neither was needed once there was no list to read.
+
+- **A hard cut for the newsletter** – no setting chooses between Resend
+  and Quill's own send. Production has six contacts and no real users
+  yet, and a switch would mean two lists that each believe they are
+  right.
 
 - **A switch, not a cut-over** – `EMAIL_PROVIDER` lets SES be proven in
   the dev stack and then in production while Resend still works, and

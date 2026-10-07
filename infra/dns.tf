@@ -139,6 +139,24 @@ locals {
       ttl     = 18000
       rrdatas = ["tqnk6jq5pksxcrmgdwrtecxxtj2l4y5s.dkim.amazonses.com."]
     }
+    # The same domain again, for the development AWS account, which has
+    # its own SES and so its own three selectors. It shares the MAIL FROM
+    # name below: the record is the same for every account in London.
+    "CNAME:mpo4k6lsqiddgh65lzh4dxeerrpm46vy._domainkey" = {
+      type    = "CNAME"
+      ttl     = 18000
+      rrdatas = ["mpo4k6lsqiddgh65lzh4dxeerrpm46vy.dkim.amazonses.com."]
+    }
+    "CNAME:c2rkclys2ilnneyqrswzb75fpzksdzdq._domainkey" = {
+      type    = "CNAME"
+      ttl     = 18000
+      rrdatas = ["c2rkclys2ilnneyqrswzb75fpzksdzdq.dkim.amazonses.com."]
+    }
+    "CNAME:tsanu3szdfgbjqalalds3zo7vnrlha4q._domainkey" = {
+      type    = "CNAME"
+      ttl     = 18000
+      rrdatas = ["tsanu3szdfgbjqalalds3zo7vnrlha4q.dkim.amazonses.com."]
+    }
     # The MAIL FROM name, where bounces come back. `mail`, not `send`:
     # `send` is Resend's and points at Ireland, and is removed with Resend.
     "MX:mail" = {

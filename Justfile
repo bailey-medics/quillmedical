@@ -188,25 +188,54 @@ abbreviate-just:
 
 
 alias al := aws-login
-# Sign in to the AWS account that sends email (Quill Medical Emails, London)
-aws-login:
+# Sign in to an AWS account from the command line (which: emails, the default, or management)
+aws-login which="emails":
     #!/usr/bin/env bash
     {{initialise}} "aws-login"
-    # `aws login` opens the browser and keeps short-lived credentials that
-    # renew themselves, so no access key is left on disk. Choose the Quill
-    # Medical Emails account there, never the management one: organisation
-    # policies do not apply to that, so anything made in it escapes the
-    # London-only rule.
+    # `aws login` keeps short-lived credentials that renew themselves, so no
+    # access key is left on disk. It does not ask which account: it takes
+    # whichever AWS console session is active in the browser. So open the
+    # right account's console first, from https://settings.aws.com/projects,
+    # and this checks the account it landed in and refuses the wrong one.
+    # On 7 October 2026 two sign-ins in a row landed in the sign-in
+    # directory account without a word.
     #
+    #   emails      Quill Medical Emails: SES, production. The usual one.
+    #   management  Quill-Medical Management Account: policies, new accounts.
+    #
+    # The development account, Quill Medical Emails Dev, needs no sign-in of
+    # its own: the `quill-emails-dev` profile reaches it through the
+    # management one.
+    case "{{which}}" in
+        emails)     profile="quill-emails";     setting="AWS_EMAILS_ACCOUNT_ID" ;;
+        management) profile="quill-management"; setting="AWS_MANAGEMENT_ACCOUNT_ID" ;;
+        *) echo "✗ Unknown account '{{which}}': emails or management."; exit 1 ;;
+    esac
+    # The account numbers live in backend/.env, which is gitignored, and not
+    # here: this repository is public.
+    want="$(grep "^${setting}=" backend/.env 2>/dev/null | cut -d= -f2-)"
+    if [ -z "$want" ] || [ "$want" = "CHANGE_ME" ]; then
+        echo "✗ ${setting} is not set in backend/.env, so the sign-in"
+        echo "  cannot be checked. Add the account's number there first."
+        exit 1
+    fi
     # The region is set first. Without one `aws login` stops to ask, and
     # everything in SES is per region: a resource made outside eu-west-2 is
     # email data outside the UK.
-    aws configure set region eu-west-2 --profile quill-emails
-    aws login --profile quill-emails
-    echo "Signed in as:"
-    aws sts get-caller-identity --profile quill-emails \
-        --query Arn --output text
-    echo "Use it with: AWS_PROFILE=quill-emails aws ..."
+    aws configure set region eu-west-2 --profile "$profile"
+    # `y` answers "overwrite the session this profile already has?".
+    printf 'y\n' | aws login --profile "$profile"
+    got="$(aws sts get-caller-identity --profile "$profile" \
+        --query Account --output text)"
+    if [ "$got" != "$want" ]; then
+        echo "✗ Signed in to account $got, not $want ({{which}})."
+        echo "  Open the {{which}} account's console in the browser, close"
+        echo "  any other AWS console session, and run this again."
+        echo "  Do not use the $profile profile until it passes."
+        exit 1
+    fi
+    echo "Signed in to the {{which}} account ($got)."
+    echo "Use it with: AWS_PROFILE=$profile aws ..."
 
 
 alias ii := initial-install
