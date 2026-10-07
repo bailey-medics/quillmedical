@@ -844,6 +844,52 @@ class MarketingPreferenceChange(Base):
         return validate_marketing_preference_source(value)
 
 
+class NewsletterSubscriber(Base):
+    """Somebody on the mailing list who has no Quill account.
+
+    Not a user: they did not register, cannot log in, and hold nothing
+    in Quill but a wish to be sent news, or not to be. Kept apart from
+    ``users`` so that a list of people who signed up for a newsletter is
+    never mistaken for a list of accounts.
+
+    Somebody who unsubscribes stays, with ``subscribed`` off, so the
+    refusal is held and a later import cannot subscribe them again.
+
+    Attributes:
+        id: Primary key.
+        email: Their address, held lower case and unique.
+        name: Their name, where one came with the address.
+        subscribed: Whether they are sent newsletters.
+        unsubscribed_at: When they last unsubscribed. Null if they never
+            have, or have since subscribed again.
+        created_at: When the row was made.
+    """
+
+    __tablename__ = "newsletter_subscriber"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False
+    )
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    subscribed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    unsubscribed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    @validates("email")
+    def _email_is_lower_case(self, _key: str, value: str) -> str:
+        """Hold the address as Quill holds every address."""
+        return normalise_email(value)
+
+
 class NewsletterSend(Base):
     """One newsletter sent to one person.
 
