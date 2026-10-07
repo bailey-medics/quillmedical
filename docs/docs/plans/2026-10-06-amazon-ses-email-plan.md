@@ -556,11 +556,19 @@ in the command that sends, and the tests have to pin it down.
       the repository's rules, so that pull request waits on the
       `api-breaking-change-review` approval.
 
-- [ ] **Delete the contact list and narrow the key.** `aws sesv2
+- [x] **Delete the contact list and narrow the key.** `aws sesv2
       delete-contact-list --contact-list-name quill-newsletter`, and
       take the six contact actions out of the `quill-backend-ses-london`
       policy, leaving `ses:SendEmail` and `ses:SendRawEmail`. The key
-      should be able to do what the backend does and no more.
+      should be able to do what the backend does and no more. Done on 7
+      October 2026. The list was empty when it was deleted. The policy
+      has a second version, now the default, with the two sending
+      actions and nothing else; AWS's policy simulator says the key may
+      send from London, may not send from Ireland, and may not list,
+      create or delete a contact. The column the cut-over left behind,
+      `users.marketing_synced_at`, is dropped by a migration of its own
+      in the pull request after the cut-over's, to merge only once the
+      cut-over has deployed.
 
 ## Phase 5: Close Resend and make the documents true
 
