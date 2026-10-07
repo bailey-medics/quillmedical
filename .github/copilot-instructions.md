@@ -194,10 +194,17 @@ Resolution per user: `(base_profession_competencies + additional) − removed`,
 via `resolve_user_competencies` behind `User.get_final_competencies`.
 
 - **Catalogue**: `shared/competency-definitions/` – `clinical.yaml`,
-  `clinical-admin.yaml`, `admin.yaml`, `oncology.yaml`, `teaching.yaml`,
-  `passport.yaml`, `safety.yaml`. All merged into one catalogue at load, so **ids must be
-  unique across the directory**, not just within a file. Which file an entry
-  lives in carries no meaning to the code; it is for the reader.
+  `clinical-admin.yaml`, `admin.yaml`, `teaching.yaml`, `passport.yaml`,
+  `safety.yaml`, and one file for each passport framework. All merged into
+  one catalogue at load, so **ids must be unique across the directory**, not
+  just within a file. Which file an entry lives in carries no meaning to
+  access control; it is for the reader.
+- **Frameworks**: the one meaning a file does carry. A file that declares a
+  `framework:` block is a passport framework, one published document as a
+  set of competencies, and its assessable entries are that framework's
+  items. A framework marked `passport_only` holds statements from a paper
+  form: `validate_competency_ids` refuses them wherever a competency is
+  granted, and they never appear in an admin picker.
 - **Professions**: `shared/base-professions.yaml` – `id`, `display_name`,
   `description`, `requires_clinical_services`, `base_competencies`
 - **Backend**: `backend/app/cbac/` – `has_competency("competency_id")` from

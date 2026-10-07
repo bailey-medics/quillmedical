@@ -675,13 +675,20 @@ changing.
 
 ## Phase 11: Bring the documentation into line
 
-- [ ] **Update `docs/docs/backend/passport/index.md`**: scopes, a confirmed
+Moved ahead of the removals, which wait on a later release and on two
+approvals: the documentation describes what is built, and need not wait
+with them.
+
+- [x] **Update `docs/docs/backend/passport/index.md`**: scopes, a confirmed
       logbook entry (which softens "everything else is the holder's own
       claim"), frameworks in place of specialties, and the new tables
       under Coordination.
-- [ ] **Update the rule that a file carries no meaning**, in
+- [x] **Update the rule that a file carries no meaning**, in
       `.github/copilot-instructions.md`, then run `/sync-copilot-config`.
-      `CLAUDE.md` is generated from it.
+      `CLAUDE.md` is generated from it. The sync spliced in that one
+      change and refreshed that one entry's hashes. Four other sources
+      had changed since the last full run, from work merged in between,
+      and were left for a full run to report.
 
 ## Phase 12: Remove what specialty left behind
 

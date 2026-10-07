@@ -54,6 +54,12 @@ The distinction the passport keeps hardest:
   based it on, what the record meant at the time, and a content hash.
 - **Everything else is the holder's own claim.** Logbook entries, certificates,
   CPD and reflections are entered by the holder and countersigned by nobody.
+- **A logbook entry may be confirmed, which is not a sign-off.** A holder
+  can ask a supervisor to confirm one entry, as a paper log carries a
+  signature beside each line. It says the procedure happened as recorded,
+  and nothing about competence. The supervisor's name and standing are
+  frozen on the entry as an assessor's are on a sign-off, and amending the
+  entry clears them, since they confirmed what it said at the time.
 
 The API and the interface both refuse to blur these. A certificate form shows
 no declaration and no assessor, and a test pins that it never will.
@@ -77,25 +83,65 @@ anything.
   CPD entry. Amending an existing record keeps the looser check, and
   reading never checks at all, so a competency withdrawn later leaves old
   records intact.
-- **A holder's specialties** order the competency picker and do nothing
-  else. Each specialty is one file in `shared/passport-specialties/`
-  listing its common competencies in order, loaded and checked at startup
-  by `specialties.py`: every listed id must exist, be assessable and not
-  be retired. The holder's choice lives in `profile.yaml` as `{id, name}`
-  pairs, so an export reads correctly with no Quill. An empty list is
-  Generic, meaning no specialty order, and a specialty id Quill no longer
-  knows is kept rather than refused on read.
-- **An organisation's lead specialties** order the specialty question
-  itself, on the create step and the Settings card. An admin with
-  `manage_users` names them on the organisation's features page, and they
-  come first for everybody the organisation reaches; everything else
-  follows alphabetically. `specialty_order_for` in `specialties.py` works
-  out the order for one holder, combining several organisations in name
-  order, and `GET /api/passport/specialties` hands it to the frontend.
-  They live in `org_unit_passport_specialty`, because they are an
-  organisation's setting rather than anything in a holder's record.
+- **A holder's frameworks** decide which competencies they are offered.
+  A framework is one published document as a set of competencies: a
+  national curriculum, or one hospital's own sign-off sheet. Each is a
+  file in `shared/competency-definitions/` that declares a `framework:`
+  block, loaded and checked with the catalogue, and its items are the
+  assessable entries of that file. A holder chooses the frameworks they
+  work to, and `_offered_refs` in `router.py` refuses a new record
+  against a competency in none of them. There is no way round: somebody
+  who wants one adds its framework first. The choice lives in
+  `profile.yaml` as `{id, name}` pairs, so an export reads correctly
+  with no Quill. Amending keeps the looser check and reading never
+  checks, so dropping a framework hides and freezes nothing.
+- **Quill hosts each framework as written.** The words, the order and
+  the levels are the document's, and no framework is mapped onto
+  another: two frameworks' levels for the same act are both kept. A
+  revised document is a new framework in a new file, so a sign-off
+  keeps the words it was signed under.
+- **A framework written from a paper form is `passport_only`.** Its
+  entries are recorded in a passport and refused wherever a competency
+  is granted, so a form's statements never appear among the permissions.
+- **An organisation's lead frameworks** order the list a holder chooses
+  from, on the create step and the Settings card. An admin with
+  `manage_users` names them on the organisation's features page, and
+  they come first for everybody the organisation reaches; the rest
+  follow alphabetically. `frameworks_for` in `frameworks.py` works out
+  the list for one holder, and `GET /api/passport/frameworks` hands it
+  to the frontend, searched by words in a name or publisher and
+  narrowed by specialty. They live in `org_unit_passport_framework`,
+  because they are an organisation's setting and nothing in a holder's
+  record.
+- **A specialty is a filter and nothing else.** `shared/specialties.yaml`
+  lists the words a framework may be filed under. Nobody chooses one.
+  Until 7 October 2026 a holder chose specialties, which ordered one
+  list of every competency; the files, table and routes that did are
+  removed by Phase 12 of the plan below.
 
-See the [passport specialties plan](../../plans/2026-09-26-passport-specialties-plan.md).
+See the [passport registrar portfolios plan](../../plans/2026-10-07-passport-registrar-portfolios-plan.md).
+
+## Scopes
+
+Some competencies are signed off one part of practice at a time:
+prescribing chemotherapy for lung cancer is assessed apart from
+prescribing it for breast cancer, though both are the one act. Such a
+competency declares `scopes` in its definition, beside `levels`.
+
+- **A sign-off and a logbook entry each name one scope**, wherever the
+  competency declares them, and neither is accepted without. A
+  competency that declares none behaves as it always did.
+- **Picked from the list, never typed.** A signed record cannot be
+  edited, and the scope decides which sign-offs form one history:
+  "Breast" and "breast cancer" would be two. Every list includes
+  `other`, so nobody is blocked by a missing entry.
+- **The derived index has one entry per competency and scope**, each
+  with its own level and history. A first sign-off for a new scope is
+  `initial`, not a reassessment below the level held for another.
+- **A sign-off counts the logbook entries for its own scope** in the
+  evidence it freezes.
+- **Scope counts towards the content hash only when present**, so a
+  sign-off made before scopes existed still verifies.
 
 ## Evidence is addressed by its own hash
 
@@ -127,14 +173,19 @@ admitting.
 
 ## Coordination in Postgres
 
-Four tables, and none is a copy of the record: `passport` points at one
+Five tables, and none is a copy of the record: `passport` points at one
 holder's repository, `passport_assessor_invite` brings an outside assessor in,
-`org_unit_passport_specialty` holds an organisation's lead specialties, and
-`passport_signoff_request` is workflow.
+`org_unit_passport_framework` holds an organisation's lead frameworks, and
+`passport_signoff_request` and `passport_logbook_confirmation_request` are
+workflow. A sixth, `org_unit_passport_specialty`, is left over from when a
+holder chose specialties, and is dropped by Phase 12 of the registrar
+portfolios plan.
 
 An assessor's inbox is a cross-passport query – "what have I been asked to
 sign?" – and no single repository can answer it. The row is the ask; each
 record is read from its own passport. It closes when the file is written.
+An ask to confirm a logbook entry is the same shape, in a table of its own
+because a logbook entry has no sign-off folder to name.
 
 These are the only concessions to the database, and deliberately not a
 projection: nothing reads them to learn what a passport contains.
