@@ -493,3 +493,49 @@ class TestNameWithScope:
 
     def test_a_name_with_no_scope_is_left_alone(self) -> None:
         assert schemas.name_with_scope("Cannulate", None) == "Cannulate"
+
+
+class TestAConfirmedLogbookEntry:
+    def _assessor(self) -> schemas.Assessor:
+        return schemas.Assessor(
+            user_id="2", name="Dr Amara Okonkwo", role="Consultant"
+        )
+
+    def test_names_who_and_when_together(self) -> None:
+        entry = schemas.LogbookEntry(
+            performed_on=date(2026, 3, 12),
+            confirmed_by=self._assessor(),
+            confirmed_at=datetime(2026, 3, 14, 9, 0, tzinfo=UTC),
+        )
+
+        assert entry.confirmed_by is not None
+
+    def test_a_name_with_no_time_is_refused(self) -> None:
+        with pytest.raises(ValidationError, match="both who confirmed"):
+            schemas.LogbookEntry(
+                performed_on=date(2026, 3, 12),
+                confirmed_by=self._assessor(),
+            )
+
+    def test_a_time_with_no_name_is_refused(self) -> None:
+        with pytest.raises(ValidationError, match="both who confirmed"):
+            schemas.LogbookEntry(
+                performed_on=date(2026, 3, 12),
+                confirmed_at=datetime(2026, 3, 14, 9, 0, tzinfo=UTC),
+            )
+
+    def test_a_time_with_no_zone_is_refused(self) -> None:
+        with pytest.raises(ValidationError, match="timezone-aware"):
+            schemas.LogbookEntry(
+                performed_on=date(2026, 3, 12),
+                confirmed_by=self._assessor(),
+                confirmed_at=datetime(2026, 3, 14, 9, 0),
+            )
+
+    def test_an_entry_written_before_confirmation_existed_still_loads(
+        self,
+    ) -> None:
+        entry = from_yaml(schemas.LogbookEntry, "performed_on: 2026-03-12\n")
+
+        assert entry.confirmed_by is None
+        assert entry.confirmed_at is None

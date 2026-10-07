@@ -126,6 +126,24 @@
     }
   },
   {
+    "id": "passport-invite-to-confirm-a-logbook-entry",
+    "label": "Passport invite, to confirm a logbook entry",
+    "quill": {
+      "file": "passport-invite-to-confirm-a-logbook-entry--quill.html",
+      "subject": "Dr Priya Shah has asked you to confirm a logbook entry",
+      "preheader": "Review and prescribe systemic anti-cancer therapy, recorded in their clinician passport.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "passport-invite-to-confirm-a-logbook-entry--ldd.html",
+      "subject": "Dr Priya Shah has asked you to confirm a logbook entry",
+      "preheader": "Review and prescribe systemic anti-cancer therapy, recorded in their clinician passport.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
     "id": "feedback-received",
     "label": "Feedback received",
     "quill": {

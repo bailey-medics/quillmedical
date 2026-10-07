@@ -9,7 +9,11 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.features.passport.models import Passport, PassportSignOffRequest
+from app.features.passport.models import (
+    Passport,
+    PassportLogbookConfirmationRequest,
+    PassportSignOffRequest,
+)
 from app.inbox import sources
 from app.models import Feedback, User
 from app.security import hash_password
@@ -241,6 +245,124 @@ def _count(client: TestClient, source: str) -> int:
         for item in client.get(ENDPOINT).json()["items"]
         if item["source"] == source
     )
+
+
+def _confirmation(
+    db: Session,
+    passport: Passport,
+    supervisor_email: str,
+    status: str = "open",
+    stem: str = "2026-03-14-143207",
+) -> PassportLogbookConfirmationRequest:
+    row = PassportLogbookConfirmationRequest(
+        passport_id=passport.id,
+        competency_id="chest_drain_insertion",
+        entry_stem=stem,
+        supervisor_email=supervisor_email,
+        status=status,
+        resolved_at=None if status == "open" else datetime.now(UTC),
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+class TestLogbookConfirmations:
+    """A logbook entry to confirm waits on the supervisor it names."""
+
+    SOURCE = "passport_logbook_confirmation"
+
+    @pytest.fixture
+    def supervisor(self, db_session: Session, test_user: User) -> User:
+        hold(test_user, "assess_clinician_passport")
+        db_session.commit()
+        return test_user
+
+    def test_counts_the_open_asks_that_name_the_caller(
+        self,
+        authenticated_client: TestClient,
+        db_session: Session,
+        supervisor: User,
+    ) -> None:
+        passport = _holder(db_session)
+        _confirmation(db_session, passport, supervisor.email)
+        _confirmation(db_session, passport, supervisor.email, "confirmed", "b")
+        _confirmation(
+            db_session, passport, "somebody.else@example.test", stem="c"
+        )
+
+        assert _count(authenticated_client, self.SOURCE) == 1
+
+    def test_the_line_names_who_asked_and_nothing_of_the_entry(
+        self,
+        authenticated_client: TestClient,
+        db_session: Session,
+        supervisor: User,
+    ) -> None:
+        passport = _holder(db_session)
+        row = _confirmation(db_session, passport, supervisor.email)
+
+        items = [
+            item
+            for item in authenticated_client.get(ITEMS).json()["items"]
+            if item["source"] == self.SOURCE
+        ]
+
+        assert items == [
+            {
+                "source": self.SOURCE,
+                "id": row.id,
+                "ref": None,
+                "title": "Logbook entry to confirm from Dr Priya Shah",
+                "detail": None,
+                "status": "Waiting",
+                "created_at": items[0]["created_at"],
+                "done": False,
+            }
+        ]
+
+    def test_an_answered_ask_moves_to_completed(
+        self,
+        authenticated_client: TestClient,
+        db_session: Session,
+        supervisor: User,
+    ) -> None:
+        passport = _holder(db_session)
+        _confirmation(db_session, passport, supervisor.email, "declined")
+
+        done = [
+            item
+            for item in authenticated_client.get(
+                ITEMS, params={"done": True}
+            ).json()["items"]
+            if item["source"] == self.SOURCE
+        ]
+
+        assert [item["status"] for item in done] == ["Not confirmed"]
+        assert _count(authenticated_client, self.SOURCE) == 0
+
+    def test_somebody_who_may_not_assess_is_told_nothing(
+        self, db_session: Session
+    ) -> None:
+        """Asked of the source itself, with a teaching delegate."""
+        delegate = User(
+            username="delegate",
+            email="delegate@example.test",
+            password_hash=hash_password("Password123!"),
+            is_active=True,
+            email_verified=True,
+            base_profession="teaching_delegate",
+        )
+        db_session.add(delegate)
+        db_session.commit()
+        passport = _holder(db_session)
+        _confirmation(db_session, passport, delegate.email)
+        source = sources.SOURCES[self.SOURCE]
+
+        assert source.count(db_session, delegate) == 0
+        assert source.lines(db_session, delegate, False) == []
+        assert source.lines(db_session, delegate, True) == []
 
 
 class TestSignOffRequests:

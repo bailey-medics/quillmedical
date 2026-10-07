@@ -205,6 +205,82 @@ class PassportSignOffRequest(Base):
     )
 
 
+class PassportLogbookConfirmationRequest(Base):
+    """An ask that a supervisor confirm one logbook entry.
+
+    Workflow, as :class:`PassportSignOffRequest` is and for the same
+    reason: a supervisor's inbox spans many passports, and no one
+    repository can say what somebody has been asked to confirm. The
+    entry is the record; this row is the ask, and it closes when the
+    entry is confirmed or the supervisor says it is not theirs to.
+
+    Its own table, though the shape is close to a sign-off request's.
+    That one names a sign-off folder in a column that is never null, and
+    a logbook entry has no such folder: it is named by its competency
+    and its file.
+
+    One row per entry. Asking again, of the same supervisor or another,
+    reopens it, so an entry never has two people asked at once.
+    """
+
+    __tablename__ = "passport_logbook_confirmation_request"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    passport_id: Mapped[str] = mapped_column(
+        ForeignKey("passport.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    #: The competency the entry is filed under, which with ``entry_stem``
+    #: is where the entry lives in the repository.
+    competency_id: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    #: The entry's file name, without ``.yaml``.
+    entry_stem: Mapped[str] = mapped_column(String(200), nullable=False)
+
+    #: Who was asked, by the address the holder typed, as a sign-off
+    #: request names its assessor.
+    supervisor_email: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    #: Who answered. Null until somebody has.
+    supervisor_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+
+    #: ``open``, ``confirmed`` or ``declined``.
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="open"
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "passport_id",
+            "competency_id",
+            "entry_stem",
+            name="uq_passport_logbook_confirmation_request_entry",
+        ),
+        Index(
+            "ix_passport_logbook_confirmation_request_inbox",
+            "supervisor_email",
+            "status",
+        ),
+    )
+
+
 class PassportAssessorInvite(Base):
     """An invitation asking somebody outside to sign a competency off.
 

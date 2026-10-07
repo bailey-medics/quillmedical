@@ -247,6 +247,46 @@ class TestLogbook:
 
         assert "3 recorded." in output
 
+    def test_a_confirmed_entry_names_who_confirmed_it(
+        self, store: LocalPassportStore, holder: Actor, assessor: Actor
+    ) -> None:
+        from app.features.passport.schemas import Assessor
+
+        stem, _ = records.add_logbook_entry(
+            store,
+            PASSPORT_ID,
+            holder,
+            COMPETENCY,
+            LogbookEntry(performed_on=date(2026, 3, 12)),
+        )
+        records.confirm_logbook_entry(
+            store,
+            PASSPORT_ID,
+            assessor,
+            COMPETENCY,
+            stem,
+            confirmer=Assessor(
+                user_id="2", name="Dr Amara Okonkwo", role="Consultant"
+            ),
+        )
+
+        output = render.render(store, PASSPORT_ID)
+
+        assert "confirmed by Dr Amara Okonkwo" in output
+
+    def test_an_unconfirmed_entry_says_nothing_about_confirmation(
+        self, store: LocalPassportStore, holder: Actor
+    ) -> None:
+        records.add_logbook_entry(
+            store,
+            PASSPORT_ID,
+            holder,
+            COMPETENCY,
+            LogbookEntry(performed_on=date(2026, 3, 12)),
+        )
+
+        assert "confirmed by" not in render.render(store, PASSPORT_ID)
+
     def test_a_logbook_is_listed_once_however_many_scopes_are_signed(
         self,
         store: LocalPassportStore,

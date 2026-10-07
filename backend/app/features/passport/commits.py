@@ -49,6 +49,9 @@ CommitAction = Literal[
     "withdraw",
     "amend",
     "remove",
+    # A supervisor confirming one logbook entry: a second person's name
+    # on a record that is otherwise the holder's own.
+    "confirm",
 ]
 
 #: The trailer keys this module will render, in the order it renders

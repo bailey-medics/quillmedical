@@ -31,6 +31,7 @@ them to defer to it.
 """
 
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -558,6 +559,10 @@ class LogbookEntryIn(_In):
     notes: str | None = None
     also_counts_towards: list[CompetencyIdField] = Field(default_factory=list)
     attachments: list[AttachmentIn] = Field(default_factory=list)
+    #: A supervisor to ask to confirm the entry. Optional: most entries
+    #: are the holder's own claim and stay that way. Naming one emails
+    #: them, as asking for a sign-off does.
+    confirmer_email: EmailStr | None = None
 
 
 class LogbookEntryOut(BaseModel):
@@ -575,6 +580,43 @@ class LogbookEntryOut(BaseModel):
     notes: str | None = None
     also_counts_towards: list[CompetencyIdField] = Field(default_factory=list)
     attachments: list[AttachmentOut] = Field(default_factory=list)
+    #: The supervisor who confirmed the entry, and when. Null on most.
+    confirmed_by: AssessorOut | None = None
+    confirmed_at: datetime | None = None
+    #: Who has been asked to confirm it and has not yet answered, as the
+    #: holder typed the address. Null where nobody is being waited on.
+    confirmation_asked_of: str | None = None
+
+
+class LogbookConfirmationOut(BaseModel):
+    """One logbook entry a supervisor has been asked to confirm.
+
+    Carries the passport and the holder's name because the supervisor
+    arrives from their inbox knowing neither.
+    """
+
+    id: int
+    passport_id: str
+    holder_name: NonEmptyText
+    competency: CompetencyRefOut
+    entry: LogbookEntryOut
+
+
+class LogbookConfirmIn(_In):
+    """A supervisor answering an ask to confirm a logbook entry.
+
+    ``confirmed`` true records their name on the entry. False says it is
+    not theirs to confirm, closes the ask and leaves the entry as the
+    holder wrote it.
+    """
+
+    confirmed: bool
+
+
+class LogbookConfirmAnswerOut(BaseModel):
+    """What became of an ask to confirm a logbook entry."""
+
+    status: Literal["confirmed", "declined"]
 
 
 class LogbookOut(BaseModel):

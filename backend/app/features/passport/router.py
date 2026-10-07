@@ -54,7 +54,7 @@ from fastapi import (
     UploadFile,
 )
 from pydantic import ValidationError
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -96,6 +96,7 @@ from app.schemas.passport import (
     AttachmentIn,
     CertificateIn,
     CertificateOut,
+    CompetencyRefOut,
     CompetencyStateOut,
     CpdEntryIn,
     CpdEntryOut,
@@ -103,6 +104,9 @@ from app.schemas.passport import (
     EvidenceUploadOut,
     InboxItemOut,
     InvitePreviewOut,
+    LogbookConfirmAnswerOut,
+    LogbookConfirmationOut,
+    LogbookConfirmIn,
     LogbookEntryIn,
     LogbookEntryOut,
     LogbookOut,
@@ -157,10 +161,12 @@ from .gcs_store import GcsBlobStore
 from .models import (
     Passport,
     PassportAssessorInvite,
+    PassportLogbookConfirmationRequest,
     PassportSignOffRequest,
 )
 from .schemas import (
     AppraisalPeriod,
+    Assessor,
     Attachment,
     Certificate,
     CompetencyRef,
@@ -976,6 +982,140 @@ def get_inbox(
     return found
 
 
+def _confirmation_asked_of(
+    db: Session, request_id: int, user: User
+) -> PassportLogbookConfirmationRequest:
+    """The open ask with this id, if it names the caller.
+
+    A 404 for anything else, as a sign-off the caller was not asked
+    about answers: an ask that exists is not confirmed to a stranger.
+    """
+    request_row = db.get(PassportLogbookConfirmationRequest, request_id)
+
+    if (
+        request_row is None
+        or request_row.status != "open"
+        or request_row.supervisor_email != user.email.strip().lower()
+    ):
+        raise HTTPException(404, "Nothing to confirm")
+
+    return request_row
+
+
+@passport_router.get(
+    "/requests/logbook-confirmations/{request_id}",
+    response_model=LogbookConfirmationOut,
+    dependencies=[_DEP_PASSPORT],
+)
+def get_logbook_confirmation(
+    request_id: int,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> LogbookConfirmationOut:
+    """One logbook entry the caller has been asked to confirm.
+
+    The entry and nothing else of the passport: being asked about one
+    procedure opens no other entry, no sign-off and no reflection.
+    """
+    request_row = _confirmation_asked_of(db, request_id, user)
+    passport = _passport_row(db, request_row.passport_id)
+
+    try:
+        entry = from_yaml(
+            LogbookEntry,
+            store.read(
+                passport.id,
+                paths.logbook_entry(
+                    request_row.competency_id, request_row.entry_stem
+                ),
+            ),
+        )
+        competency = definitions.competency_ref(request_row.competency_id)
+    except (
+        PassportNotFoundError,
+        paths.PassportPathError,
+        definitions.UnknownCompetencyError,
+    ):
+        raise HTTPException(404, "Nothing to confirm") from None
+
+    holder = db.get(User, passport.user_id)
+
+    return LogbookConfirmationOut(
+        id=request_row.id,
+        passport_id=passport.id,
+        holder_name=(
+            (holder.full_name or holder.username)
+            if holder is not None
+            else "A clinician"
+        ),
+        competency=CompetencyRefOut(id=competency.id, name=competency.name),
+        entry=_logbook_entry_out(
+            request_row.competency_id, request_row.entry_stem, entry, {}
+        ),
+    )
+
+
+@passport_router.post(
+    "/requests/logbook-confirmations/{request_id}",
+    response_model=LogbookConfirmAnswerOut,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def answer_logbook_confirmation(
+    request_id: int,
+    body: LogbookConfirmIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> LogbookConfirmAnswerOut:
+    """Confirm a logbook entry, or say it is not the caller's to confirm.
+
+    Confirming writes the caller's name and standing onto the entry, as
+    signing a sign-off does, and says only that the procedure happened
+    as recorded. Declining closes the ask and leaves the entry as the
+    holder wrote it.
+    """
+    request_row = _confirmation_asked_of(db, request_id, user)
+    passport = _passport_row(db, request_row.passport_id)
+
+    if passport.user_id == user.id:
+        # Refused when asking too, so this means the holder's address
+        # changed to the one they asked. Still not theirs to confirm.
+        raise HTTPException(403, "You cannot confirm your own logbook entry.")
+
+    if body.confirmed:
+        actor = _actor(user)
+        try:
+            passport.head_commit = records.confirm_logbook_entry(
+                store,
+                passport.id,
+                actor,
+                request_row.competency_id,
+                request_row.entry_stem,
+                confirmer=Assessor.model_validate(
+                    {
+                        "user_id": str(user.id),
+                        "name": actor.name,
+                        "role": actor.role,
+                        "registrations": _registration_dicts(user),
+                    }
+                ),
+            )
+        except (records.RecordNotFoundError, paths.PassportPathError):
+            raise HTTPException(404, "Nothing to confirm") from None
+        except records.AlreadyConfirmedError as error:
+            raise HTTPException(409, str(error)) from None
+
+    request_row.status = "confirmed" if body.confirmed else "declined"
+    request_row.supervisor_user_id = user.id
+    request_row.resolved_at = _now()
+    db.flush()
+
+    return LogbookConfirmAnswerOut(
+        status="confirmed" if body.confirmed else "declined"
+    )
+
+
 def _sign_off_out(name: str, record: SignOff) -> SignOffOut:
     """Describe a sign-off on the wire."""
     return SignOffOut.model_validate(
@@ -1011,17 +1151,26 @@ def _requests_today(db: Session, passport_id: str) -> int:
     """
     since = _now() - timedelta(days=1)
 
-    return (
-        db.scalar(
-            select(func.count())
-            .select_from(PassportSignOffRequest)
-            .where(
-                PassportSignOffRequest.passport_id == passport_id,
-                PassportSignOffRequest.created_at >= since,
-            )
+    sign_offs = db.scalar(
+        select(func.count())
+        .select_from(PassportSignOffRequest)
+        .where(
+            PassportSignOffRequest.passport_id == passport_id,
+            PassportSignOffRequest.created_at >= since,
         )
-        or 0
     )
+    # Asking a supervisor to confirm a logbook entry mails an address
+    # somebody typed too, so it counts against the same limit.
+    confirmations = db.scalar(
+        select(func.count())
+        .select_from(PassportLogbookConfirmationRequest)
+        .where(
+            PassportLogbookConfirmationRequest.passport_id == passport_id,
+            PassportLogbookConfirmationRequest.created_at >= since,
+        )
+    )
+
+    return (sign_offs or 0) + (confirmations or 0)
 
 
 def _join_as_external(db: Session, user_id: int, org_unit_id: int) -> None:
@@ -1139,6 +1288,7 @@ def _email_sign_off_request(
     db: Session,
     level_name: str | None = None,
     scope_name: str | None = None,
+    confirming_logbook: bool = False,
 ) -> None:
     """Tell the assessor they have been asked, whoever they are.
 
@@ -1216,6 +1366,7 @@ def _email_sign_off_request(
         competency_name=competency_name,
         level_name=level_name,
         scope_name=scope_name,
+        confirming_logbook=confirming_logbook,
         url=url,
         expires_in_days=expires_in_days,
     )
@@ -2370,6 +2521,131 @@ def remove_certificate(
     return RecordResultOut(name=name, commit=commit)
 
 
+def _ask_a_supervisor(
+    db: Session,
+    row: Passport,
+    holder: User,
+    competency_id: str,
+    supervisor_email: str | None,
+) -> str | None:
+    """Email a supervisor asked to confirm a logbook entry, if one is named.
+
+    Everything that can refuse the ask runs here, and the email goes
+    last, before the caller writes the entry. So a refusal or a failed
+    send leaves nothing behind, as with a sign-off request.
+
+    Returns:
+        The address asked, folded to lower case, or ``None`` where the
+        holder named nobody.
+    """
+    if supervisor_email is None:
+        return None
+
+    email = supervisor_email.strip().lower()
+
+    if email == holder.email.strip().lower():
+        raise HTTPException(400, "You cannot confirm your own logbook entry.")
+
+    if _requests_today(db, row.id) >= INVITES_PER_DAY:
+        raise HTTPException(
+            429,
+            (
+                f"You can ask up to {INVITES_PER_DAY} people a day. "
+                "Try again tomorrow."
+            ),
+        )
+
+    supervisor = db.scalar(select(User).where(func.lower(User.email) == email))
+    if supervisor is not None:
+        _let_existing_account_assess(db, supervisor, row.id, holder)
+
+    _email_sign_off_request(
+        holder=holder,
+        assessor_email=email,
+        assessor=supervisor,
+        competency_id=competency_id,
+        passport_id=row.id,
+        invited_by_user_id=holder.id,
+        db=db,
+        confirming_logbook=True,
+    )
+
+    return email
+
+
+def _open_confirmation_request(
+    db: Session,
+    passport_id: str,
+    competency_id: str,
+    stem: str,
+    supervisor_email: str,
+) -> None:
+    """Record who has been asked to confirm one logbook entry.
+
+    One row per entry. Asking again reopens it for whoever is now named,
+    so an entry never has two people asked at once.
+    """
+    request_row = db.scalar(
+        select(PassportLogbookConfirmationRequest).where(
+            PassportLogbookConfirmationRequest.passport_id == passport_id,
+            PassportLogbookConfirmationRequest.competency_id == competency_id,
+            PassportLogbookConfirmationRequest.entry_stem == stem,
+        )
+    )
+
+    if request_row is None:
+        db.add(
+            PassportLogbookConfirmationRequest(
+                passport_id=passport_id,
+                competency_id=competency_id,
+                entry_stem=stem,
+                supervisor_email=supervisor_email,
+            )
+        )
+        return
+
+    request_row.supervisor_email = supervisor_email
+    request_row.supervisor_user_id = None
+    request_row.status = "open"
+    request_row.created_at = _now()
+    request_row.resolved_at = None
+
+
+def _asked_to_confirm(
+    db: Session, passport_id: str
+) -> dict[tuple[str, str], str]:
+    """Who each logbook entry is still waiting on, by competency and file."""
+    rows = db.execute(
+        select(
+            PassportLogbookConfirmationRequest.competency_id,
+            PassportLogbookConfirmationRequest.entry_stem,
+            PassportLogbookConfirmationRequest.supervisor_email,
+        ).where(
+            PassportLogbookConfirmationRequest.passport_id == passport_id,
+            PassportLogbookConfirmationRequest.status == "open",
+        )
+    ).all()
+
+    return {(competency, stem): email for competency, stem, email in rows}
+
+
+def _logbook_entry_out(
+    competency_id: str,
+    stem: str,
+    entry: LogbookEntry,
+    asked: dict[tuple[str, str], str],
+) -> LogbookEntryOut:
+    """Describe a logbook entry on the wire."""
+    return LogbookEntryOut.model_validate(
+        {
+            "filename": stem,
+            "competency": competency_id,
+            **entry.model_dump(mode="json"),
+            "confirmation_asked_of": asked.get((competency_id, stem)),
+        }
+    )
+
+
 def _logbook_scope(
     competency_id: str, scope_id: str | None
 ) -> ScopeRef | None:
@@ -2420,10 +2696,18 @@ def add_logbook_entry(
     """
     row = _require_writer(db, passport_id, user, store)
     _assessable_refs([competency_id])
+    scope = _logbook_scope(competency_id, body.scope_id)
+
+    # Before the entry is written, for the reason a sign-off request
+    # mails first: an email cannot be unsent, and a failed send must
+    # leave nothing behind.
+    supervisor_email = _ask_a_supervisor(
+        db, row, user, competency_id, body.confirmer_email
+    )
 
     entry = LogbookEntry(
         performed_on=body.performed_on,
-        scope=_logbook_scope(competency_id, body.scope_id),
+        scope=scope,
         setting=body.setting,
         supervision=body.supervision,
         supervisor=body.supervisor,
@@ -2438,6 +2722,10 @@ def add_logbook_entry(
         store, row.id, _actor(user), competency_id, entry
     )
     row.head_commit = commit
+    if supervisor_email is not None:
+        _open_confirmation_request(
+            db, row.id, competency_id, stem, supervisor_email
+        )
     db.flush()
 
     return RecordResultOut(name=stem, commit=commit)
@@ -2470,6 +2758,7 @@ def get_whole_logbook(
     the per-competency response is.
     """
     row = _require_reader(db, passport_id, user)
+    asked = _asked_to_confirm(db, row.id)
 
     groups: list[LogbookOut] = []
     total = 0
@@ -2482,13 +2771,7 @@ def get_whole_logbook(
             raw = store.read(row.id, path)
             entry = from_yaml(LogbookEntry, raw)
             entries.append(
-                LogbookEntryOut.model_validate(
-                    {
-                        "filename": path.stem,
-                        "competency": competency_id,
-                        **entry.model_dump(mode="json"),
-                    }
-                )
+                _logbook_entry_out(competency_id, path.stem, entry, asked)
             )
 
         if not entries:
@@ -2531,6 +2814,7 @@ def get_logbook(
     filename, since the filename is the moment Quill wrote the file.
     """
     row = _require_reader(db, passport_id, user)
+    asked = _asked_to_confirm(db, row.id)
 
     entries: list[LogbookEntryOut] = []
 
@@ -2538,13 +2822,7 @@ def get_logbook(
         raw = store.read(row.id, path)
         entry = from_yaml(LogbookEntry, raw)
         entries.append(
-            LogbookEntryOut.model_validate(
-                {
-                    "filename": path.stem,
-                    "competency": competency_id,
-                    **entry.model_dump(mode="json"),
-                }
-            )
+            _logbook_entry_out(competency_id, path.stem, entry, asked)
         )
 
     entries.sort(key=lambda item: item.performed_on)
@@ -2586,9 +2864,16 @@ def amend_logbook_entry(
     except (PassportNotFoundError, paths.PassportPathError):
         raise HTTPException(404, "Logbook entry not found") from None
 
+    scope = _logbook_scope(competency_id, body.scope_id)
+    supervisor_email = _ask_a_supervisor(
+        db, row, user, competency_id, body.confirmer_email
+    )
+
+    # Built afresh from what was sent, so a confirmation on the entry is
+    # not carried over: the supervisor confirmed what it said before.
     entry = LogbookEntry(
         performed_on=body.performed_on,
-        scope=_logbook_scope(competency_id, body.scope_id),
+        scope=scope,
         setting=body.setting,
         supervision=body.supervision,
         supervisor=body.supervisor,
@@ -2611,6 +2896,10 @@ def amend_logbook_entry(
         raise HTTPException(404, "Logbook entry not found") from None
 
     row.head_commit = commit
+    if supervisor_email is not None:
+        _open_confirmation_request(
+            db, row.id, competency_id, stem, supervisor_email
+        )
     db.flush()
 
     return RecordResultOut(name=stem, commit=commit)
@@ -2640,6 +2929,14 @@ def remove_logbook_entry(
         raise HTTPException(404, "Logbook entry not found") from None
 
     row.head_commit = commit
+    # An ask about an entry that is gone has nothing to open.
+    db.execute(
+        delete(PassportLogbookConfirmationRequest).where(
+            PassportLogbookConfirmationRequest.passport_id == row.id,
+            PassportLogbookConfirmationRequest.competency_id == competency_id,
+            PassportLogbookConfirmationRequest.entry_stem == stem,
+        )
+    )
     db.flush()
 
     return RecordResultOut(name=stem, commit=commit)

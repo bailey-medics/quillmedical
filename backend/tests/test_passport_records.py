@@ -264,6 +264,101 @@ class TestLogbook:
         assert consent.scope is None
         assert consent.logbook_entries == 1
 
+    def test_a_supervisor_can_confirm_an_entry(
+        self, passport: store.LocalPassportStore, actor: commits.Actor
+    ) -> None:
+        stem, _ = records.add_logbook_entry(
+            passport,
+            PASSPORT_ID,
+            actor,
+            "perform_bronchoscopy",
+            schemas.LogbookEntry(
+                performed_on=date(2026, 3, 12), outcome="Successful"
+            ),
+            now=NOW,
+        )
+        supervisor = commits.Actor(
+            name="Dr Amara Okonkwo",
+            role="Consultant",
+            email="amara@example.nhs.uk",
+        )
+
+        records.confirm_logbook_entry(
+            passport,
+            PASSPORT_ID,
+            supervisor,
+            "perform_bronchoscopy",
+            stem,
+            confirmer=schemas.Assessor(
+                user_id="2", name="Dr Amara Okonkwo", role="Consultant"
+            ),
+            now=NOW,
+        )
+
+        stored = serialise.from_yaml(
+            schemas.LogbookEntry,
+            passport.read(
+                PASSPORT_ID, paths.logbook_entry("perform_bronchoscopy", stem)
+            ),
+        )
+        assert stored.confirmed_by is not None
+        assert stored.confirmed_by.name == "Dr Amara Okonkwo"
+        assert stored.confirmed_at == NOW
+        # What the holder wrote is untouched.
+        assert stored.outcome == "Successful"
+
+    def test_an_entry_is_confirmed_once(
+        self, passport: store.LocalPassportStore, actor: commits.Actor
+    ) -> None:
+        """A second name must not replace the first."""
+        stem, _ = records.add_logbook_entry(
+            passport,
+            PASSPORT_ID,
+            actor,
+            "perform_bronchoscopy",
+            schemas.LogbookEntry(performed_on=date(2026, 3, 12)),
+            now=NOW,
+        )
+        confirmer = schemas.Assessor(
+            user_id="2", name="Dr Amara Okonkwo", role="Consultant"
+        )
+        records.confirm_logbook_entry(
+            passport,
+            PASSPORT_ID,
+            actor,
+            "perform_bronchoscopy",
+            stem,
+            confirmer=confirmer,
+            now=NOW,
+        )
+
+        with pytest.raises(records.AlreadyConfirmedError):
+            records.confirm_logbook_entry(
+                passport,
+                PASSPORT_ID,
+                actor,
+                "perform_bronchoscopy",
+                stem,
+                confirmer=confirmer,
+                now=NOW,
+            )
+
+    def test_confirming_something_absent_is_refused(
+        self, passport: store.LocalPassportStore, actor: commits.Actor
+    ) -> None:
+        with pytest.raises(RecordNotFoundError):
+            records.confirm_logbook_entry(
+                passport,
+                PASSPORT_ID,
+                actor,
+                "perform_bronchoscopy",
+                "2026-03-14-143207",
+                confirmer=schemas.Assessor(
+                    user_id="2", name="Dr Amara Okonkwo", role="Consultant"
+                ),
+                now=NOW,
+            )
+
     def test_an_entry_is_editable(
         self, passport: store.LocalPassportStore, actor: commits.Actor
     ) -> None:

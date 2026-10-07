@@ -476,7 +476,11 @@ class LogbookEntry(PassportModel):
     """One procedure, as the holder recorded it.
 
     Self-declared and editable, because a mistyped date should be
-    fixable in seconds. ``performed_on`` has no time: nobody recalls
+    fixable in seconds. A supervisor may confirm an entry, which is the
+    signature a paper log carries beside each line: optional, asked for
+    by the holder, and cleared when the entry is amended, since they
+    confirmed what it said at the time. It is not a sign-off. It says
+    this happened as recorded, and nothing about competence. ``performed_on`` has no time: nobody recalls
     whether a procedure was at 09:30 or 11:00 when they log five of them
     on a Friday evening.
 
@@ -499,6 +503,29 @@ class LogbookEntry(PassportModel):
     notes: str | None = None
     also_counts_towards: list[CompetencyIdField] = Field(default_factory=list)
     attachments: list[Attachment] = Field(default_factory=list)
+    #: Who confirmed the entry, frozen as they were when they did, for
+    #: the reason a sign-off freezes its assessor. Absent on most entries.
+    confirmed_by: Assessor | None = None
+    confirmed_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def _confirmed_by_somebody_at_some_time(self) -> LogbookEntry:
+        """A confirmation names who and when, or it is not one.
+
+        Raises:
+            ValueError: If only one of the two is set, or the moment has
+                no timezone.
+        """
+        if (self.confirmed_by is None) != (self.confirmed_at is None):
+            raise ValueError(
+                "A confirmed logbook entry records both who confirmed it "
+                "and when."
+            )
+
+        if self.confirmed_at is not None and self.confirmed_at.tzinfo is None:
+            raise ValueError("confirmed_at must be timezone-aware.")
+
+        return self
 
 
 class Reflection(PassportModel):

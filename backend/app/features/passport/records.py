@@ -35,6 +35,7 @@ from .commits import Actor, CommitAction, fit_summary
 from .commits import build as build_message
 from .schemas import (
     AppraisalPeriod,
+    Assessor,
     Certificate,
     CpdEntry,
     LogbookEntry,
@@ -47,6 +48,14 @@ from .store import PassportHead, PassportNotFoundError, PassportStore
 
 class RecordNotFoundError(Exception):
     """No record of that kind exists under that name."""
+
+
+class AlreadyConfirmedError(Exception):
+    """The logbook entry has been confirmed already.
+
+    Refused, where overwriting would replace one supervisor's name with
+    another's on a record that says who confirmed it.
+    """
 
 
 class AppraisalPeriodOverlapError(ValueError):
@@ -519,6 +528,73 @@ def amend_logbook_entry(
                 comment=(
                     "One logged procedure. Self-declared: nobody "
                     "countersigns a logbook."
+                ),
+            )
+        },
+        competency=competency,
+        now=now,
+    )
+
+
+def confirm_logbook_entry(
+    store: PassportStore,
+    passport_id: str,
+    actor: Actor,
+    competency: str,
+    stem: str,
+    *,
+    confirmer: Assessor,
+    now: datetime | None = None,
+) -> str:
+    """Record that a supervisor confirmed a logged procedure.
+
+    The one write to a self-declared record made by somebody other than
+    the holder. It changes nothing the holder wrote: it adds who
+    confirmed it and when.
+
+    Args:
+        store: Where the passport lives.
+        passport_id: Whose passport.
+        actor: The supervisor, who is making the commit.
+        competency: Which competency the entry is filed under.
+        stem: Which entry.
+        confirmer: The supervisor as the record will hold them.
+        now: For tests.
+
+    Returns:
+        The commit id.
+
+    Raises:
+        RecordNotFoundError: If there is no such entry.
+        AlreadyConfirmedError: If somebody has confirmed it already.
+    """
+    moment = now if now is not None else datetime.now(UTC)
+    path = paths.logbook_entry(competency, stem)
+    _require(store, passport_id, path, "logbook entry")
+
+    entry = serialise.from_yaml(LogbookEntry, store.read(passport_id, path))
+
+    if entry.confirmed_by is not None:
+        raise AlreadyConfirmedError(
+            f"That {competency} entry has already been confirmed."
+        )
+
+    confirmed = entry.model_copy(
+        update={"confirmed_by": confirmer, "confirmed_at": moment}
+    )
+
+    return _write(
+        store,
+        passport_id,
+        actor,
+        "confirm",
+        f"confirm a {competency} entry",
+        {
+            path: serialise.to_yaml(
+                confirmed,
+                comment=(
+                    "One logged procedure, recorded by the holder and "
+                    "confirmed by the supervisor it names."
                 ),
             )
         },
