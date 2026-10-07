@@ -32,22 +32,6 @@ const fetchReflections = vi.fn();
 // The framework order comes from the API through this hook; each test
 // sets what it returns.
 const frameworkChoices = vi.fn();
-// The page links to its guide, which is shown only to a reader the guide
-// is written for: here, somebody who keeps and assesses passports.
-vi.mock("@/auth/AuthContext", () => ({
-  useAuth: () => ({
-    state: {
-      status: "authenticated",
-      user: {
-        id: "1",
-        username: "holder",
-        email: "holder@example.test",
-        enabled_features: ["passport"],
-        competencies: ["assess_clinician_passport", "passport_write"],
-      },
-    },
-  }),
-}));
 
 vi.mock("@lib/passport/useFrameworkChoices", () => ({
   useFrameworkChoices: (enabled: boolean) => frameworkChoices(enabled),
@@ -537,14 +521,5 @@ describe("PassportPage", () => {
 
     expect(screen.queryByText("Records")).not.toBeInTheDocument();
     expect(fetchSignOffs).not.toHaveBeenCalled();
-  });
-
-  it("links to the guide to starting a passport", async () => {
-    fetchMyPassport.mockResolvedValue(detail);
-    renderWithRouter(<PassportPage />);
-
-    expect(
-      await screen.findByRole("link", { name: "Guide: Start your passport" }),
-    ).toHaveAttribute("href", "/guides/start-your-passport");
   });
 });

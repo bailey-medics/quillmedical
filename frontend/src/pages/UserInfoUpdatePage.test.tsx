@@ -99,9 +99,6 @@ const scope = vi.hoisted(() => ({
   // to an operator only. A test of what anybody else sees sets
   // `standard` first.
   platform_role: "superadmin" as "superadmin" | "standard",
-  // The features switched on where the viewer belongs. None by default;
-  // the link to the page's guide is shown only where teaching is on.
-  enabled_features: [] as string[],
 }));
 
 vi.mock("@/auth/AuthContext", () => ({
@@ -112,7 +109,6 @@ vi.mock("@/auth/AuthContext", () => ({
         platform_role: scope.platform_role,
         may_assign_professions: scope.may_assign_professions,
         competencies: scope.competencies,
-        enabled_features: scope.enabled_features,
       },
     },
   }),
@@ -143,27 +139,6 @@ describe("UserInfoUpdatePage", () => {
       } finally {
         scope.may_assign_professions = null;
       }
-    });
-
-    it("links to the guide to adding a delegate, where teaching is on", () => {
-      scope.enabled_features = ["teaching"];
-      try {
-        renderWithRouter(<UserInfoUpdatePage />);
-
-        expect(
-          screen.getByRole("link", { name: "Guide: Add a delegate by hand" }),
-        ).toHaveAttribute("href", "/guides/add-a-delegate-by-hand");
-      } finally {
-        scope.enabled_features = [];
-      }
-    });
-
-    it("offers no guide where teaching is off", () => {
-      renderWithRouter(<UserInfoUpdatePage />);
-
-      expect(
-        screen.queryByRole("link", { name: /^Guide:/ }),
-      ).not.toBeInTheDocument();
     });
 
     it("renders step 1 with all required fields", () => {

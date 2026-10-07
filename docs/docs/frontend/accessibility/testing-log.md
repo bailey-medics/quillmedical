@@ -96,13 +96,6 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   refreshes there is told where they have landed by the page's title.
   The failed-verification page now says to sign in for a new link:
   check the message and its link are read together and in that order.
-- **Journey 4 again, for the guide links on the passport** – added on
-  5 October 2026 by phase 12 of the
-  [in-app guides plan](../../plans/2026-10-05-in-app-guides-plan.md).
-  "My passport" and the sign-off page each carry a "Guide: …" link under
-  their title. Check each is reached straight after the page's heading
-  and before the page's own controls, and that following it and coming
-  back leaves a half-filled sign-off form as it was.
 - **JAWS and Dragon** – deferred to a commissioned audit.
 - **Journeys 1 to 4 on a phone, by touch** – the
   [touch target sizes plan](../../plans/2026-09-28-touch-target-sizes-plan.md)
