@@ -127,3 +127,29 @@ describe("The scoped managers", () => {
     expect(SCOPED_MANAGER_IDS.filter((id) => retired.includes(id))).toEqual([]);
   });
 });
+
+describe("frameworks", () => {
+  it("puts every assessable competency in a framework", async () => {
+    const { ALL_FRAMEWORKS, ASSESSABLE_COMPETENCIES } = await import("./cbac");
+    const ids = new Set(ALL_FRAMEWORKS.map((framework) => framework.id));
+
+    for (const competency of ASSESSABLE_COMPETENCIES) {
+      expect(ids.has(competency.framework_id ?? "")).toBe(true);
+    }
+  });
+
+  it("offers nothing passport-only where competencies are granted", async () => {
+    const { ACTIVE_COMPETENCIES, ALL_FRAMEWORKS } = await import("./cbac");
+    const passportOnly = new Set(
+      ALL_FRAMEWORKS.filter((framework) => framework.passport_only).map(
+        (framework) => framework.id,
+      ),
+    );
+
+    expect(
+      ACTIVE_COMPETENCIES.filter((competency) =>
+        passportOnly.has(competency.framework_id ?? ""),
+      ),
+    ).toEqual([]);
+  });
+});

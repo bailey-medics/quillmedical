@@ -36,6 +36,18 @@
 # Each is one line to change. See
 # docs/docs/plans/2026-09-26-passport-specialties-plan.md.
 
+# The assessable entries in this file are a framework of their own, so
+# that a clinician can record everyday skills such as venepuncture in
+# their passport: the passport offers only what a holder's frameworks
+# contain. The permissions beside them are not items of it. It names no
+# specialty, because these belong to every one.
+framework:
+  id: clinical
+  name: "General clinical skills"
+  publisher: "Quill Medical"
+  version: "2026"
+  specialties: []
+
 competencies:
   # ==========================================================================
   # PRESCRIBING COMPETENCIES

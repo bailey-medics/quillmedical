@@ -40,6 +40,9 @@ declare module "@/generated/competencies.json" {
     // Whether the clinician passport may record something against it.
     // Opt-in: absent means a software permission rather than a skill.
     assessable?: boolean;
+    // The framework whose file the entry is in, stamped on by the
+    // generator. Absent for an entry in a file that declares none.
+    framework_id?: string;
     // What a holder may hand out: competency ids and base profession
     // ids. A competency carrying either list is a scoped manager.
     may_grant?: string[];
@@ -48,6 +51,43 @@ declare module "@/generated/competencies.json" {
 
   const data: {
     competencies: Competency[];
+  };
+
+  export default data;
+}
+
+declare module "@/generated/frameworks.json" {
+  // One per definition file that declares a `framework:` block: a
+  // published document a clinician works to. Its items are the
+  // assessable competencies carrying its id.
+  interface Framework {
+    id: string;
+    name: string;
+    publisher: string;
+    version: string;
+    // From specialties.json. Empty where it belongs to every specialty.
+    specialties: string[];
+    // True where its entries exist only to be recorded in a passport,
+    // and are granted to nobody.
+    passport_only?: boolean;
+  }
+
+  const data: {
+    frameworks: Framework[];
+  };
+
+  export default data;
+}
+
+declare module "@/generated/specialties.json" {
+  // The words a framework may be filed under. A filter and nothing else.
+  interface Specialty {
+    id: string;
+    display_name: string;
+  }
+
+  const data: {
+    specialties: Specialty[];
   };
 
   export default data;

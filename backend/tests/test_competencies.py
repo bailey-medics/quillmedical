@@ -21,11 +21,16 @@ from app.cbac.competencies import (
     COMPETENCIES,
     COMPETENCY_DEFINITIONS_DIR,
     COMPETENCY_IDS,
+    FRAMEWORK_IDS,
+    PASSPORT_ONLY_COMPETENCY_IDS,
     RETIRED_COMPETENCY_IDS,
     CompetencyEntry,
+    _load_catalogue,
     _load_competencies,
+    framework_competencies,
     get_competency_details,
     is_valid_competency,
+    validate_competency_ids,
 )
 
 
@@ -240,6 +245,181 @@ def test_the_real_catalogue_has_a_scoped_competency() -> None:
     assert all(
         "other" in [scope.id for scope in c.scopes or []] for c in scoped
     )
+
+
+# --- Frameworks ---------------------------------------------------------
+
+_FRAMEWORK = (
+    "framework:\n"
+    "  id: sheet\n"
+    '  name: "A sign-off sheet"\n'
+    '  publisher: "A trust"\n'
+    '  version: "2026"\n'
+    "  specialties: [oncology]\n"
+)
+
+
+def test_a_file_with_a_framework_block_is_a_framework(tmp_path: Path) -> None:
+    (tmp_path / "sheet.yaml").write_text(
+        _FRAMEWORK
+        + "competencies:\n"
+        + '  - id: sheet_item\n    display_name: "An item"\n'
+        + "    assessable: true\n"
+    )
+
+    entries, frameworks = _load_catalogue(tmp_path)
+
+    assert [framework.id for framework in frameworks] == ["sheet"]
+    assert frameworks[0].publisher == "A trust"
+    assert entries[0].framework_id == "sheet"
+
+
+def test_a_file_with_no_block_is_no_framework(tmp_path: Path) -> None:
+    (tmp_path / "admin.yaml").write_text(
+        'competencies:\n  - id: plain\n    display_name: "Plain"\n'
+    )
+
+    entries, frameworks = _load_catalogue(tmp_path)
+
+    assert frameworks == []
+    assert entries[0].framework_id is None
+
+
+def test_a_framework_is_named_for_its_file(tmp_path: Path) -> None:
+    """What makes a file a framework is the block; its id is the name."""
+    (tmp_path / "other.yaml").write_text(
+        _FRAMEWORK + 'competencies:\n  - id: x\n    display_name: "X"\n'
+    )
+
+    with pytest.raises(ValueError, match="its file's name"):
+        _load_catalogue(tmp_path)
+
+
+def test_a_framework_naming_an_unlisted_specialty_is_refused(
+    tmp_path: Path,
+) -> None:
+    """A misspelt one would hide the framework from the filter silently."""
+    (tmp_path / "sheet.yaml").write_text(
+        _FRAMEWORK.replace("[oncology]", "[not_a_specialty]")
+        + 'competencies:\n  - id: x\n    display_name: "X"\n'
+    )
+
+    with pytest.raises(ValueError, match="not_a_specialty"):
+        _load_catalogue(tmp_path)
+
+
+def test_an_entry_cannot_name_its_own_framework(tmp_path: Path) -> None:
+    (tmp_path / "sheet.yaml").write_text(
+        _FRAMEWORK
+        + "competencies:\n"
+        + '  - id: x\n    display_name: "X"\n    framework_id: elsewhere\n'
+    )
+
+    with pytest.raises(ValueError, match="sets framework_id"):
+        _load_catalogue(tmp_path)
+
+
+def test_an_assessable_entry_in_no_framework_is_refused(
+    tmp_path: Path,
+) -> None:
+    """The passport offers only what a framework contains."""
+    (tmp_path / "admin.yaml").write_text(
+        "competencies:\n"
+        '  - id: skill\n    display_name: "A skill"\n    assessable: true\n'
+    )
+
+    with pytest.raises(ValueError, match="belongs to no framework"):
+        _load_catalogue(tmp_path)
+
+
+def test_a_retired_assessable_entry_needs_no_framework(
+    tmp_path: Path,
+) -> None:
+    """Retired entries stay readable, wherever they are filed."""
+    (tmp_path / "retired.yaml").write_text(
+        "competencies:\n"
+        '  - id: skill\n    display_name: "A skill"\n'
+        "    assessable: true\n    retired_on: 2026-10-07\n"
+    )
+
+    assert _load_catalogue(tmp_path)[0][0].retired_on is not None
+
+
+_PASSPORT_ONLY = _FRAMEWORK + "  passport_only: true\n"
+
+
+def test_a_passport_only_entry_starts_with_its_frameworks_id(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "sheet.yaml").write_text(
+        _PASSPORT_ONLY
+        + "competencies:\n"
+        + '  - id: prescribe\n    display_name: "P"\n    assessable: true\n'
+    )
+
+    with pytest.raises(ValueError, match="must start with 'sheet_'"):
+        _load_catalogue(tmp_path)
+
+
+def test_a_passport_only_entry_must_be_assessable(tmp_path: Path) -> None:
+    (tmp_path / "sheet.yaml").write_text(
+        _PASSPORT_ONLY
+        + 'competencies:\n  - id: sheet_x\n    display_name: "X"\n'
+    )
+
+    with pytest.raises(ValueError, match="is not assessable"):
+        _load_catalogue(tmp_path)
+
+
+def test_a_passport_only_entry_may_be_on_no_may_grant_list(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "sheet.yaml").write_text(
+        _PASSPORT_ONLY
+        + "competencies:\n"
+        + '  - id: sheet_x\n    display_name: "X"\n    assessable: true\n'
+    )
+    (tmp_path / "admin.yaml").write_text(
+        "competencies:\n"
+        '  - id: manager\n    display_name: "M"\n    may_grant: [sheet_x]\n'
+    )
+
+    with pytest.raises(ValueError, match="granted to nobody"):
+        _load_catalogue(tmp_path)
+
+
+def test_every_assessable_competency_is_in_a_framework() -> None:
+    """The real catalogue, since the loader would refuse to start."""
+    for competency in COMPETENCIES:
+        if competency.assessable and competency.retired_on is None:
+            assert competency.framework_id in FRAMEWORK_IDS
+
+
+def test_a_frameworks_items_are_its_assessable_entries() -> None:
+    """clinical.yaml holds permissions beside its skills."""
+    items = {c.id for c in framework_competencies("clinical")}
+
+    assert "perform_cannulation" in items
+    assert all(get_competency_details(i).assessable for i in items)  # type: ignore[union-attr]
+    in_file = {c.id for c in COMPETENCIES if c.framework_id == "clinical"}
+    assert items < in_file
+
+
+def test_no_real_framework_is_passport_only_yet() -> None:
+    assert PASSPORT_ONLY_COMPETENCY_IDS == ()
+
+
+def test_a_passport_only_id_is_refused_where_competencies_are_granted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.cbac import competencies
+
+    monkeypatch.setattr(
+        competencies, "PASSPORT_ONLY_COMPETENCY_IDS", ("perform_cannulation",)
+    )
+
+    with pytest.raises(ValueError, match="granted to nobody"):
+        validate_competency_ids(["perform_cannulation"])
 
 
 def test_expires_after_months_is_read(tmp_path: Path) -> None:

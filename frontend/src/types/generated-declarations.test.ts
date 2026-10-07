@@ -19,16 +19,20 @@ import { describe, expect, it } from "vitest";
 import declaredBaseProfessions from "@/generated/base-professions.json";
 import declaredBrand from "@/generated/brand.json";
 import declaredCompetencies from "@/generated/competencies.json";
+import declaredFrameworks from "@/generated/frameworks.json";
 import declaredJurisdictionConfig from "@/generated/jurisdiction-config.json";
 import declaredOrgUnitTypes from "@/generated/org-unit-types.json";
 import declaredPassportSpecialties from "@/generated/passport-specialties.json";
+import declaredSpecialties from "@/generated/specialties.json";
 
 import actualBaseProfessions from "../generated/base-professions.json";
 import actualBrand from "../generated/brand.json";
 import actualCompetencies from "../generated/competencies.json";
+import actualFrameworks from "../generated/frameworks.json";
 import actualJurisdictionConfig from "../generated/jurisdiction-config.json";
 import actualOrgUnitTypes from "../generated/org-unit-types.json";
 import actualPassportSpecialties from "../generated/passport-specialties.json";
+import actualSpecialties from "../generated/specialties.json";
 
 /**
  * The keys the JSON holds that the declaration does not name, at any
@@ -83,6 +87,26 @@ describe("Generated declarations", () => {
       typeof declaredCompetencies
     > = true;
     expect(declared).toBe(actualCompetencies);
+    expect(complete).toBe(true);
+  });
+
+  it("declares frameworks.json as it is generated", () => {
+    const declared: typeof declaredFrameworks = actualFrameworks;
+    const complete: AllDeclared<
+      typeof actualFrameworks,
+      typeof declaredFrameworks
+    > = true;
+    expect(declared).toBe(actualFrameworks);
+    expect(complete).toBe(true);
+  });
+
+  it("declares specialties.json as it is generated", () => {
+    const declared: typeof declaredSpecialties = actualSpecialties;
+    const complete: AllDeclared<
+      typeof actualSpecialties,
+      typeof declaredSpecialties
+    > = true;
+    expect(declared).toBe(actualSpecialties);
     expect(complete).toBe(true);
   });
 

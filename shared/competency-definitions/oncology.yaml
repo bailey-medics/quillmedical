@@ -45,6 +45,18 @@
 # within a file. Which file an entry lives in carries no meaning to the
 # code – it is for the reader.
 
+# A framework so that its entries stay on offer in the passport, which
+# offers only what a holder's frameworks contain. It is retired once the
+# frameworks written from the published documents replace it: see Phase 9
+# of docs/docs/plans/2026-10-07-passport-registrar-portfolios-plan.md.
+framework:
+  id: oncology
+  name: "Oncology (proof of concept)"
+  publisher: "Quill Medical"
+  version: "2026"
+  specialties:
+    - oncology
+
 competencies:
   # ==========================================================================
   # SYSTEMIC ANTI-CANCER THERAPY (SACT)

@@ -18,6 +18,9 @@ const FRONTEND_GENERATED_DIR = path.join(__dirname, "..", "src", "generated");
 
 const FILES_TO_GENERATE = [
   "base-professions.yaml",
+  // The words a framework may be filed under, for the filter on the
+  // list of frameworks.
+  "specialties.yaml",
   "jurisdiction-config.yaml",
   // The screens that offer a kind of place to pick from used to
   // carry their own copy of the list, which is how three of them
@@ -45,6 +48,16 @@ interface Competency {
   [key: string]: unknown;
 }
 
+// A file that declares a `framework:` block is a framework: one published
+// document a clinician works to. Its entries are stamped with its id, and
+// the frameworks are written to their own file. Mirrors `_framework_of()`
+// in backend/app/cbac/competencies.py, which also checks each one; this
+// only copies, since the backend refuses to start on a bad one.
+interface Framework {
+  id: string;
+  [key: string]: unknown;
+}
+
 function generateCompetenciesJson(): void {
   console.log("  Processing competency-definitions/...");
 
@@ -60,15 +73,26 @@ function generateCompetenciesJson(): void {
   }
 
   const competencies: Competency[] = [];
+  const frameworks: Framework[] = [];
   const seen = new Map<string, string>();
 
   for (const file of files) {
     const filePath = path.join(COMPETENCY_DEFINITIONS_DIR, file);
     const data = yaml.load(fs.readFileSync(filePath, "utf8")) as {
+      framework?: Framework;
       competencies: Competency[];
     };
 
-    for (const competency of data.competencies) {
+    if (data.framework !== undefined) {
+      frameworks.push(data.framework);
+    }
+
+    for (const raw of data.competencies) {
+      const competency: Competency =
+        data.framework !== undefined
+          ? { ...raw, framework_id: data.framework.id }
+          : raw;
+
       const existing = seen.get(competency.id);
       if (existing !== undefined) {
         // Ids are referenced from stored records, so a duplicate would
@@ -89,6 +113,13 @@ function generateCompetenciesJson(): void {
   fs.writeFileSync(outputPath, JSON.stringify({ competencies }, null, 2));
 
   console.log(`  ✓ Generated ${outputPath} (${files.length} files merged)`);
+
+  const frameworksPath = path.join(FRONTEND_GENERATED_DIR, "frameworks.json");
+  fs.writeFileSync(frameworksPath, JSON.stringify({ frameworks }, null, 2));
+
+  console.log(
+    `  ✓ Generated ${frameworksPath} (${frameworks.length} frameworks)`,
+  );
 }
 
 // One file per specialty, merged into one passport-specialties.json in
