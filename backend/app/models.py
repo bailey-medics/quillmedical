@@ -156,15 +156,6 @@ class User(Base):
         Boolean, nullable=False, default=False, server_default="false"
     )
 
-    #: No longer read or written. It recorded when Resend, which held the
-    #: mailing list, last accepted this person's answer; Quill keeps the
-    #: list itself now. The column is dropped in a migration of its own,
-    #: once the code that stopped using it has deployed: see Phase 4 of
-    #: docs/docs/plans/2026-10-06-amazon-ses-email-plan.md.
-    marketing_synced_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
     # FHIR patient ID link (for patient users)
     fhir_patient_id: Mapped[str | None] = mapped_column(
         String(255), unique=True, nullable=True
