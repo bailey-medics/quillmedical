@@ -37,3 +37,18 @@ class MarketingPreferenceOut(BaseModel):
     """
 
     marketing_emails: bool
+
+
+class MarketingUnsubscribeOut(BaseModel):
+    """What the unsubscribe link's routes answer.
+
+    Attributes:
+        email: The address the link is for, with most of it hidden. The
+            link may have been forwarded, so whoever holds it is shown
+            enough to recognise their own address and not enough to
+            learn somebody else's.
+        marketing_emails: Whether they are sent news and updates.
+    """
+
+    email: str
+    marketing_emails: bool

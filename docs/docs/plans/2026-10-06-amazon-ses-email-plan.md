@@ -57,15 +57,21 @@ screens.
       name given was Quill Medical, and the management account email
       `aws@quill-medical.com`, an alias made for the purpose so that the
       root login is not a person's own address. The result is an
-      organisation, Quill-Medical, of three accounts:
+      organisation, Quill-Medical, of three accounts. Mark renamed
+      them on 7 October 2026, and the names in brackets are the ones
+      they carry now; the rest of this plan uses whichever was current
+      when each step was written:
 
-      - **Quill Medical Emails** – the working account, where SES and
+      - **Quill Medical Emails** (now Quill Medical Emails App) – the
+        working account, where SES and
         the backend's key live. It was the original project.
 
-      - **Quill-Medical Management Account** – billing and the
+      - **Quill-Medical Management Account** (now Quill Medical
+        Superadmin) – billing and the
         organisation's policies. Its root login is `aws@`.
 
-      - **Quill-Medical Identity Delegated Admin** – the sign-in
+      - **Quill-Medical Identity Delegated Admin** (now Quill Medical
+        ID) – the sign-in
         directory: who may log in, and to which accounts. AWS made it
         and sign-in depends on it. Nothing is done there.
 
@@ -301,7 +307,7 @@ and certificates out of the United States.
       to see in App production: a verification email from a real
       registration, and a certificate from a passed assessment.
 
-- [ ] **Give development its own AWS account.** First placed after the
+- [x] **Give development its own AWS account.** First placed after the
       production switch, and brought forward on 7 October 2026, so that
       Phase 4's send command is never tried with a key that can email
       anybody. Quill Medical Emails Dev is a third working account in
@@ -322,10 +328,41 @@ and certificates out of the United States.
       production one in the local `backend/.env`, so the production key
       now exists only in Secret Manager. The account is in the sandbox,
       which suits development: 200 emails a day, to verified addresses
-      only. **Still to do**: merge the three DKIM records added to
-      `infra/dns.tf`, wait for the domain to verify, and send one email.
-      SES took about three minutes to answer in the new account at all,
-      refusing with "needs a subscription for the service" until then.
+      only. SES took about three minutes to answer in the new account at
+      all, refusing with "needs a subscription for the service" until
+      then. The three DKIM records merged the same day and the domain
+      verified within minutes. Checked with the development key: an
+      email to `mark@quill-medical.com` was accepted, and one to an
+      outside address was refused as not verified, which is the sandbox
+      doing what development wants.
+
+- [x] **Let Mark into the development account as well.** An account
+      made through AWS Organizations has one way in, a role the
+      management account can use, which is how the command line reaches
+      it. It does not show at <https://settings.aws.com/projects>, and
+      Mark's own sign-in cannot open it, until two things exist. A role
+      in the new account, `AccountFullAccessRole`, trusting the service
+      `account-access.amazonaws.com` for `sts:AssumeRole` and
+      `sts:SetContext`, with a twelve hour session and administrator
+      rights: a copy of the one AWS made in the other accounts, at the
+      path `/` because the organisation's policy keeps `/managed/` for
+      AWS. And a grant, which AWS calls an entitlement, made in the
+      management account with `aws account-access create-entitlement`,
+      naming Mark's user in the sign-in directory and that role. Mark
+      ran both himself: giving a person administrator rights is not a
+      step for an assistant to take. The account then appeared in AWS
+      Settings at once. So there are two ways in, and neither depends on
+      the other.
+
+- [x] **Set the new account's console to London.** Saving Visible
+      Regions from its console failed with "a service control policy
+      explicitly denies the action": the console was in a region the
+      policy no longer allows, most likely Stockholm, and a save is sent
+      from wherever the console is. The first account's was changed
+      before Stockholm was closed. Console settings are allowed through
+      N. Virginia, so `aws uxc update-account-customizations --region
+      us-east-1` set it to London, N. Virginia and Oregon. To change one
+      by hand, switch the console to N. Virginia first.
 
 - [x] **Make signing in from the command line check where it landed.**
       `aws login` does not ask which account: it takes whichever AWS
@@ -371,7 +408,7 @@ in the command that sends, and the tests have to pin it down.
       it. **Superseded the next day**: nothing uses it, and the last
       step of this phase deletes it.
 
-- [ ] **Make the unsubscribe link and its routes.** A link signed with
+- [x] **Make the unsubscribe link and its routes.** A link signed with
       `itsdangerous`, as the verification and password reset links in
       `backend/app/security.py` are, under its own salt, naming the user
       by id and never by address. It does not expire: a newsletter is
@@ -389,7 +426,16 @@ in the command that sends, and the tests have to pin it down.
       added to `MARKETING_PREFERENCE_SOURCES`. `resend` stays in that
       list: rows already written carry it. A bad signature answers 404,
       as the route guards do, and says nothing about whether the user
-      exists.
+      exists. Built as planned, with three things settled on the way.
+      The token rides in the query string, on `GET` and `POST` alike:
+      a mailbox pressing the link can send nothing else. A `POST` whose
+      body is not JSON is read as the one-click and turns news off,
+      whatever it holds, because the link is already proven and off is
+      the safe way to be wrong; JSON that is not the page's shape is
+      refused with 422 and changes nothing. And while Resend still
+      holds a list the route tells it too, but never fails for it: a
+      one-click that answered an error because Resend was down would be
+      an unsubscribe refused.
 
 - [ ] **Build the unsubscribe page.** A page in the app that needs no
       login, at `/unsubscribe`, in the Quill layout: it reads the link,
@@ -431,8 +477,8 @@ in the command that sends, and the tests have to pin it down.
       with the right source.
 
 - [ ] **Cut over: stop telling Resend.** One change, with no switch.
-      Take the `sync_contact` calls out of the Settings route and
-      registration, so a choice is saved in Quill and nowhere else, and
+      Take the `sync_contact` calls out of the Settings route,
+      registration and the unsubscribe link's route, so a choice is saved in Quill and nowhere else, and
       opting out no longer fails when Resend cannot be reached. Turn
       off `marketing-reconcile.yml`: it makes Quill match Resend, and
       after this Resend is stale, so one run would undo every choice
@@ -450,12 +496,23 @@ in the command that sends, and the tests have to pin it down.
 
 ## Phase 5: Close Resend and make the documents true
 
-- [ ] **Move the accessibility review reminder off Resend.**
-      `.github/workflows/accessibility-review.yml` reads `resend-api-key`
-      from Secret Manager and sends through Resend by itself, with its
-      own grant, `ci_resend`, in `infra/runtime-identities.tf`. Removing
-      the secret breaks it. Send it through SES, or drop the email and
-      keep its Slack message, before the step below removes the secret.
+- [ ] **Move the accessibility review reminder off Resend.** The
+      yearly reminder to review the accessibility statement is a GitHub
+      job of its own, `.github/workflows/accessibility-review.yml`. Once
+      the review is eleven months old it nags weekly, by Slack and by
+      an email that `.github/scripts/accessibility-review/send-reminder.sh`
+      sends through Resend directly, with the key read from Secret
+      Manager under its own grant, `ci_resend`, in
+      `infra/runtime-identities.tf`. Closing Resend would leave the
+      email failing every Monday. Decided on 7 October 2026: keep both
+      the Slack message and the email, and send the email through SES.
+      The script calls the SES API in `eu-west-2` in place of Resend's,
+      and the workflow reads `ses-access-key-id` and
+      `ses-secret-access-key` from Secret Manager at run time, as it
+      reads the Resend key today, under a grant that replaces
+      `ci_resend`. That reuses the backend's send-only key and adds no
+      new credential. Run it once with `force` to see both arrive,
+      before the step below removes the Resend secret.
 
 - [ ] **Run both for a week, then remove Resend.** Delete the contacts
       from Resend and close the account. Unsubscribe links in
