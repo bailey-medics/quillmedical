@@ -487,7 +487,7 @@ in that order.
 
 ## Phase 6: Frameworks in the catalogue
 
-- [ ] **Let a competency file declare itself a framework**, with a
+- [x] **Let a competency file declare itself a framework**, with a
       `framework:` block at the top holding an id, a name, a publisher, a
       version and its specialties. `_load_competencies` in
       `backend/app/cbac/competencies.py` merges every file and forgets
@@ -496,14 +496,14 @@ in that order.
       the filename must match the id as a specialty file's does. A revised
       document is a new framework, not an edit, so a sign-off keeps the
       words it was signed under.
-- [ ] **Check the specialties a framework names** against one short list,
+- [x] **Check the specialties a framework names** against one short list,
       a new `shared/specialties.yaml` of ids and names, at startup, so a
       misspelt specialty stops the backend instead of quietly hiding a
       framework from the filter. A framework may name several. The list
       starts with the three specialties Quill has today and haematology.
       This is all a specialty is from here on: a word that filters a
       search. Nobody chooses one.
-- [ ] **Make every assessable competency belong to a framework.** The
+- [x] **Make every assessable competency belong to a framework.** The
       loader refuses an `assessable: true` entry in a file with no
       `framework:` block, unless the entry is retired. That forces the two
       existing files to declare one: `clinical.yaml`, as the general
@@ -511,20 +511,20 @@ in that order.
       `oncology.yaml`, which gets a block only to keep loading until Phase
       9 retires it. A framework's items are the assessable entries of its
       file, so the permissions in `clinical.yaml` are not items.
-- [ ] **Let a framework say its items are for the passport only.** A
+- [x] **Let a framework say its items are for the passport only.** A
       framework written from a paper form holds statements nobody should
       be granted as a permission. Its entries are left out of what user
       administration can grant and of every `may_grant` list, so the long
       list does not move from the holder to the administrator. The two
       existing files are not marked, because their entries are real
       permissions.
-- [ ] **Require ids in a passport-only framework to start with the
+- [x] **Require ids in a passport-only framework to start with the
       framework's id.** Ids are unique across the directory, and two
       frameworks describing the same act need two. The existing files keep
       their ids, which stored records and grants already hold.
-- [ ] **Generate the frameworks for the frontend**, in
+- [x] **Generate the frameworks for the frontend**, in
       `frontend/scripts/generate-json-from-yaml.ts`.
-- [ ] **Tests** for each refusal, and that a passport-only item cannot be
+- [x] **Tests** for each refusal, and that a passport-only item cannot be
       granted.
 
 ## Phase 7: A holder chooses frameworks, not specialties

@@ -1,0 +1,25 @@
+# shared/specialties.yaml
+#
+# SPECIALTIES
+#
+# The words a framework may be filed under, so somebody looking for the
+# frameworks of their own specialty can narrow the list to them.
+#
+# A specialty is a filter and nothing else. Nobody chooses one, nothing is
+# ordered by one and no access turns on one. A framework, in
+# shared/competency-definitions/, names the specialties it belongs to, and
+# the backend refuses to start on a name that is not listed here: a
+# misspelt specialty would otherwise hide a framework from the filter
+# without a word.
+#
+# See docs/docs/plans/2026-10-07-passport-registrar-portfolios-plan.md.
+
+specialties:
+  - id: general_medicine
+    display_name: "General medicine"
+  - id: general_surgery
+    display_name: "General surgery"
+  - id: haematology
+    display_name: "Haematology"
+  - id: oncology
+    display_name: "Oncology"
