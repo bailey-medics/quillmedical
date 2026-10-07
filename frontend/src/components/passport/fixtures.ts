@@ -305,6 +305,59 @@ export const singleEntryLogbook: Logbook = {
   entries: [logbook.entries[1]],
 };
 
+/**
+ * The logbook of a competency signed off scope by scope: two entries
+ * say which scope they count towards, and one says nothing.
+ */
+export const scopedLogbook: Logbook = {
+  competency: "prescribe_sact",
+  count: 3,
+  entries: [
+    {
+      filename: "2026-03-10-091500",
+      competency: "prescribe_sact",
+      performed_on: "2026-03-10",
+      scope: { id: "lung", name: "Lung" },
+      setting: "Oncology day unit",
+      supervision: "supervised",
+      supervisor: "Dr Amara Okonkwo",
+      indication: null,
+      outcome: null,
+      notes: null,
+      also_counts_towards: [],
+      attachments: [],
+    },
+    {
+      filename: "2026-03-11-101500",
+      competency: "prescribe_sact",
+      performed_on: "2026-03-11",
+      scope: { id: "breast", name: "Breast" },
+      setting: "Oncology day unit",
+      supervision: "supervised",
+      supervisor: "Dr Amara Okonkwo",
+      indication: null,
+      outcome: null,
+      notes: null,
+      also_counts_towards: [],
+      attachments: [],
+    },
+    {
+      filename: "2026-03-12-111500",
+      competency: "prescribe_sact",
+      performed_on: "2026-03-12",
+      scope: null,
+      setting: "Oncology day unit",
+      supervision: "independent",
+      supervisor: null,
+      indication: null,
+      outcome: null,
+      notes: null,
+      also_counts_towards: [],
+      attachments: [],
+    },
+  ],
+};
+
 export const emptyLogbook: Logbook = {
   competency: "prescribe_sact",
   count: 0,

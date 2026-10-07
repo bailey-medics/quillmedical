@@ -170,6 +170,7 @@ from .schemas import (
     LogbookEntry,
     Profile,
     Reflection,
+    ScopeRef,
     SignOff,
     SpecialtyRef,
 )
@@ -2369,6 +2370,32 @@ def remove_certificate(
     return RecordResultOut(name=name, commit=commit)
 
 
+def _logbook_scope(
+    competency_id: str, scope_id: str | None
+) -> ScopeRef | None:
+    """The scope a logbook entry names, or none.
+
+    Optional, where a sign-off requires one: an entry is the holder's
+    own and can be corrected. But a scope that is named must be one the
+    competency declares, since it decides which sign-off the entry is
+    counted under.
+    """
+    if scope_id is None:
+        return None
+
+    try:
+        return definitions.scope_ref(competency_id, scope_id)
+    except definitions.UnknownCompetencyError:
+        raise HTTPException(404, "Unknown competency") from None
+    except definitions.UnknownScopeError as error:
+        # The form offers only the competency's own scopes, so this means
+        # the form and the server disagree.
+        logger.error("logbook entry refused: %s", error)
+        raise HTTPException(
+            400, "That is not something this competency is logged under."
+        ) from None
+
+
 @passport_router.post(
     "/{passport_id}/logbook/{competency_id}",
     response_model=RecordResultOut,
@@ -2396,6 +2423,7 @@ def add_logbook_entry(
 
     entry = LogbookEntry(
         performed_on=body.performed_on,
+        scope=_logbook_scope(competency_id, body.scope_id),
         setting=body.setting,
         supervision=body.supervision,
         supervisor=body.supervisor,
@@ -2560,6 +2588,7 @@ def amend_logbook_entry(
 
     entry = LogbookEntry(
         performed_on=body.performed_on,
+        scope=_logbook_scope(competency_id, body.scope_id),
         setting=body.setting,
         supervision=body.supervision,
         supervisor=body.supervisor,

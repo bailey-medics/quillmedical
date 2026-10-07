@@ -305,6 +305,89 @@ class TestLogbook:
 
         assert response.status_code == 201, response.text
 
+    def test_an_entry_can_say_which_scope_it_counts_towards(
+        self, passport: tuple[TestClient, str]
+    ) -> None:
+        client, passport_id = passport
+
+        response = client.post(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
+            json={"performed_on": "2026-03-12", "scope_id": SCOPE},
+        )
+        assert response.status_code == 201, response.text
+
+        body = client.get(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}"
+        ).json()
+        assert body["entries"][0]["scope"] == {"id": SCOPE, "name": "Lung"}
+
+    def test_a_scope_is_optional_even_where_the_competency_has_them(
+        self, passport: tuple[TestClient, str]
+    ) -> None:
+        """Unlike a sign-off, which must name one."""
+        client, passport_id = passport
+
+        response = client.post(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
+            json={"performed_on": "2026-03-12"},
+        )
+        assert response.status_code == 201, response.text
+
+        body = client.get(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}"
+        ).json()
+        assert body["entries"][0]["scope"] is None
+
+    def test_a_scope_the_competency_does_not_declare_is_refused(
+        self, passport: tuple[TestClient, str]
+    ) -> None:
+        client, passport_id = passport
+
+        response = client.post(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
+            json={"performed_on": "2026-03-12", "scope_id": "left_elbow"},
+        )
+
+        assert response.status_code == 400, response.text
+        assert "left_elbow" not in response.json()["detail"]
+
+    def test_a_scope_on_a_competency_with_none_is_refused(
+        self, passport: tuple[TestClient, str]
+    ) -> None:
+        client, passport_id = passport
+
+        response = client.post(
+            f"/api/passport/{passport_id}/logbook/perform_cannulation",
+            json={"performed_on": "2026-03-12", "scope_id": SCOPE},
+        )
+
+        assert response.status_code == 400, response.text
+
+    def test_amending_an_entry_can_change_or_clear_its_scope(
+        self, passport: tuple[TestClient, str]
+    ) -> None:
+        client, passport_id = passport
+        stem = client.post(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
+            json={"performed_on": "2026-03-12", "scope_id": SCOPE},
+        ).json()["name"]
+        url = f"/api/passport/{passport_id}/logbook/{COMPETENCY}"
+
+        changed = client.patch(
+            f"{url}/{stem}",
+            json={"performed_on": "2026-03-12", "scope_id": "breast"},
+        )
+        assert changed.status_code == 200, changed.text
+        assert client.get(url).json()["entries"][0]["scope"]["id"] == (
+            "breast"
+        )
+
+        cleared = client.patch(
+            f"{url}/{stem}", json={"performed_on": "2026-03-12"}
+        )
+        assert cleared.status_code == 200, cleared.text
+        assert client.get(url).json()["entries"][0]["scope"] is None
+
     def test_the_logbook_counts_and_does_not_compare(
         self, passport: tuple[TestClient, str]
     ) -> None:

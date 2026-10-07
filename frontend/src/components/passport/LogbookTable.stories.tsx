@@ -6,7 +6,12 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Stack } from "@mantine/core";
 import { fn } from "storybook/test";
 import LogbookTable from "./LogbookTable";
-import { logbook, emptyLogbook, singleEntryLogbook } from "./fixtures";
+import {
+  logbook,
+  emptyLogbook,
+  scopedLogbook,
+  singleEntryLogbook,
+} from "./fixtures";
 import { StoryNote } from "@/stories/variants";
 
 const meta: Meta<typeof LogbookTable> = {
@@ -67,5 +72,17 @@ export const Loading: Story = {
     logbook: emptyLogbook,
     competencyName: "Perform bronchoscopy",
     isLoading: true,
+  },
+};
+
+/**
+ * A competency signed off scope by scope. The extra column appears only
+ * because some entry here says what it counts towards.
+ */
+export const WithScopes: Story = {
+  args: {
+    logbook: scopedLogbook,
+    competencyName: "Review and prescribe systemic anti-cancer therapy",
+    onSelect: fn(),
   },
 };

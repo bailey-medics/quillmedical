@@ -9,6 +9,12 @@ import { renderWithMantine } from "@test/test-utils";
 import LogbookEntryForm from "./LogbookEntryForm";
 import { signedOffCompetency } from "./fixtures";
 
+const scopes = [
+  { id: "breast", name: "Breast" },
+  { id: "lung", name: "Lung" },
+  { id: "other", name: "Other" },
+];
+
 function renderForm(
   props: Partial<React.ComponentProps<typeof LogbookEntryForm>> = {},
 ) {
@@ -122,6 +128,75 @@ describe("LogbookEntryForm", () => {
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  describe("Scope", () => {
+    it("is offered only where the competency declares scopes", () => {
+      renderForm();
+      expect(
+        screen.queryByRole("combobox", { name: /What it counts towards/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("can be left empty, unlike on a sign-off", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      renderForm({ scopes, onSubmit });
+
+      await user.type(
+        screen.getByRole("textbox", { name: /Performed on/ }),
+        "14/03/2026",
+      );
+      await user.click(screen.getByRole("button", { name: "Add entry" }));
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ scope_id: null }),
+      );
+    });
+
+    it("sends the scope chosen", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      renderForm({ scopes, onSubmit });
+
+      await user.type(
+        screen.getByRole("textbox", { name: /Performed on/ }),
+        "14/03/2026",
+      );
+      await user.click(
+        screen.getByRole("combobox", { name: /What it counts towards/ }),
+      );
+      await user.click(await screen.findByText("Lung"));
+      await user.click(screen.getByRole("button", { name: "Add entry" }));
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ scope_id: "lung" }),
+      );
+    });
+
+    it("starts from the scope an entry already names", () => {
+      renderForm({
+        scopes,
+        initial: {
+          filename: "20260314T1432",
+          competency: "prescribe_sact",
+          performed_on: "2026-03-14",
+          scope: { id: "breast", name: "Breast" },
+          setting: null,
+          supervision: null,
+          supervisor: null,
+          indication: null,
+          outcome: null,
+          notes: null,
+          also_counts_towards: [],
+          attachments: [],
+        },
+      });
+
+      expect(
+        screen.getByRole("combobox", { name: /What it counts towards/ }),
+      ).toHaveValue("Breast");
+    });
   });
 
   describe("Editing an entry", () => {

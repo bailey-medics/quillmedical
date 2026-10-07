@@ -459,6 +459,11 @@ export interface Certificate {
 /** One procedure, as the holder recorded it. */
 export interface LogbookEntryInput {
   performed_on: IsoDate;
+  /**
+   * What the entry counts towards within its competency. Optional even
+   * where the competency declares scopes; refused where it declares none.
+   */
+  scope_id?: string | null;
   setting?: string | null;
   supervision?: Supervision | null;
   supervisor?: string | null;
@@ -474,6 +479,8 @@ export interface LogbookEntry {
   filename: string;
   competency: string;
   performed_on: IsoDate;
+  /** What it counts towards within its competency, if it says */
+  scope?: ScopeRef | null;
   setting: string | null;
   supervision: Supervision | null;
   supervisor: string | null;

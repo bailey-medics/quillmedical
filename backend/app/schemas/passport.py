@@ -546,6 +546,10 @@ class LogbookEntryIn(_In):
     """
 
     performed_on: date
+    #: What the entry counts towards within its competency. Offered only
+    #: where the competency declares scopes, optional even then, and
+    #: refused on a competency that declares none.
+    scope_id: str | None = None
     setting: str | None = None
     supervision: Supervision | None = None
     supervisor: str | None = None
@@ -562,6 +566,7 @@ class LogbookEntryOut(BaseModel):
     filename: NonEmptyText
     competency: CompetencyIdField
     performed_on: date
+    scope: ScopeRefOut | None = None
     setting: str | None = None
     supervision: Supervision | None = None
     supervisor: str | None = None
