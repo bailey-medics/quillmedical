@@ -754,7 +754,7 @@ mailing list, and are stored as one. This phase does not wait on Phase
       where an address becomes verified: the verification link, an
       admin creating an account, and a passport invitation accepted.
 
-- [ ] **Add a Newsletter section to the admin area.** A place of its
+- [x] **Add a Newsletter section to the admin area.** A place of its
       own, `/admin/newsletter`, with a link in the admin menu, for
       everything to do with newsletters. For now only an operator may
       see it: the route behind `<RequireOperator>`, which shows a 404 to
@@ -774,9 +774,17 @@ mailing list, and are stored as one. This phase does not wait on Phase
       Facebook and email among them. Pages follow the admin area's
       conventions: exported from `pages/admin/adminChunk.ts`, with a
       child link in the menu while each is open, which
-      `navCoverage.test.tsx` checks.
+      `navCoverage.test.tsx` checks. **Built, with the one gate on each
+      side given a name of its own**: the page sits behind
+      `<RequireNewsletter>`, and the guard and the menu both read
+      `mayUseNewsletter` in `frontend/src/lib/newsletter/access.ts`; the
+      routes all depend on `MAY_USE_NEWSLETTER` in
+      `backend/app/marketing/admin_router.py`. Both mean an operator
+      today. The page also shows how many people a newsletter would
+      reach now: account holders, subscribers, and subscribers who have
+      unsubscribed.
 
-- [ ] **Import the mailing list from a file dropped into the app.** A
+- [x] **Import the mailing list from a file dropped into the app.** A
       page in the Newsletter section where an operator drops a
       spreadsheet and
       it is read into `newsletter_subscriber`. Chosen on 7 October 2026
@@ -848,6 +856,13 @@ mailing list, and are stored as one. This phase does not wait on Phase
       being a list of current subscribers. Where the column is there,
       it is still read strictly.
 
+      **The page is built**, as the `MailingListImport` card on
+      `/admin/newsletter`. It holds the dropped file in the browser only
+      between the check and the import, and shows nothing from it but
+      counts and row numbers. An import that is refused puts the file
+      aside, so it has to be dropped and checked again. What is left is
+      Mark's: dropping the real file in App production.
+
 - [ ] **Send the first newsletter in batches.** Amazon watches how many
       emails bounce and how many are reported as spam, and pauses an
       account that goes over its limits. The SES account dates from 6
@@ -882,14 +897,17 @@ mailing list, and are stored as one. This phase does not wait on Phase
       too, so the people a dry run lists are the people a send would
       reach. What is left of this step is the sending itself.
 
-- [ ] **Add the journeys this touches to the accessibility log.** The
+- [x] **Add the journeys this touches to the accessibility log.** The
       Newsletter section adds a link to the admin menu, and the
       unsubscribe page from Phase 4 is a new page reached with no login.
       Name the journeys in
       `docs/docs/frontend/accessibility/journeys.md` that pass through
       the navigation and the signed-out pages, and add them to the "Not
       yet run" list in `testing-log.md`, so the next round of manual
-      testing covers them.
+      testing covers them. Added: journeys 1 to 4 for the side
+      navigation, as somebody who operates Quill, and the Newsletter
+      page and the unsubscribe page each as a check of its own, since
+      neither is on a journey.
 
 ## Decisions
 
