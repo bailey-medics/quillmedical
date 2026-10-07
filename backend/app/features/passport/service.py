@@ -46,6 +46,7 @@ from .schemas import (
     Assessor,
     Attachment,
     EvidenceSnapshot,
+    FrameworkRef,
     Index,
     LevelRef,
     Manifest,
@@ -126,6 +127,7 @@ def create_passport(
     user_id: str,
     registrations: list[object] | None = None,
     specialties: list[SpecialtyRef] | None = None,
+    frameworks: list[FrameworkRef] | None = None,
     now: datetime | None = None,
 ) -> str:
     """Create a passport with its manifest, profile and empty index.
@@ -137,6 +139,7 @@ def create_passport(
         user_id: Their Quill user id.
         registrations: Their professional registrations, as declared.
         specialties: The specialties they chose, or none for Generic.
+        frameworks: The frameworks they work to, if chosen already.
         now: For tests.
 
     Returns:
@@ -155,6 +158,7 @@ def create_passport(
         name=actor.name,
         registrations=registrations or [],  # type: ignore[arg-type]
         specialties=specialties or [],
+        frameworks=frameworks or [],
     )
     empty = Index(
         schema_version=SCHEMA_VERSION, generated_at=moment, competencies=[]

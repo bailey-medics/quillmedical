@@ -102,6 +102,9 @@ from app.schemas.passport import (
     CpdEntryOut,
     EntitlementOut,
     EvidenceUploadOut,
+    FrameworkChoiceOut,
+    FrameworkOut,
+    FrameworksIn,
     InboxItemOut,
     InvitePreviewOut,
     LogbookConfirmAnswerOut,
@@ -139,6 +142,7 @@ from . import (
     definitions,
     email_templates,
     export,
+    frameworks,
     hashing,
     ids,
     paths,
@@ -171,6 +175,7 @@ from .schemas import (
     Certificate,
     CompetencyRef,
     CpdEntry,
+    FrameworkRef,
     Index,
     LevelRef,
     LogbookEntry,
@@ -630,6 +635,10 @@ def _passport_out(row: Passport, profile: Profile) -> PassportOut:
             SpecialtyOut(id=specialty.id, name=specialty.name)
             for specialty in profile.specialties
         ],
+        frameworks=[
+            FrameworkOut(id=framework.id, name=framework.name)
+            for framework in profile.frameworks
+        ],
         created_at=row.created_at.date(),
         head_commit=row.head_commit,
     )
@@ -736,6 +745,9 @@ def create_passport(
         raise HTTPException(409, "You already have a passport")
 
     chosen = _specialty_refs(body.specialties if body is not None else [])
+    chosen_frameworks = _framework_refs(
+        body.frameworks if body is not None else []
+    )
 
     passport_id = ids.new_passport_id()
 
@@ -748,6 +760,7 @@ def create_passport(
         user_id=str(user.id),
         registrations=list(_registration_dicts(user)),
         specialties=chosen,
+        frameworks=chosen_frameworks,
     )
 
     row = Passport(id=passport_id, user_id=user.id, head_commit=commit)
@@ -794,6 +807,45 @@ def set_specialties(
     chosen = _specialty_refs(body.specialties)
 
     commit = records.set_specialties(store, row.id, _actor(user), chosen)
+    row.head_commit = commit
+    db.flush()
+
+    return _passport_out(row, _read_profile(store, row.id))
+
+
+def _framework_refs(framework_ids: list[str]) -> list[FrameworkRef]:
+    """Resolve chosen framework ids, or refuse with a 400.
+
+    Raises:
+        HTTPException: 400 if an id has no file, or appears twice.
+    """
+    try:
+        return frameworks.framework_refs(framework_ids)
+    except frameworks.UnknownFrameworkError as error:
+        raise HTTPException(400, str(error)) from None
+
+
+@passport_router.put(
+    "/{passport_id}/frameworks",
+    response_model=PassportOut,
+    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+)
+def set_frameworks(
+    passport_id: str,
+    body: FrameworksIn,
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+    store: PassportStore = _DEP_STORE,
+) -> PassportOut:
+    """Change the frameworks the holder works to.
+
+    Behind ``_require_writer`` like every other change to the record.
+    Dropping a framework removes nothing recorded under it.
+    """
+    row = _require_writer(db, passport_id, user, store)
+    chosen = _framework_refs(body.frameworks)
+
+    commit = records.set_frameworks(store, row.id, _actor(user), chosen)
     row.head_commit = commit
     db.flush()
 
@@ -921,6 +973,47 @@ def list_specialties(
             lead=choice.lead,
         )
         for choice in specialties.specialty_order_for(db, user.id)
+    ]
+
+
+# Declared before ``/{passport_id}`` for the same reason.
+@passport_router.get(
+    "/frameworks",
+    response_model=list[FrameworkChoiceOut],
+    dependencies=[_DEP_PASSPORT],
+)
+def list_frameworks(
+    q: str | None = Query(default=None, max_length=100),
+    specialty: str | None = Query(default=None, max_length=100),
+    user: User = _DEP_USER,
+    db: Session = _DEP_SESSION,
+) -> list[FrameworkChoiceOut]:
+    """The frameworks the caller may choose, in the order to offer them.
+
+    Their organisations' lead frameworks first, then the rest
+    alphabetically. ``q`` finds words in a framework's name or
+    publisher, and ``specialty`` narrows to one specialty: a framework
+    filed under none belongs to all of them and is always kept. Needs no
+    passport: the create step asks before there is one.
+    """
+    try:
+        choices = frameworks.frameworks_for(
+            db, user.id, query=q, specialty=specialty
+        )
+    except frameworks.UnknownSpecialtyFilterError as error:
+        raise HTTPException(400, str(error)) from None
+
+    return [
+        FrameworkChoiceOut(
+            id=choice.framework.id,
+            name=choice.framework.name,
+            publisher=choice.framework.publisher,
+            version=choice.framework.version,
+            specialties=list(choice.framework.specialties),
+            lead=choice.lead,
+            items=choice.items,
+        )
+        for choice in choices
     ]
 
 

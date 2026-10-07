@@ -119,6 +119,13 @@ class SpecialtyOut(BaseModel):
     name: NonEmptyText
 
 
+class FrameworkOut(BaseModel):
+    """A framework the holder works to, with its name as stored."""
+
+    id: CompetencyIdField
+    name: NonEmptyText
+
+
 class AttachmentIn(_In):
     """Evidence a record is about to name.
 
@@ -194,6 +201,8 @@ class PassportOut(BaseModel):
     registrations: list[RegistrationOut] = Field(default_factory=list)
     #: Orders the holder's competency picker. Empty means Generic.
     specialties: list[SpecialtyOut] = Field(default_factory=list)
+    #: The frameworks the holder works to. Empty means none chosen yet.
+    frameworks: list[FrameworkOut] = Field(default_factory=list)
     created_at: date
     head_commit: str | None = None
 
@@ -207,6 +216,8 @@ class PassportCreateIn(_In):
     """
 
     specialties: list[CompetencyIdField] = Field(default_factory=list)
+    #: The frameworks the holder works to, if they have chosen already.
+    frameworks: list[CompetencyIdField] = Field(default_factory=list)
 
 
 class AppraisalPeriodIn(_In):
@@ -246,6 +257,31 @@ class SpecialtiesIn(_In):
     """Changing the holder's specialties. An empty list is Generic."""
 
     specialties: list[CompetencyIdField] = Field(default_factory=list)
+
+
+class FrameworksIn(_In):
+    """Changing the frameworks the holder works to. Empty clears them."""
+
+    frameworks: list[CompetencyIdField] = Field(
+        default_factory=list, max_length=100
+    )
+
+
+class FrameworkChoiceOut(BaseModel):
+    """One framework a holder may choose, at its place in the order.
+
+    ``lead`` is true when one of the holder's organisations named it to
+    come first. ``items`` is how many competencies it holds, so somebody
+    choosing can tell a two-page sheet from a national curriculum.
+    """
+
+    id: CompetencyIdField
+    name: NonEmptyText
+    publisher: NonEmptyText
+    version: NonEmptyText
+    specialties: list[CompetencyIdField] = Field(default_factory=list)
+    lead: bool
+    items: int = Field(ge=0)
 
 
 class SpecialtyChoiceOut(BaseModel):

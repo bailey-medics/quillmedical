@@ -347,6 +347,32 @@ class SetOrgUnitPassportSpecialtiesIn(BaseModel):
     specialty_ids: list[str] = Field(default_factory=list, max_length=100)
 
 
+class SetOrgUnitPassportFrameworksIn(BaseModel):
+    """Replacing an organisation's lead passport frameworks.
+
+    Attributes:
+        framework_ids: The new list, in order. Empty clears it. Each id
+            is checked by the route against the frameworks the catalogue
+            declares.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    framework_ids: list[str] = Field(default_factory=list, max_length=100)
+
+
+class OrgUnitPassportFrameworksOut(BaseModel):
+    """An organisation's lead passport frameworks, in order.
+
+    Attributes:
+        framework_ids: The frameworks its people are offered first when
+            they choose their own. Every row as stored, including one
+            naming a framework whose file has since gone.
+    """
+
+    framework_ids: list[str]
+
+
 class ToggleOrgUnitFeatureIn(BaseModel):
     """Request to switch a feature on or off at an org_unit.
 

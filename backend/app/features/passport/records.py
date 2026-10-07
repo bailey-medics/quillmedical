@@ -38,6 +38,7 @@ from .schemas import (
     Assessor,
     Certificate,
     CpdEntry,
+    FrameworkRef,
     LogbookEntry,
     Profile,
     Reflection,
@@ -695,6 +696,62 @@ def set_appraisal_periods(
         if ordered
         else "clear appraisal periods"
     )
+
+    return _write(
+        store,
+        passport_id,
+        actor,
+        "amend",
+        summary,
+        {
+            paths.PROFILE: serialise.to_yaml(
+                updated,
+                comment=(
+                    "Who this passport belongs to. Regenerated when their "
+                    "details change."
+                ),
+            )
+        },
+        now=now,
+    )
+
+
+def set_frameworks(
+    store: PassportStore,
+    passport_id: str,
+    actor: Actor,
+    frameworks: list[FrameworkRef],
+    *,
+    now: datetime | None = None,
+) -> str:
+    """Replace the frameworks the holder works to, in ``profile.yaml``.
+
+    The whole list at once. A commit like any other change, so the
+    history keeps what was chosen before. Dropping a framework removes
+    nothing recorded under it: the records stay, and stay readable.
+
+    Args:
+        store: Where the passport lives.
+        passport_id: Whose passport.
+        actor: The holder.
+        frameworks: Every framework they now work to. Empty clears them.
+        now: For tests.
+
+    Returns:
+        The commit id.
+    """
+    profile = serialise.from_yaml(
+        Profile, store.read(passport_id, paths.PROFILE)
+    )
+    updated = profile.model_copy(update={"frameworks": frameworks})
+    # A git subject holds 72 characters, so several are counted and not
+    # listed; the file itself names them.
+    if not frameworks:
+        summary = "clear frameworks"
+    elif len(frameworks) == 1 and len(frameworks[0].id) <= 32:
+        summary = f"set framework to {frameworks[0].id}"
+    else:
+        summary = f"set {len(frameworks)} frameworks"
 
     return _write(
         store,
