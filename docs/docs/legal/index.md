@@ -20,6 +20,12 @@ which records the research behind them and the facts still to confirm.
 Neither is published yet: the public pages still carry placeholders
 until Phase 6 of that plan.
 
+The privacy policy was revised on 7 October 2026, when email moved from
+Resend, which stored its records in the United States, to Amazon SES in
+London. It is still version 1.0: that version had never been published or
+shown to anybody, so it was corrected in place and no earlier version is
+kept. The terms of service name no email provider and did not change.
+
 ## Versioning
 
 Every version carries a version number and the date it took effect,

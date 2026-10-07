@@ -18,10 +18,10 @@ being written.
 - Whichever way you came to Quill, we are responsible for your account,
   for keeping the service secure, for the service emails we send and for
   your choice about news and updates.
-- Your data is held in the United Kingdom. The one exception is email:
-  the company that delivers our email stores its records in the United
-  States, and the company that provides our own mailboxes is in
-  Switzerland. Both are covered by safeguards described below.
+- Your data is held in the United Kingdom, and the email we send you is
+  sent from the United Kingdom. The one exception is email you send to
+  us: the company that provides our own mailboxes is in Switzerland,
+  which is covered by a safeguard described below.
 - We do not sell your data, we do not show advertising, and we do not use
   analytics tools or tracking cookies.
 - Only you can read your reflections in Quill. Never put anything about
@@ -29,7 +29,8 @@ being written.
 
 ## 1. Who we are and how to contact us
 
-1.1 Quill Medical is a trading name of Bailey Medics Ltd, company number
+1.1 Quill Medical and Let's Do Digital are both trading names of Bailey
+Medics Ltd, company number
 15604352, registered in England and Wales at Brooklands Place, Unit 5,
 Brooklands Road, Sale, Cheshire, M33 3SD. Our data protection
 registration reference is ZC262758.
@@ -40,7 +41,8 @@ data protection officer, because the law does not require one of us, but
 the person responsible for data protection will answer.
 
 1.3 This policy covers the Quill Medical service at quill-medical.com and
-its public website. Our cookie policy at
+its public website, and the newsletter we send, including to people who
+have no Quill account (section 3.11). Our cookie policy at
 <https://quill-medical.com/cookie-policy> covers the four cookies the
 service uses.
 
@@ -130,10 +132,11 @@ retention periods in one place.
 - **Why** – the service does not work without them. You cannot opt out of
   them while you have an account.
 - **Legal basis** – performing our contract with you (Article 6(1)(b)).
-- **How long** – we do not keep copies of the messages. Resend, the
-  company that delivers them, keeps a delivery record for its own
-  troubleshooting purposes under its own terms; section 5 says more about
-  Resend.
+- **How long** – we do not keep copies of the messages. Amazon Web
+  Services, the company that delivers them, sends them from its London
+  region; section 5 says more. If an email to your address cannot be
+  delivered, or you report one as spam, Amazon keeps your address on a
+  list so that it is not emailed again; section 8 says where.
 
 ### 3.4 Your training records when you deal with us directly
 
@@ -181,8 +184,7 @@ applies instead.
   for you, we ask the same question when you set your first password.
   You can change your answer at any time with the "News and updates by
   email" switch in Settings, or with the unsubscribe link in any
-  newsletter. The change applies in Quill straight away and on the
-  newsletter list shortly after.
+  newsletter. The change applies straight away.
 - **Legal basis** – our legitimate interest in telling people who use
   Quill about it (Article 6(1)(f)), together with the rules on electronic
   marketing in the Privacy and Electronic Communications Regulations,
@@ -191,12 +193,14 @@ applies instead.
   that we can show you were offered the choice.
 - **How long** – your current answer for as long as your account exists.
   The record of your answers for six years after the last one, as
-  evidence of the choice you made. Newsletters are sent by Resend, which
-  holds your name, email address and your choice on its list; section 5
-  says more. Closing your account does not change your choice, because
-  it is often an administrator who closes it; the unsubscribe link in
-  every newsletter still works, and you can ask us to remove you from the
-  list altogether.
+  evidence of the choice you made. The newsletter list is Quill's own,
+  held in our database, and no copy of it is kept by the company that
+  delivers our email. Each newsletter is sent by Amazon Web Services
+  from its London region; section 5 says more. If a newsletter to you
+  cannot be delivered, or you report one as spam, we switch newsletters
+  off for you and record that as the reason. We do not send newsletters
+  to a closed account. Closing your account does not change your
+  recorded answer, because it is often an administrator who closes it.
 
 ### 3.7 Notifications to your browser or device
 
@@ -246,6 +250,36 @@ applies instead.
   complaints (Article 6(1)(f)).
 - **How long** – requests and complaints for six years. Tax records for
   the period HM Revenue and Customs requires.
+
+### 3.11 Our newsletter, if you have no Quill account
+
+- **Who** – people who registered for a Let's Do Digital conference,
+  course or webinar. Let's Do Digital is the name Bailey Medics Ltd ran
+  those events under, so the company that holds your details has not
+  changed.
+- **What** – your email address, your name if you gave one, whether you
+  are subscribed, and when you unsubscribed if you have. We also record
+  which newsletters were sent to you, so that none is sent twice. This
+  list is kept apart from Quill's accounts: being on it does not give
+  you an account, and you cannot sign in with it.
+- **Why** – to send you news from Let's Do Digital and Quill Medical,
+  which are the same company's work.
+- **Legal basis** – our legitimate interest in telling people who came
+  to our events about what we do next (Article 6(1)(f)). Under the
+  Privacy and Electronic Communications Regulations we email you only if
+  the address you gave is a work address, or if you gave it while
+  booking with us and were offered the chance to refuse marketing then.
+  Every newsletter names us and carries an unsubscribe link.
+- **How to stop** – the unsubscribe link in any newsletter works without
+  an account or a password and applies straight away. You can also ask
+  us at <info@quill-medical.com>. If a newsletter to you cannot be
+  delivered, or you report one as spam, we unsubscribe you.
+- **How long** – while you are subscribed. If you unsubscribe we keep
+  your address, marked as unsubscribed, so that you are not added again
+  from an old list; ask us and we will delete it altogether. If you
+  later create a Quill account with the same address and verify it, your
+  entry on this list is deleted and section 3.6 applies instead. A
+  refusal you gave on this list is carried to your account.
 
 ## 4. Training records held for a sponsor
 
@@ -297,9 +331,10 @@ your data only to provide its service to us.
   content and files you upload, and holds the server logs and monitoring
   records described in section 3.2. All of it is in Google's London
   region, in the United Kingdom.
-- **Resend** – delivers our service emails and our newsletters, and holds
-  the newsletter list. Resend is a company in the United States and
-  stores its records there. Section 8 explains the safeguards.
+- **Amazon Web Services** – delivers our service emails and our
+  newsletters, from its London region, in the United Kingdom. It does not
+  hold the newsletter list. Section 8 describes one short-lived record
+  that Amazon may hold elsewhere.
 - **Proton** – provides our own mailboxes, so an email you send to
   <info@quill-medical.com>, and our reply, are held by Proton. Proton AG
   is a company in Switzerland. Section 8 explains the safeguard.
@@ -373,6 +408,11 @@ and we will remove it while we check.
 - **Your answer about news and updates** – while your account exists.
   **The record of each answer** – six years after the last one.
 - **Notification addresses** – until you turn notifications off.
+- **The newsletter list for people with no account** – while you are
+  subscribed. A refusal is kept until you ask us to delete it.
+- **An address our email could not reach, or that reported it as spam** –
+  on our account's list at Amazon until we remove it, and for up to 14
+  days on the list Amazon shares across its customers.
 - **Feedback** – two years.
 - **Unaccepted assessor invitations** – 90 days after they expire.
 - **Requests, complaints and correspondence** – six years.
@@ -387,17 +427,19 @@ identifies you.
 8.1 The service, its database and everything you upload are held in
 Google Cloud's London region, in the United Kingdom.
 
-8.2 Our email provider, Resend, is in the United States and stores all of
-its records there, including your name, your email address, the content
-of service emails sent to you and, if you are on the newsletter list,
-your choice. We rely on two safeguards for this transfer. Resend
-participates in the EU-US Data Privacy Framework and its UK Extension,
-which the UK government has recognised as giving adequate protection. In
-addition, our contract with Resend includes the UK Addendum to the EU
-standard contractual clauses, so that the transfer stays protected if the
-Data Privacy Framework changes. You can ask us for a copy of these
-safeguards at <info@quill-medical.com>. We keep patient information out
-of email by design, and no email we send contains any.
+8.2 Our email provider, Amazon Web Services, sends our email from its
+London region, in the United Kingdom, and we have set it up to work
+nowhere else. Amazon keeps a list for our account, in London, of
+addresses that could not be delivered to or whose owner reported an email
+as spam, so that they are not emailed again. There is one exception that
+we cannot turn off. When an email cannot be delivered because the address
+does not exist, Amazon also adds that address to a list it shares across
+all of its email customers, for up to 14 days, and it does not say where
+that list is held. It holds the address and nothing else. Our contract
+with Amazon includes its data processing terms for UK GDPR, which apply
+wherever Amazon processes personal data for us. You can ask us for a copy
+at <info@quill-medical.com>. We keep patient information out of email by
+design, and no email we send contains any.
 
 8.3 Emails you send to us are held by our mailbox provider, Proton AG,
 which is in Switzerland. The UK government recognises Switzerland as
