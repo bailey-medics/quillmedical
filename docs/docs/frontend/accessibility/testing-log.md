@@ -154,3 +154,23 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   "Save enrolment" button is told apart from "Save changes", and that
   the line under a module saying whether they can enter it is read
   with that module.
+- **Journeys 1 to 4 again, for the Newsletter link in the navigation** –
+  added on 7 October 2026 by the
+  [Amazon SES email plan](../../plans/2026-10-06-amazon-ses-email-plan.md).
+  Run them as somebody who operates Quill, the only person shown the
+  link. Check that "Newsletter" under Admin is reached in order and
+  announced, and that it is announced as the current page once open.
+- **The Newsletter page, by itself** – not one of the four journeys.
+  Open `/admin/newsletter` as an operator. Check that the three numbers
+  are each read with their label; that the place to drop a file can be
+  reached and opened with the keyboard alone, with no dragging; that
+  "Checking the file…" is announced; that the result of a check is
+  reached after it, with its heading naming the file; that a warning
+  about a missing opt in column or rows left out is read before the
+  import button; and that "Mailing list imported" is announced.
+- **The unsubscribe page, by itself** – reached from a link in an email
+  with no login. Open `/unsubscribe` with a token from a newsletter sent
+  in development. Check the page has a main landmark and one h1, that
+  the button says what it will do, that the change of state after
+  pressing it is announced, and that nothing sends the reader to the
+  login page.

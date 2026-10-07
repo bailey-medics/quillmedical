@@ -58,6 +58,7 @@ import TotpSetup from "./pages/TotpSetup";
 import AccountPage from "./pages/settings/AccountPage";
 import GuestOnly from "./auth/GuestOnly";
 import RequireAuth from "./auth/RequireAuth";
+import RequireNewsletter from "./auth/RequireNewsletter";
 import RequireOperator from "./auth/RequireOperator";
 import RequireCompetency from "./auth/RequireCompetency";
 import { RequireFeature } from "./auth/RequireFeature";
@@ -701,6 +702,22 @@ export const routes: RouteObject[] = [
                 path: "feedback/:id",
                 lazy: lazyFrom(loadAdmin, "FeedbackDetailPage"),
                 handle: { safeForReload: true },
+              },
+            ],
+          },
+          // The Newsletter section. Who may use it is decided in one
+          // place, `mayUseNewsletter`, which the menu reads too; the API
+          // has its own single gate.
+          {
+            element: (
+              <RequireNewsletter>
+                <Outlet />
+              </RequireNewsletter>
+            ),
+            children: [
+              {
+                path: "newsletter",
+                lazy: lazyFrom(loadAdmin, "AdminNewsletterPage"),
               },
             ],
           },

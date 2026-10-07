@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { useHasFeature } from "@lib/features";
 import { useHasCompetency } from "@/lib/cbac/hooks";
+import { mayUseNewsletter } from "@/lib/newsletter/access";
 import { api } from "@/lib/api";
 import { orgUnits } from "@/domains/orgUnit";
 import NavIcon from "../icons/NavIcon";
@@ -96,6 +97,9 @@ export default function SideNavContent({
   const isOperator =
     state.status === "authenticated" &&
     state.user.platform_role === "superadmin";
+
+  const showsNewsletter =
+    state.status === "authenticated" && mayUseNewsletter(state.user);
 
   // Don't render nav while auth is loading to avoid layout flicker
   // (Admin link appears after auth resolves, shifting Logout down)
@@ -504,6 +508,17 @@ export default function SideNavContent({
               children: /^\/admin\/feedback\/[^/]+$/.test(location.pathname)
                 ? [{ label: "Submission", href: location.pathname }]
                 : undefined,
+            } satisfies NavItem,
+          ]
+        : []),
+      // Shown to whoever `RequireNewsletter` lets through: both read
+      // `mayUseNewsletter`, so the link and the route cannot disagree.
+      ...(showsNewsletter
+        ? [
+            {
+              label: "Newsletter",
+              href: "/admin/newsletter",
+              icon: showIcons ? "mail" : undefined,
             } satisfies NavItem,
           ]
         : []),
