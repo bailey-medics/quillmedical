@@ -291,27 +291,42 @@ def _checked_headers(headers: Mapping[str, str] | None) -> dict[str, str]:
 _UNSAFE_IN_NAME = frozenset('"<>\r\n')
 
 
-def _from_header(from_name: str | None) -> str:
+#: Characters that have no place in a sending address.
+_UNSAFE_IN_ADDRESS = frozenset('"<>\r\n ,;')
+
+
+def _from_header(
+    from_name: str | None, from_address: str | None = None
+) -> str:
     """The From header: the sending address, with a display name if given.
 
     Args:
         from_name: What the recipient's inbox shows as the sender, for
             example ``"EoEETA via Quill Medical"``. ``None`` sends from the
             bare address.
+        from_address: The address to send from, when not
+            ``settings.EMAIL_FROM``. A newsletter sent as another brand
+            passes that brand's own.
 
     Returns:
-        ``settings.EMAIL_FROM``, or ``"Name" <address>``.
+        The address, or ``"Name" <address>``.
 
     Raises:
         ValueError: If the name holds a quote, an angle bracket or a line
-            break. Any of them could end the header early and let the rest
-            of the name be read as another header or another address.
+            break, or the address is not a plain one. Any of them could
+            end the header early and let the rest be read as another
+            header or another address.
     """
+    address = settings.EMAIL_FROM if from_address is None else from_address
+    if from_address is not None and (
+        address.count("@") != 1 or _UNSAFE_IN_ADDRESS & set(address)
+    ):
+        raise ValueError(f"Unsafe sender address: {from_address!r}")
     if from_name is None:
-        return settings.EMAIL_FROM
+        return address
     if not from_name.strip() or _UNSAFE_IN_NAME & set(from_name):
         raise ValueError(f"Unsafe sender name: {from_name!r}")
-    return f'"{from_name}" <{settings.EMAIL_FROM}>'
+    return f'"{from_name}" <{address}>'
 
 
 #: How long SES is given. Short to connect and one retry, for the reason
@@ -446,6 +461,7 @@ def send_email(
     reply_to: str | None = None,
     from_name: str | None = None,
     headers: Mapping[str, str] | None = None,
+    from_address: str | None = None,
 ) -> None:
     """Send a single email, or log it when in dry-run mode.
 
@@ -462,6 +478,9 @@ def send_email(
         from_name: The sender's display name, such as
             ``"EoEETA via Quill Medical"``. The address stays
             ``settings.EMAIL_FROM``.
+        from_address: The address to send from, when not
+            ``settings.EMAIL_FROM``. It must be on a domain the mail
+            provider has verified.
         headers: Extra headers. A newsletter passes ``List-Unsubscribe``
             and ``List-Unsubscribe-Post``, which mailbox providers
             require of bulk mail.
@@ -476,7 +495,7 @@ def send_email(
             header in *headers* is not safe to send.
     """
     _check_allowed(to)
-    sender = _from_header(from_name)
+    sender = _from_header(from_name, from_address)
     extra_headers = _checked_headers(headers)
     _check_rate_limit(to)
 

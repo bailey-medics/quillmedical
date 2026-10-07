@@ -638,6 +638,192 @@ in the command that sends, and the tests have to pin it down.
       still holds is six test contacts and the test emails sent through
       it before the switch, which go when the account is closed.
 
+## Phase 6: Newsletter subscribers who have no account
+
+Added on 7 October 2026. There is a list of over 800 addresses, all from
+registrations for Let's Do Digital conferences and webinars, who should
+get newsletters and have no Quill account. They are not given accounts:
+an account is somebody who registered, verified their address and can
+log in, and 800 rows of people who did none of that would muddy every
+list of users and leave 800 unverified logins lying about. They are a
+mailing list, and are stored as one. This phase does not wait on Phase
+5.
+
+- [x] **Settle which name they hear from.** Either, chosen for each
+      newsletter: a campaign says whether it goes out as Let's Do
+      Digital or as Quill Medical. It starts as Let's Do Digital and
+      moves to Quill Medical in the four stages Phase 8 of the
+      [Email branding plan](2026-09-25-email-branding-plan.md) sets out,
+      which this phase is the means of carrying out. That plan had the
+      list imported into Resend; it is held in Quill instead. So it is
+      **one audience, whose sender changes**, and not two lists: a
+      person has one answer to "do you want news?", whichever name is
+      on the envelope. Still to find out: where the list is held now,
+      and whether it has names or only addresses.
+
+- [x] **Let a campaign carry its brand.** A campaign names its theme,
+      `ldd` or `quill`, and the sender's name and address follow from
+      it. Sending as Let's Do Digital needs its domain verified in SES,
+      in London, as `quill-medical.com` was in Phase 1, with its DKIM
+      records wherever that domain's DNS is kept. Until then a campaign
+      can only be sent from `quill-medical.com`. Built so that a
+      campaign's brand is the folder its template is in,
+      `campaigns/quill/` or `campaigns/ldd/`: nothing is declared twice,
+      and a name two brands share is refused. The theme and the sender's
+      name, "Mark at Let's Do Digital", follow from it. The address
+      follows too once there is one: a new setting, `EMAIL_FROM_LDD`,
+      empty by default, and while it is empty a Let's Do Digital
+      newsletter goes from the app's own address under the Let's Do
+      Digital name. Setting it, with the domain verified in SES, is the
+      part left for Mark. `ldd-trial` is a trial campaign for it.
+
+- [ ] **Add `newsletter_subscriber`.** A table of its own: the address,
+      held lower case and unique; a name if there is one; whether they
+      are subscribed; when they unsubscribed, if they did; and when the
+      row was made. No field for where each address came from: all of
+      them came from Let's Do Digital registrations, so it would say
+      the same thing 800 times.
+
+- [ ] **Let the unsubscribe link name a subscriber.** The token names a
+      user by id today. It needs to name either kind, and the two
+      routes and the page then work for a subscriber exactly as for a
+      user, with nothing new to design. A subscriber has no
+      `marketing_preference_change` history; the row's own
+      `unsubscribed_at` is the record.
+
+- [ ] **Send to both.** `app.marketing.newsletter` reaches account
+      holders who said yes and subscribers who are subscribed. An
+      address in both gets one email, and the account's answer wins:
+      somebody who registered and said no is not emailed because an old
+      list has them on it. `newsletter_send` records a send to a
+      subscriber as it does to a user, so a run can still be repeated
+      safely. The re-check just before each person's turn applies to
+      subscribers too.
+
+- [ ] **Keep one record of somebody who is in both tables.** A person
+      can be in the mailing list table and, now or later, hold a Quill
+      account with the same address. Each table has its own answer to
+      "do they want newsletters?". Nothing is done until the account's
+      address is verified: before that it may be somebody else's
+      mistyping, and the mailing list row goes on working. Once it is
+      verified they are the same person, the account is the record that
+      is kept, and the mailing list row is deleted. The rule for what
+      the account's answer then is, agreed on 7 October 2026: **a "no"
+      from the mailing list always survives; otherwise the answer given
+      when registering is the one that counts.**
+
+      - **They had unsubscribed on the mailing list** – the account is
+        set to no newsletters, with a `marketing_preference_change` row
+        saying it came from the mailing list, whatever the registration
+        form said. Registration is an opt-out: newsletters are on
+        unless a box is ticked, so somebody who had already refused and
+        did not notice the box would otherwise be put back on.
+
+      - **They had not** – the account's own answer stands, yes or no.
+        It is the more recent choice.
+
+      The same check runs once over existing accounts when the mailing
+      list is imported. Closing an account later puts nobody back on
+      the mailing list.
+
+- [ ] **Add a Newsletter section to the admin area.** A place of its
+      own, `/admin/newsletter`, with a link in the admin menu, for
+      everything to do with newsletters. For now only an operator may
+      see it: the route behind `<RequireOperator>`, which shows a 404 to
+      anybody else, and every route it calls behind
+      `DEP_REQUIRE_OPERATOR`. A newsletter belongs to no one
+      organisation, which is the test for the platform role. **This is
+      expected to change**: somebody who looks after newsletters and
+      nothing else will want a competency of their own, such as
+      `manage_newsletters` in `shared/competency-definitions/admin.yaml`,
+      and the guards then become `<RequireCompetency>` and
+      `has_competency`. So gate the section in one place on each side,
+      not once per page and route, and the change is two lines. Its
+      first page is the mailing list import below, and the section is
+      expected to grow. One thing already in mind, and **not part of
+      this phase**: dropping in a Markdown file for a social push, with
+      a second-level heading for each place it goes, X, LinkedIn,
+      Facebook and email among them. Pages follow the admin area's
+      conventions: exported from `pages/admin/adminChunk.ts`, with a
+      child link in the menu while each is open, which
+      `navCoverage.test.tsx` checks.
+
+- [ ] **Import the mailing list from a file dropped into the app.** A
+      page in the Newsletter section where an operator drops a
+      spreadsheet and
+      it is read into `newsletter_subscriber`. Chosen on 7 October 2026
+      over a storage bucket and a command, which was the first design:
+      a page is what somebody would expect to find, and it needs no
+      terminal. It is as safe, given four things. **Only somebody who
+      may use the Newsletter section can reach it**, an operator for
+      now, and the route also checks the CSRF token. **The file is never
+      kept**: it is read in memory, in the request, and nothing is
+      written to disk or to storage. **Nothing from it is logged**, not
+      a row and not an address. **It is bounded**: one file, a few
+      megabytes at most, a few thousand rows at most, refused
+      otherwise. The file itself must still never be committed, since
+      this repository is public, or pasted into a chat.
+
+      The page is built from what there is: `MediaDropzone` and
+      `CertificateUploader` already take a dropped file, and the
+      passport router already receives one. A CSV is read with the
+      standard library. An Excel file needs a library to read it,
+      `openpyxl`, which would be a new dependency: start with CSV,
+      which Excel saves as, and add Excel only if saving as CSV proves
+      a nuisance. Each row is taken to
+      hold three things:
+
+      - **Email** – required. Trimmed, lower-cased and checked as an
+        address. A row without one is counted and left out.
+
+      - **Name** – may be missing, and a row is fine without it.
+
+      - **Opt in or out** – required, and read strictly: a short list
+        of words for each, such as `in` and `out`, `yes` and `no`,
+        `subscribed` and `unsubscribed`. Anything else is counted as
+        unreadable and left out, never guessed. Somebody opted out is
+        still imported, as unsubscribed, so the refusal is held and a
+        later file cannot subscribe them.
+
+      Two presses, never one. Dropping the file only checks it: the
+      page shows counts and changes nothing, saying how many are new,
+      how many are already there, how many would change, how many are
+      opted in and out, how many rows have no address or an answer it
+      cannot read, and how many addresses appear twice. Rows that
+      cannot be read are listed by row number, not by content. A second
+      press imports, and the file is sent again with it, since the
+      first was not kept; the server checks the counts still match what
+      was shown.
+      **An import never turns a "no" into a "yes"**: an address already
+      unsubscribed stays so, whichever file says otherwise, and where a
+      file names an address twice with different answers, opted out
+      wins. An opt-out in the file does switch an existing subscriber
+      off. Still open, and Mark's to judge: Phase 8 of the
+      [Email branding plan](2026-09-25-email-branding-plan.md) says each
+      address needs a lawful basis recorded, since nobody signed up to
+      a newsletter. Whether the import needs that as a fourth column is
+      not decided.
+
+- [ ] **Send the first newsletter in batches.** Amazon watches how many
+      emails bounce and how many are reported as spam, and pauses an
+      account that goes over its limits. The SES account dates from 6
+      October 2026, and a list of this age will hold dead addresses.
+      Give the send command a limit on how many it reaches in one run,
+      start small, and read the bounce and complaint figures on the SES
+      account dashboard between runs. SES puts an address that
+      hard-bounces on the account's suppression list and will not send
+      to it again; mark those subscribers unsubscribed so the count of
+      who is on the list stays true.
+
+- [ ] **Add the journeys this touches to the accessibility log.** The
+      Newsletter section adds a link to the admin menu, and the
+      unsubscribe page from Phase 4 is a new page reached with no login.
+      Name the journeys in
+      `docs/docs/frontend/accessibility/journeys.md` that pass through
+      the navigation and the signed-out pages, and add them to the "Not
+      yet run" list in `testing-log.md`, so the next round of manual
+      testing covers them.
+
 ## Decisions
 
 - **SES in London, not an EU provider** – the site promises the UK, and

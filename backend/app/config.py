@@ -340,6 +340,15 @@ class Settings(BaseSettings):
         "noreply@quillmedical.com",
         description="Sender address for outgoing emails",
     )
+    EMAIL_FROM_LDD: str = Field(
+        "",
+        description=(
+            "Sender address for a newsletter sent as Let's Do Digital. "
+            "Empty, the default, sends it from EMAIL_FROM: the Let's Do "
+            "Digital domain has to be verified with the mail provider "
+            "before anything can be sent from it."
+        ),
+    )
     EMAIL_ASSET_BASE_URL: str = Field(
         "https://quill-medical.com",
         description=(

@@ -4,7 +4,8 @@
   what it is, so nobody who receives it by mistake is left wondering.
 
   A campaign extends newsletter.html.j2 and fills `subject`, `preheader`,
-  `content` and `text`. Its name is this file's name, less the ending.
+  `content` and `text`. Its name is this file's name, less the ending,
+  and its brand is the folder it is in: `quill/` or `ldd/`.
 -#}
 {% extends "newsletter.html.j2" %}
 {% import "_components.html.j2" as c with context %}

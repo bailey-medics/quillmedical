@@ -68,11 +68,15 @@ registration form changes, bump `MARKETING_WORDING_VERSION` beside it.
 ## Sending a newsletter
 
 A newsletter is a **campaign**: a template under
-`backend/app/email/templates/campaigns/` that extends
+`backend/app/email/templates/campaigns/<brand>/` that extends
 `newsletter.html.j2`, named by its file name less the ending. It fills
 `subject`, `preheader`, `content` and `text`, using the same macros as
 every other email, so it carries the Quill layout. `trial.html.j2` is
-one, for checking that sending works. A campaign is written, reviewed
+one, for checking that sending works. The folder a campaign is in is the brand it goes out as: `quill/` or
+`ldd/`, for Let's Do Digital. The theme and the sender's name follow
+from it, and so does the address once `EMAIL_FROM_LDD` is set, which
+needs the Let's Do Digital domain verified with the mail provider first.
+A campaign is written, reviewed
 and merged like any other change: the pull request is where its words
 are read before anybody receives them, and the deploy is what makes it
 available to send.
