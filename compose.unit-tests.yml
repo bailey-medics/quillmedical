@@ -42,6 +42,11 @@ services:
       # does not refuse the addresses the tests use. CI has no .env and
       # passed; locally every passport request test failed with a 400.
       EMAIL_ALLOWED_RECIPIENTS: ""
+      # Empty, so a development backend/.env holding an SES key does not
+      # send the newsletter tests to Amazon to read its suppression list.
+      # With no key there is nobody to ask, as in CI.
+      SES_ACCESS_KEY_ID: ""
+      SES_SECRET_ACCESS_KEY: ""
       TEACHING_STORAGE_BACKEND: local
     working_dir: /app
     volumes:

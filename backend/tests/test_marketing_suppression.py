@@ -20,7 +20,6 @@ from app.models import MarketingPreferenceChange, NewsletterSubscriber, User
 @pytest.fixture
 def amazon(monkeypatch):
     """An SES account that answers from here, a page at a time."""
-    monkeypatch.setattr(settings, "EMAIL_PROVIDER", "ses")
     monkeypatch.setattr(settings, "SES_ACCESS_KEY_ID", SecretStr("the-id\n"))
     monkeypatch.setattr(
         settings, "SES_SECRET_ACCESS_KEY", SecretStr("the-secret\n")
@@ -137,7 +136,6 @@ class TestReadingTheList:
     @pytest.mark.parametrize(
         ("setting", "value"),
         [
-            ("EMAIL_PROVIDER", "resend"),
             ("SES_ACCESS_KEY_ID", None),
             ("SES_SECRET_ACCESS_KEY", None),
         ],

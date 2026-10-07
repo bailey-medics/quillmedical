@@ -12,7 +12,6 @@ The configuration is organized into sections:
 - VAPID keys for push notifications
 """
 
-from typing import Literal
 from urllib.parse import quote_plus
 
 from pydantic import (
@@ -305,20 +304,8 @@ class Settings(BaseSettings):
     )
 
     # --- Email ---
-    RESEND_API_KEY: SecretStr | None = Field(
-        None,
-        description="Resend API key for sending emails",
-    )
-    # Amazon SES in London, which replaces Resend so that email data stays
-    # in the UK. See docs/docs/plans/2026-10-06-amazon-ses-email-plan.md.
-    EMAIL_PROVIDER: Literal["resend", "ses"] = Field(
-        "resend",
-        description=(
-            "Which service sends email. A switch, so SES can be turned on "
-            "in one environment at a time and off again without new code. "
-            "Removed once Resend is closed."
-        ),
-    )
+    # Amazon SES in London, so that email data stays in the UK. See
+    # docs/docs/plans/2026-10-06-amazon-ses-email-plan.md.
     SES_ACCESS_KEY_ID: SecretStr | None = Field(
         None,
         description="Access key id of the AWS user that sends through SES",
