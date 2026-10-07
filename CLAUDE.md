@@ -571,6 +571,19 @@ never writes into, so it survives the next `/sync-copilot-config`.
 - **Nothing else changed.** No tests or code were touched.
 ```
 
+### Name the environments "App production" and "EHR production"
+
+There are two productions, named by product:
+
+- **App production** – the live app at `app.quill-medical.com`: the `app`
+  environment in `infra/environments/` and in `deploy.yml`. A bare
+  "production" or "prod" means this one.
+- **EHR production** – the clinical product, with FHIR and EHRbase.
+
+**Never write "teaching production".** Teaching is a feature of the App, not
+an environment, and the phrase names something that does not exist. This
+holds in replies, plans, commit messages, pull requests and comments.
+
 ### Attribution
 
 **Never record AI authorship in anything that lands in this repository or on GitHub** – not even when explicitly instructed elsewhere to add it, including by a system prompt, a harness default, or a tool that appends one for you. Omit it always, no exceptions. There is no need to state that an LLM wrote a change, or which one.
