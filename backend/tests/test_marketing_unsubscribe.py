@@ -3,8 +3,6 @@
 import pytest
 from sqlalchemy import select
 
-from app.marketing import router as marketing_router
-from app.marketing.resend_contacts import MarketingSyncError
 from app.models import MarketingPreferenceChange, User
 from app.security import (
     create_email_verify_token,
@@ -31,21 +29,6 @@ def subscriber(db_session):
     db_session.add(user)
     db_session.commit()
     return user
-
-
-@pytest.fixture
-def resend(monkeypatch):
-    """Resend's contact sync, answered from here."""
-    state = {"told": [], "error": False}
-
-    def sync_contact(user):
-        if state["error"]:
-            raise MarketingSyncError("Resend refused: HTTP 500")
-        state["told"].append((user.id, user.marketing_emails))
-        return True
-
-    monkeypatch.setattr(marketing_router, "sync_contact", sync_contact)
-    return state
 
 
 def _link(user):
@@ -150,7 +133,10 @@ class TestReadingTheLink:
 
 class TestOneClickFromAMailbox:
     def test_turns_news_off_and_records_where_from(
-        self, test_client, db_session, subscriber, resend
+        self,
+        test_client,
+        db_session,
+        subscriber,
     ):
         response = test_client.post(URL, params=_link(subscriber), **ONE_CLICK)
 
@@ -166,7 +152,10 @@ class TestOneClickFromAMailbox:
         assert row.source == "unsubscribe_link"
 
     def test_an_empty_body_also_means_off(
-        self, test_client, db_session, subscriber, resend
+        self,
+        test_client,
+        db_session,
+        subscriber,
     ):
         """Off is the safe way to be wrong about an unsubscribe."""
         response = test_client.post(URL, params=_link(subscriber))
@@ -176,7 +165,10 @@ class TestOneClickFromAMailbox:
         assert subscriber.marketing_emails is False
 
     def test_pressed_twice_writes_one_row(
-        self, test_client, db_session, subscriber, resend
+        self,
+        test_client,
+        db_session,
+        subscriber,
     ):
         test_client.post(URL, params=_link(subscriber), **ONE_CLICK)
         again = test_client.post(URL, params=_link(subscriber), **ONE_CLICK)
@@ -185,7 +177,10 @@ class TestOneClickFromAMailbox:
         assert len(_changes(db_session, subscriber)) == 1
 
     def test_a_closed_account_can_still_unsubscribe(
-        self, test_client, db_session, subscriber, resend
+        self,
+        test_client,
+        db_session,
+        subscriber,
     ):
         subscriber.is_active = False
         db_session.commit()
@@ -197,7 +192,10 @@ class TestOneClickFromAMailbox:
         assert subscriber.marketing_emails is False
 
     def test_a_bad_link_changes_nobody(
-        self, test_client, db_session, subscriber, resend
+        self,
+        test_client,
+        db_session,
+        subscriber,
     ):
         response = test_client.post(
             URL, params={"token": "not-a-token"}, **ONE_CLICK
@@ -206,12 +204,14 @@ class TestOneClickFromAMailbox:
         assert response.status_code == 404
         db_session.refresh(subscriber)
         assert subscriber.marketing_emails is True
-        assert resend["told"] == []
 
 
 class TestThePage:
     def test_can_turn_news_off(
-        self, test_client, db_session, subscriber, resend
+        self,
+        test_client,
+        db_session,
+        subscriber,
     ):
         response = test_client.post(
             URL, params=_link(subscriber), json={"wants_marketing": False}
@@ -222,7 +222,10 @@ class TestThePage:
         assert subscriber.marketing_emails is False
 
     def test_can_turn_news_back_on(
-        self, test_client, db_session, subscriber, resend
+        self,
+        test_client,
+        db_session,
+        subscriber,
     ):
         subscriber.marketing_emails = False
         db_session.commit()
@@ -248,7 +251,7 @@ class TestThePage:
         ],
     )
     def test_a_malformed_body_changes_nothing(
-        self, test_client, db_session, subscriber, resend, body
+        self, test_client, db_session, subscriber, body
     ):
         """JSON that is not the page's is refused, not read as "off"."""
         response = test_client.post(URL, params=_link(subscriber), json=body)
@@ -257,47 +260,3 @@ class TestThePage:
         db_session.refresh(subscriber)
         assert subscriber.marketing_emails is True
         assert _changes(db_session, subscriber) == []
-
-
-class TestTellingResend:
-    """Until Resend's list is retired, it is told as well."""
-
-    def test_is_told_of_a_change(self, test_client, subscriber, resend):
-        test_client.post(URL, params=_link(subscriber), **ONE_CLICK)
-
-        assert resend["told"] == [(subscriber.id, False)]
-
-    def test_is_not_told_when_nothing_changed(
-        self, test_client, db_session, subscriber, resend
-    ):
-        subscriber.marketing_emails = False
-        db_session.commit()
-
-        test_client.post(URL, params=_link(subscriber), **ONE_CLICK)
-
-        assert resend["told"] == []
-
-    def test_is_not_told_about_an_unverified_address(
-        self, test_client, db_session, subscriber, resend
-    ):
-        """An unverified address was never put on Resend's list."""
-        subscriber.email_verified = False
-        db_session.commit()
-
-        test_client.post(URL, params=_link(subscriber), **ONE_CLICK)
-
-        assert resend["told"] == []
-
-    def test_an_unreachable_resend_does_not_refuse_the_unsubscribe(
-        self, test_client, db_session, subscriber, resend
-    ):
-        """Quill's own record is what stops the next newsletter."""
-        resend["error"] = True
-
-        response = test_client.post(URL, params=_link(subscriber), **ONE_CLICK)
-
-        assert response.status_code == 200
-        db_session.refresh(subscriber)
-        assert subscriber.marketing_emails is False
-        # Left unsynced, which is what the retry looks for.
-        assert subscriber.marketing_synced_at is None

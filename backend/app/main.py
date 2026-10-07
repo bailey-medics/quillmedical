@@ -133,10 +133,6 @@ from app.marketing.preferences import (
     MARKETING_WORDING_VERSION,
     set_marketing_preference,
 )
-from app.marketing.resend_contacts import (
-    MarketingSyncError,
-    sync_contact,
-)
 from app.marketing.router import router as marketing_router
 from app.messaging import (
     MessagingError,
@@ -1464,26 +1460,6 @@ def register(
     return DetailResponse(detail="created")
 
 
-def _sync_marketing_contact(user: User) -> None:
-    """Tell Resend what somebody chose, and carry on if it cannot be told.
-
-    Done once the address is verified and not at registration, so an
-    address somebody mistyped, or typed for somebody else, never reaches
-    the mailing list: its owner never clicks the link.
-
-    A failure is logged and swallowed. ``marketing_synced_at`` stays
-    empty, which is what ``app.marketing.sync`` goes back over, and the
-    thing the person came to do is not held up by a mailing list.
-
-    Args:
-        user: The person whose preference is sent.
-    """
-    try:
-        sync_contact(user)
-    except MarketingSyncError as exc:
-        logger.warning("Marketing sync failed for user %s: %s", user.id, exc)
-
-
 @router.post("/auth/verify-email", response_model=DetailResponse)
 @limiter.limit("10/minute")
 def verify_email(
@@ -1518,7 +1494,6 @@ def verify_email(
         return DetailResponse(detail="verified")
 
     user.email_verified = True
-    _sync_marketing_contact(user)
     return DetailResponse(detail="verified")
 
 
@@ -1661,8 +1636,6 @@ def reset_password(
             wording_version=MARKETING_WORDING_VERSION,
             first_answer=True,
         )
-        if user.email_verified:
-            _sync_marketing_contact(user)
 
     return DetailResponse(detail="Password reset successfully")
 

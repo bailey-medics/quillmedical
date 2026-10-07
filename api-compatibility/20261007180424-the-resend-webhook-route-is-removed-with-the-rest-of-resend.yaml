@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "api-path-removed-without-deprecation POST /api/marketing/resend-webhook api path removed without deprecation"
+reason: "The Resend webhook route is removed with the rest of Resend's mailing list: Quill keeps the newsletter list in its own database and tells no mail provider. The route was called only by Resend, never by the app's frontend, so no browser tab depends on it. Its webhook in Resend is deleted when the account is closed. No forced reload."

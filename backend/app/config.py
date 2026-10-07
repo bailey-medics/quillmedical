@@ -309,30 +309,6 @@ class Settings(BaseSettings):
         None,
         description="Resend API key for sending emails",
     )
-    # The mailing list lives in Resend; these let Quill keep one person's
-    # entry on it in step with their marketing preference. All optional:
-    # with any of the first three unset nothing is sent to Resend, so a
-    # local or CI stack still registers people. See
-    # docs/docs/plans/2026-10-03-marketing-opt-out-plan.md.
-    RESEND_CONTACTS_API_KEY: SecretStr | None = Field(
-        None,
-        description=(
-            "Resend API key allowed to manage contacts. Separate from "
-            "RESEND_API_KEY, which may be send-only."
-        ),
-    )
-    RESEND_NEWSLETTER_SEGMENT_ID: str | None = Field(
-        None,
-        description="Resend segment every newsletter contact is put in",
-    )
-    RESEND_NEWSLETTER_TOPIC_ID: str | None = Field(
-        None,
-        description="Resend topic a contact opts in to or out of",
-    )
-    RESEND_WEBHOOK_SECRET: SecretStr | None = Field(
-        None,
-        description="Signing secret for the Resend contact webhook",
-    )
     # Amazon SES in London, which replaces Resend so that email data stays
     # in the UK. See docs/docs/plans/2026-10-06-amazon-ses-email-plan.md.
     EMAIL_PROVIDER: Literal["resend", "ses"] = Field(

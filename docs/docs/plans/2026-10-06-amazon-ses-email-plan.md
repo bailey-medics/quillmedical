@@ -505,24 +505,56 @@ in the command that sends, and the tests have to pin it down.
       below. The docs page gained a section and was not rewritten, for
       the same reason. `just newsletter-send` runs it.
 
-- [ ] **Send one to Mark alone, and try every way out.** In App
-      production, to one address. Check the mailbox shows its own
-      unsubscribe button and that pressing it turns the preference off;
-      that the footer link opens the themed page; that turning news back on there works;
-      and that each change wrote a `marketing_preference_change` row
-      with the right source.
+- [x] **Send one to Mark alone, and try every way out.** Rehearsed in
+      the dev stack first, through the development AWS account, which
+      is where the page's redirect to the login page was found. Then
+      in App production on 7 October 2026, once the code was deployed:
+      a dry run listed one address, the trial was sent with
+      `just newsletter-send app trial trial:1` to that address, it
+      arrived in the Quill layout, and the footer link opened the
+      unsubscribe page on the live site, which worked. Not checked: a
+      mailbox's own unsubscribe button, which Proton may not show, and
+      the `marketing_preference_change` rows in the production
+      database. The route that writes them is covered by tests and was
+      seen to write one in the dev stack.
 
-- [ ] **Cut over: stop telling Resend.** One change, with no switch.
-      Take the `sync_contact` calls out of the Settings route,
-      registration and the unsubscribe link's route, so a choice is saved in Quill and nowhere else, and
-      opting out no longer fails when Resend cannot be reached. Turn
-      off `marketing-reconcile.yml`: it makes Quill match Resend, and
-      after this Resend is stale, so one run would undo every choice
-      made since. **Keep the Resend webhook route.** Newsletters already
-      sent carry Resend's unsubscribe link, and somebody pressing one
-      next month still has to be heard. The rest of the Resend code
-      goes in Phase 5. From here newsletters are sent by the command
-      above and never from Resend.
+- [x] **Cut over: take Resend out of the newsletter altogether.** One
+      change, with no switch and nothing kept back. Remove the
+      `sync_contact` calls from the Settings route, registration and the
+      unsubscribe link's route, so a choice is saved in Quill and
+      nowhere else, and opting out no longer fails when Resend cannot be
+      reached. Then remove what they called and everything beside it:
+      `resend_contacts.py`, `sync.py`, `reconcile.py`, the webhook route
+      `POST /api/marketing/resend-webhook` with `RESEND_WEBHOOK_SECRET`,
+      the `marketing-sync` and `marketing-reconcile` actions in
+      `backend/scripts/admin_cli.py` with their `just` recipes, the
+      `marketing-reconcile.yml` workflow, `broadcast.py` with `just
+      email-export`, the `RESEND_CONTACTS_API_KEY` and the two newsletter
+      identifiers in `config.py` and `infra/`, and
+      `users.marketing_synced_at`, which only the sync read, by a
+      migration of its own. From here newsletters are sent by the
+      command above and never from Resend. The first draft of this step
+      kept the webhook, so that somebody pressing the unsubscribe link
+      in an old newsletter from Resend would still be heard. Mark's
+      answer on 7 October 2026: there are no real users yet. Resend's
+      list holds six contacts, all test accounts, so there is nobody to
+      hear from and no reason to carry the code. Done in two changes
+      and not one, for two reasons found on the way. **The column goes
+      separately, after the code.** A deploy runs the migration while
+      the old revision is still serving, and that revision reads
+      `marketing_synced_at`; dropping it in the same change would break
+      the app for the length of a deploy. So the first change stops all
+      use of the column and the second, merged once the first has
+      deployed, drops it. **The two secret containers stay until Resend
+      is closed.** Terraform applies on merge, before the deploy has
+      replaced the serving revision, which still mounts
+      `resend-contacts-api-key` and `resend-webhook-secret`; deleting a
+      secret a serving revision mounts stops its new instances
+      starting. The first change removes the mounts and leaves the
+      containers, and Phase 5 deletes them. Removing
+      `POST /api/marketing/resend-webhook` is a breaking API change by
+      the repository's rules, so that pull request waits on the
+      `api-breaking-change-review` approval.
 
 - [ ] **Delete the contact list and narrow the key.** `aws sesv2
       delete-contact-list --contact-list-name quill-newsletter`, and
@@ -569,22 +601,15 @@ in the command that sends, and the tests have to pin it down.
       environment, so the key is never in an argument where the process
       list would show it. The grant is `ci_ses`, on the two SES secrets.
 
-- [ ] **Run both for a week, then remove Resend.** Delete the contacts
-      from Resend and close the account. Unsubscribe links in
-      newsletters sent from Resend stop working when it closes; anybody
-      who meets one still has Settings, and the link in every newsletter
-      since. Remove what Phase 4 left: `resend_contacts.py`, `sync.py`,
-      `reconcile.py`, the webhook route, the `marketing-sync` and
-      `marketing-reconcile` actions in `backend/scripts/admin_cli.py`
-      with their `just` recipes, the `marketing-reconcile.yml` workflow,
-      and `users.marketing_synced_at`, which only the sync read, by a
-      migration of its own. Remove the `resend` dependency,
-      `RESEND_API_KEY`, `RESEND_CONTACTS_API_KEY`,
-      `RESEND_WEBHOOK_SECRET` and the two newsletter identifiers from
-      `config.py`, `infra/main.tf` and `infra/runtime-identities.tf`,
+- [ ] **Close Resend.** Once service email has run through SES long
+      enough to trust it, delete the contacts from Resend and close the
+      account. Remove what is left of it: the `resend` dependency and
+      the Resend path in `backend/app/email_send.py`, `RESEND_API_KEY`
+      from `config.py`, `infra/main.tf` and `infra/runtime-identities.tf`,
       the `resend._domainkey` record and the `send` MX and TXT records
-      from `infra/dns.tf`, the old webhook route, and `EMAIL_PROVIDER`
-      itself, which has done its job.
+      from `infra/dns.tf`, and `EMAIL_PROVIDER` itself, which has done
+      its job. The newsletter's share of Resend went at the cut-over in
+      Phase 4.
 
 - [ ] **Update the privacy policy** in `docs/docs/legal/privacy-policy.md`
       as a new version: section 5 names Amazon Web Services, London, in
@@ -597,16 +622,13 @@ in the command that sends, and the tests have to pin it down.
       and Amazon does not say where. Update the public pages when they
       are rendered from it.
 
-- [ ] **Tell EoEETA** that the email provider is now Amazon Web Services
-      in London, in the sub-processor list the terms plan sends them.
-
-- [ ] **Make the public site true at go-live, whichever comes first.** If
-      this plan is finished before go-live, "Your data stays in the UK"
-      stands. If it is not, change it in
-      `frontend/public_pages/src/pages/index.tsx`, `security.tsx` and
-      `about.tsx` to what is true that day, such as "Hosted in the UK.
-      Your records are stored in London", and put the stronger line back
-      when Resend is gone.
+- [x] **Make the public site true at go-live.** It is true now, on 7
+      October 2026, so "Your data stays in the UK" stands on the home,
+      security and about pages and nothing there needs changing. Every
+      service email from App production goes through SES in London, and
+      there are no real users whose data is anywhere else. What Resend
+      still holds is six test contacts and the test emails sent through
+      it before the switch, which go when the account is closed.
 
 ## Decisions
 

@@ -3,9 +3,7 @@
 import pytest
 from sqlalchemy import select
 
-from app.marketing import router as marketing_router
 from app.marketing.preferences import MARKETING_WORDING_VERSION
-from app.marketing.resend_contacts import MarketingSyncError
 from app.models import MarketingPreferenceChange, User
 from app.security import create_password_reset_token
 
@@ -38,21 +36,6 @@ def _changes(db_session, user):
         .scalars()
         .all()
     )
-
-
-@pytest.fixture
-def resend(monkeypatch):
-    """Resend's side of a Settings change, recorded, and able to fail."""
-    state = {"synced": [], "error": False}
-
-    def sync_contact(user):
-        if state["error"]:
-            raise MarketingSyncError("Resend refused: HTTP 500")
-        state["synced"].append((user.id, user.marketing_emails))
-        return True
-
-    monkeypatch.setattr(marketing_router, "sync_contact", sync_contact)
-    return state
 
 
 @pytest.fixture
@@ -102,13 +85,6 @@ class TestRegistering:
         assert user.marketing_emails is False
         assert _changes(db_session, user) == []
 
-    def test_nothing_is_sent_to_resend_before_the_address_is_verified(
-        self, test_client, db_session
-    ):
-        _register(test_client, "keen", marketing_opt_out=False)
-
-        assert _user(db_session, "keen").marketing_synced_at is None
-
 
 class TestAnAccountAnAdminMade:
     def test_is_not_subscribed(
@@ -150,21 +126,8 @@ class TestSettingAFirstPasswordFromAnInvite:
             },
         )
 
-    @pytest.fixture
-    def synced(self, monkeypatch):
-        """Record what the route tells Resend, without calling it."""
-        from app import main
-
-        told: list[tuple[int, bool]] = []
-        monkeypatch.setattr(
-            main,
-            "sync_contact",
-            lambda user: told.append((user.id, user.marketing_emails)),
-        )
-        return told
-
     def test_leaving_the_box_unticked_means_news_is_sent(
-        self, test_client, db_session, test_user, synced
+        self, test_client, db_session, test_user
     ):
         test_user.email_verified = True
         db_session.commit()
@@ -178,11 +141,9 @@ class TestSettingAFirstPasswordFromAnInvite:
         assert row.source == "invite"
         assert row.wants_marketing is True
         assert row.wording_version == MARKETING_WORDING_VERSION
-        # The link came by email, so Resend is told straight away.
-        assert synced == [(test_user.id, True)]
 
     def test_ticking_the_box_is_recorded_as_a_refusal(
-        self, test_client, db_session, test_user, synced
+        self, test_client, db_session, test_user
     ):
         test_user.email_verified = True
         db_session.commit()
@@ -197,7 +158,7 @@ class TestSettingAFirstPasswordFromAnInvite:
         assert row.wants_marketing is False
 
     def test_an_ordinary_reset_asks_nothing_and_changes_nothing(
-        self, test_client, db_session, test_user, synced
+        self, test_client, db_session, test_user
     ):
         test_user.marketing_emails = True
         test_user.email_verified = True
@@ -209,11 +170,11 @@ class TestSettingAFirstPasswordFromAnInvite:
         db_session.refresh(test_user)
         assert test_user.marketing_emails is True
         assert _changes(db_session, test_user) == []
-        assert synced == []
 
-    def test_an_unverified_address_is_not_sent_to_resend(
-        self, test_client, db_session, test_user, synced
+    def test_an_unverified_address_still_has_its_answer_recorded(
+        self, test_client, db_session, test_user
     ):
+        """Recorded now; the newsletter is only sent once it is verified."""
         test_user.email_verified = False
         db_session.commit()
 
@@ -221,10 +182,9 @@ class TestSettingAFirstPasswordFromAnInvite:
 
         db_session.refresh(test_user)
         assert test_user.marketing_emails is True
-        assert synced == []
 
     def test_a_bad_token_changes_nothing(
-        self, test_client, db_session, test_user, synced
+        self, test_client, db_session, test_user
     ):
         response = test_client.post(
             self.URL,
@@ -288,7 +248,7 @@ class TestMe:
 
 
 class TestChangingItInSettings:
-    def test_switching_on(self, signed_in, db_session, test_user, resend):
+    def test_switching_on(self, signed_in, db_session, test_user):
         response = signed_in.put(
             PREFERENCE_URL, json={"wants_marketing": True}
         )
@@ -300,9 +260,7 @@ class TestChangingItInSettings:
         [row] = _changes(db_session, test_user)
         assert row.source == "settings"
 
-    def test_switching_off_tells_resend_at_once(
-        self, signed_in, db_session, test_user, resend
-    ):
+    def test_switching_off(self, signed_in, db_session, test_user):
         test_user.marketing_emails = True
         test_user.email_verified = True
         db_session.commit()
@@ -312,41 +270,18 @@ class TestChangingItInSettings:
         )
 
         assert response.status_code == 200, response.text
-        assert resend["synced"] == [(test_user.id, False)]
-
-    def test_an_opt_out_resend_did_not_get_is_refused_and_undone(
-        self, signed_in, db_session, test_user, resend, caplog
-    ):
-        """Resend sends the mail, so an opt-out it never heard stops nothing."""
-        test_user.marketing_emails = True
-        test_user.email_verified = True
-        db_session.commit()
-        resend["error"] = True
-
-        response = signed_in.put(
-            PREFERENCE_URL, json={"wants_marketing": False}
-        )
-
-        assert response.status_code == 502
-        assert "try again" in response.json()["detail"]
+        assert response.json() == {"marketing_emails": False}
         db_session.refresh(test_user)
-        assert test_user.marketing_emails is True
-        assert _changes(db_session, test_user) == []
-        # Logged as an error that says why, which is what the alert on
-        # backend errors quotes. As a warning, the alert read "(null)".
-        [record] = [r for r in caplog.records if r.levelname == "ERROR"]
-        assert "opted out of marketing" in record.getMessage()
-        assert "HTTP 500" in record.getMessage()
-        assert str(test_user.id) in record.getMessage()
-        assert test_user.email not in record.getMessage()
+        assert test_user.marketing_emails is False
+        [row] = _changes(db_session, test_user)
+        assert row.source == "settings"
+        assert row.wants_marketing is False
 
-    def test_an_opt_in_resend_did_not_get_still_saves(
-        self, signed_in, db_session, test_user, resend, caplog
+    def test_an_unverified_address_can_still_choose(
+        self, signed_in, db_session, test_user
     ):
-        """A late opt-in costs nothing; the retry sends it."""
-        test_user.email_verified = True
+        test_user.email_verified = False
         db_session.commit()
-        resend["error"] = True
 
         response = signed_in.put(
             PREFERENCE_URL, json={"wants_marketing": True}
@@ -355,22 +290,9 @@ class TestChangingItInSettings:
         assert response.status_code == 200, response.text
         db_session.refresh(test_user)
         assert test_user.marketing_emails is True
-        # Nobody was failed, so it is a warning and raises no alert.
-        assert [r for r in caplog.records if r.levelname == "ERROR"] == []
-        assert [r for r in caplog.records if r.levelname == "WARNING"]
-
-    def test_an_unverified_address_is_not_sent_to_resend(
-        self, signed_in, db_session, test_user, resend
-    ):
-        test_user.email_verified = False
-        db_session.commit()
-
-        signed_in.put(PREFERENCE_URL, json={"wants_marketing": True})
-
-        assert resend["synced"] == []
 
     def test_saving_the_same_answer_does_nothing(
-        self, signed_in, db_session, test_user, resend
+        self, signed_in, db_session, test_user
     ):
         test_user.email_verified = True
         db_session.commit()
@@ -380,7 +302,6 @@ class TestChangingItInSettings:
         )
 
         assert response.status_code == 200
-        assert resend["synced"] == []
         assert _changes(db_session, test_user) == []
 
     def test_needs_a_session(self, test_client):

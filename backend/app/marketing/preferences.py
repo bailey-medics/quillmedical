@@ -6,8 +6,9 @@ evidence: a ``marketing_preference_change`` row saying what they were
 shown, what they chose and when. See
 ``docs/docs/plans/2026-10-03-marketing-opt-out-plan.md``.
 
-Marketing is news, new courses and product updates, sent from Resend.
-Everything Quill sends itself through ``email_send.py`` is a service
+Marketing is news, new courses and product updates, sent as newsletters
+by ``app.marketing.newsletter`` to the people this module says want
+them. Everything else Quill sends through ``email_send.py`` is a service
 message and is not affected by this choice.
 """
 
@@ -40,10 +41,6 @@ def set_marketing_preference(
     An answer that has not changed writes nothing: the row already there
     says when they chose it, and rewriting it would turn "when did they
     agree?" into "when did they last open Settings?".
-
-    A change clears ``marketing_synced_at``, because Resend now holds the
-    old answer. The caller that got the answer *from* Resend sets it
-    again.
 
     Args:
         db: Database session. The change is flushed, not committed.
@@ -80,6 +77,5 @@ def set_marketing_preference(
         )
     )
     user.marketing_emails = wants
-    user.marketing_synced_at = None
     db.flush()
     return changed

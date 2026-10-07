@@ -156,9 +156,11 @@ class User(Base):
         Boolean, nullable=False, default=False, server_default="false"
     )
 
-    #: When Resend, which holds the mailing list, last accepted this
-    #: person's current answer. Null means it has not been told, which is
-    #: what the retry in ``app.marketing.sync`` looks for.
+    #: No longer read or written. It recorded when Resend, which held the
+    #: mailing list, last accepted this person's answer; Quill keeps the
+    #: list itself now. The column is dropped in a migration of its own,
+    #: once the code that stopped using it has deployed: see Phase 4 of
+    #: docs/docs/plans/2026-10-06-amazon-ses-email-plan.md.
     marketing_synced_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
