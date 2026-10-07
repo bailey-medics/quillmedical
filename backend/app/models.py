@@ -767,6 +767,8 @@ class PushSubscription(Base):
 #: opens Quill's own page or is pressed for the person by their mailbox.
 #: ``mailing_list`` is an answer carried across from the mailing list of
 #: people with no account, when one of them is found to hold an account.
+#: ``bounce`` and ``complaint`` are Amazon's word that an address no
+#: longer works, or that its owner reported a newsletter as spam.
 #: ``resend`` is the mailing service telling Quill, after an unsubscribe
 #: link in an email it sent; kept while rows written with it exist.
 #: Validated in code, as ``PLATFORM_ROLES`` is, so a new source needs no
@@ -777,6 +779,8 @@ MARKETING_PREFERENCE_SOURCES: tuple[str, ...] = (
     "settings",
     "unsubscribe_link",
     "mailing_list",
+    "bounce",
+    "complaint",
     "resend",
 )
 

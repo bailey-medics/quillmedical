@@ -842,13 +842,29 @@ mailing list, and are stored as one. This phase does not wait on Phase
       account dashboard between runs. SES puts an address that
       hard-bounces on the account's suppression list and will not send
       to it again; mark those subscribers unsubscribed so the count of
-      who is on the list stays true. **Not built, and needs a
-      decision**: nothing tells Quill which addresses bounced. Reading
-      Amazon's suppression list would need the app's key to be allowed
-      `ses:ListSuppressedDestinations`, which was not given it when the
-      key was narrowed to sending only. The other way is to do nothing:
-      Amazon refuses those addresses itself, and the only cost is a
-      count of subscribers that runs a little high.
+      who is on the list stays true. Decided on 7 October 2026:
+      **Quill reads Amazon's list before each send.** Amazon keeps an
+      account's suppression list for hard bounces and for complaints,
+      somebody pressing "spam", and both are switched on in both SES
+      accounts. It already refuses those addresses, but never tells
+      Quill, so the mailing list would go on calling them subscribed
+      and a complaint, which is a refusal, would never be recorded.
+      The send command reads the list first and marks each person on
+      it: a subscriber is unsubscribed, and an account holder's
+      newsletters are switched off with a history row saying `bounce`
+      or `complaint`. It needs the app's key to be allowed one more
+      thing, `ses:ListSuppressedDestinations`, in London, which reads
+      and can change nothing. Chosen over hearing of each one as it
+      happens, which would be the public route and signature checking
+      decided against in Phase 4, for something that can wait until the
+      next send. If the list cannot be read, the send says so and
+      carries on, since Amazon still refuses those addresses itself. Built,
+      in `backend/app/marketing/suppression.py`, and the key's policy
+      has a third version allowing that one action: AWS's policy
+      simulator says it may send and read the list, and may not add to
+      it, remove from it or touch a contact. It is read on a dry run
+      too, so the people a dry run lists are the people a send would
+      reach. What is left of this step is the sending itself.
 
 - [ ] **Add the journeys this touches to the accessibility log.** The
       Newsletter section adds a link to the admin menu, and the
