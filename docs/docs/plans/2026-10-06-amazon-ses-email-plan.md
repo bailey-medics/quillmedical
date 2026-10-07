@@ -455,7 +455,7 @@ in the command that sends, and the tests have to pin it down.
       guard at all: `GuestOnly` would turn a signed-in person away, and
       `RequireAuth` a signed-out one.
 
-- [ ] **Write the command that sends a newsletter.** SES has no screen
+- [x] **Write the command that sends a newsletter.** SES has no screen
       to compose a broadcast and press send, so this is an admin action.
       It takes a subject and a body, renders `newsletter.html.j2` for
       each person with their own unsubscribe link, and sends through
@@ -475,7 +475,23 @@ in the command that sends, and the tests have to pin it down.
       `docs/docs/backend/marketing-email.md`, which describes sending by
       hand from Resend. `backend/app/email/broadcast.py` and `just
       email-export` exist only to paste the layout into Resend's editor;
-      this command replaces them.
+      this command replaces them. Built with four things the first
+      draft of this step did not have. **A newsletter is a campaign, a
+      template in the repository,** under
+      `backend/app/email/templates/campaigns/`, and not a subject and
+      body handed to the command: it then carries the Quill layout
+      through the same macros as every other email, and its words are
+      read in a pull request before anybody receives them. **Each send
+      is recorded,** in a new table, `newsletter_send`, as the email
+      leaves, so a run that stops half way can be run again and reaches
+      only the people it missed. **The confirmation names the count,**
+      as in `trial:12`, so it can only be known from a dry run and stops
+      being right if the list has changed since. **A trial goes to one
+      address** and is not recorded; `trial.html.j2` is a campaign for
+      it. `broadcast.py` and `just email-export` are left until Phase 5,
+      because newsletters are still sent from Resend until the cut-over
+      below. The docs page gained a section and was not rewritten, for
+      the same reason. `just newsletter-send` runs it.
 
 - [ ] **Send one to Mark alone, and try every way out.** In App
       production, to one address. Check the mailbox shows its own

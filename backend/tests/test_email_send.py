@@ -786,6 +786,108 @@ class TestSendingThroughSes:
         mock_boto3.client.assert_not_called()
 
 
+class TestExtraHeaders:
+    """The ``List-Unsubscribe`` pair a newsletter carries."""
+
+    HEADERS = {
+        "List-Unsubscribe": "<https://app.example/api/x?token=abc>",
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    }
+
+    def setup_method(self) -> None:
+        _rate_log.clear()
+
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_ses_carries_them_in_the_message(
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
+    ) -> None:
+        _ses_settings(mock_settings)
+
+        send_email(
+            to="a@example.com",
+            subject="News",
+            html_body="<p>x</p>",
+            headers=self.HEADERS,
+        )
+
+        message = _sent_message(mock_boto3)
+        assert message["List-Unsubscribe"] == (
+            "<https://app.example/api/x?token=abc>"
+        )
+        assert message["List-Unsubscribe-Post"] == (
+            "List-Unsubscribe=One-Click"
+        )
+
+    @patch("app.email_send.resend")
+    @patch("app.email_send.settings")
+    def test_resend_is_given_them(
+        self, mock_settings: MagicMock, mock_resend: MagicMock
+    ) -> None:
+        mock_settings.EMAIL_DRY_RUN = False
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
+        mock_settings.RESEND_API_KEY.get_secret_value.return_value = "re_k"
+        mock_settings.EMAIL_FROM = "info@quill-medical.com"
+
+        send_email(
+            to="a@example.com",
+            subject="News",
+            html_body="<p>x</p>",
+            headers=self.HEADERS,
+        )
+
+        params = mock_resend.Emails.send.call_args[0][0]
+        assert params["headers"] == self.HEADERS
+
+    @patch("app.email_send.resend")
+    @patch("app.email_send.settings")
+    def test_none_are_sent_when_none_are_given(
+        self, mock_settings: MagicMock, mock_resend: MagicMock
+    ) -> None:
+        mock_settings.EMAIL_DRY_RUN = False
+        mock_settings.EMAIL_ALLOWED_RECIPIENTS = ""
+        mock_settings.RESEND_API_KEY.get_secret_value.return_value = "re_k"
+        mock_settings.EMAIL_FROM = "info@quill-medical.com"
+
+        send_email(to="a@example.com", subject="Hi", html_body="<p>x</p>")
+
+        assert "headers" not in mock_resend.Emails.send.call_args[0][0]
+
+    @pytest.mark.parametrize(
+        "headers",
+        [
+            {"List-Unsubscribe": "<https://x>\r\nBcc: eve@example.com"},
+            {"List-Unsubscribe": "<https://x>\nBcc: eve@example.com"},
+            {"Bad Name": "x"},
+            {"X:Y": "x"},
+            {"": "x"},
+            {"Subject": "Not the real one"},
+            {"bcc": "eve@example.com"},
+            {"From": "eve@example.com"},
+        ],
+    )
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_a_header_that_could_do_harm_sends_nothing(
+        self,
+        mock_settings: MagicMock,
+        mock_boto3: MagicMock,
+        headers: dict[str, str],
+    ) -> None:
+        """A line break would start another header: a hidden recipient."""
+        _ses_settings(mock_settings)
+
+        with pytest.raises(ValueError):
+            send_email(
+                to="a@example.com",
+                subject="News",
+                html_body="<p>x</p>",
+                headers=headers,
+            )
+
+        mock_boto3.client.assert_not_called()
+
+
 class TestMaskingAnAddress:
     """An address in a log line is personal data, so most of it is hidden."""
 

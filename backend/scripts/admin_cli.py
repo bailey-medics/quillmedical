@@ -9,13 +9,18 @@ not available.
 Environment Variables:
     ADMIN_ACTION:     Required.  One of: create-superadmin, add-role,
                       verify-email, run-migrations,
-                      check-competency-seeding, delete-passport.
+                      check-competency-seeding, delete-passport,
+                      send-newsletter.
     ADMIN_USERNAME:   Required.  Target username.
     ADMIN_EMAIL:      Required for create-superadmin.
     ADMIN_PASSWORD:   Required for create-superadmin.
     ADMIN_ROLE:       Required for add-role (e.g. "System Administrator").
-    CONFIRM:          delete-passport only. The passport id, pasted back
-                      from a dry run. Without it the action only reports.
+    CONFIRM:          delete-passport and send-newsletter. What a dry
+                      run printed, pasted back. Without it the action
+                      only reports.
+    NEWSLETTER_CAMPAIGN:  Required for send-newsletter. The campaign's
+                      name, a template under app/email/templates/campaigns/.
+    NEWSLETTER_ONLY_TO:   send-newsletter only. One address, for a trial.
 
     delete-passport also reads PASSPORT_DELETABLE_USERNAMES, a
     comma-separated list of usernames set in Terraform, and
@@ -287,6 +292,18 @@ def marketing_reconcile() -> int:
     from app.marketing.reconcile import main as reconcile_main
 
     return reconcile_main()
+
+
+def send_newsletter() -> int:
+    """Send a newsletter to everybody who said yes, or report who would get it.
+
+    Reads ``NEWSLETTER_CAMPAIGN``. Without ``CONFIRM`` it is a dry run,
+    and prints the value to pass back. ``NEWSLETTER_ONLY_TO`` sends a
+    trial to one address. See ``app.marketing.newsletter``.
+    """
+    from app.marketing.newsletter import main as newsletter_main
+
+    return newsletter_main()
 
 
 def smoke_test() -> int:
@@ -583,6 +600,10 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "marketing-reconcile": (
         marketing_reconcile,
         "Make Quill's marketing preferences match Resend (weekly)",
+    ),
+    "send-newsletter": (
+        send_newsletter,
+        "Send a newsletter campaign (a dry run without CONFIRM)",
     ),
     "marketing-sync": (
         marketing_sync,
