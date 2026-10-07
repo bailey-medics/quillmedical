@@ -32,7 +32,7 @@ from app.cbac.competencies import (
     get_competency_details,
 )
 
-from .schemas import CompetencyRef, LevelRef
+from .schemas import CompetencyRef, LevelRef, ScopeRef
 
 
 class UnknownCompetencyError(ValueError):
@@ -58,6 +58,15 @@ class UnknownLevelError(ValueError):
 
     Raised rather than silently signing off at no level, which would
     record less than the assessor chose and read as a bare pass.
+    """
+
+
+class UnknownScopeError(ValueError):
+    """The competency does not declare this scope.
+
+    Its own type for the reason :class:`UnknownLevelError` has one: a
+    scope the catalogue does not list is a caller using a stale list, and
+    the route says so plainly rather than as a server error.
     """
 
 
@@ -233,6 +242,72 @@ def level_order(competency_id: str, level_id: str) -> int:
     # rather than writing a second, differently worded refusal.
     level_ref(competency_id, level_id)
     raise AssertionError("unreachable")  # pragma: no cover
+
+
+def has_scopes(competency_id: str) -> bool:
+    """Whether this competency is signed off one scope at a time.
+
+    Args:
+        competency_id: The competency id.
+
+    Returns:
+        True if it declares scopes. False where it is assessed as a
+        whole, which is most of them.
+
+    Raises:
+        UnknownCompetencyError: If the id is not in the catalogue.
+    """
+    return bool(_entry(competency_id).scopes)
+
+
+def scopes(competency_id: str) -> list[ScopeRef]:
+    """What a record for this competency may cover, in listed order.
+
+    Args:
+        competency_id: The competency id.
+
+    Returns:
+        Its scopes, or an empty list where it declares none.
+
+    Raises:
+        UnknownCompetencyError: If the id is not in the catalogue.
+    """
+    entry = _entry(competency_id)
+    return [
+        ScopeRef(id=scope.id, name=scope.name) for scope in entry.scopes or []
+    ]
+
+
+def scope_ref(competency_id: str, scope_id: str) -> ScopeRef:
+    """The scope id and its wording, to copy into a record.
+
+    Args:
+        competency_id: The competency id.
+        scope_id: Which scope.
+
+    Returns:
+        Both halves, ready to store.
+
+    Raises:
+        UnknownCompetencyError: If the competency is not in the catalogue.
+        UnknownScopeError: If it declares no scopes, or not this one.
+    """
+    available = scopes(competency_id)
+
+    if not available:
+        raise UnknownScopeError(
+            f"Competency {competency_id!r} declares no scopes, so a "
+            f"record against it cannot name scope {scope_id!r}."
+        )
+
+    for scope in available:
+        if scope.id == scope_id:
+            return scope
+
+    raise UnknownScopeError(
+        f"Competency {competency_id!r} has no scope {scope_id!r}. Its "
+        "scopes are: " + ", ".join(scope.id for scope in available) + "."
+    )
 
 
 def expires_after_months(competency_id: str) -> int | None:

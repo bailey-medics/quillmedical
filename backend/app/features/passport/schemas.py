@@ -181,6 +181,19 @@ class LevelRef(PassportModel):
     name: NonEmptyText
 
 
+class ScopeRef(PassportModel):
+    """What a record covers, as it read at the time.
+
+    A competency may be signed off one part of practice at a time, a
+    tumour site for instance. The name travels beside the id for the
+    reason a level's does: the record must read correctly years later
+    and with no Quill to look the id up in.
+    """
+
+    id: CompetencyIdField
+    name: NonEmptyText
+
+
 class SpecialtyRef(PassportModel):
     """A specialty the holder chose, as it read at the time.
 
@@ -318,6 +331,12 @@ class SignOff(PassportModel):
     #: Absent on records written before 27 September 2026, whose
     #: ``level`` still holds the request until they are signed.
     requested_level: LevelRef | None = None
+    #: What the sign-off covers, where the competency declares scopes.
+    #: Set once at request and never changed: an assessor who thinks the
+    #: scope is wrong declines, since that is a request for the wrong
+    #: thing. Absent on a competency assessed as a whole, and on every
+    #: record written before 7 October 2026.
+    scope: ScopeRef | None = None
     observed_on: date
     signed_at: datetime | None = None
     expires_on: date | None = None

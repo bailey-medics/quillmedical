@@ -14,6 +14,12 @@ const levels = [
   { id: "unsupervised", name: "Can perform independently" },
 ];
 
+const scopes = [
+  { id: "breast", name: "Breast" },
+  { id: "lung", name: "Lung" },
+  { id: "other", name: "Other" },
+];
+
 const meta: Meta<typeof SignOffRequestForm> = {
   title: "Passport/Sign-off request form",
   component: SignOffRequestForm,
@@ -35,6 +41,17 @@ export const WithLevels: Story = {
   args: {
     competency: signedOffCompetency,
     levels,
+    onSubmit: fn(),
+    onCancel: fn(),
+  },
+};
+
+/** A competency signed off one scope at a time, such as a tumour site. */
+export const WithScopes: Story = {
+  args: {
+    competency: signedOffCompetency,
+    levels,
+    scopes,
     onSubmit: fn(),
     onCancel: fn(),
   },

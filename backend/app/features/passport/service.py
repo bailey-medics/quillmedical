@@ -50,6 +50,7 @@ from .schemas import (
     LevelRef,
     Manifest,
     Profile,
+    ScopeRef,
     SignOff,
     SpecialtyRef,
 )
@@ -101,6 +102,10 @@ class LevelReasonMissingError(SignOffError):
 #: Shown to the holder, so plain English and no ids. The ids go to the
 #: logs, where they are what somebody fixing it needs.
 LEVEL_REQUIRED_MESSAGE = "Choose the level you are asking to be signed off at."
+
+#: Shown to the holder where a competency is signed off one scope at a
+#: time and the request names none.
+SCOPE_REQUIRED_MESSAGE = "Choose what this sign-off covers."
 
 
 class SignOffStateError(SignOffError):
@@ -178,7 +183,39 @@ def create_passport(
     )
 
 
-def check_request(competency_id: str, level_id: str | None) -> LevelRef | None:
+def check_scope(competency_id: str, scope_id: str | None) -> ScopeRef | None:
+    """Refuse a scope a sign-off for this competency cannot carry.
+
+    A scope is required where the competency declares scopes, and
+    refused where it declares none: a sign-off that names lung on a
+    competency assessed as a whole would claim a distinction nobody
+    made.
+
+    Args:
+        competency_id: What the holder is asking to be signed off for.
+        scope_id: What they say the sign-off covers.
+
+    Returns:
+        The scope to record, or ``None`` for a competency with none.
+
+    Raises:
+        UnknownCompetencyError: If the competency is not in the catalogue.
+        UnknownScopeError: If the scope is not one it declares, or a
+            scope was given for a competency that declares none.
+        SignOffError: If it declares scopes and none was given.
+    """
+    if scope_id is not None:
+        return definitions.scope_ref(competency_id, scope_id)
+
+    if definitions.has_scopes(competency_id):
+        raise SignOffError(SCOPE_REQUIRED_MESSAGE)
+
+    return None
+
+
+def check_request(
+    competency_id: str, level_id: str | None, scope_id: str | None = None
+) -> LevelRef | None:
     """Refuse a sign-off request that could never be saved.
 
     The route calls this before it emails anybody, since an email cannot
@@ -190,6 +227,8 @@ def check_request(competency_id: str, level_id: str | None) -> LevelRef | None:
         competency_id: What the holder is asking to be signed off for.
         level_id: The level they ask for, where the competency has a
             scale.
+        scope_id: What they say the sign-off covers, where the
+            competency declares scopes.
 
     Returns:
         The level to record, or ``None`` for a competency with no scale.
@@ -198,9 +237,13 @@ def check_request(competency_id: str, level_id: str | None) -> LevelRef | None:
         UnknownCompetencyError: If the competency is not in the catalogue.
         UnknownLevelError: If the level is not one it declares, or a
             level was given for a competency with no scale.
-        SignOffError: If it has a scale and no level was given.
+        UnknownScopeError: If the scope is not one it declares, or a
+            scope was given for a competency that declares none.
+        SignOffError: If it has a scale and no level was given, or
+            declares scopes and none was given.
     """
     definitions.competency_ref(competency_id)
+    check_scope(competency_id, scope_id)
 
     if level_id is not None:
         return definitions.level_ref(competency_id, level_id)
@@ -219,6 +262,7 @@ def request_sign_off(
     competency_id: str,
     observed_on: date,
     level_id: str | None = None,
+    scope_id: str | None = None,
     comments: str | None = None,
     attachments: list[Attachment] | None = None,
     reflection: str | None = None,
@@ -237,6 +281,8 @@ def request_sign_off(
         competency_id: What they are asking to be signed off for.
         observed_on: When the work was done.
         level_id: Which level, where the competency has a scale.
+        scope_id: What the sign-off covers, where the competency
+            declares scopes.
         comments: Anything the holder wants to say.
         attachments: Evidence already stored as blobs.
         reflection: The holder's narrative, written beside the record.
@@ -249,11 +295,15 @@ def request_sign_off(
         UnknownCompetencyError: If the competency is not in the catalogue.
         UnknownLevelError: If the level is not one it declares, or a
             level was given for a competency with no scale.
-        SignOffError: If a level is required and none was given.
+        UnknownScopeError: If the scope is not one it declares, or a
+            scope was given for a competency that declares none.
+        SignOffError: If a level or a scope is required and none was
+            given.
     """
     moment = now if now is not None else datetime.now(UTC)
     competency = definitions.competency_ref(competency_id)
-    level = check_request(competency_id, level_id)
+    level = check_request(competency_id, level_id, scope_id)
+    scope = check_scope(competency_id, scope_id)
 
     existing = _existing_for(store, passport_id, competency_id)
     kind = _kind_for(competency_id, level_id, existing)
@@ -267,6 +317,7 @@ def request_sign_off(
         # what was asked for.
         level=level,
         requested_level=level,
+        scope=scope,
         observed_on=observed_on,
         comments=comments,
         attachments=attachments or [],

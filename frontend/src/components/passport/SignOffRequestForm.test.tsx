@@ -20,6 +20,12 @@ const levels = [
   { id: "unsupervised", name: "Can perform independently" },
 ];
 
+const scopes = [
+  { id: "breast", name: "Breast" },
+  { id: "lung", name: "Lung" },
+  { id: "other", name: "Other" },
+];
+
 function renderForm(
   props: Partial<React.ComponentProps<typeof SignOffRequestForm>> = {},
 ) {
@@ -479,6 +485,85 @@ describe("SignOffRequestForm", () => {
       // form can only be the level picker.
       renderForm();
       expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Scopes", () => {
+    it("offers a scope picker only when the competency declares scopes", () => {
+      renderForm({ scopes });
+      expect(
+        screen.getByRole("combobox", { name: /What this sign-off covers/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows no scope picker for a competency assessed as a whole", () => {
+      renderForm({ levels });
+      expect(
+        screen.queryByRole("combobox", { name: /What this sign-off covers/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("will not send a scoped request without a scope", async () => {
+      const user = userEvent.setup();
+      renderForm({ scopes });
+
+      await typeAssessorEmail(user);
+      await user.type(
+        screen.getByRole("textbox", { name: /Observed on/ }),
+        "14/03/2026",
+      );
+
+      expect(
+        screen.getByRole("button", { name: "Request sign-off" }),
+      ).toHaveAttribute("aria-disabled", "true");
+    });
+
+    it("sends the scope chosen", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      renderForm({ scopes, onSubmit });
+
+      await typeAssessorEmail(user);
+      await user.type(
+        screen.getByRole("textbox", { name: /Observed on/ }),
+        "14/03/2026",
+      );
+      await user.click(
+        screen.getByRole("combobox", { name: /What this sign-off covers/ }),
+      );
+      await user.click(await screen.findByText("Lung"));
+      await user.click(
+        screen.getByRole("button", { name: "Request sign-off" }),
+      );
+      await user.click(
+        await screen.findByRole("button", { name: "Send request" }),
+      );
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ scope_id: "lung" }),
+      );
+    });
+
+    it("sends no scope for a competency that declares none", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      renderForm({ onSubmit });
+
+      await typeAssessorEmail(user);
+      await user.type(
+        screen.getByRole("textbox", { name: /Observed on/ }),
+        "14/03/2026",
+      );
+      await user.click(
+        screen.getByRole("button", { name: "Request sign-off" }),
+      );
+      await user.click(
+        await screen.findByRole("button", { name: "Send request" }),
+      );
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ scope_id: null }),
+      );
     });
   });
 

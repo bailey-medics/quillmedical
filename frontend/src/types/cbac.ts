@@ -21,6 +21,12 @@ export interface CompetencyLevel {
   name: string;
 }
 
+/** One thing a sign-off for a competency may cover, such as a tumour site. */
+export interface CompetencyScope {
+  id: string;
+  name: string;
+}
+
 export interface Competency {
   id: string;
   display_name: string;
@@ -29,6 +35,11 @@ export interface Competency {
   retired_on?: string;
   /** Present only where a competency is signed off against a scale. */
   levels?: CompetencyLevel[];
+  /**
+   * What a sign-off or logbook entry for this competency may cover, or
+   * absent where it is assessed as a whole. Always includes `other`.
+   */
+  scopes?: CompetencyScope[];
   expires_after_months?: number;
   /** Whether the clinician passport may record something against it.
    *  Opt-in: absent means a software permission, not a skill. */

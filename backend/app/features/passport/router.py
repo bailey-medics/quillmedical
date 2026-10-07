@@ -1088,7 +1088,7 @@ def _let_existing_account_assess(
 
 
 def _checked_request(
-    competency_id: str, level_id: str | None
+    competency_id: str, level_id: str | None, scope_id: str | None = None
 ) -> LevelRef | None:
     """Refuse, before anybody is emailed, a request that cannot be saved.
 
@@ -1102,9 +1102,14 @@ def _checked_request(
         The level to record, or ``None`` for a competency with no scale.
     """
     try:
-        return service.check_request(competency_id, level_id)
+        return service.check_request(competency_id, level_id, scope_id)
     except definitions.UnknownCompetencyError:
         raise HTTPException(404, "Unknown competency") from None
+    except definitions.UnknownScopeError as error:
+        logger.error("sign-off request refused: %s", error)
+        raise HTTPException(
+            400, "That is not something this competency is signed off for."
+        ) from None
     except definitions.UnknownLevelError as error:
         logger.error("sign-off request refused: %s", error)
         raise HTTPException(
@@ -1112,9 +1117,12 @@ def _checked_request(
         ) from None
     except service.SignOffError as error:
         logger.error(
-            "sign-off request refused: %s (competency %r, no level named)",
+            "sign-off request refused: %s (competency %r, level %r, "
+            "scope %r)",
             error,
             competency_id,
+            level_id,
+            scope_id,
         )
         raise HTTPException(400, str(error)) from None
 
@@ -1381,7 +1389,9 @@ def request_sign_off(
     # then refuse, such as a scaled competency asked for with no level,
     # which is what an assessor was once emailed about on the live site.
     _assessable_refs([competency_id])
-    requested_level = _checked_request(competency_id, body.level_id)
+    requested_level = _checked_request(
+        competency_id, body.level_id, body.scope_id
+    )
 
     assessor_email = body.assessor_email.strip().lower()
 
@@ -1445,12 +1455,14 @@ def request_sign_off(
             competency_id=competency_id,
             observed_on=body.observed_on,
             level_id=body.level_id,
+            scope_id=body.scope_id,
             comments=body.comments,
             reflection=body.reflection,
         )
     except (
         definitions.UnknownCompetencyError,
         definitions.UnknownLevelError,
+        definitions.UnknownScopeError,
         service.SignOffError,
     ) as error:
         # `_checked_request` refused all of these before the email went,

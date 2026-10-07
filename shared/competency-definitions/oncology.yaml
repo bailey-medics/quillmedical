@@ -70,6 +70,37 @@ competencies:
         name: "Prescribe second cycle onwards"
       - id: prescribe_first_cycle
         name: "Prescribe first cycle"
+    # The Board recommends a declaration for each tumour type somebody
+    # prescribes for, so a sign-off says which. A first draft of the
+    # list, for an oncologist to correct. `other` is required on every
+    # list, so nobody is blocked by a missing entry.
+    scopes:
+      - id: breast
+        name: "Breast"
+      - id: lung
+        name: "Lung"
+      - id: upper_gastrointestinal
+        name: "Upper gastrointestinal"
+      - id: lower_gastrointestinal
+        name: "Lower gastrointestinal"
+      - id: urological
+        name: "Urological"
+      - id: gynaecological
+        name: "Gynaecological"
+      - id: head_and_neck
+        name: "Head and neck"
+      - id: central_nervous_system
+        name: "Central nervous system"
+      - id: skin
+        name: "Skin"
+      - id: sarcoma
+        name: "Sarcoma"
+      - id: haematological
+        name: "Haematological"
+      - id: unknown_primary
+        name: "Cancer of unknown primary"
+      - id: other
+        name: "Other"
 
   - id: assess_sact_toxicity
     display_name: "Assess and grade SACT toxicity"

@@ -38,6 +38,7 @@ import { fetchMyPassport, fetchSignOffs, requestSignOff } from "@lib/passport";
 // Direct, not through the barrel, so page tests that mock the API
 // client still get the real catalogue.
 import { levelsFor } from "@lib/passport/levels";
+import { scopesFor } from "@lib/passport/scopes";
 import type {
   CompetencyState,
   SignOff,
@@ -241,6 +242,7 @@ export function Component() {
             <SignOffRequestForm
               competency={competencyForForm(chosen, competencies)}
               levels={levelsFor(chosen)}
+              scopes={scopesFor(chosen)}
               holderEmail={state.user?.email}
               holderUsername={state.user?.username}
               onSubmit={handleRequest}

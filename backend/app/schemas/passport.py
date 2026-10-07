@@ -80,6 +80,13 @@ class LevelRefOut(BaseModel):
     name: NonEmptyText
 
 
+class ScopeRefOut(BaseModel):
+    """What a record covers, as it read at the time."""
+
+    id: NonEmptyText
+    name: NonEmptyText
+
+
 class LevelOptionOut(BaseModel):
     """A level a competency offers, for populating a form.
 
@@ -342,6 +349,8 @@ class SignOffOut(BaseModel):
     #: What the holder asked for. May differ from ``level``, which is
     #: what the assessor signed. Null on records from before it existed.
     requested_level: LevelRefOut | None = None
+    #: What the sign-off covers, where its competency declares scopes.
+    scope: ScopeRefOut | None = None
     observed_on: date
     signed_at: datetime | None = None
     expires_on: date | None = None
@@ -431,6 +440,9 @@ class SignOffRequestIn(_In):
     assessor_email: EmailStr
     observed_on: date
     level_id: str | None = None
+    #: What the sign-off covers. Required where the competency declares
+    #: scopes, and refused where it declares none.
+    scope_id: str | None = None
     comments: str | None = None
     reflection: str | None = None
     attachments: list[AttachmentIn] = Field(default_factory=list)
