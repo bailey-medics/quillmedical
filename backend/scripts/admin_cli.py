@@ -21,6 +21,8 @@ Environment Variables:
     NEWSLETTER_CAMPAIGN:  Required for send-newsletter. The campaign's
                       name, a template under app/email/templates/campaigns/.
     NEWSLETTER_ONLY_TO:   send-newsletter only. One address, for a trial.
+    NEWSLETTER_LIMIT:     send-newsletter only. The most people to reach in
+                      one run, for sending in batches.
     ACCESSIBILITY_RECIPIENT, ACCESSIBILITY_REVIEWED, ACCESSIBILITY_DUE_BY:
                       Required for accessibility-reminder. Who is
                       reminded, and the two dates in words.

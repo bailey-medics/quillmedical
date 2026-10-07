@@ -676,6 +676,13 @@ mailing list, and are stored as one. This phase does not wait on Phase
       newsletter goes from the app's own address under the Let's Do
       Digital name. Setting it, with the domain verified in SES, is the
       part left for Mark. `ldd-trial` is a trial campaign for it.
+      **Mark's note, 7 October 2026**: Let's Do Digital needs its own
+      SES set up in AWS for both App production and development. To
+      settle when that is done: whether that means two more AWS
+      accounts, or the Let's Do Digital domain added as a second sending
+      domain to the two there are, Quill Medical Emails App and Quill
+      Medical Emails Dev. One SES account can send for several domains,
+      and the second way keeps one key for each environment.
 
 - [x] **Add `newsletter_subscriber`.** A table of its own: the address,
       held lower case and unique; a name if there is one; whether they
@@ -694,14 +701,19 @@ mailing list, and are stored as one. This phase does not wait on Phase
       the first names a user's, so that subscriber 7's link cannot be
       read as user 7's.
 
-- [ ] **Send to both.** `app.marketing.newsletter` reaches account
+- [x] **Send to both.** `app.marketing.newsletter` reaches account
       holders who said yes and subscribers who are subscribed. An
       address in both gets one email, and the account's answer wins:
       somebody who registered and said no is not emailed because an old
       list has them on it. `newsletter_send` records a send to a
       subscriber as it does to a user, so a run can still be repeated
       safely. The re-check just before each person's turn applies to
-      subscribers too.
+      subscribers too. Built with one refinement: the account's answer
+      wins only once the account's address is **verified**, the same
+      line the one-record rule below draws. Until then the address on
+      the account may be somebody's mistyping, and the mailing list row
+      goes on working. `newsletter_send` names a user or a subscriber,
+      one or the other, held to that by a check in the database.
 
 - [ ] **Keep one record of somebody who is in both tables.** A person
       can be in the mailing list table and, now or later, hold a Quill
@@ -811,12 +823,19 @@ mailing list, and are stored as one. This phase does not wait on Phase
       emails bounce and how many are reported as spam, and pauses an
       account that goes over its limits. The SES account dates from 6
       October 2026, and a list of this age will hold dead addresses.
-      Give the send command a limit on how many it reaches in one run,
-      start small, and read the bounce and complaint figures on the SES
+      The send command has a limit on how many it reaches in one run,
+      built with "Send to both" above: `just newsletter-send app
+      <campaign> "" "" 50` for the first fifty. Start small, and read the bounce and complaint figures on the SES
       account dashboard between runs. SES puts an address that
       hard-bounces on the account's suppression list and will not send
       to it again; mark those subscribers unsubscribed so the count of
-      who is on the list stays true.
+      who is on the list stays true. **Not built, and needs a
+      decision**: nothing tells Quill which addresses bounced. Reading
+      Amazon's suppression list would need the app's key to be allowed
+      `ses:ListSuppressedDestinations`, which was not given it when the
+      key was narrowed to sending only. The other way is to do nothing:
+      Amazon refuses those addresses itself, and the only cost is a
+      count of subscribers that runs a little high.
 
 - [ ] **Add the journeys this touches to the accessibility log.** The
       Newsletter section adds a link to the admin menu, and the

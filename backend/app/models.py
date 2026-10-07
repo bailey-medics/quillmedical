@@ -902,11 +902,17 @@ class NewsletterSend(Base):
     relationship between a person and a campaign with its own date, and
     "who was sent this?" and "what was this person sent?" are both asked.
 
+    The person is an account holder or a mailing-list subscriber, and
+    exactly one of the two columns says which.
+
     Attributes:
         id: Primary key.
         campaign: The campaign's name: its template's file name under
             ``app/email/templates/campaigns/``, less the ending.
-        user_id: Who it was sent to. Their rows go when they do.
+        user_id: The account holder it was sent to, if it was one. Their
+            rows go when they do.
+        subscriber_id: The subscriber it was sent to, if it was one.
+            Their rows go when they do.
         sent_at: When the mail provider accepted it.
     """
 
@@ -915,13 +921,27 @@ class NewsletterSend(Base):
         UniqueConstraint(
             "campaign", "user_id", name="uq_newsletter_send_campaign_user"
         ),
+        UniqueConstraint(
+            "campaign",
+            "subscriber_id",
+            name="uq_newsletter_send_campaign_subscriber",
+        ),
+        CheckConstraint(
+            "(user_id IS NULL) <> (subscriber_id IS NULL)",
+            name="ck_newsletter_send_one_recipient",
+        ),
         Index("ix_newsletter_send_user", "user_id"),
+        Index("ix_newsletter_send_subscriber", "subscriber_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     campaign: Mapped[str] = mapped_column(String(100), nullable=False)
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True
+    )
+    subscriber_id: Mapped[int | None] = mapped_column(
+        ForeignKey("newsletter_subscriber.id", ondelete="CASCADE"),
+        nullable=True,
     )
     sent_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

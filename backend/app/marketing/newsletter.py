@@ -13,6 +13,10 @@ is drawn in and the name it is sent under. It is written, reviewed and
 merged like any other change, so the pull request is where its words are
 read before anybody receives them.
 
+It goes to two kinds of people: account holders who said yes, and
+subscribers, who are on the mailing list and have no account. Where an
+address is both, the account's answer is the one that counts.
+
 **Nothing but this module stops an email to somebody who refused.** So
 who it sends to is read when a send starts and read again for each
 person just before theirs, and the tests pin both down.
@@ -47,8 +51,11 @@ from app.email_send import (
     mask_email,
     send_email,
 )
-from app.models import NewsletterSend, User
-from app.security import create_marketing_unsubscribe_token
+from app.models import NewsletterSend, NewsletterSubscriber, User
+from app.security import (
+    create_marketing_unsubscribe_token,
+    create_subscriber_unsubscribe_token,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +80,11 @@ BRANDS: tuple[EmailThemeName, ...] = get_args(EmailThemeName)
 PAUSE_SECONDS = 0.2
 
 
+#: Somebody a newsletter can go to: an account holder, or somebody on
+#: the mailing list who has no account.
+Person = User | NewsletterSubscriber
+
+
 class NewsletterError(Exception):
     """A send that cannot start, with the reason."""
 
@@ -86,6 +98,8 @@ class Sent:
             a dry run, who would be sent it.
         sent: Emails the mail provider accepted.
         already: People this campaign had reached on an earlier run.
+        waiting: People due it whom this run leaves for a later one,
+            because a limit was set.
         withdrew: People who said no between the start and their turn.
         refused: Addresses this environment may not write to, or that
             have had their hourly allowance. Development only.
@@ -96,25 +110,29 @@ class Sent:
     recipients: list[str] = field(default_factory=list)
     sent: int = 0
     already: int = 0
+    waiting: int = 0
     withdrew: int = 0
     refused: int = 0
     failed: int = 0
 
 
-def _wants_news(user: User) -> bool:
+def _wants_news(person: Person) -> bool:
     """Whether somebody may be sent a newsletter, as of now.
 
-    Verified, because an unverified address may be somebody else's.
-    Active, because a closed account is somebody who has left. And said
-    yes: ``marketing_emails`` is off until a person turns it on.
+    An account holder must be verified, because an unverified address
+    may be somebody else's; active, because a closed account is somebody
+    who has left; and have said yes, since ``marketing_emails`` is off
+    until a person turns it on. A subscriber must be subscribed.
     """
+    if isinstance(person, NewsletterSubscriber):
+        return bool(person.subscribed)
     return bool(
-        user.email_verified and user.is_active and user.marketing_emails
+        person.email_verified and person.is_active and person.marketing_emails
     )
 
 
 def recipients(db: Session) -> list[User]:
-    """Everybody who may be sent a newsletter, oldest account first.
+    """Every account holder who may be sent a newsletter, oldest first.
 
     Args:
         db: Database session.
@@ -138,30 +156,75 @@ def recipients(db: Session) -> list[User]:
     )
 
 
-def _already_sent(db: Session, campaign: str) -> set[int]:
-    """Whose copy of a campaign has already left."""
-    return set(
+def subscribers(db: Session) -> list[NewsletterSubscriber]:
+    """Every mailing-list subscriber who may be sent a newsletter.
+
+    Somebody whose address is also a verified account's is left out,
+    whatever the mailing list says: the account's answer is the one that
+    counts. So a person who registered and said no is not emailed
+    because an old list still has them on it, and a person who said yes
+    gets one newsletter and not two.
+
+    Args:
+        db: Database session.
+
+    Returns:
+        The subscribers, oldest first.
+    """
+    with_an_account = select(User.email).where(User.email_verified.is_(True))
+    return list(
         db.execute(
-            select(NewsletterSend.user_id).where(
-                NewsletterSend.campaign == campaign
+            select(NewsletterSubscriber)
+            .where(
+                NewsletterSubscriber.subscribed.is_(True),
+                NewsletterSubscriber.email.not_in(with_an_account),
             )
+            .order_by(NewsletterSubscriber.id)
         )
         .scalars()
         .all()
     )
 
 
-def unsubscribe_links(user: User) -> tuple[str, str]:
+def everybody(db: Session) -> list[Person]:
+    """Everybody who may be sent a newsletter: accounts, then subscribers."""
+    return [*recipients(db), *subscribers(db)]
+
+
+def _key(person: Person) -> tuple[str, int]:
+    """What tells one person from another across the two tables."""
+    kind = "subscriber" if isinstance(person, NewsletterSubscriber) else "user"
+    return kind, person.id
+
+
+def _already_sent(db: Session, campaign: str) -> set[tuple[str, int]]:
+    """Whose copy of a campaign has already left."""
+    rows = db.execute(
+        select(NewsletterSend.user_id, NewsletterSend.subscriber_id).where(
+            NewsletterSend.campaign == campaign
+        )
+    ).all()
+    return {
+        ("user", user_id) if user_id is not None else ("subscriber", sub_id)
+        for user_id, sub_id in rows
+        if user_id is not None or sub_id is not None
+    }
+
+
+def unsubscribe_links(person: Person) -> tuple[str, str]:
     """Where one person's unsubscribe link leads, for a person and a mailbox.
 
     Args:
-        user: The person.
+        person: The account holder or subscriber.
 
     Returns:
         The page in the app, for the link in the footer, and the API
         route, for the ``List-Unsubscribe`` header a mailbox presses.
     """
-    token = create_marketing_unsubscribe_token(user.id)
+    if isinstance(person, NewsletterSubscriber):
+        token = create_subscriber_unsubscribe_token(person.id)
+    else:
+        token = create_marketing_unsubscribe_token(person.id)
     base = settings.FRONTEND_URL.rstrip("/")
     return (
         f"{base}/unsubscribe?token={token}",
@@ -228,16 +291,16 @@ def _render(campaign: str, brand: EmailThemeName, page: str) -> RenderedEmail:
     )
 
 
-def _send_one(campaign: str, brand: EmailThemeName, user: User) -> None:
+def _send_one(campaign: str, brand: EmailThemeName, person: Person) -> None:
     """Render a campaign for one person and send it.
 
     One recipient to a message, each with their own link: a link shared
     by a whole mailing would let any reader unsubscribe everybody.
     """
-    page, one_click = unsubscribe_links(user)
+    page, one_click = unsubscribe_links(person)
     _, address = sender(brand)
     send_email(
-        to=user.email,
+        to=person.email,
         **send_args(_render(campaign, brand, page)),
         from_address=address,
         # Both headers, or a mailbox shows no unsubscribe button: the
@@ -266,6 +329,7 @@ def send_campaign(
     *,
     confirm: str | None = None,
     only_to: str | None = None,
+    limit: int | None = None,
 ) -> Sent:
     """Send a campaign, or with no ``confirm`` report who would get it.
 
@@ -276,37 +340,47 @@ def send_campaign(
         db: Database session.
         campaign: The campaign's name.
         confirm: :func:`confirmation` for this campaign and the number
-            of people it would now reach. None for a dry run.
+            of people this run would now reach. None for a dry run.
         only_to: One address, for a trial send before the real one. They
             must be somebody who may be sent newsletters. A trial is not
             recorded, so the real send still reaches them.
+        limit: The most people to reach in this run, for sending a
+            newsletter in batches. The rest wait for a later run, which
+            finds them because each send is recorded. None for no limit.
 
     Returns:
         What was found and done.
 
     Raises:
         NewsletterError: If the campaign does not exist or is misnamed,
-            ``only_to`` is nobody who may be sent it, or ``confirm`` is
-            not what a dry run would now print.
+            ``only_to`` is nobody who may be sent it, ``limit`` is not
+            positive, or ``confirm`` is not what a dry run would now
+            print.
     """
     brand = campaign_brand(campaign)
+    if limit is not None and limit <= 0:
+        raise NewsletterError("The limit must be at least one")
 
-    everybody = recipients(db)
+    people = everybody(db)
+    already: set[tuple[str, int]] = set()
     if only_to is not None:
         wanted = only_to.strip().lower()
-        to_send = [u for u in everybody if u.email.lower() == wanted]
+        to_send = [p for p in people if p.email.lower() == wanted]
         if not to_send:
             raise NewsletterError(
                 f"{mask_email(only_to)} is nobody who may be sent a "
-                "newsletter: not verified, not active, or has not said yes"
+                "newsletter: not subscribed, or an account that is not "
+                "verified, not active, or has not said yes"
             )
-        already: set[int] = set()
     else:
         already = _already_sent(db, campaign)
-        to_send = [u for u in everybody if u.id not in already]
+        to_send = [p for p in people if _key(p) not in already]
 
     result = Sent(already=len(already))
-    result.recipients = [mask_email(u.email) for u in to_send]
+    if limit is not None and len(to_send) > limit:
+        result.waiting = len(to_send) - limit
+        to_send = to_send[:limit]
+    result.recipients = [mask_email(p.email) for p in to_send]
 
     # Render it once before anything is sent, so a campaign that will
     # not render fails here and not after the first person has had theirs.
@@ -323,28 +397,30 @@ def send_campaign(
             f"{expected!r}: the list may have changed since yours."
         )
 
-    for user in to_send:
+    for person in to_send:
+        kind, person_id = _key(person)
         # Read again, just before their turn: somebody who unsubscribed
         # while this ran must not be emailed.
         try:
-            db.refresh(user)
+            db.refresh(person)
         except InvalidRequestError:
-            # The account was deleted while this ran.
+            # They were deleted while this ran.
             result.withdrew += 1
             continue
-        if not _wants_news(user):
+        if not _wants_news(person):
             result.withdrew += 1
             continue
         try:
-            _send_one(campaign, brand, user)
+            _send_one(campaign, brand, person)
         except (EmailNotAllowedError, EmailRateLimitError):
             result.refused += 1
             continue
         except EmailSendError as exc:
             logger.warning(
-                "Newsletter %s could not be sent to user %s: %s",
+                "Newsletter %s could not be sent to %s %s: %s",
                 campaign,
-                user.id,
+                kind,
+                person_id,
                 exc,
             )
             result.failed += 1
@@ -352,7 +428,13 @@ def send_campaign(
         finally:
             time.sleep(PAUSE_SECONDS)
         if only_to is None:
-            db.add(NewsletterSend(campaign=campaign, user_id=user.id))
+            db.add(
+                NewsletterSend(
+                    campaign=campaign,
+                    user_id=person_id if kind == "user" else None,
+                    subscriber_id=person_id if kind == "subscriber" else None,
+                )
+            )
             db.commit()
         result.sent += 1
     return result
@@ -361,8 +443,8 @@ def send_campaign(
 def main() -> int:
     """Run a send from the environment and print what happened.
 
-    Reads ``NEWSLETTER_CAMPAIGN``, and optionally ``CONFIRM`` and
-    ``NEWSLETTER_ONLY_TO``.
+    Reads ``NEWSLETTER_CAMPAIGN``, and optionally ``CONFIRM``,
+    ``NEWSLETTER_ONLY_TO`` and ``NEWSLETTER_LIMIT``.
 
     Returns:
         The exit status: 0 when everybody due was sent it, or for a dry
@@ -374,13 +456,20 @@ def main() -> int:
     campaign = os.environ.get("NEWSLETTER_CAMPAIGN", "").strip()
     confirm = os.environ.get("CONFIRM", "").strip() or None
     only_to = os.environ.get("NEWSLETTER_ONLY_TO", "").strip() or None
+    raw_limit = os.environ.get("NEWSLETTER_LIMIT", "").strip()
     if not campaign:
         print("✗ NEWSLETTER_CAMPAIGN is required", file=sys.stderr)
         return 1
+    if raw_limit and not raw_limit.isdecimal():
+        print("✗ NEWSLETTER_LIMIT must be a whole number", file=sys.stderr)
+        return 1
+    limit = int(raw_limit) if raw_limit else None
 
     db = CoreSessionLocal()
     try:
-        result = send_campaign(db, campaign, confirm=confirm, only_to=only_to)
+        result = send_campaign(
+            db, campaign, confirm=confirm, only_to=only_to, limit=limit
+        )
     except NewsletterError as exc:
         print(f"✗ {exc}", file=sys.stderr)
         return 1
@@ -393,7 +482,8 @@ def main() -> int:
             print(f"  {address}")
         print(
             f"{len(result.recipients)} to send, "
-            f"{result.already} already sent."
+            f"{result.already} already sent, "
+            f"{result.waiting} left for a later run."
         )
         print(
             "Nothing was sent. To send, run again with "
@@ -404,7 +494,8 @@ def main() -> int:
     print(
         f"Campaign {campaign!r}: {result.sent} sent, "
         f"{result.already} already sent, {result.withdrew} withdrew, "
-        f"{result.refused} refused, {result.failed} failed."
+        f"{result.refused} refused, {result.failed} failed, "
+        f"{result.waiting} left for a later run."
     )
     return 1 if result.failed or result.refused else 0
 

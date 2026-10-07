@@ -84,7 +84,10 @@ available to send.
 `backend/app/marketing/newsletter.py` sends it, a person at a time.
 
 - **Who it reaches** – verified, active users whose `marketing_emails`
-  is true. The list is read when the send starts and read again for
+  is true, and then subscribers: people in `newsletter_subscriber`, the
+  mailing list of those with no account, who are subscribed. Where an
+  address is on the list and is also a verified account's, the
+  account's answer is the one that counts and the list's is ignored. The list is read when the send starts and read again for
   each person just before their turn, so somebody who unsubscribes while
   it runs is not emailed. **Nothing else stops an email to somebody who
   refused**: there is no list at the mail provider to refuse it for
@@ -107,6 +110,11 @@ available to send.
   the email leaves. A run that stops half way keeps what it did, and
   the next reaches only the people it missed.
 
+- **In batches** – a limit on how many people one run reaches. Each
+  send is recorded, so the next run takes up where the last left off.
+  Worth using for a first send to an old list: the mail provider pauses
+  an account whose emails bounce too often.
+
 - **A trial to one address** – the last argument sends to one person
   who may be sent newsletters, and records nothing, so the real send
   still reaches them.
@@ -116,6 +124,8 @@ just newsletter-send app trial                      # who would get it
 just newsletter-send app trial "" you@example.org   # the same, for one address
 just newsletter-send app trial trial:1 you@example.org   # send that trial
 just newsletter-send app autumn-update autumn-update:12  # send for real
+just newsletter-send app autumn-update "" "" 50         # who the first 50 would be
+just newsletter-send app autumn-update autumn-update:50 "" 50   # send to those 50
 ```
 
 It runs as the `send-newsletter` action of the admin job, which has the
