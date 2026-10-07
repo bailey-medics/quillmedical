@@ -1,7 +1,7 @@
 {
   "version": 1,
   "generatedBy": "/sync-copilot-config",
-  "lastRun": "2026-10-01T12:11:47Z",
+  "lastRun": "2026-10-07T19:30:00Z",
   "notes": [
     "Prompt targets live under .claude/skills/<name>/SKILL.md (a skill is a directory, not a single file). A skill's invocable /name comes from the directory name, never the SKILL.md filename and never a name: frontmatter field (that only sets a display label for personal/project skills).",
     "Targets marked targetRenamed:true deliberately do not use the default source-derived directory name. Copilot's 'name:' frontmatter values were used as the directory names to preserve /crp, /e, and /read-project-instructions.",
@@ -36,15 +36,16 @@
     "2026-10-02: update-docs-docs was rewritten on BOTH sides in the same change (.github/prompts/update-docs-docs.prompt.md remains the source of truth; the Claude copy was updated in step, not synced over). The old body said to read all code and then all docs, which no model can hold at once, and left docs/docs/plans/ in scope, so 'code is the canonical truth' would have rewritten historical plans. It now works from each document to the code it names, excludes plans/ and learnings/ as well as code/, safety/ and llm/, corrects rather than writes new documentation, and reports gaps and open questions at the end. The `model:` line was dropped on both sides, since Haiku was the wrong fit for cross-checking prose against code. The entry is now divergentByDesign for the Claude-only `$ARGUMENTS` and subagent fan-out. Hashes refreshed to record the reconciled state; not outstanding drift.",
     "2026-10-02: update-docs-docs gained a second pass on BOTH sides in the same change (.github/prompts/update-docs-docs.prompt.md remains the source of truth; the Claude copy was updated in step, not synced over). Pass one still checks each existing document against the code it names. Pass two starts from the code, surveyed area by area, and proposes the documents a person or a model would need to understand the code or its reasoning; it proposes and waits, and writes only the ones chosen. This replaces the earlier 'do not write new documentation' rule. The `description:` changed on both sides to match. Hashes refreshed to record the reconciled state; not outstanding drift.",
     "2026-10-02: the Claude copy of update-docs-docs now lands its work the way /f does. A unit is one top-level folder under docs/docs/, and each unit with corrections is finished with /crpd, giving one stacked branch and one draft pull request per folder. New documents are still proposed, not written, and are the one thing a run does not land. The Copilot source was deliberately NOT changed: it has no stacked /crpd to call, so this is recorded under the entry's divergenceReason. The `description:` differs between the two sides for the same reason. Target hash refreshed to record the reconciled state; not outstanding drift.",
-    "2026-10-02: the Claude copy of update-docs-docs now writes the missing documents as well as proposing them, one stacked branch and draft pull request per document, above the correction units. A document mainly about why something was built, whose reasoning is recorded nowhere, is not written and is listed in the final report instead. The Copilot source still proposes and waits, by design. Target hash refreshed; not outstanding drift."
+    "2026-10-02: the Claude copy of update-docs-docs now writes the missing documents as well as proposing them, one stacked branch and draft pull request per document, above the correction units. A document mainly about why something was built, whose reasoning is recorded nowhere, is not written and is listed in the final report instead. The Copilot source still proposes and waits, by design. Target hash refreshed; not outstanding drift.",
+    "2026-10-07: the CBAC Catalogue bullet in copilot-instructions.md was rewritten by the passport registrar portfolios plan and a Frameworks bullet added after it: `oncology.yaml` is gone, each passport framework is a file of its own, and a file that declares a `framework:` block is the one case where the file an entry lives in carries meaning. Both bullets were spliced into CLAUDE.md in place of the old Catalogue bullet. Only that entry's hashes were refreshed. backend, ci, components and pages also show changed source hashes from work merged since 2026-10-01, and workflows and update-docs-docs changed target hashes; none was examined or written to this run, and their hashes are deliberately left stale so a full run still reports them."
   ],
   "files": [
     {
       "source": ".github/copilot-instructions.md",
       "target": "CLAUDE.md",
-      "sourceSha256": "2a0fb48fe889140dfeba9809b9eb86e2b830bf261793adb8ff731b95b9fdb339",
-      "targetSha256": "38617c7ac5616c33e161e4e93ef92698a713a2e87bbf47de92714d31b39a2f45",
-      "syncedAt": "2026-10-01T12:11:47Z"
+      "sourceSha256": "e59ce6fe1884c9c1938cb59118ed4cda50d788037da594865a5441100478102e",
+      "targetSha256": "6a8f533e79dbdaf8aa85bfffdd39f1fd1258e5f6b607a09255166663797a365b",
+      "syncedAt": "2026-10-07T19:30:00Z"
     },
     {
       "source": ".github/instructions/backend.instructions.md",
