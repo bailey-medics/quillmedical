@@ -30,6 +30,7 @@
  * ## Route structure
  *
  * - Public routes: /login, /register, /forgot-password, /reset-password
+ * - Open to anybody, signed in or not: /unsubscribe
  * - Protected routes (MainLayout): /, /patients, /messages, /settings, /admin
  * - Protected routes (TeachingLayout): /teaching, /teaching/:bankId,
  *   /teaching/learn/*, /teaching/assessment/*, /teaching/sync
@@ -71,6 +72,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import Settings from "./pages/Settings";
 import YourFeedbackPage from "./pages/feedback/YourFeedbackPage";
 import InboxPage from "./pages/inbox/InboxPage";
+import UnsubscribePage from "./pages/UnsubscribePage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import VerifyEmailPendingPage from "./pages/VerifyEmailPendingPage";
 import HomeRedirect from "./pages/HomeRedirect";
@@ -131,6 +133,13 @@ export const routes: RouteObject[] = [
         <VerifyEmailPage />
       </GuestOnly>
     ),
+  },
+  // No guard, neither GuestOnly nor RequireAuth: the link in a newsletter
+  // must work for somebody signed in and for somebody who is not. The
+  // signed token in the link is what says whose preference it is.
+  {
+    path: "/unsubscribe",
+    element: <UnsubscribePage />,
   },
   {
     path: "/verify-email-pending",

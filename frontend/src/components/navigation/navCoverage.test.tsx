@@ -220,6 +220,8 @@ const NO_LINK: Record<string, string> = {
   "/reset-password": SIGNED_OUT,
   "/verify-email": SIGNED_OUT,
   "/verify-email-pending": SIGNED_OUT,
+  "/unsubscribe":
+    "Opened from the link in a newsletter, signed in or not. It shows the sign-in pages' card and no menu.",
   "/passport/assessors/accept":
     "The invite landing, opened by somebody with no account.",
   "/passport/verify/:signOffId":
