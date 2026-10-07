@@ -134,12 +134,21 @@ def _wants_news(person: Person) -> bool:
 def recipients(db: Session) -> list[User]:
     """Every account holder who may be sent a newsletter, oldest first.
 
+    Somebody whose address is on the mailing list as unsubscribed is
+    left out even if their account says yes. ``fold_into_account``
+    carries that refusal onto the account when the address is verified,
+    and this is the guard for any account it has not reached: a "no"
+    from the mailing list always survives.
+
     Args:
         db: Database session.
 
     Returns:
         The users.
     """
+    refused_on_the_list = select(NewsletterSubscriber.email).where(
+        NewsletterSubscriber.subscribed.is_(False)
+    )
     return list(
         db.execute(
             select(User)
@@ -147,6 +156,7 @@ def recipients(db: Session) -> list[User]:
                 User.email_verified.is_(True),
                 User.is_active.is_(True),
                 User.marketing_emails.is_(True),
+                User.email.not_in(refused_on_the_list),
             )
             .order_by(User.id)
         )
