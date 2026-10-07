@@ -627,10 +627,15 @@ in the command that sends, and the tests have to pin it down.
       `send_email` has one way out, SES. `backend/app/net.py` went with
       them, since forcing IPv4 was only ever for Resend's API. The
       running service is still handed `EMAIL_PROVIDER` and the Resend
-      key until the next part, and ignores both. **Then Terraform**,
+      key until the next part, and ignores both. **Then Terraform, done**,
       once that has deployed, because the revision serving until then
-      still mounts the secret. **Then the account**, which is Mark's to
-      close.
+      still mounts the secret: the three secret containers
+      (`resend-api-key`, and the two kept back at the cut-over,
+      `resend-contacts-api-key` and `resend-webhook-secret`), the
+      backend's mount of the key, `EMAIL_PROVIDER` on the backend and
+      the admin job, and Resend's three DNS records. The `mail` records
+      are SES's and stay. **Then the account**, which is Mark's to
+      close, and is all that keeps this step unticked.
 
 - [ ] **Update the privacy policy** in `docs/docs/legal/privacy-policy.md`
       as a new version: section 5 names Amazon Web Services, London, in

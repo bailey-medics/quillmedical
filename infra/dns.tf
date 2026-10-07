@@ -28,7 +28,7 @@ resource "google_dns_managed_zone" "primary" {
   project     = var.project_id
   name        = "quill-medical-com"
   dns_name    = local.dns_apex
-  description = "quill-medical.com: the site, the app, and the Proton Mail and Resend email records."
+  description = "quill-medical.com: the site, the app, and the Proton Mail and Amazon SES email records."
   visibility  = "public"
 
   # Losing the zone would take the site and every inbound email down until
@@ -101,29 +101,9 @@ locals {
       rrdatas = ["protonmail3.domainkey.d3q5dkq3hmfucgklk5pzuidomopir5gg3hbdemxyuzp4znnk7wn6a.domains.proton.ch."]
     }
 
-    # ---------- Outbound mail: Resend, sending through Amazon SES ----------
-    # A public key, not a secret: receivers fetch it to check Resend's
-    # signatures.
-    "TXT:resend._domainkey" = {
-      type    = "TXT"
-      ttl     = 18000
-      rrdatas = ["\"p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCp4HenKERJfTpIszemf3uDmRd6NchibA7Yd9LqIQ7IRY3w4NPXaWm5KBBjJtQRkfqrR/+ffdt0Aw/ocDdXufWAQXKqvqKzBklwD+Jd0UBMh3waD2UW7/rA7Oxlru8NrlTgOnNS7afCHyhYTCHharwgZXYsqsmtYaFoHuTSCSeD2wIDAQAB\""]
-    }
-    "MX:send" = {
-      type    = "MX"
-      ttl     = 18000
-      rrdatas = ["10 feedback-smtp.eu-west-1.amazonses.com."]
-    }
-    "TXT:send" = {
-      type    = "TXT"
-      ttl     = 18000
-      rrdatas = ["\"v=spf1 include:amazonses.com ~all\""]
-    }
-
     # ---------- Outbound mail: Amazon SES in London (eu-west-2) ----------
-    # Quill's own SES account, beside Resend while both run. Easy DKIM: the
-    # three selectors point at keys Amazon holds and rotates. Resend signs
-    # with its own selector above, so both can sign for the domain.
+    # Quill's own SES account. Easy DKIM: the three selectors point at
+    # keys Amazon holds and rotates.
     "CNAME:4gokzlgrzm6qgcqfqz6ydpg5cxp66len._domainkey" = {
       type    = "CNAME"
       ttl     = 18000
@@ -157,8 +137,7 @@ locals {
       ttl     = 18000
       rrdatas = ["tsanu3szdfgbjqalalds3zo7vnrlha4q.dkim.amazonses.com."]
     }
-    # The MAIL FROM name, where bounces come back. `mail`, not `send`:
-    # `send` is Resend's and points at Ireland, and is removed with Resend.
+    # The MAIL FROM name, where bounces come back.
     "MX:mail" = {
       type    = "MX"
       ttl     = 18000

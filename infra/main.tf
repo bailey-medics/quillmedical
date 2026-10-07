@@ -60,23 +60,10 @@ module "secrets" {
       "jwt-secret",
       "core-db-password",
       "vapid-private",
-      "resend-api-key",
 
-      # Resend's mailing list, which Quill no longer uses: it keeps the
-      # newsletter list itself. Nothing mounts these two any more. The
-      # containers stay for now on purpose. Terraform applies on merge,
-      # before the deploy has replaced the revision that is serving, and
-      # that revision still mounts them: deleting a secret a serving
-      # revision mounts stops its new instances starting. They go when
-      # Resend is closed. See
-      # docs/docs/plans/2026-10-06-amazon-ses-email-plan.md, Phase 5.
-      "resend-contacts-api-key",
-      "resend-webhook-secret",
-
-      # Amazon SES in London, which replaces Resend: the access key of the
-      # AWS user that may send from eu-west-2 and nowhere else. Only the
-      # containers are made here, for the reason given above. The values
-      # go in by hand, then a second change mounts them. See
+      # Amazon SES in London, which sends every email: the access key of the
+      # AWS user that may send from eu-west-2 and nowhere else. The values
+      # went in by hand. See
       # docs/docs/plans/2026-10-06-amazon-ses-email-plan.md, Phase 2.
       "ses-access-key-id",
       "ses-secret-access-key",
@@ -442,12 +429,6 @@ module "cloud_run_backend" {
     {
       EMAIL_FROM    = "info@quill-medical.com"
       EMAIL_DRY_RUN = "false"
-      # Service email goes through Amazon SES in London, not Resend, so
-      # that it stays in the UK. Reversible: remove this line and the
-      # backend falls back to Resend, which stays configured until it is
-      # closed. The newsletter list is still Resend's. See
-      # docs/docs/plans/2026-10-06-amazon-ses-email-plan.md, Phase 3.
-      EMAIL_PROVIDER = "ses"
       # Who is told when somebody sends feedback. The notice carries a
       # link and never the message. An address, not a secret, so it sits
       # here in the open with the sender's.
@@ -510,10 +491,9 @@ module "cloud_run_admin_job" {
       # values the backend has: where the app is, for each person's
       # unsubscribe link, and how mail leaves. Without EMAIL_DRY_RUN set
       # to false a send would only be logged.
-      FRONTEND_URL   = "https://${var.lb_domains[0]}"
-      EMAIL_FROM     = "info@quill-medical.com"
-      EMAIL_DRY_RUN  = "false"
-      EMAIL_PROVIDER = "ses"
+      FRONTEND_URL  = "https://${var.lb_domains[0]}"
+      EMAIL_FROM    = "info@quill-medical.com"
+      EMAIL_DRY_RUN = "false"
     }
   )
 
