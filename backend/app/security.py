@@ -635,8 +635,31 @@ _marketing_unsubscribe = URLSafeSerializer(
 )
 
 
+def _unsubscribe_token(key: str, value: int) -> str:
+    """Sign an unsubscribe token naming one row by its id."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError("An id must be a whole number")
+    if value <= 0:
+        raise ValueError("An id must be positive")
+    return _marketing_unsubscribe.dumps({key: value})
+
+
+def _unsubscribe_token_id(token: str, key: str) -> int | None:
+    """The id an unsubscribe token names under *key*, if it is a good one."""
+    try:
+        data = _marketing_unsubscribe.loads(token)
+    except BadSignature:
+        return None
+    if not isinstance(data, dict):
+        return None
+    value = data.get(key)
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value if value > 0 else None
+
+
 def create_marketing_unsubscribe_token(user_id: int) -> str:
-    """Create the token an unsubscribe link in a newsletter carries.
+    """Create the token an unsubscribe link carries, for an account holder.
 
     It does not expire. It can be used to read and change one person's
     marketing preference and nothing else.
@@ -650,29 +673,49 @@ def create_marketing_unsubscribe_token(user_id: int) -> str:
     Raises:
         ValueError: If the id is not a positive whole number.
     """
-    if isinstance(user_id, bool) or not isinstance(user_id, int):
-        raise ValueError("User id must be a whole number")
-    if user_id <= 0:
-        raise ValueError("User id must be positive")
-    return _marketing_unsubscribe.dumps({"user_id": user_id})
+    return _unsubscribe_token("user_id", user_id)
 
 
 def verify_marketing_unsubscribe_token(token: str) -> int | None:
-    """Verify an unsubscribe token and return whose it is.
+    """Verify an account holder's unsubscribe token and return whose it is.
 
     Args:
         token: The token from the link.
 
     Returns:
-        The user's id if the signature is good, None otherwise.
+        The user's id if the signature is good and the token names a
+        user, None otherwise. A subscriber's token names no user.
     """
-    try:
-        data = _marketing_unsubscribe.loads(token)
-    except BadSignature:
-        return None
-    if not isinstance(data, dict):
-        return None
-    user_id = data.get("user_id")
-    if isinstance(user_id, bool) or not isinstance(user_id, int):
-        return None
-    return user_id if user_id > 0 else None
+    return _unsubscribe_token_id(token, "user_id")
+
+
+def create_subscriber_unsubscribe_token(subscriber_id: int) -> str:
+    """Create the token an unsubscribe link carries, for a subscriber.
+
+    A subscriber is somebody on the mailing list with no account. Their
+    token is signed the same way as an account holder's and names a
+    different kind of row, so neither can be read as the other.
+
+    Args:
+        subscriber_id: The ``newsletter_subscriber`` row the link is for.
+
+    Returns:
+        URL-safe signed token.
+
+    Raises:
+        ValueError: If the id is not a positive whole number.
+    """
+    return _unsubscribe_token("subscriber_id", subscriber_id)
+
+
+def verify_subscriber_unsubscribe_token(token: str) -> int | None:
+    """Verify a subscriber's unsubscribe token and return whose it is.
+
+    Args:
+        token: The token from the link.
+
+    Returns:
+        The subscriber's id if the signature is good and the token names
+        a subscriber, None otherwise.
+    """
+    return _unsubscribe_token_id(token, "subscriber_id")

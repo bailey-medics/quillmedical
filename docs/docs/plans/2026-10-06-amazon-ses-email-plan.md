@@ -677,19 +677,22 @@ mailing list, and are stored as one. This phase does not wait on Phase
       Digital name. Setting it, with the domain verified in SES, is the
       part left for Mark. `ldd-trial` is a trial campaign for it.
 
-- [ ] **Add `newsletter_subscriber`.** A table of its own: the address,
+- [x] **Add `newsletter_subscriber`.** A table of its own: the address,
       held lower case and unique; a name if there is one; whether they
       are subscribed; when they unsubscribed, if they did; and when the
       row was made. No field for where each address came from: all of
       them came from Let's Do Digital registrations, so it would say
       the same thing 800 times.
 
-- [ ] **Let the unsubscribe link name a subscriber.** The token names a
+- [x] **Let the unsubscribe link name a subscriber.** The token names a
       user by id today. It needs to name either kind, and the two
       routes and the page then work for a subscriber exactly as for a
       user, with nothing new to design. A subscriber has no
       `marketing_preference_change` history; the row's own
-      `unsubscribed_at` is the record.
+      `unsubscribed_at` is the record. Built as a second kind
+      of token under the same signature, naming a subscriber's id where
+      the first names a user's, so that subscriber 7's link cannot be
+      read as user 7's.
 
 - [ ] **Send to both.** `app.marketing.newsletter` reaches account
       holders who said yes and subscribers who are subscribed. An

@@ -21,14 +21,18 @@ from app.marketing.preferences import (
     MARKETING_WORDING_VERSION,
     set_marketing_preference,
 )
-from app.models import User
+from app.marketing.subscribers import set_subscribed
+from app.models import NewsletterSubscriber, User
 from app.rate_limit import limiter
 from app.schemas.marketing import (
     MarketingPreferenceIn,
     MarketingPreferenceOut,
     MarketingUnsubscribeOut,
 )
-from app.security import verify_marketing_unsubscribe_token
+from app.security import (
+    verify_marketing_unsubscribe_token,
+    verify_subscriber_unsubscribe_token,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -99,29 +103,51 @@ _DEP_RAW_BODY = Depends(_raw_body)
 _UNSUBSCRIBE_TOKEN = Query(min_length=1, max_length=512)
 
 
-def _unsubscribe_user(token: str, db: Session) -> User:
+def _unsubscribe_target(
+    token: str, db: Session
+) -> User | NewsletterSubscriber:
     """Whose unsubscribe link this is.
 
     The signature is the whole of these routes' authentication: there is
     no session and no CSRF token, because the person may be signed out,
-    or may be a mailbox pressing the link for them.
+    may have no account at all, or may be a mailbox pressing the link
+    for them.
 
     Args:
         token: The token from the link.
         db: Database session.
 
     Returns:
-        The person the link was made for.
+        The account holder or the mailing-list subscriber the link was
+        made for.
 
     Raises:
-        HTTPException: 404 for a bad signature and for an account that
-            is gone, alike, so the reply says nothing about which.
+        HTTPException: 404 for a bad signature and for somebody who is
+            gone, alike, so the reply says nothing about which.
     """
+    target: User | NewsletterSubscriber | None = None
     user_id = verify_marketing_unsubscribe_token(token)
-    user = db.get(User, user_id) if user_id is not None else None
-    if user is None:
+    if user_id is not None:
+        target = db.get(User, user_id)
+    else:
+        subscriber_id = verify_subscriber_unsubscribe_token(token)
+        if subscriber_id is not None:
+            target = db.get(NewsletterSubscriber, subscriber_id)
+    if target is None:
         raise HTTPException(status_code=404, detail="Not found.")
-    return user
+    return target
+
+
+def _answer(target: User | NewsletterSubscriber) -> MarketingUnsubscribeOut:
+    """What the link's routes say of whoever the link is for."""
+    wants = (
+        target.marketing_emails
+        if isinstance(target, User)
+        else target.subscribed
+    )
+    return MarketingUnsubscribeOut(
+        email=mask_email(target.email), marketing_emails=wants
+    )
 
 
 def _is_json(request: Request) -> bool:
@@ -165,7 +191,7 @@ def _wanted_by_link(request: Request, raw: bytes) -> bool:
 
 
 # Public and without a CSRF token on purpose, both of them: see
-# ``_unsubscribe_user``.
+# ``_unsubscribe_target``.
 @router.get("/unsubscribe", response_model=MarketingUnsubscribeOut)
 @limiter.limit("60/minute")
 def read_unsubscribe_link(
@@ -188,11 +214,7 @@ def read_unsubscribe_link(
     Raises:
         HTTPException: 404 if the link is not a real one.
     """
-    user = _unsubscribe_user(token, db)
-    return MarketingUnsubscribeOut(
-        email=mask_email(user.email),
-        marketing_emails=user.marketing_emails,
-    )
+    return _answer(_unsubscribe_target(token, db))
 
 
 @router.post("/unsubscribe", response_model=MarketingUnsubscribeOut)
@@ -218,14 +240,12 @@ def use_unsubscribe_link(
         HTTPException: 404 if the link is not a real one, 422 if a JSON
             body is not the shape the page sends.
     """
-    user = _unsubscribe_user(token, db)
-    set_marketing_preference(
-        db,
-        user,
-        wants=_wanted_by_link(request, raw),
-        source="unsubscribe_link",
-    )
-    return MarketingUnsubscribeOut(
-        email=mask_email(user.email),
-        marketing_emails=user.marketing_emails,
-    )
+    target = _unsubscribe_target(token, db)
+    wants = _wanted_by_link(request, raw)
+    if isinstance(target, User):
+        set_marketing_preference(
+            db, target, wants=wants, source="unsubscribe_link"
+        )
+    else:
+        set_subscribed(target, wants=wants)
+    return _answer(target)
