@@ -22,9 +22,9 @@ export const Default: Story = {
   args: { value: [] },
 };
 
-/** An oncology department putting its own framework first. */
+/** An oncology department putting the framework its trainees work to first. */
 export const WithLeads: Story = {
-  args: { value: ["oncology"] },
+  args: { value: ["uk_sact_board_2023"] },
 };
 
 /** A saved lead whose file has since been withdrawn. */

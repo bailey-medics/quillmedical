@@ -105,8 +105,8 @@ describe("CompetencySummary", () => {
             { ...row, id: "perform_cannulation", name: "Insert a cannula" },
             {
               ...row,
-              id: "deliver_palliative_radiotherapy",
-              name: "Deliver palliative radiotherapy",
+              id: "uk_sact_board_2023_prescribe_sact",
+              name: "Review and prescribe systemic anti-cancer therapy",
             },
           ]}
         />,
@@ -114,7 +114,9 @@ describe("CompetencySummary", () => {
 
       expect(screen.getByText("General clinical skills")).toBeInTheDocument();
       expect(
-        screen.getByText("Oncology (proof of concept)"),
+        screen.getByText(
+          "Prescriber competencies for reviewing and prescribing SACT",
+        ),
       ).toBeInTheDocument();
     });
 

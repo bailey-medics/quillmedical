@@ -1,0 +1,149 @@
+# shared/competency-definitions/ruh_sact_passport.yaml
+#
+# A FRAMEWORK: SACT COMPETENCY PASSPORT, ROYAL UNITED HOSPITALS BATH
+#
+# The local passport for haematology and oncology doctors starting to
+# prescribe SACT at the Royal United Hospitals Bath NHS Foundation Trust.
+# The document is undated. A revised edition is a new framework in a new
+# file, never an edit to this one.
+#
+# Quill hosts this as the trust wrote it. Its three tiers of supervision
+# are its own and are not the UK SACT Board's five levels: the two are
+# kept apart, each in its own words, and neither is mapped onto the other.
+#
+# HOW THE DOCUMENT IS LAID OUT HERE
+#
+#   * The first entry is prescribing itself, signed off at one of the
+#     document's three tiers. The document lets the first tier be limited
+#     to "certain drugs/regimes": the tumour site is the scope, and the
+#     drugs or regimens are written in the sign-off's comment.
+#   * Its fifteen "evidence of learning" items follow, in its order.
+#   * Its three logs (site-specific learning, pre-treatment consultations
+#     and new patient consultations) are the holder's logbook for the
+#     first entry, written in the logbook's free-text fields.
+#
+# WHAT IS LEFT OUT
+#
+# The document asks for two signatures at each tier, the clinical
+# supervisor's and the clinical lead's. A sign-off here carries one.
+# Its list of prerequisite learning topics is not signed in the document
+# and has no entries here.
+#
+# The tumour sites are a first draft for an oncologist to correct. `other`
+# is required on every list of scopes.
+#
+# `passport_only` because these are statements on a form, recorded in a
+# clinician passport and granted to nobody as a permission.
+#
+# See docs/docs/plans/2026-10-07-passport-registrar-portfolios-plan.md.
+
+framework:
+  id: ruh_sact_passport
+  name: "SACT competency passport"
+  publisher: "Royal United Hospitals Bath NHS Foundation Trust"
+  version: "Undated"
+  specialties:
+    - oncology
+    - haematology
+  passport_only: true
+
+competencies:
+  - id: ruh_sact_passport_prescribe_sact
+    display_name: "Prescribe SACT"
+    assessable: true
+    levels:
+      - id: direct_supervision
+        name: "Considered competent to prescribe SACT with direct supervision"
+      - id: indirect_supervision
+        name: "Considered competent to prescribe SACT with indirect supervision"
+      - id: independent
+        name: "Considered competent to prescribe SACT independently (consultant level)"
+    scopes:
+      - id: breast
+        name: "Breast"
+      - id: lung
+        name: "Lung"
+      - id: upper_gastrointestinal
+        name: "Upper gastrointestinal"
+      - id: lower_gastrointestinal
+        name: "Lower gastrointestinal"
+      - id: urological
+        name: "Urological"
+      - id: gynaecological
+        name: "Gynaecological"
+      - id: head_and_neck
+        name: "Head and neck"
+      - id: central_nervous_system
+        name: "Central nervous system"
+      - id: skin
+        name: "Skin"
+      - id: sarcoma
+        name: "Sarcoma"
+      - id: haematological
+        name: "Haematological"
+      - id: unknown_primary
+        name: "Cancer of unknown primary"
+      - id: other
+        name: "Other"
+
+  # Evidence of learning
+
+  - id: ruh_sact_passport_cytotoxic_drugs
+    display_name: "How cytotoxic drugs work and common toxicities"
+    assessable: true
+
+  - id: ruh_sact_passport_immunotherapy_drugs
+    display_name: "How immunotherapy drugs work and common toxicities"
+    assessable: true
+
+  - id: ruh_sact_passport_tki_drugs
+    display_name: "How TKI drugs work and common toxicities"
+    assessable: true
+
+  - id: ruh_sact_passport_assess_organ_function
+    display_name: "Assessing physiological function of organs prior to SACT prescribing e.g. liver, cardiac, renal, lung and fertility"
+    assessable: true
+
+  - id: ruh_sact_passport_consent
+    display_name: "Consent e.g. CRUK consent forms"
+    assessable: true
+
+  - id: ruh_sact_passport_explain_treatment_intent
+    display_name: "Explanation to patients of palliative, adjuvant, neoadjuvant and different stages of clinical trials from phase 1 to 4"
+    assessable: true
+
+  - id: ruh_sact_passport_find_protocols_and_advice
+    display_name: "Where to look for protocols and advice e.g. EMC, SPC, SACT protocols"
+    assessable: true
+
+  - id: ruh_sact_passport_dosing_considerations
+    display_name: "Dosing considerations e.g. BSA and BMI, AUC and EDTA"
+    assessable: true
+
+  - id: ruh_sact_passport_ctcae_grading
+    display_name: "Understanding of CTCAE grading"
+    assessable: true
+
+  - id: ruh_sact_passport_emergencies
+    display_name: "Understanding of emergencies e.g. neutropenic sepsis, IO diarrhoea, TKI pneumonitis, blood clots, mucositis, vomiting"
+    assessable: true
+
+  - id: ruh_sact_passport_hypersensitivity_reactions
+    display_name: "Understanding of SACT hypersensitivity reactions and anaphylaxis"
+    assessable: true
+
+  - id: ruh_sact_passport_intrathecal_never_event
+    display_name: "Describe the never event pertaining to intrathecal cytotoxic chemotherapy"
+    assessable: true
+
+  - id: ruh_sact_passport_dose_banding
+    display_name: "Describe what dose banding is and why it is used"
+    assessable: true
+
+  - id: ruh_sact_passport_extravasation
+    display_name: "Describe how to deal with extravasation and give examples of vesicant and irritant drugs"
+    assessable: true
+
+  - id: ruh_sact_passport_referral_process
+    display_name: "Describe the SACT referral process including delivery of SACT referral with consent and FUP/DPD etc to schedulers"
+    assessable: true

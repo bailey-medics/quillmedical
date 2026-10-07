@@ -1,0 +1,244 @@
+# shared/competency-definitions/uk_sact_board_2023.yaml
+#
+# A FRAMEWORK: UK SACT BOARD PRESCRIBER COMPETENCIES, NOVEMBER 2023
+#
+# "Prescriber competencies for reviewing and prescribing Systemic
+# Anti-Cancer Therapy", published by the UK SACT Board in November 2023,
+# with its next review due in November 2026. A revised edition is a new
+# framework in a new file, never an edit to this one: a sign-off must keep
+# the words it was signed under.
+#
+# Quill hosts this as the Board wrote it. The levels, the statements and
+# their order are the document's own, quoted, and nothing here is mapped
+# onto any other framework's wording for the same act.
+#
+# HOW THE DOCUMENT IS LAID OUT HERE
+#
+#   * The first entry is prescribing itself, signed off at one of the
+#     document's five levels, for one tumour type at a time. The Board
+#     recommends a declaration of competency "within each tumour type",
+#     which is what the scopes are for.
+#   * Each statement in its knowledge and skills tables follows, in the
+#     document's order, with its level in front. The rows reading "Has
+#     demonstrated competency at Level N" are left out: the scale on the
+#     first entry says that.
+#   * Its log of at least eight supervised prescriptions at each level is
+#     the holder's logbook for the first entry, each entry confirmed by
+#     the supervisor.
+#
+# WHAT QUILL DOES NOT ENFORCE
+#
+# The Board says who may assess each level, and that each level needs the
+# ones below it. Quill records who signed, in what role and with what
+# registration, and refuses nothing: see the plan's decisions.
+#
+# The tumour types are a first draft for an oncologist to correct. `other`
+# is required on every list of scopes, so nobody is blocked by a missing
+# entry.
+#
+# `passport_only` because these are statements on a form, recorded in a
+# clinician passport and granted to nobody as a permission. Every id
+# starts with the framework's id, which the loader checks.
+#
+# See docs/docs/plans/2026-10-07-passport-registrar-portfolios-plan.md.
+
+framework:
+  id: uk_sact_board_2023
+  name: "Prescriber competencies for reviewing and prescribing SACT"
+  publisher: "UK SACT Board"
+  version: "November 2023"
+  specialties:
+    - oncology
+    - haematology
+  passport_only: true
+
+competencies:
+  - id: uk_sact_board_2023_prescribe_sact
+    display_name: "Review and prescribe systemic anti-cancer therapy"
+    assessable: true
+    levels:
+      - id: observation_only
+        name: "Level 1: Observation only"
+      - id: review_and_authorise
+        name: "Level 2: Review and authorise administration of systemic anti-cancer therapy"
+      - id: prescribe_subsequent_cycles
+        name: "Level 3: Prescribing second cycle onwards"
+      - id: prescribe_first_cycle
+        name: "Level 4: Prescribing first cycle"
+      - id: prescribe_for_complex_patients
+        name: "Level 5: Able to prescribe and initiate SACT and customise treatment for complex patients"
+    scopes:
+      - id: breast
+        name: "Breast"
+      - id: lung
+        name: "Lung"
+      - id: upper_gastrointestinal
+        name: "Upper gastrointestinal"
+      - id: lower_gastrointestinal
+        name: "Lower gastrointestinal"
+      - id: urological
+        name: "Urological"
+      - id: gynaecological
+        name: "Gynaecological"
+      - id: head_and_neck
+        name: "Head and neck"
+      - id: central_nervous_system
+        name: "Central nervous system"
+      - id: skin
+        name: "Skin"
+      - id: sarcoma
+        name: "Sarcoma"
+      - id: haematological
+        name: "Haematological"
+      - id: unknown_primary
+        name: "Cancer of unknown primary"
+      - id: other
+        name: "Other"
+
+  # Level 2
+
+  - id: uk_sact_board_2023_define_mechanism_of_action
+    display_name: "Level 2: Ability to define the scientific mechanism of action of the SACT used in the management of cancer patients"
+    assessable: true
+
+  - id: uk_sact_board_2023_define_dose_delay_principles
+    display_name: "Level 2: Ability to define the principles for dose delay or dose reduction of systemic therapies, based upon haematological toxicity"
+    assessable: true
+
+  - id: uk_sact_board_2023_determine_antiemetic_requirements
+    display_name: "Level 2: Ability to determine the antiemetic requirements of patients receiving SACT"
+    assessable: true
+
+  - id: uk_sact_board_2023_define_likely_adverse_effects
+    display_name: "Level 2: Can define the likely adverse effects of SACT in common usage within the relevant clinical service"
+    assessable: true
+
+  - id: uk_sact_board_2023_identify_supportive_measures
+    display_name: "Level 2: Ability to identify appropriate pharmacological and non-pharmacological supportive measures that may be required for SACT"
+    assessable: true
+
+  - id: uk_sact_board_2023_assess_and_record_toxicity
+    display_name: "Level 2: Ability to perform a thorough assessment of toxicity and record the clinical information using defined systems such as the Common Toxicity Criteria"
+    assessable: true
+
+  - id: uk_sact_board_2023_review_a_prescription
+    display_name: "Level 2: Can review a prescription for SACT and accurately identify any errors or omissions"
+    assessable: true
+
+  - id: uk_sact_board_2023_authorise_treatment_to_proceed
+    display_name: "Level 2: Can correctly and accurately authorise SACT treatment to proceed following assessment of the patient and relevant laboratory investigations"
+    assessable: true
+
+  # Level 3
+
+  - id: uk_sact_board_2023_define_dose_calculation_methods
+    display_name: "Level 3: Can define the methods for calculating the correct dose of medication for administration including those based on body surface area, pharmacokinetic and pharmacodynamic principles"
+    assessable: true
+
+  - id: uk_sact_board_2023_define_dose_modification_basis
+    display_name: "Level 3: Can define the scientific basis and parameters for dose modifications to systemic therapy in the light of clinical data relating to the liver, renal, haematological and other organ systems"
+    assessable: true
+
+  - id: uk_sact_board_2023_prescribe_antiemetics
+    display_name: "Level 3: Ability to prescribe antiemetic medications appropriate to the chosen therapy and ability to modify following review of the patient’s situation and symptoms following previous treatments"
+    assessable: true
+
+  - id: uk_sact_board_2023_understand_blood_products
+    display_name: "Level 3: Ability to demonstrate knowledge and understanding of the indications for and adverse reactions associated with the use of blood products"
+    assessable: true
+
+  - id: uk_sact_board_2023_define_good_clinical_practice
+    display_name: "Level 3: Can define the requirement of Good Clinical Practice as it relates to clinical trials"
+    assessable: true
+
+  - id: uk_sact_board_2023_prescribe_supportive_measures
+    display_name: "Level 3: Can prescribe appropriate pharmacological and non-pharmacological supportive measures that may be required by patients receiving SACT, including growth factors and supportive medication"
+    assessable: true
+
+  - id: uk_sact_board_2023_prescribe_and_order_sact
+    display_name: "Level 3: Can prescribe and order SACT following assessment of the patient and relevant laboratory investigations using local electronic prescribing systems"
+    assessable: true
+
+  - id: uk_sact_board_2023_prescribe_by_dose_calculation
+    display_name: "Level 3: Can accurately prescribe SACT using various methods for calculating the correct dose of medication for administration, including those based on body surface area, pharmacokinetic and pharmacodynamic principles"
+    assessable: true
+
+  - id: uk_sact_board_2023_implement_dose_delay
+    display_name: "Level 3: Can implement a dose delay or dose reduction of systemic therapies, based upon haematological and non-haematological toxicity"
+    assessable: true
+
+  - id: uk_sact_board_2023_recognise_poor_tolerance
+    display_name: "Level 3: Can determine that a patient may not be tolerating the treatment as expected and appropriately involves more senior colleagues in the review of the patient"
+    assessable: true
+
+  - id: uk_sact_board_2023_assess_tumour_response
+    display_name: "Level 3: Can assess objective tumour response by clinical, serological and radiological parameters and appropriately involve medical colleagues in the confirmation of response as required"
+    assessable: true
+
+  # Level 4
+
+  - id: uk_sact_board_2023_define_interactions
+    display_name: "Level 4: Can define the scientific mechanism of action of the SACT used in the management cancer patients and identify when this may interact with other prescribed drugs"
+    assessable: true
+
+  - id: uk_sact_board_2023_define_long_term_effects
+    display_name: "Level 4: Can define the long-term effects of SACT including the impact on fertility and risk of a secondary malignancy"
+    assessable: true
+
+  - id: uk_sact_board_2023_define_trial_eligibility
+    display_name: "Level 4: Can define eligibility for local clinical trials within tumour specific area and initiate and prescribe subsequent SACT as coinvestigator."
+    assessable: true
+
+  - id: uk_sact_board_2023_initiate_sact
+    display_name: "Level 4: Can initiate SACT for specific named malignancies following initial assessment of patient by medical consultant, considering the decisions made during a multidisciplinary team meeting and following an agreed treatment algorithm"
+    assessable: true
+
+  - id: uk_sact_board_2023_modify_first_cycle_dosage
+    display_name: "Level 4: Can modify the dosage of first cycle of SACT based on pharmacokinetic and pharmacodynamic information relating to a patient"
+    assessable: true
+
+  - id: uk_sact_board_2023_modify_dosage_for_comorbidity
+    display_name: "Level 4: Can modify the dosage of SACT based upon the co-morbidity of the patient and other factors such as the frailty of the patient"
+    assessable: true
+
+  - id: uk_sact_board_2023_report_adverse_events
+    display_name: "Level 4: Can perform a thorough assessment of SACT toxicity and report adverse events to appropriate regulatory authorities"
+    assessable: true
+
+  - id: uk_sact_board_2023_obtain_informed_consent
+    display_name: "Level 4: Can obtain informed consent for SACT following appropriate discussion of indications and likely adverse effects of treatment (in conjunction with medical consultant as part of an agreed pathway)"
+    assessable: true
+
+  - id: uk_sact_board_2023_request_senior_assistance
+    display_name: "Level 4: Can appropriately request assistance or advice when a situation requires the involvement of a more senior colleague"
+    assessable: true
+
+  # Level 5
+
+  - id: uk_sact_board_2023_define_new_therapy_strategies
+    display_name: "Level 5: Can define strategies to introduce a new therapy within a clinical department"
+    assessable: true
+
+  - id: uk_sact_board_2023_identify_training_needs
+    display_name: "Level 5: Can identify the training needs of all healthcare professionals involved in SACT prescribing"
+    assessable: true
+
+  - id: uk_sact_board_2023_define_regulatory_framework
+    display_name: "Level 5: Ability to define the regulatory framework for the development of new SACT"
+    assessable: true
+
+  - id: uk_sact_board_2023_customise_a_prescription
+    display_name: "Level 5: Ability to identify the exceptional circumstances when it will be necessary to customise a SACT prescription for an individual patient"
+    assessable: true
+
+  - id: uk_sact_board_2023_analyse_published_evidence
+    display_name: "Level 5: Ability to perform a critical analysis of the published evidence of benefit for a new therapy and advise on the cost effectiveness and likely benefits"
+    assessable: true
+
+  - id: uk_sact_board_2023_evaluate_as_trial_investigator
+    display_name: "Level 5: Ability to participate in the evaluation of a new therapy as an investigator for a clinical trial"
+    assessable: true
+
+  - id: uk_sact_board_2023_demonstrate_leadership
+    display_name: "Level 5: Demonstrates leadership within a directorate – for example, involvement with development and maintenance of guidelines/ introduction of new therapies"
+    assessable: true

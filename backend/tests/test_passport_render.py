@@ -41,7 +41,7 @@ from app.features.passport.schemas import (
 from app.features.passport.store import LocalPassportStore
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
-COMPETENCY = "prescribe_sact"
+COMPETENCY = "uk_sact_board_2023_prescribe_sact"
 # What a sign-off for it covers. It is signed off one tumour site at a
 # time, so every request names one.
 SCOPE = "lung"
@@ -168,7 +168,7 @@ class TestCompetencyTable:
 
         output = render.render(store, PASSPORT_ID)
 
-        assert "Review and authorise administration" in output
+        assert "Level 2: Review and authorise administration" in output
         assert "signed off" in output
 
     def test_a_scoped_competency_is_named_with_its_scope(

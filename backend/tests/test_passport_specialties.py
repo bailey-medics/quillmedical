@@ -56,7 +56,10 @@ class TestTheRealFolder:
 
         assert oncology is not None
         assert oncology.display_name == "Oncology"
-        assert oncology.common_competencies[0] == "prescribe_sact"
+        assert (
+            oncology.common_competencies[0]
+            == "uk_sact_board_2023_prescribe_sact"
+        )
 
     def test_an_unknown_specialty_is_none_rather_than_an_error(self) -> None:
         """A profile naming a specialty since removed must stay readable."""

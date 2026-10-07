@@ -33,7 +33,7 @@ from tests.registrations import declare
 # Two frameworks the catalogue is known to hold, named here so a change
 # to it surfaces as one failure.
 GENERAL = "clinical"
-ONCOLOGY = "oncology"
+ONCOLOGY = "uk_sact_board_2023"
 
 
 def _make_user(
@@ -190,9 +190,11 @@ class TestSearchAndFilter:
     ) -> None:
         holder = _make_user(db_session, "holder")
 
+        # The Board's framework is filed under oncology and haematology.
         assert ONCOLOGY in _ids(db_session, holder, specialty="oncology")
+        assert ONCOLOGY in _ids(db_session, holder, specialty="haematology")
         assert ONCOLOGY not in _ids(
-            db_session, holder, specialty="haematology"
+            db_session, holder, specialty="general_surgery"
         )
 
     def test_a_framework_filed_under_no_specialty_is_never_filtered_out(
@@ -288,7 +290,8 @@ class TestTheHoldersRoutes:
             "/api/passport/frameworks", params={"q": "general"}
         )
         filtered = holder_client.get(
-            "/api/passport/frameworks", params={"specialty": "haematology"}
+            "/api/passport/frameworks",
+            params={"specialty": "general_surgery"},
         )
 
         assert [f["id"] for f in found.json()] == [GENERAL]
@@ -333,7 +336,10 @@ class TestTheHoldersRoutes:
         assert response.status_code == 200, response.text
         assert response.json()["frameworks"] == [
             {"id": GENERAL, "name": "General clinical skills"},
-            {"id": ONCOLOGY, "name": "Oncology (proof of concept)"},
+            {
+                "id": ONCOLOGY,
+                "name": "Prescriber competencies for reviewing and prescribing SACT",
+            },
         ]
         again = holder_client.get("/api/passport/me").json()
         assert [f["id"] for f in again["passport"]["frameworks"]] == [
@@ -414,14 +420,14 @@ class TestOnlyWhatTheFrameworksHold:
         passport_id = self._passport(holder_client, GENERAL)
 
         response = holder_client.post(
-            f"/api/passport/{passport_id}/logbook/prescribe_sact",
+            f"/api/passport/{passport_id}/logbook/uk_sact_board_2023_prescribe_sact",
             json={"performed_on": "2026-03-12"},
         )
 
         assert response.status_code == 400, response.text
         detail = response.json()["detail"]
         assert "Settings" in detail
-        assert "prescribe_sact" not in detail
+        assert "uk_sact_board_2023_prescribe_sact" not in detail
 
     def test_a_holder_with_no_frameworks_can_record_nothing(
         self, holder_client: TestClient
@@ -440,7 +446,7 @@ class TestOnlyWhatTheFrameworksHold:
     ) -> None:
         passport_id = self._passport(holder_client, GENERAL)
         base = f"/api/passport/{passport_id}"
-        outside = "prescribe_sact"
+        outside = "uk_sact_board_2023_prescribe_sact"
 
         attempts = [
             holder_client.post(

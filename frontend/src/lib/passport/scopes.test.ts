@@ -3,14 +3,18 @@ import { nameWithScope, scopesFor } from "./scopes";
 
 describe("scopesFor", () => {
   it("gives a scoped competency's scopes in the catalogue's order", () => {
-    const ids = scopesFor("prescribe_sact").map((scope) => scope.id);
+    const ids = scopesFor("uk_sact_board_2023_prescribe_sact").map(
+      (scope) => scope.id,
+    );
 
     expect(ids[0]).toBe("breast");
     expect(ids).toContain("lung");
   });
 
   it("always offers other, and offers it last", () => {
-    const ids = scopesFor("prescribe_sact").map((scope) => scope.id);
+    const ids = scopesFor("uk_sact_board_2023_prescribe_sact").map(
+      (scope) => scope.id,
+    );
 
     expect(ids[ids.length - 1]).toBe("other");
   });

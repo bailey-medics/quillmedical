@@ -198,6 +198,33 @@ class TestEntryFilename:
 class TestSlugify:
     """Deliberately lossy: the authoritative value is inside the file."""
 
+    def test_a_long_label_is_cut_at_a_word(self) -> None:
+        """A framework quotes its document, and a statement can run long.
+
+        Longer than a folder name should be, and longer than the column
+        a sign-off request stores its folder name in.
+        """
+        statement = (
+            "Can define the methods for calculating the correct dose of "
+            "medication for administration including those based on body "
+            "surface area, pharmacokinetic and pharmacodynamic principles"
+        )
+
+        slug = ids.slugify(statement)
+
+        assert len(slug) <= ids.MAX_SLUG_LENGTH
+        assert not slug.endswith("-")
+        # Whole words: the cut does not land inside one.
+        assert statement.casefold().startswith(slug.replace("-", " "))
+
+    def test_a_label_within_the_limit_is_left_whole(self) -> None:
+        assert ids.slugify("Perform bronchoscopy") == "perform-bronchoscopy"
+
+    def test_a_long_name_makes_a_folder_a_request_row_can_hold(self) -> None:
+        name = ids.record_dir_name(date(2026, 3, 12), "word " * 100)
+
+        assert len(name) < 200
+
     @pytest.mark.parametrize(
         ("text", "expected"),
         [

@@ -65,13 +65,15 @@ describe("CompetencyPicker", () => {
       await screen.findByText("General clinical skills");
 
       expect(
-        screen.queryByText("Deliver and manage palliative radiotherapy"),
+        screen.queryByText(
+          "Level 2: Can review a prescription for SACT and accurately identify any errors or omissions",
+        ),
       ).not.toBeInTheDocument();
     });
 
     it("lists each chosen framework under its own heading", async () => {
       const user = userEvent.setup();
-      renderPicker({ frameworks: ["clinical", "oncology"] });
+      renderPicker({ frameworks: ["clinical", "uk_sact_board_2023"] });
 
       await open(user);
 
@@ -79,10 +81,14 @@ describe("CompetencyPicker", () => {
         await screen.findByText("General clinical skills"),
       ).toBeInTheDocument();
       expect(
-        screen.getByText("Oncology (proof of concept)"),
+        screen.getByText(
+          "Prescriber competencies for reviewing and prescribing SACT",
+        ),
       ).toBeInTheDocument();
       expect(
-        screen.getByText("Deliver and manage palliative radiotherapy"),
+        screen.getByText(
+          "Level 2: Can review a prescription for SACT and accurately identify any errors or omissions",
+        ),
       ).toBeInTheDocument();
     });
 

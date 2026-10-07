@@ -1,0 +1,75 @@
+# shared/competency-definitions/ghnft_radiotherapy_record.yaml
+#
+# A FRAMEWORK: CLINICAL ONCOLOGY REGISTRAR RECORD OF RADIOTHERAPY TRAINING
+# AND COMPETENCE, GLOUCESTERSHIRE HOSPITALS (PILOT)
+#
+# The two-page record a clinical oncology registrar starts within a month
+# of joining Gloucestershire Hospitals NHS Foundation Trust, and brings to
+# each meeting with their educational supervisor. Marked as a pilot. A
+# revised edition is a new framework in a new file, never an edit to this
+# one.
+#
+# Quill hosts this as the trust wrote it.
+#
+# HOW THE DOCUMENT IS LAID OUT HERE
+#
+#   * Four of its rows ask "Do you feel confident to ... unsupervised?"
+#     and are signed by the trainee and the trainer. Each is an entry
+#     here, in the sheet's own words, signed off or not. The sheet does
+#     not use the RCR entrustment scale, so these carry no levels: the
+#     holder asking for the sign-off is their saying they feel confident,
+#     and the trainer signing is the countersignature.
+#   * Its three "acquaintance" sign-offs follow.
+#
+# WHAT IS LEFT OUT, AND WHERE IT GOES
+#
+#   * Registration with the RCR is a registration in the holder's profile.
+#   * The induction, the Part 1 FRCR course, passing Part 1 and Final
+#     FRCR, the post Part 1 slide deck and the post Part 2 review are
+#     certificates: courses and qualifications the holder claims.
+#   * "Completed one year in a post with regular supervised pre-treatment
+#     planning sessions" is time served, not something assessed. It has no
+#     entry.
+#
+# `passport_only` because these are rows on a form, recorded in a
+# clinician passport and granted to nobody as a permission.
+#
+# See docs/docs/plans/2026-10-07-passport-registrar-portfolios-plan.md.
+
+framework:
+  id: ghnft_radiotherapy_record
+  name: "Clinical oncology registrar record of radiotherapy training and competence"
+  publisher: "Gloucestershire Hospitals NHS Foundation Trust"
+  version: "Pilot"
+  specialties:
+    - oncology
+  passport_only: true
+
+competencies:
+  - id: ghnft_radiotherapy_record_refer_palliative
+    display_name: "Refer patients for palliative radiotherapy unsupervised"
+    assessable: true
+
+  - id: ghnft_radiotherapy_record_plan_and_prescribe_palliative
+    display_name: "Plan and prescribe palliative radiotherapy unsupervised"
+    assessable: true
+
+  - id: ghnft_radiotherapy_record_refer_radical
+    display_name: "Refer patients for radical radiotherapy unsupervised"
+    assessable: true
+
+  - id: ghnft_radiotherapy_record_plan_and_prescribe_radical
+    display_name: "Plan and prescribe radical radiotherapy unsupervised"
+    assessable: true
+
+  - id: ghnft_radiotherapy_record_acquaintance_with_pinnacle
+    display_name: "Acquaintance with Pinnacle treatment planning software"
+    assessable: true
+
+  - id: ghnft_radiotherapy_record_acquaintance_with_aria
+    display_name: "Acquaintance with Aria"
+    assessable: true
+
+  - id: ghnft_radiotherapy_record_acquaintance_with_referral_and_consent
+    display_name: "Acquaintance with referral and consent process"
+    assessable: true

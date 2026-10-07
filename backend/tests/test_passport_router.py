@@ -73,11 +73,11 @@ from tests.registrations import declare
 #: From the oncology set drafted in Phase 0. Chosen because it declares
 #: the UK SACT Board's four levels, so the level paths are exercised
 #: rather than only the bare signed-off-or-not case.
-COMPETENCY = "prescribe_sact"
+COMPETENCY = "uk_sact_board_2023_prescribe_sact"
 # The frameworks a test holder works to. A passport offers the
 # competencies in its holder's frameworks and no others, so one made with
 # none could record nothing.
-WORKING_TO = {"frameworks": ["clinical", "oncology"]}
+WORKING_TO = {"frameworks": ["clinical", "uk_sact_board_2023"]}
 # What a sign-off for it covers. It is signed off one tumour site at a
 # time, so every request names one.
 SCOPE = "lung"

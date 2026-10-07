@@ -34,7 +34,7 @@ from app.features.passport.schemas import Certificate, CpdEntry, LogbookEntry
 from app.features.passport.store import LocalPassportStore
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
-COMPETENCY = "prescribe_sact"
+COMPETENCY = "uk_sact_board_2023_prescribe_sact"
 # What a sign-off for it covers. It is signed off one tumour site at a
 # time, so every request names one.
 SCOPE = "lung"
@@ -48,7 +48,7 @@ CONTENT_MARKERS = (
     "Kapoor",
     "Amara",
     "Okonkwo",
-    "prescribe_sact",
+    "uk_sact_board_2023_prescribe_sact",
     "SACT course",
     "UKONS",
     "Bristol",
@@ -288,7 +288,7 @@ This is a record of assessed clinical competence: what this person has been sign
 | Competency | Level | Status | Signed off by | Date | Expires |
 | --- | --- | --- | --- | --- | --- |
 | Review and prescribe systemic anti-cancer therapy | – | no sign-off | – | – | – |
-| Review and prescribe systemic anti-cancer therapy: Lung | Review and authorise administration | signed off | Dr Amara Okonkwo | 2026-03-20 | – |
+| Review and prescribe systemic anti-cancer therapy: Lung | Level 2: Review and authorise administration of systemic anti-cancer therapy | signed off | Dr Amara Okonkwo | 2026-03-20 | – |
 
 ## Logbook
 
@@ -318,7 +318,7 @@ No CPD date ranges have been set, so these run June to June by convention rather
 
 ### Review and prescribe systemic anti-cancer therapy: Lung
 
-**Level:** Review and authorise administration
+**Level:** Level 2: Review and authorise administration of systemic anti-cancer therapy
 
 - Status: signed_off
 - Kind: initial
