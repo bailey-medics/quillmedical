@@ -508,9 +508,10 @@ class LogbookEntry(PassportModel):
     performed_on: date
     #: What the entry counts towards within its competency, where the
     #: competency declares scopes: a lung prescription, not a breast one.
-    #: Optional even then, unlike on a sign-off. An entry is the holder's
-    #: own and can be corrected, and every entry written before 7 October
-    #: 2026 has none.
+    #: The API requires it wherever the competency declares scopes, as on
+    #: a sign-off. Optional in the file all the same, because a competency
+    #: with no scopes has none to name, and every entry written before
+    #: 7 October 2026 has none.
     scope: ScopeRef | None = None
     setting: str | None = None
     supervision: Supervision | None = None

@@ -533,7 +533,7 @@ The specialty a holder chooses, and the ones an organisation leads with,
 become frameworks. It is a rename in what people see and more than a rename
 underneath: a specialty ordered the list, and a framework limits it. So
 nothing stored as a specialty can be carried over as a framework, and each
-piece is added new beside the old one, which Phase 10 then removes. This
+piece is added new beside the old one, which Phase 12 then removes. This
 phase is the storage and the routes. Nothing a holder sees changes until
 Phase 8.
 
@@ -601,7 +601,7 @@ Phase 8.
 - [x] **Tests and stories** for each, the renamed ones included.
 
 The plan had a step here to retire `common_competencies` from the specialty
-files. It is left to Phase 10, which deletes those files and their loader
+files. It is left to Phase 12, which deletes those files and their loader
 whole: trimming them first would be work thrown away a release later.
 
 ## Phase 9: The three frameworks
@@ -648,7 +648,42 @@ what is left out.
       specialty, a passport-only id is refused as a grant, and the retired
       oncology ids are still in the catalogue with their levels.
 
-## Phase 10: Remove what specialty left behind
+## Phase 10: A logbook entry must name its scope
+
+Phase 4 made the scope optional on a logbook entry, on the reasoning that an
+entry is the holder's own and can be corrected. The product owner reversed
+that on 7 October 2026 on reading its pull request: where a competency
+declares scopes, a logbook entry names one, whether or not anything is
+signed yet, exactly as a sign-off does. Built here, at the top of the stack,
+and not folded into Phase 4's branch, because the logbook tests of five
+later branches log entries with no scope and each would have needed
+changing.
+
+- [x] **Require the scope on adding and amending a logbook entry**, in
+      `_logbook_scope` in the router, wherever the competency declares
+      scopes. Phase 4 counts an entry under the scope it names, so one
+      with none counts towards no sign-off, and a holder asking to be
+      signed off for lung would find their lung prescriptions missing
+      from the evidence. Still optional in the file, since a competency
+      with no scopes has none to name and older entries have none.
+- [x] **Require it on `LogbookEntryForm`**, which holds back until one is
+      chosen. An older entry with no scope cannot be saved until it says
+      what it counts towards.
+- [x] **Tests**: an entry with no scope refused and not saved, a
+      competency with no scopes asked for nothing, amending allowed to
+      change the scope and not to clear it.
+
+## Phase 11: Bring the documentation into line
+
+- [ ] **Update `docs/docs/backend/passport/index.md`**: scopes, a confirmed
+      logbook entry (which softens "everything else is the holder's own
+      claim"), frameworks in place of specialties, and the new tables
+      under Coordination.
+- [ ] **Update the rule that a file carries no meaning**, in
+      `.github/copilot-instructions.md`, then run `/sync-copilot-config`.
+      `CLAUDE.md` is generated from it.
+
+## Phase 12: Remove what specialty left behind
 
 Not in the same release as Phases 7 and 8. An open browser tab still calls
 the specialty routes until it reloads, so the old shape must stay live for
@@ -667,16 +702,6 @@ and ask before either.
       `backend/app/features/passport/specialties.py`, with
       `test_passport_specialties.py` and `test_passport_lead_specialties.py`
       and the generated `passport-specialties.json`.
-
-## Phase 11: Bring the documentation into line
-
-- [ ] **Update `docs/docs/backend/passport/index.md`**: scopes, a confirmed
-      logbook entry (which softens "everything else is the holder's own
-      claim"), frameworks in place of specialties, and the new tables
-      under Coordination.
-- [ ] **Update the rule that a file carries no meaning**, in
-      `.github/copilot-instructions.md`, then run `/sync-copilot-config`.
-      `CLAUDE.md` is generated from it.
 
 ## Decisions
 
@@ -713,9 +738,10 @@ one step, the detail is in that step.
 
 - **Scope is a field on the record, not more competencies** – the
   competency stays `prescribe_sact`, and a record says what it covers in a
-  `scope` of id and name, kept in the passport file. It is offered on
+  `scope` of id and name, kept in the passport file. It is required on
   sign-offs and on logbook entries, and only where the competency declares
-  scopes: one that declares none behaves as it does today. A competency
+  scopes: one that declares none behaves as it does today. It was first
+  built as optional on a logbook entry, and made required in Phase 10. A competency
   per cancer type (`prescribe_sact_lung`, `prescribe_sact_breast` and so
   on) was rejected: multiplied by every level and every framework it is
   the long-list problem again. No new table is needed.
@@ -795,7 +821,7 @@ one step, the detail is in that step.
   specialty put favourite competencies at the top of one long list, and a
   framework limits what is listed at all. So the stored choices cannot be
   carried across: the profile key, the table and the routes are each added
-  new and the old ones removed a release later, in Phase 10. What is left
+  new and the old ones removed a release later, in Phase 12. What is left
   of specialty is one word on a framework, used to filter a search.
 
 - **`oncology.yaml` goes, replaced by the three frameworks** – one file for

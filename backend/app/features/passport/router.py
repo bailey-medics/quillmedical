@@ -2781,20 +2781,32 @@ def _logbook_entry_out(
     )
 
 
+#: Said to a holder logging against a competency that declares scopes
+#: without naming one.
+LOGBOOK_SCOPE_REQUIRED_MESSAGE = "Choose what this entry counts towards."
+
+
 def _logbook_scope(
     competency_id: str, scope_id: str | None
 ) -> ScopeRef | None:
-    """The scope a logbook entry names, or none.
+    """The scope a logbook entry names, or none for a competency with none.
 
-    Optional, where a sign-off requires one: an entry is the holder's
-    own and can be corrected. But a scope that is named must be one the
-    competency declares, since it decides which sign-off the entry is
-    counted under.
+    Required wherever the competency declares scopes, exactly as on a
+    sign-off, whether or not anything is signed yet. A scope decides
+    which sign-off an entry is counted under, so an entry without one
+    counts towards nothing, and a holder asking to be signed off for
+    lung would find their lung prescriptions missing from the evidence.
+
+    Held on adding and on amending. Entries written before 7 October
+    2026 name none and still read; correcting one means saying what it
+    counts towards.
     """
-    if scope_id is None:
-        return None
-
     try:
+        if scope_id is None:
+            if definitions.has_scopes(competency_id):
+                raise HTTPException(400, LOGBOOK_SCOPE_REQUIRED_MESSAGE)
+            return None
+
         return definitions.scope_ref(competency_id, scope_id)
     except definitions.UnknownCompetencyError:
         raise HTTPException(404, "Unknown competency") from None

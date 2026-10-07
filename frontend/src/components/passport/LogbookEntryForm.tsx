@@ -62,9 +62,8 @@ export interface LogbookEntryFormProps {
   competency: CompetencyState;
   /**
    * What an entry for this competency may count towards, if it declares
-   * scopes. The field is offered only then, and may be left empty: an
-   * entry is the holder's own and can be corrected, where a sign-off
-   * must name its scope.
+   * scopes. The field is offered only then, and must be answered, as on
+   * a sign-off: a scope decides which sign-off an entry counts towards.
    */
   scopes?: ScopeOption[];
   /** Called with the completed entry */
@@ -83,7 +82,8 @@ export interface LogbookEntryFormProps {
 /**
  * LogbookEntryForm
  *
- * Renders the entry. Only the date is required – the rest is detail the
+ * Renders the entry. Only the date is required, and what it counts
+ * towards where the competency declares scopes – the rest is detail the
  * holder adds where it is worth adding.
  */
 export default function LogbookEntryForm({
@@ -116,7 +116,15 @@ export default function LogbookEntryForm({
   const confirmerIsValid =
     confirmer === "" || EMAIL_PATTERN.value.test(confirmer);
 
-  const canSubmit = performedOn !== null && confirmerIsValid && !isSubmitting;
+  // Required wherever the competency declares scopes, as on a sign-off:
+  // the server refuses the entry without one.
+  const needsScope = (scopes?.length ?? 0) > 0;
+
+  const canSubmit =
+    performedOn !== null &&
+    (!needsScope || scopeId !== null) &&
+    confirmerIsValid &&
+    !isSubmitting;
 
   function handleSubmit() {
     if (!canSubmit || performedOn === null) return;
@@ -156,9 +164,9 @@ export default function LogbookEntryForm({
         {scopes && scopes.length > 0 && (
           <SelectField
             label="What it counts towards"
-            description="A sign-off counts the entries for what it covers. Optional."
+            description="A sign-off counts the entries for what it covers. Choose Other if yours is not listed."
             placeholder="Choose one"
-            clearable
+            required
             data={scopes.map((scope) => ({
               value: scope.id,
               label: scope.name,

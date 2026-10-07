@@ -303,6 +303,7 @@ class TestLogbook:
             f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
             json={
                 "performed_on": "2026-03-12",
+                "scope_id": SCOPE,
                 "setting": "Bristol Royal Infirmary",
                 "supervision": "supervised",
                 "outcome": "Successful",
@@ -327,22 +328,43 @@ class TestLogbook:
         ).json()
         assert body["entries"][0]["scope"] == {"id": SCOPE, "name": "Lung"}
 
-    def test_a_scope_is_optional_even_where_the_competency_has_them(
+    def test_a_scope_is_required_where_the_competency_has_them(
         self, passport: tuple[TestClient, str]
     ) -> None:
-        """Unlike a sign-off, which must name one."""
+        """As on a sign-off, whether or not anything is signed yet.
+
+        An entry with no scope counts towards no sign-off, so the holder
+        would find it missing from the evidence the day they asked.
+        """
         client, passport_id = passport
 
         response = client.post(
             f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
             json={"performed_on": "2026-03-12"},
         )
-        assert response.status_code == 201, response.text
 
-        body = client.get(
-            f"/api/passport/{passport_id}/logbook/{COMPETENCY}"
-        ).json()
-        assert body["entries"][0]["scope"] is None
+        assert response.status_code == 400, response.text
+        assert response.json()["detail"] == (
+            "Choose what this entry counts towards."
+        )
+        assert (
+            client.get(
+                f"/api/passport/{passport_id}/logbook/{COMPETENCY}"
+            ).json()["count"]
+            == 0
+        )
+
+    def test_a_competency_with_no_scopes_needs_none(
+        self, passport: tuple[TestClient, str]
+    ) -> None:
+        client, passport_id = passport
+
+        response = client.post(
+            f"/api/passport/{passport_id}/logbook/perform_cannulation",
+            json={"performed_on": "2026-03-12"},
+        )
+
+        assert response.status_code == 201, response.text
 
     def test_a_scope_the_competency_does_not_declare_is_refused(
         self, passport: tuple[TestClient, str]
@@ -369,7 +391,7 @@ class TestLogbook:
 
         assert response.status_code == 400, response.text
 
-    def test_amending_an_entry_can_change_or_clear_its_scope(
+    def test_amending_an_entry_can_change_its_scope_and_not_clear_it(
         self, passport: tuple[TestClient, str]
     ) -> None:
         client, passport_id = passport
@@ -391,8 +413,10 @@ class TestLogbook:
         cleared = client.patch(
             f"{url}/{stem}", json={"performed_on": "2026-03-12"}
         )
-        assert cleared.status_code == 200, cleared.text
-        assert client.get(url).json()["entries"][0]["scope"] is None
+        assert cleared.status_code == 400, cleared.text
+        assert client.get(url).json()["entries"][0]["scope"]["id"] == (
+            "breast"
+        )
 
     def test_the_logbook_counts_and_does_not_compare(
         self, passport: tuple[TestClient, str]
@@ -403,7 +427,7 @@ class TestLogbook:
         for day in ("2026-03-10", "2026-03-11", "2026-03-12"):
             client.post(
                 f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
-                json={"performed_on": day},
+                json={"performed_on": day, "scope_id": SCOPE},
             )
 
         response = client.get(
@@ -432,7 +456,7 @@ class TestLogbook:
         for day in ("2026-03-20", "2026-03-02", "2026-03-11"):
             client.post(
                 f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
-                json={"performed_on": day},
+                json={"performed_on": day, "scope_id": SCOPE},
             )
 
         body = client.get(
@@ -448,13 +472,21 @@ class TestLogbook:
         client, passport_id = passport
         created = client.post(
             f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
-            json={"performed_on": "2026-03-12", "outcome": "Typo"},
+            json={
+                "performed_on": "2026-03-12",
+                "outcome": "Typo",
+                "scope_id": SCOPE,
+            },
         )
         stem = created.json()["name"]
 
         response = client.patch(
             f"/api/passport/{passport_id}/logbook/{COMPETENCY}/{stem}",
-            json={"performed_on": "2026-03-12", "outcome": "Successful"},
+            json={
+                "performed_on": "2026-03-12",
+                "outcome": "Successful",
+                "scope_id": SCOPE,
+            },
         )
 
         assert response.status_code == 200, response.text
@@ -470,7 +502,7 @@ class TestLogbook:
         client, passport_id = passport
         created = client.post(
             f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
-            json={"performed_on": "2026-03-12"},
+            json={"performed_on": "2026-03-12", "scope_id": SCOPE},
         )
         stem = created.json()["name"]
 
@@ -495,6 +527,7 @@ class TestLogbook:
             f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
             json={
                 "performed_on": "2026-03-12",
+                "scope_id": SCOPE,
                 "outcome": "Abandoned – patient could not tolerate",
             },
         )
@@ -773,7 +806,10 @@ class TestConfirmingALogbookEntry:
         passport_id: str,
         supervisor: User | None,
     ) -> str:
-        body: dict[str, object] = {"performed_on": "2026-03-12"}
+        body: dict[str, object] = {
+            "performed_on": "2026-03-12",
+            "scope_id": SCOPE,
+        }
         if supervisor is not None:
             body["confirmer_email"] = supervisor.email
         response = client.post(
@@ -843,6 +879,7 @@ class TestConfirmingALogbookEntry:
             f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
             json={
                 "performed_on": "2026-03-12",
+                "scope_id": SCOPE,
                 "confirmer_email": holder.email,
             },
         )
@@ -869,6 +906,7 @@ class TestConfirmingALogbookEntry:
             f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
             json={
                 "performed_on": "2026-03-12",
+                "scope_id": SCOPE,
                 "confirmer_email": assessor.email,
             },
         )
@@ -1029,7 +1067,7 @@ class TestConfirmingALogbookEntry:
         holder_client = _login(client, "holder")
         changed = holder_client.patch(
             f"/api/passport/{passport_id}/logbook/{COMPETENCY}/{stem}",
-            json={"performed_on": "2026-03-13"},
+            json={"performed_on": "2026-03-13", "scope_id": SCOPE},
         )
         assert changed.status_code == 200, changed.text
 
@@ -1054,6 +1092,7 @@ class TestConfirmingALogbookEntry:
             f"/api/passport/{passport_id}/logbook/{COMPETENCY}/{stem}",
             json={
                 "performed_on": "2026-03-13",
+                "scope_id": SCOPE,
                 "confirmer_email": assessor.email,
             },
         )

@@ -80,8 +80,8 @@ export const NobodyCountersignsThis: Story = {
 };
 
 /**
- * A competency signed off scope by scope offers the scope here too. It
- * can be left empty, where a sign-off must name one.
+ * A competency signed off scope by scope asks for the scope here too,
+ * and the entry cannot be added without it, exactly as on a sign-off.
  */
 export const WithScopes: Story = {
   args: {
