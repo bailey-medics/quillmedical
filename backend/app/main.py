@@ -129,6 +129,7 @@ from app.guides.router import router as guides_router
 from app.inbox.router import router as inbox_router
 from app.log_context import request_id_var, user_id_var
 from app.logging_config import setup_logging
+from app.marketing.admin_router import router as newsletter_admin_router
 from app.marketing.preferences import (
     MARKETING_WORDING_VERSION,
     set_marketing_preference,
@@ -315,6 +316,7 @@ router.include_router(feedback_router)
 router.include_router(guides_router)
 router.include_router(inbox_router)
 router.include_router(marketing_router)
+router.include_router(newsletter_admin_router)
 router.include_router(push_router)
 
 # Permanent API-compatibility test harness (item 19) – always false in real
