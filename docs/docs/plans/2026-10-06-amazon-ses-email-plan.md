@@ -909,7 +909,82 @@ mailing list, and are stored as one. This phase does not wait on Phase
       yet run" list in `testing-log.md`, so the next round of manual
       testing covers them.
 
+## Phase 7: Keep what is in AWS as code
+
+Everything in AWS was made by hand, in the console and from the command
+line, on 6 and 7 October 2026. This phase puts it in Terraform, so a
+change to it is a pull request somebody approved, and what is there can
+be checked against what is meant to be.
+
+- [x] **Describe the two email accounts in Terraform, and adopt what
+      exists.** A root of its own, `infra/aws/`, beside `infra/github/`
+      and for the same reason: its own provider, its own state (the
+      same bucket, prefix `terraform/aws`), applied on its own. One
+      module, `modules/ses-account`, used twice, for App production and
+      development. Each holds the verified domain with Easy DKIM, the
+      MAIL FROM name, the suppression settings (bounces and
+      complaints), the user whose key sends mail, its policy, and the
+      attachment of one to the other. `imports.tf` adopts all twelve
+      resources. A plan run on 7 October 2026 against both accounts
+      said "12 to import, 0 to add, 0 to change, 0 to destroy", so the
+      code matches what is there. Four things are left out on purpose.
+      **The access keys**: a key Terraform makes is written into its
+      state in plain text, so keys stay made by hand. **The DNS
+      records**, which are in `infra/dns.tf` with the rest of the zone;
+      the DKIM selectors are outputs here to check those against.
+      **`mark@quill-medical.com`**, an address verified in the App
+      production account while it was in the sandbox, which nothing
+      needs now and can be deleted. **Sandbox or production access**,
+      which is not a setting: Amazon grants it. The account numbers are
+      in no file here, since this repository is public: the recipe
+      reads them from `backend/.env`, and each provider refuses any
+      account but its own. The development account is reached by a
+      role named in the provider, not by the `quill-emails-dev`
+      profile, because the provider cannot follow a profile that chains
+      from an `aws login` sign-in.
+
+- [x] **Apply by hand, never from CI.** `just terraform-aws` (`just
+      tf-aws`) checks both sign-ins, plans, asks, and applies. Chosen
+      over signing CI in to AWS with OIDC, which was the first idea.
+      Applying needs a role able to write IAM policy, and the first
+      thing such a role could do is widen what the mail key may do; a
+      workflow holding it could be changed by the same pull request it
+      guards. It is the reasoning `github-rulesets.yml` gives for
+      `infra/github/`. CI holds nothing for AWS, not even an
+      identifier. `.github/workflows/aws-terraform.yml` checks
+      formatting and validates on a pull request, with no sign-in, and
+      posts a reminder to apply on merge. `terraform.yml` leaves the
+      directory alone.
+
+- [ ] **Run the first apply (Mark).** After this merges: `just al`,
+      `just al management`, then `just terraform-aws`. It should say
+      twelve to import and nothing else. Answer yes, and the state
+      exists. From then on a change to SES or the mail user is made
+      here.
+
+- [ ] **Bring the organisation in.** The accounts themselves and the
+      policy that allows London only
+      (`AdvancedModeRegionRestrictionSecurityControlPolicy`) are still
+      by hand. They need a provider signed in to the management
+      account with far more reach than anything above, so they are a
+      step of their own, and the least urgent: they change when an
+      account is added, which is rare.
+
 ## Decisions
+
+- **No audit trail in AWS for now** – decided on 8 October 2026.
+  Terraform records what is meant to be in AWS and who approved each
+  change; it does not record who did what in the account. That would be
+  a CloudTrail trail, and neither the management account nor the email
+  accounts have one. Every account keeps ninety days of event history
+  regardless, which is enough to look into something odd in accounts
+  that hold one domain and one user able only to send email. A trail
+  would add longer keeping and one place for every account, at the
+  price of a bucket to look after. Worth turning on if AWS comes to
+  hold more than email, or if a DTAC or ISO 27001 assessment asks for
+  cloud logs kept as evidence. Quill's own audit log is a different
+  record: what people do in the app, not what happens in the AWS
+  account.
 
 - **SES in London, not an EU provider** – the site promises the UK, and
   SES in London is the only mainstream service that keeps the promise

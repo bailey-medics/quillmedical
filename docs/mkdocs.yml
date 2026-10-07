@@ -80,6 +80,7 @@ nav:
   - Infrastructure:
       - Overview: infrastructure/index.md
       - Google Cloud Platform: infrastructure/gcp.md
+      - Amazon Web Services: infrastructure/aws.md
       - Remote admin tasks: infrastructure/admin.md
       - Monitoring and alerting: infrastructure/monitoring.md
   - GitHub:

@@ -1,0 +1,85 @@
+# AWS Terraform – check on pull requests, and say when an apply is needed
+#
+# infra/aws/** describes Amazon SES in London and the user whose key
+# sends mail. A person applies it, with `just terraform-aws`. CI never
+# does, for two reasons.
+#
+#   It would need a role in AWS able to write IAM policy, and the first
+#   thing that role could do is widen what the mail key may do. Keeping
+#   the apply with a person means changing that always takes a human
+#   signed in to AWS, not only a merged pull request.
+#
+#   CI holds nothing for AWS today, not even an identifier, and this
+#   repository is public. What changes here is small and rare enough
+#   that a hand-run apply costs little.
+#
+# So a pull request gets the checks that need no sign-in, formatting and
+# validation, and a merge posts a reminder.
+#
+# Manual workflow, from any checkout: just terraform-aws
+
+name: AWS Terraform
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/aws/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "infra/aws/**"
+      - ".github/workflows/aws-terraform.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------- Format and validate (pull requests) ----------
+  validate:
+    name: Validate
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4.0.1
+        with:
+          terraform_version: "1.15.8"
+
+      - name: Terraform fmt
+        working-directory: infra/aws
+        run: terraform fmt -check -recursive
+
+      # -backend=false: validation reads no state, so it needs no sign-in
+      # to the bucket that holds it.
+      - name: Terraform init
+        working-directory: infra/aws
+        run: terraform init -backend=false -input=false
+
+      - name: Terraform validate
+        working-directory: infra/aws
+        run: terraform validate -no-color
+
+  # ---------- Notify that manual apply is needed (main) ----------
+  notify:
+    name: Notify
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: app
+      text: |
+        *⚠️ AWS Terraform changed – manual terraform apply required*
+
+        Files under `infra/aws/` were merged to main. They are applied by a person, never by CI. Run this from any checkout that is up to date with main, after `just al` and `just al management`; it plans first and asks before applying:
+
+        *Action required:*
+        ```
+        just terraform-aws
+        ```
+
+        *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>
+        *Author:* ${{ github.actor }}
+        *Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit

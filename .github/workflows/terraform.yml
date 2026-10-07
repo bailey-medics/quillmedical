@@ -29,11 +29,15 @@ on:
     paths:
       - "infra/**"
       - "!infra/github/**"
+      # Applied by a person, as infra/github is: see aws-terraform.yml.
+      - "!infra/aws/**"
   pull_request:
     branches: [main]
     paths:
       - "infra/**"
       - "!infra/github/**"
+      # Applied by a person, as infra/github is: see aws-terraform.yml.
+      - "!infra/aws/**"
 
 permissions:
   contents: read
