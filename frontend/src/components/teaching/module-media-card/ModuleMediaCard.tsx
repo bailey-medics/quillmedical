@@ -30,7 +30,7 @@ import {
 import { BodyText, BodyTextInline, Heading } from "@/components/typography";
 import { TeachingProgressBar } from "@/components/teaching/teaching-progress-bar";
 import type { MediaAsset, ModuleMedia } from "@/features/teaching/types";
-import MediaDropzone from "./MediaDropzone";
+import MediaDropzone from "@/components/media-dropzone";
 import { ACCEPTED_VIDEO_TYPES } from "./mediaFormat";
 
 export interface ModuleMediaCardProps {

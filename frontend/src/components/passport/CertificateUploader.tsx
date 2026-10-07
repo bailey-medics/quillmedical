@@ -27,7 +27,7 @@
 
 import { useState } from "react";
 import { Group, Stack } from "@mantine/core";
-import MediaDropzone from "@/components/teaching/module-media-card/MediaDropzone";
+import MediaDropzone from "@/components/media-dropzone";
 import ErrorState from "@/components/error-state/ErrorState";
 import Icon from "@/components/icons/Icon";
 import { IconCircleCheck } from "@/components/icons/appIcons";

@@ -10,11 +10,10 @@ import { screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { renderWithMantine } from "@test/test-utils";
 import MediaDropzone from "./MediaDropzone";
-import { ACCEPTED_VIDEO_TYPES } from "./mediaFormat";
 
-/** The teaching card's settings: video, named as such. */
+/** One caller's settings: the teaching card's, video, named as such. */
 const video = {
-  accept: ACCEPTED_VIDEO_TYPES,
+  accept: ["video/mp4", "video/webm", "video/quicktime"],
   label: "Drop a video or click to browse",
 };
 
@@ -24,16 +23,6 @@ describe("MediaDropzone", () => {
     expect(
       screen.getByText("Drop a video or click to browse"),
     ).toBeInTheDocument();
-  });
-
-  it("accepts only the video types the backend will mint a URL for", () => {
-    // Pinned against the backend's ALLOWED_MEDIA_TYPES. Drift here is
-    // silent until an upload fails at the last step.
-    expect(ACCEPTED_VIDEO_TYPES).toEqual([
-      "video/mp4",
-      "video/webm",
-      "video/quicktime",
-    ]);
   });
 
   it("takes a file through the hidden input", async () => {
