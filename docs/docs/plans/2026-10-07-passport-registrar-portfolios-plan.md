@@ -379,13 +379,24 @@ declares no scopes behaves exactly as it does today.
 
 ## Phase 3: Scope in the interface and the exports
 
-- [ ] **Show the scope wherever the level is shown**: `CompetencyRow`,
-      `SignOffCard`, `SignOffForm` and the sign-off detail page.
-      `CompetencySummary` lists one row per competency and scope.
-- [ ] **Name the scope in the invitation email** and in the Markdown and
-      PDF exports (`render.py`, `pdf.py`).
-- [ ] **Tests and stories** for each, covering a competency with scopes and
-      one without.
+- [x] **Name the scope after the competency wherever a record is named**:
+      "Review and prescribe systemic anti-cancer therapy: Lung", on
+      `CompetencyRow`, `SignOffRow`, `SignOffCard`, the sign-off detail
+      page and the list of passport records. One rule in one helper,
+      `nameWithScope`, so two records for one competency and different
+      scopes never read the same, to the eye or to a screen reader.
+      `CompetencySummary` already lists one row per competency and scope,
+      from Phase 2.
+- [x] **Show the scope on `SignOffForm` and do not offer it.** The assessor
+      sees what the holder asked to be signed off for in a read-only
+      field, and is told to decline if it is not what they assessed.
+- [x] **Name the scope in the invitation email** and in the Markdown and
+      PDF exports (`render.py`, `pdf.py`), by the same rule. The logbook
+      section of each export lists a competency once, however many scopes
+      of it are signed.
+- [x] **Tests and stories** for each, covering a competency with scopes and
+      one without. The pinned Markdown in `test_passport_export_audit.py`
+      changes to carry the scope.
 
 ## Phase 4: Scope on a logbook entry
 

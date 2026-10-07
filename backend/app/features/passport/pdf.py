@@ -69,6 +69,7 @@ from .schemas import (
     LogbookEntry,
     Profile,
     SignOff,
+    name_with_scope,
 )
 from .serialise import from_yaml, reflection_from_markdown
 from .store import PassportNotFoundError, PassportStore
@@ -311,7 +312,10 @@ def _competency_table(
     for entry in sorted(index.competencies, key=lambda e: e.name):
         rows.append(
             [
-                Paragraph(_text(entry.name), styles["cell"]),
+                Paragraph(
+                    _text(name_with_scope(entry.name, entry.scope)),
+                    styles["cell"],
+                ),
                 Paragraph(
                     _text(entry.level.name if entry.level else None),
                     styles["cell"],
@@ -726,7 +730,10 @@ def _one_sign_off(
 ) -> list[Any]:
     """One sign-off, kept on a single page where it fits."""
     block: list[Any] = [
-        Paragraph(_text(record.competency.name), styles["subheading"])
+        Paragraph(
+            _text(name_with_scope(record.competency.name, record.scope)),
+            styles["subheading"],
+        )
     ]
 
     facts = [

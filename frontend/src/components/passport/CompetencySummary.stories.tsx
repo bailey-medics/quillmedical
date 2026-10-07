@@ -6,7 +6,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Stack } from "@mantine/core";
 import { fn } from "storybook/test";
 import CompetencySummary from "./CompetencySummary";
-import { competencies } from "./fixtures";
+import { breastCompetency, competencies, lungCompetency } from "./fixtures";
 import { StoryNote } from "@/stories/variants";
 
 const meta: Meta<typeof CompetencySummary> = {
@@ -62,4 +62,15 @@ export const Selectable: Story = {
 
 export const Empty: Story = {
   args: { competencies: [] },
+};
+
+/**
+ * A competency signed off one scope at a time has a row for each scope,
+ * at its own level. Neither replaces the other.
+ */
+export const TwoScopesOfOneCompetency: Story = {
+  args: {
+    competencies: [breastCompetency, lungCompetency],
+    onSelect: undefined,
+  },
 };

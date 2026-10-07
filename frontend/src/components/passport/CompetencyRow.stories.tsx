@@ -8,6 +8,7 @@ import { fn } from "storybook/test";
 import CompetencyRow from "./CompetencyRow";
 import {
   declinedCompetency,
+  lungCompetency,
   requestedCompetency,
   signedOffCompetency,
 } from "./fixtures";
@@ -75,4 +76,9 @@ export const AllStates: Story = {
       </Stack>
     </VariantStack>
   ),
+};
+
+/** One scope of a competency signed off scope by scope. */
+export const WithAScope: Story = {
+  args: { competency: lungCompetency, onSelect: undefined },
 };

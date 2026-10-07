@@ -8,6 +8,8 @@
     holder_name      the clinician asking to be assessed
     competency_name  what they want signed off, or None when the
                      invitation comes before the request
+    scope_name       what the sign-off covers, such as a tumour site,
+                     or None where the competency is assessed as a whole
     level_name       the level they ask for, or None where the
                      competency has no scale
     url              the accept link
@@ -31,7 +33,7 @@
 {% endif %}
 {{ c.paragraph("Dear " ~ assessor_name ~ ",") }}
 {% call c.paragraph() %}
-{%- if competency_name %}{{ holder_name }} has asked you to assess <strong>{{ competency_name }}</strong>{% if level_name %} at the level <strong>{{ level_name }}</strong>{% endif %} and record the outcome in their clinician passport.
+{%- if competency_name %}{{ holder_name }} has asked you to assess <strong>{{ competency_name }}</strong>{% if scope_name %}, for <strong>{{ scope_name }}</strong>,{% endif %}{% if level_name %} at the level <strong>{{ level_name }}</strong>{% endif %} and record the outcome in their clinician passport.
 {%- else %}{{ holder_name }} has asked you to act as an assessor and record outcomes in their clinician passport.{% endif -%}
 {% endcall %}
 {% call c.panel() %}
@@ -47,7 +49,7 @@
 {% block text %}
 Dear {{ assessor_name }},
 
-{% if competency_name %}{{ holder_name }} has asked you to assess {{ competency_name }}{% if level_name %} at the level "{{ level_name }}"{% endif %} and record the outcome in their clinician passport.{% else %}{{ holder_name }} has asked you to act as an assessor and record outcomes in their clinician passport.{% endif %}
+{% if competency_name %}{{ holder_name }} has asked you to assess {{ competency_name }}{% if scope_name %}, for "{{ scope_name }}",{% endif %}{% if level_name %} at the level "{{ level_name }}"{% endif %} and record the outcome in their clinician passport.{% else %}{{ holder_name }} has asked you to act as an assessor and record outcomes in their clinician passport.{% endif %}
 
 A clinician passport is a record of competencies a clinician has been assessed as able to perform, signed by the person who assessed them. You will be asked to confirm your professional registration before you sign anything.{% if level_name %} You can sign it off at a different level if that is your judgement, and say why.{% endif %}
 

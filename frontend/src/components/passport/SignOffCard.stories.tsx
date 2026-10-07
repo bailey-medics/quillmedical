@@ -5,7 +5,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Stack } from "@mantine/core";
 import SignOffCard from "./SignOffCard";
-import { requested, signedOff } from "./fixtures";
+import { requested, requestedForLung, signedOff } from "./fixtures";
 import { StoryNote } from "@/stories/variants";
 
 const meta: Meta<typeof SignOffCard> = {
@@ -48,4 +48,9 @@ export const ThreeClocks: Story = {
       </StoryNote>
     </Stack>
   ),
+};
+
+/** A sign-off for one scope of a competency, named after the competency. */
+export const WithAScope: Story = {
+  args: { signOff: requestedForLung },
 };

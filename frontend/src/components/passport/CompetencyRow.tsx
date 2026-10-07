@@ -30,6 +30,7 @@ import {
   BodyTextInline,
 } from "@/components/typography";
 import type { CompetencyState } from "@lib/passport";
+import { nameWithScope } from "@lib/passport/scopes";
 import classes from "./CompetencyRow.module.css";
 
 export interface CompetencyRowProps {
@@ -137,7 +138,9 @@ export default function CompetencyRow({
   const content = isMobile ? (
     <Stack gap="xs" w="100%">
       <Group justify="space-between" wrap="nowrap" align="flex-start">
-        <BodyTextBold>{competency.name}</BodyTextBold>
+        <BodyTextBold>
+          {nameWithScope(competency.name, competency.scope)}
+        </BodyTextBold>
         {badge}
       </Group>
       <CompetencyDetail
@@ -148,7 +151,9 @@ export default function CompetencyRow({
   ) : (
     <Group justify="space-between" wrap="nowrap" align="flex-start" w="100%">
       <Stack gap={2}>
-        <BodyTextBold>{competency.name}</BodyTextBold>
+        <BodyTextBold>
+          {nameWithScope(competency.name, competency.scope)}
+        </BodyTextBold>
         <CompetencyDetail
           competency={competency}
           showLogbookCount={showLogbookCount}
@@ -171,7 +176,7 @@ export default function CompetencyRow({
       className={classes.row}
       data-testid="competency-row"
       onClick={() => onSelect(competency.id)}
-      aria-label={competency.name}
+      aria-label={nameWithScope(competency.name, competency.scope)}
     >
       {content}
     </UnstyledButton>

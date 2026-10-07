@@ -45,6 +45,7 @@ from .schemas import (
     Profile,
     Reflection,
     SignOff,
+    name_with_scope,
 )
 from .serialise import from_yaml, reflection_from_markdown
 from .store import PassportNotFoundError, PassportStore
@@ -159,7 +160,7 @@ def _competency_table(index: Index) -> str:
     for entry in sorted(index.competencies, key=lambda e: e.name):
         lines.append(
             "| {name} | {level} | {status} | {by} | {on} | {expires} |".format(
-                name=entry.name,
+                name=name_with_scope(entry.name, entry.scope),
                 level=entry.level.name if entry.level else "–",
                 status=_status_word(entry),
                 by=entry.signed_off_by or "–",
@@ -196,7 +197,15 @@ def _logbook_section(
     lines = ["## Logbook", ""]
     any_entries = False
 
+    # A competency signed off scope by scope has an index entry for each
+    # scope, and one logbook. Listed once.
+    listed: set[str] = set()
+
     for entry in sorted(index.competencies, key=lambda e: e.name):
+        if entry.id in listed:
+            continue
+        listed.add(entry.id)
+
         rows = _logbook_entries(store, passport_id, entry.id)
 
         if not rows:
@@ -420,7 +429,10 @@ def _sign_off_appendix(
 
 def _one_sign_off(name: str, record: SignOff) -> list[str]:
     """One sign-off, rendered in full."""
-    lines = [f"### {record.competency.name}", ""]
+    lines = [
+        f"### {name_with_scope(record.competency.name, record.scope)}",
+        "",
+    ]
 
     if record.level:
         lines.append(f"**Level:** {record.level.name}")

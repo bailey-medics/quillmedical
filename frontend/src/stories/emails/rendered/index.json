@@ -108,6 +108,24 @@
     }
   },
   {
+    "id": "passport-invite-with-scope",
+    "label": "Passport assessor invite, for one scope at a level",
+    "quill": {
+      "file": "passport-invite-with-scope--quill.html",
+      "subject": "Dr Priya Shah has asked you to assess a competency",
+      "preheader": "Review and prescribe systemic anti-cancer therapy, recorded in their clinician passport.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "passport-invite-with-scope--ldd.html",
+      "subject": "Dr Priya Shah has asked you to assess a competency",
+      "preheader": "Review and prescribe systemic anti-cancer therapy, recorded in their clinician passport.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
     "id": "feedback-received",
     "label": "Feedback received",
     "quill": {

@@ -7,13 +7,22 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import SignOffRow from "./SignOffRow";
-import { declined, requested, signedOff } from "./fixtures";
+import { declined, requested, requestedForLung, signedOff } from "./fixtures";
 
 describe("SignOffRow", () => {
   it("names the competency and the status", () => {
     renderWithMantine(<SignOffRow signOff={signedOff} />);
     expect(screen.getByText("Perform bronchoscopy")).toBeInTheDocument();
     expect(screen.getByText("Signed off")).toBeInTheDocument();
+  });
+
+  it("says what the sign-off covers, where it has a scope", () => {
+    renderWithMantine(<SignOffRow signOff={requestedForLung} />);
+    expect(
+      screen.getByText(
+        "Review and prescribe systemic anti-cancer therapy: Lung",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("shows the level signed, who signed it and the review date", () => {

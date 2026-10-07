@@ -160,6 +160,7 @@ def previews() -> list[Preview]:
                 "assessor_name": "Dr James Okafor",
                 "holder_name": "Dr Priya Shah",
                 "competency_name": "Chest drain insertion (Seldinger)",
+                "scope_name": None,
                 "level_name": None,
                 "url": "https://quill-medical.com/passport/assessors/accept?token=example",
                 "expires_in_days": 14,
@@ -176,6 +177,7 @@ def previews() -> list[Preview]:
                     "Interpret imaging for target volume and organ-at-risk "
                     "definition"
                 ),
+                "scope_name": None,
                 "level_name": "Entrusted to act unsupervised",
                 "url": "https://quill-medical.com/passport/assessors/accept?token=example",
                 "expires_in_days": 14,
@@ -191,6 +193,22 @@ def previews() -> list[Preview]:
                 "statement_url": (
                     "https://quill-medical.com/accessibility-statement"
                 ),
+            },
+        ),
+        Preview(
+            id="passport-invite-with-scope",
+            label="Passport assessor invite, for one scope at a level",
+            template="passport_invite.html.j2",
+            context={
+                "assessor_name": "Dr James Okafor",
+                "holder_name": "Dr Priya Shah",
+                "competency_name": (
+                    "Review and prescribe systemic anti-cancer therapy"
+                ),
+                "scope_name": "Lung",
+                "level_name": "Prescribe second cycle onwards",
+                "url": "https://quill-medical.com/passport/assessors/accept?token=example",
+                "expires_in_days": 14,
             },
         ),
         Preview(

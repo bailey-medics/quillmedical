@@ -27,6 +27,7 @@ import SignOffCard from "@/components/passport/SignOffCard";
 import { IconFileText } from "@/components/icons/appIcons";
 import { fetchMyPassport, fetchSignOff, withdrawSignOff } from "@lib/passport";
 import type { SignOff } from "@lib/passport";
+import { nameWithScope } from "@lib/passport/scopes";
 
 export function Component() {
   const { name } = useParams<{ name: string }>();
@@ -106,7 +107,13 @@ export function Component() {
 
   return (
     <Stack gap="lg">
-      <PageHeader title={signOff?.competency.name ?? "Sign-off"} />
+      <PageHeader
+        title={
+          signOff
+            ? nameWithScope(signOff.competency.name, signOff.scope)
+            : "Sign-off"
+        }
+      />
 
       {error && <ErrorState message={error} />}
 

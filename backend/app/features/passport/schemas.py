@@ -194,6 +194,24 @@ class ScopeRef(PassportModel):
     name: NonEmptyText
 
 
+def name_with_scope(name: str, scope: ScopeRef | None) -> str:
+    """A competency's name with what a record covers after it.
+
+    "Review and prescribe systemic anti-cancer therapy: Lung". Used
+    wherever a record's competency is named for a reader, so two records
+    for one competency and different scopes never read the same.
+    Unchanged where there is no scope.
+
+    Args:
+        name: The competency's name.
+        scope: What the record covers, if anything.
+
+    Returns:
+        The name to show.
+    """
+    return f"{name}: {scope.name}" if scope is not None else name
+
+
 class SpecialtyRef(PassportModel):
     """A specialty the holder chose, as it read at the time.
 

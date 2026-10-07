@@ -38,6 +38,7 @@ import {
 } from "@/components/typography";
 import RegistrationBadge from "./RegistrationBadge";
 import type { SignOff } from "@lib/passport";
+import { nameWithScope } from "@lib/passport/scopes";
 import classes from "./SignOffCard.module.css";
 
 export interface SignOffCardProps {
@@ -71,6 +72,7 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
     competency,
     status,
     kind,
+    scope,
     level,
     requested_level,
     observed_on,
@@ -90,7 +92,7 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
             See the stylesheet. */}
         <Group justify="space-between" wrap="nowrap" align="baseline">
           <Stack gap={2}>
-            <Heading>{competency.name}</Heading>
+            <Heading>{nameWithScope(competency.name, scope)}</Heading>
             {level && <BodyTextInline>{level.name}</BodyTextInline>}
             {level && requested_level && requested_level.id !== level.id && (
               <BodyText c="dimmed">Asked for: {requested_level.name}</BodyText>

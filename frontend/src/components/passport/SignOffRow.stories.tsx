@@ -5,7 +5,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import SignOffRow from "./SignOffRow";
-import { declined, requested, signedOff } from "./fixtures";
+import { declined, requested, requestedForLung, signedOff } from "./fixtures";
 
 const meta: Meta<typeof SignOffRow> = {
   title: "Passport/Sign-off row",
@@ -57,4 +57,9 @@ export const Declined: Story = {
 
 export const Selectable: Story = {
   args: { signOff: signedOff, onSelect: fn() },
+};
+
+/** A sign-off for one scope of a competency. */
+export const WithAScope: Story = {
+  args: { signOff: requestedForLung, onSelect: undefined },
 };

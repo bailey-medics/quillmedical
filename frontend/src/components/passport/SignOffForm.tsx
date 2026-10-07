@@ -47,6 +47,7 @@ import {
   TextField,
 } from "@components/form";
 import { levelsFor } from "@lib/passport/levels";
+import { nameWithScope } from "@lib/passport/scopes";
 import { Heading } from "@/components/typography";
 import ButtonPair from "@/components/button/ButtonPair";
 import AssessorDeclaration from "./AssessorDeclaration";
@@ -126,7 +127,22 @@ export default function SignOffForm({
   return (
     <BaseCard data-testid="sign-off-form">
       <Stack gap="md">
-        <Heading>Sign off {signOff.competency.name}</Heading>
+        <Heading>
+          Sign off {nameWithScope(signOff.competency.name, signOff.scope)}
+        </Heading>
+
+        {/* Shown and not offered. The holder said what they were asking
+            to be signed off for, and an assessor who assessed something
+            else declines: changing it here would sign a request nobody
+            made. */}
+        {signOff.scope && (
+          <TextField
+            label="What this sign-off covers"
+            value={signOff.scope.name}
+            readOnly
+            description="Chosen by the holder. Decline if it is not what you assessed."
+          />
+        )}
 
         <SelectField
           label="What did you do?"

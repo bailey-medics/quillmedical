@@ -61,3 +61,25 @@ def test_mentions_no_patient() -> None:
     invite = _invite()
 
     assert "patient" not in invite["html_body"].lower()
+
+
+def test_names_what_the_sign_off_covers_where_there_is_a_scope() -> None:
+    rendered = render_invite(
+        assessor_name="Dr James Okafor",
+        holder_name="Dr Priya Shah",
+        competency_name="Review and prescribe systemic anti-cancer therapy",
+        scope_name="Lung",
+        level_name="Prescribe second cycle onwards",
+        url="https://example.com/accept?token=t",
+        expires_in_days=14,
+    )
+
+    assert "for <strong>Lung</strong>" in rendered["html_body"]
+    assert 'for "Lung"' in rendered["text_body"]
+
+
+def test_says_nothing_about_a_scope_where_there_is_none() -> None:
+    invite = _invite()
+
+    assert ", for " not in invite["html_body"]
+    assert ", for " not in invite["text_body"]

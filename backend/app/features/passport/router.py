@@ -1137,6 +1137,7 @@ def _email_sign_off_request(
     invited_by_user_id: int,
     db: Session,
     level_name: str | None = None,
+    scope_name: str | None = None,
 ) -> None:
     """Tell the assessor they have been asked, whoever they are.
 
@@ -1213,6 +1214,7 @@ def _email_sign_off_request(
         holder_name=holder.full_name or holder.username,
         competency_name=competency_name,
         level_name=level_name,
+        scope_name=scope_name,
         url=url,
         expires_in_days=expires_in_days,
     )
@@ -1392,6 +1394,12 @@ def request_sign_off(
     requested_level = _checked_request(
         competency_id, body.level_id, body.scope_id
     )
+    # Already checked, so this only fetches the wording for the email.
+    requested_scope = (
+        definitions.scope_ref(competency_id, body.scope_id)
+        if body.scope_id is not None
+        else None
+    )
 
     assessor_email = body.assessor_email.strip().lower()
 
@@ -1442,6 +1450,7 @@ def request_sign_off(
         assessor=assessor,
         competency_id=competency_id,
         level_name=requested_level.name if requested_level else None,
+        scope_name=requested_scope.name if requested_scope else None,
         passport_id=row.id,
         invited_by_user_id=user.id,
         db=db,

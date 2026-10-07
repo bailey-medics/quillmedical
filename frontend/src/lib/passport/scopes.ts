@@ -21,6 +21,21 @@ interface CatalogueEntry {
 }
 
 /**
+ * A competency's name with what a record covers after it, as in
+ * "Review and prescribe systemic anti-cancer therapy: Lung".
+ *
+ * Used wherever a record's competency is named, so two records for the
+ * same competency and different scopes never read the same. Unchanged
+ * where there is no scope, which is most competencies.
+ */
+export function nameWithScope(
+  name: string,
+  scope: { name: string } | null | undefined,
+): string {
+  return scope ? `${name}: ${scope.name}` : name;
+}
+
+/**
  * The scopes a competency declares, in the catalogue's order. Empty where
  * it is assessed as a whole, or is unknown.
  */

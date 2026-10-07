@@ -7,13 +7,33 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import CompetencyRow from "./CompetencyRow";
-import { requestedCompetency, signedOffCompetency } from "./fixtures";
+import {
+  lungCompetency,
+  requestedCompetency,
+  signedOffCompetency,
+} from "./fixtures";
 
 describe("CompetencyRow", () => {
   describe("Content", () => {
     it("renders the competency name", () => {
       renderWithMantine(<CompetencyRow competency={signedOffCompetency} />);
       expect(screen.getByText("Perform bronchoscopy")).toBeInTheDocument();
+    });
+
+    it("says what the entry covers, where the competency has scopes", () => {
+      renderWithMantine(
+        <CompetencyRow competency={lungCompetency} onSelect={vi.fn()} />,
+      );
+      expect(
+        screen.getByText(
+          "Review and prescribe systemic anti-cancer therapy: Lung",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", {
+          name: "Review and prescribe systemic anti-cancer therapy: Lung",
+        }),
+      ).toBeInTheDocument();
     });
 
     it("renders the current level when the competency has one", () => {
