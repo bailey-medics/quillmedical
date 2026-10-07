@@ -25,7 +25,11 @@ import pytest
 from pydantic import ValidationError
 
 from app.features.passport import schemas
-from app.features.passport.serialise import from_yaml, to_yaml
+from app.features.passport.serialise import (
+    RecordFormatError,
+    from_yaml,
+    to_yaml,
+)
 
 
 def _assessor() -> schemas.Assessor:
@@ -427,22 +431,39 @@ class TestManifestAndProfile:
         assert "holder" not in schemas.SignOff.model_fields
         assert "holder_name" not in schemas.SignOff.model_fields
 
-    def test_a_profile_written_before_specialties_still_loads(self) -> None:
-        """Every passport created before specialties existed has a
-        profile with no such key, and ``profile.yaml`` is validated on
-        read. It reads as Generic."""
+    def test_a_profile_written_while_holders_chose_specialties_still_loads(
+        self,
+    ) -> None:
+        """Every passport made before frameworks carries the key.
+
+        Profiles forbid unknown fields, so without dropping it on read
+        none of those passports would open.
+        """
         profile = from_yaml(
             schemas.Profile,
-            "user_id: u-2\nname: Dr Sam Reeve\nregistrations: []\n",
+            "user_id: u-2\nname: Dr Sam Reeve\nregistrations: []\n"
+            "specialties:\n- id: oncology\n  name: Oncology\n",
         )
 
-        assert profile.specialties == []
+        assert profile.name == "Dr Sam Reeve"
+        assert "specialties" not in schemas.Profile.model_fields
 
-    def test_a_profile_keeps_each_specialty_s_name(self) -> None:
+    def test_any_other_unknown_key_is_still_refused(self) -> None:
+        with pytest.raises(RecordFormatError):
+            from_yaml(
+                schemas.Profile,
+                "user_id: u-2\nname: Dr Sam Reeve\nfavourite_colour: blue\n",
+            )
+
+    def test_a_profile_keeps_each_framework_s_name(self) -> None:
         profile = schemas.Profile(
             user_id="u-2",
             name="Dr Sam Reeve",
-            specialties=[schemas.SpecialtyRef(id="oncology", name="Oncology")],
+            frameworks=[
+                schemas.FrameworkRef(
+                    id="clinical", name="General clinical skills"
+                )
+            ],
         )
 
         assert from_yaml(schemas.Profile, to_yaml(profile)) == profile
@@ -478,9 +499,9 @@ class TestManifestAndProfile:
                 starts_on=date(2026, 10, 1), ends_on=date(2026, 9, 30)
             )
 
-    def test_a_specialty_needs_its_name(self) -> None:
+    def test_a_framework_needs_its_name(self) -> None:
         with pytest.raises(ValidationError):
-            schemas.SpecialtyRef(id="oncology")  # type: ignore[call-arg]
+            schemas.FrameworkRef(id="clinical")  # type: ignore[call-arg]
 
 
 class TestNameWithScope:

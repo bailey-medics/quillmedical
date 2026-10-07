@@ -36,7 +36,6 @@ export {
   fetchMyPassport,
   fetchPassport,
   fetchPassportFrameworks,
-  fetchPassportSpecialties,
   fetchReflections,
   fetchSignOff,
   fetchSignOffs,
@@ -50,7 +49,6 @@ export {
   revokeAssessorMembership,
   saveAppraisalPeriods,
   setPassportFrameworks,
-  setPassportSpecialties,
   signOff,
   verifySignOff,
   withdrawSignOff,
@@ -103,8 +101,6 @@ export type {
   SignOffStatus,
   Supervision,
   Verification,
-  Specialty,
-  SpecialtyChoice,
   AppraisalPeriod,
 } from "./types";
 
@@ -125,8 +121,6 @@ export type {
   PassportRecordKind,
   RecordSources,
 } from "./recordList";
-export { PASSPORT_SPECIALTIES, getPassportSpecialty } from "./specialties";
-export type { PassportSpecialtyDefinition } from "./specialties";
 export { levelsFor } from "./levels";
 export type { LevelOption } from "./levels";
 export { nameWithScope, scopesFor } from "./scopes";

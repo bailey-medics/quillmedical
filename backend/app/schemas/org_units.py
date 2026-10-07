@@ -309,17 +309,6 @@ class OrgUnitFeaturesOut(BaseModel):
     features: list[OrgUnitFeatureItem]
 
 
-class OrgUnitPassportSpecialtiesOut(BaseModel):
-    """An organisation's lead passport specialties, in order.
-
-    Attributes:
-        specialty_ids: The specialties its people see first when choosing
-            their own, the first leading. Empty when it names none.
-    """
-
-    specialty_ids: list[str]
-
-
 class OrgUnitPassportCoverOut(BaseModel):
     """Whether an org_unit pays for its members' passport writing.
 
@@ -331,20 +320,6 @@ class OrgUnitPassportCoverOut(BaseModel):
 
     enabled: bool
     covered_count: int
-
-
-class SetOrgUnitPassportSpecialtiesIn(BaseModel):
-    """Replacing an organisation's lead passport specialties.
-
-    Attributes:
-        specialty_ids: The new list, in order. Empty clears it. Each id
-            is checked against ``shared/passport-specialties/`` by the
-            route, which knows the loaded files.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    specialty_ids: list[str] = Field(default_factory=list, max_length=100)
 
 
 class SetOrgUnitPassportFrameworksIn(BaseModel):

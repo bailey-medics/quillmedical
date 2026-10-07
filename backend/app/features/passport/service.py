@@ -53,7 +53,6 @@ from .schemas import (
     Profile,
     ScopeRef,
     SignOff,
-    SpecialtyRef,
 )
 from .store import PassportNotFoundError, PassportStore
 
@@ -126,7 +125,6 @@ def create_passport(
     *,
     user_id: str,
     registrations: list[object] | None = None,
-    specialties: list[SpecialtyRef] | None = None,
     frameworks: list[FrameworkRef] | None = None,
     now: datetime | None = None,
 ) -> str:
@@ -138,7 +136,6 @@ def create_passport(
         actor: The holder, who is creating their own.
         user_id: Their Quill user id.
         registrations: Their professional registrations, as declared.
-        specialties: The specialties they chose, or none for Generic.
         frameworks: The frameworks they work to, if chosen already.
         now: For tests.
 
@@ -157,7 +154,6 @@ def create_passport(
         user_id=user_id,
         name=actor.name,
         registrations=registrations or [],  # type: ignore[arg-type]
-        specialties=specialties or [],
         frameworks=frameworks or [],
     )
     empty = Index(

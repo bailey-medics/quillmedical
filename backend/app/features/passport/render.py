@@ -116,10 +116,10 @@ def _front_page(profile: Profile, index: Index) -> str:
             )
         lines.append("")
 
-    if profile.specialties:
+    if profile.frameworks:
         lines.append(
-            "Specialty: "
-            + ", ".join(specialty.name for specialty in profile.specialties)
+            "Frameworks: "
+            + ", ".join(framework.name for framework in profile.frameworks)
         )
         lines.append("")
 

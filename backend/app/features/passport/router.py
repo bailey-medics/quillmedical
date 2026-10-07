@@ -127,9 +127,6 @@ from app.schemas.passport import (
     SignOffOut,
     SignOffRequestIn,
     SignOffResultOut,
-    SpecialtiesIn,
-    SpecialtyChoiceOut,
-    SpecialtyOut,
     VerificationOut,
     WholeLogbookOut,
 )
@@ -153,7 +150,6 @@ from . import (
     records,
     render,
     service,
-    specialties,
 )
 from .blobs import (
     BlobConflictError,
@@ -185,7 +181,6 @@ from .schemas import (
     Reflection,
     ScopeRef,
     SignOff,
-    SpecialtyRef,
 )
 from .serialise import from_yaml, reflection_from_markdown
 from .store import PassportNotFoundError, PassportStore
@@ -633,10 +628,6 @@ def _passport_out(row: Passport, profile: Profile) -> PassportOut:
             )
             for registration in profile.registrations
         ],
-        specialties=[
-            SpecialtyOut(id=specialty.id, name=specialty.name)
-            for specialty in profile.specialties
-        ],
         frameworks=[
             FrameworkOut(id=framework.id, name=framework.name)
             for framework in profile.frameworks
@@ -737,16 +728,15 @@ def create_passport(
     checked here: a second would mean two records of the same career,
     each incomplete.
 
-    The body is optional. A holder's specialties only order their
-    competency picker, so a passport created without any is Generic
-    rather than incomplete; the page asks, and the API does not insist.
+    The body is optional. A passport offers its holder the competencies
+    in their frameworks, so one created with none can record nothing
+    until some are chosen; the page asks, and the API does not insist.
     """
     existing = db.scalar(select(Passport).where(Passport.user_id == user.id))
 
     if existing is not None:
         raise HTTPException(409, "You already have a passport")
 
-    chosen = _specialty_refs(body.specialties if body is not None else [])
     chosen_frameworks = _framework_refs(
         body.frameworks if body is not None else []
     )
@@ -761,7 +751,6 @@ def create_passport(
         _actor(user),
         user_id=str(user.id),
         registrations=list(_registration_dicts(user)),
-        specialties=chosen,
         frameworks=chosen_frameworks,
     )
 
@@ -772,47 +761,6 @@ def create_passport(
     profile = _read_profile(store, passport_id)
 
     return _passport_out(row, profile)
-
-
-def _specialty_refs(specialty_ids: list[str]) -> list[SpecialtyRef]:
-    """Resolve chosen specialty ids, or refuse with a 400 naming them.
-
-    Raises:
-        HTTPException: 400 if an id has no file, or appears twice.
-    """
-    try:
-        return specialties.specialty_refs(specialty_ids)
-    except specialties.UnknownSpecialtyError as error:
-        raise HTTPException(400, str(error)) from None
-
-
-@passport_router.put(
-    "/{passport_id}/specialties",
-    response_model=PassportOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
-)
-def set_specialties(
-    passport_id: str,
-    body: SpecialtiesIn,
-    user: User = _DEP_USER,
-    db: Session = _DEP_SESSION,
-    store: PassportStore = _DEP_STORE,
-) -> PassportOut:
-    """Change the holder's specialties, which order their picker.
-
-    Behind ``_require_writer`` like every other change to the record:
-    without the right to write there is nothing to pick a competency for,
-    so there is nothing for the order to affect. An empty list is
-    Generic.
-    """
-    row = _require_writer(db, passport_id, user, store)
-    chosen = _specialty_refs(body.specialties)
-
-    commit = records.set_specialties(store, row.id, _actor(user), chosen)
-    row.head_commit = commit
-    db.flush()
-
-    return _passport_out(row, _read_profile(store, row.id))
 
 
 def _framework_refs(framework_ids: list[str]) -> list[FrameworkRef]:
@@ -951,34 +899,7 @@ def get_my_passport(
 
 
 # Declared before ``/{passport_id}``, which would otherwise take
-# "specialties" for a passport id and answer 404.
-@passport_router.get(
-    "/specialties",
-    response_model=list[SpecialtyChoiceOut],
-    dependencies=[_DEP_PASSPORT],
-)
-def list_specialties(
-    user: User = _DEP_USER,
-    db: Session = _DEP_SESSION,
-) -> list[SpecialtyChoiceOut]:
-    """Every specialty the caller may choose, in the order to offer them.
-
-    Their organisations' lead specialties first, then the rest
-    alphabetically, worked out by ``specialties.specialty_order_for`` so
-    the create step and the settings card agree without either deciding.
-    Needs no passport: the create step asks before there is one.
-    """
-    return [
-        SpecialtyChoiceOut(
-            id=choice.specialty.id,
-            display_name=choice.specialty.display_name,
-            lead=choice.lead,
-        )
-        for choice in specialties.specialty_order_for(db, user.id)
-    ]
-
-
-# Declared before ``/{passport_id}`` for the same reason.
+# "frameworks" for a passport id and answer 404.
 @passport_router.get(
     "/frameworks",
     response_model=list[FrameworkChoiceOut],

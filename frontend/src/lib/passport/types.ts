@@ -103,17 +103,6 @@ export interface Registration {
 }
 
 /**
- * A specialty the holder chose, with its name as stored in their record.
- *
- * It orders their competency picker and nothing else. An empty list on
- * a passport means Generic: no specialty order.
- */
-export interface Specialty {
-  id: string;
-  name: string;
-}
-
-/**
  * A framework the holder works to, with its name as stored in their
  * record. The passport offers them the competencies in these and no
  * others.
@@ -148,17 +137,6 @@ export interface FrameworkChoice {
 export interface AppraisalPeriod {
   starts_on: string;
   ends_on: string;
-}
-
-/**
- * A specialty a holder may choose, at its place in the order to offer it.
- *
- * `lead` is true when one of their organisations named it to come first.
- */
-export interface SpecialtyChoice {
-  id: string;
-  display_name: string;
-  lead: boolean;
 }
 
 /**
@@ -206,7 +184,6 @@ export interface Passport {
   holder_user_id: string;
   holder_name: string;
   registrations: Registration[];
-  specialties: Specialty[];
   /** The frameworks they work to. Empty means none chosen yet. */
   frameworks?: FrameworkRef[];
   created_at: IsoDate;

@@ -112,13 +112,6 @@ class RegistrationOut(BaseModel):
     number: NonEmptyText
 
 
-class SpecialtyOut(BaseModel):
-    """A specialty the holder chose, with its name as stored."""
-
-    id: CompetencyIdField
-    name: NonEmptyText
-
-
 class FrameworkOut(BaseModel):
     """A framework the holder works to, with its name as stored."""
 
@@ -199,8 +192,6 @@ class PassportOut(BaseModel):
     holder_user_id: NonEmptyText
     holder_name: NonEmptyText
     registrations: list[RegistrationOut] = Field(default_factory=list)
-    #: Orders the holder's competency picker. Empty means Generic.
-    specialties: list[SpecialtyOut] = Field(default_factory=list)
     #: The frameworks the holder works to. Empty means none chosen yet.
     frameworks: list[FrameworkOut] = Field(default_factory=list)
     created_at: date
@@ -208,14 +199,13 @@ class PassportOut(BaseModel):
 
 
 class PassportCreateIn(_In):
-    """Creating a passport, optionally with the holder's specialties.
+    """Creating a passport, optionally with the holder's frameworks.
 
-    Optional as a whole, and ``specialties`` defaults to none, meaning
-    Generic. The page always asks; the API does not insist, so a client
-    that sends no body still gets a passport.
+    Optional as a whole, and ``frameworks`` defaults to none. The page
+    always asks; the API does not insist, so a client that sends no body
+    still gets a passport.
     """
 
-    specialties: list[CompetencyIdField] = Field(default_factory=list)
     #: The frameworks the holder works to, if they have chosen already.
     frameworks: list[CompetencyIdField] = Field(default_factory=list)
 
@@ -253,12 +243,6 @@ class AppraisalPeriodsOut(BaseModel):
     periods: list[AppraisalPeriodOut] = Field(default_factory=list)
 
 
-class SpecialtiesIn(_In):
-    """Changing the holder's specialties. An empty list is Generic."""
-
-    specialties: list[CompetencyIdField] = Field(default_factory=list)
-
-
 class FrameworksIn(_In):
     """Changing the frameworks the holder works to. Empty clears them."""
 
@@ -282,18 +266,6 @@ class FrameworkChoiceOut(BaseModel):
     specialties: list[CompetencyIdField] = Field(default_factory=list)
     lead: bool
     items: int = Field(ge=0)
-
-
-class SpecialtyChoiceOut(BaseModel):
-    """One specialty a holder may choose, at its place in the order.
-
-    ``lead`` is true when one of the holder's organisations named it to
-    come first, so a page can tell the two groups apart if it wants to.
-    """
-
-    id: CompetencyIdField
-    display_name: NonEmptyText
-    lead: bool
 
 
 class CompetencyStateOut(BaseModel):

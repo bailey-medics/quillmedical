@@ -87,7 +87,6 @@ EXPECTED_PATHS = {
     "/api/passport/frameworks",
     "/api/passport/requests/inbox",
     "/api/passport/requests/logbook-confirmations/{request_id}",
-    "/api/passport/specialties",
     "/api/passport/{passport_id}",
     "/api/passport/{passport_id}/appraisal-periods",
     "/api/passport/{passport_id}/certificates",
@@ -114,7 +113,6 @@ EXPECTED_PATHS = {
     "/api/passport/{passport_id}/sign-offs/{signoff_id}/verify",
     "/api/passport/{passport_id}/sign-offs/{signoff_id}/withdraw",
     "/api/passport/{passport_id}/frameworks",
-    "/api/passport/{passport_id}/specialties",
 }
 
 

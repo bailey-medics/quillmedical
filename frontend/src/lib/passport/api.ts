@@ -64,7 +64,6 @@ import type {
   SignOffRequestInput,
   WholeLogbook,
   SignOffResult,
-  SpecialtyChoice,
   Verification,
 } from "./types";
 
@@ -85,7 +84,6 @@ export const PASSPORT_PATHS = [
   "/passport/frameworks",
   "/passport/requests/inbox",
   "/passport/requests/logbook-confirmations/{request_id}",
-  "/passport/specialties",
   "/passport/{passport_id}",
   "/passport/{passport_id}/appraisal-periods",
   "/passport/{passport_id}/assessor-invites",
@@ -113,7 +111,6 @@ export const PASSPORT_PATHS = [
   "/passport/{passport_id}/sign-offs/{signoff_id}/verify",
   "/passport/{passport_id}/sign-offs/{signoff_id}/withdraw",
   "/passport/{passport_id}/frameworks",
-  "/passport/{passport_id}/specialties",
 ] as const;
 
 /**
@@ -168,20 +165,6 @@ export function fetchPassportFrameworks(): Promise<FrameworkChoice[]> {
 }
 
 /**
- * Changes the holder's specialties. An empty list is Generic.
- *
- * Needs the right to write, like any other change to the record.
- */
-export function setPassportSpecialties(
-  passportId: string,
-  specialties: string[],
-): Promise<Passport> {
-  return api.put<Passport>(`/passport/${segment(passportId)}/specialties`, {
-    specialties,
-  });
-}
-
-/**
  * The holder's CPD date ranges, oldest first.
  */
 export async function fetchAppraisalPeriods(
@@ -207,15 +190,6 @@ export async function saveAppraisalPeriods(
     { periods },
   );
   return body.periods;
-}
-
-/**
- * Every specialty the caller may choose, in the order to offer them: their
- * organisations' lead specialties first, then the rest alphabetically.
- * The backend decides the order, so every page offering the choice agrees.
- */
-export function fetchPassportSpecialties(): Promise<SpecialtyChoice[]> {
-  return api.get<SpecialtyChoice[]>("/passport/specialties");
 }
 
 /** The caller's own passport, with derived state per competency. */

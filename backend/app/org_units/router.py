@@ -44,11 +44,7 @@ from app.deps import (
 )
 from app.features.passport import cover
 from app.features.passport.cover import COVER_FEATURE
-from app.features.passport.models import (
-    OrgUnitPassportFramework,
-    OrgUnitPassportSpecialty,
-)
-from app.features.passport.specialties import SPECIALTY_IDS
+from app.features.passport.models import OrgUnitPassportFramework
 from app.models import (
     MEMBER_CAPACITIES,
     OrgUnit,
@@ -102,13 +98,11 @@ from app.schemas.org_units import (
     OrgUnitMembersOut,
     OrgUnitPassportCoverOut,
     OrgUnitPassportFrameworksOut,
-    OrgUnitPassportSpecialtiesOut,
     OrgUnitsListOut,
     OrgUnitStatusOut,
     PractisingCompetenciesOut,
     SetClinicalLeadIn,
     SetOrgUnitPassportFrameworksIn,
-    SetOrgUnitPassportSpecialtiesIn,
     ToggleOrgUnitActiveIn,
     ToggleOrgUnitFeatureIn,
     UpdateOrgUnitIn,
@@ -1827,98 +1821,6 @@ def get_org_unit_passport_cover(
     return OrgUnitPassportCoverOut(
         enabled=cover.is_covered(db, unit_id),
         covered_count=cover.covered_count(db, unit_id),
-    )
-
-
-def _lead_specialty_ids(db: Session, unit_id: int) -> list[str]:
-    """An org_unit's lead passport specialty ids, in position order."""
-    return list(
-        db.scalars(
-            select(OrgUnitPassportSpecialty.specialty_id)
-            .where(OrgUnitPassportSpecialty.org_unit_id == unit_id)
-            .order_by(OrgUnitPassportSpecialty.position)
-        ).all()
-    )
-
-
-@router.get(
-    "/{unit_id}/passport-specialties",
-    response_model=OrgUnitPassportSpecialtiesOut,
-    dependencies=[DEP_REQUIRE_MANAGE_USERS],
-)
-def list_org_unit_passport_specialties(
-    unit_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = _DEP_SESSION,
-) -> OrgUnitPassportSpecialtiesOut:
-    """An organisation's lead passport specialties, in order.
-
-    Every row as stored, including one naming a specialty whose file has
-    since gone, so an admin sees what is saved and can clear it. The
-    holder's own list skips such a row instead. Requires ``manage_users``.
-    """
-    _require_visible(db, current_user, unit_id)
-    return OrgUnitPassportSpecialtiesOut(
-        specialty_ids=_lead_specialty_ids(db, unit_id)
-    )
-
-
-@router.put(
-    "/{unit_id}/passport-specialties",
-    response_model=OrgUnitPassportSpecialtiesOut,
-    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS],
-)
-def set_org_unit_passport_specialties(
-    unit_id: int,
-    body: SetOrgUnitPassportSpecialtiesIn,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = _DEP_SESSION,
-) -> OrgUnitPassportSpecialtiesOut:
-    """Replace an organisation's lead passport specialties.
-
-    The specialties its people see first when they choose their own, in
-    this order; the rest follow alphabetically. The whole list is
-    replaced rather than edited, because the order is the point, so
-    positions are rewritten from 1 every time. An empty list clears it.
-
-    Held at any org_unit, whatever its type, as a feature is. Requires
-    ``manage_users`` at an org_unit the caller may administer.
-    """
-    _require_visible(db, current_user, unit_id)
-
-    # Neither message repeats what was sent: a client's own text is not
-    # echoed back in an error.
-    if any(i not in SPECIALTY_IDS for i in body.specialty_ids):
-        raise HTTPException(
-            status_code=422,
-            detail="Unknown specialty. Must be one of: "
-            + ", ".join(SPECIALTY_IDS),
-        )
-    if len(set(body.specialty_ids)) != len(body.specialty_ids):
-        raise HTTPException(
-            status_code=422, detail="Each specialty can be named once."
-        )
-
-    # A core DELETE, sent at once, so the old positions are gone before
-    # the new rows are flushed against the one-position-each constraint.
-    db.execute(
-        delete(OrgUnitPassportSpecialty).where(
-            OrgUnitPassportSpecialty.org_unit_id == unit_id
-        )
-    )
-    for position, specialty_id in enumerate(body.specialty_ids, start=1):
-        db.add(
-            OrgUnitPassportSpecialty(
-                org_unit_id=unit_id,
-                specialty_id=specialty_id,
-                position=position,
-                set_by=current_user.id,
-            )
-        )
-    db.flush()
-
-    return OrgUnitPassportSpecialtiesOut(
-        specialty_ids=_lead_specialty_ids(db, unit_id)
     )
 
 

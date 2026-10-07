@@ -116,8 +116,8 @@ anything.
 - **A specialty is a filter and nothing else.** `shared/specialties.yaml`
   lists the words a framework may be filed under. Nobody chooses one.
   Until 7 October 2026 a holder chose specialties, which ordered one
-  list of every competency; the files, table and routes that did are
-  removed by Phase 12 of the plan below.
+  list of every competency. A profile written then still carries a
+  `specialties` key, which is dropped when the profile is read.
 
 See the [passport registrar portfolios plan](../../plans/2026-10-07-passport-registrar-portfolios-plan.md).
 
@@ -177,9 +177,7 @@ Five tables, and none is a copy of the record: `passport` points at one
 holder's repository, `passport_assessor_invite` brings an outside assessor in,
 `org_unit_passport_framework` holds an organisation's lead frameworks, and
 `passport_signoff_request` and `passport_logbook_confirmation_request` are
-workflow. A sixth, `org_unit_passport_specialty`, is left over from when a
-holder chose specialties, and is dropped by Phase 12 of the registrar
-portfolios plan.
+workflow.
 
 An assessor's inbox is a cross-passport query – "what have I been asked to
 sign?" – and no single repository can answer it. The row is the ask; each

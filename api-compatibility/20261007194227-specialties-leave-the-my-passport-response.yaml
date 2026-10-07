@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "response-optional-property-removed GET /api/passport/me removed the optional property `passport/specialties` from the response with the `200` status"
+reason: "Frameworks replaced a holder's specialties on 7 October 2026: a specialty ordered one list of every competency, and a framework limits it, so nothing stored as a specialty could be carried across. The passport returned by GET /api/passport/me listed the holder's specialties, and now lists their frameworks. The frontend that used it is removed in the same change, and nobody uses the live site yet, so an open tab of an older build has nothing of a holder's to lose. The silent background update is enough. No forced reload."

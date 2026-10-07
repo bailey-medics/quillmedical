@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-property-removed POST /api/passport removed the request property `anyOf[subschema #1: PassportCreateIn]/specialties`"
+reason: "Frameworks replaced a holder's specialties on 7 October 2026: a specialty ordered one list of every competency, and a framework limits it, so nothing stored as a specialty could be carried across. Creating a passport took the holder's specialties, and now takes their frameworks. The frontend that used it is removed in the same change, and nobody uses the live site yet, so an open tab of an older build has nothing of a holder's to lose. The silent background update is enough. No forced reload."

@@ -692,23 +692,38 @@ with them.
 
 ## Phase 12: Remove what specialty left behind
 
-Not in the same release as Phases 7 and 8. An open browser tab still calls
-the specialty routes until it reloads, so the old shape must stay live for
-at least one release after the new one. Both removals below wait on a human:
-one is a breaking API change and the other a destructive migration. Stop
-and ask before either.
+Planned for a later release than Phases 7 and 8, so that an open browser
+tab would stop calling the specialty routes first. The product owner
+decided on 7 October 2026 to build it now, in the same stack: nobody uses
+the live site yet, so there is no open tab to break. The two approvals in
+GitHub still stand, since nothing in a pull request can give them: a
+breaking API change and a destructive migration.
 
-- [ ] **Remove the specialty routes**, which `oasdiff` will flag as
-      breaking. It needs the `api-breaking-change-review` approval and a
-      decision file under `api-compatibility/`, as
+- [x] **Remove the specialty routes**: `GET /api/passport/specialties`,
+      `PUT /api/passport/{passport_id}/specialties`, and `GET` and `PUT`
+      `/api/org-units/{unit_id}/passport-specialties`. `specialties` also
+      leaves the passport response and the body that creates one.
+      `oasdiff` flags these as breaking. They need the
+      `api-breaking-change-review` approval and a decision file under
+      `api-compatibility/` for each change it reports, as
       `.claude/rules/backend.md` sets out.
-- [ ] **Drop `org_unit_passport_specialty`** in its own migration, with the
+- [x] **Drop `org_unit_passport_specialty`** in its own migration, with the
       `allow-destructive` marker, which waits on the
-      `db-destructive-migration-review` approval.
-- [ ] **Delete `shared/passport-specialties/`** and
-      `backend/app/features/passport/specialties.py`, with
-      `test_passport_specialties.py` and `test_passport_lead_specialties.py`
-      and the generated `passport-specialties.json`.
+      `db-destructive-migration-review` approval. No row could be carried
+      to `org_unit_passport_framework`: each names a specialty, and no
+      specialty is a framework.
+- [x] **Delete `shared/passport-specialties/`** and
+      `backend/app/features/passport/specialties.py`, with their tests and
+      the generated `passport-specialties.json`. This is where
+      `common_competencies` goes, with the files that held it.
+- [x] **Stop reading a profile's `specialties`.** The key leaves `Profile`
+      and is dropped when a profile is read, as the retired verification
+      keys are, so every passport made before frameworks still opens. The
+      history keeps what was chosen. The exports print the holder's
+      frameworks where they printed a specialty.
+- [x] **Remove the specialty client code**: the API calls, the types, the
+      `lib/passport/specialties.ts` reader and the organisation client's
+      two calls.
 
 ## Decisions
 

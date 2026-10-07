@@ -275,7 +275,6 @@ describe("the clinician passport card", () => {
       holder_user_id: "42",
       holder_name: "Dr Mark Bailey",
       registrations: [],
-      specialties: [],
       frameworks: [{ id: "oncology", name: "Oncology (proof of concept)" }],
       created_at: "2026-09-10",
       head_commit: null,
