@@ -31,11 +31,13 @@ import { Stack } from "@mantine/core";
 import BaseCard from "@/components/base-card/BaseCard";
 import {
   DateField,
+  EmailField,
+  EMAIL_PATTERN,
   SelectField,
   TextAreaField,
   TextField,
 } from "@components/form";
-import { Heading } from "@/components/typography";
+import { BodyText, Heading } from "@/components/typography";
 import ButtonPair from "@/components/button/ButtonPair";
 import type {
   CompetencyState,
@@ -106,8 +108,15 @@ export default function LogbookEntryForm({
   const [indication, setIndication] = useState(initial?.indication ?? "");
   const [outcome, setOutcome] = useState(initial?.outcome ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [confirmerEmail, setConfirmerEmail] = useState("");
 
-  const canSubmit = performedOn !== null && !isSubmitting;
+  // Optional, so an empty box is fine and a half-typed address is not:
+  // the server would refuse it after the rest of the form was filled in.
+  const confirmer = confirmerEmail.trim();
+  const confirmerIsValid =
+    confirmer === "" || EMAIL_PATTERN.value.test(confirmer);
+
+  const canSubmit = performedOn !== null && confirmerIsValid && !isSubmitting;
 
   function handleSubmit() {
     if (!canSubmit || performedOn === null) return;
@@ -121,6 +130,7 @@ export default function LogbookEntryForm({
       indication: indication.trim() || null,
       outcome: outcome.trim() || null,
       notes: notes.trim() || null,
+      confirmer_email: confirmer === "" ? null : confirmer.toLowerCase(),
     });
   }
 
@@ -203,6 +213,28 @@ export default function LogbookEntryForm({
           autosize
           minRows={2}
         />
+
+        {/* Optional, and most entries never use it: a logbook is the
+            holder's own claim. Naming somebody emails them, and they
+            confirm that the procedure happened as recorded, which is
+            not an assessment. */}
+        <EmailField
+          label="Ask a supervisor to confirm this entry"
+          description="Optional. They are emailed, and their name is recorded beside the entry once they confirm it."
+          placeholder="supervisor@example.nhs.uk"
+          value={confirmerEmail}
+          onChange={(event) => setConfirmerEmail(event.currentTarget.value)}
+          error={confirmerIsValid ? undefined : "Enter a full email address"}
+        />
+
+        {/* Said before saving, not after: the supervisor confirmed what
+            the entry said then, so changing it removes their name. */}
+        {initial?.confirmed_by && (
+          <BodyText>
+            {initial.confirmed_by.name} confirmed this entry. Saving changes
+            removes their confirmation, and you can ask for it again above.
+          </BodyText>
+        )}
 
         <ButtonPair
           acceptLabel={initial ? "Save changes" : "Add entry"}

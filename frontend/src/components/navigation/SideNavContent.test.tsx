@@ -1209,6 +1209,36 @@ describe("SideNavContent Component", () => {
       );
     });
 
+    it("hangs Confirm entry under Passport while a logbook entry is confirmed", async () => {
+      renderWithAuth(<SideNavContent />, "passport_holder", {
+        initialRoute: "/passport/logbook-confirmation/7",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Passport")).toBeInTheDocument();
+      });
+
+      expect(screen.getByText("Confirm entry").closest("a")).toHaveAttribute(
+        "href",
+        "/passport/logbook-confirmation/7",
+      );
+    });
+
+    it("hangs Confirm entry under an assessor's own link too", async () => {
+      renderWithAuth(<SideNavContent />, "passport_assessor_only", {
+        initialRoute: "/passport/logbook-confirmation/7",
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Sign-off requests")).toBeInTheDocument();
+      });
+
+      expect(screen.getByText("Confirm entry").closest("a")).toHaveAttribute(
+        "href",
+        "/passport/logbook-confirmation/7",
+      );
+    });
+
     it("draws no menu link for the inbox itself", async () => {
       // It is reached from the envelope in the ribbon, on every page.
       renderWithAuth(<SideNavContent />, "passport_holder", {

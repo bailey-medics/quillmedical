@@ -71,6 +71,15 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   named beneath it. Check it is reached in order and announced, and on
   journey 1 that "How to join a course" under the login form is reached
   after "Don't have an account? Register".
+- **Journey 4 again, for confirming a logbook entry** – added on 7
+  October 2026 by the
+  [passport registrar portfolios plan](../../plans/2026-10-07-passport-registrar-portfolios-plan.md).
+  A supervisor asked to confirm a logbook entry opens it from the Inbox,
+  as an assessor opens a sign-off, and the side navigation names the
+  page "Confirm entry" beneath Passport. Check that link is reached and
+  announced, that the tickbox "This happened as recorded here" is
+  announced with its description, and that "Confirm entry" is announced
+  as unavailable until the box is ticked.
 - **A guide page, by itself** – not one of the four journeys. Open
   `/guides/join-a-course` signed out and
   `/guides/add-a-delegate-by-hand` signed in. Check the headings read in

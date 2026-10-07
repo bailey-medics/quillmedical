@@ -15,6 +15,7 @@ import type {
   CompetencyState,
   CpdEntry,
   Logbook,
+  LogbookConfirmation,
   Reflection,
   Registration,
   InboxItem,
@@ -355,6 +356,41 @@ export const scopedLogbook: Logbook = {
       also_counts_towards: [],
       attachments: [],
     },
+  ],
+};
+
+/** One entry a supervisor has been asked to confirm, as their page gets it. */
+export const logbookConfirmation: LogbookConfirmation = {
+  id: 7,
+  passport_id: "3f2a8c1e",
+  holder_name: "Dr Priya Shah",
+  competency: {
+    id: "prescribe_sact",
+    name: "Review and prescribe systemic anti-cancer therapy",
+  },
+  entry: scopedLogbook.entries[0],
+};
+
+/** The same logbook once the first entry is confirmed and the second asked. */
+export const confirmedLogbook: Logbook = {
+  ...scopedLogbook,
+  entries: [
+    {
+      ...scopedLogbook.entries[0],
+      confirmed_by: {
+        user_id: "42",
+        name: "Dr Amara Okonkwo",
+        role: "Consultant oncologist",
+        registrations: [assessorRegistration],
+        care_location: null,
+      },
+      confirmed_at: "2026-03-14T14:32:07.000Z",
+    },
+    {
+      ...scopedLogbook.entries[1],
+      confirmation_asked_of: "a.okonkwo@nhs.net",
+    },
+    scopedLogbook.entries[2],
   ],
 };
 

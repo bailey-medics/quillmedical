@@ -63,6 +63,12 @@ const PASSPORT_PAGES: readonly (NavItem & { detail?: string })[] = [
 const SIGN_OFF_PREFIX = "/passport/sign-off/";
 
 /**
+ * Where a supervisor confirms one logbook entry:
+ * `/passport/logbook-confirmation/:id`.
+ */
+const LOGBOOK_CONFIRMATION_PREFIX = "/passport/logbook-confirmation/";
+
+/**
  * The passport page this address is, or sits beneath, if any, with the
  * record's own link beneath it on the page of one record.
  */
@@ -73,6 +79,13 @@ function passportPageAt(pathname: string): NavItem | undefined {
   // page of its own between the two until 4 October 2026.
   if (pathname.startsWith(SIGN_OFF_PREFIX)) {
     return { label: "Sign off", href: pathname };
+  }
+
+  // Confirming a logbook entry is reached from the inbox too, and is
+  // somebody else's logbook, so it hangs under Passport and not under
+  // the supervisor's own Logbook.
+  if (pathname.startsWith(LOGBOOK_CONFIRMATION_PREFIX)) {
+    return { label: "Confirm entry", href: pathname };
   }
 
   const page = PASSPORT_PAGES.find(
@@ -253,12 +266,14 @@ export function useFeatureNavItems(): NavItem[] {
       // `/admin` should reveal what is under it, and wrong here, where
       // the passport itself is a destination rather than a heading.
       //
-      // The one exception is signing somebody off, which is an
-      // assessor's page whether or not they hold a passport.
+      // The exceptions are signing somebody off and confirming one of
+      // their logbook entries, which are an assessor's pages whether or
+      // not they hold a passport.
       children: !assessesOnly
         ? openPage && [openPage]
-        : pathname.startsWith(SIGN_OFF_PREFIX)
-          ? [{ label: "Sign off", href: pathname }]
+        : pathname.startsWith(SIGN_OFF_PREFIX) ||
+            pathname.startsWith(LOGBOOK_CONFIRMATION_PREFIX)
+          ? openPage && [openPage]
           : undefined,
     });
   }

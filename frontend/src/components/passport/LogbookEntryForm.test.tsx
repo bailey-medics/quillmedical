@@ -42,6 +42,95 @@ describe("LogbookEntryForm", () => {
     ).toBeInTheDocument();
   });
 
+  describe("Asking a supervisor to confirm it", () => {
+    it("is optional, and sends nobody when left empty", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      renderForm({ onSubmit });
+
+      await user.type(
+        screen.getByRole("textbox", { name: /Performed on/ }),
+        "14/03/2026",
+      );
+      await user.click(screen.getByRole("button", { name: "Add entry" }));
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ confirmer_email: null }),
+      );
+    });
+
+    it("sends the address, trimmed and folded to lower case", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      renderForm({ onSubmit });
+
+      await user.type(
+        screen.getByRole("textbox", { name: /Performed on/ }),
+        "14/03/2026",
+      );
+      await user.type(
+        screen.getByRole("textbox", { name: /Ask a supervisor/ }),
+        " Amara.Okonkwo@Example.nhs.uk ",
+      );
+      await user.click(screen.getByRole("button", { name: "Add entry" }));
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          confirmer_email: "amara.okonkwo@example.nhs.uk",
+        }),
+      );
+    });
+
+    it("will not send a half-typed address", async () => {
+      const user = userEvent.setup();
+      renderForm();
+
+      await user.type(
+        screen.getByRole("textbox", { name: /Performed on/ }),
+        "14/03/2026",
+      );
+      await user.type(
+        screen.getByRole("textbox", { name: /Ask a supervisor/ }),
+        "amara",
+      );
+
+      expect(screen.getByRole("button", { name: "Add entry" })).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    });
+
+    it("warns that saving a confirmed entry removes the confirmation", () => {
+      renderForm({
+        initial: {
+          filename: "20260314T1432",
+          competency: "prescribe_sact",
+          performed_on: "2026-03-14",
+          setting: null,
+          supervision: null,
+          supervisor: null,
+          indication: null,
+          outcome: null,
+          notes: null,
+          also_counts_towards: [],
+          attachments: [],
+          confirmed_by: {
+            user_id: "42",
+            name: "Dr Amara Okonkwo",
+            role: "Consultant",
+            registrations: [],
+            care_location: null,
+          },
+          confirmed_at: "2026-03-14T14:32:07.000Z",
+        },
+      });
+
+      expect(
+        screen.getByText(/Dr Amara Okonkwo confirmed this entry/),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("Self-declared, and nothing pretends otherwise", () => {
     it("asks for no declaration", () => {
       // A logbook entry is the holder's own claim. Only a sign-off

@@ -472,6 +472,11 @@ export interface LogbookEntryInput {
   notes?: string | null;
   also_counts_towards?: string[];
   attachments?: AttachmentInput[];
+  /**
+   * A supervisor to ask to confirm the entry. Optional: most entries are
+   * the holder's own claim. Naming one emails them.
+   */
+  confirmer_email?: string | null;
 }
 
 /** A logbook entry as stored. */
@@ -489,6 +494,29 @@ export interface LogbookEntry {
   notes: string | null;
   also_counts_towards: string[];
   attachments: Attachment[];
+  /** The supervisor who confirmed the entry, if one has */
+  confirmed_by?: Assessor | null;
+  confirmed_at?: IsoDateTime | null;
+  /** Who has been asked to confirm it and has not yet answered */
+  confirmation_asked_of?: string | null;
+}
+
+/**
+ * One logbook entry a supervisor has been asked to confirm. Carries the
+ * holder's name because the supervisor arrives from their inbox knowing
+ * neither it nor the passport.
+ */
+export interface LogbookConfirmation {
+  id: number;
+  passport_id: string;
+  holder_name: string;
+  competency: CompetencyRef;
+  entry: LogbookEntry;
+}
+
+/** What became of an ask to confirm a logbook entry. */
+export interface LogbookConfirmationAnswer {
+  status: "confirmed" | "declined";
 }
 
 /**

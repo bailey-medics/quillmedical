@@ -7,6 +7,7 @@ import { Stack } from "@mantine/core";
 import { fn } from "storybook/test";
 import LogbookTable from "./LogbookTable";
 import {
+  confirmedLogbook,
   logbook,
   emptyLogbook,
   scopedLogbook,
@@ -82,6 +83,18 @@ export const Loading: Story = {
 export const WithScopes: Story = {
   args: {
     logbook: scopedLogbook,
+    competencyName: "Review and prescribe systemic anti-cancer therapy",
+    onSelect: fn(),
+  },
+};
+
+/**
+ * One entry confirmed by a supervisor and one still waiting on them. The
+ * column appears only because some entry here has one or the other.
+ */
+export const WithConfirmations: Story = {
+  args: {
+    logbook: confirmedLogbook,
     competencyName: "Review and prescribe systemic anti-cancer therapy",
     onSelect: fn(),
   },

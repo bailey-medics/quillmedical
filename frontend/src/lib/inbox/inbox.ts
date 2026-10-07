@@ -68,6 +68,10 @@ const ADDRESSES: Record<string, (item: InboxItem) => string | null> = {
     !item.done && item.ref
       ? `/passport/sign-off/${encodeURIComponent(item.ref)}`
       : null,
+  // The page where a supervisor confirms one logbook entry, addressed by
+  // the ask's own id. Once it is answered there is nothing to open.
+  passport_logbook_confirmation: (item) =>
+    item.done ? null : `/passport/logbook-confirmation/${item.id}`,
 };
 
 /** Whether this client knows where a source's things are dealt with. */

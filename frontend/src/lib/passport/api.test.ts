@@ -23,6 +23,8 @@ import {
   amendCertificate,
   amendCpdEntry,
   amendLogbookEntry,
+  answerLogbookConfirmation,
+  fetchLogbookConfirmation,
   amendReflection,
   createPassport,
   declineSignOff,
@@ -95,6 +97,7 @@ describe("passport paths", () => {
       "/api/passport/{passport_id}/cpd",
       "/api/passport/{passport_id}/cpd/{year}",
       "/api/passport/{passport_id}/cpd/{year}/{stem}",
+      "/api/passport/requests/logbook-confirmations/{request_id}",
       "/api/passport/{passport_id}/logbook",
       "/api/passport/{passport_id}/logbook/{competency_id}",
       "/api/passport/{passport_id}/logbook/{competency_id}/{stem}",
@@ -180,6 +183,31 @@ describe("passport", () => {
   it("fetches a passport by id", async () => {
     await fetchPassport(PASSPORT_ID);
     expect(api.get).toHaveBeenCalledWith(`/passport/${PASSPORT_ID}`);
+  });
+});
+
+describe("logbook confirmations", () => {
+  it("fetches the one entry a supervisor was asked about", async () => {
+    await fetchLogbookConfirmation(7);
+    expect(api.get).toHaveBeenCalledWith(
+      "/passport/requests/logbook-confirmations/7",
+    );
+  });
+
+  it("confirms an entry", async () => {
+    await answerLogbookConfirmation(7, true);
+    expect(api.post).toHaveBeenCalledWith(
+      "/passport/requests/logbook-confirmations/7",
+      { confirmed: true },
+    );
+  });
+
+  it("says an entry is not the caller's to confirm", async () => {
+    await answerLogbookConfirmation(7, false);
+    expect(api.post).toHaveBeenCalledWith(
+      "/passport/requests/logbook-confirmations/7",
+      { confirmed: false },
+    );
   });
 });
 
