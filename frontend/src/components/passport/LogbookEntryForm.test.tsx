@@ -227,10 +227,28 @@ describe("LogbookEntryForm", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("can be left empty, unlike on a sign-off", async () => {
+    it("must be answered, as on a sign-off", async () => {
+      // A scope decides which sign-off an entry counts towards, so one
+      // without it counts towards nothing. The server refuses it too.
       const user = userEvent.setup();
       const onSubmit = vi.fn();
       renderForm({ scopes, onSubmit });
+
+      await user.type(
+        screen.getByRole("textbox", { name: /Performed on/ }),
+        "14/03/2026",
+      );
+
+      const add = screen.getByRole("button", { name: "Add entry" });
+      expect(add).toHaveAttribute("aria-disabled", "true");
+      await user.click(add);
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it("asks nothing of a competency with no scopes", async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      renderForm({ onSubmit });
 
       await user.type(
         screen.getByRole("textbox", { name: /Performed on/ }),
@@ -241,6 +259,31 @@ describe("LogbookEntryForm", () => {
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({ scope_id: null }),
       );
+    });
+
+    it("holds back an older entry with no scope until one is chosen", () => {
+      // Entries written before scopes existed name none. Correcting one
+      // means saying what it counts towards.
+      renderForm({
+        scopes,
+        initial: {
+          filename: "20260314T1432",
+          competency: "uk_sact_board_2023_prescribe_sact",
+          performed_on: "2026-03-14",
+          setting: null,
+          supervision: null,
+          supervisor: null,
+          indication: null,
+          outcome: null,
+          notes: null,
+          also_counts_towards: [],
+          attachments: [],
+        },
+      });
+
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).toHaveAttribute("aria-disabled", "true");
     });
 
     it("sends the scope chosen", async () => {

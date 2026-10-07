@@ -583,8 +583,8 @@ class LogbookEntryIn(_In):
     """
 
     performed_on: date
-    #: What the entry counts towards within its competency. Offered only
-    #: where the competency declares scopes, optional even then, and
+    #: What the entry counts towards within its competency. Required
+    #: where the competency declares scopes, as on a sign-off, and
     #: refused on a competency that declares none.
     scope_id: str | None = None
     setting: str | None = None

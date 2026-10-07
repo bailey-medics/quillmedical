@@ -3409,14 +3409,22 @@ class TestEvidence:
         uploaded = self._upload(holder_client, passport_id).json()
         created = holder_client.post(
             f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
-            json={"performed_on": "2026-03-12", "attachments": [uploaded]},
+            json={
+                "performed_on": "2026-03-12",
+                "attachments": [uploaded],
+                "scope_id": SCOPE,
+            },
         )
         assert created.status_code == 201, created.text
         stem = created.json()["name"]
 
         response = holder_client.patch(
             f"/api/passport/{passport_id}/logbook/{COMPETENCY}/{stem}",
-            json={"performed_on": "2026-03-13", "outcome": "Successful"},
+            json={
+                "performed_on": "2026-03-13",
+                "outcome": "Successful",
+                "scope_id": SCOPE,
+            },
         )
 
         assert response.status_code == 200, response.text
