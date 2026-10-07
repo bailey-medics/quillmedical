@@ -437,7 +437,7 @@ in the command that sends, and the tests have to pin it down.
       one-click that answered an error because Resend was down would be
       an unsubscribe refused.
 
-- [ ] **Build the unsubscribe page.** A page in the app that needs no
+- [x] **Build the unsubscribe page.** A page in the app that needs no
       login, at `/unsubscribe`, in the Quill layout: it reads the link,
       says which address it is for with most of it hidden, shows whether
       news is on or off, and turns it off or back on with one button.
@@ -445,7 +445,15 @@ in the command that sends, and the tests have to pin it down.
       `<RequireAuth>`. Compose it from the Storybook components there
       are, with a story and a test, and put any new component to Mark
       before building it. The newsletter's "Update your preferences"
-      link goes to the same page.
+      link goes to the same page. Built with no new atomic component:
+      the card is the sign-in pages' logo and `BaseCard`, and the
+      control is `SolidSwitch`, the one Settings uses for the same
+      choice, so somebody who knows one knows the other. Opening the
+      page changes nothing. A link that unsubscribed by being opened
+      would be pressed by every mail scanner that follows links, which
+      is the reason a mailbox's one-click is a `POST`. The route has no
+      guard at all: `GuestOnly` would turn a signed-in person away, and
+      `RequireAuth` a signed-out one.
 
 - [ ] **Write the command that sends a newsletter.** SES has no screen
       to compose a broadcast and press send, so this is an admin action.
