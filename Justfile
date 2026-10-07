@@ -2692,6 +2692,83 @@ passport-delete env username confirm="":
     exit "${STATUS:-0}"
 
 
+alias nls := newsletter-send
+# Send a newsletter campaign to everybody who said yes (dry run unless confirm is what the dry run printed)
+newsletter-send env campaign confirm="" only_to="":
+    #!/usr/bin/env bash
+    {{initialise}} "newsletter-send ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    # A campaign is a template under backend/app/email/templates/campaigns/,
+    # named without its ending. Without confirm this only reports who would
+    # be sent it, and prints the value to pass back. only_to sends a trial
+    # to one address, which is not recorded, so the real send still reaches
+    # them. See backend/app/marketing/newsletter.py.
+    # The dry run ends "run again with CONFIRM=<value>", so that form is
+    # accepted as well as the bare value.
+    CONFIRM="{{confirm}}"
+    CONFIRM="${CONFIRM#CONFIRM=}"
+    # Checked here because each goes into a comma-separated list of
+    # variables, where a stray comma would set something else.
+    if ! [[ "{{campaign}}" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+        echo "✗ '{{campaign}}' is not a campaign name" >&2
+        exit 1
+    fi
+    if [ -n "$CONFIRM" ] && ! [[ "$CONFIRM" =~ ^[a-z0-9][a-z0-9-]*:[0-9]+$ ]]; then
+        echo "✗ confirm must be what the dry run printed, such as {{campaign}}:12" >&2
+        exit 1
+    fi
+    if [ -n "{{only_to}}" ] && ! [[ "{{only_to}}" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$ ]]; then
+        echo "✗ '{{only_to}}' is not an email address" >&2
+        exit 1
+    fi
+
+    VARS="ADMIN_ACTION=send-newsletter,NEWSLETTER_CAMPAIGN={{campaign}}"
+    if [ -n "{{only_to}}" ]; then
+        VARS="${VARS},NEWSLETTER_ONLY_TO={{only_to}}"
+    fi
+    if [ -n "$CONFIRM" ]; then
+        VARS="${VARS},CONFIRM=${CONFIRM}"
+        echo "Send the {{campaign}} newsletter on ${PROJECT}"
+    else
+        echo "Dry run: the {{campaign}} newsletter on ${PROJECT}"
+    fi
+    echo "─────────────────────────────────"
+
+    EXECUTION=$(gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "$VARS" \
+        --wait \
+        --format='value(metadata.name)') || STATUS=$?
+
+    # A failed execution prints nothing to stdout, so its name is looked
+    # up instead: the failure is exactly when the report matters most.
+    if [ -z "${EXECUTION:-}" ]; then
+        EXECUTION=$(gcloud run jobs executions list \
+            --job="quill-admin-{{env}}" \
+            --project="$PROJECT" \
+            --region="$REGION" \
+            --limit=1 \
+            --format='value(metadata.name)' || true)
+    fi
+
+    # The job prints to Cloud Logging rather than to this terminal, so
+    # its report is read back from there.
+    if [ -n "${EXECUTION:-}" ]; then
+        gcloud logging read \
+            "resource.type=cloud_run_job AND labels.\"run.googleapis.com/execution_name\"=${EXECUTION}" \
+            --project="$PROJECT" \
+            --order=asc \
+            --freshness=1h \
+            --format='value(textPayload)'
+    fi
+    exit "${STATUS:-0}"
+
+
 alias na := notifier-app
 # Build the Quill-branded macOS notifier used by the Stop-hook banner (macOS only, one-off)
 notifier-app:

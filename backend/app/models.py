@@ -851,6 +851,46 @@ class MarketingPreferenceChange(Base):
         return validate_marketing_preference_source(value)
 
 
+class NewsletterSend(Base):
+    """One newsletter sent to one person.
+
+    Written as each email leaves, so a send that stops half way can be
+    run again and reaches only the people it missed. A newsletter cannot
+    be unsent, and without this a second run would email the first half
+    twice.
+
+    A table, not a list on the campaign, because each row is a
+    relationship between a person and a campaign with its own date, and
+    "who was sent this?" and "what was this person sent?" are both asked.
+
+    Attributes:
+        id: Primary key.
+        campaign: The campaign's name: its template's file name under
+            ``app/email/templates/campaigns/``, less the ending.
+        user_id: Who it was sent to. Their rows go when they do.
+        sent_at: When the mail provider accepted it.
+    """
+
+    __tablename__ = "newsletter_send"
+    __table_args__ = (
+        UniqueConstraint(
+            "campaign", "user_id", name="uq_newsletter_send_campaign_user"
+        ),
+        Index("ix_newsletter_send_user", "user_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    campaign: Mapped[str] = mapped_column(String(100), nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    sent_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+
 def normalise_email(value: str) -> str:
     """Return an email address as Quill holds it: trimmed and lower case.
 

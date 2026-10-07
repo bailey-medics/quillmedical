@@ -67,6 +67,10 @@ locals {
     # For the `marketing-sync` action, which retries telling Resend about
     # people it could not be told about at the time.
     RESEND_CONTACTS_API_KEY = "resend-contacts-api-key"
+    # For the `send-newsletter` action, which sends through Amazon SES
+    # in London as the backend does.
+    SES_ACCESS_KEY_ID     = "ses-access-key-id"
+    SES_SECRET_ACCESS_KEY = "ses-secret-access-key"
   }
 
   # Where the mailing list is in Resend. Identifiers, not secrets: they

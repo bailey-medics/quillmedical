@@ -506,6 +506,15 @@ module "cloud_run_admin_job" {
       PASSPORT_GCS_BUCKET          = module.passport_storage.bucket_name
       PASSPORT_ARCHIVE_GCS_BUCKET  = module.passport_storage.archive_bucket_name
       PASSPORT_DELETABLE_USERNAMES = join(",", var.passport_deletable_usernames)
+
+      # For `send-newsletter`, which sends email from this job. The same
+      # values the backend has: where the app is, for each person's
+      # unsubscribe link, and how mail leaves. Without EMAIL_DRY_RUN set
+      # to false a send would only be logged.
+      FRONTEND_URL   = "https://${var.lb_domains[0]}"
+      EMAIL_FROM     = "info@quill-medical.com"
+      EMAIL_DRY_RUN  = "false"
+      EMAIL_PROVIDER = "ses"
     },
     # For `marketing-sync`.
     local.resend_newsletter_env_vars

@@ -256,6 +256,37 @@ class Attachment(TypedDict):
     content: bytes
 
 
+#: Headers a caller may not set: the ones ``send_email`` writes itself.
+_OWN_HEADERS = frozenset({"from", "to", "subject", "reply-to", "cc", "bcc"})
+
+
+def _checked_headers(headers: Mapping[str, str] | None) -> dict[str, str]:
+    """Extra headers for a message, refused if any could do harm.
+
+    Args:
+        headers: Header name to value, such as the ``List-Unsubscribe``
+            pair a newsletter carries.
+
+    Returns:
+        The same headers, as a plain dict. Empty for None.
+
+    Raises:
+        ValueError: If a name or value holds a line break, which would
+            let it start another header, if a name is not a plain header
+            name, or if it is one ``send_email`` writes itself.
+    """
+    checked: dict[str, str] = {}
+    for name, value in (headers or {}).items():
+        if not name or not all(c.isalnum() or c == "-" for c in name):
+            raise ValueError(f"Not a header name: {name!r}")
+        if name.lower() in _OWN_HEADERS:
+            raise ValueError(f"send_email sets {name} itself")
+        if "\r" in value or "\n" in value:
+            raise ValueError(f"Line break in the {name} header")
+        checked[name] = value
+    return checked
+
+
 #: Characters that would let a display name break out of the From header.
 _UNSAFE_IN_NAME = frozenset('"<>\r\n')
 
@@ -301,6 +332,7 @@ def _mime_message(
     text_body: str | None,
     reply_to: str | None,
     attachments: list[Attachment],
+    headers: Mapping[str, str] | None = None,
 ) -> bytes:
     """The email as a raw MIME message, which is what SES is handed.
 
@@ -315,6 +347,8 @@ def _mime_message(
         text_body: A plain-text version of the same email, if there is one.
         reply_to: Where a reply goes, when not to the sender.
         attachments: Files to attach.
+        headers: Extra headers, already checked by
+            :func:`_checked_headers`.
 
     Returns:
         The message, encoded and ready to send.
@@ -325,6 +359,8 @@ def _mime_message(
     message["Subject"] = subject
     if reply_to is not None:
         message["Reply-To"] = reply_to
+    for name, value in (headers or {}).items():
+        message[name] = value
 
     if text_body is None:
         message.set_content(html_body, subtype="html")
@@ -409,6 +445,7 @@ def send_email(
     text_body: str | None = None,
     reply_to: str | None = None,
     from_name: str | None = None,
+    headers: Mapping[str, str] | None = None,
 ) -> None:
     """Send a single email, or log it when in dry-run mode.
 
@@ -425,6 +462,9 @@ def send_email(
         from_name: The sender's display name, such as
             ``"EoEETA via Quill Medical"``. The address stays
             ``settings.EMAIL_FROM``.
+        headers: Extra headers. A newsletter passes ``List-Unsubscribe``
+            and ``List-Unsubscribe-Post``, which mailbox providers
+            require of bulk mail.
 
     Raises:
         EmailRateLimitError: If the recipient has exceeded the hourly limit.
@@ -432,10 +472,12 @@ def send_email(
             not on it.
         EmailSendError: If the mail provider refuses the send or cannot
             be reached.
-        ValueError: If *from_name* could break the From header.
+        ValueError: If *from_name* could break the From header, or a
+            header in *headers* is not safe to send.
     """
     _check_allowed(to)
     sender = _from_header(from_name)
+    extra_headers = _checked_headers(headers)
     _check_rate_limit(to)
 
     # Counted for the log, never named in it. Neither is the subject. A
@@ -464,6 +506,7 @@ def send_email(
                 text_body=text_body,
                 reply_to=reply_to,
                 attachments=attachments or [],
+                headers=extra_headers,
             ),
         )
         if not sent:
@@ -507,6 +550,8 @@ def send_email(
         params["reply_to"] = reply_to
     if resend_attachments:
         params["attachments"] = resend_attachments
+    if extra_headers:
+        params["headers"] = extra_headers
 
     try:
         resend.Emails.send(params)
