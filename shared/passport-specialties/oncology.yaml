@@ -18,19 +18,7 @@
 id: oncology
 display_name: "Oncology"
 common_competencies:
-  - prescribe_sact
-  - assess_sact_toxicity
-  - manage_sact_complications
-  - consent_for_sact
-  - define_radiotherapy_target_volume
-  - deliver_radical_radiotherapy
-  - deliver_palliative_radiotherapy
-  - deliver_radioisotope_therapy
-  - manage_brachytherapy_patients
-  - consent_for_radiotherapy
-  - manage_oncological_emergency
-  - deliver_acute_oncology_take
-  - manage_neutropenic_sepsis
-  - manage_metastatic_cord_compression
-  - contribute_to_tumour_mdt
-  - manage_end_of_life_care
+  - uk_sact_board_2023_prescribe_sact
+  - ruh_sact_passport_prescribe_sact
+  - ghnft_radiotherapy_record_plan_and_prescribe_palliative
+  - ghnft_radiotherapy_record_plan_and_prescribe_radical

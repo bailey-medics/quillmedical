@@ -188,6 +188,12 @@ def entry_filename(moment: datetime) -> str:
     return moment.astimezone(UTC).strftime("%Y-%m-%d-%H%M%S")
 
 
+#: The longest slug a folder name carries. Two records whose labels agree
+#: this far are told apart by the suffix a clash adds, as two records
+#: with the same label already are.
+MAX_SLUG_LENGTH = 80
+
+
 def slugify(text: str) -> str:
     """Reduce free text to the slug half of a folder name.
 
@@ -201,11 +207,20 @@ def slugify(text: str) -> str:
             reflection title.
 
     Returns:
-        Lower-case words joined by single hyphens, or ``"untitled"``
-        when nothing survives – an empty slug would produce a folder
+        Lower-case words joined by single hyphens, at most
+        :data:`MAX_SLUG_LENGTH` characters and cut at a word, or
+        ``"untitled"`` when nothing survives – an empty slug would produce a folder
         name ending in a bare hyphen.
     """
     slug = re.sub(r"[^a-z0-9]+", "-", text.casefold()).strip("-")
+
+    # Cut at a word, so the name stays legible. A framework quotes its
+    # document, and a statement from one can run past two hundred
+    # characters: longer than a folder name should be, and longer than
+    # the column a sign-off request stores its folder name in.
+    if len(slug) > MAX_SLUG_LENGTH:
+        slug = slug[:MAX_SLUG_LENGTH].rsplit("-", 1)[0].strip("-")
+
     return slug or "untitled"
 
 

@@ -608,35 +608,45 @@ whole: trimming them first would be work thrown away a release later.
 
 Each is a passport-only file in `shared/competency-definitions/`, written
 from the source document in `teaching-repos/`, in the document's own words
-and order.
+and order. Each file's header says how the document is laid out in it and
+what is left out.
 
-- [ ] **UK SACT Board, November 2023.** One scaled competency carrying its
-      five levels and the tumour-site scopes, and each knowledge and skill
-      statement as an item, quoted. The rows reading "has demonstrated
+- [x] **UK SACT Board, November 2023**, `uk_sact_board_2023.yaml`. One
+      scaled competency carrying its five levels and the tumour-site
+      scopes, and each knowledge and skill statement as an item, quoted,
+      with its level in front. The rows reading "has demonstrated
       competency at level N" are left out: the scale says that. The log of
       eight prescriptions is the logbook, each entry confirmed by a
       supervisor. Specialties: oncology and haematology.
-- [ ] **Bath SACT competency passport.** One scaled competency carrying
-      Bath's own three tiers (direct supervision, indirect supervision,
-      independent) and the scopes, and its fifteen evidence of learning
-      items. Its three logs are logbook entries in free text.
-- [ ] **Gloucestershire radiotherapy record.** The four "unsupervised"
-      questions as items in its own words, not on the RCR scale, which the
-      sheet does not use, and the three acquaintances (Pinnacle, Aria,
-      referral and consent). Exam passes, courses and induction are
-      certificates. The year in post has no home and is left out.
-- [ ] **Remove `oncology.yaml` as a framework.** It was a proof of
+- [x] **Bath SACT competency passport**, `ruh_sact_passport.yaml`. One
+      scaled competency carrying Bath's own three tiers (direct
+      supervision, indirect supervision, independent) and the scopes, and
+      its fifteen evidence of learning items. Its three logs are logbook
+      entries in free text.
+- [x] **Gloucestershire radiotherapy record**,
+      `ghnft_radiotherapy_record.yaml`. The four "unsupervised" questions
+      as items in its own words, not on the RCR scale, which the sheet
+      does not use, and the three acquaintances (Pinnacle, Aria, referral
+      and consent). Exam passes, courses and induction are certificates.
+      The year in post has no home and is left out.
+- [x] **Cut a folder name at eighty characters.** Found while building: a
+      sign-off's folder is named for its competency, a quoted statement
+      runs past two hundred characters, and the column a sign-off request
+      keeps the folder name in holds two hundred. `slugify` in `ids.py`
+      now cuts at a word.
+- [x] **Remove `oncology.yaml` as a framework.** It was a proof of
       concept, written before these documents were to hand, and its own
       header says it would be revised against them. The three files above
-      replace it. Its sixteen ids are retired with `retired_on`, in a file
-      that is no framework, and not erased: a passport that already holds
-      a record against one must still open, and `definitions._entry`
-      raises on an id the catalogue has never defined. Retiring is what
-      the catalogue does elsewhere, for the same reason. About 25 test and
-      frontend files use these ids as their examples, and move to ids from
-      the new files.
-- [ ] **Tests**: the catalogue loads, each framework is offered under its
-      specialty, and a record against a retired oncology id still reads.
+      replace it. Its sixteen ids are retired with `retired_on`, in
+      `retired-oncology.yaml`, which declares no framework, and not
+      erased: a passport that already holds a record against one must
+      still open, and `definitions._entry` raises on an id the catalogue
+      has never defined. Retiring is what the catalogue does elsewhere,
+      for the same reason. The tests and fixtures that used these ids as
+      their examples move to ids from the new files.
+- [x] **Tests**: the catalogue loads, each framework is offered under its
+      specialty, a passport-only id is refused as a grant, and the retired
+      oncology ids are still in the catalogue with their levels.
 
 ## Phase 10: Remove what specialty left behind
 

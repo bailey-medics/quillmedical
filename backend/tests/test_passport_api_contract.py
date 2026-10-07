@@ -47,11 +47,11 @@ from app.security import hash_password
 from tests.competencies import clear, hold, lapse
 from tests.registrations import declare
 
-COMPETENCY = "prescribe_sact"
+COMPETENCY = "uk_sact_board_2023_prescribe_sact"
 # The frameworks a test holder works to. A passport offers the
 # competencies in its holder's frameworks and no others, so one made with
 # none could record nothing.
-WORKING_TO = {"frameworks": ["clinical", "oncology"]}
+WORKING_TO = {"frameworks": ["clinical", "uk_sact_board_2023"]}
 LEVEL = "review_and_authorise"
 
 #: Every passport path, as the router declares them. Listed so a new

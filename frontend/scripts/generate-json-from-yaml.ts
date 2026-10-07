@@ -32,8 +32,8 @@ const FILES_TO_GENERATE = [
 ];
 
 // Competencies are split across a directory by kind – clinical.yaml,
-// clinical-admin.yaml, admin.yaml, oncology.yaml, teaching.yaml,
-// passport.yaml and safety.yaml – and merged back into one
+// clinical-admin.yaml, admin.yaml, teaching.yaml, passport.yaml and
+// safety.yaml, and one file for each framework – and merged back into one
 // competencies.json here, so consumers see one flat catalogue and never
 // need to know how the definitions are filed. Mirrors
 // _load_competencies() in backend/app/cbac/competencies.py, including

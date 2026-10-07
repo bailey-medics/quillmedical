@@ -405,8 +405,29 @@ def test_a_frameworks_items_are_its_assessable_entries() -> None:
     assert items < in_file
 
 
-def test_no_real_framework_is_passport_only_yet() -> None:
-    assert PASSPORT_ONLY_COMPETENCY_IDS == ()
+def test_a_framework_written_from_a_form_is_passport_only() -> None:
+    """Its statements are recorded in a passport and granted to nobody."""
+    assert "uk_sact_board_2023_prescribe_sact" in PASSPORT_ONLY_COMPETENCY_IDS
+    assert (
+        "ghnft_radiotherapy_record_acquaintance_with_aria"
+        in PASSPORT_ONLY_COMPETENCY_IDS
+    )
+    # General clinical skills are real permissions too.
+    assert "perform_cannulation" not in PASSPORT_ONLY_COMPETENCY_IDS
+
+
+def test_the_real_passport_only_ids_are_refused_as_grants() -> None:
+    with pytest.raises(ValueError, match="granted to nobody"):
+        validate_competency_ids(["ruh_sact_passport_ctcae_grading"])
+
+
+def test_the_first_oncology_list_is_retired_and_still_readable() -> None:
+    """A passport already holding a record against one must still open."""
+    assert "prescribe" + "_sact" in RETIRED_COMPETENCY_IDS
+    assert "define_radiotherapy_target_volume" in RETIRED_COMPETENCY_IDS
+    retired = get_competency_details("define_radiotherapy_target_volume")
+    assert retired is not None
+    assert retired.levels is not None
 
 
 def test_a_passport_only_id_is_refused_where_competencies_are_granted(
@@ -496,7 +517,7 @@ def test_competency_entry_is_not_assessable_unless_it_says_so() -> None:
 
 def test_assessable_ids_hold_skills_and_no_permissions() -> None:
     assert "perform_cannulation" in ASSESSABLE_COMPETENCY_IDS
-    assert "prescribe_sact" in ASSESSABLE_COMPETENCY_IDS
+    assert "uk_sact_board_2023_prescribe_sact" in ASSESSABLE_COMPETENCY_IDS
     for permission in (
         "manage_users",
         "access_own_patient_records",

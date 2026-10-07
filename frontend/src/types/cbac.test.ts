@@ -10,6 +10,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_COMPETENCIES,
+  ALL_FRAMEWORKS,
   ACTIVE_COMPETENCIES,
   ASSESSABLE_COMPETENCIES,
   getCompetencyDetails,
@@ -41,15 +42,30 @@ describe("The competency catalogue", () => {
     expect(offered).toEqual([]);
   });
 
-  it("offers everything that is not retired", () => {
-    // The pair must account for the whole catalogue: an id missing
-    // from both would be impossible to grant without anybody having
-    // retired it.
+  it("offers everything that is neither retired nor passport-only", () => {
+    // The three must account for the whole catalogue: an id missing
+    // from all of them would be impossible to grant without anybody
+    // having retired it or filed it in a framework written from a form.
+    const passportOnly = new Set(
+      ALL_FRAMEWORKS.filter((framework) => framework.passport_only).map(
+        (framework) => framework.id,
+      ),
+    );
+
     expect(ACTIVE_COMPETENCIES).toHaveLength(
       ALL_COMPETENCIES.filter(
-        (competency) => competency.retired_on === undefined,
+        (competency) =>
+          competency.retired_on === undefined &&
+          !passportOnly.has(competency.framework_id ?? ""),
       ).length,
     );
+  });
+
+  it("never offers a statement from a paper form to be granted", () => {
+    const ids = ACTIVE_COMPETENCIES.map((competency) => competency.id);
+
+    expect(ids).not.toContain("uk_sact_board_2023_prescribe_sact");
+    expect(ids).not.toContain("ruh_sact_passport_ctcae_grading");
   });
 
   it("offers the competency that replaced the retired one", () => {
@@ -68,7 +84,12 @@ describe("The competencies the passport may record", () => {
 
   it("offers clinical skills somebody can be assessed on", () => {
     expect(ids).toContain("perform_cannulation");
-    expect(ids).toContain("prescribe_sact");
+    expect(ids).toContain("uk_sact_board_2023_prescribe_sact");
+  });
+
+  it("no longer offers the first oncology list, now retired", () => {
+    expect(ids).not.toContain("prescribe_sact");
+    expect(ids).not.toContain("define_radiotherapy_target_volume");
   });
 
   it("never offers a software permission", () => {

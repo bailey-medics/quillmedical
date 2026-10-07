@@ -5,7 +5,7 @@ point of this module is that the passport and CBAC share one vocabulary.
 A fixture would pass while the shared files said something else.
 
 The competencies named below are chosen for what they demonstrate:
-``prescribe_sact`` has the UK SACT Board's four levels, and
+``uk_sact_board_2023_prescribe_sact`` has the UK SACT Board's four levels, and
 ``perform_cannulation`` deliberately has no scale – it is signed off or
 it is not. If either changes in ``shared/competency-definitions/`` these tests
 should be updated to name others with the same shape, not loosened.
@@ -22,9 +22,9 @@ from app.features.passport.definitions import (
     UnknownLevelError,
 )
 
-LEVELLED = "prescribe_sact"
+LEVELLED = "uk_sact_board_2023_prescribe_sact"
 # Signed off one tumour site at a time.
-SCOPED = "prescribe_sact"
+SCOPED = "uk_sact_board_2023_prescribe_sact"
 NO_SCALE = "perform_cannulation"
 
 

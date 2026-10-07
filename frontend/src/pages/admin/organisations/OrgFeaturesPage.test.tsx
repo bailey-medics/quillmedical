@@ -428,20 +428,20 @@ describe("OrgFeaturesPage", () => {
     });
 
     it("shows the saved leads while the passport is on", async () => {
-      const get = getWithLeads(["passport"], ["oncology"]);
+      const get = getWithLeads(["passport"], ["uk_sact_board_2023"]);
       const { container } = renderPage();
 
       await screen.findByText("Passport frameworks");
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Oncology (proof of concept) (Quill Medical, 2026)",
+          "Prescriber competencies for reviewing and prescribing SACT (UK SACT Board, November 2023)",
         ]),
       );
       expect(get).toHaveBeenCalledWith("/org-units/3/passport-frameworks");
     });
 
     it("sits above the save and cancel buttons", async () => {
-      getWithLeads(["passport"], ["oncology"]);
+      getWithLeads(["passport"], ["uk_sact_board_2023"]);
       renderPage();
 
       const card = await screen.findByText("Passport frameworks");
@@ -456,12 +456,12 @@ describe("OrgFeaturesPage", () => {
       // It sits inside the features form now, so a stray Enter must not
       // open the confirmation or save anything
       const user = userEvent.setup();
-      getWithLeads(["passport"], ["oncology"]);
+      getWithLeads(["passport"], ["uk_sact_board_2023"]);
       const put = vi.spyOn(apiLib.api, "put");
       const { container } = renderPage();
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Oncology (proof of concept) (Quill Medical, 2026)",
+          "Prescriber competencies for reviewing and prescribing SACT (UK SACT Board, November 2023)",
         ]),
       );
       // An unsaved switch change, so the form could submit if asked
@@ -484,14 +484,14 @@ describe("OrgFeaturesPage", () => {
 
     it("saves a picked framework straight away, at the end", async () => {
       const user = userEvent.setup();
-      getWithLeads(["passport"], ["oncology"]);
+      getWithLeads(["passport"], ["uk_sact_board_2023"]);
       const put = vi.spyOn(apiLib.api, "put").mockResolvedValue({
-        framework_ids: ["oncology", "clinical"],
+        framework_ids: ["uk_sact_board_2023", "clinical"],
       });
       const { container } = renderPage();
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Oncology (proof of concept) (Quill Medical, 2026)",
+          "Prescriber competencies for reviewing and prescribing SACT (UK SACT Board, November 2023)",
         ]),
       );
 
@@ -503,18 +503,18 @@ describe("OrgFeaturesPage", () => {
       );
 
       expect(put).toHaveBeenCalledWith("/org-units/3/passport-frameworks", {
-        framework_ids: ["oncology", "clinical"],
+        framework_ids: ["uk_sact_board_2023", "clinical"],
       });
     });
 
     it("puts the leads back, and says so, when a save fails", async () => {
       const user = userEvent.setup();
-      getWithLeads(["passport"], ["oncology"]);
+      getWithLeads(["passport"], ["uk_sact_board_2023"]);
       vi.spyOn(apiLib.api, "put").mockRejectedValue(new Error("network"));
       const { container } = renderPage();
       await waitFor(() =>
         expect(pills(container)).toEqual([
-          "Oncology (proof of concept) (Quill Medical, 2026)",
+          "Prescriber competencies for reviewing and prescribing SACT (UK SACT Board, November 2023)",
         ]),
       );
 
@@ -531,7 +531,7 @@ describe("OrgFeaturesPage", () => {
         ),
       ).toBeInTheDocument();
       expect(pills(container)).toEqual([
-        "Oncology (proof of concept) (Quill Medical, 2026)",
+        "Prescriber competencies for reviewing and prescribing SACT (UK SACT Board, November 2023)",
       ]);
     });
   });

@@ -46,7 +46,7 @@ ASSESSOR_USER = "u-assessor"
 
 # A competency with a scale, and one without. Named here so a change to
 # the catalogue surfaces as one failure rather than twenty.
-SCALED = "prescribe_sact"
+SCALED = "uk_sact_board_2023_prescribe_sact"
 # What a sign-off for it covers. It is signed off one tumour site at a
 # time, so every request names one.
 SCOPE = "lung"

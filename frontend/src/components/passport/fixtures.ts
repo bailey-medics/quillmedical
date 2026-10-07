@@ -65,7 +65,7 @@ export const requestedCompetency: CompetencyState = {
 };
 
 export const declinedCompetency: CompetencyState = {
-  id: "prescribe_sact",
+  id: "uk_sact_board_2023_prescribe_sact",
   name: "Prescribe systemic anti-cancer therapy",
   status: "declined",
   level: null,
@@ -84,7 +84,7 @@ export const declinedCompetency: CompetencyState = {
  * own level.
  */
 export const lungCompetency: CompetencyState = {
-  id: "prescribe_sact",
+  id: "uk_sact_board_2023_prescribe_sact",
   name: "Review and prescribe systemic anti-cancer therapy",
   scope: { id: "lung", name: "Lung" },
   status: "signed_off",
@@ -199,7 +199,7 @@ export const requestedForLung: SignOff = {
   name: "2026-03-12-prescribe-sact",
   id: "20260312T091044.000Z-2a7c4e19",
   competency: {
-    id: "prescribe_sact",
+    id: "uk_sact_board_2023_prescribe_sact",
     name: "Review and prescribe systemic anti-cancer therapy",
   },
   scope: { id: "lung", name: "Lung" },
@@ -311,12 +311,12 @@ export const singleEntryLogbook: Logbook = {
  * say which scope they count towards, and one says nothing.
  */
 export const scopedLogbook: Logbook = {
-  competency: "prescribe_sact",
+  competency: "uk_sact_board_2023_prescribe_sact",
   count: 3,
   entries: [
     {
       filename: "2026-03-10-091500",
-      competency: "prescribe_sact",
+      competency: "uk_sact_board_2023_prescribe_sact",
       performed_on: "2026-03-10",
       scope: { id: "lung", name: "Lung" },
       setting: "Oncology day unit",
@@ -330,7 +330,7 @@ export const scopedLogbook: Logbook = {
     },
     {
       filename: "2026-03-11-101500",
-      competency: "prescribe_sact",
+      competency: "uk_sact_board_2023_prescribe_sact",
       performed_on: "2026-03-11",
       scope: { id: "breast", name: "Breast" },
       setting: "Oncology day unit",
@@ -344,7 +344,7 @@ export const scopedLogbook: Logbook = {
     },
     {
       filename: "2026-03-12-111500",
-      competency: "prescribe_sact",
+      competency: "uk_sact_board_2023_prescribe_sact",
       performed_on: "2026-03-12",
       scope: null,
       setting: "Oncology day unit",
@@ -365,7 +365,7 @@ export const logbookConfirmation: LogbookConfirmation = {
   passport_id: "3f2a8c1e",
   holder_name: "Dr Priya Shah",
   competency: {
-    id: "prescribe_sact",
+    id: "uk_sact_board_2023_prescribe_sact",
     name: "Review and prescribe systemic anti-cancer therapy",
   },
   entry: scopedLogbook.entries[0],
@@ -395,7 +395,7 @@ export const confirmedLogbook: Logbook = {
 };
 
 export const emptyLogbook: Logbook = {
-  competency: "prescribe_sact",
+  competency: "uk_sact_board_2023_prescribe_sact",
   count: 0,
   entries: [],
 };

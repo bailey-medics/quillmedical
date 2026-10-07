@@ -187,10 +187,11 @@ class TestAssessor:
 class TestCompetencyRef:
     def test_carries_both_id_and_label(self) -> None:
         ref = schemas.CompetencyRef(
-            id="prescribe_sact", name="Review and prescribe SACT"
+            id="uk_sact_board_2023_prescribe_sact",
+            name="Review and prescribe SACT",
         )
 
-        assert ref.id == "prescribe_sact"
+        assert ref.id == "uk_sact_board_2023_prescribe_sact"
         assert ref.name
 
     @pytest.mark.parametrize(

@@ -201,7 +201,7 @@ class TestLogbook:
                 passport,
                 PASSPORT_ID,
                 actor,
-                "prescribe_sact",
+                "uk_sact_board_2023_prescribe_sact",
                 schemas.LogbookEntry(
                     performed_on=date(2026, 3, day), scope=scope
                 ),
@@ -213,7 +213,7 @@ class TestLogbook:
                 entry.logbook_entries
             )
             for entry in index.build(passport, PASSPORT_ID).competencies
-            if entry.id == "prescribe_sact"
+            if entry.id == "uk_sact_board_2023_prescribe_sact"
         }
 
         assert counts == {"lung": 2, "breast": 1, None: 1}
@@ -226,7 +226,7 @@ class TestLogbook:
             passport,
             PASSPORT_ID,
             actor,
-            "prescribe_sact",
+            "uk_sact_board_2023_prescribe_sact",
             schemas.LogbookEntry(
                 performed_on=date(2026, 3, 12),
                 scope=schemas.ScopeRef(
@@ -237,7 +237,7 @@ class TestLogbook:
             now=NOW,
         )
 
-        entry = _entry(passport, "prescribe_sact")
+        entry = _entry(passport, "uk_sact_board_2023_prescribe_sact")
 
         assert entry.scope is not None
         assert entry.scope.name == "Upper gastrointestinal"
@@ -250,7 +250,7 @@ class TestLogbook:
             passport,
             PASSPORT_ID,
             actor,
-            "prescribe_sact",
+            "uk_sact_board_2023_prescribe_sact",
             schemas.LogbookEntry(
                 performed_on=date(2026, 3, 12),
                 scope=schemas.ScopeRef(id="lung", name="Lung"),

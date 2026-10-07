@@ -33,7 +33,7 @@ export const OneFramework: Story = {
 
 /** Two frameworks, each under its own heading. Nothing else is listed. */
 export const TwoFrameworks: Story = {
-  render: () => <Controlled frameworks={["clinical", "oncology"]} />,
+  render: () => <Controlled frameworks={["clinical", "uk_sact_board_2023"]} />,
 };
 
 /**

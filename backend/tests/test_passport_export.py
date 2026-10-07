@@ -36,7 +36,7 @@ from app.features.passport.store import (
 )
 
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
-COMPETENCY = "prescribe_sact"
+COMPETENCY = "uk_sact_board_2023_prescribe_sact"
 # What a sign-off for it covers. It is signed off one tumour site at a
 # time, so every request names one.
 SCOPE = "lung"

@@ -1,61 +1,25 @@
-# shared/competency-definitions/oncology.yaml
+# shared/competency-definitions/retired-oncology.yaml
 #
-# ONCOLOGY COMPETENCY DEFINITIONS FOR QUILL MEDICAL
+# RETIRED: THE FIRST ONCOLOGY COMPETENCIES
 #
-# Clinical in kind, like clinical.yaml: these describe what may be done
-# in the care of a patient. Kept in their own file because they are the
-# first set drafted for the clinician passport and will be revised
-# against the South West SACT and radiotherapy passports once those are
-# to hand.
+# The proof-of-concept oncology list the clinician passport began with,
+# drafted from two national frameworks before any real sign-off document
+# was to hand. It was replaced on 7 October 2026 by frameworks written
+# from the documents themselves: uk_sact_board_2023.yaml,
+# ruh_sact_passport.yaml and ghnft_radiotherapy_record.yaml.
 #
-# **This is a proof-of-concept list, not a settled one.** It is drawn
-# from two published national frameworks so that the shape is credible
-# and the passport has something real to carry:
+# RETIRED, NOT DELETED
 #
-#   - The Royal College of Radiologists, Clinical Oncology Specialty
-#     Training Curriculum, August 2026 (implemented 5 August 2026).
-#     Its nineteen capabilities in practice are broad professional
-#     capabilities; the six clinical-oncology-specific ones are
-#     represented here, along with the oncology ones that describe
-#     distinct clinical work.
-#   - The UK SACT Board, Prescriber competencies for reviewing and
-#     prescribing SACT, November 2023. Its four levels are reproduced
-#     as the levels on the SACT prescribing competencies below.
+# A passport already holding a sign-off, a logbook entry or a certificate
+# against one of these must still open, and the passport raises on an id
+# the catalogue has never defined. So each entry stays, with `retired_on`:
+# readable for ever, and offered for nothing new. Their levels and scopes
+# stay too, so an old record still reads in the words it was signed under.
 #
-# Two things follow from those sources and are worth stating, because
-# they are easy to undo by accident.
+# This file declares no framework. Its entries belong to none, which is
+# allowed only because they are retired.
 #
-# **Levels are the framework's own words.** The RCR entrustment scale
-# and the SACT Board levels are quoted rather than renumbered or
-# harmonised, so a sign-off means what the framework says it means and
-# a reader who knows the framework needs no lookup table. The two
-# scales differ because the frameworks differ; that is the reason
-# levels are declared per competency rather than once globally.
-#
-# **A competency may be a whole capability, not an atomic act.**
-# "Manage the acutely unwell patient" stands on cannulation, airway
-# assessment, escalation and much else, and is still one thing an
-# assessor watches and signs. Both shapes belong here: the granular act
-# where that is what is assessed, and the composite capability where
-# that is. What decides it is what a person is actually signed off for,
-# never how neatly it decomposes.
-#
-# Every file in this directory is merged into one catalogue at load
-# time, so ids must be unique across the whole directory, not just
-# within a file. Which file an entry lives in carries no meaning to the
-# code – it is for the reader.
-
-# A framework so that its entries stay on offer in the passport, which
-# offers only what a holder's frameworks contain. It is retired once the
-# frameworks written from the published documents replace it: see Phase 9
-# of docs/docs/plans/2026-10-07-passport-registrar-portfolios-plan.md.
-framework:
-  id: oncology
-  name: "Oncology (proof of concept)"
-  publisher: "Quill Medical"
-  version: "2026"
-  specialties:
-    - oncology
+# See docs/docs/plans/2026-10-07-passport-registrar-portfolios-plan.md.
 
 competencies:
   # ==========================================================================
@@ -72,6 +36,7 @@ competencies:
 
   - id: prescribe_sact
     display_name: "Review and prescribe systemic anti-cancer therapy"
+    retired_on: 2026-10-07
     assessable: true
     levels:
       - id: observation_only
@@ -116,10 +81,12 @@ competencies:
 
   - id: assess_sact_toxicity
     display_name: "Assess and grade SACT toxicity"
+    retired_on: 2026-10-07
     assessable: true
 
   - id: manage_sact_complications
     display_name: "Manage complications of systemic anti-cancer therapy"
+    retired_on: 2026-10-07
     assessable: true
 
   # ==========================================================================
@@ -131,6 +98,7 @@ competencies:
 
   - id: define_radiotherapy_target_volume
     display_name: "Interpret imaging for target volume and organ-at-risk definition"
+    retired_on: 2026-10-07
     assessable: true
     levels:
       - id: observe_only
@@ -144,6 +112,7 @@ competencies:
 
   - id: deliver_radical_radiotherapy
     display_name: "Deliver and manage radical and combined modality radiotherapy"
+    retired_on: 2026-10-07
     assessable: true
     levels:
       - id: observe_only
@@ -157,6 +126,7 @@ competencies:
 
   - id: deliver_palliative_radiotherapy
     display_name: "Deliver and manage palliative radiotherapy"
+    retired_on: 2026-10-07
     assessable: true
     levels:
       - id: observe_only
@@ -170,6 +140,7 @@ competencies:
 
   - id: deliver_radioisotope_therapy
     display_name: "Deliver unsealed source radioisotope therapy"
+    retired_on: 2026-10-07
     assessable: true
     levels:
       - id: observe_only
@@ -183,6 +154,7 @@ competencies:
 
   - id: manage_brachytherapy_patients
     display_name: "Manage patients treated with brachytherapy"
+    retired_on: 2026-10-07
     assessable: true
     levels:
       - id: observe_only
@@ -203,6 +175,7 @@ competencies:
 
   - id: manage_oncological_emergency
     display_name: "Manage an oncological emergency"
+    retired_on: 2026-10-07
     assessable: true
     levels:
       - id: observe_only
@@ -216,14 +189,17 @@ competencies:
 
   - id: deliver_acute_oncology_take
     display_name: "Deliver the acute oncology take"
+    retired_on: 2026-10-07
     assessable: true
 
   - id: manage_neutropenic_sepsis
     display_name: "Recognise and manage neutropenic sepsis"
+    retired_on: 2026-10-07
     assessable: true
 
   - id: manage_metastatic_cord_compression
     display_name: "Recognise and manage metastatic spinal cord compression"
+    retired_on: 2026-10-07
     assessable: true
 
   # ==========================================================================
@@ -232,16 +208,20 @@ competencies:
 
   - id: contribute_to_tumour_mdt
     display_name: "Contribute expert opinion to a tumour site-specific MDT"
+    retired_on: 2026-10-07
     assessable: true
 
   - id: consent_for_sact
     display_name: "Take consent for systemic anti-cancer therapy"
+    retired_on: 2026-10-07
     assessable: true
 
   - id: consent_for_radiotherapy
     display_name: "Take consent for radiotherapy"
+    retired_on: 2026-10-07
     assessable: true
 
   - id: manage_end_of_life_care
     display_name: "Manage palliative and end-of-life care needs"
+    retired_on: 2026-10-07
     assessable: true
