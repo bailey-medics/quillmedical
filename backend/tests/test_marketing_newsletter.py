@@ -12,7 +12,7 @@ from app.marketing.newsletter import (
     send_campaign,
     unsubscribe_links,
 )
-from app.models import NewsletterSend, User
+from app.models import NewsletterSend, NewsletterSubscriber, User
 from app.security import verify_marketing_unsubscribe_token
 
 CAMPAIGN = "trial"
@@ -450,3 +450,231 @@ class TestFromTheCommandLine:
     def test_needs_a_campaign(self, run, capsys):
         assert newsletter.main() == 1
         assert "NEWSLETTER_CAMPAIGN is required" in capsys.readouterr().err
+
+
+def _member(db_session, name, *, subscribed=True):
+    member = NewsletterSubscriber(
+        email=f"{name}@example.org", name=name, subscribed=subscribed
+    )
+    db_session.add(member)
+    db_session.commit()
+    return member
+
+
+@pytest.fixture
+def members(db_session):
+    """Two on the mailing list who want news, and one who left it."""
+    return {
+        "gil": _member(db_session, "gil"),
+        "hal": _member(db_session, "hal"),
+        "left": _member(db_session, "left", subscribed=False),
+    }
+
+
+class TestSubscribersWithNoAccount:
+    def test_are_sent_it_after_the_account_holders(
+        self, db_session, people, members, outbox
+    ):
+        result = _go(db_session)
+
+        assert result.sent == 5
+        assert _sent_to(outbox) == [
+            "ada@example.com",
+            "bob@example.com",
+            "cat@example.com",
+            "gil@example.org",
+            "hal@example.org",
+        ]
+
+    def test_one_who_unsubscribed_is_not_sent_it(
+        self, db_session, members, outbox
+    ):
+        _go(db_session)
+
+        assert "left@example.org" not in _sent_to(outbox)
+
+    def test_each_carries_their_own_subscriber_link(
+        self, db_session, members, outbox
+    ):
+        from app.security import verify_subscriber_unsubscribe_token
+
+        _go(db_session)
+
+        for email, name in zip(outbox["sent"], ["gil", "hal"], strict=True):
+            page, one_click = unsubscribe_links(members[name])
+            assert page in email["html_body"]
+            assert email["headers"]["List-Unsubscribe"] == f"<{one_click}>"
+            token = page.split("token=")[1]
+            assert verify_subscriber_unsubscribe_token(token) == (
+                members[name].id
+            )
+            assert verify_marketing_unsubscribe_token(token) is None
+
+    def test_a_send_to_one_is_recorded_against_the_subscriber(
+        self, db_session, members, outbox
+    ):
+        _go(db_session)
+
+        rows = _rows(db_session)
+        assert {row.subscriber_id for row in rows} == {
+            members["gil"].id,
+            members["hal"].id,
+        }
+        assert all(row.user_id is None for row in rows)
+
+    def test_running_it_again_reaches_none_of_them_twice(
+        self, db_session, people, members, outbox
+    ):
+        _go(db_session)
+        outbox["sent"].clear()
+
+        again = send_campaign(db_session, CAMPAIGN)
+
+        assert again.recipients == []
+        assert again.already == 5
+
+    def test_a_subscriber_and_a_user_with_the_same_id_are_both_sent_it(
+        self, db_session, people, members, outbox
+    ):
+        """Row 1 in one table is not row 1 in the other."""
+        assert members["gil"].id == people["ada"].id
+
+        _go(db_session)
+
+        assert "ada@example.com" in _sent_to(outbox)
+        assert "gil@example.org" in _sent_to(outbox)
+
+    def test_one_who_leaves_while_it_runs_is_not_sent_it(
+        self, db_session, members, outbox
+    ):
+        def hal_unsubscribes(to):
+            if to == "gil@example.org":
+                members["hal"].subscribed = False
+                db_session.commit()
+
+        outbox["hook"] = hal_unsubscribes
+
+        result = _go(db_session)
+
+        assert _sent_to(outbox) == ["gil@example.org"]
+        assert result.withdrew == 1
+
+    def test_a_trial_can_go_to_one(self, db_session, members, outbox):
+        _go(db_session, only_to="gil@example.org")
+
+        assert _sent_to(outbox) == ["gil@example.org"]
+        assert _rows(db_session) == []
+
+
+class TestAnAddressOnTheListAndOnAnAccount:
+    """The account's answer is the one that counts."""
+
+    def test_gets_one_newsletter_and_not_two(self, db_session, people, outbox):
+        db_session.add(NewsletterSubscriber(email="ada@example.com"))
+        db_session.commit()
+
+        _go(db_session)
+
+        assert _sent_to(outbox).count("ada@example.com") == 1
+
+    def test_is_not_sent_it_if_the_account_said_no(
+        self, db_session, people, outbox
+    ):
+        """An old list must not email somebody who registered and refused."""
+        db_session.add(NewsletterSubscriber(email="refused@example.com"))
+        db_session.commit()
+
+        _go(db_session)
+
+        assert "refused@example.com" not in _sent_to(outbox)
+
+    def test_is_still_sent_it_while_the_account_is_unverified(
+        self, db_session, people, outbox
+    ):
+        """An unverified address may be somebody else's mistyping."""
+        db_session.add(NewsletterSubscriber(email="unverified@example.com"))
+        db_session.commit()
+
+        _go(db_session)
+
+        assert "unverified@example.com" in _sent_to(outbox)
+
+
+class TestSendingInBatches:
+    def test_a_limit_reaches_only_that_many_and_says_who_waits(
+        self, db_session, people, members, outbox
+    ):
+        result = _go(db_session, limit=2)
+
+        assert _sent_to(outbox) == ["ada@example.com", "bob@example.com"]
+        assert result.sent == 2
+        assert result.waiting == 3
+
+    def test_the_next_run_takes_up_where_the_last_left_off(
+        self, db_session, people, members, outbox
+    ):
+        _go(db_session, limit=2)
+        outbox["sent"].clear()
+
+        result = _go(db_session, limit=2)
+
+        assert _sent_to(outbox) == ["cat@example.com", "gil@example.org"]
+        assert result.already == 2
+        assert result.waiting == 1
+
+    def test_the_confirmation_names_the_batch_and_not_the_whole_list(
+        self, db_session, people, members, outbox
+    ):
+        dry = send_campaign(db_session, CAMPAIGN, limit=2)
+
+        assert confirmation(CAMPAIGN, len(dry.recipients)) == "trial:2"
+
+    @pytest.mark.parametrize("limit", [0, -1])
+    def test_a_limit_of_nothing_is_refused(
+        self, db_session, people, outbox, limit
+    ):
+        with pytest.raises(NewsletterError, match="at least one"):
+            send_campaign(db_session, CAMPAIGN, limit=limit)
+
+    def test_the_command_reads_the_limit(
+        self, db_session, people, members, outbox, monkeypatch, capsys
+    ):
+        from app.db import core_db
+
+        monkeypatch.setattr(
+            core_db, "CoreSessionLocal", lambda: _Session(db_session)
+        )
+        monkeypatch.setenv("NEWSLETTER_CAMPAIGN", CAMPAIGN)
+        monkeypatch.setenv("NEWSLETTER_LIMIT", "2")
+        monkeypatch.delenv("CONFIRM", raising=False)
+        monkeypatch.delenv("NEWSLETTER_ONLY_TO", raising=False)
+
+        assert newsletter.main() == 0
+
+        out = capsys.readouterr().out
+        assert "2 to send" in out
+        assert "3 left for a later run" in out
+        assert "CONFIRM=trial:2" in out
+
+    def test_the_command_refuses_a_limit_that_is_not_a_number(
+        self, monkeypatch, capsys
+    ):
+        monkeypatch.setenv("NEWSLETTER_CAMPAIGN", CAMPAIGN)
+        monkeypatch.setenv("NEWSLETTER_LIMIT", "lots")
+
+        assert newsletter.main() == 1
+        assert "must be a whole number" in capsys.readouterr().err
+
+
+class TestARecordOfASend:
+    def test_must_name_exactly_one_person(self, db_session, people, members):
+        from sqlalchemy.exc import IntegrityError
+
+        for kwargs in (
+            {},
+            {"user_id": people["ada"].id, "subscriber_id": members["gil"].id},
+        ):
+            db_session.add(NewsletterSend(campaign="x", **kwargs))
+            with pytest.raises(IntegrityError):
+                db_session.commit()
+            db_session.rollback()

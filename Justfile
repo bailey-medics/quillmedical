@@ -2656,7 +2656,7 @@ passport-delete env username confirm="":
 
 alias nls := newsletter-send
 # Send a newsletter campaign to everybody who said yes (dry run unless confirm is what the dry run printed)
-newsletter-send env campaign confirm="" only_to="":
+newsletter-send env campaign confirm="" only_to="" limit="":
     #!/usr/bin/env bash
     {{initialise}} "newsletter-send ({{env}})"
     set -euo pipefail
@@ -2668,7 +2668,9 @@ newsletter-send env campaign confirm="" only_to="":
     # named without its ending. Without confirm this only reports who would
     # be sent it, and prints the value to pass back. only_to sends a trial
     # to one address, which is not recorded, so the real send still reaches
-    # them. See backend/app/marketing/newsletter.py.
+    # them. limit is the most people to reach in one run, for sending in
+    # batches: later runs take up where the last left off. See
+    # backend/app/marketing/newsletter.py.
     # The dry run ends "run again with CONFIRM=<value>", so that form is
     # accepted as well as the bare value.
     CONFIRM="{{confirm}}"
@@ -2688,7 +2690,15 @@ newsletter-send env campaign confirm="" only_to="":
         exit 1
     fi
 
+    if [ -n "{{limit}}" ] && ! [[ "{{limit}}" =~ ^[1-9][0-9]*$ ]]; then
+        echo "✗ '{{limit}}' is not a number of people" >&2
+        exit 1
+    fi
+
     VARS="ADMIN_ACTION=send-newsletter,NEWSLETTER_CAMPAIGN={{campaign}}"
+    if [ -n "{{limit}}" ]; then
+        VARS="${VARS},NEWSLETTER_LIMIT={{limit}}"
+    fi
     if [ -n "{{only_to}}" ]; then
         VARS="${VARS},NEWSLETTER_ONLY_TO={{only_to}}"
     fi
