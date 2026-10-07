@@ -316,6 +316,69 @@ class TestTheCampaign:
         with pytest.raises(NewsletterError, match="Not a campaign name"):
             send_campaign(db_session, name)
 
+    def test_goes_out_as_the_brand_whose_folder_it_is_in(
+        self, db_session, people, outbox
+    ):
+        """`ldd-trial` is under `campaigns/ldd/`, so it is Let's Do Digital's."""
+        dry = send_campaign(db_session, "ldd-trial", only_to="ada@example.com")
+        send_campaign(
+            db_session,
+            "ldd-trial",
+            only_to="ada@example.com",
+            confirm=confirmation("ldd-trial", len(dry.recipients)),
+        )
+
+        [email] = outbox["sent"]
+        assert email["from_name"] == "Mark at Let's Do Digital"
+        assert email["subject"] == "A trial newsletter from Let's Do Digital"
+        assert "Let's Do Digital is a trading name" in email[
+            "html_body"
+        ].replace("&#39;", "'")
+
+    def test_a_quill_campaign_goes_from_the_apps_own_address(
+        self, db_session, people, outbox
+    ):
+        _go(db_session, only_to="ada@example.com")
+
+        [email] = outbox["sent"]
+        assert email["from_address"] is None
+
+    def test_lets_do_digital_goes_from_the_apps_address_until_it_has_its_own(
+        self, db_session, people, outbox, monkeypatch
+    ):
+        """Its domain has to be verified with the mail provider first."""
+        for address, expected in (
+            ("", None),
+            ("news@letsdodigital.example", "news@letsdodigital.example"),
+        ):
+            monkeypatch.setattr(newsletter.settings, "EMAIL_FROM_LDD", address)
+            outbox["sent"].clear()
+            dry = send_campaign(
+                db_session, "ldd-trial", only_to="ada@example.com"
+            )
+            send_campaign(
+                db_session,
+                "ldd-trial",
+                only_to="ada@example.com",
+                confirm=confirmation("ldd-trial", len(dry.recipients)),
+            )
+
+            [email] = outbox["sent"]
+            assert email["from_address"] == expected
+
+    def test_the_brands_are_the_themes(self):
+        assert newsletter.campaign_brand("trial") == "quill"
+        assert newsletter.campaign_brand("ldd-trial") == "ldd"
+
+    def test_a_name_two_brands_share_is_refused(self, tmp_path, monkeypatch):
+        for brand in ("quill", "ldd"):
+            (tmp_path / brand).mkdir()
+            (tmp_path / brand / "twice.html.j2").write_text("")
+        monkeypatch.setattr(newsletter, "CAMPAIGNS_DIR", tmp_path)
+
+        with pytest.raises(NewsletterError, match="More than one brand"):
+            newsletter.campaign_brand("twice")
+
     def test_the_trial_says_what_it_is(self, db_session, people, outbox):
         _go(db_session, only_to="ada@example.com")
 

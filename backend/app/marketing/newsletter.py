@@ -6,8 +6,10 @@ only list of who wants one: there is no copy at the mail provider to
 drift from it.
 
 A newsletter is a **campaign**: a template under
-``app/email/templates/campaigns/`` that extends ``newsletter.html.j2``,
-named by its file name less the ending. It is written, reviewed and
+``app/email/templates/campaigns/<brand>/`` that extends
+``newsletter.html.j2``, named by its file name less the ending. The
+folder is the brand it goes out as, ``quill`` or ``ldd``: the theme it
+is drawn in and the name it is sent under. It is written, reviewed and
 merged like any other change, so the pull request is where its words are
 read before anybody receives them.
 
@@ -28,14 +30,16 @@ import re
 import sys
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import get_args
 
-from jinja2 import TemplateNotFound
 from sqlalchemy import select
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.email.render import render_email, send_args
+from app.email.brand import EmailThemeName, email_theme
+from app.email.render import RenderedEmail, render_email, send_args
 from app.email_send import (
     EmailNotAllowedError,
     EmailRateLimitError,
@@ -52,9 +56,17 @@ logger = logging.getLogger(__name__)
 #: command line.
 CAMPAIGN_NAME = re.compile(r"[a-z0-9][a-z0-9-]{0,99}")
 
-#: Who a newsletter comes from. A person, not the brand: it is signed
-#: off by Mark.
-FROM_NAME = "Mark at Quill Medical"
+#: Where campaigns are kept, beside the other email templates.
+CAMPAIGNS_DIR = (
+    Path(__file__).resolve().parent.parent
+    / "email"
+    / "templates"
+    / "campaigns"
+)
+
+#: The brands a newsletter can go out as. A campaign's brand is the
+#: folder its template is in, under ``campaigns/``.
+BRANDS: tuple[EmailThemeName, ...] = get_args(EmailThemeName)
 
 #: A pause between sends, to stay well inside the mail provider's limit
 #: of fourteen a second however long the list grows.
@@ -157,22 +169,77 @@ def unsubscribe_links(user: User) -> tuple[str, str]:
     )
 
 
-def _send_one(campaign: str, user: User) -> None:
+def campaign_brand(campaign: str) -> EmailThemeName:
+    """Which brand a campaign goes out as: the folder its template is in.
+
+    Args:
+        campaign: The campaign's name.
+
+    Returns:
+        ``"quill"`` or ``"ldd"``.
+
+    Raises:
+        NewsletterError: If the name is not one, no brand has a campaign
+            of that name, or more than one has.
+    """
+    if not CAMPAIGN_NAME.fullmatch(campaign):
+        raise NewsletterError(f"Not a campaign name: {campaign!r}")
+    found = [
+        brand
+        for brand in BRANDS
+        if (CAMPAIGNS_DIR / brand / f"{campaign}.html.j2").is_file()
+    ]
+    if not found:
+        raise NewsletterError(f"There is no campaign called {campaign!r}")
+    if len(found) > 1:
+        raise NewsletterError(
+            f"More than one brand has a campaign called {campaign!r}"
+        )
+    return found[0]
+
+
+def sender(brand: EmailThemeName) -> tuple[str, str | None]:
+    """Who a newsletter in a brand comes from.
+
+    A person, not the brand alone: it is signed off by Mark. The address
+    is the brand's own where it has one set, and otherwise the app's,
+    which is all that can be sent from until the brand's domain has been
+    verified with the mail provider.
+
+    Args:
+        brand: The campaign's brand.
+
+    Returns:
+        The display name, and the address or None for the app's own.
+    """
+    name = f"Mark at {email_theme(brand).sender_name}"
+    address = settings.EMAIL_FROM_LDD.strip() if brand == "ldd" else ""
+    return name, address or None
+
+
+def _render(campaign: str, brand: EmailThemeName, page: str) -> RenderedEmail:
+    """Render a campaign for one person's unsubscribe link."""
+    name, _ = sender(brand)
+    return render_email(
+        f"campaigns/{brand}/{campaign}.html.j2",
+        brand,
+        {"unsubscribe_url": page},
+        from_name=name,
+    )
+
+
+def _send_one(campaign: str, brand: EmailThemeName, user: User) -> None:
     """Render a campaign for one person and send it.
 
     One recipient to a message, each with their own link: a link shared
     by a whole mailing would let any reader unsubscribe everybody.
     """
     page, one_click = unsubscribe_links(user)
-    rendered = render_email(
-        f"campaigns/{campaign}.html.j2",
-        "quill",
-        {"unsubscribe_url": page},
-        from_name=FROM_NAME,
-    )
+    _, address = sender(brand)
     send_email(
         to=user.email,
-        **send_args(rendered),
+        **send_args(_render(campaign, brand, page)),
+        from_address=address,
         # Both headers, or a mailbox shows no unsubscribe button: the
         # second says the first may be pressed without a person looking
         # at a page (RFC 8058). Gmail and Yahoo require them of bulk mail.
@@ -222,8 +289,7 @@ def send_campaign(
             ``only_to`` is nobody who may be sent it, or ``confirm`` is
             not what a dry run would now print.
     """
-    if not CAMPAIGN_NAME.fullmatch(campaign):
-        raise NewsletterError(f"Not a campaign name: {campaign!r}")
+    brand = campaign_brand(campaign)
 
     everybody = recipients(db)
     if only_to is not None:
@@ -242,22 +308,11 @@ def send_campaign(
     result = Sent(already=len(already))
     result.recipients = [mask_email(u.email) for u in to_send]
 
-    # Render it once before anything is sent, so a campaign that does
-    # not exist or will not render fails here and not after the first
-    # person has had theirs.
+    # Render it once before anything is sent, so a campaign that will
+    # not render fails here and not after the first person has had theirs.
     if to_send:
-        try:
-            page, _ = unsubscribe_links(to_send[0])
-            render_email(
-                f"campaigns/{campaign}.html.j2",
-                "quill",
-                {"unsubscribe_url": page},
-                from_name=FROM_NAME,
-            )
-        except TemplateNotFound:
-            raise NewsletterError(
-                f"There is no campaign called {campaign!r}"
-            ) from None
+        page, _ = unsubscribe_links(to_send[0])
+        _render(campaign, brand, page)
 
     if confirm is None:
         return result
@@ -281,7 +336,7 @@ def send_campaign(
             result.withdrew += 1
             continue
         try:
-            _send_one(campaign, user)
+            _send_one(campaign, brand, user)
         except (EmailNotAllowedError, EmailRateLimitError):
             result.refused += 1
             continue

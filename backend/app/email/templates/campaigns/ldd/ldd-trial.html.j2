@@ -1,0 +1,28 @@
+{#-
+  A trial newsletter sent as Let's Do Digital, for checking that sending
+  under that name works before a real one goes out. It says what it is,
+  so nobody who receives it by mistake is left wondering.
+
+  A campaign's brand is the folder it is in: this one is in `ldd/`, so it
+  is drawn in the Let's Do Digital theme and sent under that name.
+-#}
+{% extends "newsletter.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+{% block subject %}A trial newsletter from Let's Do Digital{% endblock %}
+{% block preheader %}Sent to check that newsletters, and unsubscribing from them, work.{% endblock %}
+{% block content %}
+{{ c.heading("A *trial* newsletter") }}
+{{ c.paragraph("This is a test, sent to check that newsletters from Let's Do Digital arrive and look right. There is no news in it.") }}
+{{ c.paragraph("If you were not expecting it, you can ignore it. The unsubscribe link below works, and so does the button your mailbox may show at the top.") }}
+{% endblock %}
+{% block text %}
+A trial newsletter
+
+This is a test, sent to check that newsletters from Let's Do Digital arrive and look right. There is no news in it.
+
+If you were not expecting it, you can ignore it.
+
+Unsubscribe: {{ unsubscribe_url }}
+
+Mark Bailey, Bailey Medics
+{% endblock %}

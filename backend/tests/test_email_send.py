@@ -888,6 +888,62 @@ class TestExtraHeaders:
         mock_boto3.client.assert_not_called()
 
 
+class TestSendingFromAnotherAddress:
+    """A newsletter sent as another brand goes from that brand's address."""
+
+    def setup_method(self) -> None:
+        _rate_log.clear()
+
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_the_address_given_is_the_one_sent_from(
+        self, mock_settings: MagicMock, mock_boto3: MagicMock
+    ) -> None:
+        _ses_settings(mock_settings)
+
+        send_email(
+            to="a@example.com",
+            subject="News",
+            html_body="<p>x</p>",
+            from_name="Mark at Let's Do Digital",
+            from_address="news@letsdodigital.example",
+        )
+
+        send = mock_boto3.client.return_value.send_email
+        assert send.call_args.kwargs["FromEmailAddress"] == (
+            '"Mark at Let\'s Do Digital" <news@letsdodigital.example>'
+        )
+
+    @pytest.mark.parametrize(
+        "address",
+        [
+            "",
+            "no-at-sign",
+            "a@b@c",
+            "news@x.example\r\nBcc: eve@example.com",
+            "news@x.example, eve@example.com",
+            "<news@x.example>",
+            "news @x.example",
+        ],
+    )
+    @patch("app.email_send.boto3")
+    @patch("app.email_send.settings")
+    def test_an_address_that_is_not_one_sends_nothing(
+        self, mock_settings: MagicMock, mock_boto3: MagicMock, address: str
+    ) -> None:
+        _ses_settings(mock_settings)
+
+        with pytest.raises(ValueError, match="Unsafe sender address"):
+            send_email(
+                to="a@example.com",
+                subject="News",
+                html_body="<p>x</p>",
+                from_address=address,
+            )
+
+        mock_boto3.client.assert_not_called()
+
+
 class TestMaskingAnAddress:
     """An address in a log line is personal data, so most of it is hidden."""
 
