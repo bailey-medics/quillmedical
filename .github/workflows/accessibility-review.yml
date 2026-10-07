@@ -28,7 +28,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write # Workload Identity Federation, to read the Resend key
+  id-token: write # Workload Identity Federation, to read the SES key
 
 concurrency:
   group: accessibility-review
@@ -36,7 +36,7 @@ concurrency:
 
 env:
   RECIPIENT: mark@quill-medical.com
-  # The address the app sends from, on the domain Resend verifies
+  # The address the app sends from, on the domain SES has verified
   SENDER: info@quill-medical.com
 
 jobs:
@@ -75,15 +75,20 @@ jobs:
 
       # The key is read at run time from Secret Manager, where the app's
       # own copy lives, rather than kept as a GitHub secret as well. It is
-      # read and used in one step so it never becomes a step output.
+      # read and used in one step so it never becomes a step output. It is
+      # the app's Amazon SES key, which can send from London and do nothing
+      # else. The AWS command line tool is part of the runner image.
       - name: Send the reminder
         env:
           GCP_PROJECT: ${{ secrets.GCP_APP_PROJECT_ID }}
         run: |
-          RESEND_API_KEY="$(gcloud secrets versions access latest \
-            --secret=resend-api-key --project="$GCP_PROJECT")"
-          echo "::add-mask::$RESEND_API_KEY"
-          export RESEND_API_KEY
+          AWS_ACCESS_KEY_ID="$(gcloud secrets versions access latest \
+            --secret=ses-access-key-id --project="$GCP_PROJECT")"
+          AWS_SECRET_ACCESS_KEY="$(gcloud secrets versions access latest \
+            --secret=ses-secret-access-key --project="$GCP_PROJECT")"
+          echo "::add-mask::$AWS_ACCESS_KEY_ID"
+          echo "::add-mask::$AWS_SECRET_ACCESS_KEY"
+          export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
           bash .github/scripts/accessibility-review/send-reminder.sh \
             "$RECIPIENT" "$SENDER" \
             "${{ needs.check.outputs.reviewed }}" \

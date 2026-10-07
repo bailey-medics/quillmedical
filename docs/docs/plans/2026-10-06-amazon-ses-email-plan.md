@@ -536,7 +536,12 @@ in the command that sends, and the tests have to pin it down.
       reads the Resend key today, under a grant that replaces
       `ci_resend`. That reuses the backend's send-only key and adds no
       new credential. Run it once with `force` to see both arrive,
-      before the step below removes the Resend secret.
+      before the step below removes the Resend secret. **The change is
+      written; the run with `force` is what is left**, and is why this
+      is not ticked. The script sends with the AWS command line tool,
+      which is part of GitHub's runner image and takes the key from the
+      environment, so the key is never in an argument where the process
+      list would show it. The grant is `ci_ses`, on the two SES secrets.
 
 - [ ] **Run both for a week, then remove Resend.** Delete the contacts
       from Resend and close the account. Unsubscribe links in

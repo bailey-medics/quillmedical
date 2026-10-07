@@ -1,21 +1,26 @@
 #!/usr/bin/env bash
-# Emails the yearly accessibility statement review reminder, through Resend.
+# Emails the yearly accessibility statement review reminder, through
+# Amazon SES in London.
 #
-# Resend is the email service the app already sends through. Its API key is
-# read from GCP Secret Manager by the workflow at run time, not stored in
-# GitHub, because GitHub only needs it for this one send.
+# SES is the email service the app sends through. The access key is the
+# app's own, which can send from eu-west-2 and do nothing else. The
+# workflow reads it from GCP Secret Manager at run time, not from GitHub,
+# because GitHub only needs it for this one send. It went through Resend
+# until Resend was retired: see
+# docs/docs/plans/2026-10-06-amazon-ses-email-plan.md.
 #
 # Usage: send-reminder.sh <recipient> <sender> <reviewed> <due-by>
 #
 #   recipient  Who is reminded.
-#   sender     The From address, on a domain Resend verifies.
+#   sender     The From address, on a domain SES has verified.
 #   reviewed   When the statement was last reviewed, e.g. "25 September 2026".
 #   due-by     When the next review is due, e.g. "25 September 2027".
 #
 # Environment:
-#   RESEND_API_KEY  Resend API key. Kept out of the arguments, where it would
-#                   show in the process list.
-#   DRY_RUN         "true" prints the request instead of sending it.
+#   AWS_ACCESS_KEY_ID      The access key, read by the AWS command line
+#   AWS_SECRET_ACCESS_KEY  tool. Kept out of the arguments, where they
+#                          would show in the process list.
+#   DRY_RUN                "true" prints the request instead of sending it.
 
 set -euo pipefail
 
@@ -23,6 +28,10 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "send-reminder"
 
 STATEMENT_URL="https://quill-medical.com/accessibility-statement"
+
+# Where SES is used. Everything in SES is per region, and a send from
+# another one would be email data outside the UK.
+SES_REGION="eu-west-2"
 
 # Print the email's plain-text body.
 body() {
@@ -48,7 +57,7 @@ This reminder is sent every Monday until the date is moved, by the accessibility
 TEXT
 }
 
-# Print the Resend API request body.
+# Print the request, in the shape `aws sesv2 send-email` takes.
 payload() {
   local recipient="$1"
   local sender="$2"
@@ -63,7 +72,11 @@ payload() {
     --arg to "$recipient" \
     --arg subject "Accessibility statement review due by ${due_by}" \
     --arg text "$text" \
-    '{from: $from, to: [$to], subject: $subject, text: $text}'
+    '{
+      FromEmailAddress: $from,
+      Destination: {ToAddresses: [$to]},
+      Content: {Simple: {Subject: {Data: $subject}, Body: {Text: {Data: $text}}}}
+    }'
 }
 
 main() {
@@ -72,14 +85,14 @@ main() {
   local reviewed="${3:-}"
   local due_by="${4:-}"
   local request
-  local status
 
   if [ -z "$recipient" ] || [ -z "$sender" ] || [ -z "$reviewed" ] || [ -z "$due_by" ]; then
     error "Usage: send-reminder.sh <recipient> <sender> <reviewed> <due-by>"
     return 1
   fi
-  if [ "${DRY_RUN:-false}" != "true" ] && [ -z "${RESEND_API_KEY:-}" ]; then
-    error "RESEND_API_KEY is not set"
+  if [ "${DRY_RUN:-false}" != "true" ] &&
+    { [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; }; then
+    error "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are not both set"
     return 1
   fi
 
@@ -91,13 +104,13 @@ main() {
     return 0
   fi
 
-  status="$(curl -sS -o /dev/null -w '%{http_code}' \
-    -X POST https://api.resend.com/emails \
-    -H "Authorization: Bearer ${RESEND_API_KEY}" \
-    -H "Content-Type: application/json" \
-    --data "$request")"
-  if [ "$status" != "200" ]; then
-    error "Resend refused the email: HTTP $status"
+  # The tool's own output is the message id, which nobody needs. Its
+  # error says why SES refused, and never holds the key.
+  if ! aws sesv2 send-email \
+    --region "$SES_REGION" \
+    --cli-input-json "$request" \
+    --no-cli-pager >/dev/null; then
+    error "SES refused the email"
     return 1
   fi
 
