@@ -258,12 +258,12 @@ def _front_page(
             )
         )
 
-    if profile.specialties:
+    if profile.frameworks:
         story.append(
             Paragraph(
-                "Specialty: "
+                "Frameworks: "
                 + ", ".join(
-                    _text(specialty.name) for specialty in profile.specialties
+                    _text(framework.name) for framework in profile.frameworks
                 ),
                 styles["body"],
             )

@@ -231,7 +231,6 @@ export interface PassportCover {
   enabled: boolean;
   covered_count: number;
 }
-type PassportSpecialtiesResponse = { specialty_ids: string[] };
 type PassportFrameworksResponse = { framework_ids: string[] };
 type LinksResponse = { links: OrgUnitLink[] };
 type StatusResponse = { status: string };
@@ -467,31 +466,6 @@ export const orgUnits = {
     return Array.isArray(data?.framework_ids)
       ? data.framework_ids
       : frameworkIds;
-  },
-
-  /**
-   * An organisation's lead passport specialties, in order: the ones its
-   * people see first when they choose their own.
-   */
-  passportSpecialties: async (id: number): Promise<string[]> => {
-    const data = await api.get<PassportSpecialtiesResponse>(
-      `/org-units/${id}/passport-specialties`,
-    );
-    return Array.isArray(data?.specialty_ids) ? data.specialty_ids : [];
-  },
-
-  /** Replace the lead passport specialties; an empty list clears them. */
-  setPassportSpecialties: async (
-    id: number,
-    specialtyIds: string[],
-  ): Promise<string[]> => {
-    const data = await api.put<PassportSpecialtiesResponse>(
-      `/org-units/${id}/passport-specialties`,
-      { specialty_ids: specialtyIds },
-    );
-    return Array.isArray(data?.specialty_ids)
-      ? data.specialty_ids
-      : specialtyIds;
   },
 
   /** Record that an org_unit is responsible for a patient. */

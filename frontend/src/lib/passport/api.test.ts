@@ -38,7 +38,6 @@ import {
   fetchLogbook,
   fetchMyPassport,
   fetchPassport,
-  fetchPassportSpecialties,
   fetchReflections,
   fetchSignOff,
   previewAssessorInvite,
@@ -50,7 +49,6 @@ import {
   searchAssessors,
   revokeAssessorMembership,
   saveAppraisalPeriods,
-  setPassportSpecialties,
   signOff,
   verifySignOff,
   withdrawSignOff,
@@ -87,7 +85,6 @@ describe("passport paths", () => {
       "/api/passport/assessor-invites/preview",
       "/api/passport/assessors/{assessor_user_id}/membership",
       "/api/passport/requests/inbox",
-      "/api/passport/specialties",
       "/api/passport/{passport_id}",
       "/api/passport/{passport_id}/appraisal-periods",
       "/api/passport/{passport_id}/assessor-invites",
@@ -117,7 +114,6 @@ describe("passport paths", () => {
       "/api/passport/{passport_id}/sign-offs/{signoff_id}/sign-off",
       "/api/passport/{passport_id}/sign-offs/{signoff_id}/verify",
       "/api/passport/{passport_id}/sign-offs/{signoff_id}/withdraw",
-      "/api/passport/{passport_id}/specialties",
     ].map((path) => path.replace(/^\/api/, ""));
 
     expect([...PASSPORT_PATHS].sort()).toEqual(backendPaths.sort());
@@ -147,19 +143,6 @@ describe("passport", () => {
     expect(api.put).toHaveBeenCalledWith(
       `/passport/${PASSPORT_ID}/frameworks`,
       { frameworks: ["clinical"] },
-    );
-  });
-
-  it("fetches the specialties in the order to offer them", async () => {
-    await fetchPassportSpecialties();
-    expect(api.get).toHaveBeenCalledWith("/passport/specialties");
-  });
-
-  it("changes the holder's specialties", async () => {
-    await setPassportSpecialties(PASSPORT_ID, ["general_surgery"]);
-    expect(api.put).toHaveBeenCalledWith(
-      `/passport/${PASSPORT_ID}/specialties`,
-      { specialties: ["general_surgery"] },
     );
   });
 

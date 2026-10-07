@@ -39,7 +39,6 @@ const detail = {
     holder_user_id: "42",
     holder_name: "Dr Mark Bailey",
     registrations: [],
-    specialties: [],
     frameworks: [
       { id: "clinical", name: "General clinical skills" },
       { id: "oncology", name: "Oncology (proof of concept)" },

@@ -60,12 +60,12 @@ class TestWhatTheDatabaseDoesNotHold:
         assert "sign_off" not in tables
 
     def test_there_is_no_site_shortlist_table(self) -> None:
-        """The holder's specialty orders the picker, not a site's list.
+        """The holder's frameworks decide the picker, not a site's list.
 
         ``site_common_competency`` was built for a per-site shortlist
-        that nothing ever wrote to. Two ways of ordering one picker would
-        clash, so a site wanting its own order gets a specialty list in
-        ``shared/passport-specialties/`` instead.
+        that nothing ever wrote to. Two ways of deciding one picker would
+        clash, so a site wanting its own puts its sign-off sheet in
+        ``shared/competency-definitions/`` as a framework instead.
         """
         assert "site_common_competency" not in set(Base.metadata.tables)
 

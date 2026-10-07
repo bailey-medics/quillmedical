@@ -22,7 +22,6 @@ import declaredCompetencies from "@/generated/competencies.json";
 import declaredFrameworks from "@/generated/frameworks.json";
 import declaredJurisdictionConfig from "@/generated/jurisdiction-config.json";
 import declaredOrgUnitTypes from "@/generated/org-unit-types.json";
-import declaredPassportSpecialties from "@/generated/passport-specialties.json";
 import declaredSpecialties from "@/generated/specialties.json";
 
 import actualBaseProfessions from "../generated/base-professions.json";
@@ -31,7 +30,6 @@ import actualCompetencies from "../generated/competencies.json";
 import actualFrameworks from "../generated/frameworks.json";
 import actualJurisdictionConfig from "../generated/jurisdiction-config.json";
 import actualOrgUnitTypes from "../generated/org-unit-types.json";
-import actualPassportSpecialties from "../generated/passport-specialties.json";
 import actualSpecialties from "../generated/specialties.json";
 
 /**
@@ -128,17 +126,6 @@ describe("Generated declarations", () => {
       typeof declaredOrgUnitTypes
     > = true;
     expect(declared).toBe(actualOrgUnitTypes);
-    expect(complete).toBe(true);
-  });
-
-  it("declares passport-specialties.json as it is generated", () => {
-    const declared: typeof declaredPassportSpecialties =
-      actualPassportSpecialties;
-    const complete: AllDeclared<
-      typeof actualPassportSpecialties,
-      typeof declaredPassportSpecialties
-    > = true;
-    expect(declared).toBe(actualPassportSpecialties);
     expect(complete).toBe(true);
   });
 });

@@ -89,6 +89,14 @@ _RETIRED_REGISTRATION_KEYS = frozenset(
 )
 _RETIRED_ASSESSOR_KEYS = frozenset({"registration_verified"})
 
+#: The key a profile carried while a holder chose specialties, which
+#: ordered one list of every competency. Frameworks replaced them on
+#: 7 October 2026: a framework limits the list, so no specialty could be
+#: carried across as one. Every profile written before then still holds
+#: the key, and is dropped on read so those passports keep opening. The
+#: history keeps what was chosen.
+_RETIRED_PROFILE_KEYS = frozenset({"specialties"})
+
 
 def _without(data: Any, keys: frozenset[str]) -> Any:
     """A mapping with *keys* removed; anything else unchanged.
@@ -212,18 +220,6 @@ def name_with_scope(name: str, scope: ScopeRef | None) -> str:
     return f"{name}: {scope.name}" if scope is not None else name
 
 
-class SpecialtyRef(PassportModel):
-    """A specialty the holder chose, as it read at the time.
-
-    The name is stored beside the id for the same reason a competency's
-    is: an export must read correctly with no Quill, and a specialty
-    renamed or removed later must not leave a bare id behind.
-    """
-
-    id: CompetencyIdField
-    name: NonEmptyText
-
-
 class FrameworkRef(PassportModel):
     """A framework the holder works to, as it read at the time.
 
@@ -316,19 +312,22 @@ class Profile(PassportModel):
     user_id: NonEmptyText
     name: NonEmptyText
     registrations: list[Registration] = Field(default_factory=list)
-    #: The holder's specialties, which order their competency picker and
-    #: nothing else. Empty means Generic: no specialty order. Optional
-    #: because every passport written before specialties existed has no
-    #: such key, and ``profile.yaml`` is validated on read.
-    specialties: list[SpecialtyRef] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_retired_specialties(cls, data: Any) -> Any:
+        """Accept a profile written while a holder chose specialties."""
+        return _without(data, _RETIRED_PROFILE_KEYS)
+
     #: The frameworks the holder works to, which are what the passport
     #: offers them: the competencies in these and no others. Empty means
-    #: none chosen yet. Optional for the reason ``specialties`` is: every
-    #: passport written before 7 October 2026 has no such key.
+    #: none chosen yet. Optional because every passport written before
+    #: 7 October 2026 has no such key, and ``profile.yaml`` is validated
+    #: on read.
     frameworks: list[FrameworkRef] = Field(default_factory=list)
     #: The holder's appraisal years, oldest first, which CPD is totalled
     #: over. Empty means none declared, and CPD falls back to June to
-    #: June. Optional for the same reason ``specialties`` is: every
+    #: June. Optional for the same reason ``frameworks`` is: every
     #: passport written before it has no such key.
     appraisal_periods: list[AppraisalPeriod] = Field(default_factory=list)
 

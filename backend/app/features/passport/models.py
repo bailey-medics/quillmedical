@@ -24,8 +24,10 @@ Tables:
 - ``Passport`` – the pointer to one holder's repository.
 - ``PassportSignOffRequest`` – an open ask, closed when resolved.
 - ``PassportAssessorInvite`` – an outside assessor being brought in.
-- ``OrgUnitPassportSpecialty`` – one of an organisation's lead
-  specialties, which its people see first when choosing their own.
+- ``PassportLogbookConfirmationRequest`` – an ask that a supervisor
+  confirm one logbook entry, closed when answered.
+- ``OrgUnitPassportFramework`` – one of an organisation's lead
+  frameworks, which its people are offered first when choosing their own.
 
 Until when somebody may add to their own passport is not a table here: it
 is the ``ends_on`` of their ``passport_write`` row in ``user_competency``.
@@ -393,9 +395,10 @@ class OrgUnitPassportFramework(Base):
     frameworks its trainees work to at the top. It orders a list and
     nothing else: it hides no framework and chooses none for anybody.
 
-    A table of its own beside :class:`OrgUnitPassportSpecialty`, which it
-    replaces. The rows there name specialties, and no specialty is a
-    framework, so nothing in it could be carried across. See Phase 7 of
+    It replaced ``org_unit_passport_specialty``, the lead specialties an
+    organisation named while a holder chose a specialty. Those rows
+    named specialties, and no specialty is a framework, so nothing was
+    carried across and that table was dropped. See Phases 7 and 12 of
     docs/docs/plans/2026-10-07-passport-registrar-portfolios-plan.md.
     """
 
@@ -455,67 +458,3 @@ class OrgUnitPassportFramework(Base):
 #: because a renewal somebody has to think about once a year is the point
 #: of having an end date at all.
 PASSPORT_ENTITLEMENT_DAYS = 365
-
-
-class OrgUnitPassportSpecialty(Base):
-    """One of an organisation's lead specialties, at its place in the order.
-
-    An organisation names the specialties its people see first when they
-    choose their own, so an oncology department can put Oncology at the
-    top. Every other specialty follows alphabetically. It orders a list
-    and nothing else: it hides no specialty and chooses none for anybody.
-
-    One row per lead specialty rather than a list in a column, because the
-    ordering reads rows: each names one specialty at one organisation.
-    Only an org_unit whose type carries features holds rows, which the
-    route that writes them checks. See Phase 10 of
-    docs/docs/plans/2026-09-26-passport-specialties-plan.md.
-    """
-
-    __tablename__ = "org_unit_passport_specialty"
-    __table_args__ = (
-        UniqueConstraint(
-            "org_unit_id",
-            "specialty_id",
-            name="uq_org_unit_passport_specialty_unit_specialty",
-        ),
-        UniqueConstraint(
-            "org_unit_id",
-            "position",
-            name="uq_org_unit_passport_specialty_unit_position",
-        ),
-        CheckConstraint(
-            "position >= 1",
-            name="ck_org_unit_passport_specialty_position",
-        ),
-    )
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-
-    org_unit_id: Mapped[int] = mapped_column(
-        ForeignKey("org_unit.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-
-    #: A file name in shared/passport-specialties/, without ``.yaml``.
-    #: A plain string with no foreign key, as on a profile: specialties
-    #: are YAML files rather than a table, and a row naming one since
-    #: removed is skipped when read rather than breaking the list.
-    specialty_id: Mapped[str] = mapped_column(String(100), nullable=False)
-
-    #: Where it leads, from 1. The lowest comes first.
-    position: Mapped[int] = mapped_column(Integer, nullable=False)
-
-    #: Who set it. Kept when that account goes, so the row still says
-    #: somebody chose it, just not who.
-    set_by: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-
-    set_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(UTC),
-    )

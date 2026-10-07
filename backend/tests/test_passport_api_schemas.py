@@ -34,6 +34,7 @@ from app.schemas.passport import (
     CertificateIn,
     CompetencyStateOut,
     CpdEntryIn,
+    FrameworksIn,
     LogbookEntryIn,
     LogbookOut,
     PassportCreateIn,
@@ -41,7 +42,6 @@ from app.schemas.passport import (
     SignOffDeclineIn,
     SignOffIn,
     SignOffRequestIn,
-    SpecialtiesIn,
 )
 
 #: Every request model. Listed explicitly rather than discovered, so a
@@ -56,7 +56,7 @@ REQUEST_MODELS = [
     ReflectionIn,
     CpdEntryIn,
     PassportCreateIn,
-    SpecialtiesIn,
+    FrameworksIn,
 ]
 
 #: Words that would mean the API had formed a view on whether somebody

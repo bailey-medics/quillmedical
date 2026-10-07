@@ -99,7 +99,6 @@ function detailWith(
       holder_user_id: "42",
       holder_name: "Dr Mark Bailey",
       registrations: [],
-      specialties: [],
       // The picker lists the competencies in these and no others.
       frameworks: [
         { id: "clinical", name: "General clinical skills" },
