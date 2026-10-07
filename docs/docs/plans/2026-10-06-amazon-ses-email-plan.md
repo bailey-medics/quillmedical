@@ -715,7 +715,7 @@ mailing list, and are stored as one. This phase does not wait on Phase
       goes on working. `newsletter_send` names a user or a subscriber,
       one or the other, held to that by a check in the database.
 
-- [ ] **Keep one record of somebody who is in both tables.** A person
+- [x] **Keep one record of somebody who is in both tables.** A person
       can be in the mailing list table and, now or later, hold a Quill
       account with the same address. Each table has its own answer to
       "do they want newsletters?". Nothing is done until the account's
@@ -739,7 +739,20 @@ mailing list, and are stored as one. This phase does not wait on Phase
 
       The same check runs once over existing accounts when the mailing
       list is imported. Closing an account later puts nobody back on
-      the mailing list.
+      the mailing list. Built with three things the rule did not say.
+      **An account that has never been asked keeps the mailing list's
+      "yes".** Where an admin or a passport invitation made the account,
+      nobody has answered the question, so there is no registration
+      answer to count; without this, making somebody an account would
+      quietly stop the news they had asked for. They are asked when
+      they first set a password, and that answer then stands. **What
+      they were sent goes with them**: their `newsletter_send` rows move
+      to the account, so a campaign they had as a subscriber is not sent
+      to them again. **The send guards the rule as well**: an account
+      whose address is on the mailing list as unsubscribed is left out
+      of a send even if nothing has folded it in yet. The fold runs
+      where an address becomes verified: the verification link, an
+      admin creating an account, and a passport invitation accepted.
 
 - [ ] **Add a Newsletter section to the admin area.** A place of its
       own, `/admin/newsletter`, with a link in the admin menu, for

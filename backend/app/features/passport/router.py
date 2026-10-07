@@ -67,6 +67,7 @@ from app.email_send import (
     send_email,
 )
 from app.features.gating import requires_feature, user_has_feature
+from app.marketing.subscribers import fold_into_account
 from app.models import (
     OrgUnitFeature,
     ProfessionalRegistration,
@@ -3936,6 +3937,9 @@ def accept_assessor_invite(
         )
         db.add(user)
         db.flush()
+        # The invitation proved the address, so if it is on the mailing
+        # list of people with no account, one record of them is kept.
+        fold_into_account(db, user)
         status = "registered"
 
     org_unit_id = _holder_org_unit(db, invite.passport_id)

@@ -134,6 +134,7 @@ from app.marketing.preferences import (
     set_marketing_preference,
 )
 from app.marketing.router import router as marketing_router
+from app.marketing.subscribers import fold_into_account
 from app.messaging import (
     MessagingError,
     add_participant,
@@ -1494,6 +1495,9 @@ def verify_email(
         return DetailResponse(detail="verified")
 
     user.email_verified = True
+    # They may be on the mailing list of people with no account. Now
+    # the address is proven theirs, one record of them is kept.
+    fold_into_account(db, user)
     return DetailResponse(detail="verified")
 
 
@@ -2425,6 +2429,9 @@ def create_user_with_cbac(
     )
     db.add(user)
     db.flush()
+    # An admin vouches for the address, so if it is on the mailing list
+    # of people with no account, one record of them is kept.
+    fold_into_account(db, user)
 
     # The one list, in org_unit ids. Organisations and the org_units inside
     # them are rows in the same table, so there is nothing to split.
