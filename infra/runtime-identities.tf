@@ -38,6 +38,13 @@ locals {
       # docs/docs/plans/2026-10-03-marketing-opt-out-plan.md, Phase 1.
       RESEND_CONTACTS_API_KEY = "resend-contacts-api-key"
       RESEND_WEBHOOK_SECRET   = "resend-webhook-secret"
+      # Amazon SES in London, which replaces Resend: the access key of
+      # the AWS user that may send from eu-west-2 and nowhere else.
+      # Mounted once each secret had a version, as above. Nothing reads
+      # them until EMAIL_PROVIDER is set to "ses". See
+      # docs/docs/plans/2026-10-06-amazon-ses-email-plan.md, Phase 2.
+      SES_ACCESS_KEY_ID     = "ses-access-key-id"
+      SES_SECRET_ACCESS_KEY = "ses-secret-access-key"
     },
     var.enable_fhir ? {
       FHIR_DB_PASSWORD           = "fhir-db-password"
