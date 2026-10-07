@@ -270,6 +270,9 @@ class CompetencyStateOut(BaseModel):
 
     id: CompetencyIdField
     name: NonEmptyText
+    #: What this entry covers, where the competency is signed off scope
+    #: by scope. A competency may then appear once for each scope.
+    scope: ScopeRefOut | None = None
     status: SignOffStatus
     level: LevelRefOut | None = None
     #: What was asked for on the latest sign-off.

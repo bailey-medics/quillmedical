@@ -305,7 +305,7 @@ def request_sign_off(
     level = check_request(competency_id, level_id, scope_id)
     scope = check_scope(competency_id, scope_id)
 
-    existing = _existing_for(store, passport_id, competency_id)
+    existing = _existing_for(store, passport_id, competency_id, scope_id)
     kind = _kind_for(competency_id, level_id, existing)
 
     record = SignOff(
@@ -451,7 +451,12 @@ def sign_off(
     kind = _kind_for(
         record.competency.id,
         level.id if level is not None else None,
-        _existing_for(store, passport_id, record.competency.id),
+        _existing_for(
+            store,
+            passport_id,
+            record.competency.id,
+            record.scope.id if record.scope is not None else None,
+        ),
     )
 
     expires_on = _expiry(record.competency.id, moment.date())
@@ -726,7 +731,7 @@ def status_for(
         sign-off still reports ``signed_off``, because what a lapsed
         sign-off implies is a clinical decision that has not been made.
     """
-    existing = _existing_for(store, passport_id, competency_id)
+    existing = _existing_for(store, passport_id, competency_id, ANY_SCOPE)
 
     if not existing:
         return "none"
@@ -756,10 +761,25 @@ def next_id(moment: datetime | None = None) -> str:
 _ids = ids.TimestampIdGenerator()
 
 
+#: Passed for the scope where every sign-off for a competency is wanted,
+#: whatever each covers. A string no scope id can be, since scope ids
+#: are lower-case words and underscores.
+ANY_SCOPE = "*"
+
+
 def _existing_for(
-    store: PassportStore, passport_id: str, competency_id: str
+    store: PassportStore,
+    passport_id: str,
+    competency_id: str,
+    scope_id: str | None,
 ) -> list[tuple[str, SignOff]]:
-    """Every sign-off for one competency, oldest first."""
+    """Every sign-off for one competency and scope, oldest first.
+
+    A sign-off for one scope is no part of another's history: the first
+    for breast is a first, however many came before for lung. So the
+    scope narrows what is returned, and ``None`` means the sign-offs
+    that name no scope, not all of them. Pass :data:`ANY_SCOPE` for all.
+    """
     found: list[tuple[str, SignOff]] = []
 
     for folder in store.list_dir(passport_id, paths.SIGN_OFFS):
@@ -768,7 +788,11 @@ def _existing_for(
         except PassportNotFoundError:
             continue
 
-        if record.competency.id == competency_id:
+        if record.competency.id != competency_id:
+            continue
+
+        record_scope = record.scope.id if record.scope is not None else None
+        if scope_id == ANY_SCOPE or record_scope == scope_id:
             found.append((folder.name, record))
 
     found.sort(key=lambda pair: (pair[1].observed_on, pair[0]))

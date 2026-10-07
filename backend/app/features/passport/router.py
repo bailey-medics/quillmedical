@@ -1846,6 +1846,7 @@ def verify_sign_off(
 def get_competency_state(
     passport_id: str,
     competency_id: str,
+    scope_id: str | None = None,
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
@@ -1856,12 +1857,21 @@ def get_competency_state(
     expired sign-off still reports ``signed_off``: what a lapsed
     sign-off implies is a clinical decision that has not been made, so
     the expiry date is returned for a person to judge.
+
+    A competency signed off scope by scope stands somewhere different
+    for each, so ``scope_id`` says which. Without it the first entry
+    for the competency is returned, which is the only one where the
+    competency is assessed as a whole.
     """
     row = _require_reader(db, passport_id, user)
     index = _read_index(store, row.id)
 
     for entry in index.competencies:
-        if entry.id == competency_id:
+        if entry.id != competency_id:
+            continue
+
+        entry_scope = entry.scope.id if entry.scope is not None else None
+        if scope_id is None or entry_scope == scope_id:
             return CompetencyStateOut.model_validate(
                 entry.model_dump(mode="json")
             )

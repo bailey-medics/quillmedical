@@ -196,6 +196,12 @@ export interface Passport {
 export interface CompetencyState {
   id: string;
   name: string;
+  /**
+   * What this entry covers, where the competency is signed off scope by
+   * scope. A competency then appears once for each scope, so `id` alone
+   * does not identify an entry: `id` and `scope` together do.
+   */
+  scope?: ScopeRef | null;
   status: SignOffStatus;
   level: LevelRef | null;
   /** What was asked for on the latest sign-off */

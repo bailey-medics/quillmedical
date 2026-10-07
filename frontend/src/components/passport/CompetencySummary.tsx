@@ -80,7 +80,12 @@ export default function CompetencySummary({
       <Stack gap="xs">
         <Heading>{title}</Heading>
         {competencies.map((competency, index) => (
-          <Stack key={competency.id} gap="xs">
+          // A competency signed off scope by scope appears once for each,
+          // so the id alone would repeat.
+          <Stack
+            key={`${competency.id}:${competency.scope?.id ?? ""}`}
+            gap="xs"
+          >
             {index > 0 && <Divider />}
             <CompetencyRow
               competency={competency}

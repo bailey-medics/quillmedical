@@ -39,20 +39,29 @@ from .schemas import (
 )
 from .store import PassportNotFoundError, PassportStore
 
+#: What identifies one entry: the competency, and the scope its
+#: sign-offs cover or ``None`` where the competency is assessed as a
+#: whole.
+EntryKey = tuple[str, str | None]
+
 
 def _sign_offs(
     store: PassportStore, passport_id: str
-) -> dict[str, list[tuple[str, SignOff]]]:
-    """Every sign-off, grouped by competency and ordered oldest first.
+) -> dict[EntryKey, list[tuple[str, SignOff]]]:
+    """Every sign-off, grouped by competency and scope, oldest first.
+
+    Grouped by scope as well as competency because a sign-off for one
+    scope says nothing about another: lung at one level and breast at a
+    lower one are both true at once, and neither is the other's history.
 
     Args:
         store: Where the passport lives.
         passport_id: Whose passport.
 
     Returns:
-        Competency id to a list of (folder name, record), sorted by the
-        date the work was observed, then by folder name so a same-day
-        pair has a stable order.
+        Competency id and scope id to a list of (folder name, record),
+        sorted by the date the work was observed, then by folder name so
+        a same-day pair has a stable order.
 
     Raises:
         RecordFormatError: If a sign-off file cannot be read. Deliberately
@@ -60,7 +69,7 @@ def _sign_offs(
             record would under-report what someone is signed off for,
             which is the one direction a passport must not fail in.
     """
-    found: dict[str, list[tuple[str, SignOff]]] = defaultdict(list)
+    found: dict[EntryKey, list[tuple[str, SignOff]]] = defaultdict(list)
 
     for folder in store.list_dir(passport_id, paths.SIGN_OFFS):
         name = folder.name
@@ -75,7 +84,8 @@ def _sign_offs(
             continue
 
         record = serialise.from_yaml(SignOff, content)
-        found[record.competency.id].append((name, record))
+        scope_id = record.scope.id if record.scope is not None else None
+        found[(record.competency.id, scope_id)].append((name, record))
 
     for records in found.values():
         records.sort(key=lambda pair: (pair[1].observed_on, pair[0]))
@@ -205,6 +215,7 @@ def _entry(
     return IndexEntry(
         id=competency_id,
         name=latest.competency.name,
+        scope=latest.scope,
         status=latest.status,
         level=latest.level,
         requested_level=latest.requested_level,
@@ -250,7 +261,13 @@ def build(
     certificates = _certificates(store, passport_id)
 
     # Every competency with any evidence at all, not just signed ones.
-    competencies = set(sign_offs) | set(logbook) | set(certificates)
+    # One with a logbook or a certificate and no sign-off still gets an
+    # entry, with no scope: the evidence is there and nothing is signed.
+    signed = {competency_id for competency_id, _ in sign_offs}
+    keys: set[EntryKey] = set(sign_offs) | {
+        (competency_id, None)
+        for competency_id in (set(logbook) | set(certificates)) - signed
+    }
 
     return Index(
         schema_version=SCHEMA_VERSION,
@@ -258,11 +275,18 @@ def build(
         competencies=[
             _entry(
                 competency_id,
-                sign_offs.get(competency_id, []),
+                sign_offs.get((competency_id, scope_id), []),
+                # Logbook entries and certificates say nothing about a
+                # scope, so each of a competency's entries reports them
+                # all.
                 logbook.get(competency_id, 0),
                 certificates.get(competency_id, []),
             )
-            for competency_id in sorted(competencies)
+            # An entry with no scope sorts before its competency's
+            # scoped ones.
+            for competency_id, scope_id in sorted(
+                keys, key=lambda key: (key[0], key[1] or "")
+            )
         ],
     )
 
