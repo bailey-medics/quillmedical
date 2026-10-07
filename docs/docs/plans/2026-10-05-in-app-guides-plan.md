@@ -1013,6 +1013,30 @@ Guides in the navigation, and that is enough. This phase withdraws them.
       it for the two passport links, and there is no longer a link to
       check.
 
+## Phase 17: Keep the joining guide from a signed-in delegate
+
+A teaching delegate who is signed in was shown "Join a course" in their
+list of guides. They have joined already: nobody is signed in who has
+not registered.
+
+- [x] Make "Join a course" an admin's guide in
+      `frontend/src/guides/registry.ts`, by changing its `audience` from
+      `everyone` to `admin`. It stays `public`, so somebody signed out
+      still reads it at `/guides/join-a-course` and the three "How to
+      join a course" links of Phase 2 still work. No new field was
+      needed: `publicGuides` never looked at the audience, and
+      `guidesVisibleTo` already holds a signed-in reader to their tier.
+      A signed-in delegate who opens the address is given the 404, as
+      for any guide that is not theirs.
+- [x] An admin is still shown it, signed in. "Add a delegate by hand"
+      opens by linking to it, and an admin is who a new delegate asks.
+      Mark asked for it gone from inside the application and did not
+      say whether that covers admins; if it does, the link in
+      `frontend/src/guides/content/add-a-delegate-by-hand.md` goes too.
+- [x] Pin it in `frontend/src/lib/guides/useGuideTier.test.ts`: a
+      signed-in delegate with teaching on is given no joining guide and
+      is still given "Take a module and its assessment".
+
 ## Decisions
 
 - **No guide links on signed-in pages** – the Guides entry in the
