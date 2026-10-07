@@ -533,33 +533,34 @@ The specialty a holder chooses, and the ones an organisation leads with,
 become frameworks. It is a rename in what people see and more than a rename
 underneath: a specialty ordered the list, and a framework limits it. So
 nothing stored as a specialty can be carried over as a framework, and each
-piece is added new beside the old one, which Phase 10 then removes.
+piece is added new beside the old one, which Phase 10 then removes. This
+phase is the storage and the routes. Nothing a holder sees changes until
+Phase 8.
 
-- [ ] **Add `frameworks` to `Profile`**, as id and name pairs, optional so
+- [x] **Add `frameworks` to `Profile`**, as id and name pairs, optional so
       every existing passport still loads, with `set_frameworks` in
-      `records.py`. The `specialties` key stays readable and is no longer
-      written: profiles forbid unknown fields, and every passport written
-      so far carries it.
-- [ ] **Add the holder's routes**: one to set their frameworks, and one to
-      find a framework by text search with specialty as a filter. Typed
-      response models for both.
-- [ ] **Add an organisation's lead frameworks**, as a new
-      `org_unit_passport_framework` table and routes, in the shape of
+      `records.py`. The `specialties` key stays readable, since profiles
+      forbid unknown fields and every passport written so far carries it.
+      It is still written until Phase 8 stops asking for a specialty.
+- [x] **Add the holder's routes**: `PUT /{passport_id}/frameworks` to set
+      their frameworks, and `GET /api/passport/frameworks` to find one by
+      text search with specialty as a filter. Every word typed must appear
+      in the framework's name or publisher. A framework filed under no
+      specialty belongs to all of them, so no filter removes it. A
+      passport may also be created with frameworks. Typed response models
+      throughout.
+- [x] **Add an organisation's lead frameworks**, as a new
+      `org_unit_passport_framework` table and routes at
+      `/api/org-units/{id}/passport-frameworks`, in the shape of
       `org_unit_passport_specialty`: one row per framework at its place in
       the order. An organisation's lead frameworks are offered first to
       everybody it reaches, and choose nothing for anybody. A new table
       and not a renamed one, because the old rows name specialties and no
-      specialty is a framework. Create the migration with `just migrate`.
-- [ ] **Refuse a new record outside the holder's frameworks**, where
-      `definitions.assessable_ref` already refuses one that is not
-      assessable: a sign-off request, logbook entry, certificate,
-      reflection or CPD entry. Amending keeps the looser check and reading
-      never checks, so dropping a framework hides nothing already
-      recorded.
-- [ ] **Tests**: search and filter, setting and reading back, lead
-      frameworks ordering what is offered, a record outside the frameworks
-      refused, an old record still readable after its framework is
-      dropped, a profile carrying only `specialties` still loading.
+      specialty is a framework. Created with `just migrate`.
+- [x] **Tests**: search and filter, setting and reading back, lead
+      frameworks ordering what is offered, an old record still readable
+      after its framework is dropped, a profile with no frameworks still
+      loading.
 
 ## Phase 8: The picker and the summaries follow the frameworks
 
@@ -570,6 +571,14 @@ piece is added new beside the old one, which Phase 10 then removes.
       anywhere.
 - [ ] **Turn the lead specialties card into lead frameworks**, on the
       organisation's features page: `PassportLeadSpecialtiesCard`.
+- [ ] **Refuse a new record outside the holder's frameworks**, where
+      `definitions.assessable_ref` already refuses one that is not
+      assessable: a sign-off request, logbook entry, certificate,
+      reflection or CPD entry. Amending keeps the looser check and reading
+      never checks, so dropping a framework hides nothing already
+      recorded. Moved here from Phase 7 while building: no existing holder
+      has chosen a framework, so refusing before the card to choose one
+      exists would have stopped everybody recording anything.
 - [ ] **Show only the holder's frameworks in `CompetencyPicker`**, grouped
       under each. With none chosen it shows a prompt to add one. The
       "Common in" ordering goes.

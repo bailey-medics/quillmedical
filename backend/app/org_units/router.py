@@ -24,7 +24,7 @@ from app.cbac.base_professions import (
     grant_staff_competencies,
     resolve_user_competencies,
 )
-from app.cbac.competencies import SCOPED_MANAGER_IDS
+from app.cbac.competencies import FRAMEWORK_IDS, SCOPED_MANAGER_IDS
 from app.cbac.grant_scope import (
     may_assign_profession,
     may_manage_account,
@@ -44,7 +44,10 @@ from app.deps import (
 )
 from app.features.passport import cover
 from app.features.passport.cover import COVER_FEATURE
-from app.features.passport.models import OrgUnitPassportSpecialty
+from app.features.passport.models import (
+    OrgUnitPassportFramework,
+    OrgUnitPassportSpecialty,
+)
 from app.features.passport.specialties import SPECIALTY_IDS
 from app.models import (
     MEMBER_CAPACITIES,
@@ -98,11 +101,13 @@ from app.schemas.org_units import (
     OrgUnitItem,
     OrgUnitMembersOut,
     OrgUnitPassportCoverOut,
+    OrgUnitPassportFrameworksOut,
     OrgUnitPassportSpecialtiesOut,
     OrgUnitsListOut,
     OrgUnitStatusOut,
     PractisingCompetenciesOut,
     SetClinicalLeadIn,
+    SetOrgUnitPassportFrameworksIn,
     SetOrgUnitPassportSpecialtiesIn,
     ToggleOrgUnitActiveIn,
     ToggleOrgUnitFeatureIn,
@@ -1914,6 +1919,99 @@ def set_org_unit_passport_specialties(
 
     return OrgUnitPassportSpecialtiesOut(
         specialty_ids=_lead_specialty_ids(db, unit_id)
+    )
+
+
+def _lead_framework_ids(db: Session, unit_id: int) -> list[str]:
+    """An org_unit's lead passport framework ids, in position order."""
+    return list(
+        db.scalars(
+            select(OrgUnitPassportFramework.framework_id)
+            .where(OrgUnitPassportFramework.org_unit_id == unit_id)
+            .order_by(OrgUnitPassportFramework.position)
+        ).all()
+    )
+
+
+@router.get(
+    "/{unit_id}/passport-frameworks",
+    response_model=OrgUnitPassportFrameworksOut,
+    dependencies=[DEP_REQUIRE_MANAGE_USERS],
+)
+def list_org_unit_passport_frameworks(
+    unit_id: int,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> OrgUnitPassportFrameworksOut:
+    """An organisation's lead passport frameworks, in order.
+
+    Every row as stored, including one naming a framework whose file has
+    since gone, so an admin sees what is saved and can clear it. The
+    holder's own list skips such a row instead. Requires ``manage_users``.
+    """
+    _require_visible(db, current_user, unit_id)
+    return OrgUnitPassportFrameworksOut(
+        framework_ids=_lead_framework_ids(db, unit_id)
+    )
+
+
+@router.put(
+    "/{unit_id}/passport-frameworks",
+    response_model=OrgUnitPassportFrameworksOut,
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS],
+)
+def set_org_unit_passport_frameworks(
+    unit_id: int,
+    body: SetOrgUnitPassportFrameworksIn,
+    current_user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> OrgUnitPassportFrameworksOut:
+    """Replace an organisation's lead passport frameworks.
+
+    The frameworks its people are offered first when they choose their
+    own, in this order; the rest follow alphabetically. The whole list
+    is replaced, because the order is the point, so positions are
+    rewritten from 1 every time. An empty list clears it. It chooses no
+    framework for anybody.
+
+    Held at any org_unit, whatever its type, as a feature is. Requires
+    ``manage_users`` at an org_unit the caller may administer.
+    """
+    _require_visible(db, current_user, unit_id)
+
+    # Neither message repeats what was sent: a client's own text is not
+    # echoed back in an error.
+    if any(i not in FRAMEWORK_IDS for i in body.framework_ids):
+        raise HTTPException(
+            status_code=422,
+            detail="Unknown framework. Must be one of: "
+            + ", ".join(FRAMEWORK_IDS),
+        )
+    if len(set(body.framework_ids)) != len(body.framework_ids):
+        raise HTTPException(
+            status_code=422, detail="Each framework can be named once."
+        )
+
+    # A core DELETE, sent at once, so the old positions are gone before
+    # the new rows are flushed against the one-position-each constraint.
+    db.execute(
+        delete(OrgUnitPassportFramework).where(
+            OrgUnitPassportFramework.org_unit_id == unit_id
+        )
+    )
+    for position, framework_id in enumerate(body.framework_ids, start=1):
+        db.add(
+            OrgUnitPassportFramework(
+                org_unit_id=unit_id,
+                framework_id=framework_id,
+                position=position,
+                set_by=current_user.id,
+            )
+        )
+    db.flush()
+
+    return OrgUnitPassportFrameworksOut(
+        framework_ids=_lead_framework_ids(db, unit_id)
     )
 
 

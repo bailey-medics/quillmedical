@@ -224,6 +224,18 @@ class SpecialtyRef(PassportModel):
     name: NonEmptyText
 
 
+class FrameworkRef(PassportModel):
+    """A framework the holder works to, as it read at the time.
+
+    The name is stored beside the id for the reason a competency's is:
+    an export must read correctly with no Quill, and a framework
+    withdrawn later must not leave a bare id behind.
+    """
+
+    id: CompetencyIdField
+    name: NonEmptyText
+
+
 class Assessor(PassportModel):
     """Who signed, frozen as they were at the moment of signing.
 
@@ -309,6 +321,11 @@ class Profile(PassportModel):
     #: because every passport written before specialties existed has no
     #: such key, and ``profile.yaml`` is validated on read.
     specialties: list[SpecialtyRef] = Field(default_factory=list)
+    #: The frameworks the holder works to, which are what the passport
+    #: offers them: the competencies in these and no others. Empty means
+    #: none chosen yet. Optional for the reason ``specialties`` is: every
+    #: passport written before 7 October 2026 has no such key.
+    frameworks: list[FrameworkRef] = Field(default_factory=list)
     #: The holder's appraisal years, oldest first, which CPD is totalled
     #: over. Empty means none declared, and CPD falls back to June to
     #: June. Optional for the same reason ``specialties`` is: every

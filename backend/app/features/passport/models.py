@@ -385,6 +385,68 @@ class PassportAssessorInvite(Base):
     )
 
 
+class OrgUnitPassportFramework(Base):
+    """One of an organisation's lead frameworks, at its place in the order.
+
+    An organisation names the frameworks its people are offered first
+    when they choose their own, so an oncology department can put the
+    frameworks its trainees work to at the top. It orders a list and
+    nothing else: it hides no framework and chooses none for anybody.
+
+    A table of its own beside :class:`OrgUnitPassportSpecialty`, which it
+    replaces. The rows there name specialties, and no specialty is a
+    framework, so nothing in it could be carried across. See Phase 7 of
+    docs/docs/plans/2026-10-07-passport-registrar-portfolios-plan.md.
+    """
+
+    __tablename__ = "org_unit_passport_framework"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    org_unit_id: Mapped[int] = mapped_column(
+        ForeignKey("org_unit.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    #: A file name in shared/competency-definitions/, without ``.yaml``,
+    #: of a file that declares a framework. A plain string with no
+    #: foreign key, as on a profile: frameworks are YAML files and not a
+    #: table, and a row naming one since withdrawn is skipped on read.
+    framework_id: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    #: Where it comes in the organisation's list, counting from one.
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    #: Who set it. Null once that account is deleted.
+    set_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+    set_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "org_unit_id",
+            "framework_id",
+            name="uq_org_unit_passport_framework_unit_framework",
+        ),
+        UniqueConstraint(
+            "org_unit_id",
+            "position",
+            name="uq_org_unit_passport_framework_unit_position",
+        ),
+        CheckConstraint(
+            "position >= 1",
+            name="ck_org_unit_passport_framework_position",
+        ),
+    )
+
+
 #: How long a ``passport_write`` subscription somebody buys for themselves
 #: runs for. Read by ``TERMS`` in ``app.cbac.grants``. A grant through a
 #: site or organisation has no end.
