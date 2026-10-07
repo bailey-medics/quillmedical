@@ -669,6 +669,41 @@ class TestOneStatePerScope:
             == "initial"
         )
 
+    def test_a_sign_off_freezes_the_logbook_for_its_own_scope(
+        self,
+        passport: store.LocalPassportStore,
+        holder: commits.Actor,
+    ) -> None:
+        """A lung sign-off counts the lung log, not the breast one."""
+        from app.features.passport import records, schemas
+
+        lung = schemas.ScopeRef(id="lung", name="Lung")
+        breast = schemas.ScopeRef(id="breast", name="Breast")
+
+        for day, scope in ((1, lung), (2, lung), (3, breast), (4, None)):
+            records.add_logbook_entry(
+                passport,
+                PASSPORT_ID,
+                holder,
+                SCALED,
+                schemas.LogbookEntry(
+                    performed_on=date(2026, 3, day), scope=scope
+                ),
+                now=NOW,
+            )
+
+        name = _request(
+            passport,
+            holder,
+            competency_id=SCALED,
+            scope_id="lung",
+            level_id="review_and_authorise",
+        )
+
+        evidence = service.read_sign_off(passport, PASSPORT_ID, name).evidence
+        assert evidence is not None
+        assert evidence.logbook_entries == 2
+
     def test_a_competency_with_no_scopes_still_has_one_entry(
         self,
         passport: store.LocalPassportStore,

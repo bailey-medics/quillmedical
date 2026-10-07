@@ -36,6 +36,7 @@ from pathlib import PurePosixPath
 
 from . import paths
 from .cpd_periods import group_cpd
+from .index import competency_names
 from .schemas import (
     Certificate,
     CpdEntry,
@@ -182,6 +183,13 @@ def _status_word(entry: IndexEntry) -> str:
     implies is a clinical decision nobody has made, so the document
     reports the date and draws no conclusion from it.
     """
+    # Evidence with no sign-off behind it: logbook entries or a
+    # certificate, and nobody asked. The index calls that "requested"
+    # for want of a nearer word, and "awaiting assessor" would say
+    # somebody had been asked.
+    if entry.sign_off is None:
+        return "no sign-off"
+
     return {
         "requested": "awaiting assessor",
         "signed_off": "signed off",
@@ -199,20 +207,14 @@ def _logbook_section(
 
     # A competency signed off scope by scope has an index entry for each
     # scope, and one logbook. Listed once.
-    listed: set[str] = set()
-
-    for entry in sorted(index.competencies, key=lambda e: e.name):
-        if entry.id in listed:
-            continue
-        listed.add(entry.id)
-
-        rows = _logbook_entries(store, passport_id, entry.id)
+    for competency_id, name in competency_names(index).items():
+        rows = _logbook_entries(store, passport_id, competency_id)
 
         if not rows:
             continue
 
         any_entries = True
-        lines.extend([f"### {entry.name}", ""])
+        lines.extend([f"### {name}", ""])
         lines.append(f"{len(rows)} recorded.")
         lines.append("")
 
@@ -220,6 +222,7 @@ def _logbook_section(
             detail = ", ".join(
                 part
                 for part in (
+                    record.scope.name if record.scope else None,
                     record.setting,
                     record.supervision,
                     record.indication,

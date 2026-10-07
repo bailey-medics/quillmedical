@@ -10,7 +10,12 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import LogbookTable from "./LogbookTable";
-import { logbook, emptyLogbook, singleEntryLogbook } from "./fixtures";
+import {
+  logbook,
+  emptyLogbook,
+  scopedLogbook,
+  singleEntryLogbook,
+} from "./fixtures";
 
 describe("LogbookTable", () => {
   describe("Counts, never comparisons", () => {
@@ -43,6 +48,24 @@ describe("LogbookTable", () => {
       renderWithMantine(<LogbookTable logbook={logbook} />);
       expect(screen.queryByText(/complete/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/remaining/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Scope", () => {
+    it("says what each entry counts towards, where any entry says", () => {
+      renderWithMantine(<LogbookTable logbook={scopedLogbook} />);
+      expect(
+        screen.getByRole("columnheader", { name: /Counts towards/ }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Lung")).toBeInTheDocument();
+      expect(screen.getByText("Breast")).toBeInTheDocument();
+    });
+
+    it("shows no such column where no entry names a scope", () => {
+      renderWithMantine(<LogbookTable logbook={logbook} />);
+      expect(
+        screen.queryByRole("columnheader", { name: /Counts towards/ }),
+      ).not.toBeInTheDocument();
     });
   });
 

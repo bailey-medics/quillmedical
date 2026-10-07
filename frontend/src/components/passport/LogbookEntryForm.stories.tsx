@@ -78,3 +78,20 @@ export const NobodyCountersignsThis: Story = {
     onCancel: fn(),
   },
 };
+
+/**
+ * A competency signed off scope by scope offers the scope here too. It
+ * can be left empty, where a sign-off must name one.
+ */
+export const WithScopes: Story = {
+  args: {
+    competency: signedOffCompetency,
+    scopes: [
+      { id: "breast", name: "Breast" },
+      { id: "lung", name: "Lung" },
+      { id: "other", name: "Other" },
+    ],
+    onSubmit: fn(),
+    onCancel: fn(),
+  },
+};

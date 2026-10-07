@@ -28,6 +28,7 @@ import ErrorState from "@/components/error-state/ErrorState";
 import StateMessage from "@/components/message-cards/StateMessage";
 import { IconFileText } from "@/components/icons/appIcons";
 import competenciesData from "@/generated/competencies.json";
+import { scopesFor } from "@lib/passport/scopes";
 import {
   addLogbookEntry,
   fetchMyPassport,
@@ -215,6 +216,7 @@ export function Component() {
           {competencyId && (
             <LogbookEntryForm
               competency={competencyForForm(competencyId, groups[0] ?? null)}
+              scopes={scopesFor(competencyId)}
               onSubmit={handleSubmit}
               onCancel={() => {
                 setAdding(false);

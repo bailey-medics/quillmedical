@@ -189,6 +189,81 @@ class TestLogbook:
         assert _entry(passport, "perform_bronchoscopy").logbook_entries == 1
         assert _entry(passport, "take_informed_consent").logbook_entries == 1
 
+    def test_entries_are_counted_under_the_scope_they_name(
+        self, passport: store.LocalPassportStore, actor: commits.Actor
+    ) -> None:
+        """A lung prescription is no evidence towards breast."""
+        lung = schemas.ScopeRef(id="lung", name="Lung")
+        breast = schemas.ScopeRef(id="breast", name="Breast")
+
+        for day, scope in ((10, lung), (11, lung), (12, breast), (13, None)):
+            records.add_logbook_entry(
+                passport,
+                PASSPORT_ID,
+                actor,
+                "prescribe_sact",
+                schemas.LogbookEntry(
+                    performed_on=date(2026, 3, day), scope=scope
+                ),
+                now=NOW,
+            )
+
+        counts = {
+            entry.scope.id if entry.scope is not None else None: (
+                entry.logbook_entries
+            )
+            for entry in index.build(passport, PASSPORT_ID).competencies
+            if entry.id == "prescribe_sact"
+        }
+
+        assert counts == {"lung": 2, "breast": 1, None: 1}
+
+    def test_an_entry_for_a_scope_carries_the_scopes_wording(
+        self, passport: store.LocalPassportStore, actor: commits.Actor
+    ) -> None:
+        """Read from the entry, since nothing is signed to read it from."""
+        records.add_logbook_entry(
+            passport,
+            PASSPORT_ID,
+            actor,
+            "prescribe_sact",
+            schemas.LogbookEntry(
+                performed_on=date(2026, 3, 12),
+                scope=schemas.ScopeRef(
+                    id="upper_gastrointestinal",
+                    name="Upper gastrointestinal",
+                ),
+            ),
+            now=NOW,
+        )
+
+        entry = _entry(passport, "prescribe_sact")
+
+        assert entry.scope is not None
+        assert entry.scope.name == "Upper gastrointestinal"
+
+    def test_counting_towards_another_competency_carries_no_scope(
+        self, passport: store.LocalPassportStore, actor: commits.Actor
+    ) -> None:
+        """Lung is a scope of prescribing, and means nothing to consent."""
+        records.add_logbook_entry(
+            passport,
+            PASSPORT_ID,
+            actor,
+            "prescribe_sact",
+            schemas.LogbookEntry(
+                performed_on=date(2026, 3, 12),
+                scope=schemas.ScopeRef(id="lung", name="Lung"),
+                also_counts_towards=["take_informed_consent"],
+            ),
+            now=NOW,
+        )
+
+        consent = _entry(passport, "take_informed_consent")
+
+        assert consent.scope is None
+        assert consent.logbook_entries == 1
+
     def test_an_entry_is_editable(
         self, passport: store.LocalPassportStore, actor: commits.Actor
     ) -> None:

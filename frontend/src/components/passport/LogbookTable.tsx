@@ -67,6 +67,17 @@ const columns: Column<LogbookEntry>[] = [
   },
 ];
 
+/**
+ * What each entry counts towards, shown only where some entry says.
+ * Most competencies are assessed as a whole, and a column of dashes on
+ * every one of their logbooks would be noise.
+ */
+const scopeColumn: Column<LogbookEntry> = {
+  header: "Counts towards",
+  render: (entry) => entry.scope?.name ?? "–",
+  accessor: (entry) => entry.scope?.name ?? null,
+};
+
 export interface LogbookTableProps {
   /** The competency's logbook, carrying its entries and their count */
   logbook: Logbook;
@@ -108,7 +119,11 @@ export default function LogbookTable({
 
         <DataTable
           data={sorted}
-          columns={columns}
+          columns={
+            entries.some((entry) => entry.scope)
+              ? [columns[0], scopeColumn, ...columns.slice(1)]
+              : columns
+          }
           getRowKey={(entry) => entry.filename}
           onRowClick={onSelect ? (entry) => onSelect(entry) : undefined}
           loading={isLoading}

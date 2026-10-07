@@ -61,6 +61,7 @@ from reportlab.platypus import (  # type: ignore[import-untyped]
 
 from . import paths
 from .cpd_periods import group_cpd
+from .index import competency_names
 from .schemas import (
     Certificate,
     CpdEntry,
@@ -361,6 +362,13 @@ def _status_word(entry: IndexEntry) -> str:
     implies is a clinical decision nobody has made, so the document
     reports and does not conclude.
     """
+    # Evidence with no sign-off behind it: logbook entries or a
+    # certificate, and nobody asked. The index calls that "requested"
+    # for want of a nearer word, and "awaiting assessor" would say
+    # somebody had been asked.
+    if entry.sign_off is None:
+        return "no sign-off"
+
     return {
         "requested": "awaiting assessor",
         "signed_off": "signed off",
@@ -395,13 +403,15 @@ def _logbook_totals(
     counts: dict[str, dict[int, int]] = {}
     years: set[int] = set()
 
-    for entry in index.competencies:
-        per_year = _counts_by_year(store, passport_id, entry.id)
+    # Once per competency: one signed off scope by scope has an index
+    # entry for each scope, and one logbook.
+    for competency_id, name in competency_names(index).items():
+        per_year = _counts_by_year(store, passport_id, competency_id)
 
         if not per_year:
             continue
 
-        counts[entry.name] = per_year
+        counts[name] = per_year
         years.update(per_year)
 
     if not counts:

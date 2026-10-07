@@ -400,18 +400,28 @@ declares no scopes behaves exactly as it does today.
 
 ## Phase 4: Scope on a logbook entry
 
-- [ ] **Add an optional `scope` to `LogbookEntry`** and to the logbook API
+- [x] **Add an optional `scope` to `LogbookEntry`** and to the logbook API
       models, offered on `LogbookEntryForm` only where the competency
       declares scopes. Optional here, where it is required on a sign-off:
       a logbook entry is the holder's own and can be edited, and entries
-      written before today have none.
-- [ ] **Count entries by scope.** The index entry for a scope counts that
-      scope's entries, and the evidence snapshot taken at signing counts
-      the entries in the sign-off's scope, so a lung sign-off freezes the
-      lung log. Entries with no scope are counted on their own and shown
-      as such.
-- [ ] **Show the scope in `LogbookTable`** and the exports.
-- [ ] **Tests**: counts by scope in the index and in the snapshot, the form
+      written before today have none. A scope that is named must still be
+      one the competency declares.
+- [x] **Count entries by scope.** The index entry for a scope counts that
+      scope's entries, and the evidence snapshot taken when a sign-off is
+      asked for counts the entries in its scope, so a lung sign-off
+      freezes the lung log. Entries with no scope are counted on their own
+      entry, which has no scope. An entry counted towards another
+      competency through `also_counts_towards` carries no scope there.
+- [x] **Show the scope in `LogbookTable`** and the exports. The table gains
+      a "Counts towards" column only where some entry names a scope.
+- [x] **Word an entry with no sign-off as "no sign-off" in the exports.**
+      Found while building: a competency with scoped sign-offs and an
+      unscoped logbook entry now has an extra index entry holding only
+      that evidence, and the exports printed it as "awaiting assessor",
+      which says somebody had been asked. It also takes its competency's
+      real name from a sibling entry, where it had a stand-in made from
+      the id.
+- [x] **Tests**: counts by scope in the index and in the snapshot, the form
       with and without scopes.
 
 ## Phase 5: A supervisor can confirm a logbook entry

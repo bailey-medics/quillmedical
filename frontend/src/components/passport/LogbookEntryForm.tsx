@@ -43,6 +43,7 @@ import type {
   LogbookEntryInput,
   Supervision,
 } from "@lib/passport";
+import type { ScopeOption } from "@lib/passport/scopes";
 
 /**
  * Whether the holder was supervised, from their own point of view.
@@ -57,6 +58,13 @@ const SUPERVISION_OPTIONS: { value: Supervision; label: string }[] = [
 export interface LogbookEntryFormProps {
   /** The competency this entry counts towards */
   competency: CompetencyState;
+  /**
+   * What an entry for this competency may count towards, if it declares
+   * scopes. The field is offered only then, and may be left empty: an
+   * entry is the holder's own and can be corrected, where a sign-off
+   * must name its scope.
+   */
+  scopes?: ScopeOption[];
   /** Called with the completed entry */
   onSubmit: (data: LogbookEntryInput) => void;
   /** Called when the holder backs out */
@@ -78,11 +86,15 @@ export interface LogbookEntryFormProps {
  */
 export default function LogbookEntryForm({
   competency,
+  scopes,
   onSubmit,
   onCancel,
   isSubmitting = false,
   initial,
 }: LogbookEntryFormProps) {
+  const [scopeId, setScopeId] = useState<string | null>(
+    initial?.scope?.id ?? null,
+  );
   const [performedOn, setPerformedOn] = useState<string | null>(
     initial?.performed_on ?? null,
   );
@@ -102,6 +114,7 @@ export default function LogbookEntryForm({
 
     onSubmit({
       performed_on: performedOn,
+      scope_id: scopeId,
       setting: setting.trim() || null,
       supervision,
       supervisor: supervisor.trim() || null,
@@ -129,6 +142,21 @@ export default function LogbookEntryForm({
           maxLevel="year"
           required
         />
+
+        {scopes && scopes.length > 0 && (
+          <SelectField
+            label="What it counts towards"
+            description="A sign-off counts the entries for what it covers. Optional."
+            placeholder="Choose one"
+            clearable
+            data={scopes.map((scope) => ({
+              value: scope.id,
+              label: scope.name,
+            }))}
+            value={scopeId}
+            onChange={setScopeId}
+          />
+        )}
 
         <TextField
           label="Setting"

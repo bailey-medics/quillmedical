@@ -26,6 +26,7 @@ import LogbookEntryForm from "@/components/passport/LogbookEntryForm";
 import PassportRecordCard from "@/components/passport/PassportRecordCard";
 import { IconFileText } from "@/components/icons/appIcons";
 import competenciesData from "@/generated/competencies.json";
+import { scopesFor } from "@lib/passport/scopes";
 import {
   amendLogbookEntry,
   fetchLogbook,
@@ -171,6 +172,7 @@ export function Component() {
       {entry && competencyId && editing && (
         <LogbookEntryForm
           competency={competencyForForm(competencyId)}
+          scopes={scopesFor(competencyId)}
           initial={entry}
           onSubmit={handleSave}
           onCancel={() => setEditing(false)}
@@ -194,6 +196,7 @@ export function Component() {
           <PassportRecordCard
             date={entry.performed_on}
             facts={[
+              { label: "Counts towards", value: entry.scope?.name ?? null },
               { label: "Setting", value: entry.setting },
               {
                 label: "Supervision",

@@ -321,7 +321,9 @@ def request_sign_off(
         observed_on=observed_on,
         comments=comments,
         attachments=attachments or [],
-        evidence=_evidence_snapshot(store, passport_id, competency_id),
+        evidence=_evidence_snapshot(
+            store, passport_id, competency_id, scope_id
+        ),
     )
 
     name = _unique_sign_off_name(
@@ -856,23 +858,25 @@ def _expiry(competency_id: str, signed_on: date) -> date | None:
 
 
 def _evidence_snapshot(
-    store: PassportStore, passport_id: str, competency_id: str
+    store: PassportStore,
+    passport_id: str,
+    competency_id: str,
+    scope_id: str | None,
 ) -> EvidenceSnapshot:
-    """What is in view for this competency right now.
+    """What is in view for this competency and scope right now.
 
     Not a threshold that was met – a record of what the assessor could
-    see when they decided.
+    see when they decided. A sign-off for one scope counts the logbook
+    entries naming that scope, so a lung sign-off freezes the lung log
+    and not the breast one.
     """
-    built = index.build(store, passport_id)
+    logbook_entries, certificates = index.evidence_for(
+        store, passport_id, competency_id, scope_id
+    )
 
-    for entry in built.competencies:
-        if entry.id == competency_id:
-            return EvidenceSnapshot(
-                logbook_entries=entry.logbook_entries,
-                certificates=list(entry.certificates),
-            )
-
-    return EvidenceSnapshot(logbook_entries=0, certificates=[])
+    return EvidenceSnapshot(
+        logbook_entries=logbook_entries, certificates=list(certificates)
+    )
 
 
 def _unique_sign_off_name(

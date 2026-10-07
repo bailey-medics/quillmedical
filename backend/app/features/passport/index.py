@@ -35,6 +35,7 @@ from .schemas import (
     Index,
     IndexEntry,
     LogbookEntry,
+    ScopeRef,
     SignOff,
 )
 from .store import PassportNotFoundError, PassportStore
@@ -93,38 +94,81 @@ def _sign_offs(
     return found
 
 
-def _logbook_counts(store: PassportStore, passport_id: str) -> dict[str, int]:
-    """How many entries each competency has.
+def _logbook_counts(
+    store: PassportStore, passport_id: str
+) -> tuple[dict[EntryKey, int], dict[EntryKey, ScopeRef]]:
+    """How many entries each competency has, scope by scope.
 
     Counts entries filed under the competency *and* entries filed
     elsewhere that name it in ``also_counts_towards``, so an unusual case
     logged once is counted everywhere it belongs without being
     duplicated on disk.
 
+    An entry is counted under the scope it names, and under no scope
+    where it names none. An entry counted towards another competency
+    through ``also_counts_towards`` carries no scope there: its scope is
+    one of the competency it is filed under, and means nothing to the
+    other.
+
     Args:
         store: Where the passport lives.
         passport_id: Whose passport.
 
     Returns:
-        Competency id to a count.
+        Competency id and scope id to a count, and the same key to the
+        scope as an entry recorded it, so an index entry with no
+        sign-off behind it can still name its scope in words.
     """
-    counts: dict[str, int] = defaultdict(int)
+    counts: dict[EntryKey, int] = defaultdict(int)
+    scopes: dict[EntryKey, ScopeRef] = {}
 
     for competency_dir in store.list_dir(passport_id, paths.LOGBOOK):
         competency = competency_dir.name
 
         for entry_path in store.list_dir(passport_id, competency_dir):
-            counts[competency] += 1
-
             entry = serialise.from_yaml(
                 LogbookEntry, store.read(passport_id, entry_path)
             )
 
+            scope_id = entry.scope.id if entry.scope is not None else None
+            counts[(competency, scope_id)] += 1
+            if entry.scope is not None:
+                scopes[(competency, scope_id)] = entry.scope
+
             for also in entry.also_counts_towards:
                 if also != competency:
-                    counts[also] += 1
+                    counts[(also, None)] += 1
 
-    return counts
+    return counts, scopes
+
+
+def evidence_for(
+    store: PassportStore,
+    passport_id: str,
+    competency_id: str,
+    scope_id: str | None,
+) -> tuple[int, list[str]]:
+    """What is logged and certified towards one competency and scope.
+
+    Args:
+        store: Where the passport lives.
+        passport_id: Whose passport.
+        competency_id: Which competency.
+        scope_id: Which of its scopes, or ``None`` for one assessed as a
+            whole.
+
+    Returns:
+        The number of logbook entries naming that scope, and the
+        certificate folders relating to the competency. A certificate
+        names no scope, so every scope of a competency sees them all.
+    """
+    logbook, _ = _logbook_counts(store, passport_id)
+    certificates = _certificates(store, passport_id)
+
+    return (
+        logbook.get((competency_id, scope_id), 0),
+        certificates.get(competency_id, []),
+    )
 
 
 def _certificates(
@@ -167,6 +211,9 @@ def _entry(
     sign_offs: list[tuple[str, SignOff]],
     logbook_entries: int,
     certificates: list[str],
+    *,
+    name: str | None = None,
+    scope: ScopeRef | None = None,
 ) -> IndexEntry:
     """One competency's line in the index.
 
@@ -175,6 +222,11 @@ def _entry(
         sign_offs: Its sign-offs, oldest first.
         logbook_entries: How many procedures are logged towards it.
         certificates: Certificate folders relating to it.
+        name: The competency's name, where another of its entries has
+            a sign-off to read it from. Used only where this one has
+            none.
+        scope: Which scope the entry is for, as a logbook entry recorded
+            it. Used only where there are no sign-offs to read it from.
 
     Returns:
         The entry. Where there are sign-offs the latest one supplies the
@@ -190,7 +242,11 @@ def _entry(
         # been signed.
         return IndexEntry(
             id=competency_id,
-            name=competency_id.replace("_", " ").capitalize(),
+            # The index is rebuilt with no catalogue to look a name up
+            # in, so with no sign-off anywhere for this competency the
+            # id stands in for it.
+            name=name or competency_id.replace("_", " ").capitalize(),
+            scope=scope,
             status="requested",
             logbook_entries=logbook_entries,
             certificates=certificates,
@@ -230,6 +286,30 @@ def _entry(
     )
 
 
+def competency_names(index: Index) -> dict[str, str]:
+    """Each competency in an index, once, with the name to show for it.
+
+    A competency signed off scope by scope has several entries and one
+    logbook, so anything listing a logbook wants each competency once.
+    An entry with a sign-off behind it carries the competency's real
+    name; one with only evidence carries a stand-in made from the id, so
+    the real name is preferred where an index holds both.
+
+    Args:
+        index: The index.
+
+    Returns:
+        Competency id to name, in name order.
+    """
+    names: dict[str, str] = {}
+
+    for entry in index.competencies:
+        if entry.id not in names or entry.sign_off is not None:
+            names[entry.id] = entry.name
+
+    return dict(sorted(names.items(), key=lambda item: item[1]))
+
+
 def build(
     store: PassportStore,
     passport_id: str,
@@ -257,16 +337,25 @@ def build(
         raise ValueError("Refusing a naive datetime: pass an aware one.")
 
     sign_offs = _sign_offs(store, passport_id)
-    logbook = _logbook_counts(store, passport_id)
+    logbook, logbook_scopes = _logbook_counts(store, passport_id)
     certificates = _certificates(store, passport_id)
 
+    # A competency's name as its latest sign-off recorded it, for any of
+    # its entries that have only evidence behind them.
+    names = {
+        competency_id: records[-1][1].competency.name
+        for (competency_id, _), records in sign_offs.items()
+    }
+
     # Every competency with any evidence at all, not just signed ones.
-    # One with a logbook or a certificate and no sign-off still gets an
-    # entry, with no scope: the evidence is there and nothing is signed.
-    signed = {competency_id for competency_id, _ in sign_offs}
-    keys: set[EntryKey] = set(sign_offs) | {
+    # Logbook entries get an entry for the scope they name even where
+    # nothing is signed for it: the evidence is there. A competency with
+    # only certificates gets one with no scope.
+    keys: set[EntryKey] = set(sign_offs) | set(logbook)
+    with_an_entry = {competency_id for competency_id, _ in keys}
+    keys |= {
         (competency_id, None)
-        for competency_id in (set(logbook) | set(certificates)) - signed
+        for competency_id in set(certificates) - with_an_entry
     }
 
     return Index(
@@ -276,11 +365,12 @@ def build(
             _entry(
                 competency_id,
                 sign_offs.get((competency_id, scope_id), []),
-                # Logbook entries and certificates say nothing about a
-                # scope, so each of a competency's entries reports them
-                # all.
-                logbook.get(competency_id, 0),
+                logbook.get((competency_id, scope_id), 0),
+                # A certificate names no scope, so each of a competency's
+                # entries reports them all.
                 certificates.get(competency_id, []),
+                name=names.get(competency_id),
+                scope=logbook_scopes.get((competency_id, scope_id)),
             )
             # An entry with no scope sorts before its competency's
             # scoped ones.
