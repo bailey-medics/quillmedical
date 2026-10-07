@@ -2,8 +2,9 @@
   A newsletter: from Mark, signed off with the brand's round avatar, with
   an unsubscribe link in the footer. A campaign extends this and fills
   `subject`, `preheader`, `body` and `text`. Context:
-    unsubscribe_url  the recipient's one-click unsubscribe link
-    preferences_url  where they choose what they receive
+    unsubscribe_url  the recipient's own unsubscribe link. There is one
+                     newsletter and one choice, so there is no second
+                     "preferences" link beside it: it led to the same page.
 -#}
 {% extends "base.html.j2" %}
 {% block body %}
@@ -26,8 +27,6 @@
 <p style="margin: 0 0 8px">{{ t.newsletter_reason }}</p>
 <p style="margin: 0 0 8px">
   <a href="{{ unsubscribe_url }}" style="color: {{ t.footer_link }}; text-decoration: underline">Unsubscribe</a>
-  &middot;
-  <a href="{{ preferences_url }}" style="color: {{ t.footer_link }}; text-decoration: underline">Update your preferences</a>
 </p>
 <p style="margin: 0">
   {{ t.sender_name }} is a trading name of Bailey Medics Ltd. Company number 15604352. Brooklands Place, Unit 5, Brooklands Road, Sale, Cheshire, M33 3SD.

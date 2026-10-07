@@ -14,14 +14,10 @@ import { Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@components/base-card/BaseCard";
 import SolidSwitch from "@components/form/SolidSwitch";
-import {
-  IconAlertCircle,
-  IconClock,
-  IconWifiOff,
-} from "@components/icons/appIcons";
+import { IconAlertCircle, IconWifiOff } from "@components/icons/appIcons";
 import { QuillLogo } from "@components/images";
-import { ResultMessage, StateMessage } from "@components/message-cards";
-import { BodyText } from "@components/typography";
+import { StateMessage } from "@components/message-cards";
+import { BodyText, Heading } from "@components/typography";
 
 /**
  * Where reading the link has got to: still asking, read, refused as not
@@ -66,14 +62,8 @@ export default function Unsubscribe({
       <BaseCard maw={380} mx="auto" mt="xl">
         <Stack>
           <PageHeader title="Email preferences" />
-          {status === "loading" && (
-            <StateMessage
-              icon={<IconClock />}
-              title="Finding your preferences…"
-              description="Please wait while we look up this link."
-              colour="info"
-            />
-          )}
+          {/* Nothing while loading: the answer comes back in a moment, and
+              a message that flashed up and was replaced read as a fault. */}
           {status === "invalid" && (
             <StateMessage
               icon={<IconAlertCircle />}
@@ -92,15 +82,14 @@ export default function Unsubscribe({
           )}
           {status === "ready" && (
             <>
+              {/* A heading, not a result card: the card it sat in is
+                  small, and a coloured box inside it shouted. */}
               {saved && (
-                <ResultMessage
-                  variant="success"
-                  title={
-                    wantsNews
-                      ? "You will be sent news and updates"
-                      : "You will not be sent news and updates"
-                  }
-                />
+                <Heading>
+                  {wantsNews
+                    ? "You will be sent news and updates"
+                    : "You will not be sent news and updates"}
+                </Heading>
               )}
               <BodyText>
                 News about Quill Medical, new courses and product updates

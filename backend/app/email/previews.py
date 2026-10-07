@@ -221,10 +221,7 @@ def previews() -> list[Preview]:
             id="newsletter",
             label="Newsletter",
             template="previews/newsletter_sample.html.j2",
-            context={
-                "unsubscribe_url": "#unsubscribe",
-                "preferences_url": "#preferences",
-            },
+            context={"unsubscribe_url": "#unsubscribe"},
         ),
     ]
 

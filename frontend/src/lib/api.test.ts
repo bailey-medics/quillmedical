@@ -231,6 +231,21 @@ describe("api.request", () => {
       expect(seen.to).toBeNull();
     });
 
+    it("leaves somebody on the unsubscribe page", async () => {
+      // The link in a newsletter is opened signed out as often as not.
+      // The page showed for a moment, AuthContext's /api/auth/me came
+      // back 401, and this handler replaced it with /login: found on
+      // the first real click, on 7 October 2026.
+      const seen = watchNavigation("/unsubscribe");
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ detail: "Not authenticated" }, 401),
+      );
+
+      await expect(api.get("/auth/me")).rejects.toThrow();
+
+      expect(seen.to).toBeNull();
+    });
+
     it("still sends an ordinary page to login", async () => {
       const seen = watchNavigation("/passport");
       vi.mocked(fetch).mockResolvedValue(

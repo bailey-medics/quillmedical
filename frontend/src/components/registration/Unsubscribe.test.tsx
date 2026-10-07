@@ -22,11 +22,19 @@ describe("Unsubscribe", () => {
     }
   });
 
-  it("shows only the waiting message while loading", () => {
+  // A waiting message used to show here. The answer arrives in a moment,
+  // so it flashed up and was replaced, which read as something going wrong.
+  it("shows the heading and nothing else while loading", () => {
     renderWithRouter(<Unsubscribe status="loading" />);
 
-    expect(screen.getByText("Finding your preferences…")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Email preferences" }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Finding your preferences/),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Please wait/)).not.toBeInTheDocument();
   });
 
   it("offers no switch for a link that is not real", () => {
@@ -112,19 +120,27 @@ describe("Unsubscribe", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("confirms an unsubscribe once it is saved", () => {
+  // A second-level heading: a coloured result card was too much for a
+  // card this small.
+  it("confirms an unsubscribe once it is saved, as a heading", () => {
     renderWithRouter(<Unsubscribe status="ready" wantsNews={false} saved />);
 
     expect(
-      screen.getByText("You will not be sent news and updates"),
+      screen.getByRole("heading", {
+        level: 2,
+        name: "You will not be sent news and updates",
+      }),
     ).toBeInTheDocument();
   });
 
-  it("confirms turning news back on once it is saved", () => {
+  it("confirms turning news back on once it is saved, as a heading", () => {
     renderWithRouter(<Unsubscribe status="ready" wantsNews saved />);
 
     expect(
-      screen.getByText("You will be sent news and updates"),
+      screen.getByRole("heading", {
+        level: 2,
+        name: "You will be sent news and updates",
+      }),
     ).toBeInTheDocument();
   });
 

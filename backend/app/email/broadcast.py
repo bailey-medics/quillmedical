@@ -33,12 +33,7 @@ def export(theme: EmailThemeName) -> str:
     rendered = render_email(
         "newsletter_broadcast.html.j2",
         theme,
-        {
-            "unsubscribe_url": RESEND_UNSUBSCRIBE_URL,
-            # Resend's unsubscribe page is also where a recipient manages
-            # which topics they get, so both links go to it.
-            "preferences_url": RESEND_UNSUBSCRIBE_URL,
-        },
+        {"unsubscribe_url": RESEND_UNSUBSCRIBE_URL},
     )
     return rendered["html_body"]
 
