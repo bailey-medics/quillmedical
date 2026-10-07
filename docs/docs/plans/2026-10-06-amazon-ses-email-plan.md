@@ -262,20 +262,22 @@ and certificates out of the United States.
       `test_certificate_email_recipients`, `test_email_verification` and
       `test_passport_invite_email`.
 
-- [ ] **Prove the backend's own send from the dev stack.** First
+- [x] **Prove the backend's own send from the dev stack.** First
       written as a sandbox test, but production access arrived before
-      the code did. Part is proven already, on 6 October 2026: the
-      Quill-themed verification email was rendered and built into a
-      message by the backend's code, sent through SES with the backend's
-      key, and arrived in the inbox signed by `quill-medical.com`. That
-      send was made from the command line, because the unit-test
-      container has no network by design, so the one link still untried
-      is the backend's own call to Amazon. Set `EMAIL_PROVIDER=ses` in
-      the dev stack with `EMAIL_ALLOWED_RECIPIENTS` naming Mark's
-      address, rebuild the backend image, which needs `boto3`, and send a
-      verification email, a password reset and a certificate. Take the
-      line out of `backend/.env` afterwards: the unit tests read that
-      file, and tests that mock Resend would try SES.
+      the code did. Done on 7 October 2026, with `EMAIL_PROVIDER=ses` in
+      the local `backend/.env` and `EMAIL_ALLOWED_RECIPIENTS` naming
+      Mark's addresses. The running dev backend sent, through its own
+      `send_email`: the Quill-themed verification email; the same layout
+      with a PDF attached; and a password reset, requested through
+      `POST /api/auth/forgot-password`, which took 0.4 seconds. All
+      three arrived, laid out correctly, the attachment present. Not
+      sent: a real certificate, which the app emails only when an
+      assessment is passed, and a verification from registering, since
+      every allowed address already had a dev account. The unit-test
+      container cannot do this test: it has no network by design. The
+      `EMAIL_PROVIDER` line came out of `backend/.env` afterwards,
+      because the unit tests read that file, and tests that mock Resend
+      would try SES.
 
 - [ ] **Switch teaching production to SES** once production access is
       granted: set `EMAIL_PROVIDER` to `ses` in `infra/main.tf`, re-run

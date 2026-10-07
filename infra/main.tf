@@ -442,6 +442,12 @@ module "cloud_run_backend" {
     {
       EMAIL_FROM    = "info@quill-medical.com"
       EMAIL_DRY_RUN = "false"
+      # Service email goes through Amazon SES in London, not Resend, so
+      # that it stays in the UK. Reversible: remove this line and the
+      # backend falls back to Resend, which stays configured until it is
+      # closed. The newsletter list is still Resend's. See
+      # docs/docs/plans/2026-10-06-amazon-ses-email-plan.md, Phase 3.
+      EMAIL_PROVIDER = "ses"
       # Who is told when somebody sends feedback. The notice carries a
       # link and never the message. An address, not a secret, so it sits
       # here in the open with the sender's.
