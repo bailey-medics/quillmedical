@@ -453,7 +453,19 @@ in the command that sends, and the tests have to pin it down.
       would be pressed by every mail scanner that follows links, which
       is the reason a mailbox's one-click is a `POST`. The route has no
       guard at all: `GuestOnly` would turn a signed-in person away, and
-      `RequireAuth` a signed-out one.
+      `RequireAuth` a signed-out one. **Four things changed on the
+      first real click,** in the dev stack on 7 October 2026, none of
+      which a test had shown. The page appeared and was at once
+      replaced by the login page: every page asks who is signed in, a
+      signed-out answer sends the browser to `/login`, and `/unsubscribe`
+      was missing from the list in `frontend/src/lib/api.ts` of pages
+      excused from that. The message shown while the link was read
+      flashed up and vanished, so nothing is shown while loading. The
+      coloured card confirming a change was too much for a card this
+      small, and is a second-level heading. And the footer's "Update
+      your preferences" link is gone from the newsletter: with one
+      newsletter and one choice it led to the same page as
+      "Unsubscribe" and added nothing.
 
 - [x] **Write the command that sends a newsletter.** SES has no screen
       to compose a broadcast and press send, so this is an admin action.

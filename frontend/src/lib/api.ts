@@ -224,6 +224,12 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
       // list at `/guides` is still kept signed-in by RequireAuth, and
       // GuidePage shows a 404 for a guide not marked `public`.
       "/guides",
+      // Opened from the link in a newsletter, often by somebody who is
+      // not signed in on this device. The signed token in the URL is
+      // what says whose preference it is. Without this the page showed
+      // for a moment and was then replaced by /login, which is an
+      // unsubscribe refused.
+      "/unsubscribe",
     ];
     const currentPath = window.location.pathname;
     const isGuestPath = guestPaths.some(

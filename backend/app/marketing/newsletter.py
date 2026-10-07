@@ -167,7 +167,7 @@ def _send_one(campaign: str, user: User) -> None:
     rendered = render_email(
         f"campaigns/{campaign}.html.j2",
         "quill",
-        {"unsubscribe_url": page, "preferences_url": page},
+        {"unsubscribe_url": page},
         from_name=FROM_NAME,
     )
     send_email(
@@ -251,7 +251,7 @@ def send_campaign(
             render_email(
                 f"campaigns/{campaign}.html.j2",
                 "quill",
-                {"unsubscribe_url": page, "preferences_url": page},
+                {"unsubscribe_url": page},
                 from_name=FROM_NAME,
             )
         except TemplateNotFound:
