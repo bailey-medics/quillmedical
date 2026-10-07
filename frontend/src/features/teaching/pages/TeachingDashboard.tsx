@@ -9,7 +9,6 @@
 import { Box, Center, SimpleGrid, Skeleton, Stack } from "@mantine/core";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import TeachingMainNav from "@/components/navigation/teaching/TeachingMainNav";
-import { GuideLink } from "@/components/guides";
 import PageHeader from "@components/typography/PageHeader";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -105,7 +104,6 @@ export default function TeachingDashboard() {
     <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
       <Stack gap="lg">
         <PageHeader title="Teaching modules" />
-        <GuideLink slug="take-a-module-and-its-assessment" />
 
         {liveBanks.length === 0 ? (
           <Center p="xl">

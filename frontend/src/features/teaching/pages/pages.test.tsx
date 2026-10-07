@@ -69,17 +69,6 @@ beforeEach(() => {
 });
 
 describe("TeachingDashboard", () => {
-  it("links to the guide to taking a module", async () => {
-    (api.get as Mock).mockResolvedValue([]);
-    renderWithRouter(<TeachingDashboard />);
-
-    expect(
-      await screen.findByRole("link", {
-        name: "Guide: Take a module and its assessment",
-      }),
-    ).toHaveAttribute("href", "/guides/take-a-module-and-its-assessment");
-  });
-
   it("shows loading state initially", () => {
     (api.get as Mock).mockReturnValue(new Promise(() => {})); // never resolves
     renderWithRouter(<TeachingDashboard />);

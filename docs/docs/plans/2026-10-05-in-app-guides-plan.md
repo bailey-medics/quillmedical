@@ -968,7 +968,57 @@ the lead's email and the module say everything.
       `validate_clinical_lead` returns its name. `RegistrationForm` has
       nowhere to show it.
 
+## Phase 16: Take the guide links off the signed-in pages
+
+Phase 5 put a "Guide: " link under the title of each page a guide
+describes, on the reasoning that somebody stuck looks at the page before
+the menu. Seen in use, the links are clutter: a signed-in reader has
+Guides in the navigation, and that is enough. This phase withdraws them.
+
+- [x] Remove `GuideLink` from the six pages that draw it:
+      `frontend/src/features/teaching/pages/TeachingDashboard.tsx`,
+      `frontend/src/pages/admin/teaching/AdminAllDelegatesPage.tsx`,
+      `frontend/src/pages/UserInfoUpdatePage.tsx`,
+      `frontend/src/pages/passport/PassportPage.tsx`,
+      `frontend/src/pages/passport/PassportSignOffPage.tsx` and
+      `frontend/src/pages/safety/SafetyPage.tsx`.
+- [x] Delete the component with its story and test, the whole of
+      `frontend/src/components/guides/`. Nothing else calls it.
+- [x] Remove the assertion for the link from each page's test:
+      `pages.test.tsx` beside the teaching dashboard,
+      `AdminAllDelegatesPage.test.tsx`, `UserInfoUpdatePage.test.tsx`,
+      `PassportPage.test.tsx`, `PassportSignOffPage.test.tsx` and
+      `SafetyPage.test.tsx`. Where a test mocks `useAuth` only because
+      the link asked for a signed-in user, as Phase 5 records for All
+      delegates, take the mock out too if nothing else needs it. It
+      came out of four: All delegates, the two passport pages and
+      Safety, which pass without a signed-in user. The new user form
+      and the teaching dashboard keep theirs, for the form's steps and
+      the sidebar; the form's mock loses only `enabled_features`.
+- [x] Keep the three "How to join a course" links of Phase 2, on the
+      login form, the registration form and the first view of
+      `/register`. Their reader is signed out and has no navigation to
+      find the guide in. They are plain `TextLink`s and never used
+      `GuideLink`.
+- [x] Keep `guidePath` and the `GuideSlug` type in
+      `frontend/src/guides/registry.ts`: the three links above and the
+      guides pages still use them.
+- [x] Check no guide's words or pictures point at a "Guide: " link on a
+      page. None was found in `frontend/src/guides/content/`, but the
+      screenshots of the six pages will lose the link when they are next
+      retaken, which needs nothing done.
+- [x] Take "Journey 4 again, for the guide links on the passport" off
+      the "Not yet run" list in
+      `docs/docs/frontend/accessibility/testing-log.md`. Phase 12 added
+      it for the two passport links, and there is no longer a link to
+      check.
+
 ## Decisions
+
+- **No guide links on signed-in pages** – the Guides entry in the
+  navigation is where a signed-in reader looks for help. Phase 5's links
+  were withdrawn in Phase 16. The signed-out "How to join a course"
+  links stay, because that reader has no navigation.
 
 - **Guides, not a FAQ** – every example that prompted this is a task with
   steps. A FAQ suits one-line answers and can be added later as one more

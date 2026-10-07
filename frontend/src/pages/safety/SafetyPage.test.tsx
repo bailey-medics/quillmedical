@@ -10,23 +10,6 @@ import { Component as SafetyPage } from "./SafetyPage";
 
 const navigate = vi.fn();
 
-// The page links to its guide, which is shown only to a reader the guide
-// is written for: somebody who uses safety cases, where safety is on.
-vi.mock("@/auth/AuthContext", () => ({
-  useAuth: () => ({
-    state: {
-      status: "authenticated",
-      user: {
-        id: "1",
-        username: "safety.officer",
-        email: "safety.officer@example.test",
-        enabled_features: ["safety"],
-        competencies: ["view_safety_cases"],
-      },
-    },
-  }),
-}));
-
 vi.mock("react-router-dom", async () => {
   const actual =
     await vi.importActual<typeof import("react-router-dom")>(
@@ -62,15 +45,5 @@ describe("SafetyPage", () => {
     renderWithRouter(<SafetyPage />);
     await userEvent.click(screen.getByText("Patient portal"));
     expect(navigate).toHaveBeenCalledWith("/safety/sc-002");
-  });
-
-  it("links to the guide that shows the way round", () => {
-    renderWithRouter(<SafetyPage />);
-
-    expect(
-      screen.getByRole("link", {
-        name: "Guide: Find your way round a safety case",
-      }),
-    ).toHaveAttribute("href", "/guides/find-your-way-round-a-safety-case");
   });
 });
