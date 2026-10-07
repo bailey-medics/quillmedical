@@ -59,6 +59,7 @@ def render_invite(
     expires_in_days: int,
     level_name: str | None = None,
     scope_name: str | None = None,
+    confirming_logbook: bool = False,
 ) -> InviteEmail:
     """Render the invitation, in the branded layout.
 
@@ -79,6 +80,10 @@ def render_invite(
             scale, so the assessor knows what they are judging.
         scope_name: What the sign-off covers, where the competency is
             signed off scope by scope: a tumour site, for instance.
+        confirming_logbook: Whether they are asked to confirm a logbook
+            entry and not to assess anything. Confirming says the
+            procedure happened as recorded, so the email must not call
+            it an assessment.
         expires_in_days: How long the link lasts, so the recipient knows
             whether they can leave it until after the weekend.
 
@@ -94,6 +99,7 @@ def render_invite(
             "competency_name": competency_name,
             "level_name": level_name,
             "scope_name": scope_name,
+            "confirming_logbook": confirming_logbook,
             "url": url,
             "expires_in_days": expires_in_days,
         },

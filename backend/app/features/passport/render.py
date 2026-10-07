@@ -227,6 +227,11 @@ def _logbook_section(
                     record.supervision,
                     record.indication,
                     record.outcome,
+                    (
+                        f"confirmed by {record.confirmed_by.name}"
+                        if record.confirmed_by
+                        else None
+                    ),
                 )
                 if part
             )

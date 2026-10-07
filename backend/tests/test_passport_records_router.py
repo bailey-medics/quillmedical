@@ -29,6 +29,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.features.passport import router
+from app.features.passport.models import PassportLogbookConfirmationRequest
 from app.features.passport.store import LocalPassportStore
 from app.main import app
 from app.models import (
@@ -742,3 +744,336 @@ class TestEvidenceNotYetBuilt:
         # dangling reference in a document whose whole claim is that it
         # can be checked years later.
         assert response.status_code == 400
+
+
+class TestConfirmingALogbookEntry:
+    """A supervisor's name beside one entry, as a paper log carries it.
+
+    Optional and asked for by the holder. It says the procedure happened
+    as recorded, and nothing about competence: that is a sign-off.
+    """
+
+    URL = "/api/passport/requests/logbook-confirmations"
+
+    @pytest.fixture
+    def mailed(self, monkeypatch: pytest.MonkeyPatch) -> list[str]:
+        sent: list[str] = []
+        monkeypatch.setattr(
+            router, "send_email", lambda **kw: sent.append(str(kw["to"]))
+        )
+        return sent
+
+    def _log(
+        self,
+        client: TestClient,
+        passport_id: str,
+        supervisor: User | None,
+    ) -> str:
+        body: dict[str, object] = {"performed_on": "2026-03-12"}
+        if supervisor is not None:
+            body["confirmer_email"] = supervisor.email
+        response = client.post(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}", json=body
+        )
+        assert response.status_code == 201, response.text
+        return str(response.json()["name"])
+
+    def _ask(self, db: Session) -> PassportLogbookConfirmationRequest:
+        row = db.query(PassportLogbookConfirmationRequest).one()
+        return row
+
+    def _entry(
+        self, client: TestClient, passport_id: str
+    ) -> dict[str, object]:
+        body = client.get(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}"
+        ).json()
+        return dict(body["entries"][0])
+
+    def test_nobody_is_asked_unless_the_holder_names_somebody(
+        self,
+        passport: tuple[TestClient, str],
+        db_session: Session,
+        mailed: list[str],
+    ) -> None:
+        client, passport_id = passport
+
+        self._log(client, passport_id, None)
+
+        assert mailed == []
+        assert (
+            db_session.query(PassportLogbookConfirmationRequest).count() == 0
+        )
+        entry = self._entry(client, passport_id)
+        assert entry["confirmation_asked_of"] is None
+        assert entry["confirmed_by"] is None
+
+    def test_naming_a_supervisor_emails_them_and_records_the_ask(
+        self,
+        passport: tuple[TestClient, str],
+        assessor: User,
+        db_session: Session,
+        mailed: list[str],
+    ) -> None:
+        client, passport_id = passport
+
+        stem = self._log(client, passport_id, assessor)
+
+        assert mailed == [assessor.email]
+        ask = self._ask(db_session)
+        assert ask.entry_stem == stem
+        assert ask.status == "open"
+        assert self._entry(client, passport_id)["confirmation_asked_of"] == (
+            assessor.email
+        )
+
+    def test_a_holder_cannot_ask_themselves(
+        self,
+        passport: tuple[TestClient, str],
+        holder: User,
+        mailed: list[str],
+    ) -> None:
+        client, passport_id = passport
+
+        response = client.post(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
+            json={
+                "performed_on": "2026-03-12",
+                "confirmer_email": holder.email,
+            },
+        )
+
+        assert response.status_code == 400, response.text
+        assert mailed == []
+
+    def test_a_failed_email_saves_no_entry_and_no_ask(
+        self,
+        passport: tuple[TestClient, str],
+        assessor: User,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """As with a sign-off request: no mail, no ask."""
+        client, passport_id = passport
+
+        def _explode(**_kwargs: object) -> None:
+            raise RuntimeError("mail server unreachable")
+
+        monkeypatch.setattr(router, "send_email", _explode)
+
+        response = client.post(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
+            json={
+                "performed_on": "2026-03-12",
+                "confirmer_email": assessor.email,
+            },
+        )
+
+        assert response.status_code == 502, response.text
+        assert (
+            db_session.query(PassportLogbookConfirmationRequest).count() == 0
+        )
+        assert (
+            client.get(
+                f"/api/passport/{passport_id}/logbook/{COMPETENCY}"
+            ).json()["count"]
+            == 0
+        )
+
+    def test_the_supervisor_reads_that_entry_and_confirms_it(
+        self,
+        passport: tuple[TestClient, str],
+        assessor: User,
+        db_session: Session,
+        mailed: list[str],
+    ) -> None:
+        client, passport_id = passport
+        self._log(client, passport_id, assessor)
+        ask_id = self._ask(db_session).id
+
+        supervisor = _login(client, "assessor")
+        shown = supervisor.get(f"{self.URL}/{ask_id}")
+        assert shown.status_code == 200, shown.text
+        assert shown.json()["holder_name"] == "Dr Holder"
+        assert shown.json()["entry"]["performed_on"] == "2026-03-12"
+
+        answer = supervisor.post(
+            f"{self.URL}/{ask_id}", json={"confirmed": True}
+        )
+        assert answer.status_code == 200, answer.text
+        assert answer.json() == {"status": "confirmed"}
+
+        db_session.expire_all()
+        assert self._ask(db_session).status == "confirmed"
+
+        holder_client = _login(client, "holder")
+        entry = self._entry(holder_client, passport_id)
+        confirmed_by = entry["confirmed_by"]
+        assert isinstance(confirmed_by, dict)
+        assert confirmed_by["name"] == "Dr Assessor"
+        assert confirmed_by["registrations"] == [
+            {"body": "GMC", "number": "1234567"}
+        ]
+        assert entry["confirmed_at"] is not None
+        assert entry["confirmation_asked_of"] is None
+
+    def test_an_answered_ask_cannot_be_answered_again(
+        self,
+        passport: tuple[TestClient, str],
+        assessor: User,
+        db_session: Session,
+        mailed: list[str],
+    ) -> None:
+        client, passport_id = passport
+        self._log(client, passport_id, assessor)
+        ask_id = self._ask(db_session).id
+        supervisor = _login(client, "assessor")
+        supervisor.post(f"{self.URL}/{ask_id}", json={"confirmed": True})
+
+        again = supervisor.post(
+            f"{self.URL}/{ask_id}", json={"confirmed": True}
+        )
+
+        assert again.status_code == 404, again.text
+
+    def test_declining_closes_the_ask_and_leaves_the_entry_alone(
+        self,
+        passport: tuple[TestClient, str],
+        assessor: User,
+        db_session: Session,
+        mailed: list[str],
+    ) -> None:
+        client, passport_id = passport
+        self._log(client, passport_id, assessor)
+        ask_id = self._ask(db_session).id
+
+        supervisor = _login(client, "assessor")
+        answer = supervisor.post(
+            f"{self.URL}/{ask_id}", json={"confirmed": False}
+        )
+        assert answer.json() == {"status": "declined"}
+
+        holder_client = _login(client, "holder")
+        entry = self._entry(holder_client, passport_id)
+        assert entry["confirmed_by"] is None
+        assert entry["confirmation_asked_of"] is None
+
+    def test_somebody_who_was_not_asked_is_told_nothing(
+        self,
+        passport: tuple[TestClient, str],
+        assessor: User,
+        org: OrgUnit,
+        db_session: Session,
+        mailed: list[str],
+    ) -> None:
+        """Not even that there is something to confirm."""
+        client, passport_id = passport
+        # A colleague where the passport is switched on, so it is the ask
+        # that refuses them and not the feature.
+        bystander_user = _make_user(
+            db_session, "bystander", profession="consultant"
+        )
+        add_org_unit_member(db_session, org.id, bystander_user.id, "staff")
+        db_session.commit()
+        self._log(client, passport_id, assessor)
+        ask_id = self._ask(db_session).id
+
+        bystander = _login(client, "bystander")
+
+        assert bystander.get(f"{self.URL}/{ask_id}").status_code == 404
+        assert (
+            bystander.post(
+                f"{self.URL}/{ask_id}", json={"confirmed": True}
+            ).status_code
+            == 404
+        )
+
+    def test_being_asked_opens_nothing_else_of_the_passport(
+        self,
+        passport: tuple[TestClient, str],
+        assessor: User,
+        db_session: Session,
+        mailed: list[str],
+    ) -> None:
+        client, passport_id = passport
+        self._log(client, passport_id, assessor)
+
+        supervisor = _login(client, "assessor")
+
+        assert (
+            supervisor.get(
+                f"/api/passport/{passport_id}/logbook/{COMPETENCY}"
+            ).status_code
+            == 404
+        )
+
+    def test_amending_a_confirmed_entry_clears_the_confirmation(
+        self,
+        passport: tuple[TestClient, str],
+        assessor: User,
+        db_session: Session,
+        mailed: list[str],
+    ) -> None:
+        """They confirmed what it said then, not what it says now."""
+        client, passport_id = passport
+        stem = self._log(client, passport_id, assessor)
+        ask_id = self._ask(db_session).id
+        _login(client, "assessor").post(
+            f"{self.URL}/{ask_id}", json={"confirmed": True}
+        )
+
+        holder_client = _login(client, "holder")
+        changed = holder_client.patch(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}/{stem}",
+            json={"performed_on": "2026-03-13"},
+        )
+        assert changed.status_code == 200, changed.text
+
+        assert self._entry(holder_client, passport_id)["confirmed_by"] is None
+
+    def test_asking_again_on_an_amended_entry_reopens_the_one_ask(
+        self,
+        passport: tuple[TestClient, str],
+        assessor: User,
+        db_session: Session,
+        mailed: list[str],
+    ) -> None:
+        client, passport_id = passport
+        stem = self._log(client, passport_id, assessor)
+        ask_id = self._ask(db_session).id
+        _login(client, "assessor").post(
+            f"{self.URL}/{ask_id}", json={"confirmed": True}
+        )
+
+        holder_client = _login(client, "holder")
+        holder_client.patch(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}/{stem}",
+            json={
+                "performed_on": "2026-03-13",
+                "confirmer_email": assessor.email,
+            },
+        )
+
+        db_session.expire_all()
+        ask = self._ask(db_session)
+        assert ask.id == ask_id
+        assert ask.status == "open"
+        assert mailed == [assessor.email, assessor.email]
+
+    def test_removing_an_entry_removes_its_ask(
+        self,
+        passport: tuple[TestClient, str],
+        assessor: User,
+        db_session: Session,
+        mailed: list[str],
+    ) -> None:
+        client, passport_id = passport
+        stem = self._log(client, passport_id, assessor)
+
+        client.delete(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}/{stem}"
+        )
+
+        assert (
+            db_session.query(PassportLogbookConfirmationRequest).count() == 0
+        )

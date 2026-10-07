@@ -427,31 +427,54 @@ declares no scopes behaves exactly as it does today.
 ## Phase 5: A supervisor can confirm a logbook entry
 
 The paper logs carry a supervisor's signature beside each prescription. This
-is optional: most entries stay the holder's own claim.
+is optional: most entries stay the holder's own claim. Built in two units,
+the record and its routes first and the interface second, so the steps are
+in that order.
 
-- [ ] **Record the confirmation on the entry**: who confirmed, as the same
+- [x] **Record the confirmation on the entry**: who confirmed, as the same
       frozen `Assessor` snapshot a sign-off carries, and when. Amending a
-      confirmed entry clears the confirmation and tells the holder so,
-      because the supervisor confirmed what the entry said at the time.
-      Self-confirmation is refused, as self-sign-off is.
-- [ ] **Add the ask as its own table**, since a supervisor's inbox spans
+      confirmed entry clears the confirmation, because the supervisor
+      confirmed what the entry said at the time. Self-confirmation is
+      refused, as self-sign-off is. It is not a sign-off: it says the
+      procedure happened as recorded, and nothing about competence.
+- [x] **Add the ask as its own table**, since a supervisor's inbox spans
       many passports and files cannot answer that. A row naming the
       passport, the competency, the entry and the supervisor's address,
       closing when the entry is confirmed: the shape of
       `passport_signoff_request`, which cannot be reused because its
-      `signoff_id` is not nullable. Create the migration with
-      `just migrate`.
-- [ ] **Let the holder ask** by naming a supervisor's address on
-      `LogbookEntryForm`. Nothing is asked unless they do.
-- [ ] **Let the supervisor confirm from the inbox** at `/inbox`, with a
-      tickbox against the entry. A tickbox and not a switch: it is saved
-      with the form like any other field, where a switch implies it takes
-      effect at once.
-- [ ] **Mark confirmed entries** in `LogbookTable` and the exports, with
-      the supervisor's name.
-- [ ] **Tests**: the ask, the confirmation, self-confirmation refused, an
-      amended entry losing its confirmation, the inbox listing both kinds
-      of request.
+      `signoff_id` is not nullable. One row per entry, reopened if the
+      holder asks again. Created with `just migrate`.
+- [x] **Let the holder ask** by naming a supervisor's address when adding
+      or amending an entry, as `confirmer_email` on the logbook API.
+      Nothing is asked unless they do. The supervisor is emailed before
+      the entry is written, so a failed send saves nothing, as with a
+      sign-off request. Somebody with no account is invited by the same
+      email and the same invitation a sign-off request sends, with its
+      wording changed to say they are confirming an entry and not
+      assessing. Asks count towards the same daily limit as sign-off
+      requests.
+- [x] **Let the supervisor read that one entry and answer**, at
+      `/api/passport/requests/logbook-confirmations/{id}`: confirm, or say
+      it is not theirs to confirm, which closes the ask and leaves the
+      entry alone. Being asked opens nothing else of the passport.
+- [x] **List the asks in the inbox**, as a new source,
+      `passport_logbook_confirmation`, beside sign-off requests.
+- [x] **Name the confirmer in the Markdown export.** The PDF prints the
+      logbook as counts by year and lists no entries, so it has nothing to
+      mark.
+- [x] **Tests**: the ask, the confirmation, self-confirmation refused, an
+      amended entry losing its confirmation, a stranger told nothing, the
+      inbox listing the new source.
+- [ ] **Offer the ask on `LogbookEntryForm`**, as an optional address, and
+      warn that saving a confirmed entry removes its confirmation.
+- [ ] **Add the page a supervisor confirms on**, reached from the inbox,
+      with a tickbox against the entry. A tickbox and not a switch: it is
+      saved with the form like any other field, where a switch implies it
+      takes effect at once.
+- [ ] **Mark confirmed entries** in `LogbookTable` and on the entry's own
+      page, with the supervisor's name, and say who an entry is waiting
+      on.
+- [ ] **Tests and stories** for each.
 
 ## Phase 6: Frameworks in the catalogue
 

@@ -27,7 +27,11 @@ from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.features.passport import definitions, service
-from app.features.passport.models import Passport, PassportSignOffRequest
+from app.features.passport.models import (
+    Passport,
+    PassportLogbookConfirmationRequest,
+    PassportSignOffRequest,
+)
 from app.feedback.labels import (
     CATEGORY_LABELS,
     SENDER_STATUS_LABELS,
@@ -317,6 +321,100 @@ def _sign_off_lines(db: Session, user: User, done: bool) -> list[InboxLine]:
     ]
 
 
+_CONFIRMATION_STATUS_LABELS: dict[str, str] = {
+    "open": "Waiting",
+    "confirmed": "Confirmed",
+    "declined": "Not confirmed",
+}
+
+
+def _asked_to_confirm(user: User) -> ColumnElement[bool] | None:
+    """The logbook confirmations that name *user* as supervisor, or None.
+
+    By address, as a sign-off request names its assessor, and None for
+    the same people: somebody with no address, or who may not assess,
+    would be refused by the passport's routes.
+    """
+    if not user.email:
+        return None
+    if "assess_clinician_passport" not in user.get_final_competencies():
+        return None
+    return (
+        func.lower(PassportLogbookConfirmationRequest.supervisor_email)
+        == user.email.strip().lower()
+    )
+
+
+def _logbook_confirmation_count(db: Session, user: User) -> int:
+    """Logbook entries waiting on the caller to confirm.
+
+    An ask waits until the supervisor confirms the entry or says it is
+    not theirs to confirm.
+    """
+    asked = _asked_to_confirm(user)
+    if asked is None:
+        return 0
+    return int(
+        db.scalar(
+            select(func.count())
+            .select_from(PassportLogbookConfirmationRequest)
+            .where(asked, PassportLogbookConfirmationRequest.status == "open")
+        )
+        or 0
+    )
+
+
+def _logbook_confirmation_lines(
+    db: Session, user: User, done: bool
+) -> list[InboxLine]:
+    """Logbook entries the caller was asked to confirm: open, or answered.
+
+    The line names the clinician who asked and the competency the entry
+    is logged under. What the entry says is read on its own page, which
+    the row's id addresses.
+    """
+    asked = _asked_to_confirm(user)
+    if asked is None:
+        return []
+    is_open = PassportLogbookConfirmationRequest.status == "open"
+    when = (
+        func.coalesce(
+            PassportLogbookConfirmationRequest.resolved_at,
+            PassportLogbookConfirmationRequest.created_at,
+        )
+        if done
+        else PassportLogbookConfirmationRequest.created_at
+    )
+    rows = db.execute(
+        select(
+            PassportLogbookConfirmationRequest, User.full_name, User.username
+        )
+        .join(
+            Passport,
+            Passport.id == PassportLogbookConfirmationRequest.passport_id,
+        )
+        .join(User, User.id == Passport.user_id)
+        .where(asked, ~is_open if done else is_open)
+        .order_by(when.desc(), PassportLogbookConfirmationRequest.id.desc())
+        .limit(MAX_ITEMS)
+    ).all()
+    return [
+        InboxLine(
+            id=request.id,
+            title=f"Logbook entry to confirm from {full_name or username}",
+            detail=_competency_name(request.competency_id),
+            status=_CONFIRMATION_STATUS_LABELS.get(request.status),
+            created_at=(
+                (request.resolved_at or request.created_at)
+                if done
+                else request.created_at
+            ),
+            done=request.status != "open",
+        )
+        for request, full_name, username in rows
+    ]
+
+
 #: Every source, in the order the inbox counts them. The key is what the
 #: API returns and what the frontend keys its addresses on, so it is part
 #: of the API: renaming one is a breaking change.
@@ -329,5 +427,9 @@ SOURCES: dict[str, InboxSource] = {
     ),
     "passport_sign_off": InboxSource(
         count=_sign_off_count, lines=_sign_off_lines
+    ),
+    "passport_logbook_confirmation": InboxSource(
+        count=_logbook_confirmation_count,
+        lines=_logbook_confirmation_lines,
     ),
 }
