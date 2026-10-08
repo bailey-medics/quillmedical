@@ -17,7 +17,7 @@ import BaseCard from "@components/base-card/BaseCard";
 import { ButtonPair } from "@components/button";
 import { IconAlertCircle, IconAlertTriangle } from "@components/icons/appIcons";
 import { ResultMessage, StateMessage } from "@components/message-cards";
-import MediaDropzone from "@components/teaching/module-media-card/MediaDropzone";
+import MediaDropzone from "@components/media-dropzone";
 import { BodyText, Heading } from "@components/typography";
 import type { MailingListSummary } from "@lib/newsletter/api";
 

@@ -10,7 +10,6 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Stack } from "@mantine/core";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import MediaDropzone, { type MediaDropzoneProps } from "./MediaDropzone";
-import { ACCEPTED_VIDEO_TYPES } from "./mediaFormat";
 import { StoryNote } from "@/stories/variants";
 
 const meta: Meta<typeof MediaDropzone> = {
@@ -23,7 +22,7 @@ const meta: Meta<typeof MediaDropzone> = {
   // is no default list in the component itself.
   args: {
     onDrop: () => {},
-    accept: ACCEPTED_VIDEO_TYPES,
+    accept: ["video/mp4", "video/webm", "video/quicktime"],
     label: "Drop a video or click to browse",
   },
 };
