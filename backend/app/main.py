@@ -2391,9 +2391,10 @@ def _require_account_in_scope(current_user: User, target: User) -> None:
 
     A change of profession, name, email or password, a deactivation, a
     reactivation or an invite acts on the whole account. A scoped manager
-    such as ``manage_teaching`` may do these only for somebody whose
-    profession they could have given, so a clinician who also sits
-    teaching assessments stays out of their reach.
+    such as ``manage_teaching`` may do these only for somebody whose every
+    competency is one they may grant, so a clinician who also sits
+    teaching assessments stays out of their reach, and so does a delegate
+    who holds anything more.
 
     Raises:
         HTTPException: 403 if the account is outside their scope.

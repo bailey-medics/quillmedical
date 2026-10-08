@@ -15,6 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.cbac.grants import sync_competency_rows
 from app.models import OrgUnit, User
 from app.organisations import add_org_unit_member, get_member_org_unit_ids
 from app.security import hash_password
@@ -254,6 +255,45 @@ class TestWhatATeachingAdminMayNotDo:
             f"/api/users/{consultant.id}",
             json={"password": "Takeover123!"},
         )
+        assert resp.status_code == 403
+
+    def test_reset_the_password_of_a_delegate_holding_manage_users(
+        self, client: TestClient, delegate: User, db_session: Session
+    ) -> None:
+        """A teaching profession does not put an account within reach.
+
+        The delegate's profession is one a teaching admin may give, but
+        they also hold ``manage_users``. Resetting their password would
+        let the teaching admin sign in as them and hold the root
+        competency, so the account is judged by what it holds.
+        """
+        sync_competency_rows(
+            delegate, additional=["manage_users"], removed=[], source="admin"
+        )
+        db_session.commit()
+
+        resp = client.patch(
+            f"/api/users/{delegate.id}",
+            json={"password": "Takeover123!"},
+        )
+
+        assert resp.status_code == 403
+
+    @pytest.mark.parametrize("action", ["deactivate", "send-invite"])
+    def test_act_on_a_delegate_holding_manage_users(
+        self,
+        client: TestClient,
+        delegate: User,
+        db_session: Session,
+        action: str,
+    ) -> None:
+        sync_competency_rows(
+            delegate, additional=["manage_users"], removed=[], source="admin"
+        )
+        db_session.commit()
+
+        resp = client.post(f"/api/users/{delegate.id}/{action}")
+
         assert resp.status_code == 403
 
     @pytest.mark.parametrize("action", ["deactivate", "send-invite"])

@@ -701,7 +701,26 @@ def passport_only_competency_ids(ids: Iterable[str]) -> list[str]:
 
 
 def validate_competency_ids(ids: Iterable[str]) -> list[str]:
-    """Validate ids at a write boundary, where retired means refused.
+    """Check that every id may be granted as a permission in the app.
+
+    **"Granted" here means given to a user so they can do something in
+    Quill**: open a page, see a record, take an action. It does not mean
+    signed off inside a clinician passport. A passport records that
+    somebody is competent at a thing; that is evidence about a person, and
+    unlocks nothing in the app. The two share the one catalogue, which is
+    why this check exists.
+
+    Called at a write boundary: wherever a competency is about to be
+    stored as a permission, so a bad id never reaches the database. Three
+    checks, in this order, each with its own message because each means
+    something different to whoever is fixing it:
+
+    - **Unknown**: not in the catalogue at all. A typo.
+    - **Retired**: in the catalogue, but no longer newly granted. People
+      who already hold it keep it.
+    - **Passport-only**: an item of a framework marked ``passport_only``,
+      a statement from a paper form. It can be signed off in a passport
+      and was never a permission, so no user is granted it.
 
     Args:
         ids: Competency ids to validate.
@@ -710,11 +729,7 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
         The same ids, as a list.
 
     Raises:
-        ValueError: If any id is unrecognised, recognised but retired, or
-            an item of a passport-only framework. Each is reported
-            differently: one is a typo, one a competency that may no
-            longer be newly granted, and one a statement on a paper form
-            that was never a permission.
+        ValueError: If any id is unknown, retired or passport-only.
     """
     checked = list(ids)
 
