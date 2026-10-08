@@ -224,8 +224,6 @@ const NO_LINK: Record<string, string> = {
     "Opened from the link in a newsletter, signed in or not. It shows the sign-in pages' card and no menu.",
   "/passport/assessors/accept":
     "The invite landing, opened by somebody with no account.",
-  "/passport/verify/:signOffId":
-    "Opened from the QR code on a printed passport, with no session.",
   "/teaching/assessment/:id":
     "An exam in progress shows the question and nothing else.",
   "/teaching/learn/:moduleId": "Only redirects to the module's first slide.",

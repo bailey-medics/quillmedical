@@ -27,4 +27,3 @@ export { Component as PassportReflectionsPage } from "./PassportReflectionsPage"
 export { Component as PassportSignOffDetailPage } from "./PassportSignOffDetailPage";
 export { Component as PassportSignOffPage } from "./PassportSignOffPage";
 export { Component as PassportSignOffsPage } from "./PassportSignOffsPage";
-export { Component as PassportVerifyPage } from "./PassportVerifyPage";

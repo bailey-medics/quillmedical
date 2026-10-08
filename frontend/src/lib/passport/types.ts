@@ -395,24 +395,6 @@ export interface SignOffResult {
 }
 
 /**
- * Whether a sign-off still matches its own fingerprint.
- *
- * `proves` and `does_not_prove` are text because the limits matter as
- * much as the result, and both should be shown to the reader rather than
- * summarised into a tick. A match shows the record has not changed since
- * it was written; it does not prove a professional registration, and it
- * proves nothing to a reader who distrusts Quill.
- */
-export interface Verification {
-  name: string;
-  unchanged: boolean;
-  content_hash: string | null;
-  recomputed_hash: string | null;
-  proves: string;
-  does_not_prove: string;
-}
-
-/**
  * A file that has been stored, and the hash a record names it by.
  *
  * Passed straight back into the record being written: this is the only

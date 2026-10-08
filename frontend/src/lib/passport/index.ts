@@ -50,7 +50,6 @@ export {
   saveAppraisalPeriods,
   setPassportFrameworks,
   signOff,
-  verifySignOff,
   withdrawSignOff,
 } from "./api";
 
@@ -100,7 +99,6 @@ export type {
   SignOffResult,
   SignOffStatus,
   Supervision,
-  Verification,
   AppraisalPeriod,
 } from "./types";
 

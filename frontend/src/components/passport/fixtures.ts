@@ -20,7 +20,6 @@ import type {
   Registration,
   InboxItem,
   SignOff,
-  Verification,
 } from "@lib/passport";
 // From its own module, not the barrel: page tests mock "@lib/passport"
 // and would otherwise hide it from this file.
@@ -225,23 +224,6 @@ export const signOffs: SignOff[] = [requested, signedOff, declined];
 export const inboxItem: InboxItem = {
   passport_id: "3f2a8c1e",
   sign_off: requested,
-};
-
-export const unchangedVerification: Verification = {
-  name: "2026-03-14-perform-bronchoscopy",
-  unchanged: true,
-  content_hash: "sha256:7f4e9a21bc0d",
-  recomputed_hash: "sha256:7f4e9a21bc0d",
-  proves:
-    "This record has not changed since it was written, and a named account signed it off.",
-  does_not_prove:
-    "It does not prove a professional registration, and it proves nothing to anyone who distrusts Quill itself.",
-};
-
-export const changedVerification: Verification = {
-  ...unchangedVerification,
-  unchanged: false,
-  recomputed_hash: "sha256:0000deadbeef",
 };
 
 /**

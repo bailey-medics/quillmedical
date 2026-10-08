@@ -886,13 +886,11 @@ export const routes: RouteObject[] = [
     ],
   },
 
-  // Passport – the two public pages, in the same lazy chunk as the rest.
+  // Passport – the one public page, in the same lazy chunk as the rest.
   //
-  // Two routes sit out here rather than inside RequireAuth: the invite
-  // landing, which somebody with no Quill account at all must be able to
-  // open, and the verify page, which the QR code on a printed passport
-  // opens for a reader who may have no session either. Both authenticate
-  // on the signed token or the record id in the URL instead.
+  // It sits out here rather than inside RequireAuth: the invite landing,
+  // which somebody with no Quill account at all must be able to open. It
+  // authenticates on the signed token in the URL instead.
   //
   // `handle` stays on the route object, never inside the lazy module:
   // isRouteSafeForReload reads it synchronously, before the module has
@@ -901,11 +899,6 @@ export const routes: RouteObject[] = [
   {
     path: "/passport/assessors/accept",
     lazy: lazyFrom(loadPassport, "PassportAcceptInvitePage"),
-    handle: { safeForReload: true },
-  },
-  {
-    path: "/passport/verify/:signOffId",
-    lazy: lazyFrom(loadPassport, "PassportVerifyPage"),
     handle: { safeForReload: true },
   },
 

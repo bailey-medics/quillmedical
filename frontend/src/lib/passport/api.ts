@@ -64,7 +64,6 @@ import type {
   SignOffRequestInput,
   WholeLogbook,
   SignOffResult,
-  Verification,
 } from "./types";
 
 /**
@@ -311,19 +310,6 @@ export function withdrawSignOff(
 ): Promise<SignOffResult> {
   return api.post<SignOffResult>(
     `/passport/${segment(passportId)}/sign-offs/${segment(signOffId)}/withdraw`,
-  );
-}
-
-/**
- * Recomputes a sign-off's hash and reports whether the record is
- * unchanged. Readable by anyone who may read the sign-off.
- */
-export function verifySignOff(
-  passportId: string,
-  signOffId: string,
-): Promise<Verification> {
-  return api.get<Verification>(
-    `/passport/${segment(passportId)}/sign-offs/${segment(signOffId)}/verify`,
   );
 }
 
