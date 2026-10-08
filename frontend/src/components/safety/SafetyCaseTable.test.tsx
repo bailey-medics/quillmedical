@@ -20,7 +20,7 @@ describe("SafetyCaseTable", () => {
 
   it("shows the system, standard, officer and status", () => {
     renderWithRouter(<SafetyCaseTable cases={[SAFETY_CASES[0]]} />);
-    expect(screen.getByText("MedScribe EPMA 4.2")).toBeInTheDocument();
+    expect(screen.getByText("Tessaly EPMA 4.2")).toBeInTheDocument();
     expect(screen.getByText("DCB0129")).toBeInTheDocument();
     expect(screen.getByText("Dr Hannah Okafor")).toBeInTheDocument();
     expect(screen.getByText("In review")).toBeInTheDocument();

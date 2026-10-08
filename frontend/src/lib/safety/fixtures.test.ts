@@ -113,7 +113,7 @@ describe("safety documents", () => {
       content: "Made by {{ supplier_name }} for {{ nobody }}.",
     };
     expect(renderDocument(document, SAFETY_CASES[0].placeholders)).toBe(
-      "Made by MedScribe Health Ltd for {{ nobody }}.",
+      "Made by Tessaly Health Ltd for {{ nobody }}.",
     );
     expect(placeholderKeysIn(document)).toEqual(["supplier_name", "nobody"]);
   });

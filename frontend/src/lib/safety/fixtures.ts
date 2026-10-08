@@ -425,7 +425,7 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
   {
     id: "sc-001",
     title: "Electronic prescribing module",
-    system: "MedScribe EPMA 4.2",
+    system: "Tessaly EPMA 4.2",
     standard: "DCB0129",
     status: "in_review",
     clinical_safety_officer: "Dr Hannah Okafor",
@@ -466,12 +466,12 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
     ],
     officers: officers("Dr Hannah Okafor", "Dr Tom Reilly", "Sarah Lindqvist"),
     sign_off: STANDARD_SIGN_OFF("Dr Hannah Okafor", false, true),
-    placeholders: placeholders("MedScribe EPMA", "4.2", "MedScribe Health Ltd"),
+    placeholders: placeholders("Tessaly EPMA", "4.2", "Tessaly Health Ltd"),
   },
   {
     id: "sc-002",
     title: "Patient portal",
-    system: "MyCare portal 2.0",
+    system: "Orrin portal 2.0",
     standard: "DCB0160",
     status: "signed_off",
     clinical_safety_officer: "Dr Tom Reilly",
@@ -497,7 +497,7 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
     ],
     officers: officers("Dr Tom Reilly", "Dr Hannah Okafor", "James Whitfield"),
     sign_off: STANDARD_SIGN_OFF("Dr Tom Reilly", true),
-    placeholders: placeholders("MyCare portal", "2.0", "Northgate Digital"),
+    placeholders: placeholders("Orrin portal", "2.0", "Wexcombe Digital"),
   },
   {
     id: "sc-003",
@@ -576,7 +576,7 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
       "James Whitfield",
     ),
     sign_off: STANDARD_SIGN_OFF("Dr Hannah Okafor", false),
-    placeholders: placeholders("WardView", "3.1", "Northgate Digital"),
+    placeholders: placeholders("WardView", "3.1", "Wexcombe Digital"),
   },
   {
     id: "sc-005",
@@ -611,7 +611,7 @@ export const SAFETY_CASES: readonly SafetyCaseDetail[] = [
       "Sarah Lindqvist",
     ),
     sign_off: STANDARD_SIGN_OFF("Dr Amara Diallo", true),
-    placeholders: placeholders("LetterFlow", "5.0", "MedScribe Health Ltd"),
+    placeholders: placeholders("LetterFlow", "5.0", "Tessaly Health Ltd"),
   },
 ];
 

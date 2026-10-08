@@ -21,7 +21,7 @@ describe("PlaceholderForm", () => {
       />,
     );
     expect(screen.getByLabelText(/^product_name\b/)).toHaveValue(
-      "MedScribe EPMA",
+      "Tessaly EPMA",
     );
     expect(screen.getAllByRole("textbox")).toHaveLength(placeholders.length);
     expect(
@@ -44,7 +44,7 @@ describe("PlaceholderForm", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
-        product_name: "MedScribe EPMA",
+        product_name: "Tessaly EPMA",
         product_version: "4.3",
       }),
     );
