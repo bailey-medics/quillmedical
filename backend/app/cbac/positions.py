@@ -1,9 +1,9 @@
 """Filling, vacating and querying positions.
 
-A position is a slot an organisation or site has. It exists whether or not
-anyone fills it, which is what separates it from a competency: "this site
-has no clinical lead" is a state worth chasing, where a competency nobody
-holds is simply absent.
+A position is a slot an org_unit has. It exists whether or not anyone
+fills it, which is what separates it from a competency: "this org_unit has
+no clinical lead" is a state worth chasing, where a competency nobody holds
+is simply absent.
 
 Holding is recorded as dated rows rather than a column on the position, so
 the post outlives its holders and its history stays queryable - "who was
@@ -148,6 +148,7 @@ def appoint(
             for h in holdings_on(db, position, start)
             if h.ended_on is None or h.ended_on > start
         ]
+
         if len(still_holding) >= position.max_holders:
             raise ValueError(
                 f"{position.title} already has {position.max_holders} "
@@ -220,12 +221,12 @@ def holders_of(
 CLINICAL_LEAD = "clinical_lead"
 
 
-def clinical_lead_post(db: Session, site: OrgUnit) -> Position:
-    """Return a site's clinical lead post, creating it if absent.
+def clinical_lead_post(db: Session, org_unit: OrgUnit) -> Position:
+    """Return an org_unit's clinical lead post, creating it if absent.
 
-    Created on demand rather than with every site, because a post nobody
-    has ever tried to fill is not a vacancy anyone is chasing - and
-    creating one for every site would fill the table with posts no
+    Created on demand rather than with every org_unit, because a post
+    nobody has ever tried to fill is not a vacancy anyone is chasing - and
+    creating one for every org_unit would fill the table with posts no
     organisation asked for.
 
     ``requires_competency`` is left unset: what a clinical lead must be
@@ -234,21 +235,21 @@ def clinical_lead_post(db: Session, site: OrgUnit) -> Position:
 
     Args:
         db: Database session.
-        site: The site.
+        org_unit: The org_unit the post belongs to.
 
     Returns:
-        The site's clinical lead post.
+        The org_unit's clinical lead post.
     """
     post = db.execute(
         select(Position).where(
-            Position.org_unit_id == site.id,
+            Position.org_unit_id == org_unit.id,
             Position.kind == CLINICAL_LEAD,
         )
     ).scalar_one_or_none()
 
     if post is None:
         post = Position(
-            org_unit_id=site.id,
+            org_unit_id=org_unit.id,
             kind=CLINICAL_LEAD,
             title="Clinical lead",
             max_holders=1,
@@ -261,23 +262,23 @@ def clinical_lead_post(db: Session, site: OrgUnit) -> Position:
 
 def set_clinical_lead(
     db: Session,
-    site: OrgUnit,
+    org_unit: OrgUnit,
     user: User | None,
     *,
     appointed_by: User | None = None,
 ) -> None:
-    """Make someone the clinical lead of a site, or leave the post vacant.
+    """Make someone clinical lead of an org_unit, or leave the post vacant.
 
     Ends whoever currently holds it before appointing, so the
     change is recorded rather than the previous holder simply vanishing.
 
     Args:
         db: Database session.
-        site: The site.
+        org_unit: The org_unit the post belongs to.
         user: The new lead, or None to vacate the post.
         appointed_by: Who made the appointment.
     """
-    post = clinical_lead_post(db, site)
+    post = clinical_lead_post(db, org_unit)
 
     for holding in holdings_on(db, post):
         if user is None or holding.user_id != user.id:
@@ -291,30 +292,32 @@ def set_clinical_lead(
     if not already:
         appoint(db, post, user, appointed_by=appointed_by)
 
+    return
 
-def clinical_leads_of(db: Session, site_ids: list[int]) -> dict[int, int]:
-    """Return the current clinical lead of each site that has one.
+
+def clinical_leads_of(db: Session, org_unit_ids: list[int]) -> dict[int, int]:
+    """Return the current clinical lead of each org_unit that has one.
 
     Args:
         db: Database session.
-        site_ids: The sites to look up.
+        org_unit_ids: The org_units to look up.
 
     Returns:
-        Site id to the user id of its clinical lead. Sites with
-        a vacant post are absent, which is what "no clinical lead" means.
+        Org_unit id to the user id of its clinical lead. Org_units with a
+        vacant post are absent, which is what "no clinical lead" means.
     """
-    if not site_ids:
+    if not org_unit_ids:
         return {}
 
     rows = db.execute(
         select(Position.org_unit_id, PositionHolding.user_id)
         .join(PositionHolding, PositionHolding.position_id == Position.id)
         .where(
-            Position.org_unit_id.in_(site_ids),
+            Position.org_unit_id.in_(org_unit_ids),
             Position.kind == CLINICAL_LEAD,
             PositionHolding.started_on <= _today(),
             PositionHolding.ended_on.is_(None),
         )
     ).all()
 
-    return {int(site_id): int(user_id) for site_id, user_id in rows}
+    return {int(unit_id): int(user_id) for unit_id, user_id in rows}
