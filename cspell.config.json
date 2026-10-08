@@ -2,6 +2,7 @@
   "version": "0.2",
   "language": "en-GB",
   "ignorePaths": [
+    "infra/aws/policies/*.json",
     "node_modules",
     ".yarn",
     "dist",
@@ -137,6 +138,7 @@
     "ESGE",
     "fromisoformat",
     "ghnft",
+    "govcloud",
     "importlib",
     "isoformat",
     "ital",
@@ -147,6 +149,7 @@
     "ogsb",
     "ogsc",
     "openpyxl",
+    "Partitional",
     "PIVI",
     "color",
     "Colorblind",

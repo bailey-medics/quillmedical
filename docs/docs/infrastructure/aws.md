@@ -18,7 +18,18 @@ repository, which is public; they are in `backend/.env`.
   it can write only to addresses verified in the account.
 
 A policy on the organisation allows London only, with the two American
-regions AWS's own global services need.
+regions AWS's own global services need. It applies to every account,
+whatever a user or key in it is allowed.
+
+The organisation, the four accounts and that policy are in Terraform, in
+`infra/aws/organisation.tf`, and Terraform will not delete any of them.
+A plan fails if the organisation holds an account the code does not
+list. To add one: make it in the console, put its number in
+`backend/.env`, and add it to `organisation.tf`.
+
+What AWS manages itself is not in Terraform: sign-in, which runs through
+an Identity Center AWS owns, and the policies and roles AWS keeps on the
+organisation for its own purposes.
 
 ## What is in each email account
 

@@ -17,8 +17,8 @@
 #     Manager (production) or backend/.env (development).
 #   - The DNS records SES needs. They are in ../dns.tf, with the rest of
 #     the zone. The `dkim_tokens` outputs here are what those must match.
-#   - The organisation: its accounts and the policy that allows London
-#     only. That needs the management account and is a later step.
+#
+# The policy that keeps every account in London is in organisation.tf.
 
 terraform {
   required_version = ">= 1.15.0"

@@ -609,7 +609,7 @@ in the command that sends, and the tests have to pin it down.
       environment, so the key is never in an argument where the process
       list would show it. The grant is `ci_ses`, on the two SES secrets.
 
-- [ ] **Close Resend.** Once service email has run through SES long
+- [x] **Close Resend.** Once service email has run through SES long
       enough to trust it, delete the contacts from Resend and close the
       account. Remove what is left of it: the `resend` dependency and
       the Resend path in `backend/app/email_send.py`, `RESEND_API_KEY`
@@ -634,8 +634,8 @@ in the command that sends, and the tests have to pin it down.
       `resend-contacts-api-key` and `resend-webhook-secret`), the
       backend's mount of the key, `EMAIL_PROVIDER` on the backend and
       the admin job, and Resend's three DNS records. The `mail` records
-      are SES's and stay. **Then the account**, which is Mark's to
-      close, and is all that keeps this step unticked.
+      are SES's and stay. **Then the account, done**: Mark deleted it on 8 October 2026.
+      Nothing of Resend is left.
 
 - [x] **Update the privacy policy** in `docs/docs/legal/privacy-policy.md`.
       Done on 7 October 2026, in place and still version 1.0, since that
@@ -980,19 +980,60 @@ be checked against what is meant to be.
       posts a reminder to apply on merge. `terraform.yml` leaves the
       directory alone.
 
-- [ ] **Run the first apply (Mark).** After this merges: `just al`,
-      `just al management`, then `just terraform-aws`. It should say
-      twelve to import and nothing else. Answer yes, and the state
-      exists. From then on a change to SES or the mail user is made
-      here.
+- [x] **Run the first apply (Mark).** Done on 8 October 2026, with
+      `just al`, `just al management`, then `just terraform-aws`. The
+      first try stopped before reading anything, with "AWS account ID
+      not allowed": the emails sign-in had landed in the management
+      account, and the provider's guard refused it. Signed in again, it
+      imported everything and changed nothing. A plan afterwards said
+      "No changes". From here a change to SES or the mail user is made
+      in `infra/aws/`.
 
-- [ ] **Bring the organisation in.** The accounts themselves and the
-      policy that allows London only
-      (`AdvancedModeRegionRestrictionSecurityControlPolicy`) are still
-      by hand. They need a provider signed in to the management
-      account with far more reach than anything above, so they are a
-      step of their own, and the least urgent: they change when an
-      account is added, which is rare.
+- [x] **Bring the organisation's London-only policy in.** The one
+      thing in the organisation that the site's promise rests on: a
+      service control policy on the root,
+      `AdvancedModeRegionRestrictionSecurityControlPolicy`, which
+      refuses any request outside `eu-west-2` in every account,
+      whatever a user or key there is allowed. AWS made it, fixed at
+      Stockholm, and it was edited by hand on 6 October 2026. It is now
+      `infra/aws/organisation.tf`, with its text in
+      `policies/london-only.json`, adopted with its attachment to the
+      root, and marked so Terraform refuses to delete either. It is in
+      the same root as the email accounts, so `just terraform-aws`
+      applies it too, through a third provider signed in to the
+      management account. A later plan now shows it if AWS, or
+      anybody, changes the policy outside a pull request.
+
+- [x] **Apply it (Mark).** Done in the same run as the first apply,
+      from the checkout that held this step's work, so that run
+      imported fourteen: the twelve email resources and these two.
+
+- [x] **Bring the organisation and its accounts in.** Asked for on 8
+      October 2026, to have everything Quill controls in AWS as code.
+      The organisation itself: all features on, and the two kinds of
+      policy in use. And the four accounts, by name, all under the
+      root. Each is marked so Terraform refuses to plan deleting it,
+      since removing an account's block must never remove the account.
+      **No email address is written down**: an account needs its
+      owner's address, which is where its root sign-in and password
+      resets go, and this repository is public. Terraform reads each
+      one back from AWS. The ID account's number joins the others in
+      `backend/.env`, as `AWS_ID_ACCOUNT_ID`. A check fails a plan if
+      the organisation holds an account the code does not list, so one
+      made in the console cannot go unnoticed. A plan on 8 October 2026
+      said "5 to import, 0 to add, 0 to change, 0 to destroy". **What
+      stays out is what AWS manages itself**: the organisation came
+      from AWS's own sign-up, which keeps policies of its own on the
+      root (`ManagedAccountSecurityControlPolicy`, the Budgets
+      spend-limit ones, `ManagedAccountResourceControlPolicy`), turns
+      service access on and off, runs sign-in through an Identity
+      Center it owns, and holds its roles under `/managed/`, where its
+      own policy stops anybody else changing them. Terraform would be
+      refused, or would fight it. With that, everything in AWS that is
+      Quill's to change is in `infra/aws/`, bar the access keys.
+
+- [ ] **Apply it (Mark).** After this merges, `just terraform-aws`.
+      It should say five to import and nothing else.
 
 ## Decisions
 

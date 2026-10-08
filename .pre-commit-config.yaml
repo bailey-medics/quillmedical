@@ -26,7 +26,11 @@ repos:
     hooks:
       - id: cspell
         name: cspell (spelling checker)
-        exclude: '^(.*/)?(yarn\.lock|\.yarn/.*|poetry\.lock)$'
+        # The AWS policy files are lists of AWS's own service names. They
+        # are in cspell.config.json's ignorePaths too, but a run handed
+        # only ignored files checks none and fails, so they are kept from
+        # the hook here as the lock files are.
+        exclude: '^(.*/)?(yarn\.lock|\.yarn/.*|poetry\.lock)$|^infra/aws/policies/.*\.json$'
         args:
           - --no-progress
           # - --no-summary
