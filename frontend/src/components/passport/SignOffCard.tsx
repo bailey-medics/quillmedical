@@ -173,8 +173,8 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
         )}
 
         {/* No content hash. It is a string of hex that tells a reader
-            nothing, and checking a record against it is the verify
-            page's job, which shows it where it means something. */}
+            nothing here. The download carries it, with VERIFY.md saying
+            how to check a record against it. */}
       </Stack>
     </BaseCard>
   );

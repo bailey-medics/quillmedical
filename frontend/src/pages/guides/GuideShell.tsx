@@ -6,8 +6,7 @@
  * read before there is an account to sign in with. A signed-in reader
  * still gets the ribbon and the menu, through `RootLayout`. Somebody
  * signed out gets the bare page the other signed-out pages have: the
- * login form and the printed passport's verification page have no menu
- * either.
+ * login form has no menu either.
  *
  * Not part of the guides' lazy chunk. `routes.tsx` imports it directly,
  * as it does `RootLayout`, since it is needed before any page is.

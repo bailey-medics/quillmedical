@@ -50,7 +50,6 @@ import {
   revokeAssessorMembership,
   saveAppraisalPeriods,
   signOff,
-  verifySignOff,
   withdrawSignOff,
 } from "./api";
 import { api } from "@lib/api";
@@ -269,13 +268,6 @@ describe("sign-offs", () => {
     await withdrawSignOff(PASSPORT_ID, SIGNOFF_ID);
     expect(api.post).toHaveBeenCalledWith(
       `/passport/${PASSPORT_ID}/sign-offs/${SIGNOFF_ID}/withdraw`,
-    );
-  });
-
-  it("verifies a sign-off", async () => {
-    await verifySignOff(PASSPORT_ID, SIGNOFF_ID);
-    expect(api.get).toHaveBeenCalledWith(
-      `/passport/${PASSPORT_ID}/sign-offs/${SIGNOFF_ID}/verify`,
     );
   });
 });

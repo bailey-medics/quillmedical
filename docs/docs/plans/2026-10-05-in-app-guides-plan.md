@@ -1210,33 +1210,36 @@ Nothing prints one: only the page was built. Mark does not want the QR
 code, so the page comes out. It is passport work, and sits in this plan
 only because the guides are where it was noticed.
 
-- [ ] Remove the route `/passport/verify/:signOffId` from
+- [x] Remove the route `/passport/verify/:signOffId` from
       `frontend/src/routes.tsx`, with
       `frontend/src/pages/passport/PassportVerifyPage.tsx`, its test and
       its export from `passportChunk.ts`. The comment above the two
       public passport routes then describes one, the invitation page.
-- [ ] Remove what only that page used: `VerificationPanel` in
+- [x] Remove what only that page used: `VerificationPanel` in
       `frontend/src/components/passport/` with its story, test and
       fixture, and `verifySignOff` and the `Verification` type in
       `frontend/src/lib/passport/`. Check `navCoverage.test.tsx`, which
       lists the route.
-- [ ] Leave the fingerprint itself alone. Every sign-off is still
+- [x] Leave the fingerprint itself alone. Every sign-off is still
       hashed when it is written, `verify` in
       `backend/app/features/passport/hashing.py` still checks it, and
       the download still carries `VERIFY.md`, which says how to check
       the hashes with no Quill at all. None of that is the QR code.
-- [ ] Leave `GET /{passport_id}/sign-offs/{signoff_id}/verify` in
+- [ ] Left in place, and Mark's call whether it goes:
+      `GET /{passport_id}/sign-offs/{signoff_id}/verify` in
       `backend/app/features/passport/router.py` for now. Taking a route
       out is a breaking change to the API, which the `oasdiff` check
       reports and a human decides, and it wants its own deploy after
       the page that called it has gone. Whether it goes at all is
       Mark's call: it is the only way to ask Quill to recheck one
       sign-off, and costs nothing left in place.
-- [ ] Check the passport's own documents for the verify page or a QR
+- [x] Check the passport's own documents for the verify page or a QR
       code, under `docs/docs/backend/passport/` and
       `docs/docs/frontend/`. A first search found neither, only
       `VERIFY.md`, which stays. The passport plans are a record of what
-      was intended and are left as written.
+      was intended and are left as written. Checked: nothing there
+      names either. Two comments in the code did, in `SignOffCard.tsx`
+      and `GuideShell.tsx`, and were corrected.
 
 ## Decisions
 
