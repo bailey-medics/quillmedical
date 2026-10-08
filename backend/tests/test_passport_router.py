@@ -121,11 +121,10 @@ def _make_user(
 ) -> User:
     """A user who holds ``assess_clinician_passport`` by profession.
 
-    ``writes`` grants ``passport_write`` as well, which no profession
-    carries: it is sold, and reaches a person through onboarding or an
-    individual subscription, and always with a term. So a fixture
-    holder gets a dated ``passport_write`` row, exactly as a real one
-    does.
+    ``writes`` grants ``passport_write`` as well, which no profession carries:
+    it is held by entitlement, and reaches a person through onboarding or an
+    individual subscription, and always with a term. So a fixture holder gets a
+    dated ``passport_write`` row, exactly as a real one does.
     """
     user = User(
         username=username,

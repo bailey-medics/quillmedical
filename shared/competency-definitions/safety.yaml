@@ -30,9 +30,9 @@ competencies:
   # officers, the clinical lead and other admins, at the org_units its
   # holder belongs to.
   #
-  # A whitelist, like manage_teaching and manage_passport, so its holder
-  # never needs manage_users, which can grant anything. It is on its own
-  # list so one safety admin can appoint another. Nothing here is sold.
+  # A whitelist, like manage_teaching and manage_passport, so its holder never
+  # needs manage_users, which can grant anything. It is on its own list so one
+  # safety admin can appoint another. Nothing here is held by entitlement.
   - id: manage_safety
     display_name: "Manage Safety"
     may_grant:

@@ -130,7 +130,7 @@ then is `manage_passport` added.
       the moment it loads, and the two steps above let it through the
       people routes and the admin pages with no further change.
 - [x] **Stop `passport_write` appearing on any `may_grant` list.**
-      `SOLD_COMPETENCY` in `backend/app/cbac/competencies.py` is refused at
+      `PASSPORT_WRITE` in `backend/app/cbac/competencies.py` is refused at
       load time, beside the check that keeps `manage_users` off. A manager
       who could grant it would be giving away the paid feature, and
       nothing would visibly go wrong.
@@ -178,7 +178,7 @@ then is `manage_passport` added.
       being given it by a Passport admin or anyone above them (`admin`).
       This step is the third. Add `passport_write` to `manage_passport`'s
       `may_grant` list in `shared/competency-definitions/passport.yaml`.
-      `SOLD_COMPETENCY` in `backend/app/cbac/competencies.py` currently
+      `PASSPORT_WRITE` in `backend/app/cbac/competencies.py` currently
       refuses `passport_write` on every list; narrow it so that only
       `manage_passport` may name it, so `manage_teaching` or any later
       scoped manager still cannot give writing away. As with every other

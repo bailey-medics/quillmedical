@@ -18,12 +18,11 @@
 # code - it is for the reader.
 
 competencies:
-  # Two competencies, because assessing and holding have opposite
-  # economics once the passport is sold. Assessing is a favour to
-  # somebody else's record: the holder's organisation gets the benefit
-  # and the assessor gets nothing, so an assessor who meets a price
-  # simply declines and the holder cannot be signed off at all. Holding
-  # is the product.
+  # Two competencies, because assessing and holding reach people in opposite
+  # ways. Assessing is a favour to somebody else's record: the holder's
+  # organisation gets the benefit and the assessor gets nothing, so an assessor
+  # who meets a price simply declines and the holder cannot be signed off at
+  # all. Holding is the product.
   #
   # This is NOT a seniority split, which an earlier single competency
   # was right to refuse: a consultant of thirty years still needs new
@@ -81,10 +80,9 @@ competencies:
   # never needs manage_users, which can grant anything. It is on its own
   # list so one Passport admin can appoint another.
   #
-  # passport_write is on it: a Passport admin may give writing to, and
-  # take it from, members of their own org units. This is the only list
-  # the loader lets name passport_write, because writing is otherwise
-  # sold. See
+  # passport_write is on it: a Passport admin may give writing to, and take it
+  # from, members of their own org units. This is the only list the loader lets
+  # name passport_write, because writing otherwise comes by entitlement. See
   # docs/docs/plans/2026-09-30-passport-professions-plan.md.
   - id: manage_passport
     display_name: "Manage the Clinician Passport"

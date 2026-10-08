@@ -1,7 +1,7 @@
 """Competency definitions loaded from YAML.
 
 This module loads and validates competency definitions from the
-shared/competency-definitions/ directory, merging every file in it into
+``shared/competency-definitions/`` directory, merging every file in it into
 one catalogue and providing type-safe access to competency IDs and
 metadata.
 """
@@ -477,16 +477,16 @@ def _check_scopes(entry: CompetencyEntry, path: Path) -> None:
 #: side door.
 ROOT_COMPETENCY: str = "manage_users"
 
-#: The paid half of the clinician passport. Somebody gets it by paying,
-#: by joining an org unit whose cover is on, or from a Passport admin. So
-#: exactly one scoped manager may name it on its ``may_grant`` list:
-#: ``SOLD_COMPETENCY_GRANTER``. Any other list naming it would let that
-#: manager give away what is sold, and nothing would visibly go wrong: the
-#: person would simply be able to write.
-SOLD_COMPETENCY: str = "passport_write"
+#: Writing to a clinician passport. No profession gives it: somebody holds
+#: it by entitlement, by joining an org unit whose cover is on, or from a
+#: Passport admin. So exactly one scoped manager may name it on its
+#: ``may_grant`` list: ``PASSPORT_WRITE_GRANTER``. Any other list naming it
+#: would let that manager hand it out as well, and nothing would visibly go
+#: wrong: the person would simply be able to write.
+PASSPORT_WRITE: str = "passport_write"
 
-#: The one scoped manager whose whitelist may include ``SOLD_COMPETENCY``.
-SOLD_COMPETENCY_GRANTER: str = "manage_passport"
+#: The one scoped manager whose whitelist may include ``PASSPORT_WRITE``.
+PASSPORT_WRITE_GRANTER: str = "manage_passport"
 
 
 def _check_may_grant(
@@ -505,7 +505,7 @@ def _check_may_grant(
     Raises:
         ValueError: If a list names an unknown or retired competency,
             the root competency, an entry of a passport-only framework,
-            or the sold one on any list but its granter's.
+            or ``passport_write`` on any list but its granter's.
     """
     passport_only = {f.id for f in frameworks if f.passport_only}
     by_id = {entry.id: entry for entry in entries}
@@ -536,13 +536,13 @@ def _check_may_grant(
                     "its own holders."
                 )
             if (
-                granted == SOLD_COMPETENCY
-                and entry.id != SOLD_COMPETENCY_GRANTER
+                granted == PASSPORT_WRITE
+                and entry.id != PASSPORT_WRITE_GRANTER
             ):
                 raise ValueError(
                     f"Competency {entry.id!r} may_grant names "
-                    f"{SOLD_COMPETENCY!r}, which is sold rather than "
-                    f"granted. Only {SOLD_COMPETENCY_GRANTER!r} may."
+                    f"{PASSPORT_WRITE!r}, which is held by entitlement. "
+                    f"Only {PASSPORT_WRITE_GRANTER!r} may grant it."
                 )
 
 

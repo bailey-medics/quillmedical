@@ -185,7 +185,7 @@ class TestLoadChecks:
             "  - id: manage_users\n"
             '    display_name: "Root"\n'
             "  - id: passport_write\n"
-            '    display_name: "Sold"\n'
+            '    display_name: "Write"\n'
             "  - id: old\n"
             '    display_name: "Old"\n'
             "    retired_on: 2026-01-01\n"
@@ -209,16 +209,17 @@ class TestLoadChecks:
         with pytest.raises(ValueError, match="may only be granted"):
             _load_competencies(tmp_path)
 
-    def test_the_sold_competency_fails_to_load(self, tmp_path: Path) -> None:
+    def test_passport_write_on_another_list_fails_to_load(
+        self, tmp_path: Path
+    ) -> None:
         """Only ``manage_passport`` may hand out ``passport_write``.
 
-        It is what an organisation or a person pays for, so any other
-        whitelist naming it would give the passport away with nothing
-        visibly wrong.
+        It is held by entitlement, so any other whitelist naming it would hand
+        it out with nothing visibly wrong.
         """
         self._write(tmp_path, ["passport_write"])
 
-        with pytest.raises(ValueError, match="sold rather than granted"):
+        with pytest.raises(ValueError, match="held by entitlement"):
             _load_competencies(tmp_path)
 
     def test_manage_passport_may_name_it(self, tmp_path: Path) -> None:
@@ -229,7 +230,7 @@ class TestLoadChecks:
             "    may_grant:\n"
             "      - passport_write\n"
             "  - id: passport_write\n"
-            '    display_name: "Sold"\n'
+            '    display_name: "Write"\n'
         )
 
         loaded = _load_competencies(tmp_path)

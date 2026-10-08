@@ -155,7 +155,7 @@ class TestOnboardingGrantsTheTerm:
         admin: User,
         starter: User,
     ) -> None:
-        """Most people are not being sold a passport.
+        """Most people are not given writing to a passport.
 
         An entitlement written for somebody who was never granted
         ``passport_write`` would be an arrangement nobody agreed to.

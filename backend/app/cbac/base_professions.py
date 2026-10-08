@@ -70,9 +70,6 @@ def competencies_kept_across_profession_change(
 ) -> list[str]:
     """What somebody keeps outside their profession when it changes.
 
-    A calculation only. It reads what it is given and changes nothing: the
-    caller sets the new profession on the user, and writes the rows.
-
     What somebody holds is their ``user_competency`` rows. This list is a
     comparison against the new profession's template, in the form
     ``sync_competency_rows`` takes as ``additional``.
@@ -84,6 +81,14 @@ def competencies_kept_across_profession_change(
     ``access_own_patient_records`` for their own record, which a replacing
     change would take away on their first day at work.
 
+    **Removed competencies are not looked at here.** The whole of the old
+    profession is carried, including anything this person had removed, so
+    the list is not safe to use on its own: it would hand a removed
+    competency back. The caller has to read
+    ``User.removed_competency_ids`` before changing the profession, and
+    pass it with this list to ``sync_competency_rows``, which takes the
+    removals out last.
+
     Both places a profession changes use this, so the rule is written
     once: adding somebody to an org_unit, and ``update_user``.
 
@@ -94,8 +99,9 @@ def competencies_kept_across_profession_change(
         new_profession: The profession they are moving to.
 
     Returns:
-        What they should hold outside the new profession, sorted so the
-        same input always gives the same list.
+        What they should hold outside the new profession, before any
+        removals are taken out, sorted so the same input always gives the
+        same list.
     """
     kept = set(additional_competencies)
     kept.update(get_profession_base_competencies(old_profession))

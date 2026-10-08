@@ -265,9 +265,9 @@ four passport professions.
   `useGrantScope` rather than working the whitelist out again.
 - **A whitelist, not a tag**: a new competency can be granted by nobody but
   `manage_users` until somebody adds it to a list.
-- **`passport_write` is sold**: the loader refuses it on every `may_grant`
-  list except `manage_passport`'s, so only a Passport admin may hand it
-  out, and only to members of their own org units.
+- **`passport_write` is held by entitlement**: the loader refuses it on
+  every `may_grant` list except `manage_passport`'s, so only a Passport
+  admin may hand it out, and only to members of their own org units.
 
 #### Practising competencies - where
 

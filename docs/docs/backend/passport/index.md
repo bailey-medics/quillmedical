@@ -221,14 +221,14 @@ read-only.
 
 ### Passport cover
 
-`passport_write` is sold. One way to get it is to belong to an org unit
-whose cover is switched on: a `passport_write` feature row beside the
-`passport` one, which only a superadmin may set. `cover.py` grants writing
-to that org unit's `staff` and `trainee` members, and to anyone an
-administrator adds in those capacities afterwards. A member of staff who
-leaves keeps it; a trainee who is removed loses it. Switching cover off ends
-every grant it made. A site may hold features, so cover can be on for one
-team without its whole trust.
+`passport_write` is held by entitlement. One way to get it is to belong to an
+org unit whose cover is switched on: a `passport_write` feature row beside the
+`passport` one, which only a superadmin may set. `cover.py` grants writing to
+that org unit's `staff` and `trainee` members, and to anyone an administrator
+adds in those capacities afterwards. A member of staff who leaves keeps it; a
+trainee who is removed loses it. Switching cover off ends every grant it made.
+A site may hold features, so cover can be on for one team without its whole
+trust.
 
 ### Passport professions
 

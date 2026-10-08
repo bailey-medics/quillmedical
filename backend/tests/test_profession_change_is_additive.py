@@ -246,3 +246,82 @@ class TestWhatTheMergeDoesNotDo:
         assert response.status_code == 200, response.text
         db_session.refresh(target)
         assert sorted(target.get_final_competencies()) == before
+
+
+class TestARemovalSurvivesAPromotion:
+    """Something taken away from a person stays taken away.
+
+    The case that matters clinically: a doctor found unfit for one
+    procedure has it removed, and is later promoted to a profession that
+    grants that procedure to everybody. The promotion must not hand it
+    back. Nobody decided that it should.
+
+    Different from ``test_an_explicit_removal_still_wins`` above, which
+    sends the removal in the same request as the profession. Here the
+    removal happened earlier, and the promotion says nothing about it.
+    """
+
+    def test_a_competency_removed_earlier_is_not_restored(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        org: OrgUnit,
+        admin: User,
+    ) -> None:
+        """Both professions grant it; the person still does not hold it."""
+        target = _user(
+            db_session, "found_unfit", profession="healthcare_assistant"
+        )
+        _place(db_session, org, target)
+        client = _login(test_client, "the_admin")
+
+        removal = client.patch(
+            f"/api/users/{target.id}",
+            json={"removed_competencies": ["perform_venepuncture"]},
+            headers=_csrf(client),
+        )
+        assert removal.status_code == 200, removal.text
+        db_session.refresh(target)
+        assert "perform_venepuncture" not in target.get_final_competencies()
+
+        promotion = client.patch(
+            f"/api/users/{target.id}",
+            json={"base_profession": "consultant"},
+            headers=_csrf(client),
+        )
+
+        assert promotion.status_code == 200, promotion.text
+        db_session.refresh(target)
+        final = target.get_final_competencies()
+        assert "perform_venepuncture" not in final
+
+    def test_the_promotion_still_grants_everything_else(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        org: OrgUnit,
+        admin: User,
+    ) -> None:
+        """Only the removal is withheld, not the new profession."""
+        target = _user(
+            db_session, "found_unfit_too", profession="healthcare_assistant"
+        )
+        _place(db_session, org, target)
+        client = _login(test_client, "the_admin")
+
+        client.patch(
+            f"/api/users/{target.id}",
+            json={"removed_competencies": ["perform_venepuncture"]},
+            headers=_csrf(client),
+        )
+        promotion = client.patch(
+            f"/api/users/{target.id}",
+            json={"base_profession": "consultant"},
+            headers=_csrf(client),
+        )
+
+        assert promotion.status_code == 200, promotion.text
+        db_session.refresh(target)
+        final = target.get_final_competencies()
+        assert "admit_patient" in final
+        assert "access_patient_records" in final

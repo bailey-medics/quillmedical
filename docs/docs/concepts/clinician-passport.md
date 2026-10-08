@@ -61,7 +61,7 @@ Passing both says only that the passport exists for this person. Whether they
 may read a *particular* record is a third question, answered by whether they
 are the holder or are named on a request against them.
 
-## Assessing is free; holding is sold
+## Assessing comes with the profession; holding comes by entitlement
 
 Signing off somebody else's competency and keeping a passport of your own are
 two different rights, because they have opposite economics.
@@ -69,9 +69,9 @@ two different rights, because they have opposite economics.
 **Assessing is a favour to somebody else's record.** The holder's organisation
 gets the benefit and the assessor gets nothing, so an assessor who met a price
 would simply decline, and the trainee waiting on them could not be signed off
-at all. `assess_clinician_passport` is therefore granted by base
-profession, or to an existing account when it is asked to sign off, never
-sold, and never lapses for payment.
+at all. `assess_clinician_passport` is therefore granted by base profession, or
+to an existing account when it is asked to sign off, never by entitlement, and
+never lapses.
 
 **Holding is the product.** `passport_write` grants the right to create a
 passport and add to it. No base profession carries it: it reaches a person
