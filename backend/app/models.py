@@ -1734,7 +1734,7 @@ class Position(Base):
         title: What this organisation calls it, for display.
         requires_competency: A competency the holder must have authorised at
             this org_unit, or None where the post needs no particular one.
-        max_holders: How many people may hold it substantively, or None for
+        max_holders: How many people may hold it at once, or None for
             no limit. A fact about this org_unit - one site may job-share a post
             another treats as singular - so it lives here rather than on the
             kind.
@@ -1800,19 +1800,12 @@ class PositionHolding(Base):
     Guardian in March?" is a question about the slot over time, which a
     single holder column on the position could not answer.
 
-    ``is_acting`` covers leave. An acting holding sits alongside the
-    substantive one rather than replacing it, so the record still shows who
-    the post belonged to, and acting holdings do not count against
-    ``max_holders``.
-
     Attributes:
         id: Primary key.
         position_id: The post being held.
         user_id: The holder.
         started_on: When they took it up.
         ended_on: When they gave it up, or None while current.
-        is_acting: Whether this is temporary cover rather than the
-            substantive appointment.
         appointed_by: Who appointed them. Null once that user is deleted, so
             the fact an appointment was made outlives the person who made it.
     """
@@ -1836,9 +1829,6 @@ class PositionHolding(Base):
     )
     started_on: Mapped[date] = mapped_column(Date, nullable=False)
     ended_on: Mapped[date | None] = mapped_column(Date, nullable=True)
-    is_acting: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False
-    )
     appointed_by: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )

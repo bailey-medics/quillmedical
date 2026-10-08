@@ -40,6 +40,14 @@ from app.models import User, UserCompetency
 #: (``source`` ``individual``) runs for a year and then lapses. Nothing
 #: writes individual grants yet; the term is here so the first thing that
 #: does gets it without a second rule.
+#:
+#: TODO: #1649 Review before a second feature needs a term. The term is looked
+#: up by ``source`` alone, so every competency granted as ``individual``
+#: gets the passport's 365 days, and a second feature has nowhere to say
+#: a different length. The likely fix is a ``term_days`` on the competency
+#: in ``shared/competency-definitions/``, read by the loader, so a new
+#: timed competency is a YAML entry and not a code change. See
+#: ``docs/docs/plans/todo.md``.
 TERMS: dict[str, timedelta] = {
     "individual": timedelta(days=PASSPORT_ENTITLEMENT_DAYS),
 }

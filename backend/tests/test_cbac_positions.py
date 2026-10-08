@@ -3,8 +3,7 @@
 The acceptance criteria in ``test_org_scoped_access_criteria.py`` say what a
 position has to express. These test the service itself: that appointment is
 checked against the person's competency *at that place*, that cardinality is
-a fact about the post, that acting cover behaves differently from a
-substantive appointment, and that history survives someone leaving.
+a fact about the post, and that history survives someone leaving.
 """
 
 from __future__ import annotations
@@ -152,7 +151,7 @@ class TestAppointmentChecksTheCompetencyHere:
 class TestHowManyMayHoldIt:
     """Cardinality is a fact about the post, not about the competency."""
 
-    def test_a_second_substantive_holder_is_refused(self, db_session):
+    def test_a_second_holder_is_refused(self, db_session):
         site = _site(db_session)
         post = _post(db_session, site=site, max_holders=1)
         first = _user(db_session, "dr_first")
@@ -283,34 +282,6 @@ class TestHowManyMayHoldIt:
         with pytest.raises(IntegrityError):
             db_session.commit()
         db_session.rollback()
-
-
-class TestActingCover:
-    """Covering leave is not the same as holding the post."""
-
-    def test_cover_is_not_blocked_by_the_limit(self, db_session):
-        """Otherwise nobody could ever cover a singular post."""
-        site = _site(db_session)
-        post = _post(db_session, site=site, max_holders=1)
-        substantive = _user(db_session, "dr_substantive")
-        cover = _user(db_session, "dr_cover")
-
-        for person in (substantive, cover):
-            _authorise(db_session, person, site=site)
-
-        appoint(db_session, post, substantive)
-        appoint(db_session, post, cover, is_acting=True)
-        db_session.commit()
-
-        assert len(holders_of(db_session, post)) == 2
-
-    def test_cover_still_needs_the_competency(self, db_session):
-        site = _site(db_session)
-        post = _post(db_session, site=site)
-        cover = _user(db_session, "dr_cover")
-
-        with pytest.raises(ValueError, match="not authorised"):
-            appoint(db_session, post, cover, is_acting=True)
 
 
 class TestThePostOutlivesItsHolders:
