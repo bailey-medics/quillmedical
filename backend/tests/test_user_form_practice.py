@@ -261,23 +261,48 @@ class TestEditingPractice:
         assert resp.status_code == 200, resp.text
         assert _rows(db_session, surgeon.id, ward) == {HELD}
 
-    def test_a_row_for_something_they_do_not_hold_survives(
+    def test_a_row_for_something_they_do_not_hold_is_removed_on_save(
         self,
         authenticated_admin_client: TestClient,
         db_session: Session,
         surgeon: User,
         trust: OrgUnit,
     ) -> None:
-        """The form has no switch for it, so says nothing about it."""
+        """A leftover row, as a grant that ran out by date leaves behind.
+
+        Written straight to the table here, because nothing may authorise
+        what somebody does not hold. Saving their competencies clears it.
+        """
         _authorise(db_session, surgeon, trust, NOT_HELD)
         _authorise(db_session, surgeon, trust, HELD)
 
         resp = authenticated_admin_client.patch(
-            f"/api/users/{surgeon.id}", json={"practising": [_at(trust)]}
+            f"/api/users/{surgeon.id}", json={"practising": [_at(trust, HELD)]}
         )
 
         assert resp.status_code == 200, resp.text
-        assert _rows(db_session, surgeon.id, trust) == {NOT_HELD}
+        assert _rows(db_session, surgeon.id, trust) == {HELD}
+
+    def test_taking_a_competency_away_removes_it_at_every_place(
+        self,
+        authenticated_admin_client: TestClient,
+        db_session: Session,
+        surgeon: User,
+        trust: OrgUnit,
+    ) -> None:
+        """Losing a competency ends it wherever it was authorised."""
+        _authorise(db_session, surgeon, trust, HELD)
+        _authorise(db_session, surgeon, trust, ALSO_HELD)
+
+        resp = authenticated_admin_client.patch(
+            f"/api/users/{surgeon.id}",
+            json={"removed_competencies": [HELD]},
+        )
+
+        assert resp.status_code == 200, resp.text
+        db_session.refresh(surgeon)
+        assert HELD not in surgeon.get_final_competencies()
+        assert _rows(db_session, surgeon.id, trust) == {ALSO_HELD}
 
     def test_a_row_that_does_not_change_keeps_who_authorised_it(
         self,
@@ -509,7 +534,7 @@ class TestReadingItBack:
     ) -> None:
         surgeon = _person(db_session, "surgeon", "consultant", trust)
         _authorise(db_session, surgeon, trust, HELD)
-        _authorise(db_session, surgeon, trust, NOT_HELD)
+        _authorise(db_session, surgeon, trust, ALSO_HELD)
         read = authenticated_admin_client.get(f"/api/users/{surgeon.id}")
 
         resp = authenticated_admin_client.patch(
@@ -518,4 +543,4 @@ class TestReadingItBack:
         )
 
         assert resp.status_code == 200, resp.text
-        assert _rows(db_session, surgeon.id, trust) == {HELD, NOT_HELD}
+        assert _rows(db_session, surgeon.id, trust) == {HELD, ALSO_HELD}

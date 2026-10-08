@@ -16,9 +16,11 @@ from sqlalchemy.orm import Session
 
 from app.cbac.practising import (
     authorise_practice,
+    authorised_at,
     can_practise_at,
     competencies_at,
     who_can_practise_at,
+    withdraw_not_held,
     withdraw_practice,
 )
 from app.models import OrgUnit, PractisingCompetency, User
@@ -362,24 +364,49 @@ class TestWritingAPracticeRow:
         (row,) = _rows(db_session, doctor, org)
         assert row.authorised_by == first.id
 
-    def test_authorising_beyond_the_ceiling_is_written_and_does_nothing(
-        self, db_session
-    ):
+    def test_authorising_what_they_do_not_hold_is_refused(self, db_session):
+        """The competency comes first, then where it may be practised."""
         org = _org(db_session, "Trust")
         patient = _user(db_session, "pat", profession="patient")
         admin = _user(db_session, "admin")
 
-        written = authorise_practice(
-            db_session,
-            user_id=patient.id,
-            org_unit_id=org.id,
-            competency="certify_death",
-            authorised_by=admin.id,
-        )
+        with pytest.raises(ValueError, match="does not hold"):
+            authorise_practice(
+                db_session,
+                user_id=patient.id,
+                org_unit_id=org.id,
+                competency="certify_death",
+                authorised_by=admin.id,
+            )
 
-        assert written is True
-        assert not can_practise_at(
-            db_session, patient, "certify_death", org_unit_id=org.id
+        assert db_session.scalars(select(PractisingCompetency)).all() == []
+
+    def test_losing_a_competency_removes_it_everywhere(self, db_session):
+        """Rows for what somebody no longer holds are deleted."""
+        org = _org(db_session, "Trust")
+        elsewhere = _org(db_session, "Other Trust")
+        doctor = _user(db_session, "doc")
+        _authorise(db_session, doctor, "certify_death", org=org)
+        _authorise(db_session, doctor, "certify_death", org=elsewhere)
+        _authorise(db_session, doctor, "access_patient_records", org=org)
+
+        for row in doctor.competency_grants:
+            if row.competency_id == "certify_death":
+                db_session.delete(row)
+
+        db_session.commit()
+        db_session.refresh(doctor)
+
+        removed = withdraw_not_held(db_session, doctor)
+        db_session.commit()
+
+        assert removed == 2
+        assert competencies_at(db_session, doctor, org_unit_id=org.id) == {
+            "access_patient_records"
+        }
+        assert (
+            authorised_at(db_session, doctor.id, org_unit_id=elsewhere.id)
+            == set()
         )
 
     def test_withdrawing_removes_only_that_row(self, db_session):

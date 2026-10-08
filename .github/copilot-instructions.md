@@ -297,9 +297,15 @@ read of a place goes through this module.
   `manage_users` row at an org unit that org unit and everything beneath it,
   and a scoped manager such as `manage_teaching` reaches everything beneath
   the organisations they belong to. Neither reaches upward or sideways.
-- **A row beyond somebody's ceiling has no effect**, so a lapsed
-  qualification narrows every place at once without a row being touched - and
-  a ceiling with no row behind it authorises nothing.
+- **The competency comes first.** Nobody is authorised to practise at a
+  place something they do not hold: `authorise_practice` refuses it, and the
+  routes answer 422. A caller giving both grants first.
+- **Losing a competency removes it everywhere.** `withdraw_not_held` deletes
+  the rows when a competency is taken away, so regaining it means being
+  authorised at each place again. A grant that runs out by date leaves its
+  rows until that person's competencies are next saved; they have no effect
+  meanwhile, because every read takes the intersection.
+- **A ceiling with no row behind it authorises nothing.**
 
 #### Org units - one tree for every place
 

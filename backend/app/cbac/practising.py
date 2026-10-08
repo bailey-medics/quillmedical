@@ -11,10 +11,19 @@ Healthcare draws the same line as credentialing versus privileging: what
 someone is qualified for, then what they are authorised to do at a particular
 site. What they may actually do here is the intersection of the two.
 
-- A row beyond someone's ceiling has no effect, so a lapsed qualification
-  narrows every org_unit at once without a single row being touched.
+- **The competency comes first.** Nobody is authorised to practise at an
+  org_unit something they do not hold: ``authorise_practice`` refuses it.
+  That is how medicine works, where privileges follow qualification.
+- **Losing a competency removes it everywhere.** When somebody stops
+  holding one, their rows for it are deleted by ``withdraw_not_held``, so
+  regaining it means being authorised at each org_unit again.
 - A ceiling with no row behind it does nothing, so being qualified is not the
   same as being authorised to practise here.
+
+One gap, which reads close it: a grant with an end date runs out with no
+code running, so its rows are still there the next morning. They have no
+effect, because every read takes the intersection, and they are deleted the
+next time that person's competencies are saved.
 
 Every read of an org_unit goes through this module. That is deliberate, and it
 paid for itself: the org_unit used to be two nullable columns and is now one,
@@ -201,13 +210,11 @@ def authorise_practice(
     """Record that somebody may practise a competency at one org_unit.
 
     Authorising the same thing twice is not an error and writes nothing:
-    the row already there keeps who authorised it and when. Rewriting it
-    would turn "who authorised this?" into "who last saved the form?".
+    the row already there keeps who authorised it and when.
 
-    Not a grant of the competency itself, and not a check of it: a row
-    beyond somebody's ceiling is allowed and has no effect until the
-    ceiling catches up. Whether the caller may write the row at all is
-    decided before this is called.
+    Not a grant of the competency itself: the person must already hold
+    it, and a caller giving both does the grant first. Whether the caller
+    may write the row at all is decided before this is called.
 
     Args:
         db: Database session. The row is flushed, not committed.
@@ -220,7 +227,22 @@ def authorise_practice(
 
     Returns:
         True if a row was written, False if it was already there.
+
+    Raises:
+        ValueError: If there is no such person, or they do not hold the
+            competency. The routes refuse this first, with a message for
+            the caller; this is the backstop for every other writer.
     """
+    person = db.get(User, user_id)
+
+    if person is None:
+        raise ValueError(f"No user {user_id} to authorise.")
+    if competency not in person.get_final_competencies():
+        raise ValueError(
+            f"User {user_id} does not hold {competency}, so cannot be "
+            "authorised to practise it anywhere."
+        )
+
     existing = db.scalar(
         select(PractisingCompetency.id).where(
             PractisingCompetency.user_id == user_id,
@@ -276,3 +298,41 @@ def withdraw_practice(
         )
     )
     db.flush()
+
+
+def withdraw_not_held(db: Session, user: User) -> int:
+    """Delete somebody's practising rows for competencies they do not hold.
+
+    Called whenever a competency is taken away, so that losing one ends it
+    at every org_unit at once. Getting it back does not bring the rows
+    back: each org_unit authorises them again.
+
+    Args:
+        db: Database session. The delete is flushed, not committed.
+        user: The person, with their competency rows already settled.
+
+    Returns:
+        How many rows were deleted.
+    """
+    held = set(user.get_final_competencies())
+    not_held = [
+        row_id
+        for row_id, competency in db.execute(
+            select(
+                PractisingCompetency.id, PractisingCompetency.competency
+            ).where(PractisingCompetency.user_id == user.id)
+        ).all()
+        if competency not in held
+    ]
+
+    if not not_held:
+        return 0
+
+    db.execute(
+        delete(PractisingCompetency).where(
+            PractisingCompetency.id.in_(not_held)
+        )
+    )
+    db.flush()
+
+    return len(not_held)

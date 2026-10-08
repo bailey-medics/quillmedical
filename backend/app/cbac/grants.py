@@ -27,10 +27,13 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy.orm import object_session
+
 from app.cbac.base_professions import (
     get_profession_base_competencies,
     resolve_user_competencies,
 )
+from app.cbac.practising import withdraw_not_held
 from app.features.passport.models import PASSPORT_ENTITLEMENT_DAYS
 from app.models import User, UserCompetency
 
@@ -155,3 +158,11 @@ def sync_competency_rows(
             if row.source in PROTECTED_SOURCES:
                 continue
             row.ends_on = now
+
+    # The competency comes first: what they no longer hold, they are no
+    # longer authorised to practise anywhere. A person not yet saved has
+    # no practising rows to lose.
+    db = object_session(user)
+
+    if db is not None and user.id is not None:
+        withdraw_not_held(db, user)
