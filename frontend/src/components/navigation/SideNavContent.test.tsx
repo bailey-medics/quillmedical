@@ -1295,6 +1295,25 @@ describe("SideNavContent Component", () => {
     });
   });
 
+  describe("Newsletter under Admin", () => {
+    it("offers it to somebody who operates Quill", async () => {
+      renderWithAuth(<SideNavContent />, "superadmin", {
+        initialRoute: "/admin",
+      });
+
+      expect(
+        await screen.findByRole("link", { name: "Newsletter" }),
+      ).toHaveAttribute("href", "/admin/newsletter");
+    });
+
+    it("hides it from an administrator who does not operate Quill", async () => {
+      renderWithAuth(<SideNavContent />, "admin", { initialRoute: "/admin" });
+
+      await screen.findByText("Admin");
+      expect(screen.queryByText("Newsletter")).not.toBeInTheDocument();
+    });
+  });
+
   describe("Feedback link", () => {
     it.each(["staff", "patient", "staff_no_clinical", "superadmin"] as const)(
       "offers it to %s, ungated",

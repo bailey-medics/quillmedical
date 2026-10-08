@@ -20,6 +20,7 @@ export { default as AdminAllDelegatesPage } from "./teaching/AdminAllDelegatesPa
 export { default as AdminBankDetailPage } from "./teaching/AdminBankDetailPage";
 export { default as AdminBankOrgSettingsPage } from "./teaching/AdminBankOrgSettingsPage";
 export { default as AdminFeedbackPage } from "./feedback/AdminFeedbackPage";
+export { default as AdminNewsletterPage } from "./newsletter/AdminNewsletterPage";
 export { default as AdminOrganisationsPage } from "./organisations/AdminOrganisationsPage";
 export { default as AdminPage } from "../AdminPage";
 export { default as AdminPatientsPage } from "./patients/AdminPatientsPage";
