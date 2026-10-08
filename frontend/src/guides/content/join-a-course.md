@@ -18,7 +18,14 @@ things:
 If you see **Clinical lead not found**, your clinical lead is not on Quill
 yet. Ask them, or whoever runs the course, to sort that out first.
 
+If your clinical lead covers more than one site, Quill asks **Which site
+are you joining?** Choose yours and press **Continue**.
+
 ## Create your account
+
+The form names the site you are joining, under **Create an account**. If
+it is the wrong site, or you chose the wrong module, press **Back**. What
+you have typed into this form is not kept.
 
 1. Enter your **Full name**, as it should appear on certificates.
 2. Choose a **Username** and enter your **Email**.

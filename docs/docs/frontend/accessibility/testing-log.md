@@ -96,6 +96,16 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   refreshes there is told where they have landed by the page's title.
   The failed-verification page now says to sign in for a new link:
   check the message and its link are read together and in that order.
+- **Registration, now with up to three views** – added on 8 October 2026
+  by phase 20 of the
+  [in-app guides plan](../../plans/2026-10-05-in-app-guides-plan.md).
+  Registration is on none of the four journeys, but every delegate comes
+  in through it. The page swaps its view without moving to a new
+  address: check a screen reader user is told when it does, going
+  forward and with **Back**. Where a clinical lead covers several sites,
+  check the choice is announced as one group with its question, "Which
+  site are you joining?". On the account form, check the heading naming
+  the site is reached before the form's fields.
 - **JAWS and Dragon** – deferred to a commissioned audit.
 - **Journeys 1 to 4 on a phone, by touch** – the
   [touch target sizes plan](../../plans/2026-09-28-touch-target-sizes-plan.md)

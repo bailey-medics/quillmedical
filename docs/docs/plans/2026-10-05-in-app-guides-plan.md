@@ -1144,7 +1144,7 @@ The page, `frontend/src/pages/RegisterPage.tsx`. Three changes Mark
 asked for on 8 October 2026, in one unit because they are the same two
 views and the same tests.
 
-- [ ] A view between the two there are, shown only when the lead check
+- [x] A view between the two there are, shown only when the lead check
       answers with more than one site. It asks "Which site are you
       joining?" and offers the sites by name, with **Continue** and
       **Back**. On the same page and in its own state, as the other two
@@ -1153,12 +1153,16 @@ views and the same tests.
       in `frontend/src/components/form/` both fit, and a radio group
       suits two or three sites better than a drop-down. With one site
       the view is skipped and nothing changes for the delegate.
-- [ ] What the first view found out, `Joining` in that file, gains the
+      `RadioField` was used. The two forms are keyed: they sit at the
+      same place in the tree, and without a key React handed the first
+      view the choice's fields on the way back, so the module and the
+      lead's email came back empty.
+- [x] What the first view found out, `Joining` in that file, gains the
       site's id and name, and `register` sends `site_id` with the module
       and the lead's email. It was left out on purpose in Phase 15,
       when the server worked the site out alone; with a choice to carry
       it has to be sent, and Phase 19 checks it.
-- [ ] A **Back** button beside the submit button on the account form,
+- [x] A **Back** button beside the submit button on the account form,
       `frontend/src/components/registration/RegistrationForm.tsx`,
       through a new optional `onBack` prop. `ButtonPair` in
       `frontend/src/components/button/` is the pattern for a pair of
@@ -1168,18 +1172,20 @@ views and the same tests.
       was typed into the account form is lost, as it is on a refresh;
       keeping a half-typed password in the page's state is not worth
       it.
-- [ ] The site is named in a level two heading on the account form,
+- [x] The site is named in a level two heading on the account form,
       through a new optional `siteName` prop, drawn with `Heading` from
       `frontend/src/components/typography/`, which is an `h2`. It reads
       "Joining" and the site's name. The wording is a suggestion and
-      Mark's to change.
-- [ ] Stories and tests for both props on `RegistrationForm`, and in
+      Mark's to change. It sits under "Create an account", which is
+      also a level two heading and was left as it is: the guide's
+      screenshot spec and the tests find the form by it.
+- [x] Stories and tests for both props on `RegistrationForm`, and in
       `frontend/src/pages/RegisterPage.test.tsx`: one site goes
       straight to the account form and names it; two sites show the
       choice, and the one chosen is what is named and what is sent;
       Back from the account form returns to the choice, and from the
       choice to the first view, with the fields as they were.
-- [ ] Bring "Join a course" into line, in
+- [x] Bring "Join a course" into line, in
       `frontend/src/guides/content/join-a-course.md`: one sentence for
       the delegate who is asked which site, and the Back button where
       the guide says what to do about a wrong module. Its screenshot
@@ -1187,7 +1193,7 @@ views and the same tests.
       picture: the seed's lead holds one site, so the choice is never
       shown, and the pictures of the account form pick up the heading
       and the button when they are next retaken.
-- [ ] Registration is not on any of the four journeys in
+- [x] Registration is not on any of the four journeys in
       `docs/docs/frontend/accessibility/journeys.md`, but it is the way
       in for every delegate. Add an entry to the "Not yet run" list in
       `docs/docs/frontend/accessibility/testing-log.md`, as Phase 8

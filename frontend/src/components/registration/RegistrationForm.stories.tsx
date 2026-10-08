@@ -77,6 +77,15 @@ export const WithGuideLink: Story = {
   },
 };
 
+/** As the registration page draws it: the site named, and a way back. */
+export const JoiningASite: Story = {
+  args: {
+    guidePath: "/guides/join-a-course",
+    siteName: "Addenbrooke's Hospital",
+    onBack: () => {},
+  },
+};
+
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },
