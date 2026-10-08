@@ -919,7 +919,7 @@ terraform-github:
 
 
 alias tf-aws := terraform-aws
-# Plan/apply the AWS side via Terraform (SES in London, and the user whose key sends mail)
+# Plan/apply the AWS side via Terraform (the organisation, its accounts, and SES in London)
 terraform-aws:
     #!/usr/bin/env bash
     {{initialise}} "terraform-aws"
@@ -928,7 +928,7 @@ terraform-aws:
     # in a tfvars file: this repository is public. Trace off while they are
     # read, so they are not printed.
     set +x
-    for setting in AWS_EMAILS_ACCOUNT_ID AWS_EMAILS_DEV_ACCOUNT_ID; do
+    for setting in AWS_EMAILS_ACCOUNT_ID AWS_EMAILS_DEV_ACCOUNT_ID AWS_MANAGEMENT_ACCOUNT_ID AWS_ID_ACCOUNT_ID; do
         value="$(grep "^${setting}=" backend/.env 2>/dev/null | cut -d= -f2-)"
         if [ -z "$value" ] || [ "$value" = "CHANGE_ME" ]; then
             echo "✗ ${setting} is not set in backend/.env."
@@ -937,8 +937,11 @@ terraform-aws:
     done
     export TF_VAR_app_account_id="$(grep '^AWS_EMAILS_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
     export TF_VAR_dev_account_id="$(grep '^AWS_EMAILS_DEV_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
+    export TF_VAR_management_account_id="$(grep '^AWS_MANAGEMENT_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
+    export TF_VAR_identity_account_id="$(grep '^AWS_ID_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
     # Both sign-ins are needed: the emails account for App production, and
-    # the management account, from which the development one is reached.
+    # the management account, which holds the organisation's policy and is
+    # where the development account is reached from.
     # Checked here so a lapsed session says so plainly, and not as a
     # provider error halfway through a plan.
     for profile in quill-emails quill-management; do
