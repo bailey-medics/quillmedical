@@ -189,6 +189,14 @@ describe("LogbookEntryForm", () => {
         screen.getByText(/never a patient identifier/),
       ).toBeInTheDocument();
     });
+
+    it("warns against identifying a patient in the outcome", () => {
+      // The outcome is where "the patient in bed 4 bled" gets written.
+      renderForm();
+      expect(
+        screen.getByText(/Never anything that could identify a patient/),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("Submission", () => {

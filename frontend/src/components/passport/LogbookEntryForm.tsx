@@ -208,7 +208,7 @@ export default function LogbookEntryForm({
 
         <TextField
           label="Outcome"
-          description="What happened, including where it did not go to plan."
+          description="What happened, including where it did not go to plan. Never anything that could identify a patient."
           value={outcome}
           onChange={(event) => setOutcome(event.currentTarget.value)}
         />

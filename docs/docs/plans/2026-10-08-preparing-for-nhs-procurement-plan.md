@@ -129,20 +129,24 @@ sour the approach on its own.
       be in the name of Bailey Medics Ltd. Scope it to the company's
       devices and the cloud accounts that run the App.
 - [ ] **Commission an independent penetration test** of the App, and fix
-      what it finds. The DTAC asks for one within the last 12 months.
-      `docs/docs/plans/2026-05-05-pentesting-plan.md` plans automated and
-      manual testing done in house and has no step ticked; that is useful
-      but is not what a trust means. DTAC v2 asks for an external test
-      covering the OWASP Top 10. Do the in-house pass first so the paid
-      test is not spent on what a scanner would find. Keep the report and
-      a summary that can be shared. Get three quotes, asking each for a
+      what it finds. DTAC v2 asks for an external test within the last 12
+      months covering the OWASP Top 10. The in-house half already runs:
+      `.github/workflows/zap-scan.yml` runs an OWASP ZAP baseline scan
+      every Monday, and `.github/workflows/security-pentest.yml` runs
+      fuzz tests and targeted attacks on the first of each month. The
+      checkboxes in `docs/docs/plans/2026-05-05-pentesting-plan.md` were
+      never ticked and should be brought up to date. Read the latest ZAP
+      report and clear what it lists before paying for a tester, so the
+      paid days go on what a scanner cannot find. Keep the report and a
+      summary that can be shared. Get three quotes, asking each for a
       web application test of one app with a retest included.
-- [ ] **Check multi-factor authentication covers every kind of account.**
-      DTAC v2 asks for MFA "for all account types". Quill has TOTP
-      two-factor authentication; find out whether any account can sign
-      in without it (a delegate, an external assessor accepting an
-      invitation, an operator) and decide whether to require it before
-      answering "yes".
+- [x] **Check multi-factor authentication covers every kind of account.**
+      It does not: TOTP two-factor authentication is offered and any
+      account may sign in without it. The product owner decided on
+      8 October 2026 to leave it so, since nobody has asked for it to be
+      required. If a trust does, require it for that trust's org units
+      and not for everybody. Until then the DTAC v2 question, MFA "for
+      all account types", is answered "available, not enforced".
 - [ ] **Publish a DSPT return.** The Data Security and Protection Toolkit
       is the yearly self-assessment an organisation with access to NHS
       data publishes, and a trust looks the supplier up by ODS code.
@@ -200,14 +204,19 @@ EoEETA's host. These steps are what this approach adds.
       protection impact assessment and a supplier who arrives with one
       already filled in saves weeks. Cover what is held, where, who can
       see it, the sub-processors, retention, and the risks below.
-- [ ] **Keep patient details out of the passport.** A logbook entry is
-      free text (regimen, co-morbidities, performance status, dosing) and
-      evidence is an uploaded file, so both invite a patient's name, a
-      hospital number or a scanned prescription. Forbid it in the terms,
-      say so on `LogbookEntryForm` and on the evidence upload, and say in
-      the DPIA what happens when somebody does it anyway. Without this
-      the passport holds patient data and every check in this plan gets
-      heavier.
+- [x] **Keep patient details out of the passport.** Most of this was
+      already in place. The terms forbid it, in clause 9 and in the rules of use.
+      A reflection cannot be saved without ticking that it identifies no
+      patient. The logbook's indication and notes, and the notes on a
+      certificate, a CPD entry and a sign-off request, each say to write
+      about the work and not about a patient. Two gaps were closed on
+      8 October 2026: the outcome field on `LogbookEntryForm`, where
+      "what happened" is most likely to name somebody, and
+      `CertificateUploader`, the only place a file enters a passport, so
+      where a scanned prescription or clinic letter would arrive. Both
+      are wording on the form, not a check: nothing reads what is typed
+      or uploaded. Say so in the DPIA, with what happens when somebody
+      does it anyway.
 
 ## Phase 5: Clinical safety
 
