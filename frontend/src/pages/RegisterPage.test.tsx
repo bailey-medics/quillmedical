@@ -1,9 +1,9 @@
 /**
  * RegisterPage tests
  *
- * Joining, on one page with two views: choose a module and name a
- * clinical lead, then create the account. Only a teaching deployment lets
- * somebody register for themselves.
+ * Joining, on one page: choose a module and name a clinical lead, choose
+ * a site where the lead holds several, then create the account. Only a
+ * teaching deployment lets somebody register for themselves.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -35,6 +35,7 @@ function leadCheckAnswers(answer: {
   valid: boolean;
   org_unit_id?: number | null;
   site_id?: number | null;
+  sites?: { site_id: number; site_name: string; org_unit_id: number }[];
 }) {
   vi.mocked(api.post).mockImplementation(async (url: string) =>
     url === VALIDATE
@@ -172,9 +173,10 @@ describe("RegisterPage", () => {
       ).toHaveAttribute("href", "/guides/join-a-course");
     });
 
-    // The API works the site out from these two and takes no id on trust,
-    // so none is sent.
-    it("registers with the module and the clinical lead, and names no site", async () => {
+    // The API works the organisation out from the lead and takes none on
+    // trust, so none is sent. The site is sent, and the API checks it is
+    // the lead's: with a lead at several sites it is the delegate's choice.
+    it("registers with the module, the clinical lead and the site", async () => {
       const user = userEvent.setup();
       renderWithRouter(<RegisterPage />);
 
@@ -190,9 +192,39 @@ describe("RegisterPage", () => {
         email: "test@example.com",
         teaching_module_id: "bank-1",
         clinical_lead_email: "lead@example.com",
+        site_id: 9,
       });
       expect(sent).not.toHaveProperty("org_unit_id");
-      expect(sent).not.toHaveProperty("site_id");
+    });
+
+    it("names the site being joined in a heading", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(<RegisterPage />);
+
+      await nameClinicalLead(user);
+
+      expect(
+        await screen.findByRole("heading", {
+          level: 2,
+          name: "Joining Test Hospital",
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it("goes back to the first view with the module and the lead as they were", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(<RegisterPage />);
+
+      await nameClinicalLead(user);
+      await user.click(await screen.findByRole("button", { name: "Back" }));
+
+      expect(
+        await screen.findByLabelText(/Clinical lead email address/),
+      ).toHaveValue("lead@example.com");
+      expect(
+        screen.getByRole("combobox", { name: /teaching module/i }),
+      ).toHaveValue("Module one");
+      expect(screen.queryByText("Create an account")).not.toBeInTheDocument();
     });
 
     it("sends the marketing box as not ticked, so the API knows it was shown", async () => {
@@ -238,6 +270,116 @@ describe("RegisterPage", () => {
         }),
       );
     });
+  });
+
+  describe("a clinical lead at several sites", () => {
+    const TWO_SITES = [
+      { site_id: 9, site_name: "North Hospital", org_unit_id: 7 },
+      { site_id: 11, site_name: "South Hospital", org_unit_id: 7 },
+    ];
+
+    beforeEach(() => {
+      leadCheckAnswers({ valid: true, sites: TWO_SITES });
+    });
+
+    it("asks which site, and does not show the account form yet", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(<RegisterPage />);
+
+      await nameClinicalLead(user);
+
+      expect(
+        await screen.findByRole("radiogroup", {
+          name: /Which site are you joining\?/,
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("radio", { name: "North Hospital" }),
+      ).not.toBeChecked();
+      expect(
+        screen.getByRole("radio", { name: "South Hospital" }),
+      ).not.toBeChecked();
+      expect(screen.queryByText("Create an account")).not.toBeInTheDocument();
+    });
+
+    it("names the site chosen, and registers with it", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(<RegisterPage />);
+
+      await nameClinicalLead(user);
+      await user.click(
+        await screen.findByRole("radio", { name: "South Hospital" }),
+      );
+      await user.click(screen.getByTestId("submit-button"));
+
+      expect(
+        await screen.findByRole("heading", {
+          level: 2,
+          name: "Joining South Hospital",
+        }),
+      ).toBeInTheDocument();
+
+      await fillInAccount(user);
+      await user.click(screen.getByTestId("submit-button"));
+
+      await waitFor(() => expect(navigate).toHaveBeenCalled());
+      expect(registration()).toMatchObject({ site_id: 11 });
+    });
+
+    it("goes back from the account form to the choice, and from there to the first view", async () => {
+      const user = userEvent.setup();
+      renderWithRouter(<RegisterPage />);
+
+      await nameClinicalLead(user);
+      await user.click(
+        await screen.findByRole("radio", { name: "North Hospital" }),
+      );
+      await user.click(screen.getByTestId("submit-button"));
+      await screen.findByText("Create an account");
+
+      await user.click(screen.getByRole("button", { name: "Back" }));
+      expect(
+        await screen.findByRole("radiogroup", {
+          name: /Which site are you joining\?/,
+        }),
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Back" }));
+      expect(
+        await screen.findByLabelText(/Clinical lead email address/),
+      ).toHaveValue("lead@example.com");
+    });
+  });
+
+  // One site listed is the answer: no question is asked.
+  it("skips the choice for a lead whose list holds one site", async () => {
+    leadCheckAnswers({
+      valid: true,
+      sites: [{ site_id: 9, site_name: "Only Hospital", org_unit_id: 7 }],
+    });
+    const user = userEvent.setup();
+    renderWithRouter(<RegisterPage />);
+
+    await nameClinicalLead(user);
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Joining Only Hospital",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("treats a valid lead with an empty list of sites as not found", async () => {
+    leadCheckAnswers({ valid: true, sites: [] });
+    const user = userEvent.setup();
+    renderWithRouter(<RegisterPage />);
+
+    await nameClinicalLead(user);
+
+    expect(
+      await screen.findByText("Clinical lead not found"),
+    ).toBeInTheDocument();
   });
 
   it("offers no registration on a clinical deployment", () => {

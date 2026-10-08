@@ -60,14 +60,22 @@ export interface RegistrationFormProps {
   onSubmit: (data: RegistrationFormData) => Promise<FormSubmitResult>;
   /** Where the guide to joining lives, to offer under the form */
   guidePath?: string | null;
+  /** The site being joined, named in a heading – omit to name none */
+  siteName?: string | null;
+  /** Goes back a step – omit to draw no Back button */
+  onBack?: () => void;
 }
 
 function RegistrationFields({
   organisations,
   guidePath,
+  siteName,
+  onBack,
 }: {
   organisations?: { value: string; label: string }[];
   guidePath: string | null;
+  siteName: string | null;
+  onBack?: () => void;
 }) {
   const { methods } = useFormContext();
   const { isOnline } = useConnectivity();
@@ -75,6 +83,9 @@ function RegistrationFields({
   return (
     <Stack>
       <Heading>Create an account</Heading>
+      {/* Worked out from the clinical lead a step earlier. Said here so
+          a delegate sent to the wrong site sees it before registering. */}
+      {siteName && <Heading>Joining {siteName}</Heading>}
       {!isOnline && (
         <StateMessage
           icon={<IconWifiOff />}
@@ -147,7 +158,7 @@ function RegistrationFields({
           and email are collected, so the policies are linked here. */}
       <LegalNotice />
       <FormStatusNarrow />
-      <SubmitButton />
+      <SubmitButton onCancel={onBack} cancelLabel="Back" />
       {guidePath && (
         <Group justify="flex-end">
           <TextLink standalone to={guidePath}>
@@ -163,6 +174,8 @@ export default function RegistrationForm({
   organisations,
   onSubmit,
   guidePath = null,
+  siteName = null,
+  onBack,
 }: RegistrationFormProps) {
   async function handleSubmit(
     data: RegistrationFormValues,
@@ -196,6 +209,8 @@ export default function RegistrationForm({
         <RegistrationFields
           organisations={organisations}
           guidePath={guidePath}
+          siteName={siteName}
+          onBack={onBack}
         />
       </Form>
     </BaseCard>

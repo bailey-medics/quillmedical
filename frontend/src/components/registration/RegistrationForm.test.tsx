@@ -44,6 +44,42 @@ describe("RegistrationForm", () => {
     expect(screen.getByTestId("submit-button")).toBeInTheDocument();
   });
 
+  it("names no site and draws no Back button unless given them", () => {
+    renderWithMantine(
+      <RegistrationForm onSubmit={() => new Promise(() => {})} />,
+    );
+
+    expect(screen.queryByText(/^Joining/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Back" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("names the site being joined in a level two heading", () => {
+    renderWithMantine(
+      <RegistrationForm
+        onSubmit={() => new Promise(() => {})}
+        siteName="Test Hospital"
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Joining Test Hospital" }),
+    ).toBeInTheDocument();
+  });
+
+  it("goes back when Back is pressed, without submitting", async () => {
+    const onBack = vi.fn();
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+    renderWithMantine(<RegistrationForm onSubmit={onSubmit} onBack={onBack} />);
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(onBack).toHaveBeenCalledOnce();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it("offers no guide to joining unless given one", () => {
     renderWithMantine(
       <RegistrationForm onSubmit={() => new Promise(() => {})} />,
