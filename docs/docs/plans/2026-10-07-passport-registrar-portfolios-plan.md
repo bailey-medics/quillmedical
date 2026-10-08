@@ -14,6 +14,9 @@ the trainers what is possible, so the questions for the training lead are
 parked rather than blocking. The phases build it in order: scope first,
 then a confirmed logbook entry, then frameworks. The source files sit in
 `teaching-repos/`, which is gitignored, so they are not in the repository.
+Every phase was built and merged by 8 October 2026. What is still open is
+the training lead's answers, the things set aside under Decisions, and the
+two unticked steps in Phase 13.
 
 ## Findings
 
@@ -197,10 +200,11 @@ starting to prescribe SACT.
 
 ### What the passport can deliver today
 
-Checked against the passport as built on 7 October 2026, leaving aside the
-second signature at the final step. The Gloucestershire sheet can be
-delivered with catalogue additions alone. The SACT Board framework mostly
-works. The Bath passport is the weakest fit.
+Checked against the passport as it stood on 7 October 2026, before any of
+the phases below, leaving aside the second signature at the final step. The
+Gloucestershire sheet could be delivered with catalogue additions alone.
+The SACT Board framework mostly worked. The Bath passport was the weakest
+fit. Each gap below now says where it went.
 
 - **Levels and the declaration fit** – a sign-off against a scale, with a
   named assessor, what they based it on, evidence files and a comment, is
@@ -234,29 +238,35 @@ works. The Bath passport is the weakest fit.
 - **Gap: no scope on a sign-off** – there is one current state per
   competency, so level 3 for lung and level 3 for breast overwrite each
   other, and Bath's "only these regimens" has nowhere to go but the
-  comment. Both SACT documents depend on this. See Decisions.
+  comment. Both SACT documents depend on this. Closed by Phases 1 to 4
+  and 10: a sign-off and a logbook entry each name a scope.
 
 - **Gap: a log row cannot be signed** – the paper forms carry a supervisor
-  signature on each logged prescription. See Decisions.
+  signature on each logged prescription. Closed by Phase 5: a supervisor
+  can confirm an entry.
 
 - **Gap: Bath's three logs do not fit the logbook** – its fields are
   procedure-shaped (setting, supervision, indication, outcome, notes), so
   regimen, parameters, co-morbidities, performance status and dosing all go
-  into free text. See Decisions.
+  into free text. Still open, by decision: see Decisions.
 
 - **Gap: nothing is grouped by the document it came from** – the passport
   already summarises itself: the passport page lists every competency held
   with its state, each section has its own summary, and the whole record
   downloads as PDF, Markdown or a zip. What is missing is narrower. Those
   views are one list ordered by specialty, so nothing gathers the rows that
-  belong to one document. See Decisions.
+  belong to one document. Closed by Phases 6 to 8: the picker and the
+  summaries are grouped by framework. A view laid out like the paper
+  form is still open, by decision.
 
 - **Gap: one competency, one scale** – Bath's direct, indirect and
   independent tiers and the SACT Board's levels are two scales for the same
-  act. See Decisions.
+  act. Closed by Phase 9: each framework is its own file with its own
+  tiers, so the same act has one competency in each.
 
 - **Not enforced: level order and who may assess** – level 3 is accepted
-  without level 2, and anybody may sign any level. See Decisions.
+  without level 2, and anybody may sign any level. Still so, by decision:
+  see Decisions.
 
 ### Many specialties, many standards
 
@@ -284,6 +294,7 @@ another does not reduce the count.
 
 Parked on 7 October 2026 and not part of the build. The working assumption
 is that all three documents are delivered, so none of these blocks anything.
+Still unanswered on 8 October 2026, with all three built.
 
 - Which trust's forms do the trainees fill in: Gloucestershire, Bath, or
   both?
@@ -724,6 +735,55 @@ breaking API change and a destructive migration.
 - [x] **Remove the specialty client code**: the API calls, the types, the
       `lib/passport/specialties.ts` reader and the organisation client's
       two calls.
+- [x] **Record the breaking changes.** `oasdiff` reported nine, not one
+      for each route: a removed route, a removed response field and a
+      removed request field each count on their own. Each has a decision
+      file under `api-compatibility/`, all `forces_reload: false`, since
+      the frontend that called them goes in the same change and nobody
+      uses the live site. Both approvals were given in GitHub.
+- [x] **Keep the migration chain in one line.** `main` gained two
+      newsletter migrations while this branch waited, so the drop
+      migration and theirs both followed the same revision and every
+      migration check failed with two heads. The drop migration was
+      repointed at the newest revision on `main`. The same thing happened
+      to Phase 5's migration. A stack with a migration in it needs its
+      `down_revision` checked against `main` each time `main` moves.
+
+## Phase 13: A Passport admin holds a passport of their own
+
+Not in the plan as written. Found on 8 October 2026, when the first real
+person was added to the live app as a Passport admin and could not add to a
+passport: `passport_write`, the competency for writing to your own
+passport, is sold, and until now no base profession carried it.
+
+- [x] **Give `passport_admin` the `passport_write` competency**, in
+      `shared/base-professions.yaml`. It is the only profession that
+      carries it, and the test that pinned "no profession grants writing"
+      now pins "none but `passport_admin`". This is a real exception to
+      "writing is sold", made on purpose. A Passport admin holds
+      `manage_passport` and may give writing to anybody at their own org
+      units, but never to themselves: `update_user` refuses anybody
+      changing their own profession or competencies unless they are a
+      superadmin. So an admin at an org unit with no cover switched on
+      needed a second admin before they could use what they run.
+- [x] **Say so in the guide and the backend page**:
+      `add-somebody-to-the-passport.md` and
+      `docs/docs/backend/passport/index.md`.
+- [ ] **Give `passport_write` by hand to anybody who is already a Passport
+      admin**, in the user editor on the live app. A profession only seeds
+      a person's `user_competency` rows at the moment it is given:
+      `User.get_final_competencies` reads the rows and never the
+      profession, so a change to `shared/base-professions.yaml` reaches
+      only people given the profession afterwards. No backfill migration
+      was written, because there is one such person. Writing also needs
+      them to belong to an org unit with the Passport feature switched on.
+- [ ] **Correct the project instructions on how competencies resolve.**
+      `.github/copilot-instructions.md`, and `CLAUDE.md` generated from
+      it, still say a user's competencies are worked out from the
+      profession on each request, as `(base profession + additional) −
+      removed`. That has been untrue since the user competency table plan
+      moved them to rows, and it is what led this phase to claim at first
+      that existing admins would gain writing on deploy.
 
 ## Decisions
 
