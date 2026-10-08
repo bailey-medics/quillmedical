@@ -22,7 +22,7 @@ press **Send** on the **Send invite email** card.
 
 - **Passport delegate** is somebody who keeps a passport.
 - **Passport clinical lead** is a label for the clinician who leads the passport where they work. It gives nothing more.
-- **Passport admin** can add people and give them these professions, as you can.
+- **Passport admin** can add people and give them these professions, as you can. An admin can also add to a passport of their own.
 - **Passport external assessor** is for an assessor from another organisation, who signs and does nothing else.
 
 ## Where everybody is covered
