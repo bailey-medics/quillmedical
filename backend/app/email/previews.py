@@ -1,4 +1,3 @@
-# backend/app/email/previews.py
 """Render every email with sample values, for Storybook to show.
 
 Storybook's Foundations/Emails stories show what the backend actually
@@ -83,6 +82,7 @@ def _certificate_context() -> dict[str, Any]:
     rendered = render_teaching_email(
         _CERTIFICATE_TEMPLATE, _CERTIFICATE_VALUES
     )
+
     return {
         "subject": rendered["subject"],
         # As the teaching router sends it: the subject doubles as the
@@ -287,10 +287,12 @@ def render_preview(preview: Preview, theme: EmailThemeName) -> RenderedEmail:
         The rendered email.
     """
     from_name = preview.from_name
+
     if preview.id == "newsletter":
         from_name = "Mark at " + (
             "Quill Medical" if theme == "quill" else "Let's Do Digital"
         )
+
     return render_email(
         preview.template,
         theme,
@@ -310,6 +312,7 @@ def _tidy(text: str) -> str:
     file, and it would then never match a fresh render.
     """
     lines = [line.rstrip() for line in text.splitlines()]
+
     return "\n".join(lines).strip("\n") + "\n"
 
 
@@ -326,6 +329,7 @@ def build() -> dict[str, str]:
     """
     files: dict[str, str] = {}
     index: list[dict[str, Any]] = []
+
     for preview in previews():
         entry: dict[str, Any] = {"id": preview.id, "label": preview.label}
         for theme in THEMES:
@@ -340,9 +344,11 @@ def build() -> dict[str, str]:
                 "replyTo": rendered["reply_to"],
             }
         index.append(entry)
+
     files["index.json"] = (
         json.dumps(index, indent=2, ensure_ascii=False) + "\n"
     )
+
     return files
 
 
@@ -357,14 +363,18 @@ def write(directory: Path = EMAIL_PREVIEWS_DIR) -> list[Path]:
     """
     directory.mkdir(parents=True, exist_ok=True)
     files = build()
+
     for stale in directory.iterdir():
         if stale.is_file() and stale.name not in files:
             stale.unlink()
+
     written: list[Path] = []
+
     for name, contents in files.items():
         path = directory / name
         path.write_text(contents, encoding="utf-8")
         written.append(path)
+
     return written
 
 

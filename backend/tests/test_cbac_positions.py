@@ -44,6 +44,7 @@ def _user(db: Session, username: str) -> User:
     )
     db.add(user)
     db.commit()
+
     return user
 
 
@@ -51,6 +52,7 @@ def _org(db: Session, name: str = "Trust") -> OrgUnit:
     org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.commit()
+
     return org
 
 
@@ -58,6 +60,7 @@ def _site(db: Session, name: str = "Ward 1") -> OrgUnit:
     site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
+
     return site
 
 
@@ -97,6 +100,7 @@ def _post(
     )
     db.add(post)
     db.commit()
+
     return post
 
 
@@ -153,6 +157,7 @@ class TestHowManyMayHoldIt:
         post = _post(db_session, site=site, max_holders=1)
         first = _user(db_session, "dr_first")
         second = _user(db_session, "dr_second")
+
         for person in (first, second):
             _authorise(db_session, person, site=site)
 
@@ -167,6 +172,7 @@ class TestHowManyMayHoldIt:
         site = _site(db_session)
         post = _post(db_session, site=site, max_holders=None)
         people = [_user(db_session, f"warden_{i}") for i in range(3)]
+
         for person in people:
             _authorise(db_session, person, site=site)
             appoint(db_session, post, person)
@@ -182,6 +188,7 @@ class TestHowManyMayHoldIt:
         post = _post(db_session, site=site, max_holders=1)
         leaver = _user(db_session, "dr_leaver")
         joiner = _user(db_session, "dr_joiner")
+
         for person in (leaver, joiner):
             _authorise(db_session, person, site=site)
 
@@ -206,6 +213,7 @@ class TestHowManyMayHoldIt:
         post = _post(db_session, site=site, max_holders=1)
         leaver = _user(db_session, "dr_leaver")
         joiner = _user(db_session, "dr_joiner")
+
         for person in (leaver, joiner):
             _authorise(db_session, person, site=site)
 
@@ -227,8 +235,10 @@ class TestHowManyMayHoldIt:
         second = _user(db_session, "dr_second")
         third = _user(db_session, "dr_third")
         fourth = _user(db_session, "dr_fourth")
+
         for person in (first, second, third, fourth):
             _authorise(db_session, person, site=site)
+
         start = date(2026, 1, 1)
         leaving = appoint(db_session, post, first, started_on=start)
         appoint(db_session, post, second, started_on=start)
@@ -248,6 +258,7 @@ class TestHowManyMayHoldIt:
         post = _post(db_session, site=site, max_holders=1)
         leaver = _user(db_session, "dr_leaver")
         joiner = _user(db_session, "dr_joiner")
+
         for person in (leaver, joiner):
             _authorise(db_session, person, site=site)
 
@@ -283,6 +294,7 @@ class TestActingCover:
         post = _post(db_session, site=site, max_holders=1)
         substantive = _user(db_session, "dr_substantive")
         cover = _user(db_session, "dr_cover")
+
         for person in (substantive, cover):
             _authorise(db_session, person, site=site)
 
@@ -384,6 +396,7 @@ class TestThePostBelongsToOnePlace:
         so a post cannot be at two places by writing to two columns.
         """
         org = _org(db_session)
+
         with pytest.raises(TypeError):
             Position(
                 organisation_id=org.id,
@@ -413,6 +426,7 @@ class TestThePostBelongsToOnePlace:
 
     def test_an_unknown_kind_is_refused(self, db_session):
         site = _site(db_session)
+
         with pytest.raises(ValueError, match="Unknown position kind"):
             Position(
                 org_unit_id=site.id,
@@ -422,6 +436,7 @@ class TestThePostBelongsToOnePlace:
 
     def test_an_unknown_required_competency_is_refused(self, db_session):
         site = _site(db_session)
+
         with pytest.raises(ValueError, match="Unknown competency"):
             Position(
                 org_unit_id=site.id,

@@ -44,6 +44,7 @@ def signed_in(authenticated_client):
     authenticated_client.headers["X-CSRF-Token"] = (
         authenticated_client.cookies.get("XSRF-TOKEN")
     )
+
     return authenticated_client
 
 

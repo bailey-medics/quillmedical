@@ -335,6 +335,7 @@ def _second_site(
     )
     set_clinical_lead(db, site, lead)
     db.flush()
+
     return site
 
 
@@ -355,6 +356,7 @@ def _register(test_client, username: str, **extra: object):
 def _sites_of(db: Session, username: str) -> set[int]:
     user = db.scalar(select(User).where(User.username == username))
     assert user is not None
+
     return set(
         db.scalars(
             select(org_unit_member.c.org_unit_id).where(

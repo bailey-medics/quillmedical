@@ -1,4 +1,3 @@
-# backend/app/features/teaching/door.py
 """Routes for letting people into teaching at an org_unit, and out again.
 
 Teaching has three layers: a competency, a place and an enrolment. Three
@@ -68,12 +67,14 @@ def require_runs_teaching(
     organisations and the competency. 403 for the rest.
     """
     user = _get_current_user(request, db)
+
     if user.platform_role == "superadmin":
         return user
     if not user_has_feature(db, user.id, "teaching"):
         raise HTTPException(status_code=403, detail="Not allowed")
     if "manage_teaching" not in user.get_final_competencies():
         raise HTTPException(status_code=403, detail="Not allowed")
+
     return user
 
 
@@ -91,6 +92,7 @@ def _require_reached(db: Session, caller: User, unit_id: int) -> None:
     confirm that an org_unit exists to somebody who may not see it.
     """
     reached = org_units_whose_people_reached_by(db, caller)
+
     if reached is not None and unit_id not in reached:
         raise HTTPException(status_code=404, detail="Org unit not found")
 
@@ -108,8 +110,10 @@ def _require_member(db: Session, unit_id: int, user_id: int) -> User:
             org_unit_member.c.user_id == user_id,
         )
     )
+
     if person is None or is_member is None:
         raise HTTPException(status_code=404, detail="Member not found")
+
     return person
 
 
@@ -185,6 +189,7 @@ def admit_member(
             detail="A module was named that this organisation does not serve.",
         ) from None
     db.commit()
+
     return AdmitOut(
         competencies=admitted.competencies,
         place=admitted.place,
@@ -214,11 +219,13 @@ def member_access(
     _require_reached(db, current_user, unit_id)
     person = _require_member(db, unit_id, user_id)
     organisation_id = access.organisation_serving(db, unit_id)
+
     if organisation_id is None:
         return MemberAccessOut(modules=[])
 
     now = datetime.now(UTC)
     modules: list[ModuleAccessOut] = []
+
     for status in db.scalars(
         select(QuestionBankOrgStatus)
         .where(
@@ -260,6 +267,7 @@ def member_access(
                 enrolment_ends_on=current[0].ends_on if current else None,
             )
         )
+
     return MemberAccessOut(modules=modules)
 
 
@@ -289,8 +297,10 @@ def unenrol_member(
     _require_reached(db, current_user, unit_id)
     person = _require_member(db, unit_id, user_id)
     organisation_id = access.organisation_serving(db, unit_id)
+
     if organisation_id is None:
         return WithdrawOut(withdrawn=0)
+
     ended = enrolments.withdraw(
         db,
         person.id,
@@ -298,6 +308,7 @@ def unenrol_member(
         question_bank_id=body.module_id,
     )
     db.commit()
+
     return WithdrawOut(withdrawn=ended)
 
 
@@ -322,12 +333,15 @@ def modules_served_at(
     """
     _require_reached(db, current_user, unit_id)
     organisation_id = access.organisation_serving(db, unit_id)
+
     if organisation_id is None:
         return ServedModulesOut(
             organisation_id=None, organisation_name=None, modules=[]
         )
+
     organisation = db.get(OrgUnit, organisation_id)
     modules: list[ServedModuleOut] = []
+
     for status in db.scalars(
         select(QuestionBankOrgStatus)
         .where(
@@ -348,6 +362,7 @@ def modules_served_at(
                 title=title or status.question_bank_id,
             )
         )
+
     return ServedModulesOut(
         organisation_id=organisation_id,
         organisation_name=organisation.name if organisation else None,

@@ -44,6 +44,7 @@ def _user(db: Session, username: str) -> User:
     )
     db.add(user)
     db.commit()
+
     return user
 
 
@@ -51,6 +52,7 @@ def _org(db: Session, name: str) -> OrgUnit:
     org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.commit()
+
     return org
 
 
@@ -65,6 +67,7 @@ def _site(db: Session, name: str, org: OrgUnit | None = None) -> OrgUnit:
             .values(parent_id=org.id)
         )
         db.commit()
+
     return site
 
 

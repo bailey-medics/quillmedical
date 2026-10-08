@@ -151,4 +151,5 @@ def archive_passport(
     destination = (
         Path(archive_root) if archive_root else Path(f"{root}-deleted")
     )
+
     return archive.archive_local(root, destination / prefix, passport_id)

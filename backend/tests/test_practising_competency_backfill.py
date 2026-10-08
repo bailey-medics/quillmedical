@@ -58,6 +58,7 @@ def _membership_implies(db: Session, user: User) -> set[int]:
     membership, plus every place beneath it at any depth.
     """
     roots = get_member_org_unit_ids(db, user.id)
+
     return set(roots) | descendant_ids(db, roots)
 
 
@@ -80,6 +81,7 @@ def _admin(
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -87,6 +89,7 @@ def _org(db: Session, name: str) -> OrgUnit:
     org = OrgUnit(name=name, type="hospital_team")
     db.add(org)
     db.commit()
+
     return org
 
 
@@ -94,6 +97,7 @@ def _below(db: Session, parent: OrgUnit, name: str, kind: str) -> OrgUnit:
     unit = OrgUnit(name=name, type=kind, parent_id=parent.id)
     db.add(unit)
     db.commit()
+
     return unit
 
 

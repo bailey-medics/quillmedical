@@ -341,6 +341,7 @@ class TestTheRoutes:
         # Whole words from the file. Not "ada" alone, which is in
         # "unreadable".
         text = response.text.lower()
+
         for word in ("ada@", "bob@", "cat@", "example.org", "lovelace"):
             assert word not in text
 
@@ -432,6 +433,7 @@ class TestTheRoutes:
         self, authenticated_superadmin_client, caplog
     ):
         client = authenticated_superadmin_client
+
         with caplog.at_level(logging.DEBUG):
             checked = client.post(CHECK, files=_upload(THREE)).json()
             client.post(
@@ -441,6 +443,7 @@ class TestTheRoutes:
             )
 
         logged = caplog.text.lower()
+
         for word in ("ada@", "bob@", "cat@", "lovelace"):
             assert word not in logged
 
@@ -478,6 +481,7 @@ class TestWhoMayUseThem:
         self, authenticated_client, method, url
     ):
         kwargs = {} if method == "get" else {"files": _upload(THREE)}
+
         if url == IMPORT:
             kwargs["data"] = {"fingerprint": "0" * 64}
 

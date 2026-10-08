@@ -47,6 +47,7 @@ def _user(
         add_org_unit_member(db, org.id, user.id, "staff")
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -55,6 +56,7 @@ def _org(db: Session, name: str) -> OrgUnit:
     db.add(org)
     db.commit()
     db.refresh(org)
+
     return org
 
 
@@ -91,8 +93,10 @@ def client(test_client: TestClient, coordinator: User) -> TestClient:
     )
     assert response.status_code == 200
     csrf = test_client.cookies.get("XSRF-TOKEN")
+
     if csrf:
         test_client.headers["X-CSRF-Token"] = csrf
+
     return test_client
 
 
@@ -236,6 +240,7 @@ class TestTheOrgUnitPage:
             )
         )
         db_session.commit()
+
         return trust
 
     def test_a_teaching_admin_sees_staff_and_no_patients_or_features(
@@ -289,6 +294,7 @@ def _ward(db: Session, name: str, parent: OrgUnit) -> OrgUnit:
     db.add(ward)
     db.commit()
     db.refresh(ward)
+
     return ward
 
 
@@ -344,8 +350,10 @@ class TestBelongingOnlyToAWard:
         )
         assert response.status_code == 200
         csrf = test_client.cookies.get("XSRF-TOKEN")
+
         if csrf:
             test_client.headers["X-CSRF-Token"] = csrf
+
         return test_client
 
     def test_lists_the_ward_and_not_its_trust(
@@ -652,6 +660,7 @@ class TestEditingASite:
             json={"name": "Ward 9", "type": "ward", "parent_id": trust.id},
         )
         assert created.status_code == 200, created.text
+
         return int(created.json()["id"])
 
     def test_renames_a_site_of_their_trust(

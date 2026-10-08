@@ -1,4 +1,3 @@
-# backend/app/cbac/competencies.py
 """Competency definitions loaded from YAML.
 
 This module loads and validates competency definitions from the

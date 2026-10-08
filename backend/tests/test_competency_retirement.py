@@ -74,6 +74,7 @@ def _retire(monkeypatch, competency_id: str = RETIRABLE) -> str:
         "RETIRED_COMPETENCY_IDS",
         tuple(c.id for c in entries if c.retired_on is not None),
     )
+
     return competency_id
 
 
@@ -263,6 +264,7 @@ class TestTheCleanupQueue:
         )
         db.add(user)
         db.commit()
+
         return user
 
     def test_a_practising_row_holding_a_retired_competency_is_listed(

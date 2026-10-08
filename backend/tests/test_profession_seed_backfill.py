@@ -47,6 +47,7 @@ def _migration() -> ModuleType:
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+
     return module
 
 
@@ -86,6 +87,7 @@ def _user(conn: Connection, name: str, profession: str) -> int:
             "profession": profession,
         },
     ).scalar_one()
+
     return int(user_id)
 
 
@@ -130,6 +132,7 @@ def _rows(user_id: int) -> list[dict[str, Any]]:
 
 def test_every_template_competency_is_seeded(before_seed: Config) -> None:
     template = _migration().TEMPLATES["teaching_delegate"]
+
     with core_engine.begin() as conn:
         user_id = _user(conn, "delegate", "teaching_delegate")
 
@@ -190,6 +193,7 @@ def test_running_it_twice_adds_nothing(before_seed: Config) -> None:
 
     command.upgrade(before_seed, SEED)
     first = _rows(user_id)
+
     with core_engine.begin() as conn:
         conn.execute(text(_migration()._seed()))
 

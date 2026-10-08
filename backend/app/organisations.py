@@ -106,6 +106,7 @@ def organisation_org_units_of(
         return set()
 
     roots = set(root_ids_of(db, org_unit_ids).values())
+
     if not roots:
         return set()
 
@@ -141,6 +142,7 @@ def feature_holder_ids_of(db: Session, org_unit_ids: list[int]) -> set[int]:
     """
     if not org_unit_ids:
         return set()
+
     return set(org_unit_ids) | organisation_org_units_of(db, org_unit_ids)
 
 
@@ -167,11 +169,13 @@ def get_member_org_unit_ids(
     stmt = select(organisation_org_unit_member.c.org_unit_id).where(
         organisation_org_unit_member.c.user_id == user_id
     )
+
     if capacity is not None:
         stmt = stmt.where(
             organisation_org_unit_member.c.capacity
             == validate_member_capacity(capacity)
         )
+
     return sorted({int(r[0]) for r in db.execute(stmt).all()})
 
 
@@ -234,6 +238,7 @@ def org_units_administered_by(db: Session, user: User) -> set[int] | None:
         .all()
         if org_unit_id is not None
     }
+
     return authorised | descendant_ids(db, sorted(authorised))
 
 
@@ -272,6 +277,7 @@ def org_units_run_by_scoped_manager(db: Session, user_id: int) -> set[int]:
             ).all()
         }
     )
+
     return set(member) | descendant_ids(db, member)
 
 
@@ -308,6 +314,7 @@ def org_units_whose_people_reached_by(
     """
     if user.platform_role == "superadmin":
         return None
+
     return org_units_run_by_scoped_manager(db, user.id)
 
 
@@ -321,6 +328,7 @@ def is_member_within(
     """
     if not org_unit_ids:
         return False
+
     return (
         db.scalar(
             select(org_unit_member.c.user_id)
@@ -378,12 +386,14 @@ def get_reachable_org_unit_ids(
     member_org_units = select(org_unit_member.c.org_unit_id).where(
         org_unit_member.c.user_id == user_id
     )
+
     if capacity is not None:
         member_org_units = member_org_units.where(
             org_unit_member.c.capacity == validate_member_capacity(capacity)
         )
 
     org_unit_ids = [int(r[0]) for r in db.execute(member_org_units).all()]
+
     return reach_of_org_units(db, org_unit_ids)
 
 
@@ -410,6 +420,7 @@ def reach_of_org_units(db: Session, org_unit_ids: list[int]) -> list[int]:
     roots = organisation_org_units_of(db, org_unit_ids)
 
     own_org_units = set(org_unit_ids) | roots
+
     return sorted(roots | _reached_through_links(db, own_org_units))
 
 
@@ -452,6 +463,7 @@ def _reached_through_links(db: Session, place_ids: set[int]) -> set[int]:
         ).all()
         if relation_grants_reach(str(relation))
     }
+
     if not targets:
         return set()
 
@@ -481,6 +493,7 @@ def get_shared_org_unit_ids(
     """Return the org_units shared between a staff user and a patient."""
     user_org_units = set(get_member_org_unit_ids(db, user_id))
     patient_org_units = set(get_patient_org_unit_ids(db, patient_id))
+
     return sorted(user_org_units & patient_org_units)
 
 
@@ -557,11 +570,13 @@ def get_org_unit_patient_ids(db: Session, org_unit_ids: list[int]) -> set[str]:
     """Return all patient IDs across the given org_units."""
     if not org_unit_ids:
         return set()
+
     rows = db.execute(
         select(org_unit_patient_member.c.patient_id).where(
             org_unit_patient_member.c.org_unit_id.in_(org_unit_ids)
         )
     ).all()
+
     return {r[0] for r in rows}
 
 
@@ -582,14 +597,17 @@ def get_org_unit_member_ids(
     """
     if not org_unit_ids:
         return set()
+
     stmt = select(organisation_org_unit_member.c.user_id).where(
         organisation_org_unit_member.c.org_unit_id.in_(org_unit_ids)
     )
+
     if capacity is not None:
         stmt = stmt.where(
             organisation_org_unit_member.c.capacity
             == validate_member_capacity(capacity)
         )
+
     return {int(r[0]) for r in db.execute(stmt).all()}
 
 
@@ -620,6 +638,7 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
 
     # Org-based access
     user_org_units = get_member_org_unit_ids(db, user.id)
+
     if user_org_units:
         result |= get_org_unit_patient_ids(db, user_org_units)
 
@@ -672,9 +691,12 @@ def media_prefix_of(db: Session, org_unit_id: int) -> int | None:
             OrgUnit.id == org_unit_id
         )
     ).first()
+
     if row is None:
         return None
+
     own_id, recorded = row
+
     return int(recorded) if recorded is not None else int(own_id)
 
 
@@ -708,6 +730,7 @@ def add_org_unit_member(
             org_unit_member.c.user_id == user_id,
         )
     )
+
     if existing is None:
         db.execute(
             org_unit_member.insert().values(
@@ -768,8 +791,10 @@ def remove_org_unit_memberships(
         org_unit_ids: Which org_units to clear, or None for every organisation.
     """
     roots = organisation_org_unit_ids()
+
     if org_unit_ids is not None:
         roots = roots.where(OrgUnit.id.in_(org_unit_ids))
+
     root_ids = list(db.execute(roots).scalars().all())
 
     if root_ids:

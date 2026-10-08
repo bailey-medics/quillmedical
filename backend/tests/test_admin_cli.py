@@ -21,6 +21,7 @@ def sysadmin_role(db_session: Session) -> Role:
     db_session.add(role)
     db_session.commit()
     db_session.refresh(role)
+
     return role
 
 
@@ -33,8 +34,10 @@ def _patch_session(db_session: Session):
     """
     original_close = db_session.close
     db_session.close = lambda: None  # type: ignore[assignment]
+
     with patch("app.db.core_db.CoreSessionLocal", return_value=db_session):
         yield
+
     db_session.close = original_close  # type: ignore[assignment]
 
 
@@ -51,6 +54,7 @@ class TestCreateSuperadmin:
             "ADMIN_EMAIL": "mark@example.com",
             "ADMIN_PASSWORD": "SecurePass123!",
         }
+
         with patch.dict(os.environ, env, clear=False):
             from scripts.admin_cli import create_superadmin
 
@@ -86,6 +90,7 @@ class TestCreateSuperadmin:
             "ADMIN_EMAIL": "operator@example.com",
             "ADMIN_PASSWORD": "SecurePass123!",
         }
+
         with patch.dict(os.environ, env, clear=False):
             from scripts.admin_cli import create_superadmin
 
@@ -123,6 +128,7 @@ class TestCreateSuperadmin:
             "ADMIN_EMAIL": "drsmith@example.com",
             "ADMIN_PASSWORD": "NewPass123!",
         }
+
         with patch.dict(os.environ, env, clear=False):
             from scripts.admin_cli import create_superadmin
 
@@ -153,6 +159,7 @@ class TestCreateSuperadmin:
             "ADMIN_EMAIL": "new@example.com",
             "ADMIN_PASSWORD": "NewPass123!",
         }
+
         with patch.dict(os.environ, env, clear=False):
             from scripts.admin_cli import create_superadmin
 
@@ -173,6 +180,7 @@ class TestCreateSuperadmin:
             "ADMIN_EMAIL": "norole@example.com",
             "ADMIN_PASSWORD": "Pass123!",
         }
+
         with patch.dict(os.environ, env, clear=False):
             from scripts.admin_cli import create_superadmin
 
@@ -185,6 +193,7 @@ class TestCreateSuperadmin:
 
     def test_missing_env_vars_exits(self) -> None:
         env = {"ADMIN_ACTION": "create-superadmin", "ADMIN_USERNAME": "mark"}
+
         with patch.dict(os.environ, env, clear=False):
             # Remove keys that might be set from other tests
             os.environ.pop("ADMIN_EMAIL", None)
@@ -214,6 +223,7 @@ class TestAddRole:
             "ADMIN_USERNAME": "roleuser",
             "ADMIN_ROLE": "System Administrator",
         }
+
         with patch.dict(os.environ, env, clear=False):
             from scripts.admin_cli import add_role
 
@@ -241,6 +251,7 @@ class TestAddRole:
             "ADMIN_USERNAME": "hasrole",
             "ADMIN_ROLE": "System Administrator",
         }
+
         with patch.dict(os.environ, env, clear=False):
             from scripts.admin_cli import add_role
 
@@ -263,6 +274,7 @@ class TestAddRole:
             "ADMIN_USERNAME": "noroleuser",
             "ADMIN_ROLE": "Nonexistent Role",
         }
+
         with patch.dict(os.environ, env, clear=False):
             from scripts.admin_cli import add_role
 
@@ -277,6 +289,7 @@ class TestAddRole:
             "ADMIN_USERNAME": "ghost",
             "ADMIN_ROLE": "System Administrator",
         }
+
         with patch.dict(os.environ, env, clear=False):
             from scripts.admin_cli import add_role
 
@@ -290,6 +303,7 @@ class TestRunMigrations:
 
     def test_runs_upgrade_head(self) -> None:
         env = {"ADMIN_ACTION": "run-migrations"}
+
         with (
             patch.dict(os.environ, env, clear=False),
             patch("alembic.command.upgrade") as mock_upgrade,
@@ -305,6 +319,7 @@ class TestRunMigrations:
 
     def test_upgrade_failure_returns_error(self) -> None:
         env = {"ADMIN_ACTION": "run-migrations"}
+
         with (
             patch.dict(os.environ, env, clear=False),
             patch(
@@ -358,6 +373,7 @@ class TestVerifyEmail:
             "ADMIN_ACTION": "verify-email",
             "ADMIN_USERNAME": "email-pending",
         }
+
         with patch.dict(os.environ, env, clear=False):
             from scripts.admin_cli import verify_email
 
@@ -382,6 +398,7 @@ class TestVerifyEmail:
             "ADMIN_ACTION": "verify-email",
             "ADMIN_USERNAME": "already-verified",
         }
+
         with patch.dict(os.environ, env, clear=False):
             from scripts.admin_cli import verify_email
 
@@ -395,6 +412,7 @@ class TestVerifyEmail:
             "ADMIN_ACTION": "verify-email",
             "ADMIN_USERNAME": "ghost",
         }
+
         with patch.dict(os.environ, env, clear=False):
             from scripts.admin_cli import verify_email
 
@@ -432,6 +450,7 @@ class TestSmokeTest:
             r.status = status
             r.__enter__ = lambda self: self
             r.__exit__ = lambda *args: False
+
             return r
 
         attempts = [response_with(503), response_with(503), response_with(200)]
@@ -441,6 +460,7 @@ class TestSmokeTest:
             "SMOKE_RETRIES": "5",
             "SMOKE_INTERVAL": "0",
         }
+
         with patch.dict(os.environ, env):
             with patch("urllib.request.urlopen", side_effect=attempts):
                 assert smoke_test() == 0
@@ -458,6 +478,7 @@ class TestSmokeTest:
             "SMOKE_RETRIES": "2",
             "SMOKE_INTERVAL": "0",
         }
+
         with patch.dict(os.environ, env):
             with patch("urllib.request.urlopen", return_value=response):
                 assert smoke_test() == 1
@@ -476,6 +497,7 @@ class TestSmokeTest:
             "SMOKE_RETRIES": "3",
             "SMOKE_INTERVAL": "0",
         }
+
         with patch.dict(os.environ, env):
             with patch(
                 "urllib.request.urlopen",
@@ -603,6 +625,7 @@ class TestDeletePassport:
             )
         )
         db_session.commit()
+
         return user
 
     def _run(self, env: dict[str, str], roots: tuple[Path, Path]) -> int:
@@ -614,6 +637,7 @@ class TestDeletePassport:
             **env,
         }
         cleared = {"CONFIRM": "", "PASSPORT_DELETABLE_USERNAMES": ""}
+
         with patch.dict(os.environ, {**cleared, **full}, clear=False):
             return delete_passport()
 
@@ -625,6 +649,7 @@ class TestDeletePassport:
         row = db_session.get(Passport, PASSPORT_ID)
         on_disk = LocalPassportStore(roots[0]).exists(PASSPORT_ID)
         assert (row is not None) == on_disk, "row and files disagree"
+
         return on_disk
 
     @pytest.mark.usefixtures("_patch_session")

@@ -36,6 +36,7 @@ def _user(db: Session, username: str, profession: str, org: OrgUnit) -> User:
     add_org_unit_member(db, org.id, user.id, "staff")
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -45,6 +46,7 @@ def trust(db_session: Session) -> OrgUnit:
     db_session.add(org)
     db_session.commit()
     db_session.refresh(org)
+
     return org
 
 
@@ -71,8 +73,10 @@ def client(test_client: TestClient, coordinator: User) -> TestClient:
     )
     assert response.status_code == 200
     csrf = test_client.cookies.get("XSRF-TOKEN")
+
     if csrf:
         test_client.headers["X-CSRF-Token"] = csrf
+
     return test_client
 
 
@@ -86,6 +90,7 @@ def _new_user(org: OrgUnit, **overrides: Any) -> dict[str, Any]:
         "org_unit_ids": [org.id],
     }
     body.update(overrides)
+
     return body
 
 

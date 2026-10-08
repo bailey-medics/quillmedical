@@ -1,4 +1,3 @@
-# backend/app/org_units/router.py
 """One surface for every org_unit.
 
 ``/api/organisations`` and ``/api/sites`` grew up as two surfaces over two
@@ -20,8 +19,8 @@ from sqlalchemy import delete, func, insert, select
 from sqlalchemy.orm import Session
 
 from app.cbac.base_professions import (
+    competencies_kept_across_profession_change,
     get_profession_base_competencies,
-    grant_competencies_on_joining,
     resolve_user_competencies,
 )
 from app.cbac.competencies import FRAMEWORK_IDS, SCOPED_MANAGER_IDS
@@ -203,6 +202,7 @@ def _through_a_scope(user: User, *competencies: str) -> bool:
         True for the narrower path.
     """
     held = set(user.get_final_competencies())
+
     return not held.isdisjoint(SCOPED_MANAGER_IDS) and not (
         set(competencies) <= held
     )
@@ -238,6 +238,7 @@ def _require_editable(db: Session, user: User, unit_id: int) -> OrgUnit:
         unit_id: The org_unit.
     """
     unit = _require_visible(db, user, unit_id, "manage_users")
+
     if _through_a_scope(user, "manage_users") and not type_requires_parent(
         unit.type
     ):
@@ -245,6 +246,7 @@ def _require_editable(db: Session, user: User, unit_id: int) -> OrgUnit:
             status_code=403,
             detail="Editing an organisation requires manage_users.",
         )
+
     return unit
 
 
@@ -293,6 +295,7 @@ def _require_visible(
             administer.
     """
     unit = db.get(OrgUnit, unit_id)
+
     if unit is None:
         raise HTTPException(status_code=404, detail="Place not found")
 
@@ -302,6 +305,7 @@ def _require_visible(
         visible = _visible_ids(db, user)
     if visible is not None and unit_id not in visible:
         raise HTTPException(status_code=404, detail="Place not found")
+
     return unit
 
 
@@ -312,6 +316,7 @@ def _require_in_scope(user: User, competencies: set[str]) -> None:
         HTTPException: 403 naming every competency out of scope.
     """
     refused = out_of_scope_competencies(user, competencies)
+
     if refused:
         raise HTTPException(
             status_code=403,
@@ -360,6 +365,7 @@ def practice_refusal(
         The refusal to raise, or None when the row may be written.
     """
     needs = "manage_practising_competencies"
+
     try:
         unit = _require_visible(db, caller, unit_id, needs)
         if authorising and not type_can_hold_competencies(unit.type):
@@ -375,6 +381,7 @@ def practice_refusal(
             raise HTTPException(status_code=404, detail="User not found")
     except HTTPException as refusal:
         return refusal
+
     return None
 
 
@@ -438,6 +445,7 @@ def _is_root(unit: OrgUnit) -> bool:
 def _item(unit: OrgUnit) -> OrgUnitItem:
     """Build the list entry for one org_unit."""
     definition = get_org_unit_type(unit.type)
+
     return OrgUnitItem(
         id=unit.id,
         name=unit.name,
@@ -462,6 +470,7 @@ def _names_of(db: Session, user_ids: set[int]) -> dict[int, str]:
     """
     if not user_ids:
         return {}
+
     return {
         row.id: row.full_name or row.username
         for row in db.execute(
@@ -480,6 +489,7 @@ def _authorised_counts(db: Session, unit_id: int) -> dict[int, int]:
     a large staff list with few authorisations stays cheap.
     """
     by_user: dict[int, set[str]] = {}
+
     for user_id, competency in db.execute(
         select(
             PractisingCompetency.user_id, PractisingCompetency.competency
@@ -490,6 +500,7 @@ def _authorised_counts(db: Session, unit_id: int) -> dict[int, int]:
         return {}
 
     users = db.scalars(select(User).where(User.id.in_(by_user))).unique().all()
+
     return {
         user.id: len(by_user[user.id] & set(user.get_final_competencies()))
         for user in users
@@ -511,6 +522,7 @@ def _members_of(db: Session, unit_id: int) -> OrgUnitMembersOut:
         .order_by(User.username)
     ).all()
     counts = _authorised_counts(db, unit_id)
+
     return OrgUnitMembersOut(
         members=[
             {
@@ -554,6 +566,7 @@ def list_org_units(
     stmt = select(OrgUnit).order_by(OrgUnit.name)
 
     visible: set[int] | None
+
     if _through_a_scope(current_user, "manage_users"):
         visible = _scoped_manager_ids(db, current_user)
     else:
@@ -643,6 +656,7 @@ def create_org_unit(
     db.add(unit)
     db.flush()
     db.refresh(unit)
+
     return _item(unit)
 
 
@@ -688,6 +702,7 @@ def get_org_unit(
 
     features: list[str] = []
     patient_ids: list[str] = []
+
     if sees_features:
         features = list(
             db.execute(
@@ -711,6 +726,7 @@ def get_org_unit(
 
     parent_name = ""
     parent_is_root = False
+
     if unit.parent_id is not None:
         parent = db.get(OrgUnit, unit.parent_id)
         if parent is not None:
@@ -718,6 +734,7 @@ def get_org_unit(
             parent_is_root = _is_root(parent)
 
     definition = get_org_unit_type(unit.type)
+
     return OrgUnitDetailOut(
         id=unit.id,
         name=unit.name,
@@ -821,6 +838,7 @@ def update_org_unit(
 
     db.flush()
     db.refresh(unit)
+
     return _item(unit)
 
 
@@ -844,6 +862,7 @@ def set_org_unit_active(
     unit.is_active = body.is_active
     db.flush()
     db.refresh(unit)
+
     return _item(unit)
 
 
@@ -880,6 +899,7 @@ def delete_org_unit(
         .select_from(OrgUnit)
         .where(OrgUnit.parent_id == unit_id)
     )
+
     if children:
         raise HTTPException(
             status_code=409,
@@ -893,6 +913,7 @@ def delete_org_unit(
     # listener on the model.
     db.delete(unit)
     db.flush()
+
     return OrgUnitStatusOut(status="deleted")
 
 
@@ -917,6 +938,7 @@ def list_org_unit_members(
     caller belongs to.
     """
     _require_visible(db, current_user, unit_id, "manage_users")
+
     return _members_of(db, unit_id)
 
 
@@ -963,6 +985,7 @@ def look_up_member(
     term = body.term.lower()
     column = User.email if "@" in term else User.username
     person = db.scalar(select(User).where(func.lower(column) == term))
+
     if person is None:
         return MemberLookupOut(status="not_found")
 
@@ -978,6 +1001,7 @@ def look_up_member(
             org_unit_member.c.user_id == person.id,
         )
     )
+
     if already is not None:
         return MemberLookupOut(status="already_member", user=found)
 
@@ -1031,6 +1055,7 @@ def add_org_unit_member(
     capacity = _known_capacity(body.capacity)
 
     person = db.get(User, body.user_id)
+
     if person is None:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -1040,6 +1065,7 @@ def add_org_unit_member(
             org_unit_member.c.user_id == body.user_id,
         )
     )
+
     if existing is None:
         db.execute(
             insert(org_unit_member).values(
@@ -1086,9 +1112,22 @@ def add_org_unit_member(
     # asked afterwards, the new profession's competencies would all read
     # as "not held" and be kept from them.
     removed = person.removed_competency_ids
-    additional = grant_competencies_on_joining(
-        person, body.base_profession, body.additional_competencies
-    )
+    outside = set(person.additional_competency_ids)
+
+    if body.base_profession is not None:
+        outside = set(
+            competencies_kept_across_profession_change(
+                outside,
+                old_profession=person.base_profession,
+                new_profession=body.base_profession,
+            )
+        )
+        person.base_profession = body.base_profession
+
+    # Granted on top of whatever they already held, never in its place.
+    outside.update(body.additional_competencies or [])
+    additional = sorted(outside)
+
     if held_before is not None:
         _require_in_scope(
             current_user,
@@ -1121,6 +1160,7 @@ def add_org_unit_member(
     )
 
     db.flush()
+
     return OrgUnitStatusOut(status=status)
 
 
@@ -1150,6 +1190,7 @@ def remove_org_unit_member(
     unit = _require_visible(
         db, current_user, unit_id, "manage_staff_membership"
     )
+
     if _through_a_scope(current_user, "manage_staff_membership"):
         person = _require_member(db, unit_id, user_id)
         _require_account_in_scope(current_user, person)
@@ -1169,6 +1210,7 @@ def remove_org_unit_member(
             org_unit_member.c.user_id == user_id,
         )
     )
+
     if result.rowcount == 0:  # type: ignore[attr-defined]
         raise HTTPException(status_code=404, detail="Membership not found")
     cover.membership_changed(
@@ -1181,6 +1223,7 @@ def remove_org_unit_member(
     )
 
     db.flush()
+
     return OrgUnitStatusOut(status="removed")
 
 
@@ -1226,6 +1269,7 @@ def set_org_unit_clinical_lead(
         )
 
     lead: User | None = None
+
     if body.user_id is not None:
         lead = db.get(User, body.user_id)
         if lead is None:
@@ -1255,6 +1299,7 @@ def set_org_unit_clinical_lead(
             detail="That person cannot be made clinical lead here.",
         ) from None
     db.flush()
+
     return OrgUnitStatusOut(status="vacant" if lead is None else "set")
 
 
@@ -1361,6 +1406,7 @@ def authorise_practising_competency(
         competency=body.competency,
         authorising=True,
     )
+
     if refusal is not None:
         raise refusal
 
@@ -1371,6 +1417,7 @@ def authorise_practising_competency(
         competency=body.competency,
         authorised_by=current_user.id,
     )
+
     return OrgUnitStatusOut(status="authorised" if written else "unchanged")
 
 
@@ -1411,12 +1458,14 @@ def withdraw_practising_competency(
         competency=competency,
         authorising=False,
     )
+
     if refusal is not None:
         raise refusal
 
     withdraw_practice(
         db, user_id=user_id, org_unit_id=unit_id, competency=competency
     )
+
     return OrgUnitStatusOut(status="withdrawn")
 
 
@@ -1438,8 +1487,10 @@ def _require_member(db: Session, unit_id: int, user_id: int) -> User:
             org_unit_member.c.user_id == user_id,
         )
     )
+
     if person is None or is_member is None:
         raise HTTPException(status_code=404, detail="Member not found")
+
     return person
 
 
@@ -1456,6 +1507,7 @@ def _grant_refusal(
     all three.
     """
     held = set(caller.get_final_competencies())
+
     if "manage_users" not in held and held.isdisjoint(SCOPED_MANAGER_IDS):
         return HTTPException(status_code=403, detail="Not allowed")
     if caller.platform_role == "superadmin":
@@ -1472,9 +1524,12 @@ def _grant_refusal(
                 "manage_users"
             ),
         )
+
     reached = org_units_whose_people_reached_by(db, caller)
+
     if reached is not None and not is_member_within(db, person.id, reached):
         return HTTPException(status_code=404, detail="Member not found")
+
     return None
 
 
@@ -1583,10 +1638,12 @@ def grant_and_authorise(
     """
     needs = ("manage_users", "manage_practising_competencies")
     through_teaching = _through_a_scope(current_user, *needs)
+
     if not through_teaching and not set(needs) <= set(
         current_user.get_final_competencies()
     ):
         raise HTTPException(status_code=403, detail="Not allowed")
+
     unit = _require_visible(db, current_user, unit_id, *needs)
 
     if not type_can_hold_competencies(unit.type):
@@ -1598,13 +1655,17 @@ def grant_and_authorise(
     person = _require_member(db, unit_id, user_id)
 
     refusal = _grant_refusal(db, current_user, person)
+
     if refusal is not None:
         raise refusal
 
     competency = body.competency
+
     if through_teaching:
         _require_in_scope(current_user, {competency})
+
     granted = competency not in person.get_final_competencies()
+
     if granted:
         template = set(
             get_profession_base_competencies(person.base_profession)
@@ -1638,6 +1699,7 @@ def grant_and_authorise(
         return OrgUnitStatusOut(status="granted_and_authorised")
     if authorised:
         return OrgUnitStatusOut(status="authorised")
+
     return OrgUnitStatusOut(status="unchanged")
 
 
@@ -1669,6 +1731,7 @@ def list_org_unit_features(
         .unique()
         .all()
     )
+
     return OrgUnitFeaturesOut(
         features=[
             {
@@ -1785,6 +1848,7 @@ def set_org_unit_feature(
     if feature_key == COVER_FEATURE:
         cover.switch_off(db, unit_id)
     db.flush()
+
     return OrgUnitStatusOut(status="disabled")
 
 
@@ -1818,6 +1882,7 @@ def get_org_unit_passport_cover(
     ``manage_users``.
     """
     _require_visible(db, current_user, unit_id)
+
     return OrgUnitPassportCoverOut(
         enabled=cover.is_covered(db, unit_id),
         covered_count=cover.covered_count(db, unit_id),
@@ -1852,6 +1917,7 @@ def list_org_unit_passport_frameworks(
     holder's own list skips such a row instead. Requires ``manage_users``.
     """
     _require_visible(db, current_user, unit_id)
+
     return OrgUnitPassportFrameworksOut(
         framework_ids=_lead_framework_ids(db, unit_id)
     )
@@ -1946,6 +2012,7 @@ def add_org_unit_patient(
             org_unit_patient_member.c.patient_id == body.patient_id,
         )
     ).first()
+
     if existing is not None:
         return OrgUnitStatusOut(status="already_added")
 
@@ -1955,6 +2022,7 @@ def add_org_unit_patient(
         )
     )
     db.flush()
+
     return OrgUnitStatusOut(status="added")
 
 
@@ -1985,10 +2053,12 @@ def remove_org_unit_patient(
             org_unit_patient_member.c.patient_id == patient_id,
         )
     )
+
     if result.rowcount == 0:  # type: ignore[attr-defined]
         raise HTTPException(status_code=404, detail="Membership not found")
 
     db.flush()
+
     return OrgUnitStatusOut(status="removed")
 
 
@@ -2016,6 +2086,7 @@ def list_org_unit_links(
     Requires ``manage_users``.
     """
     _require_visible(db, current_user, unit_id)
+
     return _links_out(db, unit_id)
 
 
@@ -2068,6 +2139,7 @@ def create_org_unit_link(
             OrgUnitLink.relation == relation,
         )
     )
+
     if existing is None:
         db.add(
             OrgUnitLink(
@@ -2103,11 +2175,13 @@ def delete_org_unit_link(
     _require_visible(db, current_user, unit_id)
 
     link = db.get(OrgUnitLink, link_id)
+
     if link is None or unit_id not in (link.source_id, link.target_id):
         raise HTTPException(status_code=404, detail="Link not found")
 
     db.delete(link)
     db.flush()
+
     return _links_out(db, unit_id)
 
 
@@ -2130,6 +2204,7 @@ def _links_out(db: Session, unit_id: int) -> OrgUnitLinksOut:
         link.target_id for link in links
     }
     names: dict[int, str] = {}
+
     if wanted:
         names = {
             row.id: row.name
@@ -2139,6 +2214,7 @@ def _links_out(db: Session, unit_id: int) -> OrgUnitLinksOut:
         }
 
     out: list[OrgUnitLinkItem] = []
+
     for link in links:
         relation = get_org_unit_relation(link.relation)
         out.append(
@@ -2155,4 +2231,5 @@ def _links_out(db: Session, unit_id: int) -> OrgUnitLinksOut:
                 created_at=link.created_at.isoformat(),
             )
         )
+
     return OrgUnitLinksOut(links=out)

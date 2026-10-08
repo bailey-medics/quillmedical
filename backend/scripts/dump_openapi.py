@@ -118,6 +118,7 @@ def import_app(dev: bool = False) -> Any:
             print("  ", p)
         # Re-raise the original exception so the caller sees the traceback
         raise
+
     return app
 
 
@@ -125,6 +126,7 @@ def generate_spec(dev: bool = False) -> dict[str, Any]:
     """Import the FastAPI app and return its OpenAPI spec as a dict."""
     app = import_app(dev=dev)
     spec: dict[str, Any] = app.openapi()
+
     return spec
 
 

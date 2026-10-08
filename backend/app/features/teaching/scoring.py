@@ -22,6 +22,7 @@ def score_answer_uniform(
         (o for o in options if o.get("id") == selected_option_id),
         None,
     )
+
     if selected is None:
         return False, []
 
@@ -37,6 +38,7 @@ def score_answer_uniform(
     diagnosis_tags = [t for t in tags if t not in confidence_tags]
 
     is_correct = correct_value in diagnosis_tags
+
     return is_correct, tags
 
 
@@ -53,11 +55,13 @@ def score_answer_variable(
         (o for o in item_options if o.get("id") == selected_option_id),
         None,
     )
+
     if selected is None:
         return False, []
 
     tags: list[str] = selected.get("tags", [])
     is_correct = selected_option_id == correct_option_id
+
     return is_correct, tags
 
 

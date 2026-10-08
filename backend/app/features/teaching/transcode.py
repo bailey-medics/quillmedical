@@ -57,6 +57,7 @@ def start_caption(
     from app.config import settings
 
     job = settings.TEACHING_CAPTION_JOB
+
     if not job:
         logger.info(
             "caption not configured, skipping org=%s module=%s asset=%s",
@@ -110,6 +111,7 @@ def start_caption(
         asset_id,
         name,
     )
+
     return name
 
 
@@ -135,6 +137,7 @@ def start_transcode(
     from app.config import settings
 
     job = settings.TEACHING_TRANSCODE_JOB
+
     if not job:
         logger.info(
             "transcode not configured, skipping org=%s module=%s asset=%s",
@@ -190,4 +193,5 @@ def start_transcode(
         asset_id,
         name,
     )
+
     return name

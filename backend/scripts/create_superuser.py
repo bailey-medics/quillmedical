@@ -65,6 +65,7 @@ def main() -> int:
         return 1
 
     db = CoreSessionLocal()
+
     try:
         if db.bind is None:
             print("ERROR: Database bind is None", file=sys.stderr)

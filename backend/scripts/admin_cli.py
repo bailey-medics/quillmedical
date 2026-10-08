@@ -70,6 +70,7 @@ def _require_env(*names: str) -> dict[str, str]:
     """Read required environment variables, exiting on any missing."""
     values: dict[str, str] = {}
     missing: list[str] = []
+
     for name in names:
         val = os.environ.get(name, "").strip()
         if not val:
@@ -83,6 +84,7 @@ def _require_env(*names: str) -> dict[str, str]:
             file=sys.stderr,
         )
         sys.exit(1)
+
     return values
 
 
@@ -103,6 +105,7 @@ def create_superadmin() -> int:
     from app.security import hash_password
 
     db = CoreSessionLocal()
+
     try:
         user = db.query(User).filter(User.username == username).first()
         is_new = user is None
@@ -189,6 +192,7 @@ def add_role() -> int:
     from app.models import Role, User
 
     db = CoreSessionLocal()
+
     try:
         user = db.query(User).filter(User.username == username).first()
         if not user:
@@ -231,6 +235,7 @@ def verify_email() -> int:
     from app.models import User
 
     db = CoreSessionLocal()
+
     try:
         user = db.query(User).filter(User.username == username).first()
         if not user:
@@ -267,6 +272,7 @@ def run_migrations() -> int:
 
     config_path = os.path.join(proj_root, "alembic.ini")
     cfg = Config(config_path)
+
     try:
         command.upgrade(cfg, "head")
         print("✓ Migrations applied successfully")
@@ -351,6 +357,7 @@ def smoke_test() -> int:
         f"✗ Health check failed after {retries} attempts: {url}",
         file=sys.stderr,
     )
+
     return 1
 
 
@@ -366,6 +373,7 @@ def check_competency_seeding() -> int:
     from app.db.core_db import CoreSessionLocal
 
     db = CoreSessionLocal()
+
     try:
         found = unseeded_profession_competencies(db)
     except Exception as exc:
@@ -387,6 +395,7 @@ def check_competency_seeding() -> int:
         print(
             f"  user {user_id}: {', '.join(competency_ids)}", file=sys.stderr
         )
+
     return 1
 
 
@@ -399,9 +408,12 @@ def _deletable_usernames() -> set[str]:
     mistaken for a name.
     """
     raw = os.environ.get("PASSPORT_DELETABLE_USERNAMES", "").strip()
+
     if not raw:
         return set()
+
     names: set[str] = set()
+
     for part in raw.split(","):
         part = part.strip()
         if not part or any(c in part for c in "*?[] "):
@@ -410,6 +422,7 @@ def _deletable_usernames() -> set[str]:
                 "not an exact username."
             )
         names.add(part)
+
     return names
 
 
@@ -479,6 +492,7 @@ def delete_passport() -> int:
         return 1
 
     db = CoreSessionLocal()
+
     try:
         user = db.scalar(select(User).where(User.username == username))
         if user is None:

@@ -339,6 +339,7 @@ def request_sign_off(
             ),
         )
     }
+
     if reflection is not None:
         files[paths.sign_off_reflection(name)] = reflection
 
@@ -432,6 +433,7 @@ def sign_off(
     )
 
     level = record.level
+
     if level_id is not None:
         level = definitions.level_ref(record.competency.id, level_id)
 
@@ -440,6 +442,7 @@ def sign_off(
         and requested is not None
         and level.id != requested.id
     )
+
     if changed and not (comments and comments.strip()):
         raise LevelReasonMissingError(
             "Say why you are signing off at a different level from the one "
@@ -498,6 +501,7 @@ def sign_off(
             ),
         )
     }
+
     if assessment is not None:
         files[paths.sign_off_assessment(name)] = assessment
 
@@ -798,6 +802,7 @@ def _existing_for(
             found.append((folder.name, record))
 
     found.sort(key=lambda pair: (pair[1].observed_on, pair[0]))
+
     return found
 
 
@@ -888,6 +893,7 @@ def _unique_sign_off_name(
     }
 
     suffix = 1
+
     while True:
         name = ids.record_dir_name(observed_on, label, suffix=suffix)
         if name not in taken:

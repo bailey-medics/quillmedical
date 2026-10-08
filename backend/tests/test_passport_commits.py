@@ -22,6 +22,7 @@ def _actor(**overrides: object) -> Actor:
         "registrations": ("GMC 1234567",),
     }
     fields.update(overrides)
+
     return Actor(**fields)  # type: ignore[arg-type]
 
 

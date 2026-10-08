@@ -76,6 +76,7 @@ class FakeBlob:
     @property
     def generation(self) -> int | None:
         stored = self._bucket.objects.get(self._name)
+
         return None if stored is None else stored[1]
 
     def exists(self) -> bool:

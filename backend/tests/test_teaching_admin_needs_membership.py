@@ -54,6 +54,7 @@ def _teaching_org(db: Session, name: str = "Trust") -> OrgUnit:
     )
     db.commit()
     db.refresh(org)
+
     return org
 
 
@@ -70,6 +71,7 @@ def _teaching_admin(db: Session, username: str) -> User:
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -105,6 +107,7 @@ def _login(client: TestClient, username: str) -> dict[str, str]:
         json={"username": username, "password": "Educator123!"},
     )
     assert response.status_code == 200, response.text
+
     return {"X-CSRF-Token": client.cookies.get("XSRF-TOKEN", "")}
 
 
@@ -124,6 +127,7 @@ class TestAWardAdminCannotAdministerTheTrust:
     def ward_admin(self, db_session: Session, org: OrgUnit) -> User:
         user = _teaching_admin(db_session, "ward_admin")
         _join_linked_site(db_session, org, user)
+
         return user
 
     def test_they_cannot_list_the_trusts_items(
@@ -174,6 +178,7 @@ class TestAnOrganisationMemberIsUnaffected:
     def trust_admin(self, db_session: Session, org: OrgUnit) -> User:
         user = _teaching_admin(db_session, "trust_admin")
         _join_org(db_session, org, user)
+
         return user
 
     def test_they_can_still_list_items(

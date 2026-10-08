@@ -41,6 +41,7 @@ def own_org(db_session: Session, test_admin: User) -> OrgUnit:
     add_org_unit_member(db_session, org.id, test_admin.id, "staff")
     administers(db_session, test_admin.id, org.id)
     db_session.commit()
+
     return org
 
 
@@ -49,6 +50,7 @@ def other_org(db_session: Session) -> OrgUnit:
     org = OrgUnit(name="Other Trust", type="hospital_team")
     db_session.add(org)
     db_session.commit()
+
     return org
 
 
@@ -122,6 +124,7 @@ class TestTheModelRefusesBadRows:
     ) -> None:
         a = _site_of(db_session, own_org, "A", admin=True)
         b = _site_of(db_session, own_org, "B", admin=True)
+
         with pytest.raises(ValueError):
             db_session.add(
                 OrgUnitLink(source_id=a.id, target_id=b.id, relation="owns")

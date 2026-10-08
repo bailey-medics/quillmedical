@@ -72,12 +72,14 @@ class LockResult:
             f"Version lock: checked {self.modules_checked} module(s), "
             f"skipped {self.modules_skipped}."
         ]
+
         if self.passed:
             lines.append("All passed.")
         else:
             lines.append(f"{len(self.violations)} violation(s):")
             for v in self.violations:
                 lines.append(str(v))
+
         return "\n".join(lines)
 
 
@@ -108,6 +110,7 @@ def _git_diff_names(ref: str, path: str) -> list[str]:
         text=True,
         check=True,
     )
+
     return [
         line.strip() for line in result.stdout.splitlines() if line.strip()
     ]
@@ -122,6 +125,7 @@ def _as_mapping(data: object) -> dict[str, object] | None:
     """Coerce a parsed YAML document to a string-keyed mapping."""
     if not isinstance(data, dict):
         return None
+
     return {str(key): value for key, value in data.items()}
 
 
@@ -145,12 +149,14 @@ def _read_yaml_file(path: Path) -> dict[str, object] | None:
 def _status_of(data: Mapping[str, object]) -> ModuleStatus | None:
     """Extract a recognised lifecycle status, or None."""
     raw = data.get("status")
+
     if raw == "draft":
         return "draft"
     if raw == "live":
         return "live"
     if raw == "retired":
         return "retired"
+
     return None
 
 
@@ -161,8 +167,10 @@ def _version_of(data: Mapping[str, object]) -> int | None:
     a YAML ``version: yes`` would silently read as ``1``.
     """
     raw = data.get("version")
+
     if isinstance(raw, bool) or not isinstance(raw, int):
         return None
+
     return raw
 
 
@@ -174,6 +182,7 @@ def _get_assessment_version(module_dir: Path) -> int | None:
             version = _version_of(data)
             if version is not None:
                 return version
+
     return None
 
 
@@ -192,6 +201,7 @@ def _get_main_assessment_version(
             version = _version_of(data)
             if version is not None:
                 return version
+
     return None
 
 
@@ -211,6 +221,7 @@ def _check_live_module(
     changed_assessment = _git_diff_names(
         ref, f"{modules_rel_path}/{module_id}/assessment/"
     )
+
     if not changed_assessment:
         return
 
@@ -262,12 +273,14 @@ def check_module(
     main_module_content = _git_show(
         ref, f"{modules_rel_path}/{module_id}/module.yaml"
     )
+
     if main_module_content is None:
         # New module - nothing to protect.
         result.modules_skipped += 1
         return
 
     main_module = _load_yaml(main_module_content)
+
     if main_module is None:
         result.modules_skipped += 1
         return
@@ -340,6 +353,7 @@ def _repo_relative_path(modules_dir: Path) -> str | None:
         return None
 
     repo_root = Path(completed.stdout.strip())
+
     try:
         return str(modules_dir.resolve().relative_to(repo_root))
     except ValueError:
@@ -370,6 +384,7 @@ def check_version_lock(
 
     # git show/diff need paths relative to the repository root.
     modules_rel_path = _repo_relative_path(modules_dir)
+
     if modules_rel_path is None:
         result.add_violation(
             "(root)",
@@ -404,6 +419,7 @@ def main(argv: list[str] | None = None) -> int:
 
     result = check_version_lock(Path(args[0]))
     print(result.summary())
+
     return 0 if result.passed else 1
 
 

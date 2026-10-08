@@ -157,6 +157,7 @@ class CommitMessage:
             return f"{self.subject}\n"
 
         lines = "\n".join(f"{key}: {value}" for key, value in self.trailers)
+
         return f"{self.subject}\n\n{lines}\n"
 
 
@@ -185,9 +186,12 @@ def fit_summary(action: CommitAction, summary: str) -> str:
         with ``...`` in place of what was cut.
     """
     room = _SUMMARY_MAX - len(f"passport:{action}: ")
+
     if len(summary) <= room:
         return summary
+
     marker = "..."
+
     return summary[: room - len(marker)].rstrip(" -_") + marker
 
 
@@ -222,6 +226,7 @@ def build(
     text = _single_line(summary, "Summary")
 
     subject = f"passport:{action}: {text}"
+
     if len(subject) > _SUMMARY_MAX:
         raise CommitMessageError(
             f"Subject line is {len(subject)} characters, over the "
@@ -280,6 +285,7 @@ def parse_trailers(message: str) -> dict[str, list[str]]:
     found: dict[str, list[str]] = {}
 
     _, separator, trailer_block = message.partition("\n\n")
+
     if not separator:
         return found
 

@@ -50,6 +50,7 @@ def logged_text(record: logging.LogRecord) -> str:
     travels.
     """
     parts = [record.getMessage()]
+
     for attr in (
         "serviceContext",
         "context",
@@ -59,6 +60,7 @@ def logged_text(record: logging.LogRecord) -> str:
         "error_source",
     ):
         parts.append(str(getattr(record, attr, "")))
+
     return " ".join(parts)
 
 
@@ -211,6 +213,7 @@ class TestServerSideRedaction:
         crumbs = [
             {"type": "route", "ms": 1, "pattern": "/patients/943 476 5919"}
         ]
+
         with caplog.at_level(logging.ERROR, logger="app.analytics.router"):
             test_client.post(
                 ENDPOINT, json={**VALID_REPORT, "breadcrumbs": crumbs}
@@ -573,6 +576,7 @@ class TestMessageHeaderAppearsOnce:
         self, test_client: TestClient, caplog: pytest.LogCaptureFixture
     ) -> None:
         stack = "Error: boom\n    at Boom (/assets/index.js:60:65253)"
+
         with caplog.at_level(logging.ERROR, logger="app.analytics.router"):
             test_client.post(
                 ENDPOINT,

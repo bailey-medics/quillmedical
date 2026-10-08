@@ -33,6 +33,7 @@ def _org(db: Session, name: str = "Trust") -> OrgUnit:
     db.add(org)
     db.commit()
     db.refresh(org)
+
     return org
 
 
@@ -41,6 +42,7 @@ def _ward(db: Session, org: OrgUnit) -> OrgUnit:
     db.add(site)
     db.commit()
     db.refresh(site)
+
     return site
 
 

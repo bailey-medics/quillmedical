@@ -45,18 +45,21 @@ def _assessment(
         (question_dir / "question.yaml").write_text(yaml.dump(data))
         for filename in (files or {}).get(name, ()):
             (question_dir / filename).write_bytes(b"")
+
     return assessment
 
 
 def _errors(assessment: Path) -> list[str]:
     result = ValidationResult()
     _validate_assessment_dir(assessment, result)
+
     return [e.message for e in result.errors]
 
 
 def _warnings(assessment: Path) -> list[str]:
     result = ValidationResult()
     _validate_assessment_dir(assessment, result)
+
     return [w.message for w in result.warnings]
 
 

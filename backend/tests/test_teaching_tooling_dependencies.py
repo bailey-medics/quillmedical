@@ -37,6 +37,7 @@ def _poetry_dependencies(pyproject: Path) -> dict[str, object]:
     assert isinstance(poetry, dict), f"no [tool.poetry] in {pyproject}"
     deps = poetry.get("dependencies")
     assert isinstance(deps, dict), f"no dependencies in {pyproject}"
+
     return deps
 
 

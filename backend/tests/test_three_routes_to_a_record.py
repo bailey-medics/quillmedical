@@ -67,6 +67,7 @@ def _user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -83,6 +84,7 @@ def org(db_session: Session) -> OrgUnit:
     )
     db_session.commit()
     db_session.refresh(organisation)
+
     return organisation
 
 
@@ -100,6 +102,7 @@ def _grant(db: Session, user: User, patient_id: str) -> ExternalPatientAccess:
     db.add(grant)
     db.commit()
     db.refresh(grant)
+
     return grant
 
 

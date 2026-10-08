@@ -34,6 +34,7 @@ def org(db_session: Session, test_superadmin: User) -> OrgUnit:
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
+
     return organisation
 
 
@@ -51,6 +52,7 @@ def _member(db: Session, org: OrgUnit, username: str) -> User:
     add_org_unit_member(db, org.id, user.id, "staff")
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -59,6 +61,7 @@ def _row(client: TestClient, username: str) -> dict:
     assert resp.status_code == 200, resp.text
     rows = [u for u in resp.json()["users"] if u["username"] == username]
     assert len(rows) == 1, f"{username} not listed once"
+
     return rows[0]
 
 

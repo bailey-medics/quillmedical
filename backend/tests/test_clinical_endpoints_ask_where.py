@@ -59,6 +59,7 @@ def surgeon(db_session: Session) -> User:
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
+
     return user
 
 
@@ -77,6 +78,7 @@ def hospital_a(db_session: Session, surgeon: User) -> OrgUnit:
         )
     )
     db_session.commit()
+
     return org
 
 
@@ -93,6 +95,7 @@ def hospital_b(db_session: Session, surgeon: User) -> OrgUnit:
     db_session.commit()
     add_org_unit_member(db_session, org.id, surgeon.id, "staff")
     db_session.commit()
+
     return org
 
 
@@ -103,8 +106,10 @@ def _as_surgeon(client: TestClient) -> TestClient:
     )
     assert response.status_code == 200, response.text
     csrf = client.cookies.get("XSRF-TOKEN")
+
     if csrf:
         client.headers["X-CSRF-Token"] = csrf
+
     return client
 
 

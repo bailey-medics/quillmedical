@@ -43,6 +43,7 @@ def client(authenticated_client: TestClient) -> TestClient:
     csrf = authenticated_client.cookies.get("XSRF-TOKEN")
     assert csrf
     authenticated_client.headers["X-CSRF-Token"] = csrf
+
     return authenticated_client
 
 
@@ -140,6 +141,7 @@ class TestTellingAnOperator:
             "app.feedback.router.send_email",
             lambda **kwargs: calls.append(kwargs),
         )
+
         return calls
 
     def test_tells_the_configured_address(
@@ -348,11 +350,13 @@ def add_feedback(
         breadcrumbs=[],
         status=status,
     )
+
     if created_at is not None:
         row.created_at = created_at
     db.add(row)
     db.commit()
     db.refresh(row)
+
     return row
 
 
@@ -798,6 +802,7 @@ class TestRepliesWaitingOnTheSender:
             "app.feedback.router.send_email",
             lambda **kwargs: calls.append(kwargs),
         )
+
         return calls
 
     def _reply(
@@ -810,6 +815,7 @@ class TestRepliesWaitingOnTheSender:
 
     def _waiting(self, client: TestClient) -> int:
         body = client.get(self.INBOX).json()
+
         return sum(
             item["count"]
             for item in body["items"]
@@ -847,6 +853,7 @@ class TestRepliesWaitingOnTheSender:
         sent: list[dict[str, object]],
     ) -> None:
         row = add_feedback(db_session, test_user, "x")
+
         for _ in range(2):
             authenticated_superadmin_client.patch(
                 f"{ENDPOINT}/{row.id}", json={"comment": "Fixed."}

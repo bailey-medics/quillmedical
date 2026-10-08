@@ -24,6 +24,7 @@ def add_role_to_user(username: str, role_name: str) -> int:
         4 on database error
     """
     db = CoreSessionLocal()
+
     try:
         # Find user
         user = db.query(User).filter(User.username == username).first()

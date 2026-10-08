@@ -1,4 +1,3 @@
-# backend/app/org_units/types.py
 """What kinds of org_unit there are, and what each kind may hold.
 
 Read from ``shared/org-unit-types.yaml`` at import, the same way base
@@ -78,6 +77,7 @@ def _load_org_unit_types(path: Path) -> list[OrgUnitTypeEntry]:
         data: Any = yaml.safe_load(f)
 
     raw_entries = (data or {}).get("org_unit_types")
+
     if not raw_entries:
         raise ValueError(
             f"No org_unit types defined in {path}. Expected at least one "
@@ -86,6 +86,7 @@ def _load_org_unit_types(path: Path) -> list[OrgUnitTypeEntry]:
 
     entries: list[OrgUnitTypeEntry] = []
     seen: set[str] = set()
+
     for raw in raw_entries:
         entry = OrgUnitTypeEntry(**raw)
         if entry.id in seen:
@@ -153,6 +154,7 @@ def validate_org_unit_type(value: str) -> str:
             + ", ".join(ORG_UNIT_TYPE_IDS)
             + "."
         )
+
     return value
 
 
@@ -175,6 +177,7 @@ def _capability(type_id: str, flag: str) -> bool:
         ValueError: If *type_id* is not a known org_unit type.
     """
     validate_org_unit_type(type_id)
+
     return bool(getattr(_BY_ID[type_id], flag))
 
 

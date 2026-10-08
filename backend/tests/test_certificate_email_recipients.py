@@ -72,6 +72,7 @@ def _user(db: Session, username: str, email: str) -> User:
     )
     db.add(user)
     db.commit()
+
     return user
 
 
@@ -79,6 +80,7 @@ def _org(db: Session, name: str) -> OrgUnit:
     org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.commit()
+
     return org
 
 
@@ -90,6 +92,7 @@ def _site_of(db: Session, org: OrgUnit, name: str) -> OrgUnit:
         update(OrgUnit).where(OrgUnit.id == site.id).values(parent_id=org.id)
     )
     db.commit()
+
     return site
 
 
@@ -174,6 +177,7 @@ def _run(
         db=db,
         criteria_results=[{"name": "Accuracy", "value": 0.9}],
     )
+
     return [t.kwargs["to"] for t in tasks.tasks]
 
 
@@ -328,6 +332,7 @@ def _sent(
         db=db,
         criteria_results=[{"name": "Accuracy", "value": 0.9}],
     )
+
     return [dict(t.kwargs) for t in tasks.tasks]
 
 

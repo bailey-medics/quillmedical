@@ -74,12 +74,14 @@ def is_frame_line(pixels: list[tuple[int, int, int]]) -> bool:
     """Whether one row or column is outline or margin, not picture."""
     if not pixels:
         return False
+
     frame = sum(
         1
         for red, green, blue in pixels
         if min(red, green, blue) > LIGHT_FLOOR
         and max(red, green, blue) - min(red, green, blue) < MAX_CHROMA
     )
+
     return frame >= FRAME_SHARE * len(pixels)
 
 
@@ -91,6 +93,7 @@ def find_cut(image: Image.Image) -> Cut:
     left, top, right, bottom = 0, 0, width, height
 
     changed = True
+
     while changed and right - left > MIN_SIDE and bottom - top > MIN_SIDE:
         changed = False
         if is_frame_line([pixels[left, y] for y in range(top, bottom)]):
@@ -120,6 +123,7 @@ def cuts_too_much(cut: Cut, width: int, height: int) -> bool:
 def question_images(roots: list[Path]) -> list[Path]:
     """Every image in a `question_*` directory beneath the given paths."""
     found: set[Path] = set()
+
     for root in roots:
         # A question directory may be named outright, as well as walked to
         here = [root] if root.name.startswith("question_") else []
@@ -129,6 +133,7 @@ def question_images(roots: list[Path]) -> list[Path]:
             for path in directory.iterdir():
                 if path.is_file() and path.suffix.lower() in EXTENSIONS:
                     found.add(path)
+
     return sorted(found)
 
 
@@ -138,6 +143,7 @@ def save_trimmed(image: Image.Image, cut: Cut, path: Path) -> None:
     trimmed = image.crop(
         (cut.left, cut.top, width - cut.right, height - cut.bottom)
     )
+
     if path.suffix.lower() == ".png":
         trimmed.save(path, optimize=True)
     else:
@@ -170,17 +176,20 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     missing = [path for path in args.paths if not path.exists()]
+
     if missing:
         for path in missing:
             print(f"No such path: {path}", file=sys.stderr)
         return 2
 
     images = question_images(args.paths)
+
     if not images:
         print("No question images found.", file=sys.stderr)
         return 2
 
     trimmed = clean = held = failed = 0
+
     for path in images:
         try:
             with Image.open(path) as image:
@@ -220,6 +229,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     if not args.write and trimmed:
         print("Nothing was changed. Pass --write to trim them.")
+
     return 1 if held or failed else 0
 
 

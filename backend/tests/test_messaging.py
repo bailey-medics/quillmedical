@@ -29,6 +29,7 @@ def test_org(db_session: Session) -> OrgUnit:
     db_session.add(org)
     db_session.commit()
     db_session.refresh(org)
+
     return org
 
 
@@ -77,6 +78,7 @@ def second_user(db_session: Session, test_org: OrgUnit) -> User:
     add_org_unit_member(db_session, test_org.id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
+
     return user
 
 
@@ -110,6 +112,7 @@ def patient_user(db_session: Session, test_org: OrgUnit) -> User:
     add_org_unit_member(db_session, test_org.id, user.id, "trainee")
     db_session.commit()
     db_session.refresh(user)
+
     return user
 
 
@@ -119,6 +122,7 @@ def csrf_token(authenticated_client: TestClient) -> str:
     authenticated_client.get("/api/auth/me")
     token = authenticated_client.cookies.get("XSRF-TOKEN")
     assert token is not None
+
     return token
 
 
@@ -342,6 +346,7 @@ class TestSendMessage:
                 },
                 headers={"X-CSRF-Token": csrf_token},
             )
+
         conv_id = create_resp.json()["id"]
 
         resp = authenticated_client.post(
@@ -373,6 +378,7 @@ class TestSendMessage:
                 },
                 headers={"X-CSRF-Token": csrf_token},
             )
+
         conv_id = create_resp.json()["id"]
         original_msg_id = create_resp.json()["messages"][0]["id"]
 
@@ -1148,6 +1154,7 @@ def _login(client: TestClient, username: str, password: str) -> str:
     client.get("/api/auth/me")
     token = client.cookies.get("XSRF-TOKEN")
     assert token is not None
+
     return token
 
 
@@ -1168,6 +1175,7 @@ def _reader(
     )
     db.add(user)
     db.flush()
+
     return user
 
 
@@ -1191,6 +1199,7 @@ class TestReadingNeedsACompetency:
             headers={"X-CSRF-Token": csrf_token},
         )
         assert resp.status_code == 200
+
         return int(resp.json()["id"])
 
     @patch(FHIR_PATCH_TARGET, return_value=_fhir_response())

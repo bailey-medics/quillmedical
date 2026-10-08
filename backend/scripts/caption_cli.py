@@ -88,6 +88,7 @@ def _report_captions(org_id: int, module_id: str, asset_id: str) -> None:
     """
     url = os.environ.get("CAPTION_CALLBACK_URL", "").strip()
     token = os.environ.get("CAPTION_CALLBACK_TOKEN", "").strip()
+
     if not url or not token:
         print(
             "Callback not configured; skipping caption report. The "
@@ -124,6 +125,7 @@ def _report_captions(org_id: int, module_id: str, asset_id: str) -> None:
         },
         method="POST",
     )
+
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
             if response.status >= 400:
@@ -147,6 +149,7 @@ def _require_env(*names: str) -> dict[str, str]:
     """Read required environment variables, exiting on any missing."""
     values: dict[str, str] = {}
     missing: list[str] = []
+
     for name in names:
         val = os.environ.get(name, "").strip()
         if not val:
@@ -160,6 +163,7 @@ def _require_env(*names: str) -> dict[str, str]:
             file=sys.stderr,
         )
         sys.exit(1)
+
     return values
 
 
@@ -173,15 +177,19 @@ def _format_timestamp(seconds: float) -> str:
     """
     if seconds < 0:
         seconds = 0.0
+
     whole = int(seconds)
     milliseconds = int(round((seconds - whole) * 1000))
+
     # Rounding can carry into the next second; fold it rather than
     # emitting ".1000".
     if milliseconds == 1000:
         whole += 1
         milliseconds = 0
+
     hours, remainder = divmod(whole, 3600)
     minutes, secs = divmod(remainder, 60)
+
     return f"{hours:02d}:{minutes:02d}:{secs:02d}.{milliseconds:03d}"
 
 
@@ -197,6 +205,7 @@ def to_webvtt(segments: list[dict[str, Any]]) -> str:
     and a cue with an empty body is a flicker on screen.
     """
     lines = ["WEBVTT", ""]
+
     for segment in segments:
         text = str(segment.get("text", "")).strip()
         if not text:
@@ -206,6 +215,7 @@ def to_webvtt(segments: list[dict[str, Any]]) -> str:
         lines.append(f"{start} --> {end}")
         lines.append(text)
         lines.append("")
+
     return "\n".join(lines)
 
 
@@ -226,6 +236,7 @@ def transcribe(path: Path, model_name: str) -> list[dict[str, Any]]:
     # produces a warning on every run and falls back to fp32 anyway.
     result = model.transcribe(str(path), fp16=False)
     segments: list[dict[str, Any]] = result.get("segments", [])
+
     return segments
 
 
@@ -276,6 +287,7 @@ def caption() -> int:
     bucket = client.bucket(env["TEACHING_VIDEOS_BUCKET"])
 
     source_blob = bucket.blob(source_key)
+
     if not source_blob.exists():
         print(
             f"ERROR: No rendition at {source_key}; run the transcode job "
@@ -328,6 +340,7 @@ def caption() -> int:
     _report_captions(org_id, module_id, asset_id)
 
     print(f"✓ Captioned {asset_id} in {len(segments)} segments")
+
     return 0
 
 

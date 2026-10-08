@@ -91,12 +91,15 @@ def suppressed_addresses() -> dict[str, Reason]:
     """
     key_id = settings.SES_ACCESS_KEY_ID
     secret = settings.SES_SECRET_ACCESS_KEY
+
     if not is_configured() or key_id is None or secret is None:
         return {}
+
     key_id_value = key_id.get_secret_value().strip()
     secret_value = secret.get_secret_value().strip()
 
     found: dict[str, Reason] = {}
+
     try:
         client = boto3.client(
             "sesv2",
@@ -126,6 +129,7 @@ def suppressed_addresses() -> dict[str, Reason]:
         message = str(exc).replace(secret_value, "[redacted]")
         message = message.replace(key_id_value, "[redacted]")
         raise SuppressionError(message) from None
+
     return found
 
 
@@ -145,6 +149,7 @@ def mark_suppressed(db: Session, addresses: dict[str, Reason]) -> Marked:
         How many of each were changed.
     """
     marked = Marked()
+
     if not addresses:
         return marked
 
@@ -167,11 +172,13 @@ def mark_suppressed(db: Session, addresses: dict[str, Reason]) -> Marked:
         .unique()
         .all()
     )
+
     for user in users:
         reason = addresses.get(user.email.lower(), "bounce")
         if set_marketing_preference(db, user, wants=False, source=reason):
             marked.accounts += 1
     db.flush()
+
     return marked
 
 
@@ -191,6 +198,8 @@ def hear_from_amazon(db: Session) -> Marked | None:
     except SuppressionError as exc:
         logger.warning("Amazon's suppression list could not be read: %s", exc)
         return None
+
     marked = mark_suppressed(db, addresses)
     db.commit()
+
     return marked

@@ -80,6 +80,7 @@ def store(tmp_path: Path, holder: Actor) -> LocalPassportStore:
         user_id="1",
         registrations=[{"body": "GMC", "number": "1234567"}],
     )
+
     return created
 
 
@@ -106,6 +107,7 @@ def _signed(store: LocalPassportStore, holder: Actor, assessor: Actor) -> str:
         level_id=LEVEL,
         registrations=[{"body": "GMC", "number": "7654321"}],
     )
+
     return name
 
 

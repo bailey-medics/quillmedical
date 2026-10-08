@@ -51,6 +51,7 @@ def _format(moment: datetime, unique: str) -> str:
     """
     stamp = moment.strftime("%Y%m%dT%H%M%S")
     milliseconds = moment.microsecond // _MILLISECOND_US
+
     return f"{stamp}.{milliseconds:03d}Z-{unique}"
 
 
@@ -255,4 +256,5 @@ def record_dir_name(
         raise ValueError(f"Suffix must be 1 or greater, got {suffix}.")
 
     name = f"{on.isoformat()}-{slugify(label)}"
+
     return name if suffix == 1 else f"{name}-{suffix}"

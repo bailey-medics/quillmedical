@@ -43,6 +43,7 @@ def _migration_source(
     )
     rev_line = f'revision: str = "{revision}"'
     down_line = f"down_revision: Union[str, None] = {down}"
+
     return (
         f"{docstring}\n\n"
         "from typing import Sequence, Union\n\n"
@@ -65,6 +66,7 @@ def _write(tmp_path: Path, name: str, **kwargs: object) -> None:
 
 def _one(tmp_path: Path, **kwargs: object) -> Migration:
     _write(tmp_path, "rev.py", **kwargs)
+
     return collect_migrations(tmp_path)[0]
 
 

@@ -60,6 +60,7 @@ def _migration() -> ModuleType:
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+
     return module
 
 
@@ -115,6 +116,7 @@ def _user(
             "removed": removed,
         },
     ).scalar_one()
+
     return int(user_id)
 
 
@@ -205,6 +207,7 @@ def test_passport_write_comes_from_the_entitlement_alone(
     """
     starts_on = datetime.now(UTC) - timedelta(days=10)
     ends_on = starts_on + timedelta(days=365)
+
     with core_engine.begin() as conn:
         user_id = _user(conn, "holder", additional='["passport_write"]')
         _entitlement(
@@ -234,6 +237,7 @@ def test_an_entitlement_without_the_competency_is_copied_closed(
     Left out, the record of the term would go with the entitlement table.
     """
     starts_on = datetime.now(UTC) - timedelta(days=10)
+
     with core_engine.begin() as conn:
         user_id = _user(conn, "not_holder")
         _entitlement(
@@ -258,6 +262,7 @@ def test_what_the_dual_write_wrote_is_not_copied_again(
     """Somebody saved since the table arrived already has their rows."""
     starts_on = datetime.now(UTC) - timedelta(days=1)
     ends_on = starts_on + timedelta(days=365)
+
     with core_engine.begin() as conn:
         user_id = _user(
             conn,
@@ -318,6 +323,7 @@ def test_running_it_twice_adds_nothing(before_backfill: Config) -> None:
     first = _rows(user_id)
 
     migration = _migration()
+
     with core_engine.begin() as conn:
         conn.execute(
             text(migration._copy_list("additional_competencies", granted=True))

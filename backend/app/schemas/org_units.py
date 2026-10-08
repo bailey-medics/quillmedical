@@ -1,4 +1,3 @@
-# backend/app/schemas/org_units.py
 """Request and response shapes for the org_unit surface.
 
 One surface for every org_unit, because there is one table of them. An
@@ -52,6 +51,7 @@ class CreateOrgUnitIn(BaseModel):
         """
         if not value.strip():
             raise ValueError("A place needs a name.")
+
         return value
 
 
@@ -79,6 +79,7 @@ class UpdateOrgUnitIn(BaseModel):
         """Refuse renaming an org_unit to nothing, for the same reason."""
         if value is not None and not value.strip():
             raise ValueError("A place needs a name.")
+
         return value
 
 
@@ -199,6 +200,7 @@ class AddOrgUnitMemberIn(BaseModel):
                 f"Unknown base profession: {value}. Professions are "
                 "defined in shared/base-professions.yaml."
             )
+
         return value
 
     @field_validator("additional_competencies")
@@ -207,6 +209,7 @@ class AddOrgUnitMemberIn(BaseModel):
         """Reject a competency id that is not in the catalogue."""
         if value is None:
             return None
+
         return validate_competency_ids(value)
 
 
@@ -394,6 +397,7 @@ class MemberLookupIn(BaseModel):
         one. Anything else is read as a username, which holds no spaces.
         """
         value = value.strip()
+
         if len(value) < 3:
             raise ValueError("Enter a whole username or email address.")
         if "@" in value:
@@ -405,6 +409,7 @@ class MemberLookupIn(BaseModel):
                 raise ValueError("Enter a whole email address.")
         elif any(character.isspace() for character in value):
             raise ValueError("Enter a username or an email address.")
+
         return value
 
 

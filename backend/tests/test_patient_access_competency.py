@@ -74,6 +74,7 @@ def _user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -90,6 +91,7 @@ def org_with_patient(db_session: Session) -> OrgUnit:
     )
     db_session.commit()
     db_session.refresh(org)
+
     return org
 
 

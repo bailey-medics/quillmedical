@@ -81,6 +81,7 @@ def main() -> int:
         return 1
 
     db = CoreSessionLocal()
+
     try:
         # Check if database has been migrated by verifying the users table exists
         if db.bind is None:

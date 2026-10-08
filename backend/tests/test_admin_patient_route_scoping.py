@@ -63,6 +63,7 @@ def admin_org(db_session: Session, test_admin: User) -> OrgUnit:
     )
     db_session.commit()
     db_session.refresh(org)
+
     return org
 
 
@@ -79,6 +80,7 @@ def other_org(db_session: Session) -> OrgUnit:
     )
     db_session.commit()
     db_session.refresh(org)
+
     return org
 
 

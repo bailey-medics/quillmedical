@@ -68,6 +68,7 @@ class LocalStorageBackend(StorageBackend):
         self, bank_id: str, item_folder: str, filename: str
     ) -> str:
         prefix = assessment_prefix(bank_id)
+
         return f"{self._base}/{prefix}{item_folder}/{filename}"
 
 
@@ -170,6 +171,7 @@ def discover_local_banks(base_path: str) -> list[str]:
     Returns a sorted list of unique bank IDs.
     """
     base = Path(base_path)
+
     if not base.is_dir():
         return []
 
@@ -215,11 +217,13 @@ def resolve_local_bank(base_path: str, bank_id: str) -> Path | None:
     (question directories and assessment/config YAML), or None if not found.
     """
     base = Path(base_path)
+
     if not base.is_dir():
         return None
 
     # Check flat layout first
     flat = base / bank_id
+
     if flat.is_dir() and _has_assessment_config(flat):
         return flat
 
@@ -252,6 +256,7 @@ def local_media_response(file_path: Path) -> FileResponse:
     content_type = (
         mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
     )
+
     return FileResponse(
         file_path,
         media_type=content_type,
@@ -267,6 +272,7 @@ def resolve_module_dir(base_path: str, module_id: str) -> Path | None:
     Only works for the modules layout.
     """
     base = Path(base_path)
+
     if not base.is_dir():
         return None
 
@@ -292,12 +298,14 @@ def local_cover_image_url(
     """
     url = f"/api/teaching/images/cover/{module_id}/{filename}"
     module_dir = resolve_module_dir(base_path, module_id)
+
     if module_dir is None:
         return url
     try:
         modified = (module_dir / filename).stat().st_mtime_ns
     except OSError:
         return url
+
     return f"{url}?v={modified}"
 
 
@@ -308,12 +316,16 @@ def has_learning_content(base_path: str, module_id: str) -> bool:
     """
     # Try GCS first if configured
     bucket = settings.TEACHING_GCS_BUCKET
+
     if bucket:
         return has_learning_content_gcs(bucket, module_id)
+
     # Fall back to local filesystem
     module_dir = resolve_module_dir(base_path, module_id)
+
     if module_dir is None:
         return False
+
     return (module_dir / "learning" / "content.mdx").is_file()
 
 
@@ -327,6 +339,7 @@ def has_learning_content_gcs(bucket_name: str, module_id: str) -> bool:
     client = storage.Client()
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(f"{learning_prefix(module_id)}content.mdx")
+
     return bool(blob.exists())
 
 
@@ -342,8 +355,10 @@ def download_learning_mdx_from_gcs(
     client = storage.Client()
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(f"{learning_prefix(module_id)}content.mdx")
+
     if not blob.exists():
         return None
+
     return str(blob.download_as_text(encoding="utf-8"))
 
 
@@ -360,10 +375,13 @@ def download_module_yaml_from_gcs(
     client = storage.Client()
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(f"{module_prefix(module_id)}module.yaml")
+
     if not blob.exists():
         return None
+
     content = blob.download_as_text(encoding="utf-8")
     result: dict[str, Any] | None = yaml.safe_load(content) or {}
+
     return result
 
 
@@ -465,6 +483,7 @@ def list_banks_in_gcs(bucket_name: str) -> list[str]:
     _ = list(blobs)
 
     bank_ids: list[str] = []
+
     for p in blobs.prefixes:
         # p looks like "modules/chest-xray-interpretation/"
         bank_id = p.removeprefix(prefix).rstrip("/")
@@ -515,6 +534,7 @@ def download_bank_from_gcs(
     bank_dir.mkdir()
 
     yaml_count = 0
+
     for blob in blobs:
         # Only download YAML files
         rel_path = blob.name.removeprefix(prefix)
@@ -538,6 +558,7 @@ def download_bank_from_gcs(
     # org_unit module.yaml in the parent directory so that
     # _load_module_metadata(bank_dir) can find it at bank_dir.parent
     module_blob = bucket.blob(f"{module_prefix(bank_id)}module.yaml")
+
     if module_blob.exists():
         module_yaml_path = tmp_dir / "module.yaml"
         module_blob.download_to_filename(str(module_yaml_path))
@@ -571,6 +592,7 @@ def get_module_status_from_gcs(
         return None
 
     content = blob.download_as_text()
+
     try:
         data = yaml.safe_load(content)
         if isinstance(data, dict):
@@ -579,6 +601,7 @@ def get_module_status_from_gcs(
                 return status
     except yaml.YAMLError:
         pass
+
     return None
 
 
@@ -638,6 +661,7 @@ def list_bank_images_in_gcs(
         len(inventory),
         sum(len(v) for v in inventory.values()),
     )
+
     return inventory
 
 
@@ -673,6 +697,7 @@ def download_module_from_gcs(
 
     # Check module.yaml exists
     module_blob = bucket.blob(f"{module_prefix(bank_id)}module.yaml")
+
     if not module_blob.exists():
         return None
 
@@ -683,6 +708,7 @@ def download_module_from_gcs(
     # One prefix, copied as it lies. The bucket has the repository's shape,
     # so there is nothing to reassemble.
     prefix = module_prefix(bank_id)
+
     for blob in bucket.list_blobs(prefix=prefix):
         rel_path = blob.name.removeprefix(prefix)
         if not rel_path or rel_path.endswith("/"):
@@ -780,8 +806,10 @@ def read_caption_object(
 
     client = storage.Client()
     blob = client.bucket(bucket_name).blob(path)
+
     if not blob.exists():
         return None
+
     return str(blob.download_as_text(encoding="utf-8"))
 
 
@@ -833,6 +861,7 @@ def delete_media_object(
 
     client = storage.Client()
     bucket = client.bucket(bucket_name)
+
     try:
         bucket.blob(path).delete()
     except gcs_exceptions.NotFound:

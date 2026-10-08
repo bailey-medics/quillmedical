@@ -31,6 +31,7 @@ def _user(db: Session, username: str) -> User:
     )
     db.add(user)
     db.commit()
+
     return user
 
 

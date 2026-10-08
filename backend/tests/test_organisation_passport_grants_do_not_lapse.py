@@ -52,6 +52,7 @@ def _cleanup() -> None:
 def _grants() -> tuple[int, datetime]:
     """A user with an organisation grant and an individual one."""
     starts_on = datetime.now(UTC) - timedelta(days=10)
+
     with core_engine.begin() as conn:
         user_id = int(
             conn.execute(
@@ -85,6 +86,7 @@ def _grants() -> tuple[int, datetime]:
                     "source": source,
                 },
             )
+
     return user_id, starts_on
 
 

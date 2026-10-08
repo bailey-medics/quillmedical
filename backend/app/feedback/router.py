@@ -190,6 +190,7 @@ def submit_feedback(
     logger.info("feedback received", extra={"feedback_id": feedback.id})
 
     notify = settings.FEEDBACK_NOTIFY_EMAIL.strip()
+
     if notify:
         background_tasks.add_task(
             _notify_operator,
@@ -199,6 +200,7 @@ def submit_feedback(
             category=feedback.category,
             route=feedback.route,
         )
+
     return FeedbackCreatedOut(id=feedback.id)
 
 
@@ -248,8 +250,10 @@ def list_feedback(
         .options(selectinload(Feedback.user))
         .order_by(Feedback.created_at.desc(), Feedback.id.desc())
     )
+
     if status is not None:
         query = query.where(Feedback.status == status)
+
     return FeedbackListOut(items=[_item(f) for f in db.scalars(query)])
 
 
@@ -272,6 +276,7 @@ def list_my_feedback(
         .where(Feedback.user_id == current_user.id)
         .order_by(Feedback.created_at.desc(), Feedback.id.desc())
     )
+
     return MyFeedbackListOut(
         items=[
             MyFeedbackItemOut.model_validate(
@@ -314,14 +319,17 @@ def mark_my_replies_seen(
     # SQLAlchemy declares for `execute` is the wider one. As in the
     # org_units router.
     seen = int(result.rowcount or 0)  # type: ignore[attr-defined]
+
     return FeedbackSeenOut(seen=seen)
 
 
 def _require_feedback(db: Session, feedback_id: int) -> Feedback:
     """Return the feedback, or refuse with a 404."""
     feedback = db.get(Feedback, feedback_id)
+
     if feedback is None:
         raise HTTPException(404, "Feedback not found")
+
     return feedback
 
 
@@ -366,9 +374,12 @@ def update_feedback(
     """
     feedback = _require_feedback(db, feedback_id)
     changed = body.model_fields_set
+
     if body.status is not None:
         feedback.status = body.status
+
     replied = False
+
     if "comment" in changed and body.comment != feedback.operator_comment:
         feedback.operator_comment = body.comment
         feedback.operator_comment_at = (
@@ -386,8 +397,10 @@ def update_feedback(
         },
     )
     sender = feedback.user
+
     if replied and sender is not None and sender.email:
         background_tasks.add_task(
             _notify_sender, to=sender.email, feedback_id=feedback.id
         )
+
     return _item(feedback)

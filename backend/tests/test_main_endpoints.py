@@ -370,5 +370,6 @@ class TestFailuresDoNotLeakExceptionText:
         resp = authenticated_client.get("/api/patients/abc123/demographics")
 
         body = resp.text
+
         for fragment in ("943 476 5919", "Jane Doe", "db-host", "connection"):
             assert fragment not in body

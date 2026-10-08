@@ -40,6 +40,7 @@ def org(db_session: Session, test_superadmin: User) -> OrgUnit:
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
+
     return organisation
 
 
@@ -57,12 +58,14 @@ def _member(db: Session, org: OrgUnit, username: str) -> User:
     add_org_unit_member(db, org.id, user.id, "staff")
     db.commit()
     db.refresh(user)
+
     return user
 
 
 def _usernames(client: TestClient, query: str) -> set[str]:
     resp = client.get(f"/api/users?{query}")
     assert resp.status_code == 200, resp.text
+
     return {user["username"] for user in resp.json()["users"]}
 
 

@@ -37,6 +37,7 @@ def _start(
         headers=headers,
     )
     assert resp.is_success, resp.text
+
     return resp.json()["assessment"]["id"], headers
 
 
@@ -50,6 +51,7 @@ def _answered(db_session: Session, assessment_id: int) -> AssessmentAnswer:
         )
         .one()
     )
+
     return answer
 
 
@@ -130,6 +132,7 @@ class TestScoringReadsTheRows:
     ) -> None:
         """Every answer is high confidence, and the result says so."""
         assessment_id, headers = _start(test_client, db_session)
+
         for _ in range(3):
             resp = test_client.post(
                 f"/api/teaching/assessments/{assessment_id}/answer",

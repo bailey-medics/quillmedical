@@ -43,11 +43,13 @@ def _user(
         base_profession=profession,
         platform_role="standard",
     )
+
     if not seeded:
         user.competency_grants = []
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -57,6 +59,7 @@ def _login(client: TestClient, username: str) -> TestClient:
         json={"username": username, "password": "Password123!"},
     )
     assert response.status_code == 200, response.text
+
     return client
 
 
@@ -71,6 +74,7 @@ def _current_grants(db: Session, user_id: int) -> dict[str, str]:
     rows = db.scalars(
         select(UserCompetency).where(UserCompetency.user_id == user_id)
     )
+
     return {
         row.competency_id: row.source for row in rows if row.is_current(now)
     }
@@ -82,6 +86,7 @@ def org(db_session: Session) -> OrgUnit:
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
+
     return organisation
 
 
@@ -91,6 +96,7 @@ def admin(db_session: Session, org: OrgUnit) -> User:
     add_org_unit_member(db_session, org.id, user.id, "staff")
     administers(db_session, user.id, org.id)
     db_session.commit()
+
     return user
 
 
@@ -239,6 +245,7 @@ class TestEveryRouteSeeds:
 
         assert response.status_code == 200, response.text
         grants = _current_grants(db_session, response.json()["id"])
+
         for competency_id in get_profession_base_competencies(
             "healthcare_assistant"
         ):

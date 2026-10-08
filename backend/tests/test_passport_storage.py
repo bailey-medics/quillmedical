@@ -139,6 +139,7 @@ class TestWithABucket:
 
         def record(bucket: str) -> GcsPassportStore:
             seen.append(bucket)
+
             return GcsPassportStore(MagicMock())
 
         monkeypatch.setattr(

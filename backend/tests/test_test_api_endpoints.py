@@ -117,6 +117,7 @@ class TestTestApiRouterEndpoints:
     def _client(self) -> TestClient:
         app = FastAPI()
         app.include_router(dummy_test_router, prefix="/api")
+
         return TestClient(app)
 
     def test_non_breaking_api_returns_expected_body(self) -> None:

@@ -117,10 +117,12 @@ def parse_hazard_types(path: str | Path) -> list[str]:
     """
     path = Path(path)
     types: list[str] = []
+
     for line in path.read_text().splitlines():
         line = line.strip()
         if line.startswith("- "):
             types.append(line[2:].strip())
+
     return types
 
 
@@ -141,6 +143,7 @@ def parse_template(path: str | Path) -> list[TemplateField]:
     in_field_type_options = False  # True after we've seen a [type] marker
 
     i = 0
+
     while i < len(lines):
         line = lines[i]
         stripped = line.strip()
@@ -313,9 +316,11 @@ def calculate_risk_score(
         return None
 
     target = f"L{likelihood_key}-S{severity_key}"
+
     for option in calculate_field.options:
         if target in option.matchers:
             return option
+
     return None
 
 
@@ -363,6 +368,7 @@ class HazardLogGenerator:
 
         # Build lookup by field name
         self._field_map: dict[str, TemplateField] = {}
+
         for f in self.fields:
             if not f.name.startswith("__"):
                 self._field_map[f.name] = f
@@ -382,13 +388,16 @@ class HazardLogGenerator:
         """Format a select field value. Returns the full option line or TBC."""
         if value is None:
             return "TBC"
+
         key_str = str(value)
+
         for opt in field_def.options:
             if opt.key == key_str:
                 return (
                     opt.raw_line
                     or f"{opt.key} - {opt.label}: {opt.description}"
                 )
+
         return f"{value} (unrecognised option)"
 
     def _format_multiselect_value(
@@ -397,7 +406,9 @@ class HazardLogGenerator:
         """Format a multiselect field value. Returns matched option lines."""
         if not values:
             return "None selected"
+
         lines = []
+
         for v in values:
             key_str = str(v)
             matched = False
@@ -411,6 +422,7 @@ class HazardLogGenerator:
                     break
             if not matched:
                 lines.append(f"- {v}")
+
         return "\n".join(lines)
 
     def _format_calculate_value(
@@ -426,6 +438,7 @@ class HazardLogGenerator:
         # Find the source fields referenced by labels (skip calculate fields
         # themselves - their labels are references, not declarations)
         label_to_field: dict[str, TemplateField] = {}
+
         for f in self.fields:
             if f.field_type == FieldType.CALCULATE:
                 continue
@@ -434,6 +447,7 @@ class HazardLogGenerator:
 
         # Get the selected key for each labelled field
         label_values: dict[str, Optional[str]] = {}
+
         for lbl in field_def.labels:
             ref_field = label_to_field.get(lbl)
             if ref_field:
@@ -451,8 +465,10 @@ class HazardLogGenerator:
 
         # Build the matcher key, e.g. "L2-S3"
         parts = []
+
         for lbl in field_def.labels:
             parts.append(f"{lbl}{label_values[lbl]}")
+
         target = "-".join(parts)
 
         for opt in field_def.options:
@@ -578,6 +594,7 @@ class HazardLogGenerator:
 
         content = "\n".join(lines)
         output_path.write_text(content)
+
         return output_path
 
 

@@ -162,6 +162,7 @@ def _column(headings: list[str], names: frozenset[str]) -> int | None:
     for index, heading in enumerate(headings):
         if heading in names:
             return index
+
     return None
 
 
@@ -169,6 +170,7 @@ def _cell(row: list[str], index: int | None) -> str:
     """One cell of a row, trimmed, or empty where the row is short."""
     if index is None or index >= len(row):
         return ""
+
     return row[index].strip()
 
 
@@ -180,16 +182,19 @@ def _address(value: str) -> str | None:
         validate_email(value, check_deliverability=False)
     except EmailNotValidError:
         return None
+
     return normalise_email(value)
 
 
 def _answer(value: str) -> bool | None:
     """What a cell says about wanting newsletters, or None if unreadable."""
     word = value.lower()
+
     if word in _OPTED_IN:
         return True
     if word in _OPTED_OUT:
         return False
+
     return None
 
 
@@ -232,20 +237,24 @@ def parse(raw: bytes) -> Parsed:
 
     headings = [heading.strip().lower() for heading in table[0]]
     email_at = _column(headings, _EMAIL_HEADINGS)
+
     if email_at is None:
         raise MailingListError(
             'No column is headed "Email". The first row must name the columns.'
         )
+
     name_at = _column(headings, _NAME_HEADINGS)
     last_name_at = _column(headings, _LAST_NAME_HEADINGS)
     opt_at = _column(headings, _OPT_HEADINGS)
 
     body = table[1:]
+
     if len(body) > MAX_ROWS:
         raise MailingListError(f"That file has more than {MAX_ROWS} rows")
 
     parsed = Parsed(rows=len(body), has_opt_column=opt_at is not None)
     found: dict[str, Entry] = {}
+
     for number, row in enumerate(body, start=2):
         email = _address(_cell(row, email_at))
         if email is None:
@@ -269,28 +278,35 @@ def parse(raw: bytes) -> Parsed:
             opted_in = opted_in and earlier.opted_in
             name = earlier.name or name
         found[email] = Entry(email=email, name=name or None, opted_in=opted_in)
+
     parsed.entries = list(found.values())
+
     return parsed
 
 
 def _existing(db: Session, parsed: Parsed) -> dict[str, NewsletterSubscriber]:
     """The subscribers already on the list whom the file names."""
     addresses = [entry.email for entry in parsed.entries]
+
     if not addresses:
         return {}
+
     rows = db.scalars(
         select(NewsletterSubscriber).where(
             NewsletterSubscriber.email.in_(addresses)
         )
     )
+
     return {row.email: row for row in rows}
 
 
 def _with_accounts(db: Session, parsed: Parsed) -> set[str]:
     """Addresses in the file that are a verified account's."""
     addresses = [entry.email for entry in parsed.entries]
+
     if not addresses:
         return set()
+
     return set(
         db.scalars(
             select(User.email).where(
@@ -312,6 +328,7 @@ def summarise(db: Session, parsed: Parsed) -> Summary:
     """
     existing = _existing(db, parsed)
     new = already_there = switched_off = 0
+
     for entry in parsed.entries:
         row = existing.get(entry.email)
         if row is None:
@@ -320,7 +337,9 @@ def summarise(db: Session, parsed: Parsed) -> Summary:
             switched_off += 1
         else:
             already_there += 1
+
     opted_in = sum(1 for entry in parsed.entries if entry.opted_in)
+
     return Summary(
         rows=parsed.rows,
         new=new,
@@ -352,6 +371,7 @@ def fingerprint(raw: bytes, summary: Summary) -> str:
     """
     digest = hashlib.sha256(raw)
     digest.update(repr(summary).encode())
+
     return digest.hexdigest()
 
 
@@ -368,6 +388,7 @@ def apply(db: Session, parsed: Parsed) -> None:
         parsed: The file, from :func:`parse`.
     """
     existing = _existing(db, parsed)
+
     for entry in parsed.entries:
         row = existing.get(entry.email)
         if row is None:

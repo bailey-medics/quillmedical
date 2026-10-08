@@ -58,6 +58,7 @@ def _make_user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -82,6 +83,7 @@ def _organisation(
     for member in members:
         add_org_unit_member(db, org.id, member.id, "staff")
     db.commit()
+
     return org
 
 
@@ -92,8 +94,10 @@ def _login(client: TestClient, username: str) -> TestClient:
     )
     assert response.status_code == 200, response.text
     csrf = client.cookies.get("XSRF-TOKEN")
+
     if csrf:
         client.headers["X-CSRF-Token"] = csrf
+
     return client
 
 
@@ -262,6 +266,7 @@ class TestTheHoldersRoutes:
         _organisation(
             db_session, "Oncology Department", ONCOLOGY, members=(holder,)
         )
+
         return _login(test_client, "holder")
 
     def test_the_list_carries_what_a_page_needs(
@@ -393,6 +398,7 @@ class TestOnlyWhatTheFrameworksHold:
     ) -> TestClient:
         holder = _make_user(db_session, "holder", writes=True)
         _organisation(db_session, "Mixed Trust", members=(holder,))
+
         return _login(test_client, "holder")
 
     def _passport(self, client: TestClient, *frameworks: str) -> str:
@@ -400,6 +406,7 @@ class TestOnlyWhatTheFrameworksHold:
             "/api/passport", json={"frameworks": list(frameworks)}
         )
         assert response.status_code == 201, response.text
+
         return str(response.json()["passport_id"])
 
     def test_a_competency_in_a_chosen_framework_can_be_logged(
@@ -516,6 +523,7 @@ def _admin_of(db: Session, org: OrgUnit, username: str = "admin") -> User:
     add_org_unit_member(db, org.id, admin.id, "staff")
     administers(db, admin.id, org.id)
     db.commit()
+
     return admin
 
 

@@ -1,4 +1,3 @@
-# backend/app/features/passport/reconcile.py
 """Noticing when the database and the repository disagree, and healing it.
 
 ``Passport.head_commit`` is a cache of where the repository is. The

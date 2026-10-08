@@ -34,6 +34,7 @@ def other_org(db_session: Session) -> OrgUnit:
     db_session.add(org)
     db_session.commit()
     db_session.refresh(org)
+
     return org
 
 
@@ -46,6 +47,7 @@ def admin_org(db_session: Session, test_admin: User) -> OrgUnit:
     add_org_unit_member(db_session, org.id, test_admin.id, "staff")
     db_session.commit()
     db_session.refresh(org)
+
     return org
 
 
@@ -65,6 +67,7 @@ def outsider(db_session: Session, other_org: OrgUnit) -> User:
     add_org_unit_member(db_session, other_org.id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
+
     return user
 
 
@@ -84,6 +87,7 @@ def insider(db_session: Session, admin_org: OrgUnit) -> User:
     add_org_unit_member(db_session, admin_org.id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
+
     return user
 
 

@@ -1,4 +1,3 @@
-# backend/app/features/teaching/access.py
 """Who may take which organisation's teaching modules, and through where.
 
 Teaching runs on the layers clinical work runs on. A competency says
@@ -72,6 +71,7 @@ def places_for_modules(db: Session, user: User) -> list[int]:
     """
     if MODULES_COMPETENCY not in user.get_final_competencies():
         return []
+
     return _rows_where_they_belong(db, user)
 
 
@@ -94,6 +94,7 @@ def _rows_where_they_belong(db: Session, user: User) -> list[int]:
             PractisingCompetency.competency == MODULES_COMPETENCY,
         )
     ).scalars()
+
     # The column is nullable in the model and never null in the table,
     # which a check constraint holds; the test is for the type checker.
     return sorted(
@@ -167,6 +168,7 @@ def may_enter_module(
     """
     if org_unit_id not in organisations_open_for_modules(db, user):
         return False
+
     return is_enrolled(
         db,
         user.id,
@@ -211,6 +213,7 @@ def enrol_everyone_with_a_place(
         )
     )
     enrolled: list[User] = []
+
     for user_id in candidate_ids:
         user = db.get(User, user_id)
         if user is None:
@@ -233,6 +236,7 @@ def enrol_everyone_with_a_place(
                 source=source,
             )
         enrolled.append(user)
+
     return enrolled
 
 
@@ -262,6 +266,7 @@ def why_not(
         ``MISSING_ENROLMENT``, in that order.
     """
     missing: list[str] = []
+
     if MODULES_COMPETENCY not in user.get_final_competencies():
         missing.append(MISSING_COMPETENCY)
     if org_unit_id not in reach_of_org_units(
@@ -275,6 +280,7 @@ def why_not(
         question_bank_id=question_bank_id,
     ):
         missing.append(MISSING_ENROLMENT)
+
     return missing
 
 
@@ -298,6 +304,7 @@ def modules_served_by(db: Session, org_unit_id: int) -> list[str]:
 def organisation_serving(db: Session, org_unit_id: int) -> int | None:
     """Return the organisation above an org_unit, or None if it has none."""
     organisations = organisation_org_units_of(db, [org_unit_id])
+
     return min(organisations) if organisations else None
 
 
@@ -364,6 +371,7 @@ def admit(
         else set()
     )
     unknown = sorted(set(module_ids) - served)
+
     if organisation_id is None or unknown:
         raise NotServed(", ".join(unknown) or "no organisation")
 
@@ -371,6 +379,7 @@ def admit(
     wanted = [
         c for c in (RESULTS_COMPETENCY, MODULES_COMPETENCY) if c not in held
     ]
+
     if wanted:
         # A competency their profession gives is restored by taking it
         # off the removed list; anything else is added beyond it. The
@@ -412,6 +421,7 @@ def admit(
             ends_on=ends_on,
         )
     ]
+
     return Admitted(competencies=wanted, place=place, enrolled=enrolled)
 
 
@@ -445,6 +455,7 @@ def settle_enrolments(
             serve. Nothing is written.
     """
     unknown = sorted(set(wanted) - set(modules_served_by(db, organisation_id)))
+
     if unknown:
         raise NotServed(", ".join(unknown))
 
@@ -469,6 +480,7 @@ def settle_enrolments(
         for unit_id in member_of
         if organisation_serving(db, int(unit_id)) == organisation_id
     )
+
     for module_id, ends_on in sorted(wanted.items()):
         for unit_id in places:
             admit(

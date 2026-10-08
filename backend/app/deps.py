@@ -51,20 +51,25 @@ def get_current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
             inactive.
     """
     tok = request.cookies.get("access_token")
+
     if not tok:
         raise HTTPException(401, "Not authenticated")
     try:
         payload = decode_token(tok)
     except Exception as e:
         raise HTTPException(401, "Invalid token") from e
+
     sub = payload.get("sub")
     user = db.scalar(select(User).where(User.username == sub))
+
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
     if payload.get("tv", 0) != user.token_version:
         raise HTTPException(401, "Session invalidated")
+
     request.state.roles = [r.name for r in user.roles]
     user_id_var.set(str(user.id))
+
     return user
 
 
@@ -88,17 +93,21 @@ def get_optional_user(
     is logged.
     """
     tok = request.cookies.get("access_token")
+
     if not tok:
         return None
     try:
         payload = decode_token(tok)
     except Exception:
         return None
+
     user = db.scalar(select(User).where(User.username == payload.get("sub")))
+
     if not user or not user.is_active:
         return None
     if payload.get("tv", 0) != user.token_version:
         return None
+
     return user
 
 
@@ -118,6 +127,7 @@ def require_operator(current_user: User = DEP_CURRENT_USER) -> User:
     """
     if current_user.platform_role != "superadmin":
         raise HTTPException(403, "Platform operator access required")
+
     return current_user
 
 
@@ -243,6 +253,7 @@ def has_competency_at(
             return user
 
         raw = request.path_params.get(place_param)
+
         if raw is None:
             # A programming error, not a caller's: the route does not carry
             # the parameter this dependency was told to read. 500 rather
@@ -300,6 +311,7 @@ def requires_competency_decorator(competency: str) -> Callable[..., Any]:
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Extract user from kwargs (assuming user: User = DEP_CURRENT_USER in signature)
             user = kwargs.get("user")
+
             if not user or not isinstance(user, User):
                 raise HTTPException(
                     status_code=401, detail="Authentication required"

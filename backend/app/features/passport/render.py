@@ -263,6 +263,7 @@ def _logbook_entries(
         found.append((record.performed_on, record))
 
     found.sort(key=lambda item: item[0])
+
     return found
 
 
@@ -373,6 +374,7 @@ def _cpd_entries(
         found.append(from_yaml(CpdEntry, store.read(passport_id, path)))
 
     found.sort(key=lambda entry: entry.activity_on)
+
     return found
 
 
@@ -492,6 +494,7 @@ def _one_sign_off(name: str, record: SignOff) -> list[str]:
         )
 
     lines.append("")
+
     return lines
 
 

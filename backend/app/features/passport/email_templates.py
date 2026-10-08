@@ -104,6 +104,7 @@ def render_invite(
             "expires_in_days": expires_in_days,
         },
     )
+
     return InviteEmail(
         subject=rendered["subject"],
         html_body=rendered["html_body"],

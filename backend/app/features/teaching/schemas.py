@@ -459,6 +459,7 @@ class TeachingOrgSettingsIn(BaseModel):
                 "email_logo and email_logo_width are set together, or "
                 "neither is"
             )
+
         return self
 
 

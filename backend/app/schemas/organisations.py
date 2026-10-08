@@ -75,6 +75,7 @@ class AddStaffIn(BaseModel):
                 f"Unknown base profession: {value}. Professions are "
                 "defined in shared/base-professions.yaml."
             )
+
         return value
 
     @field_validator("additional_competencies")
@@ -83,6 +84,7 @@ class AddStaffIn(BaseModel):
         """Reject a competency id that is not in the catalogue."""
         if value is None:
             return None
+
         return validate_competency_ids(value)
 
 
@@ -399,6 +401,7 @@ class AddSiteStaffIn(BaseModel):
                 f"Unknown base profession: {value}. Professions are "
                 "defined in shared/base-professions.yaml."
             )
+
         return value
 
     @field_validator("additional_competencies")
@@ -407,6 +410,7 @@ class AddSiteStaffIn(BaseModel):
         """Reject a competency id that is not in the catalogue."""
         if value is None:
             return None
+
         return validate_competency_ids(value)
 
 

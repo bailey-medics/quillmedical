@@ -73,6 +73,7 @@ def send_reminder(*, recipient: str, reviewed: str, due_by: str) -> None:
             "statement_url": STATEMENT_URL,
         },
     )
+
     try:
         send_email(to=recipient, **send_args(rendered))
     except (EmailNotAllowedError, EmailRateLimitError, EmailSendError) as exc:
@@ -93,12 +94,14 @@ def main() -> int:
     recipient = os.environ.get("ACCESSIBILITY_RECIPIENT", "").strip()
     reviewed = os.environ.get("ACCESSIBILITY_REVIEWED", "").strip()
     due_by = os.environ.get("ACCESSIBILITY_DUE_BY", "").strip()
+
     try:
         send_reminder(recipient=recipient, reviewed=reviewed, due_by=due_by)
     except ReminderError as exc:
         print(f"✗ {exc}", file=sys.stderr)
         return 1
     print(f"Reminder sent to {mask_email(recipient)}")
+
     return 0
 
 

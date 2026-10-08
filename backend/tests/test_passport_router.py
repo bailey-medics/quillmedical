@@ -142,6 +142,7 @@ def _make_user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -163,6 +164,7 @@ def _enable_passport(db: Session, *users: User) -> OrgUnit:
         add_org_unit_member(db, org.id, user.id, "trainee")
 
     db.commit()
+
     return org
 
 
@@ -175,6 +177,7 @@ def _login(client: TestClient, username: str) -> TestClient:
     assert response.status_code == 200, response.text
 
     csrf = client.cookies.get("XSRF-TOKEN")
+
     if csrf:
         client.headers["X-CSRF-Token"] = csrf
 
@@ -226,6 +229,7 @@ def _create_passport(client: TestClient) -> str:
     """Create the caller's passport and return its id."""
     response = client.post("/api/passport", json=WORKING_TO)
     assert response.status_code == 201, response.text
+
     return str(response.json()["passport_id"])
 
 
@@ -707,6 +711,7 @@ class TestRequestSignOff:
         self, holder_client: TestClient, assessor: User
     ) -> None:
         passport_id = _create_passport(holder_client)
+
         for scope_id in ("lung", "breast"):
             response = holder_client.post(
                 f"/api/passport/{passport_id}/competencies/{COMPETENCY}"
@@ -949,6 +954,7 @@ class TestAnExistingAccountAskedToAssess:
                 "level_id": LEVEL,
             },
         )
+
         return response, sent
 
     def _capacity(self, db: Session, org: OrgUnit, user: User) -> str | None:
@@ -1468,6 +1474,7 @@ class TestListingSignOffs:
             },
         )
         assert response.status_code == 201, response.text
+
         return str(response.json()["name"])
 
     def test_a_declined_request_and_the_one_after_are_both_listed(
@@ -1662,6 +1669,7 @@ class TestTheInvitationAnAskSends:
             )
 
         monkeypatch.setattr(router, "send_email", capture)
+
         return outbox
 
     def _ask(
@@ -1800,6 +1808,7 @@ class TestAcceptingAnInvitation:
             outbox.append({"to": to, "html_body": html_body})
 
         monkeypatch.setattr(router, "send_email", capture)
+
         return outbox
 
     def _token(self, sent: list[dict[str, str]]) -> str:
@@ -1842,6 +1851,7 @@ class TestAcceptingAnInvitation:
         registration_number: str | None = "7654321",
     ) -> Response:
         body: dict[str, object] = {"token": token}
+
         if username is not None:
             body["username"] = username
         if password is not None:
@@ -1852,6 +1862,7 @@ class TestAcceptingAnInvitation:
             body["registration_authority"] = registration_authority
         if registration_number is not None:
             body["registration_number"] = registration_number
+
         return client.post("/api/passport/assessor-invites/accept", json=body)
 
     def test_the_link_can_be_opened_repeatedly(
@@ -2386,6 +2397,7 @@ class TestTheGateResolvesForAnAcceptedAssessor:
             outbox.append({"to": to, "html_body": html_body})
 
         monkeypatch.setattr(router, "send_email", capture)
+
         return outbox
 
     def _invite_and_accept(
@@ -2649,6 +2661,7 @@ class TestAdminRevoke:
             outbox.append({"to": to, "html_body": html_body})
 
         monkeypatch.setattr(router, "send_email", capture)
+
         return outbox
 
     @pytest.fixture
@@ -2659,6 +2672,7 @@ class TestAdminRevoke:
         add_org_unit_member(db_session, org.id, user.id, "staff")
         db_session.commit()
         db_session.refresh(user)
+
         return user
 
     @pytest.fixture
@@ -2681,6 +2695,7 @@ class TestAdminRevoke:
         add_org_unit_member(db_session, other.id, user.id, "staff")
         db_session.commit()
         db_session.refresh(user)
+
         return user
 
     def _accept_an_assessor(
@@ -2715,6 +2730,7 @@ class TestAdminRevoke:
             },
         )
         assert accepted.status_code == 200, accepted.text
+
         return int(accepted.json()["user_id"])
 
     def test_a_clinician_without_manage_users_cannot_revoke(
@@ -3188,6 +3204,7 @@ class TestEvidence:
             },
         )
         assert response.status_code == 201, response.text
+
         return str(response.json()["name"])
 
     def test_a_certificate_sends_its_attachment_to_show_inline(
@@ -3232,6 +3249,7 @@ class TestEvidence:
     ) -> list[str]:
         listed = client.get(f"/api/passport/{passport_id}/certificates").json()
         certificate = next(c for c in listed if c["name"] == name)
+
         return [a["hash"] for a in certificate["attachments"]]
 
     def test_correcting_a_certificate_can_replace_its_file(
@@ -3736,6 +3754,7 @@ class TestWhatAnExternalAssessorCannotReach:
             outbox.append({"to": to, "html_body": html_body})
 
         monkeypatch.setattr(router, "send_email", capture)
+
         return outbox
 
     def _accept(
@@ -3775,6 +3794,7 @@ class TestWhatAnExternalAssessorCannotReach:
             },
         )
         assert accepted.status_code == 200, accepted.text
+
         return int(accepted.json()["user_id"])
 
     def test_they_cannot_read_the_passport_that_invited_them(
@@ -4155,6 +4175,7 @@ class TestAnOwnerWhoBelongsNowhereThePassportIsOn:
             )
         )
         db_session.commit()
+
         return holder_client, passport_id
 
     def test_they_read_it(self, removed: tuple[TestClient, str]) -> None:

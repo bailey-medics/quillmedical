@@ -448,6 +448,7 @@ class LocalPassportStore(PassportStore):
             ) from error
 
         blob = repository.get(entry.id)
+
         return bytes(blob.data)
 
     def list_dir(
@@ -523,6 +524,7 @@ class LocalPassportStore(PassportStore):
         location = self._path(passport_id)
 
         current = self.head(passport_id)
+
         if current.commit != expected_head.commit:
             raise ConcurrentWriteError(
                 f"Passport {passport_id} moved from {expected_head.commit} "

@@ -20,6 +20,7 @@ def main():
     password = "testpass123"
 
     db = CoreSessionLocal()
+
     try:
         u = db.query(User).filter(User.username == username).first()
         if not u:

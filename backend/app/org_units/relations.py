@@ -1,4 +1,3 @@
-# backend/app/org_units/relations.py
 """What one org_unit can be to another, short of owning it.
 
 Ownership is the parent column and nothing else: one parent each, no
@@ -122,6 +121,7 @@ def validate_org_unit_relation(value: str) -> str:
             + ", ".join(ORG_UNIT_RELATION_IDS)
             + "."
         )
+
     return value
 
 
@@ -141,4 +141,5 @@ def relation_grants_reach(relation_id: str) -> bool:
         ValueError: If *relation_id* is not a known relation.
     """
     validate_org_unit_relation(relation_id)
+
     return _BY_ID[relation_id].grants_reach

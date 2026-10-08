@@ -41,6 +41,7 @@ def _org(db: Session, name: str) -> OrgUnit:
     db.add(org)
     db.commit()
     db.refresh(org)
+
     return org
 
 
@@ -51,6 +52,7 @@ def _under(
     db.add(site)
     db.commit()
     db.refresh(site)
+
     return site
 
 
@@ -141,6 +143,7 @@ class TestWalkingUp:
     def test_a_chain_longer_than_the_cap_gives_up(self, db_session):
         org = _org(db_session, "Trust")
         parent_id = org.id
+
         for depth in range(MAX_TREE_DEPTH + 2):
             parent_id = _under(
                 db_session, parent_id, f"Level {depth}", "ward"
@@ -279,6 +282,7 @@ class TestEachWalkIsOneQuery:
             work()
         finally:
             event.remove(connection.engine, "before_cursor_execute", record)
+
         return len(counted)
 
     def _four_levels(self, db_session) -> tuple[int, int]:
@@ -294,6 +298,7 @@ class TestEachWalkIsOneQuery:
         hospital = _under(db_session, root_id, "Hospital", "hospital")
         ward = _under(db_session, hospital.id, "Ward", "ward")
         room = _under(db_session, ward.id, "Room", "room")
+
         return root_id, room.id
 
     def test_walking_down_asks_once(self, db_session):

@@ -49,6 +49,7 @@ class TestParseMdxToSlides:
     def test_sequential_indices(self) -> None:
         content = "# A\n\n## B\n\n## C\n"
         slides = parse_mdx_to_slides(content)
+
         for i, slide in enumerate(slides):
             assert slide.slide_index == i
 

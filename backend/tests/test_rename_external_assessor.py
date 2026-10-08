@@ -62,6 +62,7 @@ def _user(name: str, profession: str) -> int:
                 "profession": profession,
             },
         ).scalar_one()
+
     return int(user_id)
 
 

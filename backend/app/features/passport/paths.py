@@ -246,6 +246,7 @@ def logbook_entry(competency: str, filename: str) -> PurePosixPath:
         PassportPathError: If either component is malformed.
     """
     stem = _check(filename, _ENTRY_FILE, "logbook entry filename")
+
     return logbook_dir(competency) / f"{stem}.yaml"
 
 
@@ -290,6 +291,7 @@ def cpd_dir(year: int) -> PurePosixPath:
         raise PassportPathError(
             f"Invalid CPD year {year!r}: expected four digits."
         )
+
     return CPD / str(year)
 
 
@@ -307,6 +309,7 @@ def cpd_entry(year: int, filename: str) -> PurePosixPath:
         PassportPathError: If either component is malformed.
     """
     stem = _check(filename, _ENTRY_FILE, "CPD entry filename")
+
     return cpd_dir(year) / f"{stem}.yaml"
 
 

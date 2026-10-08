@@ -65,11 +65,13 @@ def archive_local(
     shutil.copytree(source, target, symlinks=True)
 
     moved = _files(source)
+
     if moved != _files(target):
         shutil.rmtree(target)
         raise ArchiveError(f"The copy of {passport_id} is incomplete.")
 
     shutil.rmtree(source)
+
     return sorted(moved)
 
 
@@ -185,4 +187,5 @@ def build_bucket(bucket_name: str, client: Any = None) -> ArchiveBucket:
         client = storage.Client()
 
     bucket: ArchiveBucket = client.bucket(bucket_name)
+
     return bucket

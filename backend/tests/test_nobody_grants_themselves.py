@@ -52,6 +52,7 @@ def _user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -61,6 +62,7 @@ def org(db_session: Session) -> OrgUnit:
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
+
     return organisation
 
 
@@ -74,6 +76,7 @@ def admin(db_session: Session, org: OrgUnit) -> User:
     """Holds ``manage_users`` and is not an operator."""
     user = _user(db_session, "the_admin", profession="system_administrator")
     _place(db_session, org, user)
+
     return user
 
 
@@ -86,6 +89,7 @@ def operator(db_session: Session, org: OrgUnit) -> User:
         platform_role="superadmin",
     )
     _place(db_session, org, user)
+
     return user
 
 
@@ -95,6 +99,7 @@ def _login(client: TestClient, username: str) -> TestClient:
         json={"username": username, "password": "Password123!"},
     )
     assert response.status_code == 200, response.text
+
     return client
 
 

@@ -36,6 +36,7 @@ def _user(db: Session, username: str, profession: str = "consultant") -> User:
     )
     db.add(user)
     db.commit()
+
     return user
 
 
@@ -43,6 +44,7 @@ def _org(db: Session, name: str) -> OrgUnit:
     org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.commit()
+
     return org
 
 
@@ -50,6 +52,7 @@ def _site(db: Session, name: str) -> OrgUnit:
     site = OrgUnit(name=name, type="ward")
     db.add(site)
     db.commit()
+
     return site
 
 
@@ -68,6 +71,7 @@ def _authorise(
     )
     db.add(row)
     db.commit()
+
     return row
 
 
@@ -211,11 +215,13 @@ class TestTheResolverAsksForOnePlace:
 
     def test_naming_no_place_is_a_type_error(self, db_session):
         doctor = _user(db_session, "doc")
+
         with pytest.raises(TypeError):
             can_practise_at(db_session, doctor, "access_patient_records")
 
     def test_competencies_at_asks_the_same_way(self, db_session):
         doctor = _user(db_session, "doc")
+
         with pytest.raises(TypeError):
             competencies_at(db_session, doctor)
 

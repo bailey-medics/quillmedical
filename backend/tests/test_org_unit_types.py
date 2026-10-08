@@ -154,6 +154,7 @@ def test_validate_returns_a_known_type_unchanged() -> None:
 def test_validate_names_the_known_types_when_it_refuses() -> None:
     with pytest.raises(ValueError) as exc_info:
         validate_org_unit_type("trust")
+
     message = str(exc_info.value)
     assert "trust" in message
     assert "organisation" in message
@@ -200,6 +201,7 @@ def test_entry_refuses_a_missing_flag() -> None:
 def _write(tmp_path: Path, body: str) -> Path:
     path = tmp_path / "org-unit-types.yaml"
     path.write_text(body)
+
     return path
 
 
@@ -219,6 +221,7 @@ def test_load_refuses_a_duplicate_id(tmp_path: Path) -> None:
         "can_have_members": True,
     }
     body = yaml.safe_dump({"org_unit_types": [entry, dict(entry)]})
+
     with pytest.raises(ValueError) as exc_info:
         _load_org_unit_types(_write(tmp_path, body))
     assert "ward" in str(exc_info.value)

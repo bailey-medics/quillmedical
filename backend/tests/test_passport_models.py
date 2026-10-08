@@ -44,6 +44,7 @@ def _user(db_session: Session, email: str) -> User:
     )
     db_session.add(user)
     db_session.flush()
+
     return user
 
 

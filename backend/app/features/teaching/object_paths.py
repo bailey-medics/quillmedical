@@ -70,6 +70,7 @@ def media_object_path(org_id: int, module_id: str, asset_id: str) -> str:
     if not asset_id or not SAFE_ID.match(asset_id):
         msg = f"Invalid asset_id: {asset_id!r}"
         raise ValueError(msg)
+
     return f"{org_id}/{module_id}/{asset_id}"
 
 

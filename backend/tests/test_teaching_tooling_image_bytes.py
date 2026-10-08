@@ -47,6 +47,7 @@ def _module(tmp_path: Path, cover: bytes | None = None) -> Path:
     shutil.copytree(_VALID, dest)
     if cover is not None:
         (dest / "cover.png").write_bytes(cover)
+
     return modules
 
 

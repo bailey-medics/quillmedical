@@ -25,6 +25,7 @@ from app.features.passport.hashing import HashMismatchError
 def _registration(**overrides: object) -> schemas.Registration:
     fields: dict[str, object] = {"body": "GMC", "number": "1234567"}
     fields.update(overrides)
+
     return schemas.Registration(**fields)  # type: ignore[arg-type]
 
 
@@ -37,6 +38,7 @@ def _assessor(**overrides: object) -> schemas.Assessor:
         "care_location": "Bristol Royal Infirmary",
     }
     fields.update(overrides)
+
     return schemas.Assessor(**fields)  # type: ignore[arg-type]
 
 
@@ -58,6 +60,7 @@ def _sign_off(**overrides: object) -> schemas.SignOff:
         "signed_off_by": _assessor(),
     }
     fields.update(overrides)
+
     return schemas.SignOff(**fields)  # type: ignore[arg-type]
 
 
@@ -323,6 +326,7 @@ class TestWhatMustNotMoveTheHash:
         """
         old = _sign_off().model_dump(mode="json")
         old["signed_off_by"]["registration_verified"] = False
+
         for registration in old["signed_off_by"]["registrations"]:
             registration.update(
                 verified=False, verified_by=None, verified_on=None

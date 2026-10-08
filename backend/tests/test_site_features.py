@@ -35,6 +35,7 @@ def trust(db_session: Session) -> OrgUnit:
     db_session.add(org)
     db_session.commit()
     db_session.refresh(org)
+
     return org
 
 
@@ -43,6 +44,7 @@ def _site(db: Session, trust: OrgUnit, name: str) -> OrgUnit:
     db.add(site)
     db.commit()
     db.refresh(site)
+
     return site
 
 
@@ -70,6 +72,7 @@ def _member(db: Session, username: str, unit: OrgUnit) -> User:
     add_org_unit_member(db, unit.id, user.id, "staff")
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -84,6 +87,7 @@ def _signed_in(client: TestClient, user: User) -> TestClient:
         json={"username": user.username, "password": PASSWORD},
     )
     assert response.status_code == 200
+
     return client
 
 

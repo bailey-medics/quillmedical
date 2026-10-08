@@ -63,10 +63,12 @@ def non_breaking_api() -> TestNonBreakingResponse:
 def breaking_api() -> TestBreakingResponse1:
     """Endpoint whose schema is deliberately mutated per test scenario."""
     body: dict[str, str] = {}
+
     if not MUTATE_REMOVE_MESSAGE_1:
         body["message"] = "This is a test response from the breaking api"
     if not MUTATE_REMOVE_DETAIL_1:
         body["detail"] = "Additional detail from the breaking api"
+
     return TestBreakingResponse1(**body)
 
 
@@ -76,8 +78,10 @@ def breaking_api_2() -> TestBreakingResponse2:
     scenario, independently of ``breaking_api`` above - lets one commit
     exercise a single breaking change spread across two endpoints."""
     body: dict[str, str] = {}
+
     if not MUTATE_REMOVE_SUMMARY_2:
         body["summary"] = (
             "This is a test response from the second breaking api"
         )
+
     return TestBreakingResponse2(**body)

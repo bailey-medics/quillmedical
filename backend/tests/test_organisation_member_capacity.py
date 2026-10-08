@@ -39,6 +39,7 @@ def _user(db: Session, username: str) -> User:
     )
     db.add(user)
     db.commit()
+
     return user
 
 
@@ -46,6 +47,7 @@ def _org(db: Session, name: str = "Trust") -> OrgUnit:
     org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.commit()
+
     return org
 
 
@@ -56,6 +58,7 @@ def _capacity_of(db: Session, org: OrgUnit, user: User) -> str | None:
             organisation_org_unit_member.c.user_id == user.id,
         )
     ).first()
+
     return row[0] if row else None
 
 

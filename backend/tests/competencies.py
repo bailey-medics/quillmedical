@@ -33,6 +33,7 @@ def hold(user: User, *competency_ids: str) -> None:
     needs it to run out calls ``lapse``. The caller commits.
     """
     now = datetime.now(UTC)
+
     for competency_id in competency_ids:
         user.competency_grants.append(
             UserCompetency(
@@ -52,6 +53,7 @@ def withhold(user: User, *competency_ids: str) -> None:
     commits.
     """
     now = datetime.now(UTC)
+
     for row in user.competency_grants:
         if row.competency_id in competency_ids and row.is_current(now):
             row.ends_on = now
@@ -64,6 +66,7 @@ def lapse(user: User, competency_id: str) -> None:
     must not end before it starts. The caller commits.
     """
     now = datetime.now(UTC)
+
     for row in user.competency_grants:
         if row.competency_id == competency_id and row.is_current(now):
             row.starts_on = now - PASSPORT_TERM - timedelta(days=1)
@@ -77,6 +80,7 @@ def clear(user: User) -> None:
     they hold only what came with their profession. The caller commits.
     """
     now = datetime.now(UTC)
+
     for row in user.competency_grants:
         if row.source != "profession" and row.is_current(now):
             row.ends_on = now
@@ -102,6 +106,7 @@ def join_for_teaching(
             PractisingCompetency.competency == "take_teaching_modules",
         )
     )
+
     if already is None:
         db.add(
             PractisingCompetency(

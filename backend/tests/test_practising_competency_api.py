@@ -33,6 +33,7 @@ def own_org(db_session: Session, test_admin: User) -> OrgUnit:
     add_org_unit_member(db_session, org.id, test_admin.id, "staff")
     administers(db_session, test_admin.id, org.id)
     db_session.commit()
+
     return org
 
 
@@ -42,6 +43,7 @@ def other_org(db_session: Session) -> OrgUnit:
     org = OrgUnit(name="Other Trust", type="hospital_team")
     db_session.add(org)
     db_session.commit()
+
     return org
 
 
@@ -57,6 +59,7 @@ def ward(db_session: Session, own_org: OrgUnit, test_admin: User) -> OrgUnit:
     db_session.add(unit)
     db_session.commit()
     administers(db_session, test_admin.id, unit.id)
+
     return unit
 
 
@@ -74,6 +77,7 @@ def surgeon(db_session: Session) -> User:
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
+
     return user
 
 

@@ -55,6 +55,7 @@ class _RiskyNames(ast.NodeVisitor):
 def _names_in(node: ast.AST) -> set[str]:
     visitor = _RiskyNames()
     visitor.visit(node)
+
     return visitor.names
 
 
@@ -84,6 +85,7 @@ def offending_details(tree: ast.AST) -> list[tuple[int, str]]:
             for kw in call.keywords:
                 if kw.arg == "detail" and caught in _names_in(kw.value):
                     found.append((call.lineno, caught))
+
     return found
 
 

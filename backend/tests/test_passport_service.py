@@ -79,6 +79,7 @@ def passport(
     service.create_passport(
         created, PASSPORT_ID, holder, user_id=HOLDER_USER, now=NOW
     )
+
     return created
 
 
@@ -101,6 +102,7 @@ def _request(
         scope_id=scope_id,
         now=NOW,
     )
+
     return name
 
 
@@ -120,6 +122,7 @@ def _sign(
         "now": NOW,
     }
     kwargs.update(overrides)
+
     return service.sign_off(passport, PASSPORT_ID, assessor, **kwargs)  # type: ignore[arg-type]
 
 
@@ -498,6 +501,7 @@ class TestOneStatePerScope:
             observed_on=observed_on,
         )
         _sign(passport, assessor, name)
+
         return name
 
     def _entries(
@@ -870,6 +874,7 @@ class TestTheAssessorDecidesTheLevel:
             level_id="review_and_authorise",
         )
         _sign(passport, assessor, first)
+
         return _request(
             passport,
             holder,

@@ -124,6 +124,7 @@ def describe_progress(
         # than crashing on the comparison.
         if started.tzinfo is None:
             started = started.replace(tzinfo=UTC)
+
         return now - started > patience
 
     if link.captions_reviewed_at is not None:
@@ -207,6 +208,7 @@ def describe_progress(
             in_progress=False,
             stalled=True,
         )
+
     return MediaProgress(
         stage=1,
         total_stages=_TOTAL_STAGES,
@@ -256,10 +258,12 @@ def get_referenced_media_keys(module_id: str) -> list[str]:
     # Ordered, de-duplicated: the card's rows follow the content, and a
     # key used on two slides is still one upload.
     keys: list[str] = []
+
     for slide in slides:
         ref = slide.video_ref
         if ref and ref not in keys:
             keys.append(ref)
+
     return keys
 
 
@@ -311,6 +315,7 @@ class MediaReference:
             self.link.transcoded_at is not None
             or not transcode_is_configured()
         )
+
         if not transcoded:
             return False
 
@@ -326,6 +331,7 @@ class MediaReference:
         # module for good.
         if caption_is_configured():
             return self.link.captions_reviewed_at is not None
+
         return True
 
     @property
@@ -474,8 +480,10 @@ def module_media_is_complete(
     different things to tell the person who uploaded it.
     """
     keys = get_referenced_media_keys(module_id)
+
     if not keys:
         return True
 
     inventory = get_media_inventory(db, organisation_id, module_id, keys)
+
     return inventory.is_servable

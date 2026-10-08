@@ -51,6 +51,7 @@ def _render(
     **context: str,
 ) -> RenderedEmail:
     values = {"name": "Sam", "url": "https://example.com/go"} | context
+
     return render_email(
         "sample.html.j2",
         theme,  # type: ignore[arg-type]

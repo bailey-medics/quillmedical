@@ -56,6 +56,7 @@ def _ward_of(db: Session, org: OrgUnit, name: str = "Ward 9") -> OrgUnit:
     db.execute(
         update(OrgUnit).where(OrgUnit.id == ward.id).values(parent_id=org.id)
     )
+
     return ward
 
 
@@ -277,6 +278,7 @@ class TestRegisteringGivesAPlace:
                 PractisingCompetency.competency == MODULES_COMPETENCY,
             )
         ).scalars()
+
         return {int(row) for row in rows if row is not None}
 
     def test_registering_at_a_site_gives_the_place_there(

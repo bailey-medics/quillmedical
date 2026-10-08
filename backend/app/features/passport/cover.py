@@ -1,4 +1,3 @@
-# backend/app/features/passport/cover.py
 """An org_unit paying for its members' passport writing.
 
 ``passport_write`` is sold. One way to get it is to belong to an org_unit
@@ -78,8 +77,10 @@ def _current_cover_rows(
         UserCompetency.org_unit_id == org_unit_id,
         (UserCompetency.ends_on.is_(None)) | (UserCompetency.ends_on > now),
     )
+
     if user_id is not None:
         query = query.where(UserCompetency.user_id == user_id)
+
     return list(db.scalars(query).all())
 
 
@@ -110,8 +111,10 @@ def _close(db: Session, org_unit_id: int, user_id: int | None = None) -> int:
     """
     now = datetime.now(UTC)
     rows = _current_cover_rows(db, org_unit_id, user_id)
+
     for row in rows:
         row.ends_on = now
+
     return len(rows)
 
 
@@ -135,9 +138,11 @@ def switch_on(db: Session, org_unit_id: int, switched_by: User) -> int:
             org_unit_member.c.capacity.in_(COVERED_CAPACITIES),
         )
     ).all()
+
     for user_id in members:
         _grant(db, org_unit_id, int(user_id), switched_by.id)
     db.flush()
+
     return len(members)
 
 
@@ -153,6 +158,7 @@ def switch_off(db: Session, org_unit_id: int) -> int:
     """
     closed = _close(db, org_unit_id)
     db.flush()
+
     return closed
 
 

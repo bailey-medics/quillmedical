@@ -96,6 +96,7 @@ class Palette:
 
         start = f"\033]8;;{url}\033\\"
         end = "\033]8;;\033\\"
+
         return f"{start}{text}{end}"
 
 
@@ -128,6 +129,7 @@ def run(cmd: list[str], *, check: bool = True) -> str:
         # than restating them.
         sys.stderr.write(result.stderr)
         raise SystemExit(1)
+
     return result.stdout if result.returncode == 0 else ""
 
 
@@ -139,12 +141,14 @@ def read_stack() -> dict[str, object] | None:
     cases rather than the exit code.
     """
     raw = run(["gh", "stack", "view", "--json"], check=False)
+
     if not raw.strip():
         return None
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
         return None
+
     return data if isinstance(data, dict) and data.get("branches") else None
 
 
@@ -156,8 +160,10 @@ def stack_entries(stack: dict[str, object]) -> list[dict[str, object]]:
     once here keeps the two call sites free of repeated isinstance noise.
     """
     raw = stack.get("branches")
+
     if not isinstance(raw, list):
         return []
+
     return [entry for entry in raw if isinstance(entry, dict)]
 
 
@@ -170,9 +176,12 @@ def spent_branches(stack: dict[str, object] | None) -> list[str] | None:
     """
     if stack is None:
         return None
+
     entries = stack_entries(stack)
+
     if not entries or not all(entry.get("isMerged") for entry in entries):
         return None
+
     return [str(entry.get("name", "")) for entry in entries]
 
 
@@ -236,10 +245,12 @@ def read_pull_requests(branches: list[str]) -> dict[str, dict[str, object]]:
         ],
         check=False,
     )
+
     try:
         limit = max(len(json.loads(counted)), 30)
     except (json.JSONDecodeError, TypeError):
         limit = 200
+
     raw = run(
         [
             "gh",
@@ -254,6 +265,7 @@ def read_pull_requests(branches: list[str]) -> dict[str, dict[str, object]]:
         ],
         check=False,
     )
+
     if not raw.strip():
         # Say so rather than returning silently: every branch would otherwise
         # be labelled "no pull request", which is indistinguishable from the
@@ -276,12 +288,14 @@ def read_pull_requests(branches: list[str]) -> dict[str, dict[str, object]]:
 
     wanted = set(branches)
     found: dict[str, dict[str, object]] = {}
+
     for pr in pull_requests:
         head = pr.get("headRefName")
         # First match wins: `gh pr list` returns newest first, so a branch
         # reused across pull requests shows its current one.
         if head in wanted and head not in found:
             found[head] = pr
+
     return found
 
 
@@ -401,6 +415,7 @@ def summarise_checks(pr: dict[str, object], palette: Palette) -> str:
     usually not run at all, and one combined tick would hide that.
     """
     rollup = pr.get("statusCheckRollup") or []
+
     if not isinstance(rollup, list) or not rollup:
         return palette.dim("no checks")
 
@@ -412,7 +427,9 @@ def summarise_checks(pr: dict[str, object], palette: Palette) -> str:
             # draft pull request, and not a failure - hence green, like the
             # tick, rather than dim. Nothing is wrong; nothing has run.
             return palette.green("-")
+
         kinds = {kind for kind, _ in names.values()}
+
         if "failing" in kinds:
             return palette.red("✗")
         if "pending" in kinds:
@@ -425,6 +442,7 @@ def summarise_checks(pr: dict[str, object], palette: Palette) -> str:
         # since the rest skipped on their own conditions.
         if kinds == {"skipped"}:
             return palette.green("-")
+
         return palette.green("✓")
 
     heavy = {n: v for n, v in best.items() if is_heavy(n)}
@@ -457,6 +475,7 @@ def build_branches(
     # gh reports bottom-to-top; drawn top-down so the trunk sits at the
     # foot, matching `gh stack view` and how a stack is talked about.
     branches.reverse()
+
     return branches
 
 
@@ -469,11 +488,13 @@ def number_branches(branches: list[Branch]) -> dict[str, int]:
     none, as there is nothing to go back to on them.
     """
     numbers: dict[str, int] = {}
+
     # `branches` is top-first, so the bottom is at the end.
     for branch in reversed(branches):
         if branch.is_merged or not branch.name:
             continue
         numbers[branch.name] = len(numbers) + 1
+
     return numbers
 
 
@@ -500,6 +521,7 @@ def draw(
     print()
     numbers = number_branches(branches) if numbered else {}
     merged_hidden = 0
+
     for branch in branches:
         if hide_merged and branch.is_merged:
             merged_hidden += 1
@@ -712,6 +734,7 @@ def draw_no_stack(palette: Palette) -> None:
 def report_blockers(branches: list[Branch], palette: Palette) -> bool:
     """Name branches held by another worktree. True when any were found."""
     blocked = [b for b in branches if b.worktree]
+
     if not blocked:
         return False
 
@@ -734,6 +757,7 @@ def report_blockers(branches: list[Branch], palette: Palette) -> bool:
         file=sys.stderr,
     )
     print(file=sys.stderr)
+
     return True
 
 
@@ -875,6 +899,7 @@ def main() -> int:
         sys.stdout.flush()
 
     blocked = report_blockers(branches, palette)
+
     return 2 if (blocked and args.check) else 0
 
 

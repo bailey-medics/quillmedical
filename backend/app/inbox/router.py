@@ -46,6 +46,7 @@ def get_inbox(
     fault must not blank the count for all the others.
     """
     items: list[InboxSourceOut] = []
+
     for key, source in SOURCES.items():
         try:
             count = source.count(db, current_user)
@@ -56,6 +57,7 @@ def get_inbox(
             continue
         if count > 0:
             items.append(InboxSourceOut(source=key, count=count))
+
     return InboxOut(items=items, total=sum(item.count for item in items))
 
 
@@ -76,6 +78,7 @@ def get_inbox_items(
     A source that fails is left out and logged, as in the counts.
     """
     items: list[InboxItemOut] = []
+
     for key, source in SOURCES.items():
         try:
             lines = source.lines(db, current_user, done)
@@ -96,4 +99,5 @@ def get_inbox_items(
             for line in lines
         )
     items.sort(key=lambda item: (item.created_at, item.id), reverse=True)
+
     return InboxItemsOut(items=items)

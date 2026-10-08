@@ -88,6 +88,7 @@ def _make_user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -99,6 +100,7 @@ def _login(client: TestClient, username: str) -> TestClient:
     assert response.status_code == 200, response.text
 
     csrf = client.cookies.get("XSRF-TOKEN")
+
     if csrf:
         client.headers["X-CSRF-Token"] = csrf
 
@@ -133,6 +135,7 @@ def org(db_session: Session, holder: User, assessor: User) -> OrgUnit:
         add_org_unit_member(db_session, org.id, user.id, "trainee")
 
     db_session.commit()
+
     return org
 
 
@@ -146,6 +149,7 @@ def passport(
     client = _login(test_client, "holder")
     response = client.post("/api/passport", json=WORKING_TO)
     assert response.status_code == 201, response.text
+
     return client, str(response.json()["passport_id"])
 
 
@@ -798,6 +802,7 @@ class TestConfirmingALogbookEntry:
         monkeypatch.setattr(
             router, "send_email", lambda **kw: sent.append(str(kw["to"]))
         )
+
         return sent
 
     def _log(
@@ -810,16 +815,20 @@ class TestConfirmingALogbookEntry:
             "performed_on": "2026-03-12",
             "scope_id": SCOPE,
         }
+
         if supervisor is not None:
             body["confirmer_email"] = supervisor.email
+
         response = client.post(
             f"/api/passport/{passport_id}/logbook/{COMPETENCY}", json=body
         )
         assert response.status_code == 201, response.text
+
         return str(response.json()["name"])
 
     def _ask(self, db: Session) -> PassportLogbookConfirmationRequest:
         row = db.query(PassportLogbookConfirmationRequest).one()
+
         return row
 
     def _entry(
@@ -828,6 +837,7 @@ class TestConfirmingALogbookEntry:
         body = client.get(
             f"/api/passport/{passport_id}/logbook/{COMPETENCY}"
         ).json()
+
         return dict(body["entries"][0])
 
     def test_nobody_is_asked_unless_the_holder_names_somebody(

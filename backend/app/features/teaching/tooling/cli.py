@@ -49,6 +49,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         default="origin/main",
         help="Git ref to compare against for version lock (default: %(default)s)",
     )
+
     return parser.parse_args(argv)
 
 

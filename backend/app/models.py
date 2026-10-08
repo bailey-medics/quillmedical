@@ -242,7 +242,9 @@ class User(Base):
         super().__init__(**kwargs)
         if self.base_profession is None:
             self.base_profession = "patient"
+
         now = datetime.now(UTC)
+
         for competency_id in get_profession_base_competencies(
             self.base_profession
         ):
@@ -262,6 +264,7 @@ class User(Base):
         records a number they once held and no longer do.
         """
         now = datetime.now(UTC)
+
         return sorted(
             (row for row in self.registrations if row.is_current(now)),
             key=lambda row: (row.authority, row.number),
@@ -270,6 +273,7 @@ class User(Base):
     def _current_grant_ids(self) -> list[str]:
         """Competency ids with a current grant row, sorted."""
         now = datetime.now(UTC)
+
         return sorted(
             {
                 row.competency_id
@@ -288,6 +292,7 @@ class User(Base):
         from their profession.
         """
         template = set(get_profession_base_competencies(self.base_profession))
+
         return [
             competency_id
             for competency_id in self._current_grant_ids()
@@ -304,6 +309,7 @@ class User(Base):
         was given it. Nobody need have removed anything.
         """
         held = set(self._current_grant_ids())
+
         return sorted(
             set(get_profession_base_competencies(self.base_profession)) - held
         )
@@ -802,6 +808,7 @@ def validate_marketing_preference_source(value: str) -> str:
             f"Unknown marketing preference source: {value}. Known sources "
             "are " + ", ".join(MARKETING_PREFERENCE_SOURCES) + "."
         )
+
     return value
 
 
@@ -1007,6 +1014,7 @@ def validate_platform_role(value: str) -> str:
             + ", ".join(PLATFORM_ROLES)
             + "."
         )
+
     return value
 
     #: What relationship a person has to an org_unit. Never a ranking and never a
@@ -1055,6 +1063,7 @@ def validate_member_capacity(value: str) -> str:
             + ", ".join(MEMBER_CAPACITIES)
             + "."
         )
+
     return value
 
 
@@ -1452,6 +1461,7 @@ class PractisingCompetency(Base):
         row rather than one endpoint's schema.
         """
         validate_competency_ids([value])
+
         return value
 
         # The positions the application itself reasons about. A free string would
@@ -1593,9 +1603,12 @@ class UserCompetency(Base):
         """
         if self.ends_on is None:
             return True
+
         ends_on = self.ends_on
+
         if ends_on.tzinfo is None:
             ends_on = ends_on.replace(tzinfo=UTC)
+
         return ends_on > now
 
     @validates("source")
@@ -1606,6 +1619,7 @@ class UserCompetency(Base):
                 f"Unknown competency grant source: {value}. Known sources "
                 "are " + ", ".join(COMPETENCY_GRANT_SOURCES) + "."
             )
+
         return value
 
 
@@ -1667,9 +1681,12 @@ class ProfessionalRegistration(Base):
         """
         if self.ends_on is None:
             return True
+
         ends_on = self.ends_on
+
         if ends_on.tzinfo is None:
             ends_on = ends_on.replace(tzinfo=UTC)
+
         return ends_on > now
 
     @validates("authority")
@@ -1762,6 +1779,7 @@ class Position(Base):
                 + ", ".join(POSITION_KINDS)
                 + "."
             )
+
         return value
 
     @validates("requires_competency")
@@ -1769,6 +1787,7 @@ class Position(Base):
         """Reject a competency id that is not in the catalogue."""
         if value is not None:
             validate_competency_ids([value])
+
         return value
 
 

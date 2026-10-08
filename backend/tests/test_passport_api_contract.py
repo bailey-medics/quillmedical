@@ -153,6 +153,7 @@ def _make_user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -164,6 +165,7 @@ def _login(client: TestClient, username: str) -> TestClient:
     assert response.status_code == 200, response.text
 
     csrf = client.cookies.get("XSRF-TOKEN")
+
     if csrf:
         client.headers["X-CSRF-Token"] = csrf
 
@@ -214,6 +216,7 @@ def org(db_session: Session, holder: User, org_admin: User) -> OrgUnit:
         add_org_unit_member(db_session, org.id, user.id, "trainee")
 
     db_session.commit()
+
     return org
 
 
@@ -226,6 +229,7 @@ def passport(
     client = _login(test_client, "holder")
     response = client.post("/api/passport", json=WORKING_TO)
     assert response.status_code == 201, response.text
+
     return str(response.json()["passport_id"])
 
 
@@ -312,6 +316,7 @@ def _spec() -> dict[str, Any]:
     from dump_openapi import generate_spec
 
     spec: dict[str, Any] = generate_spec(dev=True)
+
     return spec
 
 

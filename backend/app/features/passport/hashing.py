@@ -265,6 +265,7 @@ def content_hash(record: SignOff) -> str:
         every hash a passport holds.
     """
     digest = hashlib.sha256(canonical_bytes(record)).hexdigest()
+
     return f"sha256:{digest}"
 
 

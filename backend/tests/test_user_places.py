@@ -27,6 +27,7 @@ def org(db_session: Session) -> OrgUnit:
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
+
     return organisation
 
 
@@ -36,6 +37,7 @@ def ward(db_session: Session, org: OrgUnit) -> OrgUnit:
     db_session.add(place)
     db_session.commit()
     db_session.refresh(place)
+
     return place
 
 
@@ -49,6 +51,7 @@ def other_ward(db_session: Session) -> OrgUnit:
     db_session.add(place)
     db_session.commit()
     db_session.refresh(place)
+
     return place
 
 
@@ -150,6 +153,7 @@ class TestChanging:
         db_session.add(user)
         db_session.commit()
         db_session.refresh(user)
+
         return user
 
     def test_the_list_given_is_what_they_belong_to(

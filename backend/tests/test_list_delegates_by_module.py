@@ -41,6 +41,7 @@ def _org(db: Session, name: str) -> OrgUnit:
         )
     )
     db.commit()
+
     return org
 
 
@@ -64,6 +65,7 @@ def _delegate(db: Session, org: OrgUnit, username: str) -> User:
     db.commit()
     add_org_unit_member(db, org.id, user.id, "trainee")
     db.commit()
+
     return user
 
 
@@ -137,6 +139,7 @@ def _row(
     params = {"bank_id": bank_id} if bank_id else None
     resp = client.get(DELEGATES, params=params)
     assert resp.status_code == 200, resp.text
+
     return next(d for d in resp.json() if d["name"] == name)
 
 
@@ -144,6 +147,7 @@ def _names(client: TestClient, bank_id: str | None = None) -> set[str]:
     params = {"bank_id": bank_id} if bank_id else None
     resp = client.get(DELEGATES, params=params)
     assert resp.status_code == 200, resp.text
+
     return {d["name"] for d in resp.json()}
 
 

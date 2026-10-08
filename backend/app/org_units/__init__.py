@@ -1,4 +1,3 @@
-# backend/app/org_units/__init__.py
 """The governance tree: org_units, their types and what each type may hold.
 
 One node of organisational structure, whatever its size. A trust is an

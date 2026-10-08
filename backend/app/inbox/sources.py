@@ -98,6 +98,7 @@ def _feedback_new_count(db: Session, user: User) -> int:
     """
     if user.platform_role != "superadmin":
         return 0
+
     return int(
         db.scalar(
             select(func.count())
@@ -116,6 +117,7 @@ def _feedback_lines(db: Session, user: User, done: bool) -> list[InboxLine]:
     """
     if user.platform_role != "superadmin":
         return []
+
     rows = db.scalars(
         select(Feedback)
         .options(selectinload(Feedback.user))
@@ -123,6 +125,7 @@ def _feedback_lines(db: Session, user: User, done: bool) -> list[InboxLine]:
         .order_by(Feedback.created_at.desc(), Feedback.id.desc())
         .limit(MAX_ITEMS)
     )
+
     return [
         InboxLine(
             id=row.id,
@@ -175,6 +178,7 @@ def _feedback_reply_lines(
         .order_by(Feedback.operator_comment_at.desc(), Feedback.id.desc())
         .limit(MAX_ITEMS)
     )
+
     return [
         InboxLine(
             id=row.id,
@@ -230,6 +234,7 @@ def _record_id(request: PassportSignOffRequest) -> str | None:
             request.id,
         )
         return None
+
     return record.id
 
 
@@ -246,6 +251,7 @@ def _asked_of(user: User) -> ColumnElement[bool] | None:
         return None
     if "assess_clinician_passport" not in user.get_final_competencies():
         return None
+
     return (
         func.lower(PassportSignOffRequest.assessor_email)
         == user.email.strip().lower()
@@ -259,8 +265,10 @@ def _sign_off_count(db: Session, user: User) -> int:
     withdraws it.
     """
     asked = _asked_of(user)
+
     if asked is None:
         return 0
+
     return int(
         db.scalar(
             select(func.count())
@@ -281,8 +289,10 @@ def _sign_off_lines(db: Session, user: User, done: bool) -> list[InboxLine]:
     the assessor to open, and no record is read.
     """
     asked = _asked_of(user)
+
     if asked is None:
         return []
+
     is_open = PassportSignOffRequest.status == "open"
     when = (
         func.coalesce(
@@ -303,6 +313,7 @@ def _sign_off_lines(db: Session, user: User, done: bool) -> list[InboxLine]:
         .order_by(when.desc(), PassportSignOffRequest.id.desc())
         .limit(MAX_ITEMS)
     ).all()
+
     return [
         InboxLine(
             id=request.id,
@@ -339,6 +350,7 @@ def _asked_to_confirm(user: User) -> ColumnElement[bool] | None:
         return None
     if "assess_clinician_passport" not in user.get_final_competencies():
         return None
+
     return (
         func.lower(PassportLogbookConfirmationRequest.supervisor_email)
         == user.email.strip().lower()
@@ -352,8 +364,10 @@ def _logbook_confirmation_count(db: Session, user: User) -> int:
     not theirs to confirm.
     """
     asked = _asked_to_confirm(user)
+
     if asked is None:
         return 0
+
     return int(
         db.scalar(
             select(func.count())
@@ -374,8 +388,10 @@ def _logbook_confirmation_lines(
     the row's id addresses.
     """
     asked = _asked_to_confirm(user)
+
     if asked is None:
         return []
+
     is_open = PassportLogbookConfirmationRequest.status == "open"
     when = (
         func.coalesce(
@@ -398,6 +414,7 @@ def _logbook_confirmation_lines(
         .order_by(when.desc(), PassportLogbookConfirmationRequest.id.desc())
         .limit(MAX_ITEMS)
     ).all()
+
     return [
         InboxLine(
             id=request.id,

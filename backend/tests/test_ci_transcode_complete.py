@@ -42,6 +42,7 @@ def _body(**overrides: object) -> dict[str, object]:
         ],
     }
     body.update(overrides)
+
     return body
 
 
@@ -62,6 +63,7 @@ def link(db_session: Session) -> ModuleMediaLink:
     db_session.add(row)
     db_session.commit()
     db_session.refresh(row)
+
     return row
 
 
@@ -75,6 +77,7 @@ def configured(monkeypatch) -> None:
 
 def _post(client: TestClient, token: str | None = TOKEN, **overrides: object):
     headers = {"Authorization": f"Bearer {token}"} if token else {}
+
     return client.post(ENDPOINT, json=_body(**overrides), headers=headers)
 
 
@@ -213,6 +216,7 @@ def _post_caption(client: TestClient, token: str | None = TOKEN, **overrides):
     body = {"org_id": 1, "module_id": "test-bank", "asset_id": "asset-1"}
     body.update(overrides)
     headers = {"Authorization": f"Bearer {token}"} if token else {}
+
     return client.post(CAPTION_ENDPOINT, json=body, headers=headers)
 
 

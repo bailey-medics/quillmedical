@@ -568,6 +568,7 @@ class GcsBlobStore:
                 validated rather than trusted.
         """
         shard = paths.shard(passport_id)
+
         return f"{PREFIX}/{shard}/{paths.blob(blob_digest)}"
 
     def exists(self, passport_id: str, blob_digest: str) -> bool:
@@ -730,4 +731,5 @@ def _bucket_for(bucket_name: str, client: Any) -> _Bucket:
         client = storage.Client()
 
     bucket: _Bucket = client.bucket(bucket_name)
+
     return bucket

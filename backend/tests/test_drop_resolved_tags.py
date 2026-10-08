@@ -42,6 +42,7 @@ def test_downgrade_fills_the_column_back_from_the_rows(
     before_drop: Config,
 ) -> None:
     answered, unanswered = _answers('["adenoma"]', "null")
+
     with core_engine.begin() as conn:
         for tag in ("high_confidence", "adenoma"):
             conn.execute(

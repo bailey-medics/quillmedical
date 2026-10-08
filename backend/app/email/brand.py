@@ -1,4 +1,3 @@
-# backend/app/email/brand.py
 """Brand values for email, read from ``shared/brand.yaml``.
 
 The frontend's Mantine theme reads the same file, through the JSON that
@@ -80,15 +79,20 @@ class Palette(_Strict):
         """
         if _HEX.match(value):
             return value
+
         match = _REFERENCE.match(value)
+
         if match is None:
             raise ValueError(f"Not a colour or a palette reference: {value!r}")
+
         ramp: list[str] = getattr(self, match.group(1))
         shade = int(match.group(2))
+
         if shade >= len(ramp):
             raise ValueError(
                 f"No shade {shade} in the {match.group(1)} palette"
             )
+
         return ramp[shade]
 
 
@@ -215,6 +219,7 @@ class EmailTheme(_Strict):
                 for name in EmailDarkTheme.model_fields
             }
         )
+
         return self.model_copy(update=updates)
 
 
@@ -239,6 +244,7 @@ class BrandFile(_Strict):
         for name in ("quill", "ldd"):
             if name not in self.email_themes:
                 raise ValueError(f"No email theme {name!r} in brand.yaml")
+
         resolved = {
             name: theme.resolved(self.palette)
             for name, theme in self.email_themes.items()
@@ -246,6 +252,7 @@ class BrandFile(_Strict):
         # Frozen, so the resolved themes go in through object.__setattr__
         # rather than a field assignment pydantic would refuse.
         object.__setattr__(self, "email_themes", resolved)
+
         return self
 
 
@@ -265,6 +272,7 @@ def load_brand(path: Path) -> BrandFile:
         data: Any = yaml.safe_load(f)
     if not data:
         raise ValueError(f"{path} is empty")
+
     return BrandFile(**data)
 
 

@@ -127,6 +127,7 @@ def _wants_news(person: Person) -> bool:
     """
     if isinstance(person, NewsletterSubscriber):
         return bool(person.subscribed)
+
     return bool(
         person.email_verified and person.is_active and person.marketing_emails
     )
@@ -150,6 +151,7 @@ def recipients(db: Session) -> list[User]:
     refused_on_the_list = select(NewsletterSubscriber.email).where(
         NewsletterSubscriber.subscribed.is_(False)
     )
+
     return list(
         db.execute(
             select(User)
@@ -183,6 +185,7 @@ def subscribers(db: Session) -> list[NewsletterSubscriber]:
         The subscribers, oldest first.
     """
     with_an_account = select(User.email).where(User.email_verified.is_(True))
+
     return list(
         db.execute(
             select(NewsletterSubscriber)
@@ -205,6 +208,7 @@ def everybody(db: Session) -> list[Person]:
 def _key(person: Person) -> tuple[str, int]:
     """What tells one person from another across the two tables."""
     kind = "subscriber" if isinstance(person, NewsletterSubscriber) else "user"
+
     return kind, person.id
 
 
@@ -215,6 +219,7 @@ def _already_sent(db: Session, campaign: str) -> set[tuple[str, int]]:
             NewsletterSend.campaign == campaign
         )
     ).all()
+
     return {
         ("user", user_id) if user_id is not None else ("subscriber", sub_id)
         for user_id, sub_id in rows
@@ -236,7 +241,9 @@ def unsubscribe_links(person: Person) -> tuple[str, str]:
         token = create_subscriber_unsubscribe_token(person.id)
     else:
         token = create_marketing_unsubscribe_token(person.id)
+
     base = settings.FRONTEND_URL.rstrip("/")
+
     return (
         f"{base}/unsubscribe?token={token}",
         f"{base}/api/marketing/unsubscribe?token={token}",
@@ -258,17 +265,20 @@ def campaign_brand(campaign: str) -> EmailThemeName:
     """
     if not CAMPAIGN_NAME.fullmatch(campaign):
         raise NewsletterError(f"Not a campaign name: {campaign!r}")
+
     found = [
         brand
         for brand in BRANDS
         if (CAMPAIGNS_DIR / brand / f"{campaign}.html.j2").is_file()
     ]
+
     if not found:
         raise NewsletterError(f"There is no campaign called {campaign!r}")
     if len(found) > 1:
         raise NewsletterError(
             f"More than one brand has a campaign called {campaign!r}"
         )
+
     return found[0]
 
 
@@ -288,12 +298,14 @@ def sender(brand: EmailThemeName) -> tuple[str, str | None]:
     """
     name = f"Mark at {email_theme(brand).sender_name}"
     address = settings.EMAIL_FROM_LDD.strip() if brand == "ldd" else ""
+
     return name, address or None
 
 
 def _render(campaign: str, brand: EmailThemeName, page: str) -> RenderedEmail:
     """Render a campaign for one person's unsubscribe link."""
     name, _ = sender(brand)
+
     return render_email(
         f"campaigns/{brand}/{campaign}.html.j2",
         brand,
@@ -369,11 +381,13 @@ def send_campaign(
             print.
     """
     brand = campaign_brand(campaign)
+
     if limit is not None and limit <= 0:
         raise NewsletterError("The limit must be at least one")
 
     people = everybody(db)
     already: set[tuple[str, int]] = set()
+
     if only_to is not None:
         wanted = only_to.strip().lower()
         to_send = [p for p in people if p.email.lower() == wanted]
@@ -388,9 +402,11 @@ def send_campaign(
         to_send = [p for p in people if _key(p) not in already]
 
     result = Sent(already=len(already))
+
     if limit is not None and len(to_send) > limit:
         result.waiting = len(to_send) - limit
         to_send = to_send[:limit]
+
     result.recipients = [mask_email(p.email) for p in to_send]
 
     # Render it once before anything is sent, so a campaign that will
@@ -401,7 +417,9 @@ def send_campaign(
 
     if confirm is None:
         return result
+
     expected = confirmation(campaign, len(to_send))
+
     if confirm != expected:
         raise NewsletterError(
             "CONFIRM does not match. A dry run now would print "
@@ -448,6 +466,7 @@ def send_campaign(
             )
             db.commit()
         result.sent += 1
+
     return result
 
 
@@ -468,15 +487,18 @@ def main() -> int:
     confirm = os.environ.get("CONFIRM", "").strip() or None
     only_to = os.environ.get("NEWSLETTER_ONLY_TO", "").strip() or None
     raw_limit = os.environ.get("NEWSLETTER_LIMIT", "").strip()
+
     if not campaign:
         print("✗ NEWSLETTER_CAMPAIGN is required", file=sys.stderr)
         return 1
     if raw_limit and not raw_limit.isdecimal():
         print("✗ NEWSLETTER_LIMIT must be a whole number", file=sys.stderr)
         return 1
+
     limit = int(raw_limit) if raw_limit else None
 
     db = CoreSessionLocal()
+
     try:
         # Before anybody is counted, dry run or not: Amazon knows which
         # addresses bounced or complained since the last send, and they
@@ -523,6 +545,7 @@ def main() -> int:
         f"{result.refused} refused, {result.failed} failed, "
         f"{result.waiting} left for a later run."
     )
+
     return 1 if result.failed or result.refused else 0
 
 

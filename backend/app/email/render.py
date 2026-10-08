@@ -1,4 +1,3 @@
-# backend/app/email/render.py
 """Render a branded email from a template, a theme and its values.
 
 Every email extends ``templates/base.html.j2``, the layout signed off as a
@@ -87,6 +86,7 @@ def accent(text: str, colour: str) -> Markup:
         The heading as safe markup.
     """
     escaped = str(escape(text))
+
     return Markup(
         _ACCENT.sub(
             f'<em style="font-style: italic; color: {escape(colour)}">'
@@ -109,6 +109,7 @@ def asset(context: Context, path: str) -> str:
         The render's asset base URL joined to *path*.
     """
     base: str = context["asset_base_url"]
+
     return base.rstrip("/") + "/" + path.lstrip("/")
 
 
@@ -137,6 +138,7 @@ def make_environment(extra: BaseLoader | None = None) -> Environment:
     )
     env.filters["accent"] = accent
     env.globals["asset"] = asset
+
     return env
 
 
@@ -149,6 +151,7 @@ def _font_link(theme_name: EmailThemeName) -> str:
         f"family={font.family.replace(' ', '+')}:{font.axes}"
         for font in email_theme(theme_name).fonts
     )
+
     return f"https://fonts.googleapis.com/css2?{params}&display=swap"
 
 
@@ -162,6 +165,7 @@ def _plain(rendered: str) -> str:
     text = html.unescape(rendered)
     lines = [line.strip() for line in text.splitlines()]
     collapsed = re.sub(r"\n{3,}", "\n\n", "\n".join(lines))
+
     return collapsed.strip()
 
 
@@ -223,6 +227,7 @@ def render_email(
     body = compiled.render(values)
 
     sender = t.sender_name
+
     if from_name is not None:
         sender = from_name
     elif partner is not None and partner.short_name:

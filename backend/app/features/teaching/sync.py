@@ -42,6 +42,7 @@ def _load_config(bank_dir: Path) -> dict[str, Any]:
         if path.is_file():
             with open(path) as f:
                 return yaml.safe_load(f) or {}
+
     msg = f"No assessment.yaml or config.yaml found in {bank_dir}"
     raise FileNotFoundError(msg)
 
@@ -102,6 +103,7 @@ def _load_module_status(bank_dir: Path) -> str | None:
     if module.yaml is not found (e.g. legacy flat layout or GCS temp).
     """
     module_yaml = bank_dir.parent / "module.yaml"
+
     if not module_yaml.is_file():
         return None
     try:
@@ -113,6 +115,7 @@ def _load_module_status(bank_dir: Path) -> str | None:
                 return status
     except (yaml.YAMLError, OSError):
         pass
+
     return None
 
 
@@ -126,6 +129,7 @@ def _load_module_metadata(
     Falls back to empty strings / None if module.yaml is missing.
     """
     module_yaml = bank_dir.parent / "module.yaml"
+
     if not module_yaml.is_file():
         return {
             "title": "",
@@ -145,6 +149,7 @@ def _load_module_metadata(
             }
     except (yaml.YAMLError, OSError):
         pass
+
     return {
         "title": "",
         "description": "",
@@ -197,6 +202,7 @@ def _serve_newest_version(
         .scalars()
         .first()
     )
+
     if status is None or newest is None or status.active_version == newest:
         return False
 
@@ -210,6 +216,7 @@ def _serve_newest_version(
     status.active_version = newest
     status.active_version_set_by = user_id
     status.active_version_set_at = datetime.now(UTC)
+
     return True
 
 
@@ -261,9 +268,11 @@ def sync_question_bank(
     config = _load_config(bank_dir)
     # Derive bank_id from config "id" field (legacy) or directory name
     bank_id = config.get("id") or bank_dir.name
+
     # If bank_dir is an "assessment" subdirectory, use the parent name
     if bank_id == "assessment":
         bank_id = bank_dir.parent.name
+
     version = config["version"]
     bank_type = config["type"]
 
@@ -424,6 +433,7 @@ def sync_question_bank(
 
     # Index by metadata for matching (use directory name as key)
     existing_by_dir: dict[str, QuestionBankItem] = {}
+
     for item in existing_items:
         # We store the source directory name in metadata
         dir_name = item.metadata_json.get("_source_dir", "")
@@ -481,4 +491,5 @@ def sync_question_bank(
 
     _serve_newest_version(db, org_unit_id, bank_id, user_id)
     db.commit()
+
     return validation, sync_record

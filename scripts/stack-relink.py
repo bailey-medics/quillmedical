@@ -53,7 +53,9 @@ def record_path() -> Path | None:
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return None
+
     path = Path(out)
+
     return path if path.is_file() else None
 
 
@@ -63,6 +65,7 @@ def read_record(path: Path) -> dict[str, object] | None:
     except (OSError, json.JSONDecodeError) as exc:
         print(f"✗ Could not read the stack record: {exc}", file=sys.stderr)
         return None
+
     return record if isinstance(record, dict) else None
 
 
@@ -76,9 +79,12 @@ def stack_holding(
     its stack has finished, and the newest stack is the live one.
     """
     stacks = record.get("stacks")
+
     if not isinstance(stacks, list):
         return None
+
     found = None
+
     for stack in stacks:
         if not isinstance(stack, dict):
             continue
@@ -88,14 +94,17 @@ def stack_holding(
         for entry in branches:
             if isinstance(entry, dict) and entry.get("branch") == branch:
                 found = stack
+
     return found
 
 
 def holds_merged(github_stack: dict[str, object]) -> bool:
     """Whether a stack, as GitHub's API returns it, holds a merged PR."""
     pull_requests = github_stack.get("pull_requests")
+
     if not isinstance(pull_requests, list):
         return False
+
     return any(
         isinstance(pr, dict) and pr.get("merged_at") for pr in pull_requests
     )
@@ -111,11 +120,15 @@ def point_record(
     """
     if not isinstance(number, int) or not isinstance(stack_id, (int, str)):
         return False
+
     stack = stack_holding(record, branch)
+
     if stack is None:
         return False
+
     stack["id"] = str(stack_id)
     stack["number"] = number
+
     return True
 
 
@@ -131,11 +144,13 @@ def gh(args: list[str]) -> str | None:
     if result.returncode != 0:
         sys.stderr.write(result.stderr)
         return None
+
     return result.stdout
 
 
 def gh_json(args: list[str]) -> object | None:
     out = gh(args)
+
     if out is None:
         return None
     try:
@@ -148,6 +163,7 @@ def current_branch() -> str:
     result = subprocess.run(
         ["git", "branch", "--show-current"], capture_output=True, text=True
     )
+
     return result.stdout.strip() if result.returncode == 0 else ""
 
 
@@ -156,27 +172,36 @@ def open_pull_request(branch: str) -> int | None:
     found = gh_json(
         ["pr", "list", "--head", branch, "--state", "open", "--json", "number"]
     )
+
     if not isinstance(found, list) or len(found) != 1:
         return None
+
     number = found[0].get("number") if isinstance(found[0], dict) else None
+
     return number if isinstance(number, int) else None
 
 
 def needed() -> int:
     path = record_path()
     record = read_record(path) if path is not None else None
+
     if record is None:
         return 1
+
     stack = stack_holding(record, current_branch())
     number = stack.get("number") if stack is not None else None
+
     if not isinstance(number, int):
         # Never submitted, so there is no stack on GitHub to refuse.
         return 1
+
     github_stack = gh_json(
         ["api", f"repos/{{owner}}/{{repo}}/stacks/{number}"]
     )
+
     if not isinstance(github_stack, dict):
         return 1
+
     return 0 if holds_merged(github_stack) else 1
 
 
@@ -186,6 +211,7 @@ def link(branches: list[str]) -> int:
         return 1
 
     numbers: list[int] = []
+
     for branch in branches:
         number = open_pull_request(branch)
         if number is None:
@@ -210,6 +236,7 @@ def link(branches: list[str]) -> int:
     github_stack = (
         pull_request.get("stack") if isinstance(pull_request, dict) else None
     )
+
     if not isinstance(github_stack, dict):
         if len(numbers) == 1:
             print("  One open pull request: no stack on GitHub to point at.")
@@ -223,6 +250,7 @@ def link(branches: list[str]) -> int:
 
     path = record_path()
     record = read_record(path) if path is not None else None
+
     if path is None or record is None:
         print("✗ No local stack record to point at it.", file=sys.stderr)
         return 1
@@ -241,6 +269,7 @@ def link(branches: list[str]) -> int:
         f"  The local record now points at stack #{github_stack.get('number')} "
         f"on GitHub ({len(numbers)} open)."
     )
+
     return 0
 
 
@@ -259,6 +288,7 @@ def main() -> int:
         help="the stack's unmerged branches, bottom to top",
     )
     args = parser.parse_args()
+
     return needed() if args.needed else link(args.link)
 
 

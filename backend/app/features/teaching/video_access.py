@@ -120,4 +120,5 @@ def sign_cookie(
     key = base64.urlsafe_b64decode(key_value + padding)
 
     signature = hmac.new(key, policy.encode("utf-8"), hashlib.sha1).digest()
+
     return f"{policy}:Signature={_b64url(signature)}"
