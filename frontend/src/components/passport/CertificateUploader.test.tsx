@@ -50,6 +50,18 @@ describe("CertificateUploader", () => {
     ).toBeInTheDocument();
   });
 
+  it("warns against a file that could identify a patient", () => {
+    // The only place a file enters a passport, so a scanned prescription
+    // or a clinic letter would arrive here.
+    renderWithMantine(
+      <CertificateUploader passportId="3f2a8c1e" onUploaded={vi.fn()} />,
+    );
+
+    expect(
+      screen.getByText(/Never a file that could identify a patient/),
+    ).toBeInTheDocument();
+  });
+
   it("accepts the types the backend will store", () => {
     // Pinned against ALLOWED_EVIDENCE_TYPES on the backend. Drift is
     // silent until an upload is refused at the last step.

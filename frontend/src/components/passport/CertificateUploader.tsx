@@ -111,6 +111,7 @@ export default function CertificateUploader({
 
       <FieldDescription>
         A scan or photograph of the certificate. PDF, JPEG, PNG, HEIC or WebP.
+        Never a file that could identify a patient.
       </FieldDescription>
 
       {error && <ErrorState message={error} />}
