@@ -16,7 +16,7 @@ describe("PlaceholderTable", () => {
     );
     expect(screen.getByText("product_name")).toBeInTheDocument();
     expect(screen.queryByText(/\{\{/)).not.toBeInTheDocument();
-    expect(screen.getByText("MedScribe EPMA")).toBeInTheDocument();
+    expect(screen.getByText("Tessaly EPMA")).toBeInTheDocument();
   });
 
   it("lists the documents each is used in", () => {

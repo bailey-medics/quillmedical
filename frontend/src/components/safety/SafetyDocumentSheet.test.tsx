@@ -20,7 +20,7 @@ describe("SafetyDocumentSheet", () => {
         content={renderDocument(document, safetyCase.placeholders)}
       />,
     );
-    expect(screen.getByText("MedScribe EPMA 4.2")).toBeInTheDocument();
+    expect(screen.getByText("Tessaly EPMA 4.2")).toBeInTheDocument();
     expect(
       screen.getByText("Clinical risk management plan, version 4.2, draft"),
     ).toBeInTheDocument();
@@ -43,9 +43,7 @@ describe("SafetyDocumentSheet", () => {
     expect(
       screen.getByRole("heading", { name: "2. Scope" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/MedScribe Health Ltd/).length).toBeGreaterThan(
-      0,
-    );
+    expect(screen.getAllByText(/Tessaly Health Ltd/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/\{\{/)).not.toBeInTheDocument();
   });
 });

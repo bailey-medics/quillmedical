@@ -11,9 +11,9 @@ The outcome wanted is a Guides area inside the application: short task
 guides in text and screenshots, filtered to what the reader can do, with
 each relevant page linking to its own guide. The joining guide is readable
 before login. Screenshots are retaken by Playwright from seeded data after
-every merge, so they do not rot and never show a real person. Video is kept
-to one welcome film for new admins. Teaching is the first subject; nothing
-here is specific to it.
+every merge, so they do not rot and never show a real person. There is no
+video: the one welcome film planned was dropped. Teaching is the first
+subject; nothing here is specific to it.
 
 ## Phase 1: A guides area with text only
 
@@ -243,7 +243,8 @@ screenshots are made by a script and never by hand.
       other. No Caddy route was needed: in production the request never
       reaches Caddy, and locally Vite serves the folder from `public/`.
 
-- [ ] This applies on merge through `terraform.yml`; read the plan it
+- [x] Checked by Mark and passed, 8 October 2026.
+      This applies on merge through `terraform.yml`; read the plan it
       posts on the pull request before merging, and check the run after.
       It was not validated locally: `terraform fmt` passes, but the
       machine's Terraform is older than `infra/versions.tf` asks for, so
@@ -267,7 +268,8 @@ screenshots are made by a script and never by hand.
       worth reading: a spec that can no longer find a button means the
       words of that guide are out of date too.
 
-- [ ] The workflow cannot be tried before it merges: a workflow file runs
+- [x] Checked by Mark and passed, 8 October 2026.
+      The workflow cannot be tried before it merges: a workflow file runs
       only from `main`. After the merge, run it once by hand, open
       `/guides/join-a-course` on the live site and check the pictures are
       there. Until then every image is its alt text in a dashed box.
@@ -351,24 +353,28 @@ not revisited.
 
 ## Phase 6: A welcome video for new admins
 
+**Dropped on 8 October 2026.** Mark decided not to make the film, so none
+of the steps below will be done. They are kept as a record of what was
+intended.
+
 Last, and the only video: film costs the most to redo, so it is added once
 everything it would otherwise have to explain is written down.
 
 Not started. Every step below waits on the first: there is no film yet,
 and a player with nothing to play is not worth landing.
 
-- [ ] Record one short film, under two minutes, of Mark talking about the
+- Not done: Record one short film, under two minutes, of Mark talking about the
       service. No screen recordings in it, so it does not date when a
       screen changes.
-- [ ] Upload the file and a hand-checked WebVTT caption track to the
+- Not done: Upload the file and a hand-checked WebVTT caption track to the
       guide assets bucket by hand. Not through the teaching video
       pipeline: that is keyed by organisation and module, signs its
       addresses, and is built for a library of lectures, where this is one
       file that changes perhaps once a year.
-- [ ] Show it at the top of the admin group on `/guides`, using the
+- Not done: Show it at the top of the admin group on `/guides`, using the
       existing player in `frontend/src/components/teaching/video-player-v10/`
       if it will play an unsigned address, with captions on offer.
-- [ ] Offer it once as a dismissible card on an admin's first visit to
+- Not done: Offer it once as a dismissible card on an admin's first visit to
       `/admin`. Remember the dismissal in `localStorage`: a card seen again
       on a second device is a small cost, and a column on `User` for it is
       a migration to store one boolean.
@@ -583,7 +589,8 @@ a clinical lead. Whichever phase is built first adds the seed.
       delegate, with its **Download certificate** card: a spec cannot be
       relied on to pass an exam, and should not hold the answers.
 
-- [ ] The questions are drawn at random, so the picture of a question
+- [x] Accepted by Mark, 8 October 2026: nothing to do.
+      The questions are drawn at random, so the picture of a question
       differs from run to run and is uploaded afresh each time. Harmless,
       but it is the one picture that changes when no screen has. Pinning
       it would need the application to take a seed for its choice of
@@ -627,7 +634,9 @@ a clinical lead. Whichever phase is built first adds the seed.
 - [x] Add the rule to `docs/docs/frontend/guides.md`, under writing the
       markdown file.
 
-- [ ] `just guide-screenshots` was run and every picture looked at. Read
+- [x] Read through by Mark, 8 October 2026: fine as a first pass, to be
+      revised later.
+      `just guide-screenshots` was run and every picture looked at. Read
       each guide through locally as a reader would, as was done for the
       first set: that is a person's job.
 
@@ -728,7 +737,8 @@ page is reloaded. See `2026-10-02-safety-feature-mock-up-plan.md`.
       in as. The specs photograph "Results acknowledgement service", the
       fullest of the five cases.
 
-- [ ] Check the mock-up's invented names. The pictures are not
+- [x] Renamed in Phase 18, as Mark decided.
+      Check the mock-up's invented names. The pictures are not
       published: every safety guide is read signed in, so its pictures
       go to the private bucket, and only signed-in readers see them. `frontend/src/lib/safety/fixtures.ts` says everything in
       it is made up, and the people plainly are. Three of its suppliers
@@ -764,7 +774,9 @@ page is reloaded. See `2026-10-02-safety-feature-mock-up-plan.md`.
       cannot decline a request: the route exists and no page calls it, so
       "Sign somebody off" says to press Cancel and tell the colleague.
 
-- [ ] "Check a sign-off from a printed passport" was not written, because
+- [x] Settled in Phase 21: Mark does not want the QR code, so the page
+      goes and no guide is owed.
+      "Check a sign-off from a printed passport" was not written, because
       it would not work for the reader it is for. The page at
       `/passport/verify/:signOffId` opens without an account, but the
       request it makes is refused unless the reader is signed in, holds
@@ -832,7 +844,9 @@ page is reloaded. See `2026-10-02-safety-feature-mock-up-plan.md`.
       added to the "Not yet run" list in `testing-log.md` for the guide
       links on those pages.
 
-- [ ] One thing for that round to look at: following the guide link from
+- [x] No longer applies: Phase 16 took the guide link off the sign-off
+      page.
+      One thing for that round to look at: following the guide link from
       a half-filled sign-off form leaves the page. Whether the form asks
       before letting go, as an exam does, was not checked.
 
@@ -893,7 +907,8 @@ those pictures. The rest is a branch of its own.
       through the API, once for each guide opened. A public guide, and
       every guide in development, makes no call.
 
-- [ ] After merging: the backend's new setting arrives by Terraform,
+- [x] Checked in Phase 18.
+      After merging: the backend's new setting arrives by Terraform,
       which makes a revision that takes no traffic. Re-run `deploy.yml`
       and check the serving revision has `GUIDE_ASSETS_GCS_BUCKET`, then
       run the screenshot workflow once by hand and open a signed-in guide
@@ -926,14 +941,17 @@ involved.
 - [x] One deploy, not two. A tab left open on the second step across the
       deploy sends no lead and is refused, and nobody is using the site
       yet.
-- [ ] Left as it was, and a human's call: a registration naming only an
+- [x] Refused in Phase 18, as Mark decided.
+      Left as it was, and a human's call: a registration naming only an
       `org_unit_id`, with no site and no module, still joins that
       organisation as a trainee and is given a place there, with nothing
       checked. No page sends that request. It enrols on no module, so it
       opens no teaching, but it is the same fault one level up. Refusing
       it would change `test_registering_at_an_organisation_gives_the_place_there`
       on purpose.
-- [ ] Where a clinical lead holds the post at more than one site, the
+- [x] Decided by Mark, 8 October 2026: the delegate chooses. Phases 19
+      and 20.
+      Where a clinical lead holds the post at more than one site, the
       first is chosen, as it was before. Whether the delegate should
       choose is not decided.
 
@@ -961,10 +979,13 @@ the lead's email and the module say everything.
 - [x] "Join a course" and its screenshot spec needed no rewrite. They
       describe two steps on the register page and a **Continue** button
       between them, which is still what a delegate sees.
-- [ ] The second view has no way back to the first but a refresh. On
+- [x] Decided by Mark, 8 October 2026: a Back button. Phase 20.
+      The second view has no way back to the first but a refresh. On
       two pages the browser's back button did that. Add a "Change
       module or clinical lead" control if anybody misses it.
-- [ ] The second view does not say which site is being joined, though
+- [x] Decided by Mark, 8 October 2026: the site is named in a heading.
+      Phase 20.
+      The second view does not say which site is being joined, though
       `validate_clinical_lead` returns its name. `RegistrationForm` has
       nowhere to show it.
 
@@ -1037,7 +1058,192 @@ not registered.
       signed-in delegate with teaching on is given no joining guide and
       is still given "Take a module and its assessment".
 
+## Phase 18: Close what was left open
+
+Mark went through the unticked steps on 8 October 2026. Two of his
+answers were work, done here; the rest were ticked or dropped where they
+stand, in Phases 3, 6, 9 and 12.
+
+- [x] Give the safety mock-up names nobody could take for real ones, in
+      `frontend/src/lib/safety/fixtures.ts` and the tests that quote
+      them. "MedScribe" is now "Tessaly", "MyCare" is "Orrin" and
+      "Northgate" is "Wexcombe", so the first picture of the safety
+      guide will show "Tessaly EPMA 4.2" and "Orrin portal 2.0" once it
+      is retaken. The three were made up for this and not looked up, so
+      a supplier of the same name may exist; none is known.
+- [x] Refuse a registration that names an organisation and nothing
+      else, in `register` in `backend/app/main.py`. An `org_unit_id` is
+      now held to the rule a site or a module already was: it needs a
+      clinical lead and a module, and the server works the organisation
+      out from them. Before, it joined the organisation as a trainee
+      with nothing checked. No page sent that request.
+      `test_registering_at_an_organisation_gives_the_place_there` in
+      `backend/tests/test_teaching_place.py` asserted the old behaviour
+      and is now `test_registering_at_an_organisation_alone_is_refused`.
+      A registration naming no organisation, site or module is
+      untouched: it makes an account that belongs nowhere.
+- [x] Phase 13's check after merging, made on 8 October 2026 with
+      `gcloud`. The revision serving the backend,
+      `quill-backend-app-00273-mer`, takes all traffic and has
+      `GUIDE_ASSETS_GCS_BUCKET` set to
+      `quill-medical-app-guide-assets-private`, so `deploy.yml` needed
+      no further run. That bucket holds 53 pictures across the 19
+      signed-in guides, and the public one holds the joining guide's
+      four and the invitation email. On the live site a public picture
+      answers 200 and a private one answers 401 to somebody signed
+      out. Not checked: a private picture drawn for somebody signed
+      in, which needs an account.
+
+## Phase 19: A clinical lead at several sites, on the server
+
+A delegate types their clinical lead's email and Quill works out the
+site from it. Where the lead holds the post at two sites, the first was
+taken without a word, so a delegate could be put at the wrong hospital
+and nobody would be told. Mark decided the delegate chooses. The server
+comes first and on its own, because it is safe alone: it adds to what it
+answers, and the page of Phase 20 is what uses it.
+
+- [ ] `clinical_lead_site` in `backend/app/main.py` finds every site the
+      lead holds the post at, not the first. Keep only the sites whose
+      organisation offers the module: today a site whose organisation
+      does not comes back `valid` with no `org_unit_id`, and the page
+      turns that into "Clinical lead not found". Sort them by name, so
+      the order shown does not depend on ids.
+- [ ] `ValidateClinicalLeadOut` in `backend/app/schemas/auth.py` gains
+      `sites`, a list of `site_id`, `site_name` and `org_unit_id`. This
+      is additive. `site_name`, `site_id` and `org_unit_id` at the top
+      stay, and are filled only when there is exactly one site: with
+      several there is no one answer, and a guess is the fault being
+      fixed. A browser tab still on the old page is then told "Clinical
+      lead not found" for such a lead until it reloads, which is
+      accepted while nobody uses the service.
+- [ ] `clinical_lead_site` takes an optional `site_id`, the delegate's
+      choice. Given, it must be one of the sites found, or the answer is
+      not valid. `ValidateClinicalLeadIn` does not need it: the first
+      call is what lists the sites.
+- [ ] `register` passes `payload.site_id` to it. `RegisterIn` already
+      has the field. A lead at several sites and no `site_id` is refused
+      with a 400 saying a site must be chosen: the server never picks. A
+      lead at one site is as now, with or without a `site_id`. The
+      existing rule that a `site_id` or `org_unit_id` disagreeing with
+      the lead is refused still stands, and now reads "is not one of the
+      lead's sites".
+- [ ] Tests in `backend/tests/test_validate_clinical_lead.py` and
+      `backend/tests/test_teaching_place.py`: a lead at two sites is
+      listed with both and no single answer; registering with one of
+      them joins that site and no other; registering with neither named
+      is refused and makes no account; a `site_id` the lead does not
+      hold is refused; a lead at two sites under two organisations, only
+      one of which offers the module, is offered the one site.
+
+## Phase 20: Choosing a site, going back and seeing where you are joining
+
+The page, `frontend/src/pages/RegisterPage.tsx`. Three changes Mark
+asked for on 8 October 2026, in one unit because they are the same two
+views and the same tests.
+
+- [ ] A view between the two there are, shown only when the lead check
+      answers with more than one site. It asks "Which site are you
+      joining?" and offers the sites by name, with **Continue** and
+      **Back**. On the same page and in its own state, as the other two
+      views are, so a refresh still shows the first. Check the catalogue
+      first, as the reuse rule requires: `RadioField` and `SelectField`
+      in `frontend/src/components/form/` both fit, and a radio group
+      suits two or three sites better than a drop-down. With one site
+      the view is skipped and nothing changes for the delegate.
+- [ ] What the first view found out, `Joining` in that file, gains the
+      site's id and name, and `register` sends `site_id` with the module
+      and the lead's email. It was left out on purpose in Phase 15,
+      when the server worked the site out alone; with a choice to carry
+      it has to be sent, and Phase 19 checks it.
+- [ ] A **Back** button beside the submit button on the account form,
+      `frontend/src/components/registration/RegistrationForm.tsx`,
+      through a new optional `onBack` prop. `ButtonPair` in
+      `frontend/src/components/button/` is the pattern for a pair of
+      actions, and stacks them full width on a phone. Back goes to the
+      view before: the site choice if there was one, the first view if
+      not, with the module and the lead's email still filled in. What
+      was typed into the account form is lost, as it is on a refresh;
+      keeping a half-typed password in the page's state is not worth
+      it.
+- [ ] The site is named in a level two heading on the account form,
+      through a new optional `siteName` prop, drawn with `Heading` from
+      `frontend/src/components/typography/`, which is an `h2`. It reads
+      "Joining" and the site's name. The wording is a suggestion and
+      Mark's to change.
+- [ ] Stories and tests for both props on `RegistrationForm`, and in
+      `frontend/src/pages/RegisterPage.test.tsx`: one site goes
+      straight to the account form and names it; two sites show the
+      choice, and the one chosen is what is named and what is sent;
+      Back from the account form returns to the choice, and from the
+      choice to the first view, with the fields as they were.
+- [ ] Bring "Join a course" into line, in
+      `frontend/src/guides/content/join-a-course.md`: one sentence for
+      the delegate who is asked which site, and the Back button where
+      the guide says what to do about a wrong module. Its screenshot
+      spec, `frontend/e2e/guides/join-a-course.spec.ts`, needs no new
+      picture: the seed's lead holds one site, so the choice is never
+      shown, and the pictures of the account form pick up the heading
+      and the button when they are next retaken.
+- [ ] Registration is not on any of the four journeys in
+      `docs/docs/frontend/accessibility/journeys.md`, but it is the way
+      in for every delegate. Add an entry to the "Not yet run" list in
+      `docs/docs/frontend/accessibility/testing-log.md`, as Phase 8
+      did: that a screen reader user is told when the view changes,
+      that the site choice is announced as one group with its question,
+      and that the heading naming the site is reached before the form's
+      fields.
+
+## Phase 21: Remove the page a passport's QR code would have opened
+
+The passport was planned to print a QR code beside each sign-off, opening
+a page that says whether the sign-off still matches its fingerprint.
+Nothing prints one: only the page was built. Mark does not want the QR
+code, so the page comes out. It is passport work, and sits in this plan
+only because the guides are where it was noticed.
+
+- [ ] Remove the route `/passport/verify/:signOffId` from
+      `frontend/src/routes.tsx`, with
+      `frontend/src/pages/passport/PassportVerifyPage.tsx`, its test and
+      its export from `passportChunk.ts`. The comment above the two
+      public passport routes then describes one, the invitation page.
+- [ ] Remove what only that page used: `VerificationPanel` in
+      `frontend/src/components/passport/` with its story, test and
+      fixture, and `verifySignOff` and the `Verification` type in
+      `frontend/src/lib/passport/`. Check `navCoverage.test.tsx`, which
+      lists the route.
+- [ ] Leave the fingerprint itself alone. Every sign-off is still
+      hashed when it is written, `verify` in
+      `backend/app/features/passport/hashing.py` still checks it, and
+      the download still carries `VERIFY.md`, which says how to check
+      the hashes with no Quill at all. None of that is the QR code.
+- [ ] Leave `GET /{passport_id}/sign-offs/{signoff_id}/verify` in
+      `backend/app/features/passport/router.py` for now. Taking a route
+      out is a breaking change to the API, which the `oasdiff` check
+      reports and a human decides, and it wants its own deploy after
+      the page that called it has gone. Whether it goes at all is
+      Mark's call: it is the only way to ask Quill to recheck one
+      sign-off, and costs nothing left in place.
+- [ ] Check the passport's own documents for the verify page or a QR
+      code, under `docs/docs/backend/passport/` and
+      `docs/docs/frontend/`. A first search found neither, only
+      `VERIFY.md`, which stays. The passport plans are a record of what
+      was intended and are left as written.
+
 ## Decisions
+
+- **The server never picks a site** – a lead at several sites is put to
+  the delegate, and a registration that names none is refused. Taking
+  the first was quiet and sometimes wrong, and a delegate at the wrong
+  site is found out only when their clinical lead cannot see them.
+
+- **No QR code on a passport** – Mark decided against it on 8 October
+  2026. The fingerprint and `VERIFY.md` in the download stay: they are
+  how a record is checked without Quill, which a QR code opening Quill
+  never was.
+
+- **No welcome video** – Phase 6 planned one short film for new admins.
+  Mark dropped it on 8 October 2026.
 
 - **No guide links on signed-in pages** – the Guides entry in the
   navigation is where a signed-in reader looks for help. Phase 5's links

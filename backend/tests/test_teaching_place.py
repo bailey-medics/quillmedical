@@ -303,9 +303,14 @@ class TestRegisteringGivesAPlace:
         assert resp.status_code == 200, resp.text
         assert self._places(db_session, "place_trainee") == {site.id}
 
-    def test_registering_at_an_organisation_gives_the_place_there(
+    def test_registering_at_an_organisation_alone_is_refused(
         self, test_client: TestClient, db_session: Session
     ) -> None:
+        """An organisation is joined through a clinical lead, like a site.
+
+        Naming only the organisation used to join it as a trainee with
+        nothing checked. No page sends that, but a crafted request could.
+        """
         org, _site, _lead = _setup_org_with_site_and_lead(db_session)
 
         resp = test_client.post(
@@ -318,8 +323,11 @@ class TestRegisteringGivesAPlace:
             },
         )
 
-        assert resp.status_code == 200, resp.text
-        assert self._places(db_session, "place_org") == {org.id}
+        assert resp.status_code == 400, resp.text
+        assert (
+            db_session.scalar(select(User).where(User.username == "place_org"))
+            is None
+        )
 
     def test_a_registered_delegate_holds_both_competencies(
         self, test_client: TestClient, db_session: Session

@@ -1257,9 +1257,17 @@ def register(
     # crafted request could send any others. So the lead is named again
     # here and the server works both out for itself. What the browser
     # sent is only compared with that, and refused if it differs.
+    #
+    # An organisation named on its own is held to the same rule. It used
+    # to join that organisation as a trainee with nothing checked: no
+    # page sends it, but a crafted request could.
     org_unit_id = payload.org_unit_id
     site_id = payload.site_id
-    if payload.site_id is not None or payload.teaching_module_id is not None:
+    if (
+        payload.org_unit_id is not None
+        or payload.site_id is not None
+        or payload.teaching_module_id is not None
+    ):
         if (
             payload.clinical_lead_email is None
             or payload.teaching_module_id is None

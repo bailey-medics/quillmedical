@@ -47,8 +47,9 @@ class RegisterIn(BaseModel):
             registered through (optional). They are enrolled on it,
             where the organisation has opened it to registration.
         clinical_lead_email: The clinical lead whose email admitted them
-            (required with a site or a module). The server works the
-            site and organisation out from it, and refuses a request
+            (required with an organisation, a site or a module). The
+            server works the site and organisation out from it, and
+            refuses a request
             whose own ``org_unit_id`` or ``site_id`` says otherwise. A
             plain string, as the check before it takes: a lead's stored
             address need not pass ``EmailStr``.

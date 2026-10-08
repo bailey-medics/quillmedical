@@ -50,7 +50,7 @@ describe("SafetyDocumentPage", () => {
 
   it("fills the case's placeholders into the document", () => {
     renderPage("sc-002", "crmp");
-    expect(screen.getAllByText(/Northgate Digital/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Wexcombe Digital/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/\{\{/)).not.toBeInTheDocument();
   });
 
@@ -70,7 +70,7 @@ describe("SafetyDocumentPage", () => {
     expect(screen.getAllByText(/Acme Clinical Systems/).length).toBeGreaterThan(
       0,
     );
-    expect(screen.queryByText(/MedScribe Health Ltd/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Tessaly Health Ltd/)).not.toBeInTheDocument();
   });
 
   it("offers an edit button that opens the edit page", async () => {
@@ -94,7 +94,7 @@ describe("SafetyDocumentPage", () => {
       screen.getByRole("heading", { name: "Rewritten" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Now about MedScribe EPMA only."),
+      screen.getByText("Now about Tessaly EPMA only."),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "2. Scope" }),

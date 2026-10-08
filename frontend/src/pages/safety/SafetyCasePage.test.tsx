@@ -38,7 +38,7 @@ describe("SafetyCasePage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("In review")).toBeInTheDocument();
     expect(
-      screen.getByText("MedScribe EPMA 4.2, assessed against DCB0129."),
+      screen.getByText("Tessaly EPMA 4.2, assessed against DCB0129."),
     ).toBeInTheDocument();
   });
 

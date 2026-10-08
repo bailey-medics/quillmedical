@@ -11,7 +11,7 @@
  * ```tsx
  * <SafetyDocumentSheet
  *   document={document}
- *   product="MedScribe EPMA 4.2"
+ *   product="Tessaly EPMA 4.2"
  *   content={renderDocument(document, placeholders)}
  * />
  * ```
