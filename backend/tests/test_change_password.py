@@ -18,6 +18,7 @@ class TestChangePassword:
             json={"username": username, "password": password},
         )
         assert resp.status_code == 200
+
         return client.cookies.get("XSRF-TOKEN", "")
 
     def test_change_password_success(

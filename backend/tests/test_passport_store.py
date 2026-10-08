@@ -595,8 +595,10 @@ class TestRollback:
 
         def fail_on_the_second(self: Path, data: Any) -> int:
             calls["n"] += 1
+
             if calls["n"] == 2:
                 raise OSError("disk full")
+
             return real_write(self, data)
 
         monkeypatch.setattr(Path, "write_bytes", fail_on_the_second)
@@ -634,8 +636,10 @@ class TestRollback:
 
         def fail_on_the_second(self: Path, data: Any) -> int:
             calls["n"] += 1
+
             if calls["n"] == 2:
                 raise OSError("disk full")
+
             return real_write(self, data)
 
         monkeypatch.setattr(Path, "write_bytes", fail_on_the_second)

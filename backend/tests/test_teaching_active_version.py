@@ -24,6 +24,7 @@ def _status(**overrides: object) -> QuestionBankOrgStatus:
         "site_registration": False,
     }
     values.update(overrides)
+
     return QuestionBankOrgStatus(**values)
 
 

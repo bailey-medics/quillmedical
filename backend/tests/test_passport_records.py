@@ -57,6 +57,7 @@ def passport(tmp_path: Path, actor: commits.Actor) -> store.LocalPassportStore:
         commits.build("create", "new passport", actor),
         actor,
     )
+
     return created
 
 
@@ -83,6 +84,7 @@ def _certificate(**overrides: object) -> schemas.Certificate:
         "awarded_on": date(2025, 11, 4),
     }
     fields.update(overrides)
+
     return schemas.Certificate(**fields)  # type: ignore[arg-type]
 
 

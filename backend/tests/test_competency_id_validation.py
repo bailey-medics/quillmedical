@@ -45,6 +45,7 @@ def _user(db: Session, username: str) -> User:
     )
     db.add(user)
     db.commit()
+
     return user
 
 
@@ -85,6 +86,7 @@ class TestTheAdminApiRefusesBadIds:
             "base_profession": "consultant",
         }
         payload.update(overrides)
+
         return payload
 
     def test_creating_a_user_with_an_unknown_competency_is_refused(

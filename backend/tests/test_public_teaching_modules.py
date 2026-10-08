@@ -27,6 +27,7 @@ def _org(db: Session, name: str) -> OrgUnit:
     org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.flush()
+
     return org
 
 
@@ -65,6 +66,7 @@ def _modules(client: TestClient) -> list[dict[str, Any]]:
     resp = client.get(URL)
     assert resp.status_code == 200, resp.text
     modules: list[dict[str, Any]] = resp.json()["modules"]
+
     return modules
 
 
@@ -107,6 +109,7 @@ class TestWhatAModuleIsCalled:
     ) -> None:
         first = _org(db_session, "First Trust")
         second = _org(db_session, "Second Trust")
+
         for org in (first, second):
             _version(db_session, org, "chest-xray", 3, "Chest X-ray Old")
             _version(db_session, org, "chest-xray", 4, "Chest X-ray")

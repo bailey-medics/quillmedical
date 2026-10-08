@@ -13,6 +13,7 @@ def _invite(
         url="https://example.com/accept?token=t",
         expires_in_days=14,
     )
+
     return rendered
 
 

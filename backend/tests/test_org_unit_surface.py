@@ -45,6 +45,7 @@ def _org(db: Session, name: str = "Trust") -> OrgUnit:
     db.add(org)
     db.commit()
     db.refresh(org)
+
     return org
 
 
@@ -53,6 +54,7 @@ def _ward(db: Session, parent_id: int, name: str = "Ward 1") -> OrgUnit:
     db.add(place)
     db.commit()
     db.refresh(place)
+
     return place
 
 
@@ -61,6 +63,7 @@ def _room(db: Session, parent_id: int, name: str = "Room 4") -> OrgUnit:
     db.add(place)
     db.commit()
     db.refresh(place)
+
     return place
 
 
@@ -76,6 +79,7 @@ def _person(db: Session, username: str = "alice") -> User:
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -835,6 +839,7 @@ class TestTheClinicalLead:
         ward = _ward(db_session, org.id)
         outgoing = _person(db_session, "outgoing")
         incoming = _person(db_session, "incoming")
+
         for person in (outgoing, incoming):
             authenticated_superadmin_client.post(
                 f"/api/org-units/{ward.id}/members",
@@ -865,6 +870,7 @@ class TestTheClinicalLead:
         people = [
             _person(db_session, name) for name in ("first", "second", "third")
         ]
+
         for person in people:
             authenticated_superadmin_client.post(
                 f"/api/org-units/{ward.id}/members",
@@ -1068,6 +1074,7 @@ class TestLeavingAPlace:
         ward = _ward(db_session, org.id)
         lead = _person(db_session)
         nurse = _person(db_session, "nurse")
+
         for person in (lead, nurse):
             authenticated_superadmin_client.post(
                 f"/api/org-units/{ward.id}/members",

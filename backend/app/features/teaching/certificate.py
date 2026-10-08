@@ -104,6 +104,7 @@ def _validate_with_recovery(payload: dict[str, object]) -> CertificateStyle:
     whole style block, so one bad setting cannot blank a certificate.
     """
     candidate = dict(payload)
+
     # Bounded: every pass removes at least one key, or returns/breaks.
     for _ in range(len(candidate) + 1):
         try:
@@ -125,6 +126,7 @@ def _validate_with_recovery(payload: dict[str, object]) -> CertificateStyle:
             )
             for key in bad:
                 del candidate[key]
+
     return CertificateStyle()
 
 
@@ -136,6 +138,7 @@ def parse_certificate_style(data: object) -> CertificateStyle:
     naming what was rejected.
     """
     defaults = CertificateStyle()
+
     if data is None:
         return defaults
     if not isinstance(data, dict):
@@ -146,10 +149,12 @@ def parse_certificate_style(data: object) -> CertificateStyle:
         return defaults
 
     section = _as_str_keyed(data)
+
     if not section:
         return defaults
 
     payload: dict[str, object] = dict(section)
+
     for name, field_defaults in defaults.text_fields().items():
         raw = section.get(name)
         if raw is None:
@@ -186,8 +191,10 @@ def find_certificate_background(
     Returns None if the file does not exist.
     """
     cert_file = bank_path / bank_id / "certificate-blank.png"
+
     if cert_file.is_file():
         return cert_file
+
     return None
 
 
@@ -224,6 +231,7 @@ def download_certificate_background_from_gcs(
     blob.download_to_filename(tmp.name)
     tmp.close()
     logger.info("Downloaded certificate background from GCS to %s", tmp.name)
+
     return Path(tmp.name)
 
 
@@ -241,9 +249,11 @@ def certificate_pass_summary(criteria: list[dict[str, Any]]) -> str:
     percentage.
     """
     lines = ["Passed"]
+
     for criterion in criteria:
         percentage = round(criterion.get("value", 0) * 100)
         lines.append(f"{criterion.get('name', '')}: {percentage}%")
+
     return "\n".join(lines)
 
 
@@ -291,6 +301,7 @@ def generate_certificate_pdf(
     # Page size (reportlab is untyped, so pin the dimensions to float).
     page_w: float
     page_h: float
+
     if style.orientation == "landscape":
         page_w, page_h = landscape(A4)
     else:
@@ -341,6 +352,7 @@ def generate_certificate_pdf(
 
     c.showPage()
     c.save()
+
     return buf.getvalue()
 
 
@@ -384,6 +396,7 @@ def _draw_centred(
     # Centre the block vertically around the target y
     total_height = line_height * (len(lines) - 1)
     top_y = y + total_height / 2
+
     for i, line in enumerate(lines):
         c.drawCentredString(x, top_y - i * line_height, line)
 
@@ -402,6 +415,7 @@ def _wrap_text(
     """
     paragraphs = text.split("\n")
     lines: list[str] = []
+
     for para in paragraphs:
         para = para.strip()
         if not para:
@@ -422,4 +436,5 @@ def _wrap_text(
                 current = word
         if current:
             lines.append(current)
+
     return lines or [text]

@@ -24,6 +24,7 @@ def _load_authorities() -> tuple[str, ...]:
 
     default = data["default_jurisdiction"]
     bodies = data["jurisdictions"][default]["professional_registrations"]
+
     return tuple(str(body["id"]) for body in bodies)
 
 
@@ -45,9 +46,11 @@ def canonical_authority(value: str) -> str | None:
         The listed id it matches, or None.
     """
     wanted = value.strip().casefold()
+
     for authority in REGISTRATION_AUTHORITIES:
         if authority.casefold() == wanted:
             return authority
+
     return None
 
 
@@ -69,4 +72,5 @@ def validate_registration_authority(value: str) -> str:
             + ", ".join(REGISTRATION_AUTHORITIES)
             + "."
         )
+
     return value

@@ -69,8 +69,10 @@ def user_has_feature(db: Session, user_id: int, feature_key: str) -> bool:
         True when the feature reaches them.
     """
     holders = feature_holders_for(db, user_id)
+
     if not holders:
         return False
+
     return (
         db.scalar(
             select(OrgUnitFeature.id).where(

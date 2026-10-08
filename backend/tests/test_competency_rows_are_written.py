@@ -48,6 +48,7 @@ def _user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -57,6 +58,7 @@ def _login(client: TestClient, username: str) -> TestClient:
         json={"username": username, "password": "Password123!"},
     )
     assert response.status_code == 200, response.text
+
     return client
 
 
@@ -72,6 +74,7 @@ def _rows(db: Session, user_id: int) -> list[UserCompetency]:
     ``tests/test_profession_seeds_rows.py`` is where they are pinned.
     """
     db.expire_all()
+
     return list(
         db.scalars(
             select(UserCompetency)
@@ -89,11 +92,13 @@ def _held(db: Session, user_id: int) -> set[str]:
     db.expire_all()
     user = db.get(User, user_id)
     assert user is not None
+
     return set(user.get_final_competencies())
 
 
 def _current(db: Session, user_id: int) -> set[str]:
     now = datetime.now(UTC)
+
     return {
         row.competency_id for row in _rows(db, user_id) if row.is_current(now)
     }
@@ -105,6 +110,7 @@ def org(db_session: Session) -> OrgUnit:
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
+
     return organisation
 
 
@@ -115,6 +121,7 @@ def admin(db_session: Session, org: OrgUnit) -> User:
     add_org_unit_member(db_session, org.id, user.id, "staff")
     administers(db_session, user.id, org.id)
     db_session.commit()
+
     return user
 
 
@@ -123,6 +130,7 @@ def target(db_session: Session, org: OrgUnit) -> User:
     user = _user(db_session, "the_target", profession="patient")
     add_org_unit_member(db_session, org.id, user.id, "staff")
     db_session.commit()
+
     return user
 
 
@@ -219,6 +227,7 @@ class TestTheHelper:
         self, db_session: Session
     ) -> None:
         user = _user(db_session, "same_twice")
+
         for _ in range(2):
             sync_competency_rows(
                 user,
@@ -286,6 +295,7 @@ class TestTheHelper:
     ) -> None:
         """A grant is a fact about an arrangement, not about form saves."""
         user = _user(db_session, "same_term")
+
         for _ in range(2):
             sync_competency_rows(
                 user, additional=["passport_write"], removed=[], source="admin"
@@ -464,6 +474,7 @@ class TestEveryWriterWritesRows:
         target: User,
     ) -> None:
         client = _login(test_client, "the_admin")
+
         for listed in (["certify_death"], []):
             response = client.patch(
                 f"/api/users/{target.id}",

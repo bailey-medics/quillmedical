@@ -69,6 +69,7 @@ def _write_module(
     (assessment / "question_001" / "question.yaml").write_text(
         yaml.dump(_VALID_VARIABLE_QUESTION)
     )
+
     return module_dir
 
 

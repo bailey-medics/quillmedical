@@ -120,6 +120,7 @@ class _PendingView(PassportStore):
         }
 
         depth = len(path.parts)
+
         for pending in self._files:
             if pending.is_relative_to(path) and len(pending.parts) > depth:
                 existing.add(PurePosixPath(*pending.parts[: depth + 1]))
@@ -256,6 +257,7 @@ def _unique_dir_name(
     taken = {entry.name for entry in store.list_dir(passport_id, parent)}
 
     suffix = 1
+
     while True:
         name = ids.record_dir_name(on, label, suffix=suffix)
         if name not in taken:
@@ -287,6 +289,7 @@ def _next_entry_filename(
     taken = {entry.stem for entry in store.list_dir(passport_id, directory)}
 
     candidate = moment
+
     while ids.entry_filename(candidate) in taken:
         candidate += timedelta(seconds=1)
 
@@ -743,6 +746,7 @@ def set_frameworks(
         Profile, store.read(passport_id, paths.PROFILE)
     )
     updated = profile.model_copy(update={"frameworks": frameworks})
+
     # A git subject holds 72 characters, so several are counted and not
     # listed; the file itself names them.
     if not frameworks:

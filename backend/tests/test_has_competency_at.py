@@ -47,6 +47,7 @@ def _user(
     )
     db.add(user)
     db.commit()
+
     return user
 
 
@@ -54,6 +55,7 @@ def _ward(db: Session, name: str) -> OrgUnit:
     ward = OrgUnit(name=name, type="ward")
     db.add(ward)
     db.commit()
+
     return ward
 
 
@@ -94,6 +96,7 @@ def _client(
 
     app.dependency_overrides[get_core_db] = lambda: db
     app.dependency_overrides[get_current_user] = lambda: user
+
     return TestClient(app, raise_server_exceptions=False)
 
 

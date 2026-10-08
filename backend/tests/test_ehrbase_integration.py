@@ -176,6 +176,7 @@ class TestEHRbaseLetterOperations:
             },
         )
         assert response.status_code == 200
+
         return response.json()["id"]
 
 

@@ -41,6 +41,7 @@ def _user(
     )
     db.add(user)
     db.commit()
+
     return user
 
 
@@ -54,6 +55,7 @@ def _org(db: Session, name: str) -> OrgUnit:
         )
     )
     db.commit()
+
     return org
 
 
@@ -65,6 +67,7 @@ def _site_of(db: Session, org: OrgUnit, name: str) -> OrgUnit:
         update(OrgUnit).where(OrgUnit.id == site.id).values(parent_id=org.id)
     )
     db.commit()
+
     return site
 
 
@@ -89,6 +92,7 @@ def _in_org(db: Session, org: OrgUnit, user: User) -> None:
 def _delegates(client) -> list[dict[str, object]]:
     resp = client.get("/api/teaching/admin/delegates")
     assert resp.status_code == 200, resp.text
+
     return resp.json()
 
 

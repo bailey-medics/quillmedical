@@ -176,6 +176,7 @@ def _make_admin(db_session, org: OrgUnit | None = None) -> User:
         administers(db_session, user.id, org.id)
     db_session.commit()
     db_session.refresh(user)
+
     return user
 
 
@@ -184,6 +185,7 @@ def _make_org(db_session, name: str = "Feature Org") -> OrgUnit:
     db_session.add(org)
     db_session.commit()
     db_session.refresh(org)
+
     return org
 
 
@@ -386,6 +388,7 @@ def _make_site(db_session, org: OrgUnit, name: str = "Ward 1") -> OrgUnit:
     db_session.add(site)
     db_session.commit()
     db_session.refresh(site)
+
     return site
 
 
@@ -401,6 +404,7 @@ class TestOrganisationOnlyFeatures:
                 "password": "AdminPassword123!",
             },
         )
+
         return test_client.cookies.get("XSRF-TOKEN", "")
 
     def test_teaching_cannot_be_switched_on_at_a_site(

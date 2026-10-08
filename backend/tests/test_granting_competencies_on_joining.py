@@ -53,6 +53,7 @@ def _user(db: Session, username: str, *, profession: str) -> User:
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -62,6 +63,7 @@ def org(db_session: Session) -> OrgUnit:
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
+
     return organisation
 
 
@@ -81,6 +83,7 @@ def admin(db_session: Session, org: OrgUnit) -> User:
     user = _user(db_session, "the_admin", profession="system_administrator")
     _place(db_session, org, user)
     administers(db_session, user.id, org.id)
+
     return user
 
 
@@ -90,6 +93,7 @@ def _login(client: TestClient, username: str) -> TestClient:
         json={"username": username, "password": "Password123!"},
     )
     assert response.status_code == 200, response.text
+
     return client
 
 
@@ -296,10 +300,10 @@ class TestTheSameAtASite:
     """A ward asks the same question as the organisation above it.
 
     One route adds a member to any org_unit, so a ward goes through the
-    same ``grant_competencies_on_joining`` as the organisation, with no
-    second copy of the merge rule to drift. These tests are here so adding
-    somebody at a ward is covered in its own right, not left resting on
-    the organisation's tests.
+    same ``competencies_kept_across_profession_change`` sum as the
+    organisation, with no second copy of the merge rule to drift. These
+    tests are here so adding somebody at a ward is covered in its own
+    right, not left resting on the organisation's tests.
     """
 
     @pytest.fixture
@@ -320,6 +324,7 @@ class TestTheSameAtASite:
         )
         db_session.commit()
         administers(db_session, admin.id, site.id)
+
         return site
 
     def test_a_profession_is_granted_with_the_membership(

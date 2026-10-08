@@ -42,6 +42,7 @@ def administers(db: Session, user_id: int, org_unit_id: int) -> None:
             PractisingCompetency.competency == ADMINISTERS,
         )
     )
+
     if existing is not None:
         return
 

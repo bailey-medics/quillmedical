@@ -89,6 +89,7 @@ def _represent_str(dumper: yaml.SafeDumper, data: str) -> yaml.ScalarNode:
         return dumper.represent_scalar(
             "tag:yaml.org,2002:str", data, style="|"
         )
+
     return dumper.represent_scalar("tag:yaml.org,2002:str", data)
 
 

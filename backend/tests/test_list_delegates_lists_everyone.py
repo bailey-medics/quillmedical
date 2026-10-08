@@ -54,6 +54,7 @@ def _user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -72,6 +73,7 @@ def org(db_session: Session) -> OrgUnit:
     )
     db_session.commit()
     db_session.refresh(organisation)
+
     return organisation
 
 
@@ -86,6 +88,7 @@ def _login(client: TestClient, username: str) -> TestClient:
         json={"username": username, "password": "Password123!"},
     )
     assert response.status_code == 200, response.text
+
     return client
 
 

@@ -66,6 +66,7 @@ def get_fhir_client() -> client.FHIRClient:
         "app_id": "quill_medical",
         "api_base": settings.FHIR_SERVER_URL,
     }
+
     return client.FHIRClient(settings=fhir_settings)
 
 
@@ -148,6 +149,7 @@ def create_fhir_patient(
             raise ValueError(
                 f"NHS number must be 10 digits, got: {nhs_number}"
             )
+
     fhir = get_fhir_client()
 
     # Create Patient resource
@@ -505,6 +507,7 @@ def create_fhir_communication(
         ) from exc
 
     resource["id"] = comm_uuid
+
     return resource
 
 

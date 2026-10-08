@@ -147,8 +147,10 @@ def _user(
     competencies as rows; assigning it afterwards leaves a patient's.
     """
     user = db.scalar(select(User).where(User.username == username))
+
     if user is not None:
         return user
+
     user = User(
         username=username,
         full_name=full_name,
@@ -162,6 +164,7 @@ def _user(
     db.add(user)
     db.flush()
     print(f"Created {username}")
+
     return user
 
 
@@ -170,12 +173,15 @@ def _org_unit(
 ) -> OrgUnit:
     """Return the org unit called *name*, creating it if missing."""
     unit = db.scalar(select(OrgUnit).where(OrgUnit.name == name))
+
     if unit is not None:
         return unit
+
     unit = OrgUnit(name=name, type=type_, parent_id=parent_id)
     db.add(unit)
     db.flush()
     print(f"Created {name}")
+
     return unit
 
 
@@ -187,6 +193,7 @@ def _served_modules(db: Session, org_unit_id: int) -> dict[str, int]:
             QuestionBankOrgStatus.active_version,
         ).where(QuestionBankOrgStatus.org_unit_id == org_unit_id)
     ).all()
+
     return {
         bank_id: version for bank_id, version in rows if version is not None
     }
@@ -228,6 +235,7 @@ def _seed_attempt(
             QuestionBankConfig.version == version,
         )
     )
+
     if config is None:
         raise RuntimeError(f"No config for {bank_id} version {version}")
 
@@ -256,6 +264,7 @@ def _seed_attempt(
     db.flush()
 
     scored: list[dict[str, object]] = []
+
     for order, item in enumerate(chosen, start=1):
         answer = AssessmentAnswer(
             assessment_id=assessment.id, item_id=item.id, display_order=order
@@ -305,6 +314,7 @@ def _seed_attempt(
         "overall_passed": assessment.is_passed,
     }
     prefix = config.get("results", {}).get("exam_ref_prefix", "")
+
     if prefix:
         assessment.exam_ref = f"{prefix}{assessment.id}"
 
@@ -364,6 +374,7 @@ def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
     )
     assessor = _user(db, PASSPORT_ASSESSOR, "Dr Helen Marsh", "consultant")
     admin = _user(db, PASSPORT_ADMIN, "Alex Turner", "passport_admin")
+
     for person in (holder, starter, assessor, admin):
         add_org_unit_member(db, org_unit_id, person.id, "staff")
     cover.switch_on(db, org_unit_id, operator)
@@ -470,6 +481,7 @@ def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
             )
         )
         db.flush()
+
         return name
 
     # One left waiting, so the assessor has something in their inbox, and
@@ -501,6 +513,7 @@ def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
             PassportSignOffRequest.signoff_id == to_sign,
         )
     )
+
     if request is not None:
         request.status = "signed_off"
         request.resolved_at = signed_at
@@ -512,6 +525,7 @@ def seed_passport(db: Session, org_unit_id: int, operator: User) -> None:
 def seed() -> None:
     """Create the guides' organisation, its people and their results."""
     db = CoreSessionLocal()
+
     try:
         operator = _user(
             db,

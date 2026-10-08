@@ -296,6 +296,7 @@ class AppraisalPeriod(PassportModel):
     def _ends_after_it_starts(self) -> AppraisalPeriod:
         if self.ends_on < self.starts_on:
             raise ValueError("A date range cannot end before it starts.")
+
         return self
 
 
@@ -399,6 +400,7 @@ class SignOff(PassportModel):
                 "signed_at must be timezone-aware, so it can be compared "
                 "with observed_on and the commit time without guessing."
             )
+
         return value
 
     @model_validator(mode="after")
@@ -629,4 +631,5 @@ class Index(PassportModel):
         """An index timestamp without a zone cannot be compared."""
         if value.tzinfo is None:
             raise ValueError("generated_at must be timezone-aware.")
+
         return value

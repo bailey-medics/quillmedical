@@ -31,6 +31,7 @@ def _register(client: TestClient, username: str, email: str) -> int:
             "password": "SecurePassword123!",
         },
     )
+
     return response.status_code
 
 
@@ -47,6 +48,7 @@ def sent(monkeypatch: pytest.MonkeyPatch) -> list[str]:
         addresses.append(str(kwargs.get("to")))
 
     monkeypatch.setattr(main, "send_email", _record)
+
     return addresses
 
 

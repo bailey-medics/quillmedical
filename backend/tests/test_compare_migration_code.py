@@ -39,6 +39,7 @@ def downgrade() -> None:
 
 def _edit(old: str, new: str, source: str = BASE) -> str:
     assert old in source, f"fixture does not contain {old!r}"
+
     return source.replace(old, new)
 
 

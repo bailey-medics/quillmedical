@@ -20,6 +20,7 @@ def reject_bool(value: object) -> object:
     """
     if isinstance(value, bool):
         raise ValueError("must be a number, not a boolean")
+
     return value
 
 

@@ -110,6 +110,7 @@ def group_cpd(
             )
 
     outside = [entry for entry in ordered if id(entry) not in placed]
+
     if outside:
         groups.append(CpdGroup(heading=OUTSIDE_HEADING, entries=outside))
 

@@ -31,6 +31,7 @@ def sqlite_session_factory():
     """An in-memory SQLite sessionmaker, isolated from the real core DB."""
     engine = create_engine("sqlite:///:memory:")
     _ScratchBase.metadata.create_all(engine)
+
     return sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 

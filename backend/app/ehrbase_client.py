@@ -39,6 +39,7 @@ def get_auth_header() -> dict[str, str]:
     _require_clinical_services()
     credentials = f"{settings.EHRBASE_API_USER}:{settings.EHRBASE_API_PASSWORD.get_secret_value()}"
     encoded = base64.b64encode(credentials.encode()).decode()
+
     return {"Authorization": f"Basic {encoded}"}
 
 
@@ -63,6 +64,7 @@ def create_ehr(
         raise ValueError("subject_id cannot be empty")
     if not subject_namespace or not subject_namespace.strip():
         raise ValueError("subject_namespace cannot be empty")
+
     url = f"{settings.EHRBASE_URL}/rest/openehr/v1/ehr"
     headers = {
         **get_auth_header(),
@@ -87,6 +89,7 @@ def create_ehr(
     }
 
     response = requests.post(url, json=payload, headers=headers)
+
     if response.status_code == 409:
         raise EhrAlreadyExistsError(
             f"EHR already exists for subject {subject_id}"
@@ -98,6 +101,7 @@ def create_ehr(
             "Failed to create EHR for subject %s: %s", subject_id, exc
         )
         raise EhrbaseClientError("Failed to create clinical record") from exc
+
     return response.json()  # type: ignore[no-any-return]
 
 
@@ -120,6 +124,7 @@ def get_ehr_by_subject(
     # Defensive programming: validate inputs
     if not subject_id or not subject_id.strip():
         raise ValueError("subject_id cannot be empty")
+
     url = f"{settings.EHRBASE_URL}/rest/openehr/v1/ehr"
     headers = get_auth_header()
     params = {"subject_id": subject_id, "subject_namespace": subject_namespace}
@@ -155,6 +160,7 @@ def get_or_create_ehr(subject_id: str, subject_namespace: str = "fhir") -> str:
         ehr_id (UUID string)
     """
     ehr = get_ehr_by_subject(subject_id, subject_namespace)
+
     if ehr:
         return ehr["ehr_id"]["value"]  # type: ignore[no-any-return]
 
@@ -363,6 +369,7 @@ def list_compositions_for_ehr(ehr_id: str) -> list[dict[str, Any]]:
     """
 
     result = query_aql(aql)
+
     return result.get("rows", [])  # type: ignore[no-any-return]
 
 

@@ -74,6 +74,7 @@ async def _read(file: UploadFile) -> bytes:
     """
     chunks: list[bytes] = []
     total = 0
+
     while chunk := await file.read(_CHUNK):
         total += len(chunk)
         if total > importer.MAX_BYTES:
@@ -83,6 +84,7 @@ async def _read(file: UploadFile) -> bytes:
                 f"{importer.MAX_BYTES // (1024 * 1024)} MB",
             )
         chunks.append(chunk)
+
     return b"".join(chunks)
 
 
@@ -103,6 +105,7 @@ def _out(
 ) -> MailingListCheckOut:
     """The reply for a file: numbers, and row numbers, and nothing else."""
     limit = importer.MAX_ROW_NUMBERS
+
     return MailingListCheckOut(
         **asdict(summary),
         no_address_rows=parsed.no_address[:limit],
@@ -127,6 +130,7 @@ def audience(db: Session = _DEP_SESSION) -> NewsletterAudienceOut:
         .select_from(NewsletterSubscriber)
         .where(NewsletterSubscriber.subscribed.is_(False))
     )
+
     return NewsletterAudienceOut(
         accounts=len(recipients(db)),
         subscribers=len(subscribers(db)),
@@ -161,6 +165,7 @@ async def check_mailing_list(
     """
     raw = await _read(file)
     parsed = _parse(raw)
+
     return _out(raw, parsed, importer.summarise(db, parsed), imported=False)
 
 
@@ -199,6 +204,7 @@ async def import_mailing_list(
     raw = await _read(file)
     parsed = _parse(raw)
     summary = importer.summarise(db, parsed)
+
     if fingerprint != importer.fingerprint(raw, summary):
         raise HTTPException(
             409,
@@ -206,4 +212,5 @@ async def import_mailing_list(
             "checked. Check the file again.",
         )
     importer.apply(db, parsed)
+
     return _out(raw, parsed, summary, imported=True)

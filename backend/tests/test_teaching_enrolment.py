@@ -45,6 +45,7 @@ def _ready(db: Session) -> tuple[OrgUnit, User]:
     educator = _make_educator(db, org)
     learner = _make_learner(db, org)
     _seed_bank(db, org.id, educator.id)
+
     return org, learner
 
 
@@ -105,6 +106,7 @@ class TestEnrolling:
         self, db_session: Session
     ) -> None:
         org, learner = _ready(db_session)
+
         for row in _rows(db_session, learner):
             row.ends_on = datetime.now(UTC) - timedelta(days=1)
         db_session.flush()
@@ -117,6 +119,7 @@ class TestEnrolling:
         self, db_session: Session
     ) -> None:
         org, learner = _ready(db_session)
+
         for row in _rows(db_session, learner):
             row.starts_on = datetime.now(UTC) + timedelta(days=1)
         db_session.flush()
@@ -129,6 +132,7 @@ class TestEnrolling:
         self, db_session: Session
     ) -> None:
         org, learner = _ready(db_session)
+
         for row in _rows(db_session, learner):
             row.ends_on = datetime.now(UTC) + timedelta(days=30)
         db_session.flush()
@@ -476,6 +480,7 @@ class TestRegistrationChecksTheClinicalLeadAgain:
         db.flush()
         other.parent_id = org.id
         db.flush()
+
         return other
 
     def _member_of(self, db: Session, name: str) -> set[int]:
@@ -485,6 +490,7 @@ class TestRegistrationChecksTheClinicalLeadAgain:
                 org_unit_member.c.user_id == user_id
             )
         ).scalars()
+
         return {int(row) for row in rows}
 
     def test_a_site_with_no_clinical_lead_named_is_refused(

@@ -51,12 +51,15 @@ def _stub_urlopen(status: int = 200, side_effect=None):
         captured["url"] = request.full_url
         captured["headers"] = {k.lower(): v for k, v in request.header_items()}
         captured["json"] = json.loads(request.data.decode())
+
         if side_effect is not None:
             raise side_effect
+
         response = MagicMock()
         response.status = status
         response.__enter__ = lambda s: s
         response.__exit__ = lambda *a: False
+
         return response
 
     return patch("urllib.request.urlopen", side_effect=_fake), captured
@@ -157,18 +160,22 @@ class TestCaptionJob:
 
         def _blob(path: str) -> MagicMock:
             existing = blobs.get(path)
+
             if existing is not None:
                 return existing
+
             blob = MagicMock()
             blob.exists.return_value = (
                 source_exists if path.endswith(".mp4") else True
             )
             blobs[path] = blob
+
             return blob
 
         bucket = MagicMock()
         bucket.blob.side_effect = _blob
         bucket.blobs = blobs
+
         return bucket
 
     def _run(self, bucket: MagicMock, segments=None) -> int:
@@ -252,6 +259,7 @@ class TestCaptionJob:
 
     def test_it_exits_on_a_missing_variable(self) -> None:
         env = {k: v for k, v in BASE_ENV.items() if k != "CAPTION_ASSET_ID"}
+
         with patch.dict(os.environ, env, clear=True):
             from scripts.caption_cli import caption
 
@@ -284,6 +292,7 @@ class TestCaptionReport:
             "CAPTION_CALLBACK_URL": "https://example.test/cb",
             "CAPTION_CALLBACK_TOKEN": "tok",
         }
+
         with patch.dict(os.environ, env, clear=False):
             stub, captured = _stub_urlopen()
             with stub:
@@ -306,6 +315,7 @@ class TestCaptionReport:
             "CAPTION_CALLBACK_URL": "https://example.test/caption-complete",
             "CAPTION_CALLBACK_TOKEN": "tok",
         }
+
         with patch.dict(os.environ, env, clear=False):
             stub, captured = _stub_urlopen()
             with stub:
@@ -321,6 +331,7 @@ class TestCaptionReport:
             "CAPTION_CALLBACK_URL": "https://example.test/cb",
             "CAPTION_CALLBACK_TOKEN": "tok",
         }
+
         with patch.dict(os.environ, env, clear=False):
             stub, _ = _stub_urlopen(status=401)
             with stub:
@@ -337,6 +348,7 @@ class TestCaptionReport:
             "CAPTION_CALLBACK_URL": "https://example.test/cb",
             "CAPTION_CALLBACK_TOKEN": "tok",
         }
+
         with patch.dict(os.environ, env, clear=False):
             stub, _ = _stub_urlopen(side_effect=OSError("no route"))
             with stub:

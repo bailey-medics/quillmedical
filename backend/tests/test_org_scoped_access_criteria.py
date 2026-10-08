@@ -95,6 +95,7 @@ def _user(
     )
     db.add(user)
     db.commit()
+
     return user
 
 
@@ -102,6 +103,7 @@ def _org(db: Session, name: str) -> OrgUnit:
     org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.commit()
+
     return org
 
 
@@ -113,6 +115,7 @@ def _site(db: Session, name: str, org: OrgUnit) -> OrgUnit:
         update(OrgUnit).where(OrgUnit.id == site.id).values(parent_id=org.id)
     )
     db.commit()
+
     return site
 
 
@@ -286,6 +289,7 @@ class TestPositionsAsOpposedToCompetencies:
         )
         db_session.add(post)
         db_session.commit()
+
         return post
 
     def test_a_site_can_have_a_vacant_clinical_lead_post(self, db_session):
@@ -316,6 +320,7 @@ class TestPositionsAsOpposedToCompetencies:
 
         substantive = _user(db_session, "dr_substantive")
         cover = _user(db_session, "dr_cover")
+
         for person in (substantive, cover):
             _staff(db_session, person, trust)
             _authorise(db_session, person, "access_patient_records", site=ward)

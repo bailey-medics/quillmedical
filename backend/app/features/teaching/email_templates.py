@@ -91,6 +91,7 @@ def load_email_template(
         Parsed template dict, or None if section not found.
     """
     config_path = bank_path / bank_id / "config.yaml"
+
     if not config_path.is_file():
         return None
 
@@ -145,7 +146,9 @@ def email_partner(
     """
     if settings_row is None or not settings_row.institution_name:
         return None
+
     logo: EmailImage | None = None
+
     if settings_row.email_logo and settings_row.email_logo_width:
         logo = EmailImage(
             src=f"/email/partners/{settings_row.email_logo}",
@@ -154,6 +157,7 @@ def email_partner(
             # The logo carries the name; the image's alt text names it too
             alt=settings_row.institution_name,
         )
+
     return EmailPartner(
         name=settings_row.institution_name,
         context=context,

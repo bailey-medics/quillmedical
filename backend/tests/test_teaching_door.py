@@ -55,6 +55,7 @@ def _consultant(
     db.flush()
     add_org_unit_member(db, org_unit.id, user.id, "staff")
     db.flush()
+
     return user
 
 
@@ -65,6 +66,7 @@ def _ward_of(db: Session, org: OrgUnit, name: str) -> OrgUnit:
     db.execute(
         update(OrgUnit).where(OrgUnit.id == ward.id).values(parent_id=org.id)
     )
+
     return ward
 
 
@@ -74,6 +76,7 @@ def org(db_session: Session) -> OrgUnit:
     org = _make_teaching_org(db_session)
     educator = _make_educator(db_session, org)
     _seed_bank(db_session, org.id, educator.id)
+
     return org
 
 
@@ -316,6 +319,7 @@ class TestSayingWhatIsMissing:
         )
         assert resp.status_code == 200, resp.text
         modules: list[dict[str, object]] = resp.json()["modules"]
+
         return modules
 
     def test_somebody_with_nothing_is_missing_all_three(

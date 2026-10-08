@@ -34,6 +34,7 @@ def own_org(db_session: Session, test_admin: User) -> OrgUnit:
     add_org_unit_member(db_session, org.id, test_admin.id, "staff")
     administers(db_session, test_admin.id, org.id)
     db_session.commit()
+
     return org
 
 
@@ -43,6 +44,7 @@ def ward(db_session: Session, own_org: OrgUnit, test_admin: User) -> OrgUnit:
     db_session.add(unit)
     db_session.commit()
     administers(db_session, test_admin.id, unit.id)
+
     return unit
 
 
@@ -60,6 +62,7 @@ def _person(db: Session, username: str, **extra: object) -> User:
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -70,6 +73,7 @@ def surgeon(db_session: Session, own_org: OrgUnit, ward: OrgUnit) -> User:
     add_org_unit_member(db_session, own_org.id, user.id, "staff")
     add_org_unit_member(db_session, ward.id, user.id, "staff")
     db_session.commit()
+
     return user
 
 
@@ -410,6 +414,7 @@ class TestAuthorisedHereCount:
         members = client.get(  # type: ignore[attr-defined]
             f"/api/org-units/{unit_id}/members"
         ).json()["members"]
+
         return next(m for m in members if m["id"] == user_id)[
             "authorised_here"
         ]

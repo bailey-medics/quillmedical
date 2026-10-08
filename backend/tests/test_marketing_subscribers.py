@@ -34,6 +34,7 @@ def _user(db_session, name, *, verified=True, wants=False, answered=None):
     elif wants:
         user.marketing_emails = True
     db_session.commit()
+
     return user
 
 
@@ -43,6 +44,7 @@ def _member(db_session, name, *, subscribed=True):
     )
     db_session.add(member)
     db_session.commit()
+
     return member
 
 

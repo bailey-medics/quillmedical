@@ -42,6 +42,7 @@ def trust(db_session: Session, test_admin: User) -> OrgUnit:
     add_org_unit_member(db_session, org.id, test_admin.id, "staff")
     administers(db_session, test_admin.id, org.id)
     db_session.commit()
+
     return org
 
 
@@ -51,6 +52,7 @@ def ward(db_session: Session, trust: OrgUnit, test_admin: User) -> OrgUnit:
     db_session.add(unit)
     db_session.commit()
     administers(db_session, test_admin.id, unit.id)
+
     return unit
 
 
@@ -74,6 +76,7 @@ def _person(
         add_org_unit_member(db, unit.id, user.id, "staff")
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -128,6 +131,7 @@ def _new_user(*units: OrgUnit, **overrides: Any) -> dict[str, Any]:
         "org_unit_ids": [unit.id for unit in units],
     }
     body.update(overrides)
+
     return body
 
 
@@ -142,8 +146,10 @@ def _log_in(client: TestClient, user: User) -> TestClient:
     )
     assert response.status_code == 200
     csrf = client.cookies.get("XSRF-TOKEN")
+
     if csrf:
         client.headers["X-CSRF-Token"] = csrf
+
     return client
 
 

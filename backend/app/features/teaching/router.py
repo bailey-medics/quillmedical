@@ -179,8 +179,10 @@ def _get_user_org_ids(user: User, db: Session) -> list[int]:
     results stay where they are. See ``app.features.teaching.access``.
     """
     place_ids = organisations_open_for_modules(db, user)
+
     if not place_ids:
         raise HTTPException(403, "User has no organisation")
+
     return place_ids
 
 
@@ -231,11 +233,13 @@ def _get_user_org_id(user: User, db: Session) -> int:
     making the choice correct.
     """
     place_ids = get_member_org_unit_ids(db, user.id)
+
     if not place_ids:
         # Deliberately not "no organisation": somebody at a ward of the
         # trust has an org_unit, and saying otherwise would send them looking
         # for the wrong fix.
         raise HTTPException(403, "User is not a member of any organisation")
+
     return place_ids[0]
 
 
@@ -390,6 +394,7 @@ def list_question_banks(
     # page shows as it shows an organisation with nothing open.
     # The same answer for somebody with nowhere to take them.
     org_ids = organisations_open_for_modules(db, user)
+
     if not org_ids:
         return []
 
@@ -412,6 +417,7 @@ def list_question_banks(
     active_map: dict[str, int] = {}
     visible_bank_ids: set[str] = set()
     org_by_bank: dict[str, int] = {}
+
     for s in statuses:
         if s.active_version is None:
             continue
@@ -451,6 +457,7 @@ def list_question_banks(
     # with the same bank configured)
     seen: set[str] = set()
     results: list[dict[str, Any]] = []
+
     for c in configs:
         if c.question_bank_id in seen:
             continue
@@ -504,6 +511,7 @@ def list_question_banks(
                 "cover_image_focus": c.cover_image_focus,
             }
         )
+
     return results
 
 
@@ -521,6 +529,7 @@ def get_question_bank(
     from app.config import settings
 
     _SAFE_BANK_ID = re.compile(r"^[a-zA-Z0-9_-]+$")
+
     if not bank_id or not _SAFE_BANK_ID.match(bank_id):
         raise HTTPException(400, "Invalid bank_id")
 
@@ -538,6 +547,7 @@ def get_question_bank(
         .scalars()
         .first()
     )
+
     if not status_row:
         raise HTTPException(404, "Question bank not found")
 
@@ -558,6 +568,7 @@ def get_question_bank(
         .scalars()
         .first()
     )
+
     if not config:
         raise HTTPException(404, "Question bank not found")
 
@@ -671,6 +682,7 @@ def get_learning_content(
             )
 
             return get_learning_image_url_gcs(bucket, module_id, filename)
+
         return f"/api/teaching/images/learning/{module_id}/{filename}"
 
         # Every link this module has, so resolving a ref below is a dict
@@ -721,6 +733,7 @@ def get_learning_content(
         }
 
         link = _links.get(video_ref)
+
         if link is not None:
             asset = link.asset_id
 
@@ -761,6 +774,7 @@ def get_learning_content(
             candidate = module_dir / "learning" / f"{video_ref}.mp4"
             if candidate.is_file():
                 return {**empty, "src": f"{video_ref}.mp4"}
+
         return empty
 
     def _slide_out(s: ParsedSlide) -> dict[str, Any]:
@@ -780,6 +794,7 @@ def get_learning_content(
                 "captions": None,
             }
         )
+
         return {
             "slide_index": s.slide_index,
             "layout": s.layout,
@@ -863,6 +878,7 @@ def list_learning_modules(
         # does. Completeness is per organisation, so the media check below
         # has to be asked of the same organisation that grants the view.
     visible_org_by_bank: dict[str, int] = {}
+
     for status in (
         db.execute(
             select(QuestionBankOrgStatus).where(
@@ -880,6 +896,7 @@ def list_learning_modules(
                 )
 
     visible_bank_ids = set(visible_org_by_bank)
+
     if not visible_bank_ids:
         return []
 
@@ -943,6 +960,7 @@ def list_learning_modules(
         )
 
     modules.sort(key=lambda m: m["order"])
+
     return modules
 
 
@@ -1107,6 +1125,7 @@ def start_assessment(
         .scalars()
         .first()
     )
+
     if not status_row:
         raise HTTPException(403, "This assessment is not currently open")
 
@@ -1127,6 +1146,7 @@ def start_assessment(
         .scalars()
         .first()
     )
+
     if not config_row:
         raise HTTPException(404, "Question bank not found")
 
@@ -1162,6 +1182,7 @@ def start_assessment(
         list(published_items),
         min(items_per_attempt, len(published_items)),
     )
+
     if assessment_cfg.get("randomise_order", True):
         random.shuffle(selected)
 
@@ -1204,6 +1225,7 @@ def start_assessment(
     )
 
     first_item = None
+
     if first_answer:
         first_item = _build_candidate_item(
             first_answer, config, config_row.type
@@ -1239,6 +1261,7 @@ def assessment_history(
         .where(Assessment.user_id == user.id)
         .order_by(Assessment.started_at.desc())
     ).all()
+
     return [
         AssessmentHistoryOut(
             id=a.id,
@@ -1275,6 +1298,7 @@ def get_assessment(
     into modules would see a result with no title and no certificate.
     """
     assessment = db.get(Assessment, assessment_id)
+
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
 
@@ -1291,12 +1315,14 @@ def get_assessment(
         .first()
     )
     out = AssessmentOut.model_validate(assessment)
+
     if config_row is not None:
         results = (config_row.config_yaml or {}).get("results") or {}
         out.bank_title = config_row.title
         out.certificate_available = bool(
             assessment.is_passed and results.get("certificate_download")
         )
+
     return out
 
 
@@ -1311,6 +1337,7 @@ def question_number_of(source_dir: str) -> int | None:
     ``None`` rather than a guess.
     """
     match = _QUESTION_NUMBER.search(source_dir)
+
     return int(match.group(1)) if match else None
 
 
@@ -1325,11 +1352,13 @@ def image_label(
     ``image_labels`` entry at the same position.
     """
     own = image.get("label")
+
     if own:
         return str(own)
 
     key = image.get("key")
     declared = config.get("images")
+
     if key and isinstance(declared, list):
         for entry in declared:
             if isinstance(entry, dict) and entry.get("key") == key:
@@ -1338,10 +1367,12 @@ def image_label(
                     return str(label)
 
     legacy = config.get("image_labels")
+
     if isinstance(legacy, list) and 0 <= index < len(legacy):
         label = legacy[index]
         if label:
             return str(label)
+
     return None
 
 
@@ -1360,6 +1391,7 @@ def chosen_option_label(
         if option.get("id") == selected_option:
             label = option.get("label")
             return str(label) if label else selected_option
+
     return selected_option
 
 
@@ -1374,12 +1406,15 @@ def scored_criteria(
     """
     if not score_breakdown:
         return []
+
     results: list[CriterionResult] = []
+
     for criterion in score_breakdown.get("criteria", []):
         try:
             results.append(CriterionResult.model_validate(criterion))
         except ValidationError:
             logger.warning("Skipped a malformed stored pass criterion")
+
     return results
 
 
@@ -1402,6 +1437,7 @@ def get_assessment_question_results(
     which answers so far are right.
     """
     assessment = db.get(Assessment, assessment_id)
+
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
     if assessment.completed_at is None:
@@ -1429,6 +1465,7 @@ def get_assessment_question_results(
     )
 
     questions: list[AssessmentQuestionResultOut] = []
+
     for answer in assessment.answers:
         source_dir = str(answer.item.metadata_json.get("_source_dir", ""))
         options = (
@@ -1484,6 +1521,7 @@ def get_current_item(
 ) -> CandidateItemOut | None:
     """Get the next unanswered item (for resuming after disconnect)."""
     assessment = db.get(Assessment, assessment_id)
+
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
     _require_place_for_attempt(db, user, assessment)
@@ -1518,6 +1556,7 @@ def get_current_item(
         .scalars()
         .first()
     )
+
     if not config_row:
         raise HTTPException(500, "Config not found for assessment")
 
@@ -1539,6 +1578,7 @@ def get_item_by_order(
 ) -> CandidateItemOut:
     """Get a specific item by display order (for navigating back)."""
     assessment = db.get(Assessment, assessment_id)
+
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
     _require_place_for_attempt(db, user, assessment)
@@ -1555,6 +1595,7 @@ def get_item_by_order(
         .scalars()
         .first()
     )
+
     if not answer:
         raise HTTPException(404, "Item not found")
 
@@ -1570,6 +1611,7 @@ def get_item_by_order(
         .scalars()
         .first()
     )
+
     if not config_row:
         raise HTTPException(500, "Config not found for assessment")
 
@@ -1591,6 +1633,7 @@ def submit_answer(
 ) -> dict[str, Any]:
     """Submit an answer, score it, and return the next item."""
     assessment = db.get(Assessment, assessment_id)
+
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
     _require_place_for_attempt(db, user, assessment)
@@ -1602,6 +1645,7 @@ def submit_answer(
     deadline = assessment.started_at.replace(tzinfo=UTC) + timedelta(
         minutes=assessment.time_limit_minutes
     )
+
     if now > deadline:
         raise HTTPException(409, "Time limit exceeded")
 
@@ -1618,6 +1662,7 @@ def submit_answer(
         .scalars()
         .first()
     )
+
     if not current:
         raise HTTPException(409, "All items already answered")
 
@@ -1634,6 +1679,7 @@ def submit_answer(
         .scalars()
         .first()
     )
+
     if not config_row:
         raise HTTPException(500, "Config not found for assessment")
 
@@ -1675,6 +1721,7 @@ def submit_answer(
 
     next_item = None
     all_answered = next_answer is None
+
     if next_answer:
         next_item = _build_candidate_item(next_answer, config, config_row.type)
 
@@ -1699,6 +1746,7 @@ def update_answer(
 ) -> CandidateItemOut:
     """Update an already-answered item (before assessment completion)."""
     assessment = db.get(Assessment, assessment_id)
+
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
     _require_place_for_attempt(db, user, assessment)
@@ -1709,6 +1757,7 @@ def update_answer(
     deadline = assessment.started_at.replace(tzinfo=UTC) + timedelta(
         minutes=assessment.time_limit_minutes
     )
+
     if now > deadline:
         raise HTTPException(409, "Time limit exceeded")
 
@@ -1722,6 +1771,7 @@ def update_answer(
         .scalars()
         .first()
     )
+
     if not answer:
         raise HTTPException(404, "Answer not found")
 
@@ -1737,6 +1787,7 @@ def update_answer(
         .scalars()
         .first()
     )
+
     if not config_row:
         raise HTTPException(500, "Config not found for assessment")
 
@@ -1796,6 +1847,7 @@ def _maybe_enqueue_certificate_emails(
     results = config.get("results", {})
     email_student = results.get("email_student_on_pass", False)
     email_coordinator = results.get("email_coordinator_on_pass", False)
+
     if not email_student and not email_coordinator:
         return
 
@@ -1807,6 +1859,7 @@ def _maybe_enqueue_certificate_emails(
             == assessment.question_bank_id,
         )
     ).scalar_one_or_none()
+
     if not status_row or not status_row.is_live:
         return
 
@@ -1814,12 +1867,15 @@ def _maybe_enqueue_certificate_emails(
 
     # Build context for template rendering
     summary_parts: list[str] = []
+
     for c in criteria_results:
         pct = round(c.get("value", 0) * 100)
         summary_parts.append(f"{c.get('name', '')}: {pct}%")
+
     score_summary = ", ".join(summary_parts) if summary_parts else "Pass"
 
     completion_date = ""
+
     if assessment.completed_at:
         completion_date = assessment.completed_at.strftime("%-d %B %Y")
 
@@ -1854,6 +1910,7 @@ def _maybe_enqueue_certificate_emails(
     bg: Path | None = None
     tmp_bg: Path | None = None
     bank_path_str = app_settings.TEACHING_QUESTION_BANK_PATH
+
     if bank_path_str:
         from app.features.teaching.storage import resolve_local_bank
 
@@ -1985,6 +2042,7 @@ def complete_assessment(
 ) -> dict[str, Any]:
     """Finalise the assessment and compute aggregate scores."""
     assessment = db.get(Assessment, assessment_id)
+
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
     _require_place_for_attempt(db, user, assessment)
@@ -2004,6 +2062,7 @@ def complete_assessment(
         .scalars()
         .first()
     )
+
     if not config_row:
         raise HTTPException(500, "Config not found for assessment")
 
@@ -2048,6 +2107,7 @@ def complete_assessment(
 
     # Generate exam reference from prefix in config
     exam_ref_prefix = config.get("results", {}).get("exam_ref_prefix", "")
+
     if exam_ref_prefix:
         assessment.exam_ref = f"{exam_ref_prefix}{assessment.id}"
 
@@ -2104,6 +2164,7 @@ def download_certificate(
     )
 
     assessment = db.get(Assessment, assessment_id)
+
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
 
@@ -2125,10 +2186,12 @@ def download_certificate(
         .scalars()
         .first()
     )
+
     if not config_row:
         raise HTTPException(500, "Config not found for assessment")
 
     config = config_row.config_yaml
+
     if not config.get("results", {}).get("certificate_download"):
         raise HTTPException(404, "Certificates not enabled for this bank")
 
@@ -2136,6 +2199,7 @@ def download_certificate(
     bg: Path | None = None
     tmp_bg: Path | None = None
     bank_path_str = settings.TEACHING_QUESTION_BANK_PATH
+
     if bank_path_str:
         from app.features.teaching.storage import resolve_local_bank
 
@@ -2170,6 +2234,7 @@ def download_certificate(
 
     # Lazily generate exam_ref for assessments completed before the feature
     exam_ref = assessment.exam_ref
+
     if not exam_ref:
         prefix = config.get("results", {}).get("exam_ref_prefix", "")
         if prefix:
@@ -2195,6 +2260,7 @@ def download_certificate(
         tmp_bg.unlink(missing_ok=True)
 
     filename = f"certificate-{assessment.question_bank_id}-{assessment.id}.pdf"
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -2234,14 +2300,17 @@ def list_items(
     stmt = select(QuestionBankItem).where(
         QuestionBankItem.org_unit_id == org_id
     )
+
     if question_bank_id:
         stmt = stmt.where(
             QuestionBankItem.question_bank_id == question_bank_id
         )
+
     stmt = stmt.order_by(
         QuestionBankItem.question_bank_id,
         QuestionBankItem.bank_version,
     )
+
     return list(db.execute(stmt).scalars().all())
 
 
@@ -2259,6 +2328,7 @@ def _resolve_bank_path(bank_id: str) -> Path:
         raise HTTPException(400, "Invalid bank_id")
 
     base = settings.TEACHING_QUESTION_BANK_PATH
+
     if not base:
         raise HTTPException(
             400,
@@ -2266,8 +2336,10 @@ def _resolve_bank_path(bank_id: str) -> Path:
         )
 
     resolved = resolve_local_bank(base, bank_id)
+
     if not resolved:
         raise HTTPException(404, f"Question bank '{bank_id}' not found")
+
     return resolved
 
 
@@ -2284,6 +2356,7 @@ def _resolve_bank_path_or_gcs(bank_id: str) -> tuple[Path, bool]:
 
         # Try local path first
     base = settings.TEACHING_QUESTION_BANK_PATH
+
     if base:
         resolved = resolve_local_bank(base, bank_id)
         if resolved:
@@ -2291,6 +2364,7 @@ def _resolve_bank_path_or_gcs(bank_id: str) -> tuple[Path, bool]:
 
             # Fall back to GCS
     bucket = settings.TEACHING_GCS_BUCKET
+
     if bucket:
         try:
             bank_dir = download_bank_from_gcs(bucket, bank_id)
@@ -2317,8 +2391,10 @@ def _build_image_inventory(
     from app.config import settings
 
     bucket = settings.TEACHING_GCS_BUCKET
+
     if not bucket:
         return None
+
     return list_bank_images_in_gcs(bucket, bank_id)
 
 
@@ -2338,10 +2414,12 @@ def validate_items(
     from app.features.teaching.sync import sync_question_bank
 
     bank_id = body.get("bank_id", "")
+
     if not bank_id:
         raise HTTPException(400, "bank_id is required")
 
     bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
+
     try:
         org_id = _get_user_org_id(user, db)
         inventory = _build_image_inventory(bank_id, is_temp)
@@ -2390,10 +2468,12 @@ def sync_items(
     from app.features.teaching.sync import sync_question_bank
 
     bank_id = body.get("bank_id", "")
+
     if not bank_id:
         raise HTTPException(400, "bank_id is required")
 
     bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
+
     try:
         org_id = _get_user_org_id(user, db)
         inventory = _build_image_inventory(bank_id, is_temp)
@@ -2441,9 +2521,12 @@ def list_results(
         Assessment.org_unit_id == org_id,
         Assessment.completed_at.isnot(None),
     )
+
     if question_bank_id:
         stmt = stmt.where(Assessment.question_bank_id == question_bank_id)
+
     stmt = stmt.order_by(Assessment.completed_at.desc())
+
     return list(db.execute(stmt).scalars().all())
 
 
@@ -2484,6 +2567,7 @@ def create_media_upload_url(
     # the fault that is actually theirs.
     ext = Path(body.original_filename).suffix.lower()
     expected = ALLOWED_MEDIA_TYPES.get(ext)
+
     if expected is None:
         allowed = ", ".join(sorted(ALLOWED_MEDIA_TYPES))
         raise HTTPException(400, f"Unsupported file type (allowed: {allowed})")
@@ -2501,11 +2585,14 @@ def create_media_upload_url(
     # The org_unit records which one, because the objects already written
     # are under the organisation id the org_unit used to have.
     storage_prefix_id = media_prefix_of(db, org_id)
+
     if storage_prefix_id is None:
         raise HTTPException(404, "Module not found")
+
     asset_id = uuid.uuid4().hex
 
     bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
+
     if not bucket:
         # Development: no bucket, so the bytes come through this API to
         # the module's own learning/ directory instead. The frontend
@@ -2552,6 +2639,7 @@ def create_media_upload_url(
         module_id,
         asset_id,
     )
+
     return MediaUploadUrlOut(upload_url=url, asset_id=asset_id)
 
 
@@ -2600,6 +2688,7 @@ def get_module_media(
             stalled=progress.stalled,
             is_final=progress.is_final,
         )
+
         return out
 
     return ModuleMediaOut(
@@ -2782,6 +2871,7 @@ def unlink_module_media(
         media_key,
         link.asset_id,
     )
+
     return Response(status_code=204)
 
 
@@ -2796,6 +2886,7 @@ def list_syncs(
 ) -> list[QuestionBankSync]:
     """List sync history for the educator's org."""
     org_id = _get_user_org_id(user, db)
+
     return list(
         db.execute(
             select(QuestionBankSync)
@@ -2835,10 +2926,12 @@ def list_delegate_modules(
     is in title order.
     """
     caller_org_ids = get_member_org_unit_ids(db, user.id)
+
     if not caller_org_ids:
         return []
 
     served: dict[str, tuple[int, int]] = {}
+
     for status in db.execute(
         select(QuestionBankOrgStatus).where(
             QuestionBankOrgStatus.org_unit_id.in_(caller_org_ids),
@@ -2855,6 +2948,7 @@ def list_delegate_modules(
         return []
 
     titles: dict[str, str] = {}
+
     for config in db.execute(
         select(QuestionBankConfig).where(
             QuestionBankConfig.org_unit_id.in_(caller_org_ids),
@@ -2908,6 +3002,7 @@ def list_delegates(
     # not reach: this route lists the people *below* the caller, so a
     # trainee reaching up via a site link must not thereby list its staff.
     caller_org_ids = get_member_org_unit_ids(db, user.id)
+
     if not caller_org_ids:
         return []
 
@@ -2932,6 +3027,7 @@ def list_delegates(
     )
 
     member_ids = org_member_ids | site_member_ids
+
     # Listing every member, the caller leaves themselves out: they are
     # looking at the people below them. Asked about one module, the list
     # is of who has attempted it, and an admin who sat it is one of them.
@@ -2958,6 +3054,7 @@ def list_delegates(
     }
 
     user_ids = list(users_map.keys())
+
     if not user_ids:
         return []
 
@@ -2982,6 +3079,7 @@ def list_delegates(
 
     latest_by_user: dict[int, Assessment] = {}
     all_by_user: dict[int, list[Assessment]] = {}
+
     for a in assessments:
         all_by_user.setdefault(a.user_id, []).append(a)
         if a.user_id not in latest_by_user:
@@ -2989,6 +3087,7 @@ def list_delegates(
 
             # Get site and clinical lead info for each delegate
     site_info: dict[int, tuple[str | None, str | None]] = {}
+
     for uid in user_ids:
         site_row = db.execute(
             select(OrgUnit.id, OrgUnit.name)
@@ -3032,6 +3131,7 @@ def list_delegates(
 
         # Build response
     delegates: list[DelegateOut] = []
+
     for uid in user_ids:
         u = users_map.get(uid)
         if not u:
@@ -3120,12 +3220,14 @@ def list_admin_banks(
 
     # De-duplicate: keep only the latest version per bank_id
     seen: dict[str, QuestionBankConfig] = {}
+
     for c in db_configs:
         if c.question_bank_id not in seen:
             seen[c.question_bank_id] = c
 
             # Count items per bank
     item_counts: dict[str, int] = {}
+
     for bank_id, cfg in seen.items():
         count = db.execute(
             select(QuestionBankItem.id).where(
@@ -3153,6 +3255,7 @@ def list_admin_banks(
     # GCS banks
     gcs_bank_ids: set[str] = set()
     bucket = settings.TEACHING_GCS_BUCKET
+
     if bucket:
         try:
             gcs_bank_ids = set(list_banks_in_gcs(bucket))
@@ -3206,6 +3309,7 @@ def sync_all_banks(
 
     # Discover bank IDs
     bank_ids: list[str] = []
+
     if bucket:
         try:
             bank_ids = list_banks_in_gcs(bucket)
@@ -3331,6 +3435,7 @@ def update_settings(
 
     db.flush()
     db.refresh(settings_row)
+
     return settings_row
 
 
@@ -3350,8 +3455,10 @@ def get_settings(
             TeachingOrgSettings.org_unit_id == org_id
         )
     ).scalar_one_or_none()
+
     if not settings_row:
         raise HTTPException(404, "Teaching settings not found")
+
     return settings_row
 
     # ------------------------------------------------------------------
@@ -3385,6 +3492,7 @@ def get_admin_bank_detail(
         .scalars()
         .first()
     )
+
     if not config_row:
         raise HTTPException(404, "Question bank not found")
 
@@ -3513,6 +3621,7 @@ def list_bank_organisations(
     }
 
     rows: list[BankOrgRow] = []
+
     for place in orgs:
         status = statuses.get(place.id)
         rows.append(
@@ -3572,6 +3681,7 @@ def _promote_bank_version(
         .scalars()
         .first()
     )
+
     if not target:
         raise HTTPException(
             404, f"Version {body.version} not found for this question bank"
@@ -3587,6 +3697,7 @@ def _promote_bank_version(
         .scalars()
         .first()
     )
+
     if not status_row:
         raise HTTPException(
             404, "This question bank is not set up for your organisation"
@@ -3673,6 +3784,7 @@ def _update_bank_org_settings(
     # bank is the operation this protects: it locks candidates out of an
     # assessment they are part-way through.
     org_org_unit_ids = get_member_org_unit_ids(db, user.id)
+
     if org_unit_id not in org_org_unit_ids:
         raise HTTPException(
             403, "You cannot change settings for that organisation"
@@ -3696,6 +3808,7 @@ def _update_bank_org_settings(
         .scalars()
         .first()
     )
+
     if not config_row:
         raise HTTPException(404, "Question bank not found")
 
@@ -3742,6 +3855,7 @@ def _update_bank_org_settings(
 
     db.flush()
     db.refresh(status_row)
+
     return QuestionBankOrgSettingsOut(
         question_bank_id=bank_id,
         is_live=status_row.is_live,
@@ -3795,10 +3909,12 @@ async def upload_media_content_locally(
         raise HTTPException(404, "Not found")
 
     base_path = settings.TEACHING_QUESTION_BANK_PATH
+
     if not base_path:
         raise HTTPException(503, "Media upload is not configured")
 
     content_type = request.headers.get("content-type", "")
+
     if content_type not in ALLOWED_MEDIA_TYPES.values():
         allowed = ", ".join(sorted(set(ALLOWED_MEDIA_TYPES.values())))
         raise HTTPException(400, f"Unsupported type (allowed: {allowed})")
@@ -3810,6 +3926,7 @@ async def upload_media_content_locally(
         raise HTTPException(400, "Invalid asset id")
 
     module_dir = resolve_module_dir(base_path, module_id)
+
     if not module_dir:
         raise HTTPException(404, "Module not found")
 
@@ -3837,6 +3954,7 @@ async def upload_media_content_locally(
     # not a partial success to resume - it is a file that would play as
     # a broken one if anything later picked it up by name.
     written = 0
+
     try:
         with destination.open("wb") as handle:
             async for chunk in request.stream():
@@ -3861,6 +3979,7 @@ async def upload_media_content_locally(
         asset_id,
         written,
     )
+
     return Response(status_code=204)
 
 
@@ -3884,12 +4003,14 @@ def _delete_local_media_object(
     from app.features.teaching.storage import ALLOWED_MEDIA_TYPES
 
     base_path = settings.TEACHING_QUESTION_BANK_PATH
+
     if not base_path:
         return
     if not _SAFE_ASSET_ID.fullmatch(asset_id):
         return
 
     module_dir = resolve_module_dir(base_path, module_id)
+
     if not module_dir:
         return
 
@@ -3953,6 +4074,7 @@ def delete_media_asset(
     db.flush()
 
     bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
+
     if bucket:
         # The row remembers which organisation's prefix its object was
         # written under, which is the only thing that can say where the
@@ -3974,6 +4096,7 @@ def delete_media_asset(
         module_id,
         asset_id,
     )
+
     return Response(status_code=204)
 
 
@@ -3993,8 +4116,10 @@ def _caption_link_or_404(
             ModuleMediaLink.asset_id == asset_id,
         )
     ).scalar_one_or_none()
+
     if link is None:
         raise HTTPException(404, "No such media asset")
+
     return link
 
 
@@ -4026,6 +4151,7 @@ def get_media_captions(
     link = _caption_link_or_404(db, org_id, module_id, asset_id)
 
     bucket = settings.TEACHING_VIDEOS_BUCKET
+
     if not bucket:
         # Development, where the caption job has never run and there is
         # no processed bucket to read. Reported as "none yet" rather
@@ -4076,12 +4202,14 @@ def put_media_captions(
     link = _caption_link_or_404(db, org_id, module_id, asset_id)
 
     text = body.webvtt.strip()
+
     if not text.startswith("WEBVTT"):
         raise HTTPException(
             400, "Captions must be WebVTT, beginning with the line WEBVTT"
         )
 
     bucket = settings.TEACHING_VIDEOS_BUCKET
+
     if not bucket:
         raise HTTPException(
             503, "No video bucket configured; captions cannot be saved"

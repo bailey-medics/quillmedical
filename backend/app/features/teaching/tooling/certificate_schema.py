@@ -74,9 +74,12 @@ def parse_hex_colour(value: str) -> tuple[float, float, float]:
     value that slipped past validation still renders something sane.
     """
     m = _HEX_RE.match(value)
+
     if not m:
         return _FALLBACK_RGB
+
     h = m.group(1)
+
     return (
         int(h[0:2], 16) / 255,
         int(h[2:4], 16) / 255,

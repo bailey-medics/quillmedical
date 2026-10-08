@@ -172,6 +172,7 @@ def test_user(db_session: Session) -> User:
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
+
     return user
 
 
@@ -182,6 +183,7 @@ def clinician_role(db_session: Session) -> Role:
     db_session.add(role)
     db_session.commit()
     db_session.refresh(role)
+
     return role
 
 
@@ -206,6 +208,7 @@ def test_clinician(db_session: Session, clinician_role: Role) -> User:
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
+
     return user
 
 
@@ -219,6 +222,7 @@ def authenticated_client(
         json={"username": "testuser", "password": "TestPassword123!"},
     )
     assert response.status_code == 200
+
     return test_client
 
 
@@ -235,6 +239,7 @@ def authenticated_clinician_client(
         },
     )
     assert response.status_code == 200
+
     return test_client
 
 
@@ -259,6 +264,7 @@ def test_admin(db_session: Session) -> User:
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
+
     return user
 
 
@@ -276,8 +282,10 @@ def authenticated_admin_client(
     )
     assert response.status_code == 200
     csrf = test_client.cookies.get("XSRF-TOKEN")
+
     if csrf:
         test_client.headers["X-CSRF-Token"] = csrf
+
     return test_client
 
 
@@ -303,6 +311,7 @@ def test_patient_manager(db_session: Session) -> User:
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
+
     return user
 
 
@@ -323,8 +332,10 @@ def authenticated_patient_manager_client(
     )
     assert response.status_code == 200
     csrf = test_client.cookies.get("XSRF-TOKEN")
+
     if csrf:
         test_client.headers["X-CSRF-Token"] = csrf
+
     return test_client
 
 
@@ -349,6 +360,7 @@ def test_superadmin(db_session: Session) -> User:
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
+
     return user
 
 
@@ -369,6 +381,8 @@ def authenticated_superadmin_client(
     )
     assert response.status_code == 200
     csrf = test_client.cookies.get("XSRF-TOKEN")
+
     if csrf:
         test_client.headers["X-CSRF-Token"] = csrf
+
     return test_client

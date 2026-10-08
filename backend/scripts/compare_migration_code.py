@@ -121,6 +121,7 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_OK
 
     print(difference, file=sys.stderr)
+
     return EXIT_CODE_CHANGED
 
 

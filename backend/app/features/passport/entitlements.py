@@ -1,4 +1,3 @@
-# backend/app/features/passport/entitlements.py
 """Resolving until when somebody may write to their passport.
 
 ``passport_write`` is the competency, and a ``user_competency`` row grants
@@ -47,6 +46,8 @@ def passport_write_ends_on(db: Session, user_id: int) -> datetime | None:
             | (UserCompetency.ends_on > now),
         )
     ).all()
+
     if not ends or any(end is None for end in ends):
         return None
+
     return max(end for end in ends if end is not None)

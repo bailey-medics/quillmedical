@@ -1,4 +1,3 @@
-# backend/app/features/teaching/enrolment.py
 """Who is enrolled on which module.
 
 The third of teaching's layers: a competency says somebody may take
@@ -140,6 +139,7 @@ def enrol(
         )
     )
     db.flush()
+
     return True
 
 
@@ -168,9 +168,11 @@ def withdraw(
             )
         ).all()
     )
+
     for row in rows:
         row.ends_on = now
     db.flush()
+
     return len(rows)
 
 
@@ -249,6 +251,7 @@ def set_end(
         for row in current_enrolments(db, user_id, org_unit_id=org_unit_id)
         if row.question_bank_id == question_bank_id
     ]
+
     if not rows or all(_same_moment(row.ends_on, ends_on) for row in rows):
         return False
     withdraw(
@@ -263,4 +266,5 @@ def set_end(
         granted_by=granted_by,
         ends_on=ends_on,
     )
+
     return True

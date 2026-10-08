@@ -31,6 +31,7 @@ def _git(repo: Path, *args: str) -> str:
         text=True,
         check=True,
     )
+
     return result.stdout.strip()
 
 

@@ -363,6 +363,7 @@ class TestModuleMediaLink:
         org = OrgUnit(name=name, type="hospital_team")
         db.add(org)
         db.flush()
+
         return org
 
     def _link(self, db: Session, org, key: str, asset: str):
@@ -387,6 +388,7 @@ class TestModuleMediaLink:
             uploaded_at=datetime.now(UTC),
         )
         db.add(link)
+
         return link
 
     def test_a_link_records_the_uploaded_file(self, db_session: Session):

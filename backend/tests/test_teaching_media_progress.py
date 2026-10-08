@@ -35,8 +35,10 @@ def _link(**overrides: object) -> ModuleMediaLink:
         size_bytes=1024,
         uploaded_at=NOW - timedelta(minutes=5),
     )
+
     for field, value in overrides.items():
         setattr(row, field, value)
+
     return row
 
 

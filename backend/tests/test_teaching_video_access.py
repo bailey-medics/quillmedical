@@ -142,6 +142,7 @@ class TestSignCookie:
             "k",
             TEST_KEY,
         )
+
         for field in cookie.split(":"):
             _, _, value = field.partition("=")
             assert "+" not in value
@@ -227,6 +228,7 @@ class TestLocalVideoRoute:
         """
         if not self._mounted():
             pytest.skip("local video route not mounted in this environment")
+
         resp = client.get(f"/api/teaching/videos/module-1/{filename}")
         assert resp.status_code == 400
 
@@ -262,6 +264,7 @@ class TestLocalVideoRoute:
         """
         if not self._mounted():
             pytest.skip("local video route not mounted in this environment")
+
         resp = client.get("/api/teaching/videos/no-such-module/lecture.mp4")
         assert resp.status_code == 404
 
@@ -274,6 +277,7 @@ class TestLocalVideoRoute:
         """
         if not self._mounted():
             pytest.skip("local video route not mounted in this environment")
+
         resp = client.get(f"/api/teaching/videos/no-such-module/lecture{ext}")
         assert resp.status_code == 404
 

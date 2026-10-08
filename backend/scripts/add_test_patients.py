@@ -18,6 +18,7 @@ FHIR_URL = os.getenv("FHIR_SERVER_URL", "http://localhost/api/fhir")
 def create_fhir_client():
     """Create FHIR client."""
     settings = {"app_id": "quill_backend", "api_base": FHIR_URL}
+
     return client.FHIRClient(settings=settings)
 
 

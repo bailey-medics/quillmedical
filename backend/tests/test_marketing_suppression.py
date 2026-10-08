@@ -31,6 +31,7 @@ def amazon(monkeypatch):
     boto3 = MagicMock()
     boto3.client.return_value = client
     monkeypatch.setattr(suppression, "boto3", boto3)
+
     return boto3
 
 
@@ -41,8 +42,10 @@ def _page(*entries, token=None):
             for address, reason in entries
         ]
     }
+
     if token:
         page["NextToken"] = token
+
     return page
 
 
@@ -52,6 +55,7 @@ def _member(db_session, name, *, subscribed=True):
     )
     db_session.add(member)
     db_session.commit()
+
     return member
 
 
@@ -65,6 +69,7 @@ def _user(db_session, name, *, wants=True):
     )
     db_session.add(user)
     db_session.commit()
+
     return user
 
 

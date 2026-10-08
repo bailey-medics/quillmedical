@@ -76,6 +76,7 @@ def _require_env(*names: str) -> dict[str, str]:
     """Read required environment variables, exiting on any missing."""
     values: dict[str, str] = {}
     missing: list[str] = []
+
     for name in names:
         val = os.environ.get(name, "").strip()
         if not val:
@@ -89,6 +90,7 @@ def _require_env(*names: str) -> dict[str, str]:
             file=sys.stderr,
         )
         sys.exit(1)
+
     return values
 
 
@@ -119,6 +121,7 @@ def _report_complete(
     """
     url = os.environ.get("TRANSCODE_CALLBACK_URL", "").strip()
     token = os.environ.get("TRANSCODE_CALLBACK_TOKEN", "").strip()
+
     if not url or not token:
         print(
             "Callback not configured; skipping completion report. "
@@ -182,6 +185,7 @@ def _run_ffmpeg(args: list[str]) -> None:
         text=True,
         check=False,
     )
+
     if result.returncode != 0:
         msg = f"ffmpeg failed ({result.returncode}): {result.stderr.strip()}"
         raise RuntimeError(msg)
@@ -276,6 +280,7 @@ def transcode() -> int:
     processed_bucket = client.bucket(env["TEACHING_VIDEOS_BUCKET"])
 
     source_blob = source_bucket.blob(source_path)
+
     if not source_blob.exists():
         print(
             f"ERROR: No source object at {source_path}",
@@ -364,6 +369,7 @@ def transcode() -> int:
     _report_complete(org_id, module_id, asset_id, written)
 
     print(f"✓ Transcoded {asset_id} to {len(outputs)} outputs")
+
     return 0
 
 

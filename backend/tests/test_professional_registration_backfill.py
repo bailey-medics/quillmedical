@@ -67,6 +67,7 @@ def _user(name: str, registrations: str | None) -> int:
                 "raw": registrations,
             },
         ).scalar_one()
+
     return int(user_id)
 
 
@@ -128,6 +129,7 @@ def test_empty_null_and_malformed_copy_nothing(
 def test_a_user_with_rows_already_is_skipped(before_backfill: Config) -> None:
     """The application's row is already the copy."""
     user_id = _user("dual_written", '{"GMC": "1234567"}')
+
     with core_engine.begin() as conn:
         conn.execute(
             text("""

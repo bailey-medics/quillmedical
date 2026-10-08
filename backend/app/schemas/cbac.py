@@ -1,4 +1,3 @@
-# backend/app/schemas/cbac.py
 """Pydantic schemas for CBAC API endpoints."""
 
 from pydantic import BaseModel, ConfigDict

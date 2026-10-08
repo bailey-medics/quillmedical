@@ -112,4 +112,5 @@ def subscribe(
             PushSubscriptionModel.user_id == current_user.id
         )
     )
+
     return SubscribeOut(ok=True, count=count or 0)

@@ -38,11 +38,15 @@ def mask_email(address: str) -> str:
         The masked address, or ``***`` for anything that is not one.
     """
     local, at, domain = address.strip().partition("@")
+
     if not at or not local or not domain:
         return "***"
+
     name, dot, ending = domain.rpartition(".")
+
     if not dot or not name:
         return f"{local[0]}***@***"
+
     return f"{local[0]}***@{name[0]}***.{ending}"
 
 
@@ -228,6 +232,7 @@ def _checked_headers(headers: Mapping[str, str] | None) -> dict[str, str]:
             name, or if it is one ``send_email`` writes itself.
     """
     checked: dict[str, str] = {}
+
     for name, value in (headers or {}).items():
         if not name or not all(c.isalnum() or c == "-" for c in name):
             raise ValueError(f"Not a header name: {name!r}")
@@ -236,6 +241,7 @@ def _checked_headers(headers: Mapping[str, str] | None) -> dict[str, str]:
         if "\r" in value or "\n" in value:
             raise ValueError(f"Line break in the {name} header")
         checked[name] = value
+
     return checked
 
 
@@ -270,6 +276,7 @@ def _from_header(
             header or another address.
     """
     address = settings.EMAIL_FROM if from_address is None else from_address
+
     if from_address is not None and (
         address.count("@") != 1 or _UNSAFE_IN_ADDRESS & set(address)
     ):
@@ -278,6 +285,7 @@ def _from_header(
         return address
     if not from_name.strip() or _UNSAFE_IN_NAME & set(from_name):
         raise ValueError(f"Unsafe sender name: {from_name!r}")
+
     return f'"{from_name}" <{address}>'
 
 
@@ -325,6 +333,7 @@ def _mime_message(
     message["From"] = sender
     message["To"] = to
     message["Subject"] = subject
+
     if reply_to is not None:
         message["Reply-To"] = reply_to
     for name, value in (headers or {}).items():
@@ -370,6 +379,7 @@ def _send_with_ses(*, sender: str, to: str, raw_message: bytes) -> bool:
     """
     key_id = settings.SES_ACCESS_KEY_ID
     secret = settings.SES_SECRET_ACCESS_KEY
+
     if not key_id or not secret:
         logger.error(
             "Cannot send email: SES_ACCESS_KEY_ID and "
@@ -480,6 +490,7 @@ def send_email(
             headers=extra_headers,
         ),
     )
+
     if not sent:
         return
     _record_send(to)

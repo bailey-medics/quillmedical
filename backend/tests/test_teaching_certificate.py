@@ -71,6 +71,7 @@ class TestGenerateCertificatePdf:
         img = Image.new("RGB", (800, 1132), color=(100, 50, 150))
         path = tmp_path / "bg.png"
         img.save(path)
+
         return path
 
     def test_returns_valid_pdf_bytes(self, background: Path) -> None:
@@ -254,6 +255,7 @@ class TestWrapText:
     @pytest.fixture()
     def _canvas(self) -> canvas.Canvas:
         buf = io.BytesIO()
+
         return canvas.Canvas(buf)
 
     def test_short_text_returns_single_line(
@@ -421,11 +423,13 @@ class TestParseCertificateStyleValidation:
 class TestStyleModelsAreImmutable:
     def test_text_field_style_is_frozen(self) -> None:
         fs = TextFieldStyle()
+
         with pytest.raises(ValidationError):
             fs.size = 20
 
     def test_certificate_style_is_frozen(self) -> None:
         style = CertificateStyle()
+
         with pytest.raises(ValidationError):
             style.margin = 99
 

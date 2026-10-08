@@ -32,6 +32,7 @@ def _org(db: Session, name: str = "Trust") -> OrgUnit:
     db.add(org)
     db.commit()
     db.refresh(org)
+
     return org
 
 
@@ -40,6 +41,7 @@ def _under(db: Session, parent_id: int | None, name: str) -> OrgUnit:
     db.add(site)
     db.commit()
     db.refresh(site)
+
     return site
 
 

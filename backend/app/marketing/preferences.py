@@ -65,6 +65,7 @@ def set_marketing_preference(
     validate_marketing_preference_source(source)
 
     changed = user.marketing_emails != wants
+
     if not changed and not first_answer:
         return False
 
@@ -78,4 +79,5 @@ def set_marketing_preference(
     )
     user.marketing_emails = wants
     db.flush()
+
     return changed

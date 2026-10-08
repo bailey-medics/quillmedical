@@ -38,6 +38,7 @@ def org(db_session: Session) -> OrgUnit:
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
+
     return organisation
 
 

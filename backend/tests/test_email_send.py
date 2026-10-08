@@ -37,6 +37,7 @@ def _sent_message(mock_boto3: MagicMock) -> EmailMessage:
     raw = send.call_args.kwargs["Content"]["Raw"]["Data"]
     parsed = message_from_bytes(raw, policy=policy.default)
     assert isinstance(parsed, EmailMessage)
+
     return parsed
 
 

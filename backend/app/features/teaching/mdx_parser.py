@@ -85,6 +85,7 @@ def _strip_frontmatter(content: str) -> str:
         end = content.find("---", 3)
         if end != -1:
             return content[end + 3 :].strip()
+
     return content.strip()
 
 
@@ -95,6 +96,7 @@ def _extract_callout(body: str) -> tuple[str, str | None, str | None]:
     """
     pattern = CALLOUT_PATTERN
     match = re.search(pattern, body, re.DOTALL)
+
     if not match:
         return body, None, None
 
@@ -102,6 +104,7 @@ def _extract_callout(body: str) -> tuple[str, str | None, str | None]:
     callout_body = match.group(2).strip()
     remaining = body[: match.start()] + body[match.end() :]
     remaining = remaining.strip()
+
     return remaining, callout_type, callout_body
 
 
@@ -118,6 +121,7 @@ def _extract_youtube(
     """
     pattern = YOUTUBE_PATTERN
     match = re.search(pattern, body)
+
     if not match:
         return body, None, None
 
@@ -125,6 +129,7 @@ def _extract_youtube(
     duration = int(match.group(2)) if match.group(2) else None
     remaining = body[: match.start()] + body[match.end() :]
     remaining = remaining.strip()
+
     return remaining, youtube_id, duration
 
 
@@ -148,6 +153,7 @@ def _extract_video(
     Returns (remaining_body, video_ref, duration_seconds).
     """
     match = re.search(VIDEO_PATTERN, body)
+
     if not match:
         return body, None, None
 
@@ -155,6 +161,7 @@ def _extract_video(
     duration = int(match.group(2)) if match.group(2) else None
     remaining = body[: match.start()] + body[match.end() :]
     remaining = remaining.strip()
+
     return remaining, video_ref, duration
 
 
@@ -171,6 +178,7 @@ def _extract_figure(
     """
     pattern = FIGURE_PATTERN
     match = re.search(pattern, body)
+
     if not match:
         return body, None, None, None, None
 
@@ -189,6 +197,7 @@ def _extract_figure(
 
     remaining = body[: match.start()] + body[match.end() :]
     remaining = remaining.strip()
+
     return remaining, src, alt, caption, position
 
 
@@ -280,6 +289,7 @@ def validate_mdx(content: str) -> list[str]:
     errors: list[str] = []
 
     stripped = _strip_frontmatter(content)
+
     if not stripped.strip():
         return ["file is empty"]
 
@@ -316,6 +326,7 @@ def validate_mdx(content: str) -> list[str]:
     completes_callout = (
         re.search(CALLOUT_PATTERN, stripped, re.DOTALL) is not None
     )
+
     if opens_callout and not completes_callout:
         errors.append(
             "<Callout> is not closed with </Callout>, so it would be dropped"
@@ -440,6 +451,7 @@ def parse_mdx_to_slides(content: str) -> list[ParsedSlide]:
 def load_module_yaml(module_dir: Path) -> dict[str, Any]:
     """Load and return the module.yaml metadata."""
     path = module_dir / "module.yaml"
+
     if not path.is_file():
         return {}
     with open(path) as f:
@@ -449,7 +461,10 @@ def load_module_yaml(module_dir: Path) -> dict[str, Any]:
 def load_learning_content(module_dir: Path) -> list[ParsedSlide]:
     """Load and parse learning/content.mdx from a module directory."""
     content_path = module_dir / "learning" / "content.mdx"
+
     if not content_path.is_file():
         return []
+
     content = content_path.read_text(encoding="utf-8")
+
     return parse_mdx_to_slides(content)

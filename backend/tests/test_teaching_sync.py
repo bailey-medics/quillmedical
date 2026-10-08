@@ -30,6 +30,7 @@ def organisation(db_session: Session) -> OrgUnit:
     db_session.add(org)
     db_session.commit()
     db_session.refresh(org)
+
     return org
 
 
@@ -44,6 +45,7 @@ def admin_user(db_session: Session) -> User:
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
+
     return user
 
 
@@ -81,6 +83,7 @@ def _make_bank(tmp_path: Path, *, item_count: int = 2) -> Path:
             yaml.dump({"diagnosis": "adenoma"})
         )
         (q_dir / "wli.png").write_bytes(b"fake")
+
     return bank
 
 
@@ -224,6 +227,7 @@ class TestSyncQuestionBank:
     ) -> None:
         """Sync succeeds with GCS image inventory (no local images)."""
         bank = _make_bank(tmp_path, item_count=2)
+
         # Remove local images to simulate GCS download (YAML only)
         for q_dir in bank.iterdir():
             if q_dir.is_dir():
@@ -257,6 +261,7 @@ class TestSyncQuestionBank:
             .scalars()
             .all()
         )
+
         for item in items:
             assert item.images == [{"key": "wli.png"}]
 
@@ -692,6 +697,7 @@ class TestSyncServesTheNewestVersion:
         )
         db_session.add(status)
         db_session.commit()
+
         return status
 
     def test_a_new_version_is_served_at_once(

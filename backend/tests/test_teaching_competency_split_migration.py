@@ -74,6 +74,7 @@ def _user(conn: Connection, name: str, profession: str) -> int:
             "profession": profession,
         },
     ).scalar_one()
+
     return int(user_id)
 
 
@@ -87,6 +88,7 @@ def _org(conn: Connection) -> int:
         """),
         {"name": f"{PREFIX}org"},
     ).scalar_one()
+
     return int(org_id)
 
 

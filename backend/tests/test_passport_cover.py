@@ -29,6 +29,7 @@ def trust(db_session: Session) -> OrgUnit:
     db_session.add(org)
     db_session.commit()
     db_session.refresh(org)
+
     return org
 
 
@@ -39,6 +40,7 @@ def oncology(db_session: Session, trust: OrgUnit) -> OrgUnit:
     db_session.add(OrgUnitFeature(org_unit=site, feature_key="passport"))
     db_session.commit()
     db_session.refresh(site)
+
     return site
 
 
@@ -63,6 +65,7 @@ def _person(
         add_org_unit_member(db, unit.id, user.id, capacity)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -70,11 +73,13 @@ def _can_write(db: Session, user: User) -> bool:
     db.expire_all()
     fresh = db.get(User, user.id)
     assert fresh is not None
+
     return "passport_write" in fresh.get_final_competencies()
 
 
 def _cover_rows(db: Session, user: User) -> list[UserCompetency]:
     db.expire_all()
+
     return list(
         db.scalars(
             select(UserCompetency).where(
@@ -223,6 +228,7 @@ class TestJoiningAndLeaving:
         _switch(
             authenticated_superadmin_client, oncology, "passport_write", True
         )
+
         return authenticated_superadmin_client
 
     def test_a_member_of_staff_added_afterwards_is_granted(

@@ -86,6 +86,7 @@ def set_my_marketing_preference(
         source="settings",
         wording_version=MARKETING_WORDING_VERSION,
     )
+
     return MarketingPreferenceOut(
         marketing_emails=current_user.marketing_emails
     )
@@ -127,6 +128,7 @@ def _unsubscribe_target(
     """
     target: User | NewsletterSubscriber | None = None
     user_id = verify_marketing_unsubscribe_token(token)
+
     if user_id is not None:
         target = db.get(User, user_id)
     else:
@@ -135,6 +137,7 @@ def _unsubscribe_target(
             target = db.get(NewsletterSubscriber, subscriber_id)
     if target is None:
         raise HTTPException(status_code=404, detail="Not found.")
+
     return target
 
 
@@ -145,6 +148,7 @@ def _answer(target: User | NewsletterSubscriber) -> MarketingUnsubscribeOut:
         if isinstance(target, User)
         else target.subscribed
     )
+
     return MarketingUnsubscribeOut(
         email=mask_email(target.email), marketing_emails=wants
     )
@@ -153,6 +157,7 @@ def _answer(target: User | NewsletterSubscriber) -> MarketingUnsubscribeOut:
 def _is_json(request: Request) -> bool:
     """Whether a request says its body is JSON."""
     content_type = request.headers.get("content-type", "")
+
     return content_type.split(";")[0].strip().lower() == "application/json"
 
 
@@ -187,6 +192,7 @@ def _wanted_by_link(request: Request, raw: bytes) -> bool:
         raise HTTPException(
             status_code=422, detail="Invalid request body."
         ) from None
+
     return payload.wants_marketing
 
 
@@ -242,10 +248,12 @@ def use_unsubscribe_link(
     """
     target = _unsubscribe_target(token, db)
     wants = _wanted_by_link(request, raw)
+
     if isinstance(target, User):
         set_marketing_preference(
             db, target, wants=wants, source="unsubscribe_link"
         )
     else:
         set_subscribed(target, wants=wants)
+
     return _answer(target)

@@ -5,6 +5,8 @@ Covers:
   BaseProfessionEntry with no errors
 - get_profession_details / get_profession_base_competencies lookups
 - resolve_user_competencies' union-then-remove formula
+- competencies_kept_across_profession_change loses nothing and repeats
+  nothing across a profession change, and changes nothing itself
 - BaseProfessionEntry rejects malformed data (extra fields)
 """
 
@@ -17,6 +19,7 @@ from app.cbac.base_professions import (
     BASE_PROFESSIONS,
     PROFESSION_IDS,
     BaseProfessionEntry,
+    competencies_kept_across_profession_change,
     get_profession_base_competencies,
     get_profession_details,
     resolve_user_competencies,
@@ -309,3 +312,55 @@ def test_the_safety_clinical_lead_is_a_label() -> None:
     assert get_profession_base_competencies(
         "safety_clinical_lead"
     ) == get_profession_base_competencies("safety_officer")
+
+
+def test_a_patient_made_a_healthcare_assistant_keeps_their_own_record() -> (
+    None
+):
+    """The old profession's competency is carried, not replaced."""
+    outside = competencies_kept_across_profession_change(
+        [],
+        old_profession="patient",
+        new_profession="healthcare_assistant",
+    )
+
+    assert outside == ["access_own_patient_records"]
+
+
+def test_what_the_new_profession_gives_is_not_listed_again() -> None:
+    """Shared competencies come through the profession, not as extras."""
+    shared = set(get_profession_base_competencies("healthcare_assistant"))
+    shared &= set(get_profession_base_competencies("consultant"))
+    assert shared, "the two professions no longer overlap; pick another pair"
+
+    outside = competencies_kept_across_profession_change(
+        [],
+        old_profession="healthcare_assistant",
+        new_profession="consultant",
+    )
+
+    assert not shared & set(outside)
+
+
+def test_what_they_already_held_outside_survives_a_change() -> None:
+    """An extra held before the change is still held after it."""
+    outside = competencies_kept_across_profession_change(
+        ["manage_users"],
+        old_profession="patient",
+        new_profession="healthcare_assistant",
+    )
+
+    assert outside == ["access_own_patient_records", "manage_users"]
+
+
+def test_it_changes_nothing_it_is_given() -> None:
+    """A calculation only: the caller's list is left as it was."""
+    held = ["manage_users"]
+
+    competencies_kept_across_profession_change(
+        held,
+        old_profession="patient",
+        new_profession="healthcare_assistant",
+    )
+
+    assert held == ["manage_users"]

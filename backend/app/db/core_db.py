@@ -59,6 +59,7 @@ def get_core_db() -> Generator[Session]:
         ```
     """
     db = CoreSessionLocal()
+
     try:
         yield db
         db.commit()

@@ -64,6 +64,7 @@ def _user(name: str) -> int:
                 "email": f"{PREFIX}{name}@example.test",
             },
         ).scalar_one()
+
     return int(user_id)
 
 

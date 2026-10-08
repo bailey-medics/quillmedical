@@ -29,6 +29,7 @@ def compute_required_client_generation(
         return 1
 
     true_generations: list[int] = []
+
     for file_path in sorted(compat_dir.glob("*.yaml")):
         try:
             data = yaml.safe_load(file_path.read_text())

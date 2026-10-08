@@ -23,6 +23,7 @@ MAX_LEN = 120
 def _first_tldr_bullet(lines: list[str]) -> str:
     """The first bullet beneath a TL;DR heading, or an empty string."""
     start = None
+
     for i, line in enumerate(lines):
         if re.match(r"^#{1,6}\s*TL;DR", line, re.IGNORECASE):
             start = i
@@ -37,12 +38,14 @@ def _first_tldr_bullet(lines: list[str]) -> str:
             # asterisks of a "**bold lead**" too, and the lead is the part
             # worth keeping.
             return re.sub(r"^[-*]\s+", "", stripped).strip()
+
     return ""
 
 
 def _first_prose_line(lines: list[str]) -> str:
     """The first ordinary sentence, skipping structure and code."""
     in_fence = False
+
     for line in lines:
         stripped = line.strip()
         if stripped.startswith("```"):
@@ -53,6 +56,7 @@ def _first_prose_line(lines: list[str]) -> str:
         if stripped.startswith(("#", "-", "*", ">", "|")):
             continue
         return stripped
+
     return ""
 
 
@@ -62,24 +66,29 @@ def _strip_markdown(text: str) -> str:
     text = re.sub(r"[*_`]", "", text)
     # A markdown-escaped character ("\_", "\*") keeps only the character.
     text = re.sub(r"\\(.)", r"\1", text)
+
     return " ".join(text.split())
 
 
 def summarise(message: str) -> str:
     lines = message.splitlines()
     candidate = _first_tldr_bullet(lines) or _first_prose_line(lines)
+
     if not candidate:
         return ""
 
     # "**Did the thing.** Detail follows." The lead is the summary and the
     # detail is what the TL;DR expects a reader to skip.
     bold = re.match(r"\*\*(.+?)\*\*", candidate)
+
     if bold:
         candidate = bold.group(1)
 
     candidate = _strip_markdown(candidate)
+
     if len(candidate) > MAX_LEN:
         candidate = candidate[: MAX_LEN - 1].rstrip() + "…"
+
     return candidate
 
 
@@ -92,6 +101,7 @@ def summarise_input(payload: dict) -> str:
     such as "Claude needs your permission to use Bash".
     """
     questions = (payload.get("tool_input") or {}).get("questions") or []
+
     if questions and isinstance(questions[0], dict):
         text = questions[0].get("question") or ""
     else:
@@ -100,8 +110,10 @@ def summarise_input(payload: dict) -> str:
         return ""
 
     text = _strip_markdown(text)
+
     if len(text) > MAX_LEN:
         text = text[: MAX_LEN - 1].rstrip() + "…"
+
     return text
 
 
@@ -109,6 +121,7 @@ def main() -> int:
     # "--input" summarises what Claude is waiting on rather than what it
     # finished; see summarise_input.
     waiting = "--input" in sys.argv[1:]
+
     try:
         payload = json.load(sys.stdin)
         if waiting:
@@ -120,6 +133,7 @@ def main() -> int:
             print(summary)
     except Exception:
         pass  # No summary is a fine outcome; the caller names the branch.
+
     return 0
 
 

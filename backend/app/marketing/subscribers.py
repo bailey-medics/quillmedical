@@ -37,8 +37,10 @@ def set_subscribed(subscriber: NewsletterSubscriber, *, wants: bool) -> bool:
     """
     if subscriber.subscribed == wants:
         return False
+
     subscriber.subscribed = wants
     subscriber.unsubscribed_at = None if wants else datetime.now(UTC)
+
     return True
 
 
@@ -68,6 +70,7 @@ def _move_sends(
             )
         )
     )
+
     for send in db.scalars(
         select(NewsletterSend).where(
             NewsletterSend.subscriber_id == subscriber.id
@@ -108,11 +111,13 @@ def fold_into_account(db: Session, user: User) -> bool:
     """
     if not user.email_verified:
         return False
+
     subscriber = db.scalar(
         select(NewsletterSubscriber).where(
             NewsletterSubscriber.email == user.email
         )
     )
+
     if subscriber is None:
         return False
 
@@ -124,6 +129,7 @@ def fold_into_account(db: Session, user: User) -> bool:
     _move_sends(db, subscriber, user)
     db.delete(subscriber)
     db.flush()
+
     return True
 
 
@@ -149,4 +155,5 @@ def fold_all(db: Session) -> int:
         .unique()
         .all()
     )
+
     return sum(1 for user in users if fold_into_account(db, user))

@@ -160,9 +160,12 @@ class ValidationResult:
             return "\n".join(parts)
 
         checked = f"Checked {self.modules_checked} module(s)"
+
         if self.modules_skipped:
             checked += f", skipped {self.modules_skipped} retired"
+
         parts = [f"{checked}."]
+
         if self.is_valid:
             parts.append("All valid.")
         else:
@@ -170,6 +173,7 @@ class ValidationResult:
             parts.extend(str(err) for err in self.errors)
         if self.warnings:
             parts.append(f"{len(self.warnings)} warning(s).")
+
         return "\n".join(parts)
 
 
@@ -192,6 +196,7 @@ def _files_in(
     """
     if inventory is not None:
         return set(inventory.get(key or directory.name, set()))
+
     return {f.name for f in directory.iterdir() if f.is_file()}
 
 
@@ -203,6 +208,7 @@ def _image_problem(path: Path) -> str | None:
     ``content`` package stays on pydantic and pyyaml alone.
     """
     signatures = _IMAGE_SIGNATURES.get(path.suffix.lower())
+
     if signatures is None:
         return None
 
@@ -249,6 +255,7 @@ def _as_mapping(data: object) -> dict[str, object] | None:
     """Coerce a parsed YAML document to a string-keyed mapping."""
     if not isinstance(data, dict):
         return None
+
     return {str(key): value for key, value in data.items()}
 
 
@@ -256,7 +263,9 @@ def _image_key(entry: object) -> str | None:
     """Return the ``key`` of an ``images[]`` entry, or None if malformed."""
     if not isinstance(entry, dict):
         return None
+
     key = entry.get("key")
+
     return key if isinstance(key, str) else None
 
 
@@ -277,8 +286,10 @@ def _image_files(names: set[str]) -> set[str]:
 def certificate_enabled(config: Mapping[str, object]) -> bool:
     """Whether a bank's config turns certificate download on."""
     results = config.get("results")
+
     if not isinstance(results, dict):
         return False
+
     return bool(results.get("certificate_download", False))
 
 
@@ -320,6 +331,7 @@ def _readable(loc: str, err: ErrorDetails) -> str:
     """
     if err["type"] == "string_pattern_mismatch" and loc.endswith("colour"):
         return "must be a hex colour (e.g. #404040)"
+
     return str(err["msg"])
 
 
@@ -341,6 +353,7 @@ def _validate_config(
             )
 
     bank_type = config.get("type")
+
     if bank_type and bank_type not in VALID_ASSESSMENT_TYPES:
         result.add_error(
             rel_config,
@@ -349,6 +362,7 @@ def _validate_config(
         )
 
     assessment = config.get("assessment")
+
     if isinstance(assessment, dict):
         for field_name in sorted(REQUIRED_ASSESSMENT_SECTION_FIELDS):
             if field_name not in assessment:
@@ -374,6 +388,7 @@ def _validate_email_section(
 ) -> None:
     """Validate one email template section."""
     data = config.get(section_name)
+
     if not isinstance(data, dict):
         result.add_error(rel_config, f"'{section_name}' section is missing")
         return
@@ -393,6 +408,7 @@ def _validate_email_sections(
 ) -> None:
     """Validate email templates, but only for the emails a bank sends."""
     results = config.get("results")
+
     if not isinstance(results, dict):
         return
 
@@ -454,6 +470,7 @@ def _validate_uniform_item(
 
     expected_images = config.get("images_per_item", 0)
     actual = _image_files_in(question_dir, inventory)
+
     if isinstance(expected_images, int) and len(actual) != expected_images:
         result.add_error(
             rel_q,
@@ -461,6 +478,7 @@ def _validate_uniform_item(
         )
 
     answer_field = config.get("correct_answer_field")
+
     if isinstance(answer_field, str) and answer_field:
         if answer_field not in question_data:
             result.add_error(
@@ -489,6 +507,7 @@ def _check_item_text(
 ) -> None:
     """Enforce ``item_text.required`` when the bank asks for it."""
     item_text_cfg = config.get("item_text")
+
     if not isinstance(item_text_cfg, dict):
         return
     if not item_text_cfg.get("required"):
@@ -511,6 +530,7 @@ def _validate_variable_options(
 ) -> list[object] | None:
     """Validate the options list. Returns the ids, or None if unusable."""
     options = question_data.get("options")
+
     if not isinstance(options, list) or not options:
         result.add_error(
             f"{rel_q}/question.yaml",
@@ -519,6 +539,7 @@ def _validate_variable_options(
         return None
 
     ids = _option_ids(options)
+
     if len(ids) != len(set(ids)):
         result.add_error(
             f"{rel_q}/question.yaml", "duplicate option IDs found"
@@ -549,6 +570,7 @@ def _validate_variable_images_declared(
 ) -> None:
     """Every declared image must exist, and every file must be declared."""
     images = question_data.get("images")
+
     if images is None:
         result.add_error(
             f"{rel_q}/question.yaml",
@@ -586,6 +608,7 @@ def _validate_variable_images_declared(
             )
 
     declared = {k for k in (_image_key(i) for i in images) if k is not None}
+
     for name in _image_files_in(question_dir, inventory):
         if name not in declared:
             result.add_error(
@@ -605,6 +628,7 @@ def _validate_variable_item(
 ) -> None:
     """Validate one item of a variable bank."""
     question_type = question_data.get("question_type")
+
     if not question_type:
         result.add_error(
             f"{rel_q}/question.yaml",
@@ -618,10 +642,12 @@ def _validate_variable_item(
         )
 
     ids = _validate_variable_options(question_data, rel_q, result)
+
     if ids is None:
         return
 
     correct_id = question_data.get("correct_option_id")
+
     if not correct_id:
         result.add_error(
             f"{rel_q}/question.yaml", "missing 'correct_option_id'"
@@ -647,6 +673,7 @@ def _cross_item_checks(
     """Checks that only make sense across the whole bank."""
     assessment = config.get("assessment")
     min_pool = 0
+
     if isinstance(assessment, dict):
         raw = assessment.get("min_pool_size", 0)
         if isinstance(raw, int) and not isinstance(raw, bool):
@@ -663,15 +690,18 @@ def _cross_item_checks(
         return
 
     answer_field = config.get("correct_answer_field")
+
     if not isinstance(answer_field, str) or not items:
         return
 
     counts: dict[object, int] = {}
+
     for item in items:
         value = item.get(answer_field, "")
         counts[value] = counts.get(value, 0) + 1
 
     total = len(items)
+
     for value, count in counts.items():
         if count / total > 0.80:
             result.add_warning(
@@ -750,6 +780,7 @@ def _validate_assessment_dir(
     )
 
     config_path: Path | None = None
+
     for name in _ASSESSMENT_FILENAMES:
         candidate = assessment_dir / name
         if candidate.is_file():
@@ -812,6 +843,7 @@ def _validate_assessment_dir(
     _validate_certificate(
         config, assessment_dir, rel_config, result, image_inventory
     )
+
     return config
 
 
@@ -831,6 +863,7 @@ def _check_stray_entries(
         "config.yml",
         CERTIFICATE_BACKGROUND,
     }
+
     for entry in sorted(assessment_dir.iterdir()):
         rel = f"{rel_base}/{entry.name}"
         if entry.is_file() and entry.name not in allowed_files:
@@ -924,6 +957,7 @@ def _validate_certificate(
         return
 
     root_files = _files_in(assessment_dir, image_inventory, key=".")
+
     if CERTIFICATE_BACKGROUND not in root_files:
         result.add_error(
             rel_config,
@@ -932,6 +966,7 @@ def _validate_certificate(
         )
 
     cert = config.get("certificate")
+
     if cert is None:
         result.add_error(
             rel_config,
@@ -958,6 +993,7 @@ def _validate_uniform_images(
     question directory must contain files matching the declared keys.
     """
     images = config.get("images")
+
     if not images:
         return
 
@@ -968,6 +1004,7 @@ def _validate_uniform_images(
         return
 
     expected_keys: list[str] = []
+
     for i, img in enumerate(images):
         key = _image_key(img)
         if key is None:
@@ -1016,11 +1053,13 @@ def _validate_learning_dir(
     rel_base = str(learning_dir.relative_to(learning_dir.parent.parent.parent))
 
     content_path = learning_dir / "content.mdx"
+
     if not content_path.is_file():
         result.add_error(rel_base, "learning/ exists but has no content.mdx")
         return
 
     rel_content = f"{rel_base}/content.mdx"
+
     if content_path.stat().st_size == 0:
         result.add_error(rel_content, "file is empty")
         return
@@ -1043,6 +1082,7 @@ def _is_retired(module_dir: Path) -> bool:
     is validated normally and reports its own error.
     """
     yaml_path = module_dir / "module.yaml"
+
     if not yaml_path.is_file():
         return False
 
@@ -1181,6 +1221,7 @@ def validate_module_dir(
     """
     result = ValidationResult()
     _validate_module(module_dir, result, image_inventory)
+
     return result
 
 
@@ -1233,6 +1274,7 @@ def main(argv: list[str] | None = None) -> int:
 
     result = validate_modules_dir(Path(args[0]))
     print(result.summary())
+
     return 0 if result.is_valid else 1
 
 

@@ -95,6 +95,7 @@ def redact(text: str) -> str:
     """Apply the backstop redactions to a single field."""
     for pattern, replacement in _REDACTIONS:
         text = pattern.sub(replacement, text)
+
     return text
 
 
@@ -114,12 +115,14 @@ def clean_release(release: str) -> str:
     from.
     """
     value = _NON_VERSION.sub("", release)
+
     # A full git revision passes untouched; anything else is still redacted.
     # The exact length is what makes that safe: an NHS number is ten digits and
     # so is valid hex, meaning a looser "looks like a revision" test would let
     # one through. Forty is what the build actually produces.
     if _GIT_REVISION.fullmatch(value):
         return value
+
     return redact(value)
 
 
@@ -133,12 +136,14 @@ def build_breadcrumbs(
     pattern - the one field a caller supplies as a string.
     """
     out: list[dict[str, object]] = []
+
     for crumb in crumbs:
         entry: dict[str, object] = dict(crumb.model_dump())
         pattern = entry.get("pattern")
         if isinstance(pattern, str):
             entry["pattern"] = redact(pattern)
         out.append(entry)
+
     return out
 
 
@@ -264,6 +269,7 @@ def report_client_error(
             "breadcrumbs": build_breadcrumbs(report.breadcrumbs),
         },
     )
+
     return Response(status_code=204)
 
 
@@ -303,4 +309,5 @@ def record_page_view(
             "session_id": view.session_id,
         },
     )
+
     return Response(status_code=204)

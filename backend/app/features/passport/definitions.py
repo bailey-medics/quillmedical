@@ -109,6 +109,7 @@ def competency_ref(competency_id: str) -> CompetencyRef:
         UnknownCompetencyError: If the id is not in the catalogue.
     """
     entry = _entry(competency_id)
+
     return CompetencyRef(id=entry.id, name=entry.display_name)
 
 
@@ -174,6 +175,7 @@ def levels(competency_id: str) -> list[LevelRef]:
         UnknownCompetencyError: If the id is not in the catalogue.
     """
     entry = _entry(competency_id)
+
     return [
         LevelRef(id=level.id, name=level.name) for level in entry.levels or []
     ]
@@ -273,6 +275,7 @@ def scopes(competency_id: str) -> list[ScopeRef]:
         UnknownCompetencyError: If the id is not in the catalogue.
     """
     entry = _entry(competency_id)
+
     return [
         ScopeRef(id=scope.id, name=scope.name) for scope in entry.scopes or []
     ]

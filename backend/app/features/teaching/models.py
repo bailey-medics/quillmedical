@@ -267,10 +267,13 @@ class AssessmentAnswer(Base):
         ``uq_assessment_answer_tag_answer_tag``.
         """
         wanted = set(tags)
+
         for row in list(self.tags):
             if row.tag not in wanted:
                 self.tags.remove(row)
+
         held = {row.tag for row in self.tags}
+
         for tag in sorted(wanted - held):
             self.tags.append(AssessmentAnswerTag(tag=tag))
 
@@ -456,6 +459,7 @@ class ModuleEnrolment(Base):
 
         if aware(self.starts_on) > now:
             return False
+
         return self.ends_on is None or aware(self.ends_on) > now
 
 
@@ -770,8 +774,10 @@ def _fill_the_storage_address(
             OrgUnit.id == target.org_unit_id
         )
     ).first()
+
     if row is None:
         return
+
     own_id, recorded = row
     target.organisation_id = int(recorded if recorded is not None else own_id)
 

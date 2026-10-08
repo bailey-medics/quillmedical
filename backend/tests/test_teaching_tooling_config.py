@@ -43,6 +43,7 @@ def _base_config(**overrides: object) -> dict[str, object]:
         },
     }
     config.update(overrides)
+
     return config
 
 
@@ -55,6 +56,7 @@ def _errors(tmp_path: Path, config: dict[str, object]) -> list[str]:
     )
     result = ValidationResult()
     _validate_assessment_dir(assessment, result)
+
     return [e.message for e in result.errors]
 
 
@@ -115,6 +117,7 @@ class TestUniformRequirements:
             correct_answer_field="diagnosis",
         )
         config.update(overrides)
+
         return config
 
     def test_a_complete_uniform_config_passes(self, tmp_path: Path) -> None:

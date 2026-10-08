@@ -63,6 +63,7 @@ def holder(db_session: Session) -> User:
     db_session.add(user)
     db_session.commit()
     db_session.refresh(user)
+
     return user
 
 
@@ -105,6 +106,7 @@ def _row(db_session: Session, holder: User, commit: str | None) -> Passport:
     row = Passport(id=PASSPORT_ID, user_id=holder.id, head_commit=commit)
     db_session.add(row)
     db_session.flush()
+
     return row
 
 

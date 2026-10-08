@@ -51,6 +51,7 @@ def _user(db: Session, username: str, *, profession: str) -> User:
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -60,6 +61,7 @@ def org(db_session: Session) -> OrgUnit:
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
+
     return organisation
 
 
@@ -74,6 +76,7 @@ def site(db_session: Session, org: OrgUnit) -> OrgUnit:
         update(OrgUnit).where(OrgUnit.id == site.id).values(parent_id=org.id)
     )
     db_session.commit()
+
     return site
 
 
@@ -94,6 +97,7 @@ def site_only_admin(db_session: Session, site: OrgUnit) -> User:
         )
     )
     db_session.commit()
+
     return user
 
 
@@ -103,6 +107,7 @@ def _login(client: TestClient, username: str) -> TestClient:
         json={"username": username, "password": "Password123!"},
     )
     assert response.status_code == 200, response.text
+
     return client
 
 
@@ -166,6 +171,7 @@ class TestOrganisationMembershipStillWorks:
         add_org_unit_member(db_session, org.id, user.id, "staff")
         administers(db_session, user.id, org.id)
         db_session.commit()
+
         return user
 
     def test_a_member_reads_their_own_organisation(

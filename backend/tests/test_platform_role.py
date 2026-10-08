@@ -46,6 +46,7 @@ def _user(db: Session, username: str, **kwargs: object) -> User:
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -131,6 +132,7 @@ class TestTheRoutesReadTheNewColumn:
         # Mutating routes need the CSRF header, as the authenticated
         # fixtures in conftest do after their own login.
         csrf = client.cookies.get("XSRF-TOKEN")
+
         if csrf:
             client.headers["X-CSRF-Token"] = csrf
 
@@ -201,12 +203,14 @@ class TestAnAdminSeesAnOperatorTheyWorkBeside:
             platform_role="superadmin",
             base_profession="superadmin_profession",
         )
+
         for person in (test_admin, operator):
             add_org_unit_member(db_session, org.id, person.id, "staff")
         # Only the admin administers it; the listing is scoped to the
         # places they belong to.
         administers(db_session, test_admin.id, org.id)
         db_session.commit()
+
         return operator
 
     def test_an_operator_is_listed_with_their_colleagues(
@@ -291,6 +295,7 @@ class TestAnAdminSeesAnOperatorTheyWorkBeside:
             "ordinary_colleague",
             platform_role="standard",
         )
+
         for person in (test_admin, colleague):
             add_org_unit_member(db_session, org.id, person.id, "staff")
         # Only the admin administers it; the listing is scoped to the
@@ -338,6 +343,7 @@ class TestScopingAsksTheNewColumn:
             administers(db, person.id, org.id)
         db.commit()
         org_unit_id = org.id
+
         return int(org_unit_id)
 
     def test_an_operator_is_not_confined_to_their_organisations(
@@ -512,6 +518,7 @@ class TestOperatorsAreProtectedByTheNewColumn:
             "ordinary_target",
             platform_role="standard",
         )
+
         for person in (test_admin, colleague):
             add_org_unit_member(db_session, org.id, person.id, "staff")
         db_session.commit()

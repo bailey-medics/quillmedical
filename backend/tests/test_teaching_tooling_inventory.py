@@ -68,6 +68,7 @@ def _bank(
     if images_on_disk:
         for name in declared:
             (question / name).write_bytes(b"")
+
     return assessment
 
 
@@ -174,6 +175,7 @@ class TestVariableBanksUseTheInventoryToo:
                 }
             )
         )
+
         return assessment
 
     def test_inventory_satisfies_a_per_question_image(
@@ -211,6 +213,7 @@ class TestCertificateBackground:
             "date": {"size": 14},
         }
         (assessment / "assessment.yaml").write_text(yaml.dump(config))
+
         return assessment
 
     def test_background_found_via_the_inventory(self, tmp_path: Path) -> None:

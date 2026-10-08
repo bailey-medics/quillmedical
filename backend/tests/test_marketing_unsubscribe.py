@@ -35,6 +35,7 @@ def subscriber(db_session):
     )
     db_session.add(user)
     db_session.commit()
+
     return user
 
 
@@ -275,6 +276,7 @@ def list_member(db_session):
     member = NewsletterSubscriber(email="Grace@Example.com", name="Grace")
     db_session.add(member)
     db_session.commit()
+
     return member
 
 

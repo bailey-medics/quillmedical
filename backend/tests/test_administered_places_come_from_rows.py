@@ -52,6 +52,7 @@ def _admin(
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -59,6 +60,7 @@ def _org(db: Session, name: str) -> OrgUnit:
     org = OrgUnit(name=name, type="hospital_team")
     db.add(org)
     db.commit()
+
     return org
 
 
@@ -66,6 +68,7 @@ def _ward(db: Session, parent: OrgUnit, name: str) -> OrgUnit:
     ward = OrgUnit(name=name, type="ward", parent_id=parent.id)
     db.add(ward)
     db.commit()
+
     return ward
 
 
@@ -255,6 +258,7 @@ class TestTheRoutesAgree:
             json={"username": user.username, "password": "Password123!"},
         )
         assert response.status_code == 200
+
         return client
 
     def test_a_trust_administrator_opens_a_ward_of_the_trust(

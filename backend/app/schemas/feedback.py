@@ -79,8 +79,10 @@ class FeedbackIn(BaseModel):
         spaces would be stored as feedback.
         """
         stripped = value.strip()
+
         if not stripped:
             raise ValueError("message must not be blank")
+
         return stripped
 
 
@@ -177,6 +179,7 @@ class FeedbackUpdateIn(BaseModel):
         """Trim the comment, and store a blank one as no comment."""
         if value is None:
             return None
+
         return value.strip() or None
 
     @model_validator(mode="after")
@@ -190,4 +193,5 @@ class FeedbackUpdateIn(BaseModel):
             raise ValueError("give a status, a comment or both")
         if "status" in self.model_fields_set and self.status is None:
             raise ValueError("status must not be null")
+
         return self

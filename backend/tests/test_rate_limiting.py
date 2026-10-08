@@ -47,6 +47,7 @@ class TestLoginRateLimit:
                     "password": "TestPassword123!",
                 },
             )
+
         resp = test_client.post(
             "/api/auth/login",
             json={
@@ -68,6 +69,7 @@ class TestLoginRateLimit:
                     "password": "wrong",
                 },
             )
+
         resp = test_client.post(
             "/api/auth/login",
             json={
@@ -105,6 +107,7 @@ class TestRegisterRateLimit:
                     "password": "SecurePassword123!",
                 },
             )
+
         resp = test_client.post(
             "/api/auth/register",
             json={

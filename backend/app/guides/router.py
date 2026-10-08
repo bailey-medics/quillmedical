@@ -52,10 +52,12 @@ def read_guide_asset(bucket_name: str, key: str) -> bytes | None:
     from google.cloud import storage  # type: ignore[attr-defined]
 
     blob = storage.Client().bucket(bucket_name).blob(key)
+
     try:
         data: bytes = blob.download_as_bytes()
     except NotFound:
         return None
+
     return data
 
 
@@ -88,6 +90,7 @@ def guide_asset(
     # picture's description in its place, as they do for any that is
     # missing.
     bucket_name = settings.GUIDE_ASSETS_GCS_BUCKET
+
     if not bucket_name:
         raise HTTPException(status_code=404, detail=_NOT_FOUND)
 

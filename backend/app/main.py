@@ -51,6 +51,7 @@ from app.api_compatibility import REQUIRED_CLIENT_GENERATION
 from app.cbac.base_professions import (
     PROFESSION_IDS,
     SUPERADMIN_PROFESSION,
+    competencies_kept_across_profession_change,
     get_profession_base_competencies,
     resolve_user_competencies,
 )
@@ -382,8 +383,10 @@ async def limit_request_body_size(
         else MAX_REQUEST_BODY_BYTES
     )
     content_length = request.headers.get("content-length")
+
     if content_length and int(content_length) > limit:
         return Response(status_code=413, content="Request body too large")
+
     return await call_next(request)  # type: ignore[no-any-return]
 
 
@@ -395,6 +398,7 @@ async def add_compat_generation_header(
     """Attach Compat-Generation so clients can detect a forced-reload API change."""
     response: Response = await call_next(request)
     response.headers["Compat-Generation"] = str(REQUIRED_CLIENT_GENERATION)
+
     return response
 
     # --- Rate limiting (slowapi) ---
@@ -455,6 +459,7 @@ async def log_requests(
     request.state.request_id = request_id
 
     start = time.monotonic()
+
     try:
         response: Response = await call_next(request)
     finally:
@@ -478,6 +483,7 @@ async def log_requests(
             "client_ip": request.client.host if request.client else None,
         },
     )
+
     return response
 
 
@@ -710,20 +716,25 @@ def get_current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
         HTTPException: 401 if token missing, invalid, expired, or user inactive.
     """
     tok = request.cookies.get("access_token")
+
     if not tok:
         raise HTTPException(401, "Not authenticated")
     try:
         payload = decode_token(tok)
     except Exception as e:
         raise HTTPException(401, "Invalid token") from e
+
     sub = payload.get("sub")
     user = db.scalar(select(User).where(User.username == sub))
+
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
         # Reject tokens minted before a password change
     if payload.get("tv", 0) != user.token_version:
         raise HTTPException(401, "Session invalidated")
+
     request.state.roles = [r.name for r in user.roles]
+
     return user
 
 
@@ -753,8 +764,10 @@ def require_roles(*need: str) -> Callable[[Request, User], User]:
 
     def dep(request: Request, _u: User = DEP_CURRENT_USER) -> User:
         have = set(getattr(request.state, "roles", []))
+
         if not set(need).issubset(have):
             raise HTTPException(403, "Forbidden")
+
         return _u
 
     return dep
@@ -788,6 +801,7 @@ def require_csrf(
     """
     header = request.headers.get("x-csrf-token")
     cookie = request.cookies.get("XSRF-TOKEN")
+
     if (
         not header
         or not cookie
@@ -795,6 +809,7 @@ def require_csrf(
         or not verify_csrf(cookie, current_user.username)
     ):
         raise HTTPException(403, "CSRF failed")
+
     return current_user
 
 
@@ -942,6 +957,7 @@ def login(
                     "error_code": "invalid_totp",
                 },
             )
+
     roles = [r.name for r in user.roles]
     competencies = user.get_final_competencies()
     access = create_jwt_with_competencies(
@@ -950,6 +966,7 @@ def login(
     refresh = create_refresh_token(user.username, user.token_version)
     xsrf = make_csrf(user.username)
     set_auth_cookies(response, access, refresh, xsrf)
+
     return LoginOut(
         detail="ok",
         user={"username": user.username, "roles": roles},
@@ -982,6 +999,7 @@ def list_organisations_public(
         .scalars()
         .all()
     )
+
     return OrganisationsOut(
         organisations=[
             OrganisationListItem(org_unit_id=place.id, name=place.name)
@@ -1044,6 +1062,7 @@ def list_teaching_modules_public(
     # the same as the module it had been renamed apart from.
     seen: set[str] = set()
     modules: list[TeachingModuleItem] = []
+
     for c in configs:
         if c.question_bank_id not in seen:
             seen.add(c.question_bank_id)
@@ -1095,6 +1114,7 @@ def clinical_lead_site(
         .scalars()
         .first()
     )
+
     if not user:
         return ValidateClinicalLeadOut(valid=False)
 
@@ -1111,6 +1131,7 @@ def clinical_lead_site(
         .all()
     )
     offering = [p for p in place_ids if p is not None]
+
     if not offering:
         return ValidateClinicalLeadOut(valid=False)
 
@@ -1118,6 +1139,7 @@ def clinical_lead_site(
     # organisations' own rows, so they are roots and excluded - a lead
     # holds their post at a ward, not at the trust.
     site_ids = sorted(descendant_ids(db, offering))
+
     if not site_ids:
         return ValidateClinicalLeadOut(valid=False)
 
@@ -1127,6 +1149,7 @@ def clinical_lead_site(
     # column cannot express.
     leads = clinical_leads_of(db, list(site_ids))
     held_at = [site_id for site_id, lead in leads.items() if lead == user.id]
+
     if not held_at:
         return ValidateClinicalLeadOut(valid=False)
 
@@ -1142,6 +1165,7 @@ def clinical_lead_site(
     }
     roots = root_ids_of(db, held_at)
     sites: list[ClinicalLeadSite] = []
+
     for held_site_id in held_at:
         accountable = roots.get(held_site_id)
         if accountable is None or accountable not in offering:
@@ -1163,6 +1187,7 @@ def clinical_lead_site(
         return ValidateClinicalLeadOut(valid=True, sites=sites)
 
     only = sites[0]
+
     return ValidateClinicalLeadOut(
         valid=True,
         sites=sites,
@@ -1249,8 +1274,10 @@ def register(
             status_code=403,
             detail="Self-registration is not available in this environment",
         )
+
     username = payload.username.strip()
     email = normalise_email(payload.email)
+
     if not username or not email or not payload.password:
         raise HTTPException(status_code=400, detail="Missing fields")
 
@@ -1262,6 +1289,7 @@ def register(
 
         # Use generic message to prevent account enumeration
     existing = db.scalar(select(User).where(User.username == username))
+
     if existing:
         raise HTTPException(
             status_code=400,
@@ -1269,6 +1297,7 @@ def register(
         )
 
     existing = db.scalar(select(User).where(User.email == email))
+
     if existing:
         raise HTTPException(
             status_code=400,
@@ -1287,6 +1316,7 @@ def register(
     # page sends it, but a crafted request could.
     org_unit_id = payload.org_unit_id
     site_id = payload.site_id
+
     if (
         payload.org_unit_id is not None
         or payload.site_id is not None
@@ -1417,6 +1447,7 @@ def register(
     # they named or else the organisation. Nobody is signed in to be
     # named as having authorised it; the link admitted them.
     place_id = site_id or org_unit_id
+
     if (
         place_id is not None
         and MODULES_COMPETENCY in user.get_final_competencies()
@@ -1533,10 +1564,12 @@ def verify_email(
         HTTPException: 400 if the token is invalid or expired.
     """
     email = verify_email_verify_token(data.token)
+
     if not email:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
 
     user = db.scalar(select(User).where(User.email == email))
+
     if not user:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
 
@@ -1547,6 +1580,7 @@ def verify_email(
     # They may be on the mailing list of people with no account. Now
     # the address is proven theirs, one record of them is kept.
     fold_into_account(db, user)
+
     return DetailResponse(detail="verified")
 
 
@@ -1571,6 +1605,7 @@ def resend_verification(
     """
     email = normalise_email(data.email)
     user = db.scalar(select(User).where(User.email == email))
+
     if user and not user.email_verified:
         token = create_email_verify_token(email)
         verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
@@ -1578,6 +1613,7 @@ def resend_verification(
             to=email,
             **send_args(_verification_email(verify_url, welcome=False)),
         )
+
         # Always return ok to prevent account enumeration
     return DetailResponse(detail="ok")
 
@@ -1606,6 +1642,7 @@ def forgot_password(
     """
     email = normalise_email(data.email)
     user = db.scalar(select(User).where(User.email == email))
+
     # A deactivated account is treated as an unknown address: no email,
     # and the same reply.
     if user and user.is_active:
@@ -1624,6 +1661,7 @@ def forgot_password(
                 )
             ),
         )
+
         # Always return ok to prevent account enumeration
     return DetailResponse(detail="ok")
 
@@ -1652,6 +1690,7 @@ def reset_password(
             the new password does not meet requirements.
     """
     email = verify_password_reset_token(data.token)
+
     if not email:
         raise HTTPException(
             status_code=400,
@@ -1662,7 +1701,9 @@ def reset_password(
             status_code=400,
             detail="New password must be at least 8 characters",
         )
+
     user = db.scalar(select(User).where(User.email == email))
+
     # A link sent before the account was deactivated is refused as an
     # expired one would be.
     if not user or not user.is_active:
@@ -1670,6 +1711,7 @@ def reset_password(
             status_code=400,
             detail="Invalid or expired reset link",
         )
+
     user.password_hash = hash_password(data.new_password)
     user.token_version += 1  # Invalidate all existing sessions
     db.add(user)
@@ -1731,8 +1773,10 @@ class TeachingEnrolmentsAtIn(BaseModel):
         cls, value: list[TeachingModuleIn]
     ) -> list[TeachingModuleIn]:
         ids = [entry.module_id for entry in value]
+
         if len(ids) != len(set(ids)):
             raise ValueError("Each module may be named once.")
+
         return value
 
 
@@ -1746,9 +1790,12 @@ def _one_entry_per_organisation(
     """
     if value is None:
         return None
+
     ids = [entry.org_unit_id for entry in value]
+
     if len(ids) != len(set(ids)):
         raise ValueError("Each organisation may be named once.")
+
     return value
 
 
@@ -1791,13 +1838,16 @@ def _one_entry_per_org_unit(
     """
     if value is None:
         return None
+
     seen: set[int] = set()
+
     for entry in value:
         if entry.org_unit_id in seen:
             raise ValueError(
                 f"Place {entry.org_unit_id} is listed more than once."
             )
         seen.add(entry.org_unit_id)
+
     return value
 
 
@@ -1878,6 +1928,7 @@ class AdminUserCreateIn(BaseModel):
         """
         if value is None:
             return None
+
         return validate_competency_ids(value)
 
     @field_validator("base_profession")
@@ -1896,6 +1947,7 @@ class AdminUserCreateIn(BaseModel):
                 f"Unknown base profession: {value}. Professions are "
                 "defined in shared/base-professions.yaml."
             )
+
         return value
 
 
@@ -1969,6 +2021,7 @@ class AdminUserUpdateIn(BaseModel):
         """
         if value is None:
             return None
+
         return validate_competency_ids(value)
 
     @field_validator("base_profession")
@@ -1987,6 +2040,7 @@ class AdminUserUpdateIn(BaseModel):
                 f"Unknown base profession: {value}. Professions are "
                 "defined in shared/base-professions.yaml."
             )
+
         return value
 
 
@@ -2022,6 +2076,7 @@ def _org_units_the_caller_places_people_in(
         The org_unit ids, or None for an operator.
     """
     allowed = org_units_administered_by(db, current_user)
+
     if allowed is None:
         return None
     if not set(current_user.get_final_competencies()).isdisjoint(
@@ -2030,6 +2085,7 @@ def _org_units_the_caller_places_people_in(
         allowed = allowed | org_units_run_by_scoped_manager(
             db, current_user.id
         )
+
     return allowed
 
 
@@ -2066,6 +2122,7 @@ def _settle_teaching_enrolments(
             not serve, or an end date already passed.
     """
     is_operator = current_user.platform_role == "superadmin"
+
     if (
         not is_operator
         and "manage_teaching" not in current_user.get_final_competencies()
@@ -2207,6 +2264,7 @@ def _settle_practice(
         for entry in practising
         if entry.org_unit_id not in member_of
     )
+
     if strangers:
         raise HTTPException(
             status_code=422,
@@ -2219,6 +2277,7 @@ def _settle_practice(
     held = set(person.get_final_competencies())
     # (org_unit, competency, authorising), in the order they were sent.
     changes: list[tuple[int, str, bool]] = []
+
     for entry in practising:
         current = authorised_at(db, person.id, org_unit_id=entry.org_unit_id)
         wanted = set(entry.competencies)
@@ -2237,6 +2296,7 @@ def _settle_practice(
     # routes admit `manage_users` alone, which is not authority to set
     # where somebody practises.
     callers = set(current_user.get_final_competencies())
+
     if "manage_practising_competencies" not in callers and callers.isdisjoint(
         SCOPED_MANAGER_IDS
     ):
@@ -2246,6 +2306,7 @@ def _settle_practice(
         )
 
     refusals: list[HTTPException] = []
+
     for org_unit_id, competency, authorising in changes:
         refusal = practice_refusal(
             db,
@@ -2302,6 +2363,7 @@ def _require_changes_in_scope(
         HTTPException: 403 naming every competency out of scope.
     """
     refused = out_of_scope_competencies(current_user, before ^ after)
+
     if refused:
         raise HTTPException(
             status_code=403,
@@ -2355,6 +2417,7 @@ def _require_org_units_the_caller_administers(
     allowed = _org_units_the_caller_places_people_in(db, current_user)
 
     places: list[OrgUnit] = []
+
     for org_unit_id in place_ids:
         place = db.get(OrgUnit, org_unit_id)
         if place is None or (
@@ -2364,6 +2427,7 @@ def _require_org_units_the_caller_administers(
                 status_code=404, detail=f"Place {org_unit_id} not found"
             )
         places.append(place)
+
     return places
 
 
@@ -2420,10 +2484,12 @@ def create_user_with_cbac(
 
         # Check uniqueness
     existing = db.scalar(select(User).where(User.username == username))
+
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
 
     existing = db.scalar(select(User).where(User.email == email))
+
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
 
@@ -2567,6 +2633,7 @@ def update_user(
     # Check authorization
     # Fetch user
     user = db.scalar(select(User).where(User.id == user_id))
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -2626,6 +2693,7 @@ def update_user(
             and set(payload.org_unit_ids) != current_org_unit_ids
         )
     )
+
     if acts_on_account:
         _require_account_in_scope(current_user, user)
     if changes_profession and payload.base_profession is not None:
@@ -2634,6 +2702,7 @@ def update_user(
         raise HTTPException(
             status_code=403, detail="You may not set a platform role."
         )
+
     held_before = set(user.get_final_competencies())
 
     # Nobody awards themselves competencies. Ask another holder of
@@ -2713,40 +2782,31 @@ def update_user(
     additional = user.additional_competency_ids
     removed = user.removed_competency_ids
 
-    if payload.base_profession is not None:
-        # A profession is a template, not state: `additional` and
-        # `removed` exist precisely so reality can diverge from it. So
-        # changing one *adds* what the new profession grants and keeps
-        # what the person has already become - a patient who becomes a
-        # healthcare assistant keeps the competency for their own
-        # record, rather than losing it by being given a clinical role.
-        #
-        # Assigning the field alone dropped every competency from the
-        # old profession unless it happened to be listed in
-        # `additional_competencies`, silently. The superadmin promotion
-        # below has always merged for the same reason.
-        carried_over = set(
-            get_profession_base_competencies(user.base_profession)
-        )
-        user.base_profession = payload.base_profession
-    else:
-        carried_over = set()
-
+    # Named explicitly, the list replaces what they held outside their
+    # profession. A profession change is then worked out on top of it, so
+    # a payload carrying both fields does not discard what the old
+    # profession granted.
     if payload.additional_competencies is not None:
         additional = list(payload.additional_competencies)
 
-    if carried_over:
-        # Applied after any explicit `additional_competencies`, so a
-        # payload carrying both fields does not discard what the old
-        # profession granted.
-        granted = set(additional)
-        granted.update(carried_over)
-        # Anything the new profession grants in its own right needs no
-        # entry here; this carries only what would otherwise be lost.
-        granted.difference_update(
-            get_profession_base_competencies(user.base_profession)
+    # A profession is a template, not state: `additional` and `removed`
+    # exist precisely so reality can diverge from it. So changing one
+    # *adds* what the new profession grants and keeps what the person has
+    # already become - a patient who becomes a healthcare assistant keeps
+    # the competency for their own record, rather than losing it by being
+    # given a clinical role.
+    #
+    # Assigning the field alone dropped every competency from the old
+    # profession unless it happened to be listed in
+    # `additional_competencies`, silently. The superadmin promotion below
+    # has always merged for the same reason.
+    if payload.base_profession is not None:
+        additional = competencies_kept_across_profession_change(
+            additional,
+            old_profession=user.base_profession,
+            new_profession=payload.base_profession,
         )
-        additional = sorted(granted)
+        user.base_profession = payload.base_profession
 
     if payload.removed_competencies is not None:
         removed = list(payload.removed_competencies)
@@ -2900,6 +2960,7 @@ def deactivate_user(
             deactivate self.
     """
     user = db.scalar(select(User).where(User.id == user_id))
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -2972,6 +3033,7 @@ def reactivate_user(
         HTTPException: 400 if user is already active.
     """
     user = db.scalar(select(User).where(User.id == user_id))
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -3029,6 +3091,7 @@ def send_invite_email(
         HTTPException: 404 if user not found.
     """
     user = db.scalar(select(User).where(User.id == user_id))
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -3131,6 +3194,7 @@ def totp_setup(
         current_user.username,
         issuer=issuer,
     )
+
     return TotpSetupOut(provision_uri=uri)
 
 
@@ -3200,8 +3264,10 @@ def totp_verify(
             status_code=400,
             detail={"message": "Invalid code", "error_code": "invalid_totp"},
         )
+
     current_user.is_totp_enabled = True
     db.add(current_user)
+
     return DetailResponse(detail="enabled")
 
 
@@ -3236,9 +3302,11 @@ def totp_disable(
     """
     if not verify_password(data.password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="Incorrect password")
+
     current_user.is_totp_enabled = False
     current_user.totp_secret = None
     db.add(current_user)
+
     return DetailResponse(detail="disabled")
 
 
@@ -3282,6 +3350,7 @@ def change_password(
             status_code=400,
             detail="New password must be at least 8 characters",
         )
+
     current_user.password_hash = hash_password(data.new_password)
     current_user.token_version += 1  # Invalidate all existing sessions
     db.add(current_user)
@@ -3319,6 +3388,7 @@ def logout(response: Response, _u: User = DEP_CURRENT_USER) -> dict[str, str]:
         DetailResponse: Success response.
     """
     clear_auth_cookies(response)
+
     return DetailResponse(detail="ok")
 
 
@@ -3362,6 +3432,7 @@ def me(
     )
     user_org_unit_ids = feature_holder_ids_of(db, member_org_unit_ids)
     enabled_features: list[str] = []
+
     if user_org_unit_ids:
         features = (
             db.execute(
@@ -3381,6 +3452,7 @@ def me(
         )
         is not None
     )
+
     return MeOut(
         owns_passport=owns_passport,
         id=current_user.id,
@@ -3453,6 +3525,7 @@ def update_profile(
             current_user.email_verified = False
 
     db.add(current_user)
+
     return DetailResponse(detail="Profile updated")
 
 
@@ -3698,6 +3771,7 @@ def get_user(
     # Check permissions
     # Fetch user
     user = db.scalar(select(User).where(User.id == user_id))
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -3812,6 +3886,7 @@ def refresh(
             - User not found in database or inactive
     """
     tok = request.cookies.get("refresh_token")
+
     if not tok:
         raise HTTPException(401, "No refresh token")
     try:
@@ -3820,13 +3895,16 @@ def refresh(
             raise ValueError("not refresh")
     except Exception as e:
         raise HTTPException(401, "Bad refresh token") from e
+
     sub = payload.get("sub")
     user = db.scalar(select(User).where(User.username == sub))
+
     if not user or not user.is_active:
         raise HTTPException(401, "Inactive user")
         # Reject refresh tokens minted before a password change
     if payload.get("tv", 0) != user.token_version:
         raise HTTPException(401, "Session invalidated")
+
     roles = [r.name for r in user.roles]
     competencies = user.get_final_competencies()
     new_access = create_jwt_with_competencies(
@@ -3837,6 +3915,7 @@ def refresh(
     )  # rotate
     xsrf = make_csrf(user.username)
     set_auth_cookies(response, new_access, new_refresh, xsrf)
+
     return RefreshOut(detail="refreshed")
 
 
@@ -4505,6 +4584,7 @@ def deactivate_patient(
 
     # Verify patient exists in FHIR
     patient = read_fhir_patient(patient_id)
+
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
@@ -4573,6 +4653,7 @@ def activate_patient(
 
     # Verify patient exists in FHIR
     patient = read_fhir_patient(patient_id)
+
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
@@ -4626,6 +4707,7 @@ def shared_organisations_endpoint(
         dict: ``organisations`` list with id/name/type for each shared org.
     """
     shared_org_units = get_shared_org_unit_ids(db, current_user.id, patient_id)
+
     if not shared_org_units:
         return SharedOrganisationsOut(organisations=[])
 
@@ -4634,6 +4716,7 @@ def shared_organisations_endpoint(
         .scalars()
         .all()
     )
+
     return SharedOrganisationsOut(
         organisations=[
             SharedOrganisationSummary(
@@ -4770,6 +4853,7 @@ async def update_my_competencies(
                 "manage_users"
             ),
         )
+
         # Update user's competencies
     # A list left out of the request keeps what the rows hold now.
     additional = (
@@ -4865,7 +4949,9 @@ def _require_shared_org_with_user(
     """
     if target.id == current_user.id:
         return
+
     reached = org_units_whose_people_reached_by(db, current_user)
+
     if reached is None:
         return
     if not is_member_within(db, target.id, reached):
@@ -4900,12 +4986,14 @@ def link_patient_to_user(
         dict: Confirmation with user and patient IDs.
     """
     fhir_patient_id = body.fhir_patient_id
+
     if not fhir_patient_id:
         raise HTTPException(
             status_code=422, detail="fhir_patient_id is required"
         )
 
     target = db.get(User, user_id)
+
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -4918,6 +5006,7 @@ def link_patient_to_user(
             User.id != user_id,
         )
     )
+
     if clash is not None:
         raise HTTPException(
             status_code=409,
@@ -4972,6 +5061,7 @@ def invite_external_user(
     manages_patients = (
         "manage_patient_membership" in current_user.get_final_competencies()
     )
+
     if not (is_own or manages_patients):
         raise HTTPException(
             status_code=403,
@@ -5116,6 +5206,7 @@ def revoke_external_access(
             ExternalPatientAccess.revoked_at.is_(None),
         )
     )
+
     if grant is None:
         raise HTTPException(
             status_code=404, detail="Active access grant not found"
@@ -5157,6 +5248,7 @@ def list_external_access(
     manages_patients = (
         "manage_patient_membership" in current_user.get_final_competencies()
     )
+
     if not (is_own or manages_patients):
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -5274,6 +5366,7 @@ def list_conversations_endpoint(
         status=status,
         patient_id=patient_id,
     )
+
     return ConversationListOut(conversations=items)
 
 
@@ -5308,6 +5401,7 @@ def list_patient_conversations_endpoint(
         user=current_user,
         status=status,
     )
+
     return ConversationListOut(conversations=items)
 
 
@@ -5339,8 +5433,10 @@ def get_conversation_endpoint(
     result = get_conversation_detail(
         db=db, conversation_id=conversation_id, user=current_user
     )
+
     if result is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
+
     return result
 
 
@@ -5372,11 +5468,14 @@ def update_conversation_status_endpoint(
         HTTPException: 404 if not found or user is not a participant.
     """
     conv = db.get(Conversation, conversation_id)
+
     if conv is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
+
     cp = next(
         (p for p in conv.participants if p.user_id == current_user.id), None
     )
+
     if cp is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
@@ -5402,6 +5501,7 @@ def update_conversation_status_endpoint(
         if conv.messages
         else None
     )
+
     return ConversationOut(
         id=conv.id,
         fhir_conversation_id=conv.fhir_conversation_id,
@@ -5504,11 +5604,14 @@ def add_participant_endpoint(
         HTTPException: 403 if requesting user is not a participant.
     """
     conv = db.get(Conversation, conversation_id)
+
     if conv is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
+
     cp = next(
         (p for p in conv.participants if p.user_id == current_user.id), None
     )
+
     if cp is None:
         raise HTTPException(
             status_code=403,
@@ -5552,11 +5655,14 @@ def list_participants_endpoint(
         HTTPException: 404 if not found or user is not a participant.
     """
     conv = db.get(Conversation, conversation_id)
+
     if conv is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
+
     cp = next(
         (p for p in conv.participants if p.user_id == current_user.id), None
     )
+
     if cp is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
@@ -5640,8 +5746,10 @@ def mark_read_endpoint(
     ok = mark_conversation_read(
         db=db, conversation_id=conversation_id, user_id=current_user.id
     )
+
     if not ok:
         raise HTTPException(status_code=404, detail="Conversation not found")
+
     return MarkReadOut(ok=True)
 
 
@@ -5709,14 +5817,17 @@ def ci_teaching_sync(
 
     # Validate service token
     token = settings.TEACHING_SYNC_TOKEN
+
     if not token:
         raise HTTPException(503, "Sync token not configured")
 
     auth_header = request.headers.get("Authorization", "")
+
     if not auth_header.startswith("Bearer "):
         raise HTTPException(401, "Missing Bearer token")
 
     provided = auth_header.removeprefix("Bearer ").strip()
+
     if not hmac.compare_digest(provided, token.get_secret_value()):
         raise HTTPException(401, "Invalid token")
 
@@ -5760,6 +5871,7 @@ def ci_teaching_sync(
             .limit(1)
         )
     )
+
     if org_id is None:
         return CiTeachingSyncOut(
             synced=[],
@@ -5898,14 +6010,17 @@ def ci_transcode_complete(
     from app.features.teaching.transcode import RENDITION_FLAGS, start_caption
 
     token = settings.TEACHING_TRANSCODE_CALLBACK_TOKEN
+
     if not token:
         raise HTTPException(503, "Transcode callback token not configured")
 
     auth_header = request.headers.get("Authorization", "")
+
     if not auth_header.startswith("Bearer "):
         raise HTTPException(401, "Missing Bearer token")
 
     provided = auth_header.removeprefix("Bearer ").strip()
+
     if not hmac.compare_digest(provided, token.get_secret_value()):
         raise HTTPException(401, "Invalid token")
 
@@ -5916,6 +6031,7 @@ def ci_transcode_complete(
             ModuleMediaLink.asset_id == body.asset_id,
         )
     ).scalar_one_or_none()
+
     if link is None:
         # A job whose link row was deleted while it ran. Not an error the
         # job can act on, and it must not retry: the bytes it wrote are
@@ -5927,6 +6043,7 @@ def ci_transcode_complete(
         # would need redeploying whenever one was renamed.
     names = set(body.outputs)
     set_flags: list[str] = []
+
     for field, suffix in RENDITION_FLAGS:
         present = any(name.endswith(suffix) for name in names)
         setattr(link, field, present)
@@ -5993,14 +6110,17 @@ def ci_caption_complete(
     from app.features.teaching.models import ModuleMediaLink
 
     token = settings.TEACHING_TRANSCODE_CALLBACK_TOKEN
+
     if not token:
         raise HTTPException(503, "Transcode callback token not configured")
 
     auth_header = request.headers.get("Authorization", "")
+
     if not auth_header.startswith("Bearer "):
         raise HTTPException(401, "Missing Bearer token")
 
     provided = auth_header.removeprefix("Bearer ").strip()
+
     if not hmac.compare_digest(provided, token.get_secret_value()):
         raise HTTPException(401, "Invalid token")
 
@@ -6011,6 +6131,7 @@ def ci_caption_complete(
             ModuleMediaLink.asset_id == body.asset_id,
         )
     ).scalar_one_or_none()
+
     if link is None:
         raise HTTPException(404, "No such media asset")
 
@@ -6065,14 +6186,17 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
 
                 # Restrict to allowed image extensions
         ext = Path(filename).suffix.lower()
+
         if ext not in _ALLOWED_IMAGE_EXTENSIONS:
             raise HTTPException(400, "Invalid file type")
 
         bank_dir = resolve_local_bank(_qb_base, bank_id)
+
         if not bank_dir:
             raise HTTPException(404, "Bank not found")
 
         file_path = bank_dir / item_folder / filename
+
         if not file_path.is_file():
             raise HTTPException(404, "Image not found")
 
@@ -6100,14 +6224,17 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
 
                 # Restrict to allowed image extensions
         ext = Path(filename).suffix.lower()
+
         if ext not in _ALLOWED_IMAGE_EXTENSIONS:
             raise HTTPException(400, "Invalid file type")
 
         module_dir = resolve_module_dir(_qb_base, module_id)
+
         if not module_dir:
             raise HTTPException(404, "Module not found")
 
         file_path = module_dir / filename
+
         if not file_path.is_file():
             raise HTTPException(404, "Image not found")
 
@@ -6135,14 +6262,17 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
 
                 # Restrict to allowed image extensions
         ext = Path(filename).suffix.lower()
+
         if ext not in _ALLOWED_IMAGE_EXTENSIONS:
             raise HTTPException(400, "Invalid file type")
 
         module_dir = resolve_module_dir(_qb_base, module_id)
+
         if not module_dir:
             raise HTTPException(404, "Module not found")
 
         file_path = module_dir / "learning" / "images" / filename
+
         if not file_path.is_file():
             raise HTTPException(404, "Image not found")
 
@@ -6189,10 +6319,12 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
                 raise HTTPException(400, "Invalid path")
 
         ext = Path(filename).suffix.lower()
+
         if ext not in _ALLOWED_VIDEO_EXTENSIONS:
             raise HTTPException(400, "Invalid file type")
 
         module_dir = resolve_module_dir(_qb_base, module_id)
+
         if not module_dir:
             # A developer with no content repo cloned has no
             # teaching-repos directory at all, which is the normal
@@ -6200,6 +6332,7 @@ if settings.TEACHING_QUESTION_BANK_PATH and not settings.TEACHING_GCS_BUCKET:
             raise HTTPException(404, "Module not found")
 
         file_path = module_dir / "learning" / filename
+
         if not file_path.is_file():
             raise HTTPException(404, "Video not found")
 

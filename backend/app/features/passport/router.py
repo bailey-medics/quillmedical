@@ -651,6 +651,7 @@ def _entitlement_out(db: Session, user_id: int) -> EntitlementOut:
     also means "this response predates these fields".
     """
     holder = db.get(User, user_id)
+
     if holder is None or (
         "passport_write" not in holder.get_final_competencies()
     ):
@@ -1201,6 +1202,7 @@ def _join_as_external(db: Session, user_id: int, org_unit_id: int) -> None:
             org_unit_member.c.user_id == user_id,
         )
     )
+
     if already is None:
         add_org_unit_member(db, org_unit_id, user_id, "external")
 
@@ -1597,6 +1599,7 @@ def request_sign_off(
     assessor = db.scalar(
         select(User).where(func.lower(User.email) == assessor_email)
     )
+
     if assessor is not None:
         _let_existing_account_assess(db, assessor, row.id, user)
 
@@ -2456,6 +2459,7 @@ def get_certificate_attachment(
         (item for item in certificate.attachments if item.hash == blob_digest),
         None,
     )
+
     if attachment is None or attachment.media_type not in (
         ALLOWED_EVIDENCE_TYPES
     ):
@@ -2563,6 +2567,7 @@ def _ask_a_supervisor(
         )
 
     supervisor = db.scalar(select(User).where(func.lower(User.email) == email))
+
     if supervisor is not None:
         _let_existing_account_assess(db, supervisor, row.id, holder)
 
@@ -2741,6 +2746,7 @@ def add_logbook_entry(
         store, row.id, _actor(user), competency_id, entry
     )
     row.head_commit = commit
+
     if supervisor_email is not None:
         _open_confirmation_request(
             db, row.id, competency_id, stem, supervisor_email
@@ -2915,6 +2921,7 @@ def amend_logbook_entry(
         raise HTTPException(404, "Logbook entry not found") from None
 
     row.head_commit = commit
+
     if supervisor_email is not None:
         _open_confirmation_request(
             db, row.id, competency_id, stem, supervisor_email

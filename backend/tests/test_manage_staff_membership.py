@@ -62,6 +62,7 @@ def _user(
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -71,6 +72,7 @@ def org(db_session: Session) -> OrgUnit:
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
+
     return organisation
 
 
@@ -90,6 +92,7 @@ def site(db_session: Session, org: OrgUnit) -> OrgUnit:
         update(OrgUnit).where(OrgUnit.id == site.id).values(parent_id=org.id)
     )
     db_session.commit()
+
     return site
 
 
@@ -111,6 +114,7 @@ def _login(client: TestClient, username: str) -> TestClient:
         json={"username": username, "password": "Password123!"},
     )
     assert response.status_code == 200, response.text
+
     return client
 
 
@@ -138,6 +142,7 @@ class TestThePlaceSurfaceSaysTheSame:
             db_session, "place_account_admin", competencies=["manage_users"]
         )
         _place(db_session, org, user)
+
         return user
 
     @pytest.fixture
@@ -160,6 +165,7 @@ class TestThePlaceSurfaceSaysTheSame:
         )
         _place(db_session, org, user)
         administers(db_session, user.id, site.id)
+
         return user
 
     def test_managing_accounts_does_not_put_somebody_at_a_place(

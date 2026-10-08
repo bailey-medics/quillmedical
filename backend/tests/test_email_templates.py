@@ -18,6 +18,7 @@ def bank_dir(tmp_path: Path) -> Path:
     """Create a fake question bank directory."""
     bank = tmp_path / "test-bank"
     bank.mkdir()
+
     return bank
 
 
@@ -54,6 +55,7 @@ def coordinator_config(bank_dir: Path) -> Path:
             },
         },
     )
+
     return bank_dir
 
 
@@ -74,6 +76,7 @@ def student_config(bank_dir: Path) -> Path:
             },
         },
     )
+
     return bank_dir
 
 

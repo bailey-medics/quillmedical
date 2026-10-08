@@ -41,6 +41,7 @@ def org(db_session: Session) -> OrgUnit:
         OrgUnitFeature(org_unit_id=organisation.id, feature_key="teaching")
     )
     db_session.commit()
+
     return organisation
 
 
@@ -59,6 +60,7 @@ def educator(db_session: Session, org: OrgUnit) -> User:
     add_org_unit_member(db_session, org.id, user.id, "staff")
     db_session.commit()
     db_session.refresh(user)
+
     return user
 
 
@@ -68,6 +70,7 @@ def _login(client: TestClient) -> dict[str, str]:
         json={"username": "an_educator", "password": "Password123!"},
     )
     assert resp.status_code == 200, resp.text
+
     return {"X-CSRF-Token": client.cookies.get("XSRF-TOKEN", "")}
 
 

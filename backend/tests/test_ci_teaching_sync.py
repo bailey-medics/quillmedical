@@ -110,6 +110,7 @@ class TestRejectedBanksFailTheDeploy:
         )
         monkeypatch.setattr(settings, "TEACHING_GCS_BUCKET", None)
         monkeypatch.setattr(settings, "TEACHING_QUESTION_BANK_PATH", base)
+
         return client.post(
             "/api/ci/teaching/sync",
             headers={"Authorization": "Bearer test-token"},

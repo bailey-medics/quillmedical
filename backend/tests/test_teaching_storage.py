@@ -34,6 +34,7 @@ def _mock_gcs_client(
     """
     mock_storage = MagicMock()
     mock_storage.Client.return_value = mock_client
+
     return mock_storage
 
 
@@ -137,6 +138,7 @@ class TestListBanksInGcs:
         mock_bucket.blob.return_value = config_blob
 
         ms = _mock_gcs_client(mock_client)
+
         with patch.object(_gc, "storage", ms, create=True):
             result = list_banks_in_gcs("test-bucket")
         assert result == ["chest-xray", "ecg-basics"]
@@ -158,11 +160,13 @@ class TestListBanksInGcs:
             blob = MagicMock()
             # has-config has assessment.yaml; no-config has neither
             blob.exists.return_value = "has-config" in name
+
             return blob
 
         mock_bucket.blob.side_effect = blob_exists_side_effect
 
         ms = _mock_gcs_client(mock_client)
+
         with patch.object(_gc, "storage", ms, create=True):
             result = list_banks_in_gcs("test-bucket")
         assert result == ["has-config"]
@@ -184,11 +188,13 @@ class TestListBanksInGcs:
             blob = MagicMock()
             # Has assessment.yaml but NOT config.yaml
             blob.exists.return_value = name.endswith("assessment.yaml")
+
             return blob
 
         mock_bucket.blob.side_effect = blob_side_effect
 
         ms = _mock_gcs_client(mock_client)
+
         with patch.object(_gc, "storage", ms, create=True):
             result = list_banks_in_gcs("test-bucket")
         assert result == ["colonoscopy-test"]
@@ -219,6 +225,7 @@ class TestDownloadBankFromGcs:
         ]
 
         ms = _mock_gcs_client(mock_client)
+
         with patch.object(_gc, "storage", ms, create=True):
             result = download_bank_from_gcs("test-bucket", "test-bank")
         try:
@@ -238,6 +245,7 @@ class TestDownloadBankFromGcs:
         mock_bucket.list_blobs.return_value = []
 
         ms = _mock_gcs_client(mock_client)
+
         with patch.object(_gc, "storage", ms, create=True):
             with pytest.raises(FileNotFoundError, match="No content found"):
                 download_bank_from_gcs("test-bucket", "missing-bank")
@@ -285,6 +293,7 @@ class TestListBankImagesInGcs:
         ]
 
         ms = _mock_gcs_client(mock_client)
+
         with patch.object(_gc, "storage", ms, create=True):
             result = list_bank_images_in_gcs("test-bucket", "my-bank")
 
@@ -300,6 +309,7 @@ class TestListBankImagesInGcs:
         mock_bucket.list_blobs.return_value = []
 
         ms = _mock_gcs_client(mock_client)
+
         with patch.object(_gc, "storage", ms, create=True):
             result = list_bank_images_in_gcs("test-bucket", "empty-bank")
 
@@ -460,6 +470,7 @@ class TestGetModuleStatusFromGcs:
         )
 
         ms = _mock_gcs_client(mock_client)
+
         with patch.object(_gc, "storage", ms, create=True):
             result = get_module_status_from_gcs("test-bucket", "my-module")
 
@@ -475,6 +486,7 @@ class TestGetModuleStatusFromGcs:
         mock_blob.exists.return_value = False
 
         ms = _mock_gcs_client(mock_client)
+
         with patch.object(_gc, "storage", ms, create=True):
             result = get_module_status_from_gcs("test-bucket", "my-module")
 
@@ -490,6 +502,7 @@ class TestGetModuleStatusFromGcs:
         mock_blob.download_as_text.return_value = ": bad: yaml: ["
 
         ms = _mock_gcs_client(mock_client)
+
         with patch.object(_gc, "storage", ms, create=True):
             result = get_module_status_from_gcs("test-bucket", "my-module")
 
@@ -505,6 +518,7 @@ class TestGetModuleStatusFromGcs:
         mock_blob.download_as_text.return_value = "status: 42\n"
 
         ms = _mock_gcs_client(mock_client)
+
         with patch.object(_gc, "storage", ms, create=True):
             result = get_module_status_from_gcs("test-bucket", "my-module")
 
@@ -520,6 +534,7 @@ class TestGetModuleStatusFromGcs:
         mock_blob.download_as_text.return_value = "status: retired\n"
 
         ms = _mock_gcs_client(mock_client)
+
         with patch.object(_gc, "storage", ms, create=True):
             result = get_module_status_from_gcs("test-bucket", "my-module")
 
@@ -595,6 +610,7 @@ class TestDeleteMediaObject:
         mock_bucket.blob.return_value = mock_blob
 
         ms = _mock_gcs_client(mock_client)
+
         with patch.object(_gc, "storage", ms, create=True):
             delete_media_object("src-bucket", 7, "mod-1", "abc123")
 
@@ -620,6 +636,7 @@ class TestDeleteMediaObject:
         mock_bucket.blob.return_value = mock_blob
 
         ms = _mock_gcs_client(mock_client)
+
         with patch.object(_gc, "storage", ms, create=True):
             delete_media_object("src-bucket", 7, "mod-1", "abc123")
 
@@ -680,6 +697,7 @@ class TestLocalCoverImageUrl:
         module_dir = base / "some-teaching" / "modules" / "polyps"
         module_dir.mkdir(parents=True)
         (module_dir / "module.yaml").write_text("moduleId: polyps\n")
+
         return module_dir
 
     def test_carries_the_files_modification_time(self, tmp_path: Path) -> None:

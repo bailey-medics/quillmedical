@@ -88,6 +88,7 @@ def _user_with_rows() -> int:
                     "ends": ends,
                 },
             )
+
     return user_id
 
 

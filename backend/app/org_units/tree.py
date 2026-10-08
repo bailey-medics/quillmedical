@@ -1,4 +1,3 @@
-# backend/app/org_units/tree.py
 """Walking the governance tree, up and down.
 
 Ownership is one parent per org_unit and no cycles, so every org_unit has one
@@ -72,6 +71,7 @@ def root_ids_of(db: Session, unit_ids: list[int]) -> dict[int, int]:
     rows = db.execute(
         select(walk.c.origin, walk.c.id).where(walk.c.parent_id.is_(None))
     ).all()
+
     return {int(origin): int(root_id) for origin, root_id in rows}
 
 
@@ -130,6 +130,7 @@ def ancestor_ids(db: Session, unit_id: int) -> list[int]:
     ).all()
 
     found: list[int] = []
+
     for ancestor_id, _depth in rows:
         if ancestor_id is None or int(ancestor_id) in found:
             continue
@@ -140,6 +141,7 @@ def ancestor_ids(db: Session, unit_id: int) -> list[int]:
             # with.
             break
         found.append(int(ancestor_id))
+
     return found
 
 
@@ -166,6 +168,7 @@ def would_make_a_cycle(db: Session, unit_id: int, parent_id: int) -> bool:
     """
     if unit_id == parent_id:
         return True
+
     return unit_id in ancestor_ids(db, parent_id)
 
 
@@ -203,6 +206,7 @@ def descendant_ids(db: Session, root_ids: list[int]) -> set[int]:
         int(row)
         for row in db.execute(select(walk.c.id).distinct()).scalars().all()
     }
+
     return found - set(root_ids)
 
 
@@ -243,6 +247,7 @@ def organisation_org_units_of_sites(
         return {}
 
     roots = root_ids_of(db, site_ids)
+
     if not roots:
         return {}
 

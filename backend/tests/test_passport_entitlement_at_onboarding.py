@@ -37,6 +37,7 @@ def _user(db: Session, username: str, *, competencies: list[str]) -> User:
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -50,6 +51,7 @@ def _login(client: TestClient, username: str) -> TestClient:
         json={"username": username, "password": "Password123!"},
     )
     assert response.status_code == 200, response.text
+
     return client
 
 
@@ -71,6 +73,7 @@ def org(db_session: Session) -> OrgUnit:
     db_session.add(organisation)
     db_session.commit()
     db_session.refresh(organisation)
+
     return organisation
 
 
@@ -84,6 +87,7 @@ def ward(db_session: Session, org: OrgUnit) -> OrgUnit:
         update(OrgUnit).where(OrgUnit.id == ward.id).values(parent_id=org.id)
     )
     db_session.commit()
+
     return ward
 
 
@@ -100,6 +104,7 @@ def admin(db_session: Session, org: OrgUnit) -> User:
     # admin routes comes from the row, never from the membership.
     administers(db_session, user.id, org.id)
     db_session.commit()
+
     return user
 
 

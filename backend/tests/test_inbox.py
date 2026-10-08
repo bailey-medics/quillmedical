@@ -41,6 +41,7 @@ def _feedback(db: Session, user: User | None, status: str = "new") -> Feedback:
     db.add(row)
     db.commit()
     db.refresh(row)
+
     return row
 
 
@@ -215,6 +216,7 @@ def _holder(db: Session, username: str = "holder") -> Passport:
     passport = Passport(id=f"{user.id:032x}", user_id=user.id)
     db.add(passport)
     db.commit()
+
     return passport
 
 
@@ -236,6 +238,7 @@ def _request(
     db.add(row)
     db.commit()
     db.refresh(row)
+
     return row
 
 
@@ -265,6 +268,7 @@ def _confirmation(
     db.add(row)
     db.commit()
     db.refresh(row)
+
     return row
 
 
@@ -277,6 +281,7 @@ class TestLogbookConfirmations:
     def supervisor(self, db_session: Session, test_user: User) -> User:
         hold(test_user, "assess_clinician_passport")
         db_session.commit()
+
         return test_user
 
     def test_counts_the_open_asks_that_name_the_caller(
@@ -374,6 +379,7 @@ class TestSignOffRequests:
     def assessor(self, db_session: Session, test_user: User) -> User:
         hold(test_user, "assess_clinician_passport")
         db_session.commit()
+
         return test_user
 
     def test_counts_the_open_requests_that_name_the_caller(
@@ -403,6 +409,7 @@ class TestSignOffRequests:
 
         def record(store: object, passport_id: str, name: str) -> object:
             read.append((passport_id, name))
+
             return SimpleNamespace(id="20261003T045520.838Z-ee579e99")
 
         monkeypatch.setattr(sources.service, "read_sign_off", record)

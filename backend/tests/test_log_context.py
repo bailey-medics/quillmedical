@@ -28,6 +28,7 @@ class TestRequestContextFilter:
 
     def test_filter_adds_request_id_when_set(self) -> None:
         token = request_id_var.set("abc123")
+
         try:
             record = self._make_record()
             self.filter.filter(record)
@@ -37,6 +38,7 @@ class TestRequestContextFilter:
 
     def test_filter_adds_user_id_when_set(self) -> None:
         token = user_id_var.set("user-uuid-456")
+
         try:
             record = self._make_record()
             self.filter.filter(record)

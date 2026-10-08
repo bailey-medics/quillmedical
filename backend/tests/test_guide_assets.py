@@ -23,10 +23,12 @@ def bucket(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, str]]:
 
     def _read(bucket_name: str, key: str) -> bytes | None:
         reads.append((bucket_name, key))
+
         return PNG if key == "add-a-delegate-by-hand/users.png" else None
 
     monkeypatch.setattr(settings, "GUIDE_ASSETS_GCS_BUCKET", "the-bucket")
     monkeypatch.setattr(guides, "read_guide_asset", _read)
+
     return reads
 
 

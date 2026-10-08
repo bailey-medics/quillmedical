@@ -61,6 +61,7 @@ def main() -> None:
     args = parser.parse_args()
 
     bg = find_certificate_background(_DEFAULT_BANK_PATH, args.bank)
+
     if not bg:
         print(
             f"No certificate-blank.png found for bank '{args.bank}' "
@@ -72,9 +73,11 @@ def main() -> None:
     # Load certificate style from config.yaml
     config_path = _DEFAULT_BANK_PATH / args.bank / "config.yaml"
     config: dict[str, Any] = {}
+
     if config_path.is_file():
         with open(config_path, encoding="utf-8") as f:
             config = yaml.safe_load(f) or {}
+
     style = parse_certificate_style(config.get("certificate"))
 
     # Build preview exam ref from config prefix

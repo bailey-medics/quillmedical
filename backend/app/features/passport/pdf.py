@@ -352,6 +352,7 @@ def _competency_table(
     )
 
     story.append(table)
+
     return story
 
 
@@ -480,6 +481,7 @@ def _logbook_totals(
     )
 
     story.append(table)
+
     return story
 
 
@@ -702,6 +704,7 @@ def _reflections_note(
     )
 
     story.append(table)
+
     return story
 
 
@@ -797,6 +800,7 @@ def _one_sign_off(
         )
 
     block.append(Spacer(1, 3 * mm))
+
     return block
 
 

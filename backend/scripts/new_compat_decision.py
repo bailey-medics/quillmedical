@@ -39,6 +39,7 @@ from pathlib import Path
 def find_repo_root() -> Path:
     """Walk up from this script's location to find the repo root (.git)."""
     current = Path(__file__).resolve().parent
+
     while current != current.parent:
         if (current / ".git").exists():
             return current
@@ -50,6 +51,7 @@ def ensure_compat_dir(repo_root: Path) -> Path:
     """Ensure api-compatibility/ exists at repo root, create if needed."""
     compat_dir = repo_root / "api-compatibility"
     compat_dir.mkdir(exist_ok=True)
+
     return compat_dir
 
 
@@ -263,6 +265,7 @@ def yaml_escape(value: str) -> str:
     # In YAML double-quoted strings, only " and \ need escaping
     value = value.replace("\\", "\\\\")
     value = value.replace('"', '\\"')
+
     return value
 
 

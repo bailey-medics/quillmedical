@@ -48,6 +48,7 @@ def get_or_create_user(
 ) -> User:
     """Get existing user or create with default password."""
     user = db.query(User).filter(User.username == username).first()
+
     if user is None:
         user = User(
             username=username,
@@ -60,6 +61,7 @@ def get_or_create_user(
         print(f"  + Created user: {username}")
     else:
         print(f"  = User exists: {username}")
+
     return user
 
 
@@ -86,6 +88,7 @@ def add_message(
     db.flush()
     # Override the server-default timestamp
     msg.created_at = created_at
+
     return msg
 
 
@@ -163,6 +166,7 @@ def seed_conversation_1(
             "Thank you for your help with my prescription",
         ),
     ]
+
     for sender, ts, body in msgs:
         add_message(
             db, conversation=conv, sender=sender, body=body, created_at=ts
@@ -310,6 +314,7 @@ def seed_conversation_2(
         ),
         (david, _ago(hours=23), dietary_advice),
     ]
+
     for sender, ts, body in msgs:
         add_message(
             db, conversation=conv, sender=sender, body=body, created_at=ts
@@ -380,6 +385,7 @@ def seed_conversation_3(
             "My test results came back, what should I do next?",
         ),
     ]
+
     for sender, ts, body in msgs:
         add_message(
             db, conversation=conv, sender=sender, body=body, created_at=ts
@@ -447,6 +453,7 @@ def seed_conversation_4(
         ),
         (mark, _ago(days=1), "Issue resolved, thank you"),
     ]
+
     for sender, ts, body in msgs:
         add_message(
             db, conversation=conv, sender=sender, body=body, created_at=ts
@@ -459,6 +466,7 @@ def main() -> int:
     print("Seeding messaging conversations …")
 
     db = CoreSessionLocal()
+
     try:
         # Check if messaging data already exists
         existing = db.query(Conversation).first()

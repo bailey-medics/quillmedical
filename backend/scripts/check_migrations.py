@@ -89,6 +89,7 @@ def _string_value(node: ast.expr | None) -> str | None:
     """Return the string value of a constant node, else None."""
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
+
     return None
 
 
@@ -101,6 +102,7 @@ def _assigned_value(tree: ast.Module, name: str) -> str | None:
             and node.target.id == name
         ):
             return _string_value(node.value)
+
     return None
 
 
@@ -109,6 +111,7 @@ def _function(tree: ast.Module, name: str) -> ast.FunctionDef | None:
     for node in tree.body:
         if isinstance(node, ast.FunctionDef) and node.name == name:
             return node
+
     return None
 
 
@@ -118,6 +121,7 @@ def _call_name(call: ast.Call) -> str | None:
         return call.func.attr
     if isinstance(call.func, ast.Name):
         return call.func.id
+
     return None
 
 
@@ -135,6 +139,7 @@ def _keyword_is_false(call: ast.Call, name: str) -> bool:
             and kw.value.value is False
         ):
             return True
+
     return False
 
 
@@ -142,6 +147,7 @@ def parse_migration(path: Path) -> Migration:
     """Parse a single migration module."""
     source = path.read_text(encoding="utf-8")
     tree = ast.parse(source, filename=str(path))
+
     return Migration(
         path=path,
         revision=_assigned_value(tree, "revision"),
@@ -197,6 +203,7 @@ def check_chain_integrity(migrations: list[Migration]) -> list[Problem]:
         return problems
 
     bases = [m for m in by_revision.values() if m.down_revision is None]
+
     if not bases:
         problems.append(
             Problem(SEVERITY_ERROR, "no base migration found (one expected)")
@@ -211,6 +218,7 @@ def check_chain_integrity(migrations: list[Migration]) -> list[Problem]:
         )
 
     children: dict[str, list[Migration]] = {}
+
     for migration in by_revision.values():
         parent = migration.down_revision
         if parent is None:
@@ -242,6 +250,7 @@ def check_chain_integrity(migrations: list[Migration]) -> list[Problem]:
         if m.down_revision is not None
     }
     heads = [m for rev, m in by_revision.items() if rev not in referenced]
+
     if len(heads) > 1:
         names = ", ".join(sorted(str(h.revision) for h in heads))
         problems.append(
@@ -272,6 +281,7 @@ def _has_cycle(by_revision: dict[str, Migration]) -> bool:
             if migration is None:
                 break
             current = migration.down_revision
+
     return False
 
 
@@ -279,11 +289,14 @@ def _description(docstring: str | None) -> str:
     """Extract the human summary above the Alembic boilerplate."""
     if not docstring:
         return ""
+
     lines: list[str] = []
+
     for line in docstring.splitlines():
         if line.strip().startswith("Revision ID:"):
             break
         lines.append(line)
+
     return "\n".join(lines).strip()
 
 
@@ -291,6 +304,7 @@ def check_description(migration: Migration) -> list[Problem]:
     """Check the migration carries a non-empty description."""
     if _description(migration.docstring):
         return []
+
     return [
         Problem(
             SEVERITY_ERROR,
@@ -314,6 +328,7 @@ def _is_effectively_empty(function: ast.FunctionDef | None) -> bool:
             if isinstance(value, str) or value is Ellipsis:
                 continue
         return False
+
     return True
 
 
@@ -321,6 +336,7 @@ def check_reversibility(migration: Migration) -> list[Problem]:
     """Fail when ``downgrade()`` provides no real reversal."""
     if not _is_effectively_empty(migration.downgrade):
         return []
+
     return [
         Problem(
             SEVERITY_ERROR,
@@ -335,7 +351,9 @@ def check_not_null_trap(migration: Migration) -> list[Problem]:
     """Check NOT NULL columns on existing tables carry a server_default."""
     if migration.upgrade is None:
         return []
+
     problems: list[Problem] = []
+
     for node in ast.walk(migration.upgrade):
         if not isinstance(node, ast.Call):
             continue
@@ -369,6 +387,7 @@ def check_not_null_trap(migration: Migration) -> list[Problem]:
                         migration.path,
                     )
                 )
+
     return problems
 
 
@@ -391,6 +410,7 @@ def _marker_attached_to(lines: list[str], call_lineno: int) -> bool:
     as ``ast`` reports it.
     """
     index = call_lineno - 1
+
     if index < 0 or index >= len(lines):
         return False
     if DESTRUCTIVE_MARKER in lines[index]:
@@ -404,6 +424,7 @@ def _marker_attached_to(lines: list[str], call_lineno: int) -> bool:
             return False
         if DESTRUCTIVE_MARKER in line:
             return True
+
     return False
 
 
@@ -421,6 +442,7 @@ def check_destructive(migration: Migration) -> list[Problem]:
 
     lines = migration.source.splitlines()
     unmarked: list[tuple[int, str]] = []
+
     for node in ast.walk(migration.upgrade):
         if not isinstance(node, ast.Call):
             continue
@@ -446,11 +468,13 @@ def check_destructive(migration: Migration) -> list[Problem]:
 def check_all(migrations: list[Migration]) -> list[Problem]:
     """Run every check against every migration."""
     problems: list[Problem] = list(check_chain_integrity(migrations))
+
     for migration in migrations:
         problems.extend(check_description(migration))
         problems.extend(check_reversibility(migration))
         problems.extend(check_not_null_trap(migration))
         problems.extend(check_destructive(migration))
+
     return problems
 
 
@@ -470,12 +494,15 @@ def destructive_ops(migration: Migration) -> list[str]:
     """
     if migration.upgrade is None:
         return []
+
     found: set[str] = set()
+
     for node in ast.walk(migration.upgrade):
         if isinstance(node, ast.Call):
             name = _call_name(node)
             if name in DESTRUCTIVE_OPS:
                 found.add(str(name))
+
     return sorted(found)
 
 
@@ -489,12 +516,14 @@ def report_destructive(paths: list[Path]) -> list[str]:
     destructive operation produce no line at all.
     """
     lines: list[str] = []
+
     for path in sorted(paths):
         migration = parse_migration(path)
         ops = destructive_ops(migration)
         if ops:
             revision = migration.revision or "unknown"
             lines.append(f"{path.name} {revision} {','.join(ops)}")
+
     return lines
 
 
@@ -505,6 +534,7 @@ def report_destructive(paths: list[Path]) -> list[str]:
 
 def _format(problem: Problem) -> str:
     location = f"{problem.path.name}: " if problem.path else ""
+
     return f"{problem.severity.upper()}: {location}{problem.message}"
 
 
@@ -537,6 +567,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     report_paths: list[Path] | None = args.report_destructive
+
     if report_paths:
         missing = [p for p in report_paths if not p.is_file()]
         if missing:
@@ -548,6 +579,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     versions_dir: Path = args.versions_dir
+
     if not versions_dir.is_dir():
         print(
             f"error: versions directory not found: {versions_dir}",
@@ -577,6 +609,7 @@ def main(argv: list[str] | None = None) -> int:
             f"\n{len(warnings)} migration check warning(s) found.",
             file=sys.stderr,
         )
+
     return 0
 
 

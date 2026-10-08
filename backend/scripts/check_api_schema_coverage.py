@@ -125,6 +125,7 @@ def _resolve_schema(
 ) -> dict[str, Any]:
     """Resolve a `$ref` to its target schema; pass through otherwise."""
     seen: set[str] = set()
+
     while isinstance(schema, dict) and "$ref" in schema:
         ref = schema["$ref"]
         if ref in seen:
@@ -132,6 +133,7 @@ def _resolve_schema(
         seen.add(ref)
         name = ref.rsplit("/", 1)[-1]
         schema = schemas.get(name, {})
+
     return schema or {}
 
 
@@ -146,7 +148,9 @@ def is_opaque_schema(
     """
     if not schema:
         return True
+
     schema = _resolve_schema(schema, schemas)
+
     if not schema:
         return True
 
@@ -181,11 +185,13 @@ def _success_response_schema(
 ) -> dict[str, Any] | None:
     """Return the response schema for `operation`'s success status code."""
     responses = operation.get("responses", {})
+
     for code in sorted(code for code in responses if code.startswith("2")):
         content = responses[code].get("content", {})
         json_content = content.get("application/json")
         if json_content and "schema" in json_content:
             return json_content["schema"]  # type: ignore[no-any-return]
+
     return None
 
 
@@ -197,6 +203,7 @@ def _success_response_schema(
 def _decorator_is_http_route(decorator: ast.expr) -> bool:
     """Return True if `decorator` is `<name>.<verb>(...)` for a route verb."""
     func = decorator.func if isinstance(decorator, ast.Call) else decorator
+
     return isinstance(func, ast.Attribute) and func.attr in HTTP_METHODS
 
 
@@ -210,9 +217,12 @@ def _marker_above(lines: list[str], lineno: int) -> str | None:
     """
     if lineno < 2:
         return None
+
     above = lines[lineno - 2].strip()
+
     if above == PERMANENT_MARKER:
         return PERMANENT_MARKER
+
     return None
 
 
@@ -236,6 +246,7 @@ def _return_type_name(
         idx = source.find(sep)
         if idx != -1:
             source = source[:idx]
+
     return source.rsplit(".", 1)[-1] or None
 
 
@@ -245,6 +256,7 @@ def _index_file(path: Path) -> dict[str, _FunctionEntry]:
     lines = source.splitlines()
     tree = ast.parse(source, filename=str(path))
     index: dict[str, _FunctionEntry] = {}
+
     for node in ast.walk(tree):
         if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             continue
@@ -258,6 +270,7 @@ def _index_file(path: Path) -> dict[str, _FunctionEntry]:
             marker=_marker_above(lines, topmost.lineno),
             return_type=_return_type_name(node),
         )
+
     return index
 
 
@@ -321,6 +334,7 @@ def collect_routes(
                     return_type=entry.return_type,
                 )
             )
+
     return routes, problems
 
 
@@ -335,6 +349,7 @@ def check_route_coverage(
     """Check one route's marker against its actual schema/return type."""
     schemas = spec.get("components", {}).get("schemas", {})
     operation = spec.get("paths", {}).get(route.path, {}).get(route.method)
+
     if operation is None:
         return []  # route came from this same app; should not happen
 
@@ -355,6 +370,7 @@ def check_route_coverage(
         return []
 
     schema = _success_response_schema(operation)
+
     if not is_opaque_schema(schema, schemas):
         return []
 
@@ -375,8 +391,10 @@ def check_all(app: Any, app_dir: Path) -> list[Problem]:
     """Run the coverage check across every route in `app`."""
     spec: dict[str, Any] = app.openapi()
     routes, problems = collect_routes(app, app_dir)
+
     for route in routes:
         problems.extend(check_route_coverage(route, spec))
+
     return problems
 
 
@@ -387,11 +405,13 @@ def check_all(app: Any, app_dir: Path) -> list[Problem]:
 
 def _format(problem: Problem) -> str:
     location = ""
+
     if problem.path is not None:
         location = str(problem.path)
         if problem.line is not None:
             location += f":{problem.line}"
         location += ": "
+
     return f"{problem.severity.upper()}: {location}{problem.message}"
 
 
@@ -433,6 +453,7 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
+
     return 0
 
 

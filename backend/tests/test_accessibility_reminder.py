@@ -24,6 +24,7 @@ def outbox(monkeypatch):
         state["sent"].append(kwargs)
 
     monkeypatch.setattr(reminder, "send_email", send_email)
+
     return state
 
 
@@ -52,6 +53,7 @@ class TestTheEmail:
         send_reminder(**GOOD)
 
         [email] = outbox["sent"]
+
         for body in (email["html_body"], email["text_body"]):
             assert "last reviewed on 25 September 2026" in body
             assert "https://quill-medical.com/accessibility-statement" in body
@@ -119,6 +121,7 @@ class TestFromTheCommandLine:
         monkeypatch.setenv("ACCESSIBILITY_RECIPIENT", GOOD["recipient"])
         monkeypatch.setenv("ACCESSIBILITY_REVIEWED", GOOD["reviewed"])
         monkeypatch.setenv("ACCESSIBILITY_DUE_BY", GOOD["due_by"])
+
         return monkeypatch
 
     def test_sends_and_says_so_with_the_address_hidden(

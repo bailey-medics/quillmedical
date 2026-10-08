@@ -29,6 +29,7 @@ def _user(db_session, name, *, verified=True, active=True, wants=True):
     )
     db_session.add(user)
     db_session.commit()
+
     return user
 
 
@@ -52,6 +53,7 @@ def outbox(monkeypatch):
 
     def send_email(**kwargs):
         to = kwargs["to"]
+
         if state["hook"] is not None:
             state["hook"](to)
         if to in state["refuse_for"]:
@@ -62,6 +64,7 @@ def outbox(monkeypatch):
 
     monkeypatch.setattr(newsletter, "send_email", send_email)
     monkeypatch.setattr(newsletter.time, "sleep", lambda seconds: None)
+
     return state
 
 
@@ -76,6 +79,7 @@ def _rows(db_session):
 def _go(db_session, **kwargs):
     """Send for real: a dry run for the value to confirm, then the send."""
     dry = send_campaign(db_session, CAMPAIGN, **kwargs)
+
     return send_campaign(
         db_session,
         CAMPAIGN,
@@ -411,6 +415,7 @@ class TestFromTheCommandLine:
         )
         for name in ("NEWSLETTER_CAMPAIGN", "CONFIRM", "NEWSLETTER_ONLY_TO"):
             monkeypatch.delenv(name, raising=False)
+
         return monkeypatch
 
     def test_a_dry_run_prints_the_value_to_pass_back(
@@ -458,6 +463,7 @@ def _member(db_session, name, *, subscribed=True):
     )
     db_session.add(member)
     db_session.commit()
+
     return member
 
 

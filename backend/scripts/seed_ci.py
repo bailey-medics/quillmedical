@@ -53,6 +53,7 @@ CI_TOTP_SECRET = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
 def seed() -> None:
     """Create test users and organisation for E2E."""
     db = CoreSessionLocal()
+
     try:
         # 1. Create superadmin
         admin = db.query(User).filter(User.username == "admin").first()
@@ -198,8 +199,10 @@ def _ensure_user(
     CI user.
     """
     user = db.query(User).filter(User.username == username).first()
+
     if user is not None:
         return user
+
     user = User(
         username=username,
         email=f"{username}@ci.local",
@@ -212,6 +215,7 @@ def _ensure_user(
     db.add(user)
     db.flush()
     print(f"Created {username} user")
+
     return user
 
 
@@ -244,6 +248,7 @@ def seed_member_practice(db: Session, org_unit_id: int) -> None:
             PractisingCompetency.competency == "manage_users",
         )
     )
+
     if administers is None:
         db.add(
             PractisingCompetency(
@@ -276,6 +281,7 @@ def seed_teaching(db: Session, org_unit_id: int, admin_id: int) -> None:
     """
     base_path = settings.TEACHING_QUESTION_BANK_PATH
     bank_ids = discover_local_banks(base_path) if base_path else []
+
     if not bank_ids:
         print("No teaching modules mounted; the dashboard will be empty")
         return

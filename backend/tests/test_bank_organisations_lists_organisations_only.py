@@ -24,6 +24,7 @@ def _org(db: Session, name: str) -> OrgUnit:
     org = OrgUnit(name=name, type="organisation")
     db.add(org)
     db.commit()
+
     return org
 
 
@@ -35,6 +36,7 @@ def _site_of(db: Session, org: OrgUnit, name: str) -> OrgUnit:
         update(OrgUnit).where(OrgUnit.id == site.id).values(parent_id=org.id)
     )
     db.commit()
+
     return site
 
 
@@ -50,6 +52,7 @@ def _teaching_on(db: Session, org_unit: OrgUnit) -> None:
 def _names(client: TestClient) -> list[str]:
     resp = client.get(f"/api/teaching/admin/banks/{BANK}/organisations")
     assert resp.status_code == 200, resp.text
+
     return [row["organisation_name"] for row in resp.json()]
 
 

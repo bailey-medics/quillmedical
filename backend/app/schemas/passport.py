@@ -1,4 +1,3 @@
-# backend/app/schemas/passport.py
 """Pydantic request and response schemas for the passport API.
 
 Deliberately separate from ``app.features.passport.schemas``, which

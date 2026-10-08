@@ -57,6 +57,7 @@ def _user(db: Session, username: str, profession: str) -> User:
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 
@@ -92,6 +93,7 @@ def _coordinator(db: Session) -> User:
     db.commit()
     db.refresh(user)
     assert "manage_teaching" in user.get_final_competencies()
+
     return user
 
 
@@ -156,6 +158,7 @@ class TestScopedManagers:
 
     def test_every_one_has_a_whitelist_and_is_current(self) -> None:
         by_id = {entry.id: entry for entry in COMPETENCIES}
+
         for competency_id in SCOPED_MANAGER_IDS:
             entry = by_id[competency_id]
             assert entry.retired_on is None

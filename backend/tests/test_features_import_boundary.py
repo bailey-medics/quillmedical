@@ -44,6 +44,7 @@ def _import_in_clean_subprocess(
         "PYTHONPATH": str(_BACKEND_ROOT),
         "PYTHONDONTWRITEBYTECODE": "1",
     }
+
     return subprocess.run(
         [sys.executable, "-c", script],
         capture_output=True,

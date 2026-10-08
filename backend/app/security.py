@@ -59,6 +59,7 @@ def hash_password(p: str) -> str:
     # Defensive programming: validate input
     if not p:
         raise ValueError("Password cannot be empty")
+
     return _ph.hash(p)
 
 
@@ -112,12 +113,14 @@ def create_access_token(
     # Defensive programming: validate inputs
     if not sub or not sub.strip():
         raise ValueError("Subject (username) cannot be empty")
+
     payload: dict[str, Any] = {
         "sub": sub,
         "roles": roles,
         "tv": token_version,
         "exp": _now() + timedelta(minutes=settings.ACCESS_TTL_MIN),
     }
+
     return jwt.encode(  # type: ignore[no-any-return]
         payload,
         settings.JWT_SECRET.get_secret_value(),
@@ -145,6 +148,7 @@ def create_refresh_token(sub: str, token_version: int = 0) -> str:
         "tv": token_version,
         "exp": _now() + timedelta(days=settings.REFRESH_TTL_DAYS),
     }
+
     return jwt.encode(  # type: ignore[no-any-return]
         payload,
         settings.JWT_SECRET.get_secret_value(),
@@ -202,6 +206,7 @@ def create_csrf_token(username: str) -> str:
     # Defensive programming: validate input
     if not username or not username.strip():
         raise ValueError("Username cannot be empty")
+
     return _csrf.dumps({"sub": username})
 
 
@@ -273,6 +278,7 @@ def generate_totp_provision_uri(
         str: otpauth://totp/... URI for QR code generation.
     """
     totp = pyotp.TOTP(secret)
+
     return totp.provisioning_uri(name=username, issuer_name=issuer)
 
 
@@ -306,8 +312,10 @@ def totp_provisioning_uri(
     the frontend.
     """
     totp = pyotp.totp.TOTP(secret)
+
     if issuer:
         return totp.provisioning_uri(name=username, issuer_name=issuer)
+
     return totp.provisioning_uri(name=username)
 
 
@@ -337,6 +345,7 @@ def create_jwt_with_competencies(
     """
     if not sub or not sub.strip():
         raise ValueError("Subject (username) cannot be empty")
+
     payload: dict[str, Any] = {
         "sub": sub,
         "roles": roles,
@@ -344,6 +353,7 @@ def create_jwt_with_competencies(
         "tv": token_version,
         "exp": _now() + timedelta(minutes=settings.ACCESS_TTL_MIN),
     }
+
     return jwt.encode(  # type: ignore[no-any-return]
         payload,
         settings.JWT_SECRET.get_secret_value(),
@@ -409,6 +419,7 @@ def create_invite_token(
         "user_type": user_type,
         "exp": _now() + timedelta(days=ttl_days),
     }
+
     return jwt.encode(  # type: ignore[no-any-return]
         payload,
         settings.JWT_SECRET.get_secret_value(),
@@ -430,8 +441,10 @@ def decode_invite_token(tok: str) -> dict[str, Any]:
         settings.JWT_SECRET.get_secret_value(),
         algorithms=[settings.JWT_ALG],
     )
+
     if data.get("type") != "invite":
         raise jwt.JWTError("Not an invite token")
+
     return data
 
 
@@ -503,6 +516,7 @@ def create_passport_invite_token(
         "email": email.strip().lower(),
         "exp": _now() + timedelta(days=ttl_days),
     }
+
     return jwt.encode(  # type: ignore[no-any-return]
         payload,
         settings.JWT_SECRET.get_secret_value(),
@@ -560,6 +574,7 @@ def create_password_reset_token(email: str) -> str:
     """
     if not email or not email.strip():
         raise ValueError("Email cannot be empty")
+
     return _password_reset.dumps({"email": email.strip().lower()})
 
 
@@ -604,6 +619,7 @@ def create_email_verify_token(email: str) -> str:
     """
     if not email or not email.strip():
         raise ValueError("Email cannot be empty")
+
     return _email_verify.dumps({"email": email.strip().lower()})
 
 
@@ -641,6 +657,7 @@ def _unsubscribe_token(key: str, value: int) -> str:
         raise ValueError("An id must be a whole number")
     if value <= 0:
         raise ValueError("An id must be positive")
+
     return _marketing_unsubscribe.dumps({key: value})
 
 
@@ -652,9 +669,12 @@ def _unsubscribe_token_id(token: str, key: str) -> int | None:
         return None
     if not isinstance(data, dict):
         return None
+
     value = data.get(key)
+
     if isinstance(value, bool) or not isinstance(value, int):
         return None
+
     return value if value > 0 else None
 
 

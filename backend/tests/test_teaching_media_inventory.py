@@ -37,6 +37,7 @@ def _org(db: Session, name: str) -> OrgUnit:
     org = OrgUnit(name=name, type="hospital_team")
     db.add(org)
     db.flush()
+
     return org
 
 
@@ -68,6 +69,7 @@ def _upload(
     )
     db.add(link)
     db.flush()
+
     return link
 
 

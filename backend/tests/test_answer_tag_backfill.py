@@ -120,6 +120,7 @@ def _answers(*resolved: str) -> list[int]:
                     ).scalar_one()
                 )
             )
+
     return ids
 
 
@@ -169,6 +170,7 @@ def test_an_answer_with_rows_already_is_skipped(
 ) -> None:
     """The application's rows are already the copy."""
     (answer,) = _answers('["high_confidence", "adenoma"]')
+
     with core_engine.begin() as conn:
         conn.execute(
             text("""

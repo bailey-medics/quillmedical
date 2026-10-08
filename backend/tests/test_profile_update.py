@@ -18,6 +18,7 @@ class TestUpdateProfile:
             json={"username": username, "password": password},
         )
         assert resp.status_code == 200
+
         return client.cookies.get("XSRF-TOKEN", "")
 
     def test_update_full_name(

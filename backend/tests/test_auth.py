@@ -466,6 +466,7 @@ class TestTOTPVerify:
         )
         assert response.status_code == 400
         detail = response.json()["detail"]
+
         if isinstance(detail, dict):
             assert "invalid" in detail.get("message", "").lower()
             assert detail.get("error_code") == "invalid_totp"

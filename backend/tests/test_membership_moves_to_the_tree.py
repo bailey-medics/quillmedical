@@ -45,6 +45,7 @@ def _org(db: Session, name: str) -> OrgUnit:
     db.add(org)
     db.commit()
     db.refresh(org)
+
     return org
 
 
@@ -53,6 +54,7 @@ def _ward(db: Session, org: OrgUnit, name: str) -> OrgUnit:
     db.add(site)
     db.commit()
     db.refresh(site)
+
     return site
 
 
@@ -68,6 +70,7 @@ def _person(db: Session, username: str) -> User:
     db.add(user)
     db.commit()
     db.refresh(user)
+
     return user
 
 

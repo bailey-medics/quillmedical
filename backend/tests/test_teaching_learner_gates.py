@@ -64,20 +64,24 @@ def _competencies_asked(route: APIRoute) -> set[str]:
     with is read from the closure's cells.
     """
     asked: set[str] = set()
+
     for dependency in route.dependant.dependencies:
         call = dependency.call
         for cell in getattr(call, "__closure__", None) or ():
             if isinstance(cell.cell_contents, str):
                 asked.add(cell.cell_contents)
+
     return asked & GATES
 
 
 def _routes() -> dict[tuple[str, str], APIRoute]:
     found: dict[tuple[str, str], APIRoute] = {}
+
     for route in teaching_router.routes:
         assert isinstance(route, APIRoute)
         for method in route.methods:
             found[(method, route.path)] = route
+
     return found
 
 
@@ -135,6 +139,7 @@ def _learner(
     db.flush()
     add_org_unit_member(db, org.id, user.id, "trainee")
     db.flush()
+
     return user
 
 
@@ -149,6 +154,7 @@ def teaching_org(db_session: Session) -> OrgUnit:
         )
     )
     db_session.flush()
+
     return org
 
 
@@ -301,6 +307,7 @@ def _passed_assessment(
     )
     db.add(assessment)
     db.flush()
+
     return assessment
 
 

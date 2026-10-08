@@ -50,12 +50,15 @@ def _stub_urlopen(status: int = 200, side_effect=None):
         captured["url"] = request.full_url
         captured["headers"] = {k.lower(): v for k, v in request.header_items()}
         captured["json"] = json.loads(request.data.decode())
+
         if side_effect is not None:
             raise side_effect
+
         response = MagicMock()
         response.status = status
         response.__enter__ = lambda s: s
         response.__exit__ = lambda *a: False
+
         return response
 
     return patch("urllib.request.urlopen", side_effect=_fake), captured
@@ -83,6 +86,7 @@ def fake_gcs():
             # the upload set on the first.
             key = f"{bucket_name}/{path}"
             existing = uploaded.get(key)
+
             if existing is not None:
                 return existing
 
@@ -92,6 +96,7 @@ def fake_gcs():
                 dest
             ).write_bytes(b"fake source")
             uploaded[key] = blob
+
             return blob
 
         return _make
@@ -101,6 +106,7 @@ def fake_gcs():
     def _bucket(name: str) -> MagicMock:
         bucket = MagicMock()
         bucket.blob.side_effect = _blob_for(name)
+
         return bucket
 
     client.bucket.side_effect = _bucket
@@ -109,6 +115,7 @@ def fake_gcs():
     storage_module.Client.return_value = client
 
     modules_patch, attr_patch = _patch_storage(storage_module)
+
     with modules_patch, attr_patch:
         yield uploaded
 
@@ -190,6 +197,7 @@ class TestTranscode:
 
     def test_encodes_720p_and_1080p(self, fake_gcs, stub_ffmpeg) -> None:
         build_rendition, _ = stub_ffmpeg
+
         with patch.dict(os.environ, BASE_ENV, clear=False):
             from scripts.transcode_cli import transcode
 
@@ -239,6 +247,7 @@ class TestSourceCleanup:
         def _processed_blob(path: str) -> MagicMock:
             blob = MagicMock()
             blob.exists.return_value = not path.endswith("-poster.jpg")
+
             return blob
 
         source = MagicMock()
@@ -313,6 +322,7 @@ class TestValidation:
     )
     def test_rejects_a_traversal(self, fake_gcs, field, value) -> None:
         env = {**BASE_ENV, field: value}
+
         with patch.dict(os.environ, env, clear=False):
             from scripts.transcode_cli import transcode
 
@@ -322,6 +332,7 @@ class TestValidation:
 
     def test_rejects_a_non_integer_org_id(self, fake_gcs) -> None:
         env = {**BASE_ENV, "TRANSCODE_ORG_ID": "not-a-number"}
+
         with patch.dict(os.environ, env, clear=False):
             from scripts.transcode_cli import transcode
 
@@ -329,6 +340,7 @@ class TestValidation:
 
     def test_rejects_a_non_positive_org_id(self, fake_gcs) -> None:
         env = {**BASE_ENV, "TRANSCODE_ORG_ID": "0"}
+
         with patch.dict(os.environ, env, clear=False):
             from scripts.transcode_cli import transcode
 
@@ -336,6 +348,7 @@ class TestValidation:
 
     def test_exits_on_a_missing_variable(self) -> None:
         env = {k: v for k, v in BASE_ENV.items() if k != "TRANSCODE_ASSET_ID"}
+
         with patch.dict(os.environ, env, clear=True):
             from scripts.transcode_cli import transcode
 
@@ -418,6 +431,7 @@ class TestCompletionReport:
             "TRANSCODE_CALLBACK_URL": "https://example.test/cb",
             "TRANSCODE_CALLBACK_TOKEN": "tok",
         }
+
         with patch.dict(os.environ, env, clear=False):
             stub, captured = _stub_urlopen()
             with stub:
@@ -445,6 +459,7 @@ class TestCompletionReport:
             "TRANSCODE_CALLBACK_URL": "https://example.test/cb",
             "TRANSCODE_CALLBACK_TOKEN": "tok",
         }
+
         with patch.dict(os.environ, env, clear=False):
             stub, _ = _stub_urlopen(status=401)
             with stub:
@@ -459,6 +474,7 @@ class TestCompletionReport:
             "TRANSCODE_CALLBACK_URL": "https://example.test/cb",
             "TRANSCODE_CALLBACK_TOKEN": "tok",
         }
+
         with patch.dict(os.environ, env, clear=False):
             stub, _ = _stub_urlopen(side_effect=OSError("no route"))
             with stub:

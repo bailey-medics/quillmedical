@@ -72,6 +72,7 @@ def framework_refs(framework_ids: list[str]) -> list[FrameworkRef]:
         raise UnknownFrameworkError("Each framework can be chosen once.")
 
     refs: list[FrameworkRef] = []
+
     for framework_id in framework_ids:
         framework = get_framework(framework_id)
         if framework is None:
@@ -108,6 +109,7 @@ def _matches(framework: Framework, query: str | None) -> bool:
         return True
 
     haystack = f"{framework.name} {framework.publisher}".casefold()
+
     return all(word in haystack for word in query.casefold().split())
 
 
@@ -165,6 +167,7 @@ def frameworks_for(
     org_unit_ids = get_reachable_org_unit_ids(db, user_id)
 
     lead_ids: list[str] = []
+
     if org_unit_ids:
         rows = db.execute(
             select(

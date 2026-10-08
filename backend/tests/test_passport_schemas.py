@@ -55,6 +55,7 @@ def _signed_off(**overrides: object) -> schemas.SignOff:
         "meaning": "directly observed",
     }
     fields.update(overrides)
+
     return schemas.SignOff(**fields)  # type: ignore[arg-type]
 
 

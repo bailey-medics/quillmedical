@@ -387,6 +387,7 @@ class Settings(BaseSettings):
                 "EHRBASE_URL is required when "
                 "CLINICAL_SERVICES_ENABLED is true"
             )
+
         return self
 
     @model_validator(mode="after")
@@ -409,6 +410,7 @@ class Settings(BaseSettings):
                 "CORS_ORIGINS must name the allowed origins when "
                 'BACKEND_ENV is production; it may not contain "*"'
             )
+
         return self
 
     # --- Computed Database URLs ---
@@ -447,6 +449,7 @@ class Settings(BaseSettings):
         """
         if not self.CLINICAL_SERVICES_ENABLED:
             return None
+
         return (
             f"postgresql+psycopg://{self.FHIR_DB_USER}:"
             f"{quote_plus(self.FHIR_DB_PASSWORD.get_secret_value())}@"
@@ -467,6 +470,7 @@ class Settings(BaseSettings):
         """
         if not self.CLINICAL_SERVICES_ENABLED:
             return None
+
         return (
             f"postgresql+psycopg://{self.EHRBASE_DB_USER}:"
             f"{quote_plus(self.EHRBASE_DB_PASSWORD.get_secret_value())}@"

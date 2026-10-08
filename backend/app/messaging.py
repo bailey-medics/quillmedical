@@ -142,8 +142,10 @@ class LacksPatientRecordCompetency(MessagingError):
 def _snowball_orgs(db: Session, conversation_id: int, user_id: int) -> None:
     """Add a user's org(s) to a conversation (org snowball effect)."""
     user_org_units = get_member_org_unit_ids(db, user_id)
+
     if not user_org_units:
         return
+
         # Get existing conversation org IDs
     existing = db.execute(
         message_org_unit.select().where(
@@ -151,6 +153,7 @@ def _snowball_orgs(db: Session, conversation_id: int, user_id: int) -> None:
         )
     ).all()
     existing_org_unit_ids = {r.org_unit_id for r in existing}
+
     for org_unit_id in user_org_units:
         if org_unit_id not in existing_org_unit_ids:
             db.execute(
@@ -216,6 +219,7 @@ def _granted_patient_ids(db: Session, user: User) -> set[str]:
             ExternalPatientAccess.revoked_at.is_(None),
         )
     ).all()
+
     return {r.patient_id for r in rows}
 
 
@@ -228,6 +232,7 @@ def _user_has_conversation_access(
     taking part: see ``_reads_without_taking_part``.
     """
     cp = next((p for p in conv.participants if p.user_id == user.id), None)
+
     if cp is not None:
         return True
 
@@ -279,6 +284,7 @@ def _build_conversation_out(
         if conv.messages
         else None
     )
+
     return ConversationOut(
         id=conv.id,
         fhir_conversation_id=conv.fhir_conversation_id,
@@ -414,6 +420,7 @@ def list_conversations(
     they may read without taking part: see ``_reads_without_taking_part``.
     """
     query = db.query(Conversation)
+
     if status:
         query = query.filter(Conversation.status == status)
     if patient_id:
@@ -427,6 +434,7 @@ def list_conversations(
     competencies = user.get_final_competencies()
 
     results: list[ConversationOut] = []
+
     for conv in conversations:
         cp = next((p for p in conv.participants if p.user_id == user.id), None)
         is_participant = cp is not None
@@ -471,6 +479,7 @@ def get_conversation_detail(
     Updates last_read_at only if the user is a participant.
     """
     conv = db.get(Conversation, conversation_id)
+
     if conv is None:
         return None
 
@@ -518,16 +527,19 @@ def send_message(
     Writes to FHIR first, then projects to SQL.
     """
     conv = db.get(Conversation, conversation_id)
+
     if conv is None:
         raise ConversationNotFound()
 
         # Validate sender is a participant
     cp = next((p for p in conv.participants if p.user_id == sender.id), None)
+
     if cp is None:
         raise NotAParticipant()
 
         # Validate amendment
     amends_fhir_id: str | None = None
+
     if amends_id is not None:
         amended = db.get(Message, amends_id)
         if amended is None:
@@ -588,6 +600,7 @@ def add_participant(
 ) -> ParticipantOut:
     """Add a user to a conversation. Snowballs their org(s) in."""
     user = db.get(User, user_id)
+
     if user is None:
         raise UserNotFound()
 
@@ -596,6 +609,7 @@ def add_participant(
         .filter_by(conversation_id=conversation_id, user_id=user_id)
         .first()
     )
+
     if existing:
         return _participant_out(existing)
 
@@ -611,6 +625,7 @@ def add_participant(
 
     db.flush()
     db.refresh(cp)
+
     return _participant_out(cp)
 
 
@@ -626,9 +641,12 @@ def mark_conversation_read(
         .filter_by(conversation_id=conversation_id, user_id=user_id)
         .first()
     )
+
     if cp is None:
         return False
+
     cp.last_read_at = func.now()
+
     return True
 
 
@@ -651,6 +669,7 @@ def list_patient_conversations(
     query = db.query(Conversation).filter(
         Conversation.patient_id == patient_id
     )
+
     if status:
         query = query.filter(Conversation.status == status)
 
@@ -662,6 +681,7 @@ def list_patient_conversations(
     competencies = user.get_final_competencies()
 
     results: list[ConversationOut] = []
+
     for conv in conversations:
         cp = next((p for p in conv.participants if p.user_id == user.id), None)
         is_participant = cp is not None
@@ -721,6 +741,7 @@ def join_conversation(
     the patient's record must not be able to join their way in.
     """
     conv = db.get(Conversation, conversation_id)
+
     if conv is None:
         raise ConversationNotFound()
 
@@ -728,6 +749,7 @@ def join_conversation(
         get_member_org_unit_ids(db, user.id, capacity="staff")
     )
     conv_org_unit_ids = {place.id for place in conv.places}
+
     if not (staff_org_unit_ids & conv_org_unit_ids):
         raise NotInMessageOrganisation()
 
@@ -741,6 +763,7 @@ def join_conversation(
         .filter_by(conversation_id=conversation_id, user_id=user.id)
         .first()
     )
+
     if existing:
         return _participant_out(existing)
 
@@ -756,4 +779,5 @@ def join_conversation(
 
     db.flush()
     db.refresh(cp)
+
     return _participant_out(cp)

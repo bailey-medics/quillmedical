@@ -53,6 +53,7 @@ def _style(**overrides: object) -> dict[str, object]:
         "date": dict(field),
     }
     block.update(overrides)
+
     return block
 
 
@@ -196,6 +197,7 @@ class TestMergeGate:
             (assessment / CERTIFICATE_BACKGROUND).write_bytes(
                 PNG_SIGNATURE + b"fake-png"
             )
+
         return modules
 
     def test_valid_certificate_passes_the_gate(self, tmp_path: Path) -> None:

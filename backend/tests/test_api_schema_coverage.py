@@ -167,6 +167,7 @@ def _write_route_file(
     )
     path = tmp_path / "routes.py"
     path.write_text(source)
+
     return path
 
 
@@ -255,8 +256,10 @@ def _spec(
     *, path: str = "/x", method: str = "get", schema: dict[str, Any] | None
 ) -> dict[str, Any]:
     responses: dict[str, Any] = {"200": {}}
+
     if schema is not None:
         responses["200"]["content"] = {"application/json": {"schema": schema}}
+
     return {
         "paths": {path: {method: {"responses": responses}}},
         "components": {"schemas": {}},
@@ -308,6 +311,7 @@ def test_permanent_marker_passes_for_each_recognised_response_class() -> None:
     # four would pass a test suite that only ever exercises FileResponse
     # - so every recognised class gets its own case here.
     schema = {"type": "object"}
+
     for return_type in sorted(PERMANENT_ALLOWED_RETURN_TYPES):
         route = _route(marker=PERMANENT_MARKER, return_type=return_type)
         problems = check_route_coverage(route, _spec(schema=schema))

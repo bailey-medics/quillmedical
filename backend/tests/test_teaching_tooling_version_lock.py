@@ -49,6 +49,7 @@ class TestDraftModule:
         )
 
         result = LockResult()
+
         with (
             patch(
                 f"{_MOD}._git_show",
@@ -71,6 +72,7 @@ class TestDraftModule:
         )
 
         result = LockResult()
+
         with patch(
             f"{_MOD}._git_show",
             return_value=yaml.dump(
@@ -96,6 +98,7 @@ class TestRetiredModule:
         )
 
         result = LockResult()
+
         with (
             patch(
                 f"{_MOD}._git_show",
@@ -126,6 +129,7 @@ class TestRetiredModule:
         )
 
         result = LockResult()
+
         with (
             patch(
                 f"{_MOD}._git_show",
@@ -150,6 +154,7 @@ class TestLiveModule:
     def test_no_assessment_changes_passes(self, tmp_module: Path) -> None:
         """No assessment file changes should pass."""
         result = LockResult()
+
         with (
             patch(
                 f"{_MOD}._git_show",
@@ -186,6 +191,7 @@ class TestLiveModule:
                 return yaml.dump(
                     {"version": 1, "title": "Test", "type": "uniform"}
                 )
+
             return None
 
         with (
@@ -218,6 +224,7 @@ class TestLiveModule:
                 return yaml.dump(
                     {"version": 1, "title": "Test", "type": "uniform"}
                 )
+
             return None
 
         with (
@@ -253,6 +260,7 @@ class TestLiveModule:
                 return yaml.dump(
                     {"version": 1, "title": "Test", "type": "uniform"}
                 )
+
             return None
 
         with (
@@ -286,6 +294,7 @@ class TestLiveModule:
                 return yaml.dump(
                     {"version": 2, "title": "Test", "type": "uniform"}
                 )
+
             return None
 
         with (
@@ -307,6 +316,7 @@ class TestNewModule:
     def test_new_module_skipped(self, tmp_module: Path) -> None:
         """Module not on main is skipped (nothing to protect)."""
         result = LockResult()
+
         with patch(
             f"{_MOD}._git_show",
             return_value=None,  # Not found on main
@@ -328,6 +338,7 @@ class TestStatusRegression:
         )
 
         result = LockResult()
+
         with (
             patch(
                 f"{_MOD}._git_show",
@@ -351,6 +362,7 @@ class TestStatusRegression:
         )
 
         result = LockResult()
+
         with (
             patch(
                 f"{_MOD}._git_show",
@@ -372,6 +384,7 @@ class TestStatusRegression:
         )
 
         result = LockResult()
+
         with (
             patch(
                 f"{_MOD}._git_show",
@@ -399,6 +412,7 @@ class TestStatusRegression:
         )
 
         result = LockResult()
+
         with (
             patch(
                 f"{_MOD}._git_show",
@@ -421,6 +435,7 @@ class TestStatusRegression:
         )
 
         result = LockResult()
+
         with (
             patch(
                 f"{_MOD}._git_show",

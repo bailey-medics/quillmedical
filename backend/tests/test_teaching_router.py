@@ -62,6 +62,7 @@ def _make_teaching_org(db: Session) -> OrgUnit:
     )
     db.add(feature)
     db.flush()
+
     return org
 
 
@@ -79,6 +80,7 @@ def _make_educator(db: Session, org: OrgUnit) -> User:
     db.flush()
     add_org_unit_member(db, org.id, user.id, "trainee")
     db.flush()
+
     return user
 
 
@@ -96,6 +98,7 @@ def _make_learner(db: Session, org: OrgUnit) -> User:
     db.flush()
     add_org_unit_member(db, org.id, user.id, "trainee")
     db.flush()
+
     return user
 
 
@@ -197,6 +200,7 @@ def _seed_bank(
     )
 
     diagnoses = ["adenoma", "serrated", "adenoma", "serrated", "adenoma"]
+
     for i in range(n_items):
         item = QuestionBankItem(
             org_unit_id=org_unit_id,
@@ -216,6 +220,7 @@ def _seed_bank(
     # as the door would have done had the module been there first.
     enrol_members_on(db, org_unit_id, "test-bank")
     db.commit()
+
     return config
 
 
@@ -228,6 +233,7 @@ def _login(client, username: str, password: str) -> dict[str, str]:
     assert resp.status_code == 200
     cookies = resp.cookies
     csrf = cookies.get("XSRF-TOKEN", "")
+
     return {"X-CSRF-Token": csrf}
 
     # ------------------------------------------------------------------
@@ -340,6 +346,7 @@ class TestQuestionBanks:
             '# Slide one\n\n<Video ref="lecture-01" />\n',
             encoding="utf-8",
         )
+
         return str(tmp_path)
 
     def test_the_module_is_hidden_when_media_is_missing(
@@ -841,10 +848,12 @@ class TestAssessmentQuestionResults:
             .filter(AssessmentAnswer.assessment_id == assessment_id)
             .all()
         )
+
         for answer in answers:
             source_dir = answer.item.metadata_json["_source_dir"]
             answer.display_order = 4 - int(source_dir.split("_")[1])
         db_session.commit()
+
         return assessment_id, headers
 
     def _answer(self, test_client, assessment_id, headers, n: int) -> None:
@@ -935,6 +944,7 @@ class TestAssessmentQuestionResults:
         )
         assert resp.status_code == 200
         questions = resp.json()["questions"]
+
         for question in questions:
             assert set(question) == {
                 "question_number",
@@ -2305,6 +2315,7 @@ def _slides_for_linked_video(
     )
     resp = test_client.get("/api/teaching/modules/test-bank/learning")
     assert resp.status_code == 200
+
     return resp.json()["slides"]
 
 
@@ -2641,6 +2652,7 @@ class TestLearningRoutesRequireTheModulesCompetency:
         db.flush()
         add_org_unit_member(db, org.id, user.id, "trainee")
         db.flush()
+
         return user
 
     def test_reading_a_module_needs_the_competency(
@@ -2851,6 +2863,7 @@ class TestMediaUploadUrl:
             "size_bytes": 943718400,
         }
         body.update(over)
+
         return body
 
     def test_upload_is_refused_with_neither_bucket_nor_content_path(
@@ -2998,6 +3011,7 @@ class TestModuleMedia:
         (learning / "content.mdx").write_text(
             slides or "## Text only\n\nNo media here.", encoding="utf-8"
         )
+
         return str(tmp_path)
 
     def _use(self, monkeypatch, base_path: str) -> None:
@@ -3240,6 +3254,7 @@ class TestMediaLinking:
             "size_bytes": 943718400,
         }
         body.update(over)
+
         return body
 
     def _url(self, key: str = "lecture-01") -> str:
@@ -3679,6 +3694,7 @@ class TestIncompleteModulesAreNotServed:
         (learning / "content.mdx").write_text(
             slides or "## Text only\n\nNo media here.", encoding="utf-8"
         )
+
         return str(tmp_path)
 
     def _use(self, monkeypatch, base_path: str) -> None:
@@ -4212,6 +4228,7 @@ class TestLocalMediaUpload:
         (assessment / "config.yaml").write_text(
             "id: test-bank\n", encoding="utf-8"
         )
+
         return str(tmp_path)
 
     def _use_local(self, monkeypatch, base_path: str) -> None:

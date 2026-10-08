@@ -73,6 +73,7 @@ def store(tmp_path: Path, holder: Actor) -> LocalPassportStore:
         user_id="1",
         registrations=[{"body": "GMC", "number": "1234567"}],
     )
+
     return created
 
 
@@ -127,6 +128,7 @@ def populated(
         Reflection(title="Airway", written_on=date(2026, 3, 14)),
         "Something private about a hard day.",
     )
+
     return store
 
 

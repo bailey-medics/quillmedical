@@ -21,11 +21,13 @@ HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 def _write_brand(tmp_path: Path, data: dict[str, object]) -> Path:
     path = tmp_path / "brand.yaml"
     path.write_text(yaml.safe_dump(data, allow_unicode=True))
+
     return path
 
 
 def _brand_data() -> dict[str, object]:
     data: dict[str, object] = yaml.safe_load(BRAND_YAML_PATH.read_text())
+
     return data
 
 
@@ -57,6 +59,7 @@ class TestTheRealFile:
             )
         ]
         colours += list(theme.dark.model_dump().values())
+
         for colour in colours:
             assert HEX.match(colour), colour
 
@@ -84,24 +87,28 @@ class TestAMistakeFailsAtLoad:
     def test_refuses_a_shade_the_palette_lacks(self, tmp_path: Path) -> None:
         data = _brand_data()
         data["email_themes"]["quill"]["header"] = "grey.9"  # type: ignore[index]
+
         with pytest.raises(ValidationError, match="No shade 9"):
             load_brand(_write_brand(tmp_path, data))
 
     def test_refuses_a_malformed_colour(self, tmp_path: Path) -> None:
         data = _brand_data()
         data["email_themes"]["ldd"]["link"] = "blue"  # type: ignore[index]
+
         with pytest.raises(ValidationError, match="Not a colour"):
             load_brand(_write_brand(tmp_path, data))
 
     def test_refuses_a_misspelt_field(self, tmp_path: Path) -> None:
         data = _brand_data()
         data["email_themes"]["quill"]["header_colour"] = "#ffffff"  # type: ignore[index]
+
         with pytest.raises(ValidationError, match="header_colour"):
             load_brand(_write_brand(tmp_path, data))
 
     def test_refuses_a_ramp_of_the_wrong_length(self, tmp_path: Path) -> None:
         data = _brand_data()
         data["palette"]["primary"] = data["palette"]["primary"][:9]  # type: ignore[index]
+
         with pytest.raises(ValidationError):
             load_brand(_write_brand(tmp_path, data))
 

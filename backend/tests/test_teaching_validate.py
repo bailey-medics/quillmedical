@@ -94,6 +94,7 @@ class TestValidateQuestionBank:
         (q_dir / "question.yaml").write_text(
             yaml.dump(question, default_flow_style=False)
         )
+
         return bank
 
     # --- Structural checks ---
@@ -300,6 +301,7 @@ class TestValidateQuestionBank:
     def test_uniform_valid_with_image_inventory(self, tmp_path: Path) -> None:
         """Uniform bank passes when GCS image inventory is provided."""
         bank = self._make_uniform_bank(tmp_path)
+
         # Remove local images (simulates GCS download: YAML only)
         for q_dir in bank.iterdir():
             if q_dir.is_dir():
@@ -317,6 +319,7 @@ class TestValidateQuestionBank:
     def test_uniform_fails_missing_gcs_images(self, tmp_path: Path) -> None:
         """Uniform bank fails when GCS inventory has wrong count."""
         bank = self._make_uniform_bank(tmp_path)
+
         for q_dir in bank.iterdir():
             if q_dir.is_dir():
                 for img in q_dir.glob("*.png"):

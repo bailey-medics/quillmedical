@@ -73,7 +73,9 @@ def stack_file() -> Path | None:
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return None
+
     path = Path(out)
+
     return path if path.is_file() else None
 
 
@@ -94,6 +96,7 @@ def rev_parse(name: str) -> str | None:
         capture_output=True,
         text=True,
     )
+
     return result.stdout.strip() if result.returncode == 0 else None
 
 
@@ -103,6 +106,7 @@ def current_branch() -> str:
         capture_output=True,
         text=True,
     )
+
     return result.stdout.strip() if result.returncode == 0 else ""
 
 
@@ -122,6 +126,7 @@ def tip_in_trunk(name: str, trunk: str) -> bool:
             ).returncode
             == 0
         )
+
     return False
 
 
@@ -151,13 +156,16 @@ def pull_request_state(number: object) -> str | None:
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
+
     state = result.stdout.strip()
+
     return state if result.returncode == 0 and state else None
 
 
 def is_finished(entry: dict[str, object], trunk: str, current: str) -> bool:
     """Whether an entry has nothing left to land. See the module docstring."""
     name = str(entry.get("branch", ""))
+
     if not name:
         return False
     if not branch_exists(name):
@@ -167,6 +175,7 @@ def is_finished(entry: dict[str, object], trunk: str, current: str) -> bool:
 
     tip = rev_parse(name)
     base = entry.get("base")
+
     if tip is None or (isinstance(base, str) and rev_parse(base) == tip):
         return False
     if not tip_in_trunk(name, trunk):
@@ -174,13 +183,16 @@ def is_finished(entry: dict[str, object], trunk: str, current: str) -> bool:
 
     raw = entry.get("pullRequest")
     pull_request = raw if isinstance(raw, dict) else {}
+
     if not pull_request or pull_request.get("merged"):
         return True
+
     return pull_request_state(pull_request.get("number")) == "CLOSED"
 
 
 def main() -> int:
     path = stack_file()
+
     if path is None:
         # Not an error: a worktree with no stack has nothing to tidy, and
         # this runs unconditionally after a sync.
@@ -193,11 +205,13 @@ def main() -> int:
         return 1
 
     stacks = record.get("stacks")
+
     if not isinstance(stacks, list):
         return 0
 
     current = current_branch()
     dropped: list[str] = []
+
     for stack in stacks:
         branches = stack.get("branches")
         if not isinstance(branches, list):
@@ -235,6 +249,7 @@ def main() -> int:
     print(f"  Forgot {len(dropped)} finished {noun}:")
     for name in dropped:
         print(f"      {name}")
+
     return 0
 
 

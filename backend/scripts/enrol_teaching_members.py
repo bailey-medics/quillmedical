@@ -80,9 +80,11 @@ def main(argv: list[str] | None = None) -> int:
             db.commit()
 
     verb = "Would enrol" if args.dry_run else "Enrolled"
+
     for person in people:
         print(f"{verb} {person.username}")
     print(f"{verb} {len(people)} on {args.module_id}.")
+
     return 0
 
 

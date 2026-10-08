@@ -53,6 +53,7 @@ def root(tmp_path: Path) -> Path:
         filename="certificate.pdf",
         media_type="application/pdf",
     )
+
     return store_root
 
 
@@ -130,6 +131,7 @@ class FakeObject:
     @property
     def crc32c(self) -> str | None:
         data = self._bucket.objects.get(self._name)
+
         return None if data is None else str(zlib.crc32(data))
 
     def delete(self) -> None:
@@ -152,9 +154,12 @@ class FakeBucket:
         self, blob: Any, destination_bucket: Any, new_name: str
     ) -> ArchiveBlob:
         data = self.objects[blob.name]
+
         if self.corrupt_copies:
             data = data + b"!"
+
         destination_bucket.objects[new_name] = data
+
         return FakeObject(destination_bucket, new_name)
 
 
@@ -171,6 +176,7 @@ def buckets() -> tuple[FakeBucket, FakeBucket]:
         EVIDENCE: b"evidence",
         NEIGHBOUR: b"somebody else",
     }
+
     return source, FakeBucket()
 
 
