@@ -134,7 +134,7 @@ column rename, for the same reason: expand, dual-write, backfill, switch reads.
 
 - [x] **Call it from `add_org_unit_member`**
       (`backend/app/org_units/router.py:683`) after
-      `grant_staff_competencies` has merged the new grants into the JSON,
+      `grant_competencies_on_joining` has merged the new grants into the JSON,
       with the org unit as the row's `org_unit_id`.
       `grant_entitlement_at_onboarding` still writes its
       `passport_write_entitlement` row, and now writes the matching
@@ -253,14 +253,14 @@ column rename, for the same reason: expand, dual-write, backfill, switch reads.
 
 - [x] **Move the writers' own reads across too.** Found while doing this
       phase. `update_user`, `update_my_competencies`,
-      `grant_staff_competencies` and both superadmin scripts start from the
+      `grant_competencies_on_joining` and both superadmin scripts start from the
       person's current lists and merge into them: the profession carry-over,
       the superadmin promotion, onboarding's additive grant. They read the
       JSON to get that starting point. Left there, a person whose rows and
       JSON ever disagreed would have their rows brought into line with the
       JSON on the next save, which is the old store overwriting the new
       one. So every writer now starts from the rows, settles the lists, then
-      writes both. `grant_staff_competencies` returns the list it settled,
+      writes both. `grant_competencies_on_joining` returns the list it settled,
       so `add_org_unit_member` brings the rows into line with that rather
       than with the column.
 
@@ -302,7 +302,7 @@ column rename, for the same reason: expand, dual-write, backfill, switch reads.
 
 - [x] **Remove the JSON writes from every writer Phase 2 listed**, one
       deploy after Phase 4, leaving the rows as the only thing written.
-      `grant_staff_competencies` stops merging into JSON and returns the
+      `grant_competencies_on_joining` stops merging into JSON and returns the
       list it settled, which `add_org_unit_member` hands to the Phase 2
       helper. The two columns keep their model definitions and their empty
       default, so a new user still gets `[]` until Phase 7 drops them.
@@ -547,7 +547,7 @@ out rather than stored.
       that the profession gave them and an administrator took them away.
 
       `add_org_unit_member` now reads the person's removed list before
-      `grant_staff_competencies` changes their profession. Read afterwards,
+      `grant_competencies_on_joining` changes their profession. Read afterwards,
       the new profession's competencies would all count as "not held" and
       be kept from them. The `withhold` and `clear` test helpers now close
       grant rows. They no longer write removal rows, and `clear` leaves the
