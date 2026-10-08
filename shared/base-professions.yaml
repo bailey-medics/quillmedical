@@ -484,8 +484,9 @@ base_professions:
   # Hold a passport of their own and sign off other people's. The one
   # competency does both today: assess_clinician_passport is what opens the
   # passport at all. Writing to their own passport is not here, because
-  # passport_write is sold - it comes from the organisation enabling it or
-  # an individual subscription. One profession carries it, passport_admin.
+  # passport_write is held by entitlement - it comes from the organisation
+  # enabling it or an individual subscription. One profession carries it,
+  # passport_admin.
   - id: passport_delegate
     display_name: "Passport delegate"
     description: "Holds a clinician passport and signs off other people's competencies"
@@ -515,12 +516,12 @@ base_professions:
   # run, so its cover gave them passport_write, and writing with no way
   # in was a paid grant nobody could use.
   #
-  # It holds passport_write too, and is the only profession that does.
-  # An admin may give writing to anybody at their org units but
-  # themselves, because nobody changes their own competencies. So without
-  # this, an admin at a place with no cover switched on needed a second
-  # admin before they could use the thing they run. A deliberate
-  # exception to "writing is sold", made for the few people who run it.
+  # It holds passport_write too, and is the only profession that does. An admin
+  # may give writing to anybody at their org units but themselves, because
+  # nobody changes their own competencies. So without this, an admin at a place
+  # with no cover switched on needed a second admin before they could use the
+  # thing they run. A deliberate exception to "writing comes by entitlement",
+  # made for the few people who run it.
   - id: passport_admin
     display_name: "Passport admin"
     description: "Runs the passport at their organisation or site, signs up the people in it and holds a passport of their own"

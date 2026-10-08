@@ -1,8 +1,8 @@
 """An org_unit paying for its members' passport writing.
 
-``passport_write`` is sold. One way to get it is to belong to an org_unit
-whose cover is switched on: a ``passport_write`` feature row beside the
-``passport`` one. This module is the whole of that rule, so the feature
+``passport_write`` is held by entitlement. One way to get it is to belong to an
+org_unit whose cover is switched on: a ``passport_write`` feature row beside
+the ``passport`` one. This module is the whole of that rule, so the feature
 route and every route that changes a membership ask one place.
 
 A grant made here is a ``user_competency`` row with ``source``

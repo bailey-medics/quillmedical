@@ -460,10 +460,10 @@ def _require_writer(
     administrator posting to somebody else's passport - telling them the
     passport is real, which is what the 404 exists to withhold.
 
-    ``passport_write`` is sold. A holder whose entitlement has lapsed
-    keeps everything they can read: the record, its rendering and its
-    export are derived from owning it, never from paying. What they lose
-    is the ability to add to it.
+    ``passport_write`` is held by entitlement. A holder whose entitlement has
+    lapsed keeps everything they can read: the record, its rendering and its
+    export are derived from owning it, never from paying. What they lose is the
+    ability to add to it.
 
     Args:
         db: Core database session.

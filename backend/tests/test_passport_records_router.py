@@ -69,9 +69,10 @@ def _make_user(
 ) -> User:
     """A user, optionally holding ``passport_write``.
 
-    No profession grants ``passport_write``: it is sold, and reaches a
-    person through onboarding or an individual subscription, and always
-    with a term, so a fixture holder gets a dated ``passport_write`` row.
+    No profession grants ``passport_write``: it is held by entitlement, and
+    reaches a person through onboarding or an individual subscription, and
+    always with a term, so a fixture holder gets a dated ``passport_write``
+    row.
     """
     user = User(
         username=username,

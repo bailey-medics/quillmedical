@@ -93,7 +93,7 @@ def test_clinicians_hold_the_passport_and_others_do_not() -> None:
 
     Every clinical one of these is an assessor, and this is the free
     half: assessing is a favour to somebody else's record, so it arrives
-    with the profession and never lapses. Holding a passport is the sold
+    with the profession and never lapses. Holding a passport is the other
     half and is granted by entitlement, which is why ``passport_write``
     appears on no profession here but the Passport admin.
 
@@ -207,7 +207,7 @@ def test_the_passport_clinical_lead_is_a_label() -> None:
 
 
 def test_only_the_passport_admin_profession_may_write_a_passport() -> None:
-    """The sold half must not arrive free with a clinical account.
+    """Writing must not arrive with a clinical account.
 
     ``passport_write`` is what a clinician or their organisation pays
     for. It comes from an organisation enabling it or from an individual
@@ -230,8 +230,8 @@ def test_only_the_passport_admin_profession_may_write_a_passport() -> None:
     }
 
     assert grantors == {"passport_admin"}, (
-        "passport_write is sold, so only passport_admin may grant it: "
-        f"{sorted(grantors)}"
+        "passport_write is held by entitlement, so only passport_admin "
+        f"may grant it: {sorted(grantors)}"
     )
 
 

@@ -4,7 +4,7 @@
 ``manage_teaching``. It opens the user routes alongside ``manage_users``
 and limits them to its whitelist: ``assess_clinician_passport``, itself,
 the four passport professions, and ``passport_write`` for members of
-their own org units, which is otherwise sold. See
+their own org units, which otherwise comes by entitlement. See
 ``docs/docs/plans/2026-09-30-passport-professions-plan.md``.
 """
 
@@ -421,9 +421,9 @@ class TestLookingSomebodyUpToAddThem:
 class TestGrantingWriting:
     """A Passport admin may give and take ``passport_write`` in their units.
 
-    Writing is otherwise sold. Before 1 October 2026 this class asserted
-    the opposite: that a passport admin was refused it. The plan changed
-    that deliberately, so these cases replaced the refusals.
+    Writing otherwise comes by entitlement. Before 1 October 2026 this class
+    asserted the opposite: that a passport admin was refused it. The plan
+    changed that deliberately, so these cases replaced the refusals.
     """
 
     def test_give_a_delegate_writing(

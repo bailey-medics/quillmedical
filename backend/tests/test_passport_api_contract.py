@@ -133,10 +133,10 @@ def _make_user(
 ) -> User:
     """A user, optionally holding ``passport_write``.
 
-    No profession grants ``passport_write``: it is sold, and reaches a
-    person through onboarding or an individual subscription, and always
-    with a term. So a fixture holder gets a dated ``passport_write`` row,
-    exactly as a real one does.
+    No profession grants ``passport_write``: it is held by entitlement, and
+    reaches a person through onboarding or an individual subscription, and
+    always with a term. So a fixture holder gets a dated ``passport_write``
+    row, exactly as a real one does.
     """
     user = User(
         username=username,
@@ -321,7 +321,7 @@ def _spec() -> dict[str, Any]:
 
 
 class TestALapsedHolderKeepsTheirRecord:
-    """``passport_write`` is sold, and losing it must not lock anybody out.
+    """Losing ``passport_write`` must not lock anybody out.
 
     A passport is somebody's professional record. Reading, rendering and
     exporting it are derived from owning it, never from paying, so an

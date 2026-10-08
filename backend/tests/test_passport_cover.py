@@ -1,8 +1,8 @@
 """An org_unit paying for its members' passport writing.
 
-``passport_write`` is sold. Cover is the switch that makes it free for
-the members of one org_unit: Cheltenham oncology, a site under
-Gloucestershire Hospitals. Each test pins one rule from Phase 5 of
+``passport_write`` is held by entitlement. Cover is the switch that gives it to
+the members of one org_unit: Cheltenham oncology, a site under Gloucestershire
+Hospitals. Each test pins one rule from Phase 5 of
 ``docs/docs/plans/2026-09-30-passport-professions-plan.md``.
 """
 

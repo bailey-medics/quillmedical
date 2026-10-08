@@ -270,9 +270,9 @@ four passport professions.
   `useGrantScope` rather than working the whitelist out again.
 - **A whitelist, not a tag**: a new competency can be granted by nobody but
   `manage_users` until somebody adds it to a list.
-- **`passport_write` is sold**: the loader refuses it on every `may_grant`
-  list except `manage_passport`'s, so only a Passport admin may hand it
-  out, and only to members of their own org units.
+- **`passport_write` is held by entitlement**: the loader refuses it on
+  every `may_grant` list except `manage_passport`'s, so only a Passport
+  admin may hand it out, and only to members of their own org units.
 
 #### Practising competencies - where
 
@@ -847,3 +847,25 @@ otherwise untouched unless asked to**: Mark is doing that by hand as he
 reviews, and a diff of nothing but blank lines buries the change that
 matters. The Python detail, including what Black does with these lines, is
 in `.claude/rules/backend.md`.
+
+### The code does not sell anything
+
+**"Sold" and "selling" are not things the code thinks about or declares.**
+Whether Quill charges for something, and how, is a business matter that can
+change without the code changing. The code knows only the mechanism: who may
+grant a competency, through what, and for how long.
+
+- **Describe the mechanism, not the commerce.** `passport_write` "is held by
+  entitlement", never "is sold". A competency is "granted by one manager
+  only", never "the paid one".
+- **Name a constant for what it holds**, such as `PASSPORT_WRITE`, never for
+  a commercial role, such as `SOLD_COMPETENCY`.
+- **This covers code, comments, docstrings, error messages, test names and
+  the comments in `shared/` YAML.** An error message in particular is read by
+  somebody fixing a file, who needs the rule and not the reason behind it.
+- **Commercial reasoning has a home**: `docs/docs/research/`, the plans in
+  `docs/docs/plans/`, and the legal documents. It stays out of everything
+  that runs.
+
+Mark, 8 October 2026: "the word sold implies we are selling. The code should
+not care about that."
