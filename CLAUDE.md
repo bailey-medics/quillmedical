@@ -804,3 +804,33 @@ auto-commit/push" rule under **Critical Rules** applies unchanged.
 
 A branch that accumulates "fix: typo" on top of its real change is how a
 two-unit stack became four branches on the first real run of this tooling.
+
+### Blank lines between the steps of a function
+
+**Space a function as paragraphs: set up, do the work, hand back the
+result.** Mark reads every line of this codebase himself, and the gaps are
+what make each step findable. In any language:
+
+- **A blank line between variable declarations and the `for` or `if` that
+  follows them.**
+- **A blank line between blocks doing different business logic.**
+- **A blank line before the function's final `return`.**
+- **Looser inside a loop or an `if` body.** That body is one piece of
+  business logic, so `x = f()` followed directly by `if x:` stays together.
+
+```python
+found: dict[int, list[str]] = {}
+
+for user_id, ids in _current_ids_by_user(db).items():
+    unknown = unknown_competency_ids(ids)
+    if unknown:
+        found[user_id] = unknown
+
+return found
+```
+
+Write new and changed code this way. **Do not re-space code that is
+otherwise untouched unless asked to**: Mark is doing that by hand as he
+reviews, and a diff of nothing but blank lines buries the change that
+matters. The Python detail, including what Black does with these lines, is
+in `.claude/rules/backend.md`.

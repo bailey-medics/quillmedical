@@ -87,6 +87,7 @@ def competencies_at(
         .scalars()
         .all()
     )
+
     return authorised & set(user.get_final_competencies())
 
 
@@ -150,6 +151,7 @@ def can_practise_at(
             _org_unit_clause(org_unit_id),
         )
     ).first()
+
     return row is not None
 
 
@@ -229,6 +231,7 @@ def authorise_practice(
             _org_unit_clause(org_unit_id),
         )
     )
+
     if existing is not None:
         return False
 
@@ -241,6 +244,7 @@ def authorise_practice(
         )
     )
     db.flush()
+
     return True
 
 

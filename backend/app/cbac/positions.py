@@ -173,6 +173,7 @@ def appoint(
     )
     db.add(holding)
     db.flush()
+
     return holding
 
 
@@ -207,6 +208,7 @@ def vacate(
 
     holding.ended_on = end
     db.flush()
+
     return holding
 
 
@@ -264,6 +266,7 @@ def clinical_lead_post(db: Session, site: OrgUnit) -> Position:
         )
         db.add(post)
         db.flush()
+
     return post
 
 
@@ -301,6 +304,7 @@ def set_clinical_lead(
         for h in holdings_on(db, post)
         if not h.is_acting and h.user_id == user.id
     ]
+
     if not already:
         appoint(db, post, user, appointed_by=appointed_by)
 
@@ -330,4 +334,5 @@ def clinical_leads_of(db: Session, site_ids: list[int]) -> dict[int, int]:
             PositionHolding.ended_on.is_(None),
         )
     ).all()
+
     return {int(site_id): int(user_id) for site_id, user_id in rows}

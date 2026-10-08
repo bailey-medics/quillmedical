@@ -44,6 +44,7 @@ def unknown_ids_in_base_professions() -> dict[str, list[str]]:
         unknown = unknown_competency_ids(profession.base_competencies)
         if unknown:
             found[profession.id] = unknown
+
     return found
 
 
@@ -93,6 +94,7 @@ def unknown_ids_on_users(db: Session) -> dict[int, list[str]]:
         unknown = unknown_competency_ids(ids)
         if unknown:
             found[user_id] = unknown
+
     return found
 
 
@@ -108,6 +110,7 @@ def unknown_ids_in_practising_competencies(db: Session) -> dict[int, str]:
     rows = db.execute(
         select(PractisingCompetency.id, PractisingCompetency.competency)
     ).all()
+
     return {
         int(row_id): competency
         for row_id, competency in rows
@@ -136,6 +139,7 @@ def retired_ids_in_practising_competencies(db: Session) -> dict[int, str]:
     rows = db.execute(
         select(PractisingCompetency.id, PractisingCompetency.competency)
     ).all()
+
     return {
         int(row_id): competency
         for row_id, competency in rows
@@ -155,10 +159,12 @@ def retired_ids_on_users(db: Session) -> dict[int, list[str]]:
         User id to the retired ids held against them.
     """
     found: dict[int, list[str]] = {}
+
     for user_id, ids in _current_ids_by_user(db).items():
         retired = retired_competency_ids(ids)
         if retired:
             found[user_id] = retired
+
     return found
 
 
@@ -179,6 +185,7 @@ def unseeded_profession_competencies(db: Session) -> dict[int, list[str]]:
     """
     now = datetime.now(UTC)
     found: dict[int, list[str]] = {}
+
     for user in db.scalars(select(User)).unique():
         covered = {
             row.competency_id
@@ -191,4 +198,5 @@ def unseeded_profession_competencies(db: Session) -> dict[int, list[str]]:
         )
         if missing:
             found[user.id] = missing
+
     return found

@@ -120,6 +120,7 @@ def sync_competency_rows(
     )
 
     current: dict[str, list[UserCompetency]] = {}
+
     for row in user.competency_grants:
         if row.is_current(now):
             current.setdefault(row.competency_id, []).append(row)

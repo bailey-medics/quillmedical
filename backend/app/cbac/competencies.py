@@ -274,6 +274,7 @@ def _framework_of(data: Any, path: Path) -> Framework | None:
             hide the framework from a filter without a word.
     """
     raw = data.get("framework")
+
     if raw is None:
         return None
 
@@ -286,6 +287,7 @@ def _framework_of(data: Any, path: Path) -> Framework | None:
         )
 
     unknown = sorted(set(framework.specialties) - set(SPECIALTY_IDS))
+
     if unknown:
         raise ValueError(
             f"Framework {framework.id!r} in {path.name} names "
@@ -365,6 +367,7 @@ def _load_catalogue(
     # Sorted so the merged order is the same on every machine, whatever
     # order the filesystem hands the entries back in.
     paths = sorted(directory.glob("*.yaml"))
+
     if not paths:
         raise FileNotFoundError(
             f"No competency definitions found in {directory}. Expected at "
@@ -374,6 +377,7 @@ def _load_catalogue(
     entries: list[CompetencyEntry] = []
     frameworks: list[Framework] = []
     seen: dict[str, Path] = {}
+
     for path in paths:
         with open(path) as f:
             data: Any = yaml.safe_load(f)
@@ -427,6 +431,7 @@ def _load_catalogue(
             entries.append(entry)
 
     _check_may_grant(entries, frameworks)
+
     return entries, frameworks
 
 
@@ -505,6 +510,7 @@ def _check_may_grant(
     """
     passport_only = {f.id for f in frameworks if f.passport_only}
     by_id = {entry.id: entry for entry in entries}
+
     for entry in entries:
         for granted in entry.may_grant or []:
             target = by_id.get(granted)
@@ -607,6 +613,7 @@ def get_competency_details(competency_id: str) -> CompetencyEntry | None:
     for competency in COMPETENCIES:
         if competency.id == competency_id:
             return competency
+
     return None
 
 
@@ -634,6 +641,7 @@ def unknown_competency_ids(ids: Iterable[str]) -> list[str]:
         known.
     """
     known = set(COMPETENCY_IDS)
+
     return sorted({i for i in ids if i not in known})
 
 
@@ -647,6 +655,7 @@ def retired_competency_ids(ids: Iterable[str]) -> list[str]:
         The retired ids, sorted and deduplicated.
     """
     retired = set(RETIRED_COMPETENCY_IDS)
+
     return sorted({i for i in ids if i in retired})
 
 
@@ -655,6 +664,7 @@ def get_framework(framework_id: str) -> Framework | None:
     for framework in FRAMEWORKS:
         if framework.id == framework_id:
             return framework
+
     return None
 
 
@@ -690,6 +700,7 @@ def passport_only_competency_ids(ids: Iterable[str]) -> list[str]:
         The passport-only ids, sorted and deduplicated.
     """
     passport_only = set(PASSPORT_ONLY_COMPETENCY_IDS)
+
     return sorted({i for i in ids if i in passport_only})
 
 
@@ -712,6 +723,7 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
     checked = list(ids)
 
     unknown = unknown_competency_ids(checked)
+
     if unknown:
         raise ValueError(
             "Unknown competency "
@@ -722,6 +734,7 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
         )
 
     retired = retired_competency_ids(checked)
+
     if retired:
         raise ValueError(
             "Retired competency "
@@ -733,6 +746,7 @@ def validate_competency_ids(ids: Iterable[str]) -> list[str]:
         )
 
     passport_only = passport_only_competency_ids(checked)
+
     if passport_only:
         raise ValueError(
             "Passport-only competency "
