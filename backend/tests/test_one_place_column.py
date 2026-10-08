@@ -26,7 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.cbac.scoped import can_practise_at, competencies_at
+from app.cbac.practising import can_practise_at, competencies_at
 from app.models import OrgUnit, PractisingCompetency, User
 from app.security import hash_password
 

@@ -62,7 +62,7 @@ app/
 │   ├── __init__.py      # CBAC module exports
 │   ├── competencies.py  # Competency definitions from YAML
 │   ├── base_professions.py  # Base profession definitions from YAML
-│   └── scoped.py        # What somebody may practise at one place
+│   └── practising.py    # What somebody may practise at one place
 ├── features/
 │   ├── gating.py        # Feature-gating utilities (requires_feature dependency)
 │   └── teaching/        # Teaching feature module

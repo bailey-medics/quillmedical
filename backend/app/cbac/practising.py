@@ -41,20 +41,17 @@ from app.models import PractisingCompetency, User
 
 
 def _org_unit_clause(org_unit_id: int) -> ColumnElement[bool]:
-    """Build the where-clause for one org_unit.
+    """Build the "this row is for this org_unit" part of a query.
 
-    One column on the row, one argument here. This used to take an
-    organisation id or a site id and translate the first, because an
-    organisation was a row in another table; an organisation is an org_unit
-    now, so the two collapse and there is nothing left to mistake one
-    for the other.
+    Every query in this module filters ``practising_competency`` rows to
+    one org_unit. They all use this, so each one matches an org_unit the
+    same way.
 
     Args:
-        org_unit_id: The org_unit - an organisation's own row in the tree, or
-            any org_unit beneath one.
+        org_unit_id: The org_unit to match.
 
     Returns:
-        The matching column comparison.
+        A condition to pass to ``.where()``.
     """
     return PractisingCompetency.org_unit_id == org_unit_id
 

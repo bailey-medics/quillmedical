@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.cbac.scoped import (
+from app.cbac.practising import (
     authorise_practice,
     can_practise_at,
     competencies_at,

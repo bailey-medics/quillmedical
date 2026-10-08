@@ -204,7 +204,7 @@ def org_units_administered_by(db: Session, user: User) -> set[int] | None:
 
     This applies to administering only. What somebody may *practise* at
     an org_unit is still one row per org_unit with nothing inherited:
-    see ``app/cbac/scoped.py``.
+    see ``app/cbac/practising.py``.
 
     Before rows, this answered from membership: the organisations
     somebody belonged to, plus every org_unit beneath them. That could

@@ -21,7 +21,7 @@ from datetime import UTC, date, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.cbac.scoped import can_practise_at
+from app.cbac.practising import can_practise_at
 from app.models import OrgUnit, Position, PositionHolding, User
 
 

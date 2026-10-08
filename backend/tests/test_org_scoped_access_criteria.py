@@ -32,7 +32,7 @@ from sqlalchemy import insert, update
 from sqlalchemy.orm import Session
 
 from app.cbac.positions import appoint, holders_of, is_vacant
-from app.cbac.scoped import can_practise_at
+from app.cbac.practising import can_practise_at
 from app.models import (
     OrgUnit,
     Position,
