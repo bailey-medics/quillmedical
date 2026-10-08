@@ -11,7 +11,7 @@ from collections.abc import Iterable
 from datetime import date
 from enum import Enum
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, ConfigDict
@@ -597,9 +597,6 @@ SCOPED_MANAGER_IDS: tuple[str, ...] = tuple(
     for c in COMPETENCIES
     if c.retired_on is None and (c.may_grant or c.may_assign_professions)
 )
-
-# Create Literal type for type hints
-CompetencyId = Literal[COMPETENCY_IDS]  # type: ignore[valid-type]
 
 # Create Enum for runtime validation (dynamically loaded from YAML)
 ClinicalCompetency = Enum(  # type: ignore[misc]

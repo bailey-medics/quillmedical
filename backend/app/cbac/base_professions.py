@@ -6,7 +6,7 @@ competency sets, which can be customised per-user.
 """
 
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, ConfigDict
@@ -44,9 +44,6 @@ PROFESSION_IDS: tuple[str, ...] = tuple(p.id for p in BASE_PROFESSIONS)
 #: superadmin has to reach for its competencies and a typo would fail
 #: silently - an unknown profession resolves to no competencies at all.
 SUPERADMIN_PROFESSION: str = "superadmin_profession"
-
-# Create Literal type
-BaseProfessionId = Literal[PROFESSION_IDS]  # type: ignore[valid-type]
 
 
 def get_profession_details(profession_id: str) -> BaseProfessionEntry | None:
