@@ -2,7 +2,7 @@
 """Competency-Based Access Control (CBAC) module for Quill Medical.
 
 This module implements CBAC authorisation, allowing users to have specific
-clinical competencies rather than rigid job roles.
+clinical and non-clinical competencies rather than rigid job roles.
 """
 
 from app.cbac.base_professions import (
