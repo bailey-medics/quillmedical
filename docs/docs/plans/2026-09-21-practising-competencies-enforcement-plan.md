@@ -264,7 +264,7 @@ refactor removes without noticing.
   `get_reachable_org_unit_ids` that named `get_member_org_unit_ids` as the
   admin check now names this function.
 
-- [x] **Leave `grant_staff_competencies` alone, and say why here.** It runs
+- [x] **Leave `grant_competencies_on_joining` alone, and say why here.** It runs
       inside `add_org_unit_member` and writes to the _ceiling_ — base profession and
       additional competencies — not to practising rows. That is correct: adding
       somebody as staff should make them qualified, and authorising them to practise

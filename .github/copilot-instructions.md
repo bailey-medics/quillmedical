@@ -192,8 +192,21 @@ competency.
 #### CBAC (competency-based access control)
 
 Controls all data access and actions, clinical and feature admin alike.
-Resolution per user: `(base_profession_competencies + additional) − removed`,
-via `resolve_user_competencies` behind `User.get_final_competencies`.
+**What a user holds is their current `user_competency` rows, and nothing
+else.** `User.get_final_competencies` reads the rows and never consults the
+profession.
+
+- **A base profession is a seed, not state.** Being given one writes its
+  competencies as rows. Editing `shared/base-professions.yaml` afterwards
+  changes only people given the profession later.
+- **"Additional" and "removed" are a comparison, not storage.**
+  `User.additional_competency_ids` and `User.removed_competency_ids` work
+  out, when asked, how somebody's rows differ from their profession's
+  template, so the edit page can show it.
+- **`(template + additional) - removed` is the input to a write, never the
+  answer to a read.** `sync_competency_rows` in `backend/app/cbac/grants.py`
+  takes the two lists, resolves them with `resolve_user_competencies`, and
+  brings the rows into line.
 
 - **Catalogue**: `shared/competency-definitions/` - `clinical.yaml`,
   `clinical-admin.yaml`, `admin.yaml`, `teaching.yaml`, `passport.yaml`,
