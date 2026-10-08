@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.cbac.base_professions import (
     get_profession_base_competencies,
-    grant_staff_competencies,
+    grant_competencies_on_joining,
     resolve_user_competencies,
 )
 from app.cbac.competencies import FRAMEWORK_IDS, SCOPED_MANAGER_IDS
@@ -1086,7 +1086,7 @@ def add_org_unit_member(
     # asked afterwards, the new profession's competencies would all read
     # as "not held" and be kept from them.
     removed = person.removed_competency_ids
-    additional = grant_staff_competencies(
+    additional = grant_competencies_on_joining(
         person, body.base_profession, body.additional_competencies
     )
     if held_before is not None:

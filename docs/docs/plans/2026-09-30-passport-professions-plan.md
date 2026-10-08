@@ -33,7 +33,7 @@ so a manager can take people on and give out passport roles without holding
       Nobody's access changes: `User.get_final_competencies` reads
       `user_competency` rows, which were copied from the profession when it
       was given. What the id still drives is a later change of profession,
-      where `grant_staff_competencies` reads the old profession's template
+      where `grant_competencies_on_joining` reads the old profession's template
       to decide what carries over, and an id missing from the YAML has an
       empty template. Covered against Postgres by
       `backend/tests/test_rename_external_assessor.py`, which the

@@ -293,12 +293,13 @@ class TestWhatIsRefused:
 
 
 class TestTheSameAtASite:
-    """A site is where somebody works, so it asks the same question.
+    """A ward asks the same question as the organisation above it.
 
-    The two routes share ``grant_staff_competencies`` rather than each
-    carrying a copy of the merge rule, which would drift. These tests
-    are here so the site route is covered in its own right, not left
-    resting on the organisation route's.
+    One route adds a member to any org_unit, so a ward goes through the
+    same ``grant_competencies_on_joining`` as the organisation, with no
+    second copy of the merge rule to drift. These tests are here so adding
+    somebody at a ward is covered in its own right, not left resting on
+    the organisation's tests.
     """
 
     @pytest.fixture
