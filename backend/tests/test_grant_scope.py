@@ -128,6 +128,57 @@ class TestAgainstUsers:
         assert may_manage_account(caller, delegate)
         assert not may_manage_account(caller, consultant)
 
+    def test_a_teaching_profession_holding_more_is_out_of_reach(
+        self, db_session: Session
+    ) -> None:
+        """The account is judged by what it holds, not by its profession.
+
+        A profession is a label that seeded some rows. Somebody whose
+        label is a teaching one may still hold ``manage_users``, and a
+        teaching admin who could reset that account's password could sign
+        in as its owner and hold the root competency.
+        """
+        caller = _coordinator(db_session)
+        delegate = _user(db_session, "plain_delegate", "teaching_delegate")
+        promoted = _user(db_session, "promoted", "teaching_delegate")
+        sync_competency_rows(
+            promoted, additional=["manage_users"], removed=[], source="admin"
+        )
+        db_session.commit()
+        db_session.refresh(promoted)
+
+        assert may_manage_account(caller, delegate)
+        assert not may_manage_account(caller, promoted)
+
+    def test_a_clinical_profession_holding_only_teaching_is_in_reach(
+        self, db_session: Session
+    ) -> None:
+        """The other side of the same rule: the label does not refuse.
+
+        Nobody holds less than their profession seeded unless it was
+        taken away, so this is somebody stripped back to teaching alone.
+        Everything they hold is on the caller's list.
+        """
+        caller = _coordinator(db_session)
+        former = _user(db_session, "former_consultant", "consultant")
+
+        for row in former.competency_grants:
+            db_session.delete(row)
+
+        db_session.commit()
+        db_session.refresh(former)
+        sync_competency_rows(
+            former,
+            additional=["take_teaching_modules"],
+            removed=former.removed_competency_ids,
+            source="admin",
+        )
+        db_session.commit()
+        db_session.refresh(former)
+        assert former.get_final_competencies() == ["take_teaching_modules"]
+
+        assert may_manage_account(caller, former)
+
     def test_a_user_manager_reaches_every_account(
         self, db_session: Session
     ) -> None:

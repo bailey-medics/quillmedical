@@ -254,7 +254,9 @@ A caller's scope is the union across what they hold; `manage_users` means no
 limit and may appear on no list. A competency carrying either list is a
 **scoped manager**. `manage_teaching` is one: a teaching admin grants only
 teaching competencies and professions, and acts on a whole account only when
-its profession is a teaching one. `manage_passport` is the other, for the
+everything that account holds is a competency they may grant. The account's
+own base profession is not looked at: it is a label, and what somebody can
+do is their rows. `manage_passport` is the other, for the
 four passport professions.
 
 - **Backend**: `backend/app/cbac/grant_scope.py` - `may_grant`,

@@ -157,20 +157,29 @@ def may_assign_profession(user: User, profession: str) -> bool:
 def may_manage_account(user: User, target: User) -> bool:
     """Whether *user* may act on *target*'s account as a whole.
 
-    A change of profession, a deactivation, a reactivation or an invite
-    acts on the whole account, so it needs the target's current
-    profession to be one the caller could have given. That keeps a
-    clinician's account out of reach of a teaching coordinator, even
-    when the clinician also holds a teaching competency.
+    A change of profession, name, email or password, a deactivation, a
+    reactivation or an invite acts on the whole account. The caller may do
+    these only where every competency the target holds is one the caller
+    may grant: an account they could have built themselves.
+
+    **The target's base profession is not looked at.** A profession is a
+    label that seeded some rows, and what somebody can do is their rows.
+    Judged by the label, a teaching admin could reset the password of
+    anybody whose profession was a teaching one, including somebody later
+    given ``manage_users``, and then sign in as them.
+
+    So a clinician stays out of a teaching admin's reach because they hold
+    clinical competencies, and so does a teaching delegate who holds
+    anything beyond the teaching admin's list.
 
     Args:
-        user: The caller.
+        user: The caller, an admin.
         target: The person whose account is being acted on.
 
     Returns:
         True if the caller may act on it.
     """
-    return may_assign_profession(user, target.base_profession)
+    return not out_of_scope_competencies(user, target.get_final_competencies())
 
 
 def out_of_scope_competencies(user: User, ids: Iterable[str]) -> list[str]:

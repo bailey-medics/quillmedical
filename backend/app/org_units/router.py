@@ -386,7 +386,7 @@ def practice_refusal(
 
 
 def _require_account_in_scope(user: User, person: User) -> None:
-    """Refuse an act on somebody whose profession is outside the whitelist.
+    """Refuse an act on an account holding more than the caller may grant.
 
     Raises:
         HTTPException: 403 if the account is outside their scope.
