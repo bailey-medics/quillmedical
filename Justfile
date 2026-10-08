@@ -918,6 +918,47 @@ terraform-github:
     fi
 
 
+alias tf-aws := terraform-aws
+# Plan/apply the AWS side via Terraform (SES in London, and the user whose key sends mail)
+terraform-aws:
+    #!/usr/bin/env bash
+    {{initialise}} "terraform-aws"
+    set -euo pipefail
+    # The account numbers live in backend/.env, which is gitignored, and not
+    # in a tfvars file: this repository is public. Trace off while they are
+    # read, so they are not printed.
+    set +x
+    for setting in AWS_EMAILS_ACCOUNT_ID AWS_EMAILS_DEV_ACCOUNT_ID; do
+        value="$(grep "^${setting}=" backend/.env 2>/dev/null | cut -d= -f2-)"
+        if [ -z "$value" ] || [ "$value" = "CHANGE_ME" ]; then
+            echo "✗ ${setting} is not set in backend/.env."
+            exit 1
+        fi
+    done
+    export TF_VAR_app_account_id="$(grep '^AWS_EMAILS_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
+    export TF_VAR_dev_account_id="$(grep '^AWS_EMAILS_DEV_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
+    # Both sign-ins are needed: the emails account for App production, and
+    # the management account, from which the development one is reached.
+    # Checked here so a lapsed session says so plainly, and not as a
+    # provider error halfway through a plan.
+    for profile in quill-emails quill-management; do
+        if ! aws sts get-caller-identity --profile "$profile" >/dev/null 2>&1; then
+            echo "✗ Not signed in to AWS as ${profile}. Run: just al$([ "$profile" = quill-management ] && echo ' management')"
+            exit 1
+        fi
+    done
+    cd infra/aws
+    # -upgrade: see terraform-github; the lock file is not committed.
+    terraform init -input=false -upgrade
+    terraform plan
+    read -rp "Apply these changes? (yes/no): " confirm
+    if [ "$confirm" = "yes" ]; then
+        terraform apply -auto-approve
+    else
+        echo "Aborted."
+    fi
+
+
 alias tf := terraform-infra
 # Plan/apply the GCP infrastructure via Terraform (Cloud Run, load balancer, monitoring)
 terraform-infra env="app":
