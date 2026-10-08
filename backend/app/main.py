@@ -188,6 +188,7 @@ from app.push_send import router as push_send_router
 from app.rate_limit import limiter
 from app.schemas.auth import (
     ChangePasswordIn,
+    ClinicalLeadSite,
     DetailResponse,
     ForgotPasswordIn,
     HealthCheckOut,
@@ -1080,7 +1081,9 @@ def clinical_lead_site(
     Returns:
         ``valid`` is true only where the email belongs to somebody who is
         clinical lead at a site beneath an organisation that has opened
-        the bank to registration. The site and organisation come with it.
+        the bank to registration. ``sites`` lists every such site by
+        name. The single site and organisation come with it only where
+        there is one: with several the delegate chooses.
     """
     from app.features.teaching.models import QuestionBankOrgStatus
 
@@ -1118,33 +1121,54 @@ def clinical_lead_site(
     if not site_ids:
         return ValidateClinicalLeadOut(valid=False)
 
-        # Which of those sites this user holds the clinical lead post at.
-        # Read from positions rather than site_member.role: the post is
-        # the thing being asked about, and a post can be vacant, which a role
-        # column cannot express.
+    # Which of those sites this user holds the clinical lead post at.
+    # Read from positions rather than site_member.role: the post is
+    # the thing being asked about, and a post can be vacant, which a role
+    # column cannot express.
     leads = clinical_leads_of(db, list(site_ids))
     held_at = [site_id for site_id, lead in leads.items() if lead == user.id]
     if not held_at:
         return ValidateClinicalLeadOut(valid=False)
 
-    matched_site_id: int = held_at[0]
+    # Every one of them, not the first. A lead may hold the post at two
+    # hospitals, and taking whichever came first put a delegate at a site
+    # nobody had chosen. Kept only where the organisation accountable for
+    # the site is one offering the bank.
+    names = {
+        row.id: row.name
+        for row in db.execute(
+            select(OrgUnit.id, OrgUnit.name).where(OrgUnit.id.in_(held_at))
+        )
+    }
+    roots = root_ids_of(db, held_at)
+    sites: list[ClinicalLeadSite] = []
+    for held_site_id in held_at:
+        accountable = roots.get(held_site_id)
+        if accountable is None or accountable not in offering:
+            continue
+        sites.append(
+            ClinicalLeadSite(
+                site_id=held_site_id,
+                site_name=names.get(held_site_id, ""),
+                org_unit_id=accountable,
+            )
+        )
+    sites.sort(key=lambda site: (site.site_name.casefold(), site.site_id))
+    if not sites:
+        return ValidateClinicalLeadOut(valid=False)
 
-    # Look up the site name for display
-    site = (
-        db.execute(select(OrgUnit).where(OrgUnit.id == matched_site_id))
-        .scalars()
-        .first()
-    )
+    # One site is the answer. Several are a question for the delegate,
+    # so the single fields are left empty and nothing is picked here.
+    if len(sites) > 1:
+        return ValidateClinicalLeadOut(valid=True, sites=sites)
 
-    # The org_unit accountable for this one, if it offers the bank
-    accountable = root_ids_of(db, [matched_site_id]).get(matched_site_id)
-    org_unit_for_site = accountable if accountable in offering else None
-
+    only = sites[0]
     return ValidateClinicalLeadOut(
         valid=True,
-        site_name=site.name if site else None,
-        org_unit_id=org_unit_for_site,
-        site_id=matched_site_id,
+        sites=sites,
+        site_name=only.site_name,
+        org_unit_id=only.org_unit_id,
+        site_id=only.site_id,
     )
 
 
@@ -1280,24 +1304,40 @@ def register(
         admitted = clinical_lead_site(
             db, payload.clinical_lead_email, payload.teaching_module_id
         )
-        if (
-            not admitted.valid
-            or admitted.org_unit_id is None
-            or admitted.site_id is None
-        ):
+        if not admitted.valid or not admitted.sites:
             raise HTTPException(
                 status_code=400, detail="Clinical lead not recognised"
             )
-        if payload.org_unit_id not in (
-            None,
-            admitted.org_unit_id,
-        ) or payload.site_id not in (None, admitted.site_id):
+        # A lead at one site needs no site named. A lead at several
+        # does: the delegate chose on the page, and a request without
+        # the choice is refused, never settled by taking the first.
+        if payload.site_id is None:
+            if len(admitted.sites) > 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Choose which of the clinical lead's sites "
+                    "to join",
+                )
+            chosen = admitted.sites[0]
+        else:
+            matching = [
+                site
+                for site in admitted.sites
+                if site.site_id == payload.site_id
+            ]
+            if not matching:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Site does not match the clinical lead",
+                )
+            chosen = matching[0]
+        if payload.org_unit_id not in (None, chosen.org_unit_id):
             raise HTTPException(
                 status_code=400,
                 detail="Site does not match the clinical lead",
             )
-        org_unit_id = admitted.org_unit_id
-        site_id = admitted.site_id
+        org_unit_id = chosen.org_unit_id
+        site_id = chosen.site_id
 
     user = User(
         username=username,

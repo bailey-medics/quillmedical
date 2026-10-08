@@ -1103,13 +1103,13 @@ and nobody would be told. Mark decided the delegate chooses. The server
 comes first and on its own, because it is safe alone: it adds to what it
 answers, and the page of Phase 20 is what uses it.
 
-- [ ] `clinical_lead_site` in `backend/app/main.py` finds every site the
+- [x] `clinical_lead_site` in `backend/app/main.py` finds every site the
       lead holds the post at, not the first. Keep only the sites whose
       organisation offers the module: today a site whose organisation
       does not comes back `valid` with no `org_unit_id`, and the page
       turns that into "Clinical lead not found". Sort them by name, so
       the order shown does not depend on ids.
-- [ ] `ValidateClinicalLeadOut` in `backend/app/schemas/auth.py` gains
+- [x] `ValidateClinicalLeadOut` in `backend/app/schemas/auth.py` gains
       `sites`, a list of `site_id`, `site_name` and `org_unit_id`. This
       is additive. `site_name`, `site_id` and `org_unit_id` at the top
       stay, and are filled only when there is exactly one site: with
@@ -1117,18 +1117,20 @@ answers, and the page of Phase 20 is what uses it.
       fixed. A browser tab still on the old page is then told "Clinical
       lead not found" for such a lead until it reloads, which is
       accepted while nobody uses the service.
-- [ ] `clinical_lead_site` takes an optional `site_id`, the delegate's
-      choice. Given, it must be one of the sites found, or the answer is
-      not valid. `ValidateClinicalLeadIn` does not need it: the first
-      call is what lists the sites.
-- [ ] `register` passes `payload.site_id` to it. `RegisterIn` already
+- [x] `clinical_lead_site` was to take an optional `site_id`, the
+      delegate's choice. It does not: it lists the sites and `register`
+      looks the choice up in the list, which leaves the function with
+      one job and lets `register` say which of two things was wrong,
+      the lead or the site. `ValidateClinicalLeadIn` is unchanged: the
+      first call is what lists the sites.
+- [x] `register` matches `payload.site_id` against that list. `RegisterIn` already
       has the field. A lead at several sites and no `site_id` is refused
       with a 400 saying a site must be chosen: the server never picks. A
       lead at one site is as now, with or without a `site_id`. The
       existing rule that a `site_id` or `org_unit_id` disagreeing with
       the lead is refused still stands, and now reads "is not one of the
       lead's sites".
-- [ ] Tests in `backend/tests/test_validate_clinical_lead.py` and
+- [x] Tests in `backend/tests/test_validate_clinical_lead.py` and
       `backend/tests/test_teaching_place.py`: a lead at two sites is
       listed with both and no single answer; registering with one of
       them joins that site and no other; registering with neither named
