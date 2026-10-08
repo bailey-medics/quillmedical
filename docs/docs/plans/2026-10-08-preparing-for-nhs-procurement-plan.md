@@ -156,13 +156,15 @@ sour the approach on its own.
       every supplier that processes personal data has completed one.
       Much of the evidence is the steps above.
 - [ ] **Make the recovery plan real: written, and tested once.**
-      `2026-09-17-disaster-recovery-plan.md` has 37 steps and none is
-      ticked. Rebuilding the infrastructure is written and was done for
-      real; restoring data has never been tried. Three of its phases are
-      enough to say "tested" truthfully: Phase 1, confirm the backups and
-      their settings; Phase 3, write the restore steps; Phase 5, rehearse
-      one restore in a throwaway project. The same work answers the
-      trust's back-up question, the DPIA and the DCB0129 evidence.
+      `2026-09-17-disaster-recovery-plan.md` was checked against the live
+      project on 8 October 2026. Its Phase 1 is done: backups are taken
+      nightly and all succeed. Rebuilding the infrastructure has been done
+      for real; restoring data has never been tried. What is left to say
+      "tested" truthfully is its Phase 2, which closes the gaps in how the
+      database is protected, Phase 3, which writes the restore steps, and
+      Phase 5, which rehearses one restore in a throwaway project. The
+      same work answers the trust's back-up question, the DPIA and the
+      DCB0129 evidence.
 - [ ] **Write down how a security incident is handled**: who is told,
       how fast, and how a trust is notified. The data processing terms in
       Phase 4 will promise a time, so the promise and the practice are

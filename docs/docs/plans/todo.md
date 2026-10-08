@@ -102,7 +102,7 @@ clinical/NHS go-live.
 - [ ] Redesign `infra/modules/compute-fhir/startup.sh` for COS (Docker Compose cannot run on Container-Optimised OS) — script acknowledges COS constraints (line 7) but still generates docker-compose.yml (line 41) and runs `docker compose up` (line 87)
 - [ ] Automate `uuid-ossp` extension creation for EHRbase Cloud SQL database — currently applied manually per `docs/docs/learnings/fhir-ehrbase-issues.md`; could add to startup.sh before EHRbase start
 - [ ] Add missing EHRbase env vars (`DB_USER_ADMIN`, `DB_PASS_ADMIN`) to Terraform compute-fhir module — startup.sh only has `DB_USER`/`DB_PASS` (lines 67–68); working examples in `compose.prod.fhir-openehr.yml` lines 96–97
-- [ ] Write backup restore SOP (daily restore vs PITR, step-by-step, permissions, comms plan, quarterly drill) — partial restore guidance exists in `docs/docs/infrastructure/gcp.md` line ~596; needs formal SOP
+- [ ] Write backup restore SOP (daily restore vs PITR, step-by-step, permissions, comms plan, quarterly drill) — the restore guidance that was in `docs/docs/infrastructure/gcp.md` went when production was retired; planned as Phase 3 of the [Disaster recovery](2026-09-17-disaster-recovery-plan.md) plan
 
 ## Documentation
 
