@@ -334,19 +334,41 @@ class TeachingModulesOut(BaseModel):
     modules: list[TeachingModuleItem]
 
 
+class ClinicalLeadSite(BaseModel):
+    """One site a clinical lead's email admits somebody to.
+
+    Attributes:
+        site_id: The site, as an org_unit id.
+        site_name: Its name, to show the person choosing.
+        org_unit_id: The organisation it sits beneath, which offers the
+            module.
+    """
+
+    site_id: int
+    site_name: str
+    org_unit_id: int
+
+
 class ValidateClinicalLeadOut(BaseModel):
     """Clinical lead validation response.
 
     Attributes:
         valid: Whether the email is a clinical lead for the bank.
-        site_name: Name of the site if valid, else None.
-        org_unit_id: The organisation, as an org_unit id – what the
-            registration that follows sends back.
-        site_id: ID of the site if valid, else None. Already an org_unit id:
-            a site is an org_unit.
+        sites: Every site the lead holds the post at beneath an
+            organisation offering the bank, by name. One for most leads.
+            With several the delegate chooses, and registration is sent
+            the choice as ``site_id``.
+        site_name: Name of the site, where there is exactly one. None
+            when not valid, and None when there are several: there is
+            then no one answer, and the server does not pick.
+        org_unit_id: The organisation, as an org_unit id, on the same
+            terms.
+        site_id: ID of the site, on the same terms. Already an org_unit
+            id: a site is an org_unit.
     """
 
     valid: bool
+    sites: list[ClinicalLeadSite] = []
     site_name: str | None = None
     org_unit_id: int | None = None
     site_id: int | None = None

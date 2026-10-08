@@ -319,3 +319,167 @@ class TestRegisterWithSiteMembership:
         # Refused for not being the lead's site, before it is ever looked
         # up in the tree.
         assert "does not match" in resp.json()["detail"]
+
+
+def _second_site(
+    db: Session, org: OrgUnit, lead: User, name: str = "Another Hospital"
+) -> OrgUnit:
+    """A second site beneath ``org`` with the same clinical lead."""
+    site = OrgUnit(name=name, type="hospital", parent_id=org.id)
+    db.add(site)
+    db.flush()
+    db.execute(
+        org_unit_member.insert().values(
+            org_unit_id=site.id, user_id=lead.id, capacity="staff"
+        )
+    )
+    set_clinical_lead(db, site, lead)
+    db.flush()
+    return site
+
+
+def _register(test_client, username: str, **extra: object):
+    return test_client.post(
+        "/api/auth/register",
+        json={
+            "username": username,
+            "email": f"{username}@example.com",
+            "password": "Secure123!",
+            "teaching_module_id": "test-bank",
+            "clinical_lead_email": "lead@test.local",
+            **extra,
+        },
+    )
+
+
+def _sites_of(db: Session, username: str) -> set[int]:
+    user = db.scalar(select(User).where(User.username == username))
+    assert user is not None
+    return set(
+        db.scalars(
+            select(org_unit_member.c.org_unit_id).where(
+                org_unit_member.c.user_id == user.id
+            )
+        )
+    )
+
+
+class TestALeadAtSeveralSites:
+    """A clinical lead may hold the post at more than one site.
+
+    The first was taken without a word, so a delegate could be put at a
+    hospital nobody chose. The sites are now listed, the delegate
+    chooses, and the server never picks.
+    """
+
+    def test_one_site_is_listed_and_is_the_answer(
+        self, test_client, db_session
+    ):
+        org, site, _lead = _setup_org_with_site_and_lead(db_session)
+
+        data = test_client.post(
+            "/api/teaching/public/validate-clinical-lead",
+            json={"email": "lead@test.local", "bank_id": "test-bank"},
+        ).json()
+
+        assert data["sites"] == [
+            {
+                "site_id": site.id,
+                "site_name": "Test Hospital",
+                "org_unit_id": org.id,
+            }
+        ]
+        assert data["site_id"] == site.id
+
+    def test_two_sites_are_listed_by_name_with_no_single_answer(
+        self, test_client, db_session
+    ):
+        org, site, lead = _setup_org_with_site_and_lead(db_session)
+        other = _second_site(db_session, org, lead)
+
+        data = test_client.post(
+            "/api/teaching/public/validate-clinical-lead",
+            json={"email": "lead@test.local", "bank_id": "test-bank"},
+        ).json()
+
+        assert data["valid"] is True
+        # "Another Hospital" before "Test Hospital", though made second.
+        assert [s["site_id"] for s in data["sites"]] == [other.id, site.id]
+        assert [s["site_name"] for s in data["sites"]] == [
+            "Another Hospital",
+            "Test Hospital",
+        ]
+        assert data["site_id"] is None
+        assert data["site_name"] is None
+        assert data["org_unit_id"] is None
+
+    def test_a_site_under_an_organisation_not_offering_is_left_out(
+        self, test_client, db_session
+    ):
+        org, site, lead = _setup_org_with_site_and_lead(db_session)
+        elsewhere = OrgUnit(name="Elsewhere Org", type="hospital_team")
+        db_session.add(elsewhere)
+        db_session.flush()
+        _second_site(db_session, elsewhere, lead)
+
+        data = test_client.post(
+            "/api/teaching/public/validate-clinical-lead",
+            json={"email": "lead@test.local", "bank_id": "test-bank"},
+        ).json()
+
+        assert [s["site_id"] for s in data["sites"]] == [site.id]
+        assert data["site_id"] == site.id
+        assert data["org_unit_id"] == org.id
+
+    def test_registering_with_the_chosen_site_joins_it_and_no_other(
+        self, test_client, db_session
+    ):
+        org, site, lead = _setup_org_with_site_and_lead(db_session)
+        other = _second_site(db_session, org, lead)
+
+        resp = _register(test_client, "chooser", site_id=other.id)
+
+        assert resp.status_code == 200, resp.text
+        assert _sites_of(db_session, "chooser") == {org.id, other.id}
+        assert site.id not in _sites_of(db_session, "chooser")
+
+    def test_registering_with_no_site_named_is_refused(
+        self, test_client, db_session
+    ):
+        org, _site, lead = _setup_org_with_site_and_lead(db_session)
+        _second_site(db_session, org, lead)
+
+        resp = _register(test_client, "undecided")
+
+        assert resp.status_code == 400
+        assert "Choose" in resp.json()["detail"]
+        assert (
+            db_session.scalar(select(User).where(User.username == "undecided"))
+            is None
+        )
+
+    def test_registering_with_a_site_the_lead_does_not_hold_is_refused(
+        self, test_client, db_session
+    ):
+        org, _site, lead = _setup_org_with_site_and_lead(db_session)
+        _second_site(db_session, org, lead)
+        stranger = OrgUnit(
+            name="Not Theirs", type="hospital", parent_id=org.id
+        )
+        db_session.add(stranger)
+        db_session.flush()
+
+        resp = _register(test_client, "wrong_site", site_id=stranger.id)
+
+        assert resp.status_code == 400
+        assert "does not match" in resp.json()["detail"]
+
+    def test_a_lead_at_one_site_needs_no_site_named(
+        self, test_client, db_session
+    ):
+        org, site, _lead = _setup_org_with_site_and_lead(db_session)
+
+        resp = _register(test_client, "one_site")
+
+        assert resp.status_code == 200, resp.text
+        assert _sites_of(db_session, "one_site") == {org.id, site.id}
