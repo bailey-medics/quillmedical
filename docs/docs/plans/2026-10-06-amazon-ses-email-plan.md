@@ -1032,8 +1032,10 @@ be checked against what is meant to be.
       refused, or would fight it. With that, everything in AWS that is
       Quill's to change is in `infra/aws/`, bar the access keys.
 
-- [ ] **Apply it (Mark).** After this merges, `just terraform-aws`.
-      It should say five to import and nothing else.
+- [x] **Apply it (Mark).** Done on 8 October 2026: five imported,
+      nothing changed, and a plan afterwards said "No changes". The
+      one thing not adopted, `mark@quill-medical.com` in the App
+      production account, was deleted the same day.
 
 ## Decisions
 
