@@ -44,7 +44,7 @@ const columns: Column<Certificate>[] = [
       certificate.expires_on ? (
         <FormattedDate date={certificate.expires_on} format="medium" />
       ) : (
-        "–"
+        "-"
       ),
     accessor: (certificate) => certificate.expires_on,
   },

@@ -47,7 +47,7 @@ export const Empty: Story = {
 };
 
 /**
- * A count and no target – the reason this table looks plainer than it
+ * A count and no target - the reason this table looks plainer than it
  * might.
  */
 export const CountsNeverTargets: Story = {
@@ -56,7 +56,7 @@ export const CountsNeverTargets: Story = {
       <LogbookTable {...args} />
       <StoryNote>
         Thirty-eight entries, and nothing saying whether that is enough. Two
-        hundred bronchoscopies prove activity, not competence – the sign-off is
+        hundred bronchoscopies prove activity, not competence - the sign-off is
         what turns evidence into a conclusion, and a progress bar here would
         appear to have decided that already.
       </StoryNote>

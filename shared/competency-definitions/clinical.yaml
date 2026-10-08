@@ -11,7 +11,7 @@
 # Every file in this directory is merged into one catalogue at load
 # time, so ids must be unique across the whole directory, not just
 # within a file. Which file an entry lives in carries no meaning to the
-# code – it is for the reader.
+# code - it is for the reader.
 #
 # Competencies are granted to users based on their training,
 # qualifications and organisational approval. A user holds what their
@@ -160,14 +160,14 @@ competencies:
   # beside the competency every time: the account's own patient link, an
   # ExternalPatientAccess grant, or a shared organisation.
   #
-  #   access_own_patient_records     – your own record
-  #   access_granted_patient_records – someone else's, by invitation
-  #   access_patient_records         – your patients', by clinical role
+  #   access_own_patient_records     - your own record
+  #   access_granted_patient_records - someone else's, by invitation
+  #   access_patient_records         - your patients', by clinical role
   #
   # See docs/docs/plans/2026-09-09-platform-role-plan.md.
 
   # Reading your own record, as the subject of it. Held by patients and
-  # by any member of staff who is also a patient here – which is the
+  # by any member of staff who is also a patient here - which is the
   # ordinary case rather than the exception.
   - id: access_own_patient_records
     display_name: "Access Own Patient Records"

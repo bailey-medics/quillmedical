@@ -483,7 +483,7 @@ mistake can break it. They are the second, third and fourth steps below.
 - [x] **Write the final figures here**: entry chunk gzipped before and
       after, and each feature chunk's size. - **First load**, every file `index.html` asks for: **434.96 kB
       gzipped before, 348.62 kB after**. That is 86.34 kB less, a
-      fifth. Raw, 1,645.81 kB to 1,325.84 kB. Files, 34 to 19. - **`adminChunk`** – 35.70 kB gzipped, 33 pages. - **`passportChunk`** – 18.27 kB gzipped, 17 pages. - **`safetyChunk`** – 12.30 kB gzipped, 14 pages. - **`clinicalChunk`** – 11.74 kB gzipped, 11 pages. - **`teachingChunk`** – 6.25 kB gzipped, 8 pages. - **Nothing is left for a human except the postponed check
+      fifth. Raw, 1,645.81 kB to 1,325.84 kB. Files, 34 to 19. - **`adminChunk`** - 35.70 kB gzipped, 33 pages. - **`passportChunk`** - 18.27 kB gzipped, 17 pages. - **`safetyChunk`** - 12.30 kB gzipped, 14 pages. - **`clinicalChunk`** - 11.74 kB gzipped, 11 pages. - **`teachingChunk`** - 6.25 kB gzipped, 8 pages. - **Nothing is left for a human except the postponed check
       below.** The admin walk (Phase 3) and the failed background
       fetch (Phase 7) were both done by automated tests, not by a
       person, and each step says so. - **Postponed**: opening a patient and a message thread with
@@ -641,26 +641,26 @@ them with figures, and they are less flattering than the estimates were.
 
 ## Decisions
 
-- **One chunk per feature, never per page** – per-page chunks save almost
+- **One chunk per feature, never per page** - per-page chunks save almost
   nothing, because a page is about 1 kB gzipped (passport's first nine
   came to 10.4 kB in total), and each one costs an uncached request on
   every navigation. One chunk also removes a whole class of failure: no
   fetch can fail part-way through a flow. One rule is easier to follow
   than a judgement about which routes can stand a fetch.
 
-- **Admin is one chunk, not one per section** – splitting it into users,
+- **Admin is one chunk, not one per section** - splitting it into users,
   organisations, sites and teaching was considered, since most visits
   touch one section. It was turned down for the same reason as per-page
   chunks: the saving is a few kilobytes, and the rule stays simple.
 
-- **Passport's two public pages stay in the passport chunk** – an external
+- **Passport's two public pages stay in the passport chunk** - an external
   assessor or somebody scanning a printed passport therefore downloads
   the whole feature to see one page. That is accepted for the sake of the
   rule. If the Phase 4 measurement shows the chunk is large enough to
   matter on a phone, a second `passport-public` chunk is the answer, and
   it is still a feature-level chunk, not a per-page one.
 
-- **The plan saved bytes, and on its own did not save time** – Phase 10
+- **The plan saved bytes, and on its own did not save time** - Phase 10
   measured it. The first download is a fifth smaller, yet a teaching
   user's first visit is no quicker, because roughly seventy per cent of
   what is left is Mantine, React and the router, and because splitting
@@ -670,20 +670,20 @@ them with figures, and they are less flattering than the estimates were.
   features it uses, at no cost to a click, and that is what will matter
   when Quill is offered as a package.
 
-- **Chunks are not added to the service worker precache** – precaching
+- **Chunks are not added to the service worker precache** - precaching
   them would download every feature for everybody on install, which is
   the cost this plan removes. Phase 7 does the selective version: only
   the features this person can open, and only when idle. Quill does not
   offer offline working, so nothing is lost by a chunk not being cached.
 
 - **Superseded by Phase 9: background fetching calls the same loader,
-  not a `modulepreload` link** – a `<link rel="modulepreload">` fails silently, which would
+  not a `modulepreload` link** - a `<link rel="modulepreload">` fails silently, which would
   avoid the recovery handler altogether. But it needs the hashed file
   name, which only the build knows, and calling the loader is the one
   thing guaranteed to warm exactly what the route will ask for. The cost
   is the handler change in Phase 7, which is small and tested.
 
-- **Background fetching uses `fetch()` and the build manifest** – the
+- **Background fetching uses `fetch()` and the build manifest** - the
   reasoning above, for calling the loader, missed what a failed
   `import()` costs: the browser remembers it for the life of the page.
   `fetch()` warms the cache and remembers nothing. The hashed file names
@@ -691,19 +691,19 @@ them with figures, and they are less flattering than the estimates were.
   plugin of ours. The trade is that a warmed feature is in the cache, not
   in memory, so the click still parses it; that is milliseconds.
 
-- **Three guarantees for the exam, where one would do** – not starting on
+- **Three guarantees for the exam, where one would do** - not starting on
   an unsafe route, ignoring background failures, and never reloading an
   unsafe route each cover the case alone. They are kept separate and
   separately tested because losing an attempt is the one outcome here
   that cannot be put right afterwards.
 
-- **`/settings/totp` and the Markdown views are left alone** – `todo.md`
+- **`/settings/totp` and the Markdown views are left alone** - `todo.md`
   names them because they pull in `qrcode` and `dompurify`. `TotpSetup` is
   a single page, so splitting it would be a per-page chunk, and
   `dompurify` is imported from `components/typography`, which pages in
   every feature use. Neither fits the rule, and both are small.
 
-- **Page files do not move** – the clinical pages sit flat in `pages/`
+- **Page files do not move** - the clinical pages sit flat in `pages/`
   and `NewPatientPage` sits outside `pages/admin/`. A chunk module can
   re-export from anywhere, so tidying the folders is not needed and is
   kept out of these diffs.

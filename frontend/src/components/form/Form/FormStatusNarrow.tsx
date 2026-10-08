@@ -10,10 +10,10 @@
  *
  * @example
  * ```tsx
- * // Inside a <Form> wrapper – no props needed
+ * // Inside a <Form> wrapper - no props needed
  * <FormStatusNarrow />
  *
- * // In Storybook – prop-driven
+ * // In Storybook - prop-driven
  * <FormStatusNarrow message="Invalid username or password" />
  * ```
  */
@@ -28,7 +28,7 @@ interface FormStatusNarrowPropsFromContext {
 }
 
 interface FormStatusNarrowPropsManual {
-  /** Error message to display – for Storybook or standalone use */
+  /** Error message to display - for Storybook or standalone use */
   message: ReactNode;
 }
 

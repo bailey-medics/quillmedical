@@ -33,17 +33,17 @@ per day. A worktree is cheap to make and cheap to remove.
 
 ## What the recipe does
 
-`just wc <branch>` – aliased from `just worktree-create`:
+`just wc <branch>` - aliased from `just worktree-create`:
 
 - **Refuses a branch name the repository will reject.** Branch protection
   allows only `feature/`, `hotfix/`, `copilot/` and `renovate/` prefixes,
   and finding that out after the worktree exists means unpicking it by
   hand.
 - **Names the directory for you.** `quillmedical-2`, `quillmedical-3` and
-  so on, walking up until a free name appears – so a directory removed by
+  so on, walking up until a free name appears - so a directory removed by
   hand does not make the next number collide.
-- **Creates the branch, or resumes it.** A name that already exists – here
-  or on `origin` – is checked out with its history intact. Only a genuinely
+- **Creates the branch, or resumes it.** A name that already exists - here
+  or on `origin` - is checked out with its history intact. Only a genuinely
   new name branches from `origin/main`, so a fresh worktree never inherits
   half-finished work from wherever you happened to be standing.
 - **Leaves the upstream unset on a new branch.** A branch created against
@@ -84,7 +84,7 @@ while a hooks path is set, and the tracked hook already runs it.
 
 Poetry keys its cached environments on the project name. Every worktree's
 backend is called `backend`, so left alone they all share a single
-environment – and installing a dependency on one branch silently changes
+environment - and installing a dependency on one branch silently changes
 the others, which is the precise thing a worktree exists to prevent.
 
 Two settings are needed together, and the second is easy to miss:
@@ -149,8 +149,8 @@ revision to be found in review.
 The dev stack itself is different. It uses fixed container names, so
 **only one worktree can run it at a time**. Starting `just sd` in a second
 worktree will either fail on the name or, worse, attach to the containers
-already serving the first. Recipes that need the live stack – `just eb`,
-the create-user recipes – check which worktree the stack serves and refuse
+already serving the first. Recipes that need the live stack - `just eb`,
+the create-user recipes - check which worktree the stack serves and refuse
 to run from any other, rather than quietly acting on the wrong code.
 
 If you are running the stack in one worktree, the others are still fine for

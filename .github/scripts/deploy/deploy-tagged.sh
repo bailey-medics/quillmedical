@@ -2,7 +2,7 @@
 # Deploys a new revision under a traffic tag with --no-traffic, smoke-tests
 # that revision's own tagged URL, and only then promotes it to receive all
 # traffic. Keeps live traffic on the previous revision until the new one has
-# proven healthy – see docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md,
+# proven healthy - see docs/docs/plans/2026-08-09-alembic-review-and-revisions-plan.md,
 # item 13.
 #
 # Usage: deploy-tagged.sh <service> <project> <region> <image> <tag> <health-path>
@@ -78,7 +78,7 @@ describe_service() {
 # Succeeds once the service JSON on stdin shows the promotion has landed:
 # the service is Ready and the given revision, the one that passed the smoke
 # test, is carrying all of the traffic. Checks status (what is live), not
-# spec (what was asked for) – the stalled deploy had spec at 100% while
+# spec (what was asked for) - the stalled deploy had spec at 100% while
 # status still sat on the old revision.
 #
 # Names the revision rather than asking whether the newest revision is
@@ -174,7 +174,7 @@ main() {
 
   log "Smoke-testing the new revision at ${tagged_url}${health_path}"
   if ! run_smoke_test "${tagged_url}${health_path}"; then
-    error "Smoke test failed for tagged revision $tag – traffic left on the previous revision"
+    error "Smoke test failed for tagged revision $tag - traffic left on the previous revision"
     exit 1
   fi
 
@@ -192,7 +192,7 @@ main() {
     # first, then the traffic, and the traffic names the revision rather
     # than the tag, so the order is safe. Leaving it would keep the
     # revision addressable at its tagged URL for good.
-    log "Promoting $tag ($revision) – sending it all traffic (attempt $attempt/$attempts)"
+    log "Promoting $tag ($revision) - sending it all traffic (attempt $attempt/$attempts)"
     if ! gcloud run services update-traffic "$service" \
       --project="$project" \
       --region="$region" \

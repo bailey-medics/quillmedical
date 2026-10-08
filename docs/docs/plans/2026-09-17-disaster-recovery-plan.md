@@ -128,42 +128,42 @@ deleted data survives in backups.
 Nine buckets, with materially different protection. All are in
 `europe-west2` except the landing site, which is in the `EU` multi-region.
 
-- **Clinician passports** (`quill-passports-app`) – versioned,
+- **Clinician passports** (`quill-passports-app`) - versioned,
   `force_destroy = false`, `public_access_prevention` enforced, and
   deliberately no lifecycle rule at all. The module comment in
   `infra/modules/passport-storage/main.tf` explains why it is a separate
   module and not a flag on the shared one. This is the best-protected store
   in the estate and needs no change.
 
-- **Deleted test passports** (`quill-passports-deleted-app`) – added since
+- **Deleted test passports** (`quill-passports-deleted-app`) - added since
   this plan was written. Not versioned, and everything in it is deleted
   after 30 days. That is its job: it holds only what the admin job's
   `delete-passport` action removed.
 
-- **Teaching content** (`quill-images-app`) – question bank YAML and
+- **Teaching content** (`quill-images-app`) - question bank YAML and
   images. Versioned, with a lifecycle rule deleting superseded versions
   after 365 days. `force_destroy` is true, from the same test on `prod`.
   The content is rebuilt by CI from the teaching repositories on GitHub, so
   the bucket is a copy and not the source.
 
-- **Processed video** (`quill-teaching-videos-processed-app`) – versioned,
+- **Processed video** (`quill-teaching-videos-processed-app`) - versioned,
   no lifecycle rule. **This is the only copy of a lecture video**, because
   of the next bucket.
 
-- **Source video** (`quill-teaching-videos-source-app`) – deliberately not
+- **Source video** (`quill-teaching-videos-source-app`) - deliberately not
   versioned, and emptied after one day. When this plan was written the
   source was kept for longer. Today the transcode job deletes each upload
   once the renditions verify, so a lost rendition means asking the lecturer
   to upload again.
 
 - **Guide screenshots** (`quill-medical-app-guide-assets` and
-  `-guide-assets-private`) – added since. Not versioned, and remade by the
+  `-guide-assets-private`) - added since. Not versioned, and remade by the
   screenshot workflow after each merge, so they need no backup.
 
-- **Landing site** (`quill-medical-app-landing`) – rebuilt by CI from the
+- **Landing site** (`quill-medical-app-landing`) - rebuilt by CI from the
   repository, so it needs no backup.
 
-- **Terraform state** (`quill-medical-app-terraform-state`) – see
+- **Terraform state** (`quill-medical-app-terraform-state`) - see
   [The rebuild path](#the-rebuild-path).
 
 Versioning is not backup. It protects against overwrite and deletion within
@@ -364,20 +364,20 @@ success from failure. Each states its expected duration, because the
 difference between ten minutes and six hours changes what you tell people.
 The document does not exist yet.
 
-- [ ] **A bad migration or bad deploy** – restore to a point in time or to
+- [ ] **A bad migration or bad deploy** - restore to a point in time or to
       the most recent daily backup, including how to choose and what is
       lost. A backup can be restored onto the same instance. A point in
       time cannot: Cloud SQL always makes a new instance for it, which the
       application and the Terraform state then have to be pointed at.
 
-- [ ] **One table or one row** – restore to a clone, extract, reimport, and
+- [ ] **One table or one row** - restore to a clone, extract, reimport, and
       do not restore a whole instance to fix one mistake.
 
 - [ ] **A deleted or overwritten object, per bucket**, since the versioned
       ones and the unversioned ones need different answers, and soft delete
       gives the unversioned ones seven days.
 
-- [ ] **A corrupted or lost passport bundle** – recover the prior
+- [ ] **A corrupted or lost passport bundle** - recover the prior
       generation and verify with `git fsck` before putting it back.
 
 - [ ] **A database restored behind the passport bucket.** Added on
@@ -385,10 +385,10 @@ The document does not exist yet.
       reconcile over every passport, and how to find and re-link a bundle
       whose row was lost with the restore.
 
-- [ ] **A lost Cloud SQL instance** – restore into a new one and repoint
+- [ ] **A lost Cloud SQL instance** - restore into a new one and repoint
       the application. Depends on Phase 2 keeping backups after deletion.
 
-- [ ] **A lost project** – the full rebuild, from Batch 4 of the
+- [ ] **A lost project** - the full rebuild, from Batch 4 of the
       environment isolation plan, which is the record of doing it. It has
       to cover the state bucket and the DNS zone being lost with the
       project, the change of nameservers at the registrar, and putting a
@@ -464,18 +464,18 @@ secrets, in the app environment, and the FHIR VM for when it is deployed.
 
 **Out of scope, deliberately:**
 
-- **High availability** – about staying up, not coming back. Already deferred
+- **High availability** - about staying up, not coming back. Already deferred
   with a recorded trigger in [GCP Launch-Ready](2026-03-16-gcp-launch-ready.md).
 
-- **Multi-region** – same reasoning, larger price tag. The single-region
+- **Multi-region** - same reasoning, larger price tag. The single-region
   exposure is documented here, not fixed here.
 
-- **FHIR and EHRbase content** – not in live use.
+- **FHIR and EHRbase content** - not in live use.
 
-- **Migration validation against production-shaped data** – related, already
+- **Migration validation against production-shaped data** - related, already
   a separate `todo.md` item.
 
-- **Business continuity in the wider sense** – who tells users, contractual
+- **Business continuity in the wider sense** - who tells users, contractual
   and regulatory notification. Real, but not this document. The
   [NHS procurement plan](2026-10-08-preparing-for-nhs-procurement-plan.md)
   asks for a written incident process and an exit plan, and points here for
@@ -511,27 +511,27 @@ Two of these are properly Mark's and not technical.
 
 ## Decisions
 
-- **Look before changing** – Phase 1 changes nothing. Terraform says what was
+- **Look before changing** - Phase 1 changes nothing. Terraform says what was
   intended and the project says what is true, and on a live system holding
   other people's sign-offs the difference should be established first.
 
-- **The app environment is the whole of it** – it is live, it is the least
+- **The app environment is the whole of it** - it is live, it is the least
   protected kind, and it is the only environment. This replaced "teaching
   before everything else" when the other three were retired.
 
-- **A tool, not just a document** – restores happen rarely, under stress, by
+- **A tool, not just a document** - restores happen rarely, under stress, by
   one person. A dry-run-by-default command with a typed confirmation is worth
   more than a longer runbook.
 
-- **Rehearse in a throwaway project** – there is no staging environment to
+- **Rehearse in a throwaway project** - there is no staging environment to
   rehearse in, and rehearsing against the live one would risk the thing being
   protected.
 
-- **The passport bucket needs no change** – it is already versioned,
+- **The passport bucket needs no change** - it is already versioned,
   undeletable and free of lifecycle rules, and its module comment explains
   why. Recorded so a later reader does not "improve" it.
 
-- **Gate protection on what a store holds, not on the environment's name** –
+- **Gate protection on what a store holds, not on the environment's name** -
   added on 8 October 2026. Every setting keyed on `prod` stopped applying
   the day the last environment of that name was retired, and nothing
   failed or warned. A database is protected because it is a database.

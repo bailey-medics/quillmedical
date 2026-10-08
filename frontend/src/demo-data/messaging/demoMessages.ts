@@ -28,7 +28,7 @@ export const demoMessages: Message[] = [
     givenName: "Jane",
     familyName: "Doe",
     gradientIndex: 3,
-    text: "Hello – I had a clinic earlier today. I've been getting more stomach pain and wondered if I should change my pain meds before my tests.",
+    text: "Hello - I had a clinic earlier today. I've been getting more stomach pain and wondered if I should change my pain meds before my tests.",
     timestamp: demoTimestamp(),
   },
   {
@@ -38,7 +38,7 @@ export const demoMessages: Message[] = [
     givenName: "Imogen",
     familyName: "Fenwick",
     gradientIndex: 10,
-    text: "Thanks for your message – a clinician will triage this and we'll update Dr Fenwick if needed.",
+    text: "Thanks for your message - a clinician will triage this and we'll update Dr Fenwick if needed.",
     timestamp: demoTimestamp(60_000),
   },
   {
@@ -48,7 +48,7 @@ export const demoMessages: Message[] = [
     givenName: "Imogen",
     familyName: "Fenwick",
     gradientIndex: 10,
-    text: "Triage note: ongoing abdominal pain post-consult, possible med query – please advise Dr Fenwick.",
+    text: "Triage note: ongoing abdominal pain post-consult, possible med query - please advise Dr Fenwick.",
     timestamp: demoTimestamp(120_000),
   },
   {
@@ -58,7 +58,7 @@ export const demoMessages: Message[] = [
     givenName: "Rowan",
     familyName: "Fenwick",
     gradientIndex: 5,
-    text: "Received – forwarding to consultant. Can you provide the names of current medications and the timing of symptoms?",
+    text: "Received - forwarding to consultant. Can you provide the names of current medications and the timing of symptoms?",
     timestamp: demoTimestamp(180_000),
   },
   {
@@ -77,7 +77,7 @@ export const demoMessages: Message[] = [
     givenName: "Rowan",
     familyName: "Fenwick",
     gradientIndex: 5,
-    text: "Thanks – please avoid ibuprofen until we complete the investigations as it can worsen GI symptoms. Continue antacids if needed but note any bleeding. We'll arrange bloods and stool and review results next week.",
+    text: "Thanks - please avoid ibuprofen until we complete the investigations as it can worsen GI symptoms. Continue antacids if needed but note any bleeding. We'll arrange bloods and stool and review results next week.",
     timestamp: demoTimestamp(300_000),
   },
   {
@@ -96,7 +96,7 @@ export const demoMessages: Message[] = [
     givenName: "Rowan",
     familyName: "Fenwick",
     gradientIndex: 5,
-    text: "No, continue your regular prescribed meds unless advised by GP – only stop OTC NSAIDs like ibuprofen.",
+    text: "No, continue your regular prescribed meds unless advised by GP - only stop OTC NSAIDs like ibuprofen.",
     timestamp: demoTimestamp(420_000),
   },
   {
@@ -115,7 +115,7 @@ export const demoMessages: Message[] = [
     givenName: "Jane",
     familyName: "Doe",
     gradientIndex: 3,
-    text: "Thank you both – I appreciate the quick response.",
+    text: "Thank you both - I appreciate the quick response.",
     timestamp: demoTimestamp(540_000),
   },
 ];

@@ -2,7 +2,7 @@
  * ConfirmModal Component
  *
  * A reusable confirmation modal for destructive or irreversible actions.
- * Acts as a safety gate _before_ submission – not a post-action acknowledgement.
+ * Acts as a safety gate _before_ submission - not a post-action acknowledgement.
  *
  * @example
  * ```tsx
@@ -71,7 +71,7 @@ export default function ConfirmModal({
       await onAccept();
       onClose();
     } catch {
-      // Stay open – caller handles error display
+      // Stay open - caller handles error display
       setLoading(false);
     }
   }, [onAccept, onClose]);

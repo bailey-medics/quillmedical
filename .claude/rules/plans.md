@@ -6,12 +6,12 @@ paths:
 # Plan conventions
 
 - **Filename**: `YYYY-MM-DD-<kebab-case-slug>.md`, dated the day the plan
-  is created – e.g. `2026-08-25-core-db-auto-commit-plan.md`. End the
+  is created - e.g. `2026-08-25-core-db-auto-commit-plan.md`. End the
   slug in `-plan`.
 - **Title**: a single `#` heading in sentence case, matching the slug
   (e.g. `# Core DB auto-commit plan`).
 - **Overview**: one or two paragraphs immediately under the title,
-  before the first phase – explain _why_ the change is needed (the
+  before the first phase - explain _why_ the change is needed (the
   problem, risk, or need it addresses) and what the intended outcome
   is. Don't jump straight into tasks without this. Two paragraphs is
   the ceiling, not the target: the detail belongs in the steps, and an
@@ -22,26 +22,26 @@ paths:
   - [ ] Do the thing, in `path/to/file.py`
   - [x] Already-completed step
   ```
-  Check items off (`- [x]`) as work completes – a plan file is a living
+  Check items off (`- [x]`) as work completes - a plan file is a living
   record of progress, not a one-time proposal. Do not delete completed
   phases; leave them checked for history.
-- **No tables.** Markdown tables are unreadable in raw form – the cells
+- **No tables.** Markdown tables are unreadable in raw form - the cells
   wrap, the columns stop lining up, and the plan can only be scanned in
   a rendered preview. Use bullets for anything a table would hold:
   ```markdown
-  - **The thing** – what it is, and why it matters.
-  - **The other thing** – same shape, one bullet each.
+  - **The thing** - what it is, and why it matters.
+  - **The other thing** - same shape, one bullet each.
   ```
-  Put the label in bold, then a spaced en dash ( – ), then the prose.
-  Never an em dash: see `CLAUDE.md`. Separate
+  Put the label in bold, then a spaced hyphen ( - ), then the prose.
+  Never an em dash or an en dash: see `CLAUDE.md`. Separate
   bullets with a blank line when each runs to more than a line or two.
 - **Decisions** (optional, include when there are non-obvious
   trade-offs): a `## Decisions` section, one bullet per decision in the
   form above. The rationale explains _why_, not just what.
-- **Register new plans** in `docs/docs/plans/index.md` – add a link in
+- **Register new plans** in `docs/docs/plans/index.md` - add a link in
   the same list, roughly in date order.
 - Prefer reusing patterns/utilities already documented in nearby plans
-  over inventing new structure – skim 1-2 recent plans for tone and
+  over inventing new structure - skim 1-2 recent plans for tone and
   section depth before writing a new one.
 
 ## Write it in implementation order, and keep it that way
@@ -73,7 +73,7 @@ so its order is part of its content.
   twice as long to read as it needs to be, and it is the most common
   failure here.
 - **`## Decisions` stays separate, and does not repeat a step.** It is
-  for trade-offs that span the plan or were deliberately deferred –
+  for trade-offs that span the plan or were deliberately deferred -
   the things somebody will later ask "why did you do it that way?"
   about. Where a decision belongs to one step, it lives in that step.
 

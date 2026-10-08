@@ -188,7 +188,7 @@ main() {
   # A clean PR this gate has never commented on has nothing to report the
   # disappearance of, so it stays clean.
   if [ "$hash" = "$NO_FINDINGS" ] && [ "$(gate_has_commented "$comments_jsonl" "$marker_key")" = "false" ]; then
-    log "Nothing found and '$marker_key' has never commented on PR #$pr_number – nothing to record."
+    log "Nothing found and '$marker_key' has never commented on PR #$pr_number - nothing to record."
     echo "should_notify=false" >>"$GITHUB_OUTPUT"
     return 0
   fi
@@ -197,7 +197,7 @@ main() {
   unchanged="$(latest_announcement_matches "$comments_jsonl" "$marker_key" "$hash")"
 
   if [ "$unchanged" = "true" ]; then
-    log "State $hash is already the latest announcement on PR #$pr_number – nothing to record."
+    log "State $hash is already the latest announcement on PR #$pr_number - nothing to record."
     echo "should_notify=false" >>"$GITHUB_OUTPUT"
     return 0
   fi
@@ -207,9 +207,9 @@ main() {
   body="$(build_body "$marker_key" "$hash" "$run_url" "$message" "$all_clear_message")"
 
   if [ "$hash" = "$NO_FINDINGS" ]; then
-    log "Findings have gone from PR #$pr_number – recording that on the PR."
+    log "Findings have gone from PR #$pr_number - recording that on the PR."
   else
-    log "New change-set $hash – adding a comment to PR #$pr_number."
+    log "New change-set $hash - adding a comment to PR #$pr_number."
   fi
 
   printf '%s' "$body" | gh pr comment "$pr_number" --body-file -

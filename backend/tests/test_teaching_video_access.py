@@ -195,7 +195,7 @@ class TestLocalVideoRoute:
     """The development route that serves video off disk.
 
     Mounted only when a local content path is configured and no GCS
-    bucket is – the same condition as the sibling image routes. There
+    bucket is - the same condition as the sibling image routes. There
     is no CDN, no signature and no cookie here, so this proves the
     content model and the player and nothing about the access gate.
     """
@@ -270,7 +270,7 @@ class TestLocalVideoRoute:
         """Reaching a 404 proves the extension passed the allow-list.
 
         A 400 would mean the allow-list rejected it before ever looking
-        for the file – the distinction the previous test relies on.
+        for the file - the distinction the previous test relies on.
         """
         if not self._mounted():
             pytest.skip("local video route not mounted in this environment")
@@ -288,7 +288,7 @@ class TestTheCookieHeaderIsNotQuoted:
         Cloud-CDN-Cookie="URLPrefix=…:Signature=…"
 
     The browser stores the quotes and returns them, and the edge refuses
-    a policy that begins with one – a 403 carrying
+    a policy that begins with one - a 403 carrying
     ``signed_request_invalid_encoding``, which reaches the learner as a
     black player with a dead play button. Object keys, signing and key
     names were all checked before anyone looked at the quotes.
@@ -336,7 +336,7 @@ class TestTheCookieHeaderIsNotQuoted:
         )
 
         assert '"' in header, (
-            "Starlette no longer quotes this value – if that is true, "
+            "Starlette no longer quotes this value - if that is true, "
             "the hand-built header in `grant_video_access` can be "
             "replaced with `set_cookie` again."
         )

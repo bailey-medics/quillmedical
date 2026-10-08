@@ -80,7 +80,7 @@ describe("AdminBankOrgSettingsPage", () => {
     mockApiCalls();
     renderWithRouter(<AdminBankOrgSettingsPage />);
     await waitFor(() => {
-      expect(screen.getByText("Test Hospital – Test Bank")).toBeTruthy();
+      expect(screen.getByText("Test Hospital - Test Bank")).toBeTruthy();
     });
     expect(screen.getByText("Exam status")).toBeTruthy();
     expect(screen.getByText("Inactive")).toBeTruthy();
@@ -90,7 +90,7 @@ describe("AdminBankOrgSettingsPage", () => {
     mockApiCalls();
     renderWithRouter(<AdminBankOrgSettingsPage />);
     await waitFor(() => {
-      expect(screen.getByText("Test Hospital – Test Bank")).toBeTruthy();
+      expect(screen.getByText("Test Hospital - Test Bank")).toBeTruthy();
     });
     expect(screen.getByTestId("submit-button")).toHaveAttribute(
       "aria-disabled",

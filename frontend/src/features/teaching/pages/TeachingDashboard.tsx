@@ -52,7 +52,7 @@ export default function TeachingDashboard() {
 
   // Built before the loading check, and passed to every branch below.
   // It depends on auth, which has already resolved by the time this
-  // page renders, and not on the banks being fetched – so withholding
+  // page renders, and not on the banks being fetched - so withholding
   // it until they arrive left the sidebar genuinely absent for two
   // round trips, which read as the whole page flashing on the way in.
   const sidebarNav = <TeachingMainNav />;

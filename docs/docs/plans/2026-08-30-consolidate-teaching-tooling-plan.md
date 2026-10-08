@@ -50,7 +50,7 @@ repo just to run CI on a push. That was a reasonable instinct, but the measureme
 longer support it:
 
 - **Weight** — `teaching-tooling` is 57 tracked files / 304K; Quill is 1518 files / 17M.
-  Content-repo CI runs take 15–35s today, so a full checkout would add a few seconds, and
+  Content-repo CI runs take 15-35s today, so a full checkout would add a few seconds, and
   `actions/checkout` supports `sparse-checkout:`, which brings the fetch down to the
   validator and schema alone — tens of KB.
 - **Cadence** — `teaching-tooling` has had 32 commits in twelve months, the last three

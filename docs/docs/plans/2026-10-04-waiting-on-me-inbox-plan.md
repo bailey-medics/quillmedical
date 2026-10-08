@@ -282,7 +282,7 @@ Quill; it does not cover sitting in it.
 
 ## Decisions
 
-- **Messages and tasks carry the same weight** – for a clinician a
+- **Messages and tasks carry the same weight** - for a clinician a
   message is usually a task: it is finished when something has been done
   about it, not when it has been read. So there is one idea under the
   envelope, "waiting on me", and every source stays in the count until it
@@ -290,38 +290,38 @@ Quill; it does not cover sitting in it.
   never on opening, with unread shown separately so that what is new can
   still be seen.
 
-- **A message may be marked as needing no action** – by its sender, or
+- **A message may be marked as needing no action** - by its sender, or
   by the recipient in one press. Without that, every "thanks" sits in the
   count, the count stops meaning anything, and people learn to ignore it.
 
-- **No central inbox table** – each feature answers for its own rows. A
+- **No central inbox table** - each feature answers for its own rows. A
   table of copies would need keeping in step with every feature that
   writes to it, and would be wrong the first time one forgot.
 
-- **No text from a message in any notification** – an email, and later a
+- **No text from a message in any notification** - an email, and later a
   push, says who and what kind and gives a link. The words stay in Quill,
   behind its access checks.
 
-- **Deferred: clinician-to-clinician messages** – they arrive as a
+- **Deferred: clinician-to-clinician messages** - they arrive as a
   source in phase 3's list, with read and done held apart as above. The
   existing patient messaging feature is not changed here.
 
-- **Deferred: updating the instant something arrives** – that needs the
+- **Deferred: updating the instant something arrives** - that needs the
   server to push to the browser over a connection held open, which the
   application does not have. A check each minute is one small request,
   and a minute is soon enough for feedback, a reply or a sign-off
   request. The Inbox page's own tables are still fetched when it is
   opened, and not while it is being read.
 
-- **Deferred: web push** – `push.py` and `push_send.py` exist and have
+- **Deferred: web push** - `push.py` and `push_send.py` exist and have
   never been finished or tested. Email covers the time away until they
   are.
 
-- **Rejected: a dropdown behind the envelope** – built first, listing
+- **Rejected: a dropdown behind the envelope** - built first, listing
   each source with its count. It answered "how many" and nothing else:
   there was nowhere to see what had been completed, and no room for a
   message's own line once messages arrive. A page holds both.
 
-- **Rejected: a count on the Feedback link in the admin menu** – only an
+- **Rejected: a count on the Feedback link in the admin menu** - only an
   operator opens Admin. An assessor with sign-offs waiting and a sender
   with a reply to read never would.

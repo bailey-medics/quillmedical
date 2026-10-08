@@ -7,7 +7,7 @@
  *
  * `src` is a plain URL, not a signed one. Authorisation for hosted video
  * is carried by an `HttpOnly` cookie the backend set, validated at the
- * edge before any byte is served – so nothing here holds a credential,
+ * edge before any byte is served - so nothing here holds a credential,
  * and none appears in the DOM or in a copied link.
  *
  * Uses react-player v3 which wraps platform-specific custom elements
@@ -76,7 +76,7 @@ export default function VideoPlayer({
   const [quality, setQuality] = useState<Quality>("720p");
   // Where the learner was when they changed quality. Swapping `src`
   // reloads the element from zero, so the position has to be caught
-  // before the switch and restored once the new file can play –
+  // before the switch and restored once the new file can play -
   // dropping someone back to the start of a lecture is worse than not
   // offering the choice at all.
   const pendingSeek = useRef<number | null>(null);
@@ -161,12 +161,12 @@ export default function VideoPlayer({
           {/*
           react-player v3 passes `children` straight into the underlying
           custom element, so a WebVTT <track> works without dropping to a
-          native <video> – the fallback the plan flagged if it could not.
+          native <video> - the fallback the plan flagged if it could not.
           Captions are a WCAG 2.1 AA requirement.
 
           Two forms rather than one with a conditional child: an inline
-          `{cond && ...}` still hands the element a children argument –
-          `false`, plus any JSX comment and whitespace around it – and
+          `{cond && ...}` still hands the element a children argument -
+          `false`, plus any JSX comment and whitespace around it - and
           the YouTube custom element builds its own DOM, so anything
           passed in competes with it. Handing it no children at all is
           the difference between a YouTube slide playing and rendering

@@ -127,8 +127,8 @@ class TestTheMediaLinkKeepsItsAddress:
     cookie covers that path, so the number addresses a file rather than
     filtering a table. A row written without it would point nowhere.
 
-    Which number that is belongs to the place –
-    ``org_unit.media_prefix_id``, falling back to its own id – and
+    Which number that is belongs to the place -
+    ``org_unit.media_prefix_id``, falling back to its own id - and
     ``test_the_media_prefix_survives_the_table`` covers the choice. Here
     it is only that the column is filled at all.
     """

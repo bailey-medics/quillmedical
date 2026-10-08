@@ -68,7 +68,7 @@ from the edge on the origin the app already runs on.
   a separate problem from the auth gate and the cookie design above does not have
   to change to accommodate it later.
 
-- **Ship serving before transcoding** — Phases 0–4 get a hand-encoded MP4 playing
+- **Ship serving before transcoding** — Phases 0-4 get a hand-encoded MP4 playing
   end to end for an authorised learner and rejecting an unauthorised one. The
   FFmpeg and Whisper Cloud Run jobs (Phase 6) are an authoring convenience layered
   on a working, tested access path, not a prerequisite for one. This is the
@@ -293,7 +293,7 @@ collide rather than where they look like they might.
   platform role plan's admin batch will want. Landing it early means that work
   builds on it rather than beside it.
 
-- **Phases 1–4 are mostly new files** — the Terraform module,
+- **Phases 1-4 are mostly new files** — the Terraform module,
   `video_access.py`, `use-video-access.ts` — so they conflict with little. The
   edits to existing files are small and surgical: one URL map path rule, one
   config block, one route, and moving `Video` between two lists in
@@ -1267,7 +1267,7 @@ offered a way in, and clicking it landed on that 404 with nothing to explain it.
 
 ## Phase 6: Transcoding and captions
 
-Only after Phases 0–5 are shipped and a hand-encoded MP4 plays end to end.
+Only after Phases 0-5 are shipped and a hand-encoded MP4 plays end to end.
 
 **[found 2026-09-12] The gate above was not met, and for a reason worth
 recording: four of the five video settings were never wired into Cloud Run.**
@@ -1848,7 +1848,7 @@ violates the following Content Security Policy directive:
       `teaching/index.md` gets a shorter "Video" section under its existing
       storage backends, saying why video does not use them, and links across.
 - [x] Amend Section 8 of the Learning Section plan to point here, and tick items
-      26–30 of its Phase 3 checklist as this plan's phases complete.
+      26-30 of its Phase 3 checklist as this plan's phases complete.
       **[done 2026-09-15]** Section 8 now opens with a superseding note
       pointing here and at the storage doc, and records the five things that
       changed in building it: signed cookies rather than signed URLs, 7-day

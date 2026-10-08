@@ -2,7 +2,7 @@
 # Tests for create-pr.sh
 #
 # gh is stubbed and its invocations recorded, because what matters here is the
-# arguments the script asks gh for – not that gh itself works. The stub returns
+# arguments the script asks gh for - not that gh itself works. The stub returns
 # a scripted sequence of `gh pr list` counts so the concurrent-creation race can
 # be exercised.
 
@@ -32,8 +32,8 @@ setup() {
 
   # `gh pr list` returns the next scripted count, except for the --jq that asks
   # for a number, which yields the existing pull request's number. `gh pr view`
-  # returns the scripted current body. Everything else – `pr create`, `pr edit`
-  # – records every argument on its own line, so a body containing spaces stays
+  # returns the scripted current body. Everything else - `pr create`, `pr edit`
+  # - records every argument on its own line, so a body containing spaces stays
   # intact.
   cat > "${STUB_DIR}/gh" <<EOF
 #!/usr/bin/env bash
@@ -215,7 +215,7 @@ body_arg() {
 
   body="$(body_arg)"
   [[ "$body" == *"**Placeholder for the PR description**"* ]]
-  # The footer is kept – it is what links the pull request to its stack.
+  # The footer is kept - it is what links the pull request to its stack.
   [[ "$body" == *"GitHub Stacks CLI"* ]]
 }
 

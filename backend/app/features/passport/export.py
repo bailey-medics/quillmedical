@@ -3,15 +3,15 @@
 The artefact a registrar carries between trusts. Everything needed to
 read, check and keep the record, in one file that outlives Quill:
 
-- ``README.md`` – plain English, written for somebody who has never seen
+- ``README.md`` - plain English, written for somebody who has never seen
   this system and may be opening the zip in ten years.
-- ``passport/`` – the canonical files, exactly as they sit in the
+- ``passport/`` - the canonical files, exactly as they sit in the
   repository: YAML, Markdown, and the evidence blobs.
-- ``passport.md`` and ``passport.pdf`` – the rendered views, for reading
+- ``passport.md`` and ``passport.pdf`` - the rendered views, for reading
   rather than parsing.
-- ``VERIFY.md`` – how to check the hashes with no software beyond what
+- ``VERIFY.md`` - how to check the hashes with no software beyond what
   is already on a computer.
-- ``passport.bundle`` – a ``git bundle`` of the full history, which is
+- ``passport.bundle`` - a ``git bundle`` of the full history, which is
   the only file here that carries *who changed what and when*.
 
 The README is the highest-value file in the bundle and costs nothing to
@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 #: Where the canonical files sit inside the zip. A directory rather than
 #: the root, so the rendered views and the README are not mixed in with
-#: the record itself – somebody should be able to see at a glance which
+#: the record itself - somebody should be able to see at a glance which
 #: files are the passport and which are about it.
 _RECORD_DIR = "passport"
 
@@ -65,9 +65,9 @@ still existing.
 
 ## What to read first
 
-- **`passport.pdf`** – the printable version. Start here if you want to
+- **`passport.pdf`** - the printable version. Start here if you want to
   read it or hand it to somebody.
-- **`passport.md`** – the same thing as plain text, if you would rather
+- **`passport.md`** - the same thing as plain text, if you would rather
   search it or open it on a machine with no PDF reader.
 
 Both are *views*. They were generated from the files below and can be
@@ -75,10 +75,10 @@ regenerated from them.
 
 ## What actually holds the record
 
-- **`passport/`** – the record itself. Plain YAML and Markdown files you
+- **`passport/`** - the record itself. Plain YAML and Markdown files you
   can open in any text editor. If anything here ever disagrees with the
   PDF, these files are right.
-- **`passport.bundle`** – the full history, as a git repository. This is
+- **`passport.bundle`** - the full history, as a git repository. This is
   the only file that records *who changed what and when*, so it is the
   one to keep if you keep only one.
 
@@ -110,7 +110,7 @@ distrusts the system that wrote them.
 
 Your reflections are in `passport/reflections/` as part of the record,
 because they are yours. They are deliberately left out of `passport.pdf`
-– written reflection can be disclosed in legal proceedings, so it is not
+- written reflection can be disclosed in legal proceedings, so it is not
 put into the document most likely to be handed to somebody else.
 
 Generated {generated}.
@@ -210,7 +210,7 @@ def _walk(
     """Every file under *root*, depth first.
 
     The store exposes one directory at a time, so this walks rather than
-    asking for a recursive listing – there is no such call, and adding
+    asking for a recursive listing - there is no such call, and adding
     one to the interface for a single caller would widen it for nothing.
     """
     found: list[PurePosixPath] = []
@@ -238,7 +238,7 @@ def _children(
 
     The store has no "is this a directory" call, so this asks for a
     listing and reads the answer: a file lists as nothing, and so does an
-    empty directory – which git cannot represent anyway, so the two
+    empty directory - which git cannot represent anyway, so the two
     cases collapse safely.
     """
     try:
@@ -302,7 +302,7 @@ def _write_history(
     """Add a ``git bundle`` of the full history.
 
     The only file in the archive carrying who changed what and when, so
-    its absence matters more than a missing rendering – but it still
+    its absence matters more than a missing rendering - but it still
     does not fail the export. A holder with the files and no history is
     better off than one with nothing, and the log says what happened.
 

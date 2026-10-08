@@ -1,7 +1,7 @@
 /**
  * BodyText Storybook Stories
  *
- * Demonstrates the BodyText component – standard body copy styling.
+ * Demonstrates the BodyText component - standard body copy styling.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";

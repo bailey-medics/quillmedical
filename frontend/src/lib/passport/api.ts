@@ -18,7 +18,7 @@
  * a holder check their record years later with nothing but a checksum
  * tool, so the address cannot be computed without reading every byte.
  * That rules out the signed-URL pattern the teaching videos use, where
- * the browser uploads straight to GCS – a video is addressed by a
+ * the browser uploads straight to GCS - a video is addressed by a
  * generated id, so nobody has to look inside it.
  *
  * **There is no competency catalogue or shortlist route**, though
@@ -29,7 +29,7 @@
  * **The feature gate is not authorisation.** Every route here sits behind
  * `requires_feature("passport")` *and* `assess_clinician_passport`, and
  * passing both still says nothing about whether the caller may read a
- * given passport – that comes from being the holder, or from a
+ * given passport - that comes from being the holder, or from a
  * `passport_signoff_request` row naming them as assessor. A 403 or 404
  * from these functions is the ordinary case for an assessor, not a bug.
  */
@@ -196,7 +196,7 @@ export function fetchMyPassport(): Promise<PassportDetail> {
 }
 
 /**
- * A passport the caller may read – their own, or one they are a named
+ * A passport the caller may read - their own, or one they are a named
  * assessor on. Anyone else is refused, organisation admins included.
  */
 export function fetchPassport(passportId: string): Promise<PassportDetail> {
@@ -269,7 +269,7 @@ export function fetchSignOff(
  * The assessor signing.
  *
  * Refused unless `declaration_confirmed` is true, and refused outright if
- * the caller is the holder – self-sign-off is the one hard rule, since
+ * the caller is the holder - self-sign-off is the one hard rule, since
  * the whole value of the record is a second named person.
  */
 export function signOff(
@@ -354,7 +354,7 @@ export function exportBundle(passportId: string): Promise<Blob> {
  * set: the browser has to supply its own boundary, and `api.ts` would
  * otherwise say `application/json` over a `FormData` body.
  *
- * The response is passed straight back into the record being written –
+ * The response is passed straight back into the record being written -
  * it is the only org_unit the filename and media type exist, since a blob
  * is bytes at a path named by their hash and nothing beside it says what
  * the file was called.
@@ -492,7 +492,7 @@ export function fetchLogbook(
   );
 }
 
-/** Corrects a logbook entry – a mistyped date should be fixable in seconds. */
+/** Corrects a logbook entry - a mistyped date should be fixable in seconds. */
 export function amendLogbookEntry(
   passportId: string,
   competencyId: string,
@@ -525,7 +525,7 @@ export function removeLogbookEntry(
 // ---------------------------------------------------------------------------
 
 /**
- * Writes a reflection. `anonymised_confirmed` must be true – reflections
+ * Writes a reflection. `anonymised_confirmed` must be true - reflections
  * are one of only two org_units patient data could enter a passport.
  */
 export function addReflection(
@@ -654,7 +654,7 @@ export function acceptAssessorInvite(
 
 /**
  * Removes an assessor's membership, taking their reach with it. Sign-offs
- * they already made stand – `sign_offs_kept` says how many.
+ * they already made stand - `sign_offs_kept` says how many.
  */
 export function revokeAssessorMembership(
   assessorUserId: number,

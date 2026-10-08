@@ -66,7 +66,7 @@ describe("StackedProfilePics", () => {
       />,
     );
 
-    // ProfilePic adds tooltips – they are rendered as aria attributes
+    // ProfilePic adds tooltips - they are rendered as aria attributes
     expect(screen.getByText("AS")).toBeInTheDocument();
     expect(screen.getByText("BJ")).toBeInTheDocument();
   });

@@ -6,8 +6,8 @@ were driven off ``CertificateStyle``:
 * ``exam_ref`` and ``margin`` were not validated at all;
 * unknown keys were ignored, so a misspelled ``colour`` silently did
   nothing;
-* the certificate block was only ever checked at sync – after merge, after
-  publish – so a malformed one reached GCS and failed quietly.
+* the certificate block was only ever checked at sync - after merge, after
+  publish - so a malformed one reached GCS and failed quietly.
 
 The last point is covered by ``TestMergeGate``, which drives the same
 directory-level validator the content repos' CI runs.
@@ -109,7 +109,7 @@ class TestGapsNowClosed:
         assert any("logo" in e for e in errors)
 
     def test_boolean_margin_is_rejected(self) -> None:
-        """``margin: yes`` used to read as 1 – bool subclasses int."""
+        """``margin: yes`` used to read as 1 - bool subclasses int."""
         errors = validate_certificate_config(_style(margin=True))
         assert any("margin" in e for e in errors)
 

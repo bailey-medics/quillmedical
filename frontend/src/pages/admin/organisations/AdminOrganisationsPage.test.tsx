@@ -276,7 +276,7 @@ describe("AdminOrganisationsPage", () => {
       });
 
       expect(
-        await screen.findByRole("heading", { name: "404 – Page not found" }),
+        await screen.findByRole("heading", { name: "404 - Page not found" }),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("heading", { name: "Organisations" }),

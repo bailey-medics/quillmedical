@@ -164,7 +164,7 @@ export default function AdminOrganisationsPage() {
       : []),
   ];
 
-  // Somebody who administers no organisation – a site's admin – is not
+  // Somebody who administers no organisation - a site's admin - is not
   // offered this page in the menu, and reaching it by address gets the
   // same 404 as any other admin page they may not use. Held back until
   // the list answers, so the page is not shown and then taken away. An

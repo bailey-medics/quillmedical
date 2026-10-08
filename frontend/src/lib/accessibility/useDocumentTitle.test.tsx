@@ -15,7 +15,7 @@ describe("useDocumentTitle", () => {
     document.title = "Quill Medical";
     vi.resetModules();
     const fresh = await import("./useDocumentTitle");
-    expect(fresh.documentTitle("Settings")).toBe("Settings – Quill Medical");
+    expect(fresh.documentTitle("Settings")).toBe("Settings - Quill Medical");
   });
 
   it("sets the title while mounted and restores it after", () => {

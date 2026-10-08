@@ -133,7 +133,7 @@ type StoryNoteProps = {
  * Uses the same font size and weight as BodyText, but in muted grey.
  * Medium grey in light mode, light grey in dark mode.
  *
- * Lives in src/stories/ – cannot be imported by real app views.
+ * Lives in src/stories/ - cannot be imported by real app views.
  */
 export function StoryNote({ children, mt = "sm" }: StoryNoteProps) {
   return (

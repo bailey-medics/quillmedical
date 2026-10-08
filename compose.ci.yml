@@ -1,4 +1,4 @@
-# CI Docker Compose – lightweight stack for E2E (Playwright) tests.
+# CI Docker Compose - lightweight stack for E2E (Playwright) tests.
 # Excludes clinical services (FHIR, EHRbase) and dev tooling.
 # Usage: docker compose -f compose.ci.yml up --build --wait
 #
@@ -21,7 +21,7 @@ services:
       dockerfile: ./backend/Dockerfile
       target: prod
     environment:
-      # Core DB – individual components (Settings computes the URL)
+      # Core DB - individual components (Settings computes the URL)
       CORE_DB_PASSWORD: ci_password
       # Defaults match: CORE_DB_NAME=quill_core, CORE_DB_USER=core_user,
       # CORE_DB_HOST=postgres-core, CORE_DB_PORT=5432

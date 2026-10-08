@@ -63,7 +63,7 @@ describe("PatientAppointments", () => {
 
     expect(screen.getByText("Past appointments")).toBeInTheDocument();
     expect(
-      screen.getByText("Gastro clinic – initial assessment"),
+      screen.getByText("Gastro clinic - initial assessment"),
     ).toBeInTheDocument();
   });
 

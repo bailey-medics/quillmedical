@@ -1,7 +1,7 @@
 /**
  * Stub slide data for Storybook stories and tests.
  *
- * Inline test fixtures – no dependency on teaching content modules.
+ * Inline test fixtures - no dependency on teaching content modules.
  */
 
 import type { CompiledSlide } from "@/features/teaching/types";

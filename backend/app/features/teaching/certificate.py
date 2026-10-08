@@ -12,7 +12,7 @@ What lives here is the *rendering* half, and its opposite failure policy.
 Bank configs are authored outside this repository, so parsing is
 defensive: anything invalid is discarded with a warning and replaced by
 its default rather than raising.  A certificate download must never fail
-because of a malformed style block – where the validator, by contrast,
+because of a malformed style block - where the validator, by contrast,
 raises and reports every problem it finds.
 """
 
@@ -38,7 +38,7 @@ from app.features.teaching.tooling.certificate_schema import (
 
 # Re-exported: callers have always imported the models from here, and
 # they moved to content/certificate_schema.py without changing that.
-# The Literals are not re-exported – import them from the schema.
+# The Literals are not re-exported - import them from the schema.
 __all__ = [
     "Canvas",
     "CertificateStyle",
@@ -272,7 +272,7 @@ def generate_certificate_pdf(
     candidate_name:
         Full name of the candidate.
     pass_summary:
-        Short pass summary, e.g. "Pass – 90% accuracy".
+        Short pass summary, e.g. "Pass - 90% accuracy".
     completion_date:
         Human-readable completion date string.
     style:

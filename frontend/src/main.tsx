@@ -43,7 +43,7 @@ import { routes } from "./routes";
 // Every tree hangs off one pathless route, so recording which screen is
 // showing happens once rather than once per layout. It was previously done in
 // RootLayout, which sits inside RequireAuth and therefore missed the sign-in
-// pages, the 404 and the whole /teaching tree – those reported errors with no
+// pages, the 404 and the whole /teaching tree - those reported errors with no
 // route at all. Declared here, a tree added later inherits it.
 //
 // `FeaturePrefetch` sits here for the same reason: it fetches the other

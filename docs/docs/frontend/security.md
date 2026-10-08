@@ -82,11 +82,11 @@ Quill Medical implements a defence-in-depth security architecture for access con
 
 Access is not a ladder of levels. Three things decide it:
 
-1. **Competencies** – what somebody is qualified to do, such as viewing patient records or managing users. They come from the person's base profession, with additions and removals for the individual.
+1. **Competencies** - what somebody is qualified to do, such as viewing patient records or managing users. They come from the person's base profession, with additions and removals for the individual.
 
-2. **Membership** – where they may do it. Somebody acts only at the organisations, sites and wards they belong to.
+2. **Membership** - where they may do it. Somebody acts only at the organisations, sites and wards they belong to.
 
-3. **Platform role** – `superadmin`, held by the few people who operate Quill itself. It does not administer any organisation.
+3. **Platform role** - `superadmin`, held by the few people who operate Quill itself. It does not administer any organisation.
 
 #### Tiered security approach
 
@@ -304,7 +304,7 @@ Patient health information is never
 
 ## Payment Security
 
-**Status: Planned feature – not yet implemented.**
+**Status: Planned feature - not yet implemented.**
 
 Payment processing via Stripe is planned but not yet built. When implemented, it will follow PCI standards with no credit card details stored in our system.
 
@@ -334,7 +334,7 @@ Use the forgot password link on the login page. A reset link is emailed to you.
 
 ### Suspicious Activity Detection
 
-**Status: Planned feature – not yet implemented.**
+**Status: Planned feature - not yet implemented.**
 
 Automatic monitoring of suspicious activity (failed logins, unusual locations) is planned but not yet built.
 

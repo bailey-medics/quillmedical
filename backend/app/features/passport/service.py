@@ -24,7 +24,7 @@ whom. Who is fit to assess someone is a clinical judgement that varies
 by procedure, department and the people involved, and any rule table
 encoding it would be wrong somewhere on the day it shipped. The record
 names the assessor, their role and their registration, so a reader can
-judge for themselves – exactly as on paper, which prevents none of this
+judge for themselves - exactly as on paper, which prevents none of this
 either.
 
 **Progression is not correction.** A second sign-off at a higher level
@@ -661,7 +661,7 @@ def supersede_sign_off(
 
     Raises:
         SignOffStateError: If the record is not signed. Only a signed
-            record can be superseded – an open request is withdrawn and a
+            record can be superseded - an open request is withdrawn and a
             declined one already records what happened.
     """
     moment = now if now is not None else datetime.now(UTC)
@@ -744,8 +744,8 @@ def status_for(
 def next_id(moment: datetime | None = None) -> str:
     """Issue a timestamp id from the one generator this process shares.
 
-    Public because records outside the sign-off lifecycle need ids too –
-    a certificate carries one – and a second generator would defeat the
+    Public because records outside the sign-off lifecycle need ids too -
+    a certificate carries one - and a second generator would defeat the
     point: the monotonic guarantee holds per instance, so two would each
     be monotonic alone while issuing ids that interleave.
 
@@ -865,7 +865,7 @@ def _evidence_snapshot(
 ) -> EvidenceSnapshot:
     """What is in view for this competency and scope right now.
 
-    Not a threshold that was met – a record of what the assessor could
+    Not a threshold that was met - a record of what the assessor could
     see when they decided. A sign-off for one scope counts the logbook
     entries naming that scope, so a lung sign-off freezes the lung log
     and not the breast one.

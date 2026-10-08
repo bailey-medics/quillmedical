@@ -5,7 +5,7 @@
 it cannot know, both of which matter in this repository:
 
 - **Which branches are checked out in another worktree.** `gh stack rebase`
-  prints an error for such a branch, skips it, and still exits 0 – see
+  prints an error for such a branch, skips it, and still exits 0 - see
   github/gh-stack#35, reproduced here on 2026-09-14. A stack operation that
   half-runs is the same silent-success failure class as the stale-worktree
   test runs in CLAUDE.md, so the branches are named before anything runs.
@@ -88,7 +88,7 @@ class Palette:
         Gated on the same flag as the colours, and for the same
         reason. A terminal that does not know the sequence prints it
         as rubbish, and piped output would carry escapes into whatever
-        reads it next – so when stdout is not a terminal, or
+        reads it next - so when stdout is not a terminal, or
         `--no-colour` was passed, this hands back the plain text.
         """
         if not self.enabled or not url:
@@ -208,12 +208,12 @@ def read_pull_requests(branches: list[str]) -> dict[str, dict[str, object]]:
     # `--state open` and a small limit, deliberately. Asking for
     # statusCheckRollup across 60 pull requests makes one GraphQL query large
     # enough that GitHub answers HTTP 504, and the empty result then rendered
-    # as "no pull request" against every branch – a wrong answer that looked
+    # as "no pull request" against every branch - a wrong answer that looked
     # like an answer. A stack's branches are open by definition; a merged one
     # is reported by `isMerged` in the stack data itself.
     # Ask for every open pull request, not a guessed ceiling. At a flat 30,
     # a repository with 69 open returned only the newest; a stack's branches
-    # are all older than those, so every branch drew as "no pull request" –
+    # are all older than those, so every branch drew as "no pull request" -
     # which reads as "none opened yet" rather than "the list was cut short",
     # and the CI columns went blank with it, statusCheckRollup riding in the
     # same response. Sizing it from the stack was no better: 15 branches
@@ -259,7 +259,7 @@ def read_pull_requests(branches: list[str]) -> dict[str, dict[str, object]]:
         # be labelled "no pull request", which is indistinguishable from the
         # truth and is how this went unnoticed for two runs.
         print(
-            "  ⚠ Could not read pull requests from GitHub – "
+            "  ⚠ Could not read pull requests from GitHub - "
             "showing the stack without them.",
             file=sys.stderr,
         )
@@ -268,7 +268,7 @@ def read_pull_requests(branches: list[str]) -> dict[str, dict[str, object]]:
         pull_requests = json.loads(raw)
     except json.JSONDecodeError:
         print(
-            "  ⚠ Unreadable response from `gh pr list` – "
+            "  ⚠ Unreadable response from `gh pr list` - "
             "showing the stack without pull requests.",
             file=sys.stderr,
         )
@@ -326,7 +326,7 @@ def best_conclusion_per_check(
     request was a draft skips the heavy tier, and a later run does it, so
     the same name carries both SKIPPED and SUCCESS. Taking the last, or the
     worst, would report every heavy job as skipped forever. The best
-    outcome per name is the true one – a job that has succeeded once on
+    outcome per name is the true one - a job that has succeeded once on
     this head has succeeded.
     """
     # Ranked so the most important outcome for the same name wins, which is
@@ -335,8 +335,8 @@ def best_conclusion_per_check(
     # - **failing** beats everything. A job that failed on this head has
     #   failed, whatever a sibling entry says.
     # - **pending** beats both finished states. A name with a run still in
-    #   flight is not settled, and reporting it as passed – which ranking
-    #   pending below passing did – showed a tick while the heavy tier was
+    #   flight is not settled, and reporting it as passed - which ranking
+    #   pending below passing did - showed a tick while the heavy tier was
     #   visibly still running.
     # - **passing** beats **skipped**, because a job that actually ran and
     #   passed is the truer account of the same name than the draft run
@@ -396,8 +396,8 @@ def summarise_checks(pr: dict[str, object], palette: Palette) -> str:
 
     Two marks rather than one count, because they answer different
     questions. The fast tier runs on every push and says whether the code
-    compiles and its tests pass. The heavy tier – Storybook, Semgrep, E2E
-    – is gated on the pull request not being a draft, so on a stack it is
+    compiles and its tests pass. The heavy tier - Storybook, Semgrep, E2E
+    - is gated on the pull request not being a draft, so on a stack it is
     usually not run at all, and one combined tick would hide that.
     """
     rollup = pr.get("statusCheckRollup") or []
@@ -409,9 +409,9 @@ def summarise_checks(pr: dict[str, object], palette: Palette) -> str:
     def mark(names: dict[str, tuple[str, str]]) -> str:
         if not names:
             # No heavy check has reported at all: the ordinary state of a
-            # draft pull request, and not a failure – hence green, like the
+            # draft pull request, and not a failure - hence green, like the
             # tick, rather than dim. Nothing is wrong; nothing has run.
-            return palette.green("–")
+            return palette.green("-")
         kinds = {kind for kind, _ in names.values()}
         if "failing" in kinds:
             return palette.red("✗")
@@ -419,12 +419,12 @@ def summarise_checks(pr: dict[str, object], palette: Palette) -> str:
             # Green like the tick and the dash: a tier still running is not
             # a problem, and only ✗ should draw the eye.
             return palette.green("●")
-        # Every job skipped means the tier has not run – the ordinary state
+        # Every job skipped means the tier has not run - the ordinary state
         # of a draft's heavy tier. Say so rather than showing a tick nobody
         # earned. One job having actually run is enough to call it a pass,
         # since the rest skipped on their own conditions.
         if kinds == {"skipped"}:
-            return palette.green("–")
+            return palette.green("-")
         return palette.green("✓")
 
     heavy = {n: v for n, v in best.items() if is_heavy(n)}
@@ -489,8 +489,8 @@ def draw(
 
     `hide_merged` drops the branches that have already landed. They are
     kept by default because "what has gone in" is worth seeing, but a
-    long-lived stack accumulates them – five merged against ten live, on
-    2026-09-19 – and the part still being worked on is what a watch loop
+    long-lived stack accumulates them - five merged against ten live, on
+    2026-09-19 - and the part still being worked on is what a watch loop
     is for. The count is still reported, so nothing disappears silently.
 
     `numbered` puts each open branch's number before its name, in the
@@ -515,7 +515,7 @@ def draw(
 
         # The branch you are on is bold and yellow, and so is the rest
         # of its row. It used to be bold with "← you are here" after it,
-        # which was the longest thing on the line for the least in it –
+        # which was the longest thing on the line for the least in it -
         # the colour says the same and says it at a glance.
         current = branch.is_current
         name = palette.bold_yellow(branch.name) if current else branch.name
@@ -533,7 +533,7 @@ def draw(
             url = str(branch.pr.get("url", ""))
 
             # An open pull request is just its number, draft or not. It
-            # used to read "ready", meaning out of draft – but bare
+            # used to read "ready", meaning out of draft - but bare
             # "ready" sounds like a verdict on the code, which this
             # cannot know. "draft" went the same way for a different
             # reason: the heavy-tier mark on the same row is a dash
@@ -550,7 +550,7 @@ def draw(
 
             # On the current row the state colour gives way to the
             # yellow: two colours in one cell would make one row look
-            # like two things. The words are the same either way – the
+            # like two things. The words are the same either way - the
             # colour says where you are, not what the state is.
             if current:
                 label = palette.bold_yellow(text)
@@ -566,7 +566,7 @@ def draw(
             cells.append(summarise_checks(branch.pr, palette))
         elif show_prs and branch.is_merged:
             # A merged branch has no *open* pull request, which is what the
-            # listing asks for – but "no pull request" then reads as "you
+            # listing asks for - but "no pull request" then reads as "you
             # never opened one", the opposite of what happened. The stack
             # data still knows it merged, so say that.
             cells.append(palette.green("merged"))
@@ -669,14 +669,14 @@ def draw_no_stack(palette: Palette) -> None:
     branch protection requires, the worktree guard, and the redraw that
     makes the result legible. So the advice is this repository's own
     recipes and the skill that wraps them, in the order someone reading
-    this message needs them – check out a stack that already exists
+    this message needs them - check out a stack that already exists
     before starting a second one for the same work.
     """
     branch = run(["git", "branch", "--show-current"], check=False).strip()
     where = f" ({branch})" if branch else ""
 
     # Command, alias, what it does. Aligned on the widest command, which
-    # is not known until the list is read – hence the two passes.
+    # is not known until the list is read - hence the two passes.
     recipes = [
         ("just stack-checkout", "stc", "check out an existing stack"),
         ("just stack-fresh", "stfr", "move to main, carrying your work"),
@@ -804,7 +804,7 @@ def main() -> int:
     args = parser.parse_args()
 
     # `--colour` forces it on for a caller that captures the output and
-    # prints it itself – `just stack-watch` does exactly that, to fetch the
+    # prints it itself - `just stack-watch` does exactly that, to fetch the
     # new stack before clearing the screen rather than after. Without it the
     # capture looks like a pipe and the colour is dropped.
     coloured = args.colour or sys.stdout.isatty()

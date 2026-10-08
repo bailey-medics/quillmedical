@@ -49,7 +49,7 @@ describe("a route that crashes while rendering", () => {
     // The defect this closes, found in a production report: the route was set
     // in a useEffect, and passive effects run after paint while
     // componentDidCatch runs in the commit phase. So a report from a boundary
-    // went out with no route at all – missing on precisely the failure the
+    // went out with no route at all - missing on precisely the failure the
     // boundary exists for, and present on everything else.
     function Exploding(): never {
       throw new Error("crash during render");
@@ -123,7 +123,7 @@ describe("mounted above the route trees rather than inside one", () => {
     // Worth asserting rather than assuming: the wrapper is above the route
     // that captures the identifier, and `useParams` reads the deepest match
     // rather than the caller's own, so the pattern still comes back with the
-    // value replaced. Measured before relying on it – reasoning about which
+    // value replaced. Measured before relying on it - reasoning about which
     // match a hook reads got this wrong once already.
     renderWrapped("/patients/943-476-5919", "/patients/:id");
 

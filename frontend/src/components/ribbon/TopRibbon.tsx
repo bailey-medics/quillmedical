@@ -39,7 +39,7 @@ type Props = {
   onPatientClick?: () => void;
   /** Callback when patient demographics are double-clicked */
   onPatientDoubleClick?: () => void;
-  /** When true, hides burger, patient info, and search – shows only branding */
+  /** When true, hides burger, patient info, and search - shows only branding */
   examMode?: boolean;
   /** Whether to show the search field (hidden on non-clinical deployments) */
   showSearch?: boolean;
@@ -213,7 +213,7 @@ export default function TopRibbon({
             </UnstyledButton>
           ) : null}
         </div>
-        {/* right: search – hidden by @container when narrow */}
+        {/* right: search - hidden by @container when narrow */}
         {!isNarrow && showSearch && (
           <div className={classes.right}>
             <SearchField value={search.query} onChange={search.setQuery} />

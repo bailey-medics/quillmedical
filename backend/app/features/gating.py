@@ -1,6 +1,6 @@
 """Feature-gating dependency.
 
-Provides ``requires_feature`` – a FastAPI dependency that checks whether
+Provides ``requires_feature`` - a FastAPI dependency that checks whether
 any of the authenticated user's organisations has a given feature enabled.
 Same ergonomics as ``has_competency`` in ``app.deps``.
 

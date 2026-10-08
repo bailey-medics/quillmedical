@@ -10,7 +10,7 @@ Three things this module is careful about:
 with nothing but a text editor, so the output is block-style YAML with a
 comment at the top saying what the file is. Keys keep the order the
 model declares rather than being sorted alphabetically, because the
-model's order is the order a person would read them in – what this
+model's order is the order a person would read them in - what this
 record is about, then when, then who. That is the opposite of the
 canonical form used for hashing, and deliberately so: one is for
 fingerprinting, the other is for reading.
@@ -151,8 +151,8 @@ def from_yaml(  # noqa: UP047 - see the TypeVar note above
     Raises:
         RecordFormatError: If the file is not YAML, does not hold a
             mapping, or does not fit the model. All three mean the same
-            thing to a caller – this file cannot be trusted as this kind
-            of record – so they are one error type carrying the detail.
+            thing to a caller - this file cannot be trusted as this kind
+            of record - so they are one error type carrying the detail.
     """
     text = content.decode() if isinstance(content, bytes) else content
 
@@ -183,8 +183,8 @@ def reflection_to_markdown(reflection: Reflection, body: str) -> str:
         body: The prose, which is the substance of the record.
 
     Returns:
-        The file's contents. The body is written verbatim – including
-        any ``---`` it contains, which the reader handles – because
+        The file's contents. The body is written verbatim - including
+        any ``---`` it contains, which the reader handles - because
         reformatting somebody's reflection would change what they wrote.
     """
     frontmatter = yaml.dump(
@@ -229,7 +229,7 @@ def reflection_from_markdown(content: str | bytes) -> tuple[Reflection, str]:
             "carrying at least its title and date."
         )
 
-    # Split on the *closing* delimiter only – the first one that starts a
+    # Split on the *closing* delimiter only - the first one that starts a
     # line after the opening. A reflection's prose may legitimately
     # contain '---' as a horizontal rule, and splitting on every
     # occurrence would truncate somebody's writing at the first one.

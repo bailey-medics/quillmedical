@@ -31,7 +31,7 @@ All 47 hazards identified in the codebase have been transformed into DCB 0129/01
 ✅ All hazards assigned to "Clinical Safety Officer"
 ✅ All hazards have status "Draft from LLM"
 ✅ All hazards have "Existing controls: None identified during initial analysis."
-✅ All hazards have "Residual risk: TBC – awaiting initial controls implementation."
+✅ All hazards have "Residual risk: TBC - awaiting initial controls implementation."
 ✅ All hazards include complete mitigation controls from Stage 5
 
 ---

@@ -6,7 +6,7 @@ trust, and they held whatever they had before, which for a patient is
 their own record and nothing else.
 
 The picker used to hide such people behind ``?permission_level=staff``.
-That filter went with the column, and no filter could replace it – every
+That filter went with the column, and no filter could replace it - every
 candidate hid the patient becoming a healthcare assistant, which is the
 case the picker most needs to support. So the list shows everyone and the
 judgement moved here: the interface asks what they should hold, and this

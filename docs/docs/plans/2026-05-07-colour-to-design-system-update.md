@@ -182,7 +182,7 @@ Add rule:
 
 1. Phase 1 (theme.ts) — no breaking changes, adds new exports
 2. Phase 2 (semanticColours.ts) — updates references, badges update automatically
-3. Phase 3a–3f (bulk find-and-replace) — one file at a time or batched
+3. Phase 3a-3f (bulk find-and-replace) — one file at a time or batched
 4. Phase 4 (validation)
 5. Phase 5 (documentation)
 

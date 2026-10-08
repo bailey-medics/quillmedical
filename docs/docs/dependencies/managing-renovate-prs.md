@@ -31,10 +31,10 @@ work. Start by filtering the PR list:
 
 | Label                                                    | Tier                    | Merge policy                                                     |
 | -------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------- |
-| `tier-1-clinical`                                        | Tier 1 – Clinical       | Never automerge. Safety review required.                         |
-| _(no tier label)_ + infrastructure package               | Tier 2 – Infrastructure | No automerge. Code review required.                              |
-| devDependency / `@types/*` / GitHub Actions / pre-commit | Tier 3 – Tooling        | No automerge. Reviewed and queued by hand like every other tier. |
-| `major-version-bump`                                     | Any tier                | Extra caution – check changelogs for breaking changes.           |
+| `tier-1-clinical`                                        | Tier 1 - Clinical       | Never automerge. Safety review required.                         |
+| _(no tier label)_ + infrastructure package               | Tier 2 - Infrastructure | No automerge. Code review required.                              |
+| devDependency / `@types/*` / GitHub Actions / pre-commit | Tier 3 - Tooling        | No automerge. Reviewed and queued by hand like every other tier. |
+| `major-version-bump`                                     | Any tier                | Extra caution - check changelogs for breaking changes.           |
 
 ### 3. Review the diff
 
@@ -49,15 +49,15 @@ For minor and patch updates the diff is usually just `package.json`,
 
 When multiple Renovate PRs are open, merge in this order:
 
-1. **Backend-only PRs** (Poetry / pytest / pre-commit) – no frontend
+1. **Backend-only PRs** (Poetry / pytest / pre-commit) - no frontend
    lockfile interaction
-2. **Tier 3 tooling** (eslint plugins, type definitions, devDeps) – low
+2. **Tier 3 tooling** (eslint plugins, type definitions, devDeps) - low
    risk, quick wins
-3. **Grouped minor/patch** (the weekly `npm-pip-weekly` PR) – broadest
+3. **Grouped minor/patch** (the weekly `npm-pip-weekly` PR) - broadest
    but lowest risk per package
-4. **Infrastructure** (FastAPI, Mantine, React, Docker images) – review
+4. **Infrastructure** (FastAPI, Mantine, React, Docker images) - review
    changelogs
-5. **Major version bumps** – one at a time, verify locally if needed
+5. **Major version bumps** - one at a time, verify locally if needed
 
 Renovate does not rebase the remaining PRs after a merge; the merge queue
 re-runs CI against current `main` for each one.
@@ -126,7 +126,7 @@ conflicting package.
 
 This usually means something changed on `main` that breaks the lockfile
 (e.g. a new dependency was added without committing `yarn.lock`). Fix
-`main` first, then tick the rebase box on each PR – Renovate does not
+`main` first, then tick the rebase box on each PR - Renovate does not
 rebase on its own.
 
 ### Renovate recreates a closed PR

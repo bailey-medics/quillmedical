@@ -5,7 +5,7 @@ One surface for every org_unit, because there is one table of them. An
 organisation is an org_unit with no parent, a ward is an org_unit inside one, and
 the only thing that says which is the ``type``.
 
-The two older surfaces – ``/api/organisations`` and ``/api/sites`` – stay
+The two older surfaces - ``/api/organisations`` and ``/api/sites`` - stay
 until the frontend has moved across, then go. They answer in
 *organisation* ids and *site* ids respectively; everything here answers in
 org_unit ids, which is what makes them different surfaces rather than one
@@ -102,7 +102,7 @@ class OrgUnitItem(BaseModel):
         name: What it is called.
         type: Its type.
         type_display_name: What a person is shown for the type.
-        is_root: Whether it is the top of a tree – an organisation.
+        is_root: Whether it is the top of a tree - an organisation.
             Declared by the type, never inferred from having no parent.
         parent_id: The org_unit it sits inside, or None.
         location: Free text, possibly empty.
@@ -141,7 +141,7 @@ class OrgUnitMemberItem(BaseModel):
         username: Their username.
         email: Their email address.
         full_name: Their name, possibly empty.
-        capacity: What they are here – staff, trainee, external, patient.
+        capacity: What they are here - staff, trainee, external, patient.
         authorised_here: How many competencies they may practise at this
             org_unit: rows here that fall within their ceiling. A row for
             something they do not hold authorises nothing, so it is not
@@ -603,7 +603,7 @@ class SetClinicalLeadIn(BaseModel):
 
     Attributes:
         user_id: Who holds the post, or None to vacate it. A vacancy is a
-            real state and an actionable one – somebody has to be found –
+            real state and an actionable one - somebody has to be found -
             so it is said out loud rather than expressed by an absence.
     """
 

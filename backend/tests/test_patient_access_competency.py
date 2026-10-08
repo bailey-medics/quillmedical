@@ -12,8 +12,8 @@ paths". That was wrong: neither route carries an admin gate, so the
 hatch fired for any admin who reached them, and it was the live grant
 rather than dead code.
 
-Both halves are now required – ``access_patient_records`` says *what*,
-a shared organisation says *where* – and the tests here fail if either
+Both halves are now required - ``access_patient_records`` says *what*,
+a shared organisation says *where* - and the tests here fail if either
 is dropped:
 
 - Delete the competency check and ``test_competency_without_shared_org``
@@ -23,7 +23,7 @@ is dropped:
 
 **A superadmin is not a clinician.** ``superadmin_profession`` grants
 no clinical competency, so an operator is refused here like anyone else
-– pinned by ``test_an_operator_is_not_thereby_a_clinician``, which is
+- pinned by ``test_an_operator_is_not_thereby_a_clinician``, which is
 the case the old hatch got backwards.
 """
 
@@ -59,7 +59,7 @@ def _user(
     """A user carrying a profession, so their competencies are real.
 
     Tests that build a user without one take the column default of
-    ``patient``, which holds ``access_patient_records`` – the opposite of
+    ``patient``, which holds ``access_patient_records`` - the opposite of
     what a test asserting a refusal usually means.
     """
     user = User(
@@ -138,7 +138,7 @@ class TestBothHalvesAreRequired:
         """Sharing an organisation is not itself permission to read.
 
         A receptionist is staff at the patient's own organisation and
-        holds ``access_clinic_admin`` alone – front desk work needs the
+        holds ``access_clinic_admin`` alone - front desk work needs the
         clinic, not the record. Fails if the competency check is dropped.
 
         ``system_administrator`` looks like the natural fixture here and

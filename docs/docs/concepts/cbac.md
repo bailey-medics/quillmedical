@@ -139,7 +139,7 @@ what may be done in the care of a patient; `clinical-admin.yaml`,
 `admin.yaml`, `teaching.yaml`, `passport.yaml` and `safety.yaml` hold what
 may be done to Quill itself. The code sees one catalogue and the id is what everything
 references, so moving an entry between files changes nothing. **Ids must
-be unique across the whole directory**, not merely within a file – a
+be unique across the whole directory**, not merely within a file - a
 duplicate is refused at load, and in CI.
 
 **Structure**:
@@ -563,7 +563,7 @@ Get the catalogue entry for a competency.
 - Audit logging for competency checks
 - Professional registration API validation (GMC, NMC, GPhC)
 - Supervision tracking and enforcement
-- Competency expiry dates (revalidation) – a grant can end, but nothing acts on a definition's `expires_after_months`
+- Competency expiry dates (revalidation) - a grant can end, but nothing acts on a definition's `expires_after_months`
 - Competency assignment workflow (request → approval → grant)
 - Integration with clinical records (supervisor sign-off)
 

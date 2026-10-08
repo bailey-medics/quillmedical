@@ -20,7 +20,7 @@ base_professions:
     base_competencies:
       # Their own record and nothing else. This was
       # access_patient_records, commented "Own records only (filtered by
-      # system)" – a comment explaining that the competency did not mean
+      # system)" - a comment explaining that the competency did not mean
       # what it said, because eighteen staff professions held the same id
       # to mean a caseload.
       - access_own_patient_records
@@ -325,7 +325,7 @@ base_professions:
   # Whose caseload an organisation carries, as opposed to how a clinic is
   # run day to day. Deliberately thin: it exists so that
   # manage_patient_membership has a holder, and the name is a placeholder
-  # for a role nobody has described yet – there is no organisation-level
+  # for a role nobody has described yet - there is no organisation-level
   # administrator among the other professions, only clinic-level ones and
   # IT. Revisit when real patients make the shape of the job apparent.
   - id: patient_manager
@@ -355,7 +355,7 @@ base_professions:
   # other role rather than by a rank check inside each gate.
   #
   # Without it the column default applies and a superadmin is created as
-  # a *patient* – holding access_patient_records and not manage_users,
+  # a *patient* - holding access_patient_records and not manage_users,
   # which is both too much and too little. A gate asking for manage_users
   # would then refuse the one role meant to reach everything.
   #
@@ -459,7 +459,7 @@ base_professions:
   # Invited to one patient's record and no further. Both were accepted by
   # the invite route and written to base_profession long before they
   # existed here, and an unknown id resolves to no competencies at all
-  # without complaint – so an accepted invite made an account holding
+  # without complaint - so an accepted invite made an account holding
   # nothing. Their reach is the ExternalPatientAccess row, which names
   # the patient; the competency names what they may do with it.
 
@@ -484,7 +484,7 @@ base_professions:
   # Hold a passport of their own and sign off other people's. The one
   # competency does both today: assess_clinician_passport is what opens the
   # passport at all. Writing to their own passport is not here, because
-  # passport_write is sold – it comes from the organisation enabling it or
+  # passport_write is sold - it comes from the organisation enabling it or
   # an individual subscription. One profession carries it, passport_admin.
   - id: passport_delegate
     display_name: "Passport delegate"
@@ -534,7 +534,7 @@ base_professions:
   # of their competencies. They do not work here and must not be made
   # staff of a trust they have no relationship with, so this profession
   # is the whole grant: it carries access to the passport and nothing
-  # else – no patient records, no clinical actions, no teaching.
+  # else - no patient records, no clinical actions, no teaching.
   #
   # Only ever assigned to a *new* account accepting an invitation. All
   # fourteen clinical professions already carry

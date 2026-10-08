@@ -97,7 +97,7 @@ export default function LetterList({
             <Group gap="lg">
               <BodyText>{formatDate(letter.date)}</BodyText>
               <BodyText>
-                {letter.author} – {letter.authorRole}
+                {letter.author} - {letter.authorRole}
               </BodyText>
             </Group>
             <BodyTextInline>{letter.summary}</BodyTextInline>

@@ -8,7 +8,7 @@ database's own commit.
 The distinction that matters most is between *behind* and *ahead*.
 Behind is ordinary and is healed by moving the row forward. Ahead means
 history the row was written against is gone, which is never healed here
-– healing it would overwrite the only evidence of what went wrong.
+- healing it would overwrite the only evidence of what went wrong.
 
 Real repositories throughout, as in ``test_passport_store.py``: every
 property being asserted is a property of what git actually does, and a
@@ -307,7 +307,7 @@ class TestDetail:
     """The sentence recorded in the log.
 
     It has to be safe to log, which means commit ids and a passport id
-    and nothing about the person – a passport's contents are clinical.
+    and nothing about the person - a passport's contents are clinical.
     """
 
     def test_names_both_commits_when_they_disagree(

@@ -7,8 +7,8 @@
 # and Strict-Transport-Security, by name only: the values differ between the
 # application's pages and the API, and are reviewed where they are set.
 #
-# The headers are added at the edge – by Caddy for the application's pages and
-# by the load balancer for the API – so the deployed site is the only place
+# The headers are added at the edge - by Caddy for the application's pages and
+# by the load balancer for the API - so the deployed site is the only place
 # they can be checked. Neither the dev stack nor the E2E stack has a load
 # balancer.
 #

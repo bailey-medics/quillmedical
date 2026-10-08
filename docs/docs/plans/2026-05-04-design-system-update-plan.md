@@ -4,7 +4,7 @@ Status: In progress (PR #243 `feature/updating-storybook-components`)
 
 ## What's been done
 
-- Extended grey scale from 5 to 8 entries (shades 0–7)
+- Extended grey scale from 5 to 8 entries (shades 0-7)
 - Dark mode CSS variable hierarchy: body (shade 8), cards (shade 7), input bg (shade 6), input border (shade 9)
 - Form field description styling via global CSS override (Mantine `styles` prop doesn't work for descriptions)
 - WithDescription + DarkMode stories on all 5 form field components and SolidSwitch

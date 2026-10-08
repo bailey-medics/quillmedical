@@ -72,7 +72,7 @@ describe("ForcedReloadGate", () => {
     expect(reloadSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("renders nothing once the phase moves to fallback – that strip lives in the layouts", () => {
+  it("renders nothing once the phase moves to fallback - that strip lives in the layouts", () => {
     const { unmount } = renderGate();
     dispatchMismatch(5);
     act(() => {

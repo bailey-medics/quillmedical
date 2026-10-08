@@ -351,7 +351,7 @@ class TestIdentity:
     def test_an_invalid_token_is_treated_as_signed_out(
         self, test_client: TestClient, caplog: pytest.LogCaptureFixture
     ) -> None:
-        """A report must still be accepted when the session has gone bad –
+        """A report must still be accepted when the session has gone bad -
         an expired token is one of the things worth hearing about."""
         test_client.cookies.set("access_token", "not-a-real-token")
         with caplog.at_level(logging.ERROR, logger="app.analytics.router"):
@@ -467,7 +467,7 @@ class TestErrorCodesAreOpaque:
     Scrubbing does not work on this field: the redaction patterns are anchored
     on word boundaries, which do not fire inside a larger token, so
     ``CODE_1974-03-02`` keeps its date. Stripping the separators instead only
-    reformats the value – ``CODE_19740302`` – which is why the shape is
+    reformats the value - ``CODE_19740302`` - which is why the shape is
     constrained and long digit runs are removed on top.
     """
 
@@ -528,7 +528,7 @@ class TestReleaseSurvivesIntact:
         self, test_client: TestClient, caplog: pytest.LogCaptureFixture
     ) -> None:
         """The defect this closes: the record-number rule replaced runs of
-        digits inside a revision, so a version arrived mangled – and mangled
+        digits inside a revision, so a version arrived mangled - and mangled
         differently each release."""
         with caplog.at_level(logging.ERROR, logger="app.analytics.router"):
             test_client.post(
@@ -557,7 +557,7 @@ class TestReleaseSurvivesIntact:
         self, test_client: TestClient, release: str
     ) -> None:
         """Rejected rather than redacted. A postcode or an address contains
-        characters no version has, so the report is refused outright – which
+        characters no version has, so the report is refused outright - which
         is a stronger answer than scrubbing it."""
         resp = test_client.post(
             ENDPOINT, json={**VALID_REPORT, "release": release}

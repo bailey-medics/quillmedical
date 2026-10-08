@@ -3,8 +3,8 @@
  *
  * `api.ts` is mocked rather than `fetch`: these functions are thin
  * wrappers, so what is worth pinning is the path each one builds and the
- * verb it chooses. The transport beneath – credentials, CSRF, the 401
- * retry – is `api.test.ts`'s job and is not re-tested here.
+ * verb it chooses. The transport beneath - credentials, CSRF, the 401
+ * retry - is `api.test.ts`'s job and is not re-tested here.
  *
  * The path assertions are the point of the file. A mistyped path is
  * invisible in review, compiles perfectly, and surfaces as a 404 in front

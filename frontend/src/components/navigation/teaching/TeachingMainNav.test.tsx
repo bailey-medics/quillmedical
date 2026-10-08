@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@test/test-utils";
 import TeachingMainNav from "./TeachingMainNav";
 
-// Mock useAuth – mirrors SideNav.test.tsx pattern.
+// Mock useAuth - mirrors SideNav.test.tsx pattern.
 //
 // `enabled_features` matters now that this sidebar shares its entries
 // with the main one: the shared list gates Teaching on the feature

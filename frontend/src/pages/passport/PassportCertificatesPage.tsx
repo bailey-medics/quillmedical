@@ -11,7 +11,7 @@
  * **The uploader sits above the form rather than inside it.** Uploading
  * has its own failure modes, and a network drop halfway through a scan
  * must not cost somebody a filled-in form. So the page owns the upload,
- * holds the result, and hands it down – which is also why the attachment
+ * holds the result, and hands it down - which is also why the attachment
  * survives a failed save and can simply be resubmitted.
  */
 

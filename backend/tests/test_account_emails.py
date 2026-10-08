@@ -78,5 +78,5 @@ class TestTemplates:
         assert "&lt;b&gt;sam&lt;/b&gt;" in rendered["html_body"]
         assert "Hi <b>sam</b>," in rendered["text_body"]
         assert rendered["subject"] == (
-            "You're invited to Quill – set up your account"
+            "You're invited to Quill - set up your account"
         )

@@ -1,6 +1,6 @@
 """Validating content whose images are not on disk.
 
-``download_bank_from_gcs`` fetches only YAML – images stay in the bucket,
+``download_bank_from_gcs`` fetches only YAML - images stay in the bucket,
 so a directory listing reports every declared image as missing. The
 inventory supplies the filenames instead: item directory name to the files
 present, with ``"."`` for the assessment root.

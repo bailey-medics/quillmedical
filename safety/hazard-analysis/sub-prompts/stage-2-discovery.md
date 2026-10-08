@@ -11,7 +11,7 @@
 
 ## Your task
 
-**Process**: For each Tier 1–3 file found in `/safety/hazard-analysis/outputs/stage-1-inventory.md`. Your job is to identify every potential clinical safety hazard.
+**Process**: For each Tier 1-3 file found in `/safety/hazard-analysis/outputs/stage-1-inventory.md`. Your job is to identify every potential clinical safety hazard.
 
 ## CRITICAL CONSTRAINTS
 

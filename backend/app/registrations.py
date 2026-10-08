@@ -1,7 +1,7 @@
 """The professional registration bodies a registration may name.
 
 Read from the default jurisdiction in ``shared/jurisdiction-config.yaml``,
-so a body is added there and needs no migration – the choice
+so a body is added there and needs no migration - the choice
 ``validate_org_unit_type`` made for org unit types. For the UK these are
 the GMC, NMC, GPhC and HCPC.
 """

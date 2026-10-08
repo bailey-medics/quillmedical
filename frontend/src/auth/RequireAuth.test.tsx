@@ -157,7 +157,7 @@ describe("RequireAuth", () => {
     );
 
     expect(screen.getByText("Login Page")).toBeInTheDocument();
-    // State must be null – no `from` path leaked to next user
+    // State must be null - no `from` path leaked to next user
     expect(onState).toHaveBeenCalledWith(null);
   });
 });

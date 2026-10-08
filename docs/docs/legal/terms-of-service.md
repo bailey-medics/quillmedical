@@ -42,24 +42,24 @@ using the service.
 
 ### 2. Words used in these terms
 
-- **Sponsor** – an organisation that gives you access to Quill under an
+- **Sponsor** - an organisation that gives you access to Quill under an
   agreement with us, such as a training academy, an NHS trust, a royal
   college, a medical school or an employer. In Quill a sponsor is set up
   as one or more organisation units, which are the places you belong to.
-- **Sponsored user** – somebody who uses Quill because a sponsor enrolled
+- **Sponsored user** - somebody who uses Quill because a sponsor enrolled
   them, invited them, or let them register into its programme.
-- **Direct customer** – a person or organisation that deals with us
+- **Direct customer** - a person or organisation that deals with us
   directly, with no sponsor's agreement in between.
-- **Sponsor agreement** – the written agreement between a sponsor and us,
+- **Sponsor agreement** - the written agreement between a sponsor and us,
   including its data processing schedule.
-- **Training records** – your enrolments, assessment attempts and answers,
+- **Training records** - your enrolments, assessment attempts and answers,
   results, certificates, and everything in your clinician passport,
   including sign-offs.
-- **Assessor** – a person who signs off a competency in somebody's
+- **Assessor** - a person who signs off a competency in somebody's
   clinician passport.
-- **Content** – the teaching modules, questions, images, video, text and
+- **Content** - the teaching modules, questions, images, video, text and
   other material available through Quill.
-- **Your material** – anything you write or upload: reflections, logbook
+- **Your material** - anything you write or upload: reflections, logbook
   entries, certificates you declare, CPD entries, evidence files and
   feedback.
 

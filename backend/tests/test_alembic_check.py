@@ -1,6 +1,6 @@
 """Integration tests for the Alembic autogenerate-drift check.
 
-These require a real, migrated PostgreSQL database – SQLite unit tests
+These require a real, migrated PostgreSQL database - SQLite unit tests
 build their schema from model metadata directly (see `conftest.py`) and
 never exercise Alembic's autogenerate comparison. Run by the dedicated
 `alembic_drift_check` CI job. No `just` recipe runs them locally:

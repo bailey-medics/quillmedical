@@ -11,11 +11,11 @@
  *
  * Routes use one of two layouts:
  *
- * 1. **RootLayout → MainLayout** – the default for most authenticated pages.
+ * 1. **RootLayout → MainLayout** - the default for most authenticated pages.
  *    RootLayout renders MainLayout (side-nav, top ribbon, patient context) and
  *    exposes `useOutletContext<LayoutCtx>()` to child routes.
  *
- * 2. **TeachingLayout** – a standalone full-screen layout for teaching/learning
+ * 2. **TeachingLayout** - a standalone full-screen layout for teaching/learning
  *    pages. Each teaching page wraps itself in `<TeachingLayout>` (with optional
  *    sidebar/drawer props). These routes live OUTSIDE RootLayout's children
  *    array and supply their own `<RequireAuth>` + `<RequireFeature>` guards.
@@ -24,7 +24,7 @@
  *
  * Add to the "Teaching routes" `children` array below RootLayout. The page
  * component must wrap its content in `<TeachingLayout>`. The shared layout
- * route provides `<RequireAuth>` + `<RequireFeature>` guards once – individual
+ * route provides `<RequireAuth>` + `<RequireFeature>` guards once - individual
  * children do not need them.
  *
  * ## Route structure
@@ -92,7 +92,7 @@ function modulesOnly(Page: ComponentType): ReactElement {
 }
 
 export const routes: RouteObject[] = [
-  // Public routes (login, register) – placed before protected routes so
+  // Public routes (login, register) - placed before protected routes so
   // they are matched directly and not captured by the authenticated
   // parent route.
   {
@@ -179,7 +179,7 @@ export const routes: RouteObject[] = [
     children: [
       { path: "/", element: <HomeRedirect /> },
 
-      // Passport – gated twice: the organisation feature, or holding a
+      // Passport - gated twice: the organisation feature, or holding a
       // passport of your own, and the CBAC competency. Most people who
       // download the app can never open these, so the whole feature is
       // one lazy chunk, pages/passport/passportChunk.ts.
@@ -276,7 +276,7 @@ export const routes: RouteObject[] = [
         ],
       },
 
-      // Safety – a throwaway mock-up with no backend, gated as the
+      // Safety - a throwaway mock-up with no backend, gated as the
       // passport is: the organisation feature and the competency the
       // safety professions carry. Lazily loaded like the
       // passport, and nothing holds form state, so every page is safe
@@ -366,7 +366,7 @@ export const routes: RouteObject[] = [
         ],
       },
 
-      // Clinical routes – require FHIR/EHRbase connectivity
+      // Clinical routes - require FHIR/EHRbase connectivity
       // One lazy chunk for the whole subtree, pages/clinical/clinicalChunk.ts.
       // A deployment with clinical services off never downloads it, and
       // opening a message thread, which cannot safely reload, never needs
@@ -442,7 +442,7 @@ export const routes: RouteObject[] = [
         ],
       },
 
-      // Guides – task instructions, open to anybody signed in. Which
+      // Guides - task instructions, open to anybody signed in. Which
       // guides somebody is shown is decided in the pages, for relevance
       // and not as a guard: see `lib/guides/useGuideTier.ts`. One lazy
       // chunk, pages/guides/guidesChunk.ts, which holds the words too.
@@ -453,7 +453,7 @@ export const routes: RouteObject[] = [
         handle: { safeForReload: true },
       },
 
-      // Admin routes – require the competency the API itself requires.
+      // Admin routes - require the competency the API itself requires.
       // One lazy chunk for the whole area, pages/admin/adminChunk.ts. Where
       // a page has a guard of its own, the guard is passed to `lazyFrom`
       // and wrapped round the page, so the route stays the leaf that
@@ -792,7 +792,7 @@ export const routes: RouteObject[] = [
     ],
   },
 
-  // Teaching routes – all use TeachingLayout (not MainLayout).
+  // Teaching routes - all use TeachingLayout (not MainLayout).
   // Shared layout route provides RequireAuth + RequireFeature guards once.
   //
   // One lazy chunk for all the learner pages,
@@ -886,7 +886,7 @@ export const routes: RouteObject[] = [
     ],
   },
 
-  // Passport – the one public page, in the same lazy chunk as the rest.
+  // Passport - the one public page, in the same lazy chunk as the rest.
   //
   // It sits out here rather than inside RequireAuth: the invite landing,
   // which somebody with no Quill account at all must be able to open. It

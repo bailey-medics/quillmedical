@@ -1,4 +1,4 @@
-/* PdfPages – a column of pages, each a canvas as wide as the column.
+/* PdfPages - a column of pages, each a canvas as wide as the column.
    The canvas carries the page's own width and height as attributes, so
    `height: auto` keeps its shape before and after it is drawn. */
 

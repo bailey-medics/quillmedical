@@ -431,19 +431,19 @@ in the order they would then matter. None is committed to.
 
 ## Decisions
 
-- **Sharding goes before the Playwright image** – the stall would be the
+- **Sharding goes before the Playwright image** - the stall would be the
   safer thing to fix first, since sharding triples the exposure to it.
   But with one change per pull request, sharding first gives a clean
   reading of the largest saving against today's baseline. The cost is a
   short spell between the two in which a slow run is more likely.
 
-- **The dark-mode accessibility pass stays on every pull request** – axe
+- **The dark-mode accessibility pass stays on every pull request** - axe
   checks each story twice, light and dark, and running the dark pass only
   in the merge queue would shorten the Storybook job. It was left out
   because its share of the 6 minutes has not been measured, and because a
   dark-mode violation would then surface at merge instead of at review.
 
-- **Warm the image cache on `main` instead of moving it to GHCR** – a
+- **Warm the image cache on `main` instead of moving it to GHCR** - a
   `type=registry` cache is not tied to a ref and would also fix Phase 6.
   Warming on `main` was chosen because it is the pattern Phase 1 already
   proved here, and it takes the build cache out of pull requests

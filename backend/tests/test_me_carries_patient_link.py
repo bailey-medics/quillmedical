@@ -6,7 +6,7 @@ their own health, so it can hide the patient picker. It used to ask the
 
 **A competency does not answer this, even now one could.** The id was
 split into ``access_own_patient_records`` and ``access_patient_records``,
-so a competency *can* mark a patient – only the ``patient`` profession
+so a competency *can* mark a patient - only the ``patient`` profession
 holds the first. It still does not serve here, for two reasons:
 
 - A clinician who is also a patient at their own trust holds both, so

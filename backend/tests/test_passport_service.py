@@ -1311,7 +1311,7 @@ class TestBlobs:
         tmp_path: Path,
     ) -> None:
         """Evidence is content-addressed beside the repository, never in
-        it – which is what the .gitignore is for."""
+        it - which is what the .gitignore is for."""
         blob_store = BlobStore(tmp_path)
         blob_store.put(
             PASSPORT_ID,

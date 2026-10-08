@@ -60,7 +60,7 @@ export const Submitting: Story = {
 };
 
 /**
- * The declaration is the signature – the reason there is no drawing
+ * The declaration is the signature - the reason there is no drawing
  * canvas here.
  */
 export const TheDeclarationIsTheSignature: Story = {

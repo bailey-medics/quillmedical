@@ -39,7 +39,7 @@ class OrgUnitTypeEntry(BaseModel):
         description: What this kind of org_unit is, in a sentence.
         requires_parent: Whether a node of this type must sit under
             another. False only for the top of a tree.
-        can_hold_positions: Whether a post – clinical lead among them –
+        can_hold_positions: Whether a post - clinical lead among them -
             may be held here.
         can_hold_competencies: Whether practice may be authorised here.
         can_have_members: Whether a person may belong here.
@@ -106,7 +106,7 @@ ORG_UNIT_TYPES: list[OrgUnitTypeEntry] = _load_org_unit_types(
 #: Every known type id, in declaration order.
 ORG_UNIT_TYPE_IDS: tuple[str, ...] = tuple(t.id for t in ORG_UNIT_TYPES)
 
-#: The kinds that stand at the top of a tree – the organisations.
+#: The kinds that stand at the top of a tree - the organisations.
 #:
 #: Read from the flag rather than compared against one name, because
 #: there is more than one kind of organisation: a GP practice and a
@@ -136,7 +136,7 @@ def validate_org_unit_type(value: str) -> str:
     """Return the type unchanged, or raise naming the known ones.
 
     Validated in code rather than as a database enum, so adding a type
-    needs no migration – the same choice ``MEMBER_CAPACITIES`` made.
+    needs no migration - the same choice ``MEMBER_CAPACITIES`` made.
 
     Args:
         value: The type to check.
@@ -160,7 +160,7 @@ def _capability(type_id: str, flag: str) -> bool:
     """Return one capability flag of *type_id*.
 
     Raises rather than returning False for an unknown type. False would
-    read as a settled answer – "this org_unit may not hold positions" –
+    read as a settled answer - "this org_unit may not hold positions" -
     when in truth nothing is known about the org_unit at all, and a caller
     acting on it would refuse legitimate work without saying why.
 

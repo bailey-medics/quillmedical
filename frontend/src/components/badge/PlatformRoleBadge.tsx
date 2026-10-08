@@ -4,8 +4,8 @@
  * Marks the people who operate Quill itself. Renders a SUPERADMIN pill
  * for an operator and nothing at all for anyone else.
  *
- * Showing only the rare case is deliberate. The alternative – a STANDARD
- * pill on every row of every user list – is noise that says nothing,
+ * Showing only the rare case is deliberate. The alternative - a STANDARD
+ * pill on every row of every user list - is noise that says nothing,
  * because almost nobody is an operator. The badge earns its org_unit by
  * appearing seldom.
  *
@@ -42,7 +42,7 @@ interface PlatformRoleBadgeProps {
  * PlatformRoleBadge displays whether someone operates Quill itself.
  *
  * Renders nothing for a standard account, and nothing for a missing or
- * unrecognised value – a badge that cannot say something true says
+ * unrecognised value - a badge that cannot say something true says
  * nothing.
  */
 export default function PlatformRoleBadge({

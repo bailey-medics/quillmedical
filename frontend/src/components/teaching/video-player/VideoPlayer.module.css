@@ -26,7 +26,7 @@
  * `::cue` is the one hook into that shadow DOM the browser exposes, and
  * a background set here replaces the default rather than adding to it.
  * That is what fixes the overlap: `::cue` accepts only a small set of
- * properties – background, colour, font, shadow and a few more – and
+ * properties - background, colour, font, shadow and a few more - and
  * padding is not among them, so the boxes cannot simply be spaced
  * apart.
  *
@@ -40,8 +40,8 @@
  * YouTube brings its own captions and its own custom element, so it is
  * not this rule's business.
  *
- * A `::cue` rule that matches nothing fails silently – it type-checks,
- * passes every test and changes nothing – and jsdom does not render
+ * A `::cue` rule that matches nothing fails silently - it type-checks,
+ * passes every test and changes nothing - and jsdom does not render
  * cues, so no unit test can confirm this one works. Check it against a
  * real two-line caption in the browser.
  */
@@ -71,7 +71,7 @@
 /* The quality control sits outside the frame rather than over it. The
    browser draws its own controls in shadow DOM and decides where they
    go, so anything overlaid risks covering them at some viewport width
-   – and covering the play button to offer a quality choice is a poor
+   - and covering the play button to offer a quality choice is a poor
    trade. */
 .qualityBar {
   display: flex;

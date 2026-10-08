@@ -459,7 +459,7 @@ def send_email(
 
     if settings.EMAIL_DRY_RUN:
         logger.info(
-            "EMAIL DRY RUN – to=%s attachments=%d",
+            "EMAIL DRY RUN - to=%s attachments=%d",
             mask_email(to),
             len(attachment_names),
         )
@@ -485,7 +485,7 @@ def send_email(
     _record_send(to)
 
     logger.info(
-        "Email sent – to=%s attachments=%d",
+        "Email sent - to=%s attachments=%d",
         mask_email(to),
         len(attachment_names),
     )

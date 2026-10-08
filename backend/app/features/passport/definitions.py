@@ -150,7 +150,7 @@ def has_levels(competency_id: str) -> bool:
 
     Returns:
         True if it declares levels. False where the honest answer is
-        simply signed off or not – cannulation needs no scale.
+        simply signed off or not - cannulation needs no scale.
 
     Raises:
         UnknownCompetencyError: If the id is not in the catalogue.

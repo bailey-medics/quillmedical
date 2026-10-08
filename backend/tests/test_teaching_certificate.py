@@ -78,7 +78,7 @@ class TestGenerateCertificatePdf:
             background_path=background,
             exam_title="Test Exam",
             candidate_name="Jane Smith",
-            pass_summary="Pass – 90% accuracy",
+            pass_summary="Pass - 90% accuracy",
             completion_date="29 March 2026",
         )
         assert isinstance(result, bytes)
@@ -292,7 +292,7 @@ class TestWrapText:
 
 
 # ------------------------------------------------------------------
-# parse_certificate_style – validation and recovery
+# parse_certificate_style - validation and recovery
 # ------------------------------------------------------------------
 
 

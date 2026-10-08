@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Seed CI database with test users for E2E tests.
 
-Non-interactive – uses hardcoded test credentials suitable only for
+Non-interactive - uses hardcoded test credentials suitable only for
 ephemeral CI containers. NEVER use in production.
 
 Usage (inside the backend container after migrations):

@@ -17,7 +17,7 @@ createRoot(document.getElementById("root")!).render(
           <Stack align="center" gap="md" py="xl">
             <PublicTitle title="Careers at Quill Medical" />
             <PublicBodyText justify="centre">
-              We are building the future of clinical software – thoughtful,
+              We are building the future of clinical software - thoughtful,
               safe, and grounded in real clinical experience. If you care about
               healthcare and want to build technology that genuinely helps
               clinicians and patients, we would love to hear from you.

@@ -129,7 +129,7 @@ export default function AdminBankOrgSettingsPage() {
     // effect body runs. Matches the pattern in `SiteAdminPage`: the lint
     // rule analyses one function at a time and cannot see that `fetchData`
     // awaits before touching state, so the wrapper makes the deferral
-    // explicit – and the floating promise with it.
+    // explicit - and the floating promise with it.
     void (async () => {
       await fetchData();
     })();
@@ -196,7 +196,7 @@ export default function AdminBankOrgSettingsPage() {
           onClick={() => navigate(`/admin/teaching/modules/${bankId}`)}
           aria-label="Back to bank detail"
         />
-        <PageHeader title={`${org.organisation_name} – ${bank.title}`} />
+        <PageHeader title={`${org.organisation_name} - ${bank.title}`} />
       </Group>
 
       <Form<BankOrgSettingsFormValues>

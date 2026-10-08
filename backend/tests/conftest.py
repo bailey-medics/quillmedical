@@ -87,7 +87,7 @@ TestingSessionLocal = sessionmaker(
 #: an organisation writes exactly one place, so a database holding only
 #: organisations gives the two tables the same ids: organisation 3 is
 #: place 3. Then any code that hands a place id to something expecting an
-#: organisation id – or the reverse – works perfectly, in tests, and only
+#: organisation id - or the reverse - works perfectly, in tests, and only
 #: in tests. A real database has had places and organisations created
 #: interleaved for months and the numbers stopped agreeing long ago.
 #:
@@ -101,9 +101,9 @@ TestingSessionLocal = sessionmaker(
 #: no longer the point.
 #:
 #: It stays because what it is still matters. A ward with no parent is
-#: not an organisation by any question the application asks – it is not
+#: not an organisation by any question the application asks - it is not
 #: in a list of roots, and no admin can see it, because nobody is a
-#: member of anything above it – and several tests need exactly such a
+#: member of anything above it - and several tests need exactly such a
 #: place to point at.
 DETACHED_PLACE_NAME = "Unattached ward (belongs to no organisation)"
 
@@ -129,7 +129,7 @@ def test_client(db_session: Session) -> TestClient:
     def override_get_core_db():
         # Mirrors get_core_db()'s auto-commit-on-success /
         # rollback-on-exception behaviour (app/db/core_db.py), minus the
-        # close() – db_session's own fixture owns that lifecycle since
+        # close() - db_session's own fixture owns that lifecycle since
         # it's shared across every request within a test.
         try:
             yield db_session
@@ -245,7 +245,7 @@ def test_admin(db_session: Session) -> User:
     Carries ``system_administrator``, which grants ``manage_users``. The
     fixture previously had no profession and so took the column default
     of ``patient``, holding ``access_patient_records`` and nothing an
-    administrator needs – invisible while the routes compared ranks, and
+    administrator needs - invisible while the routes compared ranks, and
     a refusal the moment they ask for a competency instead.
     """
     user = User(

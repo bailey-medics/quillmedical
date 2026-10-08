@@ -180,7 +180,7 @@ def compute_generation(compat_dir: Path, forces_reload: bool) -> int:
             print(
                 f"Error: generation {new_generation} already used by an existing "
                 "forces_reload: true file. "
-                "Your checkout may be stale – try 'git pull' or 'git rebase main' "
+                "Your checkout may be stale - try 'git pull' or 'git rebase main' "
                 "and run this script again.",
                 file=sys.stderr,
             )

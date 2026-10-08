@@ -16,7 +16,7 @@ const fallback: SearchContextValue = {
 };
 
 /**
- * useSearch – access the global search query and setter.
+ * useSearch - access the global search query and setter.
  * Returns a no-op fallback when used outside SearchProvider (e.g. TeachingLayout).
  */
 export function useSearch(): SearchContextValue {
@@ -25,7 +25,7 @@ export function useSearch(): SearchContextValue {
 }
 
 /**
- * useSearchFilter – filters an array by the global search query.
+ * useSearchFilter - filters an array by the global search query.
  *
  * @param data - Array of items to filter
  * @param getText - Function that extracts searchable text from each item

@@ -1,4 +1,4 @@
-# Stage 6 – structured hazard data
+# Stage 6 - structured hazard data
 
 ## Input
 
@@ -8,7 +8,7 @@
 
 ## Output
 
-- `/safety/hazard-analysis/outputs/stage-6-hazard-drafts/Hazard-NNNN.md` – one file per hazard.
+- `/safety/hazard-analysis/outputs/stage-6-hazard-drafts/Hazard-NNNN.md` - one file per hazard.
 
 ## Your Task
 
@@ -46,8 +46,8 @@ Output a single JSON array. Each element is one hazard. Use this exact schema:
       "Assignment": "Clinical Safety Officer",
       "Labelling": "TBC (awaiting scoring)",
       "Project": "Clinical Risk Management",
-      "Hazard controls": "TBC – awaiting CSO triage and assessment.",
-      "Residual hazard risk assessment": "TBC – awaiting initial controls.",
+      "Hazard controls": "TBC - awaiting CSO triage and assessment.",
+      "Residual hazard risk assessment": "TBC - awaiting initial controls.",
       "Hazard status": "Draft from LLM",
       "Code associated with hazard": [
         "src/path/to/file.tsx:42",

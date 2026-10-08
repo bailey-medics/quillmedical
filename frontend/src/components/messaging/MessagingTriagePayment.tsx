@@ -58,7 +58,7 @@ export default function MessagingTriagePayment({
       id: "1",
       senderId: patientId,
       senderName: "You",
-      text: "Hi – when is my colonoscopy appointment?",
+      text: "Hi - when is my colonoscopy appointment?",
       timestamp: new Date().toISOString(),
     },
   ]);
@@ -141,7 +141,7 @@ export default function MessagingTriagePayment({
         pushMessage({
           senderId: "clinician-1",
           senderName: "Dr. Clinician",
-          text: `Offer created: ${minutes} minutes – $${(price / 100).toFixed(
+          text: `Offer created: ${minutes} minutes - $${(price / 100).toFixed(
             2,
           )} (patient must accept).`,
           timestamp: new Date().toISOString(),
@@ -171,14 +171,14 @@ export default function MessagingTriagePayment({
     pushMessage({
       senderId: "system",
       senderName: "System",
-      text: `Patient accepted offer – payment simulated.`,
+      text: `Patient accepted offer - payment simulated.`,
       timestamp: new Date().toISOString(),
     });
     setTimeout(() => {
       pushMessage({
         senderId: "clinician-1",
         senderName: "Dr. Clinician",
-        text: `Thanks – I've reviewed and here's the answer: your appointment is on 2025-10-01 at 10:30.`,
+        text: `Thanks - I've reviewed and here's the answer: your appointment is on 2025-10-01 at 10:30.`,
         timestamp: new Date().toISOString(),
       });
       setOffer(null);
@@ -220,7 +220,7 @@ export default function MessagingTriagePayment({
             alignItems: "center",
           }}
         >
-          <Title order={4}>Messaging – Inline Triage & Offer Demo</Title>
+          <Title order={4}>Messaging - Inline Triage & Offer Demo</Title>
           <Badge color="var(--mantine-color-gray-7)">
             Assigned: {assignedTo ?? "triage"}
           </Badge>
@@ -282,7 +282,7 @@ export default function MessagingTriagePayment({
         {offer && offer.status === "pending" && (
           <Box mt={12}>
             <Alert title="Offer pending" color="primary">
-              Offer: {offer.minutes} minutes –{" "}
+              Offer: {offer.minutes} minutes -{" "}
               <strong>${(offer.priceCents / 100).toFixed(2)}</strong>
               <Group mt={8}>
                 <Button onClick={patientAcceptOffer}>

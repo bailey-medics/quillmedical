@@ -1,4 +1,4 @@
-# ses-account – everything one AWS account needs to send Quill's email
+# ses-account - everything one AWS account needs to send Quill's email
 #
 # A verified domain, where its bounces come back, what Amazon refuses to
 # send to, and one user who may send from London and nothing else.

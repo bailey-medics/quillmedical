@@ -1,6 +1,6 @@
 """Tests for app/schemas/passport.py.
 
-Schemas are usually not worth testing on their own – Pydantic is not
+Schemas are usually not worth testing on their own - Pydantic is not
 ours to verify. These earn their place because three properties here are
 decisions rather than mechanics, and each would fail silently:
 
@@ -10,9 +10,9 @@ request half-applied. Every ``*In`` model is checked, because the rule
 holds only where ``extra="forbid"`` was actually set.
 
 **The wire vocabularies match the record ones.** The enums are imported
-from the record model rather than restated. A second copy would drift –
+from the record model rather than restated. A second copy would drift -
 a CPD type added on disk and forgotten here would be storable but not
-submittable – so each field's annotation is asserted to accept exactly
+submittable - so each field's annotation is asserted to accept exactly
 the record model's values.
 
 **Nothing on the wire judges sufficiency.** No response field carries a
@@ -99,7 +99,7 @@ class TestVocabulariesAreShared:
     Asserted through the annotations the API models actually carry,
     rather than through names re-exported from the API module. mypy's
     strict mode forbids implicit re-export, so reaching them via
-    ``api_schemas.`` would not type-check – and the annotation is the
+    ``api_schemas.`` would not type-check - and the annotation is the
     better thing to test anyway: it is what the field really accepts.
     """
 
@@ -195,7 +195,7 @@ class TestNothingJudgesSufficiency:
         ]
 
     def test_competency_state_carries_no_verdict(self) -> None:
-        """Status, level and dates – never a judgement about progress."""
+        """Status, level and dates - never a judgement about progress."""
         offending = [
             name
             for name in CompetencyStateOut.model_fields

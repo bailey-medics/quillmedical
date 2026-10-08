@@ -61,10 +61,10 @@ the stack is in, and carry on.
 
 Everything under `docs/docs/` except:
 
-- `plans/` and `learnings/` – records of what was decided and found at the
+- `plans/` and `learnings/` - records of what was decided and found at the
   time. They are meant to differ from today's code, so "correcting" one
   destroys the history it exists to keep.
-- `code/`, `safety/` and `llm/` – kept up to date by other means, not by this
+- `code/`, `safety/` and `llm/` - kept up to date by other means, not by this
   skill.
 
 If the area named is one of those, say so and stop rather than reviewing it.
@@ -112,9 +112,9 @@ the code or the reasoning behind it, that nothing gives them today?
 The codebase is well over a thousand source files, so survey it area by area
 rather than line by line:
 
-- `backend/app/` – each package and each large module
-- `frontend/src/` – pages, domains, `lib/`, `auth/`, and the component groups
-- `shared/` – the YAML that both sides are generated from
+- `backend/app/` - each package and each large module
+- `frontend/src/` - pages, domains, `lib/`, `auth/`, and the component groups
+- `shared/` - the YAML that both sides are generated from
 - `infra/`, `.github/workflows/`, the compose files and the `Justfile`
 
 When an area was named, survey only the code that area documents (`backend`
@@ -266,15 +266,15 @@ So before each push, look:
 gh stack view --json
 ```
 
-- **No branch has `isQueued: true`** – push as usual.
-- **Any branch has** – do not push. `/crpd` commits the unit onto its
+- **No branch has `isQueued: true`** - push as usual.
+- **Any branch has** - do not push. `/crpd` commits the unit onto its
   branch and stops there, as its own step 5 sets out. Carry on to the next
   unit: it stacks on the unpushed one.
 - **Look again before the next unit's push.** Once nothing is queued, bring
   the stack up to date with `just stack-sync` if a branch has merged, and
   push. That one push carries every unit held back, and each of their pull
   requests then needs its description written, not only the newest.
-- **Still queued at the end of the run** – do not wait. Name the units
+- **Still queued at the end of the run** - do not wait. Name the units
   that are committed and not pushed in the final report, so the human can
   run `just stack-submit` once the queue has drained.
 

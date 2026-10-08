@@ -26,7 +26,7 @@ function deviceName(userAgent: string): string | null {
     const kind = userAgent.includes("Mobile")
       ? "Android phone"
       : "Android tablet";
-    // "Linux; Android 14; Pixel 8) ..." – the model is the last entry
+    // "Linux; Android 14; Pixel 8) ..." - the model is the last entry
     // before the bracket closes. Chrome now sends "K" in its place.
     const model = capture(userAgent, /Android [\d.]+; ([^;)]+)\)/)?.trim();
     return model && model !== "K" ? `${kind} (${model})` : kind;

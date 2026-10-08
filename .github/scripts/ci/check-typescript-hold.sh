@@ -7,7 +7,7 @@
 # The eslint job therefore fails before it lints a single file.
 #
 # A hold like that has no natural end. Nothing in Renovate watches for the
-# day it stops being necessary, and a note in a config file reminds nobody –
+# day it stops being necessary, and a note in a config file reminds nobody -
 # the Python 3.13.x pin beside it said "Revisit Q3 2026" while the Dockerfiles
 # had already moved to 3.14. So this checks the one fact that decides it:
 # whether typescript-eslint's own declared peer range has come to allow the
@@ -60,7 +60,7 @@ fetch_peer_range() {
 #
 # "<=" is deliberately not matched. It is not a form typescript-eslint uses,
 # and treating "<=7.0.0" as "<7.0.0" would under-report rather than
-# over-report – the wrong way round for something whose job is to remind.
+# over-report - the wrong way round for something whose job is to remind.
 upper_bounds() {
   grep -oE '<[[:space:]]*[0-9]+(\.[0-9]+){0,2}' <<<"$1" |
     sed -E 's/^<[[:space:]]*//' || true

@@ -6,8 +6,8 @@ until this call lands nothing knows the job finished: ``transcoded_at``
 stays null and the availability gate hides a module whose renditions are
 sitting in the bucket.
 
-What is tested is the authorisation boundary – it is reachable without a
-session, so the token is the whole of it – and the mapping from reported
+What is tested is the authorisation boundary - it is reachable without a
+session, so the token is the whole of it - and the mapping from reported
 filenames to rendition columns, which is the part that would fail
 silently if it drifted.
 """
@@ -79,7 +79,7 @@ def _post(client: TestClient, token: str | None = TOKEN, **overrides: object):
 
 
 class TestAuthorisation:
-    """The token is the entire boundary – there is no session here."""
+    """The token is the entire boundary - there is no session here."""
 
     def test_unconfigured_refuses(
         self, test_client: TestClient, monkeypatch
@@ -113,7 +113,7 @@ class TestRecordingCompletion:
         self, test_client: TestClient, configured, link, db_session
     ) -> None:
         # The column the availability gate reads. Null before, set after
-        # – this single field is what moves a module from hidden to
+        # - this single field is what moves a module from hidden to
         # servable.
         assert link.transcoded_at is None
 

@@ -331,7 +331,7 @@ page first.
       description, "clinician-first digital notes". Titles and
       descriptions now live in `frontend/public_pages/page-meta.json`,
       one entry per page, and the generator stops the build if a page has
-      none. Titles follow the "Page – Quill Medical" pattern the app's
+      none. Titles follow the "Page - Quill Medical" pattern the app's
       `useDocumentTitle` uses. `generate-pages.test.ts` checks every page
       has an entry, no entry is left for a deleted page, and descriptions
       fit a search result (160 characters). Moved to the front of the

@@ -92,14 +92,14 @@ describe("SlideReader with no slide to show", () => {
   it("shows the 404 page when the module is not there for this person", async () => {
     (getModuleSlides as Mock).mockResolvedValue(null);
     renderAt(0);
-    expect(await screen.findByText("404 – Page not found")).toBeInTheDocument();
+    expect(await screen.findByText("404 - Page not found")).toBeInTheDocument();
     expect(screen.queryByText("This lesson could not be loaded")).toBeNull();
   });
 
   it("shows the 404 page when the module has no slides", async () => {
     (getModuleSlides as Mock).mockResolvedValue([]);
     renderAt(0);
-    expect(await screen.findByText("404 – Page not found")).toBeInTheDocument();
+    expect(await screen.findByText("404 - Page not found")).toBeInTheDocument();
   });
 
   it("says the lesson could not be loaded when the fetch fails", async () => {
@@ -108,6 +108,6 @@ describe("SlideReader with no slide to show", () => {
     expect(
       await screen.findByText("This lesson could not be loaded"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("404 – Page not found")).toBeNull();
+    expect(screen.queryByText("404 - Page not found")).toBeNull();
   });
 });

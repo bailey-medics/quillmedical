@@ -452,45 +452,45 @@ time. Creating a site, and only that, now opens to a scoped manager.
 
 ## Decisions
 
-- **One competency for content and people** – `manage_teaching` replaces
+- **One competency for content and people** - `manage_teaching` replaces
   `manage_teaching_content` rather than sitting beside it. A person who may
   only curate content and never add a delegate is not a role anybody has
   asked for, and two competencies would bring back the split this plan
   removes.
 
 - **The whitelist lives on the granting competency, not as a tag on each
-  granted one** – tagging each competency with a domain would make a new
+  granted one** - tagging each competency with a domain would make a new
   teaching competency open to granting the moment it is tagged, without anyone
   looking at who can hand it out. A list on `manage_teaching` is a
   whitelist: nothing can be granted until someone adds it there.
 
-- **The scope limits removal as well as granting** – without that, a teaching
+- **The scope limits removal as well as granting** - without that, a teaching
   admin could remove a consultant's clinical competencies, move a nurse to
   `teaching_delegate`, or deactivate a clinician. Account-level acts need
   the target's own profession to be in scope. So a clinician who also sits
   teaching assessments can be given or lose teaching competencies, and
   nothing else.
 
-- **`manage_users` stays the root, unchanged** – capping it too would be a
+- **`manage_users` stays the root, unchanged** - capping it too would be a
   wider change touching every admin route. It stays for very few people,
   and the teaching role no longer needs it.
 
 - **A caller holding both `manage_users` and `manage_teaching` has no
-  limit anywhere** – the scope is worked out from what they hold, not from
+  limit anywhere** - the scope is worked out from what they hold, not from
   where they hold it. So somebody with `manage_users` at one trust and
   `manage_teaching` at another could give a clinical profession at the
   second. Scoping per place would need a scope for each `org_unit`, and
   `manage_users` is already the rarely granted root. Revisit if the two
   are ever routinely held together.
 
-- **One org unit page for everybody, not a separate teaching page** – an
+- **One org unit page for everybody, not a separate teaching page** - an
   `org_unit` may one day run both teaching and clinical services, and two
   pages would list the same staff twice. Each section shows for the
   competency it needs, and the backend leaves out what a caller may not
   see, so a new section cannot leak patient data by forgetting to hide
   itself.
 
-- **Administering flows down the tree; practising does not** – a
+- **Administering flows down the tree; practising does not** - a
   `manage_users` row, and a teaching admin's membership, reach every
   `org_unit` beneath them. This reverses part of the practising
   competencies enforcement plan, which gave a row its own `org_unit` only.
@@ -499,7 +499,7 @@ time. Creating a site, and only that, now opens to a scoped manager.
   `org_unit`: being authorised to prescribe at a trust should not mean
   being authorised on every ward.
 
-- **Keep the id `teaching_admin`, drop `teaching_manager`** – `teaching_admin`
+- **Keep the id `teaching_admin`, drop `teaching_manager`** - `teaching_admin`
   is the one used across the tests, the CI seed and the dev seed script.
   There are no real users yet, so moving any `teaching_manager` holders in
   a migration costs nothing.

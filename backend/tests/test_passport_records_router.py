@@ -528,7 +528,7 @@ class TestLogbook:
             json={
                 "performed_on": "2026-03-12",
                 "scope_id": SCOPE,
-                "outcome": "Abandoned – patient could not tolerate",
+                "outcome": "Abandoned - patient could not tolerate",
             },
         )
 

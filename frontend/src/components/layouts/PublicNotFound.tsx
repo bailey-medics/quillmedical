@@ -12,7 +12,7 @@ import PublicTitle from "@/components/typography/PublicTitle";
 import { Container, Stack } from "@mantine/core";
 
 export interface PublicNotFoundProps {
-  /** Override the default home URL – defaults to "/" */
+  /** Override the default home URL - defaults to "/" */
   homeHref?: string;
 }
 
@@ -23,7 +23,7 @@ export default function PublicNotFound({
     <PublicDarkBackground>
       <Container size="lg" py="xl">
         <Stack align="center" gap="md" py="xl" style={{ minHeight: "100dvh" }}>
-          <PublicTitle title="404 – Page not found" c="white" />
+          <PublicTitle title="404 - Page not found" c="white" />
           <PublicBodyText justify="centre">
             The page you requested does not exist. It may have been moved or
             removed.

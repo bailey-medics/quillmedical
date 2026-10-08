@@ -34,7 +34,7 @@ on:
 
 ### Why we can't just "run tests after merge"
 
-Running heavy E2E tests post-merge is expensive (15–20 min per merge). We could do it, but it's wasteful: if all tests passed in the PR (which ran minutes earlier on nearly identical code), running them again is just duplicating effort. **The real fix is to guarantee the PR tests run against the actual final merge state.**
+Running heavy E2E tests post-merge is expensive (15-20 min per merge). We could do it, but it's wasteful: if all tests passed in the PR (which ran minutes earlier on nearly identical code), running them again is just duplicating effort. **The real fix is to guarantee the PR tests run against the actual final merge state.**
 
 **Decision: no CI runs on `main` at all** (not even a fast-tier sanity check). Merges are gated entirely pre-merge: branch protection requires the PR branch to be rebased onto (up to date with) `main`, and all required checks — fast and heavy tier — must pass on that rebased branch before the merge button unlocks. Once that gate passes, the merge commit is guaranteed to be `main` HEAD + already-tested commits, so no further test run is needed or triggered.
 
@@ -286,7 +286,7 @@ Once the branch is rebased and up to date:
 - [ ] Update `docs/docs/cicd/rebase-before-merge.md` with rationale + how-to
 - [x] Close the `.github/pull_request_template.md` rebase reminder — no such template exists and one is not needed; see the addendum
 - [ ] Announce to team + point to docs
-- [ ] Monitor first 2–3 merges for any issues
+- [ ] Monitor first 2-3 merges for any issues
 - [ ] Archive this plan once live
 
 ---
@@ -352,7 +352,7 @@ reminder belongs if it is wanted.
 ### Option A: Run full CI after merge
 
 - Pros: Catches all bugs
-- Cons: Wasteful (15–20 min per merge), duplicates PR testing, no incentive to rebase before merge
+- Cons: Wasteful (15-20 min per merge), duplicates PR testing, no incentive to rebase before merge
 - Status: ❌ Not chosen
 
 ### Option B: Rely on pre-commit only, no branch protection

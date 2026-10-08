@@ -105,7 +105,7 @@ def test_clinicians_hold_the_passport_and_others_do_not() -> None:
     an organisation that uses the passport without the rest of Quill.
     A Passport admin holds it as a perk of running the scheme.
     ``passport_external_assessor`` is narrower still. A consultant invited from another trust gets it on a new account
-    so they can reach the passport routes and nothing else – no patient
+    so they can reach the passport routes and nothing else - no patient
     records, no clinical actions. Somebody who already uses Quill keeps
     the clinical profession they have, since all fourteen above already
     carry the competency.
@@ -208,7 +208,7 @@ def test_only_the_passport_admin_profession_may_write_a_passport() -> None:
 
     ``passport_write`` is what a clinician or their organisation pays
     for. It comes from an organisation enabling it or from an individual
-    subscription – so a clinical profession granting it would hand every
+    subscription - so a clinical profession granting it would hand every
     clinician the paid feature at provisioning and make the split between
     assessing and holding cosmetic.
 
@@ -237,8 +237,8 @@ def test_the_passport_is_not_a_default_for_patients_or_back_office() -> None:
 
     A patient holding it would be offered a clinical training record,
     and an administrator holding it could sign off clinical competence.
-    Neither is a permission escalation – signing is refused only for
-    self-sign-off – but both would be wrong by default, and a default
+    Neither is a permission escalation - signing is refused only for
+    self-sign-off - but both would be wrong by default, and a default
     is what most people will ever have.
     """
     for profession_id in (

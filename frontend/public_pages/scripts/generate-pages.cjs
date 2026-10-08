@@ -25,7 +25,7 @@ function escapeHtml(text) {
  * and was how every page came to share one description. So a missing entry
  * stops the build rather than falling back.
  *
- * The title follows the GOV.UK pattern the app uses, "Page – Quill
+ * The title follows the GOV.UK pattern the app uses, "Page - Quill
  * Medical", most specific part first, except on the home page, which is
  * the site name alone.
  */
@@ -37,7 +37,7 @@ function headFor(name, meta) {
     );
   }
   const title =
-    entry.title === SITE_TITLE ? SITE_TITLE : `${entry.title} – ${SITE_TITLE}`;
+    entry.title === SITE_TITLE ? SITE_TITLE : `${entry.title} - ${SITE_TITLE}`;
   return {
     title: escapeHtml(title),
     description: escapeHtml(entry.description),

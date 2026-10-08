@@ -3,7 +3,7 @@
 #
 # gsutil is stubbed. An rsync is recorded with the folders it was given to
 # upload, because what matters here is which guide's pictures go to which
-# bucket – and above all that none goes to the public one by mistake.
+# bucket - and above all that none goes to the public one by mistake.
 
 bats_require_minimum_version 1.5.0
 

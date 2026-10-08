@@ -32,7 +32,7 @@ type Props = {
   onNavigate?: () => void;
   /** Whether to display icons next to labels */
   showIcons?: boolean;
-  /** Patient navigation breadcrumbs – flat array converted to nested tree */
+  /** Patient navigation breadcrumbs - flat array converted to nested tree */
   patientNav?: NavItem[];
 };
 
@@ -69,7 +69,7 @@ export default function SideNavContent({
 
   // Teaching, Passport, Settings and Admin, with their gates. Shared
   // with the teaching sidebar so the two cannot disagree about which
-  // features exist – see `featureNavItems.ts`.
+  // features exist - see `featureNavItems.ts`.
   const featureItems = useFeatureNavItems();
   const showsAdmin = featureItems.some((item) => item.href === "/admin");
 
@@ -228,13 +228,13 @@ export default function SideNavContent({
     fetchUsername();
   }, [userId]);
 
-  // Fetch org/site breadcrumb – single effect to avoid flicker during transitions
+  // Fetch org/site breadcrumb - single effect to avoid flicker during transitions
   useEffect(() => {
     let cancelled = false;
 
     async function fetchOrgNav() {
       // Sentence case, and named here rather than capitalised from the
-      // address – "add-staff" became "Add-staff" on screen.
+      // address - "add-staff" became "Add-staff" on screen.
       const subPageLabels: Record<string, string> = {
         features: "Features",
         edit: "Edit",

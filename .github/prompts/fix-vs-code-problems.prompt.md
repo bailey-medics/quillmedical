@@ -11,7 +11,7 @@ description: Fix problems in VS Code
    - **Fixable**: a genuine error or warning that can be resolved by editing code or config
    - **False positive**: a linting rule triggering on valid code (e.g. MkDocs admonition indentation flagged as MD046, Terraform templatefile variables flagged as SC2154, `.git/COMMIT_MSG` flagged by markdownlint)
    - **Upstream/unfixable**: an issue outside our control (e.g. base Docker image vulnerabilities from Debian)
-3. Fix all fixable problems – edit the source files directly
+3. Fix all fixable problems - edit the source files directly
 4. For false positives, first inform the user. Suggest either:
    - Adding targeted inline suppression comments (e.g. `# shellcheck disable=SC2154`)
    - Updating the relevant ignore file or linting config (e.g. `.markdownlintignore`, `.markdownlint.json`)

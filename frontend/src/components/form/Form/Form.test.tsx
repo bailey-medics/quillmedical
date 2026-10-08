@@ -236,7 +236,7 @@ describe("Form", () => {
       renderWithMantine(<ValidatedTestForm />);
 
       // With mode: "onChange", the button is disabled when the
-      // required field is empty – validation prevents submission
+      // required field is empty - validation prevents submission
       expect(screen.getByTestId("submit-button")).toHaveAttribute(
         "aria-disabled",
         "true",

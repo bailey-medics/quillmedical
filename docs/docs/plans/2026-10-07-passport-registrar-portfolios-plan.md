@@ -30,35 +30,35 @@ different things: one is radiotherapy, two are systemic anti-cancer therapy
 "Clinical Oncology Registrar Record of Radiotherapy Training and Competence",
 Gloucestershire Hospitals NHS Foundation Trust, two pages, marked as a pilot.
 
-- **Header** – name, ST grade, date commenced at the trust, educational
+- **Header** - name, ST grade, date commenced at the trust, educational
   supervisor.
 
-- **A 12-row checklist** – each row has Yes/No, the trainee's initial and
+- **A 12-row checklist** - each row has Yes/No, the trainee's initial and
   date, and the trainer and date. So every row is signed twice.
 
-- **The rows are four different kinds of thing** – facts (registered with
+- **The rows are four different kinds of thing** - facts (registered with
   RCR, passed Part 1 FRCR, passed Final FRCR), time served (one year in a
   post with regular supervised pre-treatment planning sessions), training
   completed (radiation protection induction, a recognised Part 1 FRCR
   course, a post Part 1 slide deck, a post Part 2 review), and self-declared
   confidence.
 
-- **Four rows are self-declared confidence** – "Do you feel confident to..."
+- **Four rows are self-declared confidence** - "Do you feel confident to..."
   refer for palliative radiotherapy unsupervised, plan and prescribe
   palliative, refer for radical, plan and prescribe radical. The trainer
   countersigns a statement of confidence, not an observed assessment.
 
-- **The order follows the exams** – palliative confidence sits after Part 1
+- **The order follows the exams** - palliative confidence sits after Part 1
   FRCR and radical confidence after Final FRCR, so the sheet is a ladder
   rather than a flat list.
 
-- **Three "acquaintance" sign-offs** – Pinnacle treatment planning software,
+- **Three "acquaintance" sign-offs** - Pinnacle treatment planning software,
   Aria, and the referral and consent process. Each has a date, a user
   signature and a trainer signature.
 
-- **A final signature pair** – trainee and lead clinician.
+- **A final signature pair** - trainee and lead clinician.
 
-- **A living record** – completed within the first month of joining, then
+- **A living record** - completed within the first month of joining, then
   reviewed and updated at each educational supervisor meeting.
 
 ### UK SACT Board prescriber competencies
@@ -67,54 +67,54 @@ Gloucestershire Hospitals NHS Foundation Trust, two pages, marked as a pilot.
 Therapy", UK SACT Board, November 2023, 20 pages. The national framework and
 the most structured of the three. Its stated next review is November 2026.
 
-- **Who it is for** – written mainly for non-medical prescribers and doctors
+- **Who it is for** - written mainly for non-medical prescribers and doctors
   in non-training posts. It says trainees record SACT competence in their
   ePortfolio through workplace-based assessments (DOST, CbD, mini-CEX, ACAT,
   MSF, patient survey), and that this framework "can further be utilised"
   for them. So for registrars it may be secondary to the ePortfolio.
 
-- **Five levels, each needing the ones below** – 1 observation only, with no
+- **Five levels, each needing the ones below** - 1 observation only, with no
   record; 2 review and authorise administration, prescribing cycle 2 onwards
   only under direct supervision; 3 prescribe cycle 2 onwards independently;
   4 initiate the first cycle; 5 initiate and customise treatment for complex
   patients, at consultant level.
 
-- **Each of levels 2 to 5 has the same three parts** – a competency record,
+- **Each of levels 2 to 5 has the same three parts** - a competency record,
   a prescription log, and a declaration.
 
-- **The competency record** – 8, 12, 10 and 8 rows at levels 2, 3, 4 and 5,
+- **The competency record** - 8, 12, 10 and 8 rows at levels 2, 3, 4 and 5,
   split into knowledge and skills and behaviour. Each row has a free-text
   supporting statement or list of evidence, a date achieved and a
   supervisor signature. From level 3 up, the first row is completion of the
   level below.
 
-- **The prescription log** – a minimum of eight supervised prescriptions per
+- **The prescription log** - a minimum of eight supervised prescriptions per
   level, each with regimen, date and supervisor signature. At level 5 they
   must include complex cases: rare tumours, co-morbidities, impaired organ
   function.
 
-- **The declaration** – signed by the practitioner and by a named approver,
+- **The declaration** - signed by the practitioner and by a named approver,
   confirming the level has been completed.
 
-- **Who may assess is a rule** – level 2 is assessed by somebody at level 3
+- **Who may assess is a rule** - level 2 is assessed by somebody at level 3
   or above, and levels 3 and 4 by somebody at level 4 or above. The
   declaration is completed by a medical or non-medical consultant who
   practises in the same patient group.
 
-- **Sign-off is scoped** – a declaration is recommended per tumour type or
+- **Sign-off is scoped** - a declaration is recommended per tumour type or
   per type of SACT, for example lung cancer or immunotherapy. The log
   carries an "area of practice", and the supervisor may name regimens that
   must appear in it.
 
-- **The count is a recommendation, not a fixed bar** – eight observations
+- **The count is a recommendation, not a fixed bar** - eight observations
   per new level, with more expected of somebody newly qualified than of
   somebody widening their scope. Repeat observations are expected as new
   agents arrive or scope grows.
 
-- **Local variation is allowed** – where it is documented and agreed through
+- **Local variation is allowed** - where it is documented and agreed through
   local governance.
 
-- **It contradicts itself in places** – the level 4 template is headed "ST3
+- **It contradicts itself in places** - the level 4 template is headed "ST3
   and above" while the text describes an advanced non-medical prescriber;
   level 5 is "ST5 and above" in the text and "Consultant level" on the
   template; and the signature column is variously "Supervisor", "Staff" and
@@ -126,75 +126,75 @@ the most structured of the three. Its stated next review is November 2026.
 a Word document. A local passport for haematology and oncology doctors
 starting to prescribe SACT.
 
-- **Adapted per person** – the competencies differ by grade and job role,
+- **Adapted per person** - the competencies differ by grade and job role,
   and the clinical supervisor adapts the passport to the individual.
 
-- **Header** – date learning commenced, clinician name, designated role,
+- **Header** - date learning commenced, clinician name, designated role,
   scope of practice.
 
-- **Eleven prerequisite learning topics** – expected from a training day,
+- **Eleven prerequisite learning topics** - expected from a training day,
   work-based education or a university module before the passport is
   started. Listed, not signed.
 
-- **Fifteen "evidence of learning" items** – each signed and dated by a
+- **Fifteen "evidence of learning" items** - each signed and dated by a
   supervisor. They are knowledge items, for example CTCAE grading,
   extravasation, dose banding, hypersensitivity and anaphylaxis, the
   intrathecal never event, and the local referral process.
 
-- **A site-specific learning log** – one per tumour site, with four regimens
+- **A site-specific learning log** - one per tumour site, with four regimens
   suggested across cytotoxic, immunotherapy and TKI. Columns are drug
   names, conditions used for, usual schedule, parameters assessed, and
   significant toxicities and treatment.
 
-- **A pre-treatment consultations log** – diagnosis, usual schedule,
+- **A pre-treatment consultations log** - diagnosis, usual schedule,
   parameters assessed, significant toxicities and treatment, dosing changes.
 
-- **A new patient consultations log** – diagnosis, co-morbidities,
+- **A new patient consultations log** - diagnosis, co-morbidities,
   performance status, treatment decision, dosing considerations.
 
-- **Three sign-off tiers** – competent to prescribe with direct supervision,
+- **Three sign-off tiers** - competent to prescribe with direct supervision,
   with indirect supervision, and independently at consultant level. The
   first may be limited to listed drugs or regimens.
 
-- **Two signatures per tier** – clinical supervisor and clinical lead, each
+- **Two signatures per tier** - clinical supervisor and clinical lead, each
   dated.
 
-- **Annual re-assessment** – all registered clinicians are expected to
+- **Annual re-assessment** - all registered clinicians are expected to
   maintain evidence and be re-assessed each year, and the document is kept
   by both the manager and the clinician.
 
 ### What the three share
 
-- **Staged levels** – each level unlocks the next, and a higher one names the
+- **Staged levels** - each level unlocks the next, and a higher one names the
   lower as a prerequisite.
 
-- **Counted logs beside ticked competencies** – a record of supervised
+- **Counted logs beside ticked competencies** - a record of supervised
   activity, not only a list of statements signed.
 
-- **Scope on the sign-off** – by tumour site, by regimen, or by palliative
+- **Scope on the sign-off** - by tumour site, by regimen, or by palliative
   versus radical.
 
-- **Supervision level as the outcome** – direct, indirect, independent. What
+- **Supervision level as the outcome** - direct, indirect, independent. What
   is signed is how closely somebody must be watched, not simply pass or
   fail.
 
-- **Two signatures at the final step** – the supervisor and somebody senior
+- **Two signatures at the final step** - the supervisor and somebody senior
   to them.
 
-- **Free-text evidence** – every form leaves what counts as evidence to the
+- **Free-text evidence** - every form leaves what counts as evidence to the
   assessor.
 
 ### Things to watch
 
-- **Patient-level detail** – the Bath consultation logs record diagnosis,
+- **Patient-level detail** - the Bath consultation logs record diagnosis,
   co-morbidities and performance status per case. That is clinical detail
   about a patient even without a name.
 
-- **Three sources, two trusts** – the forms come from Gloucestershire, Bath
+- **Three sources, two trusts** - the forms come from Gloucestershire, Bath
   and a national board, so they are unlikely all to be in use by the same
   trainees.
 
-- **A pilot and a pending review** – the Gloucestershire form is a pilot and
+- **A pilot and a pending review** - the Gloucestershire form is a pilot and
   the national framework is due for review in November 2026, so either may
   change soon.
 
@@ -206,51 +206,51 @@ Gloucestershire sheet could be delivered with catalogue additions alone.
 The SACT Board framework mostly worked. The Bath passport was the weakest
 fit. Each gap below now says where it went.
 
-- **Levels and the declaration fit** – a sign-off against a scale, with a
+- **Levels and the declaration fit** - a sign-off against a scale, with a
   named assessor, what they based it on, evidence files and a comment, is
   what the passport does. `prescribe_sact` in
   `shared/competency-definitions/oncology.yaml` already carries the SACT
   Board levels, and the radiotherapy competencies carry the RCR entrustment
   scale.
 
-- **Self-declared confidence fits** – the holder asks for a level and the
+- **Self-declared confidence fits** - the holder asks for a level and the
   assessor decides it. "Do you feel confident to plan palliative
   radiotherapy unsupervised?" is a sign-off request at "Entrusted to act
   unsupervised".
 
-- **Exam passes, courses and induction fit** – as certificates, with RCR
+- **Exam passes, courses and induction fit** - as certificates, with RCR
   registration as a profile registration.
 
-- **The log of eight prescriptions partly fits** – logbook entries count
+- **The log of eight prescriptions partly fits** - logbook entries count
   towards a competency, and a sign-off freezes how many there were and a
   digest of them. The entries themselves are the holder's own claim.
 
-- **Annual re-assessment partly fits** – a repeat sign-off is recorded as a
+- **Annual re-assessment partly fits** - a repeat sign-off is recorded as a
   reassessment and an expiry date is stored, though nothing acts on it.
 
-- **Catalogue additions, no code** – a fifth, consultant level on
+- **Catalogue additions, no code** - a fifth, consultant level on
   `prescribe_sact`, which has four of the five; entries for the
   Gloucestershire acquaintances and for referring for radiotherapy; and, if
   each row is to be signed on its own, about 38 SACT Board statements and
   Bath's 15 learning items. Those would land in the same catalogue CBAC
   reads.
 
-- **Gap: no scope on a sign-off** – there is one current state per
+- **Gap: no scope on a sign-off** - there is one current state per
   competency, so level 3 for lung and level 3 for breast overwrite each
   other, and Bath's "only these regimens" has nowhere to go but the
   comment. Both SACT documents depend on this. Closed by Phases 1 to 4
   and 10: a sign-off and a logbook entry each name a scope.
 
-- **Gap: a log row cannot be signed** – the paper forms carry a supervisor
+- **Gap: a log row cannot be signed** - the paper forms carry a supervisor
   signature on each logged prescription. Closed by Phase 5: a supervisor
   can confirm an entry.
 
-- **Gap: Bath's three logs do not fit the logbook** – its fields are
+- **Gap: Bath's three logs do not fit the logbook** - its fields are
   procedure-shaped (setting, supervision, indication, outcome, notes), so
   regimen, parameters, co-morbidities, performance status and dosing all go
   into free text. Still open, by decision: see Decisions.
 
-- **Gap: nothing is grouped by the document it came from** – the passport
+- **Gap: nothing is grouped by the document it came from** - the passport
   already summarises itself: the passport page lists every competency held
   with its state, each section has its own summary, and the whole record
   downloads as PDF, Markdown or a zip. What is missing is narrower. Those
@@ -259,12 +259,12 @@ fit. Each gap below now says where it went.
   summaries are grouped by framework. A view laid out like the paper
   form is still open, by decision.
 
-- **Gap: one competency, one scale** – Bath's direct, indirect and
+- **Gap: one competency, one scale** - Bath's direct, indirect and
   independent tiers and the SACT Board's levels are two scales for the same
   act. Closed by Phase 9: each framework is its own file with its own
   tiers, so the same act has one competency in each.
 
-- **Not enforced: level order and who may assess** – level 3 is accepted
+- **Not enforced: level order and who may assess** - level 3 is accepted
   without level 2, and anybody may sign any level. Still so, by decision:
   see Decisions.
 
@@ -277,16 +277,16 @@ everybody conformed to would be the tidy answer, but health and digital do
 not work that way: there are many standards for the one thing, and adding
 another does not reduce the count.
 
-- **The list will not scale** – once Quill carries many specialties, each
+- **The list will not scale** - once Quill carries many specialties, each
   with several standards, a holder looking for their own specialty's
   competencies to select and have signed off faces every specialty's
   competencies, several times over.
 
-- **The list is never broken up today** – the specialty drop-down only
+- **The list is never broken up today** - the specialty drop-down only
   orders what a holder sees first. Every other assessable competency is
   still listed beneath.
 
-- **That needs to change** – the large list has to be broken up, and
+- **That needs to change** - the large list has to be broken up, and
   ordering by specialty is not enough to do it. Phases 6 to 9 break it
   up by framework.
 
@@ -790,35 +790,35 @@ passport, is sold, and until now no base profession carried it.
 Taken by the product owner on 7 October 2026. Where a decision belongs to
 one step, the detail is in that step.
 
-- **Who may sign off whom is not enforced** – the SACT Board says level 2 is
+- **Who may sign off whom is not enforced** - the SACT Board says level 2 is
   assessed by somebody at level 3 or above, and levels 3 and 4 by somebody
   at level 4 or above. The passport keeps recording who signed, in what role
   and with what registration, and refuses nothing. It can be added later if
   it turns out to be needed.
 
-- **A logbook entry gains an optional sign-off** – so a supervisor can sign
+- **A logbook entry gains an optional sign-off** - so a supervisor can sign
   one logged prescription, as the paper logs have it. Optional, because most
   logbook entries are the holder's own claim and stay that way. Phase 5.
 
-- **Bath's logs go into free text for now** – the trainee writes regimen,
+- **Bath's logs go into free text for now** - the trainee writes regimen,
   parameters, co-morbidities, performance status and dosing in the existing
   logbook fields. Structured columns can follow if free text proves too
   loose.
 
-- **No view laid out as the paper form, for now** – the passport page, the
+- **No view laid out as the paper form, for now** - the passport page, the
   section summaries and the PDF, Markdown and zip downloads already show
   what a holder has. What is deferred is only a view that lays one
   document out the way the paper does. Grouping by framework arrives with
   Phase 8.
 
-- **Each framework has its own tiers** – Bath's direct, indirect and
+- **Each framework has its own tiers** - Bath's direct, indirect and
   independent supervision and the SACT Board's levels are both kept, in
   their own words, and neither is mapped onto the other.
 
-- **The second signature at the final step is set aside** – the supervisor
+- **The second signature at the final step is set aside** - the supervisor
   and clinical lead pair on the paper forms is left out of this work.
 
-- **Scope is a field on the record, not more competencies** – the
+- **Scope is a field on the record, not more competencies** - the
   competency stays `prescribe_sact`, and a record says what it covers in a
   `scope` of id and name, kept in the passport file. It is required on
   sign-offs and on logbook entries, and only where the competency declares
@@ -828,7 +828,7 @@ one step, the detail is in that step.
   on) was rejected: multiplied by every level and every framework it is
   the long-list problem again. No new table is needed.
 
-- **Scopes are picked from a list, never typed** – two reasons, and the
+- **Scopes are picked from a list, never typed** - two reasons, and the
   typo is the lesser. A signed record cannot be edited, so a misspelt
   scope signed by a consultant could only be put right by that consultant issuing a
   correction, which leaves a mark in the history implying somebody got
@@ -836,7 +836,7 @@ one step, the detail is in that step.
   "Breast", "breast cancer" and "Breast (HER2+)" would be three histories
   with no typo involved, each looking like a first sign-off.
 
-- **Scopes are declared on the competency** – a `scopes` list beside
+- **Scopes are declared on the competency** - a `scopes` list beside
   `levels`, in the framework's file under `shared/competency-definitions/`.
   The catalogue already carries three passport-only fields that access
   control never reads (`levels`, `assessable`, `expires_after_months`), and
@@ -845,26 +845,26 @@ one step, the detail is in that step.
   the field added, and should check scope ids are unique within a
   competency as it does for levels.
 
-- **Every list has an "Other"** – so a trainee in a rare tumour clinic is
+- **Every list has an "Other"** - so a trainee in a rare tumour clinic is
   not blocked by a missing entry. The detail goes in the comment and the
   real entry is added by pull request when it comes up. All "Other"
   sign-offs share one history, which is accepted for a rare case.
 
-- **Regimens stay free text** – "only these two regimens" is written in the
+- **Regimens stay free text** - "only these two regimens" is written in the
   sign-off's comment. The list of regimens is long, changes often, and is
   detail about a sign-off rather than what identifies it.
 
-- **One sign-off covers one scope** – lung and breast are two sign-offs, as
+- **One sign-off covers one scope** - lung and breast are two sign-offs, as
   on the paper forms. The current state is then per competency and scope,
   so each shows its own level, and whether a sign-off is a first one, a
   progression or a reassessment is judged within its scope. A first breast
   sign-off is not a step back from lung.
 
-- **Scope counts towards the fingerprint** – it is part of what the assessor
+- **Scope counts towards the fingerprint** - it is part of what the assessor
   attested, so changing it must change the hash. Phase 1 does it without a
   fingerprint version, by letting scope contribute only when present.
 
-- **The word is "framework"** – chosen over "portfolio", "standard" and
+- **The word is "framework"** - chosen over "portfolio", "standard" and
   "workbook". A portfolio already means a trainee's whole record, which is
   what the passport is, and Bath's own word, "passport", clashes outright.
   "Standard" oversells a two-page local pilot, doubles as an adjective
@@ -873,11 +873,11 @@ one step, the detail is in that step.
   national publication and a local form equally.
 
 - **Quill hosts each framework as written, and writes no standard of its
-  own** – there are already many standards for the one thing, and another
+  own** - there are already many standards for the one thing, and another
   would not reduce the count. Tiers are never mapped from one framework to
   another.
 
-- **A framework is a file of competencies in the catalogue** – each
+- **A framework is a file of competencies in the catalogue** - each
   framework is a collection of competencies in its own YAML file under
   `shared/competency-definitions/`, beside `clinical.yaml` and
   `oncology.yaml`. Its items are ordinary catalogue competencies, so
@@ -889,7 +889,7 @@ one step, the detail is in that step.
   item becomes a competency the user administration pickers could offer,
   which Phase 6 prevents for a framework written from a paper form.
 
-- **No way round the frameworks** – the picker only ever shows the
+- **No way round the frameworks** - the picker only ever shows the
   competencies in a holder's own frameworks. Somebody wanting one that is
   not there adds a framework that contains it and picks it from there.
   A box that searches every competency was rejected: it is the long list
@@ -897,7 +897,7 @@ one step, the detail is in that step.
   might want must belong to some framework, everyday skills such as
   venepuncture included.
 
-- **Specialty is renamed to framework, and it is not only a rename** – the
+- **Specialty is renamed to framework, and it is not only a rename** - the
   holder chooses frameworks where they chose a specialty, and an
   organisation leads with frameworks where it led with specialties. But a
   specialty put favourite competencies at the top of one long list, and a
@@ -906,6 +906,6 @@ one step, the detail is in that step.
   new and the old ones removed a release later, in Phase 12. What is left
   of specialty is one word on a framework, used to filter a search.
 
-- **`oncology.yaml` goes, replaced by the three frameworks** – one file for
+- **`oncology.yaml` goes, replaced by the three frameworks** - one file for
   each document reviewed, and no Quill-written oncology list beside them.
   Its ids are retired and kept readable. See Phase 9.

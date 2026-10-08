@@ -1,11 +1,11 @@
 #!/bin/bash
-# startup.sh – Compute Engine startup script for FHIR + EHRbase VM
+# startup.sh - Compute Engine startup script for FHIR + EHRbase VM
 # This is a Terraform templatefile; variables are substituted at plan time.
 # shellcheck disable=SC2154  # Terraform templatefile variables are injected at plan time
 set -euo pipefail
 
 # Container-Optimised OS (COS) ships with Docker but not Docker Compose.
-# COS has a read-only root filesystem – /usr/local/ is not writable.
+# COS has a read-only root filesystem - /usr/local/ is not writable.
 # Install Docker Compose plugin to the root user's home directory instead.
 COMPOSE_PLUGIN_DIR="/root/.docker/cli-plugins"
 if ! docker compose version &>/dev/null; then
@@ -15,7 +15,7 @@ if ! docker compose version &>/dev/null; then
   chmod +x "$COMPOSE_PLUGIN_DIR/docker-compose"
 fi
 
-# Use /var/lib/quill for config – /opt/ is read-only on COS
+# Use /var/lib/quill for config - /opt/ is read-only on COS
 QUILL_DIR="/var/lib/quill"
 mkdir -p "$QUILL_DIR"
 

@@ -559,7 +559,7 @@ class AddSiteStaffResponse(BaseModel):
 class CreateOrgUnitLinkIn(BaseModel):
     """Request to record a relationship between two org_units.
 
-    Ownership is not a relationship you record here – that is the parent
+    Ownership is not a relationship you record here - that is the parent
     of a site, and it has its own routes. This is for everything else: a
     school teaching on a trust's wards, two trusts sharing a laboratory.
 

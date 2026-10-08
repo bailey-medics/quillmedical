@@ -4,7 +4,7 @@ Deleting an id from ``shared/competency-definitions/`` revokes nothing:
 ``resolve_user_competencies`` does set operations on plain strings and
 ``has_competency`` compares a string from the route against that set. Neither
 consults the catalogue. So the access carries on unchanged and only stops
-being describable – and the audit trail loses the vocabulary it needs to say
+being describable - and the audit trail loses the vocabulary it needs to say
 what someone was authorised to do.
 
 So a competency is retired, by giving its entry a ``retired_on`` date, and
@@ -138,7 +138,7 @@ class TestTheYamlRoundTrip:
     than usual here: ``CompetencyEntry`` forbids extra keys and
     ``competencies.py`` is imported at start-up, so a mismatch between the
     field and the file would take the backend down the first time anyone
-    retired anything – and every other test here would still be green.
+    retired anything - and every other test here would still be green.
     """
 
     def _load(self, text: str) -> list[CompetencyEntry]:
@@ -268,7 +268,7 @@ class TestTheCleanupQueue:
     def test_a_practising_row_holding_a_retired_competency_is_listed(
         self, db_session, monkeypatch
     ):
-        """Written while active, retired afterwards – the real sequence.
+        """Written while active, retired afterwards - the real sequence.
 
         It cannot be written the other way round: the model refuses a
         retired competency, which is the point of the guard.

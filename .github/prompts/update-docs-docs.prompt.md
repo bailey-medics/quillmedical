@@ -18,10 +18,10 @@ missing.
 
 Everything under `docs/docs/` except:
 
-- `plans/` and `learnings/` – records of what was decided and found at the
+- `plans/` and `learnings/` - records of what was decided and found at the
   time. They are meant to differ from today's code, so "correcting" one
   destroys the history it exists to keep.
-- `code/`, `safety/` and `llm/` – kept up to date by other means, not by this
+- `code/`, `safety/` and `llm/` - kept up to date by other means, not by this
   prompt.
 
 If the area named is one of those, say so and stop rather than reviewing it.
@@ -57,9 +57,9 @@ the code or the reasoning behind it, that nothing gives them today?
 The codebase is well over a thousand source files, so survey it area by area
 rather than line by line, finishing each before starting the next:
 
-- `backend/app/` – each package and each large module
-- `frontend/src/` – pages, domains, `lib/`, `auth/`, and the component groups
-- `shared/` – the YAML that both sides are generated from
+- `backend/app/` - each package and each large module
+- `frontend/src/` - pages, domains, `lib/`, `auth/`, and the component groups
+- `shared/` - the YAML that both sides are generated from
 - `infra/`, `.github/workflows/`, the compose files and the `Justfile`
 
 When an area was named, survey only the code that area documents (`backend`

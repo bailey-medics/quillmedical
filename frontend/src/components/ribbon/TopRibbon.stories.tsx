@@ -42,7 +42,7 @@ export const NoPatient: Story = {
   render: (args) => <TopRibbon {...args} />,
 };
 
-/** Patient selected – wide container (search visible if your CQ allows) */
+/** Patient selected - wide container (search visible if your CQ allows) */
 export const WithPatientWide: Story = {
   args: {
     patient: demoPatientsList[0],
@@ -53,7 +53,7 @@ export const WithPatientWide: Story = {
   render: (args) => <TopRibbon {...args} />,
 };
 
-/** Patient selected – narrow container (search should hide via @container) */
+/** Patient selected - narrow container (search should hide via @container) */
 export const WithPatientNarrow: Story = {
   args: {
     patient: demoPatientsList[0],
@@ -64,7 +64,7 @@ export const WithPatientNarrow: Story = {
   render: (args) => <TopRibbon {...args} />,
 };
 
-/** A right section – the timer and "End exam" of a running assessment.
+/** A right section - the timer and "End exam" of a running assessment.
  * Below 26em the Quill name gives way to it. */
 export const WithRightSection: Story = {
   args: {
@@ -87,7 +87,7 @@ export const WithRightSection: Story = {
   },
 };
 
-/** Loading state – shows skeleton + Quill mark (narrow screen) */
+/** Loading state - shows skeleton + Quill mark (narrow screen) */
 export const LoadingNarrow: Story = {
   args: {
     onBurgerClick: () => {},
@@ -98,7 +98,7 @@ export const LoadingNarrow: Story = {
   },
 };
 
-/** Loading state – shows skeleton with ProfilePic + Quill mark (wide screen) */
+/** Loading state - shows skeleton with ProfilePic + Quill mark (wide screen) */
 export const LoadingWide: Story = {
   args: {
     onBurgerClick: () => {},
@@ -109,7 +109,7 @@ export const LoadingWide: Story = {
   },
 };
 
-/** Non-clinical deployment – search field hidden */
+/** Non-clinical deployment - search field hidden */
 export const NonClinical: Story = {
   args: {
     patient: null,

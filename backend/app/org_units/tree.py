@@ -4,7 +4,7 @@
 Ownership is one parent per org_unit and no cycles, so every org_unit has one
 root and one accountable body above it. Everything in this module is a
 walk of that single parent column, and each walk is one recursive query
-rather than one query per level – scoping runs on every admin request.
+rather than one query per level - scoping runs on every admin request.
 
 **Two levels only, for now.** The schema permits any depth and so does
 every function here, but nothing in the application builds a deeper tree.
@@ -25,7 +25,7 @@ from app.models import OrgUnit
 from app.org_units.types import ROOT_TYPE_IDS
 
 #: How far a walk goes before it gives up. Ten is far past anything the
-#: application builds – trust, hospital, building, ward, room is five –
+#: application builds - trust, hospital, building, ward, room is five -
 #: and low enough that a broken tree fails quickly.
 MAX_TREE_DEPTH = 10
 
@@ -42,7 +42,7 @@ def root_ids_of(db: Session, unit_ids: list[int]) -> dict[int, int]:
 
     Returns:
         A mapping of org_unit id to root id, leaving out any org_unit that does
-        not exist and any whose chain does not end – which is what a cycle
+        not exist and any whose chain does not end - which is what a cycle
         looks like from below.
     """
     if not unit_ids:
@@ -150,7 +150,7 @@ def would_make_a_cycle(db: Session, unit_id: int, parent_id: int) -> bool:
     for nothing, because one column cannot hold two parents; the second
     has to be checked on every re-parent or the tree quietly stops being
     one. Until scoping walked the column nothing noticed, so A under B
-    then B under A was accepted – harmless only because nothing ever
+    then B under A was accepted - harmless only because nothing ever
     followed the chain.
 
     The check is the same upward walk root resolution performs, which is
@@ -212,7 +212,7 @@ def organisation_org_unit_ids() -> Select[tuple[int]]:
     An organisation is an org_unit at the top of a tree, and what makes it
     one is its *type*: the kinds that need no parent are exactly the
     kinds a tree starts with. Not "has no parent", which a detached ward
-    also satisfies – the test fixtures make one on purpose, and treating
+    also satisfies - the test fixtures make one on purpose, and treating
     it as an organisation would give its members the run of somewhere
     nobody is accountable for.
 
@@ -268,8 +268,8 @@ def organisation_org_unit_of_site(db: Session, site_id: int) -> int | None:
     """Return the org_unit of the organisation accountable for *site_id*.
 
     Walks up to the root and checks it is a kind of org_unit a tree starts
-    with. An org_unit whose chain does not reach one – one that has been
-    detached, or whose parent is missing – has no accountable body, and
+    with. An org_unit whose chain does not reach one - one that has been
+    detached, or whose parent is missing - has no accountable body, and
     the answer is None rather than a guess.
 
     Args:

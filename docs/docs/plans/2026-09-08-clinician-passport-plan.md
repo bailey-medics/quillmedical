@@ -3173,7 +3173,7 @@ explicitly deferred here.
 - [x] **Measured, 14 September.** Entry chunk **1,016.57 kB raw,
       280.38 kB gzipped**, down from the 10 September baseline of
       1,106 kB raw and 309 kB gzipped — **28.6 kB gzipped smaller**. Nine
-      passport chunks appeared, 1.02–3.20 kB raw each and roughly 10.4 kB
+      passport chunks appeared, 1.02-3.20 kB raw each and roughly 10.4 kB
       gzipped in total, plus a 0.34 kB stylesheet. `dist/index.html`
       references none of them, which is the check that matters: a `lazy`
       that defers nothing looks identical in the diff and would show the
@@ -3547,7 +3547,7 @@ not deferred items: deferring is for what nobody should build yet.
     is not one, a file between 8 MB and 10 MB, and a file over 10 MB.
     Expect the route's JSON detail for the first two and the
     middleware's plain-text refusal only for the third.
-  - **What would falsify the fix.** A file in the 8–10 MB band coming
+  - **What would falsify the fix.** A file in the 8-10 MB band coming
     back as the middleware's plain-text 413 rather than the route's
     JSON one. That would mean the envelope is larger than the 2 MB gap
     allows and the ceiling needs to drop further.

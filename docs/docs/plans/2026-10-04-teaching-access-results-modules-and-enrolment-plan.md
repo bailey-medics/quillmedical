@@ -94,12 +94,12 @@ here; it is recorded at the foot as work to come.
       `_DEP_VIEW_CASES` with two dependencies and put one on every
       learner route. None may be left with neither:
 
-      - **Results** (`view_teaching_results`) – `GET /assessments/history`,
+      - **Results** (`view_teaching_results`) - `GET /assessments/history`,
         `GET /assessments/{id}`, `GET /assessments/{id}/question-results`,
         `GET /assessments/{id}/certificate`, and `GET /question-banks`,
         which the `/teaching` page calls.
 
-      - **Modules** (`take_teaching_modules`) – `GET /question-banks/{id}`,
+      - **Modules** (`take_teaching_modules`) - `GET /question-banks/{id}`,
         `GET /modules`, `GET /modules/{id}/learning`,
         `POST /modules/{id}/video-access`, `POST /assessments`, and the
         four routes that sit an attempt: `current`, `item/{order}`,
@@ -602,18 +602,18 @@ so the form is the wizard and an admin learns nothing new.
 
 Not built by this plan. Each needs its own plan when its time comes.
 
-- [ ] **A public page for a module** – title, description, cover image
+- [ ] **A public page for a module** - title, description, cover image
       and price, shown to somebody who cannot enter it. Today a person
       who may not enter a module is told nothing about it, on purpose;
       a selling organisation needs the opposite, so the two have to be
       reconciled per organisation, not app-wide.
 
-- [ ] **Online payment** – a successful checkout calls `admit`, with
+- [ ] **Online payment** - a successful checkout calls `admit`, with
       `source` naming the sale. Prices, VAT, receipts and refunds come
       with it. Until then an admin admits by hand and the sale is
       invoiced.
 
-- [ ] **Withdrawing many people at once** – only if somebody asks, and
+- [ ] **Withdrawing many people at once** - only if somebody asks, and
       then as a script for an operator, beside
       `enrol_teaching_members.py`, not a button on a page. It should
       end enrolments, which keep a record and show on the user form,
@@ -621,27 +621,27 @@ Not built by this plan. Each needs its own plan when its time comes.
       Before it is built, the place needs settling: today somebody may
       hold one at their site and at the organisation above it.
 
-- [ ] **Bundles and subscriptions** – undecided. A bundle can be
+- [ ] **Bundles and subscriptions** - undecided. A bundle can be
       several enrolment rows; a subscription may want a different
       shape.
 
 ## Decisions
 
-- **Teaching uses the three layers clinical work uses** – competency,
+- **Teaching uses the three layers clinical work uses** - competency,
   practising row, and a row for the thing itself. It is more to set up
   than a single switch, and it was chosen anyway: it is the model the
   rest of the app already explains, it answers "why could this person
   do that?" with one row per layer, and teaching is a good place to
   prove it on something lower-stakes than prescribing.
 
-- **Two competencies, kept separate** – holding the modules competency
+- **Two competencies, kept separate** - holding the modules competency
   without the results one reaches nothing, because `/teaching` is the
   way in. That odd state is accepted over letting "modules" quietly
   include "results": one competency meaning two things is what caused
   the confusion this plan starts from. The professions carry both.
 
 - **A centre leaves by its people losing their practising rows, not by
-  a switch and not by removing the centre** –
+  a switch and not by removing the centre** -
   the first version of this plan had an "open to all members" switch
   per organisation per module, then a passport-style cover was
   considered. Both were dropped for the practising row, which already
@@ -652,44 +652,44 @@ Not built by this plan. Each needs its own plan when its time comes.
   given on arrival and lapses when somebody leaves, and what an admin
   switches on and off is the enrolment.
 
-- **Results are given at the door and never taken back** – a result
+- **Results are given at the door and never taken back** - a result
   records something done. Leaving, a centre withdrawing and an
   enrolment ending all leave `view_teaching_results` in place.
 
-- **Enrolment for every module, with a script for the bulk case** – a
+- **Enrolment for every module, with a script for the bulk case** - a
   module marked "by enrolment" beside modules open to everyone at a
   centre was the alternative, and would spare a customer the script
   when a module is added. One rule everywhere was preferred to two.
 
-- **The enrolment outlives the place** – withdrawing people's access at
+- **The enrolment outlives the place** - withdrawing people's access at
   a centre removes practising rows and leaves enrolments. If the centre returns, giving
   the place back restores exactly what each person had.
 
-- **A results-only person sees no module names** – the module area
+- **A results-only person sees no module names** - the module area
   shows the same text as an organisation with nothing open. Showing the
   modules they once sat, with a renewal date, was considered and set
   aside for now.
 
-- **A competency per module was rejected** – competencies are a
+- **A competency per module was rejected** - competencies are a
   hand-written catalogue and modules arrive by sync, so every new
   module would need a catalogue edit and a release.
 
-- **An organisation per product was rejected** – it works today with
+- **An organisation per product was rejected** - it works today with
   no code, but ten modules is ten organisations and a buyer's results
   are split across them.
 
-- **Enrolment is a step on the user form, not a page of its own** –
+- **Enrolment is a step on the user form, not a page of its own** -
   an "Add to teaching" form on a member, and a list of who is enrolled
   on each module, were planned first. The user form already walks an
   admin through what somebody holds and where, so the third layer was
   put after those two. The per-module list is left out for now:
   nothing depends on it once enrolment is done per person.
 
-- **Ticking a module gives the other two layers** – it could have
+- **Ticking a module gives the other two layers** - it could have
   refused, and sent the admin back to the Competencies and Practice
   steps. Doing all three was chosen because an account with two layers
   of three looks set up and is not, and the Review step says what will
   be given before it is.
 
-- **No cohorts** – enrolling a group with shared dates is a layer on
+- **No cohorts** - enrolling a group with shared dates is a layer on
   top of rows, left until a course is run that way.

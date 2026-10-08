@@ -143,7 +143,7 @@ over those ranges, and fall back to June to June only where none is declared.
       `frontend/src/pages/passport/PassportCpdPage.tsx`. The field labelled
       "Year" is renamed "Date range", and lists the declared ranges newest
       first, each shown by the months it starts and ends, for example
-      "October 2025 – September 2026", using the spaced en dash. The months
+      "October 2025 - September 2026", using a spaced hyphen. The months
       are those of the stored `starts_on` and `ends_on` dates, so an
       appraisal year ending the day before it began reads as ending the
       month before. Where two ranges would read the same, such as two
@@ -151,7 +151,7 @@ over those ranges, and fall back to June to June only where none is declared.
       two options look alike (`labelPeriods` in
       `frontend/src/lib/passport/appraisalPeriods.ts`). With no ranges
       declared, the options are the June to June years, labelled the same
-      way, for example "June 2025 – May 2026", reaching back to the oldest
+      way, for example "June 2025 - May 2026", reaching back to the oldest
       activity and never fewer than five; `CpdTable` then says the year is
       a convention. The page opens on the range holding today, or the
       newest if none does. The chosen range is passed to `CpdTable` as its

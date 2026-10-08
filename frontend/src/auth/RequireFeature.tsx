@@ -5,7 +5,7 @@
  * organisation feature. Returns 404 when the feature is not enabled
  * (hides existence from unauthorised users).
  *
- * Works in conjunction with RequireAuth – assumes user is already authenticated.
+ * Works in conjunction with RequireAuth - assumes user is already authenticated.
  */
 
 import { Center } from "@mantine/core";

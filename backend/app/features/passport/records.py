@@ -20,7 +20,7 @@ make that obvious, and the storage layer keeps them apart so it can.
 organisation admin, or anyone else. Written reflection can be disclosed
 in legal proceedings and UK doctors are wary of it for good reason, so
 the narrower default is the safer one. This module does not enforce
-that – authorisation is the router's job – but the separation exists so
+that - authorisation is the router's job - but the separation exists so
 the router has something to gate.
 """
 
@@ -76,7 +76,7 @@ class _PendingView(PassportStore):
     records and their summary land in one commit rather than two.
 
     Deliberately not a general-purpose transaction. It answers the two
-    questions the index asks – read this file, list this directory – and
+    questions the index asks - read this file, list this directory - and
     refuses everything else, so it cannot quietly become a second write
     path with different rules.
     """
@@ -111,7 +111,7 @@ class _PendingView(PassportStore):
 
         Entries deep under *path* contribute only their next segment, so
         listing ``sign-offs`` yields folder names rather than the files
-        inside them – matching what the real store returns.
+        inside them - matching what the real store returns.
         """
         existing = {
             entry
@@ -186,7 +186,7 @@ def _write(
     Args:
         store: Where the passport lives.
         passport_id: Whose passport.
-        actor: Who is making the change – always the holder here, since
+        actor: Who is making the change - always the holder here, since
             nobody else may write self-declared evidence.
         action: What kind of change, for the commit message.
         summary: A short description, built from structured values.
@@ -202,7 +202,7 @@ def _write(
     head = store.head(passport_id)
 
     # The index summarises the records, so it must be rebuilt from what
-    # this write is about to leave on disk – not from what is there now.
+    # this write is about to leave on disk - not from what is there now.
     # Committing the records first and the index second would leave a
     # commit in history whose summary disagrees with its own records,
     # which is the state the "directories win" rule exists to prevent.
@@ -1050,7 +1050,7 @@ def _require(
     """Refuse unless the record exists.
 
     A guard clause at the top of every amend and remove, so nothing
-    writes a commit that changes nothing – an amend to a record that was
+    writes a commit that changes nothing - an amend to a record that was
     never there would otherwise land as an empty commit claiming to have
     corrected something.
 

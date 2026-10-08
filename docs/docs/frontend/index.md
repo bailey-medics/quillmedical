@@ -66,7 +66,7 @@ The interface is designed around user workflows, not technical systems. Patients
 
 - Works on desktop, tablet, and mobile devices
 - Follows accessibility standards
-- Progressive Web App (PWA) – can be installed like a native app
+- Progressive Web App (PWA) - can be installed like a native app
 
 ### Progressive Enhancement
 

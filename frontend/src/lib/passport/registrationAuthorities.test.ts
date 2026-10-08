@@ -13,7 +13,7 @@ describe("registrationAuthorities", () => {
 
   it("names each body in full", () => {
     expect(registrationAuthorities()[0].label).toBe(
-      "GMC – General Medical Council",
+      "GMC - General Medical Council",
     );
   });
 });

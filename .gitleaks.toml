@@ -1,4 +1,4 @@
-# Gitleaks configuration – allowlisting known false positives.
+# Gitleaks configuration - allowlisting known false positives.
 # See https://github.com/gitleaks/gitleaks#configuration
 
 title = "Quill Medical gitleaks config"

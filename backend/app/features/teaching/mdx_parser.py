@@ -69,7 +69,7 @@ class ParsedSlide:
     callout_body: str | None = None
     youtube_id: str | None = None
     #: The MDX reference key, not a filename. What it resolves to is a
-    #: request-time concern – see the plan's media-link model – so the
+    #: request-time concern - see the plan's media-link model - so the
     #: parser carries the key and nothing else.
     video_ref: str | None = None
     duration_seconds: int | None = None
@@ -229,7 +229,7 @@ def _check_component(name: str, tag: str) -> str | None:
         if not re.fullmatch(YOUTUBE_PATTERN, tag):
             return (
                 "<YouTube> has props the renderer cannot read, so it would "
-                "be dropped – only id and duration are supported"
+                "be dropped - only id and duration are supported"
             )
 
     if name == "Video":
@@ -239,7 +239,7 @@ def _check_component(name: str, tag: str) -> str | None:
         if not re.fullmatch(VIDEO_PATTERN, tag):
             return (
                 "<Video> has props the renderer cannot read, so it would "
-                "be dropped – only ref and duration are supported"
+                "be dropped - only ref and duration are supported"
             )
         # The ref is not just a label: it is the media key an admin
         # uploads against, and it travels as a path segment in the link
@@ -249,7 +249,7 @@ def _check_component(name: str, tag: str) -> str | None:
         if not re.fullmatch(SAFE_MEDIA_KEY, ref_match.group(1)):
             return (
                 f'<Video ref="{ref_match.group(1)}"> is not a usable media '
-                "key – use letters, numbers, hyphens and underscores only"
+                "key - use letters, numbers, hyphens and underscores only"
             )
 
     if name == "Figure":
@@ -259,7 +259,7 @@ def _check_component(name: str, tag: str) -> str | None:
             return "<Figure> needs an alt prop (accessibility)"
         if not re.fullmatch(FIGURE_PATTERN, tag):
             return (
-                "<Figure> is not self-closing, so it would be dropped – "
+                "<Figure> is not self-closing, so it would be dropped - "
                 "write it as <Figure ... />"
             )
 
@@ -272,7 +272,7 @@ def validate_mdx(content: str) -> list[str]:
     Returns human-readable error strings; empty when the content is sound.
 
     This deliberately checks what will render, rather than MDX syntax.  The
-    frontend never compiles MDX – it receives slides parsed here – so
+    frontend never compiles MDX - it receives slides parsed here - so
     "valid MDX" is not the useful question.  What matters is whether these
     extractors will find the components, because anything they miss
     disappears from the slide silently.
@@ -285,7 +285,7 @@ def validate_mdx(content: str) -> list[str]:
 
     if not _HEADING_RE.search(stripped):
         errors.append(
-            "no slides found – content needs at least one '#' or '##' heading"
+            "no slides found - content needs at least one '#' or '##' heading"
         )
 
     for line_number, line in enumerate(stripped.split("\n"), start=1):
@@ -297,7 +297,7 @@ def validate_mdx(content: str) -> list[str]:
     # Both media tags on one slide is ambiguous rather than malformed:
     # they share a layout and a duration field, so the renderer would
     # show one and silently drop the other. Checked per slide, not per
-    # document – a module may legitimately hold a YouTube slide and a
+    # document - a module may legitimately hold a YouTube slide and a
     # hosted-video slide side by side, and this module has exactly that.
     for slide_number, section in enumerate(
         _HEADING_RE.split(stripped), start=1
@@ -308,7 +308,7 @@ def validate_mdx(content: str) -> list[str]:
             errors.append(
                 f"slide {slide_number}: carries both <YouTube> and <Video>. "
                 "They share one layout, so one would be dropped without a "
-                "word – split them across two slides"
+                "word - split them across two slides"
             )
 
     # A Callout spans lines, so its close tag needs a whole-document check.

@@ -2,7 +2,7 @@
  * EditSitePage tests
  *
  * This page had none. It is the one screen that can rename an org_unit, move
- * it out of use, and name or stand down its clinical lead – so the gap
+ * it out of use, and name or stand down its clinical lead - so the gap
  * mattered more than most.
  *
  * The clinical lead is the thing to watch. What somebody *is* at an org_unit

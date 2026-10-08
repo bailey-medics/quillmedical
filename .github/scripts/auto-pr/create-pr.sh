@@ -4,7 +4,7 @@
 # Usage: create-pr.sh <branch-name>
 #
 # Idempotent. When a pull request already exists it is left alone, except that
-# an empty description is filled in with the placeholder – a tool that opened
+# an empty description is filled in with the placeholder - a tool that opened
 # the pull request ahead of this workflow leaves one behind. A branch whose
 # pull request has merged or closed gets no new one, and a new pull request
 # waits AUTO_PR_WAIT_SECONDS (default 60) first, so a stacked branch is left
@@ -49,7 +49,7 @@ title_for_branch() {
   esac
 
   # `${remainder^}` would be shorter, but it is bash 4 syntax and macOS ships
-  # bash 3.2 – see docs/docs/plans/2026-09-02-bats-ubuntu-parity-plan.md.
+  # bash 3.2 - see docs/docs/plans/2026-09-02-bats-ubuntu-parity-plan.md.
   printf '%s: %s%s\n' \
     "$type" \
     "$(printf '%s' "${remainder:0:1}" | tr '[:lower:]' '[:upper:]')" \
@@ -60,7 +60,7 @@ title_for_branch() {
 #
 # A tool's own footer does not count as a description. gh-stack writes its
 # stack links as a single <sub>…</sub> line, so that element is removed whole
-# – dropping only its tags would leave "GitHub Stacks CLI" behind and make an
+# - dropping only its tags would leave "GitHub Stacks CLI" behind and make an
 # otherwise empty body look written. HTML comments and any remaining tags go
 # too, then all whitespace: what survives is real text or nothing.
 visible_prose() {
@@ -163,7 +163,7 @@ main() {
     --base main \
     --head "$branch" \
     --draft 2>&1; then
-    # Check again – if a pull request now exists, a parallel run created it
+    # Check again - if a pull request now exists, a parallel run created it
     recheck=$(open_count "$branch")
     if [ "$recheck" != "0" ]; then
       log "Pull request was created by a concurrent run, skipping"

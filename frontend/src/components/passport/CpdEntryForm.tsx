@@ -13,7 +13,7 @@
  * the table, which states the appraisal range it covers. Showing a
  * running total on an entry form would pre-empt that.
  *
- * One point is one hour, and points is the unit end to end – the
+ * One point is one hour, and points is the unit end to end - the
  * frontend, the API and the record model all name the field `points`.
  *
  * **`activity_on` decides the year the entry is filed under**, which is
@@ -85,7 +85,7 @@ export default function CpdEntryForm({
   const [notes, setNotes] = useState(initial?.notes ?? "");
 
   // A date, a title and a type: the three things that make an entry
-  // readable a year later at appraisal. Points are genuinely optional –
+  // readable a year later at appraisal. Points are genuinely optional -
   // not every activity is claimed.
   const canSubmit =
     activityOn !== null &&
@@ -143,7 +143,7 @@ export default function CpdEntryForm({
 
         <TextField
           label="Points"
-          description="One point is one hour. Optional – not every activity is claimed."
+          description="One point is one hour. Optional - not every activity is claimed."
           type="number"
           min={0}
           step={0.5}

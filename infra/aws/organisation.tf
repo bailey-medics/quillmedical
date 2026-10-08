@@ -1,4 +1,4 @@
-# organisation.tf – the organisation, its accounts, and the rule that
+# organisation.tf - the organisation, its accounts, and the rule that
 # keeps every one of them in London
 #
 # Adopted from what was made by hand, so that a new account, or a change

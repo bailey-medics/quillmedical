@@ -18,7 +18,7 @@ statement of it, and this module is only the machinery that applies it.
 **What a match proves, and what it does not.** That this record has not
 changed since it was written. It does not prove a professional
 registration, and it proves nothing to anyone who distrusts Quill
-itself – the server computes the hash and the server stores it, so
+itself - the server computes the hash and the server stores it, so
 anyone who can write to both can make them agree. Keys held by somebody
 other than Quill would be needed for more, which is a deliberate future
 item rather than an oversight here.
@@ -40,7 +40,7 @@ from .schemas import SignOff
 #: against which evidence. Change any of them and the record asserts
 #: something different, so the fingerprint must move.
 #:
-#: Order is irrelevant – the canonical form sorts – but the list is kept
+#: Order is irrelevant - the canonical form sorts - but the list is kept
 #: in the order the plan states it, so the two can be read side by side.
 CONTRIBUTING: tuple[str, ...] = (
     "id",
@@ -72,8 +72,8 @@ CONTRIBUTING: tuple[str, ...] = (
 #: and breast are different claims, and must fingerprint differently.
 CONTRIBUTING_WHEN_PRESENT: tuple[str, ...] = ("scope.id",)
 
-#: The fields deliberately left out, and why. Not used by the code –
-#: :data:`CONTRIBUTING` is what the hashing reads – but kept beside it
+#: The fields deliberately left out, and why. Not used by the code -
+#: :data:`CONTRIBUTING` is what the hashing reads - but kept beside it
 #: because a reader's first question is always "what about X", and an
 #: explicit answer is cheaper than inferring one from the absence.
 NON_CONTRIBUTING: dict[str, str] = {
@@ -91,7 +91,7 @@ NON_CONTRIBUTING: dict[str, str] = {
         "of them would verify."
     ),
     "signed_off_by.name": (
-        "People are renamed – marriage, correction of a typo – and none "
+        "People are renamed - marriage, correction of a typo - and none "
         "of that changes what was decided."
     ),
     "signed_off_by.role": (
@@ -135,7 +135,7 @@ def _canonical(value: Any) -> Any:
         # To UTC before formatting: the same instant expressed in two
         # zones is one instant, and must fingerprint identically.
         # Schemas guarantee an aware datetime, so there is no naive case
-        # to guess at – and guessing would be how a record silently
+        # to guess at - and guessing would be how a record silently
         # fingerprints an hour out.
         return value.astimezone(UTC).isoformat()
 
@@ -160,7 +160,7 @@ def _resolve(record: SignOff, path: str) -> Any:
         path: A dotted field path from :data:`CONTRIBUTING`.
 
     Returns:
-        The value, or ``None`` where any step of the path is absent – an
+        The value, or ``None`` where any step of the path is absent - an
         unsigned record has no assessor, and that is not an error.
     """
     current: Any = record
@@ -193,8 +193,8 @@ def canonical_payload(record: SignOff) -> dict[str, Any]:
         value = _resolve(record, path)
 
         if path == "attachments":
-            # Only the hashes. A filename is a convenience – often the
-            # only clue what a scan is – but renaming a file must not
+            # Only the hashes. A filename is a convenience - often the
+            # only clue what a scan is - but renaming a file must not
             # invalidate the record that references its bytes. Sorted,
             # because the order two attachments were uploaded in says
             # nothing about the decision.
@@ -232,8 +232,8 @@ def canonical_bytes(record: SignOff) -> bytes:
     """The canonical serialisation, exactly as it is hashed.
 
     JSON rather than YAML, deliberately. YAML has several ways to write
-    the same value – quoted or bare, flow or block, with or without a
-    document marker – and a canonical form has to have one. JSON with
+    the same value - quoted or bare, flow or block, with or without a
+    document marker - and a canonical form has to have one. JSON with
     sorted keys and no inserted whitespace has exactly one rendering per
     value, which is the property being bought.
 
@@ -276,7 +276,7 @@ def matches(record: SignOff) -> bool:
 
     Returns:
         True if they agree. False if they differ, or if the record
-        carries no fingerprint at all – an unsigned record has nothing
+        carries no fingerprint at all - an unsigned record has nothing
         to check, and answering "yes, verified" would assert more than
         is known.
     """
@@ -309,7 +309,7 @@ def verify(record: SignOff) -> None:
         raise HashMismatchError(
             f"Sign-off {record.id} does not match its content_hash. "
             f"Stored {record.content_hash}, computed {computed}. This "
-            "means the record has changed since it was written – by an "
+            "means the record has changed since it was written - by an "
             "edit, or by a bug in whatever wrote it."
         )
 
@@ -322,7 +322,7 @@ software to install, no keys, no internet connection.
 
 ## What you can check, and what it proves
 
-Each sign-off carries a `content_hash` – a fingerprint of the facts it
+Each sign-off carries a `content_hash` - a fingerprint of the facts it
 records: which competency, at what level, observed and signed when, by
 whom, and against which evidence. Recomputing it tells you the record
 has not changed since it was written.
@@ -364,7 +364,7 @@ the committer is the software that wrote the file.
 
 Recomputing a `content_hash` by hand needs the exact set of fields it
 covers, which is written down in the passport documentation rather than
-here – it is deliberately not the whole file, so that correcting a typo
+here - it is deliberately not the whole file, so that correcting a typo
 in a comment does not look like tampering.
 
 If you need this checked, the simplest route is to ask the holder to

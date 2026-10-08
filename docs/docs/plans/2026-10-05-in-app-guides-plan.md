@@ -1250,51 +1250,51 @@ only because the guides are where it was noticed.
 
 ## Decisions
 
-- **The server never picks a site** – a lead at several sites is put to
+- **The server never picks a site** - a lead at several sites is put to
   the delegate, and a registration that names none is refused. Taking
   the first was quiet and sometimes wrong, and a delegate at the wrong
   site is found out only when their clinical lead cannot see them.
 
-- **No QR code on a passport** – Mark decided against it on 8 October
+- **No QR code on a passport** - Mark decided against it on 8 October
   2026. The fingerprint and `VERIFY.md` in the download stay: they are
   how a record is checked without Quill, which a QR code opening Quill
   never was.
 
-- **No welcome video** – Phase 6 planned one short film for new admins.
+- **No welcome video** - Phase 6 planned one short film for new admins.
   Mark dropped it on 8 October 2026.
 
-- **No guide links on signed-in pages** – the Guides entry in the
+- **No guide links on signed-in pages** - the Guides entry in the
   navigation is where a signed-in reader looks for help. Phase 5's links
   were withdrawn in Phase 16. The signed-out "How to join a course"
   links stay, because that reader has no navigation.
 
-- **Guides, not a FAQ** – every example that prompted this is a task with
+- **Guides, not a FAQ** - every example that prompted this is a task with
   steps. A FAQ suits one-line answers and can be added later as one more
   page; it is left out for now.
 
-- **In the application, not the documentation site** – the application
+- **In the application, not the documentation site** - the application
   knows who is reading, so it can filter and can link a page to its own
   guide. The MkDocs site is public and written for engineers.
 
-- **Guides live in this repository, never a teaching repository** – a
+- **Guides live in this repository, never a teaching repository** - a
   teaching repository's history is the version record for its
   assessments, and guide edits must not appear in it. Mark writes every
   guide, so nobody outside needs to edit one.
 
-- **No guide belongs to one organisation yet** – the guides are written
+- **No guide belongs to one organisation yet** - the guides are written
   as generic teaching guides although EoEETA is the only reader. A way to
   mark a guide for one organisation is deferred until a second
   organisation needs different wording. This was a recommendation not yet
   confirmed.
 
-- **Images in a bucket, not in git** – a set retaken on every merge would
+- **Images in a bucket, not in git** - a set retaken on every merge would
   grow the repository without limit. Also a recommendation not yet
   confirmed, as is the `/guides` address.
 
 - **"Retaken after every merge", not taken as the reader opens the
-  page** – a screenshot at reading time would need a browser per reader.
+  page** - a screenshot at reading time would need a browser per reader.
   After each merge is never more than one merge behind.
 
-- **One viewport and one theme** – desktop and light only. A phone reader
+- **One viewport and one theme** - desktop and light only. A phone reader
   sees desktop screenshots. Doubling or quadrupling the set is deferred
   until somebody is confused by it.

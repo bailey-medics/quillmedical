@@ -15,7 +15,7 @@
  * `observed_on` is when the work was watched, `signed_at` is when the
  * assessor signed, and the commit timestamp is not shown here at all.
  * Consultants often sign days or weeks after observing, so the gap is
- * ordinary – the card shows both and draws no conclusion from the
+ * ordinary - the card shows both and draws no conclusion from the
  * distance between them.
  *
  * @example
@@ -138,7 +138,7 @@ export default function SignOffCard({ signOff }: SignOffCardProps) {
           <Stack gap="xs">
             <BodyTextBold>Signed off by</BodyTextBold>
             <BodyText>
-              {signed_off_by.name} – {signed_off_by.role}
+              {signed_off_by.name} - {signed_off_by.role}
             </BodyText>
             {signed_off_by.care_location && (
               <BodyText c="dimmed">{signed_off_by.care_location}</BodyText>

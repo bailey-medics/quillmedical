@@ -1,6 +1,6 @@
 // frontend/scripts/computeCompatGeneration.test.ts
 //
-// Formula correctness for computeRequiredClientGeneration – mirrors
+// Formula correctness for computeRequiredClientGeneration - mirrors
 // backend/tests/test_api_compatibility.py's TestComputeRequiredClientGeneration.
 
 import { describe, expect, it } from "vitest";

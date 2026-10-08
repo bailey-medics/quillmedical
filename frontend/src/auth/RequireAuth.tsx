@@ -45,7 +45,7 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
 
   if (state.status === "unauthenticated") {
     // Only preserve the intended destination when the user was kicked out
-    // by session expiry / token failure – NOT after an explicit logout.
+    // by session expiry / token failure - NOT after an explicit logout.
     // Passing the previous path after logout leaks PHI: the next person
     // to log in on this tab would be redirected to whatever page the
     // previous user was viewing.

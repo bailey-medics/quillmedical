@@ -2,7 +2,7 @@
 
 Covers schema-opacity detection (including recursive `$ref` resolution),
 marker scanning against synthetic route files, and the combined
-marker-vs-schema check – including that the permanent marker is verified
+marker-vs-schema check - including that the permanent marker is verified
 against the function's actual return type, not just trusted.
 """
 
@@ -21,7 +21,7 @@ from scripts.check_api_schema_coverage import (
 )
 
 # The retrofit-tracking marker this checker used to recognise (see
-# docs/docs/plans/2026-08-25-api-schema-coverage-plan.md, Phase 8) –
+# docs/docs/plans/2026-08-25-api-schema-coverage-plan.md, Phase 8) -
 # no longer importable from the checker itself, since recognition of
 # the string was deleted entirely once the retrofit finished. Kept here,
 # as a literal, only to prove the escape hatch is actually closed rather
@@ -44,7 +44,7 @@ def test_bare_object_with_no_properties_is_opaque() -> None:
 
 def test_dict_str_x_with_additional_properties_is_opaque() -> None:
     # dict[str, X] renders as additionalProperties with no `properties` key
-    # – still arbitrary keys, still opaque per-field even though typed.
+    # - still arbitrary keys, still opaque per-field even though typed.
     schema = {
         "type": "object",
         "additionalProperties": {"type": "string"},
@@ -97,7 +97,7 @@ def test_ref_to_opaque_model_is_opaque() -> None:
 
 
 def test_ref_inside_array_items_is_resolved() -> None:
-    # $ref reappears at a nested depth (items) – must be resolved there
+    # $ref reappears at a nested depth (items) - must be resolved there
     # too, not just once up front.
     schema = {"type": "array", "items": {"$ref": "#/components/schemas/Foo"}}
     schemas = {"Foo": {"type": "object"}}
@@ -119,7 +119,7 @@ def test_optional_wrapped_typed_model_is_not_opaque() -> None:
 
 
 def test_optional_wrapped_opaque_dict_is_opaque() -> None:
-    # dict[str, Any] | None – the opaque branch still makes the field
+    # dict[str, Any] | None - the opaque branch still makes the field
     # impossible to diff.
     schema = {
         "anyOf": [
@@ -179,7 +179,7 @@ def test_index_file_finds_route_with_no_marker(tmp_path: Path) -> None:
 def test_index_file_no_longer_recognises_former_grandfathered_marker(
     tmp_path: Path,
 ) -> None:
-    """The grandfathered marker's recognition was deleted in Phase 8 – a
+    """The grandfathered marker's recognition was deleted in Phase 8 - a
     route bearing that exact comment today is indistinguishable from an
     unmarked route, not silently grandfathered back in."""
     path = _write_route_file(
@@ -198,7 +198,7 @@ def test_index_file_finds_permanent_marker(tmp_path: Path) -> None:
 
 
 def test_index_file_rejects_marker_with_trailing_text(tmp_path: Path) -> None:
-    """The marker line must match exactly – no appended reason or other
+    """The marker line must match exactly - no appended reason or other
     trailing text. A marker is a fixed, static line, not a per-route
     customisable comment."""
     path = _write_route_file(
@@ -306,7 +306,7 @@ def test_permanent_marker_passes_for_each_recognised_response_class() -> None:
     # A bug that only recognises FileResponse (the one class actually
     # used in this codebase today) and silently mishandles the other
     # four would pass a test suite that only ever exercises FileResponse
-    # – so every recognised class gets its own case here.
+    # - so every recognised class gets its own case here.
     schema = {"type": "object"}
     for return_type in sorted(PERMANENT_ALLOWED_RETURN_TYPES):
         route = _route(marker=PERMANENT_MARKER, return_type=return_type)

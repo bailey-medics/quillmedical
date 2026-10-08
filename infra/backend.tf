@@ -1,4 +1,4 @@
-# backend.tf – Remote state in GCS bucket
+# backend.tf - Remote state in GCS bucket
 #
 # The bucket lives in quill-medical-app, the project that holds everything
 # shared. It moved there from quill-medical-production on 2026-09-24 so that

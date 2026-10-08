@@ -194,19 +194,19 @@ is acceptable with nobody relying on it.
       so nothing new is uploaded between the two. Each name is
       `<name>-{environment}`, so for the app environment:
 
-      - **`quill-passports-app`** – passport repositories and evidence,
+      - **`quill-passports-app`** - passport repositories and evidence,
         from `infra/modules/passport-storage/`. Versioned.
 
-      - **`quill-passports-deleted-app`** – where the admin job's
+      - **`quill-passports-deleted-app`** - where the admin job's
         `delete-passport` action copies a holder's files. It clears
         itself at 30 days, but empty it now so nothing from before the
         reset reappears in an audit.
 
-      - **`quill-teaching-videos-processed-app`** – transcoded
+      - **`quill-teaching-videos-processed-app`** - transcoded
         renditions and captions, from
         `infra/modules/teaching-video-pipeline/`. Versioned.
 
-      - **`quill-teaching-videos-source-app`** – raw uploads, normally
+      - **`quill-teaching-videos-source-app`** - raw uploads, normally
         removed by the transcode job or within two days by the
         lifecycle rule. Usually empty already; check anyway.
 
@@ -254,12 +254,12 @@ is acceptable with nobody relying on it.
 
 ## Decisions
 
-- **Squash now, not later** – this is the last point a squash can drop
+- **Squash now, not later** - this is the last point a squash can drop
   the database. After go-live it can only re-stamp, and every backfill
   test written until then is carried for good. CI speed is not the
   reason: 69 migrations on an empty Postgres take seconds.
 
-- **Reset the database, not the GCP project** – starting the project
+- **Reset the database, not the GCP project** - starting the project
   afresh was considered and rejected. It would rebuild Workload
   Identity, IAP, DNS, certificates and secrets to clear one database,
   and dropping `quill_core` does the same job.

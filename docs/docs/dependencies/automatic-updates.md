@@ -9,14 +9,14 @@ Two complementary tools work together:
 
 | Tool           | Role                                               |
 | -------------- | -------------------------------------------------- |
-| **Dependabot** | Vulnerability _alerts_ only – no automated PRs     |
+| **Dependabot** | Vulnerability _alerts_ only - no automated PRs     |
 | **Renovate**   | Automated version-bump PRs on a Wednesday schedule |
 
-Renovate is preferred for PRs because it supports Yarn 4, Poetry, pre-commit hooks, and Terraform – ecosystems that Dependabot does not handle uniformly. Dependabot is retained for its native GitHub vulnerability alert integration, which surfaces CVEs in the GitHub Security tab.
+Renovate is preferred for PRs because it supports Yarn 4, Poetry, pre-commit hooks, and Terraform - ecosystems that Dependabot does not handle uniformly. Dependabot is retained for its native GitHub vulnerability alert integration, which surfaces CVEs in the GitHub Security tab.
 
 ## Version pinning
 
-Dependencies are pinned to exact versions wherever practical – including GitHub Actions (for example `actions/checkout@v7.0.1`, `docker/build-push-action@v7.3.0`), Docker base images, and lockfile-managed packages. Exact pins keep builds reproducible and make every version change an explicit, reviewable Renovate PR rather than a silent floating-tag update.
+Dependencies are pinned to exact versions wherever practical - including GitHub Actions (for example `actions/checkout@v7.0.1`, `docker/build-push-action@v7.3.0`), Docker base images, and lockfile-managed packages. Exact pins keep builds reproducible and make every version change an explicit, reviewable Renovate PR rather than a silent floating-tag update.
 
 ## Dependabot alerts
 
@@ -34,7 +34,7 @@ Dependabot monitors the following ecosystems for known vulnerabilities:
 
 `main` is the only long-lived branch. Vulnerability alerts and routine updates both target `main`.
 
-`open-pull-requests-limit: 0` is set for all ecosystems – Dependabot raises alerts only; Renovate creates the fix PRs.
+`open-pull-requests-limit: 0` is set for all ecosystems - Dependabot raises alerts only; Renovate creates the fix PRs.
 
 ## Renovate
 
@@ -42,7 +42,7 @@ Configured in `renovate.json` in the repository root.
 
 ### Schedule
 
-Routine updates run **every Wednesday** (`Europe/London` timezone) with a **3-day stability window** – a new version must be at least 3 days old before Renovate proposes it.
+Routine updates run **every Wednesday** (`Europe/London` timezone) with a **3-day stability window** - a new version must be at least 3 days old before Renovate proposes it.
 
 ### Grouping
 
@@ -57,7 +57,7 @@ Routine updates run **every Wednesday** (`Europe/London` timezone) with a **3-da
 | Lock file maintenance           | Single weekly PR, no automerge |
 
 No Renovate PR is merged automatically. Every one is reviewed and added to
-the merge queue by hand – see `.claude/rules/ci.md` for that flow.
+the merge queue by hand - see `.claude/rules/ci.md` for that flow.
 
 ### Lock file maintenance
 
@@ -77,25 +77,25 @@ Do not add `isVulnerabilityAlert` to a package rule. It is a flag Renovate sets 
 
 ## Dependency tiering
 
-### Tier 1 – Clinical
+### Tier 1 - Clinical
 
 Packages: **fhirclient** (HAPI FHIR), **httpx** (EHRbase via direct HTTP)
 
 - **No automerge under any circumstances.**
 - PRs labelled `tier-1-clinical`.
 - Routine updates wait for the Wednesday schedule. Vulnerability alerts arrive immediately, as for every tier.
-- A critical or high vulnerability also gets a hotfix branch cut by hand – see the hotfix flow below.
+- A critical or high vulnerability also gets a hotfix branch cut by hand - see the hotfix flow below.
 
-### Tier 2 – Infrastructure
+### Tier 2 - Infrastructure
 
 Packages: FastAPI, SQLAlchemy, Uvicorn, Pydantic, Alembic, GCP SDKs, Mantine, React, React Router
 
 - **No automerge**; code review required.
 - Major version bumps labelled `major-version-bump`.
 - Routine updates wait for the Wednesday schedule. Vulnerability alerts arrive immediately, as for every tier.
-- A critical or high vulnerability also gets a hotfix branch cut by hand – see the hotfix flow below.
+- A critical or high vulnerability also gets a hotfix branch cut by hand - see the hotfix flow below.
 
-### Tier 3 – Tooling
+### Tier 3 - Tooling
 
 Packages: eslint, `@types/*`, pytest, devDependencies, GitHub Actions, pre-commit hooks
 
@@ -106,7 +106,7 @@ Packages: eslint, `@types/*`, pytest, devDependencies, GitHub Actions, pre-commi
 
 | Severity        | Tier             | Action                                                                                          |
 | --------------- | ---------------- | ----------------------------------------------------------------------------------------------- |
-| Critical / High | Tier 1 or Tier 2 | Hotfix branch off latest production tag within 24–48 hrs. Safety assessment required before merge. |
+| Critical / High | Tier 1 or Tier 2 | Hotfix branch off latest production tag within 24-48 hrs. Safety assessment required before merge. |
 | Medium          | Tier 2           | Next available working day. Include in next promotion if imminent.                              |
 | Low             | Any              | Pick up in next scheduled Wednesday Renovate run. No hotfix required.                           |
 | Any severity    | Tier 3           | Pick up in next scheduled Wednesday Renovate run. No hotfix required.                           |
@@ -131,7 +131,7 @@ Renovate does not send emails directly. To ensure `info@quill-medical.com` recei
 After committing these files, the following settings must be configured manually:
 
 1. **Enable Dependabot vulnerability alerts**
-   - Repository → _Settings_ → _Security & analysis_ → enable **Dependabot alerts** and **Dependabot security updates** (leave security updates off – Renovate handles fix PRs).
+   - Repository → _Settings_ → _Security & analysis_ → enable **Dependabot alerts** and **Dependabot security updates** (leave security updates off - Renovate handles fix PRs).
 
 2. **Enable the GitHub Security tab**
    - Repository → _Settings_ → _Security & analysis_ → enable **Secret scanning** and **Code scanning** if applicable.
@@ -141,7 +141,7 @@ After committing these files, the following settings must be configured manually
    - `clinical-live`: require PR reviews (≥ 2), require status checks to pass, disallow direct push, restrict who can push.
 
 4. **Notification routing for `info@quill-medical.com`**
-   - The GitHub account associated with `info@quill-medical.com` should **Watch** this repository (_All activity_ or _Custom – Security alerts_).
+   - The GitHub account associated with `info@quill-medical.com` should **Watch** this repository (_All activity_ or _Custom - Security alerts_).
    - Alternatively, set up a [GitHub notification email routing rule](https://docs.github.com/en/account-and-profile/managing-subscriptions-and-notifications-on-github/setting-up-notifications/configuring-notifications#filtering-email-notifications) in _Settings_ → _Notifications_ → _Custom routing_.
 
 5. **Renovate GitHub App installation**

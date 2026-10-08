@@ -107,7 +107,7 @@ Modify `frontend/vite.config.ts`, `frontend/public/manifest.webmanifest`:
 
 ## Phase 2: Terraform infrastructure
 
-_Scaffold done: all modules created in `infra/` (steps 2.2–2.8). Step 2.1 (manual GCP project/API setup) is a prerequisite before `terraform apply`._
+_Scaffold done: all modules created in `infra/` (steps 2.2-2.8). Step 2.1 (manual GCP project/API setup) is a prerequisite before `terraform apply`._
 
 ### Step 2.1: GCP setup (manual)
 

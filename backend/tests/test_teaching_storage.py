@@ -202,7 +202,7 @@ class TestDownloadBankFromGcs:
         mock_bucket = MagicMock()
         mock_client.bucket.return_value = mock_bucket
 
-        # Create mock blobs – mix of YAML and image files
+        # Create mock blobs - mix of YAML and image files
         yaml_blob = MagicMock()
         yaml_blob.name = "modules/test-bank/assessment/config.yaml"
 
@@ -606,7 +606,7 @@ class TestDeleteMediaObject:
         """So a link row never becomes permanently undeletable.
 
         A half-finished upload, or a second delete, leaves the row as
-        the only record – clearing it must still be possible.
+        the only record - clearing it must still be possible.
         """
         from google.api_core import exceptions as gcs_exceptions
 

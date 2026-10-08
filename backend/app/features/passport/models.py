@@ -21,12 +21,12 @@ answer:
 
 Tables:
 
-- ``Passport`` – the pointer to one holder's repository.
-- ``PassportSignOffRequest`` – an open ask, closed when resolved.
-- ``PassportAssessorInvite`` – an outside assessor being brought in.
-- ``PassportLogbookConfirmationRequest`` – an ask that a supervisor
+- ``Passport`` - the pointer to one holder's repository.
+- ``PassportSignOffRequest`` - an open ask, closed when resolved.
+- ``PassportAssessorInvite`` - an outside assessor being brought in.
+- ``PassportLogbookConfirmationRequest`` - an ask that a supervisor
   confirm one logbook entry, closed when answered.
-- ``OrgUnitPassportFramework`` – one of an organisation's lead
+- ``OrgUnitPassportFramework`` - one of an organisation's lead
   frameworks, which its people are offered first when choosing their own.
 
 Until when somebody may add to their own passport is not a table here: it
@@ -51,7 +51,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models import Base
 
 #: What a request can be. Mirrors the sign-off file's own vocabulary for
-#: the states a *request* can reach – a file may also be ``superseded``,
+#: the states a *request* can reach - a file may also be ``superseded``,
 #: which is a fact about the record rather than about the asking.
 REQUEST_STATUSES: tuple[str, ...] = (
     "open",
@@ -126,7 +126,7 @@ class PassportSignOffRequest(Base):
     row must know is known when the holder asks: the passport, the
     competency, the address the request went to, and its state. None of
     them is null at any point. ``assessor_user_id`` is the exception and
-    means something different – who signed – so it is null for exactly
+    means something different - who signed - so it is null for exactly
     as long as ``status`` says nobody has.
     """
 
@@ -159,8 +159,8 @@ class PassportSignOffRequest(Base):
     )
 
     #: Who signed, set from the authenticated signer at the moment of
-    #: signing. Null means nobody has yet – the same thing
-    #: ``accepted_at`` records on an invite – not that the assessor is
+    #: signing. Null means nobody has yet - the same thing
+    #: ``accepted_at`` records on an invite - not that the assessor is
     #: unknown, which ``assessor_email`` always answers. Never copied
     #: from the request, so it names whoever truly signed rather than
     #: whoever was expected to.
@@ -288,7 +288,7 @@ class PassportAssessorInvite(Base):
 
     Workflow, like the request above, and for the same reason: bringing
     an assessor in spans accounts that may not exist yet, which no
-    repository can record. Nothing here is part of the passport – the
+    repository can record. Nothing here is part of the passport - the
     sign-off the assessor eventually makes is a file, and this row is
     only how they were reached.
 

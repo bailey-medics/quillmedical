@@ -1,4 +1,4 @@
-# modules/cloud-run/main.tf – Cloud Run service
+# modules/cloud-run/main.tf - Cloud Run service
 
 resource "google_cloud_run_v2_service" "service" {
   project  = var.project_id
@@ -62,7 +62,7 @@ resource "google_cloud_run_v2_service" "service" {
         }
       }
 
-      # Startup probe – give container time to boot
+      # Startup probe - give container time to boot
       startup_probe {
         http_get {
           path = var.health_check_path
@@ -113,7 +113,7 @@ resource "google_cloud_run_v2_service" "service" {
       # the name and creating a spare revision. But ignoring a field does
       # not leave it out of the request: Terraform sends back the name it
       # last read, which is the revision the deploy just made. Any change
-      # to the template – an environment variable, a label – then asks
+      # to the template - an environment variable, a label - then asks
       # Cloud Run for that same name with a different configuration, and it
       # refuses: "Error 409: Revision named '…' with different
       # configuration already exists". That failed the apply on 2026-09-28

@@ -6,8 +6,8 @@
  * for first and is the least useful of the three, being a rendering
  * rather than the record.
  *
- * The stories do not download anything – the client functions would need
- * a backend – so what they show is the wording and the arrangement.
+ * The stories do not download anything - the client functions would need
+ * a backend - so what they show is the wording and the arrangement.
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";

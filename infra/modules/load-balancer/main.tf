@@ -1,4 +1,4 @@
-# modules/load-balancer/main.tf – Global HTTPS Load Balancer with Cloud Run NEGs
+# modules/load-balancer/main.tf - Global HTTPS Load Balancer with Cloud Run NEGs
 #
 # Enterprise-grade external Application Load Balancer per environment:
 #   - Path-based routing: /api/* → backend Cloud Run, /* → frontend Cloud Run
@@ -198,14 +198,14 @@ resource "google_compute_url_map" "https" {
           # this, `/videos/1/mod/x.mp4` asks the bucket for the object key
           # `videos/1/mod/x.mp4`, and the transcode job writes
           # `1/mod/x.mp4`. The mismatch presents as a 404 on a file
-          # plainly in the bucket – a black player and a dead play
+          # plainly in the bucket - a black player and a dead play
           # button, with nothing to say why.
           #
           # Rewriting to `/` makes the key the path after `/videos/`,
           # which is what `media_object_path` produces.
           #
           # The signed cookie is unaffected. Its `URLPrefix` covers the
-          # request URL – `.../videos/{org}/{module}/` – and Cloud CDN
+          # request URL - `.../videos/{org}/{module}/` - and Cloud CDN
           # checks that before this rewrite, so the module boundary is
           # exactly where it was.
           rewrite = "/"
@@ -292,7 +292,7 @@ resource "google_compute_backend_bucket" "landing" {
   # carries the equivalent set for the application: this site is served
   # straight from the bucket through the load balancer and never passes
   # through Caddy, so until now it went out with no security headers at all.
-  # Cloud Storage cannot set them either – it serves a fixed set of its own –
+  # Cloud Storage cannot set them either - it serves a fixed set of its own -
   # so the load balancer is the only place left.
   #
   # The policy is stricter than the application's, because the site earns it.
@@ -311,15 +311,15 @@ resource "google_compute_backend_bucket" "landing" {
   # `data:` is deliberately absent from `img-src`. Nothing in the build uses
   # one, so adding it later should be a decision rather than an inheritance.
   #
-  # Strict-Transport-Security is deliberately at five minutes – step one of a
+  # Strict-Transport-Security is deliberately at five minutes - step one of a
   # three-step ramp, not a finished value.
   #
   # The header is stored by the visitor's browser rather than by us, so its
   # duration is a promise that cannot be withdrawn: sending a shorter one
   # later reaches only the people who come back. `includeSubDomains` compounds
   # that by covering subdomains that do not exist yet, and one which is not
-  # ready for HTTPS on its first day would be unreachable – with no warning to
-  # click past – for everyone who had ever visited this site.
+  # ready for HTTPS on its first day would be unreachable - with no warning to
+  # click past - for everyone who had ever visited this site.
   #
   # Five minutes proves the mechanism against a promise short enough to wait
   # out. One day comes next, then two years with `includeSubDomains` once

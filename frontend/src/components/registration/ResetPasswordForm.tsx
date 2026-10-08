@@ -33,7 +33,7 @@ interface ResetPasswordFormValues {
 
 export interface ResetPasswordFormProps {
   /**
-   * Called when the form is submitted – should return a FormSubmitResult.
+   * Called when the form is submitted - should return a FormSubmitResult.
    * `marketingOptOut` is given only when the question was asked.
    */
   onSubmit: (

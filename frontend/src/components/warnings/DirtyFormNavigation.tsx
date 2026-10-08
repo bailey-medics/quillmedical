@@ -25,7 +25,7 @@ interface DirtyFormNavigationProps {
    * What is about to be lost.
    *
    * Defaults to unsaved form changes, which is what most callers block
-   * on. A page blocking on something else – a file still uploading –
+   * on. A page blocking on something else - a file still uploading -
    * says so here, because "unsaved changes" sends the admin looking
    * for a save button that is not there.
    */
@@ -75,7 +75,7 @@ export default function DirtyFormNavigation({
   }
 
   function handleClose() {
-    // ConfirmModal calls onClose after onAccept succeeds – skip reset if
+    // ConfirmModal calls onClose after onAccept succeeds - skip reset if
     // we already proceeded (navigation is in progress).
     if (!proceededRef.current) {
       blocker.reset?.();

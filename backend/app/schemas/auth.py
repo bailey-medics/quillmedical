@@ -158,7 +158,7 @@ class ResendVerificationIn(BaseModel):
 class UpdateProfileIn(BaseModel):
     """Profile update request payload.
 
-    All fields are optional – only provided fields are updated.
+    All fields are optional - only provided fields are updated.
 
     Attributes:
         full_name: Updated display name.
@@ -425,7 +425,7 @@ class UserSummaryItem(BaseModel):
     platform_role: str
     # So a staff picker can tell whether this person holds anything a
     # member of staff would. Adding somebody who holds nothing staff-like
-    # is a real progression – a patient becoming a healthcare assistant –
+    # is a real progression - a patient becoming a healthcare assistant -
     # and the interface asks rather than refusing, which it cannot do
     # without knowing what they hold.
     competencies: list[str]

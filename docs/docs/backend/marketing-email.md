@@ -2,12 +2,12 @@
 
 Quill sends two kinds of email, and only one of them is a choice.
 
-- **Service messages** – password resets, invitations, email
+- **Service messages** - password resets, invitations, email
   verification, certificates and course reminders. Quill sends these
   itself, through `backend/app/email_send.py`, and they are always sent:
   an account does not work without them.
 
-- **Marketing** – news about Quill Medical, new courses and product
+- **Marketing** - news about Quill Medical, new courses and product
   updates. These are newsletters, sent by Quill itself with the command
   under "Sending a newsletter" below, to the people whose answer in
   Quill's own database says they want them. There is no list at a mail
@@ -27,15 +27,15 @@ sent and offers an unticked box, "I would rather not get news and
 updates". Left alone, the person is sent news. The words are in
 `frontend/src/lib/marketing/wording.ts`.
 
-- **Somebody who registers** – subscribed unless they tick the box.
+- **Somebody who registers** - subscribed unless they tick the box.
 
-- **Somebody whose account an admin created** – asked when they set
+- **Somebody whose account an admin created** - asked when they set
   their first password. The invite's link carries `invite=1`, and
   `/reset-password` then shows the same sentence and box. Until then they
   are not subscribed, because they have not been shown it. A
   forgotten-password link asks nothing.
 
-- **Anybody, later** – the "News and updates by email" switch in
+- **Anybody, later** - the "News and updates by email" switch in
   Settings, or the unsubscribe link in any newsletter.
 
 **Closing an account changes none of this.** Deactivating somebody does
@@ -46,16 +46,16 @@ altogether is for a request to erase somebody's data.
 
 ## Where it is held
 
-- **`users.marketing_emails`** – the current answer.
+- **`users.marketing_emails`** - the current answer.
 
-- **`marketing_preference_change`** – one row for every answer given:
+- **`marketing_preference_change`** - one row for every answer given:
   what they chose, when, where (`registration`, `invite`, `settings` or
   `unsubscribe_link`) and which wording was on screen. This is the
   evidence that somebody was offered the choice. Rows are never updated.
   Rows written before the cut-over may carry `resend`, from when Resend
   told Quill of an unsubscribe.
 
-- **`newsletter_send`** – one row for each newsletter sent to each
+- **`newsletter_send`** - one row for each newsletter sent to each
   person, so a send can be run again without reaching anybody twice.
 
 That is the whole of it. Quill's database is the list, and nothing is
@@ -83,7 +83,7 @@ available to send.
 
 `backend/app/marketing/newsletter.py` sends it, a person at a time.
 
-- **Who it reaches** – verified, active users whose `marketing_emails`
+- **Who it reaches** - verified, active users whose `marketing_emails`
   is true, and then subscribers: people in `newsletter_subscriber`, the
   mailing list of those with no account, who are subscribed. Where an
   address is on the list and is also a verified account's, the
@@ -93,7 +93,7 @@ available to send.
   refused**: there is no list at the mail provider to refuse it for
   Quill.
 
-- **Each person's own link** – every email carries an unsubscribe link
+- **Each person's own link** - every email carries an unsubscribe link
   signed for that one person. The footer's link opens `/unsubscribe` in
   the app, which needs no login. The `List-Unsubscribe` and
   `List-Unsubscribe-Post` headers let a mailbox show its own unsubscribe
@@ -101,21 +101,21 @@ available to send.
   bulk mail (RFC 8058). Both go to `/api/marketing/unsubscribe`, and a
   change is recorded with the source `unsubscribe_link`.
 
-- **A dry run first** – without a confirmation the command only lists
+- **A dry run first** - without a confirmation the command only lists
   who would be sent it, addresses mostly hidden, and prints the value to
   pass back, such as `trial:12`. The value names the count, so a dry run
   that is out of date cannot send.
 
-- **Safe to run again** – each send writes a `newsletter_send` row as
+- **Safe to run again** - each send writes a `newsletter_send` row as
   the email leaves. A run that stops half way keeps what it did, and
   the next reaches only the people it missed.
 
-- **In batches** – a limit on how many people one run reaches. Each
+- **In batches** - a limit on how many people one run reaches. Each
   send is recorded, so the next run takes up where the last left off.
   Worth using for a first send to an old list: the mail provider pauses
   an account whose emails bounce too often.
 
-- **Bounces and complaints** – Amazon keeps a list of addresses that
+- **Bounces and complaints** - Amazon keeps a list of addresses that
   hard-bounced, and of people who reported an email as spam, and will
   not send to them again. The command reads that list before each run,
   dry or not, and marks those people: a subscriber is unsubscribed, and
@@ -123,7 +123,7 @@ available to send.
   saying `bounce` or `complaint`. If the list cannot be read it says so
   and carries on.
 
-- **A trial to one address** – the last argument sends to one person
+- **A trial to one address** - the last argument sends to one person
   who may be sent newsletters, and records nothing, so the real send
   still reaches them.
 

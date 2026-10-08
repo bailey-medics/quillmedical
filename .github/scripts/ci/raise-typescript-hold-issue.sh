@@ -59,7 +59,7 @@ ${report}
    under *Pending Approval*. Renovate will raise the upgrade PR.
 2. Once that PR is green, remove the \`dependencyDashboardApproval\` rule for
    \`typescript\` from \`renovate.json\`, so majors flow normally again.
-3. Delete the monthly workflow that opened this issue – it exists only to
+3. Delete the monthly workflow that opened this issue - it exists only to
    watch for this moment.
 
 ## Why the hold exists

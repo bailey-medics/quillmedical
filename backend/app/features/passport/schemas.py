@@ -42,7 +42,7 @@ from pydantic import (
 
 #: The current schema version written into every new passport. Bumped
 #: only when a change would stop an older reader from understanding a
-#: file – adding an optional field does not qualify.
+#: file - adding an optional field does not qualify.
 SCHEMA_VERSION = 1
 
 #: What a sign-off can be. ``requested`` exists because the record is
@@ -128,7 +128,7 @@ class Attachment(PassportModel):
     ``files/sha256/ab/12/ab12cd34…``, so no path is stored anywhere and
     nothing can drift out of step. The original filename is kept as data
     because it is often the only clue what a scan is, but it is never
-    used to locate the bytes – a filename carrying a patient identifier
+    used to locate the bytes - a filename carrying a patient identifier
     must never reach a URL or a directory entry.
     """
 
@@ -179,8 +179,8 @@ class CompetencyRef(PassportModel):
 class LevelRef(PassportModel):
     """One step on a competency's scale, as it read at the time.
 
-    The wording is copied from the framework – the RCR entrustment
-    scale, the UK SACT Board's levels – so a sign-off means what the
+    The wording is copied from the framework - the RCR entrustment
+    scale, the UK SACT Board's levels - so a sign-off means what the
     framework said it meant on the day, even if the scale later gains a
     step.
     """
@@ -238,7 +238,7 @@ class Assessor(PassportModel):
     Deliberately a snapshot rather than a reference to a user row. An
     assessor's role changes, their registrations lapse, they leave; none
     of that may rewrite what a record said when it was signed. The
-    registrations contribute to the content hash for the same reason –
+    registrations contribute to the content hash for the same reason -
     professional standing cannot be quietly edited afterwards.
     """
 
@@ -305,7 +305,7 @@ class Profile(PassportModel):
     Regenerated whenever the holder's details change rather than frozen
     at creation, because it is the *current* answer to "whose is this".
     The one org_unit the passport says so, which is why no record repeats
-    it – copying a name into every record would leave dozens of stale
+    it - copying a name into every record would leave dozens of stale
     ones behind the first time somebody marries.
     """
 
@@ -335,8 +335,8 @@ class Profile(PassportModel):
 class EvidenceSnapshot(PassportModel):
     """What was in front of the assessor when they decided.
 
-    Not a threshold that was met – the passport never judges sufficiency
-    – but a record of what the evidence looked like at that moment. This
+    Not a threshold that was met - the passport never judges sufficiency
+    - but a record of what the evidence looked like at that moment. This
     is the part that matters if a sign-off is ever questioned.
     """
 
@@ -409,7 +409,7 @@ class SignOff(PassportModel):
         record stays correct and valid, and the holder simply moved on or
         was confirmed again. Letting either set ``corrects`` would
         quietly imply an assessor had got something wrong when they had
-        not – which is a statement about a named person, made by a field
+        not - which is a statement about a named person, made by a field
         default.
 
         Raises:

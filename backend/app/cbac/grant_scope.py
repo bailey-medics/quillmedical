@@ -5,8 +5,8 @@ the catalogue, including ``manage_users`` itself. Every other authority to
 grant is narrower, and is declared on the granting competency as two
 whitelists in ``shared/competency-definitions/``:
 
-- ``may_grant`` – the competencies its holder may grant and remove
-- ``may_assign_professions`` – the base professions its holder may give
+- ``may_grant`` - the competencies its holder may grant and remove
+- ``may_assign_professions`` - the base professions its holder may give
 
 A caller's scope is the union of those lists across everything they hold.
 This module is the one place that answers "may this caller hand this

@@ -16,21 +16,21 @@ export const fakeNotes: ClinicalNote[] = [
     authorRole: "Consultant Gastroenterologist",
     category: "consultation",
     content:
-      "S: Patient attends for initial gastro assessment. Reports 4-month history of intermittent epigastric discomfort, worse after eating, with associated bloating. Denies dysphagia, weight loss, haematemesis, melaena. No FHx of GI malignancy. Non-smoker, moderate alcohol intake (8 units/week).\n\nO: Abdo exam: soft, non-tender. No organomegaly. No masses palpable. Bowel sounds normal.\n\nA: Functional dyspepsia – likely dietary trigger component.\n\nP: 1. Omeprazole 20mg OD, 30 mins before breakfast. 2. Dietary modification – avoid known triggers (detailed guidance to follow via messaging). 3. Food diary for 14 days. 4. Review in 3 weeks. 5. If red flag symptoms develop, patient to contact clinic urgently.",
+      "S: Patient attends for initial gastro assessment. Reports 4-month history of intermittent epigastric discomfort, worse after eating, with associated bloating. Denies dysphagia, weight loss, haematemesis, melaena. No FHx of GI malignancy. Non-smoker, moderate alcohol intake (8 units/week).\n\nO: Abdo exam: soft, non-tender. No organomegaly. No masses palpable. Bowel sounds normal.\n\nA: Functional dyspepsia - likely dietary trigger component.\n\nP: 1. Omeprazole 20mg OD, 30 mins before breakfast. 2. Dietary modification - avoid known triggers (detailed guidance to follow via messaging). 3. Food diary for 14 days. 4. Review in 3 weeks. 5. If red flag symptoms develop, patient to contact clinic urgently.",
   },
   {
     id: "note-2",
-    title: "Telephone consultation – dietary guidance follow-up",
+    title: "Telephone consultation - dietary guidance follow-up",
     date: "2026-03-20",
     author: "Dr Rowan Fenwick",
     authorRole: "Consultant Gastroenterologist",
     category: "telephone",
     content:
-      "Patient messaged requesting dietary guidance following yesterday's clinic appointment. Personalised dietary guide provided via secure messaging. Advised to avoid: high-fat/fried foods, heavily spiced dishes, citrus, tomato-based sauces, raw onions, garlic, chocolate, peppermint, cruciferous vegetables if bloating occurs. Limit caffeine, alcohol (especially red wine), carbonated drinks. Keep structured food diary for 14 days. Continue omeprazole as prescribed. Charged £70 for additional consultation time – patient consented and paid via app.",
+      "Patient messaged requesting dietary guidance following yesterday's clinic appointment. Personalised dietary guide provided via secure messaging. Advised to avoid: high-fat/fried foods, heavily spiced dishes, citrus, tomato-based sauces, raw onions, garlic, chocolate, peppermint, cruciferous vegetables if bloating occurs. Limit caffeine, alcohol (especially red wine), carbonated drinks. Keep structured food diary for 14 days. Continue omeprazole as prescribed. Charged £70 for additional consultation time - patient consented and paid via app.",
   },
   {
     id: "note-3",
-    title: "GP review – epigastric symptoms",
+    title: "GP review - epigastric symptoms",
     date: "2026-02-25",
     author: "Dr Emily Williams",
     authorRole: "General Practitioner",

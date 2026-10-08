@@ -7,7 +7,7 @@
  *
  * @example
  * ```tsx
- * // Inside a <Form> wrapper – no props needed
+ * // Inside a <Form> wrapper - no props needed
  * <SubmitButton />
  *
  * // With cancel button
@@ -21,11 +21,11 @@ import ButtonPair from "@/components/button/ButtonPair";
 import { useFormContext } from "./FormContext";
 
 interface SubmitButtonProps {
-  /** Cancel button handler – if provided, renders a cancel button */
+  /** Cancel button handler - if provided, renders a cancel button */
   onCancel?: () => void;
   /** Cancel button label (defaults to "Cancel") */
   cancelLabel?: string;
-  /** Additional disable condition – OR'd with internal checks */
+  /** Additional disable condition - OR'd with internal checks */
   disabled?: boolean;
 }
 

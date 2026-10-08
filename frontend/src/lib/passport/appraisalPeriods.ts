@@ -117,7 +117,7 @@ export function periodKey(period: AppraisalPeriod): string {
 
 /**
  * Each period's label, keyed by `periodKey`: the months it starts and
- * ends in, shortened, "Oct 2025 – Sept 2026", with the spaced en dash.
+ * ends in, shortened, "Oct 2025 - Sept 2026", with a spaced hyphen.
  *
  * Where two periods would read the same, such as two short ones in one
  * month, both are given their full dates instead, so no two options in
@@ -125,7 +125,7 @@ export function periodKey(period: AppraisalPeriod): string {
  */
 export function labelPeriods(periods: AppraisalPeriod[]): Map<string, string> {
   const byMonth = (period: AppraisalPeriod) =>
-    `${shortMonthAndYear(period.starts_on)} – ${shortMonthAndYear(period.ends_on)}`;
+    `${shortMonthAndYear(period.starts_on)} - ${shortMonthAndYear(period.ends_on)}`;
 
   const counts = new Map<string, number>();
   for (const period of periods) {
@@ -139,7 +139,7 @@ export function labelPeriods(periods: AppraisalPeriod[]): Map<string, string> {
     labels.set(
       periodKey(period),
       (counts.get(label) ?? 0) > 1
-        ? `${shortDay(period.starts_on)} – ${shortDay(period.ends_on)}`
+        ? `${shortDay(period.starts_on)} - ${shortDay(period.ends_on)}`
         : label,
     );
   }

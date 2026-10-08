@@ -6,7 +6,7 @@
  *
  * 1. The route is not clinical. A route opts *in* to being counted by not
  *    declaring `handle.clinical`, so a new clinical route added without
- *    thought is counted – which is why the guard is on the subtree root
+ *    thought is counted - which is why the guard is on the subtree root
  *    rather than on each leaf, and why the test names that route.
  * 2. The user has not opted out.
  * 3. There is a matched pattern to send.

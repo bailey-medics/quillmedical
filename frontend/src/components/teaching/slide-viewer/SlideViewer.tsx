@@ -17,7 +17,7 @@ export interface SlideViewerProps {
   /**
    * Module the slide belongs to.
    *
-   * Only hosted video needs it, to request an access grant – but it is
+   * Only hosted video needs it, to request an access grant - but it is
    * threaded from the page rather than derived here, because a
    * component that guessed its own module would be wrong the moment
    * slides were ever shown outside a module route.

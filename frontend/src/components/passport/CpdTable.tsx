@@ -3,7 +3,7 @@
  *
  * One appraisal period's CPD activities, and the points they add up to.
  *
- * **Every total states the range it covers.** Not "2026 – 32 points" but
+ * **Every total states the range it covers.** Not "2026 - 32 points" but
  * the actual dates, because appraisal years do not start in January and
  * they move when somebody changes post. Thirty-two points across four
  * months and thirty-two across twelve are different records, and only
@@ -55,7 +55,7 @@ const columns: Column<CpdEntry>[] = [
   },
   {
     header: "Points",
-    render: (entry) => (entry.points === null ? "–" : entry.points),
+    render: (entry) => (entry.points === null ? "-" : entry.points),
     accessor: (entry) => entry.points,
   },
 ];

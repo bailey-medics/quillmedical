@@ -177,7 +177,7 @@ results:
 | `pass_criteria`                    | list      | Compound rules — ALL must pass                                          |
 | `pass_criteria[].rule`             | string    | `tag_percentage` or `tag_accuracy` (extensible)                         |
 | `pass_criteria[].tag`              | string    | Which option tag the rule filters on                                    |
-| `pass_criteria[].threshold`        | float     | Required minimum (0.0–1.0)                                              |
+| `pass_criteria[].threshold`        | float     | Required minimum (0.0-1.0)                                              |
 | `results.certificate_download`     | bool      | Candidate can download a PDF certificate on pass                        |
 | `results.certificate_background`   | string?   | Filename of PDF background template (e.g. `certificate_background.pdf`) |
 | `results.certificate_text_areas`   | list?     | Text area positions on certificate: `[{field, x, y, font_size}]`        |
@@ -476,7 +476,7 @@ The `metadata` field is freeform JSON validated against the question bank config
 | `id`              | UUID                   | Primary key                                                         |
 | `assessment_id`   | UUID (FK)              | Parent assessment                                                   |
 | `item_id`         | UUID (FK)              | Which `QuestionBankItem`                                            |
-| `display_order`   | int                    | Position in this assessment (1–N)                                   |
+| `display_order`   | int                    | Position in this assessment (1-N)                                   |
 | `selected_option` | str or None            | Option `id` from config; null until answered                        |
 | `is_correct`      | bool or None           | Null until answered; set when answer is submitted                   |
 | `resolved_tags`   | JSON list[str] or None | Tags resolved from the selected option at answer time (audit trail) |

@@ -126,17 +126,17 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
   const method = opts.method ?? "GET";
 
   // A forced reload is already pending (this tab is speaking a contract
-  // the backend no longer honours) – stop further mutations rather than
+  // the backend no longer honours) - stop further mutations rather than
   // sending a request that will only compound the mismatch.
   if (method !== "GET" && isReloadPending()) {
-    throw new Error("App update pending – please wait for the page to reload.");
+    throw new Error("App update pending - please wait for the page to reload.");
   }
 
   // A FormData body carries a file, and the browser has to set its own
   // `Content-Type` for that: the header has to name a multipart
   // boundary that only the browser knows. Declaring JSON over it, or
   // passing an empty string, both leave the request unparseable at the
-  // far end – an upload then failed before the file ever left.
+  // far end - an upload then failed before the file ever left.
   const isFormData =
     typeof FormData !== "undefined" && opts.body instanceof FormData;
 
@@ -297,7 +297,7 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
     return (await res.json()) as T;
   }
 
-  // Reject non-JSON responses – the backend API should always return JSON.
+  // Reject non-JSON responses - the backend API should always return JSON.
   // A text/html 200 (e.g. from a misconfigured proxy or placeholder service)
   // must never be silently accepted as valid data.
   throw new Error(`Unexpected response content-type: ${ct || "none"}`);
@@ -341,7 +341,7 @@ async function requestBlob(path: string, opts: Options = {}): Promise<Blob> {
   const method = opts.method ?? "GET";
 
   if (method !== "GET" && isReloadPending()) {
-    throw new Error("App update pending – please wait for the page to reload.");
+    throw new Error("App update pending - please wait for the page to reload.");
   }
 
   const headers: Record<string, string> = {

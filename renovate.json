@@ -2,28 +2,28 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "description": [
     "=============================================================",
-    "  Quill Medical – Renovate configuration",
+    "  Quill Medical - Renovate configuration",
     "  DCB 0129 audit reference: docs/docs/dependencies/automatic-updates.md",
     "=============================================================",
     "",
     "DEPENDENCY TIERING STRATEGY",
     "-----------------------------",
-    "Tier 1 – Clinical",
+    "Tier 1 - Clinical",
     "  Packages: fhirclient (HAPI FHIR), httpx (EHRbase direct HTTP)",
     "  Policy:   No automerge under any circumstances.",
     "            Label: tier-1-clinical.",
     "",
-    "Tier 2 – Infrastructure",
+    "Tier 2 - Infrastructure",
     "  Packages: FastAPI, SQLAlchemy, Uvicorn, Pydantic, Alembic, GCP SDKs,",
     "            Mantine, React, React Router, Docker base images",
     "  Policy:   No automerge; code review required.",
     "            Major version bumps labelled major-version-bump.",
     "",
-    "Tier 3 – Tooling",
+    "Tier 3 - Tooling",
     "  Packages: eslint, @types/*, pytest, devDependencies,",
     "            GitHub Actions, pre-commit hooks",
     "  Policy:   No automerge. Every PR is reviewed and added to the merge",
-    "            queue by hand – see .claude/rules/ci.md.",
+    "            queue by hand - see .claude/rules/ci.md.",
     "",
     "The tier governs how urgently a human responds and how deeply they",
     "review. It does not change when Renovate opens the PR: every routine",
@@ -48,7 +48,7 @@
     "SEVERITY-BASED RESPONSE POLICY",
     "--------------------------------",
     "Critical/High in Tier 1 or Tier 2:",
-    "  Hotfix branch off the latest production tag within 24–48 hrs.",
+    "  Hotfix branch off the latest production tag within 24-48 hrs.",
     "  Safety assessment required before merge.",
     "",
     "Medium in Tier 2:",
@@ -66,16 +66,16 @@
     "depend on that: ci.yml's heavy tier and every job in gate-breaking.yml",
     "trigger on ready_for_review, never on opened. A PR opened non-draft that",
     "then never gains a second commit therefore never reports four required",
-    "contexts – the two API breaking-change checks and the two DB destructive",
-    "migration checks – and can never merge. Marking the PR ready for review",
+    "contexts - the two API breaking-change checks and the two DB destructive",
+    "migration checks - and can never merge. Marking the PR ready for review",
     "fires them. See .claude/rules/ci.md.",
     "",
     "LOCK FILE MAINTENANCE",
     "-----------------------",
     "Renovate only ever bumps the dependencies declared in pyproject.toml",
-    "and package.json. Everything those pull in for themselves – Starlette",
+    "and package.json. Everything those pull in for themselves - Starlette",
     "under FastAPI, aiohttp under pywebpush, Pillow under reportlab, the",
-    "npm tooling under jsdom and cspell – stays at whatever version the",
+    "npm tooling under jsdom and cspell - stays at whatever version the",
     "lockfile first resolved, however many advisories it accrues. By",
     "September 2026 that layer held every one of the repository's 130",
     "open Dependabot alerts and Renovate had opened a PR for none of them.",
@@ -124,7 +124,7 @@
       "automerge": false
     },
     {
-      "description": "Group all @types/* packages – no automerge, queued manually (Tier 3)",
+      "description": "Group all @types/* packages - no automerge, queued manually (Tier 3)",
       "matchManagers": ["npm"],
       "matchPackageNames": ["@types/**"],
       "groupName": "TypeScript @types packages",
@@ -132,7 +132,7 @@
       "automerge": false
     },
     {
-      "description": "Group all devDependencies minor/patch – no automerge, queued manually (Tier 3)",
+      "description": "Group all devDependencies minor/patch - no automerge, queued manually (Tier 3)",
       "matchManagers": ["npm", "poetry"],
       "matchDepTypes": ["devDependencies", "dev"],
       "matchUpdateTypes": ["minor", "patch"],
@@ -141,41 +141,41 @@
       "automerge": false
     },
     {
-      "description": "Group GitHub Actions version bumps – no automerge, queued manually (Tier 3)",
+      "description": "Group GitHub Actions version bumps - no automerge, queued manually (Tier 3)",
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions",
       "groupSlug": "github-actions",
       "automerge": false
     },
     {
-      "description": "Pre-commit hook updates – no automerge, queued manually (Tier 3)",
+      "description": "Pre-commit hook updates - no automerge, queued manually (Tier 3)",
       "matchManagers": ["pre-commit"],
       "groupName": "pre-commit hooks",
       "groupSlug": "pre-commit-hooks",
       "automerge": false
     },
     {
-      "description": "Terraform provider updates – no automerge, manual review required",
+      "description": "Terraform provider updates - no automerge, manual review required",
       "matchManagers": ["terraform"],
       "groupName": "Terraform providers",
       "groupSlug": "terraform-providers",
       "automerge": false
     },
     {
-      "description": "Tier 2 – Docker base images: group and no automerge",
+      "description": "Tier 2 - Docker base images: group and no automerge",
       "matchManagers": ["docker-compose", "dockerfile"],
       "groupName": "Docker base images",
       "groupSlug": "docker-images",
       "automerge": false
     },
     {
-      "description": "Tier 1 – Clinical: fhirclient and httpx – never automerge",
+      "description": "Tier 1 - Clinical: fhirclient and httpx - never automerge",
       "matchPackageNames": ["fhirclient", "httpx"],
       "automerge": false,
       "addLabels": ["tier-1-clinical"]
     },
     {
-      "description": "Tier 2 – Infrastructure packages – no automerge",
+      "description": "Tier 2 - Infrastructure packages - no automerge",
       "matchPackageNames": [
         "fastapi",
         "sqlalchemy",
@@ -203,7 +203,7 @@
       "addLabels": ["major-version-bump"]
     },
     {
-      "description": "Hold major TypeScript upgrades behind Dependency Dashboard approval – typescript-eslint refuses to load against the TS 7 API and declares a peer range of >=4.8.4 <6.1.0, so the eslint job throws before it lints a file. tsc and the test suites are fine on TS 7; the linter alone is the blocker. This is deliberately dependencyDashboardApproval rather than allowedVersions: allowedVersions would filter the upgrade out of Renovate's view entirely and leave nothing to come back to, whereas this keeps it listed under Pending Approval on the dashboard until someone ticks it. Tick the box once typescript-eslint supports TS >=7.1 and Renovate will raise the PR – see https://github.com/typescript-eslint/typescript-eslint/issues/10940.",
+      "description": "Hold major TypeScript upgrades behind Dependency Dashboard approval - typescript-eslint refuses to load against the TS 7 API and declares a peer range of >=4.8.4 <6.1.0, so the eslint job throws before it lints a file. tsc and the test suites are fine on TS 7; the linter alone is the blocker. This is deliberately dependencyDashboardApproval rather than allowedVersions: allowedVersions would filter the upgrade out of Renovate's view entirely and leave nothing to come back to, whereas this keeps it listed under Pending Approval on the dashboard until someone ticks it. Tick the box once typescript-eslint supports TS >=7.1 and Renovate will raise the PR - see https://github.com/typescript-eslint/typescript-eslint/issues/10940.",
       "matchManagers": ["npm"],
       "matchPackageNames": ["typescript"],
       "matchUpdateTypes": ["major"],

@@ -2,7 +2,7 @@
 
 A medical school teaching on a trust's wards is a relationship and not
 ownership, so it is a link rather than a parent. The point of recording it
-is that people at the school can then reach the trust's teaching content –
+is that people at the school can then reach the trust's teaching content -
 and the point of it being a link is that they gain nothing else.
 
 Covers:

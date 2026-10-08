@@ -2,7 +2,7 @@
  * Teaching Layout-Assessment Stories
  *
  * Full-page compositions showing assessment components within the
- * TeachingLayout (no sidebar – assessments use full-width content
+ * TeachingLayout (no sidebar - assessments use full-width content
  * for exam focus).
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -174,7 +174,7 @@ export const ColonoscopyPolyps: Story = {
   },
 };
 
-/** Chest X-ray question – single large image with clinical scenario (variable format). */
+/** Chest X-ray question - single large image with clinical scenario (variable format). */
 export const ChestXray: Story = {
   tags: ["!test"],
   render: () => {

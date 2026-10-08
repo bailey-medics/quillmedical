@@ -1,12 +1,12 @@
 """SQLAlchemy models for the teaching feature.
 
 Tables:
-- QuestionBankConfig – cached config pulled from GCS bucket
-- QuestionBankItem – one item (question) in a question bank
-- Assessment – one candidate attempt at a question bank
-- AssessmentAnswer – one answer within an assessment
-- TeachingOrgSettings – per-org coordinator email + institution
-- QuestionBankSync – audit trail for sync operations
+- QuestionBankConfig - cached config pulled from GCS bucket
+- QuestionBankItem - one item (question) in a question bank
+- Assessment - one candidate attempt at a question bank
+- AssessmentAnswer - one answer within an assessment
+- TeachingOrgSettings - per-org coordinator email + institution
+- QuestionBankSync - audit trail for sync operations
 """
 
 from __future__ import annotations
@@ -91,7 +91,7 @@ class QuestionBankConfig(Base):
         default=lambda: datetime.now(UTC),
         nullable=False,
     )
-    #: Who performed the sync. Null when it was not a person – see
+    #: Who performed the sync. Null when it was not a person - see
     #: ``synced_by_actor``, which says so explicitly rather than leaving a
     #: null to be interpreted.
     synced_by: Mapped[int | None] = mapped_column(
@@ -469,7 +469,7 @@ class QuestionBankOrgStatus(Base):
     ``active_version`` is the version this organisation's candidates
     receive.  Sync imports new versions but never moves it, so revising a
     live bank does not put the revision in front of candidates until a
-    staff org admin advances the pointer – the same deliberate step a new
+    staff org admin advances the pointer - the same deliberate step a new
     bank already requires through ``is_live``.
     """
 
@@ -505,7 +505,7 @@ class QuestionBankOrgStatus(Base):
     active_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     #: Who last moved the pointer, and when. Promotion decides what a cohort
     #: sits, so it needs an answer to "who did this" that survives the person
-    #: leaving – hence SET NULL rather than a cascade.
+    #: leaving - hence SET NULL rather than a cascade.
     active_version_set_by: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -576,7 +576,7 @@ class ModuleMediaLink(Base):
 
     ``<Video ref="lecture-01" />`` names *which* video belongs on a
     slide. It is a stable key, not a path and not the uploaded file's
-    name – and this table is what turns one into the other.
+    name - and this table is what turns one into the other.
 
     Keeping the two apart is what makes the rest work. A file can be
     uploaded before the MDX exists, or the MDX merged before the file
@@ -596,7 +596,7 @@ class ModuleMediaLink(Base):
     not. It also keeps the cookie prefix ``{org_id}/{module_id}/``
     literally true, so the "one grant covers one module" property the
     video design rests on survives. The consequence is that "is this
-    module complete" has no global answer, only a per-organisation one –
+    module complete" has no global answer, only a per-organisation one -
     the same shape ``QuestionBankOrgStatus`` established for liveness.
     """
 
@@ -624,7 +624,7 @@ class ModuleMediaLink(Base):
     #: than a column switch.
     #:
     #: No foreign key, because there is no longer a table to point at.
-    #: It is an address, and an address is not a reference – the number
+    #: It is an address, and an address is not a reference - the number
     #: stays valid whether or not anything else still knows it. Which
     #: number an org_unit uses is ``org_unit.media_prefix_id``, read through
     #: ``app.organisations.media_prefix_of``.
@@ -636,8 +636,8 @@ class ModuleMediaLink(Base):
     #: Which org_unit this row belongs to, and what every query here uses.
     #:
     #: ``organisation_id`` above is an address, not an owner: every
-    #: question this table is asked – is this module complete, whose
-    #: upload is this – is answered by the org_unit.
+    #: question this table is asked - is this module complete, whose
+    #: upload is this - is answered by the org_unit.
     org_unit_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="CASCADE"),
@@ -675,7 +675,7 @@ class ModuleMediaLink(Base):
     #: network round trip on the hot path to detect it.
     #:
     #: Written by the backend when the job it invoked returns, so the
-    #: transcode CLI stays database-free – see the trigger decision in
+    #: transcode CLI stays database-free - see the trigger decision in
     #: the video plan.
     #:
     #: None also means "uploaded but not yet transcoded", the state the
@@ -687,13 +687,13 @@ class ModuleMediaLink(Base):
     #: When each job was *invoked*, as distinct from when it finished.
     #:
     #: Without these, "started and not finished" is indistinguishable
-    #: from "never started" – and the admin card said "No captions" for
+    #: from "never started" - and the admin card said "No captions" for
     #: two days while the caption job was unconfigured and nothing was
     #: coming. Both readings fit the completion columns alone; only the
     #: moment of invocation separates them.
     #:
     #: They also give the card an elapsed time, which is what turns
-    #: "transcribing" into "transcribing, started forty minutes ago" –
+    #: "transcribing" into "transcribing, started forty minutes ago" -
     #: the second of which a person can act on.
     #:
     #: Cleared alongside the completion state when a reference is
@@ -710,8 +710,8 @@ class ModuleMediaLink(Base):
     #: differ: captions come from a second job that may not have run, and
     #: a 1080p rendition is skipped for a source smaller than that.
     #:
-    #: The filenames themselves are deterministic – ``{asset_id}-720p.mp4``
-    #: and so on – so these say whether to offer a file, never where it
+    #: The filenames themselves are deterministic - ``{asset_id}-720p.mp4``
+    #: and so on - so these say whether to offer a file, never where it
     #: is.
     has_1080p: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=false()
@@ -725,8 +725,8 @@ class ModuleMediaLink(Base):
     #: When someone last saved the captions after reading them, or None
     #: where nobody has.
     #:
-    #: Whisper mishears clinical terminology – "caecum" as "seek 'em",
-    #: drug names mangled – and captions are a WCAG 2.1 AA requirement,
+    #: Whisper mishears clinical terminology - "caecum" as "seek 'em",
+    #: drug names mangled - and captions are a WCAG 2.1 AA requirement,
     #: so a learner relying on them is given the wrong word with nothing
     #: to signal it. Machine output is therefore a draft until a human
     #: has been over it, and this is what records that they have.

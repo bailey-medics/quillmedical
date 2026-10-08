@@ -50,7 +50,7 @@ class TestRejectsAnythingThatIsNotAPattern:
     """A pattern has had its captured values replaced by their names.
 
     Anything still carrying one is not a pattern, and is refused rather than
-    scrubbed – the browser has no legitimate reason to send it.
+    scrubbed - the browser has no legitimate reason to send it.
     """
 
     @pytest.mark.parametrize(

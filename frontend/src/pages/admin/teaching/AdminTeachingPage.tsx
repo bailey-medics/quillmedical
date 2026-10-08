@@ -18,7 +18,7 @@ function banksToModules(banks: AdminBank[]): SyncModuleRow[] {
   return banks.map((bank) => ({
     bank_id: bank.bank_id,
     title: bank.title ?? bank.bank_id,
-    type: bank.type ?? "–",
+    type: bank.type ?? "-",
     outcome: "imported" as const,
     version: bank.version ?? 0,
     item_count: bank.item_count,
@@ -41,7 +41,7 @@ function syncResultToModules(
       return {
         bank_id: bank.bank_id,
         title: bank.title ?? bank.bank_id,
-        type: bank.type ?? "–",
+        type: bank.type ?? "-",
         outcome: "error" as const,
         version: bank.version ?? 0,
         item_count: bank.item_count,
@@ -53,7 +53,7 @@ function syncResultToModules(
       return {
         bank_id: bank.bank_id,
         title: bank.title ?? bank.bank_id,
-        type: bank.type ?? "–",
+        type: bank.type ?? "-",
         outcome: "imported" as const,
         version: synced.version,
         item_count: synced.items_created + synced.items_updated,
@@ -61,11 +61,11 @@ function syncResultToModules(
       };
     }
 
-    // Module wasn't in the sync result – already up to date
+    // Module wasn't in the sync result - already up to date
     return {
       bank_id: bank.bank_id,
       title: bank.title ?? bank.bank_id,
-      type: bank.type ?? "–",
+      type: bank.type ?? "-",
       outcome: "up_to_date" as const,
       version: bank.version ?? 0,
       item_count: bank.item_count,
@@ -80,7 +80,7 @@ function syncResultToModules(
       rows.push({
         bank_id: err.bank_id,
         title: err.bank_id,
-        type: "–",
+        type: "-",
         outcome: "error" as const,
         version: 0,
         item_count: 0,

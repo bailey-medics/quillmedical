@@ -1,4 +1,4 @@
-# Stage 5 – mitigation suggestions
+# Stage 5 - mitigation suggestions
 
 ## Input
 
@@ -40,13 +40,13 @@ policies, or workflows that the deploying organisation would need to implement. 
 
 ## Rules
 
-1. At least one control per hazard. Most hazards should have 2–5 controls
+1. At least one control per hazard. Most hazards should have 2-5 controls
    across categories.
 2. Design controls are preferred over training/process controls (engineer out the risk rather than train around it).
 3. Be specific. "Improve error handling" is not useful. "Catch FHIR API 4xx responses in the patient demographics fetch and display a clear banner indicating data may be incomplete" is more useful.
 4. For testing controls, describe the scenario concretely enough that a
    developer could write the test from your description.
-5. Flag any controls that would require significant architectural changes – the Clinical Safety Officer needs to weigh effort against risk reduction.
+5. Flag any controls that would require significant architectural changes - the Clinical Safety Officer needs to weigh effort against risk reduction.
 
 ## Output format
 

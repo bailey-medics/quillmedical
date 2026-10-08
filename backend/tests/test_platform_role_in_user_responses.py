@@ -6,8 +6,8 @@ fed only ``system_permissions``: ``MeOut`` carried both, while
 cannot show what the API does not send, so this was the backend half of
 that change.
 
-These tests originally made the two columns **disagree** – an ``admin``
-in the old column who was ``standard`` in the new one – because a test
+These tests originally made the two columns **disagree** - an ``admin``
+in the old column who was ``standard`` in the new one - because a test
 where they agreed would pass whichever field the route actually read.
 The old column has since been dropped, so there is nothing left to
 disagree with and the assertions simply read the field.
@@ -83,7 +83,7 @@ def _login(client: TestClient, username: str) -> TestClient:
 
 
 class TestTheListingCarriesIt:
-    """``UserSummaryItem`` – the user list the badge column reads."""
+    """``UserSummaryItem`` - the user list the badge column reads."""
 
     def test_a_standard_account_says_standard(
         self,
@@ -102,7 +102,7 @@ class TestTheListingCarriesIt:
 
 
 class TestTheDetailCarriesIt:
-    """``UserOut`` – one user's admin page."""
+    """``UserOut`` - one user's admin page."""
 
     def test_a_standard_account_says_standard(
         self,

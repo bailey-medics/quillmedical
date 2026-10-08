@@ -1,6 +1,6 @@
 """Tests for the passport assessor invite token.
 
-The first direct tests of any invite token in this codebase – the
+The first direct tests of any invite token in this codebase - the
 patient-sharing pair in ``security.py`` has never had its own, and is
 covered only incidentally through the messaging routes.
 
@@ -20,7 +20,7 @@ is never verified is not an expiry.
 having been spent, so nothing in this module can enforce it. The
 ``passport_assessor_invite`` row does, through ``token_hash`` and
 ``accepted_at``. A test asserting single use here would pass while
-testing nothing, so instead one asserts the token is *replayable* –
+testing nothing, so instead one asserts the token is *replayable* -
 documenting the gap the row has to close.
 """
 
@@ -189,7 +189,7 @@ class TestSingleUseIsNotEnforcedHere:
 
         A JWT carries no record of having been spent. What makes a
         passport invite single-use is the ``passport_assessor_invite``
-        row – ``token_hash`` identifies it and ``accepted_at`` records
+        row - ``token_hash`` identifies it and ``accepted_at`` records
         that it has been consumed. A test asserting single use *here*
         would pass while testing nothing, so this asserts the opposite
         and names where the real check belongs.

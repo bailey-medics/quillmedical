@@ -2,8 +2,8 @@
 
 ``manage_users`` opens the routes that write competencies, and both of
 them could be pointed at the caller's own account. So a holder could
-award themselves anything in the catalogue – including more
-``manage_users`` – and the competency became the key to its own lock.
+award themselves anything in the catalogue - including more
+``manage_users`` - and the competency became the key to its own lock.
 
 **The rule: nobody edits their own competencies or platform role.** Ask
 another holder of ``manage_users`` instead, so the person granting and

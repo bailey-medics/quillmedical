@@ -5,12 +5,12 @@ Markdown here is the source; the pages under
 `frontend/public_pages/src/pages/` are its rendering, and the two must
 change together.
 
-- [Terms of service](terms-of-service.md) – published at
+- [Terms of service](terms-of-service.md) - published at
   `https://quill-medical.com/terms-of-service`. One document in three
   parts: Part A for everyone, Part B for people who reach Quill through a
   sponsor, Part C for people and organisations who deal with Bailey
   Medics directly.
-- [Privacy policy](privacy-policy.md) – published at
+- [Privacy policy](privacy-policy.md) - published at
   `https://quill-medical.com/privacy-policy`. Opens with which situation
   the reader is in, because that decides who the controller is.
 

@@ -22,7 +22,7 @@ describe("CertificateTable", () => {
   it("shows who issued it, and a dash where there is no expiry", () => {
     renderWithMantine(<CertificateTable certificates={certificates} />);
     expect(screen.getByText("Resuscitation Council UK")).toBeInTheDocument();
-    expect(screen.getByText("–")).toBeInTheDocument();
+    expect(screen.getByText("-")).toBeInTheDocument();
   });
 
   it("says so when there are none", () => {

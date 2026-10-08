@@ -1,15 +1,15 @@
-# modules/analytics/main.tf – Usage metrics, archive, and the one dashboard
+# modules/analytics/main.tf - Usage metrics, archive, and the one dashboard
 #
 # Answers three questions from data Google Cloud already holds, with no
 # third-party analytics processor anywhere and nothing stored on a user's
 # device:
 #
-#   1. Where are things going wrong  – alert policies live in the monitoring
+#   1. Where are things going wrong  - alert policies live in the monitoring
 #      module; the charts live here so there is a single dashboard to open.
-#   2. How many people visit the public site – load-balancer request logs.
+#   2. How many people visit the public site - load-balancer request logs.
 #      Backend-bucket logging on an external load balancer is automatic and
 #      cannot be disabled, so the landing site is already logged.
-#   3. How many people visit each page of the app – a log-based metric over
+#   3. How many people visit each page of the app - a log-based metric over
 #      the page-view pings, added when that endpoint exists.
 #
 # See docs/docs/plans/2026-08-31-analytics-plan.md.
@@ -93,7 +93,7 @@ resource "google_logging_metric" "page_views" {
     labels {
       key         = "page"
       value_type  = "STRING"
-      description = "Matched route pattern, such as /patients/:id – never a resolved URL"
+      description = "Matched route pattern, such as /patients/:id - never a resolved URL"
     }
   }
 
@@ -103,12 +103,12 @@ resource "google_logging_metric" "page_views" {
   # years, in the way the raw request rows are not.
   #
   # There is deliberately no "signed in" label. Page tracking runs only inside
-  # `RequireAuth`, so such a label would read true every time – and a label
+  # `RequireAuth`, so such a label would read true every time - and a label
   # that cannot vary is not a measurement, it is a claim the dashboard would
   # be unable to honour.
   #
-  # Clinical routes never reach here at all – the browser declines to send
-  # them – so this metric cannot show how often a patient record was opened,
+  # Clinical routes never reach here at all - the browser declines to send
+  # them - so this metric cannot show how often a patient record was opened,
   # by design and not by omission.
   label_extractors = {
     "page" = "EXTRACT(jsonPayload.page)"
@@ -119,7 +119,7 @@ resource "google_logging_metric" "page_views" {
 #
 # Browser error reports, as counted from the log entries the ingest endpoint
 # writes. Cloud Error Reporting is the right place to read an individual
-# fault – it groups them and shows the stack – but it is a separate console,
+# fault - it groups them and shows the stack - but it is a separate console,
 # and the dashboard is meant to be the one bookmark. What the dashboard owes
 # is the count, so a rising line is visible beside the uptime check without
 # having to remember to look somewhere else.
@@ -164,7 +164,7 @@ resource "google_logging_metric" "client_errors" {
   # Both labels are bounded and carry nothing personal. `source` is one of
   # three fixed values. `route` is a matched pattern such as /patients/:id,
   # which the browser builds from the router's own parameters, so an
-  # identifier is never in it – that is what makes this safe to retain for
+  # identifier is never in it - that is what makes this safe to retain for
   # years, in the way the raw rows are not.
   label_extractors = {
     "source" = "EXTRACT(jsonPayload.error_source)"
@@ -176,7 +176,7 @@ resource "google_logging_metric" "client_errors" {
 #
 # The nearest thing to "how many people use the app" that is available
 # without touching application code. It counts successful non-API requests
-# to the app host – that is, loads of the single-page application shell,
+# to the app host - that is, loads of the single-page application shell,
 # which a browser fetches once per visit rather than once per click.
 #
 # It is a proxy, not a headcount. It cannot distinguish two visits by one
@@ -208,7 +208,7 @@ resource "google_logging_metric" "app_page_loads" {
 #
 # The drift signal for hosted video. The database records which renditions a
 # transcode produced, and the player composes its URL from that record rather
-# than asking the bucket what is there – so if an object is deleted by hand,
+# than asking the bucket what is there - so if an object is deleted by hand,
 # or a transcode is recorded that did not land, the learner requests a file
 # that does not exist and nothing else here would notice.
 #
@@ -227,7 +227,7 @@ resource "google_logging_metric" "video_not_found" {
   description = "Requests for a video file that is not in the processed bucket"
 
   # 404 specifically, not 4xx. A 403 under this prefix is the signed-cookie
-  # gate doing its job – an expired grant, or someone without one – which is
+  # gate doing its job - an expired grant, or someone without one - which is
   # ordinary and would drown the signal this exists to carry.
   filter = <<-EOT
     resource.type="http_load_balancer"
@@ -251,7 +251,7 @@ resource "google_logging_metric" "video_not_found" {
 #
 # Retention is deliberately short. Load-balancer request logs contain
 # httpRequest.remoteIp, and there is no way to strip a field from them at
-# ingest – Cloud Logging sinks route entries, they do not redact them. Keeping
+# ingest - Cloud Logging sinks route entries, they do not redact them. Keeping
 # client IP addresses for a year to count visits to a marketing site would be
 # disproportionate, so the raw rows expire quickly and the long-run trend comes
 # from the log-based metric above, which stores no IP at all.
@@ -264,7 +264,7 @@ resource "google_bigquery_dataset" "analytics" {
 
   # Partition expiry, not table expiry. The sink writes one partitioned table
   # and keeps appending to it, so a *table* expiration would delete the whole
-  # thing – recent data included – on the anniversary of its creation, rather
+  # thing - recent data included - on the anniversary of its creation, rather
   # than rolling old days off the back. Partition expiry gives the rolling
   # window that was actually intended.
   default_partition_expiration_ms = var.retention_days * 24 * 60 * 60 * 1000
@@ -281,15 +281,15 @@ resource "google_logging_project_sink" "analytics" {
 
   destination = "bigquery.googleapis.com/projects/${var.project_id}/datasets/${google_bigquery_dataset.analytics.dataset_id}"
 
-  # Public marketing site only – the same scoping as the metric above, and it
+  # Public marketing site only - the same scoping as the metric above, and it
   # matters far more here.
   #
   # An unscoped "resource.type=http_load_balancer" filter would archive every
   # request to the authenticated app as well, and app request URLs carry
   # identifiers in the path: /api/patients/{patient_id}/letters,
   # /api/users/{user_id}. Storing those, next to client IP addresses, would
-  # break the plan's most important control – no raw URLs from the
-  # authenticated app – using the very pipeline built to honour it.
+  # break the plan's most important control - no raw URLs from the
+  # authenticated app - using the very pipeline built to honour it.
   #
   # Application logs are likewise not routed here: they may carry context
   # analytics has no business retaining.
@@ -320,16 +320,16 @@ resource "google_monitoring_dashboard" "quill" {
   project = var.project_id
 
   dashboard_json = jsonencode({
-    displayName = "Quill – health and usage (${var.environment})"
+    displayName = "Quill - health and usage (${var.environment})"
     gridLayout = {
       # A string, not the number it looks like. `columns` is an int64 in the
       # Monitoring API, and the proto3 JSON mapping encodes 64-bit integers as
-      # strings – so the API stores and returns "2" however it is sent.
+      # strings - so the API stores and returns "2" however it is sent.
       #
       # That mismatch was the sole cause of this dashboard appearing in every
       # plan as changed when nothing had changed. The provider's diff
-      # suppression strips fields the API adds – `etag` and the `targetAxis`
-      # it fills in – and then compares what remains with reflect.DeepEqual,
+      # suppression strips fields the API adds - `etag` and the `targetAxis`
+      # it fills in - and then compares what remains with reflect.DeepEqual,
       # which is strict about types: 2 and "2" are not equal, and one
       # inequality anywhere renders the whole resource as drifting.
       #
@@ -488,8 +488,8 @@ resource "google_monitoring_dashboard" "quill" {
         {
           # Renamed from "Client errors (4xx)". Two widgets called "client
           # errors" meaning different things is a trap that springs months
-          # later: this one counts HTTP 4xx responses at the load balancer –
-          # someone requesting a bad URL – and has nothing to do with
+          # later: this one counts HTTP 4xx responses at the load balancer -
+          # someone requesting a bad URL - and has nothing to do with
           # JavaScript failing in a browser. Diagnostically it is also
           # different from 5xx: a 401 spike means auth broke, a 404 spike
           # means something links wrongly.

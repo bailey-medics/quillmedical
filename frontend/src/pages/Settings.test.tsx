@@ -123,7 +123,7 @@ describe("the page-view opt-out", () => {
   });
 
   it("reads as off when the user has already opted out", () => {
-    // The preference is stored, so it survives a reload – which is the point
+    // The preference is stored, so it survives a reload - which is the point
     // of storing it, and the difference from the session identifier.
     setOptedOut(true);
 

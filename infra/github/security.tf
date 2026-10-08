@@ -1,4 +1,4 @@
-# security.tf – GitHub repository security settings
+# security.tf - GitHub repository security settings
 #
 # Enables secret scanning and push protection on the quillmedical repository.
 # Secret scanning detects accidentally committed credentials (API keys,
@@ -8,7 +8,7 @@
 # Also manages delete_branch_on_merge: branches are deleted on the remote as
 # soon as their PR merges, so a merged branch can't be left lying around to
 # hit the rebase-after-merge trap documented in .claude/rules/ci.md. This
-# only removes the remote branch – deleting a stale local copy is still on
+# only removes the remote branch - deleting a stale local copy is still on
 # each developer (`git fetch --prune` or `git branch -d`).
 #
 # Prerequisites:
@@ -23,7 +23,7 @@
 # and does not drift on other repository configuration managed via the UI.
 
 # ---------------------------------------------------------------------------
-# Quill Medical – main repository
+# Quill Medical - main repository
 # ---------------------------------------------------------------------------
 
 resource "github_repository" "quillmedical" {

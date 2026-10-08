@@ -148,23 +148,23 @@ type TextColourConfig = {
 export const textColours: Record<string, TextColourConfig> = {
   default: {
     value: "inherit",
-    usage: "Heading, PageHeader – default black headings",
+    usage: "Heading, PageHeader - default black headings",
   },
   body: {
     value: "var(--mantine-color-text)",
-    usage: "BodyText – primary body text (inherits theme navy)",
+    usage: "BodyText - primary body text (inherits theme navy)",
   },
   muted: {
     value: "var(--mantine-color-dimmed)",
-    usage: "FieldDescription, EmptyState – secondary text",
+    usage: "FieldDescription, EmptyState - secondary text",
   },
   link: {
     value: "var(--link-color)",
-    usage: "TextLink – links",
+    usage: "TextLink - links",
   },
   error: {
     value: "var(--error-color)",
-    usage: "ErrorMessage – validation and error messages",
+    usage: "ErrorMessage - validation and error messages",
   },
 };
 

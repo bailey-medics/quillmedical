@@ -46,7 +46,7 @@ that a sole developer can keep them green without a specialist.
   requires. Section D1 (usability and accessibility) is no longer scored,
   only reviewed comparatively, but it now names WCAG 2.2 AA, requires a
   user journey map, and requires the supplier to show it has considered the
-  Accessible Information Standard. Sections C1–C4 cover clinical safety,
+  Accessible Information Standard. Sections C1-C4 cover clinical safety,
   data protection, technical security and interoperability; C1 is already
   served by the hazard log under `docs/docs/safety/`.
 
@@ -408,7 +408,7 @@ Things the survey found that no tool will fix on its own.
       Two targets were under 24px: the remove button on a filter pill
       (21px tall) and the filter panel's Reset link (23px), both in
       `FilterModal`, now given a 1.5rem minimum height. Radios and
-      switches measure 16–20px but their labels are part of the target,
+      switches measure 16-20px but their labels are part of the target,
       and the video player's time readout is media-chrome's own control
 - [x] Redundant entry check (3.3.7): confirm the multi-step form and
       registration carry earlier answers forward and that nothing asks for
@@ -590,7 +590,7 @@ readable by someone who cannot yet log in.
       below: every route kept `index.html`'s "Quill Medical", so a screen
       reader announced the same title on every page, and every tab and
       history entry read the same. `useDocumentTitle` in
-      `src/lib/accessibility/` sets "Page – Quill Medical", the GOV.UK
+      `src/lib/accessibility/` sets "Page - Quill Medical", the GOV.UK
       pattern, and `PageHeader` calls it, so a page's h1 is also its
       title; phase 3 gave every page exactly one, always a `PageHeader`.
       An e2e test checks the teaching dashboard's title

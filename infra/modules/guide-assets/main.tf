@@ -1,4 +1,4 @@
-# modules/guide-assets/main.tf – screenshots for the in-app guides
+# modules/guide-assets/main.tf - screenshots for the in-app guides
 #
 # The guides at /guides show screenshots that Playwright retakes from seeded
 # data after each merge. They are not in the repository, because a set retaken

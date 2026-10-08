@@ -2,7 +2,7 @@
 
 Extracted from main.py to allow reuse in sub-routers (push, push_send)
 without circular imports. Also holds the CBAC competency-check
-dependencies (previously app/cbac/decorators.py) for the same reason –
+dependencies (previously app/cbac/decorators.py) for the same reason -
 a competency dependency needs the User model, and centralising here
 keeps that a one-way import rather than a cycle back into app.cbac.
 """
@@ -30,7 +30,7 @@ def require_clinical_services() -> None:
 
     Here rather than in ``main`` so that a sub-router can depend on the
     *same* callable. A wrapper would be a different object, and the tests
-    switch this gate off by overriding the object – so a wrapper would
+    switch this gate off by overriding the object - so a wrapper would
     quietly stay on.
     """
     if not settings.CLINICAL_SERVICES_ENABLED:
@@ -109,7 +109,7 @@ def require_operator(current_user: User = DEP_CURRENT_USER) -> User:
     """Require that the caller operates Quill itself.
 
     Its one consumer sends a test push notification to every subscribed
-    client in the deployment, which is unbounded by any organisation –
+    client in the deployment, which is unbounded by any organisation -
     the platform question rather than an administrative act at an org_unit.
     See docs/docs/plans/2026-09-09-platform-role-plan.md.
 
@@ -194,8 +194,8 @@ def has_competency_at(
     every org_unit without a row being touched.
 
     Use it wherever the org_unit is named in the path. Where a route has no
-    org_unit to scope to – a listing that *discovers* which org_units somebody
-    may administer – scope the query instead, because there is no single
+    org_unit to scope to - a listing that *discovers* which org_units somebody
+    may administer - scope the query instead, because there is no single
     org_unit to check.
 
     **Operators bypass the row check.** ``platform_role == "superadmin"``

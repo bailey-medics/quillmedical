@@ -34,9 +34,9 @@ def get_core_db() -> Generator[Session]:
     """FastAPI dependency to provide core database sessions.
 
     Commits automatically if the route returns without error, and rolls
-    back if any exception is raised – a route no longer needs to call
+    back if any exception is raised - a route no longer needs to call
     `db.commit()` itself. If a server-generated value (e.g. a new row's
-    `id`) is needed mid-request, use `db.flush()` instead – it populates
+    `id`) is needed mid-request, use `db.flush()` instead - it populates
     generated columns without ending the transaction, so the row stays
     rollback-able if something later in the request fails.
 

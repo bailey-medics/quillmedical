@@ -17,7 +17,7 @@
 # Every file in this directory is merged into one catalogue at load
 # time, so ids must be unique across the whole directory, not just
 # within a file. Which file an entry lives in carries no meaning to the
-# code – it is for the reader.
+# code - it is for the reader.
 
 competencies:
   # Opens the safety pages, as view_teaching_results opens teaching and

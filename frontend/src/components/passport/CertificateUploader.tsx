@@ -12,9 +12,9 @@
  * attachment.
  *
  * **The upload goes through Quill, not straight to a bucket.** Evidence
- * is addressed by the SHA-256 of its own bytes – which is what lets a
+ * is addressed by the SHA-256 of its own bytes - which is what lets a
  * holder verify their record years later with nothing but a checksum
- * tool – so the address cannot be computed without reading every byte.
+ * tool - so the address cannot be computed without reading every byte.
  * That is the whole reason the teaching videos' signed-URL pattern does
  * not apply here: a video is addressed by a generated id, so nobody has
  * to look inside it.

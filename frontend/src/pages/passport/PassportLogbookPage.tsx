@@ -46,7 +46,7 @@ import type {
  *
  * The form takes the whole `CompetencyState` because it shows what is
  * already recorded, but a competency being logged against for the first
- * time has no state yet – it is not on the passport until this entry
+ * time has no state yet - it is not on the passport until this entry
  * puts it there. So the name comes from the shared catalogue, the same
  * source the picker reads, and the rest describes an empty history
  * rather than pretending to know one.

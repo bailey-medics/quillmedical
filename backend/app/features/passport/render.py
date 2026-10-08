@@ -1,7 +1,7 @@
 """Rendering a passport as one readable Markdown document.
 
 A view, never a record. The files in the repository are canonical and
-this output is assembled from them on demand – it is deliberately not
+this output is assembled from them on demand - it is deliberately not
 written back, because a stored rendering is a second version of the
 truth waiting to disagree with the first.
 
@@ -23,7 +23,7 @@ what replaced it. Hiding it would make the document a summary of
 conclusions rather than a record of what was decided and when.
 
 **Clinical dates order clinical things.** Logbook and CPD entries sort by
-the date inside the entry, not by the filename – a filename records when
+the date inside the entry, not by the filename - a filename records when
 Quill wrote the file, which for five procedures logged on a Friday
 evening is the order somebody typed them up rather than the order they
 happened.
@@ -112,7 +112,7 @@ def _front_page(profile: Profile, index: Index) -> str:
     if profile.registrations:
         for registration in profile.registrations:
             lines.append(
-                f"- {registration.body} {registration.number} – _declared_"
+                f"- {registration.body} {registration.number} - _declared_"
             )
         lines.append("")
 
@@ -162,12 +162,12 @@ def _competency_table(index: Index) -> str:
         lines.append(
             "| {name} | {level} | {status} | {by} | {on} | {expires} |".format(
                 name=name_with_scope(entry.name, entry.scope),
-                level=entry.level.name if entry.level else "–",
+                level=entry.level.name if entry.level else "-",
                 status=_status_word(entry),
-                by=entry.signed_off_by or "–",
-                on=entry.signed_on.isoformat() if entry.signed_on else "–",
+                by=entry.signed_off_by or "-",
+                on=entry.signed_on.isoformat() if entry.signed_on else "-",
                 expires=(
-                    entry.expires_on.isoformat() if entry.expires_on else "–"
+                    entry.expires_on.isoformat() if entry.expires_on else "-"
                 ),
             )
         )
@@ -236,7 +236,7 @@ def _logbook_section(
                 if part
             )
             lines.append(
-                f"- **{performed_on.isoformat()}** – {detail or 'recorded'}"
+                f"- **{performed_on.isoformat()}** - {detail or 'recorded'}"
             )
 
         lines.append("")
@@ -286,7 +286,7 @@ def _certificates_section(store: PassportStore, passport_id: str) -> str:
 
     for certificate in sorted(found, key=lambda c: c.awarded_on):
         lines.append(
-            f"- **{certificate.title}** – {certificate.issuer}, "
+            f"- **{certificate.title}** - {certificate.issuer}, "
             f"{certificate.awarded_on.isoformat()}"
         )
 
@@ -349,7 +349,7 @@ def _cpd_section(
         for entry in group.entries:
             suffix = f" ({entry.points:g} points)" if entry.points else ""
             lines.append(
-                f"- **{entry.activity_on.isoformat()}** – {entry.title}"
+                f"- **{entry.activity_on.isoformat()}** - {entry.title}"
                 f" [{entry.activity_type}]{suffix}"
             )
 
@@ -464,7 +464,7 @@ def _one_sign_off(name: str, record: SignOff) -> list[str]:
         lines.append(
             f"- Signed off by: {assessor.name}, {assessor.role}"
             + (
-                f" ({registrations}) – _registration as declared_"
+                f" ({registrations}) - _registration as declared_"
                 if registrations
                 else ""
             )

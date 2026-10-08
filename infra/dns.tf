@@ -1,4 +1,4 @@
-# dns.tf – the quill-medical.com zone
+# dns.tf - the quill-medical.com zone
 #
 # The zone GoDaddy, the registrar, delegates quill-medical.com to. It lived
 # in quill-medical-production, created by hand, until Batch 10a of

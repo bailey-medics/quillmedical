@@ -2,7 +2,7 @@
 
 ``app.features.__init__`` used to define ``requires_feature``, so importing
 anything under ``app.features`` pulled in FastAPI, SQLAlchemy, ``app.models``,
-``app.db`` and ``app.config`` – and ``Settings`` requires ``JWT_SECRET`` and
+``app.db`` and ``app.config`` - and ``Settings`` requires ``JWT_SECRET`` and
 ``CORE_DB_PASSWORD``.  That made the package unusable for tooling that only
 needs to read YAML, which is why ``requires_feature`` now lives in
 ``app.features.gating``.
@@ -38,7 +38,7 @@ def _import_in_clean_subprocess(
         f"leaked = [m for m in {FORBIDDEN!r} if m in sys.modules]\n"
         "print('LEAKED:' + ','.join(leaked))\n"
     )
-    # PATH only – deliberately no JWT_SECRET or CORE_DB_PASSWORD.
+    # PATH only - deliberately no JWT_SECRET or CORE_DB_PASSWORD.
     env = {
         "PATH": os.environ.get("PATH", ""),
         "PYTHONPATH": str(_BACKEND_ROOT),
@@ -88,7 +88,7 @@ def test_import_needs_no_secrets(module: str) -> None:
     """The import must succeed without JWT_SECRET or CORE_DB_PASSWORD."""
     result = _import_in_clean_subprocess(module)
     assert result.returncode == 0, (
-        f"importing {module} failed without app secrets – something in the "
+        f"importing {module} failed without app secrets - something in the "
         f"chain reached app.config:\n{result.stderr}"
     )
 
@@ -133,7 +133,7 @@ def test_import_pulls_in_nothing_heavy(module: str) -> None:
     leaked = [m for m in line.removeprefix("LEAKED:").split(",") if m]
     assert not leaked, (
         f"importing {module} pulled in {leaked}. Keep the __init__.py files in "
-        "the app.features chain docstring-only – see app/features/gating.py."
+        "the app.features chain docstring-only - see app/features/gating.py."
     )
 
 

@@ -100,7 +100,7 @@ main() {
   # The base ref has a catalogue and this branch does not, so every id has
   # gone. Almost certainly a move this check has not been taught about
   # rather than a real deletion, but silence here would mean the check
-  # quietly stopped running – which is the failure it exists to prevent.
+  # quietly stopped running - which is the failure it exists to prevent.
   if [ -z "$(files_at_ref HEAD)" ]; then
     error "No competency definitions found in ${CATALOGUE}/ on this branch,"
     error "but ${main_ref} has them."

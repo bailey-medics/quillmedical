@@ -51,7 +51,7 @@ describe("PatientLetters", () => {
       screen.getByText("Gastroenterology outpatient clinic letter"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("GP referral letter – gastroenterology"),
+      screen.getByText("GP referral letter - gastroenterology"),
     ).toBeInTheDocument();
     expect(
       screen.getByText("Routine health review letter"),
@@ -65,7 +65,7 @@ describe("PatientLetters", () => {
     });
 
     expect(
-      screen.getByText("Dr Rowan Fenwick – Consultant Gastroenterologist"),
+      screen.getByText("Dr Rowan Fenwick - Consultant Gastroenterologist"),
     ).toBeInTheDocument();
   });
 

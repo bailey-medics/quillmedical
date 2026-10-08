@@ -305,7 +305,7 @@ class TestThePostOutlivesItsHolders:
     """History is the reason holding is a table rather than a column."""
 
     def test_a_past_holder_is_found_on_the_date_they_held_it(self, db_session):
-        """'Who was the lead in March?' – the question a review asks."""
+        """'Who was the lead in March?' - the question a review asks."""
         site = _site(db_session)
         post = _post(db_session, site=site)
         doctor = _user(db_session, "dr_past")

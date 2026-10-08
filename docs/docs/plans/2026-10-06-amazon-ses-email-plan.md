@@ -62,16 +62,16 @@ screens.
       they carry now; the rest of this plan uses whichever was current
       when each step was written:
 
-      - **Quill Medical Emails** (now Quill Medical Emails App) – the
+      - **Quill Medical Emails** (now Quill Medical Emails App) - the
         working account, where SES and
         the backend's key live. It was the original project.
 
       - **Quill-Medical Management Account** (now Quill Medical
-        Superadmin) – billing and the
+        Superadmin) - billing and the
         organisation's policies. Its root login is `aws@`.
 
       - **Quill-Medical Identity Delegated Admin** (now Quill Medical
-        ID) – the sign-in
+        ID) - the sign-in
         directory: who may log in, and to which accounts. AWS made it
         and sign-in depends on it. Nothing is done there.
 
@@ -751,14 +751,14 @@ mailing list, and are stored as one. This phase does not wait on Phase
       from the mailing list always survives; otherwise the answer given
       when registering is the one that counts.**
 
-      - **They had unsubscribed on the mailing list** – the account is
+      - **They had unsubscribed on the mailing list** - the account is
         set to no newsletters, with a `marketing_preference_change` row
         saying it came from the mailing list, whatever the registration
         form said. Registration is an opt-out: newsletters are on
         unless a box is ticked, so somebody who had already refused and
         did not notice the box would otherwise be put back on.
 
-      - **They had not** – the account's own answer stands, yes or no.
+      - **They had not** - the account's own answer stands, yes or no.
         It is the more recent choice.
 
       The same check runs once over existing accounts when the mailing
@@ -833,12 +833,12 @@ mailing list, and are stored as one. This phase does not wait on Phase
       a nuisance. Each row is taken to
       hold three things:
 
-      - **Email** – required. Trimmed, lower-cased and checked as an
+      - **Email** - required. Trimmed, lower-cased and checked as an
         address. A row without one is counted and left out.
 
-      - **Name** – may be missing, and a row is fine without it.
+      - **Name** - may be missing, and a row is fine without it.
 
-      - **Opt in or out** – required, and read strictly: a short list
+      - **Opt in or out** - required, and read strictly: a short list
         of words for each, such as `in` and `out`, `yes` and `no`,
         `subscribed` and `unsubscribed`. Anything else is counted as
         unreadable and left out, never guessed. Somebody opted out is
@@ -1039,7 +1039,7 @@ be checked against what is meant to be.
 
 ## Decisions
 
-- **No audit trail in AWS for now** – decided on 8 October 2026.
+- **No audit trail in AWS for now** - decided on 8 October 2026.
   Terraform records what is meant to be in AWS and who approved each
   change; it does not record who did what in the account. That would be
   a CloudTrail trail, and neither the management account nor the email
@@ -1053,25 +1053,25 @@ be checked against what is meant to be.
   record: what people do in the app, not what happens in the AWS
   account.
 
-- **SES in London, not an EU provider** – the site promises the UK, and
+- **SES in London, not an EU provider** - the site promises the UK, and
   SES in London is the only mainstream service that keeps the promise
   word for word. Amazon is a US company with UK data centres, which is
   the position Quill is already in with Google Cloud.
 
-- **Convert the account AWS gave, not sign up again** – the new sign-up
+- **Convert the account AWS gave, not sign up again** - the new sign-up
   fixed the region at Stockholm. Signing up again the advanced way would
   have given one plain account with a root login. Activating advanced
   features on the account already made was chosen instead; it is
   permanent, and leaves an organisation of three accounts, a region
   policy and a console setting to keep right, all recorded in Phase 1.
 
-- **London is enforced twice, on purpose** – the organisation's policy
+- **London is enforced twice, on purpose** - the organisation's policy
   refuses every region but London for anything of Quill's, and the
   backend's key is limited to London again in Phase 2. The policy stops
   a mistake made by hand in the console; the key's own limit is what
   holds if the policy is ever loosened.
 
-- **Quill keeps the newsletter list, not Amazon** – decided on 7
+- **Quill keeps the newsletter list, not Amazon** - decided on 7
   October 2026. Amazon's unsubscribe page cannot be themed and sits at
   an Amazon address, and one contact list per account would have been
   shared by development and production. With the list in Quill's own
@@ -1081,38 +1081,38 @@ be checked against what is meant to be.
   missing list screen, which SES has none of, stops mattering for the
   same reason: the list is the users table.
 
-- **No webhook from Amazon, and no daily check** – both were ways of
+- **No webhook from Amazon, and no daily check** - both were ways of
   hearing what Amazon's list held. A webhook would have been a public
   route with a signature check written by hand, since Amazon publishes
   no Python tool for it; a daily read of the list was chosen in its
   place, and then neither was needed once there was no list to read.
 
-- **A hard cut for the newsletter** – no setting chooses between Resend
+- **A hard cut for the newsletter** - no setting chooses between Resend
   and Quill's own send. Production has six contacts and no real users
   yet, and a switch would mean two lists that each believe they are
   right.
 
-- **A switch, not a cut-over** – `EMAIL_PROVIDER` lets SES be proven in
+- **A switch, not a cut-over** - `EMAIL_PROVIDER` lets SES be proven in
   the dev stack and then in production while Resend still works, and
   turned off again without new code. It is removed at the end.
 
-- **An access key in Secret Manager, for now** – the simplest thing that
+- **An access key in Secret Manager, for now** - the simplest thing that
   works: a key that can only send from London, held where the other
   runtime secrets are. Amazon also accepts a Google service account's
   identity in place of a key, which would leave no credential to steal
   or rotate, and fits the rule of preferring identifiers to credentials.
   Worth doing once sending works; not worth holding up go-live for.
 
-- **A separate MAIL FROM name, `mail`, not `send`** – so that Resend's
+- **A separate MAIL FROM name, `mail`, not `send`** - so that Resend's
   bounce handling keeps working while both run. `send` is removed with
   Resend.
 
-- **The shared suppression list is accepted and stated** – SES adds any
+- **The shared suppression list is accepted and stated** - SES adds any
   address that hard-bounces to a list that "applies to all SES
   customers" for up to 14 days, it cannot be turned off, and Amazon does
   not say where it is held. It holds only addresses that do not work,
   briefly. Saying so in the policy is better than pretending it away.
 
-- **The company's own mailboxes stay on Proton** – that is the company's
+- **The company's own mailboxes stay on Proton** - that is the company's
   correspondence, not the service, and does not bear on the hosting
   claim.

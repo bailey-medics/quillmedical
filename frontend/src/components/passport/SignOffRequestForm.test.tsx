@@ -213,7 +213,7 @@ describe("SignOffRequestForm", () => {
         "14/03/2026",
       );
 
-      // The form cannot be sent until the lookup has answered – a name
+      // The form cannot be sent until the lookup has answered - a name
       // that has found nobody yet is not somebody to ask.
       await screen.findByText(/Dr Amara Okonkwo already uses Quill/);
 
@@ -288,7 +288,7 @@ describe("SignOffRequestForm", () => {
     it("does not pick one of several people answering to a name", async () => {
       // Two consultants answering to "Okonkwo" is not an answer, and
       // taking the first would name whichever the database happened to
-      // return – the mistake this whole step exists to prevent.
+      // return - the mistake this whole step exists to prevent.
       const user = userEvent.setup();
       searchAssessors.mockResolvedValue({
         matches: [

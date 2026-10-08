@@ -1,6 +1,6 @@
 # Development Integration
 
-Embedding clinical safety into the software development lifecycle – not bolting it on before procurement.
+Embedding clinical safety into the software development lifecycle - not bolting it on before procurement.
 
 ---
 
@@ -74,10 +74,10 @@ Once Quill Medical is live in any clinical environment:
 
 ### Incident Management
 
-- Maintain a **clinical safety incident log** – any safety events reported by users must be captured, graded, and managed
+- Maintain a **clinical safety incident log** - any safety events reported by users must be captured, graded, and managed
 - Grade incidents using the same severity/likelihood matrix as the Hazard Log
 - Update the Hazard Log to reflect new incidents (new hazards or re-scored existing hazards)
-- Where an incident is deemed significant, notify deploying organisations – they may need to implement local controls
+- Where an incident is deemed significant, notify deploying organisations - they may need to implement local controls
 
 ### User Feedback
 
@@ -100,10 +100,10 @@ Once Quill Medical is live in any clinical environment:
 
 Clinical test scenarios should be developed alongside functional tests. These are scenarios that reflect realistic patient conditions and clinical workflows, designed to detect safety hazards in the system. Examples:
 
-- A patient with a documented penicillin allergy – is this visible when a prescription workflow begins?
-- Two patients with similar names – can the clinician reliably distinguish between them?
-- A clinician opens a patient record, is interrupted, returns – is the correct patient still in context?
-- Network connectivity drops during data entry – what happens to unsaved data?
-- A clinician accesses the system on a shared device – does the previous session's patient context persist?
+- A patient with a documented penicillin allergy - is this visible when a prescription workflow begins?
+- Two patients with similar names - can the clinician reliably distinguish between them?
+- A clinician opens a patient record, is interrupted, returns - is the correct patient still in context?
+- Network connectivity drops during data entry - what happens to unsaved data?
+- A clinician accesses the system on a shared device - does the previous session's patient context persist?
 
 These test scenarios should be maintained alongside the Hazard Log and updated as new hazards are identified.

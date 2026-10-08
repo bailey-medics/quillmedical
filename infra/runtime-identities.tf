@@ -1,4 +1,4 @@
-# runtime-identities.tf – one service account per Cloud Run workload
+# runtime-identities.tf - one service account per Cloud Run workload
 #
 # Every service and job used to run as the default Compute Engine account,
 # which held roles/secretmanager.secretAccessor on the whole project. So the
@@ -47,7 +47,7 @@ locals {
       TEACHING_SYNC_TOKEN        = "teaching-sync-token"
       TEACHING_VIDEO_SIGNING_KEY = "teaching-video-signing-key"
       # The other end of the transcode job's completion report. Same
-      # secret on both sides – the job presents it, this verifies it.
+      # secret on both sides - the job presents it, this verifies it.
       TEACHING_TRANSCODE_CALLBACK_TOKEN = "teaching-transcode-callback-token"
     } : {}
   )
@@ -211,9 +211,9 @@ resource "google_service_account_iam_member" "runtime_backend_signs_as_itself" {
 #
 # **`jobsExecutorWithOverrides`, not `invoker`.** Starting a job as
 # configured is `run.jobs.run`, which `roles/run.invoker` confers.
-# Starting one with container overrides – which is how the three ids
+# Starting one with container overrides - which is how the three ids
 # reach the job, and the only way they can, since each execution needs
-# different ones – is `run.jobs.runWithOverrides`, a separate permission
+# different ones - is `run.jobs.runWithOverrides`, a separate permission
 # that `run.invoker` does not include. Granting the narrower role first
 # produced exactly that silent failure, with the
 # distinction visible only in the traceback:

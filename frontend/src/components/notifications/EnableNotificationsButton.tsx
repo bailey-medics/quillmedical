@@ -72,7 +72,7 @@ export default function EnableNotificationsButton() {
           : state === "denied"
             ? "Permission denied"
             : state === "err"
-              ? "Error – try again"
+              ? "Error - try again"
               : "Enable notifications"}
     </button>
   );

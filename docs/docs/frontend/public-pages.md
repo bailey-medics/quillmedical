@@ -45,7 +45,7 @@ frontend/
 
 | Aspect          | Clinical app (`frontend/src/`) | Public pages (`frontend/public_pages/`)        |
 | --------------- | ------------------------------ | ---------------------------------------------- |
-| Routing         | React Router SPA               | Multi-page – each page is a separate HTML file |
+| Routing         | React Router SPA               | Multi-page - each page is a separate HTML file |
 | Deployment      | Cloud Run container via Caddy  | GCS bucket with CDN                            |
 | Authentication  | Required (JWT cookies)         | None                                           |
 | Release process | DCB0129 clinical sign-off      | Update anytime                                 |
@@ -56,7 +56,7 @@ frontend/
 Public pages import components and the Mantine theme from the parent workspace via path aliases (`@/components/...`, `@/theme`). To avoid dual-context errors where React or Mantine resolves from a separate `node_modules`, the Vite config forces shared packages to resolve from the parent:
 
 ```typescript
-// vite.config.ts – resolve aliases
+// vite.config.ts - resolve aliases
 resolve: {
   alias: {
     "@": path.resolve(__dirname, "../src"),
@@ -68,7 +68,7 @@ resolve: {
 }
 ```
 
-The `public-pages` workspace has **no runtime dependencies** in its `package.json` – only dev dependencies (Vite, chokidar, etc.). This prevents Yarn from installing duplicate copies of React/Mantine.
+The `public-pages` workspace has **no runtime dependencies** in its `package.json` - only dev dependencies (Vite, chokidar, etc.). This prevents Yarn from installing duplicate copies of React/Mantine.
 
 ## Page generation (`pages:gen`)
 
@@ -76,18 +76,18 @@ Each TSX file in `src/pages/` is a standalone React entry point, not a route. Th
 
 1. Scans `src/pages/` for `.tsx` files
 2. Reads `templates/page.html` as a template
-3. Takes the page's title and meta description from `page-meta.json`, and stops with an error if the page has no entry there. The title becomes "Title – Quill Medical"; the home page's is "Quill Medical" alone
+3. Takes the page's title and meta description from `page-meta.json`, and stops with an error if the page has no entry there. The title becomes "Title - Quill Medical"; the home page's is "Quill Medical" alone
 4. Writes an HTML file with the correct `<script>` entry point
 
 **When it runs:**
 
-- `yarn workspace public-pages dev` – runs once, then watches for new/renamed TSX files
-- `yarn workspace public-pages build` – runs once before Vite build
+- `yarn workspace public-pages dev` - runs once, then watches for new/renamed TSX files
+- `yarn workspace public-pages build` - runs once before Vite build
 
 **Example:** Creating `src/pages/pricing.tsx` automatically generates `pricing.html` with:
 
 ```html
-<title>Pricing – Quill Medical</title>
+<title>Pricing - Quill Medical</title>
 <script type="module" src="/src/pages/pricing.tsx"></script>
 ```
 
@@ -117,15 +117,15 @@ The production build picks the page up too: `rollupOptions.input` in `vite.confi
 
 2. Add a title and description for it to `frontend/public_pages/page-meta.json`, keyed by the file name without `.tsx`. The description is what a search result shows, so keep it under 160 characters; `generate-pages.test.ts` checks that.
 
-3. Run `just pub` – the HTML file is generated automatically and the dev server opens.
+3. Run `just pub` - the HTML file is generated automatically and the dev server opens.
 
 ## PublicLayout
 
 All public pages use `PublicLayout` from `@/components/layouts/PublicLayout.tsx`. It provides:
 
-- **Header** – `PublicTopRibbon` navigation with logo and links
+- **Header** - `PublicTopRibbon` navigation with logo and links
 - **Main content** area (flex-grows to fill viewport)
-- **Footer** – `PublicFooter` component
+- **Footer** - `PublicFooter` component
 
 Props:
 
@@ -167,8 +167,8 @@ The `public-site.yml` workflow triggers on pushes to `main` that change:
 
 **Pipeline:**
 
-1. **Build** – `yarn workspace public-pages build` → outputs to `frontend/dist/public_pages/`
-2. **Deploy** – syncs to the app project's `{project}-landing` GCS bucket
+1. **Build** - `yarn workspace public-pages build` → outputs to `frontend/dist/public_pages/`
+2. **Deploy** - syncs to the app project's `{project}-landing` GCS bucket
 
 ### Cache strategy
 
@@ -181,10 +181,10 @@ The `public-site.yml` workflow triggers on pushes to `main` that change:
 
 The GCS landing bucket sits behind the Global HTTPS Load Balancer (managed by Terraform):
 
-- **SSL** – Google-managed certificate covering `quill-medical.com` and `www.quill-medical.com`
-- **CDN** – Enabled on the backend bucket for edge caching
-- **404 page** – Load balancer serves `not-found.html` for missing paths
-- **Cloud Armor** – not applied to this site. The rate limit (500 req/min per IP) is attached to the application's two backend services, and the landing bucket carries no policy
+- **SSL** - Google-managed certificate covering `quill-medical.com` and `www.quill-medical.com`
+- **CDN** - Enabled on the backend bucket for edge caching
+- **404 page** - Load balancer serves `not-found.html` for missing paths
+- **Cloud Armor** - not applied to this site. The rate limit (500 req/min per IP) is attached to the application's two backend services, and the landing bucket carries no policy
 
 ### DNS
 

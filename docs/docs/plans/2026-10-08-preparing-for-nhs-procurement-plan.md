@@ -290,45 +290,45 @@ EoEETA's host. These steps are what this approach adds.
 
 ## Decisions
 
-- **"DDAT" was read as DTAC** – the request named DDAT, which is the
+- **"DDAT" was read as DTAC** - the request named DDAT, which is the
   government's digital and data profession. The assessment a trust runs
   on a product is the DTAC, and the accessibility work already filed
   under `dtac-d1.md` points the same way.
 
-- **Do the three things in Phase 1 before any evidence work** – a missing
+- **Do the three things in Phase 1 before any evidence work** - a missing
   certificate delays a purchase. An undeclared interest, a product
   already in use without agreement, or a publisher objecting to its
   document being hosted can end one.
 
-- **Answer clinical safety, do not argue it away** – the passport holds
+- **Answer clinical safety, do not argue it away** - the passport holds
   no patient record, and a claim that DCB0129 does not apply could be
   defended. But a trust's clinical safety officer will ask what happens
   when a sign-off is wrong, and a short statement with a hazard log
   answers that where "out of scope" invites a second meeting.
 
-- **Basic Cyber Essentials first, then Plus** – the basic certificate is
+- **Basic Cyber Essentials first, then Plus** - the basic certificate is
   self-assessed and satisfies the DTAC question, so it comes first. Plus
   is what the DSPT and most trust security teams give weight to, and it
   audits the same answers.
 
-- **The offer is the passport, not the EHR** – every answer in the pack
+- **The offer is the passport, not the EHR** - every answer in the pack
   is about the App and the Clinician Passport. Offering the clinical
   product would bring patient data, DCB0129 in full and a much longer
   assessment, and nobody has asked for it.
 
-- **The first approach is a pilot** – decided by the product owner on
+- **The first approach is a pilot** - decided by the product owner on
   8 October 2026. The information governance checks apply in full
   whatever the commercial terms. If a regional body wants the passport
   across several trusts, the buyer is that body's host and the pack goes
   to a different team.
 
-- **Nothing here is confirmed with the trust yet** – what Gloucestershire
+- **Nothing here is confirmed with the trust yet** - what Gloucestershire
   in particular requires (cover levels, route to buy, whether it wants a
   DSPT from a supplier this size) is not known. Phase 2 and Phase 8 ask.
   Where this plan says "a trust will", it is the usual case, not their
   answer.
 
-- **Commercial detail stays out of this document** – the repository is
+- **Commercial detail stays out of this document** - the repository is
   public. Policy and quote references, prices, turnover, what cover is
   or is not held, and how a negotiation will be run are kept in private
   notes. This plan lists what has to be done, not the company's position

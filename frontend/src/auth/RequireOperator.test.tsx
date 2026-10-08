@@ -1,7 +1,7 @@
 /**
  * RequireOperator Tests
  *
- * The guard asks one question – does this person operate Quill? – so the
+ * The guard asks one question - does this person operate Quill? - so the
  * tests are about `platform_role` and nothing else.
  *
  * Its predecessor `RequirePermission` compared a `level` prop against a

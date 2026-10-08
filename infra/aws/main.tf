@@ -1,4 +1,4 @@
-# main.tf – Amazon SES in London, in the two AWS accounts that send email
+# main.tf - Amazon SES in London, in the two AWS accounts that send email
 #
 # What Quill has in AWS is small: one verified domain, a few SES settings
 # and one user whose key sends mail, in each of two accounts. It was made

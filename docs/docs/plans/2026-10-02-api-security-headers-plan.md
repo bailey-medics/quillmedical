@@ -24,13 +24,13 @@ check fails if they ever go missing again.
       bucket in the same file already does this and is the pattern to copy.
       The headers:
 
-    - **`X-Content-Type-Options: nosniff`** – the one that matters most.
+    - **`X-Content-Type-Options: nosniff`** - the one that matters most.
       It stops a browser guessing a file's type, which is how an uploaded
       file gets treated as a web page. Only one route sets it today, the
       inline evidence response in
       `backend/app/features/passport/router.py`.
 
-    - **`X-Frame-Options: SAMEORIGIN`** – not `DENY`, which this plan
+    - **`X-Frame-Options: SAMEORIGIN`** - not `DENY`, which this plan
       first asked for. It said nothing in `frontend/src` frames an API
       response, and that was wrong: the search looked for an `iframe` tag
       and missed `<Box component="iframe">` in
@@ -42,18 +42,18 @@ check fails if they ever go missing again.
       framing keeps the page working and still stops another site framing
       an API response.
 
-    - **`Content-Security-Policy: default-src 'none'; frame-ancestors 'self'`**
-      – an API-only policy, far tighter than the application's, because an
+    - **`Content-Security-Policy: default-src 'none'; frame-ancestors 'self'`** -
+      an API-only policy, far tighter than the application's, because an
       API response should load nothing at all. `frame-ancestors 'self'`
       rather than `'none'` for the reason above. The API serves no HTML in
       production (`/api/docs` and `/api/redoc` exist only in dev), so
       `default-src 'none'` has no page of its own to break.
 
-    - **`Strict-Transport-Security: max-age=63072000; includeSubDomains`**
-      – the same value Caddy already sends for this hostname, so it makes
+    - **`Strict-Transport-Security: max-age=63072000; includeSubDomains`** -
+      the same value Caddy already sends for this hostname, so it makes
       no new promise. No `preload`, for the reason given in the Caddyfile.
 
-    - **`Referrer-Policy: strict-origin-when-cross-origin`** – to match
+    - **`Referrer-Policy: strict-origin-when-cross-origin`** - to match
       the application.
 
 - [x] Before merging, check that the strict policy does not stop a browser
@@ -64,7 +64,7 @@ check fails if they ever go missing again.
       refuses to render under `default-src 'none'`, loosen the policy for
       what the viewer needs and record what was needed here.
 
-    - **Only the evidence route is at risk** – it is the one response a
+    - **Only the evidence route is at risk** - it is the one response a
       browser renders in place. The markdown, PDF and zip exports and the
       teaching PDF are all sent as `attachment`, and the frontend fetches
       them and saves them from a blob, so a policy on the response never
@@ -212,18 +212,18 @@ could run before they exist and fail a healthy deploy.
 
 ## Decisions
 
-- **The load balancer, not a backend middleware** – one setting covers
+- **The load balancer, not a backend middleware** - one setting covers
   every response the backend sends, including from endpoints written later,
   and it is the pattern the landing site already uses. The cost is that the
   headers exist only in production, so no unit or E2E test can see them.
   Phase 3 is the answer to that.
 
-- **The frontend service is left alone** – Caddy already sets its headers
+- **The frontend service is left alone** - Caddy already sets its headers
   and the E2E stack runs that same Caddyfile, so they are exercised before
   every merge. Setting them at the load balancer as well would send two
   copies of each.
 
-- **Real WAF rules are deferred** – adding Google's preconfigured rule sets
+- **Real WAF rules are deferred** - adding Google's preconfigured rule sets
   (SQL injection, cross-site scripting) to the Cloud Armor policy is a
   separate piece of work. They can block legitimate requests, so they need
   to run in preview mode first and be tuned. Phase 4 only stops the

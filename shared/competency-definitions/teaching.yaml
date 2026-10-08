@@ -2,7 +2,7 @@
 #
 # TEACHING COMPETENCY DEFINITIONS FOR QUILL MEDICAL
 #
-# Competencies governing the teaching feature – who may take an
+# Competencies governing the teaching feature - who may take an
 # assessment, curate the content behind it, and read the analytics it
 # produces.
 #
@@ -12,7 +12,7 @@
 # Every file in this directory is merged into one catalogue at load
 # time, so ids must be unique across the whole directory, not just
 # within a file. Which file an entry lives in carries no meaning to the
-# code – it is for the reader.
+# code - it is for the reader.
 
 competencies:
   # The two doors a learner goes through, kept apart so the inner one can

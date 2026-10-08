@@ -207,20 +207,20 @@ On the live application, open a certificate with a PDF of several pages
 and confirm every page can be reached. One step for each device, so what
 has and has not been seen is plain.
 
-- [x] **Galaxy tablet** – pdf.js path. Confirmed on 4 October 2026:
+- [x] **Galaxy tablet** - pdf.js path. Confirmed on 4 October 2026:
       the pages draw, and "Open file" downloads the PDF. Which of Chrome
       and Samsung Internet it was tried in was not recorded.
 
-- [x] **iPhone, Safari** – pdf.js path. Confirmed on 4 October 2026:
+- [x] **iPhone, Safari** - pdf.js path. Confirmed on 4 October 2026:
       every page can be reached, and "Open file" works.
 
-- [-] **iPad, Safari** – pdf.js path. Not checked: there is no iPad to
+- [-] **iPad, Safari** - pdf.js path. Not checked: there is no iPad to
   try it on. It is assumed to behave as the iPhone does. If it turns
   out to report a mouse as its main pointer, as it may with a
   keyboard case attached, it would get the frame and show one page,
   and the gate in `useNativePdfViewer` would need another look.
 
-- [x] **MacBook** – the frame, unchanged. Confirmed on 4 October
+- [x] **MacBook** - the frame, unchanged. Confirmed on 4 October
       2026: a PDF shows in the browser's own viewer as it did before.
       Which of Chrome and Safari it was tried in was not recorded.
 
@@ -230,21 +230,21 @@ has and has not been seen is plain.
 
 ## Decisions
 
-- **Desktop keeps the iframe** – the built-in viewer has search, print,
+- **Desktop keeps the iframe** - the built-in viewer has search, print,
   zoom and download, and on pdf.js each would have to be built. The
   price is two paths to keep working. It is accepted because the pdf.js
   path can be forced in Storybook and so stays testable without a phone.
 
-- **The gate asks what the browser can do, not what it is** – "has a
+- **The gate asks what the browser can do, not what it is** - "has a
   viewer and uses a mouse". A wrong guess sends a capable browser down
   the pdf.js path, which still shows the PDF. The other way round would
   not, so the gate errs towards pdf.js.
 
-- **No text layer on the pdf.js path** – pages are pictures, so text
+- **No text layer on the pdf.js path** - pages are pictures, so text
   cannot be selected or searched on a phone, and a screen reader reads
   only the page labels. The "Open file" link is the way through for
   both. A text layer is pdf.js's answer and can be added later if
   anybody asks for it; it roughly doubles the component.
 
-- **Images are untouched** – a PNG or JPEG attachment already shows on
+- **Images are untouched** - a PNG or JPEG attachment already shows on
   every device, and HEIC keeps its download link.

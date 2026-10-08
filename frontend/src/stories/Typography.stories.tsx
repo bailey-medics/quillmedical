@@ -33,8 +33,8 @@ export const Overview: Story = {
       <Stack gap="xs">
         <PageHeader title="Font family" />
         <StoryNote>
-          <strong>Atkinson Hyperlegible Next</strong> – designed by the Braille
-          Institute for maximum readability. Self-hosted variable font (100–900
+          <strong>Atkinson Hyperlegible Next</strong> - designed by the Braille
+          Institute for maximum readability. Self-hosted variable font (100-900
           weight range).
         </StoryNote>
         <StoryNote>
@@ -49,7 +49,7 @@ export const Overview: Story = {
       <Stack gap="xs">
         <PageHeader title="Character differentiation" />
         <StoryNote>
-          Critical for clinical safety – confusing characters in dosages or IDs
+          Critical for clinical safety - confusing characters in dosages or IDs
           could cause harm.
         </StoryNote>
         <Group gap="xl" mt="xs">

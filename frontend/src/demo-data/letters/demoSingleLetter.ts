@@ -13,14 +13,14 @@ export const sampleLetter = {
   date: new Date().toISOString(),
   body: `## Diagnosis
 
-1. Chronic persistent cough – likely **post-nasal drip syndrome**
+1. Chronic persistent cough - likely **post-nasal drip syndrome**
 2. Possible mild asthma (to confirm with spirometry)
 
 ## Plan
 
 1. Trial of nasal corticosteroid spray (fluticasone 50mcg, two sprays each nostril daily) for **eight weeks**
 2. Salbutamol inhaler 100mcg as required for wheeze or breathlessness
-3. Chest X-ray – requested to exclude underlying pathology
+3. Chest X-ray - requested to exclude underlying pathology
 4. Spirometry with reversibility testing at next visit
 5. Review in respiratory clinic in **eight weeks** with results
 

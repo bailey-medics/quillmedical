@@ -50,7 +50,7 @@ describe("ConfirmModal", () => {
     renderWithMantine(
       <ConfirmModal {...defaultProps} icon={<IconAlertTriangle />} />,
     );
-    // Icon is wrapped in our Icon component – check for svg
+    // Icon is wrapped in our Icon component - check for svg
     expect(
       screen.getByText("Are you sure?").closest("[class*='Modal']"),
     ).toBeInTheDocument();

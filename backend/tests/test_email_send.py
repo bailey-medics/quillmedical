@@ -99,7 +99,7 @@ class TestEmailRateLimiting:
         """Emails within rate limit should succeed."""
         mock_settings.EMAIL_DRY_RUN = True
 
-        # Send 10 emails (the limit) – all should succeed
+        # Send 10 emails (the limit) - all should succeed
         for i in range(10):
             send_email(
                 to="user@example.com",
@@ -169,7 +169,7 @@ class TestEmailRateLimiting:
             html_body="<p>2</p>",
         )
 
-        # At limit now – wait for window to expire
+        # At limit now - wait for window to expire
         time.sleep(1.1)
 
         # Should succeed because old entries expired

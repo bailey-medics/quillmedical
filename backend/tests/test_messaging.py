@@ -60,7 +60,7 @@ def second_user(db_session: Session, test_org: OrgUnit) -> User:
     ``registered_nurse`` for the same reason as the ``test_user``
     fixture: declaring no profession takes the column default of
     ``patient``, whose competency is now ``access_own_patient_records``
-    – their own record, not the caseload this fixture is placed in an
+    - their own record, not the caseload this fixture is placed in an
     organisation to read.
     """
     user = User(
@@ -603,7 +603,7 @@ class TestUnreadCount:
         db_session.add(msg)
         db_session.commit()
 
-        # List conversations – should show 1 unread
+        # List conversations - should show 1 unread
         resp = authenticated_client.get("/api/conversations")
         convs = resp.json()["conversations"]
         assert len(convs) == 1
@@ -1178,7 +1178,7 @@ class TestReadingNeedsACompetency:
     Each is now paired with its competency, as reaching the patient's
     record is: ``access_patient_records`` with the org_unit,
     ``access_granted_patient_records`` with the grant. The tests fail if
-    either half is dropped – ``second_user`` and ``external_hcp`` hold the
+    either half is dropped - ``second_user`` and ``external_hcp`` hold the
     competency and are admitted by the same scope that refuses the
     accounts here.
     """

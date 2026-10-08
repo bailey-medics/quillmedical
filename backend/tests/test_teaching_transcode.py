@@ -1,7 +1,7 @@
 """Tests for invoking the transcode job.
 
 The backend is the trigger, not Eventarc, so ``link_module_media`` is
-what fires the job – and the property that matters most here is what
+what fires the job - and the property that matters most here is what
 happens when firing fails. Linking an upload has already succeeded by
 that point, so a job that cannot be reached must not turn a successful
 upload into a failed request.
@@ -21,7 +21,7 @@ class TestStartTranscode:
         """The normal development case, not an error.
 
         A developer uploading through the admin card gets their file
-        stored and no renditions, and the module stays incomplete –
+        stored and no renditions, and the module stays incomplete -
         the same safe direction as a job that fails.
         """
         from app.features.teaching.transcode import start_transcode
@@ -145,7 +145,7 @@ class TestTranscodeStateDefaults:
         db_session.commit()
         db_session.refresh(link)
 
-        # None is "uploaded but not yet transcoded" – the state the
+        # None is "uploaded but not yet transcoded" - the state the
         # availability gate needs so a module is not served with a
         # slide whose video has no renditions.
         assert link.transcoded_at is None

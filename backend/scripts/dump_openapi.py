@@ -99,7 +99,7 @@ def import_app(dev: bool = False) -> Any:
     """Import and return the FastAPI app.
 
     Shared by ``dump_openapi.py`` and ``check_api_schema_coverage.py`` so
-    both tools import the app – and thus generate the OpenAPI spec –
+    both tools import the app - and thus generate the OpenAPI spec -
     identically.
     """
     # If requested, inject temporary dev environment values to allow importing

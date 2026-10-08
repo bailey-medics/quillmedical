@@ -77,7 +77,7 @@ When you have finished your analysis, write your findings to:
 
 ## Output structure
 
-- **Executive summary** (3–5 sentences): overall state of the codebase, with
+- **Executive summary** (3-5 sentences): overall state of the codebase, with
   explicit comment on its readiness for human review
 - One section per dimension above, each containing:
   - A brief overall finding for that dimension

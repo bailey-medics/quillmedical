@@ -424,7 +424,7 @@ class HazardLogGenerator:
             return "Cannot compute: insufficient labels defined"
 
         # Find the source fields referenced by labels (skip calculate fields
-        # themselves – their labels are references, not declarations)
+        # themselves - their labels are references, not declarations)
         label_to_field: dict[str, TemplateField] = {}
         for f in self.fields:
             if f.field_type == FieldType.CALCULATE:
@@ -652,8 +652,8 @@ def main():
             "Assignment": "Clinical Safety Officer",
             "Labelling": "TBC (awaiting scoring)",
             "Project": "Clinical Risk Management",
-            "New hazard controls": "TBC – awaiting CSO triage and assessment.",
-            "Residual hazard risk assessment": "TBC – awaiting initial controls.",
+            "New hazard controls": "TBC - awaiting CSO triage and assessment.",
+            "Residual hazard risk assessment": "TBC - awaiting initial controls.",
             "Hazard status": "open",
             "Code associated with hazard": [
                 "src/contexts/PatientContext.tsx",
