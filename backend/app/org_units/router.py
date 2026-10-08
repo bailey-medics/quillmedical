@@ -1245,7 +1245,7 @@ def set_org_unit_clinical_lead(
     vacates it, which is why this is one route rather than an add and a
     remove.
 
-    Whoever holds it substantively is stood down first, so a handover is
+    Whoever holds it is stood down first, so a handover is
     recorded rather than the previous holder simply vanishing.
 
     The person has to be at the org_unit already. Naming somebody who is not

@@ -347,9 +347,6 @@ A position is a slot a place has, in `models.py` as `Position` and
 - **Appointment checks `can_practise_at`**: holding a competency somewhere is
   not enough, it must be authorised where the post is. A post with no place
   fails closed.
-- **Acting cover does not fill a vacancy** and does not count against
-  `max_holders`, because covering leave must not be blocked by the person
-  being covered for.
 ### Web Push notifications
 
 - Backend: `push.py` (subscription management), `push_send.py` (notification sending) - VAPID keys via `just vapid-key`

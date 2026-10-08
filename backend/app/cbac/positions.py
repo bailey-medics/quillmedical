@@ -55,7 +55,7 @@ def holdings_on(
         on_date: The date to ask about, or None for "now".
 
     Returns:
-        The holdings in force, substantive and acting alike.
+        The holdings in force.
     """
     query = select(PositionHolding).where(
         PositionHolding.position_id == position.id
@@ -79,11 +79,7 @@ def holdings_on(
 def is_vacant(
     db: Session, position: Position, on_date: date | None = None
 ) -> bool:
-    """Whether nobody substantively holds the post on one date.
-
-    Acting cover does not fill a vacancy: someone covering leave is not the
-    post-holder, and a post with only acting cover is exactly the state
-    worth chasing.
+    """Whether nobody holds the post on one date.
 
     Args:
         db: Database session.
@@ -91,11 +87,9 @@ def is_vacant(
         on_date: The date to ask about, defaulting to today.
 
     Returns:
-        True when no substantive holding is in force.
+        True when no holding is in force.
     """
-    return not [
-        h for h in holdings_on(db, position, on_date) if not h.is_acting
-    ]
+    return not holdings_on(db, position, on_date)
 
 
 def appoint(
@@ -104,7 +98,6 @@ def appoint(
     user: User,
     *,
     started_on: date | None = None,
-    is_acting: bool = False,
     appointed_by: User | None = None,
 ) -> PositionHolding:
     """Appoint someone to a post.
@@ -114,7 +107,6 @@ def appoint(
         position: The post being filled.
         user: The person taking it up.
         started_on: When, defaulting to today.
-        is_acting: Whether this is temporary cover.
         appointed_by: Who made the appointment.
 
     Returns:
@@ -123,11 +115,9 @@ def appoint(
     Raises:
         ValueError: If the post requires a competency the person is not
             authorised to practise at that org_unit, or if filling it
-            substantively would exceed ``max_holders``. Acting cover does
-            not count against the limit, because covering leave must not be
-            blocked by the person being covered for. Nor does somebody
-            whose holding ends on or before the start date: they have
-            gone, so the post is free to fill that same day.
+            would exceed ``max_holders``. Somebody whose holding ends on
+            or before the start date does not count against the limit:
+            they have gone, so the post is free to fill that same day.
     """
     start = started_on or _today()
 
@@ -149,16 +139,16 @@ def appoint(
                 f"hold {position.title}."
             )
 
-    if not is_acting and position.max_holders is not None:
+    if position.max_holders is not None:
         # Somebody whose last day is the start date has gone, and does
         # not make the post full. Replacing a holder is one act on one
         # day, with no day's gap asked for between the two.
-        substantive = [
+        still_holding = [
             h
             for h in holdings_on(db, position, start)
-            if not h.is_acting and (h.ended_on is None or h.ended_on > start)
+            if h.ended_on is None or h.ended_on > start
         ]
-        if len(substantive) >= position.max_holders:
+        if len(still_holding) >= position.max_holders:
             raise ValueError(
                 f"{position.title} already has {position.max_holders} "
                 "holder(s); vacate one before appointing another."
@@ -168,7 +158,6 @@ def appoint(
         position_id=position.id,
         user_id=user.id,
         started_on=start,
-        is_acting=is_acting,
         appointed_by=appointed_by.id if appointed_by else None,
     )
     db.add(holding)
@@ -223,7 +212,7 @@ def holders_of(
         on_date: The date to ask about, defaulting to today.
 
     Returns:
-        User ids, acting and substantive alike, in no particular order.
+        User ids, in no particular order.
     """
     return [h.user_id for h in holdings_on(db, position, on_date)]
 
@@ -279,7 +268,7 @@ def set_clinical_lead(
 ) -> None:
     """Make someone the clinical lead of a site, or leave the post vacant.
 
-    Ends whoever currently holds it substantively before appointing, so the
+    Ends whoever currently holds it before appointing, so the
     change is recorded rather than the previous holder simply vanishing.
 
     Args:
@@ -291,19 +280,13 @@ def set_clinical_lead(
     post = clinical_lead_post(db, site)
 
     for holding in holdings_on(db, post):
-        if not holding.is_acting and (
-            user is None or holding.user_id != user.id
-        ):
+        if user is None or holding.user_id != user.id:
             vacate(db, holding)
 
     if user is None:
         return
 
-    already = [
-        h
-        for h in holdings_on(db, post)
-        if not h.is_acting and h.user_id == user.id
-    ]
+    already = [h for h in holdings_on(db, post) if h.user_id == user.id]
 
     if not already:
         appoint(db, post, user, appointed_by=appointed_by)
@@ -317,7 +300,7 @@ def clinical_leads_of(db: Session, site_ids: list[int]) -> dict[int, int]:
         site_ids: The sites to look up.
 
     Returns:
-        Site id to the user id of its substantive clinical lead. Sites with
+        Site id to the user id of its clinical lead. Sites with
         a vacant post are absent, which is what "no clinical lead" means.
     """
     if not site_ids:
@@ -329,7 +312,6 @@ def clinical_leads_of(db: Session, site_ids: list[int]) -> dict[int, int]:
         .where(
             Position.org_unit_id.in_(site_ids),
             Position.kind == CLINICAL_LEAD,
-            PositionHolding.is_acting.is_(False),
             PositionHolding.started_on <= _today(),
             PositionHolding.ended_on.is_(None),
         )
