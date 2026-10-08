@@ -92,7 +92,7 @@ def test_clinicians_hold_the_passport_and_others_do_not() -> None:
     half: assessing is a favour to somebody else's record, so it arrives
     with the profession and never lapses. Holding a passport is the sold
     half and is granted by entitlement, which is why ``passport_write``
-    appears on no profession here.
+    appears on no profession here but the Passport admin.
 
     The split is not seniority. A consultant still gets signed off on
     new things, and a registrar signed off last year is often who signs
@@ -171,12 +171,14 @@ def test_passport_professions_need_nothing_clinical(
     assert not profession.requires_clinical_services
 
 
-def test_a_passport_admin_runs_the_passport_and_may_open_it() -> None:
-    """Managing the passport comes with the way into it.
+def test_a_passport_admin_runs_the_passport_and_holds_one() -> None:
+    """Managing the passport comes with a passport of their own.
 
-    An admin is a member of the place they run, so its cover gives them
-    ``passport_write``. Without ``assess_clinician_passport`` every
-    passport route refused them, and the paid grant could not be used.
+    ``assess_clinician_passport`` is the way in: without it every
+    passport route refused them. ``passport_write`` lets them keep a
+    passport. They may give writing to others through
+    ``manage_passport`` but never to themselves, so without it an admin
+    at a place with no cover switched on could not use what they run.
     Pinned whole, so nothing else arrives with the job unremarked.
     """
     admin = get_profession_details("passport_admin")
@@ -185,6 +187,7 @@ def test_a_passport_admin_runs_the_passport_and_may_open_it() -> None:
     assert set(admin.base_competencies) == {
         "manage_passport",
         "assess_clinician_passport",
+        "passport_write",
     }
     assert not admin.requires_clinical_services
 
@@ -200,14 +203,18 @@ def test_the_passport_clinical_lead_is_a_label() -> None:
     ) == get_profession_base_competencies("passport_delegate")
 
 
-def test_no_profession_grants_the_right_to_write_a_passport() -> None:
-    """The sold half must not arrive free with an account.
+def test_only_the_passport_admin_profession_may_write_a_passport() -> None:
+    """The sold half must not arrive free with a clinical account.
 
     ``passport_write`` is what a clinician or their organisation pays
     for. It comes from an organisation enabling it or from an individual
-    subscription, and from nowhere else – so a base profession granting
-    it would hand every clinician the paid feature at provisioning and
-    make the split between assessing and holding cosmetic.
+    subscription – so a clinical profession granting it would hand every
+    clinician the paid feature at provisioning and make the split between
+    assessing and holding cosmetic.
+
+    The Passport admin is the one deliberate exception. Nobody may
+    change their own competencies, so an admin could give writing to
+    everybody but themselves; the profession carries it for them.
 
     Pinned rather than left to review because the failure is silent:
     everything works, nobody is refused, and the only symptom is that
@@ -219,8 +226,8 @@ def test_no_profession_grants_the_right_to_write_a_passport() -> None:
         if "passport_write" in profession.base_competencies
     }
 
-    assert grantors == set(), (
-        "passport_write is sold, so no base profession may grant it: "
+    assert grantors == {"passport_admin"}, (
+        "passport_write is sold, so only passport_admin may grant it: "
         f"{sorted(grantors)}"
     )
 

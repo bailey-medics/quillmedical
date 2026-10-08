@@ -55,11 +55,13 @@ competencies:
   - id: assess_clinician_passport
     display_name: "Sign Off Clinician Passport Competencies"
 
-  # The product. Deliberately granted by NO base profession: it comes
-  # from an organisation's enablement, an individual subscription, or a
-  # Passport admin (manage_passport) at their own org units, and nowhere
-  # else. A profession granting it would hand every clinician the paid
-  # feature at provisioning and make the split cosmetic.
+  # The product. Deliberately granted by no base profession but
+  # passport_admin: it comes from an organisation's enablement, an
+  # individual subscription, or a Passport admin (manage_passport) at
+  # their own org units, and nowhere else. A clinical profession granting
+  # it would hand every clinician the paid feature at provisioning and
+  # make the split cosmetic. The admin is a deliberate exception: they
+  # run the scheme and may give writing to anybody but themselves.
   #
   # Given through an organisation it does not lapse. An individual
   # subscription runs for a year.
