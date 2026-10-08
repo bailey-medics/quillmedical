@@ -77,10 +77,25 @@ rather than a new document.
       to confirm with the contracts: the exact Google and Resend
       contracting entities and Resend's own retention of delivery
       records, both left unnamed in the draft rather than guessed.
+      **Changed on 7 October 2026: Resend is gone.** Email goes through
+      Amazon SES in London (`eu-west-2`), so the list is Google Cloud
+      for the service, Amazon Web Services for sending email, and Proton
+      for the company's own mailboxes, and nothing the service holds
+      leaves the UK. Amazon holds no newsletter list: that is Quill's
+      own table. Amazon's data processing addendum and its UK GDPR
+      addendum are part of the AWS Service Terms and have applied since
+      the account was opened on 6 October 2026. Still to confirm: the
+      exact Google and Amazon contracting entities.
 
-- [ ] **Cover the transfer of email data to the United States,** for as
+- [x] **Cover the transfer of email data to the United States,** for as
       long as Resend is used. Phase 5 moves email to Amazon SES in London,
-      after which this step falls away. Resend
+      after which this step falls away. **It fell away on 7 October
+      2026**, when Resend was removed: no email data goes to the United
+      States, so there is nothing to tell EoEETA about a transfer and no
+      transfer risk assessment to write. Ticked as closed, not as done.
+      One rule below outlives it and is not a task: nothing clinical,
+      and nothing about a person's health, in any email. What follows is
+      the record of how it stood while Resend was used. Resend
       stores everything in the US: its own page says it "stores customer
       data in the United States, including message content, delivery
       logs, webhook payloads, and account records", and that the sending
@@ -95,15 +110,19 @@ rather than a new document.
       - [x] **Say so in the privacy policy.** Section 8 of the draft
             names the transfer and both safeguards, and says how to ask
             for a copy.
-      - [ ] **Tell EoEETA.** A safeguard applies, but EoEETA should know
+      - [x] **Tell EoEETA.** A safeguard applies, but EoEETA should know
             that the email provider is in the US. This is the
-            sub-processor list in Phase 4, which now says so.
-      - [ ] **Keep patient and health detail out of every email.** Emails
+            sub-processor list in Phase 4, which now says so. Not
+            needed: the list in Phase 4 now names Amazon in London.
+      - [x] **Keep patient and health detail out of every email.** A
+            standing rule, kept whoever sends the email. Emails
             carry a name, an address and things like a certificate or a
             reset link, which is low risk, and that is how Quill works
             today. Hold to it as new emails are added: nothing clinical,
             and nothing about a person's health, in a subject or a body.
-      - [ ] **Write the transfer risk assessment.** The regulator expects
+      - [x] **Write the transfer risk assessment.** Not needed: there
+            is no transfer that relies on contractual clauses. The
+            regulator expects
             a short written note assessing the risk of a transfer that
             relies on contractual clauses. For names and email addresses
             going to a certified US provider it is about a page: what is
@@ -284,6 +303,53 @@ rather than a new document.
       passport export the portability right in section 10. Nothing the
       code collects is missing from the draft.
 
+- [x] **Revise the draft for the move to Amazon SES.** Done on 7 October
+      2026, in place: version 1.0 had never been published, so it was
+      corrected and not given a new number, and
+      `docs/docs/legal/index.md` says so. The summary at the top no
+      longer names the United States. Sections 3.3 and 3.6 name Amazon
+      Web Services in London in place of Resend, and 3.6 says the
+      newsletter list is Quill's own with no copy at the email provider,
+      that a choice applies straight away, and that a bounce or a spam
+      report switches newsletters off. Section 5 lists Amazon in place
+      of Resend. Section 8.2 loses the transfer and both safeguards, and
+      states the one exception: an address that hard-bounces goes on a
+      list Amazon shares across its customers for up to 14 days, held
+      Amazon does not say where. Section 7 gains a line for it. The
+      terms of service name no email provider and did not change. For
+      Mark to read in Phase 6: section 8.2 rests that exception on
+      Amazon's data processing terms, and their wording on transfers
+      should be checked against <https://aws.amazon.com/service-terms/>.
+
+- [x] **Cover newsletter subscribers who have no account.** Phase 6 of
+      the [Amazon SES email plan](2026-10-06-amazon-ses-email-plan.md)
+      adds `newsletter_subscriber`: over 800 people from Let's Do
+      Digital conference and webinar registrations, holding an address,
+      perhaps a name, and whether they are subscribed. Drafted on
+      7 October 2026 as section 3.11 of the privacy policy, from how
+      that plan manages them: a list apart from accounts, with no login;
+      the unsubscribe link working with no account; a bounce or a spam
+      report unsubscribing them; a refusal kept so that a later import
+      cannot undo it; and the row deleted once the same address holds a
+      verified account, with any "no" carried across. Section 1 now
+      names Let's Do Digital as a trading name of Bailey Medics beside
+      Quill Medical, which Phase 8 of the
+      [Email branding plan](2026-09-25-email-branding-plan.md) asks for,
+      and section 7 gains a line. The lawful basis is the one that plan
+      sets out: legitimate interests, with PECR met by the address being
+      a work one or by the soft opt-in at a booking.
+
+- [ ] **Make section 3.11 true before the first newsletter to the
+      list.** It says only work addresses and soft opt-in addresses are
+      emailed. Nothing enforces that yet: the import takes every row in
+      the file as opted in, and the sorting in Phase 8 of the Email
+      branding plan is not done. Either sort the file before it is
+      imported, leaving out the addresses with no basis, or reword 3.11.
+      Write the short legitimate interests assessment that plan asks for
+      and keep it in `docs/docs/legal/`. Check what the booking forms
+      said before relying on the soft opt-in. The Let's Do Digital
+      privacy notice needs the same "trading as" sentence.
+
 ## Phase 4: The SaaS agreement and data processing terms
 
 The agreement with EoEETA is the starting point for every later
@@ -312,12 +378,15 @@ It is not a public page, and its contents are not recorded here.
       parties, so that both sides count the year of service from the
       same day. Do it before go-live.
 
-- [ ] **Send EoEETA the sub-processor list**, Google Cloud and Resend,
-      saying what each does and where its data sits, so that it matches
-      the privacy policy. Say plainly that Resend stores email data in
-      the United States, and name the two safeguards that cover it: the
-      UK Addendum to the standard contractual clauses, and the UK
-      Extension to the Data Privacy Framework. Keep a copy.
+- [ ] **Send EoEETA the sub-processor list**, Google Cloud and Amazon
+      Web Services, saying what each does and where its data sits, so
+      that it matches the privacy policy: Google Cloud in London for the
+      service, and Amazon SES in London for sending email. Rewritten on
+      7 October 2026, when Resend was removed; it had said that Resend
+      stored email data in the United States under two safeguards. Say
+      plainly the one thing that is not certain to be in London: an
+      address that hard-bounces sits on a list Amazon shares across its
+      customers for up to 14 days. Keep a copy.
 
 - [ ] **Write down the back-up policy and the support policy**: what is
       backed up, how often, how long back-ups are kept and how a restore
@@ -333,6 +402,16 @@ site's promise is not kept, and it contradicts the privacy policy. Amazon
 SES in its London region is the one mainstream service that keeps email
 data in the UK, at $0.10 per 1,000 emails with no daily cap, so it makes
 the claim true as written. Google Cloud has no email service of its own.
+
+**Done on 7 October 2026, and not quite as written here.** The working
+document became the [Amazon SES email plan](2026-10-06-amazon-ses-email-plan.md),
+which records each step. Every email, service and newsletter, goes
+through SES in London, and Resend is out of the code. The steps below are
+ticked with what happened to each. The one design that changed: the
+newsletter list did not move to an SES contact list. Quill keeps it in
+its own database, so Amazon holds no list, there is no sync and no
+webhook. What is left is closing the Resend account, which that plan
+tracks.
 
 - [x] **Confirm what SES keeps in London** before building on it.
       Checked against Amazon's documentation on 6 October 2026, and the
@@ -368,20 +447,22 @@ the claim true as written. Google Cloud has no email service of its own.
         contain attachments to check for viruses", and filters for spam.
         Normal for a mail service, and worth knowing.
 
-- [ ] **Open the AWS account and ask for production access early.** A
+- [x] **Open the AWS account and ask for production access early.**
+      Opened and granted on 6 October 2026. A
       new SES account starts in a sandbox that sends only to verified
       addresses. Moving out of it needs a request to Amazon describing
       what is sent, and takes a day or more. Do it weeks before go-live,
       not days. Accept Amazon's data processing addendum at the same
       time and record that it is in place.
 
-- [ ] **Add the sending records in Terraform,** in `infra/dns.tf`: the
+- [x] **Add the sending records in Terraform,** in `infra/dns.tf`: the
       SES DKIM records for the sending domain, beside the Resend one for
       now. The SPF record already includes `amazonses.com`. Keep the
       credentials in Secret Manager, the way `resend-api-key` is held in
       `infra/runtime-identities.tf`.
 
-- [ ] **Send service email through SES.** Every service email goes
+- [x] **Send service email through SES.** App production switched on
+      7 October 2026. Every service email goes
       through `send_email` in `backend/app/email_send.py`, and only about
       twenty-five lines of it are Resend's: setting the key, building the
       parameters and the send call. Replace those with the SES call,
@@ -391,7 +472,12 @@ the claim true as written. Google Cloud has no email service of its own.
       tests that mock the send. This alone gets verification emails,
       password resets, invitations and certificates out of the US.
 
-- [ ] **Move the newsletter list to an SES contact list.** SES keeps a
+- [x] **Move the newsletter list to an SES contact list.** Not done,
+      on purpose, and ticked as closed: the alternative this step
+      rejects is what was built. Amazon's unsubscribe page cannot be
+      themed, and one contact list per account would have been shared by
+      development and production, so the list stays in Quill's database
+      and the unsubscribe page is Quill's own. SES keeps a
       list much as Resend does (checked against Amazon's documentation on
       6 October 2026): one contact list for the account with up to 20
       topics, an opt-in or opt-out per person per topic, an import from a
@@ -410,7 +496,9 @@ the claim true as written. Google Cloud has no email service of its own.
       the list on Resend, which keeps a US processor and stops the site
       saying all data stays in the UK.
 
-- [ ] **Receive unsubscribes from SES.** Resend calls a signed webhook,
+- [x] **Receive unsubscribes from SES.** Not needed, with no list at
+      Amazon to hear from. Bounces and spam reports are read from
+      Amazon's suppression list before each send. Resend calls a signed webhook,
       `POST /api/marketing/resend-webhook` in
       `backend/app/marketing/router.py`. SES reports the same event
       through a configuration set's notifications, which arrive in a
@@ -419,7 +507,8 @@ the claim true as written. Google Cloud has no email service of its own.
       with the answer: one `set_marketing_preference` call with a new
       source in place of `resend`.
 
-- [ ] **Write the command that sends a newsletter.** This is the one
+- [x] **Write the command that sends a newsletter.** Built, with
+      Quill's own unsubscribe link in place of Amazon's. This is the one
       thing SES lacks: there is no screen to compose a broadcast and
       press send. A newsletter becomes a command that lists the contacts
       opted in to the topic and sends each one the rendered
@@ -430,20 +519,28 @@ the claim true as written. Google Cloud has no email service of its own.
       `docs/docs/backend/marketing-email.md`, which describes sending by
       hand from Resend.
 
-- [ ] **Move the list and close the Resend account.** Import the contacts
+- [ ] **Move the list and close the Resend account.** Nothing was
+      moved: the list is the users table, and Resend held six test
+      contacts. Resend's code, DNS records and secrets were removed on
+      7 October 2026. Tick this when the account itself is closed.
+      Import the contacts
       with each person's answer, from Quill's database and not from
       Resend, so that Quill stays the source. Check that nobody who
       refused is opted in. Then delete the contacts from Resend, remove
       its DNS record, secrets and webhook, and close the account.
 
-- [ ] **Update the privacy policy and tell EoEETA.** Section 5 names
+- [x] **Update the privacy policy and tell EoEETA.** The policy was
+      revised on 7 October 2026, the step added to Phase 3. Telling
+      EoEETA is the sub-processor list in Phase 4, now rewritten.
+      Section 5 names
       Amazon Web Services (London) in place of Resend, section 8 loses
       the transfer to the United States and says nothing leaves the UK,
       and section 3 loses its mentions of Resend. The transfer step and
       the risk assessment in Phase 1 fall away once Resend is closed. The
       sub-processor list sent to EoEETA in Phase 4 names AWS.
 
-- [ ] **Make the public site true at go-live, whichever comes first.** If
+- [x] **Make the public site true at go-live, whichever comes first.**
+      True on 7 October 2026, so the wording stands. If
       this phase is finished before go-live, the wording stands. If it is
       not, change "Your data stays in the UK" in
       `frontend/public_pages/src/pages/index.tsx`, `security.tsx` and
@@ -541,8 +638,9 @@ the claim true as written. Google Cloud has no email service of its own.
   only mainstream service that keeps that promise word for word. An EU
   provider such as Brevo was the alternative, at the price of weakening
   the claim to "UK and EU". SES keeps a contact list with topics and
-  handles unsubscribes itself, so the newsletter arrangement carries
-  over; what it lacks is a screen for composing a newsletter. Amazon
+  handles unsubscribes itself, so the newsletter arrangement was
+  expected to carry over; on 7 October 2026 that was set aside and
+  Quill keeps the list itself, for the reasons in Phase 5. Amazon
   is a US company with UK data centres, which is the position Quill is
   already in with Google Cloud. Cost played no part: SES is $0.10 per
   1,000 emails, and Resend's free plan is 3,000 a month capped at 100 a
@@ -1037,7 +1135,8 @@ findings have been reviewed.
   additions. See the
   [Accurx DPA](https://www.accurx.com/data-processing-agreement).
 
-- **Resend is Quill's one real transfer** – "Resend stores all customer
+- **Resend was Quill's one real transfer** (removed on 7 October 2026,
+  so this and the next point are history) – "Resend stores all customer
   data in the United States only", "There is no setting today that moves
   stored data to the EU", it "participates in the EU-U.S. Data Privacy
   Framework and the UK Extension", its DPA uses the EU SCCs with the UK
@@ -1463,10 +1562,11 @@ each rests on the finding above that names its source.
   throughout.
 
 - **Name each sub-processor with purpose, location and safeguard** –
-  Google Cloud (London region, Google's data processing terms), Resend
-  (email delivery, data stored in the US, the UK Extension to the DPF with
-  the UK Addendum to the EU SCCs as the alternative, and how to get a
-  copy). There is no analytics vendor to name.
+  Google Cloud (London region, Google's data processing terms), Amazon
+  Web Services (email delivery from its London region, Amazon's data
+  processing terms, and the shared suppression list as the one thing not
+  certain to stay there). This named Resend and its two transfer
+  safeguards until 7 October 2026. There is no analytics vendor to name.
 
 - **Describe analytics as cookieless**, say any preference or statistics
   storage relies on the new PECR exceptions, and offer a simple, free
@@ -1507,8 +1607,10 @@ each rests on the finding above that names its source.
   third-party reports accepted; flow-down and full liability for
   sub-processors; the duty to flag an unlawful instruction.
 
-- **Sub-processor mechanics** – an objection window that lets Resend's 14
-  days pass through, a public sub-processor page in the Atlassian layout
+- **Sub-processor mechanics** – an objection window no shorter than
+  the notice Quill's own suppliers give it (Resend's was 14 days;
+  Amazon's is to be read from its terms), a public sub-processor page in
+  the Atlassian layout
   with an email subscription, and an archive of each dated version.
 
 - **Two clocks** – the deletion clock runs from the sponsor's written
@@ -1560,7 +1662,7 @@ each rests on the finding above that names its source.
   learning not facts, no privilege), and consider sensitive-data scanning
   as the RCGP's portfolio already does.
 
-- **Data hygiene** – patient or health content stays out of Resend-routed
+- **Data hygiene** – patient or health content stays out of every
   email, push notifications are treated as electronic mail needing
   consent, and every access to a record is attributable to a named user
   with logs available to the sponsor (NDG standard 4).
@@ -1587,7 +1689,12 @@ Points the research could not settle, for Mark to decide.
 
 - **Whether Resend's DPF listing is active and the UK Extension still
   stands at publication**, and whether to write a transfer risk
-  assessment now.
+  assessment now. Closed on 7 October 2026: Resend is gone and nothing
+  rests on the Data Privacy Framework.
+
+- **Whether the soft opt-in holds for the Let's Do Digital mailing
+  list**, which turns on what the booking forms said. See the step in
+  Phase 3.
 
 - **Whether the teaching platform is a "Health IT System" under DCB0129**
   and what the DSPT Category 3 assertions require, before promising a

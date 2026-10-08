@@ -637,8 +637,14 @@ in the command that sends, and the tests have to pin it down.
       are SES's and stay. **Then the account**, which is Mark's to
       close, and is all that keeps this step unticked.
 
-- [ ] **Update the privacy policy** in `docs/docs/legal/privacy-policy.md`
-      as a new version: section 5 names Amazon Web Services, London, in
+- [x] **Update the privacy policy** in `docs/docs/legal/privacy-policy.md`.
+      Done on 7 October 2026, in place and still version 1.0, since that
+      version had never been published; the public pages are still
+      placeholders, so there was nothing to render. The detail is in
+      Phase 3 of the
+      [Terms and privacy policy](2026-10-06-terms-and-privacy-policy-plan.md)
+      plan. The step as first written: as a new version: section 5 names
+      Amazon Web Services, London, in
       place of Resend; section 8 loses the transfer to the United States;
       section 3 loses its mentions of Resend, and says the newsletter
       list is Quill's own, with no copy at the email provider. Add one
