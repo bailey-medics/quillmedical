@@ -416,25 +416,6 @@ print(details.display_name)  # "Prescribe Schedule 2 Controlled Drugs"
 print(details.assessable)  # True
 ```
 
-### Type Hints
-
-```python
-from app.cbac.competencies import CompetencyId
-
-# CompetencyId is a Literal type of all valid competency IDs
-def grant_competency(
-    user: User, competency: CompetencyId, granted_by: int
-) -> None:
-    # Type checker validates competency is valid ID
-    sync_competency_rows(
-        user,
-        additional=[*user.additional_competency_ids, competency],
-        removed=user.removed_competency_ids,
-        source="admin",
-        granted_by=granted_by,
-    )
-```
-
 ## Audit Logging
 
 **TODO**: Audit logging is currently a placeholder. When implemented, competency checks will log:
