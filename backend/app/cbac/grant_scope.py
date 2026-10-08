@@ -69,6 +69,7 @@ def _check_professions() -> None:
         ValueError: If a list names a profession the catalogue lacks.
     """
     known = set(PROFESSION_IDS)
+
     for entry in COMPETENCIES:
         for profession in entry.may_assign_professions or []:
             if profession not in known:
@@ -92,16 +93,19 @@ def scope_for_competencies(held: Iterable[str]) -> GrantScope:
         union of the whitelists on everything they hold.
     """
     held_ids = set(held)
+
     if ROOT_COMPETENCY in held_ids:
         return UNLIMITED
 
     competencies: set[str] = set()
     professions: set[str] = set()
+
     for entry in COMPETENCIES:
         if entry.id not in held_ids:
             continue
         competencies.update(entry.may_grant or [])
         professions.update(entry.may_assign_professions or [])
+
     return GrantScope(
         competencies=frozenset(competencies),
         professions=frozenset(professions),
@@ -131,6 +135,7 @@ def may_grant(user: User, competency: str) -> bool:
         True if it is in their scope.
     """
     scope = scope_for(user)
+
     return scope.competencies is None or competency in scope.competencies
 
 
@@ -145,6 +150,7 @@ def may_assign_profession(user: User, profession: str) -> bool:
         True if it is in their scope.
     """
     scope = scope_for(user)
+
     return scope.professions is None or profession in scope.professions
 
 
@@ -182,6 +188,8 @@ def out_of_scope_competencies(user: User, ids: Iterable[str]) -> list[str]:
         all are within it.
     """
     scope = scope_for(user)
+
     if scope.competencies is None:
         return []
+
     return sorted({i for i in ids if i not in scope.competencies})

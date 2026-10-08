@@ -54,12 +54,14 @@ def get_profession_details(profession_id: str) -> BaseProfessionEntry | None:
     for profession in BASE_PROFESSIONS:
         if profession.id == profession_id:
             return profession
+
     return None
 
 
 def get_profession_base_competencies(profession_id: str) -> list[str]:
     """Get the base competencies for a profession."""
     details = get_profession_details(profession_id)
+
     return details.base_competencies if details else []
 
 
@@ -143,4 +145,5 @@ def resolve_user_competencies(
     removed = set(removed_competencies or [])
 
     final = (base | additional) - removed
+
     return list(final)

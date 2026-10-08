@@ -45,6 +45,43 @@ See
 for the migration away from two such columns, and for which of the
 repository's remaining JSON columns are genuine documents.
 
+## Layout: blank lines between the steps of a function
+
+**Space a function as paragraphs: set up, do the work, hand back the
+result.** This code is reviewed by a person reading every line, and the
+gaps are what let each step be found at a glance.
+
+- **A blank line between variable declarations and the `for` or `if` that
+  follows them.**
+- **A blank line between blocks doing different business logic.** Two
+  steps that answer different questions do not share a paragraph.
+- **A blank line before the function's final `return`.**
+- **Inside a loop or an `if` body the rule is looser.** The body is one
+  piece of business logic, so a value worked out on one line and tested on
+  the next stays together. Add a gap there only when the body itself holds
+  separate steps.
+
+```python
+found: dict[int, list[str]] = {}
+
+for user_id, ids in _current_ids_by_user(db).items():
+    unknown = unknown_competency_ids(ids)
+    if unknown:
+        found[user_id] = unknown
+
+return found
+```
+
+Black keeps a single blank line wherever one is written, with one limit:
+it removes a blank line at the very start of a block. So a `return` that is
+the first line inside an `if` has none above it, and a function whose body
+is only a `return` needs none.
+
+**Write new and changed code this way. Do not re-space code that is
+otherwise untouched unless asked to**: a diff of nothing but blank lines
+buries the change that matters, and the existing code is being re-spaced by
+hand as it is reviewed.
+
 ## Database migrations (Alembic)
 
 These rules are enforced statically by
