@@ -168,11 +168,15 @@ rather than a new document.
         90 days after they expire. Nothing deletes them today. Decide.
       - **Requests, complaints and correspondence.** The draft says six
         years. Decide.
-      - **Database back-ups.** Not in the draft at all. About thirty
-        back-ups are kept, and data deleted from the live database
-        survives in them until they roll off. The policy should say so
-        in one sentence once the figure is confirmed against the
-        [Disaster recovery](2026-09-17-disaster-recovery-plan.md) plan.
+      - **Database back-ups.** Not in the draft at all. Seven daily
+        back-ups are kept, checked on the live database on 8 October
+        2026, and not the thirty this step first said: thirty applies
+        only to an environment named `prod`, and there is none. Data
+        deleted from the live database survives in them until they roll
+        off. The figure is expected to rise, so the policy should say so
+        in one sentence once Phase 2 of the
+        [Disaster recovery](2026-09-17-disaster-recovery-plan.md) plan
+        has settled it.
 
 - [ ] **Build what the agreed periods need.** Nothing above is enforced
       in code except the 30-day log expiry. Each agreed period that
