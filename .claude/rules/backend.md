@@ -16,8 +16,8 @@ add one because it is quicker, because the shape is still settling, or
 because the data "is just a blob for now".
 
 **The test is whether anything needs to point at what is inside.** A
-document read back whole – a synced config file, the errors from one
-validation run, a snapshot of how somebody scored on one attempt – is
+document read back whole - a synced config file, the errors from one
+validation run, a snapshot of how somebody scored on one attempt - is
 genuinely a document, and JSON is right for it. A list of references to
 other entities is not: competencies, registrations, tags and memberships
 are all relationships wearing a document's clothes, and each one wants a
@@ -51,25 +51,25 @@ These rules are enforced statically by
 `backend/scripts/check_migrations.py` (run in pre-commit and CI, or
 directly with `python backend/scripts/check_migrations.py --all`). The
 pre-launch history was squashed into a single compliant baseline
-(`878bc9300d4f`), so the allow-list is now empty and every migration –
-the baseline included – is held to the full standard below.
+(`878bc9300d4f`), so the allow-list is now empty and every migration -
+the baseline included - is held to the full standard below.
 
 ### Creating migrations
 
-- Always create migrations with `just migrate "description"` – never run
+- Always create migrations with `just migrate "description"` - never run
   `alembic revision` by hand. The recipe upgrades to head, autogenerates
   against the models, then upgrades again so the new revision is applied.
 - **A merged migration's code does not change.** Once a migration is on
   `main`, its DDL, its `revision`/`down_revision` identifiers and its docstring
   are frozen, and it must not be deleted or renamed. Correct code that turns
-  out to be wrong by adding a **new** migration that supersedes it – the same
+  out to be wrong by adding a **new** migration that supersedes it - the same
   "supersede, never amend" rule the `api-compatibility/` decision files follow.
   Enforced by the `DB migration immutability check` CI job, which fails the
   build outright: there is no approval path, because there is no legitimate
   case to approve.
 - **Comments may still be edited, so a rationale can be clarified in place.**
   This mirrors the decision files, where `change` and `forces_reload` are
-  frozen after merge but `reason` stays editable – prose explains a decision,
+  frozen after merge but `reason` stays editable - prose explains a decision,
   it cannot alter one. Fixing a badly worded rationale should not require a
   no-op migration.
 - **The `# migration-check: allow-destructive` marker is the exception.** It
@@ -83,7 +83,7 @@ the baseline included – is held to the full standard below.
   Bare `<rev>_.py` files (no description) are rejected.
 - Keep the chain linear: exactly one base and one head, with no branches
   (a reused `down_revision`) and no cycles.
-- Every migration must ship a real `downgrade()` – an empty, `pass`-only,
+- Every migration must ship a real `downgrade()` - an empty, `pass`-only,
   or missing body is rejected. If a change is genuinely irreversible, say
   so explicitly rather than leaving `downgrade()` blank.
 
@@ -115,20 +115,20 @@ the baseline included – is held to the full standard below.
   `Index(...)` with the same predicate, otherwise autogenerate cannot see
   it and repeatedly proposes to drop it. Declare it in the model's
   `__table_args__` with the same predicate as the migration. (No model
-  currently uses one – the last, `ix_site_staff_one_clinical_lead` on
+  currently uses one - the last, `ix_site_staff_one_clinical_lead` on
   `site_staff_member`, went out with the org-unit tree unification, so there
   is no live example to copy.)
-- Declare the predicate for **both** dialects – `postgresql_where=` *and*
+- Declare the predicate for **both** dialects - `postgresql_where=` *and*
   `sqlite_where=`. The unit-test database is SQLite, built from the model
   metadata via `create_all()`, and `postgresql_where` is silently ignored
-  there – so a partial unique index would collapse into a **full** unique
+  there - so a partial unique index would collapse into a **full** unique
   index and reject rows the predicate was meant to exclude. SQLite supports
   partial indexes, so `sqlite_where` restores the intended behaviour.
 
 ### Destructive changes
 
 - `drop_column`, `drop_table`, and `drop_constraint` are separate,
-  deliberate contract migrations – not bundled with additive work.
+  deliberate contract migrations - not bundled with additive work.
 - The checker requires an explicit `# migration-check: allow-destructive`
   marker in any migration whose `upgrade()` performs a destructive
   operation, to force expand-contract deliberateness.
@@ -143,13 +143,13 @@ the baseline included – is held to the full standard below.
   proving that a human decision happened separately.
 - When a destructive migration is added to a PR, the `db_destructive_migration_check`
   CI job (`.github/workflows/gate-breaking.yml`) detects it and sets the PR to `waiting` on the
-  `db-destructive-migration-review` environment – a required-reviewer GitHub
+  `db-destructive-migration-review` environment - a required-reviewer GitHub
   Actions environment with `can_admins_bypass: false`. The environment's
   sole reviewer is accountable for approving destructive database changes.
 - A Slack notification lands in `#cicd`, summarising the migration(s) and
   the operations detected, and linking to "Review pending deployments" for the
   environment approval. It is raised once per distinct set of destructive
-  migrations, not once per push – a later commit that leaves the same
+  migrations, not once per push - a later commit that leaves the same
   migration(s) in place stays silent, while the approval gate still re-blocks.
 - **This approval is the only way a destructive migration proceeds.** The
   `allow-destructive` marker does not gate the PR; it is only a static-checker
@@ -161,14 +161,14 @@ the baseline included – is held to the full standard below.
 - The `alembic_drift_check` CI job (`.github/workflows/ci.yml`, fast tier)
   runs `alembic upgrade head` then `alembic check` against a real,
   ephemeral Postgres service container, and fails the build if autogenerate
-  would still produce any operations – i.e. a model changed but no
+  would still produce any operations - i.e. a model changed but no
   migration was written for it.
 - This needs a real Postgres: SQLite unit tests build their schema straight
   from model metadata (`conftest.py`'s `create_all()`) and never exercise
   Alembic's autogenerate comparison, so it cannot live in the DB-less `unit`
   matrix task.
 - Regression-tested in `backend/tests/test_alembic_check.py`
-  (`@pytest.mark.integration` – excluded from the normal `just ub` / `unit`
+  (`@pytest.mark.integration` - excluded from the normal `just ub` / `unit`
   CI task; run explicitly against a migrated Postgres, as the
   `alembic_drift_check` job does).
 - **A test that runs migrations against Postgres carries the `migration`
@@ -181,17 +181,17 @@ the baseline included – is held to the full standard below.
 ### Renaming or retiring a column
 
 - A rename (e.g. `body` -> `content`) is a copy-and-retire spread across
-  several deploys, not a single migration – the old and new app revisions
+  several deploys, not a single migration - the old and new app revisions
   run concurrently against one schema, so a same-deploy rename breaks the
   still-serving old revision. Sequence it across separate deploys:
-  1. **Expand** – add the new column, nullable; deploy an app that writes
+  1. **Expand** - add the new column, nullable; deploy an app that writes
      both columns but still reads the old one.
-  2. **Backfill** – batched `UPDATE ... SET new = old WHERE new IS NULL`
+  2. **Backfill** - batched `UPDATE ... SET new = old WHERE new IS NULL`
      for existing rows (dual-write from step 1 covers rows that change
      during the migration).
-  3. **Switch reads** – deploy an app that reads the new column (still
+  3. **Switch reads** - deploy an app that reads the new column (still
      writing both).
-  4. **Contract** – deploy an app that stops writing the old column, then
+  4. **Contract** - deploy an app that stops writing the old column, then
      drop it in its own migration (`allow-destructive` marker required).
 
 ### Deploy and configuration notes
@@ -199,11 +199,11 @@ the baseline included – is held to the full standard below.
 - Migrations run as a **separate pre-deploy Cloud Run Job**
   (`quill-admin-{env}`, `ADMIN_ACTION=run-migrations` in
   `backend/scripts/admin_cli.py`), executed with `--wait` by `deploy.yml`
-  before the new backend revision is created – not inside the serving
+  before the new backend revision is created - not inside the serving
   container's entrypoint. A failing migration blocks the deploy rather than
   crash-looping the service. Test migrations locally before pushing.
 - Manual traffic pinning / rollback is only guaranteed safe to the
-  **immediately preceding** revision – expand-contract compatibility is
+  **immediately preceding** revision - expand-contract compatibility is
   pairwise-adjacent, not transitive across a gap. Before pinning back further
   than one revision, check whether any destructive/contract migration (a
   `drop_column`/`drop_table` completing an earlier rename, etc.) has shipped
@@ -211,7 +211,7 @@ the baseline included – is held to the full standard below.
   table that no longer exists.
 - `compare_server_default` is deliberately **off** in `env.py` (only
   `compare_type=True` is enabled). Server-default drift is therefore not
-  autodetected – manage column server defaults explicitly in migrations
+  autodetected - manage column server defaults explicitly in migrations
   rather than relying on autogenerate to catch them.
 - `env.py` sets `lock_timeout = 3s` and `statement_timeout = 30s` at the
   start of `run_migrations_online`, so a migration that cannot acquire its
@@ -222,17 +222,17 @@ the baseline included – is held to the full standard below.
 ## API response typing (Pydantic response models)
 
 Every route needs a typed Pydantic `response_model=` (and a matching
-return-type annotation) – never `-> dict[str, Any]`, `-> dict[str, X]`,
+return-type annotation) - never `-> dict[str, Any]`, `-> dict[str, X]`,
 or a bare `-> Any`. A response schema with no `properties` is invisible
 to `oasdiff`: a field can be silently removed with zero flagged breaking
 changes, defeating the API compatibility enforcement below entirely.
-This isn't hypothetical – it's exactly how a removed field escaped
+This isn't hypothetical - it's exactly how a removed field escaped
 review and prompted
 `docs/docs/plans/2026-08-25-api-schema-coverage-plan.md`.
 
 - Enforced statically by `backend/scripts/check_api_schema_coverage.py`
   (pre-commit and CI), which walks the real OpenAPI spec and flags any
-  response schema `oasdiff` can't meaningfully diff by field – a bare
+  response schema `oasdiff` can't meaningfully diff by field - a bare
   object with no `properties`, `dict[str, X]` (renders as
   `additionalProperties` only, still no named fields), an untyped
   array, or an `Optional`/union with an opaque branch.
@@ -242,25 +242,25 @@ review and prompted
   an openEHR composition) still need real typing wherever they form the
   entire response body, since wrapping them in an envelope after the
   fact is a breaking change. Model the fields your own code actually
-  sets or reads – not the full external spec – and set
+  sets or reads - not the full external spec - and set
   `model_config = ConfigDict(extra="allow")` so any other field the
   external system returns still passes through unchanged. See
   `FhirPatientResource` in `backend/app/schemas/patients.py`.
 - Where such a payload is nested inside an already-typed envelope
   (rather than being the whole response body), it's fine to leave that
-  inner field `dict[str, Any]` – the coverage check only inspects a
+  inner field `dict[str, Any]` - the coverage check only inspects a
   response's top-level schema, matching what `oasdiff` can actually
   diff (whether a top-level field appeared or disappeared), not deep
   field-by-field structure.
 - One inline marker, checked the same way `DESTRUCTIVE_MARKER` is
-  above – a comment on the line immediately above the route decorator:
+  above - a comment on the line immediately above the route decorator:
   `# api-schema-check: allow-opaque-permanent` (a route that genuinely
-  never returns JSON, e.g. `FileResponse` – the checker verifies this
+  never returns JSON, e.g. `FileResponse` - the checker verifies this
   against the function's actual return type rather than just trusting
   the marker). A second marker, `allow-opaque-grandfathered`, tracked
   the retrofit of pre-existing opaque routes to typed responses; once
   that retrofit finished, recognition of the string was deleted from
-  the checker entirely – not just left unused.
+  the checker entirely - not just left unused.
 
 ## API compatibility (expand-contract)
 
@@ -274,10 +274,10 @@ depends on the current response/request shape for as long as it stays open.
   retyping a field, or adding a **required** request field, is a breaking
   change and must never ship as a single deploy.
 - Stage it as two deploys, at least one release apart:
-  1. **Expand** – the new shape goes live alongside the old one; both are
+  1. **Expand** - the new shape goes live alongside the old one; both are
      served simultaneously, so a stale client keeps working unchanged.
-  2. **Contract** – the old shape is removed, **at least one full release
-     cycle later** ("N releases" of deprecation) – never in the same deploy
+  2. **Contract** - the old shape is removed, **at least one full release
+     cycle later** ("N releases" of deprecation) - never in the same deploy
      as the expand step.
 
 ### Enforcement: `oasdiff` + a required-reviewer environment gate
@@ -288,7 +288,7 @@ depends on the current response/request shape for as long as it stays open.
   fails the build on any undeclared breaking change.
 - The **only** way to declare a breaking change intentional is a required
   reviewer approval on the GitHub Actions environment
-  `api-breaking-change-review` – never a code comment, commit-message
+  `api-breaking-change-review` - never a code comment, commit-message
   trailer, or PR label. Those are just text/metadata an AI coding agent
   produces as routinely as the code itself, so none of them prove a human
   actually decided the change was intentional.
@@ -301,7 +301,7 @@ depends on the current response/request shape for as long as it stays open.
 
 - Every `oasdiff`-flagged breaking change also needs a YAML decision file
   under `api-compatibility/` at the repo root recording the
-  `forces_reload` verdict for that change – not a substitute for the
+  `forces_reload` verdict for that change - not a substitute for the
   environment approval above, an addition to it. The file itself can be
   drafted with LLM help like any other content; the actual human-only
   gate is the `api-breaking-change-review` required-reviewer environment
@@ -311,7 +311,7 @@ depends on the current response/request shape for as long as it stays open.
   (by exact `id`+`operation`+`path`+`text`) must have a matching file, or
   the build fails. Two properties removed from the same endpoint are two
   separate flagged changes and need two separate files.
-- Create a YAML file with `python backend/scripts/new_compat_decision.py` – it
+- Create a YAML file with `python backend/scripts/new_compat_decision.py` - it
   prompts for the exact oasdiff change string (copy verbatim from the CI
   log) and whether the change needs a forced reload of open tabs
   (interactive `y`/`n` prompt, written to the file as boolean
@@ -322,10 +322,10 @@ depends on the current response/request shape for as long as it stays open.
   must reload immediately (bumps the shared `Compat-Generation` value,
   triggering the client's forced-reload overlay); `forces_reload: false`
   means the existing silent background-update mechanism (hourly timer or
-  navigation) is sufficient – this covers the vast majority of changes
+  navigation) is sufficient - this covers the vast majority of changes
   (additions, deprecations, optional-field removals).
 - Once merged, a decision file's `generation`, `forces_reload`, and
-  `change` fields are immutable – never edit them retroactively, and
+  `change` fields are immutable - never edit them retroactively, and
   never delete a file. If a decision is superseded, add a new file
   instead. Only `reason` may be edited later, via the same
   `api-breaking-change-review` gate.

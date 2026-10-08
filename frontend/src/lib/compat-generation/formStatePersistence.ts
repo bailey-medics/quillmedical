@@ -6,7 +6,7 @@
  * half-written clinical note. Deliberately generic and limited in scope:
  *
  * - Only covers native `<input>` (text-like types) and `<textarea>`
- *   elements – custom Mantine controls (Select, RichTextEditor, etc.)
+ *   elements - custom Mantine controls (Select, RichTextEditor, etc.)
  *   that don't expose a plain native value are not covered.
  * - Restore is exact-match only: a saved field is restored only if an
  *   element with the exact same `name` (or, failing that, `id`) exists
@@ -41,7 +41,7 @@ export function persistFormState(pathname: string): void {
   try {
     sessionStorage.setItem(STORAGE_PREFIX + pathname, JSON.stringify(snapshot));
   } catch {
-    // sessionStorage unavailable/full – best-effort only, never blocks reload.
+    // sessionStorage unavailable/full - best-effort only, never blocks reload.
   }
 }
 
@@ -75,7 +75,7 @@ export function restoreFormState(pathname: string): void {
 
   for (const [key, value] of Object.entries(snapshot)) {
     const field = findFieldByKey(key);
-    if (!field) continue; // no exact match – drop this field, never guess.
+    if (!field) continue; // no exact match - drop this field, never guess.
     setNativeValue(field, value);
   }
 }

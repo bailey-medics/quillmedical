@@ -1,4 +1,4 @@
-"""Messaging service – CQRS coordination layer.
+"""Messaging service - CQRS coordination layer.
 
 Writes message content to FHIR (source of truth) then projects
 metadata into SQL tables for fast reads. All reads come from SQL.
@@ -49,7 +49,7 @@ class MessagingError(Exception):
 
     What this replaces was ``raise ConversationNotFound()``,
     surfaced as ``detail=str(exc)``. Every message was in fact a constant, so
-    nothing leaked – but it held by convention rather than by construction,
+    nothing leaked - but it held by convention rather than by construction,
     and would have stopped holding the first time one interpolated an
     identifier. That is not hypothetical: it is precisely the defect found
     across eleven other endpoints in this file's neighbour, where the
@@ -114,7 +114,7 @@ class SingleUserCannotSelfJoin(MessagingError):
     at membership, and this was that refusal. Both rejections are now the
     one below, which describes the actual reason. Removing the class in
     the same deploy would take the code out of the API for any client
-    still matching on it, so it is retired in a later one – the contract
+    still matching on it, so it is retired in a later one - the contract
     half of expand-contract.
     """
 
@@ -703,9 +703,9 @@ def join_conversation(
     """Allow a staff member of one of the conversation's organisations to join.
 
     One question, asked once: is this person staff at an organisation this
-    conversation belongs to? It used to be two – a platform-level check
+    conversation belongs to? It used to be two - a platform-level check
     that the user was `staff` or above, and a membership check that they
-    were at one of the conversation's organisations – and neither answered
+    were at one of the conversation's organisations - and neither answered
     it. The level said what someone is on the platform, not where; the
     membership check said where, but not in what capacity, because before
     the capacity column the table could not tell a delegate from a

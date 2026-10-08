@@ -2006,7 +2006,7 @@ from the reasoning rather than from scratch:
   the cloud terms.
 
 - **Plausible or Umami for the public site.** Cookie-free, EU-hosted, about
-  £9–19 per month, one script tag. Held as the fallback for question 2 if the
+  £9-19 per month, one script tag. Held as the fallback for question 2 if the
   log-derived dashboard proves too coarse to guide decisions — reach for it
   then, not before.
 

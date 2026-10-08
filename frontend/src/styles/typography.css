@@ -7,7 +7,7 @@
  * as CSS custom properties via cssVariablesResolver.
  */
 
-/* Fixed font sizes – from typographyTokens.fontSizes */
+/* Fixed font sizes - from typographyTokens.fontSizes */
 :root {
   --mantine-font-size-xs: var(--typo-xs);
   --mantine-font-size-sm: var(--typo-sm);
@@ -21,7 +21,7 @@
  * Minimum font size should never go below 14px for body content
  */
 body {
-  font-size: 1.1875rem; /* 19px – fixed across all viewports */
+  font-size: 1.1875rem; /* 19px - fixed across all viewports */
   line-height: 1.6;
 }
 

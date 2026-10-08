@@ -1,5 +1,5 @@
 # Dependencies for running the content validator on its own, outside the
-# backend container – this is what a content repo's CI installs.
+# backend container - this is what a content repo's CI installs.
 #
 # Separate from backend/pyproject.toml on purpose: the package is designed
 # to stand alone, and declaring its needs here says so. The versions must

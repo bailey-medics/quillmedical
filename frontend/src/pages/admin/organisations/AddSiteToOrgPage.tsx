@@ -181,7 +181,7 @@ export default function AddSiteToOrgPage() {
     try {
       // Create the site inside this organisation. The link is written
       // in the same transaction, so there is no window where the site
-      // belongs nowhere – which is what the second call used to leave.
+      // belongs nowhere - which is what the second call used to leave.
       const site = await orgUnits.create({
         name: data.name,
         type: data.type as string,
@@ -192,7 +192,7 @@ export default function AddSiteToOrgPage() {
       // Naming a clinical lead is two acts now: the person is at the
       // org_unit, and the person holds the post. They used to be one, which
       // meant a post could not be vacant without also removing the
-      // person – and a vacancy is a real state worth being able to say.
+      // person - and a vacancy is a real state worth being able to say.
       if (mayNameLead && data.clinicalLeadId) {
         await orgUnits.addMember(site.id, {
           user_id: Number(data.clinicalLeadId),

@@ -244,7 +244,7 @@ they are what the next reader, human or model, takes as the reason.
     - the docstring of `register` says a password needs 6 characters. The
       code enforces 8.
 
-- [x] `backend/app/security.py` – the docstring of the TOTP check says it
+- [x] `backend/app/security.py` - the docstring of the TOTP check says it
       allows one step of clock drift, "default pyotp behavior". The call
       passes no `valid_window`, so only the current step is accepted. Decide
       which is wanted: if drift tolerance is, this is a code change and not
@@ -254,15 +254,15 @@ they are what the next reader, human or model, takes as the reason.
       accepted. Whether to allow drift is left open, because it changes
       who can log in; see Decisions.
 
-- [x] `backend/app/cbac/competencies.py` – a comment still names
+- [x] `backend/app/cbac/competencies.py` - a comment still names
       `feature-admin.yaml`, and a docstring says "defined in more than one
       org_unit" where it means more than one file.
 
-- [x] `shared/competency-definitions/clinical.yaml` – the header says
+- [x] `shared/competency-definitions/clinical.yaml` - the header says
       `resolve_user_competencies()` is how a user's final list is worked
       out. A user now holds what their `user_competency` rows say.
 
-- [x] `backend/app/models.py` – the docstring on `org_unit_member` still
+- [x] `backend/app/models.py` - the docstring on `org_unit_member` still
       explains the name `site_member`, and the one on `OrgUnitLink` says
       both ends point at `sites`.
 
@@ -369,16 +369,16 @@ clinical services are on, and the live deployment has them off.
 
 ## Decisions
 
-- **API security headers are not here** – they were found by the same
+- **API security headers are not here** - they were found by the same
   review and already have their own plan,
   `2026-10-02-api-security-headers-plan.md`, which has landed.
 
-- **CORS is two phases, not one** – the Terraform value has to be live
+- **CORS is two phases, not one** - the Terraform value has to be live
   before the backend starts refusing a wildcard, or a deploy that lands
   first takes the service down. Phase 2 exists so the next environment
   cannot repeat the omission.
 
-- **A participant in a conversation needs no competency** – phase 8
+- **A participant in a conversation needs no competency** - phase 8
   gated everybody who reads from outside a conversation and left
   participants alone. A participant was added to that one conversation
   by name, and the patient may be one. But `add_participant` checks
@@ -387,7 +387,7 @@ clinical services are on, and the live deployment has them off.
   the newcomer, and against which competency, is open; no catalogue
   entry describes "may take part in a conversation".
 
-- **Whether a login code may be one step out is not decided** –
+- **Whether a login code may be one step out is not decided** -
   `verify_totp_code` accepts only the current 30-second step, though its
   docstring claimed one step of drift either way until phase 6 corrected
   it. RFC 6238, section 5.2, recommends allowing at most one step for
@@ -397,13 +397,13 @@ clinical services are on, and the live deployment has them off.
   then stay valid for up to 90 seconds, so it wants a check that a used
   code cannot be replayed.
 
-- **`scripts/run-github-actions-locally.sh` cannot run** – it points `act`
+- **`scripts/run-github-actions-locally.sh` cannot run** - it points `act`
   at `non-main.yml` and `main.yml`, which no longer exist; the workflows
   are `ci.yml` and `deploy.yml`. Phase 5 fixed the one job name the review
   reported and left the rest, because whether to repair the script or
   delete it depends on whether anybody still wants to run Actions locally.
 
-- **Reported by the review and not confirmed** – these came back from the
+- **Reported by the review and not confirmed** - these came back from the
   checkers and were not opened again before this plan was written, so
   confirm each before acting on it:
 

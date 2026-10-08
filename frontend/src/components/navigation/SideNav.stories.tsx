@@ -46,7 +46,7 @@ export const WithSearch: Story = {
 };
 
 /**
- * Patient message thread – three-level nesting: patient → Messages → thread.
+ * Patient message thread - three-level nesting: patient → Messages → thread.
  */
 export const PatientMessageThread: Story = {
   args: {
@@ -65,7 +65,7 @@ export const PatientMessageThread: Story = {
 };
 
 /**
- * Patient message thread – three-level nesting: patient → Messages → thread.
+ * Patient message thread - three-level nesting: patient → Messages → thread.
  */
 export const PatientMessageThreadWithSearch: Story = {
   args: {

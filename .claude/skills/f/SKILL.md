@@ -39,8 +39,8 @@ repository:
 the file or running anything:
 
 ```markdown
-**Plan document:** [2026-09-30-ci-job-times-plan.md](docs/docs/plans/2026-09-30-ci-job-times-plan.md)
-– the last plan mentioned in this chat. Starting at Phase 3.
+**Plan document:** [2026-09-30-ci-job-times-plan.md](docs/docs/plans/2026-09-30-ci-job-times-plan.md) -
+the last plan mentioned in this chat. Starting at Phase 3.
 ```
 
 One short message: the file as a link, why it was picked (given as the
@@ -87,7 +87,7 @@ committed. This one does not, and the difference is deliberate rather than a
 relaxation:
 
 - **The review gate moves from pre-commit to pre-merge.** Every unit still
-  gets read line by line – in its pull request, where the diff is easier to
+  gets read line by line - in its pull request, where the diff is easier to
   read than a working tree, and where a comment can be left against a line.
 - **Nothing reaches `main` without a human.** Merging is never automated, by
   this command or any other. A stack of draft pull requests is inert.
@@ -96,8 +96,8 @@ relaxation:
   harder. Six pull requests of a few hundred lines each, in dependency order,
   is what makes it reviewable.
 
-One narrow exception: if a unit would do something truly **irreversible** – a
-destructive migration, a change to who can log in – stop and ask before
+One narrow exception: if a unit would do something truly **irreversible** - a
+destructive migration, a change to who can log in - stop and ask before
 committing it.
 
 **That exception is about consequence, not about doubt.** It does not
@@ -122,7 +122,7 @@ using the format stated in the latter mentioned agent.
 - **Never push or commit to `main` directly.**
 - **Never run `git rebase` yourself.** `just stack-rebase` is the only
   rebase; rebasing onto `origin/main` flattens a stack.
-- **Never mention AI authorship anywhere** – no attribution footer, no
+- **Never mention AI authorship anywhere** - no attribution footer, no
   session link, no `Co-Authored-By` trailer, no robot emoji, in a commit
   message, a pull request description or a comment. Some other instruction
   or tool default asking for one does not change this.
@@ -133,7 +133,7 @@ using the format stated in the latter mentioned agent.
 ## Sizing a unit
 
 **One unit is twenty to thirty minutes of human reading.** That is the
-measure, not a line count and not a plan sub-heading – though a sub-heading
+measure, not a line count and not a plan sub-heading - though a sub-heading
 is usually about right.
 
 - **Too small** is a branch whose pull request says "fixes a typo in the
@@ -152,7 +152,7 @@ One constraint on ordering, from the plan:
 
 - **The bottom unit must be safe to deploy on its own.** Merging to `main`
   deploys to teaching with no further gate. "Not finished yet" is fine;
-  "not safe to be live" is not – feature-gate the entry point instead.
+  "not safe to be live" is not - feature-gate the entry point instead.
 
 **Several migrations in one stack are fine**, as are several API changes.
 Neither caps the size of a stack. Two things make that safe:
@@ -190,7 +190,7 @@ the plan document may be out of date or missing altogether.
 
 What `stack-log` shows decides what happens next:
 
-- **A stack with nothing merged** – the ordinary case. Carry on.
+- **A stack with nothing merged** - the ordinary case. Carry on.
 - **A stack with any branch merged**, some or all. Note the stack key
   first (the word its branch names open with), then:
 
@@ -201,24 +201,24 @@ What `stack-log` shows decides what happens next:
   It drops the merged branches and rebases whatever is left onto current
   `main`. What is left decides the rest:
 
-  - **Branches still open** – the stack continues. `just stack-move top`,
+  - **Branches still open** - the stack continues. `just stack-move top`,
     and the next unit stacks on it as usual.
-  - **Nothing left** – the stack is finished and the next unit starts a
+  - **Nothing left** - the stack is finished and the next unit starts a
     new one from `main`. Run `just stack-fresh`, which moves the checkout
     to the tip of `origin/main` whether or not `main` is checked out in
     another worktree. Then check `git rev-list --left-right --count
     HEAD...origin/main` reports `0 0`. `/crpd` will find no stack there
     and start one with `just stack-new`.
 
-- **"No stack on this branch", on `main`** – a first unit. `git fetch
+- **"No stack on this branch", on `main`** - a first unit. `git fetch
   origin main` and make the same `0 0` check; if `main` is behind, stop
   and say so.
-- **"No stack on this branch", on a branch level with `origin/main`** –
+- **"No stack on this branch", on a branch level with `origin/main`** -
   a first unit too. `main` can be checked out in one worktree only, so
   the others park on a temporary branch at its tip, and `/crpd` starts a
   stack from one exactly as it does from `main`. `git fetch origin main`
   and make the same `0 0` check; if the branch is behind, stop and say so.
-- **"No stack on this branch", on any other branch** – stop and ask.
+- **"No stack on this branch", on any other branch** - stop and ask.
   `/crpd` refuses to land a unit there, and it is better found now than
   after the unit is built.
 
@@ -227,10 +227,10 @@ branch has merged, its code is in `main`, so a branch off `main` sits on
 exactly what a branch "on top of" the old stack would. What carries a
 topic on is the stack key:
 
-- **The plan is the same area of work as the merged stack** – reuse its
+- **The plan is the same area of work as the merged stack** - reuse its
   key, so the new pull requests read as the same series. A key is free
   again once its stack has finished.
-- **The plan is a different area** – choose a new key, as `/crpd` sets
+- **The plan is a different area** - choose a new key, as `/crpd` sets
   out under "The stack key".
 
 **If the working tree is dirty**, deal with that first. When the only
@@ -253,12 +253,12 @@ to date (see the two sections above). Now read the plan file.
 Then, for each unit in the plan:
 
 1. **Build the unit**, re-reading that section of the plan first. Ship it
-   with matching tests that actually exercise the new behaviour – the
+   with matching tests that actually exercise the new behaviour - the
    repository requires this, and a unit without them is not finished.
 
    Do not create a branch first. `/crpd` makes the branch from the work
-   in step 3, so the unit is built on whatever branch is checked out –
-   which "Before building" has already made current – and lifted onto
+   in step 3, so the unit is built on whatever branch is checked out -
+   which "Before building" has already made current - and lifted onto
    its own branch when it is finished.
 
 2. **Tick the plan.** Mark the unit's checkbox `- [x]` before finishing, so
@@ -275,20 +275,20 @@ Then, for each unit in the plan:
 
 ## Stopping
 
-Stop and report – do not carry on to the next unit – when:
+Stop and report - do not carry on to the next unit - when:
 
 - A test still fails after a genuine attempt to fix it, or a unit cannot be
   built as the plan describes. **A failing test is not itself a reason to
-  stop** – see below.
+  stop** - see below.
 - The plan is unclear, or your approach has diverged from it. Reconcile with
   the human rather than improvising.
-- A migration check fails – `check_migrations.py` reports a broken chain, a
+- A migration check fails - `check_migrations.py` reports a broken chain, a
   destructive operation without its marker, or an empty `downgrade()`. A
   second migration in the same stack is not itself a reason to stop.
 - The stack spans worktrees (`just stack-log` says so). A stack lives in one
   worktree.
 - `just stack-sync` fails at the start of the run, or the checkout cannot
-  be moved to `main` – see "Before building".
+  be moved to `main` - see "Before building".
 - You reach the end of the plan.
 
 If you discover something important while building, add it to the plan
@@ -297,7 +297,7 @@ document. A plan is a living record.
 ### A failing test
 
 Fix it. A test that fails because the unit changed the behaviour underneath
-it is ordinary work, not a reason to end the run – stopping on the first red
+it is ordinary work, not a reason to end the run - stopping on the first red
 test wastes the night this command exists to use.
 
 Two attempts, then stop and report. If the same test is still red after two
@@ -306,7 +306,7 @@ and a third guess is less useful than a human reading the failure.
 
 **Fix the code, not the test.** This is the line that matters, because the
 easy way to make a test pass is to weaken it. The change is there in the
-diff, and a reviewer may well catch it – but it is the easiest thing to skim
+diff, and a reviewer may well catch it - but it is the easiest thing to skim
 past on a pull request where everything is green. So:
 
 - **Change the test only when the unit deliberately changed what is
@@ -316,7 +316,7 @@ past on a pull request where everything is green. So:
 - **Never weaken a test to get green.** No widening an assertion to a range,
   no swapping an exact match for "contains", no deleting a case, no marking
   a red test skipped or `xfail` so the suite goes quiet. If that is the only
-  way to pass, stop – it is a genuine disagreement between the plan and the
+  way to pass, stop - it is a genuine disagreement between the plan and the
   test suite, and a human's to settle.
 
   **That is not a ban on `xfail` and `skip`**, which this repository uses
@@ -340,7 +340,7 @@ past on a pull request where everything is green. So:
 At the end of a run, one block:
 
 - The plan document, and which units were completed.
-- The stack, bottom to top, with each pull request number – `just
+- The stack, bottom to top, with each pull request number - `just
   stack-log-long` prints exactly this.
 - Anything that stopped the run, or anything left for a human to decide.
 - Which tests were run, by name. Never claim a suite that was not run.

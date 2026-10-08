@@ -111,7 +111,7 @@ describe("LogbookTable", () => {
 
     it("renders a dash where nothing was recorded", () => {
       renderWithMantine(<LogbookTable logbook={logbook} />);
-      expect(screen.getAllByText("–").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("-").length).toBeGreaterThan(0);
     });
   });
 

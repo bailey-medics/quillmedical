@@ -3,14 +3,14 @@
 A passport is a git repository, and two concurrent writes to one
 repository is the shape of problem git is least good at. The store
 already refuses a write built on a stale read, so nothing can be
-silently lost – but a refusal means the caller's work is wasted, and a
+silently lost - but a refusal means the caller's work is wasted, and a
 second attempt can lose the race again.
 
 So writes to one passport are serialised, using the database every
 request already has. After VPR: *the database acts as a traffic light.*
 
 **Why an advisory lock rather than a row lock.** There is nothing to lock
-– the thing being protected is a directory, not a row. An advisory lock
+- the thing being protected is a directory, not a row. An advisory lock
 is exactly a named mutex the database happens to hold, which is what is
 wanted, and it needs no table and no cleanup: Postgres releases it when
 the connection goes, so a crashed worker does not leave a passport

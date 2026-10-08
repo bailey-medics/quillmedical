@@ -7,7 +7,7 @@
  *
  * **This is how an attestation is confirmed**, not a setting toggled.
  * Use `SolidSwitch` for something a user flips back and forth; use this
- * where ticking is a deliberate one-time act – agreeing to a
+ * where ticking is a deliberate one-time act - agreeing to a
  * declaration, confirming a statement has been read.
  *
  * Two rules follow from that and are the caller's to keep:
@@ -38,7 +38,7 @@ export interface CheckboxFieldProps extends Omit<
   CheckboxProps,
   "description" | "error"
 > {
-  /** Helper text below the box – where a declaration's wording belongs */
+  /** Helper text below the box - where a declaration's wording belongs */
   description?: string;
   /** Validation message below the box */
   error?: string;

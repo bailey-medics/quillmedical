@@ -10,11 +10,11 @@ was set up, is in the
 One organisation, with four accounts. Their numbers are kept out of this
 repository, which is public; they are in `backend/.env`.
 
-- **Quill Medical Superadmin** – the management account: policies and
+- **Quill Medical Superadmin** - the management account: policies and
   new accounts. Nothing runs in it.
-- **Quill Medical ID** – the sign-in directory.
-- **Quill Medical Emails App** – SES for App production.
-- **Quill Medical Emails Dev** – SES for development, in the sandbox, so
+- **Quill Medical ID** - the sign-in directory.
+- **Quill Medical Emails App** - SES for App production.
+- **Quill Medical Emails Dev** - SES for development, in the sandbox, so
   it can write only to addresses verified in the account.
 
 A policy on the organisation allows London only, with the two American
@@ -35,15 +35,15 @@ organisation for its own purposes.
 
 Described in Terraform, in `infra/aws/`, one module used twice:
 
-- **The domain** – `quill-medical.com`, verified, signing with Easy DKIM.
+- **The domain** - `quill-medical.com`, verified, signing with Easy DKIM.
   Amazon holds the keys; the three selectors are CNAME records in
   `infra/dns.tf`.
-- **The MAIL FROM name** – `mail.quill-medical.com`, where bounces come
+- **The MAIL FROM name** - `mail.quill-medical.com`, where bounces come
   back, so SPF lines up with the domain.
-- **The suppression list** – Amazon refuses an address that hard-bounced
+- **The suppression list** - Amazon refuses an address that hard-bounced
   or whose owner pressed "spam". Quill reads the list before each
   newsletter send.
-- **One user** – `quill-backend-ses` (`quill-backend-ses-dev` in
+- **One user** - `quill-backend-ses` (`quill-backend-ses-dev` in
   development), whose access key the backend sends with. Its policy
   allows sending, from London, and nothing else; App production's may
   also read the suppression list.

@@ -133,12 +133,12 @@ function ConfirmContent({
       <Stack gap={4} mt="xs" align="center">
         {authorise.map((id) => (
           <BodyText key={id}>
-            <strong>{competencyName(id)}</strong> – authorise
+            <strong>{competencyName(id)}</strong> - authorise
           </BodyText>
         ))}
         {withdraw.map((id) => (
           <BodyText key={id}>
-            <strong>{competencyName(id)}</strong> – withdraw
+            <strong>{competencyName(id)}</strong> - withdraw
           </BodyText>
         ))}
       </Stack>

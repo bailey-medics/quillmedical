@@ -10,7 +10,7 @@ nobody reviewed.
 
 **No PHI, and no patient anywhere near it.** A passport is about a
 clinician's own competence. The message names the holder, the competency
-and the person inviting – never a patient, a procedure performed on
+and the person inviting - never a patient, a procedure performed on
 anyone, or any clinical detail of the evidence.
 
 **The recipient may not have heard of Quill.** A consultant at another

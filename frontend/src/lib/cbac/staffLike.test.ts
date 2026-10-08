@@ -2,7 +2,7 @@
  * The definition the staff picker leans on.
  *
  * Deliberately the complement of the two patient-side competencies
- * rather than a list of staff ones – see `staffLike.ts`. The test for
+ * rather than a list of staff ones - see `staffLike.ts`. The test for
  * an unknown competency is the point of that choice: a clinical
  * competency added to the catalogue tomorrow counts as staff-like
  * here without anybody remembering to update this file.
@@ -47,7 +47,7 @@ describe("holdsStaffLikeCompetency", () => {
     });
 
     it("says yes to an administrative one", () => {
-      // Staff-like is not the same as clinical – a receptionist counts.
+      // Staff-like is not the same as clinical - a receptionist counts.
       expect(holdsStaffLikeCompetency(["manage_users"])).toBe(true);
     });
 

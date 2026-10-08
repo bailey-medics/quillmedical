@@ -2,7 +2,7 @@
 
 ## Purpose of this document
 
-This document provides the clinical and regulatory context that any LLM or analyst needs in order to perform meaningful clinical safety analysis on this codebase. It is not a tutorial on software engineering – it is a tutorial on thinking like a clinician who happens to understand software.
+This document provides the clinical and regulatory context that any LLM or analyst needs in order to perform meaningful clinical safety analysis on this codebase. It is not a tutorial on software engineering - it is a tutorial on thinking like a clinician who happens to understand software.
 
 ---
 
@@ -10,7 +10,7 @@ This document provides the clinical and regulatory context that any LLM or analy
 
 A Clinical Safety Officer (CSO) is a senior clinician who is personally accountable for ensuring that a health IT system does not cause patient harm. The role is mandated by NHS England standard DCB 0129 for any manufacturer placing a health IT system into the NHS.
 
-The CSO must hold current clinical registration (GMC, NMC, GPhC, or HCPC) and must have completed training in clinical risk management. They are not an advisory role – they have authority to block a release if they judge the clinical risk to be unacceptable.
+The CSO must hold current clinical registration (GMC, NMC, GPhC, or HCPC) and must have completed training in clinical risk management. They are not an advisory role - they have authority to block a release if they judge the clinical risk to be unacceptable.
 
 The CSO's core question is not "does this code work correctly?" but rather **"could this code contribute to a patient being harmed?"**
 
@@ -28,7 +28,7 @@ DCB 0129 uses a precise vocabulary. Every clinical safety concern follows a chai
 
 **Hazard**: The potential for harm. This exists whether or not anyone is actually harmed. Example: "A clinician may proceed to make clinical decisions without confirming they are viewing the correct patient's record."
 
-**Harm**: An actual adverse outcome for a patient. Example: "A clinician prescribes penicillin to a patient with a documented penicillin allergy, because the allergy list – which belongs to a different patient – appeared empty due to the failed demographics load causing a misidentified record."
+**Harm**: An actual adverse outcome for a patient. Example: "A clinician prescribes penicillin to a patient with a documented penicillin allergy, because the allergy list - which belongs to a different patient - appeared empty due to the failed demographics load causing a misidentified record."
 
 When analysing code, always trace the full chain. A software bug is only a clinical safety hazard if you can articulate a plausible path from the bug to patient harm.
 
@@ -47,9 +47,9 @@ A hospital ward is not a quiet office. A doctor on a medical ward might:
 - Switch between patient records dozens of times per shift
 - Be called away from a workstation mid-task (mid-sentence in a clinical note, mid-way through a prescription) and return minutes or hours later
 - Work a 12-hour shift, making critical decisions at hour 11 with the same cognitive demands as hour 1
-- Be a junior doctor (Foundation Year 1 – weeks into their career) or a consultant with 20 years' experience, using the same system
+- Be a junior doctor (Foundation Year 1 - weeks into their career) or a consultant with 20 years' experience, using the same system
 
-**Implication for hazard analysis**: Any design that relies on the user being attentive, unhurried, or completing a multi-step task without interruption is a hazard source. The system must be safe for a tired, distracted, interrupted user – not just for a careful, focused one.
+**Implication for hazard analysis**: Any design that relies on the user being attentive, unhurried, or completing a multi-step task without interruption is a hazard source. The system must be safe for a tired, distracted, interrupted user - not just for a careful, focused one.
 
 ### Clinicians trust what the screen shows them
 
@@ -59,10 +59,10 @@ A clinician looking at a patient record does not think "I wonder if this data lo
 
 - If the screen says **"No known allergies"**, they will prescribe drugs that would be contraindicated if an allergy existed. They will not consider the possibility that the allergy data failed to load.
 - If a **lab result is displayed**, they assume it belongs to the patient whose record they believe they have open. They will not cross-check the patient identifier on the lab result against the patient banner.
-- If a **field is empty**, they interpret it as "this has not been recorded" – not "the system failed to retrieve this data." An empty medication list means "patient is on no medications," not "the medication query timed out."
+- If a **field is empty**, they interpret it as "this has not been recorded" - not "the system failed to retrieve this data." An empty medication list means "patient is on no medications," not "the medication query timed out."
 - If an **observation value is shown** (blood pressure, heart rate, oxygen saturation), they assume it is the most recent value. They will not notice if the display is showing a value from three days ago because the latest reading failed to sync.
 
-**Implication for hazard analysis**: Anywhere the system displays clinical data, ask: "What does the clinician _believe_ they are seeing, and is that belief always correct?" If there is any scenario where the display could mislead – even if the underlying data is technically correct – that is a hazard.
+**Implication for hazard analysis**: Anywhere the system displays clinical data, ask: "What does the clinician _believe_ they are seeing, and is that belief always correct?" If there is any scenario where the display could mislead - even if the underlying data is technically correct - that is a hazard.
 
 ### Shared workstations are the norm
 
@@ -95,7 +95,7 @@ They alt-tab between these constantly. Clinicians may even have multiple patient
 
 ### Alert fatigue is real and dangerous
 
-If a system shows too many warnings, clinicians stop reading them. This is not a character flaw – it is a well-documented cognitive response to information overload. Research consistently shows:
+If a system shows too many warnings, clinicians stop reading them. This is not a character flaw - it is a well-documented cognitive response to information overload. Research consistently shows:
 
 - Override rates for clinical alerts exceed 90% in many systems
 - Clinicians develop "click-through" behaviour where they dismiss alerts without reading them
@@ -127,7 +127,7 @@ Not every bug is a clinical safety hazard. Not every clinical safety hazard is a
 
 - A design that puts the patient's name in small grey text at the top of a busy screen (technically correct, but in practice clinicians won't check it)
 - A workflow that requires 6 clicks to view a patient's allergy list (no bug, but it means clinicians won't check allergies in a hurry)
-- A system that works perfectly online but shows no indication when it's serving offline-cached data (no bug – it's working as designed – but the clinician doesn't know they're seeing stale data)
+- A system that works perfectly online but shows no indication when it's serving offline-cached data (no bug - it's working as designed - but the clinician doesn't know they're seeing stale data)
 - A patient list sorted by bed number where two patients with similar names are in adjacent beds (the sorting is correct, but the proximity increases wrong-patient risk)
 
 ### The test
@@ -144,9 +144,9 @@ If the answer to any of these is "yes, plausibly", it is a clinical safety hazar
 
 ---
 
-## Severity of harm – the clinical perspective
+## Severity of harm - the clinical perspective
 
-When identifying hazards (not scoring them – that is the CSO's job), it helps to understand the clinical severity spectrum:
+When identifying hazards (not scoring them - that is the CSO's job), it helps to understand the clinical severity spectrum:
 
 **Catastrophic**: Multiple deaths or permanent life-changing injuries. Example: A systematic error that causes every patient in a ward to receive the wrong medication for 24 hours.
 
@@ -158,7 +158,7 @@ When identifying hazards (not scoring them – that is the CSO's job), it helps 
 
 **Minor**: Minor injury with short-term recovery, minor psychological upset, or inconvenience. Example: A patient's appointment is delayed because the referral letter was sent to the wrong clinic.
 
-When identifying hazards, you as the LLM, do not need to score them. But understanding this spectrum helps you recognise which hazards are worth logging – if the plausible worst case is "minor inconvenience", it may not warrant a formal hazard log entry. If the plausible worst case includes death, it always does.
+When identifying hazards, you as the LLM, do not need to score them. But understanding this spectrum helps you recognise which hazards are worth logging - if the plausible worst case is "minor inconvenience", it may not warrant a formal hazard log entry. If the plausible worst case includes death, it always does.
 
 ---
 
@@ -204,7 +204,7 @@ Look for: Auto-population of fields from previous entries, templates that pre-fi
 
 ---
 
-## Thinking Like a clinician – a checklist
+## Thinking Like a clinician - a checklist
 
 When reviewing any code that handles clinical data, work through this mentally:
 
@@ -214,7 +214,7 @@ When reviewing any code that handles clinical data, work through this mentally:
 4. **Is this data correct?** Could a data transformation, mapping, or display logic cause the value shown to differ from the value stored? Are units displayed? Are dates unambiguous?
 5. **What happens if the user is interrupted?** If they walk away mid-task and return 10 minutes later, is the screen still showing valid, current, correct data for the right patient? If someone else sits down, what do they see?
 6. **What happens if the network fails?** Right now, mid-operation. Does the user know? Is data lost? Is a partial write possible?
-7. **What happens if this is used by the wrong person?** Not maliciously – just a nurse accessing a screen designed for doctors, or a medical student who doesn't understand the clinical significance of what they're changing.
+7. **What happens if this is used by the wrong person?** Not maliciously - just a nurse accessing a screen designed for doctors, or a medical student who doesn't understand the clinical significance of what they're changing.
 8. **What does the audit trail show?** If something goes wrong, can we trace what happened, who did it, and when? Or does the system silently overwrite without recording the change?
 
 ---
@@ -223,12 +223,12 @@ When reviewing any code that handles clinical data, work through this mentally:
 
 Good hazard analysis is:
 
-- **Specific**: "The PatientBanner component renders patient.name from context without checking whether context has been refreshed since the last route change" – not "there might be patient identity issues."
+- **Specific**: "The PatientBanner component renders patient.name from context without checking whether context has been refreshed since the last route change" - not "there might be patient identity issues."
 - **Traces the full chain**: cause → effect → hazard → harm, every time.
-- **Clinically grounded**: The harm description reflects real clinical scenarios, not abstract possibilities. "A clinician prescribes a contraindicated drug because the allergy list appeared empty" – not "incorrect data could be displayed."
+- **Clinically grounded**: The harm description reflects real clinical scenarios, not abstract possibilities. "A clinician prescribes a contraindicated drug because the allergy list appeared empty" - not "incorrect data could be displayed."
 - **Over-inclusive rather than under-inclusive**: It is far cheaper to review and dismiss a false positive than to miss a real hazard. When in doubt, log it.
-- **Honest about controls**: If existing controls mitigate the hazard, say so. If there are no controls, say "None identified" – do not invent ones that don't exist.
-- **Honest about uncertainty**: If you're not sure whether something is a hazard, say "Uncertain – recommend CSO review." Do not silently omit it.
+- **Honest about controls**: If existing controls mitigate the hazard, say so. If there are no controls, say "None identified" - do not invent ones that don't exist.
+- **Honest about uncertainty**: If you're not sure whether something is a hazard, say "Uncertain - recommend CSO review." Do not silently omit it.
 
 ---
 
@@ -237,5 +237,5 @@ Good hazard analysis is:
 - **DCB 0129**: Clinical Risk Management: its Application in the Manufacture of Health IT Systems
 - **DCB 0160**: Clinical Risk Management: its Application in the Deployment and Use of Health IT Systems
 - **NHS England**: Digital Clinical Safety Strategy
-- **ISO 14971**: Medical devices – Application of risk management to medical devices
+- **ISO 14971**: Medical devices - Application of risk management to medical devices
 - **HSSIB**: Healthcare Safety Investigation Branch EPR thematic review

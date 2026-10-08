@@ -1,6 +1,6 @@
 """Tests for the transcode CLI script (Cloud Run Job).
 
-FFmpeg itself is not exercised here – the encode is stubbed. What is
+FFmpeg itself is not exercised here - the encode is stubbed. What is
 tested is everything around it that can go wrong silently: the object
 keys the job reads and writes, the validation that stops one
 organisation's job reaching another's prefix, and the cache header
@@ -25,7 +25,7 @@ def _patch_storage(storage_module: MagicMock):
     package, because once ``google.cloud`` has been imported that import
     form reads the attribute and never consults ``sys.modules``. Patching
     only the latter passes in isolation and fails once any earlier test
-    has imported the real module – which is exactly what happened here,
+    has imported the real module - which is exactly what happened here,
     with ``test_teaching_storage.py`` running first in the full suite.
     """
     return (
@@ -78,8 +78,8 @@ def fake_gcs():
     def _blob_for(bucket_name: str):
         def _make(path: str) -> MagicMock:
             # One mock per path, not per call. The job asks for the same
-            # blob twice – once to upload, once to verify it is readable
-            # – and a fresh mock on the second call would discard what
+            # blob twice - once to upload, once to verify it is readable
+            # - and a fresh mock on the second call would discard what
             # the upload set on the first.
             key = f"{bucket_name}/{path}"
             existing = uploaded.get(key)
@@ -165,7 +165,7 @@ class TestTranscode:
 
             assert transcode() == 0
 
-        # No extension on the source key – media_object_path does not add
+        # No extension on the source key - media_object_path does not add
         # one, because the upload is keyed by generated id alone.
         assert "source-bucket/7/colonoscopy-basics/a1b2c3d4" in fake_gcs
 
@@ -203,7 +203,7 @@ class TestSourceCleanup:
     """The master is deleted on success, and only on success.
 
     Once renditions exist the source's sole remaining use is
-    re-encoding, wanted within days rather than months – so the job
+    re-encoding, wanted within days rather than months - so the job
     cleans up after itself and the 7-day lifecycle rule is only a
     backstop for uploads whose job never ran.
     """
@@ -254,7 +254,7 @@ class TestSourceCleanup:
         # Patched the same way as the fake_gcs fixture. Patching
         # `google.cloud.storage.Client` by name would force a real
         # import of that module, which is what contaminates every later
-        # test – see _patch_storage.
+        # test - see _patch_storage.
         storage_module = MagicMock()
         storage_module.Client.return_value = client
         modules_patch, attr_patch = _patch_storage(storage_module)
@@ -354,7 +354,7 @@ class TestValidation:
         # Not `patch("google.cloud.storage.Client")`: patching by name
         # imports the real module to reach the attribute, and leaves it
         # bound on the parent package for every later test. That is the
-        # fault that broke the full-suite run – see _patch_storage.
+        # fault that broke the full-suite run - see _patch_storage.
         storage_module = MagicMock()
         storage_module.Client.return_value = client
         modules_patch, attr_patch = _patch_storage(storage_module)
@@ -394,7 +394,7 @@ class TestCompletionReport:
     """The callback that tells the backend the renditions exist.
 
     Until this lands, `transcoded_at` stays null and the module stays
-    hidden – so what matters is that it is attempted, that it carries
+    hidden - so what matters is that it is attempted, that it carries
     filenames rather than paths, and above all that it can never fail
     the job. The encode has succeeded and the source is about to be
     deleted by the time it runs.

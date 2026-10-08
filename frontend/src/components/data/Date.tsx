@@ -1,7 +1,7 @@
 /**
  * Date Component
  *
- * Pure formatter – returns bare text with no wrapping element.
+ * Pure formatter - returns bare text with no wrapping element.
  * Accepts ISO 8601 date strings (YYYY-MM-DD) from the backend (FHIR format).
  */
 

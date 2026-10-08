@@ -6,7 +6,7 @@ one duplication the design accepts, and this is what stops it drifting:
 the same validator runs at both gates, so a version only one of them sees
 is a version that can make them disagree.
 
-If this fails, change whichever declaration is behind – do not relax the
+If this fails, change whichever declaration is behind - do not relax the
 test.
 """
 

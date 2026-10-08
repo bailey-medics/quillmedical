@@ -8,7 +8,7 @@ parameter for a place to ask about.
 
 **These are marked ``xfail(strict=True)`` on purpose.** They run on every
 suite, they keep CI green while the design is unbuilt, and the moment one
-starts passing pytest reports it as unexpectedly passing and fails the build – which is the signal
+starts passing pytest reports it as unexpectedly passing and fails the build - which is the signal
 wanted. A test here going green is news.
 
 **Two piles, deliberately.** Where a case can be set up with today's tables it
@@ -20,7 +20,7 @@ To adopt: point ``_can_at`` at the real per-place resolver when one exists.
 Every xfail here should start passing in the same commit.
 
 Every competency named below exists in ``shared/competency-definitions/``. Some are
-stand-ins – there is no rota or clinical-safety-officer competency yet, so a
+stand-ins - there is no rota or clinical-safety-officer competency yet, so a
 real one of roughly the right shape stands in its place. What is asserted is
 that the answer differs by place, not which competency it is.
 """
@@ -324,7 +324,7 @@ class TestPositionsAsOpposedToCompetencies:
         db_session.commit()
 
         # Cover sits alongside the substantive holder rather than replacing
-        # them, so the record still shows whose post it is – and it is not
+        # them, so the record still shows whose post it is - and it is not
         # blocked by max_holders, or nobody could ever cover.
         appoint(db_session, post, cover, is_acting=True)
         db_session.commit()

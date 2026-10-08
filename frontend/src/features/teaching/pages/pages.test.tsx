@@ -91,7 +91,7 @@ describe("TeachingDashboard", () => {
 
   it("shows the page title while loading rather than a skeleton of it", async () => {
     // "Teaching modules" is a constant and never waited on the fetch,
-    // but a skeleton stood in for it anyway – so the title appeared to
+    // but a skeleton stood in for it anyway - so the title appeared to
     // flash as a grey bar was swapped for the words it was always
     // going to say. Skeletons belong where the content is unknown.
     (api.get as Mock).mockReturnValue(new Promise(() => {}));
@@ -227,7 +227,7 @@ describe("LearningDashboard", () => {
 
   it("shows an empty state when nothing is visible", async () => {
     // The right answer for a learner whose organisations have no live
-    // modules – not an error, and it says nothing about what exists
+    // modules - not an error, and it says nothing about what exists
     // elsewhere.
     (api.get as Mock).mockResolvedValue([]);
     renderWithRouter(<LearningDashboard />);

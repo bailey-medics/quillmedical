@@ -27,7 +27,7 @@ type Story = StoryObj<typeof CompetencyRow>;
  * Every read-only story sets `onSelect: undefined` explicitly rather than
  * omitting it. `argTypesRegex: "^on[A-Z].*"` in `.storybook/preview.tsx`
  * auto-fills any unset `on*` prop with a spy, so an omitted `onSelect`
- * would render the row as a button with a hover – exactly what these
+ * would render the row as a button with a hover - exactly what these
  * stories exist to show it is not.
  */
 export const SignedOff: Story = {

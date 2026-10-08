@@ -4,7 +4,7 @@
  * Below `md`, not `sm`: a tablet held upright (an iPad or a Galaxy Tab at
  * 750 to 850px) is wider than a phone but too narrow to give 260px to a
  * side bar and still leave room for the page. Everything else responsive
- * – stacked buttons, padding, form layout – still switches at `sm`.
+ * - stacked buttons, padding, form layout - still switches at `sm`.
  *
  * When this is true the ribbon is in its narrow form too: the hamburger
  * shows and the Quill name does not. The two never appear together.

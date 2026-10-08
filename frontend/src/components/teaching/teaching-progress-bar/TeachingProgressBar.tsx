@@ -13,7 +13,7 @@ import classes from "./TeachingProgressBar.module.css";
 interface TeachingProgressBarProps {
   /**
    * What the bar measures, read out by screen readers as the progress
-   * bar's name – "Question progress", "Upload progress". Required: an
+   * bar's name - "Question progress", "Upload progress". Required: an
    * unnamed progress bar is announced only as "progress bar", and axe
    * fails it under `aria-progressbar-name`.
    */
@@ -26,7 +26,7 @@ interface TeachingProgressBarProps {
    * How full to draw the bar, when that differs from `current`.
    *
    * Counting stages gives a bar that only moves in whole steps, which
-   * reads as stuck during a long stage – a video upload sits on one
+   * reads as stuck during a long stage - a video upload sits on one
    * step for minutes. Pass a fractional position here to let the bar
    * creep while the count keeps to whole stages: `fill={0.42}` with
    * `current={0} total={4}` draws a tenth full and still counts zero

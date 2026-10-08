@@ -109,18 +109,18 @@ placeholders are acceptable until somebody does.
 
 ## Decisions
 
-- **No tick box** – a required box adds a step and a way to fail, and
+- **No tick box** - a required box adds a step and a way to fail, and
   buys nothing here. Consent is not the lawful basis for holding an
   account, so there is nothing to consent to; the privacy policy only has
   to be given, and terms are accepted by carrying on past a clear notice.
 
-- **The policies stay on the public site, not in the app** – agreed on
+- **The policies stay on the public site, not in the app** - agreed on
   5 October 2026. Showing them in the app, as routes or a pop-up over the
   form, would mean a second copy of the text or an app release for every
   change of wording. The public site holds one copy and updates at any
   time.
 
-- **Acceptance is not recorded per person, yet** – no column, no
+- **Acceptance is not recorded per person, yet** - no column, no
   migration. What somebody agreed to is worked out from when their
   account was created and the "Last updated" date on the terms. That
   holds while the terms have one version. The first material change to
@@ -128,7 +128,7 @@ placeholders are acceptable until somebody does.
   `MARKETING_WORDING_VERSION` does for the marketing sentence, and that
   is a plan of its own.
 
-- **The login page gets no sentence** – nothing is collected there that
+- **The login page gets no sentence** - nothing is collected there that
   registration did not already collect. Whether the app should carry the
   legal links somewhere permanent, such as Settings, is a separate
   question and not needed for compliance at sign-up.

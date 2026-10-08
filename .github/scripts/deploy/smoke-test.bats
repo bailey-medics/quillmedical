@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for smoke-test.sh – the deploy pipeline's post-deploy health check.
+# Tests for smoke-test.sh - the deploy pipeline's post-deploy health check.
 #
 # The curl call (http_status) is stubbed so the retry logic can be tested
 # without network access. Interval is set to 0 to keep tests fast.

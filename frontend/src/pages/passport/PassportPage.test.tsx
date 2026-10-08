@@ -379,7 +379,7 @@ describe("PassportPage", () => {
     // 404 is the ordinary state of everybody who has never pressed the
     // button, not a fault. It was reported as a failed load until
     // somebody opened the page on a fresh account and was told to try
-    // again – advice that could never have worked.
+    // again - advice that could never have worked.
     fetchMyPassport.mockRejectedValue(httpError(404));
     renderWithRouter(<PassportPage />);
 

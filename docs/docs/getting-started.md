@@ -4,9 +4,9 @@
 
 - Docker Desktop (running)
 - [just](https://github.com/casey/just) command runner
-- [GitHub CLI](https://cli.github.com/) (`gh`) – authenticated with `gh auth login`
+- [GitHub CLI](https://cli.github.com/) (`gh`) - authenticated with `gh auth login`
 - Node.js (for pre-commit hooks)
-- [ShellCheck](https://www.shellcheck.net/) (optional) – only needed to lint the GitHub Actions shell scripts locally; `brew install shellcheck`
+- [ShellCheck](https://www.shellcheck.net/) (optional) - only needed to lint the GitHub Actions shell scripts locally; `brew install shellcheck`
 
 ## Initial setup
 
@@ -23,13 +23,13 @@
    just initial-install
    ```
 
-   This discovers all `*-teaching` and `*-teaching-testing` repos in the `bailey-medics` organisation and clones them into `teaching-repos/`. Safe to re-run at any time – existing repos are pulled, new ones are cloned.
+   This discovers all `*-teaching` and `*-teaching-testing` repos in the `bailey-medics` organisation and clones them into `teaching-repos/`. Safe to re-run at any time - existing repos are pulled, new ones are cloned.
 
 3. Start the Docker stack:
 
    ```bash
-   just start-teaching   # teaching-only (no FHIR/EHRbase) – alias: j st
-   just start-dev        # full EPR with clinical services – alias: j sd
+   just start-teaching   # teaching-only (no FHIR/EHRbase) - alias: j st
+   just start-dev        # full EPR with clinical services - alias: j sd
    ```
 
    Both accept a `b` argument to rebuild images: `just st b`
@@ -44,7 +44,7 @@
 
 Web sessions start from a fresh, empty container: `.env` files are git-ignored so
 they're not part of the clone, and the dev Docker stack isn't running yet.
-`.claude/hooks/session-start.sh` handles this automatically on every session –
+`.claude/hooks/session-start.sh` handles this automatically on every session -
 it materialises `.env`, `backend/.env` and `frontend/.env` from the committed
 `.env-sample` files (skipping any that already exist) and runs
 `docker compose -f compose.dev.yml up -d --wait`. The one thing to configure is
@@ -64,11 +64,11 @@ docker compose -f compose.dev.yml build backend frontend || true
 docker compose -f compose.dev.yml pull postgres-core caddy || true
 ```
 
-Don't add `.env-sample` copying to the Setup script – the session-start hook
+Don't add `.env-sample` copying to the Setup script - the session-start hook
 already does it, and the Setup script runs before it, when the checkout it
 would be copying from isn't guaranteed to be in place yet (that's what caused
 `cp: .env-sample: No such file or directory` failures). Setup scripts must
-also exit zero or the session fails to start, hence the `|| true` guards – see
+also exit zero or the session fails to start, hence the `|| true` guards - see
 [Setup scripts](https://code.claude.com/docs/en/cloud-environments#setup-scripts)
 in the Claude Code docs.
 
@@ -86,7 +86,7 @@ These are cloned into `teaching-repos/` (git-ignored by the parent repo). Each h
 
 The validator and the reusable pipeline those repos run live in Quill, under `backend/app/features/teaching/tooling/` and `.github/workflows/teaching-pipeline.yml`. Nothing extra needs cloning.
 
-To add a new teaching organisation, create a repo named `<org>-teaching` in `bailey-medics` – `just initial-install` will pick it up automatically. Add it to `teaching_repos` in `infra/github/teaching_rulesets.tf` as well, so its `main` branch is protected.
+To add a new teaching organisation, create a repo named `<org>-teaching` in `bailey-medics` - `just initial-install` will pick it up automatically. Add it to `teaching_repos` in `infra/github/teaching_rulesets.tf` as well, so its `main` branch is protected.
 
 **Module ids must be unique across every content repo.** All repos deploy into one bucket under `modules/<moduleId>/`, and the sync puts every module in the same organisation, so two repos with the same `moduleId` overwrite each other. `eoeeta-teaching` holds `colonoscopy-optical-diagnosis` and `eoeeta-teaching-testing` holds `colonoscopy-optical-diagnosis-test`, so the two deploy side by side. A module renamed in a content repo starts as a new bank, not live until it is switched on in the teaching admin; the old one stays in the bucket and the database.
 

@@ -75,8 +75,8 @@ function push(crumb: Breadcrumb): void {
  * Reduce an API path to a pattern.
  *
  * By allowlist, not by recognising identifiers. A segment is kept only if it
- * is lowercase letters and hyphens – which is what every static segment of
- * this API looks like – and anything else becomes `:id`. Written this way
+ * is lowercase letters and hyphens - which is what every static segment of
+ * this API looks like - and anything else becomes `:id`. Written this way
  * round because identifiers are precisely the thing with no reliable shape:
  * a rule that tries to spot them has to anticipate every form they take,
  * whereas a rule that spots ordinary words fails safe when it meets something

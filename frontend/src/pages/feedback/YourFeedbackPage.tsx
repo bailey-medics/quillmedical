@@ -8,7 +8,7 @@
  *
  * Read-only. The status is the answer, with a comment from whoever dealt
  * with it when they wrote one. The sender cannot reply to that here.
- * Reached from links in the feedback modal, not the sidebar – sending is
+ * Reached from links in the feedback modal, not the sidebar - sending is
  * the sidebar's job, and it happens far more often than checking.
  */
 

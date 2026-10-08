@@ -325,10 +325,10 @@ Every story is checked against WCAG 2.2 AA by [axe-core](https://github.com/dequ
 
 ### What runs, and where it is configured
 
-- **The rules** – `parameters.a11y` in `.storybook/preview.tsx`: the `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa` tags, plus `target-size` (WCAG 2.5.8), which axe ships switched off. `test: "error"` makes a violation fail the test.
-- **The light pass** – the addon checks each story as it renders, which is light mode unless the story pins a scheme.
-- **The dark pass** – `.storybook/a11y-dark-mode.ts` switches the `colorScheme` global to dark after each story, waits for it to re-render, and checks it again. It is loaded as a Jest setup file by `frontend/test-runner-jest.config.js`, not as `.storybook/test-runner.ts`, because Storybook 10 loads that file in a way Jest 30.5 refuses; the reason is in the file's header.
-- **Not checked** – stories tagged `!test`, and anything a story does not render. A story that renders nothing passes, so a component gated on a competency needs the mock user in `preview.tsx` to hold it.
+- **The rules** - `parameters.a11y` in `.storybook/preview.tsx`: the `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa` tags, plus `target-size` (WCAG 2.5.8), which axe ships switched off. `test: "error"` makes a violation fail the test.
+- **The light pass** - the addon checks each story as it renders, which is light mode unless the story pins a scheme.
+- **The dark pass** - `.storybook/a11y-dark-mode.ts` switches the `colorScheme` global to dark after each story, waits for it to re-render, and checks it again. It is loaded as a Jest setup file by `frontend/test-runner-jest.config.js`, not as `.storybook/test-runner.ts`, because Storybook 10 loads that file in a way Jest 30.5 refuses; the reason is in the file's header.
+- **Not checked** - stories tagged `!test`, and anything a story does not render. A story that renders nothing passes, so a component gated on a competency needs the mock user in `preview.tsx` to hold it.
 
 ### Running the checks locally
 

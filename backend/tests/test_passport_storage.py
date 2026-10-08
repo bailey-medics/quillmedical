@@ -195,7 +195,7 @@ class TestNoSecondSwitch:
         ``TEACHING_STORAGE_BACKEND`` is set in three files and read by
         none, so setting it to "local" while a bucket is configured does
         nothing at all. If a ``PASSPORT_STORAGE_BACKEND`` is ever added,
-        it must actually decide the backend – and this test failing is
+        it must actually decide the backend - and this test failing is
         the prompt to check that it does.
         """
         assert not hasattr(settings, "PASSPORT_STORAGE_BACKEND")

@@ -58,7 +58,7 @@ class TestModuleYamlSchema:
                 title="Test",
                 order=1,
                 # Rejected at runtime by the Literal; mypy now catches it
-                # statically too, which is the improvement – but this test
+                # statically too, which is the improvement - but this test
                 # exists to prove the runtime guard, so silence it here.
                 status="published",  # type: ignore[arg-type]
             )
@@ -108,7 +108,7 @@ class TestValidateModulesDir:
         invalid_module = FIXTURES / ".invalid-module"
         result = ValidationResult()
         module = _validate_module_yaml(invalid_module, result)
-        # Should fail – missing moduleId field, invalid status
+        # Should fail - missing moduleId field, invalid status
         assert module is None or not result.is_valid
 
 

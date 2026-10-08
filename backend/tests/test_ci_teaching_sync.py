@@ -82,7 +82,7 @@ class TestRejectedBanksFailTheDeploy:
         modules.mkdir(parents=True)
 
         if good:
-            # Named for the fixture's own moduleId – validation
+            # Named for the fixture's own moduleId - validation
             # requires the directory name to match it.
             shutil.copytree(_VALID_MODULE, modules / _VALID_MODULE_ID)
         if bad:
@@ -100,7 +100,7 @@ class TestRejectedBanksFailTheDeploy:
 
         The route used to fall back to the literal organisation 1
         whether or not it existed, so the rows it wrote pointed at
-        nothing – which SQLite allowed and Postgres would not.
+        nothing - which SQLite allowed and Postgres would not.
         """
         if db is not None:
             db.add(OrgUnit(name="Teaching Trust", type="hospital_team"))

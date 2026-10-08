@@ -4,7 +4,7 @@
 
 The UK's approach to clinical safety of health IT systems is built around two complementary information standards, both mandated under **Section 250 of the Health and Social Care Act 2012**.
 
-### DCB 0129 – Manufacture
+### DCB 0129 - Manufacture
 
 *Clinical Risk Management: its Application in the Manufacture of Health IT Systems.*
 
@@ -22,11 +22,11 @@ The specification (v4.2) outlines over 50 requirements. The core obligations are
 - Maintain a clinical safety incident log
 - Use defined risk acceptability criteria for hazard evaluation
 
-### DCB 0160 – Deployment and Use
+### DCB 0160 - Deployment and Use
 
 *Clinical Risk Management: its Application in the Deployment and Use of Health IT Systems.*
 
-This is the mirror standard that applies to **each NHS organisation that deploys** Quill Medical. Each deploying Trust must conduct their own clinical risk assessment for their local context – covering local configuration, integration with existing systems, training, business continuity, etc.
+This is the mirror standard that applies to **each NHS organisation that deploys** Quill Medical. Each deploying Trust must conduct their own clinical risk assessment for their local context - covering local configuration, integration with existing systems, training, business continuity, etc.
 
 The deploying organisation's CSO will typically request a meeting with the manufacturer's CSO and will review the manufacturer's DCB 0129 documentation as a starting point for their DCB 0160 assessment.
 

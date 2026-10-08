@@ -5,12 +5,12 @@
  * (see docs/docs/plans/2026-08-09-sub-plan-api-compatibility-plan.md).
  * Mirrors the `ConnectivityProvider`/`useConnectivity` pattern: mounted
  * once at the app root, exposing `phase` to whichever components need to
- * react to it – the root-mounted blocking overlay (`ForcedReloadGate`),
+ * react to it - the root-mounted blocking overlay (`ForcedReloadGate`),
  * and `MainLayout`/`TeachingLayout`'s fallback `StatusStrip`, stacked
  * below their own `TopRibbon` alongside the connectivity strip.
  *
  * - First mismatch for a given server generation -> phase "blocking",
- *   persist in-progress form state, reload shortly after – unless this
+ *   persist in-progress form state, reload shortly after - unless this
  *   tab is currently offline, in which case a reload would just fail to
  *   reach anything, so go straight to phase "fallback" instead.
  * - Mismatch still present for that *same* generation (the reload didn't
@@ -75,7 +75,7 @@ export function ForcedReloadProvider({
     restoreFormState(window.location.pathname);
 
     // On a fresh load, if a prior mismatch is still being tracked, check
-    // compatibility now rather than waiting for organic traffic – this is
+    // compatibility now rather than waiting for organic traffic - this is
     // a real request through the interceptor, never a blind reload.
     if (hasPendingRetryRecord()) {
       void api.get("/health").catch(() => {
@@ -84,7 +84,7 @@ export function ForcedReloadProvider({
     }
 
     function handleMismatch(event: Event): void {
-      // A transition is already in flight – ignore rather than overwrite it.
+      // A transition is already in flight - ignore rather than overwrite it.
       if (phaseRef.current !== "idle") return;
 
       const detail = (event as CustomEvent<{ serverGeneration: number }>)
@@ -99,7 +99,7 @@ export function ForcedReloadProvider({
       }
 
       // Offline: a reload would just fail to reach the new bundle's
-      // matching backend – go straight to the fallback state instead.
+      // matching backend - go straight to the fallback state instead.
       if (decision.action === "reload-now" && isOnlineRef.current) {
         transitionTo("blocking");
         setTimeout(() => {

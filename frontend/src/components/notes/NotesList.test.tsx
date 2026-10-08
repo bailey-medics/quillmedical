@@ -76,7 +76,7 @@ describe("NotesList", () => {
       renderWithMantine(<NotesList notes={[mockNotes[0]]} />);
 
       expect(
-        screen.getByText("Dr Rowan Fenwick – Consultant Gastroenterologist"),
+        screen.getByText("Dr Rowan Fenwick - Consultant Gastroenterologist"),
       ).toBeInTheDocument();
     });
 

@@ -2,7 +2,7 @@
 """Create a superadmin user in the local development database.
 
 This is a convenience wrapper around `create_user.py` that also marks the
-user as an operator – ``platform_role`` of ``superadmin``. It is intended
+user as an operator - ``platform_role`` of ``superadmin``. It is intended
 for local development setup only.
 
 Usage (inside the backend container):
@@ -96,7 +96,7 @@ def main() -> int:
                 # profession like every other role, rather than by a rank
                 # check inside each gate. Without this the column default
                 # applies and a fresh superadmin is created as a
-                # *patient* – holding access_patient_records and not
+                # *patient* - holding access_patient_records and not
                 # manage_users, which is both too much and too little.
                 base_profession=SUPERADMIN_PROFESSION,
                 email_verified=True,

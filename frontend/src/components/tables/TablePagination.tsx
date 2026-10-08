@@ -3,8 +3,8 @@
  *
  * Composable pagination controls. Render the parts you need:
  * - TablePagination (wrapper with centred layout)
- * - TablePagination.Nav – prev/next arrows with "Page X of Y"
- * - TablePagination.PageSize – items-per-page menu
+ * - TablePagination.Nav - prev/next arrows with "Page X of Y"
+ * - TablePagination.PageSize - items-per-page menu
  *
  * @example
  * <TablePagination>

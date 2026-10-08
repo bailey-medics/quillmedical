@@ -62,7 +62,7 @@ export default function AdminBankDetailPage() {
   // Leaving mid-upload loses the file, so both ways out are guarded.
   //
   // The two are not the same fault. A route change unmounts the page
-  // but not the XMLHttpRequest, which lives in a closure – the bytes
+  // but not the XMLHttpRequest, which lives in a closure - the bytes
   // keep going and the asset is recorded, so what is lost is only the
   // progress bar and anywhere to report a failure. A tab close or
   // reload kills the transfer itself, and the `link` call that records
@@ -80,7 +80,7 @@ export default function AdminBankDetailPage() {
   useEffect(() => {
     if (!uploading) return;
     function handleBeforeUnload(e: BeforeUnloadEvent) {
-      // preventDefault is the whole API – the browser shows its own
+      // preventDefault is the whole API - the browser shows its own
       // wording and ignores any message we set.
       e.preventDefault();
     }
@@ -148,7 +148,7 @@ export default function AdminBankDetailPage() {
 
   // Rendered in every branch below, not just the happy one. An upload
   // survives a refetch of the bank detail, so the page can be blocking
-  // navigation while showing its skeleton or its error – and a blocked
+  // navigation while showing its skeleton or its error - and a blocked
   // navigation with no modal on screen leaves the router stuck with no
   // way to answer it.
   //
@@ -301,7 +301,7 @@ export default function AdminBankDetailPage() {
       {/*
         Only when the content references media. `references` comes from
         the MDX itself, so a module of pure text shows no card and there
-        is no flag for an author to set – and therefore none to fall out
+        is no flag for an author to set - and therefore none to fall out
         of step with the slides.
 
         No route guard of its own: the whole /admin subtree sits under

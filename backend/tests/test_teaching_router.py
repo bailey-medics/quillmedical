@@ -184,8 +184,8 @@ def _seed_bank(
     db.flush()
 
     # Set the bank as live (or closed) for the org, pinned to the version
-    # above. A real status row always carries a pointer – the settings
-    # endpoint sets one when it creates the row – and candidate queries now
+    # above. A real status row always carries a pointer - the settings
+    # endpoint sets one when it creates the row - and candidate queries now
     # follow it, so a fixture without one would not represent a live bank.
     db.add(
         QuestionBankOrgStatus(
@@ -385,7 +385,7 @@ class TestQuestionBanks:
 
         Linking is not the moment. The transcode job produces what the
         player asks for, so a link alone leaves the processed bucket
-        empty under that asset's name – see the sibling below.
+        empty under that asset's name - see the sibling below.
         """
         org = _make_teaching_org(db_session)
         educator = _make_educator(db_session, org)
@@ -434,7 +434,7 @@ class TestQuestionBanks:
         explain the failure.
 
         Needs a transcode job configured to be that window at all. With
-        none – development – there is no job to wait for and the upload
+        none - development - there is no job to wait for and the upload
         is served as it is, which the media inventory tests cover.
         """
         monkeypatch.setattr(
@@ -613,7 +613,7 @@ class TestAssessmentLifecycle:
         assert "criteria" in data
         assert "is_passed" in data
         # 3/3 are high confidence (100% >= 60%) ✓
-        # But only adenoma items are correct – depends on item diagnoses.
+        # But only adenoma items are correct - depends on item diagnoses.
 
     def test_answer_persists_scoring_fields(self, test_client, db_session):
         """Per-answer scoring: is_correct and the tag rows set."""
@@ -676,7 +676,7 @@ class TestAssessmentLifecycle:
             headers=headers,
         )
 
-        # Resume – should return second item
+        # Resume - should return second item
         resp = test_client.get(
             f"/api/teaching/assessments/{assessment_id}/current",
         )
@@ -747,7 +747,7 @@ class TestAssessmentLifecycle:
         assessment.started_at = datetime.now(UTC) - timedelta(hours=2)
         db_session.commit()
 
-        # Try to answer – should fail with 409
+        # Try to answer - should fail with 409
         resp = test_client.post(
             f"/api/teaching/assessments/{assessment_id}/answer",
             json={"selected_option": "high_a"},
@@ -1628,7 +1628,7 @@ class TestPromotingAVersion:
 
         Inferring it took the caller's first organisation, so someone
         teaching for two would silently promote for whichever came back
-        first – and never know which.
+        first - and never know which.
         """
         org = _make_teaching_org(db_session)
         educator = _make_educator(db_session, org)
@@ -1741,7 +1741,7 @@ class TestAdminViewsShowBothVersions:
     def test_a_bank_with_nothing_promoted_reports_null(
         self, test_client, db_session
     ):
-        """Distinguishable from "promoted version 1" – an admin seeing null
+        """Distinguishable from "promoted version 1" - an admin seeing null
         knows the bank has never been opened, not that it is up to date."""
         org = _make_teaching_org(db_session)
         educator = _make_educator(db_session, org)
@@ -1967,7 +1967,7 @@ class TestBankOrgSettingsSetTheActiveVersion:
         """The case that would promote a revision by accident.
 
         A bank switched off and on again must not pick up a version that
-        arrived meanwhile – advancing the pointer is a separate decision.
+        arrived meanwhile - advancing the pointer is a separate decision.
         """
         org = _make_teaching_org(db_session)
         educator = _make_educator(db_session, org)
@@ -2075,7 +2075,7 @@ class TestBankOrgSettingsAreScopedToYourOrganisations:
 
         assert resp.status_code == 403
         # Nothing was written for the organisation the caller does not
-        # belong to – a 403 that still wrote would be no fix at all.
+        # belong to - a 403 that still wrote would be no fix at all.
         assert (
             db_session.query(QuestionBankOrgStatus)
             .filter_by(org_unit_id=other.id)
@@ -2254,7 +2254,7 @@ def _slides_for_linked_video(
     """Fetch a module's slides for a ref backed by one uploaded asset.
 
     Drives the GCS branch, where resolution is a pure link lookup with
-    no disk fallback available – which is what makes the rendition
+    no disk fallback available - which is what makes the rendition
     fields worth asserting here rather than through the filename
     convention development still allows.
     """
@@ -2362,7 +2362,7 @@ class TestVideoSrcResolution:
 
         **The availability gate is stubbed out for this one test.** It
         hides a module awaiting its transcode from learners, which is
-        correct and tested elsewhere – but it also refuses the request
+        correct and tested elsewhere - but it also refuses the request
         before
         resolution runs, so the behaviour asserted here is unreachable
         through the route while the gate is live. The resolver is a
@@ -2375,7 +2375,7 @@ class TestVideoSrcResolution:
 
         Patched at ``media`` rather than on the router, because
         ``get_learning_content`` imports the name inside the function on
-        every call – a router attribute would never be consulted.
+        every call - a router attribute would never be consulted.
         """
         monkeypatch.setattr(
             "app.features.teaching.media.module_media_is_complete",
@@ -2396,7 +2396,7 @@ class TestVideoSrcResolution:
     ):
         """Deterministic names, gated by the flags on the link.
 
-        The names are not discovered by listing the bucket – the signed
+        The names are not discovered by listing the bucket - the signed
         cookie covers the prefix rather than each file, so the API can
         address them directly from what the job recorded.
         """
@@ -2464,7 +2464,7 @@ class TestLearningContentGate:
         """The gate itself, tested directly.
 
         Through the route, a permitted request still 404s because no
-        MDX exists in the test environment – and the content layer's
+        MDX exists in the test environment - and the content layer's
         refusal is indistinguishable from the gate's. So the allow path
         is asserted on the helper, and the deny paths through the route
         where the status code is the whole point.
@@ -2561,7 +2561,7 @@ class TestLearningContentGate:
     def test_a_site_member_reaches_the_organisation(
         self, test_client, db_session
     ):
-        """Reach, not membership – the case the plural resolver exists for.
+        """Reach, not membership - the case the plural resolver exists for.
 
         A trainee attached to a ward is not a member of the trust, but
         content is delivered downward, so they receive what the
@@ -2623,7 +2623,7 @@ class TestLearningRoutesRequireTheModulesCompetency:
     question, so a person at an organisation with a module live could
     read it whatever their competencies said. The video route beside it
     already required a competency, which made the slides cheaper to
-    reach than the video of them – the same asymmetry that left the pair
+    reach than the video of them - the same asymmetry that left the pair
     half-closed before. Both now ask for `take_teaching_modules`.
     """
 
@@ -2670,7 +2670,7 @@ class TestLearningRoutesRequireTheModulesCompetency:
         """403, not an empty list.
 
         The listing answers `[]` for someone who may read nothing, so a
-        missing competency has to refuse outright – otherwise it would
+        missing competency has to refuse outright - otherwise it would
         be indistinguishable from having nothing delivered.
         """
         org = _make_teaching_org(db_session)
@@ -2729,7 +2729,7 @@ class TestVideoAccess:
         """Log in and return the CSRF header the endpoint requires.
 
         This is the first CSRF-protected route in the teaching router,
-        so a POST without the header is a 403 – which looks exactly
+        so a POST without the header is a 403 - which looks exactly
         like a competency refusal or a signing fault.
         """
         return _login(test_client, "testlearner", "Learner123!")
@@ -2883,7 +2883,7 @@ class TestMediaUploadUrl:
         """Development uploads come through here instead of to GCS.
 
         The frontend PUTs to whatever URL it is handed, so a local URL
-        is the whole difference between the two environments – nothing
+        is the whole difference between the two environments - nothing
         above this endpoint knows which it got.
         """
         monkeypatch.setattr(
@@ -2904,7 +2904,7 @@ class TestMediaUploadUrl:
         body = resp.json()
         assert body["upload_url"].startswith("/api/teaching/admin/modules/")
         assert body["upload_url"].endswith("/content")
-        # Addressed by generated id, never the uploaded filename – the
+        # Addressed by generated id, never the uploaded filename - the
         # same rule the bucket path follows.
         assert body["asset_id"] in body["upload_url"]
         assert "EoEETA" not in body["upload_url"]
@@ -2981,7 +2981,7 @@ class TestModuleMedia:
         """Write a module on disk whose MDX carries *refs*.
 
         The content repository sits between the base path and
-        ``modules/`` – ``resolve_module_dir`` looks one level down for
+        ``modules/`` - ``resolve_module_dir`` looks one level down for
         it, so a fixture without it resolves to nothing and every
         reference silently disappears.
         """
@@ -3018,7 +3018,7 @@ class TestModuleMedia:
         """An upload, transcoded by default.
 
         Default true so these tests keep asserting what they were
-        written to assert – that a *playable* upload completes a
+        written to assert - that a *playable* upload completes a
         module. Pass false for the window between the link landing and
         the job finishing.
         """
@@ -3071,7 +3071,7 @@ class TestModuleMedia:
         assert resp.status_code == 200
         progress = resp.json()["references"][0]["asset"]["progress"]
         assert progress["is_final"] is True
-        assert progress["label"] == "Uploaded – plays without processing"
+        assert progress["label"] == "Uploaded - plays without processing"
 
     def test_the_endpoint_leaves_is_final_false_while_working(
         self, test_client, db_session, monkeypatch, tmp_path
@@ -3162,7 +3162,7 @@ class TestModuleMedia:
     ):
         """The property the whole per-organisation model rests on.
 
-        B's file must not make A's module look complete – that would
+        B's file must not make A's module look complete - that would
         serve A's learners a video their organisation never uploaded.
         """
         org = _make_teaching_org(db_session)
@@ -3225,8 +3225,8 @@ class TestModuleMedia:
 class TestMediaLinking:
     """Attaching an upload to a reference, and detaching it.
 
-    The backend never sees the uploaded bytes – they go straight to GCS
-    on a resumable URL – so linking is what records that they arrived.
+    The backend never sees the uploaded bytes - they go straight to GCS
+    on a resumable URL - so linking is what records that they arrived.
     """
 
     def _login(self, test_client) -> dict[str, str]:
@@ -3457,8 +3457,8 @@ class TestMediaLinking:
 class TestMediaCaptions:
     """Reading and correcting one asset's WebVTT.
 
-    Whisper mishears clinical terminology – "caecum" as "seek 'em",
-    drug names mangled – and captions are a WCAG 2.1 AA requirement, so
+    Whisper mishears clinical terminology - "caecum" as "seek 'em",
+    drug names mangled - and captions are a WCAG 2.1 AA requirement, so
     machine output is a draft until a human has been over it. These are
     the endpoints that let them.
 
@@ -3569,7 +3569,7 @@ class TestMediaCaptions:
         _make_educator(db_session, org)
         self._upload(db_session, org.id, "asset-1")
         db_session.commit()
-        # No bucket, so this gets as far as the 503 – which is itself
+        # No bucket, so this gets as far as the 503 - which is itself
         # proof the header check passed.
         monkeypatch.setattr("app.config.settings.TEACHING_VIDEOS_BUCKET", None)
 
@@ -3699,7 +3699,7 @@ class TestIncompleteModulesAreNotServed:
         """An upload, transcoded by default.
 
         Default true so these tests keep asserting what they were
-        written to assert – that a *playable* upload completes a
+        written to assert - that a *playable* upload completes a
         module. Pass false for the window between the link landing and
         the job finishing.
         """
@@ -3733,7 +3733,7 @@ class TestIncompleteModulesAreNotServed:
     def test_content_with_a_missing_upload_is_404(
         self, test_client, db_session, monkeypatch, tmp_path
     ):
-        """Same 404 as "not yours" – incompleteness is not disclosed."""
+        """Same 404 as "not yours" - incompleteness is not disclosed."""
         org = _make_teaching_org(db_session)
         self._learner_in(db_session, org)
         self._use(monkeypatch, self._content(tmp_path, "lecture-01"))
@@ -3962,7 +3962,7 @@ class TestMediaAssetDeletion:
         """Development deletes from disk rather than refusing.
 
         This used to answer 503, which left an admin able to upload
-        locally but never to undo it – the row outlived every attempt
+        locally but never to undo it - the row outlived every attempt
         to clear it, and the card kept offering a button that could not
         work.
         """
@@ -4082,7 +4082,7 @@ class TestVideoResolutionOnTheGcsPath:
     runs, so on the GCS branch that fallback is unreachable through the
     route. The guard there is correct in isolation rather than correct
     because something else happens to run first, which is why it was
-    reordered – but only mypy can see it.
+    reordered - but only mypy can see it.
 
     What these do pin is the behaviour either side of that: a linked
     ref resolves to its asset, and a module missing one is hidden
@@ -4157,7 +4157,7 @@ class TestVideoResolutionOnTheGcsPath:
         """An unlinked ref on the GCS path produces a 404, not a 500.
 
         The availability gate reaches this first, so resolution never
-        runs – which is the reason the disk fallback below it cannot be
+        runs - which is the reason the disk fallback below it cannot be
         exercised from here.
         """
         org = _make_teaching_org(db_session)
@@ -4184,7 +4184,7 @@ class TestVideoResolutionOnTheGcsPath:
         self._login(test_client)
         resp = test_client.get("/api/teaching/modules/test-bank/learning")
 
-        # Hidden by the availability gate rather than a 500 – the point
+        # Hidden by the availability gate rather than a 500 - the point
         # is that nothing raises on the way to deciding that.
         assert resp.status_code == 404
 
@@ -4194,7 +4194,7 @@ class TestLocalMediaUpload:
 
     In the teaching environment the bytes go straight to GCS and never
     touch this application. There is no bucket locally, so they land in
-    the module's own learning/ directory instead – which is what lets a
+    the module's own learning/ directory instead - which is what lets a
     developer drive the real admin card rather than a stub.
     """
 
@@ -4348,7 +4348,7 @@ class TestLocalMediaUpload:
     def test_an_unsafe_asset_id_is_refused(
         self, test_client, db_session, monkeypatch, tmp_path, asset_id
     ):
-        # Generated server-side, so this cannot happen in normal use –
+        # Generated server-side, so this cannot happen in normal use -
         # but it reaches a filename, and a path component is checked
         # rather than trusted because of where it came from.
         org = _make_teaching_org(db_session)

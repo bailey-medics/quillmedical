@@ -18,8 +18,8 @@
 # does. The notification gate posts an all-clear on the return.
 #
 # Every later push on a branch that moved the contract answers yes again,
-# and revalidates again. The contract has not moved twice – this holds no
-# memory of what it already checked – but the published content it is judged
+# and revalidates again. The contract has not moved twice - this holds no
+# memory of what it already checked - but the published content it is judged
 # against can change while the pull request is open, so the answer can too.
 #
 # Hashing contents also survives a rebase, an amend or a squash, which

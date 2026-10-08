@@ -19,7 +19,7 @@ decision first.
 - [x] `frontend/src/pages/passport/PassportCpdPage.test.tsx`, the test
       "chooses from June to June years, labelled by month", failed on two
       pull requests that changed only markdown and passed on a re-run. The
-      failure was `expect(element).toHaveValue(Jun 2026 – May 2027)` with
+      failure was `expect(element).toHaveValue(Jun 2026 - May 2027)` with
       nothing received.
 
       The date is not the cause: the suite fakes it with
@@ -296,20 +296,20 @@ all; the fourth is a rule to decide and has moved to Phase 7.
 
 ## Decisions
 
-- **A second plan, not an addition to the first** – the first findings plan
+- **A second plan, not an addition to the first** - the first findings plan
   had already been copied to another worktree and may be part-way through.
   Adding phases to it here would have split it in two.
 
 - **The stack repairs are written up as tooling changes, not as a
-  runbook** – both breakages will recur whenever a pull request is closed
+  runbook** - both breakages will recur whenever a pull request is closed
   and replaced, or a stack is refreshed after part of it has merged. A
   runbook asks somebody to edit `.git/gh-stack` by hand again.
 
-- **The skill changes come after the documentation passages** – the plan
+- **The skill changes come after the documentation passages** - the plan
   first had them the other way round. `/crpd` is the skill that lands
   every unit here, so its start check is changed once the units that can
   be landed without it have been.
 
-- **Nothing here is urgent** – unlike the CORS setting in the first plan,
+- **Nothing here is urgent** - unlike the CORS setting in the first plan,
   none of these has a consequence on the live site today. Phase 1 is first
   only because a random failure wastes a merge queue slot each time.

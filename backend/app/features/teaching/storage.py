@@ -21,7 +21,7 @@ from starlette.responses import FileResponse
 from app.config import settings
 
 # Re-exported, not merely used. These were defined here until the
-# transcode job – which needs one of them and no configuration at all –
+# transcode job - which needs one of them and no configuration at all -
 # crashed on startup, because importing this module constructs
 # ``Settings`` and that requires ``JWT_SECRET`` and ``CORE_DB_PASSWORD``.
 # They now live in a module that imports nothing, and are imported back
@@ -137,7 +137,7 @@ def get_storage_backend() -> StorageBackend:
     if base_url:
         return LocalStorageBackend(base_url)
 
-    # Fallback for local dev – images served from /static/questions/
+    # Fallback for local dev - images served from /static/questions/
     return LocalStorageBackend("/static")
 
 
@@ -487,7 +487,7 @@ def download_bank_from_gcs(
     """Download question bank YAML files from GCS to a temp directory.
 
     Downloads only YAML files (``config.yaml`` and
-    ``question_N/question.yaml``).  Images are NOT downloaded – they
+    ``question_N/question.yaml``).  Images are NOT downloaded - they
     stay in the bucket and are served via signed URLs at runtime.
 
     Returns the path to the temporary directory.  The caller is
@@ -796,7 +796,7 @@ def write_caption_object(
 
     Carries the same ``Cache-Control`` the caption job sets. Without it
     the object would be written with none, and Cloud CDN would go on
-    serving the old text until something evicted it – so the admin's
+    serving the old text until something evicted it - so the admin's
     correction would appear to have done nothing.
     """
     from google.cloud import storage
@@ -822,8 +822,8 @@ def delete_media_object(
     caller reach another organisation's object.
 
     A missing object is not an error. The link row is the record the
-    admin acts on, and an object already gone – a half-finished upload,
-    or a second delete – should still let the row be cleared rather
+    admin acts on, and an object already gone - a half-finished upload,
+    or a second delete - should still let the row be cleared rather
     than leaving it permanently undeletable.
     """
     from google.api_core import exceptions as gcs_exceptions

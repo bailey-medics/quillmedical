@@ -21,7 +21,7 @@ const fieldStyles = {
 type EmailFieldProps = Omit<TextInputProps, "type">;
 
 /**
- * EmailField – a TextField preset for email addresses.
+ * EmailField - a TextField preset for email addresses.
  *
  * Sets `type="email"` and `autoComplete="email"` automatically.
  * Pair with `EMAIL_PATTERN` from `emailPattern.ts` in your `register`

@@ -27,7 +27,7 @@ interface ForgotPasswordFormValues {
 }
 
 export interface ForgotPasswordFormProps {
-  /** Called when the form is submitted – should return a FormSubmitResult */
+  /** Called when the form is submitted - should return a FormSubmitResult */
   onSubmit: (email: string) => Promise<FormSubmitResult>;
 }
 

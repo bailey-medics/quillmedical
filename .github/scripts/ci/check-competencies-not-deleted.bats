@@ -5,7 +5,7 @@
 # is a comparison between two commits.
 #
 # Writing these caught the mistake that a hand-check missed. Editing the
-# catalogue in the working tree and running the script proves nothing – it
+# catalogue in the working tree and running the script proves nothing - it
 # compares committed refs, so an uncommitted deletion looks like no deletion
 # at all, and the script reported success.
 
@@ -146,7 +146,7 @@ YAML
 }
 
 @test "a missing catalogue on the base ref is not a failure" {
-  # A branch predating the catalogue. Only the catalogue is removed – an
+  # A branch predating the catalogue. Only the catalogue is removed - an
   # earlier version of this test emptied the repository and took the script
   # under test with it, so bash exited 127 and the assertion was measuring
   # nothing.
@@ -181,7 +181,7 @@ YAML
 }
 
 @test "un-retiring a competency fails and names it" {
-  # Retire it on the base ref, then bring it back on the branch – the only
+  # Retire it on the base ref, then bring it back on the branch - the only
   # way to reach this state.
   sed -i.bak 's/    display_name: "Certify Death"/    display_name: "Certify Death"\n    retired_on: 2026-09-08/' \
     shared/competency-definitions/clinical.yaml

@@ -1,7 +1,7 @@
 """The backfill of ``user_competency``, against a real Postgres.
 
-Migration ``61e9c9b15ac6`` is Postgres SQL – ``json_array_elements_text``,
-``LATERAL``, ``GREATEST`` – and cannot run on the SQLite unit database,
+Migration ``61e9c9b15ac6`` is Postgres SQL - ``json_array_elements_text``,
+``LATERAL``, ``GREATEST`` - and cannot run on the SQLite unit database,
 which is built from model metadata rather than the migration chain. So
 these run the migration itself: step back to the revision before it,
 seed users and entitlements with plain SQL, step forward, and read what

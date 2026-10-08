@@ -1,4 +1,4 @@
-"""Tests for the teaching feature – sync module."""
+"""Tests for the teaching feature - sync module."""
 
 from __future__ import annotations
 
@@ -153,7 +153,7 @@ class TestSyncQuestionBank:
             user_id=admin_user.id,
             db=db_session,
         )
-        # Second sync – should update, not create
+        # Second sync - should update, not create
         validation, sync_record = sync_question_bank(
             bank,
             org_unit_id=organisation.id,
@@ -409,7 +409,7 @@ class TestVersionGuard:
     ) -> None:
         """Live modules with same version do metadata-only update."""
         bank = _make_bank(tmp_path)
-        # First sync – establishes version 1
+        # First sync - establishes version 1
         sync_question_bank(
             bank,
             org_unit_id=organisation.id,
@@ -417,7 +417,7 @@ class TestVersionGuard:
             db=db_session,
             module_status="live",
         )
-        # Second sync with same version – metadata-only update
+        # Second sync with same version - metadata-only update
         validation, sync_record = sync_question_bank(
             bank,
             org_unit_id=organisation.id,
@@ -433,7 +433,7 @@ class TestVersionGuard:
     ) -> None:
         """Live modules with incremented version sync normally."""
         bank = _make_bank(tmp_path)
-        # First sync – version 1
+        # First sync - version 1
         sync_question_bank(
             bank,
             org_unit_id=organisation.id,
@@ -531,7 +531,7 @@ class TestVersionGuard:
         )
         (q_dir / "wli.png").write_bytes(b"fake")
 
-        # No module_status passed – should read "draft" from module.yaml
+        # No module_status passed - should read "draft" from module.yaml
         # and reject because version is 2
         validation, sync_record = sync_question_bank(
             assessment_dir,

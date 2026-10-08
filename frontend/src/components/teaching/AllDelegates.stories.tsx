@@ -153,21 +153,21 @@ const columns: Column<Delegate>[] = [
   {
     header: "Learning",
     render: (d) => {
-      if (d.learningCompleted === null) return "–";
+      if (d.learningCompleted === null) return "-";
       return d.learningCompleted ? "Complete" : "In progress";
     },
   },
   {
     header: "Assessment",
     render: (d) => {
-      if (!d.assessmentResult) return "–";
+      if (!d.assessmentResult) return "-";
       return <AssessmentResultBadge result={d.assessmentResult} />;
     },
   },
   {
     header: "Date",
     render: (d) => {
-      if (!d.assessmentDate) return "–";
+      if (!d.assessmentDate) return "-";
       return <FormattedDate date={d.assessmentDate} />;
     },
   },

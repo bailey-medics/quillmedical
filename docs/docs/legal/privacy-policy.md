@@ -90,49 +90,49 @@ retention periods in one place.
 
 ### 3.1 Creating and running your account
 
-- **What** – your username, your full name, your email address, a
+- **What** - your username, your full name, your email address, a
   one-way hash of your password (never the password itself), whether your
   email address is verified, the organisation you chose at registration
   if you were asked, and the module you registered for if you came through
   a link to one.
-- **Why** – so you can sign in and use the service, and so we can tell
+- **Why** - so you can sign in and use the service, and so we can tell
   you apart from everybody else.
-- **Legal basis** – performing our contract with you (Article 6(1)(b)).
+- **Legal basis** - performing our contract with you (Article 6(1)(b)).
   If a sponsor gave you the account, we hold these details as its
   processor as well as for our own purpose of running the service, which
   is a legitimate interest (Article 6(1)(f)).
-- **How long** – while your account exists, and for two years after it
+- **How long** - while your account exists, and for two years after it
   is closed or deactivated, so that a closed account cannot be re-created
   by somebody else and so that we can answer questions about it. Then we
   delete it or remove everything that identifies you.
 
 ### 3.2 Keeping the service and your account secure
 
-- **What** – server logs of each request to the service, including your
+- **What** - server logs of each request to the service, including your
   IP address, the page or endpoint requested, the time, and your browser
   type; your two-factor authentication secret if you turn two-factor on;
   and a token version that lets us end every session when your password
   changes. Repeated failed sign-ins are counted for a few minutes so that
   we can slow them down, and the count is not stored.
-- **Why** – to stop unauthorised access, to find and fix faults and
+- **Why** - to stop unauthorised access, to find and fix faults and
   attacks, and to show who did what if something goes wrong.
-- **Legal basis** – our legitimate interest in network and information
+- **Legal basis** - our legitimate interest in network and information
   security (Article 6(1)(f)), which the law recognises as a legitimate
   interest.
-- **How long** – server logs for 30 days. Your two-factor secret until
+- **How long** - server logs for 30 days. Your two-factor secret until
   you turn two-factor off or close your account.
 
 ### 3.3 Service emails
 
-- **What** – your name and email address, and the content of each
+- **What** - your name and email address, and the content of each
   message: verifying your email address, resetting your password, an
   invitation to Quill or to a module, a certificate when you pass a
   module, reminders about modules you are enrolled in, and a notice when
   an assessment you passed is due to be repeated.
-- **Why** – the service does not work without them. You cannot opt out of
+- **Why** - the service does not work without them. You cannot opt out of
   them while you have an account.
-- **Legal basis** – performing our contract with you (Article 6(1)(b)).
-- **How long** – we do not keep copies of the messages. Amazon Web
+- **Legal basis** - performing our contract with you (Article 6(1)(b)).
+- **How long** - we do not keep copies of the messages. Amazon Web
   Services, the company that delivers them, sends them from its London
   region; section 5 says more. If an email to your address cannot be
   delivered, or you report one as spam, Amazon keeps your address on a
@@ -143,7 +143,7 @@ retention periods in one place.
 If you have a sponsor, these records are your sponsor's, and section 4
 applies instead.
 
-- **What** – which modules you are enrolled in, when, and who enrolled
+- **What** - which modules you are enrolled in, when, and who enrolled
   you; each assessment attempt, when it started and finished, the time
   limit, each answer you gave and whether it was correct, your score and
   whether you passed; certificates; and your clinician passport: your
@@ -151,33 +151,33 @@ applies instead.
   assessors with the evidence they cite, your logbook, certificates and
   qualifications you declare, CPD entries, evidence files you upload, and
   your reflections.
-- **Why** – this is the record of your training that you came to Quill
+- **Why** - this is the record of your training that you came to Quill
   to build. We keep every attempt and every answer, not only your best
   result, so that the record is complete.
-- **Legal basis** – performing our contract with you (Article 6(1)(b)).
-- **How long** – while your account exists. Your passport is yours to
+- **Legal basis** - performing our contract with you (Article 6(1)(b)).
+- **How long** - while your account exists. Your passport is yours to
   download in full at any time. Two years after your account is closed we
   delete these records, unless you ask us to delete them sooner.
 
 ### 3.5 Assessors you invite
 
-- **What** – the email address of the person you invite to sign off a
+- **What** - the email address of the person you invite to sign off a
   competency, who invited them, when, when the invitation expires, and
   whether it was accepted.
-- **Why** – to send the invitation and connect the sign-off to the
+- **Why** - to send the invitation and connect the sign-off to the
   assessor who made it.
-- **Legal basis** – our legitimate interest in running the passport as
+- **Legal basis** - our legitimate interest in running the passport as
   you have asked us to (Article 6(1)(f)). You must have the assessor's
   agreement before you give us their email address.
-- **How long** – an invitation that is not accepted is deleted 90 days
+- **How long** - an invitation that is not accepted is deleted 90 days
   after it expires. An accepted one becomes part of the sign-off record.
 
 ### 3.6 News and updates by email
 
-- **What** – your name, your email address, and a record of every answer
+- **What** - your name, your email address, and a record of every answer
   you have given about news and updates: what you chose, when, where you
   chose it, and the exact wording you were shown.
-- **Why** – to send you news about Quill Medical, new modules and
+- **Why** - to send you news about Quill Medical, new modules and
   product updates, and only if you have not said no. When you register
   we tell you that we will email you news and updates and offer a box to
   tick if you would rather not. If an administrator created your account
@@ -185,13 +185,13 @@ applies instead.
   You can change your answer at any time with the "News and updates by
   email" switch in Settings, or with the unsubscribe link in any
   newsletter. The change applies straight away.
-- **Legal basis** – our legitimate interest in telling people who use
+- **Legal basis** - our legitimate interest in telling people who use
   Quill about it (Article 6(1)(f)), together with the rules on electronic
   marketing in the Privacy and Electronic Communications Regulations,
   which we meet by offering you the chance to refuse when we collect your
   address and in every message. The record of your answers is kept so
   that we can show you were offered the choice.
-- **How long** – your current answer for as long as your account exists.
+- **How long** - your current answer for as long as your account exists.
   The record of your answers for six years after the last one, as
   evidence of the choice you made. The newsletter list is Quill's own,
   held in our database, and no copy of it is kept by the company that
@@ -204,77 +204,77 @@ applies instead.
 
 ### 3.7 Notifications to your browser or device
 
-- **What** – if you turn notifications on, the address your browser gives
+- **What** - if you turn notifications on, the address your browser gives
   us to deliver them to, and the keys needed to send to it.
-- **Why** – to tell you about things in Quill that need your attention. A
+- **Why** - to tell you about things in Quill that need your attention. A
   notification never contains anything about a patient.
-- **Legal basis** – your consent, given when you allow notifications in
+- **Legal basis** - your consent, given when you allow notifications in
   your browser (Article 6(1)(a)). Withdraw it by turning notifications
   off in your browser or in Settings.
-- **How long** – until you turn notifications off, or until your browser
+- **How long** - until you turn notifications off, or until your browser
   tells us the address no longer works.
 
 ### 3.8 Feedback you send us
 
-- **What** – your message and the category you chose, the page you were
+- **What** - your message and the category you chose, the page you were
   on, the version of Quill you were using, your screen size and browser
   type, the pages you visited just before sending it, and any error the
   page had shown. Your account is attached to the feedback if you were
   signed in.
-- **Why** – to fix problems and improve Quill, and to reply to you.
-- **Legal basis** – our legitimate interest in running and improving the
+- **Why** - to fix problems and improve Quill, and to reply to you.
+- **Legal basis** - our legitimate interest in running and improving the
   service (Article 6(1)(f)).
-- **How long** – two years from when you sent it. An operator is emailed
+- **How long** - two years from when you sent it. An operator is emailed
   when feedback arrives; that email carries a link to the feedback and
   never its content.
 
 ### 3.9 Understanding how the service is used
 
-- **What** – totals worked out from the server logs in section 3.2, such
+- **What** - totals worked out from the server logs in section 3.2, such
   as how many people visited a page or completed a module. We do not use
   an analytics service, tracking cookies or anything stored on your
   device for this, and the totals do not identify you.
-- **Why** – to see what is used and what is not.
-- **Legal basis** – our legitimate interest in improving the service
+- **Why** - to see what is used and what is not.
+- **Legal basis** - our legitimate interest in improving the service
   (Article 6(1)(f)).
-- **How long** – totals indefinitely, because they identify nobody. The
+- **How long** - totals indefinitely, because they identify nobody. The
   logs they come from for 30 days.
 
 ### 3.10 Dealing with requests, complaints and legal obligations
 
-- **What** – correspondence with you about your data or a complaint, and
+- **What** - correspondence with you about your data or a complaint, and
   the records we must keep by law, such as tax records if you pay us.
-- **Why** – to answer you and to meet our legal obligations.
-- **Legal basis** – compliance with a legal obligation (Article 6(1)(c))
+- **Why** - to answer you and to meet our legal obligations.
+- **Legal basis** - compliance with a legal obligation (Article 6(1)(c))
   and our legitimate interest in handling and evidencing requests and
   complaints (Article 6(1)(f)).
-- **How long** – requests and complaints for six years. Tax records for
+- **How long** - requests and complaints for six years. Tax records for
   the period HM Revenue and Customs requires.
 
 ### 3.11 Our newsletter, if you have no Quill account
 
-- **Who** – people who registered for a Let's Do Digital conference,
+- **Who** - people who registered for a Let's Do Digital conference,
   course or webinar. Let's Do Digital is the name Bailey Medics Ltd ran
   those events under, so the company that holds your details has not
   changed.
-- **What** – your email address, your name if you gave one, whether you
+- **What** - your email address, your name if you gave one, whether you
   are subscribed, and when you unsubscribed if you have. We also record
   which newsletters were sent to you, so that none is sent twice. This
   list is kept apart from Quill's accounts: being on it does not give
   you an account, and you cannot sign in with it.
-- **Why** – to send you news from Let's Do Digital and Quill Medical,
+- **Why** - to send you news from Let's Do Digital and Quill Medical,
   which are the same company's work.
-- **Legal basis** – our legitimate interest in telling people who came
+- **Legal basis** - our legitimate interest in telling people who came
   to our events about what we do next (Article 6(1)(f)). Under the
   Privacy and Electronic Communications Regulations we email you only if
   the address you gave is a work address, or if you gave it while
   booking with us and were offered the chance to refuse marketing then.
   Every newsletter names us and carries an unsubscribe link.
-- **How to stop** – the unsubscribe link in any newsletter works without
+- **How to stop** - the unsubscribe link in any newsletter works without
   an account or a password and applies straight away. You can also ask
   us at <info@quill-medical.com>. If a newsletter to you cannot be
   delivered, or you report one as spam, we unsubscribe you.
-- **How long** – while you are subscribed. If you unsubscribe we keep
+- **How long** - while you are subscribed. If you unsubscribe we keep
   your address, marked as unsubscribed, so that you are not added again
   from an old list; ask us and we will delete it altogether. If you
   later create a Quill account with the same address and verify it, your
@@ -327,15 +327,15 @@ us and we will help you.
 bound by a contract that meets Article 28 of UK GDPR, and each may use
 your data only to provide its service to us.
 
-- **Google Cloud** – hosts the service and the database, stores teaching
+- **Google Cloud** - hosts the service and the database, stores teaching
   content and files you upload, and holds the server logs and monitoring
   records described in section 3.2. All of it is in Google's London
   region, in the United Kingdom.
-- **Amazon Web Services** – delivers our service emails and our
+- **Amazon Web Services** - delivers our service emails and our
   newsletters, from its London region, in the United Kingdom. It does not
   hold the newsletter list. Section 8 describes one short-lived record
   that Amazon may hold elsewhere.
-- **Proton** – provides our own mailboxes, so an email you send to
+- **Proton** - provides our own mailboxes, so an email you send to
   <info@quill-medical.com>, and our reply, are held by Proton. Proton AG
   is a company in Switzerland. Section 8 explains the safeguard.
 
@@ -399,24 +399,24 @@ and we will remove it while we check.
 
 ## 7. How long we keep your data
 
-- **Your account** – while it exists, and two years after it is closed
+- **Your account** - while it exists, and two years after it is closed
   or deactivated.
-- **Training records, where we are the controller** – while your account
+- **Training records, where we are the controller** - while your account
   exists, and two years after it is closed, or sooner if you ask.
-- **Training records held for a sponsor** – as your sponsor instructs.
-- **Server logs** – 30 days.
-- **Your answer about news and updates** – while your account exists.
-  **The record of each answer** – six years after the last one.
-- **Notification addresses** – until you turn notifications off.
-- **The newsletter list for people with no account** – while you are
+- **Training records held for a sponsor** - as your sponsor instructs.
+- **Server logs** - 30 days.
+- **Your answer about news and updates** - while your account exists.
+  **The record of each answer** - six years after the last one.
+- **Notification addresses** - until you turn notifications off.
+- **The newsletter list for people with no account** - while you are
   subscribed. A refusal is kept until you ask us to delete it.
-- **An address our email could not reach, or that reported it as spam** –
+- **An address our email could not reach, or that reported it as spam** -
   on our account's list at Amazon until we remove it, and for up to 14
   days on the list Amazon shares across its customers.
-- **Feedback** – two years.
-- **Unaccepted assessor invitations** – 90 days after they expire.
-- **Requests, complaints and correspondence** – six years.
-- **Tax and payment records** – the period HM Revenue and Customs
+- **Feedback** - two years.
+- **Unaccepted assessor invitations** - 90 days after they expire.
+- **Requests, complaints and correspondence** - six years.
+- **Tax and payment records** - the period HM Revenue and Customs
   requires, currently six years.
 
 When a period ends we delete the data or remove everything in it that

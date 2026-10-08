@@ -1,4 +1,4 @@
-# modules/networking/main.tf – VPC, subnets, NAT, firewall, VPC connector
+# modules/networking/main.tf - VPC, subnets, NAT, firewall, VPC connector
 
 # ---------- VPC ----------
 resource "google_compute_network" "vpc" {

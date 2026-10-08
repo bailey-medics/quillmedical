@@ -28,7 +28,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "post-plan-comment"
 PLAN_FILE="infra/plan-output.txt"
 
 # The lines Terraform uses to conclude a plan: changes to resources, no changes
-# at all, or changes to outputs only – the last prints no "Plan:" line, and
+# at all, or changes to outputs only - the last prints no "Plan:" line, and
 # omitting it here would see a healthy plan reported as a failed one. Anchored
 # to the start of the line, so the same words quoted inside a resource diff
 # cannot match.
@@ -61,7 +61,7 @@ plan_summary() {
 # Build the PR comment markdown from the summary ($1), the job URL ($2) and
 # the environment ($3).
 #
-# An empty summary means Terraform reached no conclusion – almost always a
+# An empty summary means Terraform reached no conclusion - almost always a
 # failed plan. That is reported as a single line too: the failure needs to be
 # visible, not verbose, and the reason is in the job log the link points at.
 #
@@ -91,8 +91,8 @@ EOF
 # Resolve the URL of this run's plan job, so the link opens the log itself
 # rather than the run's list of jobs.
 #
-# The job id is only available from the API – the runner exposes the job's
-# config key in GITHUB_JOB, not its display name or id – so this matches on the
+# The job id is only available from the API - the runner exposes the job's
+# config key in GITHUB_JOB, not its display name or id - so this matches on the
 # display name passed in JOB_NAME. Any failure to resolve it falls back to the
 # run URL given in $1: a link one click coarser is not worth failing the
 # comment over, and it is why JOB_NAME drifting from the workflow degrades the

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# env-samples-update.sh – Generate .env-sample files from .env files.
+# env-samples-update.sh - Generate .env-sample files from .env files.
 #
 # For each .env file found in the repo, creates/updates a .env-sample in the
 # same directory with keys preserved and values replaced by placeholders.

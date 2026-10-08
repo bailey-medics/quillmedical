@@ -32,7 +32,7 @@ const meta: Meta<typeof SearchButton> = {
 export default meta;
 type Story = StoryObj<typeof SearchButton>;
 
-/** Default state – white magnifying glass on navy background. */
+/** Default state - white magnifying glass on navy background. */
 export const Default: Story = {
   args: {
     onClick: () => {},

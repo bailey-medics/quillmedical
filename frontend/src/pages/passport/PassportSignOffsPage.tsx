@@ -51,7 +51,7 @@ import type {
  *
  * The form shows the competency's name while asking about it, but a
  * holder may be requesting a sign-off for something with nothing
- * recorded against it yet – which is how a competency first reaches a
+ * recorded against it yet - which is how a competency first reaches a
  * passport at all. So where the passport already knows it, that entry is
  * used; otherwise the name comes from the shared catalogue, the same
  * source the picker reads, and the rest describes an empty history.
@@ -158,7 +158,7 @@ export function Component() {
       });
 
     // The page no longer reads the user list. An assessor is named by
-    // email, so there is nothing to offer and nothing to look up –
+    // email, so there is nothing to offer and nothing to look up -
     // which also means asking for a sign-off no longer requires the
     // holder to fetch every user on the platform.
 
@@ -184,8 +184,8 @@ export function Component() {
       setRefusal(null);
     } catch (caught) {
       // The server's own words where it gave any. It refuses some asks
-      // for reasons a holder can act on – naming yourself, a competency
-      // that does not exist, too many in a day – and "please try again"
+      // for reasons a holder can act on - naming yourself, a competency
+      // that does not exist, too many in a day - and "please try again"
       // both hides the reason and invites retrying something that will
       // never work. The api client has already lifted FastAPI's detail
       // into the message.

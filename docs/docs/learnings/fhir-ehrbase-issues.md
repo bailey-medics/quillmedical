@@ -1,6 +1,6 @@
 # FHIR and EHRbase staging issues
 
-## 21 March 2026 – Staging infrastructure bootstrap
+## 21 March 2026 - Staging infrastructure bootstrap
 
 ### Summary
 
@@ -16,12 +16,12 @@ Cloud Run was serving an **admin** Docker image instead of the **prod** target. 
 
 #### 2. COS read-only filesystem breaks startup script
 
-The VM uses Container-Optimised OS (COS), which has a **read-only root filesystem**. The startup script tried to install Docker Compose to `/usr/local/lib/docker/cli-plugins/` and write config to `/opt/quill/` – both fail silently.
+The VM uses Container-Optimised OS (COS), which has a **read-only root filesystem**. The startup script tried to install Docker Compose to `/usr/local/lib/docker/cli-plugins/` and write config to `/opt/quill/` - both fail silently.
 
 Key COS constraints:
 
-- `/usr/`, `/opt/`, `/root/` – **read-only**
-- `/var/`, `/home/`, `/mnt/stateful_partition/` – writable but **noexec** (cannot execute binaries)
+- `/usr/`, `/opt/`, `/root/` - **read-only**
+- `/var/`, `/home/`, `/mnt/stateful_partition/` - writable but **noexec** (cannot execute binaries)
 - Docker Compose binary **cannot be installed anywhere** on COS
 
 **Fix:** Bypassed Docker Compose entirely and used direct `docker run` commands. The startup script still needs a permanent redesign (either use `docker run` commands, run Compose via a container image, or switch to a standard VM image).
@@ -48,11 +48,11 @@ EHRbase requires `DB_USER_ADMIN` and `DB_PASS_ADMIN` for Flyway to create schema
 
 The backend config default `EHRBASE_API_USER` was `ehrbase_user` (underscore), but the Docker Compose reference used `ehrbase-user` (hyphen). This caused 401 responses when Cloud Run tried to authenticate.
 
-**Fix:** Standardised on `ehrbase_user` (underscore) everywhere – both the EHRbase container's `SECURITY_AUTHUSER` and the backend's config default.
+**Fix:** Standardised on `ehrbase_user` (underscore) everywhere - both the EHRbase container's `SECURITY_AUTHUSER` and the backend's config default.
 
 #### 6. EHRbase startup timing
 
-EHRbase takes 30–110 seconds to start (Flyway migrations, Spring Boot init, HikariPool). Health checks hitting EHRbase during startup received 401 because Spring Security wasn't initialised yet. This was misdiagnosed as a credentials issue during debugging.
+EHRbase takes 30-110 seconds to start (Flyway migrations, Spring Boot init, HikariPool). Health checks hitting EHRbase during startup received 401 because Spring Security wasn't initialised yet. This was misdiagnosed as a credentials issue during debugging.
 
 **Fix:** Allowed sufficient startup time. The Cloud Run startup probe was also updated with `timeout_seconds = 15` (was defaulting to 1 second) to prevent premature failure.
 

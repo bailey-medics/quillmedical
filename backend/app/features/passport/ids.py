@@ -17,7 +17,7 @@ records, which is why the uuid is there; and a record's id must not
 change when someone corrects the date it refers to, which is why the
 clinical date lives in the file rather than in the id.
 
-Clocks go backwards – NTP steps, virtual machines resume, leap seconds
+Clocks go backwards - NTP steps, virtual machines resume, leap seconds
 get smeared. A generator that assumed otherwise would issue an id that
 sorts before one it already issued, so :class:`TimestampIdGenerator`
 enforces monotonicity explicitly, after VPR's rule of bumping to the
@@ -59,13 +59,13 @@ class TimestampIdGenerator:
 
     One instance per process is enough; it is safe to share between
     threads. The monotonic guarantee holds per instance, which is all a
-    single writer needs – and a passport has a single writer by design,
+    single writer needs - and a passport has a single writer by design,
     enforced by the per-passport lock in the service layer.
 
     What this does *not* claim: that the id's timestamp is the moment
     anything clinical happened. It is the moment the record was written.
-    The three clocks a sign-off carries – when the work was observed,
-    when the assessor signed, and when the file was written – are kept
+    The three clocks a sign-off carries - when the work was observed,
+    when the assessor signed, and when the file was written - are kept
     apart deliberately, and this is only ever the third.
     """
 
@@ -80,7 +80,7 @@ class TimestampIdGenerator:
         Args:
             now: The current instant, for tests. Defaults to the system
                 clock in UTC. A naive datetime is refused rather than
-                assumed to be UTC – guessing a timezone is how a record
+                assumed to be UTC - guessing a timezone is how a record
                 ends up an hour out with nothing to show it.
 
         Returns:
@@ -117,7 +117,7 @@ class TimestampIdGenerator:
                 # drift.
                 #
                 # timedelta rather than .replace(microsecond=...), which
-                # raises once the previous id landed on .999 – the carry
+                # raises once the previous id landed on .999 - the carry
                 # into the next second has to happen, and only date
                 # arithmetic does it.
                 moment = self._previous + timedelta(
@@ -133,7 +133,7 @@ def is_timestamp_id(value: str) -> bool:
     """Whether *value* is shaped like a timestamp id.
 
     Shape only. It says nothing about whether the record exists, and
-    nothing about whether the instant is plausible – a validator that
+    nothing about whether the instant is plausible - a validator that
     rejected a date it found surprising would refuse to read a passport
     written by a machine with a bad clock, which is exactly when the
     record matters most.
@@ -209,7 +209,7 @@ def slugify(text: str) -> str:
     Returns:
         Lower-case words joined by single hyphens, at most
         :data:`MAX_SLUG_LENGTH` characters and cut at a word, or
-        ``"untitled"`` when nothing survives – an empty slug would produce a folder
+        ``"untitled"`` when nothing survives - an empty slug would produce a folder
         name ending in a bare hyphen.
     """
     slug = re.sub(r"[^a-z0-9]+", "-", text.casefold()).strip("-")
@@ -233,8 +233,8 @@ def record_dir_name(
     """A record directory's name: ``<date>-<slug>``, ``-2`` on a clash.
 
     Used for sign-offs, certificates and reflections. The date is the one
-    the record is *about* – when the work was observed, when the
-    certificate was awarded – not when the file was written, because
+    the record is *about* - when the work was observed, when the
+    certificate was awarded - not when the file was written, because
     someone looking for a sign-off thinks of when they did the procedure,
     not when the paperwork caught up.
 

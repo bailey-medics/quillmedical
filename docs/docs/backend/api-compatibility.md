@@ -3,7 +3,7 @@
 ## Overview
 
 Every API response shape and required request field is a contract that
-stale clients still depend on – not just during a rolling deploy, but for
+stale clients still depend on - not just during a rolling deploy, but for
 as long as a browser tab stays open. This page explains why a single
 breaking deploy is unsafe on the client boundary, the two-deploy pattern
 that closes the gap, and the tooling that enforces it automatically rather
@@ -16,7 +16,7 @@ boundary instead of the schema.
 Refresh tokens rotate on every use (`main.py`, `/api/auth/refresh`), so a
 tab kept alive by routine use never hits the 7-day refresh TTL and never
 re-logs-in. Because this is a client-routed single-page app, re-login is
-the only thing that would otherwise force a fresh page load – a tab can
+the only thing that would otherwise force a fresh page load - a tab can
 genuinely stay open for 30+ days on the bundle it started with, still
 calling the API with the shapes that bundle expects.
 
@@ -27,18 +27,18 @@ retyping a field, or adding a **required** request field, is a breaking
 change and must never ship as a single deploy. Instead it's staged across
 two deploys, at least one release apart:
 
-1. **Expand** – the new shape goes live **alongside** the old one; both are
-   served simultaneously, so a stale tab keeps working exactly as before –
+1. **Expand** - the new shape goes live **alongside** the old one; both are
+   served simultaneously, so a stale tab keeps working exactly as before -
    nothing about this deploy is "breaking" for anyone yet.
-2. **Contract** – the old shape is removed, **at least one full release
+2. **Contract** - the old shape is removed, **at least one full release
    cycle later** (the "N releases" of deprecation), never in the same
    deploy as the expand step, and never sooner than a release cycle.
 
 This is the same reasoning as the database's expand-contract rule, applied
 to the API boundary instead of the schema: [item 14](../plans/2026-08-09-alembic-review-and-revisions-plan.md)'s
 hourly-timer-and-navigation, whitelist-gated reload check gives every
-stale tab numerous opportunities – timer-driven, not just
-navigation-driven – to pick up the expand deploy well before the contract
+stale tab numerous opportunities - timer-driven, not just
+navigation-driven - to pick up the expand deploy well before the contract
 deploy ships, since a release cycle spans many days of ordinary use. The
 risk window is closed by the staging gap, reinforced by (not solely
 dependent on) that hourly check.
@@ -58,10 +58,10 @@ months later.
 
 A second-reviewer requirement (CODEOWNERS + required PR review) was also
 considered and rejected on principle, not just team size: design for the
-lowest common denominator – a lazy human – and a second reviewer is not
+lowest common denominator - a lazy human - and a second reviewer is not
 inherently more careful than the person who wrote the change. The gate
 below is deliberately built so **the author themself** is the accountable
-approver – the goal is forcing one genuine, separate, deliberate action out
+approver - the goal is forcing one genuine, separate, deliberate action out
 of whoever is accountable, not diffusing accountability across more people
 who could each be equally lazy.
 
@@ -76,12 +76,12 @@ who could each be equally lazy.
   meantime then reads as a removal by the PR. Taking both sides from one
   point of history leaves only what the PR itself changed. The cost is that
   a break which appears only when this PR is combined with a newer `main`
-  is not caught here – the up-to-date branch requirement re-runs this check
+  is not caught here - the up-to-date branch requirement re-runs this check
   against the newer base before the PR can merge, though a PR that enters
   the merge queue behind `main` is merged on the queue's own ref without
   that re-run.
   Chosen over hand-written contract tests because it needs no test
-  authoring per endpoint – it diffs the full spec on every PR
+  authoring per endpoint - it diffs the full spec on every PR
   automatically. `oasdiff`'s source-location tracking only maps a change
   back to a line/column inside the OpenAPI spec file itself, not into the
   Python source that generated it, so the check can only report "was _any_
@@ -89,9 +89,9 @@ who could each be equally lazy.
 - **Human gate**: a breaking-change finding routes the workflow through a
   required-reviewer GitHub Actions environment
   (`api-breaking-change-review`) with the repo owner (the author) as the
-  sole reviewer. "Prevent self-review" stays **off** – by design, see the
+  sole reviewer. "Prevent self-review" stays **off** - by design, see the
   accountability reasoning above. Approving is a distinct action in the
-  GitHub Actions UI/mobile app – less reachable from an agent's
+  GitHub Actions UI/mobile app - less reachable from an agent's
   terminal/editor session. An approval covers the pull request's own change
   while that change is unchanged: a later run skips the gate only when
   GitHub's approval record shows a person approved this environment in an
@@ -117,7 +117,7 @@ who could each be equally lazy.
   then. All-clears and static-check failures show on the PR and nowhere else.
   The destructive-migration gate follows exactly the same rule, so knowing one
   tells you how the other behaves. A validation failure with no decision file
-  therefore produces a red check plus the ordinary gate message – not a
+  therefore produces a red check plus the ordinary gate message - not a
   second, separate alert.
 - **One message per distinct set of breaks**:
   the gate asks for approval whenever the pull request's code changes, see
@@ -128,8 +128,8 @@ who could each be equally lazy.
   affect the hash) and asks whether any comment on the PR already carries
   that hash (`gate-notify.sh` with marker key `breaking-api-change-hash`,
   matched on a hidden `<!-- breaking-api-change-hash: <hash> -->` first
-  line). Slack only fires when the answer is no – the first breaking change
-  on a PR, or a later commit that alters which changes are breaking – never
+  line). Slack only fires when the answer is no - the first breaking change
+  on a PR, or a later commit that alters which changes are breaking - never
   on a re-push that leaves the same break(s) in place. State lives in a PR
   comment rather than `actions/cache` because cache entries are
   branch/key-scoped and evict after inactivity, whereas a comment persists
@@ -140,18 +140,18 @@ who could each be equally lazy.
   what was found and when. Only the gate's **newest** comment is consulted
   when deciding whether to announce (`max_by(.id)`, so the answer doesn't
   depend on API ordering), which means moving back to a set the PR held
-  earlier is announced again rather than swallowed – each comment records a
+  earlier is announced again rather than swallowed - each comment records a
   transition, not a standing claim.
 - **A return to clean is recorded too**: when the last breaking change is
   removed the gate posts an all-clear comment (✅, "no longer present"), so the
-  timeline shows the break arriving *and* going. Slack is not told – the notify
+  timeline shows the break arriving *and* going. Slack is not told - the notify
   job is gated on `oasdiff` having found something as well as on
-  `should_notify` – and a PR that never had a break stays silent. The gate's
+  `should_notify` - and a PR that never had a break stays silent. The gate's
   approval requirement is unaffected throughout: it asks again whenever the
   pull request's code changes, for as long as a break is present.
 - **Outside `ci.yml`, deliberately**: all of the above lives in
   `.github/workflows/gate-breaking.yml`, because `ci.yml` cancels its runs when
-  a newer commit arrives. Right for expensive tests, wrong here – two commits
+  a newer commit arrives. Right for expensive tests, wrong here - two commits
   pushed in quick succession, one adding a break and one reverting it, could
   leave no record the break existed, and a job cannot opt out of its own run
   being cancelled. `gate-breaking.yml` sets no workflow-level concurrency, so
@@ -161,7 +161,7 @@ who could each be equally lazy.
   concurrency group holds one running plus one pending instance and a third
   push would cancel the queued second, losing that commit's comment. It calls
   `wait-for-ancestor-decisions.sh` instead, which waits for every ancestor
-  commit still deciding – no queue to cap, so every commit is recorded, and the
+  commit still deciding - no queue to cap, so every commit is recorded, and the
   comments land in commit order without a lock. See
   [Gate notification workflow](../plans/2026-08-29-gate-notification-workflow-plan.md)
   for the alternatives rejected.
@@ -190,7 +190,7 @@ reason: "Old bundles call this endpoint from the encounter close button. Removin
 
 ### Field meanings
 
-- `generation` – a positive integer assigned by the script when the file is
+- `generation` - a positive integer assigned by the script when the file is
   created. On files where `forces_reload: true`, this is a globally unique
   identifier: if two files ever both claim `forces_reload: true` with the
   same generation number, CI fails (enforced by branch protection requiring
@@ -200,18 +200,18 @@ reason: "Old bundles call this endpoint from the encounter close button. Removin
   detect when a tab is running an older bundle than the current API
   requires (the client forced-reload mechanism, see below).
 
-- `forces_reload` – boolean. `true` means every open browser tab is
+- `forces_reload` - boolean. `true` means every open browser tab is
   incompatible with the new API and must reload immediately; `false` means
   the existing quiet background-update mechanism (hourly timer or
   navigation, whichever comes first) is sufficient for users to pick up the
   new bundle before they encounter the changed API. This decision is a human
   judgement call recorded by the required reviewer.
 
-- `change` – the exact oasdiff flagged change ID, operation, path and text, copied
+- `change` - the exact oasdiff flagged change ID, operation, path and text, copied
   verbatim from the CI log so a reviewer can match the file against what
   the CI tool actually found. Example: `api-path-removed-without-deprecation DELETE /api/v1/encounters/{id}`.
 
-- `reason` – free-form text explaining why the human made this
+- `reason` - free-form text explaining why the human made this
   `forces_reload` decision. This is the safety/hazard-log artefact: it
   records the thinking for a clinical/compliance audit trail, not just the
   outcome. Must be non-empty.
@@ -219,7 +219,7 @@ reason: "Old bundles call this endpoint from the encounter close button. Removin
 ### Immutability and edits
 
 Once a file is merged to `main`, the `generation`, `forces_reload`, and
-`change` fields become immutable – editing them retroactively would make
+`change` fields become immutable - editing them retroactively would make
 the original approval meaningless for compliance purposes. The `reason`
 field may be edited in later PRs to fix typos or add context, and comments
 may be added, but only via the same `api-breaking-change-review` gate to
@@ -230,7 +230,7 @@ if a decision is superseded, record a new decision file instead.
 
 ### Routine and expand-step deploys (forces_reload: false)
 
-Routine and expand-step deploys stay fully silent – the existing
+Routine and expand-step deploys stay fully silent - the existing
 whitelist-gated reload (hourly timer or navigation, whichever is first)
 picks up the new bundle with no message. These cases cover the vast
 majority of API changes (additions, deprecations, optional field removals).
@@ -267,8 +267,8 @@ mismatch at its next API call. The detection works as follows:
 If the reload fails to resolve the mismatch (e.g. the backend generation
 mismatch persists after reload due to deploy ordering issues), the tab
 shows a non-dismissible `StatusStrip` (`variant="fallback"`) in normal
-layout flow directly below `TopRibbon` – pure passive status text, with no
-"Refresh now" or dismiss button – **and** keeps retrying automatically in
+layout flow directly below `TopRibbon` - pure passive status text, with no
+"Refresh now" or dismiss button - **and** keeps retrying automatically in
 the background every 5 minutes via a real compatibility check (never a
 blind reload with no evidence), so a tab left open eventually self-heals
 once the correct bundle is live, without needing the user to do anything.
@@ -279,13 +279,13 @@ The strip stays visible until the underlying condition clears on its own.
 The side-effect logic (listening for the mismatch event, running the
 retry timer, persisting/restoring form state) lives in
 `lib/compat-generation/ForcedReloadProvider.tsx` and its `useForcedReload()`
-hook, mounted once at the app root – mirroring the existing
+hook, mounted once at the app root - mirroring the existing
 `ConnectivityProvider`/`useConnectivity()` pattern exactly. This keeps the
 side effects running exactly once regardless of which layout is active,
 while still letting each layout render its own status strip:
 
 - `ForcedReloadGate` (root-mounted, sibling to `RouterProvider`) renders
-  only the blocking `UpdatingBanner` overlay while `phase === "blocking"` –
+  only the blocking `UpdatingBanner` overlay while `phase === "blocking"` -
   this covers every route, including guest pages with no layout at all.
 - `MainLayout` and `TeachingLayout` each call `useForcedReload()` and
   `useConnectivity()` directly, rendering `StatusStrip` for the
@@ -294,12 +294,12 @@ while still letting each layout render its own status strip:
   priority ordering between them).
 - `StatusStrip` (`components/status-strip/StatusStrip.tsx`) is a single
   component covering all four non-blocking variants (`offline` |
-  `reconnected` | `updating` | `fallback`) – it replaced three separate,
+  `reconnected` | `updating` | `fallback`) - it replaced three separate,
   near-identical components (`OfflineStrip`, `UpdatingBanner`'s old passive
   strip variant, `UpdateFallbackBanner`) that had converged on the same
   shape (icon + short message, `role="status"`, `aria-live="polite"`).
 
 This forced-reload mechanism is the only thing that protects users in
-genuinely breaking contract-step scenarios – the expand-contract staging
+genuinely breaking contract-step scenarios - the expand-contract staging
 already eliminates the risk operationally, so the reload is reassurance
 rather than the risk-elimination mechanism itself.

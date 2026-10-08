@@ -442,7 +442,7 @@ def decode_invite_token(tok: str) -> dict[str, Any]:
 # patient: ``patient_id`` is required, it is carried in every payload,
 # and ``accept_invite`` reads it unconditionally to create an
 # ``ExternalPatientAccess`` grant. A passport assessor invite has no
-# patient at all – it concerns a trainee's competency – so extending it
+# patient at all - it concerns a trainee's competency - so extending it
 # would mean making the patient optional and branching the code path that
 # gates patient record sharing, for a caller sharing none of its logic.
 #

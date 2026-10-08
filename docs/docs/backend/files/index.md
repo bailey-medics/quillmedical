@@ -55,12 +55,12 @@ Both live in `europe-west2`, with uniform bucket-level access and public
 access prevention enforced. Defined in
 `infra/modules/teaching-video-pipeline/`.
 
-- **Source** – `quill-teaching-videos-source-app`. Raw uploads. Not
+- **Source** - `quill-teaching-videos-source-app`. Raw uploads. Not
   versioned: a replaced upload is simply a new upload. A CORS policy allows
   `POST`, `PUT` and `OPTIONS` from the app origin and exposes `Location`,
   which is what carries the resumable session URL back to the browser.
 
-- **Processed** – `quill-teaching-videos-processed-app`. What learners
+- **Processed** - `quill-teaching-videos-processed-app`. What learners
   are served. Versioned, because losing a transcode means re-running a job
   over a source that may already be gone.
 
@@ -80,16 +80,16 @@ admin re-uploads instead.
 The load balancer strips the `/videos/` prefix with a URL rewrite, because a
 backend bucket does not strip it on its own. A request for
 `/videos/{org_id}/{module_id}/{asset_id}-720p.mp4` fetches the bucket key
-`{org_id}/{module_id}/{asset_id}-720p.mp4` – the path after `/videos/` is the
+`{org_id}/{module_id}/{asset_id}-720p.mp4` - the path after `/videos/` is the
 object key exactly.
 
 Per uploaded asset, the jobs produce:
 
-- `{asset_id}-720p.mp4` – the default. Chosen because hospital wifi is the
+- `{asset_id}-720p.mp4` - the default. Chosen because hospital wifi is the
   common case.
-- `{asset_id}-1080p.mp4` – offered through the player's quality switch.
-- `{asset_id}-poster.jpg` – a frame shown before playback starts.
-- `{asset_id}.vtt` – WebVTT captions, a WCAG 2.1 AA requirement.
+- `{asset_id}-1080p.mp4` - offered through the player's quality switch.
+- `{asset_id}-poster.jpg` - a frame shown before playback starts.
+- `{asset_id}.vtt` - WebVTT captions, a WCAG 2.1 AA requirement.
 
 All four are uploaded with `Cache-Control: public, max-age=86400`. "Public"
 here describes cacheability at the edge, not reachability: the CDN still
@@ -97,7 +97,7 @@ refuses a request without a valid cookie.
 
 Assets are named for a generated id, never for the uploader's filename or the
 MDX reference key. Which renditions exist is recorded on the `ModuleMediaLink`
-row – the player trusts that record rather than listing the bucket, so a
+row - the player trusts that record rather than listing the bucket, so a
 missing object shows up as a 404 alert rather than a silent failure.
 
 ## The signed cookie
@@ -128,7 +128,7 @@ Three properties carry the design:
   refreshes silently.
 
 The cookie is set with `path=/videos/`, `Secure`, `HttpOnly`, `SameSite=Lax`
-and no `Domain` attribute – host-only, so it cannot leak to a sibling
+and no `Domain` attribute - host-only, so it cannot leak to a sibling
 subdomain, and it is not sent on ordinary API or page requests.
 
 HMAC-SHA1 is Cloud CDN's scheme, not a choice made here. SHA-1's collision
@@ -138,7 +138,7 @@ review, so it is recorded as a platform constraint.
 ### What the endpoint refuses
 
 The same gate as the learning content routes, so the two cannot drift apart.
-A module that is not yours, not live, or does not exist all return 404 –
+A module that is not yours, not live, or does not exist all return 404 -
 identically, so the endpoint cannot be used to enumerate what exists. An
 unsafe `module_id` is refused before anything is signed, because the prefix
 _is_ the authorisation boundary. The endpoint is rate-limited to 10 per
@@ -151,7 +151,7 @@ encoding, which `random_bytes` does not produce directly), and then used
 twice: installed on the CDN key as `teaching-video-key`, and written to Secret
 Manager for the backend to read as `TEACHING_VIDEO_SIGNING_KEY`.
 
-The same bytes on both sides is the whole requirement – the backend mints,
+The same bytes on both sides is the whole requirement - the backend mints,
 the edge verifies, and neither works if they differ.
 
 ## Local development
@@ -169,7 +169,7 @@ the endpoint learns which it got.
 
 A log-based metric counts 404s under `/videos/`, and an alert policy fires on
 them. That specifically means the database says a rendition exists and the
-bucket disagrees – a 403 is the cookie gate working normally and is not
+bucket disagrees - a 403 is the cookie gate working normally and is not
 counted.
 
 It is an alert rather than a reconciliation sweep: the transcode job verifies

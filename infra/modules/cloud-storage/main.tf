@@ -1,4 +1,4 @@
-# modules/cloud-storage/main.tf – GCS bucket (teaching images)
+# modules/cloud-storage/main.tf - GCS bucket (teaching images)
 
 resource "google_storage_bucket" "bucket" {
   project  = var.project_id
@@ -19,14 +19,14 @@ resource "google_storage_bucket" "bucket" {
   # `with_state` is the load-bearing part, and its absence was a bug. The
   # condition defaults to ANY, which matches the live object as well as the
   # noncurrent ones this rule is meant to clear. On a versioned bucket a
-  # Delete against a live object does not erase it – the bytes become a
-  # noncurrent version, as they would on any overwrite – but the live object
+  # Delete against a live object does not erase it - the bytes become a
+  # noncurrent version, as they would on any overwrite - but the live object
   # is gone, so the application reads the file as missing. A question's image
   # would 404 while its bytes sat in the bucket, recoverable only by hand.
   #
   # Nothing has been lost to it: the oldest objects here date from May 2026,
   # so the first would have been affected around May 2027, and only those CI
-  # had not re-uploaded since – an upload resets the age, so actively
+  # had not re-uploaded since - an upload resets the age, so actively
   # maintained content kept saving itself. The stale corners were the ones at
   # risk, which is exactly where nobody would have noticed quickly.
   #

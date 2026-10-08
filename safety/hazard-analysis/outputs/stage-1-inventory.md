@@ -1,6 +1,6 @@
 # Stage 1 - code inventory
 
-## Tier 1 – direct clinical data
+## Tier 1 - direct clinical data
 
 | File                                                            | Purpose                                                                            | Key Dependencies                |
 | --------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------- |
@@ -21,7 +21,7 @@
 | `backend/app/schemas/letters.py`                                | Pydantic schemas for letter creation and retrieval                                 | Pydantic BaseModel              |
 | `backend/app/utils/colors.py`                                   | Avatar gradient color generation for patient identification                        | Color calculations              |
 
-## Tier 2 – clinical workflow
+## Tier 2 - clinical workflow
 
 | File                                                    | Purpose                                                         | Key Dependencies               |
 | ------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------ |
@@ -42,7 +42,7 @@
 | `backend/app/models.py`                                 | SQLAlchemy User and Role models for RBAC                        | SQLAlchemy                     |
 | `backend/app/main.py`                                   | Authentication routes (/api/auth/login, /logout, /totp, etc.)   | security module                |
 
-## Tier 3 – infrastructure
+## Tier 3 - infrastructure
 
 | File                               | Purpose                                                       | Key Dependencies    |
 | ---------------------------------- | ------------------------------------------------------------- | ------------------- |
@@ -63,7 +63,7 @@
 | `vite.config.ts`                   | Vite build configuration with SWC                             | Vite                |
 | `vitest.config.ts`                 | Vitest test configuration                                     | Vitest              |
 
-## Tier 4 – non-clinical
+## Tier 4 - non-clinical
 
 | File                                                                  | Purpose                                          |
 | --------------------------------------------------------------------- | ------------------------------------------------ |

@@ -16,7 +16,7 @@
   - Idle: action label (e.g. "Save", "Submit")
   - Submitting:
     - `aria-disabled="true"` (not `disabled`) to remain focusable and screen-reader-accessible
-    - Spinner with `role="status"` / `aria-label`, delayed by 150–300ms to avoid flashing on fast requests
+    - Spinner with `role="status"` / `aria-label`, delayed by 150-300ms to avoid flashing on fast requests
     - Label changes to action-appropriate verb + ellipsis (U+2026): "Saving…", "Sending…", "Uploading…", "Submitting…"
     - Button width fixed (or `min-width` set) to prevent layout shift
   - Success: return to idle; success surfaced in status card

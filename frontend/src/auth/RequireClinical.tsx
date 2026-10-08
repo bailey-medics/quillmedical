@@ -4,7 +4,7 @@
  * Protects routes that depend on clinical services (FHIR/EHRbase).
  * Redirects to `/` when clinical services are disabled, assuming the
  * user is already authenticated (used inside RequireAuth). `/` then
- * sends them on to the first feature they can reach – see
+ * sends them on to the first feature they can reach - see
  * `HomeRedirect`.
  */
 

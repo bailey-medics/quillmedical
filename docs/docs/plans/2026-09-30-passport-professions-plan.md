@@ -507,37 +507,37 @@ coordinates; it does not govern.
 
 ## Decisions
 
-- **Rename the id, not just the display name** – so all four passport
+- **Rename the id, not just the display name** - so all four passport
   professions start `passport_`, like the teaching ones start `teaching_`.
   The cost is one data migration and one line in the router.
-- **The clinical lead is a profession, not a position** – because that is
+- **The clinical lead is a profession, not a position** - because that is
   how teaching does it. A `Position` would record who held the role and when,
   and could show that a place has no clinical lead. If that turns out to
   matter, the lead should move to a position rather than gain more powers
   as a profession.
-- **The delegate reads and signs off, but does not write** – writing is the
+- **The delegate reads and signs off, but does not write** - writing is the
   paid part, and it comes only from an organisation enablement or an
   individual subscription.
-- **Turning an org unit's cover off ends it for everyone it covered** –
+- **Turning an org unit's cover off ends it for everyone it covered** -
   leavers included. Leaving the unit ends nothing, so a doctor who moves on
   keeps writing for as long as Cheltenham chooses to pay. Switching the
   cover off is a commercial decision, and it is the one thing that ends it.
-- **A leaver stays on the books as staff** – a doctor who leaves
+- **A leaver stays on the books as staff** - a doctor who leaves
   Cheltenham keeps their `staff` membership of the site, because the
   passport's feature gate asks for membership of an org unit where the
   passport is switched on. Agreed on 1 October 2026 as right for now.
   Revisit once patients use Quill: keeping somebody as staff of a unit
   they have left may then show them, or their name, somewhere it should
   not.
-- **An alliance is linked, never a parent** – SWAG does not govern the
+- **An alliance is linked, never a parent** - SWAG does not govern the
   trusts it pays for, and a trust may belong to more than one network. Agreed
   on 1 October 2026.
-- **Cheltenham sits under its trust** – Gloucestershire Hospitals is the
+- **Cheltenham sits under its trust** - Gloucestershire Hospitals is the
   `organisation` and Cheltenham oncology a `site` under it, decided on
   1 October 2026. A stand-alone top-level unit would have been quicker,
   but it could never be moved under the trust later. This is what made
   site-level features necessary.
-- **Three ways to get writing** – paying as an individual, which means
+- **Three ways to get writing** - paying as an individual, which means
   joining a Quill-run Clinician Passport organisation; joining an org unit
   whose cover is on; and being granted it by a Passport admin or higher.
   Agreed on 1 October 2026. Each is its own `user_competency` row, so

@@ -178,7 +178,7 @@ export default function MessageThread() {
         setPatient(mapped);
       })
       .catch(() => {
-        // Patient demographics unavailable – ribbon stays empty
+        // Patient demographics unavailable - ribbon stays empty
       });
 
     return () => {

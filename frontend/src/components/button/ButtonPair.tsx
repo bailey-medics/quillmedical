@@ -32,7 +32,7 @@ interface ButtonPairProps {
   cancelLabel?: string;
   /** Called when the accept button is clicked */
   onAccept?: () => void;
-  /** Called when the cancel button is clicked – cancel button hidden when omitted */
+  /** Called when the cancel button is clicked - cancel button hidden when omitted */
   onCancel?: () => void;
   /** Disables the accept button (aria-disabled, stays focusable) */
   acceptDisabled?: boolean;

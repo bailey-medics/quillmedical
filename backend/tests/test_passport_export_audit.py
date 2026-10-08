@@ -4,7 +4,7 @@ Two things the plan asks for that the other Phase 4 tests do not cover.
 
 **Exports are logged, and the log carries no content.** The plan's audit
 rule is that the git history is the audit trail and exports are recorded
-in the application log – who, which passport, when, and nothing else. A
+in the application log - who, which passport, when, and nothing else. A
 passport holds no patient data, but it is somebody's assessment record
 and an application log is read by people with no business in it. So the
 test is not merely that a line appears: it is that the line does *not*
@@ -12,8 +12,8 @@ contain the holder's name, a competency, an assessor, or any of the
 prose.
 
 **A rendered passport is pinned as a snapshot.** Rendering is the part
-most likely to drift without anybody noticing – a heading reworded, a
-section reordered, a date format changed – because every individual
+most likely to drift without anybody noticing - a heading reworded, a
+section reordered, a date format changed - because every individual
 change looks harmless and no other test would fail. Comparing a whole
 document against a fixture makes drift visible in the diff, which is
 where it can be judged.
@@ -198,7 +198,7 @@ class TestExportsAreLogged:
         found = [marker for marker in CONTENT_MARKERS if marker in logged]
         assert not found, (
             f"{found} reached the application log, which records who "
-            "exported what and when – never what the record says."
+            "exported what and when - never what the record says."
         )
 
     def test_an_unattributed_export_says_so(
@@ -226,7 +226,7 @@ class TestTheRenderedMarkdownIsPinned:
         """Compared with the generation date normalised.
 
         The date is the one part that legitimately changes on every run,
-        so it is replaced rather than frozen – freezing it would mean
+        so it is replaced rather than frozen - freezing it would mean
         threading a clock through the renderer for no other reason.
         """
         output = render.render(populated, PASSPORT_ID)
@@ -277,7 +277,7 @@ EXPECTED_MARKDOWN = """\
 
 **Dr Priya Kapoor**
 
-- GMC 1234567 – _declared_
+- GMC 1234567 - _declared_
 
 Generated <date>.
 
@@ -287,8 +287,8 @@ This is a record of assessed clinical competence: what this person has been sign
 
 | Competency | Level | Status | Signed off by | Date | Expires |
 | --- | --- | --- | --- | --- | --- |
-| Review and prescribe systemic anti-cancer therapy | – | no sign-off | – | – | – |
-| Review and prescribe systemic anti-cancer therapy: Lung | Level 2: Review and authorise administration of systemic anti-cancer therapy | signed off | Dr Amara Okonkwo | 2026-03-20 | – |
+| Review and prescribe systemic anti-cancer therapy | - | no sign-off | - | - | - |
+| Review and prescribe systemic anti-cancer therapy: Lung | Level 2: Review and authorise administration of systemic anti-cancer therapy | signed off | Dr Amara Okonkwo | 2026-03-20 | - |
 
 ## Logbook
 
@@ -296,13 +296,13 @@ This is a record of assessed clinical competence: what this person has been sign
 
 1 recorded.
 
-- **2026-03-12** – Bristol Royal Infirmary, supervised, Successful
+- **2026-03-12** - Bristol Royal Infirmary, supervised, Successful
 
 ## Certificates
 
 Self-declared: recorded by the holder, with nobody countersigning.
 
-- **SACT course** – UKONS, 2026-02-11
+- **SACT course** - UKONS, 2026-02-11
 
 ## Continuing professional development
 
@@ -312,7 +312,7 @@ No CPD date ranges have been set, so these run June to June by convention rather
 
 1 activity, 6 points.
 
-- **2026-02-11** – Regional study day [teaching day] (6 points)
+- **2026-02-11** - Regional study day [teaching day] (6 points)
 
 ## Sign-offs in full
 
@@ -325,7 +325,7 @@ No CPD date ranges have been set, so these run June to June by convention rather
 - Observed: 2026-03-14
 - Signed: 2026-03-20
 - The assessor directly observed
-- Signed off by: Dr Amara Okonkwo, consultant (GMC 7654321) – _registration as declared_
+- Signed off by: Dr Amara Okonkwo, consultant (GMC 7654321) - _registration as declared_
 - Evidence in view when signed: 0 logbook entries, 0 certificates
 
 Fingerprint: `sha256:<hash>`

@@ -32,7 +32,7 @@ export const Default: Story = {
   ),
 };
 
-/** Coloured card – border removed, white text */
+/** Coloured card - border removed, white text */
 export const WithBackground: Story = {
   render: () => (
     <BaseCard bg="var(--success-color)">

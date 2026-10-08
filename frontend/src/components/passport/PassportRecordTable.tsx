@@ -45,7 +45,7 @@ const columns: Column<PassportRecord>[] = [
   {
     header: "Status",
     render: (record) =>
-      record.status ? <SignOffStatusBadge status={record.status} /> : "–",
+      record.status ? <SignOffStatusBadge status={record.status} /> : "-",
   },
 ];
 

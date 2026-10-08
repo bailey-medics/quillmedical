@@ -21,7 +21,7 @@ import { forwardRef, type ReactNode, type Ref } from "react";
  * fixed styling props so they cannot be overridden by consumers.
  * `children` is re-declared as required.
  *
- * Pass `bg` (a Mantine colour value) to create a coloured card – the
+ * Pass `bg` (a Mantine colour value) to create a coloured card - the
  * border is automatically removed and text defaults to white. Pass `c`
  * alongside it for a pale background, where white would be unreadable.
  */

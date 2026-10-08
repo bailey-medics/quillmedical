@@ -233,7 +233,7 @@ class TestTheOrgUnitKeyedPaths:
         it is: membership answers in the places of organisations, so a
         ward is never one of them and neither is a place standing on its
         own. Same refusal as naming somebody else's trust, and for the
-        same reason – the answer discloses nothing either way.
+        same reason - the answer discloses nothing either way.
         """
         _seed_bank(db_session, org, educator)
         headers = _login(test_client)

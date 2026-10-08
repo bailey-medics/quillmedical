@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for check-security-headers.sh – the deploy pipeline's check that the
+# Tests for check-security-headers.sh - the deploy pipeline's check that the
 # live site still sends its security headers.
 #
 # The curl call (response_headers) is stubbed so the check can be tested

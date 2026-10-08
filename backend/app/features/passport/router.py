@@ -8,8 +8,8 @@ Four rules hold across every route here, and each is a decision the plan
 argues for rather than a convention:
 
 **Authorisation is resolved before storage is touched.** Every route
-establishes the caller's relationship to the passport – holder, a named
-assessor, or an admin of the holder's organisation – as a guard clause,
+establishes the caller's relationship to the passport - holder, a named
+assessor, or an admin of the holder's organisation - as a guard clause,
 so no work runs against a passport the caller may not see. A passport id
 also decides a filesystem path, so it is validated as 32 hex characters
 before it reaches the store.
@@ -270,8 +270,8 @@ _DEP_BLOBS = Depends(get_blob_store)
 
 #: What evidence may be. Deliberately short: a scan, a photograph of a
 #: logbook page, or a PDF of a course certificate is what this is for.
-#: `blobs.py` decides none of this on purpose – storing is separate from
-#: admitting – so the allow-list lives at the boundary that admits.
+#: `blobs.py` decides none of this on purpose - storing is separate from
+#: admitting - so the allow-list lives at the boundary that admits.
 ALLOWED_EVIDENCE_TYPES: frozenset[str] = frozenset(
     {
         "application/pdf",
@@ -285,7 +285,7 @@ ALLOWED_EVIDENCE_TYPES: frozenset[str] = frozenset(
 #: The most evidence may be, enforced by reading rather than by trusting
 #: a header. `limit_request_body_size` in ``app.main`` applies
 #: ``MAX_REQUEST_BODY_BYTES`` from ``Content-Length``, but skips the
-#: check when the header is absent – so a chunked request would
+#: check when the header is absent - so a chunked request would
 #: otherwise be unbounded, and reading it whole would put it all in
 #: memory.
 #:
@@ -314,7 +314,7 @@ def _looks_like(data: bytes, media_type: str) -> bool:
     library would be a supply-chain surface for something this small.
     It is a sanity check and not a parser: a well-formed header on
     malformed content still passes, which is the right depth here
-    because nothing executes or serves these bytes by path – a blob is
+    because nothing executes or serves these bytes by path - a blob is
     addressed by its own hash and handed back only as a download.
     """
     if media_type == "application/pdf":
@@ -457,7 +457,7 @@ def _require_writer(
 
     Checking the competency first would have been one line as a route
     dependency, and it would have answered 403 to an organisation
-    administrator posting to somebody else's passport – telling them the
+    administrator posting to somebody else's passport - telling them the
     passport is real, which is what the 404 exists to withhold.
 
     ``passport_write`` is sold. A holder whose entitlement has lapsed
@@ -470,7 +470,7 @@ def _require_writer(
         passport_id: The passport being written to.
         user: The caller.
         store: The store, where the caller is about to write to the
-            repository. Passing it adds the divergence check – see
+            repository. Passing it adds the divergence check - see
             :func:`_reconcile_before_writing`. Omitted by the one writer
             that does not move HEAD, evidence upload, which writes a
             blob addressed by its own hash and commits nothing.
@@ -512,8 +512,8 @@ def _reconcile_before_writing(
     error, or succeeds and buries the divergence one commit deeper.
 
     **A row merely behind is healed and the write proceeds.** That is
-    the recoverable case – a commit landed and the request died before
-    the row caught up – and the holder should not be stopped by a
+    the recoverable case - a commit landed and the request died before
+    the row caught up - and the holder should not be stopped by a
     previous request's accident.
 
     **Anything else is refused with a 409.** A row naming a commit the
@@ -549,7 +549,7 @@ def _require_reader(db: Session, passport_id: str, user: User) -> Passport:
     """Require that the caller may read this passport as a whole.
 
     **The holder alone.** An assessor is named on one request and may
-    read that sign-off, which :func:`_require_signoff_reader` allows –
+    read that sign-off, which :func:`_require_signoff_reader` allows -
     but the whole record is a different thing. Somebody asked to judge a
     bronchoscopy has no business reading a year of CPD, a logbook of
     every procedure, or the sign-offs another assessor declined.
@@ -1308,7 +1308,7 @@ def _email_sign_off_request(
 
     Two cases, one email. Somebody with an account is told to sign in;
     somebody without gets a single-use link to register behind. The link
-    is what an invitation row exists for – a token carries no record of
+    is what an invitation row exists for - a token carries no record of
     having been spent, so the row is what makes it single-use.
 
     **A failure here undoes the request, and this runs before anything
@@ -1422,7 +1422,7 @@ def _email_sign_off_request(
         ) from None
     except Exception:
         # Every other mail failure: unreachable, refused, timed out.
-        # Caught broadly on purpose – what they have in common is that
+        # Caught broadly on purpose - what they have in common is that
         # the assessor was not told, and none of them is something the
         # holder can diagnose. The traceback is logged; the request is
         # abandoned by raising, which leaves nothing written.
@@ -1458,8 +1458,8 @@ def search_assessors(
     **An exact email address, and nothing else.** It used to match a
     substring of an address, a username or a full name, which made it a
     directory: the authorisation review on 22 September found that any
-    holder of ``assess_clinician_passport`` – sixteen base professions,
-    and every external assessor ever invited – could read back the
+    holder of ``assess_clinician_passport`` - sixteen base professions,
+    and every external assessor ever invited - could read back the
     address and professional registration number of every active
     account in the deployment. A three-character minimum and a limit of
     ten slowed that down; neither bounded it.
@@ -1534,7 +1534,7 @@ def request_sign_off(
 
     The holder chooses their assessor, because the judgement about who is
     appropriate sits with them and their supervisor. The one rule is that
-    it may not be the holder – the whole value of the record is a second
+    it may not be the holder - the whole value of the record is a second
     named person accepting accountability.
 
     **The address need not belong to a Quill account.** That is the
@@ -1580,7 +1580,7 @@ def request_sign_off(
     # it a holder could mail an unbounded number of strangers in Quill's
     # name. Requests alone are the whole count: asking is now the only
     # thing that sends this mail, and an invitation is minted by an ask
-    # rather than beside one – so adding the two together would charge a
+    # rather than beside one - so adding the two together would charge a
     # single ask twice and halve the limit without saying so.
     if _requests_today(db, row.id) >= INVITES_PER_DAY:
         raise HTTPException(
@@ -2013,7 +2013,7 @@ def get_competency_state(
     # claims: they enter them, nobody countersigns, and they are editable
     # because a mistyped date should be fixable in seconds. That is the whole
     # difference between these and a sign-off, which is immutable once signed
-    # and corrected only by superseding it – the difference follows from who
+    # and corrected only by superseding it - the difference follows from who
     # is accountable for each.
     #
     # So every route below requires the holder and nobody else.
@@ -2121,7 +2121,7 @@ def _attachments(
     this is a second call, and until this check it took the caller's
     word. A PNG uploaded honestly could be named here as
     ``application/pdf`` and the record would say so permanently, which
-    is the same lie the sniff at upload exists to refuse – just told one
+    is the same lie the sniff at upload exists to refuse - just told one
     step later. The record outlives the request, so it is the record
     that has to be true.
     """
@@ -2189,7 +2189,7 @@ async def upload_evidence(
     **The bytes come through this application deliberately.** A blob is
     addressed by the SHA-256 of its contents, which is what lets a
     holder check their own record years later with nothing but a
-    checksum tool – so the address cannot be computed without reading
+    checksum tool - so the address cannot be computed without reading
     every byte. That rules out the signed-URL pattern the teaching
     videos use, where the browser uploads straight to the bucket: a
     video is addressed by a generated id, so nobody has to look inside
@@ -3022,7 +3022,7 @@ def list_reflections(
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> list[ReflectionOut]:
-    """Every reflection – holder only.
+    """Every reflection - holder only.
 
     ``_require_holder`` rather than ``_require_reader``: an assessor
     named on a request may read the sign-off they were asked about, and
@@ -3154,7 +3154,7 @@ def add_cpd_entry(
     """Record a continuing professional development activity.
 
     Grouped by year on disk, because UK appraisal runs annually and asks
-    what you did this year – the grouping matches how the record is used
+    what you did this year - the grouping matches how the record is used
     rather than being file management.
     """
     row = _require_writer(db, passport_id, user, store)
@@ -3385,7 +3385,7 @@ INVITES_PER_DAY = 100
 #
 # **"Admin of the holder's organisation" is two questions, not one.**
 # ``manage_users`` says *what* somebody may do and is global; membership
-# says *where*. Either alone is wrong – the competency on its own would
+# says *where*. Either alone is wrong - the competency on its own would
 # make an admin at one trust an administrator of every assessor in Quill,
 # which is the trap ``_require_shared_org_with_user`` exists to close for
 # the admin routes in ``main``. Both are required here, in that order.
@@ -3451,7 +3451,7 @@ def revoke_assessor_membership(
     **The sign-offs they already made stand**, and the count is returned
     so an admin sees that stated rather than having to trust it. A record
     of who assessed somebody is not undone by that person later losing
-    their access – the assessment happened.
+    their access - the assessment happened.
     """
     organisation_org_unit_id = _require_org_admin_over(
         db, user, assessor_user_id
@@ -3512,7 +3512,7 @@ def revoke_assessor_membership(
     #
     # **These two routes are deliberately outside the feature gate.** Every
     # other route here hangs off ``requires_feature("passport")``, which
-    # resolves through organisation membership – and somebody accepting an
+    # resolves through organisation membership - and somebody accepting an
     # invitation has no account, no organisation and no membership yet.
     # Gating them would make the invitation impossible to accept, which is
     # the sort of circular dependency that is obvious once seen and
@@ -3721,8 +3721,8 @@ def accept_assessor_invite(
     """Finish registration, which is what consumes the invitation.
 
     Only this sets ``accepted_at``, and only this is refused a second
-    time. The token cannot enforce single use – a JWT carries no record
-    of having been spent – so the row does.
+    time. The token cannot enforce single use - a JWT carries no record
+    of having been spent - so the row does.
     """
     invite, email = _decoded_invite(db, body.token)
 
@@ -3758,7 +3758,7 @@ def accept_assessor_invite(
 
         # Stated here rather than taken from the invitation. A trainee
         # asking for a sign-off gives an address and nothing else, so
-        # the invitation carries no name or registration to copy – and
+        # the invitation carries no name or registration to copy - and
         # a number typed by its holder is worth more than one typed by
         # somebody who half-remembered it.
         full_name = (body.full_name or "").strip()
@@ -3922,7 +3922,7 @@ def export_pdf(
 ) -> Response:
     """The whole passport as a PDF.
 
-    Never carries reflections – `render_pdf` excludes them by design and
+    Never carries reflections - `render_pdf` excludes them by design and
     says so on the page, so a holder handing this to a panel is not
     relying on having remembered a parameter.
     """
@@ -3960,7 +3960,7 @@ def export_bundle(
     """The portable bundle: the record, the renderings and the history.
 
     The artefact a registrar carries between trusts, and the only export
-    that contains the canonical files themselves – reflections included,
+    that contains the canonical files themselves - reflections included,
     copied byte-for-byte. Holder-only for that reason above all.
     """
     row = _require_holder(db, passport_id, user)
@@ -3998,7 +3998,7 @@ def _as_utc(moment: datetime) -> datetime:
     type and drops the offset, so a column declared
     ``DateTime(timezone=True)`` reads back naive under the unit suite.
     Comparing that against ``_now()`` raises rather than returning a
-    wrong answer, which is the good version of this bug – but it still
+    wrong answer, which is the good version of this bug - but it still
     has to be handled, and assuming UTC is safe because UTC is the only
     thing ever written.
     """

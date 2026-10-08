@@ -77,14 +77,14 @@ FROM base AS dev
 # Dev-only utilities (do not copy these into the `prod` stage)
 # git: the teaching content version-lock tests build real repositories and shell
 # out to git. CI runs pytest on the runner where git already exists; without it
-# here, `just ub` could not run them at all. Dev stage only – never in `prod`.
+# here, `just ub` could not run them at all. Dev stage only - never in `prod`.
 USER root
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git \
  && rm -rf /var/lib/apt/lists/*
 # The dev group (pytest, mypy, the mkdocs toolchain) on top of the main
 # group the base layer installed. Same retry loop as the base layer, for
-# the same reason. Dev stage only – never in `prod` or `admin`.
+# the same reason. Dev stage only - never in `prod` or `admin`.
 RUN --mount=type=cache,target=/root/.cache/pypoetry \
     for attempt in 1 2 3; do \
         poetry install --only dev --no-interaction --no-ansi && exit 0; \
@@ -98,7 +98,7 @@ RUN --mount=type=cache,target=/root/.cache/pypoetry \
 # it, so creating it as appuser is what makes the volume writable. The
 # container runs as uid 10001 and a bare named volume would arrive owned
 # by root, which is how a passport create came to fail with
-# `Permission denied: '/data'`. Dev stage only – production sets
+# `Permission denied: '/data'`. Dev stage only - production sets
 # PASSPORT_GCS_BUCKET and never touches this path.
 RUN mkdir -p /data/passports && chown -R appuser:appuser /data
 USER appuser
@@ -139,7 +139,7 @@ CMD ["python", "scripts/admin_cli.py"]
 # ---------- Transcode target (Cloud Run Job for video renditions) ----------
 # FFmpeg is the only thing this target adds over `base`. It is an apt
 # install of a few hundred megabytes, which has no business in the image
-# the API serves from – hence a target of its own rather than a line in
+# the API serves from - hence a target of its own rather than a line in
 # `base`. Whisper, when the caption job is built, pulls torch and a
 # multi-gigabyte model and will likely want its own Dockerfile again.
 FROM base AS transcode

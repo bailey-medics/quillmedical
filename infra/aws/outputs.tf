@@ -1,4 +1,4 @@
-# outputs.tf – what the DNS zone has to match
+# outputs.tf - what the DNS zone has to match
 #
 # The three DKIM selectors for each account are CNAME records in
 # ../dns.tf, written there by hand. If Amazon ever issues new ones, these

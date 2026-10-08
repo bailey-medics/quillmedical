@@ -185,7 +185,7 @@ describe("PassportAcceptInvitePage", () => {
       screen.getByRole("combobox", { name: /Registering body/ }),
     );
     await user.click(
-      screen.getByRole("option", { name: /GMC – General Medical Council/ }),
+      screen.getByRole("option", { name: /GMC - General Medical Council/ }),
     );
     await user.type(screen.getByLabelText(/Registration number/), "7654321");
     await user.type(screen.getByLabelText(/Choose a username/), "okonkwo");

@@ -26,7 +26,7 @@ export default function VerifyEmailPendingPage() {
       await api.post("/auth/resend-verification", { email });
       setResent(true);
     } catch {
-      // Silently handle – rate limit or other error
+      // Silently handle - rate limit or other error
     } finally {
       setLoading(false);
     }

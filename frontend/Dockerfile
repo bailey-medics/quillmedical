@@ -5,7 +5,7 @@
 # Dev: context: .        dockerfile: ./frontend/Dockerfile  target: dev
 
 # ============================================================
-# Stage: deps – install node_modules (shared by dev + build)
+# Stage: deps - install node_modules (shared by dev + build)
 # ============================================================
 # Pin by digest for reproducible builds. To update, run:
 #   docker pull node:24.13.0-bookworm-slim && docker inspect --format='{{index .RepoDigests 0}}' node:24.13.0-bookworm-slim
@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
     yarn install --immutable --check-cache
 
 # ============================================================
-# Stage: dev – hot-reload dev servers (unchanged from before)
+# Stage: dev - hot-reload dev servers (unchanged from before)
 # ============================================================
 FROM deps AS dev
 
@@ -34,25 +34,25 @@ EXPOSE 5174
 CMD ["/bin/sh", "-c", "/app/dev-start.sh"]
 
 # ============================================================
-# Stage: build – compile production assets
+# Stage: build - compile production assets
 # ============================================================
 FROM deps AS build
 
 COPY frontend/ .
 COPY shared/ /shared/
 
-# VAPID public key – injected at build time for push notifications
+# VAPID public key - injected at build time for push notifications
 ARG VITE_VAPID_PUBLIC
 ENV VITE_VAPID_PUBLIC=${VITE_VAPID_PUBLIC}
 
-# Feature flag – disables clinical services UI for teaching-only environments
+# Feature flag - disables clinical services UI for teaching-only environments
 ARG VITE_CLINICAL_SERVICES_ENABLED=true
 ENV VITE_CLINICAL_SERVICES_ENABLED=${VITE_CLINICAL_SERVICES_ENABLED}
 
 # Build identifier, reported with client errors so a fault can be tied to the
 # deploy that produced it. The build context is `COPY frontend/ .` with no
 # `.git`, so vite.config.ts cannot read the revision itself and falls back to
-# "dev" – deploy.yml passes the real commit in.
+# "dev" - deploy.yml passes the real commit in.
 ARG VITE_APP_VERSION
 ENV VITE_APP_VERSION=${VITE_APP_VERSION}
 
@@ -61,7 +61,7 @@ ENV VITE_APP_VERSION=${VITE_APP_VERSION}
 RUN yarn build
 
 # ============================================================
-# Stage: prod – tiny Caddy image serving static files
+# Stage: prod - tiny Caddy image serving static files
 # ============================================================
 # Pin by digest for reproducible builds. To update, run:
 #   docker pull caddy:2-alpine && docker inspect --format='{{index .RepoDigests 0}}' caddy:2-alpine

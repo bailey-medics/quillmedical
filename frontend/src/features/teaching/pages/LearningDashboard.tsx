@@ -21,7 +21,7 @@ import type {
 } from "@/features/teaching/types";
 import { getModules } from "@/features/teaching/learning-data";
 
-/** Stub progress for Phase 1 – Phase 2 will fetch from API */
+/** Stub progress for Phase 1 - Phase 2 will fetch from API */
 const STUB_PROGRESS: LearnerProgress[] = [
   {
     module_id: "colonoscopy-optical-diagnosis-test",
@@ -63,7 +63,7 @@ export default function LearningDashboard() {
         setModules(await getModules());
       } catch (err) {
         // api.get throws, and without this the page sat on skeletons
-        // for ever with an unhandled rejection in the console – which
+        // for ever with an unhandled rejection in the console - which
         // to a learner is indistinguishable from a slow network.
         setError(err instanceof Error ? err.message : "Failed to load modules");
       } finally {

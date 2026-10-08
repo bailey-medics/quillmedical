@@ -5,7 +5,7 @@ going stale: a competency removed from ``shared/competency-definitions/`` leaves
 every row that referenced it pointing at nothing, and no foreign key exists
 to refuse the removal.
 
-So this walks the other way – over what is stored – and reports anything the
+So this walks the other way - over what is stored - and reports anything the
 catalogue no longer recognises. Read-only, and it changes nothing itself:
 what to do about a stale id is a decision, not a cleanup.
 """
@@ -39,6 +39,7 @@ def unknown_ids_in_base_professions() -> dict[str, list[str]]:
         when the two files agree.
     """
     found: dict[str, list[str]] = {}
+
     for profession in BASE_PROFESSIONS:
         unknown = unknown_competency_ids(profession.base_competencies)
         if unknown:
@@ -50,7 +51,7 @@ def _current_ids_by_user(db: Session) -> dict[int, list[str]]:
     """Every competency id on a current ``user_competency`` row, per user.
 
     Grants and removals alike, since a stale id on a removal is as
-    misleading as one on a grant – it silently removes nothing. Closed rows
+    misleading as one on a grant - it silently removes nothing. Closed rows
     are left out: they record what somebody could once do, and mislead
     nobody about what they can do now.
 
@@ -70,8 +71,10 @@ def _current_ids_by_user(db: Session) -> dict[int, list[str]]:
         .distinct()
     ).all()
     found: dict[int, list[str]] = {}
+
     for user_id, competency_id in rows:
         found.setdefault(int(user_id), []).append(competency_id)
+
     return {user_id: sorted(ids) for user_id, ids in found.items()}
 
 
@@ -85,6 +88,7 @@ def unknown_ids_on_users(db: Session) -> dict[int, list[str]]:
         User id to the unrecognised ids held against them.
     """
     found: dict[int, list[str]] = {}
+
     for user_id, ids in _current_ids_by_user(db).items():
         unknown = unknown_competency_ids(ids)
         if unknown:

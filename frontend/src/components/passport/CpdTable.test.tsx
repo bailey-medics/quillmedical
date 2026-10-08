@@ -2,7 +2,7 @@
  * CpdTable Component Tests
  *
  * Most of these guard the rule that every total states the range it
- * covers – the thing that stops an honest short period reading as a poor
+ * covers - the thing that stops an honest short period reading as a poor
  * year.
  */
 
@@ -116,7 +116,7 @@ describe("CpdTable", () => {
       renderWithMantine(
         <CpdTable entries={cpdEntries} period={appraisalPeriod} />,
       );
-      expect(screen.getAllByText("–").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("-").length).toBeGreaterThan(0);
     });
   });
 

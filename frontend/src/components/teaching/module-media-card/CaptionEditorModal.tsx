@@ -8,8 +8,8 @@
  * correctable now, and does not foreclose building the better one once
  * there is a real lecture to try it against.
  *
- * Why it exists at all: Whisper mishears clinical terminology –
- * "caecum" as "seek 'em", drug names mangled – and captions are a WCAG
+ * Why it exists at all: Whisper mishears clinical terminology -
+ * "caecum" as "seek 'em", drug names mangled - and captions are a WCAG
  * 2.1 AA requirement, so a learner relying on them is given the wrong
  * word with nothing to signal it. Until this existed nothing in the
  * application could read or write the file after the job wrote it.
@@ -40,7 +40,7 @@ export interface CaptionEditorModalProps {
   /**
    * The WebVTT as loaded.
    *
-   * Null means the caption job has not run – a different thing from an
+   * Null means the caption job has not run - a different thing from an
    * empty file, and shown as such rather than as a blank box the admin
    * might save over nothing.
    */
@@ -67,7 +67,7 @@ export default function CaptionEditorModal({
   // to the prop: mirroring props into state in an effect is what
   // `react-hooks/set-state-in-effect` exists to prevent, and it would
   // also leave the box holding the previous asset's transcript for a
-  // render – a quiet way to save one lecture's captions onto another.
+  // render - a quiet way to save one lecture's captions onto another.
   const [edited, setEdited] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -110,7 +110,7 @@ export default function CaptionEditorModal({
 
         <BodyText>
           Machine transcription mishears clinical terms. Correct the words, not
-          the timings – each block begins with the time it appears.
+          the timings - each block begins with the time it appears.
         </BodyText>
 
         <Textarea

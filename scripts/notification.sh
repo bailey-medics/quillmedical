@@ -8,7 +8,7 @@
 # its own in VS Code, so a turn could sit blocked on one unnoticed.
 #
 # Claude Code runs this when a response completes, passing the hook payload as
-# JSON on stdin. We read `cwd` from that payload – it follows Claude into the
+# JSON on stdin. We read `cwd` from that payload - it follows Claude into the
 # worktree, whereas $CLAUDE_PROJECT_DIR stays at the session's start directory.
 #
 # Several worktrees of this repository are usually open at once, and a bare
@@ -204,7 +204,7 @@ case "$(uname -s 2>/dev/null || echo unknown)" in
         done
         ;;
     MINGW*|MSYS*|CYGWIN*)
-        # Git Bash / MSYS on Windows. Untested – best effort only.
+        # Git Bash / MSYS on Windows. Untested - best effort only.
         if command -v powershell.exe >/dev/null 2>&1; then
             powershell.exe -NoProfile -Command \
                 "[reflection.assembly]::LoadWithPartialName('System.Windows.Forms') | Out-Null; \

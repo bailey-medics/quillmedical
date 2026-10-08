@@ -5,7 +5,7 @@
 # images with a dependency tree none of them imports. See the header of
 # Dockerfile.caption for the full reasoning and what it costs.
 #
-# Pinned exactly, because nothing else pins them – there is no lock file
+# Pinned exactly, because nothing else pins them - there is no lock file
 # behind this and no Renovate coverage, so an unpinned range here would
 # make the image non-reproducible.
 openai-whisper==20250625

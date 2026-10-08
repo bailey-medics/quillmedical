@@ -14,7 +14,7 @@ import { act } from "react";
  * Timers still pending when a test ends.
  *
  * Mantine's `Transition` schedules `setStatus` on the transition
- * duration – 100ms or more – from inside two nested
+ * duration - 100ms or more - from inside two nested
  * `requestAnimationFrame` callbacks, so the timer does not even exist
  * until two frames after the transition starts. It clears itself on
  * unmount, but only once React runs that cleanup.

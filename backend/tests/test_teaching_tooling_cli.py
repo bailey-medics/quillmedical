@@ -149,7 +149,7 @@ class TestVersionLockToggle:
         ``tmp_path`` is outside any git repository, which is the same
         situation as validating a tree downloaded from GCS.  That must be
         reported as a violation pointing at ``--skip-version-lock``, not
-        raised as a traceback – and the two ways it can fail (no repository
+        raised as a traceback - and the two ways it can fail (no repository
         at all, or a directory outside the one git reports) must behave the
         same, since which one occurs depends on where pytest was invoked.
         """

@@ -8,7 +8,7 @@ For the detailed audit findings and penetration test results, see the [Security 
 
 ### Password hashing
 
-Hashing is a one-way mathematical transformation – the original password cannot be recovered from the stored hash. Passwords are hashed with **Argon2id** (via `argon2-cffi`) using Open Worldwide Application Security Project (OWASP) recommended defaults:
+Hashing is a one-way mathematical transformation - the original password cannot be recovered from the stored hash. Passwords are hashed with **Argon2id** (via `argon2-cffi`) using Open Worldwide Application Security Project (OWASP) recommended defaults:
 
 | Parameter   | Value          |
 | ----------- | -------------- |
@@ -21,7 +21,7 @@ Passwords are never stored in plain text. Verification uses constant-time compar
 
 ### JSON web token (JWT) tokens
 
-All authentication tokens are signed JWTs – compact, digitally signed tokens that prove a user's identity without requiring a database lookup on every request. They use **HS256** (HMAC with SHA-256) with a minimum 32-character secret (enforced by Pydantic `min_length=32`).
+All authentication tokens are signed JWTs - compact, digitally signed tokens that prove a user's identity without requiring a database lookup on every request. They use **HS256** (HMAC with SHA-256) with a minimum 32-character secret (enforced by Pydantic `min_length=32`).
 
 | Token                | Lifetime   | Scope                                              |
 | -------------------- | ---------- | -------------------------------------------------- |
@@ -61,7 +61,7 @@ CSRF attacks trick a user's browser into making unwanted requests to a site wher
 
 This works because an attacker's website can trigger a request that includes the cookie, but cannot read the cookie value to include it in the header.
 
-### Two-factor authentication (2FA) – time-based one-time password (TOTP)
+### Two-factor authentication (2FA) - time-based one-time password (TOTP)
 
 2FA adds an extra layer of security beyond a password. TOTP generates a short-lived code (typically six digits) using an authenticator app on the user's phone.
 
@@ -93,7 +93,7 @@ Anti-enumeration prevents attackers from discovering valid usernames or email ad
 
 - **Login**: Returns a generic "Invalid credentials" message regardless of whether the username exists.
 - **Registration**: Returns "Username or email already in use" for both duplicate username and duplicate email (no field-specific error).
-- **Forgot password**: Always returns `{"detail": "ok"}` – does not reveal whether the email is registered.
+- **Forgot password**: Always returns `{"detail": "ok"}` - does not reveal whether the email is registered.
 - **Conversation access**: Returns 404 "not found" (not 403 "forbidden") for unauthorised conversation access, preventing insecure direct object reference (IDOR) enumeration.
 
 ## Authorisation
@@ -107,7 +107,7 @@ itself?
 standard | superadmin
 ```
 
-- `platform_role` is read directly – there is no hierarchy and no ordering, so
+- `platform_role` is read directly - there is no hierarchy and no ordering, so
   nothing can sit "above" anything else.
 - It confers **no clinical access**. A superadmin who does not hold
   `access_patient_records` cannot read a record, the same as anyone else.
@@ -127,8 +127,8 @@ and site membership plus competencies; only `superadmin` stood alone. See
 Healthcare-specific authorisation layer for clinical operations. Rather than simple role-based permissions, CBAC checks whether a user has a specific clinical competency (e.g. "can prescribe controlled drugs") before allowing an action.
 
 - **Competency resolution**: `final_competencies = base_profession_competencies + additional_competencies - removed_competencies`
-- **Configuration**: Defined in `shared/competency-definitions/` (a directory split by kind – `clinical.yaml` for what may be done to a patient, `admin.yaml` for administering a place, and feature files such as `teaching.yaml` and `passport.yaml` – merged into one catalogue at load time) and `shared/base-professions.yaml` (profession templates).
-- **Enforcement**: `has_competency("competency_id")` FastAPI dependency – raises 403 if the user lacks the required competency.
+- **Configuration**: Defined in `shared/competency-definitions/` (a directory split by kind - `clinical.yaml` for what may be done to a patient, `admin.yaml` for administering a place, and feature files such as `teaching.yaml` and `passport.yaml` - merged into one catalogue at load time) and `shared/base-professions.yaml` (profession templates).
+- **Enforcement**: `has_competency("competency_id")` FastAPI dependency - raises 403 if the user lacks the required competency.
 - **Self-modification blocked**: Only a superadmin (platform role) can modify their own competencies via `PATCH /cbac/my-competencies`; everyone else is changed by a holder of `manage_users` through `PATCH /users/{user_id}`.
 
 ### Route protection (frontend)
@@ -153,7 +153,7 @@ All data sent to the API is validated before processing, rejecting anything unex
 
 ### Structured query language (SQL) injection
 
-SQL injection is an attack where malicious database commands are inserted into user input fields. All database queries use **SQLAlchemy object-relational mapper (ORM)** with parameterised queries – no string concatenation. This means user input is always treated as data, never as executable commands. FHIR queries use object-based construction via the `fhirclient` library.
+SQL injection is an attack where malicious database commands are inserted into user input fields. All database queries use **SQLAlchemy object-relational mapper (ORM)** with parameterised queries - no string concatenation. This means user input is always treated as data, never as executable commands. FHIR queries use object-based construction via the `fhirclient` library.
 
 ### Cross-site scripting (XSS) prevention
 
@@ -161,7 +161,7 @@ XSS attacks inject malicious scripts into web pages viewed by other users. The p
 
 - **Backend (email)**: `nh3.clean()` sanitises Markdown-to-HTML output in email templates.
 - **Frontend (rendering)**: `DOMPurify` sanitises all Markdown content before rendering, with an allowlist of safe tags and attributes. Only `http`, `https`, `mailto`, `tel`, relative, and `#` URLs are permitted.
-- **Infrastructure**: Content Security Policy (CSP) (`script-src 'self'`) blocks inline scripts – only scripts from the application's own domain are allowed to run.
+- **Infrastructure**: Content Security Policy (CSP) (`script-src 'self'`) blocks inline scripts - only scripts from the application's own domain are allowed to run.
 
 ### Server-side request forgery (SSRF) and command injection
 
@@ -187,10 +187,10 @@ Security headers are instructions sent by the server that tell the browser how t
 
 Caddy only sees the responses it serves, so in production three other kinds of response get their headers from the load balancer instead, through `custom_response_headers` in Terraform. The dev and end-to-end stacks have no load balancer, so there only Caddy's headers exist.
 
-- **The application's pages and static files** – Caddy (`caddy/prod/Caddyfile`), with the values in the table above.
-- **API responses, `/api/*`** – the load balancer's backend service (`infra/modules/load-balancer/main.tf`). `Content-Security-Policy` is `default-src 'none'; frame-ancestors 'self'`, far tighter than the application's because an API response should load nothing. `X-Frame-Options` is `SAMEORIGIN` rather than `DENY`, because the certificate page shows a PDF from the API in an iframe. `Strict-Transport-Security`, `X-Content-Type-Options` and `Referrer-Policy` match the table.
-- **Teaching videos and captions, `/videos/*`** – the videos backend bucket (`infra/modules/teaching-video-pipeline/main.tf`). The same set as the API with `X-Frame-Options: DENY`, and no `Content-Security-Policy`, which does nothing on a media file.
-- **The landing site** – its own backend bucket, in the load balancer module, with a policy written for that site.
+- **The application's pages and static files** - Caddy (`caddy/prod/Caddyfile`), with the values in the table above.
+- **API responses, `/api/*`** - the load balancer's backend service (`infra/modules/load-balancer/main.tf`). `Content-Security-Policy` is `default-src 'none'; frame-ancestors 'self'`, far tighter than the application's because an API response should load nothing. `X-Frame-Options` is `SAMEORIGIN` rather than `DENY`, because the certificate page shows a PDF from the API in an iframe. `Strict-Transport-Security`, `X-Content-Type-Options` and `Referrer-Policy` match the table.
+- **Teaching videos and captions, `/videos/*`** - the videos backend bucket (`infra/modules/teaching-video-pipeline/main.tf`). The same set as the API with `X-Frame-Options: DENY`, and no `Content-Security-Policy`, which does nothing on a media file.
+- **The landing site** - its own backend bucket, in the load balancer module, with a policy written for that site.
 
 The load balancer overwrites a header of the same name that the backend sent, so a single API route cannot set its own value for any of these.
 
@@ -213,8 +213,8 @@ Docker containers package the application and its dependencies into isolated uni
 
 Secrets (passwords, API keys, signing keys) require special handling to prevent accidental exposure.
 
-- All secrets are typed as `SecretStr` (Pydantic) – a special type that masks the value when printed or logged, displaying `**********` instead of the actual secret.
-- `.env` files are in `.gitignore` – never committed to version control.
+- All secrets are typed as `SecretStr` (Pydantic) - a special type that masks the value when printed or logged, displaying `**********` instead of the actual secret.
+- `.env` files are in `.gitignore` - never committed to version control.
 - Production secrets are managed via **GCP Secret Manager** and injected as environment variables by Cloud Run.
 - `JWT_SECRET` enforces `min_length=32` at startup.
 
@@ -234,7 +234,7 @@ The centralised API client (`frontend/src/lib/api.ts`) enforces security pattern
 - **Credentials**: All requests use `credentials: "include"` to send authentication cookies.
 - **CSRF**: Automatically extracts the `XSRF-TOKEN` cookie and includes it as `X-CSRF-Token` header on all mutating requests.
 - **Auto-refresh**: On 401 "unauthorised" response, silently requests a new access token and retries once. If refresh fails, redirects to `/login`.
-- **No raw fetch**: All components use this client – raw `fetch` is prohibited by convention.
+- **No raw fetch**: All components use this client - raw `fetch` is prohibited by convention.
 
 ### Markdown rendering
 
@@ -258,7 +258,7 @@ Static analysis tools examine the source code without running it, catching poten
 | **Gitleaks**      | Detects accidentally committed secrets (API keys, tokens, passwords)        | Pre-commit hook on every commit                                         |
 | **Semgrep**       | JavaScript/TypeScript security rules (frontend)                             | CI pipeline on every non-draft pull request (PR) and in the merge queue |
 | **Ruff**          | Python linting rules including security-relevant checks (E, F, W, I, UP, B) | Pre-commit hook                                                         |
-| **mypy --strict** | Type safety – catches type confusion and null safety issues                 | Pre-commit hook and CI                                                  |
+| **mypy --strict** | Type safety - catches type confusion and null safety issues                 | Pre-commit hook and CI                                                  |
 
 ### Dependency scanning
 
@@ -283,7 +283,7 @@ Penetration testing simulates real-world attacks to verify defences hold. Automa
   - Cookie security and unauthenticated endpoint protection
 - **Schedule**: 1st of each month at 03:00 UTC.
 - **Artefacts**: JUnit XML results uploaded with 90-day retention.
-- **Notifications**: Slack alert on both success and failure – the success "dead man's switch" ping confirms the infrequent monthly run actually executed, so silence is never mistaken for a pass.
+- **Notifications**: Slack alert on both success and failure - the success "dead man's switch" ping confirms the infrequent monthly run actually executed, so silence is never mistaken for a pass.
 
 ### Secret scanning
 
@@ -291,7 +291,7 @@ Secret scanning prevents credentials from being committed to the repository, cat
 
 - **Pre-commit (gitleaks)**: Scans staged changes for over 150 secret patterns (API keys, tokens, passwords, private keys) before each commit. If a secret is detected, the commit is blocked and the developer is alerted.
 - **GitHub secret scanning**: Server-side scanning of the full repository history. Enabled via Terraform (`infra/github/security.tf`).
-- **Push protection**: Blocks pushes containing detected secrets at the GitHub server level – even if the pre-commit hook is bypassed, the secret cannot reach the remote repository.
+- **Push protection**: Blocks pushes containing detected secrets at the GitHub server level - even if the pre-commit hook is bypassed, the secret cannot reach the remote repository.
 
 ### Recommended improvements
 
@@ -307,13 +307,13 @@ Secret scanning prevents credentials from being committed to the repository, cat
 
 PHI is any information that could identify a patient or relate to their health, treatment, or payment. It requires strict handling under healthcare regulations.
 
-- **No PHI in logs**: Logging captures request method, path, status, and timing – never patient data or credentials.
+- **No PHI in logs**: Logging captures request method, path, status, and timing - never patient data or credentials.
 - **No PHI in error messages**: Error responses contain generic messages, not database contents.
 - **Audit trail**: All clinical document modifications are tracked via EHRbase's built-in versioning.
 
 ### Clinical data integrity
 
-- **Three-database architecture**: Authentication (PostgreSQL), demographics (HAPI FHIR), and clinical documents (EHRbase) are isolated – a breach of one does not compromise all data.
+- **Three-database architecture**: Authentication (PostgreSQL), demographics (HAPI FHIR), and clinical documents (EHRbase) are isolated - a breach of one does not compromise all data.
 - **FHIR compliance**: Patient demographics use the Health Level 7 (HL7) FHIR standard for interoperability and validation.
-- **OpenEHR compliance**: Clinical letters and documents follow the OpenEHR archetype model with immutable versioning (once written, documents cannot be altered – only new versions can be created).
+- **OpenEHR compliance**: Clinical letters and documents follow the OpenEHR archetype model with immutable versioning (once written, documents cannot be altered - only new versions can be created).
 - **Idempotent operations**: Critical clinical operations use the `get_or_create_ehr` pattern to prevent duplicate records. An idempotent operation produces the same result whether it is run once or many times, which is essential for safety when network requests may be retried.

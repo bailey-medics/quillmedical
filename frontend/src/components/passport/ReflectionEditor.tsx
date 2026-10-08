@@ -43,7 +43,7 @@ import type { Reflection, ReflectionInput } from "@lib/passport";
  */
 export const ANONYMISATION_DECLARATION =
   "I confirm this reflection contains nothing that could identify a " +
-  "patient – no name, no date of birth, no NHS number, no hospital " +
+  "patient - no name, no date of birth, no NHS number, no hospital " +
   "number, and no detail so unusual that it would single somebody out.";
 
 export interface ReflectionEditorProps {

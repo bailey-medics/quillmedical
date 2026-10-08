@@ -2,9 +2,9 @@
 
 ``list_delegates`` had no test, and it reads the site membership table
 twice: once for the capacity that marks someone a delegate at a site, and
-once to name that site's clinical lead. Both were about to change – the
+once to name that site's clinical lead. Both were about to change - the
 first by the ``site_member``/``capacity`` rename, the second by moving the
-lead onto the post – so this describes the behaviour first.
+lead onto the post - so this describes the behaviour first.
 
 It also pins a bug worth not reintroducing: the lead used to be matched by
 ``Site.name``, so two sites sharing a name in different organisations

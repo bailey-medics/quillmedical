@@ -32,7 +32,7 @@ Apply these mappings. Where a target already exists, merge rather than overwrite
 |---|---|---|
 | `.github/copilot-instructions.md` | `CLAUDE.md` | Create it if absent; merge into it if present. Never truncate it. |
 | `.github/instructions/*.instructions.md` | `.claude/rules/<name>.md` | Convert the `applyTo` frontmatter string to a `paths` array. |
-| `.github/prompts/*.prompt.md` | `.claude/skills/<name>/SKILL.md` | Body becomes the skill's instructions. The target is a directory containing `SKILL.md`, not a single file – see Skill naming below. |
+| `.github/prompts/*.prompt.md` | `.claude/skills/<name>/SKILL.md` | Body becomes the skill's instructions. The target is a directory containing `SKILL.md`, not a single file - see Skill naming below. |
 | `.github/chatmodes/*.chatmode.md` | `.claude/agents/<name>.md` | Only if such files exist; skip silently otherwise. |
 
 ### Skill naming
@@ -49,10 +49,10 @@ A skill's invocable name (`/name`) comes from its **directory name**, never from
 
 **Prompt files.** Copilot prompt files may carry `mode`, `model`, `tools`, `agent` or `description` frontmatter. Carry `description` across unchanged. Drop `mode` and `agent`. Do not invent an `allowed-tools` value: if the source declared tools, list them in your report as something for me to decide on, and leave the frontmatter field out.
 
-**When to add `disable-model-invocation: true`.** Skills (unlike the old bare command files) genuinely support Claude auto-invoking them from conversational judgement, so this field is meaningful – it stops that and leaves the skill runnable only by typing `/name`. Copilot's `mode: agent` vs `mode: ask` doesn't map cleanly onto this; decide instead on what the prompt does:
+**When to add `disable-model-invocation: true`.** Skills (unlike the old bare command files) genuinely support Claude auto-invoking them from conversational judgement, so this field is meaningful - it stops that and leaves the skill runnable only by typing `/name`. Copilot's `mode: agent` vs `mode: ask` doesn't map cleanly onto this; decide instead on what the prompt does:
 
-- Any prompt whose steps commit, push, or otherwise mutate git history or a remote (e.g. the `nst-crp` skill) must get `disable-model-invocation: true`. This is a hard rule – it mirrors CLAUDE.md's "NEVER auto-commit/push – always ask permission first", and a skill Claude can silently trigger from a vague request would undermine that.
-- A prompt that only reads, reports, or explains (e.g. `e`, `read-project-instructions`) does not need it – leave model-invocation on unless the prompt's own body says otherwise.
+- Any prompt whose steps commit, push, or otherwise mutate git history or a remote (e.g. the `nst-crp` skill) must get `disable-model-invocation: true`. This is a hard rule - it mirrors CLAUDE.md's "NEVER auto-commit/push - always ask permission first", and a skill Claude can silently trigger from a vague request would undermine that.
+- A prompt that only reads, reports, or explains (e.g. `e`, `read-project-instructions`) does not need it - leave model-invocation on unless the prompt's own body says otherwise.
 - Otherwise, preserve whatever the existing target already has; don't flip it without a reason tied to the prompt's actual behaviour, and call out the reasoning in your report if you do change it.
 
 **Body text.** Preserve the wording. Do not rewrite, tighten, summarise or "improve" my instructions. The only edits permitted are: rewriting references to Copilot-specific paths so they point at the Claude equivalent, and rewriting references to Copilot-specific features that have no Claude counterpart. Flag each such edit in your report rather than making it silently.
@@ -65,11 +65,11 @@ A skill's invocable name (`/name`) comes from its **directory name**, never from
 
 Maintain `.claude/sync-manifest.json`. For each synced source file record: the source path, the target path (for prompts, the `.claude/skills/<name>/SKILL.md` path), a SHA-256 of the source file at time of sync, and an ISO date. On each run, compare current source hashes against the manifest and classify every file as one of:
 
-- **new** – source exists, no manifest entry
-- **changed** – source hash differs from the manifest
-- **unchanged** – hashes match, no action needed
-- **orphaned** – manifest entry exists but the source file is gone, or (for prompts) the source still exists but its resolved skill name changed and the old `.claude/skills/<old-name>/` directory is still present
-- **diverged** – the target has been hand-edited since sync, detectable because it no longer matches what the recorded source would have produced
+- **new** - source exists, no manifest entry
+- **changed** - source hash differs from the manifest
+- **unchanged** - hashes match, no action needed
+- **orphaned** - manifest entry exists but the source file is gone, or (for prompts) the source still exists but its resolved skill name changed and the old `.claude/skills/<old-name>/` directory is still present
+- **diverged** - the target has been hand-edited since sync, detectable because it no longer matches what the recorded source would have produced
 
 Never delete an orphaned or diverged target. Report it and let me decide.
 
@@ -79,7 +79,7 @@ platform feature with no counterpart on the other side (Copilot's `get_errors`
 tool, Claude's `$ARGUMENTS` and `ide_selection`, the different instruction files
 each platform reads). Report those separately as **by design**, not under
 Diverged, and never sync over them in either direction. The flag records intent,
-not state – recorded hashes still move when either side genuinely changes, so if
+not state - recorded hashes still move when either side genuinely changes, so if
 a diverged file differs in a way the `divergenceReason` does not cover, that part
 is ordinary drift and should be raised as usual.
 

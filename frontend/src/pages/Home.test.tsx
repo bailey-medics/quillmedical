@@ -1,12 +1,12 @@
 /**
- * Home page – error state
+ * Home page - error state
  *
  * Home rendered its error as a bare `<div>` with an inline colour, showing
  * whatever the backend returned. It was the worst of the twenty-nine
  * hand-rolled error displays, and the first converted to `ErrorState`.
  *
- * These cover the failure path only. The rest of Home – the patient list, the
- * FHIR readiness handling – is untested here and was before this change too.
+ * These cover the failure path only. The rest of Home - the patient list, the
+ * FHIR readiness handling - is untested here and was before this change too.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";

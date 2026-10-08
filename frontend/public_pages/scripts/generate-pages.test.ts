@@ -40,7 +40,7 @@ describe("page-meta.json", () => {
 
 describe("headFor", () => {
   it("puts the page first and the site name last", () => {
-    expect(headFor("pricing", meta).title).toBe("Pricing – Quill Medical");
+    expect(headFor("pricing", meta).title).toBe("Pricing - Quill Medical");
   });
 
   it("uses the site name alone for the home page", () => {
@@ -51,7 +51,7 @@ describe("headFor", () => {
     const head = headFor("x", {
       x: { title: "A & B", description: 'Say "hi" <b>' },
     });
-    expect(head.title).toBe("A &amp; B – Quill Medical");
+    expect(head.title).toBe("A &amp; B - Quill Medical");
     expect(head.description).toBe("Say &quot;hi&quot; &lt;b&gt;");
   });
 

@@ -21,14 +21,14 @@ export default meta;
 
 type Story = StoryObj<typeof UpdatingBanner>;
 
-/** Blocking full-screen overlay – used by ForcedReloadGate for the API-compatibility forced-reload flow */
+/** Blocking full-screen overlay - used by ForcedReloadGate for the API-compatibility forced-reload flow */
 export const Blocking: Story = {
   render: () => (
     <>
       <UpdatingBanner />
       <StoryNote>
         Full-screen, non-dismissible overlay used when a tab is running a bundle
-        older than the API now requires (the C &lt; S case) – not route-gated,
+        older than the API now requires (the C &lt; S case) - not route-gated,
         mutating requests are stopped until the reload completes.
       </StoryNote>
     </>

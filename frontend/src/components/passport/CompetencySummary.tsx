@@ -3,8 +3,8 @@
  *
  * Every competency a passport holds evidence for, as a list of rows.
  *
- * This answers the question asked ninety-nine times out of a hundred – is
- * this person signed off – and leaves the detail beneath it to the pages
+ * This answers the question asked ninety-nine times out of a hundred - is
+ * this person signed off - and leaves the detail beneath it to the pages
  * that need it.
  *
  * Rows sit under the framework each competency belongs to, so the page
@@ -71,7 +71,7 @@ export interface CompetencySummaryProps {
   title?: string;
   /**
    * Whether each row reports its logbook entry count. Off where the
-   * list is about sign-offs – see `CompetencyRow`.
+   * list is about sign-offs - see `CompetencyRow`.
    */
   showLogbookCount?: boolean;
 }
@@ -91,7 +91,7 @@ export default function CompetencySummary({
   // No loading state, deliberately. Skeletons stood here until the
   // fetch returned and were then replaced by one of two things: the
   // rows, or a fixed message saying nothing is recorded yet. For the
-  // second – everyone's first visit – the panel changed shape for no
+  // second - everyone's first visit - the panel changed shape for no
   // information at all: three grey bars in a card, then a differently
   // sized message in a different colour. That read as a flicker.
   //

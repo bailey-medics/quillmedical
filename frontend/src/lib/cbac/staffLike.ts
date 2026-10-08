@@ -8,7 +8,7 @@
  * needs to support.
  *
  * So the list shows everyone, and the judgement moved into the
- * interface. It asks – are you sure? – rather than refusing, and offers
+ * interface. It asks - are you sure? - rather than refusing, and offers
  * to grant what is missing in the same step.
  *
  * **Defined as the complement of the two patient-side competencies**,
@@ -23,9 +23,9 @@
 /**
  * Competencies that do not, on their own, make somebody staff.
  *
- * - `access_own_patient_records` – the `patient` profession's whole
+ * - `access_own_patient_records` - the `patient` profession's whole
  *   grant: this person may read their own record and nothing else.
- * - `access_granted_patient_records` – held by `patient_advocate` and
+ * - `access_granted_patient_records` - held by `patient_advocate` and
  *   `external_hcp`, who read records they have been granted
  *   individually. Being an advocate for a relative does not make
  *   somebody staff at the trust.
@@ -38,7 +38,7 @@ export const PATIENT_SIDE_COMPETENCIES = [
 /**
  * Does this person hold anything a member of staff would?
  *
- * Someone with no competencies at all returns `false` – they hold
+ * Someone with no competencies at all returns `false` - they hold
  * nothing staff-like, which is the same answer and the same prompt.
  *
  * @param competencies - Resolved competency IDs, as `/users` returns them

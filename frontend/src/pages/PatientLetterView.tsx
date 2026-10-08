@@ -43,7 +43,7 @@ export default function PatientLetterView() {
               id: letter.id,
               subject: letter.title,
               date: letter.date,
-              from: `${letter.author} – ${letter.authorRole}`,
+              from: `${letter.author} - ${letter.authorRole}`,
               body: letter.body,
             }
           : null

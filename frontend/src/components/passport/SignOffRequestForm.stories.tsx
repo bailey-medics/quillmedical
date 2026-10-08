@@ -76,7 +76,7 @@ export const AnAssessorFromAnywhere: Story = {
       <SignOffRequestForm {...args} />
       <StoryNote>
         The consultant who observed the work is often at another trust, or not
-        on Quill at all – which is the case this feature exists for. A list of
+        on Quill at all - which is the case this feature exists for. A list of
         existing users had no row for them, so the holder could not ask. They
         are emailed, and sign in or register to sign.
       </StoryNote>
@@ -100,7 +100,7 @@ export const ConfirmsBeforeSending: Story = {
       <StoryNote>
         Fill in an address and a date, then ask: the form confirms who it found
         before anything is sent. A registration number is hard evidence that
-        this is the right person – two consultants may share a name, and an
+        this is the right person - two consultants may share a name, and an
         address says only that somebody controls a mailbox. It says the number
         is stated by them rather than checked by Quill, because nobody here has
         checked a register.

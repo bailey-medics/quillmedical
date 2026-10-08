@@ -8,7 +8,7 @@ id. `update_user` was the worst of them: it writes username, email,
 organisations.
 
 Each test here fails without `_require_shared_org_with_user`. That is the
-point of them – a place check that is never exercised is indistinguishable
+point of them - a place check that is never exercised is indistinguishable
 from one that is wrong.
 
 **404, not 403.** Matching `_require_own_org` and

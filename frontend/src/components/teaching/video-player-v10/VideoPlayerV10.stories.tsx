@@ -1,12 +1,12 @@
 /**
- * VideoPlayerV10 Stories – a side-by-side evaluation.
+ * VideoPlayerV10 Stories - a side-by-side evaluation.
  *
  * The point of these is the control bar. `react-player` hands playback to
  * the browser, which draws controls CSS cannot reach; v10 builds them from
  * ordinary elements. Put the two next to each other and the difference is
  * visible rather than argued.
  *
- * Nothing in the app renders VideoPlayerV10 – see the component for why.
+ * Nothing in the app renders VideoPlayerV10 - see the component for why.
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Stack } from "@mantine/core";
@@ -58,7 +58,7 @@ export const SideBySideWithReactPlayer: Story = {
       <StoryNote>
         The same clip in the same frame, so any difference is the player's
         doing. The lower one delegates to the browser, which is why its controls
-        look different in Chrome, Safari and Firefox – and why they cannot be
+        look different in Chrome, Safari and Firefox - and why they cannot be
         restyled.
       </StoryNote>
     </Stack>

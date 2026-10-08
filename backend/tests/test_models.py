@@ -353,7 +353,7 @@ class TestModuleMediaLink:
     """The link between an MDX media reference and an uploaded file.
 
     The reference is a stable key, not a filename, so the mapping has to
-    be stored rather than derived – media arrives through the admin
+    be stored rather than derived - media arrives through the admin
     upload UI, not the content repository.
     """
 

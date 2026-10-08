@@ -10,7 +10,7 @@ for that contract, used at both gates:
 **It must stay dependency-light.**  Nothing here may import ``app.models``,
 ``app.db``, ``app.config``, FastAPI, SQLAlchemy, or anything from its parent
 package.  The whole point is that a content repo's CI job can run this with
-only ``pydantic`` and ``pyyaml`` installed and no environment variables –
+only ``pydantic`` and ``pyyaml`` installed and no environment variables -
 ``Settings`` requires ``JWT_SECRET`` and ``CORE_DB_PASSWORD``, which a YAML
 validator has no business needing.
 

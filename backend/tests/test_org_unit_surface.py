@@ -226,7 +226,7 @@ class TestCreating:
         """The kinds used to be a column on the organisations table.
 
         They are types of place now, so a screen offering them is
-        offering something the server will accept – which it was not
+        offering something the server will accept - which it was not
         while the tree knew only one kind of organisation.
         """
         kinds = [
@@ -398,7 +398,7 @@ class TestChanging:
     ):
         """It would be a top of a tree with something above it.
 
-        `is_root` would go on saying yes – the type declares it – while
+        `is_root` would go on saying yes - the type declares it - while
         every walk upwards landed in somebody else's trust.
         """
         org = _org(db_session)
@@ -1380,7 +1380,7 @@ class TestAnOrganisationCreatedAsAPlace:
 
     Two tables described one thing until the organisations table went:
     a root created without its paired row was a place only a superadmin
-    could see, with nobody able to belong to it – the first thing
+    could see, with nobody able to belong to it - the first thing
     anybody would try. There is one row now, so the pairing cannot come
     apart; what these check is that the consequences still hold.
     """
@@ -1412,7 +1412,7 @@ class TestAnOrganisationCreatedAsAPlace:
         )
 
         # Root-ness is declared by the type, never inferred from having
-        # nothing above it – a ward with no parent is a loose ward, not a
+        # nothing above it - a ward with no parent is a loose ward, not a
         # trust, and the test would read the same either way if it asked
         # about the column.
         roots = (

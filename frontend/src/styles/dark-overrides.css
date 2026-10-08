@@ -5,7 +5,7 @@
  * clash with our custom dark palette (navy shades).
  */
 
-/* Disabled filled buttons – light navy with white text, matching brand */
+/* Disabled filled buttons - light navy with white text, matching brand */
 .mantine-Button-root:disabled,
 .mantine-Button-root[data-disabled],
 .mantine-ActionIcon-root[data-variant="filled"]:disabled,
@@ -15,7 +15,7 @@
   color: white !important;
 }
 
-/* Dark mode – one shade lighter than card bg so they're visible */
+/* Dark mode - one shade lighter than card bg so they're visible */
 [data-mantine-color-scheme="dark"] .mantine-Button-root:disabled,
 [data-mantine-color-scheme="dark"] .mantine-Button-root[data-disabled],
 [data-mantine-color-scheme="dark"]
@@ -84,7 +84,7 @@
  * define --card-border to override the fallback.
  */
 [data-offline] {
-  --card-border: #ced4da; /* gray.4 – 2 shades darker than bg (gray.2) */
+  --card-border: #ced4da; /* gray.4 - 2 shades darker than bg (gray.2) */
   --card-border-color: #ced4da;
 }
 

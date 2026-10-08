@@ -42,9 +42,9 @@ export interface DataCardProps<T> {
   row: T;
   /** Column definitions (header labels + render functions) */
   columns: Column<T>[];
-  /** Click handler – receives the row data */
+  /** Click handler - receives the row data */
   onClick: (row: T) => void;
-  /** Loading state – shows skeleton placeholders */
+  /** Loading state - shows skeleton placeholders */
   loading?: boolean;
   /**
    * Full-width content beneath the fields, such as the reason an

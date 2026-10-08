@@ -1,4 +1,4 @@
-# Features – Clinician passport
+# Features - Clinician passport
 
 A portable record of assessed clinical competence: what the holder has been
 signed off to do, by whom, when, and on what evidence.
@@ -6,8 +6,8 @@ signed off to do, by whom, when, and on what evidence.
 The storage design is the thing to understand before reading the code. A
 passport is **a git repository of YAML and Markdown**, one per holder, that the
 holder can carry between trusts. The files are canonical. The database holds
-only two things files genuinely cannot answer – where a repository is, and who
-has been asked to sign what – so there is deliberately no sign-off table, no
+only two things files genuinely cannot answer - where a repository is, and who
+has been asked to sign what - so there is deliberately no sign-off table, no
 per-competency status table and no cached progress.
 
 Two properties run through every module below.
@@ -15,8 +15,8 @@ Two properties run through every module below.
 **Trust is recorded, never inferred.** A professional registration is
 *declared* until somebody checks a register, and the model says so with an
 explicit flag rather than by omission. A sign-off records which of three
-clinically different acts it was – directly observed, reviewed evidence, or
-countersigned – because a record that does not distinguish them is weaker than
+clinically different acts it was - directly observed, reviewed evidence, or
+countersigned - because a record that does not distinguish them is weaker than
 it looks.
 
 **Evidence is counted, never judged.** The passport reports thirty-eight logged
@@ -37,7 +37,7 @@ one validated write and one commit.
 
 ## Records
 
-Self-declared evidence – certificates, logbook entries, reflections and CPD.
+Self-declared evidence - certificates, logbook entries, reflections and CPD.
 Editable by their holder, unlike a sign-off, because a mistyped date should be
 fixable in seconds. The difference follows from who is accountable for each.
 

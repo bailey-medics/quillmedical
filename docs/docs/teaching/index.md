@@ -2,7 +2,7 @@
 
 The teaching feature enables competency-based assessments for clinical trainees. Educators create question banks (image-based MCQs), candidates take timed assessments, and the system scores answers against configurable pass criteria.
 
-The feature is **organisation-scoped** and gated behind a feature flag – only organisations with `teaching` enabled can access teaching routes.
+The feature is **organisation-scoped** and gated behind a feature flag - only organisations with `teaching` enabled can access teaching routes.
 
 ---
 
@@ -33,8 +33,8 @@ teaching content repos (Git)
 
 | Backend   | Class                 | When                                                             |
 | --------- | --------------------- | ---------------------------------------------------------------- |
-| **Local** | `LocalStorageBackend` | Dev – serves images via FastAPI route at `/api/teaching/images/` |
-| **GCS**   | `GCSStorageBackend`   | Production – generates signed URLs with 15-minute expiry         |
+| **Local** | `LocalStorageBackend` | Dev - serves images via FastAPI route at `/api/teaching/images/` |
+| **GCS**   | `GCSStorageBackend`   | Production - generates signed URLs with 15-minute expiry         |
 
 The backend is selected automatically based on config: if `TEACHING_GCS_BUCKET` is set, GCS is used; otherwise `TEACHING_IMAGES_BASE_URL` (or fallback `/static`) is used.
 
@@ -60,7 +60,7 @@ admin upload ──▶ source bucket ──▶ transcode job ──▶ processed
                                                   learner's player
 ```
 
-In development there is no bucket and no cookie – video is streamed off disk
+In development there is no bucket and no cookie - video is streamed off disk
 from the module's `learning/` directory, and the frontend runs the same code
 path in both environments.
 
@@ -217,7 +217,7 @@ Pass criteria are evaluated after all items are answered. Each criterion must pa
 | `tag_percentage` | Of **all items** (including unanswered), what percentage have the specified tag? |
 | `tag_accuracy`   | Of answers **with the specified tag**, what percentage are correct?              |
 
-Both rules compare the computed value against the `threshold` (0.0–1.0).
+Both rules compare the computed value against the `threshold` (0.0-1.0).
 
 ---
 
@@ -227,10 +227,10 @@ All models live in `backend/app/features/teaching/models.py`.
 
 | Model                   | Table                      | Purpose                                                                       |
 | ----------------------- | -------------------------- | ----------------------------------------------------------------------------- |
-| `QuestionBankConfig`    | `question_bank_configs`    | Cached config from YAML – one row per bank+version+org                        |
-| `QuestionBankItem`      | `question_bank_items`      | Individual questions – images (JSON), metadata, status (`draft`/`published`)  |
-| `Assessment`            | `assessments`              | One candidate attempt – tracks time limit, completion, score breakdown        |
-| `AssessmentAnswer`      | `assessment_answers`       | One answer within an assessment – selected option, correctness, resolved tags |
+| `QuestionBankConfig`    | `question_bank_configs`    | Cached config from YAML - one row per bank+version+org                        |
+| `QuestionBankItem`      | `question_bank_items`      | Individual questions - images (JSON), metadata, status (`draft`/`published`)  |
+| `Assessment`            | `assessments`              | One candidate attempt - tracks time limit, completion, score breakdown        |
+| `AssessmentAnswer`      | `assessment_answers`       | One answer within an assessment - selected option, correctness, resolved tags |
 | `TeachingOrgSettings`   | `teaching_org_settings`    | Per-org settings (coordinator email, institution name)                        |
 | `QuestionBankOrgStatus` | `question_bank_org_status` | Per-org bank settings (is_live, site registration, coordinator email)         |
 | `QuestionBankSync`      | `question_bank_syncs`      | Audit trail for sync operations (status, items created/updated, errors)       |
@@ -283,10 +283,10 @@ These require the `manage_teaching` CBAC competency.
 
 The sync (`sync_question_bank()` in `sync.py`) runs these steps:
 
-1. **Validate** – checks assessment.yaml structure, item directories, image counts, answer fields
-2. **Upsert config** – creates or updates the `QuestionBankConfig` row
-3. **Import items** – creates or updates `QuestionBankItem` rows (written as `published`)
-4. **Record audit** – creates a `QuestionBankSync` record with status, counts, and timestamps
+1. **Validate** - checks assessment.yaml structure, item directories, image counts, answer fields
+2. **Upsert config** - creates or updates the `QuestionBankConfig` row
+3. **Import items** - creates or updates `QuestionBankItem` rows (written as `published`)
+4. **Record audit** - creates a `QuestionBankSync` record with status, counts, and timestamps
 
 Only **published** items appear in assessments, and sync publishes every item it imports.
 
@@ -295,8 +295,8 @@ Only **published** items appear in assessments, and sync publishes every item it
 Validation (`tooling/validate.py`) runs in three contexts:
 
 1. **CI** on the question bank repo (catches errors before merge)
-2. **Dry-run API** (`POST /items/validate`) – educators check content without importing
-3. **Pre-sync gate** – sync aborts on any validation error
+2. **Dry-run API** (`POST /items/validate`) - educators check content without importing
+3. **Pre-sync gate** - sync aborts on any validation error
 
 Checks performed:
 
@@ -354,7 +354,7 @@ All page components live in `frontend/src/features/teaching/pages/`.
 | `/teaching/:bankId`                           | `TeachingModuleMain`   | Module landing page (info, learning content, start assessment)      |
 | `/teaching/learn`                             | `LearningDashboard`    | Learning content dashboard                                          |
 | `/teaching/learn/:moduleId/slide/:slideIndex` | `SlideReader`          | Slide-based learning content viewer                                 |
-| `/teaching/assessment/:id`                    | `AssessmentAttempt`    | Active assessment – shows images, options, timer, progress          |
+| `/teaching/assessment/:id`                    | `AssessmentAttempt`    | Active assessment - shows images, options, timer, progress          |
 | `/teaching/assessment/:id/result`             | `AssessmentResultPage` | Pass/fail result with score breakdown                               |
 | `/teaching/sync`                              | `SyncStatus`           | Educator: sync history and status                                   |
 

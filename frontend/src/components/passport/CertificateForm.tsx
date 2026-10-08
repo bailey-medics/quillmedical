@@ -11,8 +11,8 @@
  *
  * **The evidence is attached, not uploaded here.** The form takes an
  * attachment that has already been stored and shows what it is. Uploading
- * is a separate concern with its own failure modes – a network drop
- * halfway through a scan should not lose a half-filled form – so the page
+ * is a separate concern with its own failure modes - a network drop
+ * halfway through a scan should not lose a half-filled form - so the page
  * owns it and hands the result down.
  *
  * **`expires_on` is recorded and nothing acts on it.** Plenty of
@@ -95,7 +95,7 @@ export default function CertificateForm({
 
   // What it was, who gave it and when: the three things that make a
   // certificate mean anything to somebody reading it later. Expiry and
-  // the attachment are genuinely optional – a lapsed certificate is
+  // the attachment are genuinely optional - a lapsed certificate is
   // still a record, and not every course issues a document.
   const canSubmit =
     title.trim().length > 0 &&
@@ -149,7 +149,7 @@ export default function CertificateForm({
 
         <DateField
           label="Expires on"
-          description="Optional. Recorded and nothing acts on it – what a lapsed certificate implies is a judgement for an appraiser."
+          description="Optional. Recorded and nothing acts on it - what a lapsed certificate implies is a judgement for an appraiser."
           value={expiresOn}
           onChange={setExpiresOn}
         />

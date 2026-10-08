@@ -62,7 +62,7 @@ class LearningSlideOut(BaseModel):
     #: Optional, so the API change is additive.
     #:
     #: The default rendition, and what plays without the learner
-    #: touching anything – 720p where the transcode job has run, because
+    #: touching anything - 720p where the transcode job has run, because
     #: hospital wifi is the common case. Falls back to the original
     #: upload where it has not.
     video_src: str | None = None
@@ -183,7 +183,7 @@ class AssessmentOut(BaseModel):
 
 
 class AssessmentWithFirstItem(BaseModel):
-    """Returned when starting an assessment – includes the first item."""
+    """Returned when starting an assessment - includes the first item."""
 
     assessment: AssessmentOut
     first_item: CandidateItemOut | None
@@ -359,7 +359,7 @@ class SyncHistoryOut(BaseModel):
 
 
 # ------------------------------------------------------------------
-# Admin – teaching modules overview
+# Admin - teaching modules overview
 # ------------------------------------------------------------------
 
 
@@ -669,7 +669,7 @@ class MediaProgressOut(BaseModel):
     """How far an upload has got, in terms a person can act on.
 
     The card previously showed "No captions" throughout processing,
-    which states absence where the truth was "not yet" – and sent
+    which states absence where the truth was "not yet" - and sent
     someone re-uploading a video that was working. These fields exist to
     let it say which instead.
 
@@ -721,7 +721,7 @@ class MediaAssetOut(BaseModel):
     has_captions: bool = False
     #: When someone last saved the captions after reading them, or None
     #: where nobody has. Whisper mishears clinical terminology, so
-    #: machine output is a draft until a human has been over it – and a
+    #: machine output is a draft until a human has been over it - and a
     #: learner relying on captions cannot tell the difference.
     captions_reviewed_at: datetime | None = None
     #: How far through processing this upload is, and what is happening
@@ -781,7 +781,7 @@ class TranscodeCompleteIn(BaseModel):
     module_id: str
     asset_id: str
     #: Object keys written under ``{org_id}/{module_id}/``, as the job
-    #: verified them. Names only – the prefix is reconstructed here, so a
+    #: verified them. Names only - the prefix is reconstructed here, so a
     #: callback cannot name a path outside its own module.
     outputs: list[str]
 

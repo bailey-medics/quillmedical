@@ -6,7 +6,7 @@ declare module "@fontsource-variable/atkinson-hyperlegible-next";
  *
  * Two entry points, not one: the package's default export carries only the
  * upright faces, and the italics live in a separate stylesheet. Importing
- * just the default renders italic text as a synthesised oblique – visually
+ * just the default renders italic text as a synthesised oblique - visually
  * close enough to miss in review, and wrong.
  */
 declare module "@fontsource-variable/cormorant-garamond";

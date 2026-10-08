@@ -33,7 +33,7 @@ describe("PassportRecordTable", () => {
     const reflectionRow = screen
       .getByText("Breaking bad news")
       .closest("tr") as HTMLElement;
-    expect(within(reflectionRow).getByText("–")).toBeInTheDocument();
+    expect(within(reflectionRow).getByText("-")).toBeInTheDocument();
     expect(screen.getAllByText("Signed off").length).toBeGreaterThan(0);
   });
 

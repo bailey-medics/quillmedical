@@ -3,10 +3,10 @@
 One backend image and one frontend image run every Quill deployment. What a
 person sees depends on three gates, checked in this order:
 
-1. **The deployment** – does this deployment have clinical services at all?
-2. **The feature** – is the feature switched on somewhere that reaches this
+1. **The deployment** - does this deployment have clinical services at all?
+2. **The feature** - is the feature switched on somewhere that reaches this
    person?
-3. **The competency** – may this person do it? See [CBAC](./cbac.md).
+3. **The competency** - may this person do it? See [CBAC](./cbac.md).
 
 Anyone adding a route or a base profession has to know which of the three
 applies. This page covers the first two. It was written from
@@ -25,20 +25,20 @@ it set to `false`.
 
 When the flag is `false`:
 
-- **Settings** – the check that `FHIR_SERVER_URL` and `EHRBASE_URL` are
+- **Settings** - the check that `FHIR_SERVER_URL` and `EHRBASE_URL` are
   present is skipped, and `FHIR_DATABASE_URL` and `EHRBASE_DATABASE_URL`
   return `None`.
-- **Health** – `/api/health` reports FHIR and EHRbase as "Not provisioned"
+- **Health** - `/api/health` reports FHIR and EHRbase as "Not provisioned"
   without calling them, and startup does not probe them.
-- **Clinical routes** – every route carrying `DEP_REQUIRE_CLINICAL` returns
+- **Clinical routes** - every route carrying `DEP_REQUIRE_CLINICAL` returns
   503, "Clinical services are not available in this deployment".
-- **The clients** – `fhir_client.py` and `ehrbase_client.py` refuse to run if
+- **The clients** - `fhir_client.py` and `ehrbase_client.py` refuse to run if
   anything reaches them anyway.
-- **Self-registration** – `POST /api/auth/register` is open, and a new
+- **Self-registration** - `POST /api/auth/register` is open, and a new
   account is given the `teaching_delegate` base profession. With the flag
   `true` the route returns 403, because a clinical deployment onboards
   people through an administrator.
-- **The session** – `/api/auth/me` returns `clinical_services_enabled`, and
+- **The session** - `/api/auth/me` returns `clinical_services_enabled`, and
   the frontend reads it: `<RequireClinical>` redirects clinical routes to
   `/`, the side navigation hides the clinical links, and the profession
   picker hides every base profession marked `requires_clinical_services` in
@@ -55,9 +55,9 @@ object, and would quietly stay on.
 
 Recorded in the [teaching project plan](../plans/2026-03-18-teaching-project.md):
 
-- **One flag for both services** – FHIR and EHRbase are always on or off
+- **One flag for both services** - FHIR and EHRbase are always on or off
   together, because EHRbase depends on FHIR for patient context.
-- **It defaults to `true`** – a clinical deployment that forgets to set it
+- **It defaults to `true`** - a clinical deployment that forgets to set it
   still gets clinical services. Only an explicit `false` turns them off, so
   a missing variable never silently disables clinical work.
 

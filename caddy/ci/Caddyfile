@@ -1,4 +1,4 @@
-# CI Caddyfile – routes API to backend, everything else to frontend (prod Caddy)
+# CI Caddyfile - routes API to backend, everything else to frontend (prod Caddy)
 {
 	admin off
 }

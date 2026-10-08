@@ -22,7 +22,7 @@ export const fakeAppointments: Appointment[] = [
   },
   {
     id: "appt-2",
-    title: "Gastro clinic – initial assessment",
+    title: "Gastro clinic - initial assessment",
     date: "2026-03-19",
     time: "10:30",
     location: "Riverside Health Centre, Room 4",
@@ -34,7 +34,7 @@ export const fakeAppointments: Appointment[] = [
   },
   {
     id: "appt-3",
-    title: "GP consultation – gastro referral",
+    title: "GP consultation - gastro referral",
     date: "2026-02-25",
     time: "09:15",
     location: "Meadowbrook Surgery, Room 2",
@@ -58,7 +58,7 @@ export const fakeAppointments: Appointment[] = [
   },
   {
     id: "appt-5",
-    title: "Practice nurse – BP and weight check",
+    title: "Practice nurse - BP and weight check",
     date: "2025-10-15",
     time: "11:00",
     location: "Meadowbrook Surgery, Treatment Room",

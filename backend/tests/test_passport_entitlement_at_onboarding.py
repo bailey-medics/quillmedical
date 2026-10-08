@@ -3,7 +3,7 @@
 ``passport_write`` says somebody may hold a passport, and the row granting
 it says until when. Granting one without the other produced a new starter
 who could open their passport and not write to it, which reads as a
-broken page rather than as an arrangement nobody set up – so the grant is
+broken page rather than as an arrangement nobody set up - so the grant is
 written dated, as one row.
 """
 

@@ -42,7 +42,7 @@ export default function LoginPage() {
       const user = await login(data.username, data.password, data.totp);
 
       // Safety net: don't redirect to admin paths if the user cannot use
-      // them – prevents PHI leakage across login sessions. Asks the
+      // them - prevents PHI leakage across login sessions. Asks the
       // competency the `/admin` guard asks, so the two cannot disagree.
       const canAdminister =
         user.competencies?.some(
@@ -56,7 +56,7 @@ export default function LoginPage() {
         (!redirectFrom.startsWith("/admin") || canAdminister);
 
       // Otherwise to `/`, which lands them on the first link in their
-      // side navigation – see `HomeRedirect`.
+      // side navigation - see `HomeRedirect`.
       if (canRedirect) {
         window.location.assign(redirectFrom);
       } else {

@@ -17,7 +17,7 @@ export interface PublicFeatureCardProps {
   title: string;
   /** Card body text */
   body: string;
-  /** Optional URL – makes card a clickable link with hover animation */
+  /** Optional URL - makes card a clickable link with hover animation */
   href?: string;
 }
 

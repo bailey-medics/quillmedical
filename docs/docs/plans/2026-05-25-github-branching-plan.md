@@ -259,7 +259,7 @@ Runs on: `pull_request` types `[ready_for_review, synchronize]`, gated by `if: g
 
 | Category                    | Check                                   | Notes                                 |
 | --------------------------- | --------------------------------------- | ------------------------------------- |
-| Storybook interaction tests | `yarn storybook:test:ci`                | Installs Chromium; currently ~3–5 min |
+| Storybook interaction tests | `yarn storybook:test:ci`                | Installs Chromium; currently ~3-5 min |
 | Semgrep (SAST)              | `semgrep --config .semgrep.yml --error` | Currently in fast; move to heavy      |
 | E2E (Playwright)            | `yarn e2e`                              | Requires full stack (see below)       |
 | MkDocs build                | `mkdocs build --strict`                 | Python + Node + Yarn (see below)      |
@@ -398,7 +398,7 @@ No gatekeeper job needed: heavy is only ever skipped while a PR is draft, and a 
 | Task                | Tier  | Reason                                                         |
 | ------------------- | ----- | -------------------------------------------------------------- |
 | `storybook:build`   | Fast  | Build is quick (~30s); validates component compilation         |
-| `storybook:test:ci` | Heavy | Spawns Storybook server + Chromium interaction tests; ~3–5 min |
+| `storybook:test:ci` | Heavy | Spawns Storybook server + Chromium interaction tests; ~3-5 min |
 
 `storybook:test:ci` self-builds — the script is:
 

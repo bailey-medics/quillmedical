@@ -59,7 +59,7 @@ export default function Settings() {
   const [useTotp, setUseTotp] = useState(false);
   // Switched on unless the user has said otherwise: this is an opt-out, and
   // the switch reads positively ("help improve") rather than as a negative to
-  // be un-ticked. Read once on mount – the preference only changes here.
+  // be un-ticked. Read once on mount - the preference only changes here.
   const [countPageViews, setCountPageViews] = useState(!hasOptedOut());
   const navigate = useNavigate();
   const { state } = useAuth();
@@ -198,7 +198,7 @@ export default function Settings() {
       case "denied":
         return "Permission denied";
       case "err":
-        return "Error – try again";
+        return "Error - try again";
       default:
         return "Enable notifications";
     }

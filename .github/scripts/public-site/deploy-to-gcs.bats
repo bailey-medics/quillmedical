@@ -2,7 +2,7 @@
 # Tests for deploy-to-gcs.sh
 #
 # gsutil is stubbed and its invocations recorded. What matters here is which
-# files exist to be uploaded and what metadata the clean URLs are given – not
+# files exist to be uploaded and what metadata the clean URLs are given - not
 # that gsutil itself works.
 
 bats_require_minimum_version 1.5.0

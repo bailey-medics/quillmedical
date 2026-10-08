@@ -112,10 +112,10 @@ describe("MemberPracticePage", () => {
     await user.click(screen.getByRole("button", { name: "Save changes" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText(/authorise$/)).toHaveTextContent(
-      "Certify Death – authorise",
+      "Certify Death - authorise",
     );
     expect(within(dialog).getByText(/withdraw$/)).toHaveTextContent(
-      "Perform Venepuncture – withdraw",
+      "Perform Venepuncture - withdraw",
     );
     expect(authorise).not.toHaveBeenCalled();
 
@@ -233,7 +233,7 @@ describe("MemberPracticePage", () => {
     renderPage();
 
     expect(
-      await screen.findByRole("heading", { name: "404 – Page not found" }),
+      await screen.findByRole("heading", { name: "404 - Page not found" }),
     ).toBeInTheDocument();
   });
 

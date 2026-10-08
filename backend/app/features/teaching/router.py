@@ -145,7 +145,7 @@ def _require_csrf(request: Request, db: Session = _DEP_SESSION) -> None:
     """Validate the CSRF token, lazily as above.
 
     ``main`` imports this router, so importing ``require_csrf`` at module
-    scope would be circular – the same reason ``_get_current_user``
+    scope would be circular - the same reason ``_get_current_user``
     exists in this shape.
     """
     from app.main import require_csrf
@@ -210,7 +210,7 @@ def _get_user_org_id(user: User, db: Session) -> int:
 
     **Membership, not reach**, and it is the only caller of the two that
     asks for the narrower answer. Every one of its eighteen call sites is
-    an administrative route behind ``manage_teaching`` – syncing
+    an administrative route behind ``manage_teaching`` - syncing
     items, linking and deleting media, writing captions, changing bank
     settings. Reach is why a ward trainee *receives* the trust's content;
     it was never why they would edit it. While this delegated to
@@ -223,7 +223,7 @@ def _get_user_org_id(user: User, db: Session) -> int:
 
     **Which organisation it returns is still arbitrary**, and that is a
     separate, known bug rather than something this fixes. With two
-    memberships it picks whichever comes back first – see
+    memberships it picks whichever comes back first - see
     ``promote_bank_version_at_org_unit``, which takes ``org_unit_id`` in the
     path for that reason, and the test named
     ``test_a_bank_held_only_by_your_second_organisation_is_found``.
@@ -242,8 +242,8 @@ def _get_user_org_id(user: User, db: Session) -> int:
 def resolve_visible_module(user: User, db: Session, module_id: str) -> int:
     """Return an org_unit id that makes ``module_id`` visible to ``user``.
 
-    A module is visible when any of the user's organisations – reached
-    directly or through a site – has a ``QuestionBankOrgStatus`` row for
+    A module is visible when any of the user's organisations - reached
+    directly or through a site - has a ``QuestionBankOrgStatus`` row for
     it that is live. The same permissive union the bank list uses: one
     live organisation is enough, and which one is returned does not
     matter to the caller, only that the user may see the module.
@@ -335,7 +335,7 @@ def _build_candidate_item(
     )
 
     # ------------------------------------------------------------------
-    # Question banks (read – all teaching users)
+    # Question banks (read - all teaching users)
     # ------------------------------------------------------------------
 
 
@@ -346,7 +346,7 @@ def _module_is_servable(
 ) -> bool:
     """Whether a module may be shown to a learner at all.
 
-    A module missing any of its media is not served – not the learning
+    A module missing any of its media is not served - not the learning
     half of it, the whole thing, assessment included. Half a module is
     not a lesser version of the module: it is a module whose author
     intended a video the learner would never see, and the assessment
@@ -355,7 +355,7 @@ def _module_is_servable(
     Per organisation, because media links are. The same module can be
     servable for one organisation and hidden from another.
 
-    A module referencing no media is servable, which is most of them –
+    A module referencing no media is servable, which is most of them -
     this gate is invisible to content that never had video.
     """
     if organisation_id is None:
@@ -379,7 +379,7 @@ def list_question_banks(
 
     A bank is visible if ANY of the user's organisations has a
     QuestionBankOrgStatus row for it. The actual QuestionBankConfig
-    may be owned by a different (educator) organisation – we fetch
+    may be owned by a different (educator) organisation - we fetch
     configs by bank ID regardless of owning org.
     """
     from app.config import settings
@@ -405,7 +405,7 @@ def list_question_banks(
         .all()
     )
     # A bank is live if ANY of the user's orgs has it live, and it shows the
-    # highest version any of them has promoted – the same permissive union.
+    # highest version any of them has promoted - the same permissive union.
     # A null pointer contributes nothing: that organisation has promoted no
     # version, so it has nothing to show.
     live_map: dict[str, bool] = {}
@@ -423,7 +423,7 @@ def list_question_banks(
             live_map[s.question_bank_id] = True
             # Which organisation makes this bank visible, for the media
             # gate below. Media links are per organisation, so completeness
-            # has no global answer – only one per organisation.
+            # has no global answer - only one per organisation.
         if s.org_unit_id is not None:
             org_by_bank.setdefault(s.question_bank_id, int(s.org_unit_id))
 
@@ -454,7 +454,7 @@ def list_question_banks(
     for c in configs:
         if c.question_bank_id in seen:
             continue
-            # A module missing any of its media is not offered at all –
+            # A module missing any of its media is not offered at all -
             # hidden rather than shown disabled, because a learner who can
             # see a module they cannot open raises a support question the
             # admin cannot answer from the learner's side.
@@ -584,7 +584,7 @@ def get_question_bank(
     }
 
     # ------------------------------------------------------------------
-    # Learning modules (read – all teaching users)
+    # Learning modules (read - all teaching users)
     # ------------------------------------------------------------------
 
 
@@ -700,12 +700,12 @@ def get_learning_content(
         ref or the uploader's filename, so this is a link lookup. The
         old ``<ref>.mp4`` convention survives only as a fallback, for
         content whose video was dropped on disk by hand before there
-        was an upload path – the plan sanctions that for local work and
+        was an upload path - the plan sanctions that for local work and
         it still plays.
 
         ``src`` is what plays by default. The rest are what the
         transcode and caption jobs produce, and each appears only where
-        the link records that job having produced it – never inferred
+        the link records that job having produced it - never inferred
         from the naming convention, because a name that resolves to a
         file nobody wrote is a 404 the player cannot explain.
 
@@ -725,7 +725,7 @@ def get_learning_content(
             asset = link.asset_id
 
             # Before the transcode job has run there are no renditions,
-            # only the original upload – so the default rendition falls
+            # only the original upload - so the default rendition falls
             # back to it and the alternatives stay absent. A module in
             # that state is hidden from learners anyway, but the shape
             # has to be right for the admin card and for a dev machine
@@ -965,7 +965,7 @@ def grant_video_access(
     The access decision stays here, next to the feature gate and the
     competency check; the bytes are then served from the edge without
     the request reaching this application again. That is the whole
-    shape of the design – see the video auth gate plan.
+    shape of the design - see the video auth gate plan.
 
     The cookie is scoped to this module's prefix and nothing else, so a
     learner granted one module cannot reach another's video with it.
@@ -1034,7 +1034,7 @@ def grant_video_access(
     # The header is built by hand rather than with `set_cookie`, and
     # that is load-bearing. Starlette sets cookies through Python's
     # `SimpleCookie`, which wraps any value containing characters
-    # outside its safe set in double quotes – and this value is full of
+    # outside its safe set in double quotes - and this value is full of
     # `:` and `=`:
     #
     #   Cloud-CDN-Cookie="URLPrefix=…:Signature=…"; Path=/videos/
@@ -1048,7 +1048,7 @@ def grant_video_access(
     # the quotes were noticed.
     #
     # Scoped to the media path, so it is not sent on ordinary API or
-    # page requests. Host-only – no Domain attribute – so it cannot
+    # page requests. Host-only - no Domain attribute - so it cannot
     # leak to a sibling subdomain.
     max_age = settings.TEACHING_VIDEO_COOKIE_TTL_MINUTES * 60
     response.raw_headers.append(
@@ -1116,7 +1116,7 @@ def start_assessment(
     if status_row.active_version is None:
         raise HTTPException(403, "This assessment is not currently open")
 
-        # May be owned by a different org – content is shared, the pointer is not.
+        # May be owned by a different org - content is shared, the pointer is not.
     config_row = (
         db.execute(
             select(QuestionBankConfig).where(
@@ -1911,7 +1911,7 @@ def _maybe_enqueue_certificate_emails(
                 ),
             )
 
-            # Coordinator (clinical lead) email – look up from site staff
+            # Coordinator (clinical lead) email - look up from site staff
     if email_coordinator:
         coord_template = extract_email_template(config, "coordinator_email")
         if coord_template:
@@ -2213,7 +2213,7 @@ _DEP_MANAGE = Depends(has_competency("manage_teaching"))
 #: What a generated asset id may contain before it becomes a filename.
 #:
 #: The id is minted here with ``uuid4().hex``, so this can never fail in
-#: normal use – it is here because the value reaches a path, and a path
+#: normal use - it is here because the value reaches a path, and a path
 #: component is checked rather than trusted regardless of who produced
 #: it. The same shape as ``storage._SAFE_BANK_ID``.
 _SAFE_ASSET_ID = re.compile(r"[a-zA-Z0-9_-]+")
@@ -2274,7 +2274,7 @@ def _resolve_bank_path(bank_id: str) -> Path:
 def _resolve_bank_path_or_gcs(bank_id: str) -> tuple[Path, bool]:
     """Resolve bank to filesystem path or download from GCS.
 
-    Returns (path, is_temp) – caller must clean up when is_temp is True.
+    Returns (path, is_temp) - caller must clean up when is_temp is True.
     """
     from app.config import settings
     from app.features.teaching.storage import resolve_local_bank
@@ -2465,8 +2465,8 @@ def create_media_upload_url(
     an HMAC over a shared secret, so the processed bucket needs no
     credential here at all.
 
-    The uploaded filename never reaches the object path – the asset id
-    is generated here – so the filename needs no path validation. It is
+    The uploaded filename never reaches the object path - the asset id
+    is generated here - so the filename needs no path validation. It is
     recorded as data and shown back to the admin so they recognise their
     own file.
     """
@@ -2480,7 +2480,7 @@ def create_media_upload_url(
 
     # Validate the request before consulting configuration. A caller
     # sending an unsupported type should hear that, not "the bucket is
-    # missing" – the second tells them about our deployment and hides
+    # missing" - the second tells them about our deployment and hides
     # the fault that is actually theirs.
     ext = Path(body.original_filename).suffix.lower()
     expected = ALLOWED_MEDIA_TYPES.get(ext)
@@ -2510,7 +2510,7 @@ def create_media_upload_url(
         # Development: no bucket, so the bytes come through this API to
         # the module's own learning/ directory instead. The frontend
         # PUTs to whatever URL it is handed, so pointing it at a local
-        # route is the whole difference – nothing above this learns
+        # route is the whole difference - nothing above this learns
         # which environment it is in.
         #
         # Only where content is on disk. A deployment with neither a
@@ -2569,7 +2569,7 @@ def get_module_media(
 
     The admin card's data. Built on the shared inventory rather than a
     second query: the learner gate and the merge gate ask the same
-    question, and three implementations would drift – with the most
+    question, and three implementations would drift - with the most
     permissive one being the one nobody noticed.
 
     Scoped to the caller's organisation, because the links are. Two
@@ -2633,7 +2633,7 @@ def link_module_media(
     """Attach an uploaded asset to an MDX reference.
 
     Called once the resumable upload has finished, because the backend
-    never sees the bytes – this is what records that they arrived.
+    never sees the bytes - this is what records that they arrived.
 
     Re-linking a key that already has an asset replaces the link rather
     than refusing it. One video per reference is the rule the unique
@@ -2710,7 +2710,7 @@ def link_module_media(
     )
 
     # The trigger. Fired after the row is flushed, so the link exists
-    # before anything can act on it, and deliberately not awaited –
+    # before anything can act on it, and deliberately not awaited -
     # encoding a lecture takes minutes. It never raises: the upload the
     # admin asked for has already succeeded, and failing the request now
     # would report that as a failure. A job that never runs leaves the
@@ -2723,7 +2723,7 @@ def link_module_media(
     # Only where a job exists to start. Recording a start time for one
     # that was never configured is what had the card report "Preparing
     # the video" on a developer's machine until the patience ran out and
-    # it became "Processing seems to have failed" – a failure that never
+    # it became "Processing seems to have failed" - a failure that never
     # happened, over a job that was never fired. Asked of the same
     # helper the learner gate uses, so the two cannot disagree.
     if transcode_is_configured():
@@ -2753,7 +2753,7 @@ def unlink_module_media(
 
     Detaching is not deleting. The upload stays in the bucket and
     reappears in the card as unattached, because a reference removed
-    today may well return – and that is someone's 900 MB either way.
+    today may well return - and that is someone's 900 MB either way.
     Removing the file is a separate, destructive call.
     """
     org_id = _get_user_org_id(user, db)
@@ -2807,7 +2807,7 @@ def list_syncs(
     )
 
     # ------------------------------------------------------------------
-    # Admin endpoints – delegates
+    # Admin endpoints - delegates
     # ------------------------------------------------------------------
 
 
@@ -2943,7 +2943,7 @@ def list_delegates(
 
         # Fetch user details. Every member of the caller's organisations is
         # listed: this used to exclude anyone whose rank said "admin" or
-        # "superadmin", which was a display preference rather than a check –
+        # "superadmin", which was a display preference rather than a check -
         # the route is already gated by ``_DEP_MANAGE`` and scoped to the
         # caller's own organisations. It also read the column being retired,
         # and an administrator who is also a trainee is an ordinary case
@@ -3086,7 +3086,7 @@ def list_delegates(
     return delegates
 
     # ------------------------------------------------------------------
-    # Admin endpoints – teaching modules overview
+    # Admin endpoints - teaching modules overview
     # ------------------------------------------------------------------
 
 
@@ -3104,7 +3104,7 @@ def list_admin_banks(
 
     org_id = _get_user_org_id(user, db)
 
-    # DB banks – latest version per bank_id
+    # DB banks - latest version per bank_id
     db_configs = (
         db.execute(
             select(QuestionBankConfig)
@@ -3227,7 +3227,7 @@ def sync_all_banks(
         try:
             # Module metadata and learning content. The assessment is
             # validated inside sync_question_bank against the GCS
-            # inventory, which a module directory cannot supply – together
+            # inventory, which a module directory cannot supply - together
             # the two cover everything exactly once.
             if base_path and not bucket:
                 from app.features.teaching.storage import (
@@ -3250,12 +3250,12 @@ def sync_all_banks(
                     errors.append({"bank_id": bank_id, "error": msg})
                     continue
             else:
-                # No module directory found – block sync for safety
+                # No module directory found - block sync for safety
                 errors.append(
                     {
                         "bank_id": bank_id,
                         "error": (
-                            "module directory not found – "
+                            "module directory not found - "
                             "cannot validate module metadata"
                         ),
                     }
@@ -3355,7 +3355,7 @@ def get_settings(
     return settings_row
 
     # ------------------------------------------------------------------
-    # Admin – bank detail & status
+    # Admin - bank detail & status
     # ------------------------------------------------------------------
 
 
@@ -3665,10 +3665,10 @@ def _update_bank_org_settings(
 
     The caller must be a member of the org_unit named. Without that, anyone
     holding ``manage_teaching`` could set a bank live or closed
-    anywhere at all – and closing one mid-cohort locks its candidates
+    anywhere at all - and closing one mid-cohort locks its candidates
     out of an assessment they are part-way through.
     """
-    # Membership, not reach – the docstring above already says *member*,
+    # Membership, not reach - the docstring above already says *member*,
     # and reaching a trust from a ward is not belonging to it. Closing a
     # bank is the operation this protects: it locks candidates out of an
     # assessment they are part-way through.
@@ -3684,7 +3684,7 @@ def _update_bank_org_settings(
     # and the branch below handles that by leaving the pointer null.
     #
     # Across every organisation the caller belongs to, rather than
-    # `_get_user_org_id`'s arbitrary first one – with two, that decided
+    # `_get_user_org_id`'s arbitrary first one - with two, that decided
     # whether the bank was found at all.
     config_row = (
         db.execute(
@@ -3709,7 +3709,7 @@ def _update_bank_org_settings(
 
     if status_row:
         # active_version is deliberately untouched. Switching a bank off and
-        # on again must not promote a revision that arrived meanwhile – the
+        # on again must not promote a revision that arrived meanwhile - the
         # whole point of the pointer is that advancing it is a separate,
         # deliberate act.
         status_row.is_live = body.is_live
@@ -3723,7 +3723,7 @@ def _update_bank_org_settings(
         # Deliberately not config_row.version: that row was looked up for
         # the caller's organisation to check the bank exists, and versions
         # are per organisation. Null when this one has nothing synced yet,
-        # which is honest – there is no version to serve.
+        # which is honest - there is no version to serve.
         active_version = db.execute(
             select(func.max(QuestionBankConfig.version)).where(
                 QuestionBankConfig.org_unit_id == org_unit_id,
@@ -3774,7 +3774,7 @@ async def upload_media_content_locally(
     them.
 
     The frontend PUTs to whatever URL the upload-url endpoint handed
-    it, so nothing above this knows which of the two happened – which
+    it, so nothing above this knows which of the two happened - which
     is the point. A developer drives the real admin card, and the only
     difference is where the file ends up.
 
@@ -3834,7 +3834,7 @@ async def upload_media_content_locally(
     # it and the admin never sees it. The bucket path has a lifecycle
     # rule for exactly this; on disk there is nothing but this except
     # clause. Removed rather than kept, because a half-written video is
-    # not a partial success to resume – it is a file that would play as
+    # not a partial success to resume - it is a file that would play as
     # a broken one if anything later picked it up by name.
     written = 0
     try:
@@ -3873,7 +3873,7 @@ def _delete_local_media_object(
 
     The development counterpart of ``delete_media_object``. The file is
     named for its asset id, so the id validation that guards the write
-    guards the delete too – a traversal here would reach outside the
+    guards the delete too - a traversal here would reach outside the
     module.
 
     A missing file is not an error, matching the bucket path: the link
@@ -3928,7 +3928,7 @@ def delete_media_asset(
 
     The row goes first and the object second. If the bucket call fails
     the transaction rolls back, so a link never survives without its
-    file – the failure mode that would show a learner a broken player.
+    file - the failure mode that would show a learner a broken player.
     """
     from app.config import settings
     from app.features.teaching.storage import delete_media_object
@@ -4012,7 +4012,7 @@ def get_media_captions(
     """The current WebVTT for one asset, for the admin editor.
 
     Whisper mishears clinical terminology, so what the caption job wrote
-    is a draft. This is how an admin reads it – and, with the sibling
+    is a draft. This is how an admin reads it - and, with the sibling
     below, how they fix it.
 
     A missing file is not an error: ``webvtt`` is None where the caption
@@ -4059,12 +4059,12 @@ def put_media_captions(
 
     Saving is what records the review. Someone who has edited the text
     has read it, whereas a separate "mark as reviewed" button is a box
-    to tick without looking – so ``captions_reviewed_at`` is set here
+    to tick without looking - so ``captions_reviewed_at`` is set here
     rather than by an action of its own.
 
     The body is checked to begin ``WEBVTT`` and nothing more. That
-    catches the common mistake – a paste that lost its header, or the
-    wrong file entirely – without pretending to validate a format this
+    catches the common mistake - a paste that lost its header, or the
+    wrong file entirely - without pretending to validate a format this
     endpoint has no business parsing. A player given a malformed track
     shows no captions and says nothing about why, so the cheap check
     earns its org_unit.
@@ -4096,7 +4096,7 @@ def put_media_captions(
     link.has_captions = True
     db.flush()
 
-    # No caption text in the log – it is a transcript of a lecture and
+    # No caption text in the log - it is a transcript of a lecture and
     # this log is not PHI-safe.
     logger.info(
         "captions saved user=%s org=%s module=%s asset=%s",

@@ -1,7 +1,7 @@
 """Features, patient lists and conversations hang off a place.
 
 They used to name an organisation. They now name that organisation's own
-row in the tree, which is the same thing said in the tree's terms – and
+row in the tree, which is the same thing said in the tree's terms - and
 the column was renamed with it, so a call site that had not moved across
 would fail rather than match a different place.
 

@@ -2,7 +2,7 @@
 
 The CI path had no user and passed ``0``, which violated the ``users``
 foreign key, so every pipeline sync failed. It failed invisibly, because
-the endpoint returned 200 with the error in the body – the same gap that
+the endpoint returned 200 with the error in the body - the same gap that
 `/api/ci/teaching/sync` returning 422 now closes.
 
 Passing null instead fixes the constraint but loses the attribution, so
@@ -57,8 +57,8 @@ class TestTheConstantsAreDistinct:
 
 class TestTheModelDefault:
     def test_a_row_written_without_an_actor_reads_as_a_user(self) -> None:
-        """Matches the migration's server default, so existing rows – all
-        synced through the admin UI – keep the right attribution."""
+        """Matches the migration's server default, so existing rows - all
+        synced through the admin UI - keep the right attribution."""
         from app.features.teaching.models import QuestionBankConfig
 
         column = QuestionBankConfig.__table__.c.synced_by_actor

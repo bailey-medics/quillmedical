@@ -14,9 +14,9 @@ import { useEffect } from "react";
 const SITE_TITLE =
   typeof document === "undefined" ? "Quill Medical" : document.title;
 
-/** Build "Page – Site", the GOV.UK pattern, most specific part first. */
+/** Build "Page - Site", the GOV.UK pattern, most specific part first. */
 export function documentTitle(pageTitle: string): string {
-  return SITE_TITLE ? `${pageTitle} – ${SITE_TITLE}` : pageTitle;
+  return SITE_TITLE ? `${pageTitle} - ${SITE_TITLE}` : pageTitle;
 }
 
 /**

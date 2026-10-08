@@ -2,7 +2,7 @@
  * ResultMessage Component
  *
  * A full-width coloured card for displaying pass/fail or success/error
- * outcomes. Uses BaseCard with a background colour – border is
+ * outcomes. Uses BaseCard with a background colour - border is
  * automatically removed, text set to white.
  */
 

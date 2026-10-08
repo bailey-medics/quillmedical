@@ -543,34 +543,34 @@ grew out of Phase 17 and uses its component, so it is recorded here.
 
 ## Decisions
 
-- **No backend, no backend placeholder** – the data lives in
+- **No backend, no backend placeholder** - the data lives in
   `lib/safety/fixtures.ts` and the pages import it directly rather than
   through a fake `api.ts`. A pretend async layer would be code to delete
   later and buys nothing for a demo. There is no "real backend later" for
   this feature: if Turva adopts Quill, Quill is the thing imported into
   Turva, not the other way round, and this code is removed.
 
-- **Gated by the organisation feature switch, not a build flag** – it is
+- **Gated by the organisation feature switch, not a build flag** - it is
   the mechanism Teaching and Passport use, it needs no backend change
   because feature keys are free strings, and it keeps the mock-up out of
   every organisation but the one demonstrating it.
 
-- **Called Safety throughout** – the feature key, folder names, route
+- **Called Safety throughout** - the feature key, folder names, route
   paths, nav label and page titles all say "safety". Turva's name appears
   in this plan only, as the thing being imitated.
 
-- **Expected to be deleted** – the mock-up has served its purpose once the
+- **Expected to be deleted** - the mock-up has served its purpose once the
   Turva conversation has happened. Nothing elsewhere in Quill may depend on
   `lib/safety/` or `components/safety/`, so that removing the three folders,
   the routes, the nav entry and the feature key is the whole of the clean-up.
 
-- **One `RequireFeature` gate and no competency, at first** – the
+- **One `RequireFeature` gate and no competency, at first** - the
   passport's second gate exists because its routes write; these read
   fixtures. Reversed in Phase 6, when the mock-up was asked to mirror
   Teaching and Passport in how it is gated and staffed, so that a safety
   organisation can be set up from the same admin pages.
 
 - **Plain `ActionCard`s on the case page rather than a new card
-  component** – six cards with an icon, title, subtitle and button is
+  component** - six cards with an icon, title, subtitle and button is
   exactly what `ActionCard` is, and the passport landing page already
   lays out its sections this way, so the two features look like siblings.

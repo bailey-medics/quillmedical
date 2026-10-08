@@ -65,7 +65,7 @@ export const Default: Story = {
 };
 
 /**
- * All sizes comparison – sm, md, lg, and xl with a single icon.
+ * All sizes comparison - sm, md, lg, and xl with a single icon.
  */
 export const AllSizes: Story = {
   args: {

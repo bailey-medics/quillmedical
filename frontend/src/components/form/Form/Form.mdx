@@ -4,7 +4,7 @@ import { Meta } from "@storybook/addon-docs/blocks";
 
 # Form
 
-The `<Form>` component is the **standard wrapper for all single-page forms** in the application. It owns the submission lifecycle – loading state, success/error feedback, timeout handling – so individual pages don't need to reimplement this boilerplate.
+The `<Form>` component is the **standard wrapper for all single-page forms** in the application. It owns the submission lifecycle - loading state, success/error feedback, timeout handling - so individual pages don't need to reimplement this boilerplate.
 
 ## When to use
 
@@ -21,13 +21,13 @@ This includes:
 
 ## When NOT to use
 
-- **Multi-step forms** – use `MultiStepForm` instead. It has its own step navigation, per-step validation, and confirmation step pattern that don't fit the `<Form>` model.
-- **Teaching assessments** – these have timer-driven flows, multi-question navigation, and scoring logic that require custom state management.
-- **Inline toggles** – single-field saves (e.g. a live status switch) where a full FormStatus card would be overkill.
+- **Multi-step forms** - use `MultiStepForm` instead. It has its own step navigation, per-step validation, and confirmation step pattern that don't fit the `<Form>` model.
+- **Teaching assessments** - these have timer-driven flows, multi-question navigation, and scoring logic that require custom state management.
+- **Inline toggles** - single-field saves (e.g. a live status switch) where a full FormStatus card would be overkill.
 
 ## Four submission patterns
 
-Form supports four submission patterns – confirm is orthogonal to stay/navigate:
+Form supports four submission patterns - confirm is orthogonal to stay/navigate:
 
 | #   | Pattern                    | Components                                   | Feedback location               |
 | --- | -------------------------- | -------------------------------------------- | ------------------------------- |
@@ -48,17 +48,17 @@ idle → submitting → success
      → validation_error (client-side validation failed)
 ```
 
-- **idle** – no submission attempted
-- **submitting** – request in flight (button shows spinner + submitting label)
-- **success** – full success
-- **partial_success** – composite write where some layers succeeded (e.g. letter saved but GP delivery pending)
-- **error** – server rejected or handler threw
-- **validation_error** – client-side validation failed; uses amber/warning severity to avoid alert fatigue. Shows "Please check the highlighted fields" with a count of fields needing attention
-- **timeout** – request exceeded the configured timeout (default 30 seconds)
+- **idle** - no submission attempted
+- **submitting** - request in flight (button shows spinner + submitting label)
+- **success** - full success
+- **partial_success** - composite write where some layers succeeded (e.g. letter saved but GP delivery pending)
+- **error** - server rejected or handler threw
+- **validation_error** - client-side validation failed; uses amber/warning severity to avoid alert fatigue. Shows "Please check the highlighted fields" with a count of fields needing attention
+- **timeout** - request exceeded the configured timeout (default 30 seconds)
 
-The state is exposed to child components via React context. `FormStatus` and `SubmitButton` subscribe to this context automatically – no prop threading needed.
+The state is exposed to child components via React context. `FormStatus` and `SubmitButton` subscribe to this context automatically - no prop threading needed.
 
-## Basic usage (§2 – stay on form)
+## Basic usage (§2 - stay on form)
 
 ```tsx
 import { Form, FormStatus, SubmitButton } from "@components/form/Form";
@@ -91,9 +91,9 @@ function SettingsPage() {
 }
 ```
 
-## Destructive actions (§1 – confirm modal)
+## Destructive actions (§1 - confirm modal)
 
-For destructive or irreversible actions, use the `confirm` prop on `<Form>` to gate submission behind a confirmation modal. The modal manages its own async loading state – the form stays idle until the user confirms.
+For destructive or irreversible actions, use the `confirm` prop on `<Form>` to gate submission behind a confirmation modal. The modal manages its own async loading state - the form stays idle until the user confirms.
 
 ```tsx
 import { IconAlertTriangle } from "@tabler/icons-react";
@@ -133,17 +133,17 @@ function PermissionsPage() {
 
 ### ConfirmModal features
 
-- `onAccept` can be sync or async – spinner shows on the accept button while the promise is pending
+- `onAccept` can be sync or async - spinner shows on the accept button while the promise is pending
 - Both buttons disabled during loading (prevents double-submit)
 - Button width is locked during loading to prevent layout shift
 - On success: calls `onClose` automatically, loading state persists through the close animation (no flash)
 - On error: stays open, caller handles error display
-- `closeOnClickOutside={false}` – prevents accidental dismissal
-- No close button – forces conscious dismissal via Cancel or confirm
+- `closeOnClickOutside={false}` - prevents accidental dismissal
+- No close button - forces conscious dismissal via Cancel or confirm
 
 ## Navigate away on success (§3)
 
-For forms that navigate to a different page on success, pass a flash payload via React Router state. The centralised `PageMessageProvider` (in `MainLayout`) picks it up automatically and displays the message on the destination page – no per-page component needed.
+For forms that navigate to a different page on success, pass a flash payload via React Router state. The centralised `PageMessageProvider` (in `MainLayout`) picks it up automatically and displays the message on the destination page - no per-page component needed.
 
 ```tsx
 import { useNavigate } from "react-router";
@@ -180,7 +180,7 @@ function SendLetterPage() {
 }
 ```
 
-On the destination page, the message appears automatically – no extra component needed.
+On the destination page, the message appears automatically - no extra component needed.
 The `PageMessageProvider` reads `location.state.flash` and renders it above the page content.
 
 For imperative page-level messages (e.g. after a delete action outside a `<Form>`), use
@@ -203,7 +203,7 @@ function OrganisationsPage() {
 
   return (
     <Container size="lg" py="xl">
-      {/* PageMessageDisplay is rendered by MainLayout – no import needed */}
+      {/* PageMessageDisplay is rendered by MainLayout - no import needed */}
       <OrgList onDelete={handleDelete} />
     </Container>
   );
@@ -220,7 +220,7 @@ The outer wrapper. Accepts `defaultValues`, an async `onSubmit` handler that ret
 
 When `disableWhenClean` is true, the submit button is disabled until the user changes a field value.
 
-When `confirm` is provided, a `<ConfirmModal>` gates submission – the form validates first, then shows the modal. On confirm, the `onSubmit` handler runs.
+When `confirm` is provided, a `<ConfirmModal>` gates submission - the form validates first, then shows the modal. On confirm, the `onSubmit` handler runs.
 
 ### `<FormStatus />`
 

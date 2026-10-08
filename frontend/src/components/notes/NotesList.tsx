@@ -82,7 +82,7 @@ export default function NotesList({ notes, onNoteClick, isLoading }: Props) {
                 <FormattedDate date={note.date} format="long" />
               </BodyTextBold>
               <BodyTextBold>
-                {note.author} – {note.authorRole}
+                {note.author} - {note.authorRole}
               </BodyTextBold>
             </Group>
             <BodyTextInline>{note.content}</BodyTextInline>

@@ -46,7 +46,7 @@ const A_NURSE = {
   competencies: ["access_patient_records"],
 };
 
-/** Holds only their own record – the case the page now asks about. */
+/** Holds only their own record - the case the page now asks about. */
 const A_PATIENT = {
   id: 2,
   username: "janesmith",

@@ -4,10 +4,10 @@
  * Asks whether to install Quill on this device, or explains how. What it
  * shows depends on the install route from `lib/pwa/installRoute.ts`:
  *
- * - `prompt` – the browser lets Quill start the install, so "Install" hands
+ * - `prompt` - the browser lets Quill start the install, so "Install" hands
  *   over to the browser's own confirmation.
- * - a manual route – the steps for that platform, with one "Got it" button.
- * - `unsupported` – why this browser cannot install Quill, and which can.
+ * - a manual route - the steps for that platform, with one "Got it" button.
+ * - `unsupported` - why this browser cannot install Quill, and which can.
  *
  * Pure presentational: visibility and the install itself are the parent's.
  * The steps are data, in `installSteps.tsx`, so adding a platform is one

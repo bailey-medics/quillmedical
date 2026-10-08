@@ -85,7 +85,7 @@ type FallbackProps = {
  * Exported for Storybook rendering.
  *
  * A thin wrapper over `ErrorState` in its page variant. A crash is the one
- * case where replacing the whole view is right – there is nothing left to
+ * case where replacing the whole view is right - there is nothing left to
  * sit inside.
  *
  * Also offers `Tell us what happened`, opening the feedback modal. This is

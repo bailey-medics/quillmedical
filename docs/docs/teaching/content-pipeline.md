@@ -93,9 +93,9 @@ tree that reaches `main` is byte for byte the one `validate` passed.
 `check_version_lock.py` compares the branch with `origin/main` and applies a
 rule by the module's status on `main`:
 
-- **draft** – the version stays at 1
-- **live** – a change to the assessment needs the version raised by one
-- **retired** – no change is allowed
+- **draft** - the version stays at 1
+- **live** - a change to the assessment needs the version raised by one
+- **retired** - no change is allowed
 
 ### The pull request is the gate
 

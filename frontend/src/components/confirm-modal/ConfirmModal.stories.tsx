@@ -32,7 +32,7 @@ const meta: Meta<typeof ConfirmModal> = {
 export default meta;
 type Story = StoryObj<typeof ConfirmModal>;
 
-/** Default – modal with icon, title, and message */
+/** Default - modal with icon, title, and message */
 export const Default: Story = {
   args: {
     title: "Delete patient record",
@@ -64,7 +64,7 @@ export const IconOnly: Story = {
   },
 };
 
-/** Interactive demo – click the trigger button to open, confirm to close */
+/** Interactive demo - click the trigger button to open, confirm to close */
 export const Interactive: Story = {
   args: { opened: false },
   render: function InteractiveDemo() {

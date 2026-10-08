@@ -5,7 +5,7 @@
  * forced-reload flow (see
  * docs/docs/plans/2026-08-09-sub-plan-api-compatibility-plan.md). All
  * side effects (event listening, retry timers, form-state persistence)
- * live in `ForcedReloadProvider`/`useForcedReload` – this component only
+ * live in `ForcedReloadProvider`/`useForcedReload` - this component only
  * renders the full-screen blocking overlay while `phase === "blocking"`.
  *
  * Mounted once, near the app root, sibling to `RouterProvider`, so it

@@ -33,7 +33,7 @@ export const Default: Story = {
 };
 
 /**
- * Removed state – features that have been removed
+ * Removed state - features that have been removed
  */
 export const Removed: Story = {
   render: () => (

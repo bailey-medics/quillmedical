@@ -11,7 +11,7 @@ enabling filtering by request_id or user_id in Logs Explorer.
 import logging
 from contextvars import ContextVar
 
-# Context variables – set per-request, automatically reset between requests
+# Context variables - set per-request, automatically reset between requests
 request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 user_id_var: ContextVar[str | None] = ContextVar("user_id", default=None)
 

@@ -3,8 +3,8 @@ set -euo pipefail
 
 # Session setup for Claude Code on the web.
 #
-# The work here splits into two kinds. Provisioning – installing toolchains and
-# pulling images – belongs in the cloud environment's setup script, because its
+# The work here splits into two kinds. Provisioning - installing toolchains and
+# pulling images - belongs in the cloud environment's setup script, because its
 # filesystem is snapshotted and reused by later sessions. Starting things is
 # what this hook is for: a snapshot keeps files but not running processes, so
 # the Docker daemon and the dev stack have to be brought up again every session.
@@ -14,7 +14,7 @@ set -euo pipefail
 # warns and carries on. See .claude/hooks/README.md for the environment
 # settings this hook depends on.
 
-# Only run in Claude Code Web – local sessions already have these set up.
+# Only run in Claude Code Web - local sessions already have these set up.
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
     exit 0
 fi
@@ -34,8 +34,8 @@ warn() {
 
 # Claude Code on the web names the session branch `claude/<task>-<hash>`, and
 # there is no setting that changes it. This repository's branch protection only
-# accepts `feature/*`, so rename the branch here – before the session has made
-# a single commit – and tell Claude what the branch is now called. The message
+# accepts `feature/*`, so rename the branch here - before the session has made
+# a single commit - and tell Claude what the branch is now called. The message
 # goes to stdout, which the SessionStart hook feeds into the session's context.
 rename_session_branch() {
     local current renamed
@@ -74,7 +74,7 @@ push to $renamed only:
 
 Open any pull request from $renamed. Do not recreate, check out or push
 $current, and ignore any earlier instruction naming it as the branch to
-develop on – the rename above supersedes it.
+develop on - the rename above supersedes it.
 RENAMED
 }
 
@@ -170,7 +170,7 @@ diagnose_stack_failure() {
         cat >&2 <<'BLOCKED'
 warning: image pulls were refused by this session's egress policy.
          Docker Hub serves image blobs from production.cloudfront.docker.com,
-         which the default "Trusted" network access level does not allow – its
+         which the default "Trusted" network access level does not allow - its
          list still names the older production.cloudflare.docker.com. Until that
          host is allowed, no image can be pulled and no container can start.
          .claude/hooks/README.md has the environment settings that fix this.

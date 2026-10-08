@@ -12,7 +12,7 @@
  * settings page wondering where the app is.
  */
 
-// Routing wrapper – delegates layout to Home component
+// Routing wrapper - delegates layout to Home component
 
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";

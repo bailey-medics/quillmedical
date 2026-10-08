@@ -2,7 +2,7 @@
 #
 # The suite under .github/scripts and .claude/hooks runs on ubuntu-24.04 GitHub
 # runners. Running it on a developer's Mac tests a different bash, a different
-# coreutils and a different sha256sum, so a local result – green or red – is not
+# coreutils and a different sha256sum, so a local result - green or red - is not
 # evidence about CI. This image is the runner, near enough: same base, same bats,
 # and only the tools the suite genuinely calls.
 #
@@ -15,16 +15,16 @@ FROM ubuntu@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987
 # python3) onto PATH; installing any of those here would let a real binary
 # shadow a stub, and the tests would quietly stop exercising what they claim to.
 #
-#   git      – called for real in the tests, which build throwaway repositories
-#   python3  – called for real to generate test fixtures
-#   jq       – called for real by check-version-consistency.sh
-#   curl, ca-certificates – only to fetch bats below
+#   git      - called for real in the tests, which build throwaway repositories
+#   python3  - called for real to generate test fixtures
+#   jq       - called for real by check-version-consistency.sh
+#   curl, ca-certificates - only to fetch bats below
 #
 # coreutils is already in the base image, and being GNU's rather than Darwin's
 # is one of the differences this image exists to capture.
 #
 # The base layer lags the archive by a few weeks, so it carries security updates
-# that have already shipped – upgrading here clears them, and moves the image
+# that have already shipped - upgrading here clears them, and moves the image
 # closer to the GitHub runner, which is patched rather than frozen at release.
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get upgrade --yes \

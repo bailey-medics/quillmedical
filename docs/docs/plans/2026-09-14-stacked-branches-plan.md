@@ -1140,7 +1140,7 @@ Four open issues, all in the same place, and the important one was
   which is what the guard reads.
 
   The roll-up reports the fast and heavy tiers as two marks, fast then
-  heavy — `✓ –` — because on a stack they answer different questions: the
+  heavy — `✓ -` — because on a stack they answer different questions: the
   fast tier runs on every push, while the heavy tier is gated on the pull
   request not being a draft and so usually has not run. A dash means "not
   run", not "failed". Getting this right needed one subtlety: a check

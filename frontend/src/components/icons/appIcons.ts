@@ -2,7 +2,7 @@
  * Application Icon Registry
  *
  * Single source of truth for all Tabler icons used in the application.
- * Components MUST import icons from here – never directly from
+ * Components MUST import icons from here - never directly from
  * "@tabler/icons-react". To add a new icon, import it below and add
  * it to both the re-export and the iconCatalogue object.
  *
@@ -185,7 +185,7 @@ export {
 };
 
 /**
- * Icon catalogue – maps display names to icon components.
+ * Icon catalogue - maps display names to icon components.
  * Used by Storybook to render the full icon grid automatically.
  */
 export const iconCatalogue = {

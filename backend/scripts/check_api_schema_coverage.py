@@ -7,7 +7,7 @@ diff by field:
 
 - A bare ``{"type": "object"}`` with no ``properties``
 - ``dict[str, X]`` for a concrete ``X`` (renders as ``additionalProperties``
-  with no ``properties`` – still arbitrary keys, still opaque per-field)
+  with no ``properties`` - still arbitrary keys, still opaque per-field)
 - A bare top-level array of untyped objects
 - An ``Optional``/union-wrapped opaque return (``anyOf`` with an opaque
   non-null branch)
@@ -30,7 +30,7 @@ retrofit tracked by
 docs/docs/plans/2026-08-25-api-schema-coverage-plan.md and marked a
 pre-existing opaque route awaiting a typed Pydantic response model. Once
 that retrofit finished (zero routes left bearing it), recognition of the
-string was deleted from this checker entirely – not just left unused –
+string was deleted from this checker entirely - not just left unused -
 so a route bearing that exact comment today fails the check like any
 other unmarked opaque route.
 
@@ -50,7 +50,7 @@ from pathlib import Path
 from typing import Any
 
 # Make imports robust regardless of current working directory or how this
-# script is invoked (pre-commit runs it as a bare script, not a package) –
+# script is invoked (pre-commit runs it as a bare script, not a package) -
 # ensure the backend dir is on sys.path before importing the `scripts`
 # package, mirroring dump_openapi.py's own bootstrap.
 _HERE = Path(__file__).resolve()
@@ -171,7 +171,7 @@ def is_opaque_schema(
         # properties), or a schema with no type info at all (Any).
         return True
 
-    # A primitive (string/integer/boolean/number) or enum – trivially
+    # A primitive (string/integer/boolean/number) or enum - trivially
     # diffable as a whole; no field-level shape is needed.
     return False
 
@@ -203,7 +203,7 @@ def _decorator_is_http_route(decorator: ast.expr) -> bool:
 def _marker_above(lines: list[str], lineno: int) -> str | None:
     """Return the marker on the line immediately above 1-indexed `lineno`.
 
-    Requires an exact match against the marker constant – no appended
+    Requires an exact match against the marker constant - no appended
     reason text or other trailing content. A marker is a fixed, static
     line, not a per-route customisable comment; allowing a suffix would
     invite exactly that impression without the checker ever reading it.
@@ -278,7 +278,7 @@ def collect_routes(
             continue
 
         # Decorators like slowapi's @limiter.limit(...) wrap the endpoint
-        # in a function defined inside the decorator's own package –
+        # in a function defined inside the decorator's own package -
         # unwrap (a no-op for undecorated functions) to reach the real
         # route function and its true source location.
         endpoint = inspect.unwrap(endpoint)

@@ -95,10 +95,10 @@ export const AnimatedLoadingSequence: Story = {
     }, [state]);
 
     const labels: Record<typeof state, string> = {
-      "health-check": "1/4 – Health check loading (5s)",
-      "db-init": "2/4 – Database initialising (5s)",
-      fetching: "3/4 – Fetching patients (5s)",
-      loaded: "4/4 – Patients loaded (5s)",
+      "health-check": "1/4 - Health check loading (5s)",
+      "db-init": "2/4 - Database initialising (5s)",
+      fetching: "3/4 - Fetching patients (5s)",
+      loaded: "4/4 - Patients loaded (5s)",
     };
 
     // Render appropriate state

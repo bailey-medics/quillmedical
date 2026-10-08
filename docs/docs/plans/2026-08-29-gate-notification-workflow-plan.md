@@ -208,7 +208,7 @@ are therefore tracked in one place rather than two:
 
 ## Phase 5: Wait for ancestors — every commit recorded, in commit order
 
-Phases 1–2 serialised the decide jobs with job-level `concurrency`
+Phases 1-2 serialised the decide jobs with job-level `concurrency`
 (`cancel-in-progress: false`). GitHub concurrency groups hold **one running
 plus one pending** instance — a third arrival cancels the queued second — so
 three rapid pushes silently drop the middle commit's decision. Decided

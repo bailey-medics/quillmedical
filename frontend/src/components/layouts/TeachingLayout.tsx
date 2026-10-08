@@ -2,7 +2,7 @@
  * TeachingLayout Component
  *
  * Dedicated layout for all teaching pages (learning + assessments).
- * Deliberately excludes patient context for clinical safety – teaching
+ * Deliberately excludes patient context for clinical safety - teaching
  * pages have zero access to PHI by design, not by flag.
  *
  * Uses an optional sidebar slot for context-specific navigation:

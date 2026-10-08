@@ -238,7 +238,7 @@ def read_fhir_patient(patient_id: str) -> dict[str, Any] | None:
         patient = Patient.read(patient_id, fhir.server)
         return patient.as_json()  # type: ignore[no-any-return]
     except Exception as exc:
-        # fhirclient raises generic exceptions – check for 404-like cases
+        # fhirclient raises generic exceptions - check for 404-like cases
         exc_str = str(exc).lower()
         if "not found" in exc_str or "404" in exc_str:
             return None

@@ -1,4 +1,4 @@
-# variables.tf – inputs for the AWS root
+# variables.tf - inputs for the AWS root
 
 # The account numbers have no default and are not in a tfvars file: this
 # repository is public. `just terraform-aws` reads them from

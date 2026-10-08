@@ -2,7 +2,7 @@
  * StateMessage Component Stories
  *
  * Demonstrates informational alert messages for different application states.
- * All content is passed via props – icon, title, description, and colour.
+ * All content is passed via props - icon, title, description, and colour.
  */
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { StoryNote } from "@/stories/variants";
@@ -27,7 +27,7 @@ type Story = StoryObj<typeof StateMessage>;
  * Every status colour as a full card.
  *
  * Driven off the palette rather than a hand-written list, so a colour
- * added later shows up here without anybody remembering to add it –
+ * added later shows up here without anybody remembering to add it -
  * which is how `update` came to be the only one whose text colour had
  * ever been checked at this size.
  */

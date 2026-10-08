@@ -6,9 +6,9 @@ need: paper, in a room, with no laptop.
 
 ``platypus`` rather than the ``pdfgen`` canvas the teaching certificate
 uses. A certificate is one page of fixed layout, so drawing at absolute
-coordinates is right for it. A passport flows – a registrar with fifty
+coordinates is right for it. A passport flows - a registrar with fifty
 sign-offs and three hundred logbook entries produces a document of
-unknown length – and platypus does the pagination, table splitting and
+unknown length - and platypus does the pagination, table splitting and
 text wrapping that would otherwise have to be written by hand.
 
 **Nothing here may fail a download.** That policy comes from
@@ -17,7 +17,7 @@ somebody else's content repository must degrade to a default rather than
 raise. The passport has no style config, so the same discipline is
 applied where it does apply: to the record data. A sign-off missing an
 optional field, a competency whose name is empty, a date that will not
-format – each degrades to a readable placeholder rather than denying
+format - each degrades to a readable placeholder rather than denying
 somebody their own record on the morning of a panel.
 
 **Reflections are counted, never printed.** There is deliberately no
@@ -80,7 +80,7 @@ logger = logging.getLogger(__name__)
 #: What a missing or unreadable value prints as. One dash, everywhere,
 #: so a reader learns its meaning once rather than meeting three
 #: different spellings of "we do not know".
-_MISSING = "–"
+_MISSING = "-"
 
 #: Room for the footer, which carries the head commit on every page.
 _BOTTOM_MARGIN = 22 * mm
@@ -107,7 +107,7 @@ def render_pdf(
 
     Raises:
         PassportNotFoundError: If there is no such passport. The only
-            failure this function raises – everything past reading the
+            failure this function raises - everything past reading the
             passport degrades rather than denying the download.
     """
     profile = from_yaml(Profile, store.read(passport_id, paths.PROFILE))
@@ -123,7 +123,7 @@ def render_pdf(
         rightMargin=18 * mm,
         topMargin=18 * mm,
         bottomMargin=_BOTTOM_MARGIN,
-        title=f"Clinician passport – {_text(profile.name)}",
+        title=f"Clinician passport - {_text(profile.name)}",
         author="Quill Medical",
     )
 
@@ -153,7 +153,7 @@ def _styles() -> dict[str, ParagraphStyle]:
     per-tenant styling, and the teaching certificate's config parsing
     exists because bank configs are authored outside this repository.
     Nothing equivalent applies, so there is nothing to parse defensively
-    – the defensiveness belongs on the record data instead.
+    - the defensiveness belongs on the record data instead.
     """
     sheet = getSampleStyleSheet()
 
@@ -253,7 +253,7 @@ def _front_page(
         story.append(
             Paragraph(
                 f"{_text(registration.body)} {_text(registration.number)} "
-                "– <i>declared</i>",
+                "- <i>declared</i>",
                 styles["body"],
             )
         )
@@ -284,7 +284,7 @@ def _front_page(
                 "Quill checks no register, so a reader relying on one "
                 "should check it there. The fingerprints printed against each "
                 "sign-off show the record has not changed since it was "
-                "written – they do not prove a registration, and they "
+                "written - they do not prove a registration, and they "
                 "prove nothing to a reader who distrusts the system that "
                 "wrote them.",
                 styles["caveat"],
@@ -391,7 +391,7 @@ def _logbook_totals(
     many did I do, and when" at a glance, and the repository holds the
     detail for anyone who needs it.
 
-    Grouped by ``performed_on`` – the clinical date inside the entry –
+    Grouped by ``performed_on`` - the clinical date inside the entry -
     not by the filename, which records when Quill wrote the file.
 
     Still a count and never a comparison. No target, no expected number,
@@ -539,7 +539,7 @@ def _certificates(
     for certificate in sorted(found, key=lambda c: c.awarded_on):
         story.append(
             Paragraph(
-                f"<b>{_text(certificate.title)}</b> – "
+                f"<b>{_text(certificate.title)}</b> - "
                 f"{_text(certificate.issuer)}, "
                 f"{_day(certificate.awarded_on)}",
                 styles["body"],
@@ -600,14 +600,14 @@ def _cpd(
 
         story.append(
             Paragraph(
-                f"{_text(group.heading)} – {summary}", styles["subheading"]
+                f"{_text(group.heading)} - {summary}", styles["subheading"]
             )
         )
 
         for entry in group.entries:
             story.append(
                 Paragraph(
-                    f"{_day(entry.activity_on)} – {_text(entry.title)} "
+                    f"{_day(entry.activity_on)} - {_text(entry.title)} "
                     f"[{_text(entry.activity_type)}]",
                     styles["body"],
                 )
@@ -623,7 +623,7 @@ def _reflections_note(
 
     The count is worth printing and the content is not. That somebody
     wrote nine reflections across a year is what an appraiser is looking
-    for – evidence of a habit – and it discloses nothing about any
+    for - evidence of a habit - and it discloses nothing about any
     patient or any case.
 
     The writing itself never appears, even when a caller asks for
@@ -633,7 +633,7 @@ def _reflections_note(
     repository where its holder controls who reads it.
 
     Only ``written_on`` is read. No title, because a title alone can
-    identify a case – "the arrest on ward 12" names nobody and tells
+    identify a case - "the arrest on ward 12" names nobody and tells
     anyone who was there exactly which patient it was.
     """
     story: list[Any] = [Paragraph("Reflections", styles["heading"])]
@@ -776,7 +776,7 @@ def _one_sign_off(
                 f"Signed off by {_text(assessor.name)}, "
                 f"{_text(assessor.role)}"
                 + (
-                    f" ({registrations}) – <i>registration as declared</i>"
+                    f" ({registrations}) - <i>registration as declared</i>"
                     if registrations
                     else ""
                 ),

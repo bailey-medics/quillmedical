@@ -1,9 +1,9 @@
 /**
- * VideoPlayerV10 – an evaluation of Video.js v10, not a production player.
+ * VideoPlayerV10 - an evaluation of Video.js v10, not a production player.
  *
  * `VideoPlayer` remains what the app uses. This exists so the v10 controls
  * can be seen and styled in Storybook beside them, because the question
- * that matters – whether its controls are genuinely ours to restyle –
+ * that matters - whether its controls are genuinely ours to restyle -
  * cannot be answered from documentation.
  *
  * **Nothing in the application imports this.** The dependency is a release
@@ -30,7 +30,7 @@ export interface VideoPlayerV10Props {
    *
    * Not a signed URL: access is carried by an `HttpOnly` cookie checked
    * at the edge, so this is an ordinary address that happens to require
-   * one – the same contract `VideoPlayer` works to.
+   * one - the same contract `VideoPlayer` works to.
    */
   src?: string;
   /** YouTube video ID. v10 reads YouTube through `@videojs/youtube-video`. */

@@ -5,9 +5,9 @@
  * the startedAt timestamp and the config-driven time limit.
  *
  * Colour states:
- * - Blue: normal – more than 5 minutes remaining
- * - Orange: warning – 5 minutes or less remaining
- * - Red: critical – 1 minute or less remaining, or expired ("Time up")
+ * - Blue: normal - more than 5 minutes remaining
+ * - Orange: warning - 5 minutes or less remaining
+ * - Red: critical - 1 minute or less remaining, or expired ("Time up")
  *
  * Calls onExpire when the countdown reaches zero.
  */

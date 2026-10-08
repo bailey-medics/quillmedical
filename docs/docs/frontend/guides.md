@@ -8,11 +8,11 @@ the [in-app guides plan](../plans/2026-10-05-in-app-guides-plan.md).
 
 ## What a guide is made of
 
-- **A registry entry** – in `frontend/src/guides/registry.ts`. It gives the
+- **A registry entry** - in `frontend/src/guides/registry.ts`. It gives the
   guide its address, its title and who it is for.
-- **A markdown file** – `frontend/src/guides/content/<slug>.md`, holding
+- **A markdown file** - `frontend/src/guides/content/<slug>.md`, holding
   the words.
-- **A screenshot spec** – `frontend/e2e/guides/<slug>.spec.ts`, taking the
+- **A screenshot spec** - `frontend/e2e/guides/<slug>.spec.ts`, taking the
   pictures the words name. A guide with no pictures needs none.
 
 The tests in `frontend/src/guides/` hold the three together. A registry
@@ -34,18 +34,18 @@ two, a picture nobody takes and a picture nobody shows each fail the build.
 },
 ```
 
-- **`slug`** – lower case words joined by hyphens. It is the address,
+- **`slug`** - lower case words joined by hyphens. It is the address,
   `/guides/<slug>`, and the name of the markdown file.
-- **`title`** – sentence case, and a task: "Add a delegate by hand", not
+- **`title`** - sentence case, and a task: "Add a delegate by hand", not
   "Delegates".
-- **`audience`** – `everyone`, `admin` or `superadmin`. A reader sees their
+- **`audience`** - `everyone`, `admin` or `superadmin`. A reader sees their
   own audience and every one below it.
-- **`public`** – `true` lets somebody who is not signed in read it. Only
+- **`public`** - `true` lets somebody who is not signed in read it. Only
   for a guide somebody needs before they have an account. It publishes the
   guide to the internet.
-- **`feature`** – leave it out for a guide about Quill as a whole. Given, the
+- **`feature`** - leave it out for a guide about Quill as a whole. Given, the
   guide is shown only where that feature is switched on.
-- **`competency`** – optional. Given, the guide is shown only to somebody
+- **`competency`** - optional. Given, the guide is shown only to somebody
   who holds it. Use it where one feature has readers who do different
   things: a guide to signing somebody off names
   `assess_clinician_passport`, so a holder who cannot assess is not shown

@@ -13,7 +13,7 @@
  *   keep retrying a reload automatically every RETRY_INTERVAL_MS in the
  *   background, in case the deploy is simply still rolling out.
  * - A mismatch for a *different* (newer) generation always resets the
- *   record and reloads immediately again – it's a fresh decision, not a
+ *   record and reloads immediately again - it's a fresh decision, not a
  *   repeat of the one already tracked.
  */
 
@@ -26,7 +26,7 @@ export interface RetryRecord {
   generation: number;
   /** How many reload attempts have been made for this generation. */
   attempts: number;
-  /** Epoch ms – the earliest time a further automatic retry may fire. */
+  /** Epoch ms - the earliest time a further automatic retry may fire. */
   nextRetryAt: number;
 }
 
@@ -59,7 +59,7 @@ function writeRecord(storage: StorageLike, record: RetryRecord): void {
   try {
     storage.setItem(STORAGE_KEY, JSON.stringify(record));
   } catch {
-    // sessionStorage unavailable/full – best-effort only, never blocks the
+    // sessionStorage unavailable/full - best-effort only, never blocks the
     // reload flow itself.
   }
 }
@@ -73,7 +73,7 @@ export function clearRetryRecord(storage: StorageLike = sessionStorage): void {
 }
 
 /**
- * True if a retry record is already tracked from a previous mismatch –
+ * True if a retry record is already tracked from a previous mismatch -
  * used on mount to decide whether to proactively re-check compatibility
  * (via a lightweight request) rather than waiting for organic traffic.
  * Read-only: never writes or mutates state.
@@ -102,7 +102,7 @@ export type RetryDecision =
  *   banner. `waitMs` is how long until the next automatic background
  *   retry is due (may be 0 if already overdue).
  * - `wait`: same as fallback but the background retry isn't due yet and
- *   the caller has already shown the fallback banner this session – kept
+ *   the caller has already shown the fallback banner this session - kept
  *   distinct so the caller doesn't need to re-derive "already showing".
  */
 export function decideRetryAction(

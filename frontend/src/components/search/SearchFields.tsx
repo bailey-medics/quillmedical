@@ -15,7 +15,7 @@ import { typographyTokens } from "@/theme";
 import classes from "./SearchFields.module.css";
 
 interface SearchFieldProps {
-  /** Controlled value – when provided, component is controlled */
+  /** Controlled value - when provided, component is controlled */
   value?: string;
   /** Called when the search text changes */
   onChange?: (value: string) => void;

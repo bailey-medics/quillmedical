@@ -131,7 +131,7 @@ Clinical Risk Management
 
 ## Residual hazard risk assessment
 
-TBC – awaiting scoring by the Clinical Safety Officer.
+TBC - awaiting scoring by the Clinical Safety Officer.
 
 One of the five design controls, the API security headers, is in place. The first, removing the roles array from the login response, is not: login still returns `user: {username, roles}`. Given the correction in the description, that the response tells a user only their own roles and only after they have logged in, the remaining design controls may not be needed. That is a judgement for the Clinical Safety Officer.
 
@@ -139,7 +139,7 @@ One of the five design controls, the API security headers, is in place. The firs
 
 ## Hazard status
 
-Draft from LLM – facts corrected and controls updated 2 October 2026, scoring still awaited
+Draft from LLM - facts corrected and controls updated 2 October 2026, scoring still awaited
 
 ---
 

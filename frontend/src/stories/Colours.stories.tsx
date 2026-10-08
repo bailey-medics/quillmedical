@@ -134,7 +134,7 @@ function TextSwatch({
       <div>
         <StoryNote mt={0}>{name.toUpperCase()}</StoryNote>
         <StoryNote mt={0}>
-          {config.value} – {config.usage}
+          {config.value} - {config.usage}
         </StoryNote>
       </div>
     </Group>
@@ -189,7 +189,7 @@ function LogoSwatch({
       <div>
         <StoryNote mt={0}>{label.toUpperCase()}</StoryNote>
         <StoryNote mt={0}>
-          {colours} – {usage}
+          {colours} - {usage}
         </StoryNote>
       </div>
     </Group>
@@ -219,27 +219,27 @@ export const Overview: Story = {
           <ColourSwatch
             colour={brand.primary}
             label="Primary"
-            description={`${brand.primary} – navigation, primary actions, brand identity`}
+            description={`${brand.primary} - navigation, primary actions, brand identity`}
           />
           <ColourSwatch
             colour={brand.secondary}
             label="Secondary"
-            description={`${brand.secondary} – secondary buttons, accents, highlights`}
+            description={`${brand.secondary} - secondary buttons, accents, highlights`}
           />
           <ColourSwatch
             colour={brand.background}
             label="Background"
-            description={`${brand.background} – page backgrounds, card surfaces`}
+            description={`${brand.background} - page backgrounds, card surfaces`}
           />
           <ColourSwatch
             colour={brand.mark}
             label="Mark"
-            description={`${brand.mark} – the quill on a navy tile: the email avatar and the installed app's icon. Light grey, not white, so the mark sits back from the navy`}
+            description={`${brand.mark} - the quill on a navy tile: the email avatar and the installed app's icon. Light grey, not white, so the mark sits back from the navy`}
           />
           <ColourSwatch
             colour="#f8f9fa"
             label="Default grey"
-            description="#f8f9fa – subtle backgrounds, input fills, hover states"
+            description="#f8f9fa - subtle backgrounds, input fills, hover states"
           />
         </Stack>
       </div>
@@ -391,7 +391,7 @@ export const Overview: Story = {
               <Box flex={1} miw="14rem">
                 <StoryNote mt={0}>{name.toUpperCase()}</StoryNote>
                 <StoryNote mt={0}>
-                  {config.value} – {config.usage}
+                  {config.value} - {config.usage}
                 </StoryNote>
               </Box>
             </Group>

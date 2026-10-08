@@ -5,7 +5,7 @@ Creates staff users and four conversations matching the front-end
 demo data so the UI works end-to-end without mock data.
 
 Each message is created directly in SQL (skipping the real FHIR
-write) because this is seed/demo data – FHIR IDs are synthetic.
+write) because this is seed/demo data - FHIR IDs are synthetic.
 
 Run from the backend container:
     python scripts/seed_messages.py
@@ -95,8 +95,8 @@ def seed_conversation_1(
     mark: User,
     patient_id: str,
 ) -> None:
-    """Conv 1 – Prescription renewal."""
-    print(f"\n  Conversation 1: patient={patient_id} – Prescription renewal")
+    """Conv 1 - Prescription renewal."""
+    print(f"\n  Conversation 1: patient={patient_id} - Prescription renewal")
 
     conv = Conversation(
         fhir_conversation_id=_fhir_id(),
@@ -124,13 +124,13 @@ def seed_conversation_1(
             mark,
             _ago(hours=3),
             "Hi, I wanted to check on my prescription renewal"
-            " – it's due in a few days and I'd like to make sure"
+            " - it's due in a few days and I'd like to make sure"
             " there aren't any changes.",
         ),
         (
             emily,
             _ago(hours=2, minutes=30),
-            "Hello, let me pull up your records" " – which medication is it?",
+            "Hello, let me pull up your records" " - which medication is it?",
         ),
         (
             mark,
@@ -143,7 +143,7 @@ def seed_conversation_1(
             _ago(hours=1, minutes=30),
             "I can see your prescription here. Your last BP reading"
             " was 128/82 which is well controlled. I'll renew the"
-            " Amlodipine for another three months – no changes needed.",
+            " Amlodipine for another three months - no changes needed.",
         ),
         (
             mark,
@@ -177,9 +177,9 @@ def seed_conversation_2(
     mark: User,
     patient_id: str,
 ) -> None:
-    """Conv 2 – Gastroenterology clinic."""
+    """Conv 2 - Gastroenterology clinic."""
     print(
-        f"\n  Conversation 2: patient={patient_id} – Gastroenterology clinic"
+        f"\n  Conversation 2: patient={patient_id} - Gastroenterology clinic"
     )
 
     conv = Conversation(
@@ -226,11 +226,11 @@ def seed_conversation_2(
         "3. **Eating habits:** Eat smaller, more frequent meals"
         " rather than large portions. Avoid eating within three"
         " hours of lying down. Chew thoroughly and eat slowly"
-        " – rushing meals increases aerophagia and gastric"
+        " - rushing meals increases aerophagia and gastric"
         " distension.\n\n"
         "4. **Food diary:** Please keep a structured food diary for"
         " the next 14 days, noting everything you eat and drink"
-        " alongside any symptoms (timing, severity 1–10, and"
+        " alongside any symptoms (timing, severity 1-10, and"
         " duration). This will help us identify your specific"
         " triggers rather than relying on generalised guidance.\n\n"
         "5. **Medication:** Continue with the omeprazole 20mg once"
@@ -238,9 +238,9 @@ def seed_conversation_2(
         " not adequately controlled after two weeks of dietary"
         " adjustment, we may consider switching to esomeprazole or"
         " adding a prokinetic agent.\n\n"
-        "If your symptoms worsen – particularly if you experience"
+        "If your symptoms worsen - particularly if you experience"
         " unintentional weight loss, dysphagia, persistent"
-        " vomiting, or any blood in your stool – please contact"
+        " vomiting, or any blood in your stool - please contact"
         " the clinic immediately as these would warrant further"
         " investigation.\n\n"
         "I'll ask Imogen to schedule a follow-up review in three"
@@ -296,7 +296,7 @@ def seed_conversation_2(
             _ago(days=2) + timedelta(hours=1),
             "Hello, Imogen's passed your question on to me."
             " I'm happy to put together a personalised dietary"
-            " guide for you – it'll take me about 12 minutes to"
+            " guide for you - it'll take me about 12 minutes to"
             " review your notes and write it up. As this falls"
             " outside your original appointment, there would be a"
             " charge of £70 for the additional consultation time."
@@ -324,8 +324,8 @@ def seed_conversation_3(
     mark: User,
     patient_id: str,
 ) -> None:
-    """Conv 3 – Blood test results."""
-    print(f"\n  Conversation 3: patient={patient_id} – Blood test results")
+    """Conv 3 - Blood test results."""
+    print(f"\n  Conversation 3: patient={patient_id} - Blood test results")
 
     conv = Conversation(
         fhir_conversation_id=_fhir_id(),
@@ -371,7 +371,7 @@ def seed_conversation_3(
             _ago(hours=5),
             "I've reviewed your bloods. Most values are within"
             " normal range. Your cholesterol is slightly elevated at"
-            " 5.4 mmol/L – we should discuss dietary adjustments at"
+            " 5.4 mmol/L - we should discuss dietary adjustments at"
             " your next appointment.",
         ),
         (
@@ -393,8 +393,8 @@ def seed_conversation_4(
     mark: User,
     patient_id: str,
 ) -> None:
-    """Conv 4 – Headaches."""
-    print(f"\n  Conversation 4: patient={patient_id} – Headaches")
+    """Conv 4 - Headaches."""
+    print(f"\n  Conversation 4: patient={patient_id} - Headaches")
 
     conv = Conversation(
         fhir_conversation_id=_fhir_id(),
@@ -421,7 +421,7 @@ def seed_conversation_4(
         (
             mark,
             _ago(days=2),
-            "I've been having headaches for the past week – worse"
+            "I've been having headaches for the past week - worse"
             " in the mornings. Should I be concerned?",
         ),
         (
@@ -463,13 +463,13 @@ def main() -> int:
         # Check if messaging data already exists
         existing = db.query(Conversation).first()
         if existing:
-            print("  Conversations already exist – skipping seed.")
+            print("  Conversations already exist - skipping seed.")
             return 0
 
         # Look up the primary dev user (mark.bailey)
         mark = db.query(User).filter(User.username == "mark.bailey").first()
         if mark is None:
-            print("  ✗ User mark.bailey not found – run create-user first.")
+            print("  ✗ User mark.bailey not found - run create-user first.")
             return 1
         print(f"  = Using mark.bailey (id={mark.id}) as participant")
 

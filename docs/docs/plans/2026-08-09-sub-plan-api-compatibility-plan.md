@@ -526,7 +526,7 @@ jobs so new `api-compatibility/` files continue to route through the
 Implemented as `.github/scripts/ci/validate-compat-files.sh`, mirroring the
 existing `check-api-breaking-changes.sh` pattern (sources
 `shared/logging.sh`, `set -euo pipefail`, testable via override env vars for
-its git-shelling-out helpers). Covers rules 2–7, 7a and 10 (rule 1 is
+its git-shelling-out helpers). Covers rules 2-7, 7a and 10 (rule 1 is
 oasdiff itself; rule 8 is structural-only, not a separate check; rules 9
 and 11 are workflow/repo-setting, not script checks). Found and fixed a
 pre-existing bug while adding immutability test coverage: `read_yaml_field`

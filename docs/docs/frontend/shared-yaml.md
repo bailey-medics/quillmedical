@@ -14,18 +14,18 @@ It was written from `frontend/scripts/generate-json-from-yaml.ts`,
 
 ## What is in `shared/`, and who reads it
 
-- **`competency-definitions/*.yaml`** – the competency catalogue, split by
+- **`competency-definitions/*.yaml`** - the competency catalogue, split by
   kind and merged into one. Backend: `backend/app/cbac/competencies.py`.
   Frontend: `competencies.json`.
-- **`base-professions.yaml`** – Backend: `backend/app/cbac/base_professions.py`.
+- **`base-professions.yaml`** - Backend: `backend/app/cbac/base_professions.py`.
   Frontend: `base-professions.json`.
-- **`org-unit-types.yaml`** – Backend: `backend/app/org_units/types.py`.
+- **`org-unit-types.yaml`** - Backend: `backend/app/org_units/types.py`.
   Frontend: `org-unit-types.json`.
-- **`jurisdiction-config.yaml`** – Backend: `backend/app/registrations.py`.
+- **`jurisdiction-config.yaml`** - Backend: `backend/app/registrations.py`.
   Frontend: `jurisdiction-config.json`.
-- **`brand.yaml`** – Backend: `backend/app/email/brand.py`, for the email
+- **`brand.yaml`** - Backend: `backend/app/email/brand.py`, for the email
   themes. Frontend: `brand.json`, read by `theme.ts`.
-- **`passport-specialties/*.yaml`** – one file per specialty. Backend:
+- **`passport-specialties/*.yaml`** - one file per specialty. Backend:
   `backend/app/features/passport/specialties.py`. Frontend:
   `passport-specialties.json`.
 

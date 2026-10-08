@@ -13,7 +13,7 @@
 
 import { expect, test } from "@playwright/test";
 
-const NOT_FOUND = "404 – Page not found";
+const NOT_FOUND = "404 - Page not found";
 
 test.describe("A teaching manager in the admin area", () => {
   test("opens the admin home, so a 404 below is the guard at work", async ({

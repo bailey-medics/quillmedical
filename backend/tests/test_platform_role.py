@@ -1,14 +1,14 @@
 """What a person is to Quill itself, as opposed to at a place.
 
-`system_permissions` ranked four values – single-user, staff, admin,
-superadmin – and three of them were about a place. `admin` and `staff`
+`system_permissions` ranked four values - single-user, staff, admin,
+superadmin - and three of them were about a place. `admin` and `staff`
 describe someone at an organisation or site, which is membership plus the
 competencies they hold there. `single-user` gated nothing anywhere.
 `superadmin` alone stands on its own: it says the person operates Quill,
 which is true everywhere or nowhere.
 
 `platform_role` keeps only that question. Two values, and deliberately
-not a ladder – a ranking is what invited the reading that `superadmin`
+not a ladder - a ranking is what invited the reading that `superadmin`
 subsumes clinical access, which it does not.
 
 The expand half wrote and validated the column. The routes now *read* it:
@@ -90,7 +90,7 @@ class TestTheColumnDefaults:
         """An operator is made deliberately, never by omission.
 
         This once asserted the new column was independent of
-        ``system_permissions`` – that the two could disagree while
+        ``system_permissions`` - that the two could disagree while
         callers migrated, so the column was not silently derived at read
         time. The old column is gone and the independence it guarded is
         moot; the default it relied on is still worth pinning.
@@ -118,7 +118,7 @@ class TestTheRoutesReadTheNewColumn:
     `platform_role`, so they fail the moment a check reads the old one.
 
     `POST /api/org-units` creating a root is the subject: it is the plainest
-    superadmin gate in `main.py` – no place check beside it, no
+    superadmin gate in `main.py` - no place check beside it, no
     competency, just the platform question.
     """
 
@@ -310,12 +310,12 @@ class TestScopingAsksTheNewColumn:
 
     Sixteen branches read `== "admin"` and meant *confine this caller to
     their own organisations*. A superadmin skipped them because they are
-    global – which is the platform question, not an admin one. They now
+    global - which is the platform question, not an admin one. They now
     read `platform_role != "superadmin"`.
 
     The swap widens each branch: `== "admin"` excluded `staff` and
     `single-user`, `!= "superadmin"` does not. That is safe only because
-    `manage_users` gates the door, so the last test here pins it – a
+    `manage_users` gates the door, so the last test here pins it - a
     competency holder who is not an admin must be scoped, never handed
     the unscoped branch a superadmin gets.
     """
@@ -430,7 +430,7 @@ class TestOperatorsAreProtectedByTheNewColumn:
     and were the last authorisation reads left on `system_permissions`.
 
     Both users below have divergent columns, so each test fails if the
-    check reads the old one – the operator says `single-user` there, and
+    check reads the old one - the operator says `single-user` there, and
     would be treated as an ordinary user.
     """
 
@@ -531,7 +531,7 @@ class TestPatientAccessAsksTheRightQuestion:
     - Listing every patient in the deployment is reach unbounded by any
       place, so it asks `platform_role`.
     - A patient's external access grants are patient centric, so they ask
-      `manage_patient_membership` – not `manage_users`, because a patient
+      `manage_patient_membership` - not `manage_users`, because a patient
       is not a user.
 
     `update_my_competencies` keeps the old rank deliberately: it is

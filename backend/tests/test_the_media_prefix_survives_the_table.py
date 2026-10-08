@@ -6,8 +6,8 @@ one place has to share a prefix. A second number for the same place
 would need a second cookie, and nothing issues one.
 
 That prefix was the organisation's own id. The organisations table is
-gone, so the number is recorded on the place instead –
-``org_unit.media_prefix_id`` – and read from there. Nothing in the
+gone, so the number is recorded on the place instead -
+``org_unit.media_prefix_id`` - and read from there. Nothing in the
 bucket moved, and a place created since files under its own id, there
 being no second number for it to have.
 

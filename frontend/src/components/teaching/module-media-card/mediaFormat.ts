@@ -2,7 +2,7 @@
  * Non-component helpers for the module media card.
  *
  * Separate from the components themselves because a file that exports
- * both a component and a constant breaks React Fast Refresh – the lint
+ * both a component and a constant breaks React Fast Refresh - the lint
  * rule that enforces this is what put them here.
  */
 

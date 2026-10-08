@@ -62,7 +62,7 @@ describe("SignOffCard", () => {
     it("renders the assessor's name and role", () => {
       renderWithMantine(<SignOffCard signOff={signedOff} />);
       expect(
-        screen.getByText(/Dr Amara Okonkwo – Consultant respiratory physician/),
+        screen.getByText(/Dr Amara Okonkwo - Consultant respiratory physician/),
       ).toBeInTheDocument();
     });
 

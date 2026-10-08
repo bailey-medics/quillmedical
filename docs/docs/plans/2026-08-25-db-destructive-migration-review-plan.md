@@ -330,7 +330,7 @@ that moved these jobs into `gate-breaking.yml`. Both need the same throwaway
 PR, so both are verified in one pass — see the second checklist below.
 
 **Sequencing note: verification cannot start before Phase 5 is merged.** The
-first walkthrough attempt ran with Phases 1–4 merged but Phase 5 not yet
+first walkthrough attempt ran with Phases 1-4 merged but Phase 5 not yet
 written. The gate blocked correctly, but no Slack message and no record
 comment appeared — because
 `heavy_db_destructive_migration_gate_notify` and
@@ -765,7 +765,7 @@ fail", you need `result != 'skipped'` alongside it.
 
 ### Rapid-push ordering: what three pushes in five seconds found
 
-Run on PR #446 — setup push, then three pushes 1–2 seconds apart: add
+Run on PR #446 — setup push, then three pushes 1-2 seconds apart: add
 migration A, add migration B, remove both. Expected three comments in commit
 order. **Got one comment, describing migrations the branch no longer had.**
 
@@ -865,7 +865,7 @@ already prevents. It does not, and the distinction is worth keeping:
 
 - **Under ~1 second apart** — GitHub coalesces. One run. Nothing to order, and
   the delay is irrelevant.
-- **Roughly 1–5 seconds apart** — two runs *are* created and their decide jobs
+- **Roughly 1-5 seconds apart** — two runs *are* created and their decide jobs
   overlap, because a decide job starts ~14s after its run and takes ~5s. This
   is the band the delay exists for, and PR #446 hit it: pushes 2 and 3 were 2
   seconds apart, got separate runs, and raced.

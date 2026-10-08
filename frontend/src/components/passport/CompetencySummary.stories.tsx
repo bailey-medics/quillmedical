@@ -25,7 +25,7 @@ type Story = StoryObj<typeof CompetencySummary>;
  * `onSelect` is set to `undefined` explicitly rather than omitted.
  * `argTypesRegex: "^on[A-Z].*"` in `.storybook/preview.tsx` auto-fills
  * every unset `on*` prop with a spy, so omitting it would hand the
- * component a function and render every row as a button – making this
+ * component a function and render every row as a button - making this
  * story indistinguishable from `Selectable`.
  */
 export const Default: Story = {

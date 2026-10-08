@@ -31,7 +31,7 @@ Environment Variables:
     comma-separated list of usernames set in Terraform, and
     PASSPORT_ARCHIVE_GCS_BUCKET. See delete_passport().
 
-    run-migrations takes no ADMIN_* variables – it runs `alembic upgrade
+    run-migrations takes no ADMIN_* variables - it runs `alembic upgrade
     head` against the standard CORE_DB_* connection settings, as a
     pre-deploy step run once against the shared database before the new
     app revision is created (see docs/docs/backend/alembic-migration-safety.md).
@@ -125,7 +125,7 @@ def create_superadmin() -> int:
 
         # Operating Quill grants its competencies through a profession,
         # like every other role, rather than by a rank check inside each
-        # gate – `/admin` now asks for `manage_users`, not for a
+        # gate - `/admin` now asks for `manage_users`, not for a
         # permission level. This used to set `consultant`, which is both
         # too much and too little: a pile of clinical competencies an
         # operator has no business holding, and not the one the gates
@@ -138,9 +138,9 @@ def create_superadmin() -> int:
                 user, additional=[], removed=[], source="bootstrap"
             )
         else:
-            # An existing user keeps the profession they practise under –
+            # An existing user keeps the profession they practise under -
             # overwriting it would strip a clinician's clinical
-            # competencies – so the operator ones are added alongside.
+            # competencies - so the operator ones are added alongside.
             granted = set(user.additional_competency_ids)
             granted.update(
                 get_profession_base_competencies(SUPERADMIN_PROFESSION)
@@ -258,7 +258,7 @@ def run_migrations() -> int:
     """Apply all pending Alembic migrations (`alembic upgrade head`).
 
     Run as the pre-deploy step against the shared core database, before the
-    new app revision is created – see
+    new app revision is created - see
     docs/docs/backend/alembic-migration-safety.md.
     """
     from alembic.config import Config

@@ -1,6 +1,6 @@
 """What media a module references, and which of it is present.
 
-One question asked in three org_units – the admin card listing what is
+One question asked in three org_units - the admin card listing what is
 missing, the learner gate hiding an incomplete module, and the merge gate
 warning about a reference nothing has uploaded. One function answers it,
 because three implementations would drift and the most permissive one
@@ -12,7 +12,7 @@ content lives in GCS and the files are therefore not on disk.
 
 Everything here is per organisation. Media belongs to the module, and
 modules are per organisation, so "is this module complete" has no global
-answer – the same shape ``QuestionBankOrgStatus`` established for
+answer - the same shape ``QuestionBankOrgStatus`` established for
 liveness.
 """
 
@@ -92,7 +92,7 @@ class MediaProgress:
     #: Stated here rather than inferred from the stage count, because
     #: the two genuinely differ. A stalled job is on its last stage and
     #: is not final, and "captions have not started" is idle without
-    #: being finished – captions are still owed, so the bar stays.
+    #: being finished - captions are still owed, so the bar stays.
     is_final: bool = False
 
 
@@ -103,7 +103,7 @@ def describe_progress(
 
     The admin card used to show "No captions" from the moment a file
     landed until Whisper finished, which states absence where the truth
-    was "not yet" – and sent someone re-uploading a video that was
+    was "not yet" - and sent someone re-uploading a video that was
     working perfectly.
 
     Two states look identical in the completion columns alone: a job
@@ -130,7 +130,7 @@ def describe_progress(
         return MediaProgress(
             stage=4,
             total_stages=_TOTAL_STAGES,
-            label="Ready – captions checked",
+            label="Ready - captions checked",
             in_progress=False,
             stalled=False,
             is_final=True,
@@ -140,7 +140,7 @@ def describe_progress(
         return MediaProgress(
             stage=3,
             total_stages=_TOTAL_STAGES,
-            label="Captions need checking – hidden from learners until then",
+            label="Captions need checking - hidden from learners until then",
             in_progress=False,
             stalled=False,
         )
@@ -153,7 +153,7 @@ def describe_progress(
             return MediaProgress(
                 stage=2,
                 total_stages=_TOTAL_STAGES,
-                label="Video ready – captions have not started",
+                label="Video ready - captions have not started",
                 in_progress=False,
                 stalled=False,
             )
@@ -161,7 +161,7 @@ def describe_progress(
             return MediaProgress(
                 stage=2,
                 total_stages=_TOTAL_STAGES,
-                label="Video ready – captions seem to have failed",
+                label="Video ready - captions seem to have failed",
                 in_progress=False,
                 stalled=True,
             )
@@ -187,7 +187,7 @@ def describe_progress(
             return MediaProgress(
                 stage=1,
                 total_stages=_TOTAL_STAGES,
-                label="Uploaded – plays without processing",
+                label="Uploaded - plays without processing",
                 in_progress=False,
                 stalled=False,
                 is_final=True,
@@ -195,7 +195,7 @@ def describe_progress(
         return MediaProgress(
             stage=1,
             total_stages=_TOTAL_STAGES,
-            label="Uploaded – processing has not started",
+            label="Uploaded - processing has not started",
             in_progress=False,
             stalled=False,
         )
@@ -227,7 +227,7 @@ def get_referenced_media_keys(module_id: str) -> list[str]:
     drifts.
 
     A module with no content, or none this deployment can reach, has no
-    references – not an error. Whether content *should* exist is the
+    references - not an error. Whether content *should* exist is the
     caller's question, and ``get_learning_content`` already answers it
     with a 404; here an empty list simply means nothing to upload.
     """
@@ -277,7 +277,7 @@ class MediaReference:
         """Whether this reference has a file behind it.
 
         The admin's question: has anyone uploaded anything for this key?
-        Deliberately not the learner's question – see ``is_servable``.
+        Deliberately not the learner's question - see ``is_servable``.
         """
         return self.link is not None
 
@@ -287,7 +287,7 @@ class MediaReference:
 
         An upload is not yet a video. The transcode job produces what
         the player asks for, and until it has run the processed bucket
-        holds nothing under this asset's name – so a module served in
+        holds nothing under this asset's name - so a module served in
         that window puts a learner on a slide whose file is not there.
 
         Kept apart from ``is_present`` because the two answer different
@@ -299,7 +299,7 @@ class MediaReference:
         That is development, where the renditions are never coming: the
         playback resolver already falls back to serving the original
         upload as ``src`` for exactly this case, and without this branch
-        the gate hides the module before that fallback can run – so the
+        the gate hides the module before that fallback can run - so the
         fallback was unreachable on the only machines it was written
         for. Nothing changes in teaching, where a job is configured and
         ``transcoded_at`` remains the whole question.
@@ -357,7 +357,7 @@ class MediaInventory:
 
         The admin card's measure: has the person been asked for
         everything the content references? It says nothing about whether
-        a learner could play them – ``is_servable`` is that question.
+        a learner could play them - ``is_servable`` is that question.
         """
         return all(ref.is_present for ref in self.references)
 
@@ -370,7 +370,7 @@ class MediaInventory:
         the admin's side and not yet playable from the learner's.
 
         A module in that state is hidden rather than served with a slide
-        the player cannot fill – which is also what makes plain delete
+        the player cannot fill - which is also what makes plain delete
         safe in the admin card, since deleting cannot leave a learner
         with a broken slide.
         """
@@ -469,7 +469,7 @@ def module_media_is_complete(
     transcode job produces, so a module whose uploads are linked but not
     yet transcoded would put a learner on a slide whose video is not in
     the processed bucket. The gate therefore reads ``is_servable``, not
-    ``is_complete`` – the admin card keeps the looser measure, because
+    ``is_complete`` - the admin card keeps the looser measure, because
     "we are still processing it" and "you have not uploaded it" are
     different things to tell the person who uploaded it.
     """

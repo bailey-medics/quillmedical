@@ -4,7 +4,7 @@ Provides functions for querying organisation membership and access
 control. Used throughout the application to enforce org-scoped
 visibility boundaries.
 
-**Everything here counts in org_unit ids** – an organisation is named by
+**Everything here counts in org_unit ids** - an organisation is named by
 its own row in the tree, the row every org_unit beneath it walks up to.
 That is the id the membership table holds, the id the patient list
 holds, and the id the screens put back into URLs. The organisation's own
@@ -12,9 +12,9 @@ id is on its way out and nothing here speaks it.
 
 Two questions live here and must not be confused:
 
-- **Membership** – *is this person at this organisation, and as what?*
+- **Membership** - *is this person at this organisation, and as what?*
   :func:`get_member_org_unit_ids`.
-- **Reach** – *which organisations can this person get to?* Organisation
+- **Reach** - *which organisations can this person get to?* Organisation
   membership reaches the organisation and its sites; site membership
   reaches the organisations that site is linked to.
   :func:`get_reachable_org_unit_ids`.
@@ -59,7 +59,7 @@ ADMINISTERS = "manage_users"
 # Organisation membership, read from the merged table
 # ------------------------------------------------------------------
 
-#: Who is at an organisation, and in what capacity – the membership
+#: Who is at an organisation, and in what capacity - the membership
 #: table, narrowed to the rows naming an organisation's own org_unit.
 #:
 #: A membership of a ward is not in here; that is a membership of the
@@ -91,8 +91,8 @@ def organisation_org_units_of(
     root, so an organisation's row answers itself.
 
     A root that no organisation stands for contributes nothing rather
-    than itself. Such an org_unit is detached from every tree – the test
-    fixtures make one deliberately – and treating it as an organisation
+    than itself. Such an org_unit is detached from every tree - the test
+    fixtures make one deliberately - and treating it as an organisation
     would give its members the run of an org_unit nobody is accountable for.
 
     Args:
@@ -346,7 +346,7 @@ def get_reachable_org_unit_ids(
 
     **A teaching link reaches further.** A medical school teaching on a
     trust's wards is a relationship and not ownership, so it is a link
-    rather than a parent – and the point of recording it is that people at
+    rather than a parent - and the point of recording it is that people at
     the school can then reach the trust's teaching content. Which
     relations do that is declared beside them in
     ``app/org_units/relations.py``; today only ``teaches_at`` does.
@@ -420,8 +420,8 @@ def _reached_through_links(db: Session, place_ids: set[int]) -> set[int]:
     and only relations that say they grant reach. Two limits, both
     deliberate:
 
-    - **A link is a claim its source makes about itself** – "we teach
-      there" – so following it the other way would let anybody name a
+    - **A link is a claim its source makes about itself** - "we teach
+      there" - so following it the other way would let anybody name a
       school and be let into it.
     - **A link belongs to the org_unit that made it**, not to everything
       above it. One ward recording a relationship must not quietly open it
@@ -498,8 +498,8 @@ def check_user_patient_access(
     - ``access_patient_records`` and a shared organisation
 
     **The rank hatch this used to open with is gone.** Its first line
-    returned ``True`` for any ``admin`` or ``superadmin`` – "always True
-    for admin pages" – so an operator who shared no organisation with a
+    returned ``True`` for any ``admin`` or ``superadmin`` - "always True
+    for admin pages" - so an operator who shared no organisation with a
     patient could still reach them. That is the conflation the platform
     role work exists to undo: a rank said *what* someone is and was read
     as *where* they may act.
@@ -597,7 +597,7 @@ def get_org_unit_staff_ids(db: Session, org_unit_ids: list[int]) -> set[int]:
     """Return every member of the given org_units, in any capacity.
 
     Deprecated in favour of :func:`get_org_unit_member_ids`, which makes the
-    capacity explicit. The name says staff and the behaviour never was –
+    capacity explicit. The name says staff and the behaviour never was -
     once registration began writing trainees into the same table this
     returned them too.
 
@@ -613,7 +613,7 @@ def get_org_unit_staff_ids(db: Session, org_unit_ids: list[int]) -> set[int]:
 def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
     """Return all patient IDs a user can access (via orgs or external grants).
 
-    All users – including admin/superadmin – are org-scoped here.
+    All users - including admin/superadmin - are org-scoped here.
     Admin pages that need an unfiltered list should bypass this function.
     """
     result: set[str] = set()
@@ -640,7 +640,7 @@ def get_accessible_patient_ids(db: Session, user: User) -> set[str]:
     #
     # Membership at an organisation and membership at a ward are the same
     # fact about the same person, and are now one table keyed on an org_unit in
-    # the tree. An organisation's org_unit is its own row – its root.
+    # the tree. An organisation's org_unit is its own row - its root.
     #
     # These three functions are the only code that writes an organisation
     # membership. They were what made switching every reader over a change in
@@ -656,7 +656,7 @@ def media_prefix_of(db: Session, org_unit_id: int) -> int | None:
     id; ``org_unit.media_prefix_id`` records it, so the objects already
     written stay addressable once the organisations table is gone.
 
-    An org_unit with nothing recorded files under its own id – which is what
+    An org_unit with nothing recorded files under its own id - which is what
     an org_unit created from here onwards does, there being no second number
     for it to have.
 

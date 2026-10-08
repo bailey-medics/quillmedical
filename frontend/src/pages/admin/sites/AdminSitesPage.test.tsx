@@ -2,7 +2,7 @@
  * AdminSitesPage tests
  *
  * The list shows the org_units inside organisations, never the
- * organisations themselves – they have their own page. The interesting
+ * organisations themselves - they have their own page. The interesting
  * case is a site whose owner the person cannot see: it still belongs in
  * the list, because they may administer the site itself.
  */

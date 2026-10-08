@@ -1,4 +1,4 @@
-# AWS Terraform – check on pull requests, and say when an apply is needed
+# AWS Terraform - check on pull requests, and say when an apply is needed
 #
 # infra/aws/** describes Amazon SES in London and the user whose key
 # sends mail. A person applies it, with `just terraform-aws`. CI never
@@ -70,7 +70,7 @@ jobs:
     with:
       channel: app
       text: |
-        *⚠️ AWS Terraform changed – manual terraform apply required*
+        *⚠️ AWS Terraform changed - manual terraform apply required*
 
         Files under `infra/aws/` were merged to main. They are applied by a person, never by CI. Run this from any checkout that is up to date with main, after `just al` and `just al management`; it plans first and asks before applying:
 

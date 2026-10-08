@@ -69,18 +69,18 @@ anyone setting it by hand.
 
 ## Decisions
 
-- **Fit, not breakpoint** – the problem is columns against width, not
+- **Fit, not breakpoint** - the problem is columns against width, not
   screen size, so the rule measures width. Moving the fixed breakpoint up
   to `md` would have fixed wide tables and punished narrow ones, turning a
   three-column table into cards on a tablet where it fitted.
 
-- **No horizontal scroll** – a scroll container would stop the overflow
+- **No horizontal scroll** - a scroll container would stop the overflow
   too, but a sideways-scrolling table hides columns and is poor for touch
   and for screen readers. Cards show every column. If a table is ever
   found that cannot become cards, a `Table.ScrollContainer` is the
   fallback to add then.
 
-- **Default 8rem per column, down from a first guess of 10** – the page
+- **Default 8rem per column, down from a first guess of 10** - the page
   container is 1140px wide with 16px padding each side, so a table never
   has more than 1108px. At 10rem the seven-column safety case table
   needed 1120px and was cards even on a wide laptop, where it had fitted

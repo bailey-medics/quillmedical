@@ -15,7 +15,7 @@
 # Callers pass a slack channel name and markdown message. Unknown channels cause
 # a workflow failure.
 #
-# Callable from outside Quill – the content repos reach it through the teaching
+# Callable from outside Quill - the content repos reach it through the teaching
 # pipeline. It checks out Quill by name rather than relying on the run's own
 # repository, so the channel validation script is always present. The calling
 # repository must hold SLACK_WEBHOOK_URL for `secrets: inherit` to supply it.
@@ -45,7 +45,7 @@ jobs:
     steps:
       # Quill explicitly, not the default checkout. A bare checkout takes the
       # repository whose run this is, which for a content repo calling the
-      # teaching pipeline is that content repo – where the validation script
+      # teaching pipeline is that content repo - where the validation script
       # does not exist. Naming Quill lets any repo in the org use this.
       - name: Check out the Quill scripts
         uses: actions/checkout@v7.0.1

@@ -1,4 +1,4 @@
-# versions.tf – Provider version constraints
+# versions.tf - Provider version constraints
 
 terraform {
   required_version = ">= 1.15.2"

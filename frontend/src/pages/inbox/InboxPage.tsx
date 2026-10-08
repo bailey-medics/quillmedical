@@ -45,7 +45,7 @@ const waitingColumns: Column<InboxItem>[] = [
   },
   {
     header: "About",
-    render: (item) => item.detail ?? "–",
+    render: (item) => item.detail ?? "-",
     accessor: (item) => item.detail ?? "",
   },
   {
@@ -59,7 +59,7 @@ const doneColumns: Column<InboxItem>[] = [
   ...waitingColumns.slice(0, 2),
   {
     header: "Outcome",
-    render: (item) => item.status ?? "–",
+    render: (item) => item.status ?? "-",
     accessor: (item) => item.status ?? "",
   },
   waitingColumns[2],

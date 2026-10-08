@@ -1,6 +1,6 @@
 """Pydantic schemas for user feedback.
 
-The captured context – route, release, viewport, user agent, breadcrumbs –
+The captured context - route, release, viewport, user agent, breadcrumbs -
 takes the same bounds and shapes the error reports do, from
 ``app.schemas.analytics``, so the two can be lined up and neither accepts
 anything the other would refuse.

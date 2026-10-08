@@ -146,7 +146,7 @@ resource "github_repository_ruleset" "tooling_protected_branches" {
 
 ### 1. Clean up quillmedical Terraform
 
-- [x] Remove rulesets 3–10 (question-bank and teaching repos) from `infra/github/branch_rules.tf`
+- [x] Remove rulesets 3-10 (question-bank and teaching repos) from `infra/github/branch_rules.tf`
 - [x] Remove associated variables (`question_bank_repository`, `teaching_tooling_repository`, etc.)
 - [x] Remove question-bank security config from `infra/github/security.tf`
 - [x] Run `terraform apply` — orphaned state cleaned, secret scanning enabled

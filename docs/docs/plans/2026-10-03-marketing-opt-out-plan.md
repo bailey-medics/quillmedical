@@ -579,7 +579,7 @@ address of Mark's own for every test account, and plus-addresses
 - [x] **Read the logs for addresses.** Searched the backend's logs for
       the test address. Nothing from `app.marketing` names it: that code
       logs a user id and an HTTP status. One entry does, and it is not
-      marketing's: `email_send.py` logs `Email sent – to=<address>` for
+      marketing's: `email_send.py` logs `Email sent - to=<address>` for
       every email it sends, the verification email here. An email address
       in the logs is personal data, and for a patient's account it would
       sit beside the fact that they have one. Outside this plan, and
@@ -602,7 +602,7 @@ address of Mark's own for every test account, and plus-addresses
 
 ## Decisions
 
-- **Opt-out, not opt-in** – Mark's decision, made at the start and
+- **Opt-out, not opt-in** - Mark's decision, made at the start and
   confirmed on 4 October 2026 once the whole of it had run on the live
   app. UK rules (PECR) allow marketing email without prior consent only
   under the "soft opt-in": the address was given in the course of a sale
@@ -616,43 +616,43 @@ address of Mark's own for every test account, and plus-addresses
   an unticked "Send me news and updates" and bump the wording version.
   Nothing else in the plan changes.
 
-- **An unticked "rather not" box, not a pre-ticked "yes" box** – both are
+- **An unticked "rather not" box, not a pre-ticked "yes" box** - both are
   opt-outs. A pre-ticked box is the pattern regulators single out as
   misleading; a plain sentence saying news will be sent, with a box to
   refuse, says the same thing honestly.
 
-- **One list, one choice** – a single Newsletter topic. Resend topics
+- **One list, one choice** - a single Newsletter topic. Resend topics
   would allow a choice per teaching organisation or per subject later, and
   the change table already records which wording was shown, so splitting
   the choice is additive.
 
-- **Resend holds the list, Quill holds the evidence** – broadcasts are
+- **Resend holds the list, Quill holds the evidence** - broadcasts are
   sent from Resend, so its contact record decides who is emailed. Quill's
   column and change table exist to show the person their own choice and to
   prove what they were asked. Where the two disagree, an opt-out wins
   whichever side it is on, and the webhook and the retry bring them back
   together.
 
-- **Somebody whose account was made for them is asked, not skipped** –
+- **Somebody whose account was made for them is asked, not skipped** -
   this first read "admin-created accounts are not subscribed". They are
   still not subscribed on the strength of a default, because they have
   not seen the sentence. They see it when they set their first password
   from the invite, and are then subscribed unless they refuse, the same
   as somebody who registered.
 
-- **Closing an account does not unsubscribe anybody** – deactivation
+- **Closing an account does not unsubscribe anybody** - deactivation
   says nothing about what the person wants to hear. The contact stays in
   Resend as it was, and only the person, through Settings or an
   unsubscribe link, changes it. Removal is for erasure.
 
-- **The retry is scheduled, weekly, as part of the reconcile** – this
+- **The retry is scheduled, weekly, as part of the reconcile** - this
   bullet first read "no scheduled retry yet", with a Cloud Scheduler job
   as the obvious next step. The weekly reconcile in Phase 6 runs the
   retry before it compares anything, from a scheduled workflow, so there
   is no separate schedule to add.
 
 - **Development has its own segment and topic, which is half a
-  separation** – this first read "dev and production share one list". On
+  separation** - this first read "dev and production share one list". On
   4 October 2026 a "Quill Medical (dev)" segment and a "Newsletter (dev)"
   topic were made and the dev stack's `backend/.env` pointed at them, so a
   real newsletter cannot reach a test contact. But Resend keeps one list
@@ -666,14 +666,14 @@ address of Mark's own for every test account, and plus-addresses
   from the plain one, and has to be added to `EMAIL_ALLOWED_RECIPIENTS`
   before the dev stack will email it.
 
-- **A segment's contacts are read from the segment's own route** –
+- **A segment's contacts are read from the segment's own route** -
   `GET /segments/{id}/contacts`. `GET /contacts?segment_id=...` looks the
   same and is not: Resend ignores the filter and returns every contact in
   the account. Found when the new, empty dev segment came back holding
   all six production contacts. The stub in the tests had honoured the
   filter, which is why nothing caught it; it now ignores it too.
 
-- **`email_send.py` no longer logs the address it sends to** – found by
+- **`email_send.py` no longer logs the address it sends to** - found by
   Phase 6's log check: every email logged `to=<address>`. It now logs a
   masked form, `m***@e***.org`, enough to tell two addresses apart
   beside a known one and not enough to read off who somebody is. The
@@ -681,7 +681,7 @@ address of Mark's own for every test account, and plus-addresses
   email's subject names the person. Attachments are counted, not named,
   for the same reason.
 
-- **`email_send.py` was slowed by IPv6, as the sync was** – confirmed on
+- **`email_send.py` was slowed by IPv6, as the sync was** - confirmed on
   4 October 2026, when "forgot password" took 60 seconds on the live app
   and the page gave up with "Request timed out", though the email
   arrived. The `resend` SDK's own client waits thirty seconds to connect
@@ -689,6 +689,6 @@ address of Mark's own for every test account, and plus-addresses
   connects over IPv4 only and gives up on a connection after three
   seconds. `app/net.py` holds the reason once, for both.
 
-- **No existing users to migrate** – nobody is registered in production,
+- **No existing users to migrate** - nobody is registered in production,
   so there is no backfill, and no question of what an existing person
   agreed to.

@@ -138,10 +138,10 @@ describe("PassportCpdPage", () => {
       fetchAllCpd.mockResolvedValue(cpdEntries);
       renderWithRouter(<PassportCpdPage />);
 
-      await dateRangeShows("Jun 2026 – May 2027");
+      await dateRangeShows("Jun 2026 - May 2027");
       const labels = await optionLabels(user);
-      expect(labels[0]).toBe("Jun 2026 – May 2027");
-      expect(labels[1]).toBe("Jun 2025 – May 2026");
+      expect(labels[0]).toBe("Jun 2026 - May 2027");
+      expect(labels[1]).toBe("Jun 2025 - May 2026");
     });
 
     it("totals the chosen June to June year", async () => {
@@ -149,11 +149,11 @@ describe("PassportCpdPage", () => {
       fetchAllCpd.mockResolvedValue(cpdEntries);
       renderWithRouter(<PassportCpdPage />);
 
-      await dateRangeShows("Jun 2026 – May 2027");
+      await dateRangeShows("Jun 2026 - May 2027");
       await user.click(dateRangeField());
       await user.click(
         await screen.findByRole("option", {
-          name: "Jun 2025 – May 2026",
+          name: "Jun 2025 - May 2026",
         }),
       );
 
@@ -169,10 +169,10 @@ describe("PassportCpdPage", () => {
       fetchAppraisalPeriods.mockResolvedValue([octoberYear, calendar2026]);
       renderWithRouter(<PassportCpdPage />);
 
-      await dateRangeShows("Jan 2026 – Dec 2026");
+      await dateRangeShows("Jan 2026 - Dec 2026");
       expect(await optionLabels(user)).toEqual([
-        "Jan 2026 – Dec 2026",
-        "Oct 2024 – Aug 2025",
+        "Jan 2026 - Dec 2026",
+        "Oct 2024 - Aug 2025",
       ]);
     });
 

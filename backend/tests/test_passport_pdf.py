@@ -6,7 +6,7 @@ split is deliberate.
 
 **Structure is tested through the story**, the list of flowables
 platypus is handed. Building it is where every decision this module
-makes actually happens, and reading it is precise – a test can say that
+makes actually happens, and reading it is precise - a test can say that
 a fingerprint paragraph exists rather than that some bytes contain a
 hash.
 
@@ -18,7 +18,7 @@ somebody's logbook note would have cost them their download.
 
 The failure policy is what most of these are about. Nothing in a
 passport may deny somebody their own record: a malformed field, a
-missing optional, an unreadable file – each degrades to a placeholder or
+missing optional, an unreadable file - each degrades to a placeholder or
 is skipped, and the rest still prints.
 """
 
@@ -172,7 +172,7 @@ class TestNothingDeniesADownload:
         """Platypus reads angle brackets as markup.
 
         An assessor writing "sats <92% throughout" would otherwise raise
-        at build time – after the request had been accepted, which is
+        at build time - after the request had been accepted, which is
         the worst moment to fail.
         """
         name, _ = service.request_sign_off(
@@ -203,12 +203,12 @@ class TestNothingDeniesADownload:
         assert output.startswith(b"%PDF-")
 
     def test_an_empty_value_prints_a_placeholder(self) -> None:
-        assert pdf._text(None) == "–"
-        assert pdf._text("") == "–"
-        assert pdf._text("   ") == "–"
+        assert pdf._text(None) == "-"
+        assert pdf._text("") == "-"
+        assert pdf._text("   ") == "-"
 
     def test_a_missing_date_prints_a_placeholder(self) -> None:
-        assert pdf._day(None) == "–"
+        assert pdf._day(None) == "-"
 
     def test_markup_characters_are_escaped(self) -> None:
         assert pdf._text("a < b & c > d") == "a &lt; b &amp; c &gt; d"
@@ -442,7 +442,7 @@ class TestTheCompetencyTable:
 
 
 class TestLogbookTotals:
-    """Counts by competency and year – the number people look for."""
+    """Counts by competency and year - the number people look for."""
 
     def _index(self, store: LocalPassportStore):
         from app.features.passport import paths as passport_paths
@@ -585,8 +585,8 @@ class TestCpdTotals:
         story = pdf._cpd(store, PASSPORT_ID, pdf._styles(), _profile(store))
         text = " ".join(item.text for item in story if hasattr(item, "text"))
 
-        assert "1 January 2026 to 31 December 2026 – 1 activity" in text
-        assert "Outside the declared date ranges – 1 activity" in text
+        assert "1 January 2026 to 31 December 2026 - 1 activity" in text
+        assert "Outside the declared date ranges - 1 activity" in text
         assert "by convention" not in text
 
     def test_without_ranges_it_says_june_to_june_is_a_convention(

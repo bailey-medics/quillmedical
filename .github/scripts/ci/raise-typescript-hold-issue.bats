@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # Tests for raise-typescript-hold-issue.sh
 #
-# The behaviour that matters is not opening the issue – it is not opening it
+# The behaviour that matters is not opening the issue - it is not opening it
 # twice. The check runs monthly and a liftable hold stays liftable, so a
 # script that created an issue each time would bury the signal it exists to
 # send.

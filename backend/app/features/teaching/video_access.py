@@ -6,15 +6,15 @@ a cookie the load balancer will honour, and the edge then serves the
 bytes without the request ever reaching the application.
 
 Deliberately separate from ``storage.py``. The signing code below is the
-whole authorisation mechanism – a mistake in the prefix hands a learner
-every module in the bucket – so it is kept small enough to read in one
+whole authorisation mechanism - a mistake in the prefix hands a learner
+every module in the bucket - so it is kept small enough to read in one
 sitting and tested on its own.
 
 Two properties are worth stating plainly, because both are load-bearing:
 
 - **The cookie is scoped to a URL prefix, not a URL.** One grant covers
-  every asset beneath ``{base}/{org_id}/{module_id}/`` – renditions,
-  poster frame, captions – so the player fetches what it needs without
+  every asset beneath ``{base}/{org_id}/{module_id}/`` - renditions,
+  poster frame, captions - so the player fetches what it needs without
   a round trip per file, and the design survives a later move to
   segmented HLS where per-URL signing would be untenable.
 
@@ -53,7 +53,7 @@ def build_url_prefix(base_url: str, org_id: int, module_id: str) -> str:
 
     The prefix *is* the authorisation boundary, so both components are
     validated before they reach it. A traversal here would not merely
-    break a link – it would grant a learner every module in the bucket.
+    break a link - it would grant a learner every module in the bucket.
 
     Args:
         base_url: Where video is served from, without a trailing slash.
@@ -92,7 +92,7 @@ def sign_cookie(
 
         URLPrefix=<b64url>:Expires=<unix>:KeyName=<name>:Signature=<b64url>
 
-    Field order is part of the specification – the edge recomputes the
+    Field order is part of the specification - the edge recomputes the
     HMAC over the policy as written, so reordering produces a signature
     that verifies against nothing.
 

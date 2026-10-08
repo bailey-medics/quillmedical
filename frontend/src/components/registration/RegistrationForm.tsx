@@ -54,15 +54,15 @@ interface RegistrationFormValues {
 }
 
 export interface RegistrationFormProps {
-  /** Available organisations for the dropdown – omit to hide the field */
+  /** Available organisations for the dropdown - omit to hide the field */
   organisations?: { value: string; label: string }[];
-  /** Called when the form is submitted with valid data – should return a FormSubmitResult */
+  /** Called when the form is submitted with valid data - should return a FormSubmitResult */
   onSubmit: (data: RegistrationFormData) => Promise<FormSubmitResult>;
   /** Where the guide to joining lives, to offer under the form */
   guidePath?: string | null;
-  /** The site being joined, named in a heading – omit to name none */
+  /** The site being joined, named in a heading - omit to name none */
   siteName?: string | null;
-  /** Goes back a step – omit to draw no Back button */
+  /** Goes back a step - omit to draw no Back button */
   onBack?: () => void;
 }
 

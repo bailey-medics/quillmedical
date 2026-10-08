@@ -49,22 +49,22 @@ Only app is deployed. Staging, teaching and production were retired and their co
 
 The first three routes are on the app host, and the fourth is on the landing hosts. The load balancer's four routes (`infra/modules/load-balancer/main.tf`):
 
-- **`/api/*` on the app host** – the backend Cloud Run service (FastAPI)
-- **`/videos/*` on the app host** – the teaching videos bucket, through Cloud CDN, which checks a signed cookie
-- **Everything else on the app host** – the frontend Cloud Run service (Caddy serving the built React app)
-- **Every path on `quill-medical.com` and `www.quill-medical.com`** – the landing site's bucket, through Cloud CDN
+- **`/api/*` on the app host** - the backend Cloud Run service (FastAPI)
+- **`/videos/*` on the app host** - the teaching videos bucket, through Cloud CDN, which checks a signed cookie
+- **Everything else on the app host** - the frontend Cloud Run service (Caddy serving the built React app)
+- **Every path on `quill-medical.com` and `www.quill-medical.com`** - the landing site's bucket, through Cloud CDN
 
 The Cloud Armor policy, a rate limit, is attached to the two Cloud Run backend services only. The two buckets have none.
 
 The app environment has:
 
-- **Global HTTPS Load Balancer** – host and path routing, Google-managed SSL
-- **Cloud Run** – backend (FastAPI) and frontend (React/Vite), auto-scaling, plus the admin, transcode and caption jobs
-- **Cloud SQL** – one PostgreSQL instance, the core database. There is no FHIR or EHRbase database (`enable_fhir = false`)
-- **Cloud Storage** – the landing site, the teaching videos, the teaching content (question bank YAML and images, deployed by CI from the `eoeeta-teaching` and `respiratory-teaching` content repos) and the clinician passport
-- **Secret Manager** – JWT keys, database passwords, VAPID keys
-- **VPC** – private networking, no public database IPs
-- **Monitoring** – uptime checks on `/api/health` with email alerts
+- **Global HTTPS Load Balancer** - host and path routing, Google-managed SSL
+- **Cloud Run** - backend (FastAPI) and frontend (React/Vite), auto-scaling, plus the admin, transcode and caption jobs
+- **Cloud SQL** - one PostgreSQL instance, the core database. There is no FHIR or EHRbase database (`enable_fhir = false`)
+- **Cloud Storage** - the landing site, the teaching videos, the teaching content (question bank YAML and images, deployed by CI from the `eoeeta-teaching` and `respiratory-teaching` content repos) and the clinician passport
+- **Secret Manager** - JWT keys, database passwords, VAPID keys
+- **VPC** - private networking, no public database IPs
+- **Monitoring** - uptime checks on `/api/health` with email alerts
 
 ## What has been set up
 
@@ -144,10 +144,10 @@ gcloud iam service-accounts add-iam-policy-binding \
 
 The service accounts have the following IAM roles:
 
-- `roles/editor` – manage most GCP resources
-- `roles/secretmanager.admin` – create and manage secrets
-- `roles/run.admin` – deploy Cloud Run services
-- `roles/iam.serviceAccountUser` – let Cloud Run services run as other service accounts
+- `roles/editor` - manage most GCP resources
+- `roles/secretmanager.admin` - create and manage secrets
+- `roles/run.admin` - deploy Cloud Run services
+- `roles/iam.serviceAccountUser` - let Cloud Run services run as other service accounts
 
 ### GitHub secrets (done)
 
@@ -222,11 +222,11 @@ Each project has a Docker repository in Artifact Registry:
 europe-west2-docker.pkg.dev/quill-medical-{env}/quill/
 ```
 
-Container images are pushed here by CI (not GHCR – Cloud Run only supports Artifact Registry, GCR, or Docker Hub). Image paths:
+Container images are pushed here by CI (not GHCR - Cloud Run only supports Artifact Registry, GCR, or Docker Hub). Image paths:
 
-- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/backend:{sha}` – backend service (built from `prod` Dockerfile stage; also tagged `latest`)
-- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/frontend:{sha}` – frontend service (built from `prod` Dockerfile stage; also tagged `latest`)
-- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/admin:latest` – admin CLI (built from `admin` Dockerfile stage, by CI on every backend change or via `just build-admin`)
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/backend:{sha}` - backend service (built from `prod` Dockerfile stage; also tagged `latest`)
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/frontend:{sha}` - frontend service (built from `prod` Dockerfile stage; also tagged `latest`)
+- `europe-west2-docker.pkg.dev/quill-medical-{env}/quill/admin:latest` - admin CLI (built from `admin` Dockerfile stage, by CI on every backend change or via `just build-admin`)
 
 !!! warning "Docker build targets"
 The backend Dockerfile has five stages: `base`, `dev`, `prod`, `admin`, and `transcode`. The `transcode` stage is last, so building without `--target` produces the transcode job image, not the web server. CI deploy workflows must always specify `target: prod`.
@@ -245,7 +245,7 @@ This required the `roles/orgpolicy.policyAdmin` role at the organisation level.
 
 ### Staging Terraform apply (done)
 
-`terraform apply` completed for the staging environment – **all resources created successfully**:
+`terraform apply` completed for the staging environment - **all resources created successfully**:
 
 - VPC, subnet, Cloud NAT, VPC connector, firewall rules
 - 3 Cloud SQL instances (auth, FHIR, EHRbase) with auto-generated passwords
@@ -263,10 +263,10 @@ Cloud Run URLs (placeholder containers, will serve real app after first CI deplo
 
 ### Teaching Terraform apply (done)
 
-`terraform apply` completed for the teaching environment – **32 resources created**:
+`terraform apply` completed for the teaching environment - **32 resources created**:
 
 - VPC, subnet, Cloud NAT, VPC connector, firewall rules
-- 1 Cloud SQL instance (auth only – no FHIR/EHRbase) with auto-generated password
+- 1 Cloud SQL instance (auth only - no FHIR/EHRbase) with auto-generated password
 - Secret Manager secrets with initial values
 - Cloud Run backend and frontend (placeholder images)
 - Artifact Registry Docker repository
@@ -297,11 +297,11 @@ Each environment has a Global HTTPS Load Balancer that sits in front of the Clou
 | ----------- | ---------------------------- | ---------------- | ------------------------ |
 | App         | `app.quill-medical.com`      | `34.49.99.83`    | Active                   |
 | App         | `quill-medical.com`          | `34.49.99.83`    | Active (landing page)    |
-| Teaching    | `teaching.quill-medical.com` | –                | Retired, no DNS record   |
-| Staging     | `staging.quill-medical.com`  | –                | Retired, no DNS record   |
-| Production  | `ehr.quill-medical.com`      | –                | Shut down, no DNS record |
+| Teaching    | `teaching.quill-medical.com` | -                | Retired, no DNS record   |
+| Staging     | `staging.quill-medical.com`  | -                | Retired, no DNS record   |
+| Production  | `ehr.quill-medical.com`      | -                | Shut down, no DNS record |
 
-The Caddyfile no longer reverse-proxies `/api/*` to the backend – the load balancer handles all routing. Caddy now just serves static frontend files and provides a `/healthz` endpoint for health checks.
+The Caddyfile no longer reverse-proxies `/api/*` to the backend - the load balancer handles all routing. Caddy now just serves static frontend files and provides a `/healthz` endpoint for health checks.
 
 ### Domain architecture (done)
 
@@ -309,9 +309,9 @@ The Caddyfile no longer reverse-proxies `/api/*` to the backend – the load bal
 | ---------------------------- | --------------------------------------------- | ------------------------------------ | --------------------- |
 | `quill-medical.com`          | Public landing/marketing site                 | Update anytime, no clinical sign-off | Active (app LB)       |
 | `app.quill-medical.com`      | Teaching and clinician passport               | Auto-deploy from main branch         | Active                |
-| `teaching.quill-medical.com` | The same product, on the project it moved off | –                                    | Retired               |
+| `teaching.quill-medical.com` | The same product, on the project it moved off | -                                    | Retired               |
 | `ehr.quill-medical.com`      | Live clinical application                     | Release versions, DCB0129, UAT       | Named only, not built |
-| `staging.quill-medical.com`  | Staging/integration testing                   | –                                    | Retired               |
+| `staging.quill-medical.com`  | Staging/integration testing                   | -                                    | Retired               |
 
 The public landing site (`quill-medical.com` and `www.quill-medical.com`) is served from a GCS bucket behind the app load balancer. The site is built from the `frontend/public_pages/` Vite workspace and deployed via the `public-site.yml` CI workflow on pushes to `main`. This allows marketing pages and feature announcements to be updated without going through clinical release gates.
 
@@ -338,7 +338,7 @@ ns-cloud-c4.googledomains.com
 
 Each environment uses a separate Terraform workspace to isolate state:
 
-- **`app`** – the only live environment. State at
+- **`app`** - the only live environment. State at
   `gs://quill-medical-app-terraform-state/terraform/state/app.tfstate`.
 
 The `staging`, `teaching` and `production` workspaces were retired with
@@ -381,8 +381,8 @@ There is no production environment. The promotion job, and the CalVer tag it mad
 
 Workflow: `.github/workflows/terraform.yml`
 
-- **Pull requests** – runs `terraform plan` and posts the diff as a PR comment
-- **Merge to main** – runs `terraform apply` for app
+- **Pull requests** - runs `terraform plan` and posts the diff as a PR comment
+- **Merge to main** - runs `terraform apply` for app
 
 ## Environment configuration
 
@@ -435,26 +435,26 @@ The backend logs `Failed to list GCS banks` and the Admin > Teaching page shows 
 
 ## Security
 
-- **No public database IPs** – Cloud SQL is accessible only via VPC
-- **SSH via IAP only** – no open SSH ports, all access through Identity-Aware Proxy
-- **Secrets in Secret Manager** – never in environment variables (initial values auto-generated by Terraform)
-- **WIF authentication** – no long-lived JSON key files, short-lived tokens only
-- **Attribute condition on WIF** – only `bailey-medics/quillmedical` can authenticate (production/staging); teaching also allows `bailey-medics/quill-question-bank`
-- **Least-privilege service accounts** – each environment has its own service account
-- **Explicit GCS IAM bindings** – Cloud Run service accounts need bucket-level `roles/storage.objectViewer` even when they are project editors (see [Cloud Storage IAM](#cloud-storage-iam))
-- **Cloud Armor rate limiting** – 500 req/min per IP on the backend and frontend services of every load balancer. The landing and video buckets carry no policy
-- **HTTPS enforced** – HTTP to HTTPS redirect on all environments, Google-managed SSL certificates
-- **Google-managed TLS** – certificates auto-provisioned and auto-renewed, no manual cert management
-- **Content Security Policy** – browser-enforced allowlists per resource type (see [CSP headers](#content-security-policy-csp-headers) below)
+- **No public database IPs** - Cloud SQL is accessible only via VPC
+- **SSH via IAP only** - no open SSH ports, all access through Identity-Aware Proxy
+- **Secrets in Secret Manager** - never in environment variables (initial values auto-generated by Terraform)
+- **WIF authentication** - no long-lived JSON key files, short-lived tokens only
+- **Attribute condition on WIF** - only `bailey-medics/quillmedical` can authenticate (production/staging); teaching also allows `bailey-medics/quill-question-bank`
+- **Least-privilege service accounts** - each environment has its own service account
+- **Explicit GCS IAM bindings** - Cloud Run service accounts need bucket-level `roles/storage.objectViewer` even when they are project editors (see [Cloud Storage IAM](#cloud-storage-iam))
+- **Cloud Armor rate limiting** - 500 req/min per IP on the backend and frontend services of every load balancer. The landing and video buckets carry no policy
+- **HTTPS enforced** - HTTP to HTTPS redirect on all environments, Google-managed SSL certificates
+- **Google-managed TLS** - certificates auto-provisioned and auto-renewed, no manual cert management
+- **Content Security Policy** - browser-enforced allowlists per resource type (see [CSP headers](#content-security-policy-csp-headers) below)
 
 ### Content Security Policy (CSP) headers
 
 A `Content-Security-Policy` response header tells the browser which origins are allowed to load each type of resource, providing defence against XSS and data-injection attacks. Which layer sets it depends on the response:
 
-- **The application's pages** – the production Caddyfile (`caddy/prod/Caddyfile`), with the policy below.
-- **API responses, `/api/*`** – the load balancer's backend service (`infra/modules/load-balancer/main.tf`), with `default-src 'none'; frame-ancestors 'self'`. These go straight to the backend and never pass through Caddy.
-- **Teaching videos, `/videos/*`** – none. The videos backend bucket sets the other security headers, but a policy does nothing on a media file.
-- **The landing site** – its backend bucket, in the load balancer module, with its own policy.
+- **The application's pages** - the production Caddyfile (`caddy/prod/Caddyfile`), with the policy below.
+- **API responses, `/api/*`** - the load balancer's backend service (`infra/modules/load-balancer/main.tf`), with `default-src 'none'; frame-ancestors 'self'`. These go straight to the backend and never pass through Caddy.
+- **Teaching videos, `/videos/*`** - none. The videos backend bucket sets the other security headers, but a policy does nothing on a media file.
+- **The landing site** - its backend bucket, in the load balancer module, with its own policy.
 
 See [Which layer sets the headers](../cybersecurity/index.md#which-layer-sets-the-headers) for the full set of headers on each.
 
@@ -483,7 +483,7 @@ frame-ancestors 'none'
 | `frame-ancestors` | `'none'`                                      | Prevents the app being embedded in an iframe                      |
 
 !!! warning "Adding external image or API sources"
-If a new feature loads images from an external origin (e.g. a different CDN or FHIR server), that origin **must** be added to the relevant CSP directive in `caddy/prod/Caddyfile`. Without this, the browser silently blocks the request and images appear broken with no errors in the application logs – only a CSP violation message in the browser console.
+If a new feature loads images from an external origin (e.g. a different CDN or FHIR server), that origin **must** be added to the relevant CSP directive in `caddy/prod/Caddyfile`. Without this, the browser silently blocks the request and images appear broken with no errors in the application logs - only a CSP violation message in the browser console.
 
 ## Remaining steps
 
@@ -496,7 +496,7 @@ VAPID keys were generated and stored in Secret Manager for all three environment
 
 The public key is baked into the frontend Docker image at build time via the `VITE_VAPID_PUBLIC` build argument (set in CI workflows).
 
-The `jwt-secret` auto-generated value is fine for use – it's a strong random 64-character string.
+The `jwt-secret` auto-generated value is fine for use - it's a strong random 64-character string.
 
 Database passwords are auto-generated by Terraform and stored in Secret Manager automatically.
 
@@ -522,11 +522,11 @@ Once DNS is fully propagated and SSL certificates are provisioned, merge the `fe
 
 ### Alembic migrations run as a pre-deploy Cloud Run Job (done)
 
-Database migrations (`alembic upgrade head`) run as a separate **pre-deploy step** – a `gcloud run jobs execute --wait` call against the `quill-admin-{env}` Cloud Run Job – before the new backend/frontend revisions are deployed. This runs exactly once per deploy (no multi-instance race), gives a clean pass/fail signal separate from app boot, and blocks the deploy on failure. See the [admin tasks documentation](admin.md) and [Alembic migration safety](../backend/alembic-migration-safety.md).
+Database migrations (`alembic upgrade head`) run as a separate **pre-deploy step** - a `gcloud run jobs execute --wait` call against the `quill-admin-{env}` Cloud Run Job - before the new backend/frontend revisions are deployed. This runs exactly once per deploy (no multi-instance race), gives a clean pass/fail signal separate from app boot, and blocks the deploy on failure. See the [admin tasks documentation](admin.md) and [Alembic migration safety](../backend/alembic-migration-safety.md).
 
 ### Backend deploys via a tagged, smoke-tested revision (done)
 
-The backend deploy step (`.github/scripts/deploy/deploy-tagged.sh`) deploys the new revision under a unique traffic tag with `--no-traffic`, smoke-tests that revision's own tagged URL, and only then promotes that revision by name (`--to-revisions`) to receive live traffic. Live traffic stays on the previous, healthy revision until the new one – including its migration – has proven itself, rather than cutting over immediately and finding out via the public-edge smoke test. See [Alembic migration safety](../backend/alembic-migration-safety.md#revision-specific-smoke-test).
+The backend deploy step (`.github/scripts/deploy/deploy-tagged.sh`) deploys the new revision under a unique traffic tag with `--no-traffic`, smoke-tests that revision's own tagged URL, and only then promotes that revision by name (`--to-revisions`) to receive live traffic. Live traffic stays on the previous, healthy revision until the new one - including its migration - has proven itself, rather than cutting over immediately and finding out via the public-edge smoke test. See [Alembic migration safety](../backend/alembic-migration-safety.md#revision-specific-smoke-test).
 
 The promotion is issued with `--async` and verified by polling the service's own status until it is Ready with the new revision carrying all traffic, rather than relying on gcloud's built-in wait. That wait has no ceiling: on 2026-09-10 Cloud Run stalled on "Provisioning revision instances to receive traffic" and gcloud sat for 56 minutes before crashing, holding the serialised deploy queue the whole time. The poll is bounded (`PROMOTE_TIMEOUT_SECONDS`, default 300s), a stalled promotion gets one fresh attempt (`PROMOTE_ATTEMPTS`, default 2), and a failure prints the service's conditions and traffic split into the job log. The deploy jobs also carry a 30-minute `timeout-minutes` ceiling as a backstop.
 
@@ -534,7 +534,7 @@ The promotion is issued with `--async` and verified by polling the service's own
 
 Each active environment has a `quill-admin-{env}` Cloud Run Job for one-off admin tasks (creating superadmin users, assigning roles, running migrations). See the [admin tasks documentation](admin.md) for usage.
 
-The job is defined in the `cloud-run-job` Terraform module and uses a separate Docker image built from the `admin` target in the backend Dockerfile. The admin image is a CLI tool – it does **not** run an HTTP server.
+The job is defined in the `cloud-run-job` Terraform module and uses a separate Docker image built from the `admin` target in the backend Dockerfile. The admin image is a CLI tool - it does **not** run an HTTP server.
 
 ### Production go-live
 

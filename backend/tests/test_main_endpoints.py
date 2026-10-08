@@ -136,8 +136,8 @@ class TestRequestBodySizeLimit:
     ):
         """A lecture is far past 10 MB and must still be admitted.
 
-        The body never reaches this application in a real deployment –
-        the browser uploads straight to GCS – so this route exists for
+        The body never reaches this application in a real deployment -
+        the browser uploads straight to GCS - so this route exists for
         local development, where the general limit would block the one
         endpoint built to carry a whole video.
         """
@@ -149,8 +149,8 @@ class TestRequestBodySizeLimit:
                 "Content-Type": "video/mp4",
             },
         )
-        # Past the size check. What it fails on afterwards – auth, a
-        # missing module – is not this middleware's business.
+        # Past the size check. What it fails on afterwards - auth, a
+        # missing module - is not this middleware's business.
         assert response.status_code != 413
 
     def test_media_upload_still_has_a_ceiling(self, test_client: TestClient):
@@ -326,7 +326,7 @@ class TestFailuresDoNotLeakExceptionText:
     """A 500 must say what went wrong, not what the exception said.
 
     These endpoints wrap EHRbase, HAPI FHIR and the database, and used to
-    return ``str(e)`` to the caller – text that can carry a name, an NHS
+    return ``str(e)`` to the caller - text that can carry a name, an NHS
     number, a request URL with an identifier in it, or a fragment of a
     clinical document, and which pages render on screen via ``err.message``.
 

@@ -2,7 +2,7 @@
  * IconTextButton Component
  *
  * A button with a leading icon and text label. Icons are restricted to a
- * known set – passing an unlisted icon name causes a TypeScript error.
+ * known set - passing an unlisted icon name causes a TypeScript error.
  * Mirrors the AddButton pattern for consistent sizing and responsiveness.
  *
  * @example

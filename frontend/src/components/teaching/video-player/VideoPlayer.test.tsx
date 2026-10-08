@@ -18,7 +18,7 @@ vi.mock("react-player", () => ({
       ref?: React.Ref<HTMLVideoElement>;
     }) => (
       // Children are rendered because the real component forwards them
-      // to the underlying video element – which is how the caption
+      // to the underlying video element - which is how the caption
       // track reaches the DOM, and therefore what these tests assert.
       //
       // `poster` is deliberately not accepted. The real component hands
@@ -124,7 +124,7 @@ describe("VideoPlayer", () => {
     // The track is offered in the player's menu rather than turned on
     // when the video loads, which is how every player a learner
     // already knows behaves. WCAG 2.1 AA asks that captions exist and
-    // can be turned on, not that they start on – so this is a
+    // can be turned on, not that they start on - so this is a
     // preference, and the assertion exists to stop `default` drifting
     // back in unnoticed.
     const { container, findByTestId } = renderWithMantine(
@@ -141,7 +141,7 @@ describe("VideoPlayer", () => {
   it("hands YouTube no children at all", async () => {
     // Not the same as "no track". react-player passes `children`
     // straight into the underlying custom element, and the YouTube one
-    // builds its own DOM – so even a `false` from a conditional, or the
+    // builds its own DOM - so even a `false` from a conditional, or the
     // whitespace around a JSX comment, is enough to render a blank
     // player. This broke slide 5 in the learning centre; the assertion
     // is on emptiness rather than on the absence of a <track>.

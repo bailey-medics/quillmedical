@@ -1,7 +1,7 @@
 /**
  * FilterModal Component
  *
- * The dropdown panel content for FilterSelect – a grouped
+ * The dropdown panel content for FilterSelect - a grouped
  * multi-select with a reset link. Rendered inside a popover.
  */
 
@@ -11,7 +11,7 @@ import MultiSelectField from "../MultiSelectField";
 import classes from "./FilterModal.module.css";
 
 interface FilterModalProps {
-  /** Grouped or flat option data – same format as MultiSelect */
+  /** Grouped or flat option data - same format as MultiSelect */
   data: (string | ComboboxParsedItemGroup)[];
   /** Currently selected filter values */
   value: string[];

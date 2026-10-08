@@ -86,7 +86,7 @@ describe("ConnectivityContext", () => {
     });
     expect(result.current.isOnline).toBe(false);
 
-    // Fire online event – triggers health check
+    // Fire online event - triggers health check
     act(() => {
       window.dispatchEvent(new Event("online"));
     });

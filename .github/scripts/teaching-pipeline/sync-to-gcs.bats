@@ -2,7 +2,7 @@
 # Tests for sync-to-gcs.sh
 #
 # gsutil is stubbed and its invocations recorded, because what matters here
-# is where each module is sent – not that gsutil itself works.
+# is where each module is sent - not that gsutil itself works.
 
 # `run !` needs this declared, or bats runs in a compatibility mode where
 # flags on `run` are not honoured and the negation silently passes.

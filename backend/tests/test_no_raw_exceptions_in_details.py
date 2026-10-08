@@ -1,7 +1,7 @@
 """No caught exception may reach the client through an HTTPException detail.
 
 Written after auditing what a browser error report would carry. Eleven
-endpoints returned ``str(e)``, or an f-string containing it, to the caller –
+endpoints returned ``str(e)``, or an f-string containing it, to the caller -
 ten on patient-data paths, where the exception originates in EHRbase, HAPI
 FHIR or the database and can carry a name, an NHS number, a request URL with
 an identifier in it, or a fragment of a clinical document.
@@ -34,7 +34,7 @@ class _RiskyNames(ast.NodeVisitor):
 
     ``str(exc)`` and ``f"{exc}"`` hand over whatever the exception carries,
     which is the defect. ``exc.message`` reads a named attribute that somebody
-    wrote – on the typed exceptions in ``messaging.py`` those are class
+    wrote - on the typed exceptions in ``messaging.py`` those are class
     constants with a no-argument constructor, so there is nothing to
     interpolate into them. Treating the two alike would leave no way to return
     a structured error at all, and would push people towards assigning to a
@@ -63,7 +63,7 @@ def offending_details(tree: ast.AST) -> list[tuple[int, str]]:
 
     Scoped to ``except ... as <name>`` handlers, so it flags the thing that
     actually went wrong rather than banning a shape. An authored constant is
-    fine, and so is an f-string interpolating a fixed vocabulary – the repo
+    fine, and so is an f-string interpolating a fixed vocabulary - the repo
     has several, listing valid values back to the caller. What is never fine
     is handing over whatever the database, EHRbase or HAPI FHIR happened to
     put in an exception.

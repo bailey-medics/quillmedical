@@ -35,8 +35,8 @@ setup() {
     mkdir -p "$SESSION_START_LOG_DIR"
 
     # Keep the tooling steps quiet and instant; they are not what is under
-    # test. `bats` is deliberately not stubbed – shadowing it would break the
-    # runner executing these tests – and the hook only reaches for npm when
+    # test. `bats` is deliberately not stubbed - shadowing it would break the
+    # runner executing these tests - and the hook only reaches for npm when
     # bats is missing, which under bats it never is.
     stub pre-commit 'exit 0'
     stub npm 'exit 0'

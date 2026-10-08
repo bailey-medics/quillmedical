@@ -1,4 +1,4 @@
-# imports.tf – adopt what was made by hand
+# imports.tf - adopt what was made by hand
 #
 # Everything below existed before this directory did. An import block
 # tells Terraform the resource is already there, so the first apply

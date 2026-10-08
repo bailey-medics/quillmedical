@@ -66,7 +66,7 @@ export const NobodyCountersignsThis: Story = {
       <LogbookEntryForm {...args} />
       <StoryNote>
         No declaration, no assessor and no target. A logbook proves activity,
-        not competence – it is the sign-off that turns evidence into a
+        not competence - it is the sign-off that turns evidence into a
         conclusion. Only the date is required; failures and abandoned attempts
         belong in the record as much as successes do.
       </StoryNote>

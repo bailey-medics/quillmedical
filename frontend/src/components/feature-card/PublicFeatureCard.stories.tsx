@@ -67,7 +67,7 @@ const features = [
   },
   {
     title: "Modular Deployment",
-    body: "Activate only the modules your organisation needs – grow the system alongside your workflows.",
+    body: "Activate only the modules your organisation needs - grow the system alongside your workflows.",
   },
 ];
 

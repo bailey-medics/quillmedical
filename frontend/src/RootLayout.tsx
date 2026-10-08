@@ -84,7 +84,7 @@ export default function RootLayout() {
     }
   }, [location.pathname]);
 
-  // Reset fluid on every navigation – pages must opt in per-render
+  // Reset fluid on every navigation - pages must opt in per-render
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- navigation side effect
     setFluid(false);

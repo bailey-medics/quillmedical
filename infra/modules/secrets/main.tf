@@ -1,7 +1,7 @@
-# modules/secrets/main.tf – Secret Manager secrets
+# modules/secrets/main.tf - Secret Manager secrets
 #
 # Terraform creates the secret *containers*. Actual secret values are set
-# manually via `gcloud secrets versions add` or by CI – never in Terraform
+# manually via `gcloud secrets versions add` or by CI - never in Terraform
 # state.
 
 resource "google_secret_manager_secret" "secrets" {

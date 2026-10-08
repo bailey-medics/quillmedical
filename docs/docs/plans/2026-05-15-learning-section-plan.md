@@ -1549,7 +1549,7 @@ Before archiving `question-bank`:
 
 6. **App still works:** run `just sync-teaching` locally, verify assessment starts and questions render (existing flow unchanged)
 
-7. **Question-bank no longer needed:** once steps 1–6 pass, notify the maintainer that `bailey-medics/quill-question-bank` can be archived or deleted at their discretion. Do not archive or delete automatically
+7. **Question-bank no longer needed:** once steps 1-6 pass, notify the maintainer that `bailey-medics/quill-question-bank` can be archived or deleted at their discretion. Do not archive or delete automatically
 
 ### 11.8 `CONTENT_FORMAT.md` template
 
@@ -1718,7 +1718,7 @@ Steps:
 
 **Phase 3 — GCS video infrastructure (replaces YouTube)** ⏳ LATER
 
-> **Note:** Phase 3 will be built, but only after Phases 1–2 and 4–5 are complete and shipped. YouTube embeds via `react-player` are sufficient for the initial release. Begin this phase when explicitly instructed.
+> **Note:** Phase 3 will be built, but only after Phases 1-2 and 4-5 are complete and shipped. YouTube embeds via `react-player` are sufficient for the initial release. Begin this phase when explicitly instructed.
 
 - [x] 26. Terraform: video buckets and Cloud CDN (`infra/modules/teaching-video-pipeline/`)
       — applied and live: both buckets exist in `quill-medical-teaching`, the

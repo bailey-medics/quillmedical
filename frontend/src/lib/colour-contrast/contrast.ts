@@ -14,7 +14,7 @@ export const AA_TEXT = 4.5;
 export const AA_LARGE_OR_GRAPHIC = 3;
 
 /**
- * Parse a `#rrggbb` or `#rgb` hex colour into 0–255 channels.
+ * Parse a `#rrggbb` or `#rgb` hex colour into 0-255 channels.
  *
  * @throws Error if the value is not a hex colour
  */

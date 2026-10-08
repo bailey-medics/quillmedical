@@ -15,26 +15,26 @@ The platform is designed for clinical reliability, security, and compliance with
 
 ### Frontend
 
-- **React 19** – Modern UI framework for building interactive interfaces
-- **TypeScript** – Type-safe JavaScript for reliable code
-- **Mantine UI** – comprehensive component library for React applications
-- **Tabler Icons** – Beautiful open-source icon set via [@tabler/icons-react](https://tabler.io/icons)
-- **React Router** – Client-side routing and navigation
-- **Vite** – Fast build tool and development server
-- **Vitest** – Unit testing framework
-- **Storybook** – Component development and documentation
+- **React 19** - Modern UI framework for building interactive interfaces
+- **TypeScript** - Type-safe JavaScript for reliable code
+- **Mantine UI** - comprehensive component library for React applications
+- **Tabler Icons** - Beautiful open-source icon set via [@tabler/icons-react](https://tabler.io/icons)
+- **React Router** - Client-side routing and navigation
+- **Vite** - Fast build tool and development server
+- **Vitest** - Unit testing framework
+- **Storybook** - Component development and documentation
 
 ### Backend
 
-- **FastAPI** – Modern Python web framework
-- **SQLAlchemy** – Database ORM and query builder
-- **PostgreSQL** – Relational database
-- **Alembic** – Database migration tool
+- **FastAPI** - Modern Python web framework
+- **SQLAlchemy** - Database ORM and query builder
+- **PostgreSQL** - Relational database
+- **Alembic** - Database migration tool
 
 ### Healthcare Standards
 
-- **FHIR R4** – Patient demographics and healthcare data exchange
-- **OpenEHR** – Clinical document modeling and storage
+- **FHIR R4** - Patient demographics and healthcare data exchange
+- **OpenEHR** - Clinical document modeling and storage
 
 ---
 
@@ -42,11 +42,11 @@ The platform is designed for clinical reliability, security, and compliance with
 
 Quill Medical is built from several connected components:
 
-- **Web application** – What patients and staff see and use in their browsers
-- **Web server** – Handles secure connections and routes traffic
-- **Application server** – Processes requests and manages business logic
-- **Databases** – Store patient information, clinical letters, and user accounts
-- **Healthcare standards** – Uses FHIR for patient demographics and OpenEHR for clinical documents
+- **Web application** - What patients and staff see and use in their browsers
+- **Web server** - Handles secure connections and routes traffic
+- **Application server** - Processes requests and manages business logic
+- **Databases** - Store patient information, clinical letters, and user accounts
+- **Healthcare standards** - Uses FHIR for patient demographics and OpenEHR for clinical documents
 
 ---
 
@@ -81,11 +81,11 @@ The codebase uses automated tools to maintain consistent formatting and catch co
 
 Quill Medical uses a defence-in-depth security architecture:
 
-- **Backend validation** – All permissions checked server-side (source of truth)
-- **Frontend protection** – Hides inaccessible features for better user experience
-- **Tiered security** – Different user types receive appropriate error responses
-- **Competencies, not a ladder** – what somebody may do comes from the competencies they hold, and where from the places they belong to; a separate platform role marks who operates Quill itself
-- **Fail-safe defaults** – Access denied unless explicitly granted
+- **Backend validation** - All permissions checked server-side (source of truth)
+- **Frontend protection** - Hides inaccessible features for better user experience
+- **Tiered security** - Different user types receive appropriate error responses
+- **Competencies, not a ladder** - what somebody may do comes from the competencies they hold, and where from the places they belong to; a separate platform role marks who operates Quill itself
+- **Fail-safe defaults** - Access denied unless explicitly granted
 
 This approach ensures:
 
@@ -113,11 +113,11 @@ This approach ensures:
 
 #### Required Software
 
-- Docker Desktop – runs the application in containers
-- Node.js 22+ – for frontend development
-- Python 3.13+ – for backend development
-- Yarn – JavaScript package manager
-- Just – command runner for common tasks
+- Docker Desktop - runs the application in containers
+- Node.js 22+ - for frontend development
+- Python 3.13+ - for backend development
+- Yarn - JavaScript package manager
+- Just - command runner for common tasks
 
 #### Setup Steps
 

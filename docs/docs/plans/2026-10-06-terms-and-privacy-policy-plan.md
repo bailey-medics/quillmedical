@@ -142,15 +142,15 @@ rather than a new document.
       goes into section 3 and section 7 of the privacy policy, and where
       the code does not yet do it, becomes a backend task.
 
-      - **Server logs – settled at 30 days** on 6 October 2026, which
+      - **Server logs - settled at 30 days** on 6 October 2026, which
         is what the log bucket and the analytics archive already keep
         (`var.retention_days` in `infra/modules/analytics`). The draft
         said 90 and now says 30.
-      - **Feedback – two figures disagree.** The draft says two years.
+      - **Feedback - two figures disagree.** The draft says two years.
         The [User feedback](2026-09-20-user-feedback-plan.md) plan left
         it open at "ninety days unless use suggests otherwise". Nothing
         deletes feedback today. Decide which.
-      - **Accounts after closure – nothing is deleted today.** The draft
+      - **Accounts after closure - nothing is deleted today.** The draft
         says two years after an account is closed. `is_active` is a soft
         delete, so a closed account is kept for ever. The public security
         page already promises "complete deletion upon account closure",
@@ -202,9 +202,9 @@ rather than a new document.
       reminders and one-message cancellation (27), and the 14-day
       sequence at checkout (25). Structure, in this order:
 
-      - **Who we are and definitions** – Bailey Medics Ltd trading as
+      - **Who we are and definitions** - Bailey Medics Ltd trading as
         Quill Medical; "Customer", "End user", "Sponsoring organisation".
-      - **Part A, common terms** – the account (one per person, accurate
+      - **Part A, common terms** - the account (one per person, accurate
         details, keep the password secret, two-factor where offered),
         acceptable use (no sharing of accounts, no scraping, no uploading
         of patient-identifiable data into teaching features), intellectual
@@ -217,14 +217,14 @@ rather than a new document.
         changes to the terms (notice, and the "Last updated" date as the
         record of version), governing law (England and Wales, exclusive
         jurisdiction of its courts).
-      - **Part B, users of a sponsoring organisation** – written for
+      - **Part B, users of a sponsoring organisation** - written for
         EoEETA's members today and for any later organisation. The
         organisation's agreement with Bailey Medics governs; these terms
         sit beneath it; the organisation controls enrolment, access and
         withdrawal; results are visible to the organisation; the user has
         no direct payment relationship with us; what happens to the
         account when the organisation's agreement ends.
-      - **Part C, direct customers** – individuals and organisations
+      - **Part C, direct customers** - individuals and organisations
         contracting with Bailey Medics directly. Ordering and payment,
         subscription term and renewal, the 14-day cancellation right for
         consumers under the Consumer Contracts Regulations 2013 and the
@@ -256,7 +256,7 @@ rather than a new document.
       question the research recorded; and the regulator's name, which the
       research found changed on 30 September 2026. In this order:
 
-      - **Who is responsible for your data** – the one section that
+      - **Who is responsible for your data** - the one section that
         differs by route, so it comes first. If you use Quill through a
         sponsoring organisation such as EoEETA, that organisation is the
         controller and Bailey Medics processes your data on its
@@ -264,7 +264,7 @@ rather than a new document.
         your data go to it, though we will help. If you signed up
         directly, Bailey Medics Ltd is the controller. ICO registration
         number and contact details for both cases.
-      - **What we collect and why** – one bullet per purpose, each with
+      - **What we collect and why** - one bullet per purpose, each with
         its lawful basis: running your account (contract), assessment
         results and progress (contract, and legitimate interests of the
         sponsoring organisation in training its members), security logs
@@ -276,24 +276,24 @@ rather than a new document.
         special category data is collected by the teaching service, and
         that patient data is out of scope until the clinical service
         launches.
-      - **Who we share it with** – the sub-processor list from Phase 1,
+      - **Who we share it with** - the sub-processor list from Phase 1,
         the sponsoring organisation where there is one, and the
         circumstances in which the law requires disclosure. No selling
         of data, no advertising.
-      - **Where it is held** – Google Cloud, London region; any transfer
+      - **Where it is held** - Google Cloud, London region; any transfer
         outside the UK named with its safeguard.
-      - **How long we keep it** – the periods settled in Phase 1.
-      - **Your rights** – access, rectification, erasure, restriction,
+      - **How long we keep it** - the periods settled in Phase 1.
+      - **Your rights** - access, rectification, erasure, restriction,
         portability, objection, withdrawing consent, and the right to
         complain to the ICO, with the ICO's address and
         <https://ico.org.uk>. For organisation users, that the request
         goes to the organisation and we act on its instruction.
-      - **Cookies** – one sentence pointing at the existing cookie policy
+      - **Cookies** - one sentence pointing at the existing cookie policy
         at `/cookie-policy`, which already lists the four strictly
         necessary cookies.
-      - **Children** – Quill is for healthcare professionals and not
+      - **Children** - Quill is for healthcare professionals and not
         offered to anyone under 18.
-      - **Changes to this policy** – and the "Last updated" date.
+      - **Changes to this policy** - and the "Last updated" date.
 
 - [x] **Check the policy against the code paths that collect data.**
       Every form that takes personal data (`RegistrationForm.tsx`,
@@ -609,35 +609,35 @@ tracks.
 
 ## Decisions
 
-- **One document per kind, with a part per route** – rather than separate
+- **One document per kind, with a part per route** - rather than separate
   EoEETA and direct terms. The registration sentence links to one address
   for each, the common clauses are most of the text, and a second
   sponsoring organisation becomes a sentence in Part B rather than a new
   page. The privacy policy has only one section that differs by route,
   who the controller is, so it leads with that.
 
-- **EoEETA is controller, Bailey Medics is processor** – confirmed by Mark
+- **EoEETA is controller, Bailey Medics is processor** - confirmed by Mark
   on 6 October 2026. This is the usual shape for a membership body's
   training platform: EoEETA decides who is trained and why, Bailey Medics
   runs the system. It means EoEETA's members get their Article 13
   information from EoEETA, and our policy says so rather than pretending
   to be the controller of data it only holds on instruction.
 
-- **Direct customers may be individuals** – so Part C carries consumer
+- **Direct customers may be individuals** - so Part C carries consumer
   law, which the organisation route does not need. A direct organisation
   customer gets the SaaS agreement from Phase 4, the same as EoEETA.
 
-- **Source text lives in `docs/docs/legal/` as Markdown** – a reviewer
+- **Source text lives in `docs/docs/legal/` as Markdown** - a reviewer
   reads and marks up text, not TSX. The page is a rendering of the
   reviewed text, not the other way round.
 
-- **Clinical records are declared out of scope for now** – the FHIR and
+- **Clinical records are declared out of scope for now** - the FHIR and
   EHRbase services hold demo data only and are not offered to any
   customer. Writing patient-data terms before there is a patient-data
   service would be guessing, and they will need a DPIA and a clinical
   safety case of their own when the time comes.
 
-- **Email moves to Amazon SES in London, not to an EU provider** – the
+- **Email moves to Amazon SES in London, not to an EU provider** - the
   public site promises that data stays in the UK, and SES in London is the
   only mainstream service that keeps that promise word for word. An EU
   provider such as Brevo was the alternative, at the price of weakening
@@ -651,7 +651,7 @@ tracks.
   day, a cap that would have bitten on the day EoEETA invites its
   delegates.
 
-- **The company's own mailboxes do not bear on the UK hosting claim** –
+- **The company's own mailboxes do not bear on the UK hosting claim** -
   Quill's mailboxes are on Proton, a Swiss company (the MX records in
   `infra/dns.tf`), so an email somebody sends to the support address is
   held there. That is the company's correspondence, not the service, and
@@ -661,14 +661,14 @@ tracks.
   does bear on the claim is the service's own sending, which Phase 5
   deals with.
 
-- **Reflections stay holder-only, and the terms say so** – the passport
+- **Reflections stay holder-only, and the terms say so** - the passport
   already keeps reflections readable by the holder alone, and the drafts
   state that as a promise rather than hedging it, alongside the plain
   statement that reflections are not legally privileged. A sponsor that
   wants to read reflections is asking for a product change, not a
   wording change.
 
-- **The drafts name the regulator as the Information Commission** –
+- **The drafts name the regulator as the Information Commission** -
   checked on 6 October 2026 against SI 2026/1015, made on 10 September
   2026, which from 30 September 2026 brought into force the abolition of
   the office of Information Commissioner and the transfer of its
@@ -694,7 +694,7 @@ findings have been reviewed.
 
 ### Who was read
 
-- **Clinical e-portfolios** – risr/ (Fry-IT Ltd, formerly Kaizen: MSA
+- **Clinical e-portfolios** - risr/ (Fry-IT Ltd, formerly Kaizen: MSA
   and DPA of 26 August 2026, website privacy policy still dated 2018),
   FourteenFish (user terms undated, EMIS G-Cloud master terms of May 2024,
   privacy policy now redirected to Enlivio and unreadable), Clarity and
@@ -703,22 +703,22 @@ findings have been reviewed.
   2026), PebblePad, Horus, ISCP (terms of January 2020), JETS and JAG at
   the RCP, NHS ePortfolios, Turas and L2P.
 
-- **E-learning and question banks selling to individuals** – Pastest,
+- **E-learning and question banks selling to individuals** - Pastest,
   Passmedicine, Quesmed (privacy policy of 22 September 2026), BMJ
   Learning and OnExamination, Geeky Medics, MedAll, Mind the Bleep, Zero
   to Finals, TeachMeSeries, eIntegrity (the only in-scope seller of an
   endoscopy course to individuals), Red Whale, Doctors.net.uk, the MDU
   and the MPS. Medisense is offline.
 
-- **UK clinical SaaS** – Accurx (terms of 5 August 2026, DPA v11.1 of
+- **UK clinical SaaS** - Accurx (terms of 5 August 2026, DPA v11.1 of
   15 September 2026), Patchwork, Locum's Nest, Induction, Pando, Lantum.
 
-- **Controller-side notices and NHS requirements** – NHS England elfh and
+- **Controller-side notices and NHS requirements** - NHS England elfh and
   Learning Hub, JETS and JAG, RCP, RCGP, RCS England, RCPCH, JRCPTB,
   Scotland Deanery, NES, the NHS Standard Contract 2026/27, DSPT standard
   10 and DTAC v2.
 
-- **International architecture examples, under non-UK law** – Slack,
+- **International architecture examples, under non-UK law** - Slack,
   GitHub, Atlassian, Microsoft, Google Workspace for Education, Kahoot!,
   Zoom, Teachable, Instructure.
 
@@ -734,7 +734,7 @@ findings have been reviewed.
   [Accurx terms](https://www.accurx.com/terms-and-conditions) and the
   [Slack user terms](https://slack.com/terms-of-service/user).
 
-- **User-side precedence wording to borrow is Slack's** – "if there is a
+- **User-side precedence wording to borrow is Slack's** - "if there is a
   conflict or inconsistency between the Contract and the User Terms, the
   terms of the Contract will first prevail, followed by the provisions in
   these User Terms", with a capitalised line that it is solely the
@@ -745,7 +745,7 @@ findings have been reviewed.
   [Kahoot! terms](https://trust.kahoot.com/terms-and-conditions/).
 
 - **Business-side precedence runs Order Form, then DPA for personal data,
-  then schedules, then the main terms** – Accurx clause 1.4, the risr/
+  then schedules, then the main terms** - Accurx clause 1.4, the risr/
   MSA and Agilio's 2026 waterfall all do this. The 2024 Clarity MSA
   inverts it and MedAll states no hierarchy at all. See the
   [Agilio general terms](https://agiliosoftware.com/legal-centre/general-terms/).
@@ -754,7 +754,7 @@ findings have been reviewed.
   "Authorised User" (Slack, Accurx) or "End User" (GitHub, Google), so
   Quill must define its own term rather than assume it is understood.
 
-- **Plain-English summaries are rare** – only FourteenFish's six-bullet
+- **Plain-English summaries are rare** - only FourteenFish's six-bullet
   "quick summary" and Agilio's closing glossary. Visible version numbers
   are rarer still: Myprogress ("Version 2.0, effective 02.02.2026"), the
   Clarity MSA ("V2.1") and the RCPCH notice ("v4.7"). See the
@@ -786,7 +786,7 @@ findings have been reviewed.
   and the
   [Myprogress product privacy policy](https://www.myknowledgemap.com/product-privacy-policy).
 
-- **Slack's residual-controller split is the cleanest** – "Customer Data"
+- **Slack's residual-controller split is the cleanest** - "Customer Data"
   processed for the customer against "Other Information" used "to operate
   our Services, Websites and business" as controller. This is the
   paragraph nobody in UK healthcare writes, and Quill needs it for
@@ -794,7 +794,7 @@ findings have been reviewed.
   sponsored users. See the
   [Slack privacy policy](https://slack.com/trust/privacy/privacy-policy).
 
-- **FourteenFish is the deliberate outlier** – EMIS is controller for
+- **FourteenFish is the deliberate outlier** - EMIS is controller for
   everything in a user's own account and processor only for the copy the
   user submits to the customer, and promises never to share with the
   customer or a regulator without the user's instruction. That suits a
@@ -816,14 +816,14 @@ findings have been reviewed.
   state no Article 6 basis, which is a defect rather than a model. See
   the [JETS privacy statement](https://jets.thejag.org.uk/privacy-statement).
 
-- **Avoid consent as the basis for sponsored clinicians** – the ICO's
+- **Avoid consent as the basis for sponsored clinicians** - the ICO's
   employment guidance: "Employers are often in a position of power over
   workers and therefore it's best to avoid relying on consent". NHS bodies
   cite public task with contract alongside; the RCP defaults to
   legitimate interests. See
   [ICO, sharing workers' health information](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/employment/information-about-workers-health/when-can-we-share-workers-health-information/).
 
-- **Pitfalls** – Patchwork and Locum's Nest never articulate a processor
+- **Pitfalls** - Patchwork and Locum's Nest never articulate a processor
   role; PebblePad's product policy never says who the controller is for
   institutional accounts; risr/'s 2018 policy hedges that an
   organisation's contract "may restrict our collection or use of your
@@ -832,7 +832,7 @@ findings have been reviewed.
 
 ### Consumer law and subscriptions
 
-- **Four of fourteen sellers handle the 14-day right properly** – Geeky
+- **Four of fourteen sellers handle the 14-day right properly** - Geeky
   Medics, TeachMeSeries, BMJ Group and Zero to Finals. Only Geeky Medics
   writes the regulation 37 sequence: the buyer must "Expressly request
   immediate access", acknowledge that access starts within the 14 days,
@@ -844,13 +844,13 @@ findings have been reviewed.
   and the
   [Consumer Contracts Regulations 2013, Part 3](https://www.legislation.gov.uk/uksi/2013/3134/part/3).
 
-- **Never deny consumer status** – Red Whale ("you are not deemed to be a
+- **Never deny consumer status** - Red Whale ("you are not deemed to be a
   'consumer' under the laws of England and Wales") and the MDU ("dealing
   with us as a medical or dental-professional, and not as a consumer") do
   so, and a clinician paying personally may still be a consumer in law.
   See the [Red Whale terms of sale](https://www.redwhale.co.uk/terms-of-sale).
 
-- **Renewal mechanics with precedent** – BMJ auto-renews with at least 28
+- **Renewal mechanics with precedent** - BMJ auto-renews with at least 28
   days' notice including the renewal price and a 14-day opt-out deadline;
   Quesmed applies price changes no earlier than 30 days after notice;
   Pastest's Shopify template still says prices change "without notice".
@@ -858,11 +858,11 @@ findings have been reviewed.
   [BMJ individual subscription terms](https://bmjgroup.com/subscription-terms-and-conditions-individuals/)
   and the [Quesmed terms](https://quesmed.com/terms-and-conditions/).
 
-- **Account sharing is paired with a consequence** – Passmedicine's
+- **Account sharing is paired with a consequence** - Passmedicine's
   "immediate termination", BMJ's right to verify a personal subscriber,
   eIntegrity's liability for losses from deliberately shared log-ins.
 
-- **The DMCC subscription regime is not yet in force** – the government's
+- **The DMCC subscription regime is not yet in force** - the government's
   response of 2 April 2026 said spring 2027; law-firm trackers report a
   9 August 2026 announcement of January 2027; no commencement regulations
   have been made. It will require renewal reminders, two 14-day
@@ -873,7 +873,7 @@ findings have been reviewed.
   and the
   [Wiggin DMCC tracker](https://wiggin.co.uk/insight/digital-markets-competition-and-consumer-act-tracker/).
 
-- **Consumer Rights Act 2015** – section 57(3) bars capping service
+- **Consumer Rights Act 2015** - section 57(3) bars capping service
   liability below the price paid; Schedule 2 paragraph 11 lists varying
   terms "without a valid reason which is specified in the contract" as
   unfair; Part 2 paragraph 23 allows variation of an open-ended contract
@@ -887,14 +887,14 @@ findings have been reviewed.
 
 ### Liability and disclaimers
 
-- **Business caps sit at 100 to 150 per cent of twelve months' fees** –
+- **Business caps sit at 100 to 150 per cent of twelve months' fees** -
   risr/ and Agilio 100 per cent, FourteenFish and EMIS 120 per cent, the
   Clarity MSA 150 per cent, the Clarity 2022 terms the greater of twelve
   months' fees and £200, all with data loss and consequential loss
   excluded. See the
   [risr/ MSA of August 2026](https://risr.global/wp-content/uploads/2026/09/risr_Master_Services_Agreement_Aug26.pdf).
 
-- **Accurx is the UK healthcare precedent for two caps** – general
+- **Accurx is the UK healthcare precedent for two caps** - general
   liability at the higher of twelve months' fees or £250,000, and
   £1,000,000 for claims under the DPA or data protection law, which NHS
   customers negotiate for anyway. Under UCTA section 11(4) a cap set
@@ -902,7 +902,7 @@ findings have been reviewed.
   figure. See the [Accurx terms](https://www.accurx.com/terms-and-conditions)
   and [UCTA 1977](https://www.legislation.gov.uk/ukpga/1977/50).
 
-- **Consumer caps are messier and the mistakes are visible** – BMJ 115 per
+- **Consumer caps are messier and the mistakes are visible** - BMJ 115 per
   cent of the preceding twelve months, Red Whale the higher of sums paid
   or £100, Doctors.net.uk "£1 or the aggregate of sums you have paid",
   Patchwork one £250 for every kind of user. Pastest, Passmedicine, Mind
@@ -913,7 +913,7 @@ findings have been reviewed.
   cent of global turnover. See
   [Lewis Silkin on the CMA guidance](https://www.lewissilkin.com/insights/2026/07/29/cmas-new-unfair-contract-terms-guidance-is-here-whats-changed-and-what-your-bu-102nez8).
 
-- **Clean consumer models** – Geeky Medics ("we do not exclude or limit in
+- **Clean consumer models** - Geeky Medics ("we do not exclude or limit in
   any way our liability to you where it would be unlawful to do so",
   liable for losses "that are a foreseeable result of our breach") and
   TeachMeSeries, which reproduces the CRA "Summary of your key legal
@@ -922,7 +922,7 @@ findings have been reviewed.
   [Geeky Medics store terms](https://store.geekymedics.com/policies/terms-of-service)
   and the [TeachMeSeries terms](https://teachmeanatomy.info/terms-and-conditions/).
 
-- **Clinical disclaimers say three things everywhere** – education not
+- **Clinical disclaimers say three things everywhere** - education not
   advice, judgement not replaced, the professional keeps responsibility
   for the patient. The formulary warning ("a recognised formulary such as
   the British National Formulary prior to prescribing") is near
@@ -936,13 +936,13 @@ findings have been reviewed.
   [Accurx acceptable use policy](https://www.accurx.com/acceptable-use-policy)
   and the [OnExamination terms](https://www.onexamination.com/pages/terms-and-conditions).
 
-- **A gap Quill alone has** – no platform addresses liability for an
+- **A gap Quill alone has** - no platform addresses liability for an
   assessment outcome relied on by an employer, which is closer to a
   sign-off passport than exam revision is.
 
 ### Intellectual property and user content
 
-- **Two owners is the defensible model** – PebblePad: "you remain the
+- **Two owners is the defensible model** - PebblePad: "you remain the
   owner of it unless it is owned by the Institution who is providing or
   provided your account for you"; risr/: the customer "exclusively owns
   and retains all right, title and interest in and to the Content,
@@ -953,14 +953,14 @@ findings have been reviewed.
   [PebblePad alumni terms](https://payments.pebblepad.co.uk/TermsAndConditions.aspx)
   and the [MedAll terms](https://medall.org/terms).
 
-- **Over-reach to avoid** – Geeky Medics requires an "exclusive licence"
+- **Over-reach to avoid** - Geeky Medics requires an "exclusive licence"
   over uploads, which read literally stops a learner reusing their own
   notes; BMJ's website terms take an irrevocable worldwide licence "for
   any purpose, in any media" with moral rights waived; Turnitin's licence
   survives leaving; GitHub's individual licence now includes use "by
   training AI Features".
 
-- **AI clauses arrived in 2025 and 2026** – Geeky Medics bans use of its
+- **AI clauses arrived in 2025 and 2026** - Geeky Medics bans use of its
   content "in the creation of artificial intelligence (AI) related
   products including the training of models"; Red Whale reserves
   text-and-data-mining rights and says "Personal data provided to us is
@@ -976,7 +976,7 @@ findings have been reviewed.
   "Transaction Data", risr/'s "anonymised data, information or
   techniques".
 
-- **The confidentiality warranty to copy is MedAll's** – uploads "will not
+- **The confidentiality warranty to copy is MedAll's** - uploads "will not
   breach any obligations of confidentiality whether to a patient, your
   employer, your colleague or any other third party".
 
@@ -998,7 +998,7 @@ findings have been reviewed.
   and the
   [BCSA accreditation guidelines v1.7](https://www.bcsa.thejag.org.uk/CMS_Documents/Scheme/SAAS/230901-%20Bowel%20Cancer%20Screener%20Accreditation%20Guidelines%20-%20%20Colonoscopists%20%20V1.7.pdf).
 
-- **The JETS certification chain** – summative DOPS, local review and
+- **The JETS certification chain** - summative DOPS, local review and
   sign-off by the training lead, then the national JETS training lead,
   with a "minimum of two assessors, minimum of two cases, minimum of four
   DOPS ... within a month"; a trainee returning from a break needs no
@@ -1014,7 +1014,7 @@ findings have been reviewed.
   paragraphs 62 and 89, not contractual. All three are new wording for
   Quill.
 
-- **Registration warranties are the norm** – Doctors.net.uk verifies GMC
+- **Registration warranties are the norm** - Doctors.net.uk verifies GMC
   registration and says removed doctors "may be denied access"; MedAll
   requires users to "notify us immediately if you are struck off" but
   admits "we don't vet our Users"; Accurx delegates the check to the
@@ -1022,7 +1022,7 @@ findings have been reviewed.
   [Doctors.net.uk terms](https://www.doctors.net.uk/terms-and-conditions.html).
 
 - **Reflection rests on the joint AoMRC, COPMeD, GMC and Medical Schools
-  Council guidance, which no platform restates** – anonymise to the ICO
+  Council guidance, which no platform restates** - anonymise to the ICO
   standard ("Simply removing the patient's name, age, address or other
   personal identifiers is unlikely to be enough"), "capture learning
   outcomes and future plans" rather than facts, reflections "are not
@@ -1039,7 +1039,7 @@ findings have been reviewed.
   and the
   [RCPCH ePortfolio guidance](https://www.rcpch.ac.uk/resources/rcpch-eportfolio-guidance-doctors).
 
-- **2026 college positions on AI in entries** – JRCPTB (May 2026) treats
+- **2026 college positions on AI in entries** - JRCPTB (May 2026) treats
   "Entering patient identifiable information into AI tools" and
   submitting AI-generated reflections as personal work as unacceptable,
   and recommends a declaration such as "AI was used to assist with
@@ -1050,7 +1050,7 @@ findings have been reviewed.
   and the
   [RCPCH AI guidance](https://rcpch.ac.uk/resources/responsible-use-artificial-intelligence-eportfolio-entries-guidance).
 
-- **An identifiable reflection changes what the data is** – a reflection
+- **An identifiable reflection changes what the data is** - a reflection
   naming a patient is health data about that patient, engages Article 9,
   the duty of confidence and Caldicott, and makes the platform a
   processor (or for a direct account possibly a controller) of patient
@@ -1058,7 +1058,7 @@ findings have been reviewed.
   not health data; reasonable-adjustment records are, as RCUK's 25 per
   cent extra time for dyslexia shows.
 
-- **Clinical images and video** – the GMC's recordings guidance, read
+- **Clinical images and video** - the GMC's recordings guidance, read
   through the MPS because gmc-uk.org blocked every fetch, treats images
   of internal organs as recordings made as part of care that may be used
   for teaching "in an anonymised form without seeking specific consent",
@@ -1069,14 +1069,14 @@ findings have been reviewed.
   recording. See
   [MPS on recordings of patients](https://www.medicalprotection.org/uk/articles/eng-making-audio-and-visual-recordings-of-patients).
 
-- **Push notifications** – NHS messaging guidance says to disable
+- **Push notifications** - NHS messaging guidance says to disable
   lock-screen previews and minimise confidential content, yet neither
   Accurx's nor Pando's notice says anything about notification content.
   This is new wording for Quill.
 
 ### Retention and offboarding
 
-- **Controllers keep training records six to twelve years** – Horus six
+- **Controllers keep training records six to twelve years** - Horus six
   years read-only then deletion, the Scotland Deanery six years after
   leaving, NHS ePortfolios training plus seven years, the RCP six years
   for CPD evidence, RCPCH twelve years after CCT on its guidance page but
@@ -1086,7 +1086,7 @@ findings have been reviewed.
   not to copy. See [Data in Horus](https://supporthorus.hee.nhs.uk/faqs/data-in-horus/)
   and the [JETS privacy statement](https://jets.thejag.org.uk/privacy-statement).
 
-- **Processor exit windows are 30 to 150 days** – risr/ 30 days' access
+- **Processor exit windows are 30 to 150 days** - risr/ 30 days' access
   then deletion, Agilio 30 days in a standard file format, the Clarity
   MSA 90, FourteenFish and EMIS a copy within 30 days, Accurx deletion
   confirmed within 90, PebblePad a purge 150 days after licence expiry.
@@ -1095,7 +1095,7 @@ findings have been reviewed.
   not match, and a processor's terms must say which it follows.
 
 - **risr/'s "Expiration of Users" clause is the closest precedent for
-  clinicians who move trusts** – the customer gets "a period of two (2)
+  clinicians who move trusts** - the customer gets "a period of two (2)
   years from the date that such User becomes a non-User, to either
   retrieve or destroy said User's data", which keeps the record with the
   controller long enough for a sign-off to finish or transfer.
@@ -1113,7 +1113,7 @@ findings have been reviewed.
 
 ### Sub-processors and transfers
 
-- **Hosting disclosures are rare and short** – Quesmed "Amazon Web
+- **Hosting disclosures are rare and short** - Quesmed "Amazon Web
   Services in the eu-west-1 region in Ireland", MedAll "Our servers are
   currently based in the UK", FourteenFish's DPIA "AWS London", Myprogress
   "UK South" with Microsoft bound to the region; the RCP family still
@@ -1131,7 +1131,7 @@ findings have been reviewed.
   [Agilio sub-processors](https://agiliosoftware.com/legal-centre/sub-processors/)
   and the [Atlassian sub-processors](https://www.atlassian.com/legal/sub-processors).
 
-- **The best UK contract wording is Accurx's** – a "general written
+- **The best UK contract wording is Accurx's** - a "general written
   authorisation", notice "at least thirty (30) days in advance" of any
   change to its sub-processor page, and objection "on reasonable and
   explained grounds ... within ten (10) business days". DSPT guide 10 and
@@ -1140,7 +1140,7 @@ findings have been reviewed.
   [Accurx DPA](https://www.accurx.com/data-processing-agreement).
 
 - **Resend was Quill's one real transfer** (removed on 7 October 2026,
-  so this and the next point are history) – "Resend stores all customer
+  so this and the next point are history) - "Resend stores all customer
   data in the United States only", "There is no setting today that moves
   stored data to the EU", it "participates in the EU-U.S. Data Privacy
   Framework and the UK Extension", its DPA uses the EU SCCs with the UK
@@ -1149,7 +1149,7 @@ findings have been reviewed.
   sponsors. See [Resend GDPR](https://resend.com/security/gdpr) and the
   [Resend DPA](https://resend.com/legal/dpa).
 
-- **The UK Extension is under strain** – on 29 June 2026 the US Supreme
+- **The UK Extension is under strain** - on 29 June 2026 the US Supreme
   Court held in Trump v Slaughter that FTC commissioners can be removed
   at will; the EDPB asked the Commission to assess the DPF on 31 July
   2026; the UK government said on 14 July 2026 it is "exploring the
@@ -1172,7 +1172,7 @@ findings have been reviewed.
 
 ### Acceptance and versioning
 
-- **Parker-Grennan v Camelot [2024] EWCA Civ 185 approves click-wrap** –
+- **Parker-Grennan v Camelot [2024] EWCA Civ 185 approves click-wrap** -
   "reasonable steps to bring the terms of the contract to the customer's
   attention" and "sufficient opportunity to read the terms" suffice;
   Camelot's drop-downs, hyperlinks, mandatory tick box and "summaries of
@@ -1199,7 +1199,7 @@ findings have been reviewed.
   close. Everyone else relies on sign-up click-wrap or deemed acceptance
   by use. See the [ISCP new terms page](https://www.iscp.ac.uk/newterms.aspx).
 
-- **Dating is where the UK sector looks worst** – risr/'s website privacy
+- **Dating is where the UK sector looks worst** - risr/'s website privacy
   policy is dated 25 May 2018 beneath a 2026 DPA; PebblePad's product
   terms are © 2018 and still cite the Data Protection Act 1998; NHS
   ePortfolios' statement is November 2018; FourteenFish, MedAll and
@@ -1212,7 +1212,7 @@ findings have been reviewed.
   and Slack keep dated archives. See the
   [GitHub site-policy repository](https://github.com/github/site-policy).
 
-- **Change mechanisms split by route** – for organisations, Accurx makes
+- **Change mechanisms split by route** - for organisations, Accurx makes
   non-material updates binding immediately and material ones subject to
   thirty days' notice with a ten-business-day objection, the agreement
   continuing "under the pre-modification terms until the end of the
@@ -1227,7 +1227,7 @@ findings have been reviewed.
   the CMA's warning that variation terms must be tied to objective
   triggers with genuine cancellation or refund rights.
 
-- **Evidence to keep for each acceptance** – user identifier, UTC
+- **Evidence to keep for each acceptance** - user identifier, UTC
   timestamp, the exact wording displayed, the version identifier and
   effective date of each linked document, IP address and user agent,
   whether a box was ticked, and a separate record of the regulation 37
@@ -1237,13 +1237,13 @@ findings have been reviewed.
 
 ### What EoEETA's host trust will ask for
 
-- **EoEETA publishes no notice of its own** – it is an NHS England academy
+- **EoEETA publishes no notice of its own** - it is an NHS England academy
   hosted at the Norfolk and Norwich, with a Learning Hub project space
   that links only to the Learning Hub's policies, so its host trust will
   reach for the NHS documents below. See the
   [EoEETA page](https://www.hee.nhs.uk/our-work/cancer-diagnostics/training-academies/endoscopy-training-academies/east-england-endoscopy-training-academy).
 
-- **NHS Standard Contract 2026/27** – GC21 requires an annual DSPT
+- **NHS Standard Contract 2026/27** - GC21 requires an annual DSPT
   assessment, the National Data Guardian's standards, a named IG lead,
   Caldicott Guardian and SIRO, a DPO "where required by Data Protection
   Legislation", and breach notice to the commissioner on or before the
@@ -1261,7 +1261,7 @@ findings have been reviewed.
   and the
   [service conditions](https://www.england.nhs.uk/wp-content/uploads/2025/11/03-nhssc-26-27-full-length-service-conditions.pdf).
 
-- **DSPT standard 10** – "Every supplier, data processor and joint
+- **DSPT standard 10** - "Every supplier, data processor and joint
   controller linked to your organisation who processes personal or
   confidential information must have completed a data security and
   protection toolkit ... If not, they should be able to demonstrate an
@@ -1278,7 +1278,7 @@ findings have been reviewed.
   and the [DSPT organisation types](https://www.dsptoolkit.nhs.uk/Help/5).
 
 - **DTAC v2, which manufacturers must provide on request from 6 April
-  2026** – asks for DSPT "standards met or exceeded", ICO registration, a
+  2026** - asks for DSPT "standards met or exceeded", ICO registration, a
   DPIA, "your product's transparency information (privacy notice)"
   (C2.2.3), "the relevant product terms and conditions regarding use of
   user data, end user licence agreement or equivalent" (C2.2.4), data
@@ -1316,7 +1316,7 @@ findings have been reviewed.
 
 ### The law on 6 October 2026
 
-- **Every DUAA data protection provision is in force** – the main block
+- **Every DUAA data protection provision is in force** - the main block
   on 5 February 2026 (SI 2026/82), the complaints duty on 19 June 2026,
   and the Information Commission replacing the Information Commissioner
   on 30 September 2026 (SI 2026/1015); the legislation.gov.uk text of
@@ -1326,14 +1326,14 @@ findings have been reviewed.
   [SI 2026/1015](https://www.legislation.gov.uk/uksi/2026/1015/made) and
   [ICO, what the DUAA means for organisations](https://ico.org.uk/about-the-ico/what-we-do/legislation-we-cover/data-use-and-access-act-2025/the-data-use-and-access-act-2025-what-does-it-mean-for-organisations/).
 
-- **The complaints duty** – new section 164A of the DPA 2018: an
+- **The complaints duty** - new section 164A of the DPA 2018: an
   electronic route, acknowledgement within 30 days, a response without
   undue delay, the outcome told to the complainant, "no exemptions". It
   binds controllers only and reaches processors through contract terms
   obliging them to pass complaints on promptly. See
   [ICO, how to deal with data protection complaints](https://ico.org.uk/for-organisations/how-to-deal-with-data-protection-complaints/).
 
-- **Legitimate interests** – Article 6(1)(ea) "recognised legitimate
+- **Legitimate interests** - Article 6(1)(ea) "recognised legitimate
   interests" need no balancing test, and the statutory examples of
   ordinary legitimate interests now include direct marketing and
   "network and information security", the basis for Quill's security
@@ -1354,12 +1354,12 @@ findings have been reviewed.
   [ICO, the exceptions](https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-the-use-of-storage-and-access-technologies/what-are-the-exceptions/)
   and [PECR regulation 22](https://www.legislation.gov.uk/uksi/2003/2426/regulation/22).
 
-- **DMCC** – the unfair commercial practices chapter has been in force
+- **DMCC** - the unfair commercial practices chapter has been in force
   since 6 April 2025 with CMA direct enforcement, the final unfair
   contract terms guidance arrived in July 2026, and the subscription
   chapter waits for regulations, as above.
 
-- **Housekeeping** – the data protection fee is £52 at tier 1 since
+- **Housekeeping** - the data protection fee is £52 at tier 1 since
   17 February 2025 and is payable by a controller that is also a
   processor. The site must show the registered name, "the part of the
   United Kingdom in which the company is registered", the company number
@@ -1370,7 +1370,7 @@ findings have been reviewed.
   and
   [E-Commerce Regulations reg 6](https://www.legislation.gov.uk/uksi/2002/2013/regulation/6).
 
-- **Children** – the Children's code applies on a "more probable than
+- **Children** - the Children's code applies on a "more probable than
   not" test and excludes services designed to exclude children "if access
   is effectively prevented", provided the reasons are documented; a
   medical-student cohort may include people aged 17; comparators' age
@@ -1378,7 +1378,7 @@ findings have been reviewed.
   most defensible) to 18 (L2P). See
   [ICO, services covered by the code](https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/childrens-information/childrens-code-guidance-and-resources/age-appropriate-design-a-code-of-practice-for-online-services/services-covered-by-this-code/).
 
-- **Online Safety Act 2023** – "internal business services" limited to a
+- **Online Safety Act 2023** - "internal business services" limited to a
   closed group of workers and people they authorise are exempt, which
   covers a sponsor deployment; a consumer feature that lets users share
   content with each other could make Quill a user-to-user service and
@@ -1400,7 +1400,7 @@ each rests on the finding above that names its source.
   organisation ... that invited you ... This may be your employer") and
   Accurx's "Licensee", and use "Authorised User" for the UK register.
 
-- **Order of precedence on the business side** – Order Form, data
+- **Order of precedence on the business side** - Order Form, data
   processing schedule (for personal data only), service schedule, SaaS
   agreement, with the data processing schedule prevailing on data
   protection.
@@ -1411,12 +1411,12 @@ each rests on the finding above that names its source.
 
 #### Terms of service, common part
 
-- **Eligibility** – healthcare professionals, students and the
+- **Eligibility** - healthcare professionals, students and the
   organisations that train them, minimum age 18 (or 16 with sponsor
   confirmation of supervision), with a written note kept of why children
   are unlikely to reach the service.
 
-- **Professional details** – a warranty that they are accurate, a duty to
+- **Professional details** - a warranty that they are accurate, a duty to
   notify suspension, erasure or conditions, and a right to suspend
   features that depend on registration (MedAll plus Doctors.net.uk).
 
@@ -1425,39 +1425,39 @@ each rests on the finding above that names its source.
   entry (the joint reflective-practice guidance, Doctors.net.uk, Agilio,
   risr/).
 
-- **The reflection clause no UK platform has** – reflections are not
+- **The reflection clause no UK platform has** - reflections are not
   legally privileged, may be disclosed where a court, coroner or the law
   requires, will never be volunteered to the GMC by Quill, should record
   learning rather than facts, and the author will be told of any request
   where the law allows (the joint guidance and RCPCH's disclosure list).
 
-- **The assessment clause no UK platform has** – a result or sign-off is
+- **The assessment clause no UK platform has** - a result or sign-off is
   evidence for the sponsor or the learner's own record, the sign-off is
   the assessor's professional act which Quill records but does not
   verify, and Quill gives no warranty of competence (JETS, BCSP, RCUK and
   Good medical practice paragraphs 62 and 89).
 
-- **AI** – any AI assistance in an entry must be declared (JRCPTB's
+- **AI** - any AI assistance in an entry must be declared (JRCPTB's
   wording), patient identifiers must not go into external AI tools, and
   Quill does not use learner content to train models (Agilio, Red
   Whale).
 
-- **Clinical disclaimer** – the standard three points with a formulary
+- **Clinical disclaimer** - the standard three points with a formulary
   warning, Accurx's "all clinical assessments, decisions and actions"
   line, no emergency use, and an express "no guarantee of success in any
   assessment or exam".
 
-- **Clinical images** – a contributor-side warranty that images were made
+- **Clinical images** - a contributor-side warranty that images were made
   as part of care, anonymised to the ICO standard before upload and used
   for teaching under the GMC's secondary-use rule; screenshots and screen
   recording named in the no-copying clause.
 
-- **Two-owner content clause** – the learner owns what they write, the
+- **Two-owner content clause** - the learner owns what they write, the
   sponsor owns its assessment and sign-off records, Quill takes only the
   licence needed to run the service, and any anonymised-data licence
   excludes patient data and identifiability. No AI-training licence.
 
-- **Personal accounts** – no sharing, paired with suspension, verification
+- **Personal accounts** - no sharing, paired with suspension, verification
   and liability for deliberate sharing; a ban on using Quill content to
   train AI.
 
@@ -1471,32 +1471,32 @@ each rests on the finding above that names its source.
   message bodies load only after authentication, and users are advised to
   disable lock-screen previews.
 
-- **Scope** – the teaching service is not a medical device and not
+- **Scope** - the teaching service is not a medical device and not
   clinical decision support; any future clinical-records sponsor carries
   DCB0160.
 
-- **Versioning** – a version number, effective date and previous
+- **Versioning** - a version number, effective date and previous
   version's date on every document, an annual "reviewed on ... with no
   amendments" line, and a public archive of every version.
 
 #### Terms of service, sponsored-user part
 
-- **Slack's two sentences** – the sponsor's agreement governs and
+- **Slack's two sentences** - the sponsor's agreement governs and
   prevails, these terms still bind the user personally for conduct, and
   it is the sponsor's responsibility to tell users its policies and
   obtain any consents.
 
-- **What the sponsor may do with the account** – provision and
+- **What the sponsor may do with the account** - provision and
   deprovision it, set permissions, see what the learner records, and
   claim a direct account whose email domain matches (Kahoot!, Google);
   plus Clarity's irrevocable permission to share with the assessors the
   sponsor authorises, scoped to the sponsor.
 
-- **Routing** – support, rights requests and complaints go to the sponsor
+- **Routing** - support, rights requests and complaints go to the sponsor
   first, and the sponsor's privacy notice applies to training records
   (the Learning Hub Centre model, GitHub).
 
-- **Leaving** – the sponsor keeps its records for its stated period, the
+- **Leaving** - the sponsor keeps its records for its stated period, the
   learner may take a personal copy or convert to a direct account, and
   sponsor-owned material is carved out (PebblePad's alumni model, MedAll's
   retained certificate). The right must be granted in the SaaS agreement
@@ -1508,7 +1508,7 @@ each rests on the finding above that names its source.
 
 - **Treat the individual as a consumer**; never deny consumer status.
 
-- **Build the regulation 36 and 37 sequence into checkout** – Schedule 2
+- **Build the regulation 36 and 37 sequence into checkout** - Schedule 2
   information before the pay button (cost per billing period, duration
   and how to end it, functionality, compatibility), a button label that
   says it creates an obligation to pay, a separate unticked box by which
@@ -1516,17 +1516,17 @@ each rests on the finding above that names its source.
   the 14-day right, a confirmation email repeating the cancellation
   information with the model form, and a stored record of each.
 
-- **Refunds** – full within 14 days where content was not accessed, and a
+- **Refunds** - full within 14 days where content was not accessed, and a
   proportionate refund for the service element after an express request
   to start (BMJ's test, regulation 36(4)).
 
-- **DMCC-ready renewal terms now** – a reminder at least 28 days before an
+- **DMCC-ready renewal terms now** - a reminder at least 28 days before an
   annual renewal, 28 to 30 days' notice of a price change with a free
   right to cancel before it bites, cancellation by a single message and
   online, and a fresh 14-day cooling-off after a trial or a 12-month
   renewal (BMJ, Quesmed).
 
-- **Variation** – specified valid reasons (law, security, non-reducing
+- **Variation** - specified valid reasons (law, security, non-reducing
   feature changes), 30 days' email notice of material changes, and
   cancellation with a pro-rata refund; never "without notice" or "your
   responsibility to check".
@@ -1534,7 +1534,7 @@ each rests on the finding above that names its source.
 - **Reproduce the "Summary of your key legal rights" box** and name the
   payment processor.
 
-- **Say what happens to a lapsed direct account** – it persists with its
+- **Say what happens to a lapsed direct account** - it persists with its
   data, or access ends after a stated grace period with export; either is
   fine, but say which.
 
@@ -1547,25 +1547,25 @@ each rests on the finding above that names its source.
   notice applies; otherwise Bailey Medics is controller (Kahoot!, Quesmed
   are the nearest fits).
 
-- **Add the residual-controller paragraph nobody writes** – what Bailey
+- **Add the residual-controller paragraph nobody writes** - what Bailey
   Medics does as controller even for sponsored users: account security,
   authentication, audit logs, service email, aggregate analytics,
   support, under legitimate interests citing the DUAA's security example
   (Slack, Myprogress).
 
-- **Map every purpose to a lawful basis and cover every Article 13 item**
-  – contract for accounts and direct subscriptions, legitimate interests
+- **Map every purpose to a lawful basis and cover every Article 13 item** -
+  contract for accounts and direct subscriptions, legitimate interests
   for security and anti-abuse, consent or soft opt-in for marketing email,
   in-app messages and push notifications, retention criteria for logs
   and dormant accounts, the full rights list; avoid consent for sponsored
   clinicians (Quesmed and Turas as models, JETS as the pitfall).
 
-- **Describe the complaints route under the DUAA** – how to complain to
+- **Describe the complaints route under the DUAA** - how to complain to
   Bailey Medics, acknowledgement within 30 days, a response without undue
   delay, then the Information Commission; say Information Commission
   throughout.
 
-- **Name each sub-processor with purpose, location and safeguard** –
+- **Name each sub-processor with purpose, location and safeguard** -
   Google Cloud (London region, Google's data processing terms), Amazon
   Web Services (email delivery from its London region, Amazon's data
   processing terms, and the shared suppression list as the one thing not
@@ -1579,7 +1579,7 @@ each rests on the finding above that names its source.
 - **State hosting plainly as the United Kingdom**, stricter than the
   controllers' own "within the EU".
 
-- **Say which records are health data** – assessment and sign-off records
+- **Say which records are health data** - assessment and sign-off records
   about a clinician are not; reasonable-adjustment information is, and is
   handled under a named Article 9 condition; the service is not directed
   at children.
@@ -1597,7 +1597,7 @@ each rests on the finding above that names its source.
   countersigned Accurx PDFs, which is evidence NHS bodies accept a
   vendor-standard DPA.
 
-- **Every Article 28(3) term and every Annex B expectation** – an annex of
+- **Every Article 28(3) term and every Annex B expectation** - an annex of
   data subjects (learners, supervisors, assessors), data (identity,
   contact, assessment and sign-off records, reflections, logs) and
   duration; the service description as the standing instruction; staff
@@ -1611,41 +1611,41 @@ each rests on the finding above that names its source.
   third-party reports accepted; flow-down and full liability for
   sub-processors; the duty to flag an unlawful instruction.
 
-- **Sub-processor mechanics** – an objection window no shorter than
+- **Sub-processor mechanics** - an objection window no shorter than
   the notice Quill's own suppliers give it (Resend's was 14 days;
   Amazon's is to be read from its terms), a public sub-processor page in
   the Atlassian layout
   with an email subscription, and an archive of each dated version.
 
-- **Two clocks** – the deletion clock runs from the sponsor's written
+- **Two clocks** - the deletion clock runs from the sponsor's written
   instruction, not from contract end, and the sponsor gets a two-year
   retrieve-or-destroy window for departed learners (risr/), because the
   controller norm of six to twelve years would collide with a generic
   30-day purge.
 
-- **Portability** – grant, as a standing controller instruction, the
+- **Portability** - grant, as a standing controller instruction, the
   learner's right to a personal copy or a direct-account conversion when
   they leave, with sponsor-owned records carved out.
 
-- **The sponsor's controller duties in the agreement** – lawful basis, an
+- **The sponsor's controller duties in the agreement** - lawful basis, an
   Article 13 notice to its learners and supervisors naming Bailey Medics
   as processor in the JETS form, documented instructions, DSPT where it
   is an NHS body, DCB0160 for any clinical service, and prompt onward
   passing of complaints (GC21.8, Google's "responsible for any consents
   and notices").
 
-- **Business liability** – the greater of twelve months' fees and a fixed
+- **Business liability** - the greater of twelve months' fees and a fixed
   floor set against Bailey Medics' insurance, a separate higher cap for
   data protection breaches, the usual consequential-loss exclusions, and
   unlimited liability for death, personal injury, fraud and anything that
   cannot be limited (Accurx's £250,000 and £1,000,000 for the structure).
 
-- **Variation for organisations** – non-material changes immediately,
+- **Variation for organisations** - non-material changes immediately,
   material changes on 30 days' notice to a named contact with a
   ten-business-day or 30-day objection, the old terms running to the end
   of the current term or next renewal (Accurx, Agilio).
 
-- **Other mechanics** – a region field in the order form, notice and cure
+- **Other mechanics** - a region field in the order form, notice and cure
   before suspension, auto-renewal with 90 days' non-renewal notice, and an
   escalation clause before litigation (risr/, FourteenFish and EMIS).
 
@@ -1658,7 +1658,7 @@ each rests on the finding above that names its source.
   (Parker-Grennan, ISCP, eIntegrity). This conflicts with the "No tick
   box" decision above and needs a decision.
 
-- **An immutable acceptance record per user** – identifier, UTC timestamp,
+- **An immutable acceptance record per user** - identifier, UTC timestamp,
   wording shown, document versions and effective dates, IP and user
   agent, tick state, and the separate regulation 37 consent.
 
@@ -1666,17 +1666,17 @@ each rests on the finding above that names its source.
   learning not facts, no privilege), and consider sensitive-data scanning
   as the RCGP's portfolio already does.
 
-- **Data hygiene** – patient or health content stays out of every
+- **Data hygiene** - patient or health content stays out of every
   email, push notifications are treated as electronic mail needing
   consent, and every access to a record is attributable to a named user
   with logs available to the sponsor (NDG standard 4).
 
-- **Assurance** – complete the DSPT as Category 3, hold Cyber Essentials
+- **Assurance** - complete the DSPT as Category 3, hold Cyber Essentials
   (Plus if affordable), commission an annual OWASP penetration test,
   enforce MFA, write a DCB0129 scope justification and prepare a DPIA on
   NHS England's template, so that DTAC v2 can be answered on request.
 
-- **Housekeeping** – pay the £52 data protection fee, and put the
+- **Housekeeping** - pay the £52 data protection fee, and put the
   registered name, "Registered in England and Wales", company number,
   registered office, email address and (once registered) VAT number in the
   site footer and email footers.
@@ -1716,13 +1716,13 @@ Points the research could not settle, for Mark to decide.
 - **GMC pages returned 403 throughout**, so GMC text is cited through the
   AoMRC, the MPS, the RCP and a barristers' commentary.
 
-- **Unreadable documents** – the FourteenFish and Enlivio privacy policy
+- **Unreadable documents** - the FourteenFish and Enlivio privacy policy
   (JavaScript only), ISCP's 2020 single-page app, the RCoA Lifelong
   Learning Platform, the BSG privacy policy, BMJ's institutional licence,
   Notion's live terms, Turnitin, Moodle, Pastest's institutional terms,
   the RCPCH privacy notice v4.7 PDF, and the DCB0129 specification PDF.
 
-- **Not settled by any source** – whether a free sign-up counts as
+- **Not settled by any source** - whether a free sign-up counts as
   "negotiations" for the PECR soft opt-in; whether push notifications are
   "electronic mail"; whether a records-about-clinicians platform is a
   "Health IT System"; and the January 2027 DMCC date, which no gov.uk page
