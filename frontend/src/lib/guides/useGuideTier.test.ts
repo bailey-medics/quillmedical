@@ -295,6 +295,17 @@ describe("useReadableGuide", () => {
     expect(read("join-a-course")).toBe("join-a-course");
   });
 
+  // A delegate who is signed in has joined already. The guide is public
+  // for the reader with no account, and an admin's once signed in.
+  it("keeps the joining guide from a signed-in delegate", () => {
+    signInAs(someone({ enabled_features: ["teaching"] }));
+
+    expect(read("join-a-course")).toBeUndefined();
+    expect(read("take-a-module-and-its-assessment")).toBe(
+      "take-a-module-and-its-assessment",
+    );
+  });
+
   // Signed in, a public guide is one of theirs like any other, so it
   // still needs its feature: a clinical deployment shows no joining guide.
   it("holds a signed-in reader to the guide's feature, public or not", () => {
