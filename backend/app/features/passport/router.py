@@ -127,7 +127,6 @@ from app.schemas.passport import (
     SignOffOut,
     SignOffRequestIn,
     SignOffResultOut,
-    VerificationOut,
     WholeLogbookOut,
 )
 from app.security import (
@@ -142,7 +141,6 @@ from . import (
     email_templates,
     export,
     frameworks,
-    hashing,
     ids,
     paths,
     pdf,
@@ -1965,54 +1963,6 @@ def withdraw_sign_off(
     db.flush()
 
     return SignOffResultOut(name=signoff_id, status="declined", commit=commit)
-
-
-@passport_router.get(
-    "/{passport_id}/sign-offs/{signoff_id}/verify",
-    response_model=VerificationOut,
-    dependencies=[_DEP_PASSPORT],
-)
-def verify_sign_off(
-    passport_id: str,
-    signoff_id: str,
-    user: User = _DEP_USER,
-    db: Session = _DEP_SESSION,
-    store: PassportStore = _DEP_STORE,
-) -> VerificationOut:
-    """Recompute a sign-off's fingerprint and report whether it matches.
-
-    The response states its own limits rather than leaving them to be
-    inferred. A match shows the record has not changed since it was
-    written. It does not prove a professional registration, and it proves
-    nothing to a reader who distrusts Quill, since the same system
-    computed and stored the hash.
-    """
-    row = _require_signoff_reader(db, passport_id, signoff_id, user)
-
-    try:
-        record = service.read_sign_off(store, row.id, signoff_id)
-    except (PassportNotFoundError, paths.PassportPathError):
-        raise HTTPException(404, "Sign-off not found") from None
-
-    recomputed = hashing.content_hash(record)
-
-    return VerificationOut(
-        name=signoff_id,
-        unchanged=hashing.matches(record),
-        content_hash=record.content_hash,
-        recomputed_hash=recomputed,
-        proves=(
-            "This record has not changed since it was written, and a "
-            "named account signed it off."
-        ),
-        does_not_prove=(
-            "It does not prove the assessor's professional "
-            "registration, which Quill records as declared and never "
-            "checks against a register. It proves nothing to a reader "
-            "who distrusts Quill itself, since the same system computed "
-            "and stored the hash."
-        ),
-    )
 
 
 @passport_router.get(

@@ -1225,14 +1225,21 @@ only because the guides are where it was noticed.
       `backend/app/features/passport/hashing.py` still checks it, and
       the download still carries `VERIFY.md`, which says how to check
       the hashes with no Quill at all. None of that is the QR code.
-- [ ] Left in place, and Mark's call whether it goes:
-      `GET /{passport_id}/sign-offs/{signoff_id}/verify` in
-      `backend/app/features/passport/router.py` for now. Taking a route
-      out is a breaking change to the API, which the `oasdiff` check
-      reports and a human decides, and it wants its own deploy after
-      the page that called it has gone. Whether it goes at all is
-      Mark's call: it is the only way to ask Quill to recheck one
-      sign-off, and costs nothing left in place.
+- [x] `GET /{passport_id}/sign-offs/{signoff_id}/verify` in
+      `backend/app/features/passport/router.py` was left in place by the
+      unit above, because taking a route out is a breaking change to the
+      API and wants its own deploy after the page that called it has
+      gone. Mark decided on 8 October 2026 that it goes. Removed in a
+      unit of its own, stacked above the page's, with `VerificationOut`,
+      its tests and its line in the two lists of passport routes that
+      `test_passport_api_contract.py` and `api.test.ts` hold to each
+      other. The decision file is
+      `api-compatibility/20261008122838-rechecking-a-sign-off-s-fingerprint-is-removed.yaml`,
+      with no forced reload. **Merge the page's pull request and let it
+      deploy before this one**, and approve it in the
+      `api-breaking-change-review` environment. `matches` in
+      `hashing.py` now has no caller in the application and stays: it is
+      the fingerprint check itself.
 - [x] Check the passport's own documents for the verify page or a QR
       code, under `docs/docs/backend/passport/` and
       `docs/docs/frontend/`. A first search found neither, only

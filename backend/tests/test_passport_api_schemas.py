@@ -235,16 +235,3 @@ class TestRegistrationsAreHonest:
         fields = set(api_schemas.AssessorOut.model_fields)
 
         assert "registration_verified" not in fields
-
-
-class TestVerificationStatesItsLimits:
-    def test_the_response_carries_what_it_does_not_prove(self) -> None:
-        """A hash match proves less than a reader might assume.
-
-        Not a professional registration, and nothing at all to somebody
-        who distrusts Quill – the same system computed and stored it. The
-        response says so rather than leaving it to be inferred.
-        """
-        fields = set(api_schemas.VerificationOut.model_fields)
-
-        assert {"unchanged", "proves", "does_not_prove"} <= fields

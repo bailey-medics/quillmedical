@@ -494,24 +494,6 @@ class SignOffResultOut(BaseModel):
     commit: NonEmptyText
 
 
-class VerificationOut(BaseModel):
-    """Whether a sign-off still matches its own fingerprint.
-
-    ``proves`` and ``does_not_prove`` are returned as text because the
-    limits matter as much as the result: a match shows the record has
-    not changed since it was written. It does not prove a professional
-    registration, and it proves nothing to a reader who distrusts Quill,
-    since the same system computed and stored the hash.
-    """
-
-    name: NonEmptyText
-    unchanged: bool
-    content_hash: str | None = None
-    recomputed_hash: str | None = None
-    proves: str
-    does_not_prove: str
-
-
 # --------------------------------------------------------------------
 # Self-declared evidence
 # --------------------------------------------------------------------

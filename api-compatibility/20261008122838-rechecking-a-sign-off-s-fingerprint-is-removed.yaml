@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "api-path-removed-without-deprecation GET /api/passport/{passport_id}/sign-offs/{signoff_id}/verify api path removed without deprecation"
+reason: "This route recomputed one sign-off's fingerprint and said whether it still matched. Its only caller was the page at /passport/verify/:signOffId, which a QR code on a printed passport was meant to open. No passport ever printed that QR code, Mark decided against it on 8 October 2026, and the page was removed in the pull request before this one. Nothing in the frontend calls the route, so an open tab of an older build loses only a page nothing linked to. The fingerprint on each sign-off and VERIFY.md in the download are unchanged. The silent background update is enough. No forced reload."

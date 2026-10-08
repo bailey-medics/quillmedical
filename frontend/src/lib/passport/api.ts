@@ -107,7 +107,6 @@ export const PASSPORT_PATHS = [
   "/passport/{passport_id}/sign-offs/{signoff_id}",
   "/passport/{passport_id}/sign-offs/{signoff_id}/decline",
   "/passport/{passport_id}/sign-offs/{signoff_id}/sign-off",
-  "/passport/{passport_id}/sign-offs/{signoff_id}/verify",
   "/passport/{passport_id}/sign-offs/{signoff_id}/withdraw",
   "/passport/{passport_id}/frameworks",
 ] as const;
