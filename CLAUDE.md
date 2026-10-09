@@ -600,19 +600,26 @@ never writes into, so it survives the next `/sync-copilot-config`.
 
 ### The `local/` folder is kept out of git
 
-`local/` at the repository root is gitignored. It holds material for this
-machine only: private plans in `local/plans/`, contracts and other
-documents Mark may ask to have read, and scratch output. Nothing the app,
-the build or the tests reads lives there, so a missing folder breaks
-nothing.
+`local/` at the root of the main checkout is gitignored. It holds material
+for this machine only: private plans, contracts and other documents Mark
+may ask to have read, and scratch output. Nothing the app, the build or
+the tests reads lives there, so a missing folder breaks nothing.
 
 - **Read it only when asked**, and never copy its contents into a commit,
   a pull request, a docs page or a comment.
-- **A plan in `local/plans/` follows `.claude/rules/plans.md`** in every
+- **A plan kept there follows `.claude/rules/plans.md`** in every
   way but one: it is never registered in `docs/docs/plans/index.md`,
   because the index links only to files in the repository.
-- **It is not shared between worktrees.** Each worktree has its own
-  `local/`; Mark copies files between them by hand when he needs to.
+- **There is one, in the main checkout, and no other worktree has a
+  copy.** `just local-path` (`just lp`) prints where it is, from any
+  worktree, and makes it if it is missing. A script that reads or writes
+  it asks `scripts/local-path.sh` the same way, never a path of its own.
+- **Never symlink it into a worktree.** A file under a symlinked folder
+  makes `git check-ignore` stop with "beyond a symbolic link", and the
+  editor, which asks about a batch of paths at once, then greys out
+  nothing at all. Tried and undone on 9 October 2026.
+- **To browse it from another worktree's window**, add the folder with
+  "File, Add Folder to Workspace", or open the path `just lp` prints.
 
 ### Name the environments "App production" and "EHR production"
 

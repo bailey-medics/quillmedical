@@ -22,7 +22,7 @@ prompt-output.md
 site/
 
 # Files kept out of git
-local/
+/local
 
 # Teaching content repos (cloned locally)
 teaching-repos/
