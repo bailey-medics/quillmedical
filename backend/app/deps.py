@@ -15,7 +15,7 @@ from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.cbac.scoped import can_practise_at
+from app.cbac.practising import can_practise_at
 from app.config import settings
 from app.db import get_core_db
 from app.log_context import user_id_var

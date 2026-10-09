@@ -66,7 +66,7 @@ backend/app/cbac/
 ├── base_professions.py  - Loads base-professions.yaml
 ├── grants.py            - Turns a saved pair of lists into user_competency rows
 ├── grant_scope.py       - What a caller may grant (may_grant, may_assign_professions)
-├── scoped.py            - What somebody may practise at one place
+├── practising.py        - What somebody may practise at one place
 ├── positions.py         - Positions and who holds them
 └── audit.py             - Finds unknown and retired ids in stored data
 

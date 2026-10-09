@@ -32,7 +32,7 @@ from app.cbac.grant_scope import (
 )
 from app.cbac.grants import sync_competency_rows
 from app.cbac.positions import clinical_leads_of, set_clinical_lead
-from app.cbac.scoped import authorise_practice, withdraw_practice
+from app.cbac.practising import authorise_practice, withdraw_practice
 from app.db import get_core_db
 from app.deps import (
     DEP_CURRENT_USER,

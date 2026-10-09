@@ -69,7 +69,7 @@ from app.cbac.grants import sync_competency_rows
 from app.cbac.positions import (
     clinical_leads_of,
 )
-from app.cbac.scoped import (
+from app.cbac.practising import (
     authorise_practice,
     authorised_at,
     competencies_at,

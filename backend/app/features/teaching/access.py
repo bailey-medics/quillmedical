@@ -7,7 +7,7 @@ Teaching runs on the layers clinical work runs on. A competency says
 and written by ``app.features.teaching.enrolment``. This module is the
 whole of the second question for teaching, and puts the three together
 in ``may_enter_module``, so every route that serves a module asks one
-place, as every other read of a place goes through ``app.cbac.scoped``.
+place, as every other read of a place goes through ``app.cbac.practising``.
 
 - **A row counts only while the person belongs there.** Leaving a
   centre closes its modules to them without anybody remembering to
@@ -35,7 +35,7 @@ from sqlalchemy.orm import Session
 
 from app.cbac.base_professions import get_profession_base_competencies
 from app.cbac.grants import sync_competency_rows
-from app.cbac.scoped import authorise_practice
+from app.cbac.practising import authorise_practice
 from app.features.teaching.enrolment import (
     current_enrolments,
     enrol,

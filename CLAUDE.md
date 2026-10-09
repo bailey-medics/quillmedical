@@ -237,9 +237,9 @@ profession.
 - Route pattern: `Depends(has_competency("prescribe_controlled_schedule_2"))`
 
 **`has_competency` checks the ceiling only, never the place.** Endpoints that
-need _where_ scope separately on membership. A route guard has no place to
-scope to, so it gates on the competency alone and lets the API refuse
-anything out of scope.
+need _where_ check membership separately. A route guard has no place to
+check against, so it gates on the competency alone and lets the API refuse
+anything at a place the caller may not act in.
 
 **`manage_users` is the root competency - grant it rarely.** Because
 `update_user` writes `additional_competencies` wholesale with no check on
@@ -278,7 +278,7 @@ four passport professions.
 
 #### Practising competencies - where
 
-`backend/app/cbac/scoped.py` over the `practising_competency` table. Every
+`backend/app/cbac/practising.py` over the `practising_competency` table. Every
 read of a place goes through this module.
 
 - `competencies_at(db, user, org_unit_id=...)` - what they may practise there,
@@ -425,7 +425,7 @@ A position is a slot a place has, in `models.py` as `Position` and
 
 **Operator-only endpoint**: Add `DEP_REQUIRE_OPERATOR` to the route params - gates on `platform_role`, for operating Quill itself
 
-**Place-administration endpoint**: Add `Depends(has_competency("manage_users"))`, then scope to the caller's own org units in the route body - the competency says _what_, membership says _where_
+**Place-administration endpoint**: Add `Depends(has_competency("manage_users"))`, then limit it to the caller's own org units in the route body - the competency says _what_, membership says _where_
 
 **Frontend API**: Use `api` from `@/lib/api.ts` (never raw `fetch`)
 
@@ -442,7 +442,7 @@ A position is a slot a place has, in `models.py` as `Position` and
 - `backend/app/db/`: Database session management (`get_core_db`)
 - `backend/app/cbac/`: Competency-based access control module
 - `backend/app/org_units/`: the place tree - router, and type capability flags
-- `backend/app/cbac/scoped.py`: what somebody may practise at one place
+- `backend/app/cbac/practising.py`: what somebody may practise at one place
 - `backend/app/schemas/`: Pydantic request/response models (`auth.py`, `cbac.py`)
 - `frontend/src/routes.tsx`: All route definitions
 - `frontend/src/main.tsx`: Mounts the app and hands the routes to `createBrowserRouter`
