@@ -18,6 +18,7 @@
   `t` is the resolved theme from shared/brand.yaml; every colour is hex.
   `partner` is set only on an email sent for a partner.
 -#}
+{% import "_company.html.j2" as company with context %}
 <!doctype html>
 <html lang="en-GB" xmlns="http://www.w3.org/1999/xhtml">
   <head>
@@ -250,7 +251,7 @@
                   {%- block reason %}{% endblock -%}
                 </p>
                 <p style="margin: 0">
-                  {{ t.sender_name }} is a trading name of Bailey Medics Ltd.
+                  {{ company.trading_line() }}
                 </p>
                 {%- endblock %}
               </td>

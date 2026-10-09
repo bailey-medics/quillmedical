@@ -222,13 +222,31 @@
       "file": "newsletter--quill.html",
       "subject": "Autumn update: the clinician passport, and 2027 dates",
       "preheader": "What I have been building, and when we meet next.",
-      "fromName": "Mark at Quill Medical",
+      "fromName": "Quill Medical Team",
       "replyTo": null
     },
     "ldd": {
       "file": "newsletter--ldd.html",
       "subject": "Autumn update: the clinician passport, and 2027 dates",
       "preheader": "What I have been building, and when we meet next.",
+      "fromName": "Let's Do Digital Team",
+      "replyTo": null
+    }
+  },
+  {
+    "id": "newsletter-from-a-person",
+    "label": "Newsletter, from a person",
+    "quill": {
+      "file": "newsletter-from-a-person--quill.html",
+      "subject": "A note from Mark",
+      "preheader": "Something I wanted to say myself.",
+      "fromName": "Mark at Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "newsletter-from-a-person--ldd.html",
+      "subject": "A note from Mark",
+      "preheader": "Something I wanted to say myself.",
       "fromName": "Mark at Let's Do Digital",
       "replyTo": null
     }

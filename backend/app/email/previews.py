@@ -281,6 +281,12 @@ def previews() -> list[Preview]:
             template="previews/newsletter_sample.html.j2",
             context={"unsubscribe_url": "#unsubscribe"},
         ),
+        Preview(
+            id="newsletter-from-a-person",
+            label="Newsletter, from a person",
+            template="previews/newsletter_personal_sample.html.j2",
+            context={"unsubscribe_url": "#unsubscribe"},
+        ),
     ]
 
 
@@ -294,19 +300,12 @@ def render_preview(preview: Preview, theme: EmailThemeName) -> RenderedEmail:
     Returns:
         The rendered email.
     """
-    from_name = preview.from_name
-
-    if preview.id == "newsletter":
-        from_name = "Mark at " + (
-            "Quill Medical" if theme == "quill" else "Let's Do Digital"
-        )
-
     return render_email(
         preview.template,
         theme,
         preview.context,
         partner=preview.partner,
-        from_name=from_name,
+        from_name=preview.from_name,
         # Relative paths, so Storybook serves the images from its own
         # static folder rather than the live site.
         asset_base_url="",

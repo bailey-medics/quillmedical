@@ -1,12 +1,39 @@
 {#-
-  A newsletter: from Mark, signed off with the brand's round avatar, with
-  an unsubscribe link in the footer. A campaign extends this and fills
-  `subject`, `preheader`, `body` and `text`. Context:
-    unsubscribe_url  the recipient's own unsubscribe link. There is one
-                     newsletter and one choice, so there is no second
-                     "preferences" link beside it: it led to the same page.
+  A newsletter: signed off beside the brand's round avatar, with an
+  unsubscribe link in the footer. A campaign extends this and fills
+  `subject`, `preheader`, `content` and `text`. Context:
+    unsubscribe_url  the recipient's own unsubscribe link.
+
+  Who it is from. Left alone, a newsletter is from the team: signed
+  "Quill Medical Team" or "Let's Do Digital Team", after the brand it
+  goes out as, and sent under that name. A campaign that is from a
+  person says so with `set`, straight after its `extends`:
+
+    {% extends "newsletter.html.j2" %}
+    {% set signoff_name = "Mark Bailey" %}
+    {% set signoff_role = "Bailey Medics" %}
+    {% set from_name = "Mark at Quill Medical" %}
+
+    signoff_name  who signs it, in bold beside the avatar
+    signoff_role  the line beneath: a job title or an organisation.
+                  Left out, there is no second line
+    from_name     the name an inbox shows as the sender. Left out, it is
+                  the same as signoff_name
+
+  Any of the three may be set without the others. Only a template that
+  extends this one directly can set them: the lines below read what the
+  campaign set and fill in the rest.
+
+  A campaign's `text` block ends with {{ signoff_text }}, which is the
+  name, and the role after a comma where there is one, so the plain-text
+  version is signed the same way.
 -#}
 {% extends "base.html.j2" %}
+{% set signoff_name = signoff_name | default(t.sender_name ~ " Team") %}
+{% set signoff_role = signoff_role | default("") %}
+{% set from_name = from_name | default(signoff_name) %}
+{% set signoff_text = signoff_name ~ (", " ~ signoff_role if signoff_role else "") %}
+{% import "_company.html.j2" as company with context %}
 {% block body %}
 {% block content %}{% endblock %}
 {#- The avatar is one image with its circle drawn in: Outlook ignores
@@ -17,8 +44,10 @@
       <img src="{{ asset(t.avatar) }}" width="56" height="56" alt="" style="width: 56px; height: 56px" />
     </td>
     <td style="vertical-align: middle">
-      <p style="margin: 0; font-weight: 700">Mark Bailey</p>
-      <p class="em-muted" style="margin: 0; font-size: 19px; color: {{ t.muted }}">Bailey Medics</p>
+      <p style="margin: 0; font-weight: 700">{{ signoff_name }}</p>
+      {%- if signoff_role %}
+      <p class="em-muted" style="margin: 0; font-size: 19px; color: {{ t.muted }}">{{ signoff_role }}</p>
+      {%- endif %}
     </td>
   </tr>
 </table>
@@ -29,6 +58,6 @@
   <a href="{{ unsubscribe_url }}" style="color: {{ t.footer_link }}; text-decoration: underline">Unsubscribe</a>
 </p>
 <p style="margin: 0">
-  {{ t.sender_name }} is a trading name of Bailey Medics Ltd. Company number 15604352. Brooklands Place, Unit 5, Brooklands Road, Sale, Cheshire, M33 3SD.
+  {{ company.trading_line(registered=true) }}
 </p>
 {% endblock %}

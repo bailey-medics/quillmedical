@@ -227,7 +227,7 @@ class TestEachEmail:
 
         ada = outbox["sent"][0]
         assert "bob@example.com" not in ada["html_body"]
-        assert ada["from_name"] == "Mark at Quill Medical"
+        assert ada["from_name"] == "Quill Medical Team"
 
 
 class TestRunningItAgain:
@@ -333,7 +333,7 @@ class TestTheCampaign:
         )
 
         [email] = outbox["sent"]
-        assert email["from_name"] == "Mark at Let's Do Digital"
+        assert email["from_name"] == "Let's Do Digital Team"
         assert email["subject"] == "A trial newsletter from Let's Do Digital"
         assert "Let's Do Digital is a trading name" in email[
             "html_body"

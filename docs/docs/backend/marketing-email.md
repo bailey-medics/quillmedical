@@ -81,6 +81,35 @@ and merged like any other change: the pull request is where its words
 are read before anybody receives them, and the deploy is what makes it
 available to send.
 
+### Who a newsletter is from
+
+Left alone, a newsletter is from the team. It is signed "Quill Medical
+Team" or "Let's Do Digital Team", after the brand it goes out as, and an
+inbox shows that name as the sender.
+
+A campaign from a person says so with three lines straight after its
+`extends`. Any of them may be left out:
+
+```jinja
+{% extends "newsletter.html.j2" %}
+{% set signoff_name = "Mark Bailey" %}
+{% set signoff_role = "Bailey Medics" %}
+{% set from_name = "Mark at Quill Medical" %}
+```
+
+- **`signoff_name`** - who signs it, in bold beside the avatar.
+
+- **`signoff_role`** - the line beneath, a job title or an organisation.
+  Left out, there is no second line.
+
+- **`from_name`** - the name an inbox shows as the sender. Left out, it
+  is the same as `signoff_name`.
+
+End the campaign's `text` block with `{{ signoff_text }}`, which is the
+name, and the role after a comma where there is one, so the plain-text
+version is signed the same way. The address a newsletter is sent from
+is the brand's and does not change with any of this.
+
 `backend/app/marketing/newsletter.py` sends it, a person at a time.
 
 - **Who it reaches** - verified, active users whose `marketing_emails`

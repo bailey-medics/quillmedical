@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from jinja2 import DictLoader, Environment, UndefinedError
 
-from app.email.brand import EmailImage, email_theme
+from app.email.brand import EmailImage, EmailThemeName, email_theme
 from app.email.render import (
     EmailPartner,
     RenderedEmail,
@@ -249,3 +249,98 @@ def test_theme_colours_reach_the_email(env: Environment) -> None:
 
     assert email_theme("quill").button_background in html
     assert email_theme("quill").panel in html
+
+
+class TestWhoANewsletterIsFrom:
+    """The team unless the campaign says otherwise: see newsletter.html.j2."""
+
+    @staticmethod
+    def _newsletter(theme: EmailThemeName, top: str = "") -> RenderedEmail:
+        campaign = (
+            '{% extends "newsletter.html.j2" %}'
+            + top
+            + "{% block subject %}News{% endblock %}"
+            "{% block preheader %}Soon{% endblock %}"
+            "{% block content %}<p>Hello</p>{% endblock %}"
+            "{% block text %}Hello\n\n{{ signoff_text }}{% endblock %}"
+        )
+        env = make_environment(DictLoader({"campaign.html.j2": campaign}))
+
+        return render_email(
+            "campaign.html.j2",
+            theme,
+            {"unsubscribe_url": "https://example.test/u"},
+            asset_base_url="",
+            env=env,
+        )
+
+    @pytest.mark.parametrize(
+        ("theme", "team"),
+        [("quill", "Quill Medical Team"), ("ldd", "Let's Do Digital Team")],
+    )
+    def test_left_alone_it_is_from_the_brands_team(
+        self, theme: EmailThemeName, team: str
+    ) -> None:
+        rendered = self._newsletter(theme)
+
+        assert rendered["from_name"] == team
+        assert rendered["text_body"].endswith(team)
+        assert team in rendered["html_body"].replace("&#39;", "'")
+
+    def test_the_team_sign_off_has_no_second_line(self) -> None:
+        assert (
+            "Bailey Medics</p>" not in self._newsletter("quill")["html_body"]
+        )
+
+    def test_a_campaign_can_be_from_a_person(self) -> None:
+        rendered = self._newsletter(
+            "quill",
+            '{% set signoff_name = "Mark Bailey" %}'
+            '{% set signoff_role = "Bailey Medics" %}'
+            '{% set from_name = "Mark at Quill Medical" %}',
+        )
+
+        assert rendered["from_name"] == "Mark at Quill Medical"
+        assert ">Mark Bailey</p>" in rendered["html_body"]
+        assert ">Bailey Medics</p>" in rendered["html_body"]
+        assert rendered["text_body"].endswith("Mark Bailey, Bailey Medics")
+
+    def test_a_name_alone_is_also_who_it_is_sent_as(self) -> None:
+        rendered = self._newsletter(
+            "quill", '{% set signoff_name = "Mark Bailey" %}'
+        )
+
+        assert rendered["from_name"] == "Mark Bailey"
+        assert rendered["text_body"].endswith("Mark Bailey")
+
+    def test_a_sign_off_is_escaped_in_the_html_and_not_in_the_text(
+        self,
+    ) -> None:
+        rendered = self._newsletter(
+            "quill", '{% set signoff_name = "Tom & <b>Jerry</b>" %}'
+        )
+
+        assert "<b>Jerry</b>" not in rendered["html_body"]
+        assert "Tom &amp; &lt;b&gt;Jerry&lt;/b&gt;" in rendered["html_body"]
+        assert rendered["text_body"].endswith("Tom & <b>Jerry</b>")
+
+    def test_a_name_the_caller_gives_still_wins(self) -> None:
+        campaign = (
+            '{% extends "newsletter.html.j2" %}'
+            "{% block subject %}News{% endblock %}"
+            "{% block preheader %}Soon{% endblock %}"
+            "{% block content %}{% endblock %}"
+            "{% block text %}Hello{% endblock %}"
+        )
+        env = make_environment(DictLoader({"campaign.html.j2": campaign}))
+
+        rendered = render_email(
+            "campaign.html.j2",
+            "quill",
+            {"unsubscribe_url": "https://example.test/u"},
+            from_name="Somebody else",
+            asset_base_url="",
+            env=env,
+        )
+
+        assert rendered["from_name"] == "Somebody else"

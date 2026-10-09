@@ -1,0 +1,28 @@
+{#-
+  A sample newsletter from a person, for the Storybook preview only.
+  Invented content. It shows the three values a campaign sets when it is
+  not from the team: see newsletter.html.j2.
+-#}
+{% extends "newsletter.html.j2" %}
+{% set signoff_name = "Mark Bailey" %}
+{% set signoff_role = "Bailey Medics" %}
+{% set from_name = "Mark at " ~ t.sender_name %}
+{% import "_components.html.j2" as c with context %}
+{% block subject %}A note from Mark{% endblock %}
+{% block preheader %}Something I wanted to say myself.{% endblock %}
+{% block content %}
+{{ c.heading("A *personal* note") }}
+{{ c.paragraph("Hello,") }}
+{{ c.paragraph("Most of our newsletters come from the team. Now and then there is something I would rather say myself, and this is what one of those looks like.") }}
+{{ c.paragraph("Thank you for reading.") }}
+{% endblock %}
+
+{% block text %}
+Hello,
+
+Most of our newsletters come from the team. Now and then there is something I would rather say myself, and this is what one of those looks like.
+
+Thank you for reading.
+
+{{ signoff_text }}
+{% endblock %}
