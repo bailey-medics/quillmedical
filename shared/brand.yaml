@@ -70,7 +70,8 @@ palette:
     - "#495057" # 7 muted text, dimmed in light mode (8.2:1 on white)
 
 # Each email theme is one brand's look for every email: the layout is the
-# same, only these values change. Signed off in Phase 1 of the plan.
+# same, only these values change. Mark approved these values when the
+# emails were designed.
 email_themes:
   # Follows the public site rather than the app, with a white body.
   quill:

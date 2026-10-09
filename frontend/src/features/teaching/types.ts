@@ -257,6 +257,8 @@ export interface EmailTemplate {
   subject: string;
   body: string;
   attach_certificate: boolean;
+  /** The line an inbox shows after the subject; null where the bank writes none */
+  preheader?: string | null;
 }
 
 export interface AdminBankDetail {

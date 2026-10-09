@@ -280,3 +280,81 @@ class TestRenderEmail:
         result = render_email(template, {})
         assert "<strong>bold</strong>" in result["html_body"]
         assert '<a href="https://example.com"' in result["html_body"]
+
+
+class TestPreheader:
+    """The line an inbox shows after the subject, where a bank writes one."""
+
+    def test_a_bank_without_one_gets_its_subject(self) -> None:
+        template = extract_email_template(
+            {"student_email": {"subject": "Your cert", "body": "Hi"}},
+            "student_email",
+        )
+
+        assert template is not None
+        assert template["preheader"] == ""
+        assert render_email(template, {})["preheader"] == "Your cert"
+
+    def test_a_template_built_without_the_key_gets_its_subject(self) -> None:
+        """As every template was built before the key existed."""
+        template = EmailTemplate(
+            subject="Certificate: $exam_title",
+            body="Body",
+            attach_certificate=True,
+        )
+
+        rendered = render_email(template, {"exam_title": "Chest X-ray"})
+
+        assert rendered["preheader"] == "Certificate: Chest X-ray"
+
+    def test_one_that_is_written_is_used_with_its_variables_filled(
+        self,
+    ) -> None:
+        template = extract_email_template(
+            {
+                "student_email": {
+                    "subject": "Your cert",
+                    "preheader": "You passed $exam_title on $completion_date.",
+                    "body": "Hi",
+                }
+            },
+            "student_email",
+        )
+
+        assert template is not None
+        rendered = render_email(
+            template,
+            {"exam_title": "Chest X-ray", "completion_date": "9 October"},
+        )
+
+        assert rendered["preheader"] == "You passed Chest X-ray on 9 October."
+        assert rendered["subject"] == "Your cert"
+
+    @pytest.mark.parametrize("written", ["", "   ", None])
+    def test_an_empty_one_counts_as_none(self, written: str | None) -> None:
+        template = extract_email_template(
+            {
+                "student_email": {
+                    "subject": "Your cert",
+                    "preheader": written,
+                    "body": "Hi",
+                }
+            },
+            "student_email",
+        )
+
+        assert template is not None
+        assert render_email(template, {})["preheader"] == "Your cert"
+
+    def test_line_breaks_are_folded_into_one_line(self) -> None:
+        """An inbox shows it beside the subject, on one line."""
+        template = EmailTemplate(
+            subject="S",
+            body="B",
+            attach_certificate=True,
+            preheader="You passed.\n  Your certificate\nis attached.",
+        )
+
+        assert render_email(template, {})["preheader"] == (
+            "You passed. Your certificate is attached."
+        )

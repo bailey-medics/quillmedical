@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 # Repointed at the merged validator rather than rewritten, so the coverage
@@ -594,3 +595,38 @@ class TestValidateQuestionBank:
         self._write_config(bank, config)
         result = validate_question_bank(bank)
         assert result.is_valid
+
+    def test_email_preheader_is_optional_and_accepted(
+        self, tmp_path: Path
+    ) -> None:
+        bank = self._make_uniform_bank(tmp_path)
+        config = yaml.safe_load((bank / "config.yaml").read_text())
+        config["results"] = {"email_student_on_pass": True}
+        config["student_email"] = {
+            "subject": "Your cert",
+            "preheader": "You passed. Your certificate is attached.",
+            "body": "Well done!",
+        }
+        self._write_config(bank, config)
+
+        assert validate_question_bank(bank).is_valid
+
+    @pytest.mark.parametrize("written", ["", "   ", 3, ["a"]])
+    def test_email_preheader_that_is_not_text_is_refused(
+        self, tmp_path: Path, written: object
+    ) -> None:
+        bank = self._make_uniform_bank(tmp_path)
+        config = yaml.safe_load((bank / "config.yaml").read_text())
+        config["results"] = {"email_student_on_pass": True}
+        config["student_email"] = {
+            "subject": "Your cert",
+            "preheader": written,
+            "body": "Well done!",
+        }
+        self._write_config(bank, config)
+        result = validate_question_bank(bank)
+
+        assert not result.is_valid
+        assert any(
+            "'preheader' must be text" in e.message for e in result.errors
+        )

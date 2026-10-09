@@ -264,6 +264,14 @@ export default function AdminBankDetailPage() {
                       <BodyTextBold>Subject:</BodyTextBold>
                       <BodyText>{bank.student_email_template.subject}</BodyText>
                     </Group>
+                    {bank.student_email_template.preheader && (
+                      <Group>
+                        <BodyTextBold>Inbox preview:</BodyTextBold>
+                        <BodyText>
+                          {bank.student_email_template.preheader}
+                        </BodyText>
+                      </Group>
+                    )}
                     <MarkdownView source={bank.student_email_template.body} />
                   </Stack>
                 </Paper>
@@ -286,6 +294,14 @@ export default function AdminBankDetailPage() {
                         {bank.coordinator_email_template.subject}
                       </BodyText>
                     </Group>
+                    {bank.coordinator_email_template.preheader && (
+                      <Group>
+                        <BodyTextBold>Inbox preview:</BodyTextBold>
+                        <BodyText>
+                          {bank.coordinator_email_template.preheader}
+                        </BodyText>
+                      </Group>
+                    )}
                     <MarkdownView
                       source={bank.coordinator_email_template.body}
                     />

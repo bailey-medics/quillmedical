@@ -84,6 +84,19 @@ repos:
         files: ^backend/app/.*\.py$
         pass_filenames: false
 
+      # The list of email themes is generated from the brand file into
+      # one Python and one TypeScript file, because neither type checker
+      # can read YAML. This writes both whenever the brand file is in a
+      # commit, and stages them. It comes before the previews are
+      # rendered: those import the app, which refuses to load while the
+      # generated names and the brand file disagree.
+      - id: generate-email-themes
+        name: generate email themes
+        entry: sh -c 'env -u VIRTUAL_ENV poetry -C backend run python3 scripts/generate_email_themes.py && git add backend/app/email/theme.py frontend/src/generated/emailThemes.ts'
+        language: system
+        files: ^(shared/brand\.yaml|backend/scripts/generate_email_themes\.py)$
+        pass_filenames: false
+
       # Storybook shows the committed renders of every email, and a test
       # fails in CI when they are behind the templates. This renders them
       # whenever something an email is made from is staged, and stages the

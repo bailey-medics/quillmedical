@@ -203,14 +203,14 @@
     "quill": {
       "file": "certificate--quill.html",
       "subject": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
-      "preheader": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
+      "preheader": "You passed on 25 September 2026. Your certificate is attached.",
       "fromName": "EoEETA via Quill Medical",
       "replyTo": "coordinator@eoeeta.example"
     },
     "ldd": {
       "file": "certificate--ldd.html",
       "subject": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
-      "preheader": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
+      "preheader": "You passed on 25 September 2026. Your certificate is attached.",
       "fromName": "EoEETA via Let's Do Digital",
       "replyTo": "coordinator@eoeeta.example"
     }
@@ -221,14 +221,14 @@
     "quill": {
       "file": "certificate-without-logo--quill.html",
       "subject": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
-      "preheader": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
+      "preheader": "You passed on 25 September 2026. Your certificate is attached.",
       "fromName": "EoEETA via Quill Medical",
       "replyTo": "coordinator@eoeeta.example"
     },
     "ldd": {
       "file": "certificate-without-logo--ldd.html",
       "subject": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
-      "preheader": "Your certificate for Optical diagnosis of diminutive colorectal polyps",
+      "preheader": "You passed on 25 September 2026. Your certificate is attached.",
       "fromName": "EoEETA via Let's Do Digital",
       "replyTo": "coordinator@eoeeta.example"
     }

@@ -1,10 +1,12 @@
 {#-
   The layout every email shares, whichever brand it goes out as: Quill
   Medical or Let's Do Digital. Nothing here belongs to one brand; the
-  theme `t` supplies the colours, fonts and names. Moved across from the
-  signed-off Phase 1 mock-up
-  (frontend/src/stories/emails/mockups/base.html). If a render looks
-  different from the mock-up, this file is wrong.
+  theme `t` supplies the colours, fonts and names.
+
+  What each email looks like is on show in Storybook, under
+  Foundations/Emails, from the renders committed in
+  frontend/src/stories/emails/rendered/. Look there before and after
+  changing this file: a change here changes every email.
 
   A child template extends this and fills these blocks:
     subject    the subject line (plain text)
