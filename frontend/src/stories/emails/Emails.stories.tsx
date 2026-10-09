@@ -139,6 +139,11 @@ export const LetsDoDigitalNewsletter: Story = {
   args: { email: "newsletter", theme: "ldd" },
 };
 
+/** Signed by a person and sent under their name, not the team's. */
+export const NewsletterFromAPerson: Story = {
+  args: { email: "newsletter-from-a-person" },
+};
+
 export const OnAPhone: Story = {
   args: { email: "password-reset", device: "phone" },
 };

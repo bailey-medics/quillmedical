@@ -189,9 +189,10 @@ def render_email(
         partner: Set for an email sent for a partner: shows the partner
             strip, names them in the footer and sender, and sends replies
             to them.
-        from_name: The sender's display name, where it is a person
-            rather than the brand: a newsletter is "Mark at Quill
-            Medical". Otherwise the theme's name, or the partner's "via".
+        from_name: The sender's display name, where the caller must
+            choose it. Otherwise it is what the template set as
+            ``from_name``, as a newsletter does, then the partner's
+            "via", then the theme's name.
         asset_base_url: Where images load from. Defaults to
             ``settings.EMAIL_ASSET_BASE_URL``; the Storybook previews pass
             ``""`` for relative paths Storybook can serve.
@@ -219,17 +220,32 @@ def render_email(
         ),
     }
     compiled = environment.get_template(template)
-    page = compiled.new_context(values)
+
+    # Rendered as a module, which is the same HTML and also hands back
+    # what the template set at its top level. A newsletter says who it is
+    # from that way (see newsletter.html.j2), and the blocks rendered on
+    # their own below must see those values too, or the plain-text part
+    # would be signed differently from the HTML.
+    module = compiled.make_module(values)
+    template_set = {
+        name: value
+        for name, value in vars(module).items()
+        if not name.startswith("_")
+    }
+    page = compiled.new_context({**values, **template_set})
 
     subject = _plain("".join(compiled.blocks["subject"](page)))
     preheader = _plain("".join(compiled.blocks["preheader"](page)))
     text = _plain("".join(compiled.blocks["text"](page)))
-    body = compiled.render(values)
+    body = str(module)
 
     sender = t.sender_name
+    template_from_name = template_set.get("from_name")
 
     if from_name is not None:
         sender = from_name
+    elif isinstance(template_from_name, str) and template_from_name.strip():
+        sender = template_from_name.strip()
     elif partner is not None and partner.short_name:
         sender = f"{partner.short_name} via {t.sender_name}"
 

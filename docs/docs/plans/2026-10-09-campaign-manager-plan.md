@@ -62,7 +62,11 @@ starts.
       across the table and matching `CAMPAIGN_NAME` in
       `backend/app/marketing/newsletter.py`, the brand, the subject, the
       preheader, the body, a status, who wrote it, and when it was
-      created, last changed and first sent. Validate the brand and the
+      created, last changed and first sent. Also who it is from: the
+      sign-off name, the sign-off role and the sender's name, all
+      optional, which a file campaign sets with `signoff_name`,
+      `signoff_role` and `from_name` (see `newsletter.html.j2`). Empty,
+      a newsletter is from the brand's team. Validate the brand and the
       status in code against a tuple, as `validate_platform_role` does,
       so neither needs a migration to grow.
 
@@ -111,7 +115,8 @@ starts.
       checked on App production.
 
 - [ ] Delete `backend/app/email/templates/previews/newsletter_sample.html.j2`
-      and give the Storybook preview a sample body in its place. The file
+      and `newsletter_personal_sample.html.j2` beside it, and give the
+      two Storybook previews sample bodies in their place. The file
       is the "Newsletter" entry in `backend/app/email/previews.py`: a
       Jinja template extending `newsletter.html.j2`, which is the shape
       of a file campaign. Once a newsletter is a body rendered from a

@@ -42,7 +42,7 @@ from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.email.brand import EmailThemeName, email_theme
+from app.email.brand import EmailThemeName
 from app.email.render import RenderedEmail, render_email, send_args
 from app.email_send import (
     EmailNotAllowedError,
@@ -282,35 +282,33 @@ def campaign_brand(campaign: str) -> EmailThemeName:
     return found[0]
 
 
-def sender(brand: EmailThemeName) -> tuple[str, str | None]:
-    """Who a newsletter in a brand comes from.
+def sender_address(brand: EmailThemeName) -> str | None:
+    """The address a newsletter in a brand is sent from.
 
-    A person, not the brand alone: it is signed off by Mark. The address
-    is the brand's own where it has one set, and otherwise the app's,
-    which is all that can be sent from until the brand's domain has been
+    The brand's own where it has one set, and otherwise the app's, which
+    is all that can be sent from until the brand's domain has been
     verified with the mail provider.
+
+    The name beside it is not decided here. A campaign says who it is
+    from, the team unless it sets otherwise: see ``newsletter.html.j2``.
 
     Args:
         brand: The campaign's brand.
 
     Returns:
-        The display name, and the address or None for the app's own.
+        The address, or None for the app's own.
     """
-    name = f"Mark at {email_theme(brand).sender_name}"
     address = settings.EMAIL_FROM_LDD.strip() if brand == "ldd" else ""
 
-    return name, address or None
+    return address or None
 
 
 def _render(campaign: str, brand: EmailThemeName, page: str) -> RenderedEmail:
     """Render a campaign for one person's unsubscribe link."""
-    name, _ = sender(brand)
-
     return render_email(
         f"campaigns/{brand}/{campaign}.html.j2",
         brand,
         {"unsubscribe_url": page},
-        from_name=name,
     )
 
 
@@ -321,7 +319,7 @@ def _send_one(campaign: str, brand: EmailThemeName, person: Person) -> None:
     by a whole mailing would let any reader unsubscribe everybody.
     """
     page, one_click = unsubscribe_links(person)
-    _, address = sender(brand)
+    address = sender_address(brand)
     send_email(
         to=person.email,
         **send_args(_render(campaign, brand, page)),

@@ -1,0 +1,28 @@
+{#-
+  Who sends every email, in law. The one place these details are written
+  for email: change them here and every footer follows.
+
+  Both brands are trading names of the same company, so nothing here
+  depends on the brand but the name it trades under, which comes from the
+  theme. Import with context, so `t` is in scope:
+
+    {% import "_company.html.j2" as company with context %}
+
+  The public site states the same details on its company information
+  page (frontend/public_pages/src/pages/company-information.tsx), and
+  the terms and the privacy policy state them under docs/docs/legal/.
+  Those are separate documents and are changed by hand.
+-#}
+{% set legal_name = "Bailey Medics Ltd" %}
+{% set company_number = "15604352" %}
+{% set registered_office = "Brooklands Place, Unit 5, Brooklands Road, Sale, Cheshire, M33 3SD" %}
+
+{#-
+  The sentence a footer ends with. Short for an email somebody asked
+  for. With `registered=true` it adds the company number and registered
+  office, which a newsletter carries because marketing email must say
+  who sent it and where they can be written to.
+-#}
+{% macro trading_line(registered=false) -%}
+{{ t.sender_name }} is a trading name of {{ legal_name }}.{% if registered %} Company number {{ company_number }}. {{ registered_office }}.{% endif %}
+{%- endmacro %}
