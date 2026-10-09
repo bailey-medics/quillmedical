@@ -30,6 +30,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.cbac.practising import withdraw_not_held
 from app.models import OrgUnitFeature, User, UserCompetency, org_unit_member
 
 #: The feature key that switches an org_unit's cover on.
@@ -114,6 +115,9 @@ def _close(db: Session, org_unit_id: int, user_id: int | None = None) -> int:
 
     for row in rows:
         row.ends_on = now
+
+    for person in {row.user for row in rows}:
+        withdraw_not_held(db, person)
 
     return len(rows)
 

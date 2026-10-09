@@ -167,14 +167,14 @@ class TestAuthorisingPractice:
         assert second.json()["status"] == "unchanged"
         assert len(_rows(db_session, ward.id)) == 1
 
-    def test_authorising_beyond_a_persons_ceiling_is_allowed(
+    def test_authorising_what_a_person_does_not_hold_is_refused(
         self, authenticated_admin_client, db_session, ward
     ):
-        """The place records its decision without waiting on paperwork.
+        """The competency comes first, then where it may be practised.
 
-        The row does nothing until the person is qualified, because
-        ``can_practise_at`` requires both halves. Refusing it here would
-        make a place unable to say what it has decided.
+        A place does not authorise somebody for something they are not
+        qualified to do. The caller grants it first, or uses the route
+        that grants and authorises together.
         """
         patient = User(
             username="not-a-clinician",
@@ -192,8 +192,9 @@ class TestAuthorisingPractice:
             json={"user_id": patient.id, "competency": COMPETENCY},
         )
 
-        assert resp.status_code == 200
-        assert len(_rows(db_session, ward.id)) == 1
+        assert resp.status_code == 422
+        assert "do not hold" in resp.json()["detail"]
+        assert _rows(db_session, ward.id) == []
 
     def test_an_unknown_person_is_refused(
         self, authenticated_admin_client, ward

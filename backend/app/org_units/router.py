@@ -348,8 +348,9 @@ def practice_refusal(
     through a scoped manager, such as ``manage_teaching``, to stay inside
     its whitelist. Authorising asks for more than withdrawing does: the
     org_unit's type must be one somebody can practise at, the person must
-    exist, and a scoped manager may authorise only a member of the
-    org_unit. Withdrawing asks for none of those, so that a row can always
+    exist and already hold the competency, and a scoped manager may
+    authorise only a member of the org_unit. Withdrawing asks for none of
+    those, so that a row can always
     be taken away, whatever has happened to the person or the place since
     it was written.
 
@@ -377,8 +378,19 @@ def practice_refusal(
             if authorising:
                 _require_member(db, unit_id, user_id)
             _require_in_scope(caller, {competency})
-        if authorising and db.get(User, user_id) is None:
-            raise HTTPException(status_code=404, detail="User not found")
+        if authorising:
+            person = db.get(User, user_id)
+
+            if person is None:
+                raise HTTPException(status_code=404, detail="User not found")
+            if competency not in person.get_final_competencies():
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"They do not hold {competency}, so it cannot be "
+                        "authorised here. Grant it to them first."
+                    ),
+                )
     except HTTPException as refusal:
         return refusal
 

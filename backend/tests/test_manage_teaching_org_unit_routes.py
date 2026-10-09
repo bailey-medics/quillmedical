@@ -26,6 +26,7 @@ from app.models import (
 )
 from app.organisations import add_org_unit_member, get_member_org_unit_ids
 from app.security import hash_password
+from tests.competencies import hold
 
 PASSWORD = "Coordinator123!"
 
@@ -158,6 +159,10 @@ class TestAtTheirOwnOrgUnit:
         consultant: User,
         db_session: Session,
     ) -> None:
+        # Held first: a place authorises only what somebody already holds.
+        hold(consultant, "take_teaching_modules")
+        db_session.commit()
+
         resp = client.post(
             f"/api/org-units/{trust.id}/practising-competencies",
             json={
