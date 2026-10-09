@@ -274,25 +274,59 @@ fixtures from `backend/tests/fixtures/`, which stays where it is.
 
 ## Phase 5: Find the modules with no test of their own
 
-- [ ] List every module under `backend/app/` with no `_test.py` beside
-      it. After the move this is a directory listing. The survey found 24
-      modules that no test imports at all.
+- [x] List every module under `backend/app/` with no `_test.py` beside
+      it. After the move this is a directory listing. On 9 October 2026,
+      once Phase 3 was done, it was 41 of 115 modules.
 
-- [ ] Sort the list into three kinds. **Plain modules with no test**
-      should get one: `feedback/replies.py`, `feedback/labels.py`,
-      `features/passport/entitlements.py`, `messaging.py`, `push.py` and
-      `push_send.py` were the candidates on 9 October 2026, unchecked.
-      **Routers** are tested through the API and need none of their own.
-      **Modules whose logic sits inside a route** cannot be tested alone
-      as they stand.
+- [x] Sort the list into kinds. There turned out to be four, not three.
 
-- [ ] Write the missing tests for the first kind.
+      - **Routers: 10.** `main.py`, `deps.py`, `features/gating.py`, and
+        the `router.py` of `analytics`, `feedback`, `guides`, `inbox`,
+        `marketing` (with `admin_router.py`) and `org_units`. Tested
+        through the API, from `backend/tests/`, and needing none of
+        their own.
+      - **Schemas and table definitions: 14.** Everything in
+        `backend/app/schemas/` but `passport.py`, and the teaching
+        feature's `models.py` and `schemas.py`. They declare shapes and
+        hold almost no logic. Where one carries a validator, as
+        `schemas/org_units.py` and `schemas/organisations.py` do, that
+        validator is worth a test of its own; none was written here.
+      - **Constants: 3.** `paths.py`, and `annotations.py` and
+        `module_schema.py` in the teaching tooling. Nothing to test
+        apart from the code that reads them.
+      - **Plain modules with logic: 14.** These are the ones the phase
+        is for, and they split in two below.
 
-- [ ] Record the third kind as candidates for pulling logic out of
-      routes into plain functions, as `cbac/grants.py` and
+- [x] Write the missing tests for the plain modules small enough to be
+      tested whole. Five, each beside its module:
+      `feedback/replies_test.py`, for which replies a sender has not
+      opened; `feedback/labels_test.py`, that every stored category and
+      status has its words; `feedback/slack_test.py`, the words of the
+      Slack post and what happens when Slack cannot be reached, taking
+      over two cases that sat in `tests/test_feedback.py`;
+      `features/passport/entitlements_test.py`, for until when somebody
+      may write to their passport; and `logging_config_test.py`.
+
+- [ ] Write tests of their own for the larger plain modules. Each is
+      exercised today only through routes or through another module's
+      test, which is cover but not a test of the module in its own
+      right. In rough order of how much rides on them:
+      `messaging.py` (600 lines, 17 functions), `inbox/sources.py` (360
+      lines, 12 functions), `features/teaching/access.py` (409 lines, 11
+      functions), `features/passport/index.py` (302 lines),
+      `features/passport/blobs.py` (205 lines), `cbac/audit.py`,
+      `cbac/grants.py`, `org_units/relations.py` and
+      `features/passport/locking.py`. Not done in this run: a test
+      written for each without first reading what the route tests
+      already pin down would repeat them or be shallow. Each is a piece
+      of work of its own, best done as that module is reviewed.
+
+- [ ] Record the modules whose logic sits inside a route as candidates
+      for pulling it out into plain functions, as `cbac/grants.py` and
       `cbac/practising.py` already do. That is what makes a test of one
-      module possible, and it is part of the review this plan came out
-      of. Each is its own piece of work and not part of this plan.
+      module possible. `main.py` is the large one, at 65 routes and 106
+      functions in one file, and `org_units/router.py` the next, at 26
+      routes. Each is its own piece of work and not part of this plan.
 
 ## Phase 6: Turn the Bandit scan on, and deal with what it reports
 
