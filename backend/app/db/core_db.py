@@ -2,7 +2,7 @@
 
 This module provides SQLAlchemy engine and session management for the
 core database (non-patient-facing application state: users, roles,
-permissions, organisations, sites, teaching, and more).
+permissions, organisational units, teaching, and more).
 """
 
 from collections.abc import Generator
@@ -13,12 +13,28 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.config import settings
 
 # Create core database engine
+#
+# The pool is sized against what the database accepts, not against how
+# busy the app might get. Each uvicorn worker is its own process with its
+# own engine, so the most the app can open is
+#
+#     (pool_size + max_overflow) x workers x Cloud Run instances
+#     (5 + 4) x 2 x 5 = 90
+#
+# against the 100 connections the core database's tier accepts by
+# default (``db_tier`` in infra/environments/app/terraform.tfvars). The
+# ten left over are for the slots Postgres reserves, the migrations job
+# and a session opened by hand.
+#
+# Going over is worse than waiting: a request with no free connection in
+# the pool queues for one, where a request Postgres has no room for is
+# refused outright. So raise these only with the tier, the worker count
+# in backend/Dockerfile and ``cloud_run_max_instances`` in view.
 core_engine = create_engine(
     settings.CORE_DATABASE_URL,
-    future=True,
     pool_pre_ping=True,
     pool_size=5,
-    max_overflow=10,
+    max_overflow=4,
 )
 
 # Create session factory
@@ -26,7 +42,6 @@ CoreSessionLocal = sessionmaker(
     bind=core_engine,
     autoflush=False,
     autocommit=False,
-    future=True,
 )
 
 
