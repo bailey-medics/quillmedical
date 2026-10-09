@@ -252,14 +252,25 @@ fixtures from `backend/tests/fixtures/`, which stays where it is.
       alone does not apply. By the suffix only, and **not `test_*.py`**:
       see the renamed endpoints module in Phase 1.
 
-- [ ] Shipping tests would do little harm, since nothing runs them and
+- [x] Shipping tests would do little harm, since nothing runs them and
       the test-only packages are not installed in the image. They are
       kept out because their fixtures hold strings that look like
       credentials, which a scanner flags, and because "is test code
       deployed?" is easier to answer with a no.
 
-- [ ] Add a check that fails if the built image holds a `*_test.py`, in
-      the job that builds it, so the rule cannot stop working unnoticed.
+- [x] Add a check that fails if the built image holds a `*_test.py`, so
+      the rule cannot stop working unnoticed.
+      `.github/scripts/ci/check-no-tests-in-image.sh` looks inside the
+      image for a `_test.py` under `/app/app` or a `conftest.py` beside
+      it. It runs in the `E2E (Playwright)` job of `ci.yml`, on the image
+      that job has just pulled: the `prod` target, built from the same
+      Dockerfile and context as the one `deploy.yml` ships. So it gates
+      a pull request leaving draft and the merge queue, before anything
+      is deployed, and `deploy.yml` is left alone. It fails too if it
+      finds no `main.py` where it looks, so that looking in the wrong
+      place cannot read as a clean image, which is the mistake the
+      Bandit hook made. Run against a production image built locally,
+      it found 131 Python files and no tests.
 
 ## Phase 5: Find the modules with no test of their own
 
