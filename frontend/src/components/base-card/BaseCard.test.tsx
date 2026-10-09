@@ -79,4 +79,36 @@ describe("BaseCard", () => {
       color: "var(--status-text-dark)",
     });
   });
+
+  it("breaks a word longer than the card, unless told not to", () => {
+    // The stylesheet keys on this attribute. jsdom does no layout, so the
+    // attribute is what can be checked here; the Long word story shows it.
+    renderWithMantine(<BaseCard data-testid="card">Content</BaseCard>);
+
+    expect(screen.getByTestId("card")).toHaveAttribute("data-wrap-long-words");
+  });
+
+  it("leaves long words alone when wrapLongWords is off", () => {
+    renderWithMantine(
+      <BaseCard data-testid="card" wrapLongWords={false}>
+        Content
+      </BaseCard>,
+    );
+
+    expect(screen.getByTestId("card")).not.toHaveAttribute(
+      "data-wrap-long-words",
+    );
+  });
+
+  it("keeps a class name it is given beside its own", () => {
+    renderWithMantine(
+      <BaseCard data-testid="card" className="mine">
+        Content
+      </BaseCard>,
+    );
+
+    const card = screen.getByTestId("card");
+    expect(card).toHaveClass("mine");
+    expect(card.className.split(" ").length).toBeGreaterThan(1);
+  });
 });

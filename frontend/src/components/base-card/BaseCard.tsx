@@ -8,11 +8,16 @@
  * Fixed props (not overridable):
  *   shadow="sm"  padding="lg"  radius="md"
  *
+ * A word longer than the card breaks inside itself, so nothing in a card
+ * runs off the side of a phone. Set `wrapLongWords={false}` to turn that
+ * off for one card.
+ *
  * All other Mantine Card props are forwarded.
  */
 
 import { Card, type CardProps } from "@mantine/core";
 import { forwardRef, type ReactNode, type Ref } from "react";
+import classes from "./BaseCard.module.css";
 
 /**
  * Props for BaseCard.
@@ -31,6 +36,13 @@ export type BaseCardProps = Omit<
 > &
   Omit<React.HTMLAttributes<HTMLDivElement>, keyof CardProps> & {
     children: ReactNode;
+    /**
+     * Break a word longer than the card inside itself. Defaults to true.
+     *
+     * Turn it off only where a squeezed column would be worse than text
+     * running out of the card.
+     */
+    wrapLongWords?: boolean;
   };
 
 /**
@@ -42,7 +54,15 @@ const COLOURED_CARD_SHADOW =
   "0 1px 3px rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.22)";
 
 const BaseCard = forwardRef(function BaseCard(
-  { children, bg, c, style, ...rest }: BaseCardProps,
+  {
+    children,
+    bg,
+    c,
+    style,
+    className,
+    wrapLongWords = true,
+    ...rest
+  }: BaseCardProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const hasBg = !!bg;
@@ -54,6 +74,8 @@ const BaseCard = forwardRef(function BaseCard(
       padding="lg"
       radius="md"
       withBorder={!hasBg}
+      className={className ? `${classes.card} ${className}` : classes.card}
+      data-wrap-long-words={wrapLongWords || undefined}
       bg={bg}
       // White is the right default for a saturated fill, but only a
       // default: a pale background needs dark text, and forcing white

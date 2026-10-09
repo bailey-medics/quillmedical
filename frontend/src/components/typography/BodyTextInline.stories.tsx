@@ -40,25 +40,6 @@ export const Bold: Story = {
   ),
 };
 
-/**
- * A value with nowhere to wrap, such as an address or a release id,
- * breaks inside itself instead of running off a narrow screen.
- */
-export const BreakAnywhere: Story = {
-  args: {
-    breakAnywhere: true,
-    children:
-      "/teaching/assessments/12345/questions/67890/review/8ed08fd0c2b48463456cb1a88add2739f5fcd5a7",
-  },
-  decorators: [
-    (Story) => (
-      <div style={{ maxWidth: 240 }}>
-        <Story />
-      </div>
-    ),
-  ],
-};
-
 export const DarkMode: Story = {
   ...Default,
   globals: { colorScheme: "dark" },
