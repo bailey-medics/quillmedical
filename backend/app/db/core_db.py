@@ -41,7 +41,6 @@ core_engine = create_engine(
 CoreSessionLocal = sessionmaker(
     bind=core_engine,
     autoflush=False,
-    autocommit=False,
 )
 
 

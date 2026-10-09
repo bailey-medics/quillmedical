@@ -20,6 +20,7 @@
 {{ c.small("This link expires in " ~ ttl_minutes ~ " minutes.") }}
 {% endblock %}
 {% block reason %}You are receiving this because this address was used to create an account on Quill.{% endblock %}
+
 {% block text %}
 {% if welcome %}Welcome to Quill! Please verify your email address to activate your account.{% else %}Please verify your email address to activate your Quill account.{% endif %}
 

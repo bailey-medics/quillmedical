@@ -295,6 +295,39 @@ def get_profile(u: User = DEP_CURRENT_USER):
     return u
 ```
 
+### Transactions
+
+A request is one database transaction. `get_core_db`, the dependency
+behind `DEP_GET_SESSION`, commits once when the route returns without
+error and rolls back if anything raises, so a route does not call
+`db.commit()` itself.
+
+```python
+@router.post("/users")
+def create_user(user_in: UserCreate, db: Session = DEP_GET_SESSION):
+    user = User(**user_in.model_dump())
+    db.add(user)
+    db.flush()  # fills in user.id; the transaction stays open
+
+    return user  # committed by get_core_db after the route returns
+```
+
+- **Flush for a generated value.** `db.flush()` sends the pending changes
+  and fills in a new row's `id` without ending the transaction, so the
+  row can still be rolled back if something later in the request fails.
+- **Flush before querying for what was just written.** Sessions are made
+  with `autoflush=False`, so a row passed to `db.add()` cannot be seen by
+  a later query in the same request until it is flushed.
+- **An explicit commit is a deliberate checkpoint**, for work that must
+  survive a failure later in the same request, and carries a comment
+  saying what it protects.
+- **Code outside a request commits for itself.** A script, an admin job
+  action or a background task that opens its own `CoreSessionLocal()`
+  does not go through the dependency.
+
+The reasoning, and how the earlier explicit commits were sorted, is in the
+[Core DB auto-commit plan](../../plans/2026-08-25-core-db-auto-commit-plan.md).
+
 ## API Documentation
 
 ### Swagger UI

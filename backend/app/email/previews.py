@@ -145,6 +145,7 @@ def previews() -> list[Preview]:
             label="Account invitation",
             template="account_invite.html.j2",
             context={
+                "name": "Sam Patel",
                 "username": "sam.patel",
                 "setup_url": (
                     "https://quill-medical.com/reset-password?token=example"

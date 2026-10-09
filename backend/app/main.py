@@ -3122,6 +3122,7 @@ def send_invite_email(
                 "account_invite.html.j2",
                 "quill",
                 {
+                    "name": user.full_name or user.username,
                     "username": user.username,
                     "setup_url": reset_url,
                     "ttl_minutes": settings.PASSWORD_RESET_TTL_MIN,
