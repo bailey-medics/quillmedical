@@ -488,6 +488,12 @@ kill-port-8000:
     lsof -i :8000
 
 
+alias lp := local-path
+# Print the path of the shared local/ folder (files kept out of git)
+local-path:
+    @bash scripts/local-path.sh
+
+
 alias qbc := question-bank-clone
 # Clone the question bank repo into question-bank/
 question-bank-clone:
@@ -523,6 +529,30 @@ question-bank-push:
         exit 1
     fi
     git -C question-bank push
+
+
+alias rd := review-diff
+# Show what changed in a file since it was stamped as read
+review-diff path:
+    @python3 scripts/review-ledger.py diff {{path}}
+
+
+alias rs := review-status
+# Say how much has been read. Pass 'f' for the full list by folder, or a folder to list it file by file.
+review-status path="":
+    @python3 scripts/review-ledger.py status {{path}}
+
+
+alias r := reviewed
+# Stamp files, or every file in a folder, as read
+reviewed *paths:
+    @python3 scripts/review-ledger.py mark {{paths}}
+
+
+alias ur := unreviewed
+# Take the read stamp off files, or off every file in a folder
+unreviewed *paths:
+    @python3 scripts/review-ledger.py unmark {{paths}}
 
 
 alias sdt := seed-teaching
