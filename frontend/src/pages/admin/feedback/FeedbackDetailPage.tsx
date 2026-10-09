@@ -7,8 +7,9 @@
  * start of each message, and deciding what to do about one means reading
  * all of it.
  *
- * The message is never edited. The status saves when it is chosen; the
- * comment saves from its own button, since it is typed rather than picked.
+ * The message is never edited. The status and the comment are saved
+ * together from one button, so a status can be changed and the reason for
+ * it written before the sender sees either.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -35,10 +36,10 @@ import {
   FEEDBACK_STATUSES,
   FEEDBACK_STATUS_LABELS,
   MAX_FEEDBACK_COMMENT,
+  answerFeedback,
   categoryLabel,
   getFeedback,
-  setFeedbackComment,
-  setFeedbackStatus,
+  type FeedbackAnswer,
   type FeedbackItem,
   type FeedbackStatus,
 } from "@/lib/feedback/feedbackAdmin";
@@ -67,15 +68,16 @@ export default function FeedbackDetailPage() {
   const [item, setItem] = useState<FeedbackItem | null>(null);
   const [loading, setLoading] = useState(Boolean(id));
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<FeedbackStatus | null>(null);
   const [comment, setComment] = useState("");
-  const [savingComment, setSavingComment] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const fetchItem = useCallback(async () => {
     if (!id) return;
     try {
       const fetched = await getFeedback(Number(id));
       setItem(fetched);
+      setStatus(fetched.status);
       setComment(fetched.comment ?? "");
     } catch {
       setError("Feedback not found");
@@ -90,43 +92,33 @@ export default function FeedbackDetailPage() {
     })();
   }, [fetchItem]);
 
-  async function changeStatus(value: string | null) {
-    if (!item || !isFeedbackStatus(value) || value === item.status) return;
-    setSaving(true);
-    try {
-      setItem(await setFeedbackStatus(item.id, value));
-      // The envelope in the ribbon counts feedback still new, so it is
-      // told at once, not left to find out at the next page.
-      inboxChanged();
-      showMessage({
-        variant: "success",
-        title: `Marked as ${FEEDBACK_STATUS_LABELS[value].toLowerCase()}`,
-      });
-    } catch {
-      showMessage({ variant: "error", title: "The status was not changed" });
-    } finally {
-      setSaving(false);
-    }
-  }
-
+  const statusChanged = status !== null && status !== item?.status;
   const commentChanged = comment.trim() !== (item?.comment ?? "");
 
-  async function saveComment() {
-    if (!item || !commentChanged) return;
-    setSavingComment(true);
+  async function submit() {
+    if (!item || (!statusChanged && !commentChanged)) return;
+
+    // Only what changed is sent, so an untouched comment is not written
+    // again and the sender is not emailed about one they have read.
+    const answer: FeedbackAnswer = {};
+    if (statusChanged) answer.status = status;
+    if (commentChanged) answer.comment = comment.trim();
+
+    setSaving(true);
     try {
-      const saved = await setFeedbackComment(item.id, comment.trim());
+      const saved = await answerFeedback(item.id, answer);
       setItem(saved);
+      setStatus(saved.status);
       setComment(saved.comment ?? "");
-      showMessage({
-        variant: "success",
-        title: saved.comment ? "Comment saved" : "Comment removed",
-      });
+      // The envelope in the ribbon counts feedback still new, so it is
+      // told at once, not left to find out at the next page.
+      if (statusChanged) inboxChanged();
+      showMessage({ variant: "success", title: "Response saved" });
     } catch {
-      // What was typed stays in the box, to be tried again.
-      showMessage({ variant: "error", title: "The comment was not saved" });
+      // What was picked and typed stays put, to be tried again.
+      showMessage({ variant: "error", title: "The response was not saved" });
     } finally {
-      setSavingComment(false);
+      setSaving(false);
     }
   }
 
@@ -169,8 +161,10 @@ export default function FeedbackDetailPage() {
           <SelectField
             label="Status"
             data={STATUS_OPTIONS}
-            value={item.status}
-            onChange={(value) => void changeStatus(value)}
+            value={status}
+            onChange={(value) => {
+              if (isFeedbackStatus(value)) setStatus(value);
+            }}
             disabled={saving}
             allowDeselect={false}
           />
@@ -182,13 +176,13 @@ export default function FeedbackDetailPage() {
             maxLength={MAX_FEEDBACK_COMMENT}
             autosize
             minRows={3}
-            disabled={savingComment}
+            disabled={saving}
           />
           <ButtonPair
-            acceptLabel="Save comment"
-            onAccept={() => void saveComment()}
-            acceptDisabled={!commentChanged}
-            acceptLoading={savingComment}
+            acceptLabel="Submit"
+            onAccept={() => void submit()}
+            acceptDisabled={!statusChanged && !commentChanged}
+            acceptLoading={saving}
           />
         </Stack>
       </BaseCard>

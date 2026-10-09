@@ -159,8 +159,8 @@ class FeedbackUpdateIn(BaseModel):
     """An operator's answer to a piece of feedback: a status, a comment
     or both.
 
-    Each is left alone unless the body names it, so the status select and
-    the comment box save separately. ``comment`` as null or blank removes
+    Each is left alone unless the body names it, so one may be sent
+    without the other. ``comment`` as null or blank removes
     the comment. What the sender wrote is not here, so it cannot be edited.
     """
 
