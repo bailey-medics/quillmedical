@@ -1,7 +1,8 @@
 # Teaching content validation fixtures
 
-Golden module directories used by `test_teaching_tooling_validate.py` and
-`test_teaching_tooling_cli.py`.
+Golden module directories used by `validate_test.py` and
+`cli_test.py`, both in
+`backend/app/features/teaching/tooling/`.
 
 ## Why most image files are empty
 
@@ -45,5 +46,5 @@ LFS. Sync still cannot check: `download_bank_from_gcs` fetches only YAML and
 not there to inspect - which is exactly why the fixtures below stay empty.
 
 Do not give the remaining fixtures real bytes. Tests for the signature check
-build their own files, in `test_teaching_tooling_image_bytes.py`, so nothing
+build their own files, in `validate_image_bytes_test.py`, so nothing
 here needs to change to cover it.

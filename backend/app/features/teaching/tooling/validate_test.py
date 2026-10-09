@@ -15,7 +15,12 @@ from app.features.teaching.tooling.validate import (
     validate_modules_dir,
 )
 
-FIXTURES = Path(__file__).parent / "fixtures" / "teaching_tooling"
+FIXTURES = (
+    Path(__file__).resolve().parents[4]
+    / "tests"
+    / "fixtures"
+    / "teaching_tooling"
+)
 
 
 class TestModuleYamlSchema:

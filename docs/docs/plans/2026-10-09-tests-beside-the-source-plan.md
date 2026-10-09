@@ -180,8 +180,22 @@ fixtures from `backend/tests/fixtures/`, which stays where it is.
       `test_teaching_learner_gates.py`, `test_teaching_place.py` and
       `test_teaching_admin_needs_membership.py`.
 
-- [ ] `backend/app/features/teaching/tooling/`, as a pull request of
-      its own.
+- [x] `backend/app/features/teaching/tooling/`, as a pull request of
+      its own: thirteen tests. Nine are for `validate.py`, the content
+      validator, and are named for it first: `validate_test.py`,
+      `validate_certificate_test.py`, `validate_config_test.py`,
+      `validate_image_bytes_test.py`, `validate_inventory_test.py`,
+      `validate_items_test.py`, `validate_question_bank_test.py`,
+      `validate_result_test.py` and `validate_retired_test.py`. The rest
+      are `certificate_schema`, `cli`, `check_version_lock` and
+      `check_version_lock_integration`. Four read golden modules from
+      `backend/tests/fixtures/teaching_tooling/` and had that line
+      changed; the fixtures stay there, since `test_ci_teaching_sync.py`
+      reads them too. This folder is also installed on its own by a
+      content repository's CI. Nothing there imports the tests, and the
+      two tests that police what the folder may import still pass. Left
+      in `backend/tests/`: `test_teaching_tooling_dependencies.py`,
+      which compares two `pyproject.toml` files and is about no module.
 
 - [ ] `backend/app/features/passport/`.
 
