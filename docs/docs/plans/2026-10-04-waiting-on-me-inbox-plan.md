@@ -308,7 +308,7 @@ needs to reach more than one person.
       2026. A GitHub secret was turned down too: GitHub would only relay
       the value to Terraform, and a secret lives where it is used.
 
-- [ ] Give the secret its value, by hand, once the change above has
+- [x] Give the secret its value, by hand, once the change above has
       merged and Terraform has applied:
       `printf '%s' 'one@example.org,two@example.org' | gcloud secrets versions add feedback-notify-email --project quill-medical-app --data-file=-`.
       `printf` and not `echo`, which adds a newline.
@@ -364,7 +364,7 @@ extra that is skipped where no webhook is set.
 - [x] Create the secret container `feedback-slack-webhook-url`, in
       `module.secrets` in `infra/main.tf`.
 
-- [ ] Make the webhook in Slack, for the `quill-medical-feedback`
+- [x] Make the webhook in Slack, for the `quill-medical-feedback`
       channel, and give the secret its value once the change above has
       merged and Terraform has applied:
       `printf '%s' 'https://hooks.slack.com/services/...' | gcloud secrets versions add feedback-slack-webhook-url --project quill-medical-app --data-file=-`.

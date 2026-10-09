@@ -36,6 +36,15 @@ locals {
       # docs/docs/plans/2026-10-06-amazon-ses-email-plan.md, Phase 2.
       SES_ACCESS_KEY_ID     = "ses-access-key-id"
       SES_SECRET_ACCESS_KEY = "ses-secret-access-key"
+      # Who is told when somebody sends feedback, and the Slack channel
+      # that is posted to beside the email. The addresses are a list
+      # separated by commas, and the backend refuses to start in
+      # production with none; the webhook must be Slack's. To change
+      # either, add a version of the secret and re-run deploy.yml. See
+      # docs/docs/plans/2026-10-04-waiting-on-me-inbox-plan.md, Phases
+      # 10 and 11.
+      FEEDBACK_NOTIFY_EMAIL      = "feedback-notify-email"
+      FEEDBACK_SLACK_WEBHOOK_URL = "feedback-slack-webhook-url"
     },
     var.enable_fhir ? {
       FHIR_DB_PASSWORD           = "fhir-db-password"

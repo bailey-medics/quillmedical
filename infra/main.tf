@@ -81,17 +81,14 @@ module "secrets" {
       # Who is told when somebody sends feedback: one or more addresses,
       # separated by commas. Not a credential, but people's own addresses,
       # and this repository is public, so they are kept out of it. The
-      # container is created here and the value added by hand; a second
-      # change then mounts it on the backend as FEEDBACK_NOTIFY_EMAIL in
-      # place of the plain value below. One apply cannot do both, because
-      # Cloud Run will not mount a secret that has no version yet.
+      # value went in by hand, and the backend mounts it as
+      # FEEDBACK_NOTIFY_EMAIL (runtime-identities.tf).
       "feedback-notify-email",
 
       # The Slack incoming webhook the backend posts to when somebody
       # sends feedback, beside the email. A credential: anybody holding
-      # the URL can post to the channel. Created here, filled by hand and
-      # mounted as FEEDBACK_SLACK_WEBHOOK_URL in the same second change
-      # as the addresses above, for the same reason.
+      # the URL can post to the channel. The value went in by hand, and
+      # the backend mounts it as FEEDBACK_SLACK_WEBHOOK_URL.
       "feedback-slack-webhook-url",
     ],
     var.enable_fhir ? [
@@ -445,12 +442,9 @@ module "cloud_run_backend" {
     {
       EMAIL_FROM    = "info@quill-medical.com"
       EMAIL_DRY_RUN = "false"
-      # Who is told when somebody sends feedback. The notice carries a
-      # link and never the message. A role address, so it can sit here in
-      # the open; it moves to the feedback-notify-email secret, which may
-      # hold named people, once that secret has a value. The backend
-      # refuses to start in production with this empty.
-      FEEDBACK_NOTIFY_EMAIL = "info@quill-medical.com"
+      # Who is told when somebody sends feedback is not here: it is the
+      # feedback-notify-email secret, mounted in runtime-identities.tf,
+      # because it may name people and this repository is public.
     }
   )
 
