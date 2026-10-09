@@ -8,10 +8,11 @@
  * shows is what the backend sends.
  */
 
+import type { EmailThemeName } from "@/generated/emailThemes";
 import publicAsset from "@lib/publicAsset";
 import index from "./rendered/index.json";
 
-export type EmailThemeName = "quill" | "ldd";
+export type { EmailThemeName };
 
 export interface RenderedEmailEntry {
   file: string;
@@ -21,12 +22,11 @@ export interface RenderedEmailEntry {
   replyTo: string | null;
 }
 
-interface IndexEntry {
-  id: string;
-  label: string;
-  quill: RenderedEmailEntry;
-  ldd: RenderedEmailEntry;
-}
+/** One preview: its id and label, and a render for each theme. */
+type IndexEntry = { id: string; label: string } & Record<
+  EmailThemeName,
+  RenderedEmailEntry
+>;
 
 const renders = import.meta.glob<string>("./rendered/*.html", {
   query: "?raw",

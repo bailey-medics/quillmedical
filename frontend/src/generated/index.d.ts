@@ -258,10 +258,12 @@ declare module "@/generated/brand.json" {
       secondary: string[];
       grey: string[];
     };
-    email_themes: {
-      quill: EmailThemeSource;
-      ldd: EmailThemeSource;
-    };
+    // Keyed by the theme names in emailThemes.ts, which is generated
+    // from the same file, so the names are not written out again here.
+    email_themes: Record<
+      import("@/generated/emailThemes").EmailThemeName,
+      EmailThemeSource
+    >;
   };
 
   export default data;

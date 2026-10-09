@@ -12,6 +12,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Group, Stack, Text } from "@mantine/core";
 import { useState } from "react";
+import { EMAIL_THEME_NAMES } from "@/generated/emailThemes";
 import { StoryNote } from "@/stories/variants";
 import {
   emailIds,
@@ -80,7 +81,7 @@ const meta: Meta<typeof EmailPreview> = {
   argTypes: {
     theme: {
       control: "inline-radio",
-      options: ["quill", "ldd"],
+      options: [...EMAIL_THEME_NAMES],
       description: "Quill Medical, or Let's Do Digital",
     },
     email: {

@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from string import Template
-from typing import Any, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 import markdown
 import nh3
@@ -32,12 +32,19 @@ class EmailTemplate(TypedDict):
     subject: str
     body: str
     attach_certificate: bool
+    #: The line an inbox shows after the subject. Optional: a bank that
+    #: writes none gets its subject there, as every bank did before this
+    #: key existed.
+    preheader: NotRequired[str]
 
 
 class RenderedEmail(TypedDict):
     """A fully rendered email ready to send."""
 
     subject: str
+    #: The template's ``preheader`` with its variables filled in, or the
+    #: subject where the template has none.
+    preheader: str
     html_body: str
     #: The same body as plain text: the Markdown with its variables filled
     #: in, which reads well as it is.
@@ -68,6 +75,7 @@ def extract_email_template(
         subject=str(data.get("subject", "")),
         body=str(data.get("body", "")),
         attach_certificate=bool(data.get("attach_certificate", True)),
+        preheader=str(data.get("preheader") or "").strip(),
     )
 
 
@@ -121,8 +129,16 @@ def render_email(
     body_md = Template(template["body"]).safe_substitute(context)
     html_body = nh3.clean(markdown.markdown(body_md))
 
+    # One line, whatever the YAML held: a preheader is shown beside the
+    # subject in an inbox, where a line break has no meaning.
+    written = Template(template.get("preheader", "")).safe_substitute(context)
+    preheader = " ".join(written.split())
+
     return RenderedEmail(
-        subject=subject, html_body=html_body, body_text=body_md.strip()
+        subject=subject,
+        preheader=preheader or subject,
+        html_body=html_body,
+        body_text=body_md.strip(),
     )
 
 
@@ -193,7 +209,7 @@ def in_branded_layout(
             "quill",
             {
                 "subject": rendered["subject"],
-                "preheader": rendered["subject"],
+                "preheader": rendered["preheader"],
                 # Already sanitised by nh3 in render_email, so marked safe
                 # here rather than escaped a second time.
                 "body_html": Markup(rendered["html_body"]),

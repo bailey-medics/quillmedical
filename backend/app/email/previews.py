@@ -21,8 +21,9 @@ from typing import Any
 
 from markupsafe import Markup
 
-from app.email.brand import EmailImage, EmailThemeName
+from app.email.brand import EmailImage
 from app.email.render import EmailPartner, RenderedEmail, render_email
+from app.email.theme import EMAIL_THEME_NAMES, EmailThemeName
 from app.features.teaching.email_templates import (
     EmailTemplate,
 )
@@ -31,7 +32,7 @@ from app.features.teaching.email_templates import (
 )
 from app.paths import EMAIL_PREVIEWS_DIR
 
-THEMES: tuple[EmailThemeName, ...] = ("quill", "ldd")
+THEMES: tuple[EmailThemeName, ...] = EMAIL_THEME_NAMES
 
 _EOEETA_NAME = "East of England Endoscopy Training Academy"
 
@@ -55,6 +56,7 @@ _EOEETA = EmailPartner(
 #: bank's config.yaml. The score criteria are invented.
 _CERTIFICATE_TEMPLATE = EmailTemplate(
     subject="Your certificate for $exam_title",
+    preheader="You passed on $completion_date. Your certificate is attached.",
     body=(
         "Dear $recipient_name,\n\n"
         "Congratulations on passing **$exam_title**!\n\n"
@@ -85,9 +87,9 @@ def _certificate_context() -> dict[str, Any]:
 
     return {
         "subject": rendered["subject"],
-        # As the teaching router sends it: the subject doubles as the
-        # preheader, since the coordinator writes no separate one.
-        "preheader": rendered["subject"],
+        # As the teaching router sends it: the coordinator's own
+        # preheader, or the subject again where they wrote none.
+        "preheader": rendered["preheader"],
         "body_html": Markup(rendered["html_body"]),
         "body_text": rendered["body_text"],
         "reason": "You are receiving this because you sat an assessment on Quill.",

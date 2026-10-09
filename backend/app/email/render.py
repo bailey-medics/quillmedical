@@ -1,7 +1,7 @@
 """Render a branded email from a template, a theme and its values.
 
-Every email extends ``templates/base.html.j2``, the layout signed off as a
-static mock-up in Phase 1 of the email branding plan, and fills its blocks.
+Every email extends ``templates/base.html.j2``, the one layout all of
+them share, and fills its blocks.
 One function, :func:`render_email`, turns a template name, a theme and a
 context into everything :func:`app.email_send.send_email` needs.
 
@@ -33,7 +33,8 @@ from jinja2.runtime import Context
 from markupsafe import Markup, escape
 
 from app.config import settings
-from app.email.brand import EmailImage, EmailThemeName, email_theme
+from app.email.brand import EmailImage, email_theme
+from app.email.theme import EmailThemeName
 
 
 @dataclass(frozen=True)

@@ -35,15 +35,14 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import get_args
 
 from sqlalchemy import select
 from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.email.brand import EmailThemeName
 from app.email.render import RenderedEmail, render_email, send_args
+from app.email.theme import EMAIL_THEME_NAMES, EmailThemeName
 from app.email_send import (
     EmailNotAllowedError,
     EmailRateLimitError,
@@ -74,7 +73,7 @@ CAMPAIGNS_DIR = (
 
 #: The brands a newsletter can go out as. A campaign's brand is the
 #: folder its template is in, under ``campaigns/``.
-BRANDS: tuple[EmailThemeName, ...] = get_args(EmailThemeName)
+BRANDS: tuple[EmailThemeName, ...] = EMAIL_THEME_NAMES
 
 #: A pause between sends, to stay well inside the mail provider's limit
 #: of fourteen a second however long the list grows.

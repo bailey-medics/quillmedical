@@ -595,6 +595,9 @@ class EmailTemplateOut(BaseModel):
     subject: str
     body: str
     attach_certificate: bool = True
+    #: The line an inbox shows after the subject, as the bank wrote it.
+    #: None where the bank writes none and the subject is used.
+    preheader: str | None = None
 
 
 # ------------------------------------------------------------------

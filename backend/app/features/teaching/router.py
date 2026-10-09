@@ -3530,6 +3530,7 @@ def get_admin_bank_detail(
                 subject=ct["subject"],
                 body=ct["body"],
                 attach_certificate=ct.get("attach_certificate", True),
+                preheader=ct.get("preheader") or None,
             )
         st = extract_email_template(config, "student_email")
         if st:
@@ -3537,6 +3538,7 @@ def get_admin_bank_detail(
                 subject=st["subject"],
                 body=st["body"],
                 attach_certificate=st.get("attach_certificate", True),
+                preheader=st.get("preheader") or None,
             )
 
             # The pointer for this organisation, which may lag the newest import.

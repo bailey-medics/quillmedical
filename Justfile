@@ -342,6 +342,19 @@ email-preview:
         run --rm backend sh -lc "python -m app.email.previews"
 
 
+alias et := email-themes
+# Write the list of email themes, for mypy and TypeScript, from shared/brand.yaml
+email-themes:
+    #!/usr/bin/env bash
+    {{initialise}} "email-themes"
+    # On the host, through the backend's Poetry environment, as the
+    # pre-commit hooks run: it writes one file under backend/ and one
+    # under frontend/, and the unit-test container mounts only the first.
+    # Commit what changes: tests/test_email_theme.py and
+    # emailThemes.test.ts fail while either file is behind the brand file.
+    env -u VIRTUAL_ENV poetry -C backend run python3 scripts/generate_email_themes.py
+
+
 alias etm := enrol-teaching-members
 # Enrol an organisation's people on one teaching module (add --dry-run to only list them)
 enrol-teaching-members org_unit_id module_id *ARGS:

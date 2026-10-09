@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from jinja2 import DictLoader, Environment, UndefinedError
 
-from app.email.brand import EmailImage, EmailThemeName, email_theme
+from app.email.brand import EmailImage, email_theme
 from app.email.render import (
     EmailPartner,
     RenderedEmail,
@@ -14,6 +14,7 @@ from app.email.render import (
     make_environment,
     render_email,
 )
+from app.email.theme import EmailThemeName
 
 #: A child template written the way a real email is: extends the base,
 #: uses the components, fills every block.

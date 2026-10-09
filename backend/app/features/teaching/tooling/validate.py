@@ -400,6 +400,18 @@ def _validate_email_section(
                 f"{section_name} missing required field '{field_name}'",
             )
 
+    # Optional: the line an inbox shows after the subject. Left out, the
+    # subject is shown there. Written, it must be words.
+    preheader = data.get("preheader")
+
+    if preheader is not None and (
+        not isinstance(preheader, str) or not preheader.strip()
+    ):
+        result.add_error(
+            rel_config,
+            f"{section_name} 'preheader' must be text, or be left out",
+        )
+
 
 def _validate_email_sections(
     config: Mapping[str, object],

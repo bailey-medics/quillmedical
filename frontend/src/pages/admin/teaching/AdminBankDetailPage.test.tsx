@@ -236,6 +236,26 @@ describe("AdminBankDetailPage", () => {
     expect(screen.getByText("Coordinator email")).toBeTruthy();
   });
 
+  it("shows a template's inbox preview where the bank wrote one", async () => {
+    (api.get as Mock).mockImplementation((url: string) => {
+      if (url.includes("/organisations")) return Promise.resolve(mockOrgs);
+      return Promise.resolve({
+        ...mockBank,
+        student_email_template: {
+          ...mockBank.student_email_template,
+          preheader: "You passed. Your certificate is attached.",
+        },
+      });
+    });
+    renderWithRouter(<AdminBankDetailPage />);
+
+    expect(
+      await screen.findByText("You passed. Your certificate is attached."),
+    ).toBeTruthy();
+    // The coordinator's template wrote none, so it has no such line.
+    expect(screen.getAllByText("Inbox preview:")).toHaveLength(1);
+  });
+
   it("hides email templates when email flags are false", async () => {
     (api.get as Mock).mockImplementation((url: string) => {
       if (url.includes("/organisations")) return Promise.resolve(mockOrgs);

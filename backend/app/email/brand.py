@@ -30,16 +30,15 @@ the same way.
 
 import re
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.email.theme import EMAIL_THEME_NAMES, EmailThemeName
 from app.paths import SHARED_DIR
 
 BRAND_YAML_PATH: Path = SHARED_DIR / "brand.yaml"
-
-EmailThemeName = Literal["quill", "ldd"]
 
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 _REFERENCE = re.compile(r"^(primary|secondary|grey)\.(\d)$")
@@ -174,8 +173,14 @@ _COLOUR_FIELDS: tuple[str, ...] = (
 class EmailTheme(_Strict):
     """One brand's look for every email.
 
-    Field by field, the values the Phase 1 mock-ups were signed off with;
-    ``shared/brand.yaml`` notes the reason for each.
+    Every email shares one layout, and a theme is what differs between
+    brands: the colours, the fonts, the logo and the names. Each field
+    below is one of those values, and ``shared/brand.yaml`` notes the
+    reason for each where it is set.
+
+    The values are the ones Mark approved when the emails were designed.
+    Storybook's Foundations/Emails stories show every email in each
+    theme, so that is where to look before changing one.
     """
 
     sender_name: str
@@ -231,6 +236,7 @@ class EmailTheme(_Strict):
             name: palette.resolve(getattr(self, name))
             for name in _COLOUR_FIELDS
         }
+
         updates["dark"] = self.dark.model_copy(
             update={
                 name: palette.resolve(getattr(self.dark, name))
@@ -259,9 +265,13 @@ class BrandFile(_Strict):
             ValueError: If a theme is missing or a colour does not
                 resolve.
         """
-        for name in ("quill", "ldd"):
+        for name in EMAIL_THEME_NAMES:
             if name not in self.email_themes:
-                raise ValueError(f"No email theme {name!r} in brand.yaml")
+                raise ValueError(
+                    f"No email theme {name!r} in brand.yaml. The names in "
+                    "app/email/theme.py are generated from that file: run "
+                    "`just email-themes`"
+                )
 
         resolved = {
             name: theme.resolved(self.palette)
@@ -288,6 +298,7 @@ def load_brand(path: Path) -> BrandFile:
     """
     with open(path) as f:
         data: Any = yaml.safe_load(f)
+
     if not data:
         raise ValueError(f"{path} is empty")
 
