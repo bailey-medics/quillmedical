@@ -3,7 +3,7 @@
 ``has_competency`` compares a competency against somebody's ceiling, which
 is true everywhere at once. ``has_competency_at`` adds the second half: a
 row in ``practising_competency`` authorising them at the place this request
-names. ``test_cbac_practising.py`` covers the resolver those rows are read
+names. ``app/cbac/practising_test.py`` covers the resolver those rows are read
 through; these cover the dependency wrapped around it, which is where the
 request, the path parameter and the refusal live.
 
