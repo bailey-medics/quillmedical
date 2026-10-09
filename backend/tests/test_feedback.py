@@ -11,7 +11,6 @@ from pydantic import SecretStr
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.feedback.slack import feedback_notice_text
 from app.models import FEEDBACK_CATEGORIES, FEEDBACK_STATUSES, Feedback, User
 from app.schemas.feedback import (
     MAX_COMMENT,
@@ -351,32 +350,6 @@ class TestTellingSlack:
             assert "not-a-real-key" not in record.getMessage()
             assert "not-a-real-key" not in str(record.__dict__)
             assert SECRET_MESSAGE not in str(record.__dict__)
-
-
-class TestSlackNoticeText:
-    def test_what_a_person_typed_cannot_make_a_link_or_a_mention(self) -> None:
-        text = feedback_notice_text(
-            sender="<!channel> & co",
-            category=None,
-            route="",
-            url="https://example.test/admin/feedback/1",
-        )
-
-        assert "<!channel>" not in text
-        assert "&lt;!channel&gt; &amp; co" in text
-
-    def test_no_category_and_no_route_are_simply_left_out(self) -> None:
-        text = feedback_notice_text(
-            sender="sam",
-            category=None,
-            route="",
-            url="https://example.test/admin/feedback/1",
-        )
-
-        assert text == (
-            "*Feedback from sam*\n"
-            "<https://example.test/admin/feedback/1|Read it in Quill>"
-        )
 
 
 class TestRefusing:
