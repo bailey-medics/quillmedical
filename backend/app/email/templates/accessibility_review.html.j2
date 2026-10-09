@@ -9,8 +9,8 @@
 -#}
 {% extends "base.html.j2" %}
 {% import "_components.html.j2" as c with context %}
-{% block subject %}Accessibility statement review due by {{ due_by }}{% endblock %}
-{% block preheader %}It was last reviewed on {{ reviewed }}.{% endblock %}
+{% block subject %}Accessibility statement review due by {{ due_by }}{% endblock subject %}
+{% block preheader %}It was last reviewed on {{ reviewed }}.{% endblock preheader %}
 {% block body %}
 {{ c.heading("Accessibility statement *review*") }}
 {{ c.paragraph("The accessibility statement is due its yearly review by " ~ due_by ~ ". It was last reviewed on " ~ reviewed ~ ".") }}
@@ -23,8 +23,8 @@
 {{ c.paragraph("4. Check that info@quill-medical.com, the contact the statement gives, is still read.") }}
 {{ c.paragraph("5. Move the REVIEWED date in frontend/public_pages/src/pages/accessibility-statement.tsx to today, and deploy the public site. That resets these reminders.") }}
 {{ c.small("This reminder is sent every Monday until the date is moved.") }}
-{% endblock %}
-{% block reason %}You are receiving this because this address is set to be reminded of Quill's accessibility statement review.{% endblock %}
+{% endblock body %}
+{% block reason %}You are receiving this because this address is set to be reminded of Quill's accessibility statement review.{% endblock reason %}
 
 {% block text %}
 The accessibility statement is due its yearly review by {{ due_by }}. It was last reviewed on {{ reviewed }}.
@@ -42,4 +42,4 @@ To review it:
 5. Move the REVIEWED date in frontend/public_pages/src/pages/accessibility-statement.tsx to today, and deploy the public site. That resets these reminders.
 
 This reminder is sent every Monday until the date is moved, by the accessibility-review workflow.
-{% endblock %}
+{% endblock text %}

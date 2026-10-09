@@ -11,11 +11,11 @@
     reason     why the recipient is getting it
 -#}
 {% extends "base.html.j2" %}
-{% block subject %}{{ subject }}{% endblock %}
-{% block preheader %}{{ preheader }}{% endblock %}
+{% block subject %}{{ subject }}{% endblock subject %}
+{% block preheader %}{{ preheader }}{% endblock preheader %}
 {% block body %}
 <div style="font-size: 19px">{{ body_html }}</div>
-{% endblock %}
-{% block reason %}{{ reason }}{% endblock %}
+{% endblock body %}
+{% block reason %}{{ reason }}{% endblock reason %}
 
-{% block text %}{{ body_text }}{% endblock %}
+{% block text %}{{ body_text }}{% endblock text %}

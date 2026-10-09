@@ -4,8 +4,8 @@
  -#}
 {% extends "newsletter.html.j2" %}
 {% import "_components.html.j2" as c with context %}
-{% block subject %}Autumn update: the clinician passport, and 2027 dates{% endblock %}
-{% block preheader %}What I have been building, and when we meet next.{% endblock %}
+{% block subject %}Autumn update: the clinician passport, and 2027 dates{% endblock subject %}
+{% block preheader %}What I have been building, and when we meet next.{% endblock preheader %}
 {% block content %}
 {{ c.heading("Autumn *update*") }}
 {{ c.paragraph("Hello,") }}
@@ -26,7 +26,7 @@
 {{ c.button("Register your interest", "https://letsdodigital.org") }}
 {{ c.subheading("One thing to try") }}
 {{ c.paragraph("If your trust has an innovation fund, the deadline is often in January. A one-page summary of the problem is usually all it takes to start the conversation.") }}
-{% endblock %}
+{% endblock content %}
 
 {% block text %}
 Hello,
@@ -38,4 +38,4 @@ The clinician passport is live: https://quill-medical.com
 Let's Do Digital 2027 is on Thursday 20 May 2027 in Bristol: https://letsdodigital.org
 
 {{ signoff_text }}
-{% endblock %}
+{% endblock text %}

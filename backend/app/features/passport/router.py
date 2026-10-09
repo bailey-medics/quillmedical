@@ -1383,6 +1383,7 @@ def _email_sign_off_request(
         level_name=level_name,
         scope_name=scope_name,
         confirming_logbook=confirming_logbook,
+        has_account=assessor is not None,
         url=url,
         expires_in_days=expires_in_days,
     )

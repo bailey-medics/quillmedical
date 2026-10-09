@@ -72,6 +72,24 @@
     }
   },
   {
+    "id": "passport-invite-to-an-account-holder",
+    "label": "Passport assessor invite, to somebody with an account",
+    "quill": {
+      "file": "passport-invite-to-an-account-holder--quill.html",
+      "subject": "Dr Priya Shah has asked you to assess a competency",
+      "preheader": "Chest drain insertion (Seldinger), recorded in their clinician passport.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "passport-invite-to-an-account-holder--ldd.html",
+      "subject": "Dr Priya Shah has asked you to assess a competency",
+      "preheader": "Chest drain insertion (Seldinger), recorded in their clinician passport.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
     "id": "passport-invite-with-level",
     "label": "Passport assessor invite, at a level",
     "quill": {
