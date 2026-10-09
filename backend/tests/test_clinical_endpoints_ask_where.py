@@ -1,6 +1,6 @@
 """The suspended surgeon, asserted against the endpoint layer.
 
-``test_cbac_practising.py`` and ``test_has_competency_at.py`` show the model
+``app/cbac/practising_test.py`` and ``test_has_competency_at.py`` show the model
 can answer "may this person do this *here*". Nothing clinical asks it
 yet: every clinical route still gates on ``has_competency``, which reads
 the ceiling and is true everywhere at once.

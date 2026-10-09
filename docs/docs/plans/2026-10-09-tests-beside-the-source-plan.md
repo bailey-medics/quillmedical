@@ -66,22 +66,15 @@ on 9 October 2026.
       only. CI's unit job runs `pytest` from `backend/` and takes
       `testpaths` from `pyproject.toml`. That leaves Bandit, below.
 
-- [ ] **Found on the way, and not fixed here: the Bandit hook scans
-      nothing.** Its arguments in `.pre-commit-config.yaml` are `r`,
-      `backend`, `-x`, `backend/tests`. The first is `r` and not `-r`, so
-      Bandit looks for a file called `r`, is given the `backend` folder
-      without being told to go into it, and reports "Skipping directory
-      (backend), use -r flag to scan contents" and "Total lines of code:
-      0". It has passed on every commit by checking no code at all. Run
-      as it was meant to be, with `-r backend -x backend/tests`, it
-      reports about 75 findings: 34 of possible SQL built from strings,
-      7 of `requests` calls with no timeout, 7 each of two subprocess
-      checks, and a scatter of others. Many will be false alarms, such
-      as SQL in migrations, but nobody has looked. Turning it on is a
-      piece of work of its own, a triage of those findings, and belongs
-      to Mark to schedule. When it is turned on, exclude
-      `backend/conftest.py` and `*_test.py` as well as `backend/tests`,
-      or every `assert` in a moved test is reported.
+- [x] **Found on the way: the Bandit hook scans nothing.** Its
+      arguments in `.pre-commit-config.yaml` are `r`, `backend`, `-x`,
+      `backend/tests`. The first is `r` and not `-r`, so Bandit looks for
+      a file called `r`, is given the `backend` folder without being told
+      to go into it, and reports "Skipping directory (backend), use -r
+      flag to scan contents" and "Total lines of code: 0". It has passed
+      on every commit by checking no code at all. Not fixed in this
+      phase, because turning it on fails every commit until what it
+      reports is dealt with. Phase 6 does both.
 
 ## Phase 2: Move one folder, `backend/app/email/`, and look at it
 
@@ -138,22 +131,42 @@ on 9 October 2026.
       moved in. It now skips `*_test.py`. The count of tests collected is
       4,149 again, as it was before anything moved.
 
-- [ ] Stop and look at `backend/app/email/` with Mark before going on.
+- [x] Stop and look at `backend/app/email/` with Mark before going on.
       This folder is the trial: whether a test beside its module does get
       read, and whether the naming and the split read well, are judged
-      here and not assumed.
+      here and not assumed. Mark said to carry on, on 9 October 2026.
 
 ## Phase 3: Move the rest, a folder at a time
 
-- [ ] Move the self-contained folders next, each as its own pull
-      request: `backend/app/cbac/`, `backend/app/marketing/`,
-      `backend/app/features/teaching/`, `backend/app/features/passport/`,
-      `backend/app/org_units/`, `backend/app/feedback/` and
-      `backend/app/inbox/`. A survey on 9 October 2026 found 79 of the
-      203 test files import exactly one application module and 58 import
-      two or three; most of both groups have one module as their subject
-      and move. One folder to a pull request keeps each diff readable and
-      lets the rule be corrected as it is applied.
+A survey on 9 October 2026 found 79 of the 203 test files import exactly
+one application module and 58 import two or three; most of both groups
+have one module as their subject and move. One area to a pull request
+keeps each diff readable and lets the rule be corrected as it is applied.
+
+**Where a module has several tests, each is named for the module first
+and what it covers second**: `validate_test.py`, `validate_config_test.py`,
+`validate_items_test.py`. They then sort together under `validate.py`.
+
+**A test that finds a file by its own place on disk has that one line
+changed when it moves**, and nothing else. Several teaching tests read
+fixtures from `backend/tests/fixtures/`, which stays where it is.
+
+- [x] `backend/app/cbac/` and `backend/app/org_units/`: nine tests.
+      `base_professions`, `positions`, `practising`, `competencies` (and
+      `competencies_retirement`), `grant_scope`, and for the tree `tree`
+      (and `tree_stays_a_tree`) and `types`. Left in `backend/tests/`:
+      `test_one_place_column.py` and `test_competency_id_validation.py`,
+      which are each about a rule, and `test_org_unit_links.py` and
+      `test_org_unit_surface.py`, which drive the API.
+
+- [ ] `backend/app/marketing/`.
+
+- [ ] `backend/app/features/teaching/`, and its `tooling/` folder as a
+      pull request of its own.
+
+- [ ] `backend/app/features/passport/`.
+
+- [ ] `backend/app/feedback/` and `backend/app/inbox/`.
 
 - [ ] Move the tests of the top-level modules in `backend/app/`, such as
       `security.py`, `config.py` and `organisations.py`, in a pull request
@@ -210,6 +223,82 @@ on 9 October 2026.
       `cbac/practising.py` already do. That is what makes a test of one
       module possible, and it is part of the review this plan came out
       of. Each is its own piece of work and not part of this plan.
+
+## Phase 6: Turn the Bandit scan on, and deal with what it reports
+
+Added on 9 October 2026 at Mark's request, after Phase 1 found the scan
+had never run. It is here because that is where it was found, not
+because it depends on the tests moving: it can be done at any point.
+
+Run as it was meant to be, skipping tests, Bandit reports 89 findings in
+the backend: 49 medium and 40 low, none high. The command that produced
+the list, for anybody repeating it, is `bandit -r backend -x
+'backend/tests,backend/conftest.py,*_test.py'`.
+
+- [ ] Triage before fixing: read each finding and sort it into a real
+      defect to fix, a false alarm to mark, or a rule that does not fit
+      this codebase and should be switched off for everybody. Record the
+      verdict for each group in this plan. The groups, largest first:
+
+      - **B608, SQL built from a string: 34.** 32 are in
+        `backend/alembic/versions/` and 2 in `backend/app/ehrbase_client.py`.
+        The two in the EHRbase client are the ones to read with care:
+        they build a query that goes to the clinical record store.
+      - **B105 and B106, something that looks like a hard-coded
+        password: 12.** 7 are the placeholder settings in
+        `backend/scripts/dump_openapi.py`, which are meant to be
+        placeholders. Check the one in `backend/app/features/passport/`.
+      - **B113, a web request with no timeout: 7**, all in
+        `backend/app/ehrbase_client.py`. Likely real: a request with no
+        timeout can hold a worker for ever if EHRbase stops answering.
+      - **B603, B607 and B404, running another program: 18**, in the
+        passport and teaching features and `transcode_cli.py`. These run
+        `git` and `ffmpeg`. Check that nothing a user typed reaches the
+        command line.
+      - **B704, `Markup` on text that may not be safe: 3**, in
+        `backend/app/email/previews.py`, `backend/app/email/render.py`
+        and the teaching email templates. Each marks text as safe HTML
+        after escaping or sanitising it; confirm that for each one.
+      - **B314 and B405, parsing XML with the standard library: 3**, in
+        `backend/app/ehrbase_client.py`. Check where the XML comes from.
+      - **B110, an error caught and ignored: 4.**
+      - **B310 and B311, opening a URL and a random number generator
+        that is not for secrets: 6.** Check none of the random numbers
+        is a token or a password.
+      - **B101 and B108: 2**, an `assert` and a path under `/tmp`, both
+        in scripts.
+
+- [ ] Decide what to do about the migrations. A merged migration's code
+      is frozen (see "Database migrations" in `.claude/rules/backend.md`),
+      so the 32 findings there cannot be fixed by changing the SQL. A
+      comment may still be edited, so each could carry a `# nosec` with
+      its reason; or `backend/alembic/versions/` could be left out of
+      the scan, since a migration is run once by the deploy and never
+      with anything a user supplied. The recommendation is to leave the
+      folder out and say why beside the setting.
+
+- [ ] Fix the real defects, each with a test where the behaviour
+      changes. A timeout on the EHRbase requests is the likeliest
+      candidate, and belongs with whatever the EHR production work
+      decides a sensible wait is.
+
+- [ ] Mark each false alarm where it is, with `# nosec <rule>` and a
+      few words saying why it is safe. Never a bare `# nosec`: that
+      silences every rule on the line, including ones added later.
+
+- [ ] Correct the hook in `.pre-commit-config.yaml`: `-r` for `r`, and
+      leave out `backend/conftest.py` and `*_test.py` as well as
+      `backend/tests`, or every `assert` in a test that sits beside its
+      module is reported. This goes in last, in the same change as the
+      final fix, so that no commit in between fails on findings still
+      being worked through.
+
+- [ ] Add a check that the scan covered something. A hook that reports
+      "Total lines of code: 0" and passes is how this went unnoticed for
+      a year: fail the hook, or a test, when Bandit scans no files.
+
+- [ ] Run the same scan in CI, so that a commit made without the hooks
+      is still checked.
 
 ## Decisions
 
