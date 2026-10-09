@@ -8,7 +8,7 @@
 #
 # Pin by digest for reproducible builds. To update, run:
 #   docker pull ubuntu:24.04 && docker inspect --format='{{index .RepoDigests 0}}' ubuntu:24.04
-FROM ubuntu@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987517
+FROM public.ecr.aws/docker/library/ubuntu@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a2ab987517
 
 # This list is deliberately short, and adding to it is a decision rather than a
 # convenience. The tests stub gh, gcloud, gsutil and python (as distinct from

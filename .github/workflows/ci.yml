@@ -141,7 +141,7 @@ jobs:
     timeout-minutes: 10
     services:
       postgres:
-        image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
+        image: public.ecr.aws/docker/library/postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
         env:
           POSTGRES_DB: quill_core
           POSTGRES_USER: core_user
@@ -286,10 +286,12 @@ jobs:
       - name: Lint shell scripts
         run: find .github/scripts .claude/hooks -name '*.sh' -exec shellcheck --source-path=SCRIPTDIR {} +
       # Lints all workflow and composite-action YAML; reuses shellcheck for run: blocks.
+      # Installed from its GitHub release and not run from its Docker
+      # image, which is on Docker Hub only: see the script for why.
+      - name: Install actionlint
+        run: bash .github/scripts/ci/install-actionlint.sh
       - name: Lint GitHub Actions workflows
-        uses: docker://rhysd/actionlint:1.7.8
-        with:
-          args: -color
+        run: actionlint -color
       - name: Set up bats
         uses: bats-core/bats-action@4.0.0
         with:

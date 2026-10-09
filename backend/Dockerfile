@@ -7,7 +7,14 @@
 # ---------- Base layer (deps + app) ----------
 # Pin by digest for reproducible builds. To update, run:
 #   docker pull python:3.14-slim && docker inspect --format='{{index .RepoDigests 0}}' python:3.14-slim
-FROM python:3.14-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d AS base
+#
+# Pulled from Amazon's public copy of Docker Hub's official images, here
+# and wherever this repository names one (python, node, caddy, postgres,
+# ubuntu). Docker Hub limits how often a machine with no login may pull,
+# and CI failed whenever GitHub's shared runners had used the allowance
+# up. The copy needs no login and holds the same image under the same
+# digest, so the pin above still proves what is being built on.
+FROM public.ecr.aws/docker/library/python:3.14-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
