@@ -21,10 +21,11 @@
 {{ c.paragraph("2. Update the known issues: remove anything fixed, and add anything the testing log or users have found since.") }}
 {{ c.paragraph("3. Check the compliance status. Only move beyond \"partially compliant\" if testing by people supports it.") }}
 {{ c.paragraph("4. Check that info@quill-medical.com, the contact the statement gives, is still read.") }}
-{{ c.paragraph("5. Move the REVIEWED date in frontend/public_pages/src/pages/accessibility-statement.tsx to today, and deploy the public site. That stops these reminders.") }}
+{{ c.paragraph("5. Move the REVIEWED date in frontend/public_pages/src/pages/accessibility-statement.tsx to today, and deploy the public site. That resets these reminders.") }}
 {{ c.small("This reminder is sent every Monday until the date is moved.") }}
 {% endblock %}
 {% block reason %}You are receiving this because this address is set to be reminded of Quill's accessibility statement review.{% endblock %}
+
 {% block text %}
 The accessibility statement is due its yearly review by {{ due_by }}. It was last reviewed on {{ reviewed }}.
 
@@ -38,7 +39,7 @@ To review it:
 2. Update the known issues: remove anything fixed, and add anything the testing log or users have found since.
 3. Check the compliance status. Only move beyond "partially compliant" if testing by people supports it.
 4. Check that info@quill-medical.com, the contact the statement gives, is still read.
-5. Move the REVIEWED date in frontend/public_pages/src/pages/accessibility-statement.tsx to today, and deploy the public site. That stops these reminders.
+5. Move the REVIEWED date in frontend/public_pages/src/pages/accessibility-statement.tsx to today, and deploy the public site. That resets these reminders.
 
 This reminder is sent every Monday until the date is moved, by the accessibility-review workflow.
 {% endblock %}

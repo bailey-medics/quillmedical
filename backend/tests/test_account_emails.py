@@ -6,7 +6,9 @@ hand to ``send_email``, and what each template says.
 
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 from app.email.render import render_email
 from app.models import User
@@ -48,6 +50,39 @@ class TestRoutesSendBrandedEmail:
         assert "/reset-password?token=" in sent["html_body"]
         assert "expires in 30 minutes" in sent["text_body"]
 
+    @pytest.mark.parametrize(
+        ("full_name", "greeting"),
+        [("Sam Patel", "Hi Sam Patel,"), (None, "Hi invited,")],
+    )
+    def test_the_invite_greets_by_full_name_and_gives_the_username(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        full_name: str | None,
+        greeting: str,
+    ) -> None:
+        """They log in with the username, so it is stated either way."""
+        user = User(
+            username="invited",
+            full_name=full_name,
+            email="invited@example.com",
+            password_hash="x",
+            email_verified=True,
+        )
+        db_session.add(user)
+        db_session.commit()
+
+        with patch("app.main.send_email") as mock_send:
+            response = authenticated_superadmin_client.post(
+                f"/api/users/{user.id}/send-invite"
+            )
+
+        assert response.status_code == 200, response.text
+        sent = mock_send.call_args.kwargs
+        assert greeting in sent["text_body"]
+        assert "Your username is invited." in sent["text_body"]
+        assert "Your username is invited." in sent["html_body"]
+
 
 class TestTemplates:
     def test_verification_greets_only_on_registering(self) -> None:
@@ -63,20 +98,24 @@ class TestTemplates:
         assert "Welcome to Quill!" not in again["html_body"]
         assert "expires in 60 minutes" in again["text_body"]
 
-    def test_account_invite_escapes_the_username(self) -> None:
+    def test_account_invite_escapes_the_name_and_the_username(self) -> None:
         rendered = render_email(
             "account_invite.html.j2",
             "quill",
             {
-                "username": "<b>sam</b>",
+                "name": "<b>Sam</b>",
+                "username": "<i>sam</i>",
                 "setup_url": "https://example.com/s",
                 "ttl_minutes": 30,
             },
         )
 
-        assert "<b>sam</b>" not in rendered["html_body"]
-        assert "&lt;b&gt;sam&lt;/b&gt;" in rendered["html_body"]
-        assert "Hi <b>sam</b>," in rendered["text_body"]
+        assert "<b>Sam</b>" not in rendered["html_body"]
+        assert "<i>sam</i>" not in rendered["html_body"]
+        assert "&lt;b&gt;Sam&lt;/b&gt;" in rendered["html_body"]
+        assert "&lt;i&gt;sam&lt;/i&gt;" in rendered["html_body"]
+        assert "Hi <b>Sam</b>," in rendered["text_body"]
+        assert "Your username is <i>sam</i>." in rendered["text_body"]
         assert rendered["subject"] == (
             "You're invited to Quill - set up your account"
         )

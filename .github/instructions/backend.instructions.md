@@ -81,6 +81,41 @@ otherwise untouched unless asked to**: a diff of nothing but blank lines
 buries the change that matters, and the existing code is being re-spaced by
 hand as it is reviewed.
 
+## Transactions: the session dependency commits, routes flush
+
+**A route does not call `db.commit()`.** `get_core_db` in
+`backend/app/db/core_db.py`, the dependency behind `DEP_GET_SESSION`,
+commits once when the route returns without error and rolls back if
+anything raises. So a request is one transaction: either all of its
+writes land or none do.
+
+- **Use `db.flush()` when a generated value is needed mid-request**, such
+  as a new row's `id` or an `onupdate` timestamp. A flush sends the
+  pending changes without ending the transaction, so the row can still be
+  rolled back if something later in the request fails.
+- **Flush before querying for what was just written.** The session is
+  made with `autoflush=False`, so a row passed to `db.add()` is invisible
+  to a later query in the same request until it is flushed. A count taken
+  straight after an add is one short without it.
+- **A helper flushes and leaves the commit to its caller.** Say so in its
+  docstring: "The row is flushed, not committed."
+- **An explicit `db.commit()` is a deliberate checkpoint**, for work that
+  must survive even if a later step in the same request fails: a sync
+  that records each module as it goes, for example. Put a comment beside
+  it saying what it protects. One with no such reason is a mistake.
+- **Code that makes its own session commits it itself.** A script, an
+  admin job action or a background task that calls `CoreSessionLocal()`
+  directly does not go through the dependency, so nothing commits for it.
+- **The test double must do the same.** `override_get_core_db` in
+  `backend/tests/conftest.py` commits and rolls back as the real
+  dependency does. If it did not, a route with no commit of its own would
+  pass in production and lose its writes under test, or the reverse.
+
+See
+[Core DB auto-commit plan](../../docs/docs/plans/2026-08-25-core-db-auto-commit-plan.md)
+for how the explicit commits already in the code were sorted when this
+was introduced.
+
 ## Database migrations (Alembic)
 
 These rules are enforced statically by

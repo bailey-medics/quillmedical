@@ -98,3 +98,4 @@
 - [Amazon SES Email](2026-10-06-amazon-ses-email-plan.md)
 - [Passport Registrar Portfolios](2026-10-07-passport-registrar-portfolios-plan.md)
 - [Preparing for NHS Procurement](2026-10-08-preparing-for-nhs-procurement-plan.md)
+- [Campaign Manager](2026-10-09-campaign-manager-plan.md)
