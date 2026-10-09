@@ -66,7 +66,7 @@ services:
       - public
 
   postgres-core:
-    image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+    image: public.ecr.aws/docker/library/postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
     container_name: quill_postgres_core
     environment:
       POSTGRES_DB: quill_core
@@ -89,7 +89,7 @@ services:
 
   postgres-fhir:
     profiles: ["clinical"]
-    image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+    image: public.ecr.aws/docker/library/postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
     container_name: quill_postgres_fhir
     environment:
       POSTGRES_DB: hapi
@@ -208,7 +208,7 @@ services:
       start_period: 60s
 
   caddy:
-    image: caddy:2-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+    image: public.ecr.aws/docker/library/caddy:2-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
     container_name: quill_caddy
     ports:
       # HTTP only. The dev Caddyfile has a single `:80` site block and no

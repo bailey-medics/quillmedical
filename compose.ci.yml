@@ -82,7 +82,7 @@ services:
       - ci
 
   postgres-core:
-    image: postgres:18-alpine
+    image: public.ecr.aws/docker/library/postgres:18-alpine
     environment:
       POSTGRES_DB: quill_core
       POSTGRES_USER: core_user
@@ -98,7 +98,7 @@ services:
       - ci
 
   caddy:
-    image: caddy:2-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+    image: public.ecr.aws/docker/library/caddy:2-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
     ports:
       - "${E2E_PORT:-80}:80"
     volumes:
