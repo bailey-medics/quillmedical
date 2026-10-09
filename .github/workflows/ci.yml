@@ -626,6 +626,13 @@ jobs:
           docker tag "$CI_IMAGE_BACKEND" quillmedical-ci_backend:latest
           docker tag "$CI_IMAGE_FRONTEND" quillmedical-ci_frontend:latest
 
+      # The image is the prod target, built from the same Dockerfile and
+      # context as the one deploy.yml ships. A backend test may sit beside
+      # its module under backend/app/, which the Dockerfile copies whole;
+      # the root .dockerignore keeps those out, and this fails if it stops.
+      - name: Check the backend image holds no test code
+        run: .github/scripts/ci/check-no-tests-in-image.sh "$CI_IMAGE_BACKEND"
+
       # A module for the teaching tests to open. seed_ci.py syncs it.
       - name: Fetch E2E teaching content
         run: .github/scripts/ci/fetch-e2e-teaching.sh
