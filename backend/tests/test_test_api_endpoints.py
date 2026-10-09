@@ -10,12 +10,12 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.test_api_endpoints import (
+from app.compat_harness_endpoints import (
     MUTATE_REMOVE_DETAIL_1,
     MUTATE_REMOVE_MESSAGE_1,
     MUTATE_REMOVE_SUMMARY_2,
 )
-from app.test_api_endpoints import (
+from app.compat_harness_endpoints import (
     test_api_router as dummy_test_router,
 )
 
@@ -67,7 +67,7 @@ class TestMutateBreakingResponseToggles:
         both required properties of TestBreakingResponse1's schema (removing
         either, or both at once, is the deliberate breaking-change scenario
         in Phase 2)."""
-        from app.test_api_endpoints import TestBreakingResponse1
+        from app.compat_harness_endpoints import TestBreakingResponse1
 
         schema = TestBreakingResponse1.model_json_schema()
         assert "message" in schema["properties"]
@@ -85,7 +85,7 @@ class TestMutateBreakingResponseToggles:
         """With the toggle at its default, `summary` is a required
         property of TestBreakingResponse2's schema - lets a single-field
         breaking change be tested on a second, independent endpoint."""
-        from app.test_api_endpoints import TestBreakingResponse2
+        from app.compat_harness_endpoints import TestBreakingResponse2
 
         schema = TestBreakingResponse2.model_json_schema()
         assert "summary" in schema["properties"]

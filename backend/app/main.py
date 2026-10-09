@@ -75,6 +75,7 @@ from app.cbac.practising import (
     competencies_at,
     withdraw_practice,
 )
+from app.compat_harness_endpoints import test_api_router
 from app.config import settings
 from app.db import get_core_db
 from app.deps import (
@@ -279,7 +280,6 @@ from app.security import (
     verify_password_reset_token,
     verify_totp_code,
 )
-from app.test_api_endpoints import test_api_router
 
 setup_logging()
 logger = logging.getLogger(__name__)

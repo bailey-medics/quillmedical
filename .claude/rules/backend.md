@@ -108,7 +108,7 @@ writes land or none do.
   admin job action or a background task that calls `CoreSessionLocal()`
   directly does not go through the dependency, so nothing commits for it.
 - **The test double must do the same.** `override_get_core_db` in
-  `backend/tests/conftest.py` commits and rolls back as the real
+  `backend/conftest.py` commits and rolls back as the real
   dependency does. If it did not, a route with no commit of its own would
   pass in production and lose its writes under test, or the reverse.
 

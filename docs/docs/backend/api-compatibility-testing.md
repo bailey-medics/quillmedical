@@ -22,14 +22,14 @@ git checkout -b feature/test-api-compat
 ## Step 1: Trigger a breaking change with the built-in test harness
 
 Don't touch any real endpoint. The repo has a permanent, flag-gated test
-harness purpose-built for this - `backend/app/test_api_endpoints.py`,
+harness purpose-built for this - `backend/app/compat_harness_endpoints.py`,
 registered only when `TEST_API_ENDPOINTS_ENABLED=true` (always false in real
 deployments; CI sets it true only when dumping specs for this check). It
 exposes `GET /api/test/non-breaking-api` (a control endpoint, never mutated)
 and `GET /api/test/breaking-api` / `GET /api/test/breaking-api-2` (endpoints
 whose response schema you mutate per scenario).
 
-Open [backend/app/test_api_endpoints.py](../../../backend/app/test_api_endpoints.py) and flip one of the mutation
+Open [backend/app/compat_harness_endpoints.py](../../../backend/app/compat_harness_endpoints.py) and flip one of the mutation
 constants near the top from `False` to `True`:
 
 ```python
@@ -52,7 +52,7 @@ decision-file coverage.
 Push your change:
 
 ```bash
-git add backend/app/test_api_endpoints.py
+git add backend/app/compat_harness_endpoints.py
 git commit -m "test: mutate breaking-api harness for compat testing"
 git push origin feature/test-api-compat
 ```
@@ -291,7 +291,7 @@ git branch -D feature/test-api-compat
 git push origin --delete feature/test-api-compat
 ```
 
-Also flip the mutation constant(s) in `test_api_endpoints.py` back to `False` on `main`, and delete the decision file(s) created for the test round, so the harness stays reusable for future demos. Deleting a decision file requires a temporary bypass of the `validate_no_deletions` CI rule (comment out its call in `validate-compat-files.sh`'s `main()`), restored again in an immediate follow-up PR - see [the Alembic review plan](../plans/2026-08-09-alembic-review-and-revisions-plan.md) for the worked example from the Phase 2 test round.
+Also flip the mutation constant(s) in `compat_harness_endpoints.py` back to `False` on `main`, and delete the decision file(s) created for the test round, so the harness stays reusable for future demos. Deleting a decision file requires a temporary bypass of the `validate_no_deletions` CI rule (comment out its call in `validate-compat-files.sh`'s `main()`), restored again in an immediate follow-up PR - see [the Alembic review plan](../plans/2026-08-09-alembic-review-and-revisions-plan.md) for the worked example from the Phase 2 test round.
 
 ## Common errors and fixes
 
