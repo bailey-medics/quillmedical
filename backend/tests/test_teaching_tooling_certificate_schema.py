@@ -7,7 +7,7 @@ if someone re-declares a model in ``certificate.py``, or the two drift, the
 identity assertions below fail.
 
 Behavioural coverage of the models themselves lives in
-``test_teaching_certificate.py``, which exercises them through
+``app/features/teaching/certificate_test.py``, which exercises them through
 ``parse_certificate_style``.
 """
 

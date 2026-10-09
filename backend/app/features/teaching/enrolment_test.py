@@ -26,14 +26,14 @@ from app.features.teaching.models import (
     ModuleEnrolment,
     QuestionBankOrgStatus,
 )
-from app.models import OrgUnit, User, org_unit_member
-from tests.test_teaching_router import (
+from app.features.teaching.router_test import (
     _login,
     _make_educator,
     _make_learner,
     _make_teaching_org,
     _seed_bank,
 )
+from app.models import OrgUnit, User, org_unit_member
 from tests.test_validate_clinical_lead import _setup_org_with_site_and_lead
 
 BANK = "test-bank"

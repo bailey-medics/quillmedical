@@ -24,17 +24,17 @@ from app.features.teaching.access import (
     places_for_modules,
 )
 from app.features.teaching.models import Assessment
-from app.models import OrgUnit, PractisingCompetency, User, org_unit_member
-from app.organisations import add_org_unit_member
-from app.security import hash_password
-from tests.competencies import join_for_teaching
-from tests.test_teaching_router import (
+from app.features.teaching.router_test import (
     _login,
     _make_educator,
     _make_learner,
     _make_teaching_org,
     _seed_bank,
 )
+from app.models import OrgUnit, PractisingCompetency, User, org_unit_member
+from app.organisations import add_org_unit_member
+from app.security import hash_password
+from tests.competencies import join_for_teaching
 from tests.test_validate_clinical_lead import _setup_org_with_site_and_lead
 
 

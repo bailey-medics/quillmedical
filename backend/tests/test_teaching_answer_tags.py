@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.features.teaching.models import AssessmentAnswer
-from tests.test_teaching_router import (
+from app.features.teaching.router_test import (
     _login,
     _make_educator,
     _make_learner,

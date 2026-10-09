@@ -25,16 +25,16 @@ from app.features.teaching.access import (
 from app.features.teaching.door import door_router, require_runs_teaching
 from app.features.teaching.enrolment import is_enrolled
 from app.features.teaching.models import ModuleEnrolment
-from app.models import OrgUnit, PractisingCompetency, User
-from app.organisations import add_org_unit_member
-from app.security import hash_password
-from tests.test_teaching_router import (
+from app.features.teaching.router_test import (
     _login,
     _make_educator,
     _make_learner,
     _make_teaching_org,
     _seed_bank,
 )
+from app.models import OrgUnit, PractisingCompetency, User
+from app.organisations import add_org_unit_member
+from app.security import hash_password
 
 BANK = "test-bank"
 

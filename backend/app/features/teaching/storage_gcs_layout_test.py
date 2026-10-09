@@ -18,7 +18,8 @@ from app.features.teaching.storage import (
     module_prefix,
 )
 
-_STORAGE = Path(__file__).parent.parent / "app" / "features" / "teaching"
+#: The teaching folder, which this test now sits in.
+_STORAGE = Path(__file__).parent
 
 
 class TestThePrefixesMirrorTheRepository:

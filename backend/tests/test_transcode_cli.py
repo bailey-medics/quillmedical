@@ -26,7 +26,7 @@ def _patch_storage(storage_module: MagicMock):
     form reads the attribute and never consults ``sys.modules``. Patching
     only the latter passes in isolation and fails once any earlier test
     has imported the real module - which is exactly what happened here,
-    with ``test_teaching_storage.py`` running first in the full suite.
+    with ``app/features/teaching/storage_test.py`` running first in the full suite.
     """
     return (
         patch.dict("sys.modules", {"google.cloud.storage": storage_module}),
