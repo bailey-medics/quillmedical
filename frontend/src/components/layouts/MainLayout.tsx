@@ -239,7 +239,7 @@ export default function MainLayout({
           </NavigationDrawer>
         )}
 
-        <Flex style={{ flex: 1, height: "100%" }}>
+        <Flex style={{ flex: 1, height: "100%", minWidth: 0 }}>
           {!navCollapsed && !examMode && (
             <Box
               component="aside"
@@ -259,7 +259,15 @@ export default function MainLayout({
               />
             </Box>
           )}
-          <Flex direction="column" flex={1} style={{ height: "100%" }}>
+          {/* `minWidth: 0` because a flex item will not otherwise go
+              narrower than its widest content: one long unbroken word
+              on a page pushed the whole column, footer included, past
+              the edge of a phone, where the wrapper above clipped it. */}
+          <Flex
+            direction="column"
+            flex={1}
+            style={{ height: "100%", minWidth: 0 }}
+          >
             <Box
               component="main"
               ref={mainRef}

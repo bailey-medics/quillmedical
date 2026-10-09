@@ -7,7 +7,9 @@
  *
  * Line breaks collapse into spaces, as in any paragraph. Set
  * `preserveLines` for text somebody typed into a text area, so the lines
- * they wrote stay the lines that are read.
+ * they wrote stay the lines that are read. Such text may also hold a
+ * word longer than the line, a pasted address above all, so it is allowed
+ * to break inside one where it would otherwise run off a phone.
  */
 
 import { Text } from "@mantine/core";
@@ -50,7 +52,11 @@ export default function BodyText({
       fw={typographyTokens.fontWeights.body}
       c={c}
       ta={alignMap[justify]}
-      style={preserveLines ? { whiteSpace: "pre-wrap" } : undefined}
+      style={
+        preserveLines
+          ? { whiteSpace: "pre-wrap", overflowWrap: "anywhere" }
+          : undefined
+      }
     >
       {children}
     </Text>

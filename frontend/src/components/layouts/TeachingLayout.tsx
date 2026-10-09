@@ -161,7 +161,13 @@ export default function TeachingLayout({
           </Box>
         )}
 
-        <Flex direction="column" flex={1} style={{ height: "100%" }}>
+        {/* `minWidth: 0` so one long unbroken word on a page cannot push
+            the column past the edge of a phone. See MainLayout. */}
+        <Flex
+          direction="column"
+          flex={1}
+          style={{ height: "100%", minWidth: 0 }}
+        >
           <Box
             component="main"
             ref={mainRef}

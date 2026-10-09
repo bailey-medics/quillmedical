@@ -104,7 +104,7 @@ export default function YourFeedbackPage() {
                     </BodyTextInline>
                   )}
                 </Group>
-                <FeedbackStatusBadge status={item.status} audience="sender" />
+                <FeedbackStatusBadge status={item.status} />
               </Group>
               <BodyText preserveLines>{item.message}</BodyText>
               {item.comment && (

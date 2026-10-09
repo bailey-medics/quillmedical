@@ -25,6 +25,25 @@ describe("BodyText", () => {
     });
   });
 
+  it("lets a word longer than the line break, with preserveLines", () => {
+    // Typed text may hold a pasted address with nowhere to wrap.
+    renderWithMantine(
+      <BodyText preserveLines>https://example.com/a/very/long/path</BodyText>,
+    );
+
+    expect(
+      screen.getByText("https://example.com/a/very/long/path"),
+    ).toHaveStyle({ overflowWrap: "anywhere" });
+  });
+
+  it("leaves ordinary text to wrap at its spaces", () => {
+    renderWithMantine(<BodyText>Ordinary text</BodyText>);
+
+    expect(screen.getByText("Ordinary text")).not.toHaveStyle({
+      overflowWrap: "anywhere",
+    });
+  });
+
   it("keeps line breaks with preserveLines", () => {
     renderWithMantine(
       <BodyText preserveLines>{"First line\nSecond line"}</BodyText>,

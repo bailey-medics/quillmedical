@@ -57,7 +57,7 @@ function Detail({ label, value }: { label: string; value: string }) {
   return (
     <Group gap="xs">
       <BodyTextBold>{label}:</BodyTextBold>
-      <BodyTextInline>{value}</BodyTextInline>
+      <BodyTextInline breakAnywhere>{value}</BodyTextInline>
     </Group>
   );
 }

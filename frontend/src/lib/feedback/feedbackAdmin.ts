@@ -23,7 +23,10 @@ export const FEEDBACK_STATUSES: readonly FeedbackStatus[] = [
   "wont_fix",
 ];
 
-/** The label an operator sees for each status. */
+/**
+ * The label for each status. An operator picks from these words and the
+ * sender reads the same ones on their badge, so there is one vocabulary.
+ */
 export const FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = {
   new: "New",
   acknowledged: "Acknowledged",
