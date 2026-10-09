@@ -18,7 +18,12 @@ from app.features.teaching.tooling.validate import (
     validate_modules_dir,
 )
 
-_FIXTURES = Path(__file__).parent / "fixtures" / "teaching_tooling"
+_FIXTURES = (
+    Path(__file__).resolve().parents[4]
+    / "tests"
+    / "fixtures"
+    / "teaching_tooling"
+)
 _VALID = _FIXTURES / ".valid-module"
 _VALID_ID = "valid-module"
 

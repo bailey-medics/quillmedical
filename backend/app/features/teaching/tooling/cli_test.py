@@ -14,7 +14,12 @@ import yaml
 
 from app.features.teaching.tooling.cli import main
 
-FIXTURES = Path(__file__).parent / "fixtures" / "teaching_tooling"
+FIXTURES = (
+    Path(__file__).resolve().parents[4]
+    / "tests"
+    / "fixtures"
+    / "teaching_tooling"
+)
 
 
 #: A variable question the merged validator accepts.
