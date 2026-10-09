@@ -5,8 +5,14 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Stack } from "@mantine/core";
-import { BodyText, Heading } from "@/components/typography";
+import { Group, Stack } from "@mantine/core";
+import {
+  BodyText,
+  BodyTextBold,
+  BodyTextInline,
+  Heading,
+} from "@/components/typography";
+import { VariantRow, VariantStack } from "@/stories/variants";
 import BaseCard from "./BaseCard";
 
 const meta: Meta<typeof BaseCard> = {
@@ -44,6 +50,41 @@ export const WithBackground: Story = {
         </BodyText>
       </Stack>
     </BaseCard>
+  ),
+};
+
+const LONG_ADDRESS =
+  "/teaching/assessments/12345/questions/67890/review/8ed08fd0c2b48463456cb1a88add2739f5fcd5a7";
+
+function LongWordCard({ wrapLongWords }: { wrapLongWords?: boolean }) {
+  return (
+    <BaseCard w={280} wrapLongWords={wrapLongWords}>
+      <Stack gap="sm">
+        <Heading>Sent from</Heading>
+        <BodyText>{LONG_ADDRESS}</BodyText>
+        <Group gap="xs">
+          <BodyTextBold>Page:</BodyTextBold>
+          <BodyTextInline>{LONG_ADDRESS}</BodyTextInline>
+        </Group>
+      </Stack>
+    </BaseCard>
+  );
+}
+
+/**
+ * A word longer than the card, such as an address or a release id,
+ * breaks inside itself. With `wrapLongWords` off it runs out of the side.
+ */
+export const LongWord: Story = {
+  render: () => (
+    <VariantStack>
+      <VariantRow label="default" horizontal={false}>
+        <LongWordCard />
+      </VariantRow>
+      <VariantRow label="wrapLongWords={false}" horizontal={false}>
+        <LongWordCard wrapLongWords={false} />
+      </VariantRow>
+    </VariantStack>
   ),
 };
 

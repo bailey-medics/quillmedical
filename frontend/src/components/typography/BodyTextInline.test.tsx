@@ -41,23 +41,4 @@ describe("BodyTextInline", () => {
     expect(element).toHaveStyle({ fontWeight: "700" });
     expect(element.tagName).toBe("SPAN");
   });
-
-  it("wraps only at spaces unless asked", () => {
-    renderWithMantine(<BodyTextInline>Ordinary</BodyTextInline>);
-
-    expect(screen.getByText("Ordinary")).not.toHaveStyle({
-      overflowWrap: "anywhere",
-    });
-  });
-
-  it("lets a word longer than the line break when asked", () => {
-    // An address or a release id has nowhere to wrap, and ran off a phone.
-    renderWithMantine(
-      <BodyTextInline breakAnywhere>/a/very/long/path</BodyTextInline>,
-    );
-
-    const element = screen.getByText("/a/very/long/path");
-    expect(element).toHaveStyle({ overflowWrap: "anywhere" });
-    expect(element).toHaveStyle({ whiteSpace: "pre-wrap" });
-  });
 });

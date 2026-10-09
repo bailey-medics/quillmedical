@@ -22,15 +22,6 @@ export interface BodyTextInlineProps {
    * middle of a line without breaking the sentence around it.
    */
   bold?: boolean;
-  /**
-   * Lets a word longer than the line break inside itself. Defaults to
-   * false.
-   *
-   * For a value nobody chose the length of, such as an address or a
-   * release id, which would otherwise run off a phone. Not the default:
-   * in a table cell it lets the column shrink to a letter wide.
-   */
-  breakAnywhere?: boolean;
 }
 
 /**
@@ -43,7 +34,6 @@ export default function BodyTextInline({
   children,
   c,
   bold = false,
-  breakAnywhere = false,
 }: BodyTextInlineProps) {
   return (
     <Text
@@ -55,10 +45,7 @@ export default function BodyTextInline({
           : typographyTokens.fontWeights.body
       }
       c={c}
-      style={{
-        whiteSpace: "pre-wrap",
-        ...(breakAnywhere && { overflowWrap: "anywhere" }),
-      }}
+      style={{ whiteSpace: "pre-wrap" }}
     >
       {children}
     </Text>
