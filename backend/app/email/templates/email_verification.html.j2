@@ -12,8 +12,8 @@
 -#}
 {% extends "base.html.j2" %}
 {% import "_components.html.j2" as c with context %}
-{% block subject %}Verify your Quill email address{% endblock %}
-{% block preheader %}The link lasts {{ ttl_minutes }} minutes.{% endblock %}
+{% block subject %}Verify your Quill email address{% endblock subject %}
+{% block preheader %}The link lasts {{ ttl_minutes }} minutes.{% endblock preheader %}
 {% block body %}
 {{ c.heading("Verify your *email address*") }}
 {{ c.paragraph("Hi " ~ name ~ ",") }}
@@ -26,8 +26,8 @@
 {{ c.button("Verify your email", verify_url) }}
 {{ c.small("This link expires in " ~ ttl_minutes ~ " minutes.") }}
 {{ c.small("This email was sent to " ~ email ~ ".") }}
-{% endblock %}
-{% block reason %}You are receiving this because this address was used to create an account on Quill.{% endblock %}
+{% endblock body %}
+{% block reason %}You are receiving this because this address was used to create an account on Quill.{% endblock reason %}
 
 {% block text %}
 Hi {{ name }},
@@ -41,4 +41,4 @@ Verify your email: {{ verify_url }}
 This link expires in {{ ttl_minutes }} minutes.
 
 This email was sent to {{ email }}.
-{% endblock %}
+{% endblock text %}

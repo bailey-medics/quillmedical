@@ -84,3 +84,30 @@ def test_says_nothing_about_a_scope_where_there_is_none() -> None:
 
     assert ", for " not in invite["html_body"]
     assert ", for " not in invite["text_body"]
+
+
+WHAT_QUILL_IS = "Quill Medical is the online service"
+
+
+def test_tells_somebody_with_no_account_what_quill_is() -> None:
+    """To them the sender is a name they have never seen."""
+    invite = _invite()
+
+    for body in (invite["html_body"], invite["text_body"]):
+        assert WHAT_QUILL_IS in body
+        assert "asks you to create one first" in body
+
+
+def test_spares_somebody_with_an_account_the_explanation() -> None:
+    rendered = render_invite(
+        assessor_name="Dr James Okafor",
+        holder_name="Dr Priya Shah",
+        competency_name="Chest drain insertion",
+        url="https://example.com/inbox",
+        expires_in_days=14,
+        has_account=True,
+    )
+
+    for body in (rendered["html_body"], rendered["text_body"]):
+        assert WHAT_QUILL_IS not in body
+        assert "clinician passport is a record" in body

@@ -11,8 +11,8 @@
 -#}
 {% extends "base.html.j2" %}
 {% import "_components.html.j2" as c with context %}
-{% block subject %}You're invited to Quill - set up your account{% endblock %}
-{% block preheader %}Create your password and get started.{% endblock %}
+{% block subject %}You're invited to Quill - set up your account{% endblock subject %}
+{% block preheader %}Create your password and get started.{% endblock preheader %}
 {% block body %}
 {{ c.heading("You're invited to *Quill*") }}
 {{ c.paragraph("Hi " ~ name ~ ",") }}
@@ -21,8 +21,8 @@
 {{ c.button("Set up your account", setup_url) }}
 {{ c.small("This link expires in " ~ ttl_minutes ~ " minutes.") }}
 {{ c.small("This email was sent to " ~ email ~ ".") }}
-{% endblock %}
-{% block reason %}You are receiving this because an administrator created a Quill account for this address.{% endblock %}
+{% endblock body %}
+{% block reason %}You are receiving this because an administrator created a Quill account for this address.{% endblock reason %}
 
 {% block text %}
 Hi {{ name }},
@@ -36,4 +36,4 @@ Set up your account: {{ setup_url }}
 This link expires in {{ ttl_minutes }} minutes.
 
 This email was sent to {{ email }}.
-{% endblock %}
+{% endblock text %}

@@ -13,10 +13,10 @@
 -#}
 {% extends "base.html.j2" %}
 {% import "_components.html.j2" as c with context %}
-{% block subject %}New feedback from {{ sender }}{% endblock %}
+{% block subject %}New feedback from {{ sender }}{% endblock subject %}
 {% block preheader %}
 {%- if category %}{{ category }}.{% else %}Open it in Quill to read it.{% endif -%}
-{% endblock %}
+{% endblock preheader %}
 {% block body %}
 {{ c.heading("New *feedback*") }}
 {{ c.paragraph(sender ~ " has sent feedback through Quill.") }}
@@ -24,8 +24,8 @@
 {% if route %}{{ c.paragraph("Sent from: " ~ route) }}{% endif %}
 {{ c.button("Read the feedback", url) }}
 {{ c.small("The message is not in this email. It may hold patient details, so it stays in Quill.") }}
-{% endblock %}
-{% block reason %}You are receiving this because this address is set to be told of new feedback on Quill.{% endblock %}
+{% endblock body %}
+{% block reason %}You are receiving this because this address is set to be told of new feedback on Quill.{% endblock reason %}
 
 {% block text %}
 {{ sender }} has sent feedback through Quill.
@@ -39,4 +39,4 @@ Sent from: {{ route }}
 Read the feedback: {{ url }}
 
 The message is not in this email. It may hold patient details, so it stays in Quill.
-{% endblock %}
+{% endblock text %}

@@ -27,7 +27,7 @@
     <meta name="x-apple-disable-message-reformatting" />
     <meta name="color-scheme" content="light dark" />
     <meta name="supported-color-schemes" content="light dark" />
-    <title>{% block subject %}{% endblock %}</title>
+    <title>{% block subject %}{% endblock subject %}</title>
     <link rel="stylesheet" href="{{ font_link }}" />
     <style>
       body {
@@ -123,7 +123,7 @@
     <div
       style="display: none; max-height: 0; overflow: hidden; mso-hide: all; font-size: 1px; line-height: 1px; color: {{ t.background }}"
     >
-      {% block preheader %}{% endblock %}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+      {% block preheader %}{% endblock preheader %}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
     </div>
 
     <table
@@ -235,7 +235,7 @@
                 class="em-text em-pad"
                 style="padding: 36px 40px 32px; font-family: {{ t.font_family }}; font-size: 19px; line-height: 1.5; color: {{ t.text }}"
               >
-                {% block body %}{% endblock %}
+                {% block body %}{% endblock body %}
               </td>
             </tr>
 
@@ -248,12 +248,12 @@
                 {%- block footer %}
                 <p style="margin: 0 0 8px">
                   {%- if partner %}Sent by {{ t.sender_name }} on behalf of {{ partner.name }}. {% endif -%}
-                  {%- block reason %}{% endblock -%}
+                  {%- block reason %}{% endblock reason -%}
                 </p>
                 <p style="margin: 0">
                   {{ company.trading_line() }}
                 </p>
-                {%- endblock %}
+                {%- endblock footer %}
               </td>
             </tr>
           </table>

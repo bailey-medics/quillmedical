@@ -8,14 +8,14 @@
 {% set signoff_role = "Bailey Medics" %}
 {% set from_name = "Mark at " ~ t.sender_name %}
 {% import "_components.html.j2" as c with context %}
-{% block subject %}A note from Mark{% endblock %}
-{% block preheader %}Something I wanted to say myself.{% endblock %}
+{% block subject %}A note from Mark{% endblock subject %}
+{% block preheader %}Something I wanted to say myself.{% endblock preheader %}
 {% block content %}
 {{ c.heading("A *personal* note") }}
 {{ c.paragraph("Hello,") }}
 {{ c.paragraph("Most of our newsletters come from the team. Now and then there is something I would rather say myself, and this is what one of those looks like.") }}
 {{ c.paragraph("Thank you for reading.") }}
-{% endblock %}
+{% endblock content %}
 
 {% block text %}
 Hello,
@@ -25,4 +25,4 @@ Most of our newsletters come from the team. Now and then there is something I wo
 Thank you for reading.
 
 {{ signoff_text }}
-{% endblock %}
+{% endblock text %}

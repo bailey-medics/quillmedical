@@ -60,6 +60,7 @@ def render_invite(
     level_name: str | None = None,
     scope_name: str | None = None,
     confirming_logbook: bool = False,
+    has_account: bool = False,
 ) -> InviteEmail:
     """Render the invitation, in the branded layout.
 
@@ -84,6 +85,12 @@ def render_invite(
             entry and not to assess anything. Confirming says the
             procedure happened as recorded, so the email must not call
             it an assessment.
+        has_account: Whether the address already has a Quill account.
+            Somebody without one is told what Quill is and that the link
+            asks them to create an account. False unless the caller
+            knows otherwise, because explaining it to somebody who knew
+            costs a sentence, and not explaining it to somebody who did
+            not leaves them with a link from a stranger.
         expires_in_days: How long the link lasts, so the recipient knows
             whether they can leave it until after the weekend.
 
@@ -100,6 +107,7 @@ def render_invite(
             "level_name": level_name,
             "scope_name": scope_name,
             "confirming_logbook": confirming_logbook,
+            "has_account": has_account,
             "url": url,
             "expires_in_days": expires_in_days,
         },

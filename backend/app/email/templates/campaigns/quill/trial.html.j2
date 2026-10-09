@@ -10,13 +10,13 @@
 -#}
 {% extends "newsletter.html.j2" %}
 {% import "_components.html.j2" as c with context %}
-{% block subject %}A trial newsletter from Quill Medical{% endblock %}
-{% block preheader %}Sent to check that newsletters, and unsubscribing from them, work.{% endblock %}
+{% block subject %}A trial newsletter from Quill Medical{% endblock subject %}
+{% block preheader %}Sent to check that newsletters, and unsubscribing from them, work.{% endblock preheader %}
 {% block content %}
 {{ c.heading("A *trial* newsletter") }}
 {{ c.paragraph("This is a test, sent to check that newsletters from Quill Medical arrive and look right. There is no news in it.") }}
 {{ c.paragraph("If you were not expecting it, you can ignore it. The unsubscribe link below works, and so does the button your mailbox may show at the top.") }}
-{% endblock %}
+{% endblock content %}
 
 {% block text %}
 A trial newsletter
@@ -28,4 +28,4 @@ If you were not expecting it, you can ignore it.
 Unsubscribe: {{ unsubscribe_url }}
 
 {{ signoff_text }}
-{% endblock %}
+{% endblock text %}
