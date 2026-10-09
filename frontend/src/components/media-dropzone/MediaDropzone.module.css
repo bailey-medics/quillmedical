@@ -15,6 +15,9 @@
      the certificate uploader and the Disabled story both showed it so. */
   align-self: flex-start;
 
+  /* And never wider than what it sits in, whatever the label. */
+  max-width: 100%;
+
   /* In the middle of the line it sits on, not on the text baseline. It
      is an inline box, so in a table cell it otherwise sat on the cell's
      baseline, with the room kept for letters such as "g" beneath it, and
@@ -50,6 +53,15 @@
    6.9:1. Light mode keeps the body text colour. */
 [data-mantine-color-scheme="dark"] .dropzone {
   color: var(--mantine-color-white);
+}
+
+/* The hidden file input, taken out of the row. Mantine draws it zero
+   wide, but Safari still counts a file input's natural width, some
+   330px, when it works out how wide the pill wants to be. The pill then
+   came out 522px wide on a phone and pushed the whole page off the
+   screen with it. Out of the flow, it counts for nothing. */
+.dropzone input[type="file"] {
+  position: absolute;
 }
 
 /* Never squeezed. On a very narrow screen the label cannot wrap in its

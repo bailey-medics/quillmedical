@@ -1091,7 +1091,7 @@ class TestRepliesWaitingOnTheSender:
         items = waiting.json()["items"]
         assert [item["source"] for item in items] == ["feedback_reply"]
         assert items[0]["title"] == "Reply to your feedback"
-        assert items[0]["status"] == "Fixed"
+        assert items[0]["status"] == "Resolved"
         assert "Example-Reply" not in waiting.text
         assert "Example-Leak" not in waiting.text
 

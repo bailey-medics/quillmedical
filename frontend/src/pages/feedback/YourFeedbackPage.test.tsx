@@ -101,7 +101,7 @@ describe("YourFeedbackPage", () => {
     ).toHaveStyle({ whiteSpace: "pre-wrap" });
   });
 
-  it("shows each message with its status in the sender's words", async () => {
+  it("shows each message with its status in the operator's own words", async () => {
     vi.spyOn(apiLib.api, "get").mockResolvedValue({
       items: [fixed, received],
     });
@@ -114,10 +114,11 @@ describe("YourFeedbackPage", () => {
     expect(
       screen.getByText("Captions lag behind the video."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Fixed")).toBeInTheDocument();
-    expect(screen.getByText("Received")).toBeInTheDocument();
-    expect(screen.queryByText("Resolved")).not.toBeInTheDocument();
-    expect(screen.queryByText("New")).not.toBeInTheDocument();
+    // The same words the operator chose from, not a second set.
+    expect(screen.getByText("Resolved")).toBeInTheDocument();
+    expect(screen.getByText("New")).toBeInTheDocument();
+    expect(screen.queryByText("Fixed")).not.toBeInTheDocument();
+    expect(screen.queryByText("Received")).not.toBeInTheDocument();
   });
 
   it("shows the category when one was chosen", async () => {

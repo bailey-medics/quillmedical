@@ -32,11 +32,7 @@ from app.features.passport.models import (
     PassportLogbookConfirmationRequest,
     PassportSignOffRequest,
 )
-from app.feedback.labels import (
-    CATEGORY_LABELS,
-    SENDER_STATUS_LABELS,
-    STATUS_LABELS,
-)
+from app.feedback.labels import CATEGORY_LABELS, STATUS_LABELS
 from app.feedback.replies import reply_is_unseen
 from app.models import Feedback, User
 from app.passport_storage import get_passport_store
@@ -184,7 +180,7 @@ def _feedback_reply_lines(
             id=row.id,
             title="Reply to your feedback",
             detail=CATEGORY_LABELS.get(row.category or ""),
-            status=SENDER_STATUS_LABELS.get(row.status),
+            status=STATUS_LABELS.get(row.status),
             created_at=row.operator_comment_at or row.created_at,
             done=done,
         )
