@@ -19,6 +19,10 @@ frontend/src/generated/*.json
 
 prompt-output.md
 
+# Written by the Storybook upgrade tool wherever it is run from.
+# frontend/.gitignore covers *.log there; this covers the root.
+debug-storybook.log
+
 site/
 
 # Files kept out of git
