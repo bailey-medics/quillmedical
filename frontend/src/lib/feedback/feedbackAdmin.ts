@@ -70,24 +70,24 @@ export function getFeedback(id: number): Promise<FeedbackItem> {
   return api.get<FeedbackItem>(`/feedback/${id}`);
 }
 
-/** Move a piece of feedback to another status. */
-export function setFeedbackStatus(
-  id: number,
-  status: FeedbackStatus,
-): Promise<FeedbackItem> {
-  return api.patch<FeedbackItem>(`/feedback/${id}`, { status });
-}
-
 /** Longest comment the server accepts. Matches `MAX_COMMENT` there. */
 export const MAX_FEEDBACK_COMMENT = 2000;
 
+/** An operator's answer: a status, a comment or both. */
+export interface FeedbackAnswer {
+  status?: FeedbackStatus;
+  /** A blank comment removes the one already there */
+  comment?: string;
+}
+
 /**
- * Write, change or remove the comment the sender sees beside the status.
- * A blank comment removes it. The status is left alone.
+ * Answer a piece of feedback in one request. Only what is named changes,
+ * so a status sent alone leaves the comment as it was, and the other way
+ * round.
  */
-export function setFeedbackComment(
+export function answerFeedback(
   id: number,
-  comment: string,
+  answer: FeedbackAnswer,
 ): Promise<FeedbackItem> {
-  return api.patch<FeedbackItem>(`/feedback/${id}`, { comment });
+  return api.patch<FeedbackItem>(`/feedback/${id}`, answer);
 }

@@ -2,7 +2,7 @@
  * FeedbackDetailPage tests
  *
  * One piece of feedback in full, changing its status and writing the
- * comment the sender sees.
+ * comment the sender sees, both saved from one button.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -89,7 +89,23 @@ describe("FeedbackDetailPage", () => {
     expect(screen.queryByText("Error:")).not.toBeInTheDocument();
   });
 
-  it("changes the status", async () => {
+  it("does not save the status until it is submitted", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(apiLib.api, "get").mockResolvedValue(feedback);
+    const patch = vi.spyOn(apiLib.api, "patch");
+
+    renderWithRouter(<FeedbackDetailPage />);
+
+    await user.click(await screen.findByRole("combobox", { name: "Status" }));
+    await user.click(await screen.findByRole("option", { name: "Resolved" }));
+
+    expect(screen.getByRole("combobox", { name: "Status" })).toHaveValue(
+      "Resolved",
+    );
+    expect(patch).not.toHaveBeenCalled();
+  });
+
+  it("changes the status without touching the comment", async () => {
     const user = userEvent.setup();
     vi.spyOn(apiLib.api, "get").mockResolvedValue(feedback);
     const patch = vi
@@ -100,15 +116,43 @@ describe("FeedbackDetailPage", () => {
 
     await user.click(await screen.findByRole("combobox", { name: "Status" }));
     await user.click(await screen.findByRole("option", { name: "Resolved" }));
+    await user.click(screen.getByRole("button", { name: "Submit" }));
 
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/feedback/5", {
         status: "resolved",
       }),
     );
-    expect(await screen.findByRole("combobox", { name: "Status" })).toHaveValue(
+    expect(await screen.findByText("Response saved")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Status" })).toHaveValue(
       "Resolved",
     );
+  });
+
+  it("saves the status and the comment in one request", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(apiLib.api, "get").mockResolvedValue(feedback);
+    const patch = vi.spyOn(apiLib.api, "patch").mockResolvedValue({
+      ...feedback,
+      status: "resolved",
+      comment: "Fixed in the next release.",
+    });
+
+    renderWithRouter(<FeedbackDetailPage />);
+
+    await user.click(await screen.findByRole("combobox", { name: "Status" }));
+    await user.click(await screen.findByRole("option", { name: "Resolved" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Comment" }),
+      "Fixed in the next release.",
+    );
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+
+    await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
+    expect(patch).toHaveBeenCalledWith("/feedback/5", {
+      status: "resolved",
+      comment: "Fixed in the next release.",
+    });
   });
 
   it("tells the ribbon's envelope when the status changes", async () => {
@@ -127,12 +171,36 @@ describe("FeedbackDetailPage", () => {
     await user.click(
       await screen.findByRole("option", { name: "Acknowledged" }),
     );
+    await user.click(screen.getByRole("button", { name: "Submit" }));
 
     await waitFor(() => expect(told).toHaveBeenCalledTimes(1));
     stop();
   });
 
-  it("keeps the old status when the change fails", async () => {
+  it("leaves the ribbon's envelope alone when only the comment changes", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(apiLib.api, "get").mockResolvedValue(feedback);
+    vi.spyOn(apiLib.api, "patch").mockResolvedValue({
+      ...feedback,
+      comment: "Thanks",
+    });
+    const told = vi.fn();
+    const stop = onInboxChanged(told);
+
+    renderWithRouter(<FeedbackDetailPage />);
+
+    await user.type(
+      await screen.findByRole("textbox", { name: "Comment" }),
+      "Thanks",
+    );
+    await user.click(screen.getByRole("button", { name: "Submit" }));
+
+    expect(await screen.findByText("Response saved")).toBeInTheDocument();
+    expect(told).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it("keeps the status picked when the save fails", async () => {
     const user = userEvent.setup();
     vi.spyOn(apiLib.api, "get").mockResolvedValue(feedback);
     vi.spyOn(apiLib.api, "patch").mockRejectedValue(new Error("HTTP 500"));
@@ -141,11 +209,13 @@ describe("FeedbackDetailPage", () => {
 
     await user.click(await screen.findByRole("combobox", { name: "Status" }));
     await user.click(await screen.findByRole("option", { name: "Resolved" }));
+    await user.click(screen.getByRole("button", { name: "Submit" }));
 
-    await waitFor(() =>
-      expect(screen.getByRole("combobox", { name: "Status" })).toHaveValue(
-        "New",
-      ),
+    expect(
+      await screen.findByText("The response was not saved"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Status" })).toHaveValue(
+      "Resolved",
     );
   });
 
@@ -163,7 +233,7 @@ describe("FeedbackDetailPage", () => {
       await screen.findByRole("textbox", { name: "Comment" }),
       "  Fixed in the next release. ",
     );
-    await user.click(screen.getByRole("button", { name: "Save comment" }));
+    await user.click(screen.getByRole("button", { name: "Submit" }));
 
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/feedback/5", {
@@ -188,7 +258,7 @@ describe("FeedbackDetailPage", () => {
     );
   });
 
-  it("does not save a comment that has not changed", async () => {
+  it("does not save when nothing has changed", async () => {
     const user = userEvent.setup();
     vi.spyOn(apiLib.api, "get").mockResolvedValue({
       ...feedback,
@@ -199,7 +269,7 @@ describe("FeedbackDetailPage", () => {
     renderWithRouter(<FeedbackDetailPage />);
 
     await screen.findByRole("textbox", { name: "Comment" });
-    await user.click(screen.getByRole("button", { name: "Save comment" }));
+    await user.click(screen.getByRole("button", { name: "Submit" }));
 
     expect(patch).not.toHaveBeenCalled();
   });
@@ -217,7 +287,7 @@ describe("FeedbackDetailPage", () => {
     renderWithRouter(<FeedbackDetailPage />);
 
     await user.clear(await screen.findByRole("textbox", { name: "Comment" }));
-    await user.click(screen.getByRole("button", { name: "Save comment" }));
+    await user.click(screen.getByRole("button", { name: "Submit" }));
 
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/feedback/5", { comment: "" }),
@@ -235,10 +305,10 @@ describe("FeedbackDetailPage", () => {
       await screen.findByRole("textbox", { name: "Comment" }),
       "Thanks",
     );
-    await user.click(screen.getByRole("button", { name: "Save comment" }));
+    await user.click(screen.getByRole("button", { name: "Submit" }));
 
     expect(
-      await screen.findByText("The comment was not saved"),
+      await screen.findByText("The response was not saved"),
     ).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Comment" })).toHaveValue(
       "Thanks",
