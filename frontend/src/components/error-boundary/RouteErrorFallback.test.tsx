@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router-dom";
 import { renderWithMantine } from "@test/test-utils";
 import { reportError } from "@lib/error-reporting/report";
@@ -87,7 +87,13 @@ describe("RouteErrorFallback", () => {
     await router.navigate("/passport");
     await screen.findByTestId("error-boundary-fallback");
 
-    expect(reportError).toHaveBeenCalledWith(chunkGone, "boundary");
+    // Waited for, not asserted straight away: the component reports from
+    // an effect, which runs after the fallback is on screen. Checking at
+    // once passed or failed on how the two happened to be scheduled, and
+    // failed in CI on 9 October 2026.
+    await waitFor(() => {
+      expect(reportError).toHaveBeenCalledWith(chunkGone, "boundary");
+    });
   });
 
   it("stays out of the way when the chunk loads", async () => {

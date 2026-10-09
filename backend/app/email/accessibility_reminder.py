@@ -7,10 +7,7 @@ REVIEWED date each Monday and, once it is eleven months old, posts to
 Slack and runs this, the ``accessibility-reminder`` admin action.
 
 **The app sends the email, and not the workflow,** so that GitHub holds
-no mail credential. It did hold one: the workflow read the mail
-provider's key from Secret Manager and sent the email itself. Now it
-may start this job and nothing more, and the email is in Quill's own
-layout as a side effect.
+no mail credential.
 """
 
 from __future__ import annotations
@@ -58,6 +55,7 @@ def send_reminder(*, recipient: str, reviewed: str, due_by: str) -> None:
     """
     if not _ADDRESS.fullmatch(recipient):
         raise ReminderError("The recipient is not an email address")
+
     for name, value in (("reviewed", reviewed), ("due by", due_by)):
         if not _DATE.fullmatch(value):
             raise ReminderError(
