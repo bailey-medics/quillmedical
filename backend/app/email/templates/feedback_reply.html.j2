@@ -12,16 +12,16 @@
 {% block preheader %}Open Quill to read it.{% endblock %}
 {% block body %}
 {{ c.heading("Your feedback has a *reply*") }}
-{{ c.paragraph("Thank you for telling us. We have replied to the feedback you sent through Quill.") }}
+{{ c.paragraph("Thank you for providing feedback. We have replied and you can see view this through Quill.") }}
 {{ c.button("Read the reply", url) }}
-{{ c.small("The reply is not in this email. It stays in Quill, where only you and our team can read it.") }}
+{{ c.small("The reply is not in this email. It stays in Quill, where only you can read it.") }}
 {% endblock %}
 {% block reason %}You are receiving this because you sent feedback on Quill.{% endblock %}
 
 {% block text %}
-Thank you for telling us. We have replied to the feedback you sent through Quill.
+Thank you for providing feedback. We have replied and you can see view this through Quill.
 
 Read the reply: {{ url }}
 
-The reply is not in this email. It stays in Quill, where only you and our team can read it.
+The reply is not in this email. It stays in Quill, where only you can read it.
 {% endblock %}

@@ -280,6 +280,101 @@ Quill; it does not cover sitting in it.
 - [x] Tests: the count is asked for again after a minute, not while the
       tab is hidden, and at once when it becomes visible again.
 
+## Phase 10: Several people are told, and their addresses are kept out of the repository
+
+Phase 1 told one address, written in `infra/main.tf`. That file is in a
+public repository, so it can hold a role address such as
+`info@quill-medical.com` and not a named person's. Feedback on teaching
+needs to reach more than one person.
+
+- [x] Let `FEEDBACK_NOTIFY_EMAIL` hold several addresses separated by
+      commas, read by `parse_address_list` in `backend/app/config.py`.
+      Each address is sent its own notice from `submit_feedback` in
+      `backend/app/feedback/router.py`, so one that bounces costs only
+      its own and nobody is shown who else is told. Stray spaces, a
+      trailing comma and a repeated address are forgiven.
+
+- [x] Refuse to start in production with no address, in
+      `_validate_feedback_notify_email` on `Settings`. With none, the
+      notice is silently not sent and the feedback sits unread, so a
+      secret saved empty must stop the deploy. An entry that is not an
+      address is refused in every environment. Only the backend service
+      sets `BACKEND_ENV` to `production`: the admin, transcode and
+      caption jobs do not, so they start without the setting.
+
+- [x] Create the secret container `feedback-notify-email`, by adding it
+      to `module.secrets` in `infra/main.tf`. A forwarding alias at the
+      email host was considered and turned down by Mark on 9 October
+      2026. A GitHub secret was turned down too: GitHub would only relay
+      the value to Terraform, and a secret lives where it is used.
+
+- [ ] Give the secret its value, by hand, once the change above has
+      merged and Terraform has applied:
+      `printf '%s' 'one@example.org,two@example.org' | gcloud secrets versions add feedback-notify-email --project quill-medical-app --data-file=-`.
+      `printf` and not `echo`, which adds a newline.
+
+- [ ] Mount the secret on the backend: add
+      `FEEDBACK_NOTIFY_EMAIL = "feedback-notify-email"` to
+      `backend_secret_env_vars` in `infra/runtime-identities.tf`, which
+      also grants the backend's account access to it, and remove the
+      plain `FEEDBACK_NOTIFY_EMAIL` from `infra/main.tf`. A change of its
+      own, after the value is in: Cloud Run will not mount a secret with
+      no version. Then re-run `deploy.yml` and check the serving
+      revision, since a revision Terraform makes gets no traffic.
+
+- [ ] To change who is told afterwards: add a new version of the secret
+      and re-run `deploy.yml`. No pull request is needed.
+
+## Phase 11: Feedback is posted to a Slack channel
+
+Asked for by Mark on 9 October 2026, so that feedback is seen where the
+other notices already are. The post sits beside the email and does not
+replace it: the email is what production insists on, and Slack is an
+extra that is skipped where no webhook is set.
+
+- [x] Post from the backend, in `backend/app/feedback/slack.py`. The
+      other Slack notices come from GitHub workflows, through
+      `.github/workflows/slack-notify.yml`, but feedback arrives in the
+      app, and a workflow has nothing to tell it. So the backend holds a
+      Slack incoming webhook of its own, `FEEDBACK_SLACK_WEBHOOK_URL`, a
+      `SecretStr` in `backend/app/config.py`.
+
+- [x] Say what the email says and no more: who sent it, the category,
+      the page as a route pattern, and a link to it in the admin area.
+      **Never the message**, which may hold patient data and would be
+      copied into a system outside Quill. What a person typed, the
+      username, is escaped, so it cannot make a link or an `@channel`.
+
+- [x] Keep the webhook out of the logs. The URL is the credential, and
+      the errors `httpx` raises name the URL they were sent to, so a
+      failure is logged by its kind and the feedback's id alone, with no
+      traceback. A failure is swallowed, as the email's is: the feedback
+      is stored either way.
+
+- [x] Refuse a webhook that does not start `https://hooks.slack.com/`,
+      in `_validate_feedback_slack_webhook_url` on `Settings`, so a slip
+      in the secret cannot send who-sent-what somewhere else.
+
+- [x] Set `hide_input_in_errors` on `Settings`. Writing the check above
+      showed that Pydantic prints what it was given beside a validation
+      error, and for `Settings` that is the environment: the JWT secret
+      and the database passwords would have gone into the startup log of
+      any deploy that failed a check.
+
+- [x] Create the secret container `feedback-slack-webhook-url`, in
+      `module.secrets` in `infra/main.tf`.
+
+- [ ] Make the webhook in Slack, for the `quill-medical-feedback`
+      channel, and give the secret its value once the change above has
+      merged and Terraform has applied:
+      `printf '%s' 'https://hooks.slack.com/services/...' | gcloud secrets versions add feedback-slack-webhook-url --project quill-medical-app --data-file=-`.
+
+- [ ] Mount it on the backend, in the same change that mounts
+      `feedback-notify-email` in Phase 10: add
+      `FEEDBACK_SLACK_WEBHOOK_URL = "feedback-slack-webhook-url"` to
+      `backend_secret_env_vars` in `infra/runtime-identities.tf`. Then
+      re-run `deploy.yml`, send a piece of feedback and check the post.
+
 ## Decisions
 
 - **Messages and tasks carry the same weight** - for a clinician a
