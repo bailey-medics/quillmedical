@@ -307,9 +307,20 @@ def withdraw_practice(
 def withdraw_not_held(db: Session, user: User) -> int:
     """Delete somebody's practising rows for competencies they do not hold.
 
+    The rule this keeps: nobody may practise at an org_unit a competency
+    they do not hold. ``authorise_practice`` enforces it when a row is
+    written, by refusing a competency the person does not hold. This
+    enforces it afterwards, for somebody who held one, was authorised at
+    several org_units, and then lost it. Nothing checks those rows again,
+    so without this they would stay.
+
     Called whenever a competency is taken away, so that losing one ends it
     at every org_unit at once. Getting it back does not bring the rows
-    back: each org_unit authorises them again.
+    back: each org_unit authorises them again. A row left behind would do
+    nothing while the competency was gone, because every read takes what
+    is held and what is authorised together, and would then authorise
+    them at every org_unit again the moment it was regained, with nobody
+    there having decided it.
 
     Args:
         db: Database session. The delete is flushed, not committed.
