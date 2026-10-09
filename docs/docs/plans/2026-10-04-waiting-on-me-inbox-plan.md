@@ -313,7 +313,7 @@ needs to reach more than one person.
       `printf '%s' 'one@example.org,two@example.org' | gcloud secrets versions add feedback-notify-email --project quill-medical-app --data-file=-`.
       `printf` and not `echo`, which adds a newline.
 
-- [ ] Mount the secret on the backend: add
+- [x] Mount the secret on the backend: add
       `FEEDBACK_NOTIFY_EMAIL = "feedback-notify-email"` to
       `backend_secret_env_vars` in `infra/runtime-identities.tf`, which
       also grants the backend's account access to it, and remove the
@@ -369,7 +369,7 @@ extra that is skipped where no webhook is set.
       merged and Terraform has applied:
       `printf '%s' 'https://hooks.slack.com/services/...' | gcloud secrets versions add feedback-slack-webhook-url --project quill-medical-app --data-file=-`.
 
-- [ ] Mount it on the backend, in the same change that mounts
+- [x] Mount it on the backend, in the same change that mounts
       `feedback-notify-email` in Phase 10: add
       `FEEDBACK_SLACK_WEBHOOK_URL = "feedback-slack-webhook-url"` to
       `backend_secret_env_vars` in `infra/runtime-identities.tf`. Then

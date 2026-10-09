@@ -1,5 +1,18 @@
 """Brand values for email, read from ``shared/brand.yaml``.
 
+**Two things are in that file, and they are not the same kind of thing.**
+
+- **The Quill app's own colours**: ``BrandColours`` and ``Palette``. One
+  set, because there is one app, and it is always Quill. The frontend
+  builds its styling from them. Nothing here is per brand.
+- **The email themes**, one for each brand an email can go out as:
+  ``EmailTheme``, keyed by ``EmailThemeName``, ``"quill"`` or ``"ldd"``
+  for Let's Do Digital. This is what a template sees as ``t``. Let's Do
+  Digital exists only here, because email is the only place it appears.
+
+So a new brand is a new email theme. It adds nothing to the app's
+colours.
+
 The frontend's Mantine theme reads the same file, through the JSON that
 ``yarn generate:types`` makes from it, so an email and the app cannot
 disagree about what the brand navy is.
@@ -39,10 +52,15 @@ class _Strict(BaseModel):
 
 
 class BrandColours(_Strict):
-    """The brand colours the app's CSS variables are built from.
+    """The Quill app's own colours, which its CSS variables are built from.
 
-    ``mark`` is the quill on a navy tile, as on the email avatar and the
-    app icon; the rest are the app's own surfaces.
+    One set, not one per brand: the app is always Quill. A brand an
+    email goes out as, Let's Do Digital among them, has an
+    ``EmailTheme`` and nothing here.
+
+    ``mark`` is the colour of the logo's symbol, the quill, as drawn on
+    a navy tile for the email avatar and the app icon. The rest are the app's
+    own surfaces.
     """
 
     primary: str
