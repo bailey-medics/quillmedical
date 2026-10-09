@@ -211,20 +211,34 @@ fixtures from `backend/tests/fixtures/`, which stays where it is.
       `test_passport_api_schemas.py`, whose modules are outside this
       folder and move with the top-level ones.
 
-- [ ] `backend/app/feedback/` and `backend/app/inbox/`.
+- [x] `backend/app/feedback/` and `backend/app/inbox/`: nothing moved.
+      `test_feedback.py` and `test_inbox.py` each drive the API across
+      several modules, and neither folder has a test whose subject is
+      one module. That is a finding for Phase 5: `feedback/replies.py`,
+      `feedback/labels.py`, `feedback/slack.py` and `inbox/sources.py`
+      are tested only through routes.
 
-- [ ] Move the tests of the top-level modules in `backend/app/`, such as
-      `security.py`, `config.py` and `organisations.py`, in a pull request
-      of their own.
+- [x] Move the tests of the top-level modules in `backend/app/`, in a
+      pull request of their own: nineteen tests. Beside their modules in
+      `backend/app/`: `api_compatibility`, `compat_harness_endpoints`,
+      `config`, `ehrbase_client`, `fhir_client`, `log_context`, `models`,
+      `organisations` (as `organisations_place_resolver` and
+      `organisations_member_capacity`), `passport_storage`, `push`,
+      `push_send`, `rate_limit`, `registrations` and `security` (with
+      `security_passport_invite_token`). In the folders below it:
+      `db/core_db_test.py`, `schemas/passport_test.py` and
+      `utils/colors_test.py`. `test_security_pentest.py` stays where it
+      is: `security-pentest.yml` runs it by path, and it attacks the
+      running app and is about no one module.
 
-- [ ] Leave the tests of `backend/app/main.py`'s routes in
+- [x] Leave the tests of `backend/app/main.py`'s routes in
       `backend/tests/`. `main.py` holds a great many routes, and their
       tests are named for behaviour (`test_admin_user_route_scoping.py`).
       Scores of files beside `main.py` would bury it. They move when
       `main.py` is split by area, each to the router it then belongs to,
       and not before.
 
-- [ ] Leave in `backend/tests/` the tests that only drive the API (44
+- [x] Leave in `backend/tests/` the tests that only drive the API (44
       files import nothing but the app and the models) and the ones that
       span four or more modules (22 files). What remains in that folder
       is then an honest list of what belongs to no one place.

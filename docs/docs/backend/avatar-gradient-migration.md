@@ -156,7 +156,7 @@ yarn test ProfilePic
 
 ```bash
 cd backend
-poetry run pytest tests/test_colors.py -v
+poetry run pytest app/utils/colors_test.py -v
 ```
 
 ## Rollback Plan
