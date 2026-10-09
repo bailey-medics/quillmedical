@@ -1,7 +1,10 @@
 {#-
-  The layout every Quill email shares, moved across from the signed-off
-  Phase 1 mock-up (frontend/src/stories/emails/mockups/base.html). If a
-  render looks different from the mock-up, this file is wrong.
+  The layout every email shares, whichever brand it goes out as: Quill
+  Medical or Let's Do Digital. Nothing here belongs to one brand; the
+  theme `t` supplies the colours, fonts and names. Moved across from the
+  signed-off Phase 1 mock-up
+  (frontend/src/stories/emails/mockups/base.html). If a render looks
+  different from the mock-up, this file is wrong.
 
   A child template extends this and fills these blocks:
     subject    the subject line (plain text)
@@ -56,7 +59,7 @@
           display: block !important;
         }
       }
-      /* A phone: the desktop headings wrap and fill the screen. Inline
+      /* On a phone: the desktop headings wrap and fill the screen. Inline
          sizes win unless overridden, hence the !important. */
       @media (max-width: 480px) {
         .em-h1 {

@@ -31,6 +31,10 @@ class TestRoutesSendBrandedEmail:
         sent = mock_send.call_args.kwargs
         assert sent["subject"] == "Verify your Quill email address"
         assert "Welcome to Quill!" in sent["html_body"]
+        assert "Hi newuser," in sent["text_body"]
+        assert "Your username is newuser." in sent["text_body"]
+        assert "This email was sent to new@example.com." in sent["text_body"]
+        assert "This email was sent to new@example.com." in sent["html_body"]
         assert "/verify-email?token=" in sent["html_body"]
         assert "/verify-email?token=" in sent["text_body"]
         assert sent["from_name"] == "Quill Medical"
@@ -49,6 +53,13 @@ class TestRoutesSendBrandedEmail:
         assert sent["subject"] == "Reset your Quill password"
         assert "/reset-password?token=" in sent["html_body"]
         assert "expires in 30 minutes" in sent["text_body"]
+        assert f"Your username is {test_user.username}." in sent["text_body"]
+        assert (
+            f"This email was sent to {test_user.email}." in sent["text_body"]
+        )
+        assert (
+            f"This email was sent to {test_user.email}." in sent["html_body"]
+        )
 
     @pytest.mark.parametrize(
         ("full_name", "greeting"),
@@ -81,12 +92,23 @@ class TestRoutesSendBrandedEmail:
         sent = mock_send.call_args.kwargs
         assert greeting in sent["text_body"]
         assert "Your username is invited." in sent["text_body"]
-        assert "Your username is invited." in sent["html_body"]
+        assert (
+            "Your username is <strong>invited</strong>." in sent["html_body"]
+        )
+        assert (
+            "This email was sent to invited@example.com." in sent["text_body"]
+        )
 
 
 class TestTemplates:
     def test_verification_greets_only_on_registering(self) -> None:
-        values = {"verify_url": "https://example.com/v", "ttl_minutes": 60}
+        values = {
+            "name": "Sam Patel",
+            "username": "sam.patel",
+            "email": "sam@example.com",
+            "verify_url": "https://example.com/v",
+            "ttl_minutes": 60,
+        }
         welcome = render_email(
             "email_verification.html.j2", "quill", values | {"welcome": True}
         )
@@ -105,6 +127,7 @@ class TestTemplates:
             {
                 "name": "<b>Sam</b>",
                 "username": "<i>sam</i>",
+                "email": "sam@example.com",
                 "setup_url": "https://example.com/s",
                 "ttl_minutes": 30,
             },
@@ -119,3 +142,40 @@ class TestTemplates:
         assert rendered["subject"] == (
             "You're invited to Quill - set up your account"
         )
+
+    @pytest.mark.parametrize(
+        ("template", "link"),
+        [
+            ("email_verification.html.j2", "verify_url"),
+            ("password_reset.html.j2", "reset_url"),
+            ("account_invite.html.j2", "setup_url"),
+        ],
+    )
+    def test_every_account_email_says_whose_account_and_where_it_went(
+        self, template: str, link: str
+    ) -> None:
+        """Somebody reading several addresses in one mailbox can tell."""
+        rendered = render_email(
+            template,
+            "quill",
+            {
+                "name": "Sam Patel",
+                "username": "sam.patel",
+                "email": "sam@example.com",
+                link: "https://example.com/x",
+                "ttl_minutes": 30,
+                "welcome": False,
+            },
+        )
+
+        for body in (rendered["html_body"], rendered["text_body"]):
+            assert "Hi Sam Patel," in body
+            assert "This email was sent to sam@example.com." in body
+
+        # Bold in the HTML, so it can be found at a glance; plain text
+        # has no bold to give.
+        assert (
+            "Your username is <strong>sam.patel</strong>."
+            in rendered["html_body"]
+        )
+        assert "Your username is sam.patel." in rendered["text_body"]

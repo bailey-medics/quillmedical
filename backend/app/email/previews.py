@@ -69,7 +69,7 @@ _CERTIFICATE_TEMPLATE = EmailTemplate(
 )
 
 _CERTIFICATE_VALUES = {
-    "recipient_name": "Dr Sam Patel",
+    "recipient_name": "Dr John Smith",
     "exam_title": "Optical diagnosis of diminutive colorectal polyps",
     "completion_date": "25 September 2026",
     "score_summary": "Overall accuracy: 92%, High-confidence accuracy: 95%",
@@ -124,6 +124,9 @@ def previews() -> list[Preview]:
             label="Password reset",
             template="password_reset.html.j2",
             context={
+                "name": "John Smith",
+                "username": "john.smith",
+                "email": "john.smith@example.org",
                 "reset_url": "https://quill-medical.com/reset-password?token=example",
                 "ttl_minutes": 30,
             },
@@ -133,6 +136,9 @@ def previews() -> list[Preview]:
             label="Email verification",
             template="email_verification.html.j2",
             context={
+                "name": "John Smith",
+                "username": "john.smith",
+                "email": "john.smith@example.org",
                 "verify_url": (
                     "https://quill-medical.com/verify-email?token=example"
                 ),
@@ -145,8 +151,9 @@ def previews() -> list[Preview]:
             label="Account invitation",
             template="account_invite.html.j2",
             context={
-                "name": "Sam Patel",
-                "username": "sam.patel",
+                "name": "John Smith",
+                "username": "john.smith",
+                "email": "john.smith@example.org",
                 "setup_url": (
                     "https://quill-medical.com/reset-password?token=example"
                 ),
@@ -237,7 +244,7 @@ def previews() -> list[Preview]:
             label="Feedback received",
             template="feedback_received.html.j2",
             context={
-                "sender": "sam.patel",
+                "sender": "john.smith",
                 "category": "Something is wrong or inaccurate",
                 "route": "/teaching/:bankId",
                 "url": "https://quill-medical.com/admin/feedback/12",
