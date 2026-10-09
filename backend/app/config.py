@@ -23,6 +23,51 @@ from pydantic import (
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def parse_address_list(raw: str) -> list[str]:
+    """Split a comma-separated setting into the email addresses it names.
+
+    For a setting that says who is emailed, where one address became
+    several. Each is trimmed and lower-cased, as every address in Quill
+    is held; blanks between commas are dropped, so a trailing comma or a
+    stray space is not an error; and an address given twice is kept once,
+    so nobody is sent the same notice twice.
+
+    Args:
+        raw: The setting as it was given, such as ``"a@x.org, b@y.org"``.
+
+    Returns:
+        The addresses, in the order given. Empty when *raw* names none.
+
+    Raises:
+        ValueError: If an entry is not an email address. The entry is not
+            quoted, so an address never reaches a log through the error.
+    """
+    addresses: list[str] = []
+
+    for position, entry in enumerate(raw.split(","), start=1):
+        address = entry.strip().lower()
+        if not address:
+            continue
+
+        local, at, domain = address.partition("@")
+        well_formed = (
+            bool(local)
+            and bool(at)
+            and "@" not in domain
+            and "." in domain.strip(".")
+            and not any(character.isspace() for character in address)
+        )
+        if not well_formed:
+            raise ValueError(
+                f"entry {position} of the list is not an email address"
+            )
+
+        if address not in addresses:
+            addresses.append(address)
+
+    return addresses
+
+
 class Settings(BaseSettings):
     """Application settings loaded from environment variables.
 
@@ -58,6 +103,12 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         extra="ignore",
         case_sensitive=False,
+        # A setting that fails validation is reported without what it was
+        # given. Pydantic otherwise prints its input beside the error,
+        # and here that input is the environment: the JWT secret, the
+        # database passwords and the Slack webhook, into the startup log
+        # of a deploy that is already failing.
+        hide_input_in_errors=True,
         # If you use Docker secrets, uncomment:
         # secrets_dir="/run/secrets",
     )
@@ -347,10 +398,21 @@ class Settings(BaseSettings):
     FEEDBACK_NOTIFY_EMAIL: str = Field(
         "",
         description=(
-            "The address told when somebody sends feedback. Empty, the "
-            "default, sends nothing, which is what development and the "
-            "tests want. One address, not every operator: test operator "
-            "accounts exist in every environment and should get no mail."
+            "The addresses told when somebody sends feedback, separated "
+            "by commas. Empty, the default, sends nothing, which is what "
+            "development and the tests want; production refuses to start "
+            "without at least one. Named addresses, not every operator: "
+            "test operator accounts exist in every environment and should "
+            "get no mail."
+        ),
+    )
+    FEEDBACK_SLACK_WEBHOOK_URL: SecretStr | None = Field(
+        default=None,
+        description=(
+            "A Slack incoming webhook that is posted to when somebody "
+            "sends feedback, beside the email. Unset or empty, the "
+            "default, posts nothing. A secret: anybody holding the URL "
+            "can post to the channel."
         ),
     )
     EMAIL_DRY_RUN: bool = Field(
@@ -409,6 +471,64 @@ class Settings(BaseSettings):
             raise ValueError(
                 "CORS_ORIGINS must name the allowed origins when "
                 'BACKEND_ENV is production; it may not contain "*"'
+            )
+
+        return self
+
+    @model_validator(mode="after")
+    def _validate_feedback_notify_email(self) -> "Settings":
+        """Refuse to start in production with nobody to tell of feedback.
+
+        Feedback is how a problem somebody meets in Quill reaches a
+        person. With no address the notice is simply not sent, and nothing
+        else says so: the feedback sits unread until somebody happens to
+        look. The addresses come from a secret, which can be saved empty
+        or with a slip in it, so this fails at startup, where a deploy
+        stops and the old revision keeps serving.
+
+        An entry that is not an address is refused in every environment,
+        as is a value that is set and names nobody, such as a lone comma.
+        Only production insists that there is one at all.
+        """
+        addresses = parse_address_list(self.FEEDBACK_NOTIFY_EMAIL)
+
+        if self.FEEDBACK_NOTIFY_EMAIL.strip() and not addresses:
+            raise ValueError(
+                "FEEDBACK_NOTIFY_EMAIL is set but names no address; "
+                "give at least one, or leave it empty"
+            )
+
+        if self.BACKEND_ENV.lower() == "production" and not addresses:
+            raise ValueError(
+                "FEEDBACK_NOTIFY_EMAIL must name at least one address "
+                "when BACKEND_ENV is production"
+            )
+
+        return self
+
+    @model_validator(mode="after")
+    def _validate_feedback_slack_webhook_url(self) -> "Settings":
+        """Refuse a Slack webhook that does not point at Slack.
+
+        The backend posts who sent feedback, and from which page, to
+        whatever this holds. A slip in it, or a value pasted from the
+        wrong place, would send that somewhere else, and nothing would
+        say so. Unset or empty is allowed everywhere: the post is an
+        extra, and the email is what production insists on.
+
+        The value is not quoted in the error, because it is a secret.
+        """
+        webhook = self.FEEDBACK_SLACK_WEBHOOK_URL
+
+        if webhook is None:
+            return self
+
+        url = webhook.get_secret_value().strip()
+
+        if url and not url.startswith("https://hooks.slack.com/"):
+            raise ValueError(
+                "FEEDBACK_SLACK_WEBHOOK_URL must be a Slack incoming "
+                "webhook, starting https://hooks.slack.com/"
             )
 
         return self

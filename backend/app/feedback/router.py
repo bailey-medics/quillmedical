@@ -36,7 +36,7 @@ from app.analytics.router import (
     redact,
     redact_code,
 )
-from app.config import settings
+from app.config import parse_address_list, settings
 from app.db import get_core_db
 from app.deps import (
     DEP_CURRENT_USER,
@@ -47,6 +47,7 @@ from app.email.render import render_email, send_args
 from app.email_send import send_email
 from app.feedback.labels import CATEGORY_LABELS
 from app.feedback.replies import reply_is_unseen
+from app.feedback.slack import post_feedback_notice
 from app.models import Feedback, User
 from app.rate_limit import limiter
 from app.schemas.feedback import (
@@ -167,8 +168,10 @@ def submit_feedback(
     reports do, since the browser's sanitising is not something this end
     can trust. The message itself is stored as typed.
 
-    Where ``FEEDBACK_NOTIFY_EMAIL`` is set, that address is told once the
-    response has gone, with a link and without the message.
+    Where ``FEEDBACK_NOTIFY_EMAIL`` is set, each address in it is told
+    once the response has gone, with a link and without the message.
+    Where ``FEEDBACK_SLACK_WEBHOOK_URL`` is set, the same is posted to
+    Slack.
     """
     feedback = Feedback(
         user_id=current_user.id,
@@ -189,16 +192,33 @@ def submit_feedback(
     # The id and nothing else. See the module docstring.
     logger.info("feedback received", extra={"feedback_id": feedback.id})
 
-    notify = settings.FEEDBACK_NOTIFY_EMAIL.strip()
-
-    if notify:
+    # One notice each, never one email to them all: an address that
+    # bounces then costs only its own notice, and nobody is shown who
+    # else is told.
+    for address in parse_address_list(settings.FEEDBACK_NOTIFY_EMAIL):
         background_tasks.add_task(
             _notify_operator,
-            to=notify,
+            to=address,
             feedback_id=feedback.id,
             sender=current_user.username,
             category=feedback.category,
             route=feedback.route,
+        )
+
+    # The same notice in Slack, where a webhook is set. The same rule
+    # too: who, what kind, which page and a link, and never the message.
+    webhook = settings.FEEDBACK_SLACK_WEBHOOK_URL
+    webhook_url = webhook.get_secret_value().strip() if webhook else ""
+
+    if webhook_url:
+        background_tasks.add_task(
+            post_feedback_notice,
+            webhook_url=webhook_url,
+            feedback_id=feedback.id,
+            sender=current_user.username,
+            category=feedback.category,
+            route=feedback.route,
+            url=f"{settings.FRONTEND_URL}/admin/feedback/{feedback.id}",
         )
 
     return FeedbackCreatedOut(id=feedback.id)

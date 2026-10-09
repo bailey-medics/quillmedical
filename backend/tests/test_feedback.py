@@ -4,11 +4,14 @@ import logging
 import typing
 from datetime import UTC, datetime, timedelta
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.feedback.slack import feedback_notice_text
 from app.models import FEEDBACK_CATEGORIES, FEEDBACK_STATUSES, Feedback, User
 from app.schemas.feedback import (
     MAX_COMMENT,
@@ -168,6 +171,26 @@ class TestTellingAnOperator:
         assert "Something is wrong or inaccurate" in text
         assert "/teaching/:bankId" in text
 
+    def test_tells_every_address_in_the_list_its_own_notice(
+        self,
+        client: TestClient,
+        sent: list[dict[str, object]],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Stray spaces, a trailing comma and a repeat are all forgiven."""
+        monkeypatch.setattr(
+            "app.feedback.router.settings.FEEDBACK_NOTIFY_EMAIL",
+            " ops@example.test, Lead@Example.test ,ops@example.test,",
+        )
+
+        resp = client.post(ENDPOINT, json=VALID)
+
+        assert resp.status_code == 201
+        assert [email["to"] for email in sent] == [
+            "ops@example.test",
+            "lead@example.test",
+        ]
+
     def test_the_email_never_carries_the_message(
         self,
         client: TestClient,
@@ -221,6 +244,139 @@ class TestTellingAnOperator:
         for record in caplog.records:
             assert SECRET_MESSAGE not in record.getMessage()
             assert SECRET_MESSAGE not in str(record.__dict__)
+
+
+class TestTellingSlack:
+    """A webhook, where one is set, is posted the same notice."""
+
+    WEBHOOK = "https://hooks.slack.com/services/T000/B000/not-a-real-key"
+
+    @pytest.fixture
+    def posted(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> list[dict[str, object]]:
+        """Capture what would be posted, in place of posting it."""
+        calls: list[dict[str, object]] = []
+
+        def fake_post(url: str, **kwargs: object) -> httpx.Response:
+            calls.append({"url": url, **kwargs})
+
+            return httpx.Response(200, text="ok")
+
+        monkeypatch.setattr("app.feedback.slack.httpx.post", fake_post)
+
+        return calls
+
+    @pytest.fixture
+    def webhook_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(
+            "app.feedback.router.settings.FEEDBACK_SLACK_WEBHOOK_URL",
+            SecretStr(self.WEBHOOK),
+        )
+
+    def test_posts_who_what_kind_which_page_and_a_link(
+        self,
+        client: TestClient,
+        test_user: User,
+        posted: list[dict[str, object]],
+        webhook_set: None,
+    ) -> None:
+        resp = client.post(ENDPOINT, json=VALID)
+
+        assert resp.status_code == 201
+        [post] = posted
+        assert post["url"] == self.WEBHOOK
+        text = str(post["json"])
+        assert test_user.username in text
+        assert "Something is wrong or inaccurate" in text
+        assert "/teaching/:bankId" in text
+        assert f"/admin/feedback/{resp.json()['id']}|Read it in Quill" in text
+
+    def test_the_post_never_carries_the_message(
+        self,
+        client: TestClient,
+        posted: list[dict[str, object]],
+        webhook_set: None,
+    ) -> None:
+        client.post(ENDPOINT, json=VALID)
+
+        [post] = posted
+        assert SECRET_MESSAGE not in str(post)
+        assert "Example-Leak" not in str(post)
+
+    @pytest.mark.parametrize("value", [None, SecretStr(""), SecretStr("  ")])
+    def test_posts_nothing_when_no_webhook_is_set(
+        self,
+        client: TestClient,
+        posted: list[dict[str, object]],
+        monkeypatch: pytest.MonkeyPatch,
+        value: SecretStr | None,
+    ) -> None:
+        monkeypatch.setattr(
+            "app.feedback.router.settings.FEEDBACK_SLACK_WEBHOOK_URL", value
+        )
+
+        resp = client.post(ENDPOINT, json=VALID)
+
+        assert resp.status_code == 201
+        assert posted == []
+
+    @pytest.mark.parametrize("outcome", ["unreachable", "refused"])
+    def test_a_failure_to_post_leaves_the_feedback_stored_and_logs_no_url(
+        self,
+        client: TestClient,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+        webhook_set: None,
+        outcome: str,
+    ) -> None:
+        """The URL is the credential, and httpx's errors name it."""
+
+        def fail(url: str, **kwargs: object) -> httpx.Response:
+            if outcome == "unreachable":
+                raise httpx.ConnectError(f"could not reach {url}")
+
+            return httpx.Response(404, text="no_service")
+
+        monkeypatch.setattr("app.feedback.slack.httpx.post", fail)
+
+        with caplog.at_level(logging.DEBUG):
+            resp = client.post(ENDPOINT, json=VALID)
+
+        assert resp.status_code == 201
+        assert len(stored(db_session)) == 1
+        assert any("Slack post" in r.getMessage() for r in caplog.records)
+        for record in caplog.records:
+            assert "not-a-real-key" not in record.getMessage()
+            assert "not-a-real-key" not in str(record.__dict__)
+            assert SECRET_MESSAGE not in str(record.__dict__)
+
+
+class TestSlackNoticeText:
+    def test_what_a_person_typed_cannot_make_a_link_or_a_mention(self) -> None:
+        text = feedback_notice_text(
+            sender="<!channel> & co",
+            category=None,
+            route="",
+            url="https://example.test/admin/feedback/1",
+        )
+
+        assert "<!channel>" not in text
+        assert "&lt;!channel&gt; &amp; co" in text
+
+    def test_no_category_and_no_route_are_simply_left_out(self) -> None:
+        text = feedback_notice_text(
+            sender="sam",
+            category=None,
+            route="",
+            url="https://example.test/admin/feedback/1",
+        )
+
+        assert text == (
+            "*Feedback from sam*\n"
+            "<https://example.test/admin/feedback/1|Read it in Quill>"
+        )
 
 
 class TestRefusing:
