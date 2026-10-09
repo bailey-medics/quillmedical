@@ -393,9 +393,9 @@ def write(directory: Path = EMAIL_PREVIEWS_DIR) -> list[Path]:
     directory.mkdir(parents=True, exist_ok=True)
     files = build()
 
-    for stale in directory.iterdir():
-        if stale.is_file() and stale.name not in files:
-            stale.unlink()
+    for entry in directory.iterdir():
+        if entry.is_file() and entry.name not in files:
+            entry.unlink()
 
     written: list[Path] = []
 

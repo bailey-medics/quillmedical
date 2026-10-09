@@ -101,7 +101,7 @@ alembic check   # exits non-zero if the models and migrations have diverged
 ### Why this needs a real Postgres, and its own CI job
 
 Backend unit tests build their schema straight from model metadata via
-SQLite's `create_all()` (see `backend/tests/conftest.py`) - fast, but it
+SQLite's `create_all()` (see `backend/conftest.py`) - fast, but it
 never touches Alembic's migration chain at all, so it cannot exercise this
 comparison. The check needs a database actually migrated through the real
 chain, on the same engine (PostgreSQL) the migrations were written for.

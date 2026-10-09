@@ -1,5 +1,12 @@
 """Permanent, flag-gated dummy endpoints for the API-compatibility test harness.
 
+Not a test, though it serves one: it is application code, imported by
+``app.main``. It was called ``test_api_endpoints.py`` until 9 October
+2026, when tests began to live beside their modules under ``app/``. A
+name starting ``test_`` would then have been collected by pytest, and
+taken out of the production image by any rule written to keep tests out
+of it. The router and the setting keep their names.
+
 These exist solely to re-exercise the oasdiff/api-compatibility CI chain
 (fixed in PR #379) on demand, without ever touching a real production
 endpoint again. Only registered when ``TEST_API_ENDPOINTS_ENABLED`` is true

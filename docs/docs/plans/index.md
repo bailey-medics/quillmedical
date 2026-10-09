@@ -99,3 +99,4 @@
 - [Passport Registrar Portfolios](2026-10-07-passport-registrar-portfolios-plan.md)
 - [Preparing for NHS Procurement](2026-10-08-preparing-for-nhs-procurement-plan.md)
 - [Campaign Manager](2026-10-09-campaign-manager-plan.md)
+- [Tests Beside the Source](2026-10-09-tests-beside-the-source-plan.md)
