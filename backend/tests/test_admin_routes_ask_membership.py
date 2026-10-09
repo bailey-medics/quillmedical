@@ -17,7 +17,7 @@ the trust above their site.
 can only ever *widen* what it admits, because reach adds site-linked
 organisations to a set that held only direct memberships. A mistake here
 is therefore a permission that is too generous, which is the failure that
-does not announce itself. `test_place_resolver.py` pins the resolvers
+does not announce itself. `app/organisations_place_resolver_test.py` pins the resolvers
 themselves; this pins the routes that call them.
 """
 

@@ -42,7 +42,7 @@ from app.security import hash_password
 # setting for it, so there is no switch that could weaken a deployment.
 # `verify_password` reads the parameters out of the hash itself, so a hash
 # made here still verifies. The hasher production uses is kept, and
-# tests/test_security.py checks it is as strong as it should be.
+# app/security_test.py checks it is as strong as it should be.
 PRODUCTION_PASSWORD_HASHER = security._ph
 security._ph = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1)
 
