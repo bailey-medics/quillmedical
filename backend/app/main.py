@@ -287,13 +287,38 @@ logger = logging.getLogger(__name__)
 DEV_MODE = settings.BACKEND_ENV.lower().startswith("dev")
 
 
-def _verification_email(verify_url: str, *, welcome: bool) -> RenderedEmail:
+def _account_email_values(user: User) -> dict[str, str]:
+    """What every account email says about whose account it is.
+
+    The invite, the verification and the password reset all greet the
+    person, give their username and say which address the email went to.
+    People log in with the username and may have forgotten it, and many
+    read several addresses in one mailbox, so the address tells them
+    which account this is about.
+
+    Args:
+        user: The account the email is about.
+
+    Returns:
+        The ``name``, ``username`` and ``email`` those templates name.
+    """
+    return {
+        "name": user.full_name or user.username,
+        "username": user.username,
+        "email": user.email,
+    }
+
+
+def _verification_email(
+    user: User, verify_url: str, *, welcome: bool
+) -> RenderedEmail:
     """The email that asks somebody to verify their address.
 
     Sent from three places: on registering (``welcome`` greets them), and
     when a fresh link is asked for or an unverified login is refused.
 
     Args:
+        user: The account whose address is being verified.
         verify_url: The verification link.
         welcome: True on registering.
 
@@ -304,6 +329,7 @@ def _verification_email(verify_url: str, *, welcome: bool) -> RenderedEmail:
         "email_verification.html.j2",
         "quill",
         {
+            **_account_email_values(user),
             "verify_url": verify_url,
             "ttl_minutes": settings.EMAIL_VERIFY_TTL_MIN,
             "welcome": welcome,
@@ -929,7 +955,7 @@ def login(
         verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
         send_email(
             to=user.email,
-            **send_args(_verification_email(verify_url, welcome=False)),
+            **send_args(_verification_email(user, verify_url, welcome=False)),
         )
         raise HTTPException(
             status_code=403,
@@ -1501,7 +1527,7 @@ def register(
     try:
         send_email(
             to=email,
-            **send_args(_verification_email(verify_url, welcome=True)),
+            **send_args(_verification_email(user, verify_url, welcome=True)),
         )
     except EmailRateLimitError:
         # The address has had its hour's allowance, which on this route
@@ -1611,7 +1637,7 @@ def resend_verification(
         verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
         send_email(
             to=email,
-            **send_args(_verification_email(verify_url, welcome=False)),
+            **send_args(_verification_email(user, verify_url, welcome=False)),
         )
 
         # Always return ok to prevent account enumeration
@@ -1655,6 +1681,7 @@ def forgot_password(
                     "password_reset.html.j2",
                     "quill",
                     {
+                        **_account_email_values(user),
                         "reset_url": reset_url,
                         "ttl_minutes": settings.PASSWORD_RESET_TTL_MIN,
                     },
@@ -3122,8 +3149,7 @@ def send_invite_email(
                 "account_invite.html.j2",
                 "quill",
                 {
-                    "name": user.full_name or user.username,
-                    "username": user.username,
+                    **_account_email_values(user),
                     "setup_url": reset_url,
                     "ttl_minutes": settings.PASSWORD_RESET_TTL_MIN,
                 },

@@ -148,14 +148,14 @@
     "label": "Feedback received",
     "quill": {
       "file": "feedback-received--quill.html",
-      "subject": "New feedback from sam.patel",
+      "subject": "New feedback from john.smith",
       "preheader": "Something is wrong or inaccurate.",
       "fromName": "Quill Medical",
       "replyTo": null
     },
     "ldd": {
       "file": "feedback-received--ldd.html",
-      "subject": "New feedback from sam.patel",
+      "subject": "New feedback from john.smith",
       "preheader": "Something is wrong or inaccurate.",
       "fromName": "Let's Do Digital",
       "replyTo": null

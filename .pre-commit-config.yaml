@@ -84,6 +84,19 @@ repos:
         files: ^backend/app/.*\.py$
         pass_filenames: false
 
+      # Storybook shows the committed renders of every email, and a test
+      # fails in CI when they are behind the templates. This renders them
+      # whenever something an email is made from is staged, and stages the
+      # result, so the renders travel in the same commit as the change.
+      # `git add` and not a failure for the author to act on: a stacked
+      # commit that stops part-way is awkward to run again.
+      - id: render-email-previews
+        name: render email previews
+        entry: sh -c 'env -u VIRTUAL_ENV poetry -C backend run python3 scripts/render_email_previews.py && git add frontend/src/stories/emails/rendered'
+        language: system
+        files: ^(backend/app/email/|backend/app/features/teaching/email_templates\.py$|shared/brand\.yaml$)
+        pass_filenames: false
+
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1
     hooks:

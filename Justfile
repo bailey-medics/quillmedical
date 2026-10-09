@@ -1005,6 +1005,23 @@ alias sb := storybook
 storybook:
     #!/usr/bin/env bash
     {{initialise}} "storybook"
+
+    # Render the emails first. The Foundations/Emails stories show the
+    # HTML files under frontend/src/stories/emails/rendered/, which only
+    # `email-preview` writes: Storybook reads them and never renders. So
+    # without this, a template edited since the last render shows its old
+    # email, and nothing says so until the backend tests run.
+    #
+    # A failed render does not stop Storybook. Somebody working on a
+    # component with Docker down, or with a template half written, still
+    # wants it, and the committed renders are there to show.
+    if ! { just _start-docker-daemon && just email-preview; }; then
+        echo "" >&2
+        echo "⚠ The emails could not be rendered, so the email stories show" >&2
+        echo "  the renders already on disk. Run \`just email-preview\` to see why." >&2
+        echo "" >&2
+    fi
+
     cd frontend
     yarn storybook
 
