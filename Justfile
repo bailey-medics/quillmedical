@@ -1703,6 +1703,21 @@ stack-sync scope="":
         python3 "{{stack_scripts}}"/stack-forget-merged.py || return 1
         if ! gh stack sync --prune; then
             echo "  ✗ gh stack sync failed here; leaving this worktree alone." >&2
+
+            # The usual cause, and one gh reports only as git's own
+            # "cannot rebase: You have unstaged changes", which names
+            # neither the files nor the way out. Asked after the failure
+            # and not before: a sync with nothing to rebase is fine over
+            # a dirty tree, and refusing it up front would be a new fault.
+            local dirty=""
+            dirty="$(git status --porcelain --untracked-files=no)"
+            if [ -n "${dirty}" ]; then
+                echo "    Uncommitted changes are in the way of the rebase, in:" >&2
+                echo "${dirty}" | sed 's/^/      /' >&2
+                echo "    Fold them into this branch's commit with \`just stu\`," >&2
+                echo "    or put them aside with \`git stash\`, then sync again." >&2
+            fi
+
             return 1
         fi
 
