@@ -1,5 +1,5 @@
 """
-test_fhir_integration.py
+fhir_integration_test.py
 
 Integration tests for FHIR functionality.
 Tests creating, reading, and updating patients via FHIR endpoints.
@@ -8,7 +8,7 @@ Note: These are integration tests that require docker-compose services to be run
 Mark tests with @pytest.mark.integration for proper test filtering.
 
 Usage:
-    pytest tests/test_fhir_integration.py -v -m integration
+    pytest tests/fhir_integration_test.py -v -m integration
 """
 
 import httpx

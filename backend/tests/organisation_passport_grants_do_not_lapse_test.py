@@ -4,7 +4,7 @@ Migration ``57deea9f9ea6`` takes the end date off every current
 ``passport_write`` grant given through a site or organisation, and leaves
 a subscription somebody bought for themselves alone. Integration tests,
 run in the ``alembic_drift_check`` CI job and locally through
-``compose.migrate.yml``, as ``tests/test_user_competency_backfill.py``
+``compose.migrate.yml``, as ``tests/user_competency_backfill_test.py``
 describes.
 """
 

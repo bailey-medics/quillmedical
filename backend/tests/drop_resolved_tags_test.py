@@ -3,7 +3,7 @@
 Migration ``2a0640755949`` drops the column. Its downgrade fills the column
 back from the ``assessment_answer_tag`` rows, so going back loses nothing.
 Integration tests, run in the ``alembic_drift_check`` CI job and locally
-through ``compose.migrate.yml``, as ``tests/test_user_competency_backfill.py``
+through ``compose.migrate.yml``, as ``tests/user_competency_backfill_test.py``
 describes.
 """
 
@@ -17,7 +17,7 @@ from sqlalchemy import text
 
 from alembic import command
 from app.db.core_db import core_engine
-from tests.test_answer_tag_backfill import _answers, _cleanup
+from tests.answer_tag_backfill_test import _answers, _cleanup
 
 pytestmark = [pytest.mark.integration, pytest.mark.migration]
 

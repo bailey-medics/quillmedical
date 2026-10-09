@@ -1,6 +1,6 @@
 """Tests for filling, vacating and querying positions.
 
-The acceptance criteria in ``test_org_scoped_access_criteria.py`` say what a
+The acceptance criteria in ``org_scoped_access_criteria_test.py`` say what a
 position has to express. These test the service itself: that appointment is
 checked against the person's competency *at that place*, that cardinality is
 a fact about the post, and that history survives someone leaving.

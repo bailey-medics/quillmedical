@@ -4,7 +4,7 @@ Migration ``2a2a7b1ea83a`` closes every current removal row. These step
 back to the revision before it, write rows with plain SQL, step forward
 and read them. Integration tests, run in the ``alembic_drift_check`` CI
 job and locally through ``compose.migrate.yml``, as
-``tests/test_user_competency_backfill.py`` describes.
+``tests/user_competency_backfill_test.py`` describes.
 """
 
 from __future__ import annotations

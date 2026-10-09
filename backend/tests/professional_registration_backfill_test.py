@@ -5,7 +5,7 @@ JSON into rows. It is Postgres SQL and cannot run on the SQLite unit
 database, so these step back to the revision before it, seed users with
 plain SQL, step forward and read the rows. Run in the
 ``alembic_drift_check`` CI job with ``-m migration``, and locally through
-``compose.migrate.yml``, as ``tests/test_user_competency_backfill.py``
+``compose.migrate.yml``, as ``tests/user_competency_backfill_test.py``
 describes.
 """
 

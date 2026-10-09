@@ -5,7 +5,7 @@
 # to stand alone, and declaring its needs here says so. The versions must
 # still agree with the backend's, because the same code runs at both gates
 # and a version only one of them sees is a version that can make them
-# disagree. test_teaching_tooling_dependencies.py enforces that.
+# disagree. teaching_tooling_dependencies_test.py enforces that.
 [project]
 name = "quill-teaching-tooling"
 version = "0.1.0"

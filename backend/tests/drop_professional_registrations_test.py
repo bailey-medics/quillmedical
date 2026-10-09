@@ -4,7 +4,7 @@ Migration ``7c33ceaa4550`` drops the column. Its downgrade fills the column
 back from the current ``professional_registration`` rows, so going back
 loses nothing. Run in the ``alembic_drift_check`` CI job with
 ``-m migration``, and locally through ``compose.migrate.yml``, as
-``tests/test_user_competency_backfill.py`` describes.
+``tests/user_competency_backfill_test.py`` describes.
 """
 
 from __future__ import annotations

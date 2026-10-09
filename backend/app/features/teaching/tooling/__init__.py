@@ -14,5 +14,5 @@ only ``pydantic`` and ``pyyaml`` installed and no environment variables -
 ``Settings`` requires ``JWT_SECRET`` and ``CORE_DB_PASSWORD``, which a YAML
 validator has no business needing.
 
-``backend/tests/test_features_import_boundary.py`` enforces this.
+``backend/tests/features_import_boundary_test.py`` enforces this.
 """

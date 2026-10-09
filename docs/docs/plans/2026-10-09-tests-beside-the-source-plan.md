@@ -74,7 +74,7 @@ on 9 October 2026.
       flag to scan contents" and "Total lines of code: 0". It has passed
       on every commit by checking no code at all. Not fixed in this
       phase, because turning it on fails every commit until what it
-      reports is dealt with. Phase 6 does both.
+      reports is dealt with. Phase 7 does both.
 
 ## Phase 2: Move one folder, `backend/app/email/`, and look at it
 
@@ -328,7 +328,76 @@ fixtures from `backend/tests/fixtures/`, which stays where it is.
       functions in one file, and `org_units/router.py` the next, at 26
       routes. Each is its own piece of work and not part of this plan.
 
-## Phase 6: Turn the Bandit scan on, and deal with what it reports
+## Phase 6: One name for a test file, `*_test.py`, everywhere
+
+Added on 9 October 2026 at Mark's request, once the moves were done.
+Phases 2 and 3 left two conventions: `<module>_test.py` beside a module,
+and `test_<what>.py` for the 109 files still in `backend/tests/`. The
+prefix was kept on the thought that it shows which side of the line a
+test is on. The folder already shows that, so the second convention says
+nothing and costs a rule to remember.
+
+- [x] Rename every `backend/tests/test_<what>.py` to
+      `backend/tests/<what>_test.py`, with `git mv`: `test_feedback.py`
+      becomes `feedback_test.py`. 109 files. The files do not move; only
+      the name changes.
+
+- [x] Repoint the tests that import from another test by its module
+      name. Three do: `app/features/teaching/enrolment_test.py` and
+      `tests/test_teaching_place.py` import from
+      `tests.test_validate_clinical_lead`, and
+      `tests/test_drop_resolved_tags.py` from
+      `tests.test_answer_tag_backfill`.
+
+- [x] Update what names a test file by its path.
+      `.github/workflows/security-pentest.yml` runs
+      `tests/test_security_pentest.py`. `.claude/skills/f/SKILL.md`,
+      `docs/docs/cybersecurity/index.md`,
+      `docs/docs/backend/alembic-migration-safety.md` and
+      `docs/docs/safety/hazards/Hazard-0048.md` name files, as do the
+      docstrings of several tests. Older plans are left as they are:
+      they record the names the files had. 41 files had a reference
+      rewritten, each by the exact name of a renamed file.
+
+- [x] Tell pytest to collect `*_test.py` only, by taking `test_*.py`
+      out of `python_files` in `backend/pyproject.toml`. A source file
+      whose name starts with `test_` then stops being a hazard at all:
+      pytest no longer collects it, as it would have collected
+      `test_api_endpoints.py` before Phase 1 renamed it. Do this in the
+      same change as the renames, or every test in `backend/tests/`
+      stops running.
+
+- [x] Check the count of tests collected is what it was before, and
+      run the whole backend suite once. A rename that pytest cannot see
+      does not fail: it runs fewer tests and passes. The count is the
+      only thing that shows it. It was 4,181 when this phase was
+      written, and 4,181 after the renames, with the 59 tests marked
+      `integration`, which the usual recipe leaves out, counted
+      separately and also unchanged. The full suite passed.
+
+- [x] Rewrite the rule in `.github/instructions/backend.instructions.md`
+      and its copy in `.claude/rules/backend.md`, "Where a test lives",
+      to say one thing about names: a test file ends `_test.py`,
+      wherever it is. Where it lives still follows its subject.
+
+- [x] Leave `backend/conftest.py` and the helpers `competencies.py`,
+      `places.py` and `registrations.py` as they are. They are not
+      tests.
+
+- [x] Add a test that fails when a file holding tests has a name pytest
+      will not collect. Asked for by Mark while the renames were being
+      made. With only `*_test.py` collected, a test written into
+      `test_brand.py` is never run and nothing says so: the suite
+      passes with one file fewer. `tests/test_file_names_test.py` reads
+      every Python file under `backend/app/`, `backend/tests/`,
+      `backend/scripts/` and `backend/alembic/`, and fails on any that
+      defines a test and does not end `_test.py`. It reads the syntax
+      tree and not the name alone, because a source file may start with
+      `test_` and hold no tests, as `compat_harness_endpoints.py` once
+      did. Planting a `test_zz_probe.py` made it fail by name; removing
+      it made it pass.
+
+## Phase 7: Turn the Bandit scan on, and deal with what it reports
 
 Added on 9 October 2026 at Mark's request, after Phase 1 found the scan
 had never run. It is here because that is where it was found, not
@@ -416,13 +485,15 @@ the list, for anybody repeating it, is `bandit -r backend -x
   and out of sight, which is the problem being solved.
 
 - **`brand_test.py`, not `test_brand.py`** - for the sorting. It also
-  gives one unambiguous pattern for "a test that lives in the
-  application", which the `.dockerignore` rule and the tool exclusions
-  rely on. Tests that stay in `backend/tests/` keep their `test_` prefix.
+  gives one unambiguous pattern for a test, which the `.dockerignore`
+  rule, the image check and the tool exclusions rely on. The tests that
+  stayed in `backend/tests/` kept their `test_` prefix at first, and
+  Phase 6 renames them too: two conventions was one more than was
+  needed.
 
-- **Two styles side by side is accepted** - some tests beside the source
-  and some in `backend/tests/`. It is the right split, and the rule for
-  which is which is written above. The alternative, forcing behaviour
+- **Two places is accepted, two names is not** - some tests beside the
+  source and some in `backend/tests/`. It is the right split, and the
+  rule for which is which is written above. The alternative, forcing behaviour
   tests next to a module, would put them somewhere arbitrary.
 
 - **Size was not a reason to hold back** - about 200 files is a quick

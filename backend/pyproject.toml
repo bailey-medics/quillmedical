@@ -98,13 +98,18 @@ plugins = ["sqlalchemy.ext.mypy.plugin"]
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers --maxfail=1"
-# Two places. A test whose subject is one module sits beside it under
-# app/, named <module>_test.py so the two sort together. A test of a rule
-# or a journey that no one module owns is in tests/, named test_<what>.py.
-# conftest.py is at backend/, above both, so every test sees its fixtures.
+# Two places, one name. A test whose subject is one module sits beside it
+# under app/, as <module>_test.py, so the two sort together. A test of a
+# rule or a journey that no one module owns is in tests/, as
+# <what>_test.py. conftest.py is at backend/, above both, so every test
+# sees its fixtures.
+#
+# Only the suffix is collected. A file named test_<something>.py is not a
+# test here and pytest does not look in it, so a source file may start
+# with test_ without being run or left out of the production image.
 # See docs/docs/plans/2026-10-09-tests-beside-the-source-plan.md.
 testpaths = ["tests", "app"]
-python_files = ["test_*.py", "*_test.py"]
+python_files = ["*_test.py"]
 pythonpath = ["."]
 markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",

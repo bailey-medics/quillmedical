@@ -14,7 +14,7 @@ locally against the throwaway database ``compose.migrate.yml`` provides:
     docker compose -p quill-migrate-<worktree> -f compose.migrate.yml \\
         run --rm migrate sh -lc \\
         'alembic upgrade head && pytest -m migration \\
-         tests/test_user_competency_backfill.py'
+         tests/user_competency_backfill_test.py'
 
 Each test leaves the database at head with its seed removed, because the
 drift check shares the database and runs after.

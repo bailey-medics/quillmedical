@@ -35,7 +35,7 @@ from app.models import OrgUnit, PractisingCompetency, User, org_unit_member
 from app.organisations import add_org_unit_member
 from app.security import hash_password
 from tests.competencies import join_for_teaching
-from tests.test_validate_clinical_lead import _setup_org_with_site_and_lead
+from tests.validate_clinical_lead_test import _setup_org_with_site_and_lead
 
 
 def _withdraw(db: Session, user: User, org_unit_id: int) -> None:

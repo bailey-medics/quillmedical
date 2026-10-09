@@ -6,7 +6,7 @@
  * retry and the compat-generation check. Never call `fetch` directly.
  *
  * Paths are built here and nowhere else. `EXPECTED_PATHS` in
- * `backend/tests/test_passport_api_contract.py` pins every route on the
+ * `backend/tests/passport_api_contract_test.py` pins every route on the
  * backend side; `PASSPORT_PATHS` below is the mirror of it, exported so a
  * test can assert the two agree rather than leaving a typo to surface as
  * a 404 in front of a user.

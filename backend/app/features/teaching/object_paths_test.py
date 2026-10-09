@@ -59,7 +59,7 @@ class TestImportsWithoutConfiguration:
         # PATH only - deliberately no JWT_SECRET or CORE_DB_PASSWORD, so
         # a chain that reaches `app.config` fails loudly rather than
         # passing on the runner's own environment. The same shape as
-        # `test_features_import_boundary.py`, which guards the sibling
+        # `features_import_boundary_test.py`, which guards the sibling
         # property for `app.features`.
         env = {
             "PATH": os.environ.get("PATH", ""),

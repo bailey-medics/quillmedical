@@ -75,7 +75,7 @@ beforeEach(() => {
 describe("passport paths", () => {
   it("mirrors the backend's EXPECTED_PATHS, with the /api prefix stripped", () => {
     // Copied verbatim from EXPECTED_PATHS in
-    // backend/tests/test_passport_api_contract.py. `api.ts` adds the
+    // backend/tests/passport_api_contract_test.py. `api.ts` adds the
     // /api prefix itself, so the client's own paths omit it.
     const backendPaths = [
       "/api/passport",

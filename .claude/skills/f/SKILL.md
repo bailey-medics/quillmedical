@@ -320,7 +320,7 @@ past on a pull request where everything is green. So:
   test suite, and a human's to settle.
 
   **That is not a ban on `xfail` and `skip`**, which this repository uses
-  appropriately. `backend/tests/test_org_scoped_access_criteria.py` is the pattern:
+  appropriately. `backend/tests/org_scoped_access_criteria_test.py` is the pattern:
   twelve cases written from a plan, marked `xfail(strict=True)` because the
   design they describe is not built yet. They run on every suite, and the
   moment one passes, pytest reports it as unexpectedly passing and fails the

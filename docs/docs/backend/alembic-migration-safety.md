@@ -124,7 +124,7 @@ The job:
 3. `alembic check` - the actual gate; a non-empty diff fails the job.
 4. Runs every test marked `migration` (`pytest -m migration`). Each is
    also marked `integration`, so it's excluded from the normal `just ub` /
-   `unit` CI task. They include `backend/tests/test_alembic_check.py`, a
+   `unit` CI task. They include `backend/tests/alembic_check_test.py`, a
    regression test: one test asserts a freshly migrated database has no
    drift; the other temporarily registers an extra table in
    `Base.metadata` (simulating an unmigrated model change) and asserts

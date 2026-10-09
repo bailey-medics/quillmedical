@@ -1,5 +1,5 @@
 """
-test_ehrbase_integration.py
+ehrbase_integration_test.py
 
 Integration tests for EHRbase/OpenEHR functionality.
 Tests creating and reading letters via EHRbase endpoints.
@@ -8,7 +8,7 @@ Note: These are integration tests that require docker-compose services to be run
 Mark tests with @pytest.mark.integration for proper test filtering.
 
 Usage:
-    pytest tests/test_ehrbase_integration.py -v -m integration
+    pytest tests/ehrbase_integration_test.py -v -m integration
 """
 
 import httpx

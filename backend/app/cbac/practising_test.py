@@ -1,6 +1,6 @@
 """Tests for resolving what a person may practise at one place.
 
-The acceptance criteria in ``test_org_scoped_access_criteria.py`` say what the
+The acceptance criteria in ``org_scoped_access_criteria_test.py`` say what the
 model must express. These test the resolver itself: the intersection with a
 person's ceiling, both query directions, the refusal to guess a place, and
 the constraint that keeps a row pointing at exactly one thing, and the two
