@@ -19,7 +19,7 @@ SHARED_DIR = PROJECT_ROOT / "shared"
 API_COMPATIBILITY_DIR = PROJECT_ROOT / "api-compatibility"
 
 #: Where the committed email previews live, for Storybook to show. Written by
-#: `just email-preview` and checked by tests/test_email_previews.py. Inside
+#: `just email-preview` and checked by app/email/previews_test.py. Inside
 #: the frontend, because Storybook serves them; the backend unit-test
 #: container mounts this one folder so it can read and write it.
 EMAIL_PREVIEWS_DIR = (

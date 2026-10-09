@@ -6,3 +6,12 @@
 **/node_modules
 **/.DS_Store
 **/*.log
+
+# Backend tests that live beside the module they test, under backend/app/,
+# which backend/Dockerfile copies whole. Kept out of the image: nothing
+# runs them there, and their fixtures hold strings a scanner reads as
+# credentials. By the suffix only, never `test_*.py`: a source file may
+# start with `test_`, and one did until it was renamed. See
+# docs/docs/plans/2026-10-09-tests-beside-the-source-plan.md.
+backend/app/**/*_test.py
+backend/conftest.py

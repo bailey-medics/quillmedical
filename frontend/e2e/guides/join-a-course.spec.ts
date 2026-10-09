@@ -44,7 +44,7 @@ test("join a course", async ({ page }) => {
 
 // The verification email, as it is really sent. Rendered with sample
 // values by `just email-preview` for Storybook, and held true to the
-// template by `backend/tests/test_email_previews.py`, so this is a
+// template by `backend/app/email/previews_test.py`, so this is a
 // picture of the real thing with no email sent to take it.
 test("the verification email", async ({ page }) => {
   const rendered = path.join(

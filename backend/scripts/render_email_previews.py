@@ -3,7 +3,7 @@
 
 Storybook's Foundations/Emails stories show the committed renders under
 ``frontend/src/stories/emails/rendered/``, and
-``tests/test_email_previews.py`` fails in CI when a template has changed
+``app/email/previews_test.py`` fails in CI when a template has changed
 and they were not rendered again. That failure arrives after the push.
 This runs the same render at commit time, whenever something an email is
 made from is staged, so the renders go into the same commit as the

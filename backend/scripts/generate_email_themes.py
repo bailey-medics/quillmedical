@@ -17,7 +17,7 @@ Usage:
 
 The pre-commit hook ``generate-email-themes`` runs it whenever
 ``shared/brand.yaml`` is in a commit, and stages what it writes.
-``tests/test_email_theme.py`` fails while ``theme.py`` is behind the
+``app/email/theme_test.py`` fails while ``theme.py`` is behind the
 YAML, and ``emailThemes.test.ts`` does the same for the frontend's file.
 
 **This imports nothing from the app**, on purpose. ``app.email.brand``

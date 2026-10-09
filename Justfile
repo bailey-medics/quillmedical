@@ -336,7 +336,7 @@ email-preview:
     {{initialise}} "email-preview"
     # In the backend unit-test container, which mounts this worktree's
     # frontend/src/stories/emails/rendered/ for the renders to land in.
-    # Commit what changes: tests/test_email_previews.py fails while the
+    # Commit what changes: app/email/previews_test.py fails while the
     # committed renders are behind the templates.
     docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
         run --rm backend sh -lc "python -m app.email.previews"
@@ -350,7 +350,7 @@ email-themes:
     # On the host, through the backend's Poetry environment, as the
     # pre-commit hooks run: it writes one file under backend/ and one
     # under frontend/, and the unit-test container mounts only the first.
-    # Commit what changes: tests/test_email_theme.py and
+    # Commit what changes: app/email/theme_test.py and
     # emailThemes.test.ts fail while either file is behind the brand file.
     env -u VIRTUAL_ENV poetry -C backend run python3 scripts/generate_email_themes.py
 

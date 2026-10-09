@@ -26,7 +26,13 @@ APP = Path(__file__).resolve().parent.parent / "app"
 
 
 def _python_files() -> list[Path]:
-    return sorted(APP.rglob("*.py"))
+    # Application code only. A test may live beside its module under app/,
+    # named <module>_test.py, and what a test raises reaches no client.
+    return sorted(
+        path
+        for path in APP.rglob("*.py")
+        if not path.name.endswith("_test.py")
+    )
 
 
 class _RiskyNames(ast.NodeVisitor):
