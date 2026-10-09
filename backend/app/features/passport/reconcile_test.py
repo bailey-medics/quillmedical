@@ -10,7 +10,7 @@ Behind is ordinary and is healed by moving the row forward. Ahead means
 history the row was written against is gone, which is never healed here
 - healing it would overwrite the only evidence of what went wrong.
 
-Real repositories throughout, as in ``test_passport_store.py``: every
+Real repositories throughout, as in ``store_test.py``: every
 property being asserted is a property of what git actually does, and a
 mock would let the module pass while disagreeing with the store.
 """

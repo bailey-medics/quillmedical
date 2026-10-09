@@ -197,7 +197,19 @@ fixtures from `backend/tests/fixtures/`, which stays where it is.
       in `backend/tests/`: `test_teaching_tooling_dependencies.py`,
       which compares two `pyproject.toml` files and is about no module.
 
-- [ ] `backend/app/features/passport/`.
+- [x] `backend/app/features/passport/`: twenty-five tests, one or more
+      for each of `archive`, `commits`, `cover`, `cpd_periods`,
+      `definitions`, `email_templates`, `export` (and `export_audit`),
+      `frameworks`, `gcs_store`, `hashing`, `ids`, `models`, `paths`,
+      `pdf`, `reconcile`, `records`, `render`, `router` (with
+      `router_records` and `router_registrations_from_rows`), `schemas`,
+      `serialise`, `service` and `store`. Left in `backend/tests/`:
+      `test_passport_api_contract.py` and
+      `test_passport_entitlement_at_onboarding.py`, which are about a
+      contract and a journey; `test_passport_invite_token.py`, whose
+      subject is in `security.py`; and `test_passport_storage.py` and
+      `test_passport_api_schemas.py`, whose modules are outside this
+      folder and move with the top-level ones.
 
 - [ ] `backend/app/feedback/` and `backend/app/inbox/`.
 

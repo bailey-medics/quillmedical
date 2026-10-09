@@ -2,7 +2,7 @@
 
 Certificates, logbook entries, reflections and CPD: the holder's own
 claims, entered by them, countersigned by nobody. The sign-off routes are
-tested separately in ``test_passport_router.py``; what matters here is
+tested separately in ``router_test.py``; what matters here is
 the difference between the two kinds of record.
 
 **These are editable and a sign-off is not.** A mistyped logbook date
