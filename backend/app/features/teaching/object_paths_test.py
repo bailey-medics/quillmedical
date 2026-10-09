@@ -1,6 +1,6 @@
 """Tests for the teaching object-path helpers.
 
-The paths themselves are covered by ``test_teaching_storage.py``, which
+The paths themselves are covered by ``storage_test.py``, which
 reaches them through ``storage``'s re-export. What is tested *here* is
 the property this module exists for: that importing it does not
 construct ``Settings``.
@@ -33,7 +33,8 @@ from app.features.teaching.object_paths import (
 #: ``/app`` and on a bare CI runner under a workspace path, and a
 #: literal ``/app`` passes locally while failing everywhere else -
 #: which is exactly how this test first went red.
-_BACKEND_ROOT = Path(__file__).resolve().parent.parent
+#: Three folders up from here: teaching/, features/, app/, then backend/.
+_BACKEND_ROOT = Path(__file__).resolve().parents[3]
 
 
 class TestImportsWithoutConfiguration:

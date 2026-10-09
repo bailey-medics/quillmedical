@@ -159,10 +159,29 @@ fixtures from `backend/tests/fixtures/`, which stays where it is.
       which are each about a rule, and `test_org_unit_links.py` and
       `test_org_unit_surface.py`, which drive the API.
 
-- [ ] `backend/app/marketing/`.
+- [x] `backend/app/marketing/`: four tests, `mailing_list_import`,
+      `preferences`, `suppression` and `subscribers`, beside
+      `newsletter_test.py`, which moved in Phase 2. Left in
+      `backend/tests/`: `test_marketing_registration.py` and
+      `test_marketing_unsubscribe.py`, which each follow a person through
+      a journey that crosses several modules. `admin_router.py` and
+      `router.py` have no test beside them, being routers.
 
-- [ ] `backend/app/features/teaching/`, and its `tooling/` folder as a
-      pull request of its own.
+- [x] `backend/app/features/teaching/`: sixteen tests. `certificate`,
+      `door`, `enrolment`, `mdx_parser` (and `mdx_parser_validation`),
+      `media_inventory` and `media_progress`, `object_paths`, `router`,
+      `scoring`, `storage` (and `storage_gcs_layout`), `sync` (and
+      `sync_actor`), `transcode` and `video_access`. Two found files by
+      their own place on disk and had that line changed. Four tests
+      borrow helpers from the router's test and now import them from
+      `app.features.teaching.router_test`: a test may import from
+      another test wherever each of them sits. Left in `backend/tests/`:
+      the tests named for a rule, such as
+      `test_teaching_learner_gates.py`, `test_teaching_place.py` and
+      `test_teaching_admin_needs_membership.py`.
+
+- [ ] `backend/app/features/teaching/tooling/`, as a pull request of
+      its own.
 
 - [ ] `backend/app/features/passport/`.
 
