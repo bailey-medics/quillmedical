@@ -81,6 +81,37 @@ otherwise untouched unless asked to**: a diff of nothing but blank lines
 buries the change that matters, and the existing code is being re-spaced by
 hand as it is reviewed.
 
+## Where a test lives
+
+**A test whose subject is one module sits beside that module**, named
+`<module>_test.py`: `backend/app/email/brand.py` and
+`backend/app/email/brand_test.py`. The suffix, not a `test_` prefix, so
+the two sort together in a listing and the test is read with the module.
+
+**A test of a rule or a journey that no one module owns is in
+`backend/tests/`**, named `test_<what>.py`: route scoping, an access rule
+that needs a route, a competency and a membership to agree, anything that
+drives the API through the test client.
+
+- **Decide by subject, not by counting imports.** A test of
+  `newsletter.py` that stubs the email sender is still a test of
+  `newsletter.py`. Where it is not clear, it goes in `backend/tests/`.
+- **Fixtures are in `backend/conftest.py`**, above both, so a test sees
+  them wherever it is. The shared helpers stay in `backend/tests/` and
+  are imported as `tests.competencies`, `tests.places` and
+  `tests.registrations`.
+- **Never name a source file `test_*.py` or `*_test.py`.** pytest collects
+  both under `app/`, and the root `.dockerignore` keeps
+  `backend/app/**/*_test.py` out of the production image, so a source
+  file with that ending would be missing in production.
+- **A check that scans every file under `app/` must skip `*_test.py`**,
+  as `tests/test_no_raw_exceptions_in_details.py` does. A test is not
+  application code.
+
+The move is going a folder at a time: see
+[Tests beside the source plan](../../docs/docs/plans/2026-10-09-tests-beside-the-source-plan.md).
+Until a folder has been done its tests are all in `backend/tests/`.
+
 ## Transactions: the session dependency commits, routes flush
 
 **A route does not call `db.commit()`.** `get_core_db` in

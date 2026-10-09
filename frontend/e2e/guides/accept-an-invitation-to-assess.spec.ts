@@ -3,7 +3,7 @@
  *
  * The invitation email, as it is really sent: rendered with sample values
  * by `just email-preview` for Storybook, and held true to the template by
- * `backend/tests/test_email_previews.py`. No picture of the page the
+ * `backend/app/email/previews_test.py`. No picture of the page the
  * email leads to, which needs a real invitation's token to open.
  */
 

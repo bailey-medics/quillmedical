@@ -85,7 +85,7 @@ on 9 October 2026.
 
 ## Phase 2: Move one folder, `backend/app/email/`, and look at it
 
-- [ ] Move the tests whose subject is one module in `backend/app/email/`
+- [x] Move the tests whose subject is one module in `backend/app/email/`
       to sit beside it, named `<module>_test.py` and not
       `test_<module>.py`. The suffix form sorts each test directly under
       its module in a file listing, as `Brand.tsx` and `Brand.test.tsx`
@@ -98,7 +98,7 @@ on 9 October 2026.
       `test_accessibility_reminder.py` to
       `accessibility_reminder_test.py`.
 
-- [ ] Decide each of the rest by its subject, not by counting what it
+- [x] Decide each of the rest by its subject, not by counting what it
       imports. A test moves if one module is what it is about, whatever
       else it imports: a test of `newsletter.py` that stubs the email
       sender is still a test of `newsletter.py`. It stays in
@@ -111,15 +111,32 @@ on 9 October 2026.
       `test_email_addresses_are_lower_case.py` are about what routes do
       and stay. Where it is not clear, it stays.
 
-- [ ] Update what names a moved file. The pre-commit hook
-      `render-email-previews` and the docstrings in
-      `backend/app/email/previews.py`, `backend/app/paths.py`,
-      `backend/scripts/generate_email_themes.py` and
-      `compose.unit-tests.yml` all say `tests/test_email_previews.py` or
-      `tests/test_email_theme.py`. `CLAUDE.md` and
-      `.github/copilot-instructions.md` describe the layout and the
-      commands (`just ub -k "..."` keeps working; a path now may be under
-      `app/`).
+- [x] Update what names a moved file. The docstrings in
+      `backend/app/email/previews.py`, `backend/app/paths.py`, the two
+      scripts under `backend/scripts/`, `compose.unit-tests.yml`, the
+      `Justfile` and three frontend comments said
+      `tests/test_email_previews.py` or `tests/test_email_theme.py`. The
+      rule for where a test lives is written into
+      `.github/instructions/backend.instructions.md`, with its copy in
+      `.claude/rules/backend.md`, and pointed at from
+      `.github/copilot-instructions.md` and `CLAUDE.md`.
+
+- [x] Keep the moved tests out of the production image, in the root
+      `.dockerignore`: `backend/app/**/*_test.py` and
+      `backend/conftest.py`. **Brought forward from Phase 4**, where this
+      plan first put it. `backend/Dockerfile` copies `backend/app` whole,
+      so the first test moved would otherwise have shipped until Phase 4
+      was reached. Checked by building a small image from the real build
+      context: no `_test.py` under `app/`, no `conftest.py`, the renamed
+      `compat_harness_endpoints.py` present, and 131 Python files, the
+      number of modules there were before.
+
+- [x] Stop a check that scans every file under `app/` from reading the
+      moved tests as application code. One did:
+      `tests/test_no_raw_exceptions_in_details.py` runs once for each
+      Python file under `app/`, and gained eight cases when eight tests
+      moved in. It now skips `*_test.py`. The count of tests collected is
+      4,149 again, as it was before anything moved.
 
 - [ ] Stop and look at `backend/app/email/` with Mark before going on.
       This folder is the trial: whether a test beside its module does get
@@ -156,14 +173,12 @@ on 9 October 2026.
 
 ## Phase 4: Keep tests out of the production image
 
-- [ ] Exclude the moved tests in the **root** `.dockerignore`. The
-      backend image is built with the repository root as its context
-      (`context: .` in `compose.ci.yml` and `deploy.yml`), and
-      `backend/Dockerfile` copies `backend/app` whole, so
-      `backend/.dockerignore` alone does not apply. Exclude by the suffix
-      only, `backend/app/**/*_test.py`, plus `backend/conftest.py`.
-      **Not `test_*.py`**: see the renamed endpoints module in Phase 1,
-      and any other source file whose name starts with `test_`.
+- [x] Exclude the moved tests in the **root** `.dockerignore`. Done in
+      Phase 2, before the first test moved: see there. The backend image
+      is built with the repository root as its context (`context: .` in
+      `compose.ci.yml` and `deploy.yml`), so `backend/.dockerignore`
+      alone does not apply. By the suffix only, and **not `test_*.py`**:
+      see the renamed endpoints module in Phase 1.
 
 - [ ] Shipping tests would do little harm, since nothing runs them and
       the test-only packages are not installed in the image. They are

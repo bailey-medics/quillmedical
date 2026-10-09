@@ -3,7 +3,7 @@
  *
  * The backend renders every email with sample values into `rendered/`
  * (`just email-preview`), with an `index.json` holding the inbox line each
- * shows above its email. `backend/tests/test_email_previews.py` fails when
+ * shows above its email. `backend/app/email/previews_test.py` fails when
  * the templates change and the renders are not updated, so what Storybook
  * shows is what the backend sends.
  */

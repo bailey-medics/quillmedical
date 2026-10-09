@@ -3,7 +3,7 @@
 Storybook's Foundations/Emails stories show what the backend actually
 sends, not a copy of the design. CI's Storybook build runs without
 Python, so it cannot render the templates itself: the renders are
-committed, and ``tests/test_email_previews.py`` fails when a template
+committed, and ``app/email/previews_test.py`` fails when a template
 changes and they are not rendered again.
 
 Run with ``just email-preview``, which writes one HTML file per preview
