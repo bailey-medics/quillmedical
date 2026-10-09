@@ -19,7 +19,7 @@ or sideways.
 
 Migration `b4c2e7a91f38` seeds the rows from the memberships they
 replace, so the answer on the day it deploys is the answer the day
-before. `test_practising_competency_backfill.py` covers that.
+before. `practising_competency_backfill_test.py` covers that.
 """
 
 from __future__ import annotations

@@ -7,7 +7,7 @@ users and rows with plain SQL, step forward and read what it wrote.
 
 Integration tests, run in the ``alembic_drift_check`` CI job and locally
 through ``compose.migrate.yml``, as
-``tests/test_user_competency_backfill.py`` describes. Each leaves the
+``tests/user_competency_backfill_test.py`` describes. Each leaves the
 database at head with its seed removed.
 """
 

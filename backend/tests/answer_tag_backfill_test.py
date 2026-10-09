@@ -5,7 +5,7 @@ rows. It is Postgres SQL and cannot run on the SQLite unit database, so
 these step back to the revision before it, seed an answer chain with
 plain SQL, step forward and read the rows. Integration tests, run in the
 ``alembic_drift_check`` CI job and locally through ``compose.migrate.yml``,
-as ``tests/test_user_competency_backfill.py`` describes.
+as ``tests/user_competency_backfill_test.py`` describes.
 """
 
 from __future__ import annotations

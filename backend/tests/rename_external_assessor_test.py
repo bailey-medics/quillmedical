@@ -3,7 +3,7 @@
 Migration ``4fd333faf33b`` moves ``users.base_profession`` to the new id
 and its downgrade moves it back. Run in the ``alembic_drift_check`` CI job
 with ``-m migration``, and locally through ``compose.migrate.yml``, as
-``tests/test_user_competency_backfill.py`` describes.
+``tests/user_competency_backfill_test.py`` describes.
 """
 
 from __future__ import annotations

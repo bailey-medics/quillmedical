@@ -71,7 +71,7 @@ def _rows(db: Session, user_id: int) -> list[UserCompetency]:
 
     Rows seeded from the person's base profession are left out: every save
     writes them, whatever the lists say, and
-    ``tests/test_profession_seeds_rows.py`` is where they are pinned.
+    ``tests/profession_seeds_rows_test.py`` is where they are pinned.
     """
     db.expire_all()
 

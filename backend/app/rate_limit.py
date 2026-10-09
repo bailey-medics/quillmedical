@@ -19,7 +19,7 @@ from app.config import settings
 #: backend from one address, and between them their logins exceed the five
 #: a minute ``/auth/login`` allows, so a valid login in the second project
 #: was refused with a 429 and the run failed. Tests of the limiter itself
-#: force-enable it, as ``test_security_pentest.py`` does.
+#: force-enable it, as ``security_pentest_test.py`` does.
 limiter = Limiter(
     key_func=get_remote_address,
     enabled=settings.BACKEND_ENV not in {"development", "testing"},

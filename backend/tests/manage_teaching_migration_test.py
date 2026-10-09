@@ -1,14 +1,14 @@
-"""Giving teaching members their place, against Postgres.
+"""Moving teaching to ``manage_teaching``, against Postgres.
 
-Migration ``3d7a91c5e6f2`` writes a ``practising_competency`` row for
-``take_teaching_modules`` wherever a holder is already a member, and
-first seeds the teaching accounts that registered themselves and were
-never given a teaching competency at all. It is Postgres SQL and cannot
-run on the SQLite unit database, so these step back to the revision
-before it, seed with plain SQL, step forward and read what it wrote.
+Migration ``16834fc0663d`` folds ``teaching_manager`` into
+``teaching_admin`` and moves ``manage_teaching_content`` rows to
+``manage_teaching``. It is Postgres SQL and cannot run on the SQLite unit
+database, so these step back to the revision before it, seed users and rows
+with plain SQL, step forward and read what it wrote.
 
-Integration tests, run in the ``alembic_drift_check`` CI job, as
-``tests/test_user_competency_backfill.py`` describes. Each leaves the
+Integration tests, run in the ``alembic_drift_check`` CI job and locally
+through ``compose.migrate.yml``, as
+``tests/user_competency_backfill_test.py`` describes. Each leaves the
 database at head with its seed removed.
 """
 
@@ -26,16 +26,13 @@ from app.db.core_db import core_engine
 
 pytestmark = [pytest.mark.integration, pytest.mark.migration]
 
-BEFORE = "7d0086c2b783"
-PLACE = "3d7a91c5e6f2"
-PREFIX = "teaching_place_test_"
-
-RESULTS = "view_teaching_results"
-MODULES = "take_teaching_modules"
+BEFORE = "79a6ba344abb"
+MOVE = "16834fc0663d"
+PREFIX = "manage_teaching_test_"
 
 
 @pytest.fixture
-def before_place() -> Iterator[Config]:
+def before_move() -> Iterator[Config]:
     config = Config("alembic.ini")
     command.upgrade(config, "head")
     _cleanup()
@@ -143,6 +140,16 @@ def _closed(user_id: int) -> set[str]:
         return {r[0] for r in rows}
 
 
+def _profession(user_id: int) -> str:
+    with core_engine.connect() as conn:
+        return str(
+            conn.execute(
+                text("SELECT base_profession FROM users WHERE id = :id"),
+                {"id": user_id},
+            ).scalar_one()
+        )
+
+
 def _practising(user_id: int) -> set[str]:
     with core_engine.connect() as conn:
         rows = conn.execute(
@@ -155,106 +162,88 @@ def _practising(user_id: int) -> set[str]:
         return {r[0] for r in rows}
 
 
-def _join(conn: Connection, user_id: int, org_id: int) -> None:
-    conn.execute(
-        text("""
-            INSERT INTO org_unit_member (org_unit_id, user_id, capacity)
-            VALUES (:org_id, :user_id, 'trainee')
-        """),
-        {"org_id": org_id, "user_id": user_id},
-    )
-
-
-def _places(user_id: int) -> set[int]:
-    with core_engine.connect() as conn:
-        rows = conn.execute(
-            text("""
-                SELECT org_unit_id FROM practising_competency
-                 WHERE user_id = :user_id AND competency = :competency
-            """),
-            {"user_id": user_id, "competency": MODULES},
-        )
-        return {int(r[0]) for r in rows}
-
-
-def test_a_member_who_holds_it_gets_a_place(before_place: Config) -> None:
-    with core_engine.begin() as conn:
-        user_id = _user(conn, "member", "teaching_delegate")
-        org_id = _org(conn)
-        _grant(conn, user_id, RESULTS, "profession")
-        _grant(conn, user_id, MODULES, "profession")
-        _join(conn, user_id, org_id)
-
-    command.upgrade(before_place, PLACE)
-
-    assert _places(user_id) == {org_id}
-
-
-def test_a_member_who_does_not_hold_it_gets_none(
-    before_place: Config,
+def test_a_teaching_manager_becomes_a_teaching_admin(
+    before_move: Config,
 ) -> None:
+    """The profession moves and its manager-only rows close.
+
+    What the old profession seeded goes; the competency the new one
+    carries arrives in place of ``manage_teaching_content``.
+    """
     with core_engine.begin() as conn:
-        user_id = _user(conn, "consultant", "consultant")
-        org_id = _org(conn)
-        _join(conn, user_id, org_id)
+        user_id = _user(conn, "manager", "teaching_manager")
+        for competency in (
+            "view_teaching_cases",
+            "manage_teaching_content",
+            "view_teaching_analytics",
+            "manage_users",
+            "manage_staff_membership",
+            "manage_practising_competencies",
+        ):
+            _grant(conn, user_id, competency, "profession")
 
-    command.upgrade(before_place, PLACE)
+    command.upgrade(before_move, MOVE)
 
-    assert _places(user_id) == set()
+    assert _profession(user_id) == "teaching_admin"
+    assert _current(user_id) == {
+        "view_teaching_cases",
+        "manage_teaching",
+        "view_teaching_analytics",
+    }
+    assert {
+        "manage_teaching_content",
+        "manage_users",
+        "manage_staff_membership",
+        "manage_practising_competencies",
+    } <= _closed(user_id)
 
 
-def test_a_never_seeded_delegate_is_given_both_and_a_place(
-    before_place: Config,
+def test_a_hand_granted_manage_users_row_stays_open(
+    before_move: Config,
 ) -> None:
-    """The self-registered delegate: the profession and no teaching row."""
+    """Only what the profession seeded is closed."""
     with core_engine.begin() as conn:
-        user_id = _user(conn, "registered", "teaching_delegate")
-        org_id = _org(conn)
-        _grant(conn, user_id, "access_own_patient_records", "profession")
-        _join(conn, user_id, org_id)
+        user_id = _user(conn, "granted", "teaching_manager")
+        _grant(conn, user_id, "manage_users", "admin")
 
-    command.upgrade(before_place, PLACE)
+    command.upgrade(before_move, MOVE)
 
-    assert {RESULTS, MODULES} <= _current(user_id)
-    assert _places(user_id) == {org_id}
+    assert "manage_users" in _current(user_id)
 
 
-def test_somebody_it_was_taken_from_is_left_without(
-    before_place: Config,
-) -> None:
-    """A closed row says an administrator decided; that stands."""
+def test_other_professions_keep_manage_users(before_move: Config) -> None:
     with core_engine.begin() as conn:
-        user_id = _user(conn, "removed", "teaching_delegate")
-        org_id = _org(conn)
-        _join(conn, user_id, org_id)
-        conn.execute(
-            text("""
-                INSERT INTO user_competency
-                    (user_id, competency_id, starts_on, ends_on, source,
-                     created_at)
-                VALUES (:user_id, :competency_id,
-                        NOW() - INTERVAL '2 days',
-                        NOW() - INTERVAL '1 day', 'profession', NOW())
-            """),
-            {"user_id": user_id, "competency_id": MODULES},
-        )
+        user_id = _user(conn, "clinic", "clinic_manager")
+        _grant(conn, user_id, "manage_users", "profession")
 
-    command.upgrade(before_place, PLACE)
+    command.upgrade(before_move, MOVE)
 
-    assert _current(user_id) == set()
-    assert _places(user_id) == set()
+    assert _profession(user_id) == "clinic_manager"
+    assert "manage_users" in _current(user_id)
 
 
-def test_running_it_twice_writes_nothing_new(before_place: Config) -> None:
+def test_practising_rows_move_to_manage_teaching(before_move: Config) -> None:
     with core_engine.begin() as conn:
-        user_id = _user(conn, "twice", "teaching_delegate")
+        user_id = _user(conn, "practising", "teaching_admin")
         org_id = _org(conn)
-        _grant(conn, user_id, RESULTS, "profession")
-        _grant(conn, user_id, MODULES, "profession")
-        _join(conn, user_id, org_id)
+        _practise(conn, user_id, org_id, "manage_teaching_content")
 
-    command.upgrade(before_place, PLACE)
-    command.downgrade(before_place, BEFORE)
-    command.upgrade(before_place, PLACE)
+    command.upgrade(before_move, MOVE)
 
-    assert _places(user_id) == {org_id}
+    assert _practising(user_id) == {"manage_teaching"}
+
+
+def test_downgrade_moves_the_competency_back(before_move: Config) -> None:
+    with core_engine.begin() as conn:
+        user_id = _user(conn, "roundtrip", "teaching_admin")
+        org_id = _org(conn)
+        _grant(conn, user_id, "manage_teaching_content", "profession")
+        _practise(conn, user_id, org_id, "manage_teaching_content")
+
+    command.upgrade(before_move, MOVE)
+    command.downgrade(before_move, BEFORE)
+
+    current: set[str] = _current(user_id)
+    assert "manage_teaching_content" in current
+    assert "manage_teaching" not in current
+    assert _practising(user_id) == {"manage_teaching_content"}

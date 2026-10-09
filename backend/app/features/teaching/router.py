@@ -156,7 +156,7 @@ def _require_csrf(request: Request, db: Session = _DEP_SESSION) -> None:
 _DEP_USER = Depends(_get_current_user)
 _DEP_REQUIRE_CSRF = Depends(_require_csrf)
 # The two doors a learner goes through. Every learner route carries one
-# of them at its decorator, and `tests/test_teaching_learner_gates.py`
+# of them at its decorator, and `tests/teaching_learner_gates_test.py`
 # fails if a route is added with neither.
 #
 # Results is the outer door: reaching teaching at all, and somebody's

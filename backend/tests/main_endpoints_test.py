@@ -330,7 +330,7 @@ class TestFailuresDoNotLeakExceptionText:
     number, a request URL with an identifier in it, or a fragment of a
     clinical document, and which pages render on screen via ``err.message``.
 
-    The guard in ``test_no_raw_exceptions_in_details.py`` stops the shape
+    The guard in ``no_raw_exceptions_in_details_test.py`` stops the shape
     coming back. This checks the behaviour: that a real failure produces the
     authored message and the code, and that the exception's own text is
     nowhere in the response.

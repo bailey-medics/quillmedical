@@ -34,7 +34,7 @@ from app.features.teaching.router_test import (
     _seed_bank,
 )
 from app.models import OrgUnit, User, org_unit_member
-from tests.test_validate_clinical_lead import _setup_org_with_site_and_lead
+from tests.validate_clinical_lead_test import _setup_org_with_site_and_lead
 
 BANK = "test-bank"
 

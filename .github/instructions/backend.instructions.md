@@ -83,14 +83,21 @@ hand as it is reviewed.
 
 ## Where a test lives
 
+**A test file ends `_test.py`, wherever it is.** That is the only name
+pytest collects (`python_files` in `backend/pyproject.toml`), so there is
+one convention and not two.
+
 **A test whose subject is one module sits beside that module**, named
-`<module>_test.py`: `backend/app/email/brand.py` and
-`backend/app/email/brand_test.py`. The suffix, not a `test_` prefix, so
-the two sort together in a listing and the test is read with the module.
+for it: `backend/app/email/brand.py` and
+`backend/app/email/brand_test.py`. The two sort together in a listing,
+so the test is read with the module. Where a module has several tests,
+each is named for the module first and what it covers second:
+`validate_test.py`, `validate_config_test.py`.
 
 **A test of a rule or a journey that no one module owns is in
-`backend/tests/`**, named `test_<what>.py`: route scoping, an access rule
-that needs a route, a competency and a membership to agree, anything that
+`backend/tests/`**, named for what it checks:
+`admin_user_route_scoping_test.py`. Route scoping, an access rule that
+needs a route, a competency and a membership to agree, anything that
 drives the API through the test client.
 
 - **Decide by subject, not by counting imports.** A test of
@@ -100,17 +107,21 @@ drives the API through the test client.
   them wherever it is. The shared helpers stay in `backend/tests/` and
   are imported as `tests.competencies`, `tests.places` and
   `tests.registrations`.
-- **Never name a source file `test_*.py` or `*_test.py`.** pytest collects
-  both under `app/`, and the root `.dockerignore` keeps
-  `backend/app/**/*_test.py` out of the production image, so a source
-  file with that ending would be missing in production.
+- **Never name a source file `*_test.py`.** pytest collects it, and the
+  root `.dockerignore` keeps `backend/app/**/*_test.py` out of the
+  production image, so a source file with that ending would be missing
+  in production. A name starting `test_` is safe: nothing treats it as
+  a test.
 - **A check that scans every file under `app/` must skip `*_test.py`**,
-  as `tests/test_no_raw_exceptions_in_details.py` does. A test is not
+  as `tests/no_raw_exceptions_in_details_test.py` does. A test is not
   application code.
+- **To run one file, give its path**: `just ub app/email/brand_test.py`
+  or `just ub tests/feedback_test.py`. `just ub -k "words"` matches on
+  the names of test functions and classes as before.
 
-The move is going a folder at a time: see
-[Tests beside the source plan](../../docs/docs/plans/2026-10-09-tests-beside-the-source-plan.md).
-Until a folder has been done its tests are all in `backend/tests/`.
+See
+[Tests beside the source plan](../../docs/docs/plans/2026-10-09-tests-beside-the-source-plan.md)
+for how the tests came to be laid out this way.
 
 ## Transactions: the session dependency commits, routes flush
 
@@ -269,7 +280,7 @@ the baseline included - is held to the full standard below.
   from model metadata (`conftest.py`'s `create_all()`) and never exercise
   Alembic's autogenerate comparison, so it cannot live in the DB-less `unit`
   matrix task.
-- Regression-tested in `backend/tests/test_alembic_check.py`
+- Regression-tested in `backend/tests/alembic_check_test.py`
   (`@pytest.mark.integration` - excluded from the normal `just ub` / `unit`
   CI task; run explicitly against a migrated Postgres, as the
   `alembic_drift_check` job does).
@@ -278,7 +289,7 @@ the baseline included - is held to the full standard below.
   pytest.mark.migration]`. The `alembic_drift_check` job runs
   `pytest -m migration`, so a new one is picked up without editing the
   workflow. Locally, run them with `compose.migrate.yml`, as
-  `backend/tests/test_user_competency_backfill.py` describes.
+  `backend/tests/user_competency_backfill_test.py` describes.
 
 ### Renaming or retiring a column
 

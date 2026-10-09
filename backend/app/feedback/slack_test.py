@@ -1,7 +1,7 @@
 """Posting to Slack that feedback has arrived.
 
 What the route does with this, and that it never carries the message, is
-in ``tests/test_feedback.py``. This is the module on its own: the words
+in ``tests/feedback_test.py``. This is the module on its own: the words
 of the post, and what happens when Slack cannot be reached.
 """
 
