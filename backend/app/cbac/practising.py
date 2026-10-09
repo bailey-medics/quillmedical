@@ -209,15 +209,18 @@ def authorise_practice(
 ) -> bool:
     """Record that somebody may practise a competency at one org_unit.
 
+    The competency comes first: the person must already hold it, and
+    this raises ValueError if they do not. It is not a grant of the
+    competency itself, so a caller giving both does the grant first.
+
     Authorising the same thing twice is not an error and writes nothing:
     the row already there keeps who authorised it and when.
 
-    Not a grant of the competency itself: the person must already hold
-    it, and a caller giving both does the grant first. Whether the caller
-    may write the row at all is decided before this is called.
+    Whether the caller may write the row at all is decided before this
+    is called.
 
     Args:
-        db: Database session. The row is flushed, not committed.
+        db: Database session.
         user_id: The person being authorised.
         org_unit_id: Where.
         competency: A competency id from ``shared/competency-definitions/``.
@@ -237,13 +240,14 @@ def authorise_practice(
 
     if person is None:
         raise ValueError(f"No user {user_id} to authorise.")
+
     if competency not in person.get_final_competencies():
         raise ValueError(
             f"User {user_id} does not hold {competency}, so cannot be "
             "authorised to practise it anywhere."
         )
 
-    existing = db.scalar(
+    existing_competency = db.scalar(
         select(PractisingCompetency.id).where(
             PractisingCompetency.user_id == user_id,
             PractisingCompetency.competency == competency,
@@ -251,7 +255,7 @@ def authorise_practice(
         )
     )
 
-    if existing is not None:
+    if existing_competency is not None:
         return False
 
     db.add(
@@ -285,7 +289,7 @@ def withdraw_practice(
     at any other org_unit.
 
     Args:
-        db: Database session. The delete is flushed, not committed.
+        db: Database session.
         user_id: The person.
         org_unit_id: Where.
         competency: A competency id from ``shared/competency-definitions/``.
