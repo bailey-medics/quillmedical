@@ -395,7 +395,7 @@ project_id              = "quill-medical-app"
 environment             = "app"
 enable_fhir             = false
 enable_ha               = false
-db_tier                 = "db-f1-micro"
+db_tier                 = "db-custom-1-3840"
 cloud_run_max_instances = 5
 ```
 
@@ -546,7 +546,6 @@ The job is defined in the `cloud-run-job` Terraform module and uses a separate D
 ### Future improvements
 
 - CPU/memory monitoring (uptime, 5xx and disk alerts exist)
-- Production database tier upgrade from `db-f1-micro`
 - High availability for production Cloud SQL
 
 ## Retired environments

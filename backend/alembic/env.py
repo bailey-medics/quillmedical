@@ -55,7 +55,6 @@ def run_migrations_online() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        future=True,  # SQLAlchemy 2.0 style
     )
 
     with connectable.connect() as connection:

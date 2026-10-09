@@ -21,7 +21,13 @@ domain      = "quill-medical.com"
 # This environment holds the quill-medical.com zone. No other may set it.
 manage_dns_zone = true
 
-db_tier     = "db-f1-micro"
+# One dedicated vCPU and 3.75 GB. Google keeps the shared-core tiers,
+# db-f1-micro and db-g1-small, out of the Cloud SQL SLA and says not to
+# run production on them. This tier also sets how many connections
+# Postgres accepts, 100 by default at this memory size, and the pool in
+# backend/app/db/core_db.py is sized against that number: change one
+# and check the other.
+db_tier     = "db-custom-1-3840"
 enable_fhir = false # No FHIR/EHRbase - single auth DB + Cloud Storage
 enable_ha   = false
 
