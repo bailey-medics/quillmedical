@@ -38,44 +38,52 @@ def inject_dev_defaults() -> None:
         )
     # Database passwords
     if not os.environ.get("CORE_DB_PASSWORD"):
-        os.environ["CORE_DB_PASSWORD"] = "dev-auth-password"
+        # Here and below: a placeholder so the app imports, never a
+        # real secret.
+        os.environ["CORE_DB_PASSWORD"] = "dev-auth-password"  # nosec B105
         print(
             "(export_openapi) WARNING: CORE_DB_PASSWORD not set; "
             "using temporary dev password for export"
         )
     if not os.environ.get("FHIR_DB_PASSWORD"):
-        os.environ["FHIR_DB_PASSWORD"] = "dev-fhir-password"
+        os.environ["FHIR_DB_PASSWORD"] = "dev-fhir-password"  # nosec B105
         print(
             "(export_openapi) WARNING: FHIR_DB_PASSWORD not set; "
             "using temporary dev password for export"
         )
     if not os.environ.get("EHRBASE_DB_PASSWORD"):
-        os.environ["EHRBASE_DB_PASSWORD"] = "dev-ehrbase-db-password"
+        os.environ["EHRBASE_DB_PASSWORD"] = (  # nosec B105
+            "dev-ehrbase-db-password"
+        )
         print(
             "(export_openapi) WARNING: EHRBASE_DB_PASSWORD not set; "
             "using temporary dev password for export"
         )
     # EHRbase API credentials
     if not os.environ.get("EHRBASE_PASSWORD"):
-        os.environ["EHRBASE_PASSWORD"] = "dev-password"
+        os.environ["EHRBASE_PASSWORD"] = "dev-password"  # nosec B105
         print(
             "(export_openapi) WARNING: EHRBASE_PASSWORD not set; "
             "using temporary dev password for export"
         )
     if not os.environ.get("EHRBASE_ADMIN_PASSWORD"):
-        os.environ["EHRBASE_ADMIN_PASSWORD"] = "dev-admin-password"
+        os.environ["EHRBASE_ADMIN_PASSWORD"] = (  # nosec B105
+            "dev-admin-password"
+        )
         print(
             "(export_openapi) WARNING: EHRBASE_ADMIN_PASSWORD not set; "
             "using temporary dev admin password for export"
         )
     if not os.environ.get("EHRBASE_API_PASSWORD"):
-        os.environ["EHRBASE_API_PASSWORD"] = "dev-api-password"
+        os.environ["EHRBASE_API_PASSWORD"] = "dev-api-password"  # nosec B105
         print(
             "(export_openapi) WARNING: EHRBASE_API_PASSWORD not set; "
             "using temporary dev password for export"
         )
     if not os.environ.get("EHRBASE_API_ADMIN_PASSWORD"):
-        os.environ["EHRBASE_API_ADMIN_PASSWORD"] = "dev-api-admin-password"
+        os.environ["EHRBASE_API_ADMIN_PASSWORD"] = (  # nosec B105
+            "dev-api-admin-password"
+        )
         print(
             "(export_openapi) WARNING: EHRBASE_API_ADMIN_PASSWORD not set; "
             "using temporary dev password for export"

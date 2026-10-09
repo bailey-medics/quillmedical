@@ -88,7 +88,9 @@ def accent(text: str, colour: str) -> Markup:
     """
     escaped = str(escape(text))
 
-    return Markup(
+    # Both the text and the colour are escaped before this marks the
+    # result safe.
+    return Markup(  # nosec B704
         _ACCENT.sub(
             f'<em style="font-style: italic; color: {escape(colour)}">'
             r"\1</em>",

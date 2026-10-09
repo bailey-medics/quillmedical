@@ -4,14 +4,23 @@
 import base64
 import logging
 from typing import Any
-from xml.etree.ElementTree import ParseError
-from xml.etree.ElementTree import fromstring as xml_fromstring
+
+# Bandit warns that this parser is unsafe on XML from a stranger. Its one
+# use, in upload_template, is on an operator's own template file.
+from xml.etree.ElementTree import ParseError  # nosec B405
+from xml.etree.ElementTree import fromstring as xml_fromstring  # nosec B405
 
 import requests
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+#: How long one request to EHRbase may take, in seconds: ten to connect
+#: and thirty for the answer to start arriving. ``requests`` has no
+#: limit of its own, so without this a call to an EHRbase that has
+#: stopped answering never returns, and holds its worker for good.
+REQUEST_TIMEOUT: tuple[float, float] = (10, 30)
 
 
 class EhrAlreadyExistsError(Exception):
@@ -88,7 +97,9 @@ def create_ehr(
         "is_queryable": True,
     }
 
-    response = requests.post(url, json=payload, headers=headers)
+    response = requests.post(
+        url, json=payload, headers=headers, timeout=REQUEST_TIMEOUT
+    )
 
     if response.status_code == 409:
         raise EhrAlreadyExistsError(
@@ -130,7 +141,9 @@ def get_ehr_by_subject(
     params = {"subject_id": subject_id, "subject_namespace": subject_namespace}
 
     try:
-        response = requests.get(url, params=params, headers=headers)
+        response = requests.get(
+            url, params=params, headers=headers, timeout=REQUEST_TIMEOUT
+        )
         if response.status_code == 404:
             return None
         response.raise_for_status()
@@ -198,7 +211,9 @@ def upload_template(template_xml: str) -> dict[str, Any]:
     """
     # Fail-fast: validate XML well-formedness before sending
     try:
-        xml_fromstring(template_xml)
+        # An operator's own template file, never a user's: no route
+        # calls this. Use defusedxml if one ever does.
+        xml_fromstring(template_xml)  # nosec B314
     except ParseError as exc:
         raise ValueError(f"Invalid template XML: {exc}") from exc
 
@@ -209,7 +224,9 @@ def upload_template(template_xml: str) -> dict[str, Any]:
     }
 
     try:
-        response = requests.post(url, data=template_xml, headers=headers)
+        response = requests.post(
+            url, data=template_xml, headers=headers, timeout=REQUEST_TIMEOUT
+        )
         response.raise_for_status()
         return response.json()  # type: ignore[no-any-return]
     except requests.RequestException as exc:
@@ -231,7 +248,7 @@ def list_templates() -> list[str]:
     headers = get_auth_header()
 
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         return response.json()  # type: ignore[no-any-return]
     except requests.RequestException as exc:
@@ -273,7 +290,12 @@ def create_composition(
     }
 
     try:
-        response = requests.post(url, json=composition_data, headers=headers)
+        response = requests.post(
+            url,
+            json=composition_data,
+            headers=headers,
+            timeout=REQUEST_TIMEOUT,
+        )
         response.raise_for_status()
         return response.json()  # type: ignore[no-any-return]
     except requests.RequestException as exc:
@@ -306,7 +328,7 @@ def get_composition(ehr_id: str, composition_uid: str) -> dict[str, Any]:
     headers = get_auth_header()
 
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         return response.json()  # type: ignore[no-any-return]
     except requests.RequestException as exc:
@@ -316,12 +338,19 @@ def get_composition(ehr_id: str, composition_uid: str) -> dict[str, Any]:
         ) from exc
 
 
-def query_aql(aql_query: str) -> dict[str, Any]:
+def query_aql(
+    aql_query: str, parameters: dict[str, str] | None = None
+) -> dict[str, Any]:
     """
     Execute an AQL query against EHRbase.
 
+    A value that varies goes in *parameters* and is named in the query
+    as ``$name``. It is never written into the query string, so nothing
+    in a value can be read as part of the query.
+
     Args:
         aql_query: The AQL query string
+        parameters: A value for each ``$name`` in the query
 
     Returns:
         Query results
@@ -338,10 +367,14 @@ def query_aql(aql_query: str) -> dict[str, Any]:
         "Content-Type": "application/json",
     }
 
-    payload = {"q": aql_query}
+    payload: dict[str, Any] = {"q": aql_query}
+    if parameters:
+        payload["query_parameters"] = parameters
 
     try:
-        response = requests.post(url, json=payload, headers=headers)
+        response = requests.post(
+            url, json=payload, headers=headers, timeout=REQUEST_TIMEOUT
+        )
         response.raise_for_status()
         return response.json()  # type: ignore[no-any-return]
     except requests.RequestException as exc:
@@ -362,13 +395,13 @@ def list_compositions_for_ehr(ehr_id: str) -> list[dict[str, Any]]:
     if not ehr_id or not ehr_id.strip():
         raise ValueError("ehr_id must be a non-empty string")
 
-    aql = f"""
+    aql = """
     SELECT c
-    FROM EHR e[ehr_id/value='{ehr_id}']
+    FROM EHR e[ehr_id/value=$ehr_id]
     CONTAINS COMPOSITION c
     """
 
-    result = query_aql(aql)
+    result = query_aql(aql, {"ehr_id": ehr_id})
 
     return result.get("rows", [])  # type: ignore[no-any-return]
 
@@ -526,18 +559,18 @@ def list_letters_for_patient(patient_id: str) -> list[dict[str, Any]]:
         ehr_id = ehr["ehr_id"]["value"]
 
         # Query for all report compositions (letters)
-        aql = f"""
+        aql = """
         SELECT
             c/uid/value as composition_uid,
             c/name/value as title,
             c/context/start_time/value as created_at,
             c/composer/name as author
-        FROM EHR e[ehr_id/value='{ehr_id}']
+        FROM EHR e[ehr_id/value=$ehr_id]
         CONTAINS COMPOSITION c[openEHR-EHR-COMPOSITION.report.v1]
         ORDER BY c/context/start_time/value DESC
         """
 
-        result = query_aql(aql)
+        result = query_aql(aql, {"ehr_id": ehr_id})
         return result.get("rows", [])  # type: ignore[no-any-return]
     except EhrbaseClientError:
         raise

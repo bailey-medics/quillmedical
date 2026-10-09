@@ -481,6 +481,7 @@
     "nosemgrep",
     "nosetests",
     "buildkit",
+    "defusedxml",
     "nosec",
     "nosniff",
     "notanemail",

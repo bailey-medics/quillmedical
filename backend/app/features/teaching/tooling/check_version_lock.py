@@ -91,7 +91,8 @@ class LockResult:
 def _git_show(ref: str, path: str) -> str | None:
     """Read a file from a git ref. Returns None if the file is absent."""
     try:
-        result = subprocess.run(  # noqa: S603
+        # Here and below: a fixed argument list and no shell.
+        result = subprocess.run(  # noqa: S603  # nosec B607 B603
             ["git", "show", f"{ref}:{path}"],  # noqa: S607
             capture_output=True,
             text=True,
@@ -104,7 +105,7 @@ def _git_show(ref: str, path: str) -> str | None:
 
 def _git_diff_names(ref: str, path: str) -> list[str]:
     """List changed files under *path* relative to *ref*."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(  # noqa: S603  # nosec B607 B603
         ["git", "diff", "--name-only", ref, "--", path],  # noqa: S607
         capture_output=True,
         text=True,
@@ -343,7 +344,7 @@ def _repo_relative_path(modules_dir: Path) -> str | None:
     is a poor way to tell someone they wanted ``--skip-version-lock``.
     """
     try:
-        completed = subprocess.run(  # noqa: S603
+        completed = subprocess.run(  # noqa: S603  # nosec B607 B603
             ["git", "rev-parse", "--show-toplevel"],  # noqa: S607
             capture_output=True,
             text=True,

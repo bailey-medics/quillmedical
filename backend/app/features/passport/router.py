@@ -1343,7 +1343,8 @@ def _email_sign_off_request(
         url = f"{settings.FRONTEND_URL.rstrip('/')}/inbox"
         expires_in_days = PASSPORT_INVITE_TTL_DAYS
     else:
-        invite = PassportAssessorInvite(
+        # token_hash is empty only until the token is made, just below.
+        invite = PassportAssessorInvite(  # nosec B106
             id=str(uuid.uuid4()),
             passport_id=passport_id,
             invited_by_user_id=invited_by_user_id,

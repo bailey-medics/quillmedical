@@ -21,7 +21,8 @@ public_key = private_key.public_key()
 pub_uncompressed = public_key.public_bytes(
     encoding=Encoding.X962, format=PublicFormat.UncompressedPoint
 )
-assert len(pub_uncompressed) == 65 and pub_uncompressed[0] == 0x04
+if len(pub_uncompressed) != 65 or pub_uncompressed[0] != 0x04:
+    raise SystemExit("The public key is not a 65-byte uncompressed point")
 
 # 3) Private key raw 32-byte big-endian integer
 priv_int = private_key.private_numbers().private_value

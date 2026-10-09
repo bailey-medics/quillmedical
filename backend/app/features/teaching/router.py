@@ -1178,7 +1178,8 @@ def start_assessment(
         )
 
         # Randomly select and order items
-    selected = random.sample(
+    # Not a secret: which questions an attempt draws, and in what order.
+    selected = random.sample(  # nosec B311
         list(published_items),
         min(items_per_attempt, len(published_items)),
     )

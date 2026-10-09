@@ -32,12 +32,14 @@ from app.features.teaching.certificate import (
 )
 
 _DEFAULT_BANK_PATH = Path("/question-banks/questions")
-_OUTPUT_PATH = Path("/tmp/certificate-preview.pdf")  # noqa: S108
+# A preview for a person to open, on their own machine.
+_OUTPUT_PATH = Path("/tmp/certificate-preview.pdf")  # noqa: S108  # nosec B108
 
 # Dummy data for preview - tweak these to test different lengths
 _EXAM_TITLE = "Optical Diagnosis of Diminutive Colorectal Polyps MCQ Online"
 _CANDIDATE_NAME = "Dr Alexandra Hamilton-Fairfax"
-_PASS_SUMMARY = (
+# Not a password: "Pass" is the sample result.
+_PASS_SUMMARY = (  # nosec B105
     "Pass\nHigh confidence rate: 78%\nAccuracy of high-confidence answers: 91%"
 )
 _COMPLETION_DATE = "31 March 2026"

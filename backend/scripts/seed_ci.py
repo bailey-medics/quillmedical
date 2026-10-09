@@ -47,7 +47,7 @@ from app.security import hash_password  # noqa: E402
 # Base32 of RFC 4226's test key "12345678901234567890". Public, and only
 # ever seeded into the throwaway CI database; see the BACKEND_ENV guard.
 # cspell:disable-next-line
-CI_TOTP_SECRET = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+CI_TOTP_SECRET = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"  # nosec B105
 
 
 def seed() -> None:

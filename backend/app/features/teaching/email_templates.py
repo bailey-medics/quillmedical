@@ -212,7 +212,7 @@ def in_branded_layout(
                 "preheader": rendered["preheader"],
                 # Already sanitised by nh3 in render_email, so marked safe
                 # here rather than escaped a second time.
-                "body_html": Markup(rendered["html_body"]),
+                "body_html": Markup(rendered["html_body"]),  # nosec B704
                 "body_text": rendered["body_text"],
                 "reason": reason,
             },
