@@ -598,6 +598,22 @@ never writes into, so it survives the next `/sync-copilot-config`.
 - **Nothing else changed.** No tests or code were touched.
 ```
 
+### The `local/` folder is kept out of git
+
+`local/` at the repository root is gitignored. It holds material for this
+machine only: private plans in `local/plans/`, contracts and other
+documents Mark may ask to have read, and scratch output. Nothing the app,
+the build or the tests reads lives there, so a missing folder breaks
+nothing.
+
+- **Read it only when asked**, and never copy its contents into a commit,
+  a pull request, a docs page or a comment.
+- **A plan in `local/plans/` follows `.claude/rules/plans.md`** in every
+  way but one: it is never registered in `docs/docs/plans/index.md`,
+  because the index links only to files in the repository.
+- **It is not shared between worktrees.** Each worktree has its own
+  `local/`; Mark copies files between them by hand when he needs to.
+
 ### Name the environments "App production" and "EHR production"
 
 There are two productions, named by product:
