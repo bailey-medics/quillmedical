@@ -37,6 +37,7 @@
 {% endblock preheader %}
 
 {% block body %}
+
 {% if confirming_logbook %}
 {{ c.heading("You have been asked to confirm a *logbook entry*") }}
 {% elif competency_name %}
@@ -44,22 +45,27 @@
 {% else %}
 {{ c.heading("You have been asked to be an *assessor*") }}
 {% endif %}
+
 {{ c.paragraph("Dear " ~ assessor_name ~ ",") }}
+
 {% call c.paragraph() %}
 {%- if confirming_logbook %}{{ holder_name }} has asked you to confirm an entry in their logbook for <strong>{{ competency_name }}</strong>, in their clinician passport. Confirming says it happened as they recorded it. It is not an assessment.
 {%- elif competency_name %}{{ holder_name }} has asked you to assess <strong>{{ competency_name }}</strong>{% if scope_name %}, for <strong>{{ scope_name }}</strong>,{% endif %}{% if level_name %} at the level <strong>{{ level_name }}</strong>{% endif %} and record the outcome in their clinician passport.
 {%- else %}{{ holder_name }} has asked you to act as an assessor and record outcomes in their clinician passport.{% endif -%}
 {% endcall %}
+
 {% call c.panel() %}
 {{ c.paragraph("A clinician passport is a record of competencies a clinician has been assessed as able to perform, signed by the person who assessed them.") }}
 {% if not has_account %}{{ c.paragraph("Quill Medical is the online service their clinician passport is kept in. You do not have an account with it yet, so the link below asks you to create one first.") }}{% endif %}
 {% if level_name %}{{ c.paragraph("You can sign it off at a different level if that is your judgement, and say why.") }}{% endif %}
 <p style="margin: 0">You will be asked to confirm your professional registration before you sign anything.</p>
 {% endcall %}
+
 {{ c.button("Accept the invitation", url) }}
 {{ c.small("You can use this link until you accept the invitation. It expires in " ~ expires_in_days ~ " days.") }}
 {{ c.small("If you were not expecting this, you can ignore this email and nothing will happen.") }}
 {% endblock body %}
+
 {% block reason %}You are receiving this because {{ holder_name }} entered this address when inviting an assessor on Quill.{% endblock reason %}
 
 {% block text %}
