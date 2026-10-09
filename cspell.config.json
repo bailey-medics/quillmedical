@@ -480,6 +480,7 @@
     "noroleuser",
     "nosemgrep",
     "nosetests",
+    "buildkit",
     "nosec",
     "nosniff",
     "notanemail",
