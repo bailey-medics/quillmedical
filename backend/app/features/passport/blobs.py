@@ -103,6 +103,20 @@ def digest_file(source: Path) -> str:
     return f"sha256:{hasher.hexdigest()}"
 
 
+def _discard(staging: Path) -> None:
+    """Remove a part-written file, if there is one and it will go.
+
+    Best effort: this runs while the write's own failure is being
+    reported, and that is the error the caller needs. A file left
+    behind is harmless, since nothing reads a ``.partial`` name and the
+    next write to the same hash replaces it.
+    """
+    try:
+        staging.unlink(missing_ok=True)
+    except OSError:
+        return
+
+
 class BlobStore:
     """Content-addressed evidence for one store root.
 
@@ -195,17 +209,19 @@ class BlobStore:
                 media_type=media_type,
             )
 
+        # Write beside the target and move into place, so a failure
+        # part-way through cannot leave a truncated file under a name
+        # that asserts its own hash. A reader finding a short file at
+        # a valid hash would have no way to tell it was incomplete.
+        staging = target.with_suffix(".partial")
+
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
-
-            # Write beside the target and move into org_unit, so a failure
-            # part-way through cannot leave a truncated file under a name
-            # that asserts its own hash. A reader finding a short file at
-            # a valid hash would have no way to tell it was incomplete.
-            staging = target.with_suffix(".partial")
             staging.write_bytes(data)
             staging.replace(target)
         except OSError as error:
+            _discard(staging)
+
             raise BlobError(
                 f"Could not store blob {blob_digest}: {error}"
             ) from error

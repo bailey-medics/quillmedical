@@ -483,6 +483,7 @@
     "buildkit",
     "defusedxml",
     "nosec",
+    "xact",
     "nosniff",
     "notanemail",
     "nowasm",

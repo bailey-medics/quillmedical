@@ -43,7 +43,10 @@ from app.features.teaching.enrolment import (
     set_end,
     withdraw,
 )
-from app.features.teaching.models import QuestionBankOrgStatus
+from app.features.teaching.models import (
+    ENROLMENT_SOURCES,
+    QuestionBankOrgStatus,
+)
 from app.models import PractisingCompetency, User, org_unit_member
 from app.organisations import organisation_org_units_of, reach_of_org_units
 
@@ -202,7 +205,15 @@ def enrol_everyone_with_a_place(
 
     Returns:
         The people enrolled, or who would be, in id order.
+
+    Raises:
+        ValueError: If *source* is not one of ``ENROLMENT_SOURCES``,
+            on a dry run as on a real one, and whether or not there is
+            anybody to enrol.
     """
+    if source not in ENROLMENT_SOURCES:
+        raise ValueError(f"Unknown enrolment source: {source!r}")
+
     candidate_ids = sorted(
         set(
             db.scalars(
@@ -322,6 +333,15 @@ class Admitted:
 
 class NotServed(ValueError):
     """A module was named that the organisation does not serve."""
+
+
+class BelongsNowhere(ValueError):
+    """Somebody was to be enrolled who belongs to no org_unit there.
+
+    Nobody does anything without being somewhere. A place is given at
+    each org_unit a person belongs to under the organisation, so with
+    none there is nowhere for them to enter the module from.
+    """
 
 
 def admit(
@@ -453,22 +473,13 @@ def settle_enrolments(
     Raises:
         NotServed: If a module is named that the organisation does not
             serve. Nothing is written.
+        BelongsNowhere: If a module is named and the person belongs to
+            no org_unit under the organisation. Nothing is written.
     """
     unknown = sorted(set(wanted) - set(modules_served_by(db, organisation_id)))
 
     if unknown:
         raise NotServed(", ".join(unknown))
-
-    for row in current_enrolments(db, user.id, org_unit_id=organisation_id):
-        if row.question_bank_id not in wanted:
-            withdraw(
-                db,
-                user.id,
-                org_unit_id=organisation_id,
-                question_bank_id=row.question_bank_id,
-            )
-    if not wanted:
-        return
 
     member_of = db.scalars(
         select(org_unit_member.c.org_unit_id).where(
@@ -480,6 +491,20 @@ def settle_enrolments(
         for unit_id in member_of
         if organisation_serving(db, int(unit_id)) == organisation_id
     )
+
+    if wanted and not places:
+        raise BelongsNowhere()
+
+    for row in current_enrolments(db, user.id, org_unit_id=organisation_id):
+        if row.question_bank_id not in wanted:
+            withdraw(
+                db,
+                user.id,
+                org_unit_id=organisation_id,
+                question_bank_id=row.question_bank_id,
+            )
+    if not wanted:
+        return
 
     for module_id, ends_on in sorted(wanted.items()):
         for unit_id in places:

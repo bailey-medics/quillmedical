@@ -292,7 +292,7 @@ class TestLoadChecks:
         }
 
 
-class TestTheSoldCompetency:
+class TestPassportWriteIsGrantedByOneManager:
     def test_only_manage_passport_names_it(self) -> None:
         naming = {
             entry.id

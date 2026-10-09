@@ -89,8 +89,17 @@ def sync_competency_rows(
     **The profession seeds rows.** A row opened for a competency in the
     template, and not asked for in ``additional``, has ``source``
     ``profession``. Changing somebody's profession therefore adds rows for
-    what the new one grants and closes nothing, and somebody with no rows
-    yet gets the whole template as rows on their first save.
+    what the new one grants, and somebody with no rows yet gets the whole
+    template as rows on their first save. A change of profession closes
+    nothing only when the caller passes what is to be kept as
+    ``additional``, as ``competencies_kept_across_profession_change``
+    works out. A row the new template lacks, and nobody asked to keep,
+    is closed like any other.
+
+    **A current row of any source counts as holding the competency.**
+    No second row is opened beside it. So an id asked for here, and
+    already held through another source, writes nothing: when that other
+    row ends, the competency goes with it.
 
     **A row whose source is in ``PROTECTED_SOURCES`` is never closed
     here**, whatever the lists say. See that constant.
