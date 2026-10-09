@@ -536,7 +536,7 @@ class TestFailure:
         this raises ``ConcurrentWriteError`` rather than
         ``NonFastForwardError`` - the same ordering the local store has,
         inherited rather than reimplemented. The rewrite refusal itself
-        is tested where the rule lives, in ``test_passport_store.py``,
+        is tested where the rule lives, in ``store_test.py``,
         which reaches it through the private commit seam because no
         public path can. What matters here is that the bundle backend
         does not open a route around either check.
