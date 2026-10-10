@@ -179,9 +179,11 @@ def main() -> int:
         db.rollback()
         return 1
     finally:
+        # Closing is best effort: the script is ending either way, and
+        # an error here must not hide the one already reported.
         try:
             db.close()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
 

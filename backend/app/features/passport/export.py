@@ -323,7 +323,7 @@ def _write_history(
     with tempfile.TemporaryDirectory() as scratch:
         target = Path(scratch) / "passport.bundle"
 
-        result = subprocess.run(  # noqa: S603 - fixed argv, no shell
+        result = subprocess.run(  # noqa: S603 - fixed argv, no shell  # nosec B607 B603
             ["git", "bundle", "create", str(target), "--all"],
             cwd=str(repository),
             capture_output=True,

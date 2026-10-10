@@ -153,7 +153,11 @@ def _report_complete(
             },
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=30) as response:
+        # The callback address is the job's own configuration, never a
+        # user's.
+        with urllib.request.urlopen(  # nosec B310
+            request, timeout=30
+        ) as response:
             if response.status >= 400:
                 print(
                     f"ERROR: completion callback refused "
@@ -179,7 +183,8 @@ def _run_ffmpeg(args: list[str]) -> None:
     stdout, so a failure that reports only an exit code sends whoever
     reads the job log back to reproduce it by hand.
     """
-    result = subprocess.run(  # noqa: S603
+    # A fixed argument list and no shell.
+    result = subprocess.run(  # noqa: S603  # nosec B607 B603
         ["ffmpeg", "-y", "-loglevel", "error", *args],  # noqa: S607
         capture_output=True,
         text=True,

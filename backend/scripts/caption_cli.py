@@ -127,7 +127,11 @@ def _report_captions(org_id: int, module_id: str, asset_id: str) -> None:
     )
 
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        # The callback address is the job's own configuration, never a
+        # user's.
+        with urllib.request.urlopen(  # nosec B310
+            request, timeout=30
+        ) as response:
             if response.status >= 400:
                 print(
                     f"ERROR: caption callback refused "

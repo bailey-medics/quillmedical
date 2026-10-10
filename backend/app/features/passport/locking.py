@@ -132,5 +132,5 @@ def passport_write_lock(
                 text("SELECT pg_advisory_unlock(:namespace, :key)"),
                 {"namespace": LOCK_NAMESPACE, "key": key},
             )
-        except Exception:  # noqa: BLE001, S110 - see the comment above
+        except Exception:  # noqa: BLE001, S110  # nosec B110
             pass

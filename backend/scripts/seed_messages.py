@@ -29,7 +29,8 @@ from app.models import (  # noqa: E402
 )
 from app.security import hash_password  # noqa: E402
 
-DEFAULT_PASSWORD = "DemoPass123!"
+# The demo accounts' password, for local development only.
+DEFAULT_PASSWORD = "DemoPass123!"  # nosec B105
 
 
 def _now() -> datetime:

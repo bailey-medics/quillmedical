@@ -479,7 +479,7 @@ def _bundle_bytes(repository: Path) -> bytes:
     with tempfile.TemporaryDirectory() as scratch:
         target = Path(scratch) / "passport.bundle"
 
-        result = subprocess.run(  # noqa: S603 - fixed argv, no shell
+        result = subprocess.run(  # noqa: S603 - fixed argv, no shell  # nosec B607 B603
             [
                 "git",
                 "bundle",
@@ -517,7 +517,7 @@ def _unbundle(data: bytes, repository: Path) -> None:
         source = Path(scratch) / "passport.bundle"
         source.write_bytes(data)
 
-        result = subprocess.run(  # noqa: S603 - fixed argv, no shell
+        result = subprocess.run(  # noqa: S603 - fixed argv, no shell  # nosec B607 B603
             [
                 "git",
                 "clone",

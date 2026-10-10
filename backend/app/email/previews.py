@@ -90,7 +90,8 @@ def _certificate_context() -> dict[str, Any]:
         # As the teaching router sends it: the coordinator's own
         # preheader, or the subject again where they wrote none.
         "preheader": rendered["preheader"],
-        "body_html": Markup(rendered["html_body"]),
+        # Sanitised by nh3 in render_email, as the router sends it.
+        "body_html": Markup(rendered["html_body"]),  # nosec B704
         "body_text": rendered["body_text"],
         "reason": "You are receiving this because you sat an assessment on Quill.",
     }

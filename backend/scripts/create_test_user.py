@@ -17,7 +17,8 @@ def main():
     """Create test user."""
     username = "test"
     email = "test@example.com"
-    password = "testpass123"
+    # A throwaway account, for local development only.
+    password = "testpass123"  # nosec B105
 
     db = CoreSessionLocal()
 

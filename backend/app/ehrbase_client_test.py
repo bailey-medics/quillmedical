@@ -582,3 +582,131 @@ class TestUploadTemplateValidation:
             ehrbase_client.upload_template("<template>valid</template>")
 
         assert "Failed to upload clinical template" in str(exc_info.value)
+
+
+class TestRequestTimeout:
+    """Every request to EHRbase gives up after a set time."""
+
+    def test_every_request_in_the_module_passes_the_timeout(self):
+        """A request with no timeout waits for ever, so none may lack one."""
+        import ast
+        from pathlib import Path
+
+        tree = ast.parse(Path(ehrbase_client.__file__).read_text())
+        calls = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "requests"
+            and node.func.attr
+            in {"get", "post", "put", "patch", "delete", "request"}
+        ]
+
+        assert calls, "found no requests calls to check"
+
+        for call in calls:
+            timeouts = [k for k in call.keywords if k.arg == "timeout"]
+            assert timeouts, f"line {call.lineno} has no timeout"
+            assert isinstance(timeouts[0].value, ast.Name)
+            assert timeouts[0].value.id == "REQUEST_TIMEOUT"
+
+    @patch("app.ehrbase_client.requests.post")
+    @patch("app.ehrbase_client.get_auth_header")
+    @patch("app.ehrbase_client.settings")
+    def test_a_query_is_sent_with_the_timeout(
+        self, mock_settings, mock_auth, mock_post
+    ):
+        """Ten seconds to connect and thirty to read."""
+        mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
+        mock_auth.return_value = {"Authorization": "Basic test"}
+        mock_post.return_value = MagicMock()
+
+        ehrbase_client.query_aql("SELECT e FROM EHR e")
+
+        assert mock_post.call_args.kwargs["timeout"] == (10, 30)
+
+    @patch("app.ehrbase_client.requests.post")
+    @patch("app.ehrbase_client.get_auth_header")
+    @patch("app.ehrbase_client.settings")
+    def test_a_request_that_times_out_is_reported_as_a_client_error(
+        self, mock_settings, mock_auth, mock_post
+    ):
+        """The caller sees the same error as any other failed request."""
+        mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
+        mock_auth.return_value = {"Authorization": "Basic test"}
+        mock_post.side_effect = requests.Timeout("read timed out")
+
+        with pytest.raises(ehrbase_client.EhrbaseClientError):
+            ehrbase_client.query_aql("SELECT e FROM EHR e")
+
+
+class TestAqlParameters:
+    """An EHR id travels beside the query, never inside it."""
+
+    @patch("app.ehrbase_client.requests.post")
+    @patch("app.ehrbase_client.get_auth_header")
+    @patch("app.ehrbase_client.settings")
+    def test_parameters_are_sent_as_query_parameters(
+        self, mock_settings, mock_auth, mock_post
+    ):
+        mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
+        mock_auth.return_value = {"Authorization": "Basic test"}
+        mock_post.return_value = MagicMock()
+
+        ehrbase_client.query_aql(
+            "SELECT e FROM EHR e[ehr_id/value=$ehr_id]", {"ehr_id": "abc"}
+        )
+
+        assert mock_post.call_args.kwargs["json"] == {
+            "q": "SELECT e FROM EHR e[ehr_id/value=$ehr_id]",
+            "query_parameters": {"ehr_id": "abc"},
+        }
+
+    @patch("app.ehrbase_client.requests.post")
+    @patch("app.ehrbase_client.get_auth_header")
+    @patch("app.ehrbase_client.settings")
+    def test_a_query_with_no_parameters_sends_none(
+        self, mock_settings, mock_auth, mock_post
+    ):
+        mock_settings.EHRBASE_URL = "http://test-ehrbase:8080"
+        mock_auth.return_value = {"Authorization": "Basic test"}
+        mock_post.return_value = MagicMock()
+
+        ehrbase_client.query_aql("SELECT e FROM EHR e")
+
+        assert mock_post.call_args.kwargs["json"] == {
+            "q": "SELECT e FROM EHR e"
+        }
+
+    @patch("app.ehrbase_client.query_aql")
+    def test_listing_compositions_keeps_the_id_out_of_the_query(
+        self, mock_query
+    ):
+        """An id holding a quote cannot close the predicate early."""
+        hostile = "x'] CONTAINS COMPOSITION c WHERE '1'='1"
+        mock_query.return_value = {"rows": []}
+
+        ehrbase_client.list_compositions_for_ehr(hostile)
+
+        aql, parameters = mock_query.call_args.args
+        assert hostile not in aql
+        assert "$ehr_id" in aql
+        assert parameters == {"ehr_id": hostile}
+
+    @patch("app.ehrbase_client.get_ehr_by_subject")
+    @patch("app.ehrbase_client.query_aql")
+    def test_listing_letters_keeps_the_id_out_of_the_query(
+        self, mock_query, mock_get_ehr
+    ):
+        hostile = "x'] CONTAINS COMPOSITION c WHERE '1'='1"
+        mock_get_ehr.return_value = {"ehr_id": {"value": hostile}}
+        mock_query.return_value = {"rows": []}
+
+        ehrbase_client.list_letters_for_patient("patient-123")
+
+        aql, parameters = mock_query.call_args.args
+        assert hostile not in aql
+        assert "$ehr_id" in aql
+        assert parameters == {"ehr_id": hostile}

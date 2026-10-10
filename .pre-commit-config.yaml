@@ -59,14 +59,17 @@ repos:
   - repo: https://github.com/PyCQA/bandit
     rev: 1.9.4
     hooks:
+      # Run through a script of ours and not straight from the hook, so
+      # the script can check that the scan covered the backend. Bandit
+      # passes a scan of nothing, and for a year this hook passed "r"
+      # where "-r" was meant and scanned no lines. What is scanned, and
+      # what is left out, is in the script.
       - id: bandit
         name: bandit (backend)
-        args:
-          - r
-          - backend
-          - -x
-          - backend/tests
+        entry: .github/scripts/ci/run-bandit.sh
+        args: []
         pass_filenames: false
+        always_run: true
 
   - repo: local
     hooks:

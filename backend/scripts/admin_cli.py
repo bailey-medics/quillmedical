@@ -333,7 +333,10 @@ def smoke_test() -> int:
 
     for attempt in range(1, retries + 1):
         try:
-            with urllib.request.urlopen(url, timeout=10) as response:
+            # SMOKE_URL is the job's own configuration, never a user's.
+            with urllib.request.urlopen(  # nosec B310
+                url, timeout=10
+            ) as response:
                 status = response.status
         except urllib.error.HTTPError as exc:
             status = exc.code

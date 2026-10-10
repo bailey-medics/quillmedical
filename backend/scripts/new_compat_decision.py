@@ -245,7 +245,8 @@ def build_filename_and_path(compat_dir: Path, slug: str) -> Path:
         import time
 
         time.sleep(0.1)
-        suffix = "".join(random.choices("0123456789", k=4))
+        # Not a secret: only tells two files of the same second apart.
+        suffix = "".join(random.choices("0123456789", k=4))  # nosec B311
         filename = f"{timestamp}-{slug}-{suffix}.yaml"
         file_path = compat_dir / filename
 

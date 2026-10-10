@@ -27,4 +27,5 @@ def generate_avatar_gradient_index() -> int:
         >>> index
         12
     """
-    return random.randint(0, GRADIENT_COUNT - 1)
+    # Not a secret: an avatar's colour.
+    return random.randint(0, GRADIENT_COUNT - 1)  # nosec B311

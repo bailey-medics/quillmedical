@@ -408,70 +408,103 @@ the backend: 49 medium and 40 low, none high. The command that produced
 the list, for anybody repeating it, is `bandit -r backend -x
 'backend/tests,backend/conftest.py,*_test.py'`.
 
-- [ ] Triage before fixing: read each finding and sort it into a real
+- [x] Triage before fixing: read each finding and sort it into a real
       defect to fix, a false alarm to mark, or a rule that does not fit
-      this codebase and should be switched off for everybody. Record the
-      verdict for each group in this plan. The groups, largest first:
+      this codebase and should be switched off for everybody. With the
+      migrations left out (the next step) there were 57. The verdict for
+      each group:
 
-      - **B608, SQL built from a string: 34.** 32 are in
-        `backend/alembic/versions/` and 2 in `backend/app/ehrbase_client.py`.
-        The two in the EHRbase client are the ones to read with care:
-        they build a query that goes to the clinical record store.
-      - **B105 and B106, something that looks like a hard-coded
-        password: 12.** 7 are the placeholder settings in
-        `backend/scripts/dump_openapi.py`, which are meant to be
-        placeholders. Check the one in `backend/app/features/passport/`.
-      - **B113, a web request with no timeout: 7**, all in
-        `backend/app/ehrbase_client.py`. Likely real: a request with no
-        timeout can hold a worker for ever if EHRbase stops answering.
-      - **B603, B607 and B404, running another program: 18**, in the
-        passport and teaching features and `transcode_cli.py`. These run
-        `git` and `ffmpeg`. Check that nothing a user typed reaches the
-        command line.
-      - **B704, `Markup` on text that may not be safe: 3**, in
-        `backend/app/email/previews.py`, `backend/app/email/render.py`
-        and the teaching email templates. Each marks text as safe HTML
-        after escaping or sanitising it; confirm that for each one.
-      - **B314 and B405, parsing XML with the standard library: 3**, in
-        `backend/app/ehrbase_client.py`. Check where the XML comes from.
-      - **B110, an error caught and ignored: 4.**
-      - **B310 and B311, opening a URL and a random number generator
-        that is not for secrets: 6.** Check none of the random numbers
-        is a token or a password.
-      - **B101 and B108: 2**, an `assert` and a path under `/tmp`, both
-        in scripts.
+      - **B113, a web request with no timeout: 7, all real.** Every
+        request in `backend/app/ehrbase_client.py`. Fixed.
+      - **B608, a query built from a string: 2, both real.** The two in
+        `backend/app/ehrbase_client.py` wrote an EHR id into the AQL
+        text. The id came from EHRbase's own answer and not from a user,
+        so nothing could be exploited today, but nothing in the code
+        said so. Fixed, and not marked.
+      - **B101, an `assert` in a script: 1, fixed.**
+        `backend/scripts/generate_vapid_keys.py` now exits with a
+        message, since Python run with `-O` drops an `assert`.
+      - **B404, the line `import subprocess`: 4, switched off for
+        everybody.** It fires on the import whatever is then run. Each
+        call is still checked by B603 and B607.
+      - **B603 and B607, running another program: 14, false alarms.**
+        `git` and `ffmpeg`, each with a fixed list of arguments and no
+        shell. Nothing a user typed reaches the command line.
+      - **B105 and B106, something that looks like a password: 12,
+        false alarms.** Placeholders in `dump_openapi.py`, the passwords
+        of local demo and CI accounts, the word "Pass" in a sample
+        result, and in `passport/router.py` an empty `token_hash` that
+        is filled in a few lines later.
+      - **B704, `Markup` on text: 3, false alarms.** Each is escaped, or
+        sanitised by `nh3`, before it is marked safe.
+      - **B314 and B405, parsing XML with the standard library: 3,
+        false alarms for now.** `upload_template` checks that an
+        operator's own template file is well formed, and no route calls
+        it. If one ever accepts an upload, use `defusedxml`; the comment
+        beside it says so.
+      - **B110, an error caught and ignored: 4, false alarms.** Three
+        scripts closing a session as they exit, and the advisory unlock
+        in `passport/locking.py`, which already explains itself.
+      - **B310 and B311: 6, false alarms.** Each URL is the job's own
+        configuration. The random numbers choose an avatar's colour, a
+        file name suffix, and which questions an attempt draws: none is
+        a token or a password.
+      - **B108, a path under `/tmp`: 1, false alarm.** A preview a
+        person opens on their own machine.
 
-- [ ] Decide what to do about the migrations. A merged migration's code
+- [x] Decide what to do about the migrations. A merged migration's code
       is frozen (see "Database migrations" in `.claude/rules/backend.md`),
-      so the 32 findings there cannot be fixed by changing the SQL. A
-      comment may still be edited, so each could carry a `# nosec` with
-      its reason; or `backend/alembic/versions/` could be left out of
-      the scan, since a migration is run once by the deploy and never
-      with anything a user supplied. The recommendation is to leave the
-      folder out and say why beside the setting.
+      so the 32 findings there cannot be fixed by changing the SQL.
+      **Mark decided on 9 October 2026 to leave
+      `backend/alembic/versions/` out of the scan**: a migration is run
+      once by the deploy and never with anything a user supplied. The
+      reason is written beside the setting, in
+      `.github/scripts/ci/run-bandit.sh`.
 
-- [ ] Fix the real defects, each with a test where the behaviour
-      changes. A timeout on the EHRbase requests is the likeliest
-      candidate, and belongs with whatever the EHR production work
-      decides a sensible wait is.
+- [x] Fix the real defects, each with a test where the behaviour
+      changes.
 
-- [ ] Mark each false alarm where it is, with `# nosec <rule>` and a
-      few words saying why it is safe. Never a bare `# nosec`: that
-      silences every rule on the line, including ones added later.
+      - **A timeout on every EHRbase request.** `REQUEST_TIMEOUT` in
+        `backend/app/ehrbase_client.py`: ten seconds to connect and
+        thirty for the answer, **Mark's decision on 9 October 2026**. A
+        test reads the module and fails if any `requests` call lacks it,
+        so a request added later cannot go without.
+      - **The EHR id goes to EHRbase as a query parameter.** `query_aql`
+        takes a second argument and sends it as `query_parameters`, with
+        `$ehr_id` in the query, which is how the openEHR REST
+        specification passes a value. The first idea was to check the id
+        is a UUID before writing it into the string. A parameter is the
+        better fix: it is the same rule the SQL follows, it accepts
+        every id the old code did, and no later change to the check can
+        reopen it. **Not yet run against a real EHRbase**: the unit
+        tests check what is sent, not that EHRbase accepts it. Listing a
+        patient's letters is the one journey that uses it, so that is
+        what to try when the EHR production work next has a stack up.
 
-- [ ] Correct the hook in `.pre-commit-config.yaml`: `-r` for `r`, and
-      leave out `backend/conftest.py` and `*_test.py` as well as
-      `backend/tests`, or every `assert` in a test that sits beside its
-      module is reported. This goes in last, in the same change as the
-      final fix, so that no commit in between fails on findings still
-      being worked through.
+- [x] Mark each false alarm where it is, with `# nosec <rule>`. Never a
+      bare `# nosec`: that silences every rule on the line, including
+      ones added later. **The reason is in a comment above the line and
+      not after the mark**, which is a change from what this step first
+      said. A reason on the same line makes the line too long, and Black
+      then bends the statement round the comment, moving the mark off
+      the line Bandit reads. Where a line already said why it is safe,
+      nothing was added.
 
-- [ ] Add a check that the scan covered something. A hook that reports
-      "Total lines of code: 0" and passes is how this went unnoticed for
-      a year: fail the hook, or a test, when Bandit scans no files.
+- [x] Correct the hook in `.pre-commit-config.yaml`. It now runs
+      `.github/scripts/ci/run-bandit.sh`, which holds what is scanned
+      and what is left out: `backend/tests`, `backend/conftest.py`,
+      `*_test.py` and `backend/alembic/versions`.
 
-- [ ] Run the same scan in CI, so that a commit made without the hooks
-      is still checked.
+- [x] Add a check that the scan covered something. The script reads
+      "Total lines of code" from Bandit's report and fails below 10,000,
+      or when the report does not give a number, whatever Bandit's own
+      verdict. The backend is about 45,800. Tested in
+      `.github/scripts/ci/run-bandit.bats`.
+
+- [x] Run the same scan in CI, so that a commit made without the hooks
+      is still checked. Nothing to add: the fast tier's `pre-commit` job
+      already runs every hook over every file, so it had been running
+      the broken hook, and passing, all along.
 
 ## Decisions
 
