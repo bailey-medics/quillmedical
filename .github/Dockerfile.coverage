@@ -1,0 +1,55 @@
+# The shell test image, with kcov added, for measuring which lines of the
+# shell scripts the bats tests run.
+#
+# Used by `just test-coverage sh` and nothing else. It is never part of a
+# production image: the application images are built from backend/Dockerfile
+# and frontend/Dockerfile, which know nothing of this file.
+#
+# A file of its own, and not a line in .github/Dockerfile, because that image
+# is kept to the few tools the tests call, and says why. kcov needs a compiler
+# and half a dozen libraries to build, none of which a test run should see.
+# So this starts from that image, already built and tagged by the recipe, and
+# adds only the kcov binary and the libraries it loads.
+#
+# Built from source because Ubuntu 24.04 has no kcov package.
+#
+# cspell:ignore DCMAKE
+
+# ---------- Build kcov ----------
+FROM quill-shell-tests AS build
+
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends --yes \
+        binutils-dev \
+        cmake \
+        g++ \
+        libcurl4-openssl-dev \
+        libdw-dev \
+        libiberty-dev \
+        libssl-dev \
+        make \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Bump deliberately. v43 is the release current in October 2026.
+ARG KCOV_VERSION=43
+RUN curl -fsSL "https://github.com/SimonKagstrom/kcov/archive/refs/tags/v${KCOV_VERSION}.tar.gz" \
+        | tar xz -C /tmp \
+    && cmake -S "/tmp/kcov-${KCOV_VERSION}" -B /tmp/kcov-build -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build /tmp/kcov-build --parallel \
+    && cmake --install /tmp/kcov-build --prefix /opt/kcov
+
+# ---------- The test image, plus kcov ----------
+FROM quill-shell-tests
+
+# Only what the kcov binary loads at run time.
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends --yes \
+        binutils \
+        libcurl4t64 \
+        libdw1t64 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /opt/kcov/bin/kcov /usr/local/bin/kcov
+
+RUN kcov --version

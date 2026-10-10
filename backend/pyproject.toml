@@ -96,6 +96,13 @@ python_version = "3.14"
 strict = true
 plugins = ["sqlalchemy.ext.mypy.plugin"]
 
+# What `just test-coverage py` measures: the application, and not the
+# tests that sit beside it. A test file is run by definition, so counting
+# it would raise the figure without saying anything about the code.
+[tool.coverage.run]
+source = ["app"]
+omit = ["*_test.py"]
+
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers --maxfail=1"
 # Two places, one name. A test whose subject is one module sits beside it
