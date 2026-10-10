@@ -13,6 +13,8 @@ Covers:
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -74,11 +76,13 @@ def _site_of(
     db.refresh(site)
 
     if admin:
-        for user_id in db.execute(
+        member_ids: Iterable[int] = db.execute(
             select(org_unit_member.c.user_id).where(
                 org_unit_member.c.org_unit_id == org.id
             )
-        ).scalars():
+        ).scalars()
+
+        for user_id in member_ids:
             administers(db, int(user_id), site.id)
 
     return site
