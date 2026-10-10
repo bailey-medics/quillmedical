@@ -91,15 +91,19 @@ from app.schemas.org_units import (
     MemberLookupOut,
     MemberLookupUser,
     MemberPracticeOut,
+    OrgUnitChildItem,
     OrgUnitDetailOut,
+    OrgUnitFeatureItem,
     OrgUnitFeaturesOut,
     OrgUnitItem,
+    OrgUnitMemberItem,
     OrgUnitMembersOut,
     OrgUnitPassportCoverOut,
     OrgUnitPassportFrameworksOut,
     OrgUnitsListOut,
     OrgUnitStatusOut,
     PractisingCompetenciesOut,
+    PractisingCompetencyItem,
     SetClinicalLeadIn,
     SetOrgUnitPassportFrameworksIn,
     ToggleOrgUnitActiveIn,
@@ -537,14 +541,14 @@ def _members_of(db: Session, unit_id: int) -> OrgUnitMembersOut:
 
     return OrgUnitMembersOut(
         members=[
-            {
-                "id": row.id,
-                "username": row.username,
-                "email": row.email,
-                "full_name": row.full_name or "",
-                "capacity": row.capacity,
-                "authorised_here": counts.get(row.id, 0),
-            }
+            OrgUnitMemberItem(
+                id=row.id,
+                username=row.username,
+                email=row.email,
+                full_name=row.full_name or "",
+                capacity=row.capacity,
+                authorised_here=counts.get(row.id, 0),
+            )
             for row in rows
         ]
     )
@@ -764,16 +768,14 @@ def get_org_unit(
         updated_at=unit.updated_at.isoformat(),
         members=_members_of(db, unit_id).members,
         children=[
-            {
-                "id": child.id,
-                "name": child.name,
-                "type": child.type,
-                "is_active": child.is_active,
-                "clinical_lead_id": leads.get(child.id),
-                "clinical_lead_name": lead_names.get(
-                    leads.get(child.id, 0), ""
-                ),
-            }
+            OrgUnitChildItem(
+                id=child.id,
+                name=child.name,
+                type=child.type,
+                is_active=child.is_active,
+                clinical_lead_id=leads.get(child.id),
+                clinical_lead_name=lead_names.get(leads.get(child.id, 0), ""),
+            )
             for child in children
         ],
         features=features,
@@ -1366,14 +1368,14 @@ def list_practising_competencies(
 
     return PractisingCompetenciesOut(
         practising_competencies=[
-            {
-                "user_id": row.id,
-                "username": row.username,
-                "full_name": row.full_name or "",
-                "competency": row.competency,
-                "authorised_at": row.authorised_at.isoformat(),
-                "authorised_by": row.authorised_by,
-            }
+            PractisingCompetencyItem(
+                user_id=row.id,
+                username=row.username,
+                full_name=row.full_name or "",
+                competency=row.competency,
+                authorised_at=row.authorised_at.isoformat(),
+                authorised_by=row.authorised_by,
+            )
             for row in rows
             if not through_teaching
             or in_scope is None
@@ -1746,13 +1748,13 @@ def list_org_unit_features(
 
     return OrgUnitFeaturesOut(
         features=[
-            {
-                "feature_key": row.feature_key,
-                "enabled_at": (
+            OrgUnitFeatureItem(
+                feature_key=row.feature_key,
+                enabled_at=(
                     row.enabled_at.isoformat() if row.enabled_at else None
                 ),
-                "enabled_by": row.enabled_by,
-            }
+                enabled_by=row.enabled_by,
+            )
             for row in rows
         ]
     )

@@ -320,4 +320,10 @@ def clinical_leads_of(db: Session, org_unit_ids: list[int]) -> dict[int, int]:
         )
     ).all()
 
-    return {int(unit_id): int(user_id) for unit_id, user_id in rows}
+    # The query asks only for posts at the org_units given, so none has a
+    # missing place. A post with no place has no clinical lead to report.
+    return {
+        int(unit_id): int(user_id)
+        for unit_id, user_id in rows
+        if unit_id is not None
+    }

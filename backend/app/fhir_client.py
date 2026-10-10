@@ -10,22 +10,22 @@ import logging
 import uuid
 from typing import Any
 
-from fhirclient import client  # type: ignore[import-untyped]
-from fhirclient.models.address import Address  # type: ignore[import-untyped]
-from fhirclient.models.contactpoint import (  # type: ignore[import-untyped]
+from fhirclient import client
+from fhirclient.models.address import Address
+from fhirclient.models.contactpoint import (
     ContactPoint,
 )
-from fhirclient.models.extension import (  # type: ignore[import-untyped]
+from fhirclient.models.extension import (
     Extension,
 )
-from fhirclient.models.fhirdate import FHIRDate  # type: ignore[import-untyped]
-from fhirclient.models.fhirdatetime import (  # type: ignore[import-untyped]
+from fhirclient.models.fhirdate import FHIRDate
+from fhirclient.models.fhirdatetime import (
     FHIRDateTime,
 )
-from fhirclient.models.humanname import (  # type: ignore[import-untyped]
+from fhirclient.models.humanname import (
     HumanName,
 )
-from fhirclient.models.patient import Patient  # type: ignore[import-untyped]
+from fhirclient.models.patient import Patient
 
 from app.config import settings
 from app.utils.colors import generate_avatar_gradient_index
@@ -181,7 +181,7 @@ def create_fhir_patient(
 
     # NHS Number (UK national identifier)
     if nhs_number:
-        from fhirclient.models.identifier import (  # type: ignore[import-untyped]
+        from fhirclient.models.identifier import (
             Identifier,
         )
 

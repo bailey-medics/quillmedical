@@ -182,7 +182,7 @@ def build_bucket(bucket_name: str, client: Any = None) -> ArchiveBucket:
         The bucket.
     """
     if client is None:
-        from google.cloud import storage  # type: ignore[import-untyped]
+        from google.cloud import storage  # type: ignore[attr-defined]
 
         client = storage.Client()
 

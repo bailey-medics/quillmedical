@@ -53,6 +53,7 @@ from .schemas import (
     Profile,
     ScopeRef,
     SignOff,
+    SignOffKind,
 )
 from .store import PassportNotFoundError, PassportStore
 
@@ -349,7 +350,7 @@ def request_sign_off(
         holder,
         "request",
         f"request {competency_id}",
-        files,  # type: ignore[arg-type]
+        files,
         competency=competency_id,
         sign_off=name,
         now=moment,
@@ -511,7 +512,7 @@ def sign_off(
         assessor,
         "sign-off",
         f"sign off {record.competency.id}",
-        files,  # type: ignore[arg-type]
+        files,
         competency=record.competency.id,
         sign_off=name,
         now=moment,
@@ -810,7 +811,7 @@ def _kind_for(
     competency_id: str,
     level_id: str | None,
     existing: list[tuple[str, SignOff]],
-) -> str:
+) -> SignOffKind:
     """Why this sign-off exists, from what came before it.
 
     Derived rather than asked for, because a caller choosing the wrong

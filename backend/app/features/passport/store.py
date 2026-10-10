@@ -38,6 +38,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
+from typing import cast
 
 import pygit2
 
@@ -438,7 +439,10 @@ class LocalPassportStore(PassportStore):
                 "be read."
             )
 
-        tree = repository.get(repository.head.target).tree
+        # pygit2 types `get` as any object or none. The head of a branch
+        # with commits is a commit, and the entry at a file's path a blob.
+        commit = cast(pygit2.Commit, repository.get(repository.head.target))
+        tree = commit.tree
 
         try:
             entry = tree[str(path)]
@@ -447,7 +451,7 @@ class LocalPassportStore(PassportStore):
                 f"No file {path} in passport {passport_id}."
             ) from error
 
-        blob = repository.get(entry.id)
+        blob = cast(pygit2.Blob, repository.get(entry.id))
 
         return bytes(blob.data)
 
@@ -474,7 +478,8 @@ class LocalPassportStore(PassportStore):
         if repository.head_is_unborn:
             return []
 
-        tree = repository.get(repository.head.target).tree
+        commit = cast(pygit2.Commit, repository.get(repository.head.target))
+        tree = commit.tree
 
         if str(path) not in ("", "."):
             try:
@@ -485,9 +490,12 @@ class LocalPassportStore(PassportStore):
             if entry.type_str != "tree":
                 return []
 
-            tree = repository.get(entry.id)
+            # Checked just above to be a tree.
+            tree = cast(pygit2.Tree, repository.get(entry.id))
 
-        return sorted(path / item.name for item in tree)
+        # An entry in a tree always has a name; only a detached object
+        # read some other way does not.
+        return sorted(path / cast(str, item.name) for item in tree)
 
     def write(
         self,
