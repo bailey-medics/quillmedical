@@ -1,0 +1,34 @@
+{
+  "name": "review-marks",
+  "displayName": "Review marks",
+  "description": "Shows which files have been stamped as read, from the card that scripts/review-ledger.py keeps.",
+  "version": "0.4.0",
+  "publisher": "local",
+  "engines": { "vscode": "^1.80.0" },
+  "main": "./extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      { "command": "reviewMarks.stamp", "title": "Review: stamp as read" },
+      { "command": "reviewMarks.removeStamp", "title": "Review: take the stamp off" },
+      { "command": "reviewMarks.showChange", "title": "Review: show what changed since I read it" },
+      { "command": "reviewMarks.statusClick", "title": "Review: act on this file" },
+      { "command": "reviewMarks.refresh", "title": "Review: refresh the marks" }
+    ],
+    "menus": {
+      "explorer/context": [
+        { "command": "reviewMarks.stamp", "group": "7_review@1" },
+        { "command": "reviewMarks.removeStamp", "group": "7_review@2" },
+        { "command": "reviewMarks.showChange", "group": "7_review@3", "when": "!explorerResourceIsFolder" }
+      ],
+      "editor/title/context": [
+        { "command": "reviewMarks.stamp", "group": "7_review@1" },
+        { "command": "reviewMarks.removeStamp", "group": "7_review@2" },
+        { "command": "reviewMarks.showChange", "group": "7_review@3" }
+      ],
+      "commandPalette": [
+        { "command": "reviewMarks.statusClick", "when": "false" }
+      ]
+    }
+  }
+}
