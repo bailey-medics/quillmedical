@@ -737,13 +737,21 @@ report its real result.
 a daemon failure stand in for a test result. Either the suite ran, and the
 command and its outcome are named, or it did not run and that is said plainly.
 
-### Tests run from any worktree; the dev stack belongs to one
+### Tests run from any worktree; the dev stack belongs to the main checkout
 
-There are several worktrees of this repository, but only one dev stack. Its
-containers are bind-mounted to whichever worktree started it, and the
-container names are fixed - `quill_backend`, `quill_postgres_core` - so
-`docker exec quill_backend …` from any worktree reaches **the worktree that
-started the stack**, not the one you are working in.
+There are several worktrees of this repository, but only one dev stack, and
+**only the main checkout may start it**. Its container names are fixed -
+`quill_backend`, `quill_postgres_core` - so there can only be one, and
+`docker exec quill_backend …` from any worktree reaches the main checkout's
+code, not the code you are working in.
+
+`just sd` and `just st` call the `_dev-stack-guard` recipe, which refuses
+from every other worktree. The main checkout is found from git, as the
+folder holding the shared `.git` directory, so it is not written down
+anywhere. **Never work round the
+refusal** with a bare `docker compose -f compose.dev.yml up` from another
+worktree: say the dev stack is needed and that it lives in the main
+checkout.
 
 **The unit tests no longer go through the stack.** `just ub` and `just uf`
 run `docker compose run --rm` against `compose.unit-tests.yml`: a throwaway
@@ -792,13 +800,9 @@ revision means the models already match the migrations, not that the
 recipe worked.
 
 **Recipes that still need the live stack** keep the `_worktree-guard`
-check and refuse to run from a worktree the stack does not serve:
-`just eb` / `just ef`, the create-user recipes and `just validate-teaching`.
-The guard reads the owning path from Docker:
-
-```bash
-docker inspect quill_backend --format '{{range .Mounts}}{{if eq .Destination "/app"}}{{.Source}}{{end}}{{end}}'
-```
+check: `just eb` / `just ef`, `just csl` and
+`just validate-teaching`. It calls `_dev-stack-guard`, so they too run from
+the main checkout only, then checks that the container is running.
 
 **Why the guard exists.** Before the test recipes were separated from the
 stack, both failures were silent and both looked like success:

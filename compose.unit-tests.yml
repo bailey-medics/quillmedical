@@ -1,9 +1,9 @@
 # Throwaway unit-test containers for any worktree.
 #
-# The dev stack (compose.dev.yml) belongs to whichever worktree ran `just sd`:
-# its containers bind-mount that checkout and carry fixed names, so testing
-# through `docker exec quill_backend` from another worktree silently runs the
-# other worktree's code. This file sidesteps the stack entirely. `just ub` and
+# The dev stack (compose.dev.yml) belongs to the main checkout alone: its
+# containers bind-mount that checkout and carry fixed names, so testing
+# through `docker exec quill_backend` from another worktree would run the
+# main checkout's code. This file sidesteps the stack entirely. `just ub` and
 # `just uf` run `docker compose run --rm` against it, so each run is a fresh
 # container built from the shared dev image with THIS worktree mounted at /app.
 #
