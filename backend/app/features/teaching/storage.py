@@ -86,7 +86,7 @@ class GCSStorageBackend(StorageBackend):
         from google.auth.transport import (
             requests as auth_requests,
         )
-        from google.cloud import storage  # type: ignore[import-untyped]
+        from google.cloud import storage  # type: ignore[attr-defined]
 
         self._credentials, _project = default()
         self._client = storage.Client(credentials=self._credentials)
@@ -331,7 +331,7 @@ def has_learning_content(base_path: str, module_id: str) -> bool:
 
 def has_learning_content_gcs(bucket_name: str, module_id: str) -> bool:
     """Check if a module has learning content in GCS."""
-    from google.cloud import storage
+    from google.cloud import storage  # type: ignore[attr-defined]
 
     if not module_id or not _SAFE_BANK_ID.match(module_id):
         return False
@@ -347,7 +347,7 @@ def download_learning_mdx_from_gcs(
     bucket_name: str, module_id: str
 ) -> str | None:
     """Download learning/content.mdx from GCS and return as string."""
-    from google.cloud import storage
+    from google.cloud import storage  # type: ignore[attr-defined]
 
     if not module_id or not _SAFE_BANK_ID.match(module_id):
         return None
@@ -367,7 +367,7 @@ def download_module_yaml_from_gcs(
 ) -> dict[str, Any] | None:
     """Download modules/<module_id>/module.yaml from GCS."""
     import yaml
-    from google.cloud import storage
+    from google.cloud import storage  # type: ignore[attr-defined]
 
     if not module_id or not _SAFE_BANK_ID.match(module_id):
         return None
@@ -395,7 +395,7 @@ def get_learning_image_url_gcs(
     from google.auth.transport import (
         requests as auth_requests,
     )
-    from google.cloud import storage
+    from google.cloud import storage  # type: ignore[attr-defined]
 
     if not module_id or not _SAFE_BANK_ID.match(module_id):
         msg = f"Invalid module_id: {module_id!r}"
@@ -434,7 +434,7 @@ def get_cover_image_url_gcs(
     from google.auth.transport import (
         requests as auth_requests,
     )
-    from google.cloud import storage
+    from google.cloud import storage  # type: ignore[attr-defined]
 
     if not module_id or not _SAFE_BANK_ID.match(module_id):
         msg = f"Invalid module_id: {module_id!r}"
@@ -470,7 +470,7 @@ def list_banks_in_gcs(bucket_name: str) -> list[str]:
     contains
     an ``assessment.yaml`` or ``config.yaml`` file.
     """
-    from google.cloud import storage
+    from google.cloud import storage  # type: ignore[attr-defined]
 
     client = storage.Client()
     bucket = client.bucket(bucket_name)
@@ -513,7 +513,7 @@ def download_bank_from_gcs(
     responsible for cleaning it up (use ``shutil.rmtree`` or a
     context manager).
     """
-    from google.cloud import storage
+    from google.cloud import storage  # type: ignore[attr-defined]
 
     if not bank_id or not _SAFE_BANK_ID.match(bank_id):
         msg = f"Invalid bank_id: {bank_id!r}"
@@ -582,7 +582,7 @@ def get_module_status_from_gcs(
     if not found.
     """
     import yaml
-    from google.cloud import storage
+    from google.cloud import storage  # type: ignore[attr-defined]
 
     client = storage.Client()
     bucket = client.bucket(bucket_name)
@@ -615,7 +615,7 @@ def list_bank_images_in_gcs(
     mapping of item directory names to the set of image filenames
     found.  Only files with allowed image extensions are included.
     """
-    from google.cloud import storage
+    from google.cloud import storage  # type: ignore[attr-defined]
 
     if not bank_id or not _SAFE_BANK_ID.match(bank_id):
         msg = f"Invalid bank_id: {bank_id!r}"
@@ -687,7 +687,7 @@ def download_module_from_gcs(
     if module.yaml doesn't exist in GCS.  Caller must clean up with
     ``shutil.rmtree(path.parent)``.
     """
-    from google.cloud import storage
+    from google.cloud import storage  # type: ignore[attr-defined]
 
     if not bank_id or not _SAFE_BANK_ID.match(bank_id):
         return None
@@ -763,7 +763,7 @@ def create_resumable_upload_url(
     from google.auth.transport import (
         requests as auth_requests,
     )
-    from google.cloud import storage
+    from google.cloud import storage  # type: ignore[attr-defined]
 
     path = media_object_path(org_id, module_id, asset_id)
 
@@ -800,7 +800,7 @@ def read_caption_object(
     None rather than an empty string, because "the job has not run" and
     "the captions are empty" are different things to show an admin.
     """
-    from google.cloud import storage
+    from google.cloud import storage  # type: ignore[attr-defined]
 
     path = caption_object_path(org_id, module_id, asset_id)
 
@@ -827,7 +827,7 @@ def write_caption_object(
     serving the old text until something evicted it - so the admin's
     correction would appear to have done nothing.
     """
-    from google.cloud import storage
+    from google.cloud import storage  # type: ignore[attr-defined]
 
     path = caption_object_path(org_id, module_id, asset_id)
 
@@ -855,7 +855,7 @@ def delete_media_object(
     than leaving it permanently undeletable.
     """
     from google.api_core import exceptions as gcs_exceptions
-    from google.cloud import storage
+    from google.cloud import storage  # type: ignore[attr-defined]
 
     path = media_object_path(org_id, module_id, asset_id)
 

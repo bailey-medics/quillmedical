@@ -91,10 +91,32 @@ lint.ignore = ["E501", "B008"]  # B008: FastAPI Depends() in defaults is idiomat
 target-version = ["py313"]
 line-length = 79
 
+# Read by the "mypy (backend, strict)" pre-commit hook, which runs mypy
+# from this folder through Poetry so that it sees these settings and the
+# real libraries. For a long time nothing did: the hook ran from the
+# repository root, where there is no config, so `strict` was never applied.
+#
+# No SQLAlchemy plugin. SQLAlchemy 2 is typed without one, and 2.1 no
+# longer ships `sqlalchemy.ext.mypy`: naming it here stopped mypy loading
+# this file at all.
 [tool.mypy]
 python_version = "3.14"
 strict = true
-plugins = ["sqlalchemy.ext.mypy.plugin"]
+files = ["app", "scripts"]
+# Tests are checked by their own hook, without `strict`.
+exclude = ['_test\.py$']
+
+# Libraries that ship no type information. Their names are still checked
+# for existing; what they return is treated as untyped.
+#
+# google-cloud-storage is another, and is not listed, because listing it
+# does not help: it sits in a namespace its typed neighbours share, so
+# mypy reports `from google.cloud import storage` as a name that does not
+# exist and not as a library without types. Each such import carries
+# `# type: ignore[attr-defined]` instead.
+[[tool.mypy.overrides]]
+module = ["fhirclient.*", "jose.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = "-q --strict-markers --maxfail=1"

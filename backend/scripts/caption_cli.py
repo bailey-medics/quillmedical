@@ -254,7 +254,7 @@ def caption() -> int:
     )
     model_name = os.environ.get("WHISPER_MODEL", "small").strip() or "small"
 
-    from google.cloud import storage  # type: ignore[import-untyped]
+    from google.cloud import storage  # type: ignore[attr-defined]
 
     # `object_paths`, not `storage`: the latter imports `settings` at
     # module scope, which requires JWT_SECRET and CORE_DB_PASSWORD -

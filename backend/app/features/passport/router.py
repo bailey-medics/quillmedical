@@ -42,7 +42,9 @@ import hashlib
 import logging
 import re
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
+from typing import cast
 
 from fastapi import (
     APIRouter,
@@ -1547,7 +1549,8 @@ def search_assessors(
                 full_name=row.full_name,
                 email=row.email,
                 registrations=[
-                    RegistrationOut(**reg) for reg in _registration_dicts(row)
+                    RegistrationOut(body=held.authority, number=held.number)
+                    for held in row.current_registrations
                 ],
             )
             for row in rows
@@ -3645,13 +3648,16 @@ def _holder_org_unit(db: Session, passport_id: str) -> int:
 
     member_ids = sorted(
         int(row)
-        for row in db.execute(
-            select(org_unit_member.c.org_unit_id).where(
-                org_unit_member.c.user_id == passport.user_id
+        for row in cast(
+            Sequence[int],
+            db.execute(
+                select(org_unit_member.c.org_unit_id).where(
+                    org_unit_member.c.user_id == passport.user_id
+                )
             )
+            .scalars()
+            .all(),
         )
-        .scalars()
-        .all()
     )
 
     # The same question `requires_feature` asks, so one that passes here

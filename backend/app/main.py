@@ -24,10 +24,10 @@ Architecture:
 import hmac
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 import httpx
@@ -209,6 +209,7 @@ from app.schemas.auth import (
     RegisterIn,
     ResendVerificationIn,
     ResetPasswordIn,
+    ServiceHealthStatus,
     TeachingEnrolmentsAtOut,
     TeachingModuleItem,
     TeachingModuleOut,
@@ -717,7 +718,15 @@ def health_check() -> HealthCheckOut:
 
     return HealthCheckOut(
         status="healthy" if all_healthy else "degraded",
-        services=services,
+        # The same dictionaries, under the wider type the model declares:
+        # a dict is not accepted where one with more value types is asked
+        # for, though every value here fits.
+        services=cast(
+            dict[
+                str, ServiceHealthStatus | dict[str, bool | int | str | None]
+            ],
+            services,
+        ),
     )
 
 
@@ -1254,7 +1263,7 @@ def register(
     request: Request,
     payload: RegisterIn,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """User Registration.
 
     Creates a new user account with username, email, and password. Performs
@@ -1576,7 +1585,7 @@ def verify_email(
     request: Request,
     data: VerifyEmailIn,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Verify a user's email address using a signed token.
 
     Validates the token from the email link and marks the user's email
@@ -1619,7 +1628,7 @@ def resend_verification(
     request: Request,
     data: ResendVerificationIn,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Resend the email verification link.
 
     Looks up the user by email and sends a new verification token.
@@ -1653,7 +1662,7 @@ def forgot_password(
     request: Request,
     data: ForgotPasswordIn,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Request a password reset email.
 
     Accepts an email address and, if a matching active account exists, sends a
@@ -1702,7 +1711,7 @@ def reset_password(
     request: Request,
     data: ResetPasswordIn,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Reset a user's password using a reset token.
 
     Verifies the token from the email link, validates the new password,
@@ -2161,13 +2170,16 @@ def _settle_teaching_enrolments(
 
     member_of = [
         int(unit_id)
-        for unit_id in db.execute(
-            select(org_unit_member.c.org_unit_id).where(
-                org_unit_member.c.user_id == person.id
+        for unit_id in cast(
+            Sequence[int],
+            db.execute(
+                select(org_unit_member.c.org_unit_id).where(
+                    org_unit_member.c.user_id == person.id
+                )
             )
+            .scalars()
+            .all(),
         )
-        .scalars()
-        .all()
     ]
     theirs = organisation_org_units_of(db, member_of)
     reached = org_units_whose_people_reached_by(db, current_user)
@@ -2289,13 +2301,16 @@ def _settle_practice(
             not make, with every such change named.
     """
     member_of = set(
-        db.execute(
-            select(org_unit_member.c.org_unit_id).where(
-                org_unit_member.c.user_id == person.id
+        cast(
+            Sequence[int],
+            db.execute(
+                select(org_unit_member.c.org_unit_id).where(
+                    org_unit_member.c.user_id == person.id
+                )
             )
+            .scalars()
+            .all(),
         )
-        .scalars()
-        .all()
     )
     strangers = sorted(
         entry.org_unit_id
@@ -2698,13 +2713,16 @@ def update_user(
     # Every org_unit they belong to, as `get_user` reports them and so as
     # the form sends them back.
     current_org_unit_ids = set(
-        db.execute(
-            select(org_unit_member.c.org_unit_id).where(
-                org_unit_member.c.user_id == user.id
+        cast(
+            Sequence[int],
+            db.execute(
+                select(org_unit_member.c.org_unit_id).where(
+                    org_unit_member.c.user_id == user.id
+                )
             )
+            .scalars()
+            .all(),
         )
-        .scalars()
-        .all()
     )
     changes_profession = (
         payload.base_profession is not None
@@ -3109,7 +3127,7 @@ def send_invite_email(
     user_id: int,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Send Invite Email.
 
     Sends an email to the user inviting them to set up or update their
@@ -3260,7 +3278,7 @@ def totp_verify(
     payload: TotpVerifyIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Verify TOTP and Enable Two-Factor.
 
     Verifies the 6-digit TOTP code from the user's authenticator app and
@@ -3317,7 +3335,7 @@ def totp_disable(
     data: TotpDisableIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Disable Two-Factor Authentication.
 
     Disables TOTP two-factor authentication for the current user and clears
@@ -3355,7 +3373,7 @@ def change_password(
     response: Response,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Change the current user's password.
 
     Verifies the current password, validates the new password meets
@@ -3411,7 +3429,7 @@ def change_password(
 
 
 @router.post("/auth/logout", response_model=DetailResponse)
-def logout(response: Response, _u: User = DEP_REQUIRE_CSRF) -> dict[str, str]:
+def logout(response: Response, _u: User = DEP_REQUIRE_CSRF) -> DetailResponse:
     """User Logout.
 
     Logs out the current user by clearing all authentication cookies (access_token,
@@ -3461,13 +3479,16 @@ def me(
     # ward or clinic they belong to. One walk up answers both, because
     # an organisation's own row is its own root.
     member_org_unit_ids = list(
-        db.execute(
-            select(org_unit_member.c.org_unit_id).where(
-                org_unit_member.c.user_id == current_user.id
+        cast(
+            Sequence[int],
+            db.execute(
+                select(org_unit_member.c.org_unit_id).where(
+                    org_unit_member.c.user_id == current_user.id
+                )
             )
+            .scalars()
+            .all(),
         )
-        .scalars()
-        .all()
     )
     user_org_unit_ids = feature_holder_ids_of(db, member_org_unit_ids)
     enabled_features: list[str] = []
@@ -3524,7 +3545,7 @@ def update_profile(
     data: UpdateProfileIn,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
-) -> dict[str, str]:
+) -> DetailResponse:
     """Update the current user's profile.
 
     Allows updating full_name and email. If email is changed,
@@ -5141,7 +5162,7 @@ def accept_invite(
     Returns:
         dict: Status and redirect information.
     """
-    from jose import JWTError  # type: ignore[import-untyped]
+    from jose import JWTError
 
     try:
         payload = decode_invite_token(body.token)
