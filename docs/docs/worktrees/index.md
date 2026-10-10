@@ -99,6 +99,31 @@ The recipe does both. Worth knowing if you ever run `poetry install` by
 hand in a new worktree and wonder why the dependencies appeared somewhere
 else.
 
+## Which Python the environment is built on
+
+`.python-version` names the Python this repository is pinned to, and the
+environment is built on that one: for `3.14.7`, with `python3.14`. Left
+to itself Poetry uses whichever Python it finds first, which is how
+worktrees on one machine came to be on different versions, and none of
+them on the one CI runs.
+
+The unit tests are not affected, because they run in a container built
+from the same pin. What runs in this environment is a handful of
+pre-commit hooks: the strict mypy check, the API schema check and the
+email previews. Those can pass on one Python and fail on another.
+
+So a mismatch is refused, not warned about:
+
+- **The pre-commit hook "local Python matches CI"** runs before those
+  hooks and stops the commit.
+- **`just docs` and `just email-themes`**, which use the same
+  environment, refuse to start.
+- **`just venv-rebuild`** (`just vr`) is the fix. It removes
+  `backend/.venv` and builds it again on the pinned Python.
+
+It compares the first two parts of the version, 3.14 with 3.14. CI
+installs the newest patch release of the pinned version, and so may you.
+
 ## Removing one
 
 ```bash
