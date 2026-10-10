@@ -6,6 +6,11 @@ from sqlalchemy.orm import Session
 from app.models import PushSubscription, User
 
 
+def _csrf(client: TestClient) -> dict[str, str]:
+    """The header a page sends with a request that changes something."""
+    return {"X-CSRF-Token": client.cookies.get("XSRF-TOKEN", "")}
+
+
 class TestPushSubscription:
     """Test push notification subscription endpoint."""
 
@@ -24,6 +29,23 @@ class TestPushSubscription:
         )
         assert response.status_code == 401
 
+    def test_subscribe_without_the_csrf_token_is_refused(
+        self, authenticated_client: TestClient
+    ):
+        """Another site must not be able to register a device for
+        somebody's notifications."""
+        response = authenticated_client.post(
+            "/api/push/subscribe",
+            json={
+                "endpoint": "https://push.example.com/123",
+                "expirationTime": None,
+                "keys": {"p256dh": "test_p256dh_key", "auth": "test_auth_key"},
+            },
+        )
+
+        assert response.status_code == 403
+        assert response.json()["detail"] == "CSRF failed"
+
     def test_subscribe_success(
         self,
         authenticated_client: TestClient,
@@ -41,6 +63,7 @@ class TestPushSubscription:
                     "auth": "test_auth_key",
                 },
             },
+            headers=_csrf(authenticated_client),
         )
 
         assert response.status_code == 200
@@ -74,10 +97,14 @@ class TestPushSubscription:
 
         # Subscribe twice
         response1 = authenticated_client.post(
-            "/api/push/subscribe", json=subscription
+            "/api/push/subscribe",
+            json=subscription,
+            headers=_csrf(authenticated_client),
         )
         response2 = authenticated_client.post(
-            "/api/push/subscribe", json=subscription
+            "/api/push/subscribe",
+            json=subscription,
+            headers=_csrf(authenticated_client),
         )
 
         assert response1.status_code == 200
@@ -105,6 +132,7 @@ class TestPushSubscription:
                     "auth": "old_auth",
                 },
             },
+            headers=_csrf(authenticated_client),
         )
 
         # Subscribe again with new keys
@@ -117,6 +145,7 @@ class TestPushSubscription:
                     "auth": "new_auth",
                 },
             },
+            headers=_csrf(authenticated_client),
         )
 
         sub = db_session.query(PushSubscription).first()
@@ -142,6 +171,7 @@ class TestPushSubscription:
                         "auth": f"test_auth_key_{i}",
                     },
                 },
+                headers=_csrf(authenticated_client),
             )
             assert response.status_code == 200
 
@@ -165,6 +195,7 @@ class TestPushSubscription:
                     "auth": "test_auth_key",
                 },
             },
+            headers=_csrf(authenticated_client),
         )
 
         assert response.status_code == 200
@@ -178,6 +209,7 @@ class TestPushSubscription:
                 "endpoint": "https://push.example.com/missing",
                 # Missing keys
             },
+            headers=_csrf(authenticated_client),
         )
         # Should return validation error
         assert response.status_code == 422
