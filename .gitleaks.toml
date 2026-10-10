@@ -1,10 +1,56 @@
-# Gitleaks configuration - allowlisting known false positives.
+# Gitleaks configuration: the rules to scan with, and the known values that
+# are not secrets.
 # See https://github.com/gitleaks/gitleaks#configuration
+#
+# A config file REPLACES the built-in rules unless it says to extend them.
+# For as long as this file held only an allowlist, gitleaks ran with no
+# rules at all and passed every commit, a real key included. The [extend]
+# block below is what makes the scan a scan: never remove it.
+# scripts/tests/gitleaks-config.bats fails if it goes.
 
 title = "Quill Medical gitleaks config"
 
-[allowlist]
+[extend]
+useDefault = true
+
+[[allowlists]]
 description = "VAPID public keys are intentionally public (used by browsers for web push)"
 paths = [
   '''\.github/workflows/deploy.*\.yml''',
+]
+
+[[allowlists]]
+description = "Made-up secrets the tests and CI start the app with. Each says in its own words that it is one."
+regexes = [
+  '''^(ci_)?test_[a-z0-9_]*secret[a-z0-9_]*$''',
+]
+
+[[allowlists]]
+description = "The published RFC 6238 test key for one-time codes, used by the end-to-end tests"
+regexes = [
+  # cspell:disable-next-line
+  '''^GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ$''',
+]
+
+[[allowlists]]
+description = "Names of secrets held in Secret Manager, not their values"
+targetRules = ["hashicorp-tf-password"]
+regexes = [
+  '''^"[a-z][a-z0-9-]*-(db|api)-password"$''',
+]
+
+[[allowlists]]
+description = "A made-up signature in the test of signed video links"
+regexes = [
+  '''^Signature=abc-_123$''',
+]
+
+[[allowlists]]
+description = "Password of the throwaway database the dev stack starts on this machine only"
+condition = "AND"
+paths = [
+  '''^compose\.dev\.yml$''',
+]
+regexes = [
+  '''^vspct8I2iLUkfC3JsXxefy$''',
 ]
