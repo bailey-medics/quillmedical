@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-syntax */
 import PublicLayout from "@/components/layouts/PublicLayout";
 import PublicNotFound from "@/components/layouts/PublicNotFound";
 import PublicMantineProvider from "../PublicMantineProvider";

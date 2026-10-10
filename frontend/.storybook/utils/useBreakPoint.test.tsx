@@ -1,5 +1,8 @@
 /* @vitest-environment jsdom */
 import { render, screen, cleanup } from "@testing-library/react";
+// The hook reads the theme's breakpoints, and each test gives it a theme
+// of its own, which the shared render helpers have no way to pass.
+// eslint-disable-next-line no-restricted-imports
 import { MantineProvider } from "@mantine/core";
 import { describe, it, expect, afterEach } from "vitest";
 
