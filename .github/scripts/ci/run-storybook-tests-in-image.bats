@@ -140,3 +140,35 @@ teardown() {
   [ "$status" -eq 1 ]
   run ! kill -0 "$(cat "${CALLS}/server.pid")"
 }
+
+@test "does not finish until the server has gone" {
+  # The script used to signal the server and leave. Whether it had gone
+  # by the time anything looked was luck, and on CI the two tests above
+  # sometimes lost. Asked ten times here, to give luck room to run out.
+  local attempt
+
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    rm -f "${CALLS}/server.pid"
+
+    run bash "$SCRIPT" "$IMAGE" "1/3"
+    [ "$status" -eq 0 ]
+
+    run ! kill -0 "$(cat "${CALLS}/server.pid")"
+  done
+}
+
+@test "kills a server that ignores being asked to stop, and still finishes" {
+  # Ignoring a signal is inherited across exec, so this server shrugs
+  # off the polite request and only the hard one ends it.
+  cat > "${STUBS}/python3" <<EOF
+#!/usr/bin/env bash
+echo \$\$ > "${CALLS}/server.pid"
+trap '' TERM
+exec sleep 300
+EOF
+
+  STORYBOOK_STOP_GRACE_SECONDS=1 run bash "$SCRIPT" "$IMAGE" "1/3"
+
+  [ "$status" -eq 0 ]
+  run ! kill -0 "$(cat "${CALLS}/server.pid")"
+}
