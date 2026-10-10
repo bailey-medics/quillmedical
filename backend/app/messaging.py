@@ -10,6 +10,7 @@ their orgs snowball onto the conversation.
 
 import logging
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -302,9 +303,43 @@ def _build_conversation_out(
         include_patient_as_participant=(conv.include_patient_as_participant),
     )
 
-    # ---------------------------------------------------------------------------
-    # Public API
-    # ---------------------------------------------------------------------------
+
+def _other_participant_ids(
+    db: Session, creator: User, participant_ids: list[int] | None
+) -> list[int]:
+    """Who joins a new conversation besides its creator, each once.
+
+    The creator is left out, because they join as the initiator, and an
+    id given twice is kept once: a person is in a conversation or is
+    not.
+
+    Args:
+        db: The database session.
+        creator: Who is starting the conversation.
+        participant_ids: The ids asked for, in any order.
+
+    Returns:
+        The ids to add, in the order first given.
+
+    Raises:
+        UserNotFound: If any id is no user.
+    """
+    others: list[int] = []
+
+    for user_id in participant_ids or []:
+        if user_id == creator.id or user_id in others:
+            continue
+        if db.get(User, user_id) is None:
+            raise UserNotFound()
+
+        others.append(user_id)
+
+    return others
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 
 
 def create_conversation(
@@ -321,10 +356,21 @@ def create_conversation(
 
     Validates the creator has access to the patient, writes the first
     message to FHIR, then creates all SQL records including org links.
+
+    Everything that can be refused is checked before the FHIR write.
+    FHIR is not part of the database transaction, so a message written
+    there stays written when a later step fails, with no row of ours
+    pointing at it.
+
+    Raises:
+        NotInPatientOrganisation: If the creator may not read the patient.
+        UserNotFound: If an id in *participant_ids* is no user.
     """
     # Validate creator has access to this patient
     if not check_user_patient_access(db, creator, patient_id):
         raise NotInPatientOrganisation()
+
+    others = _other_participant_ids(db, creator, participant_ids)
 
     conv_uuid = str(uuid.uuid4())
 
@@ -367,20 +413,17 @@ def create_conversation(
     db.add(creator_participant)
 
     # Add other participants (with org snowball)
-    if participant_ids:
-        for uid in participant_ids:
-            if uid == creator.id:
-                continue
-            db.add(
-                ConversationParticipant(
-                    conversation_id=conv.id,
-                    user_id=uid,
-                    role="participant",
-                )
+    for uid in others:
+        db.add(
+            ConversationParticipant(
+                conversation_id=conv.id,
+                user_id=uid,
+                role="participant",
             )
-            _snowball_orgs(db, conv.id, uid)
+        )
+        _snowball_orgs(db, conv.id, uid)
 
-            # Project the first message
+        # Project the first message
     msg = Message(
         fhir_communication_id=fhir_comm_id,
         conversation_id=conv.id,
@@ -581,7 +624,12 @@ def send_message(
     )
     db.add(msg)
 
-    # Update conversation status and timestamp
+    # Every message moves the conversation to the top of its lists,
+    # which are ordered by updated_at. Set here and not left to the
+    # column's onupdate: that fires only when something else on the row
+    # changes, which after the first reply nothing does.
+    conv.updated_at = datetime.now(UTC)
+
     if conv.status == "new":
         conv.status = "active"
 
@@ -598,7 +646,15 @@ def add_participant(
     user_id: int,
     role: str = "participant",
 ) -> ParticipantOut:
-    """Add a user to a conversation. Snowballs their org(s) in."""
+    """Add a user to a conversation. Snowballs their org(s) in.
+
+    Raises:
+        ConversationNotFound: If there is no such conversation.
+        UserNotFound: If there is no such user.
+    """
+    if db.get(Conversation, conversation_id) is None:
+        raise ConversationNotFound()
+
     user = db.get(User, user_id)
 
     if user is None:

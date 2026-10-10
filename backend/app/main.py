@@ -105,6 +105,9 @@ from app.features.teaching.access import (
 from app.features.teaching.access import (
     RESULTS_COMPETENCY as TEACHING_RESULTS_COMPETENCY,
 )
+from app.features.teaching.access import (
+    BelongsNowhere as TeachingBelongsNowhere,
+)
 from app.features.teaching.access import NotServed as TeachingNotServed
 from app.features.teaching.enrolment import current_enrolments
 from app.features.teaching.enrolment import enrol as enrol_on_module
@@ -2227,6 +2230,14 @@ def _settle_teaching_enrolments(
         raise HTTPException(
             status_code=422,
             detail="A module was named that the organisation does not serve.",
+        ) from None
+    except TeachingBelongsNowhere:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "They must belong to an org unit under the organisation "
+                "before they can be enrolled."
+            ),
         ) from None
     db.flush()
 

@@ -56,9 +56,7 @@ def _current_ids_by_user(db: Session) -> dict[int, list[str]]:
     are left out: they record what somebody could once do, and mislead
     nobody about what they can do now.
 
-    One query over the rows, which is what the JSON columns this replaced
-    could not offer: there, every user had to be read and each list parsed
-    in Python.
+    One query over the rows.
     """
     now = datetime.now(UTC)
     rows = db.execute(
@@ -169,13 +167,18 @@ def retired_ids_on_users(db: Session) -> dict[int, list[str]]:
 
 
 def unseeded_profession_competencies(db: Session) -> dict[int, list[str]]:
-    """Return what users hold only through their profession's template.
+    """Return what each user's profession grants that they do not hold.
 
-    The check to run before the resolver stops reading the template. For
-    each user, every competency their base profession grants that they have
-    no current row for, neither a grant nor a removal. Today they hold it,
-    because the template is added on top of the rows. Once only the rows
-    count, they would not. An empty result means the switch changes nobody.
+    For each user, every competency in their base profession's template
+    that they have no current row for. **A competency never seeded and
+    one taken away are the same thing here**, on purpose: what somebody
+    holds is their current rows and nothing else, and no row is kept to
+    say which of the two it was. So this is a list of where people
+    differ from their profession's template, and a name on it may be
+    there by an administrator's decision.
+
+    It was written to run before the resolver stopped reading the
+    template, when a missing row meant a competency about to be lost.
 
     Args:
         db: Database session.

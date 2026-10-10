@@ -158,6 +158,7 @@ from .blobs import (
 from .commits import Actor
 from .entitlements import passport_write_ends_on
 from .gcs_store import GcsBlobStore
+from .locking import lock_passport_for_write
 from .models import (
     Passport,
     PassportAssessorInvite,
@@ -226,10 +227,40 @@ def _feature_unless_reading_your_own(
     _FEATURE_GATE(request, db)
 
 
+def _lock_the_passport_being_written(
+    request: Request, db: Session = Depends(get_core_db)
+) -> None:
+    """One writer at a time for the passport a request is about to change.
+
+    Every request that is not a read, on a route naming a passport in
+    its path, takes that passport's write lock and holds it until the
+    request's transaction ends. See :mod:`app.features.passport.locking`
+    for why.
+
+    Here, on the router, and not on each route: a route that writes and
+    was never given the lock would look exactly like one that was.
+
+    A path whose id is not a passport id takes no lock. The route
+    refuses it a moment later, through ``_checked_id``.
+    """
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return
+
+    passport_id = request.path_params.get("passport_id")
+
+    if passport_id is None or not _PASSPORT_ID.fullmatch(passport_id):
+        return
+
+    lock_passport_for_write(db, passport_id)
+
+
 passport_router = APIRouter(
     prefix="/passport",
     tags=["passport"],
-    dependencies=[Depends(_feature_unless_reading_your_own)],
+    dependencies=[
+        Depends(_feature_unless_reading_your_own),
+        Depends(_lock_the_passport_being_written),
+    ],
 )
 
 #: A passport id is 32 lower-case hex characters and decides a filesystem
@@ -1099,6 +1130,10 @@ def answer_logbook_confirmation(
         raise HTTPException(403, "You cannot confirm your own logbook entry.")
 
     if body.confirmed:
+        # This route names a request and not a passport, so the router's
+        # own lock cannot tell which passport is about to be written.
+        lock_passport_for_write(db, passport.id)
+
         actor = _actor(user)
         try:
             passport.head_commit = records.confirm_logbook_entry(

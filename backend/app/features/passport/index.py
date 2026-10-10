@@ -77,11 +77,12 @@ def _sign_offs(
 
         try:
             content = store.read(passport_id, paths.sign_off_file(name))
-        except PassportNotFoundError:
-            # A directory with no sign-off.yaml is not a sign-off. It
-            # cannot arise through the application, so it means somebody
-            # created a folder by hand; ignoring it is kinder than
-            # refusing to rebuild the whole index.
+        except (PassportNotFoundError, paths.PassportPathError):
+            # A directory with no sign-off.yaml is not a sign-off, and
+            # neither is anything whose name is not a date and a slug.
+            # Neither can arise through the application, so it means
+            # somebody created a folder or a file by hand; ignoring it
+            # is kinder than refusing to rebuild the whole index.
             continue
 
         record = serialise.from_yaml(SignOff, content)
@@ -192,7 +193,8 @@ def _certificates(
 
         try:
             content = store.read(passport_id, paths.certificate_file(name))
-        except PassportNotFoundError:
+        except (PassportNotFoundError, paths.PassportPathError):
+            # Made by hand, as in _sign_offs: not a certificate.
             continue
 
         certificate = serialise.from_yaml(Certificate, content)

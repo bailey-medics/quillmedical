@@ -307,26 +307,12 @@ fixtures from `backend/tests/fixtures/`, which stays where it is.
       `features/passport/entitlements_test.py`, for until when somebody
       may write to their passport; and `logging_config_test.py`.
 
-- [ ] Write tests of their own for the larger plain modules. Each is
-      exercised today only through routes or through another module's
-      test, which is cover but not a test of the module in its own
-      right. In rough order of how much rides on them:
-      `messaging.py` (600 lines, 17 functions), `inbox/sources.py` (360
-      lines, 12 functions), `features/teaching/access.py` (409 lines, 11
-      functions), `features/passport/index.py` (302 lines),
-      `features/passport/blobs.py` (205 lines), `cbac/audit.py`,
-      `cbac/grants.py`, `org_units/relations.py` and
-      `features/passport/locking.py`. Not done in this run: a test
-      written for each without first reading what the route tests
-      already pin down would repeat them or be shallow. Each is a piece
-      of work of its own, best done as that module is reviewed.
-
-- [ ] Record the modules whose logic sits inside a route as candidates
-      for pulling it out into plain functions, as `cbac/grants.py` and
-      `cbac/practising.py` already do. That is what makes a test of one
-      module possible. `main.py` is the large one, at 65 routes and 106
-      functions in one file, and `org_units/router.py` the next, at 26
-      routes. Each is its own piece of work and not part of this plan.
+- [x] Leave the nine larger plain modules, and the routes that hold
+      logic of their own, for a later phase. Neither was done here: a
+      test written for a module without first reading what the route
+      tests already pin down would repeat them or be shallow. **Both
+      are Phase 8**, moved there on 9 October 2026 because that is when
+      they were done, after the renaming and the security scan.
 
 ## Phase 6: One name for a test file, `*_test.py`, everywhere
 
@@ -505,6 +491,149 @@ the list, for anybody repeating it, is `bandit -r backend -x
       is still checked. Nothing to add: the fast tier's `pre-commit` job
       already runs every hook over every file, so it had been running
       the broken hook, and passing, all along.
+
+## Phase 8: The routes that hold logic, then the larger modules
+
+The two steps Phase 5 left open, done after Phases 6 and 7 and so
+written here. The list of routes comes first because it is small, and
+because it says which modules are plain already and can be tested now.
+
+- [x] Record the modules whose logic sits inside a route as candidates
+      for pulling it out into plain functions, as `cbac/grants.py` and
+      `cbac/practising.py` already do. That is what makes a test of one
+      module possible: a route can be tested only through the API, with
+      a user, a session and a request built for each case. Measured on
+      9 October 2026 by reading every route function under
+      `backend/app/` and counting the lines of its body. A route of 40
+      lines or more is taken as holding logic of its own; shorter ones
+      mostly check, call and return. **Each is its own piece of work
+      and none is part of this plan.** Largest first:
+
+      - **`main.py`** - 6,367 lines, 64 routes, 2,636 lines inside
+        route bodies, 18 routes of 40 lines or more. `update_user` (294
+        lines, 28 branches) and `register` (270 lines, 24 branches) are
+        the two to start with: each decides several things in a row,
+        and each branch can today be reached only by a full request.
+        Then `ci_teaching_sync` (168), `list_users` (159) and
+        `create_user_with_cbac` (119).
+
+      - **`features/teaching/router.py`** - 4,244 lines, 38 routes,
+        2,485 lines inside route bodies, and 27 of the 38 are 40 lines
+        or more, the highest share of any router. `get_learning_content`
+        (199), `list_delegates` (189, 17 branches),
+        `list_question_banks` (127), `start_assessment` (127) and
+        `list_learning_modules` (115, 16 branches). The two listing
+        routes work out who may see what, which is the kind of rule
+        `features/teaching/access.py` exists to hold.
+
+      - **`features/passport/router.py`** - 4,017 lines, 44 routes,
+        1,338 lines inside route bodies, 7 routes of 40 or more. In
+        better shape than its size suggests: it has more plain helper
+        functions (48) than routes. `request_sign_off` (120) and
+        `accept_assessor_invite` (113) are the two long ones.
+
+      - **`org_units/router.py`** - 2,247 lines, 26 routes, 909 lines
+        inside route bodies, 9 routes of 40 or more.
+        `add_org_unit_member` (120), `get_org_unit` (85),
+        `set_org_unit_feature` (77, 10 branches) and
+        `grant_and_authorise` (65).
+
+      - **Nothing to do** - `features/teaching/door.py`,
+        `feedback/router.py` and the routers of `inbox`, `guides`,
+        `marketing`, `analytics` and push each have at most one route
+        of 40 lines, and already keep their logic in a module beside
+        them.
+
+- [x] Write tests of their own for the larger plain modules. Each was
+      exercised only through routes or through another module's test,
+      which is cover but not a test of the module in its own right. For
+      each, what the route tests already pin down was read first, and
+      is not repeated. Nine files, 472 cases, each beside its module:
+
+      - **`messaging_test.py`** - 108. Every refusal, who may read a
+        conversation without taking part, and what is sent to FHIR,
+        with FHIR replaced by a recorder.
+      - **`inbox/sources_test.py`** - 71. Each source's count and its
+        lines, the order, the cap on lines, and that no line carries
+        the words of a message.
+      - **`features/teaching/access_test.py`** - 76.
+      - **`features/passport/index_test.py`** - 54, against a small
+        store held in memory, so a hand-made folder can be planted.
+      - **`features/passport/blobs_test.py`** - 45, on a real
+        temporary folder.
+      - **`features/passport/locking_test.py`** - 22. The unit suite is
+        SQLite, which has no advisory locks, so these check which
+        statements are sent and in what order. Whether a second writer
+        really waits is not tested.
+      - **`cbac/audit_test.py`** - 28, **`cbac/grants_test.py`** - 30
+        and **`org_units/relations_test.py`** - 38.
+
+- [x] Decide what to do about what the new tests turned up, and do it.
+      No source module was changed while the tests were being written:
+      a test of how a module behaves is not the place to change how it
+      behaves. **Mark ruled on each on 9 October 2026**, and each was
+      then fixed with a test:
+
+      - **`create_conversation` wrote to FHIR, then could fail** - it
+        never checked `participant_ids`, so an id that is no user, or
+        one given twice, raised after the Communication was in FHIR,
+        leaving it there with no row of ours. Now everybody named is
+        looked up before the FHIR write, an unknown id is refused as
+        `UserNotFound`, and somebody named twice joins once.
+
+      - **`passport_write_lock` was called nowhere** - `locking.py`
+        said writes to one passport happen one at a time, and no write
+        took the lock. Ruled: wire it in. It is now a dependency of the
+        whole passport router, `_lock_the_passport_being_written`, so
+        every request that is not a read and names a passport in its
+        path takes that passport's lock, and a route added later is
+        covered without anybody remembering. Answering a logbook
+        confirmation names a request and not a passport, so it calls
+        the lock itself. **The lock changed kind as it went in**: from
+        one held by the connection and released by a second statement,
+        to one held by the transaction (`pg_advisory_xact_lock`) and
+        released by the commit or rollback. A request is one
+        transaction, so that is the span wanted, and a pooled session
+        cannot promise that its release goes down the connection that
+        took the lock. The option not to wait went with it, having no
+        caller. **Only what is sent is tested**: the unit suite is
+        SQLite, where the lock does nothing. That two writers really
+        queue is for the E2E run, on Postgres, to show by not failing.
+
+      - **A reply did not move a conversation up the list** -
+        `send_message` changed the conversation's row only when its
+        status was `new`. It now sets `updated_at` on every message.
+
+      - **A stray folder stopped the passport index rebuilding** - a
+        folder or file made by hand under `sign-offs/` or
+        `certificates/`, with a name that is not a date and a slug,
+        raised `PassportPathError`. Ruled: ignore it, as the comment
+        there already promised.
+
+      - **`unseeded_profession_competencies` names people who had a
+        competency taken away on purpose** - ruled: removed and missing
+        are the same thing. The behaviour stands, the test pinning it
+        stays, and the docstring, which described removal rows that no
+        longer exist, now says so.
+
+      - **`settle_enrolments` did nothing, silently, for somebody who
+        belongs nowhere under the organisation** - ruled: in medicine
+        you need to be somewhere to do anything, so you need to belong
+        to an org unit. It now raises `BelongsNowhere` before anything
+        is written, and the user form's route answers 422. Ending every
+        enrolment still needs no membership, so somebody who has left
+        can be taken off what they were on.
+
+      - **`TestTheSoldCompetency`** - renamed
+        `TestPassportWriteIsGrantedByOneManager`.
+
+      - **Smaller, fixed without a ruling** - `add_participant` refuses
+        a conversation that does not exist;
+        `enrol_everyone_with_a_place` checks `source` first, on a dry
+        run too; `BlobStore.put` removes its `.partial` file when the
+        last move fails; and the docstring of `sync_competency_rows`
+        now says when a change of profession closes rows, and that a
+        current row of any source counts as holding.
 
 ## Decisions
 
