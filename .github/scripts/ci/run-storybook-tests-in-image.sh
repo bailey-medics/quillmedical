@@ -30,6 +30,10 @@ STORYBOOK_PORT=6006
 STORYBOOK_URL="http://127.0.0.1:${STORYBOOK_PORT}"
 STORYBOOK_WAIT_MS=30000
 
+# How long a server asked to stop is given before it is killed outright.
+# Read from the environment only so the tests need not wait five seconds.
+STORYBOOK_STOP_GRACE_SECONDS="${STORYBOOK_STOP_GRACE_SECONDS:-5}"
+
 # Where `storybook:build` in frontend/package.json writes, seen from frontend.
 STORYBOOK_BUILD_DIR="../docs/docs/code/storybook"
 
@@ -47,10 +51,33 @@ serve_storybook() {
   SERVER_PID=$!
 }
 
+# Stops the server and does not return until it has gone.
+#
+# A signal only asks. Without the wait, this returned while the server was
+# still on its way out, and a caller that looked straight afterwards
+# sometimes found it there: two of this script's own tests did, on CI.
+# The wait also collects the dead process, which otherwise still answers
+# to its number until something does.
+#
+# A server that ignores the request is killed outright after the grace
+# period, so the wait cannot hang the job.
 stop_storybook() {
-  if [ -n "$SERVER_PID" ]; then
-    kill -- "-${SERVER_PID}" 2>/dev/null || true
+  if [ -z "$SERVER_PID" ]; then
+    return 0
   fi
+
+  kill -- "-${SERVER_PID}" 2>/dev/null || true
+
+  # Its output goes nowhere, so nothing reading ours waits on its sleep.
+  (
+    sleep "$STORYBOOK_STOP_GRACE_SECONDS"
+    kill -KILL -- "-${SERVER_PID}" 2>/dev/null || true
+  ) >/dev/null 2>&1 &
+  local killer=$!
+
+  wait "$SERVER_PID" 2>/dev/null || true
+  kill "$killer" 2>/dev/null || true
+  wait "$killer" 2>/dev/null || true
 }
 
 run_tests() {
