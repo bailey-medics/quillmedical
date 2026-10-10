@@ -123,7 +123,7 @@ Two things follow from how that works:
   branch changes `package.json`, run `just utr` to drop them and rebuild;
   otherwise the old packages linger.
 - **Dependencies live in the image**, so a backend dependency change also
-  needs a rebuild: `just utr`, or `just sd b` from the worktree that owns
+  needs a rebuild: `just utr`, or `just se b` from the worktree that owns
   the stack. One image serves every worktree.
 
 The end-to-end tests need a whole application, so `just e2e` builds one:
@@ -147,7 +147,7 @@ drops it again. It fails on an empty result rather than leaving a no-op
 revision to be found in review.
 
 The dev stack itself is different. It uses fixed container names, so
-**only one worktree can run it at a time**. Starting `just sd` in a second
+**only one worktree can run it at a time**. Starting `just se` in a second
 worktree will either fail on the name or, worse, attach to the containers
 already serving the first. Recipes that need the live stack - `just eb`,
 `just csl` - check which worktree the stack serves and refuse

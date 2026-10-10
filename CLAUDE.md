@@ -719,7 +719,7 @@ report its real result.
 - **Do this without asking first.** Starting the daemon changes nothing in
   the repository and nothing outside the machine. It is setup for a command
   already agreed, not a new decision.
-- **`just sd`, `just st` and `just ts` already do it themselves**, via the
+- **`just sa`, `just se` and `just ts` already do it themselves**, via the
   private `_start-docker-daemon` recipe, which is all `just dds` runs. The
   unit-test, E2E and migration recipes do not, which is why this rule exists.
 - **`just dds` only knows how to drive Docker Desktop on macOS.** On any
@@ -743,7 +743,7 @@ There are several worktrees of this repository, but only one dev stack, and
 `docker exec quill_backend …` from any worktree reaches the main checkout's
 code, not the code you are working in.
 
-`just sd` and `just st` call the `_dev-stack-guard` recipe, which refuses
+`just sa` and `just se` call the `_dev-stack-guard` recipe, which refuses
 from every other worktree. The main checkout is found from git, as the
 folder holding the shared `.git` directory, so it is not written down
 anywhere. **Never work round the
@@ -765,7 +765,7 @@ SQLite and the frontend suite is vitest under jsdom, so no service is needed.
   a branch changes `package.json`, run `just utr` to drop them and rebuild
   the image; otherwise the old packages linger and the failure is confusing.
 - **Dependencies are baked into the image.** A backend dependency change
-  needs the image rebuilt too (`just utr`, or `just sd b`). Both compose
+  needs the image rebuilt too (`just utr`, or `just se b`). Both compose
   files tag the same `quill-backend-dev` / `quill-frontend-dev` images, so
   one build serves every worktree.
 - **On a Linux host, pytest warns it cannot write `.pytest_cache`.** The
