@@ -12,6 +12,11 @@ from app.security import generate_totp_secret
 from tests.competencies import hold
 
 
+def _csrf(client: TestClient) -> dict[str, str]:
+    """The header a page sends with a request that changes something."""
+    return {"X-CSRF-Token": client.cookies.get("XSRF-TOKEN", "")}
+
+
 class TestRegister:
     """Test user registration endpoint."""
 
@@ -296,13 +301,24 @@ class TestLogout:
 
     def test_logout_success(self, authenticated_client: TestClient):
         """Test successful logout."""
-        response = authenticated_client.post("/api/auth/logout")
+        response = authenticated_client.post(
+            "/api/auth/logout", headers=_csrf(authenticated_client)
+        )
         assert response.status_code == 200
         assert response.json() == {"detail": "ok"}
 
         # Client cookies should no longer contain access token
         token = authenticated_client.cookies.get("access_token")
         assert token in (None, "")
+
+    def test_logout_without_the_csrf_token_is_refused(
+        self, authenticated_client: TestClient
+    ):
+        """Another site must not be able to sign somebody out."""
+        response = authenticated_client.post("/api/auth/logout")
+
+        assert response.status_code == 403
+        assert authenticated_client.cookies.get("access_token")
 
 
 class TestAuthMe:
@@ -407,11 +423,22 @@ class TestTOTPSetup:
 
     def test_totp_setup_success(self, authenticated_client: TestClient):
         """Test TOTP setup returns provisioning URI."""
-        response = authenticated_client.post("/api/auth/totp/setup")
+        response = authenticated_client.post(
+            "/api/auth/totp/setup", headers=_csrf(authenticated_client)
+        )
         assert response.status_code == 200
         data = response.json()
         assert "provision_uri" in data
         assert data["provision_uri"].startswith("otpauth://totp/")
+
+    def test_totp_setup_without_the_csrf_token_is_refused(
+        self, authenticated_client: TestClient
+    ):
+        """Setting up a second factor is a change to the account."""
+        response = authenticated_client.post("/api/auth/totp/setup")
+
+        assert response.status_code == 403
+        assert response.json()["detail"] == "CSRF failed"
 
     def test_totp_setup_unauthenticated(self, test_client: TestClient):
         """Test TOTP setup without authentication."""
@@ -427,7 +454,9 @@ class TestTOTPVerify:
     ):
         """Test successful TOTP verification."""
         # Setup TOTP
-        response = authenticated_client.post("/api/auth/totp/setup")
+        response = authenticated_client.post(
+            "/api/auth/totp/setup", headers=_csrf(authenticated_client)
+        )
         provision_uri = response.json()["provision_uri"]
 
         # Extract secret from provision_uri
@@ -445,7 +474,9 @@ class TestTOTPVerify:
 
         # Verify code
         response = authenticated_client.post(
-            "/api/auth/totp/verify", json={"code": valid_code}
+            "/api/auth/totp/verify",
+            json={"code": valid_code},
+            headers=_csrf(authenticated_client),
         )
         assert response.status_code == 200
         assert response.json()["detail"] == "enabled"
@@ -458,11 +489,15 @@ class TestTOTPVerify:
     def test_totp_verify_invalid_code(self, authenticated_client: TestClient):
         """Test TOTP verification with invalid code."""
         # Setup TOTP first
-        authenticated_client.post("/api/auth/totp/setup")
+        authenticated_client.post(
+            "/api/auth/totp/setup", headers=_csrf(authenticated_client)
+        )
 
         # Try to verify with wrong code
         response = authenticated_client.post(
-            "/api/auth/totp/verify", json={"code": "000000"}
+            "/api/auth/totp/verify",
+            json={"code": "000000"},
+            headers=_csrf(authenticated_client),
         )
         assert response.status_code == 400
         detail = response.json()["detail"]

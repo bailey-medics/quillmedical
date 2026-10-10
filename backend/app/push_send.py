@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_core_db
-from app.deps import DEP_REQUIRE_OPERATOR
+from app.deps import DEP_REQUIRE_CSRF, DEP_REQUIRE_OPERATOR
 from app.models import PushSubscription, User
 
 router = APIRouter(prefix="/api/push", tags=["push-send"])
@@ -47,6 +47,7 @@ class SendTestOut(BaseModel):
 @router.post("/send-test", response_model=SendTestOut)
 def send_test(
     _u: User = DEP_REQUIRE_OPERATOR,
+    _csrf: User = DEP_REQUIRE_CSRF,
     db: Session = Depends(get_core_db),
 ) -> SendTestOut:
     """Send test push notification to all subscribed clients.

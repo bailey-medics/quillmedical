@@ -522,6 +522,26 @@ class TestQuestionBanks:
 class TestAssessmentLifecycle:
     """Start → answer → complete flow."""
 
+    def test_starting_without_the_csrf_token_is_refused(
+        self, test_client, db_session
+    ):
+        """A learner who may start an assessment, signed in, with the
+        token left off: refused for the token and nothing else."""
+        org = _make_teaching_org(db_session)
+        educator = _make_educator(db_session, org)
+        _seed_bank(db_session, org.id, educator.id)
+        _make_learner(db_session, org)
+        db_session.commit()
+
+        _login(test_client, "testlearner", "Learner123!")
+        resp = test_client.post(
+            "/api/teaching/assessments",
+            json={"question_bank_id": "test-bank"},
+        )
+
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "CSRF failed"
+
     def test_start_assessment(self, test_client, db_session):
         org = _make_teaching_org(db_session)
         educator = _make_educator(db_session, org)
