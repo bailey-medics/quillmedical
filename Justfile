@@ -68,9 +68,11 @@ _e2e-up:
     set -euo pipefail
     project=$(just _e2e-project)
     compose="docker compose -p ${project} -f compose.ci.yml"
+
     # The module seed_ci.py syncs, pinned so a local run tests what CI does
     .github/scripts/ci/fetch-e2e-teaching.sh >&2
     E2E_PORT=0 ${compose} up --build --wait --wait-timeout 120 >&2
+
     # The prod image does not migrate on start-up, so the fresh database
     # needs the schema applied before it is seeded - as in ci.yml.
     ${compose} exec -T backend alembic upgrade head >&2
@@ -90,6 +92,7 @@ _e2e-down:
 _e2e-run *ARGS:
     #!/usr/bin/env bash
     set -euo pipefail
+
     # Runs on failure too, so a red run never leaves a stack behind. The exit
     # status Playwright produced survives the trap.
     trap 'just _e2e-down' EXIT
@@ -165,6 +168,7 @@ alias al := aws-login
 aws-login which="emails":
     #!/usr/bin/env bash
     {{initialise}} "aws-login"
+
     # `aws login` keeps short-lived credentials that renew themselves, so no
     # access key is left on disk. It does not ask which account: it takes
     # whichever AWS console session is active in the browser. So open the
@@ -264,6 +268,7 @@ alias d := docs
 docs:
     #!/usr/bin/env bash
     {{initialise}} "docs"
+
     # Copy the Claude configuration to docs for inclusion in MkDocs build
     bash .github/scripts/docs/copy-llm-config.sh . docs/docs/llm
     cd frontend
@@ -568,6 +573,7 @@ migrate message:
         alembic revision --autogenerate -m "$AL_MSG" &&
         alembic upgrade head
     '
+
     # Autogenerate happily writes an empty revision when it finds no
     # difference, and that exits zero. Name the file and say so, rather
     # than leaving a permanent no-op to be discovered in review.
@@ -688,12 +694,14 @@ worktree-create branch="":
         echo "Branch {{branch}} already exists locally - checking it out."
         git -C "$ROOT" worktree add "$DEST" "{{branch}}"
     elif git -C "$ROOT" show-ref --verify --quiet "refs/remotes/origin/{{branch}}"; then
+
         # Resuming work that already exists on the remote. Branching from
         # main here would silently discard every commit on it.
         echo "Branch {{branch}} exists on origin - resuming it."
         git -C "$ROOT" worktree add -b "{{branch}}" "$DEST" "origin/{{branch}}"
         git -C "$DEST" branch --set-upstream-to="origin/{{branch}}" "{{branch}}"
     else
+
         # Branch from origin/main rather than the current HEAD, so a new
         # worktree never inherits half-finished work from wherever you
         # happened to be standing.
@@ -723,6 +731,7 @@ worktree-create branch="":
     # others, which is exactly what a worktree is meant to prevent.
 
     echo "Creating the backend virtual environment..."
+
     # `env -u VIRTUAL_ENV` matters as much as the in-project flag. If a
     # venv is already active in the calling shell - which it is whenever
     # you run this from a worktree you have been working in - Poetry
@@ -796,6 +805,7 @@ prune-branches scope="":
         if [ -z "$MERGED_UNTRACKED" ]; then
             echo "No merged untracked branches to remove."
         else
+
             # -D, not -d, because the merge check has already been made above
             # and made against the right branch. A branch with no upstream
             # sends `git branch -d` to compare against HEAD instead of main,
@@ -816,6 +826,7 @@ prune-branches scope="":
             echo "No teaching content repos cloned - run 'just initial-install' first."
         else
             for REPO in "$ROOT"/teaching-repos/*/; do
+
                 # A directory without .git is content someone dropped in by
                 # hand, not a clone, and git commands there would act on
                 # Quill's repository instead.
@@ -921,6 +932,7 @@ terraform-aws:
     done
 
     cd infra/aws
+
     # -upgrade: see terraform-github; the lock file is not committed.
     terraform init -input=false -upgrade
     terraform plan
@@ -967,21 +979,23 @@ storybook:
     cd frontend
     yarn storybook
 
+
 alias sbt := storybook-test
-# Run storybook tests (requires storybook to be running)
+# Run storybook tests, starting storybook first if it is not already running
 storybook-test:
     #!/usr/bin/env bash
     {{initialise}} "storybook-test"
     cd frontend
-    yarn storybook:test
 
-alias sbtci := storybook-test-ci
-# Run storybook tests in CI mode (starts storybook, runs tests, stops storybook)
-storybook-test-ci:
-    #!/usr/bin/env bash
-    {{initialise}} "storybook-test-ci"
-    cd frontend
-    yarn storybook:test:ci
+    # A Storybook already up is used as it is and left running. Otherwise
+    # the CI script starts one, runs the tests and stops it again.
+    if curl --silent --fail --max-time 5 --output /dev/null http://127.0.0.1:6006/index.json; then
+        echo "Storybook is already running: testing against it."
+        yarn storybook:test
+    else
+        echo "Storybook is not running: starting one for this run."
+        yarn storybook:test:ci
+    fi
 
 
 alias sdc := show-dev-containers
@@ -1053,6 +1067,7 @@ stack-add name message:
     {{stack_repo}}
     set -euo pipefail
     just _stack-guard
+
     # Refuse to stack on a branch whose pull request has merged. The
     # stack's own record cannot be trusted for this: `gh stack view` says
     # what it knew at the last sync, so a pull request merged on GitHub
@@ -1076,6 +1091,7 @@ stack-add name message:
     fi
 
     branch="$(just _stack-branch-name '{{name}}')"
+
     # -A stages everything including untracked files, which is what makes
     # this one command rather than three. The commit message is required
     # rather than optional: without -m, gh opens an editor, and a recipe
@@ -1091,6 +1107,7 @@ stack-checkout target="":
     {{initialise}} "stack-checkout"
     {{stack_repo}}
     set -euo pipefail
+
     # The recovery path when a stack's local state is gone - a removed
     # worktree takes .git/worktrees/<name>/gh-stack with it. This fetches
     # the stack back from GitHub, which works once two or more pull
@@ -1126,6 +1143,7 @@ stack-fresh:
     {{initialise}} "stack-fresh"
     {{stack_repo}}
     set -euo pipefail
+
     # For the moment after a stack has merged: the branch checked out is
     # spent, the trunk has moved, and the working tree holds the next unit.
     # Until this existed the way across was `just stack-sync` then
@@ -1188,17 +1206,6 @@ stack-help:
     #
     # Coloured only when stdout is a terminal, so piping or capturing the
     # output does not pick up escape sequences.
-    #
-    # 206,166,87 as a 24-bit RGB escape rather than an ANSI palette index: it
-    # is the colour an editor gives a recipe name in this Justfile, sampled
-    # from the screen, and the point is to match it. Palette colour 33
-    # ("yellow") renders anywhere from amber to orange depending on the
-    # theme, so it could not. A terminal with only 256 colours degrades this
-    # to the nearest entry, 179, which is close enough not to detect.
-    # The arguments are coloured separately from the name, so the shape of a
-    # command - what it is, and what it wants - reads at a glance. The alias
-    # takes the recipe colour, because it is the same thing said shorter:
-    # colouring it differently would suggest a difference that is not there.
     if [ -t 1 ]; then
         recipe_colour=$'\033[38;2;206;166;87m'
         argument_colour=$'\033[38;2;159;206;253m'
@@ -1218,6 +1225,7 @@ stack-help:
     widest=0
 
     while IFS= read -r line; do
+
         # `--list` prints "  name args   # description [alias: x]". The alias
         # lives inside the comment, so it has to be lifted out before the
         # comment is stripped.
@@ -1282,6 +1290,7 @@ alias stl := stack-log
 # Show the current stack (fast, local only - no network)
 stack-log:
     #!/usr/bin/env bash
+
     # Trace off before `initialise`, not after: this recipe exists to draw a
     # picture, and even the two trace lines the setup itself emits are
     # enough to push the stack down the terminal. Same reasoning as
@@ -1290,6 +1299,7 @@ stack-log:
     {{initialise}} "stack-log"
     set +x
     {{stack_repo}}
+
     # Local flags only: branch order, merged/queued, needs-rebase, and which
     # branches another worktree holds. Instant and works offline. `just stll`
     # is the same picture with pull request and CI state joined on.
@@ -1308,6 +1318,7 @@ stack-log-long:
     {{initialise}} "stack-log-long"
     set +x
     {{stack_repo}}
+
     # One `gh pr list` for the whole stack rather than one call per branch,
     # so a six-deep stack is one round trip. This is the view that answers
     # "is this one green yet" without opening a browser.
@@ -1328,6 +1339,7 @@ stack-move direction="":
     {{initialise}} "stack-move"
     {{stack_repo}}
     set -euo pipefail
+
     # `gh stack switch` with no argument opens an interactive picker; the
     # named directions are the cheap ones. Wrapped together because they
     # are the same act - going somewhere else in the stack - and because
@@ -1340,6 +1352,7 @@ stack-move direction="":
         bottom|b)         gh stack bottom ;;
         trunk|main)       gh stack trunk ;;
         [1-9]|[1-9][0-9])
+
             # A branch by its number, 1 at the bottom, as `stack-watch`
             # draws them. The script owns the numbering so that the number
             # on screen and the branch it reaches cannot drift apart.
@@ -1381,6 +1394,7 @@ stack-new name message:
             git switch "${branch}"
         fi
     else
+
         # A new stack is cut from wherever the checkout is, so it has to be
         # at the trunk's tip. Cut from a branch that has merged, the new
         # branch sits behind the trunk and its pull request carries the old
@@ -1414,6 +1428,7 @@ stack-ready:
     {{stack_repo}}
     set -euo pipefail
     just _stack-guard
+
     # Marking ready is what starts the heavy CI tier (Storybook interaction
     # tests, Semgrep, E2E): it fires on ready_for_review, never on opened. So
     # this starts it on every branch at once - do not run it alongside
@@ -1479,6 +1494,7 @@ stack-refresh:
     {{initialise}} "stack-refresh"
     {{stack_repo}}
     set -euo pipefail
+
     # The record in .git/gh-stack stores trunk.head: the commit main sat
     # at when the stack was started. `gh stack rebase` works out "your
     # commits" from that point, and nothing refreshes it as the branches
@@ -1533,6 +1549,7 @@ stack-refresh:
     echo "${branches}" | sed 's/^/  /'
 
     if python3 "{{stack_scripts}}"/stack-relink.py --needed; then
+
         # GitHub refuses to unstack a stack holding a merged pull request
         # ("Pull requests #1356, #1358 cannot be removed from this
         # stack"), and on 2026-10-02 the attempt left the open ones in
@@ -1544,12 +1561,15 @@ stack-refresh:
         echo "not unstack. Rebuilding the local record and linking the"
         echo "open pull requests instead."
         gh stack unstack --local
+
         # shellcheck disable=SC2086
         gh stack init ${branches}
+
         # shellcheck disable=SC2086
         python3 "{{stack_scripts}}"/stack-relink.py --link ${branches}
     else
         gh stack unstack
+
         # shellcheck disable=SC2086
         gh stack init ${branches}
     fi
@@ -1564,17 +1584,19 @@ stack-submit:
     {{initialise}} "stack-submit"
     {{stack_repo}}
     set -euo pipefail
+
     # Rebase first, every time. A stack is submitted over and over as the
     # units above it are revised, and trunk moves underneath it while that
-    # happens - 22 commits in one afternoon, the first time this was used.
-    # Submitting without rebasing pushes branches whose pull requests then
-    # sit behind main, which the merge queue has to sort out later.
+    # happens. Submitting without rebasing pushes branches whose pull
+    # requests then sit behind main, which the merge queue has to sort out
+    # later.
     #
     # `stack-rebase` rather than a bare `gh stack rebase`: it carries the
     # worktree guard and the after-the-fact check that catches a rebase
     # which reported success and silently skipped a branch. Both belong
     # here too, and are better called than copied.
     just stack-rebase
+
     # --auto skips the interactive editor and opens every new pull request as
     # a draft, which is what this repository needs: the heavy CI tier and the
     # four gate contexts fire on ready_for_review and synchronize, never on
@@ -1645,10 +1667,12 @@ stack-sync scope="":
         # ordinary outcomes of a sweep and each deserves its own line.
         local status=0
         python3 "{{stack_scripts}}"/stack-status.py --check >/dev/null 2>&1 || status=$?
+
         if [ "${status}" -eq 1 ]; then
             echo "  No stack here - nothing to sync."
             return 0
         fi
+
         if [ "${status}" -eq 2 ]; then
             echo "  ✗ Skipped: this stack spans more than one worktree." >&2
             echo "    Free the branches above, or sync it from the worktree" >&2
@@ -1679,6 +1703,7 @@ stack-sync scope="":
         # so it stays put, warns, and leaves the spent stack drawn.
         local cleared=0
         clear_spent || cleared=$?
+
         if [ "${cleared}" -ne 1 ]; then
             return "${cleared}"
         fi
@@ -1735,6 +1760,7 @@ stack-sync scope="":
         local drawn=""
         local draw_status=0
         drawn=$(python3 "{{stack_scripts}}"/stack-status.py --prs --colour 2>&1) || draw_status=$?
+
         if [ "${draw_status}" -eq 0 ]; then
             printf '%s\n' "${drawn}"
         elif [ "${draw_status}" -eq 1 ]; then
@@ -1743,6 +1769,7 @@ stack-sync scope="":
             printf '%s\n' "${drawn}" >&2
             return "${draw_status}"
         fi
+
         return 0
     }
 
@@ -1761,6 +1788,7 @@ stack-sync scope="":
     failed=0
 
     while IFS= read -r WT; do
+
         # Worktrees outside the checkout's own parent directory are not part
         # of the working set: agent sessions leave detached ones under
         # /private/tmp, and a sweep that force-pushed from one of those would
@@ -1771,6 +1799,7 @@ stack-sync scope="":
         esac
         echo ""
         echo "▸ $(basename "${WT}")"
+
         # A subshell, so sync_one's `cd` cannot leak into the next iteration.
         ( sync_one "${WT}" ) || failed=1
     done < <(git worktree list --porcelain | awk '/^worktree /{print $2}')
@@ -1789,6 +1818,7 @@ stack-update message="":
     {{initialise}} "stack-update"
     {{stack_repo}}
     set -euo pipefail
+
     # The counterpart to stack-new and stack-add, which both create a branch.
     # This one revises the branch already checked out - the ordinary case when
     # a review comment, or a second pass over generated code, changes a unit
@@ -1825,6 +1855,7 @@ stack-update message="":
     if [ -n "{{message}}" ]; then
         git commit --amend -m "{{message}}"
     else
+
         # --no-edit keeps the existing message rather than opening an editor,
         # which would hang anywhere non-interactive.
         git commit --amend --no-edit
@@ -1863,6 +1894,7 @@ stack-watch:
     {{initialise}} "stack-watch"
     set +x
     {{stack_repo}}
+
     # `stack-log-long` in a loop. A minute is the cadence because CI state
     # does not change faster than that in any way worth watching, and one
     # `gh pr list` a minute is 60 calls an hour against a 5000-point limit.
@@ -1898,6 +1930,7 @@ stack-watch:
     }
 
     while true; do
+
         # Fetch first, then clear. Clearing before the ~3s `gh pr list` call
         # left the terminal blank for the whole of it, which read as a hang;
         # capturing the new stack first means the old one stays on screen
@@ -1918,6 +1951,7 @@ stack-watch:
         # the window leaves the older copy above the new one and the
         # status line scrolls out of sight with it.
         printf '\033[H\033[2J\033[3J'
+
         # The keys, each word carrying the letter that does it: its first,
         # except for refresh, whose `r` belongs to ready, so it is the `f`.
         # That letter is bold blue: a colour the drawing below does not use, so
@@ -1927,11 +1961,13 @@ stack-watch:
         # argument; the time goes in as an argument too, not inline.
         k='\033[1;94m'
         n='\033[0m'
+
         # The colour codes split each word at its key letter, which the
         # spelling check reads as fragments.
         # cspell:disable
         printf '  updated %s - %b\n' "$(date '+%H:%M:%S')" \
             "${k}r${n}eady all - ${k}s${n}ync - ${k}number${n} branch - re${k}f${n}resh - ${k}ctrl-c${n} to stop"
+
         # cspell:enable
         printf '%s\n' "${drawn}"
 
@@ -1957,6 +1993,7 @@ stack-watch:
             sleep 60
             continue
         fi
+
         # The key is read silently and then answered in words, rather than
         # left to echo. A bare `r` on the line says nothing about what it
         # set off, and the redraw's fetch takes about three seconds, in
@@ -1997,6 +2034,7 @@ stack-watch:
         if [ -z "${key}" ]; then
             continue
         fi
+
         # Whichever key it was, the dots run on into the fetch at the top
         # of the loop, which is what stops them: one growing line from the
         # keypress to the redraw.
@@ -2011,6 +2049,7 @@ stack-watch:
                 start_dots "s · syncing the stack"
                 ;;
             [1-9])
+
                 # One digit is the whole number unless the stack is tall
                 # enough for a second: with eleven branches a `1` may be
                 # branch 1 or the start of 10 or 11. Only then is there a
@@ -2029,6 +2068,7 @@ stack-watch:
                         [0-9]) number="${key}${second}" ;;
                     esac
                 fi
+
                 # A number with no branch behind it is said in a line, not
                 # handed to the recipe: its refusal comes back with a
                 # trace round it and is then held as a failure to be read.
@@ -2047,6 +2087,7 @@ stack-watch:
                 start_dots "${number} · checking out branch ${number}"
                 ;;
             *)
+
                 # Only `f` reaches here: the read above drops the rest.
                 start_dots "f · refreshing"
                 continue
@@ -2266,6 +2307,7 @@ alias ub := unit-tests-backend
 unit-tests-backend *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-backend"
+
     # Runs from the shared dev image against THIS worktree's checkout, so it
     # needs neither the dev stack nor ownership of it. `run` builds the image
     # if it is missing. In-memory SQLite: no database service involved.
@@ -2278,6 +2320,7 @@ alias uf := unit-tests-frontend
 unit-tests-frontend *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-frontend"
+
     # As for `ub`: shared image, this worktree mounted, per-worktree
     # node_modules volumes seeded from the image on first use. If a branch
     # changes package.json, `just utr` resets those volumes.
@@ -2290,6 +2333,7 @@ alias utr := unit-tests-reset
 unit-tests-reset:
     #!/usr/bin/env bash
     {{initialise}} "unit-tests-reset"
+
     # For when a branch changes dependencies: the per-worktree volumes were
     # seeded from an older image and would otherwise keep the old packages.
     docker compose -p "$(just _test-project)" -f compose.unit-tests.yml \
@@ -2332,6 +2376,7 @@ alias ee := e2e
 e2e *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "e2e"
+
     # Playwright runs on the host, but the app it drives is this worktree's
     # own compose.ci.yml stack on a free port - not the dev stack - so this
     # works from any worktree and matches what CI runs. See `_e2e-up`.
@@ -2376,6 +2421,7 @@ yarn-install:
 
 _gcp_env_project env:
     #!/usr/bin/env bash
+
     # `app` is the only environment. teaching, staging and production were
     # retired in Batches 8 and 10a of
     # docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md; a
