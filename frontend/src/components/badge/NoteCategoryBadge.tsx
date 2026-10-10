@@ -15,10 +15,7 @@ import {
 import BadgeSkeleton from "./BadgeSkeleton";
 
 export type NoteCategoryType =
-  | "consultation"
-  | "telephone"
-  | "observation"
-  | "procedure";
+  "consultation" | "telephone" | "observation" | "procedure";
 
 type Props = {
   /** The note category to display */

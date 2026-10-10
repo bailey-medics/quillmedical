@@ -83,6 +83,7 @@ export default tseslint.config(
     {
       files: [
         "src/main.tsx",
+        "public_pages/src/main.tsx",
         "src/test/test-utils.tsx",
         "src/RootLayout.test.tsx",
         ".storybook/preview.tsx",
