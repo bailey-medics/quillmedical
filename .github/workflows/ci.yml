@@ -275,6 +275,30 @@ jobs:
         run: bash .github/scripts/ci/require-matrix-success.sh "Frontend unit tests" "${{ needs.frontend_unit_shards.result }}"
 
 
+  # ---------- Secret scan ----------
+  # The pre-commit hook scans what is staged, on the machine that commits.
+  # A commit made where the hook is not installed, or pushed with
+  # --no-verify, never meets it, and the pre-commit job above does not
+  # make up for that: it runs the same hook with nothing staged, which
+  # scans nothing. This scans the commits the branch adds.
+  secret_scan:
+    if: github.event_name == 'push' || github.event_name == 'merge_group'
+    runs-on: ubuntu-24.04
+    name: Secret scan
+    timeout-minutes: 5
+    steps:
+      # The whole history, so the branch can be measured against main.
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        run: bash .github/scripts/ci/install-gitleaks.sh
+
+      - name: Scan this branch's commits
+        run: bash .github/scripts/ci/run-gitleaks.sh origin/main
+
+
   # ---------- Shell scripts ----------
   shell_checks:
     if: github.event_name == 'push'
