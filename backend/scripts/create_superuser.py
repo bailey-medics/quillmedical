@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Create a superadmin user in the local development database.
 
-This is a convenience wrapper around `create_user.py` that also marks the
-user as an operator - ``platform_role`` of ``superadmin``. It is intended
-for local development setup only.
+It prompts for a username, email and password, and marks the user as an
+operator - ``platform_role`` of ``superadmin``. It is intended for local
+development setup only.
 
 Usage (inside the backend container):
 

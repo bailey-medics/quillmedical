@@ -98,55 +98,45 @@ _e2e-run *ARGS:
     cd frontend && E2E_BASE_URL="${base_url}" npx playwright test {{ARGS}}
 
 
-# Refuse to run when this worktree is not the one the container serves.
-#
-# The dev stack is owned by whichever worktree ran `just sd`: the containers
-# bind-mount that checkout, and their names are fixed in compose.dev.yml, so
-# `docker exec` from a second worktree silently acts on the first one's code.
-# A user-creation script would write to the wrong database.
-#
-# Only recipes that genuinely need the live stack call this. The tests and
-# migrations do not: `just ub` and `just uf` run in throwaway containers
-# that mount the current worktree (compose.unit-tests.yml), `just migrate`
-# uses a throwaway database (compose.migrate.yml), and `just e2e` brings up
-# its own per-worktree stack (compose.ci.yml), so all work from any worktree.
-#
-# The owning path is read from Docker rather than hard-coded, so renaming or
-# moving the root worktree needs no change here.
+# Refuse to run anywhere but the main checkout, which owns the dev stack:
+# its container names are fixed in compose.dev.yml, so there is only one.
+# The tests, migrations and `just e2e` never call this. They use throwaway
+# containers of their own and work from any worktree.
+_dev-stack-guard:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Found from git, not written down: the main checkout is the folder
+    # holding the .git directory every worktree shares.
+    common_dir=$(git rev-parse --path-format=absolute --git-common-dir)
+    main_checkout=$(cd -P "$(dirname "${common_dir}")" && pwd)
+    here=$(cd -P "{{justfile_directory()}}" && pwd)
+
+    if [ "${here}" != "${main_checkout}" ]; then
+        echo "" >&2
+        echo "✗ Refusing to run: the dev stack belongs to the main checkout." >&2
+        echo "" >&2
+        echo "    this worktree:  ${here}" >&2
+        echo "    main checkout:  ${main_checkout}" >&2
+        echo "" >&2
+        echo "  Run this from ${main_checkout} instead." >&2
+        echo "  These work from any worktree, in containers of their own:" >&2
+        echo "    just ub    just uf    just e2e    just migrate" >&2
+        echo "" >&2
+        exit 1
+    fi
+
+
+# For recipes that need the live stack: refuse to run outside the main
+# checkout, or when the container is not running.
 _worktree-guard container:
     #!/usr/bin/env bash
     set -uo pipefail
-    # Parsed with jq rather than `docker inspect --format`: a Go template
-    # needs its braces doubled to survive just's own interpolation, which is
-    # easy to get subtly wrong and leaks stray braces into the path.
-    # `.Mounts? // empty` keeps a missing container quiet: docker inspect
-    # yields no object, and the empty result is reported below as "not
-    # running" rather than as a jq iteration error.
-    mount=$(docker inspect {{container}} 2>/dev/null \
-        | jq -r '.[0].Mounts? // empty | .[] | select(.Destination == "/app") | .Source')
-    if [ -z "${mount}" ]; then
+
+    just _dev-stack-guard || exit 1
+
+    if [ -z "$(docker ps -q -f name=^{{container}}$ 2>/dev/null)" ]; then
         echo "{{container}} is not running. Start it with: just sd" >&2
-        exit 1
-    fi
-    owner=$(dirname "${mount}")
-    # Docker Desktop reports a bind mount's source with a `/host_mnt`
-    # prefix - the path as the VM sees it, not as the host wrote it. The
-    # two name the same directory, so a raw string comparison refused
-    # every guarded recipe on a Mac with the stack serving this very
-    # worktree.
-    owner="${owner#/host_mnt}"
-    here="{{justfile_directory()}}"
-    if [ "${owner}" != "${here}" ]; then
-        echo "" >&2
-        echo "✗ Refusing to run: {{container}} serves a different worktree." >&2
-        echo "" >&2
-        echo "    this worktree: ${here}" >&2
-        echo "    container serves: ${owner}" >&2
-        echo "" >&2
-        echo "  Running here would act on the other worktree's code." >&2
-        echo "  Either run this from ${owner}, or restart the stack" >&2
-        echo "  from this worktree: just sc && just sd" >&2
-        echo "" >&2
         exit 1
     fi
 
@@ -194,22 +184,27 @@ aws-login which="emails":
         management) profile="quill-management"; setting="AWS_MANAGEMENT_ACCOUNT_ID" ;;
         *) echo "✗ Unknown account '{{which}}': emails or management."; exit 1 ;;
     esac
+
     # The account numbers live in backend/.env, which is gitignored, and not
     # here: this repository is public.
     want="$(grep "^${setting}=" backend/.env 2>/dev/null | cut -d= -f2-)"
+
     if [ -z "$want" ] || [ "$want" = "CHANGE_ME" ]; then
         echo "✗ ${setting} is not set in backend/.env, so the sign-in"
         echo "  cannot be checked. Add the account's number there first."
         exit 1
     fi
+
     # The region is set first. Without one `aws login` stops to ask, and
     # everything in SES is per region: a resource made outside eu-west-2 is
     # email data outside the UK.
     aws configure set region eu-west-2 --profile "$profile"
+
     # `y` answers "overwrite the session this profile already has?".
     printf 'y\n' | aws login --profile "$profile"
     got="$(aws sts get-caller-identity --profile "$profile" \
         --query Account --output text)"
+
     if [ "$got" != "$want" ]; then
         echo "✗ Signed in to account $got, not $want ({{which}})."
         echo "  Open the {{which}} account's console in the browser, close"
@@ -217,12 +212,12 @@ aws-login which="emails":
         echo "  Do not use the $profile profile until it passes."
         exit 1
     fi
+
     echo "Signed in to the {{which}} account ($got)."
     echo "Use it with: AWS_PROFILE=$profile aws ..."
 
 
 alias ii := initial-install
-# Clone all *-teaching repos into local dirs (safe to re-run)
 initial-install:
     #!/usr/bin/env bash
     {{initialise}} "initial-install"
@@ -255,17 +250,8 @@ initial-install:
     echo "Done. Teaching repos are in ./teaching-repos/"
 
 
-alias cu := create-user
-# Create a new user in the database
-create-user:
-    #!/usr/bin/env bash
-    {{initialise}} "create-user"
-    just _worktree-guard quill_backend
-    docker exec -it quill_backend sh -lc "cd scripts && python create_user.py"
-
-
 alias csl := create-superadmin-local
-# Create a superadmin user locally (for dev setup)
+# Create a superadmin user locally
 create-superadmin-local:
     #!/usr/bin/env bash
     {{initialise}} "create-superadmin-local"
@@ -273,17 +259,8 @@ create-superadmin-local:
     docker exec -it quill_backend sh -lc "cd scripts && python create_superuser.py"
 
 
-alias cur := create-user-with-role
-# Create a new user with role assignment (supports Clinician role)
-create-user-with-role:
-    #!/usr/bin/env bash
-    {{initialise}} "create-user-with-role"
-    just _worktree-guard quill_backend
-    docker exec -it quill_backend sh -lc "cd scripts && python create_user_with_role.py"
-
-
 alias d := docs
-# Open the documentation in the browser
+# Open the documentation in the local browser
 docs:
     #!/usr/bin/env bash
     {{initialise}} "docs"
@@ -301,14 +278,17 @@ docs:
 
 alias dds := docker-daemon-start
 # Start the Docker daemon (Mac only)
+# TODO: #1701 add a windows and linux version
 docker-daemon-start:
     #!/usr/bin/env bash
     {{initialise}} "docker-daemon-start"
     open /Applications/Docker.app
+
     while ! docker system info > /dev/null 2>&1; do
         echo "Waiting for Docker to start..."
         sleep 1
     done
+
     echo "Docker is running."
 
 
@@ -317,6 +297,7 @@ alias ep := email-preview
 email-preview:
     #!/usr/bin/env bash
     {{initialise}} "email-preview"
+
     # In the backend unit-test container, which mounts this worktree's
     # frontend/src/stories/emails/rendered/ for the renders to land in.
     # Commit what changes: app/email/previews_test.py fails while the
@@ -330,6 +311,7 @@ alias et := email-themes
 email-themes:
     #!/usr/bin/env bash
     {{initialise}} "email-themes"
+
     # On the host, through the backend's Poetry environment, as the
     # pre-commit hooks run: it writes one file under backend/ and one
     # under frontend/, and the unit-test container mounts only the first.
@@ -370,6 +352,7 @@ alias fc := frontend-chunks
 frontend-chunks:
     #!/usr/bin/env bash
     {{initialise}} "frontend-chunks"
+
     # Code splitting is proved in the build output, not in the diff: a lazy
     # route that defers nothing reads the same in review as one that works.
     # So this runs the real production build and lists each file with its
@@ -397,6 +380,7 @@ alias gl := gcp-login
 gcp-login:
     #!/usr/bin/env bash
     {{initialise}} "gcp-login"
+
     # Two separate credentials that expire independently. `gcloud auth login`
     # covers gcloud commands and direct API calls; application-default covers
     # tools that read Application Default Credentials, Terraform among them.
@@ -411,6 +395,7 @@ alias gsh := guide-screenshots
 guide-screenshots *ARGS:
     #!/usr/bin/env bash
     {{initialise}} "guide-screenshots"
+
     # Not a test of the application: a build step that walks each guide's
     # flow and photographs it, so it has a Playwright config of its own and
     # `just e2e` never runs it. It drives this worktree's own compose.ci.yml
@@ -422,6 +407,7 @@ guide-screenshots *ARGS:
     # between the stack coming up and Playwright starting. It is kept out of
     # seed_ci.py, which the end-to-end tests count on staying as it is.
     set -euo pipefail
+
     # Runs on failure too, so a red run never leaves a stack behind.
     trap 'just _e2e-down' EXIT
     base_url=$(just _e2e-up)
@@ -441,10 +427,11 @@ hex-32:
 
 
 alias i := initialise-repo
-# Initialise the repository (run this first)
+# Initialise the repository (run this after pulling the repo for the first time)
 initialise-repo:
     #!/usr/bin/env bash
     {{initialise}} "initialise"
+
     # Git runs the tracked .husky/pre-commit directly, which itself runs
     # `pre-commit run`. The path is deliberately relative: git resolves it
     # against the root of whichever worktree is committing, so every
@@ -453,9 +440,11 @@ initialise-repo:
     # that checkout moved. Not `pre-commit install`: it refuses to run while
     # core.hooksPath is set, and would be redundant anyway.
     git config core.hooksPath .husky
+
     # The only package.json is the frontend's; the repository root has none.
     (cd frontend && yarn install)
     just aj
+
     # Without this the Stop-hook banner still works, but shows the
     # default osascript icon, so a failure here is not worth stopping the
     # setup for. macOS only; the script exits cleanly elsewhere.
@@ -463,7 +452,7 @@ initialise-repo:
 
 
 
-alias kp := kill-port-8000
+alias kp8 := kill-port-8000
 # Kill any processes listening on port 8000
 kill-port-8000:
     #!/usr/bin/env bash
@@ -482,10 +471,12 @@ alias qbc := question-bank-clone
 question-bank-clone:
     #!/usr/bin/env bash
     {{initialise}} "question-bank-clone"
+
     if [ -d "question-bank/.git" ]; then
         echo "question-bank/ already exists - use 'just question-bank-pull' to update"
         exit 1
     fi
+
     git clone https://github.com/bailey-medics/quill-question-bank.git question-bank
     echo "Cloned into question-bank/"
 
@@ -495,10 +486,12 @@ alias qbpu := question-bank-pull
 question-bank-pull:
     #!/usr/bin/env bash
     {{initialise}} "question-bank-pull"
+
     if [ ! -d "question-bank/.git" ]; then
         echo "question-bank/ not found - run 'just question-bank-clone' first"
         exit 1
     fi
+
     git -C question-bank pull
 
 
@@ -507,10 +500,12 @@ alias qbps := question-bank-push
 question-bank-push:
     #!/usr/bin/env bash
     {{initialise}} "question-bank-push"
+
     if [ ! -d "question-bank/.git" ]; then
         echo "question-bank/ not found - run 'just question-bank-clone' first"
         exit 1
     fi
+
     git -C question-bank push
 
 
@@ -561,17 +556,21 @@ validate-teaching:
     {{initialise}} "validate-teaching"
     set -uo pipefail
     just _worktree-guard quill_backend
+
     if [ -z "$(docker ps -q -f name=^quill_backend$)" ]; then
         echo "quill_backend is not running. Start it with: just sd"
         exit 1
     fi
+
     if ! compgen -G "teaching-repos/*/modules" > /dev/null; then
         echo "No teaching repos found. Clone them with: just initial-install"
         exit 1
     fi
+
     # Version lock compares a branch against origin/main, which is a
     # pull-request concern rather than a local one, so it is skipped here.
     FAILED=0
+
     for REPO in teaching-repos/*/; do
         NAME=$(basename "${REPO}")
         if [ -d "${REPO}modules" ]; then
@@ -583,10 +582,12 @@ validate-teaching:
             echo ""
         fi
     done
+
     if [ "${FAILED}" -ne 0 ]; then
         echo "✗ Teaching content validation failed."
         exit 1
     fi
+
     echo "✓ All teaching content valid."
 
 
@@ -626,12 +627,14 @@ migrate message:
     new=$(comm -13 <(echo "${before}") <(ls backend/alembic/versions/*.py))
     echo ""
     echo "Created: ${new}"
+
     if sed -n '/^def upgrade/,/^def downgrade/p' "${new}" | grep -vE '^\s*(#|$)' | grep -qE '^\s+pass\s*$'; then
         rm "${new}"
         echo "✗ upgrade() was empty, so the file has been removed." >&2
         echo "  The models already match the migrations: check the model change is saved." >&2
         exit 1
     fi
+
     echo "Review upgrade() and downgrade() before committing."
 
 
@@ -724,9 +727,11 @@ worktree-create branch="":
     # existing worktrees: one removed by hand would otherwise make the
     # next number collide with a directory still on disk.
     N=2
+
     while [ -e "$PARENT/$NAME-$N" ]; do
         N=$((N + 1))
     done
+
     DEST="$PARENT/$NAME-$N"
 
     git -C "$ROOT" fetch origin --quiet
@@ -880,6 +885,7 @@ rebase:
     #!/usr/bin/env bash
     {{initialise}} "rebase"
     BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
     if [ "$BRANCH" = "main" ]; then
         echo "On main - pulling latest..."
         git pull
@@ -937,6 +943,7 @@ terraform-github:
     terraform init -input=false -reconfigure -upgrade
     terraform plan -var-file=terraform.tfvars
     read -rp "Apply these changes? (yes/no): " confirm
+
     if [ "$confirm" = "yes" ]; then
         terraform apply -var-file=terraform.tfvars -auto-approve
     else
@@ -954,6 +961,7 @@ terraform-aws:
     # in a tfvars file: this repository is public. Trace off while they are
     # read, so they are not printed.
     set +x
+
     for setting in AWS_EMAILS_ACCOUNT_ID AWS_EMAILS_DEV_ACCOUNT_ID AWS_MANAGEMENT_ACCOUNT_ID AWS_ID_ACCOUNT_ID; do
         value="$(grep "^${setting}=" backend/.env 2>/dev/null | cut -d= -f2-)"
         if [ -z "$value" ] || [ "$value" = "CHANGE_ME" ]; then
@@ -961,10 +969,12 @@ terraform-aws:
             exit 1
         fi
     done
+
     export TF_VAR_app_account_id="$(grep '^AWS_EMAILS_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
     export TF_VAR_dev_account_id="$(grep '^AWS_EMAILS_DEV_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
     export TF_VAR_management_account_id="$(grep '^AWS_MANAGEMENT_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
     export TF_VAR_identity_account_id="$(grep '^AWS_ID_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
+
     # Both sign-ins are needed: the emails account for App production, and
     # the management account, which holds the organisation's policy and is
     # where the development account is reached from.
@@ -976,11 +986,13 @@ terraform-aws:
             exit 1
         fi
     done
+
     cd infra/aws
     # -upgrade: see terraform-github; the lock file is not committed.
     terraform init -input=false -upgrade
     terraform plan
     read -rp "Apply these changes? (yes/no): " confirm
+
     if [ "$confirm" = "yes" ]; then
         terraform apply -auto-approve
     else
@@ -996,10 +1008,12 @@ terraform-infra env="app":
     set -euo pipefail
     cd infra
     VARS="environments/{{env}}/terraform.tfvars"
+
     if [ ! -f "$VARS" ]; then
         echo "No tfvars for environment '{{env}}' at infra/$VARS" >&2
         exit 1
     fi
+
     # -upgrade: see terraform-github; the lock file is not committed, so an
     # older checkout cannot read state a newer provider wrote.
     terraform init -input=false -upgrade
@@ -1010,6 +1024,7 @@ terraform-infra env="app":
     terraform workspace select "{{env}}"
     terraform plan -var-file="$VARS"
     read -rp "Apply these changes to {{env}}? (yes/no): " confirm
+
     if [ "$confirm" = "yes" ]; then
         terraform apply -var-file="$VARS" -auto-approve
     else
@@ -1085,6 +1100,7 @@ show-dev-containers:
 _stack-branch-name name:
     #!/usr/bin/env bash
     set -euo pipefail
+
     case "{{name}}" in
         feature/*|hotfix/*|copilot/*|renovate/*) echo "{{name}}" ;;
         *) echo "feature/{{name}}" ;;
@@ -1110,6 +1126,7 @@ _stack-guard:
     {{stack_repo}}
     python3 "{{stack_scripts}}"/stack-status.py --check
     status=$?
+
     # 1 is "no stack here". The script has already named the recipes and
     # the skill that start or check out one, so stopping here is what makes
     # that the last thing on the screen: without it the recipe carried on
@@ -1118,6 +1135,7 @@ _stack-guard:
     if [ "${status}" -eq 1 ]; then
         exit 1
     fi
+
     if [ "${status}" -eq 2 ]; then
         echo "✗ Refusing to run: this stack spans more than one worktree." >&2
         echo "  Free the branches above, or run this from the worktree" >&2
@@ -1142,6 +1160,7 @@ stack-add name message:
     # rather than making a new branch, so the new unit lands under the
     # merged unit's name. Ask GitHub, which knows.
     current="$(git branch --show-current)"
+
     if merged="$(gh pr list --head "${current}" --state merged --json number --jq '.[0].number // empty')"; then
         if [ -n "${merged}" ]; then
             echo "✗ Refusing to stack on ${current}: its pull request #${merged} has merged." >&2
@@ -1154,6 +1173,7 @@ stack-add name message:
     else
         echo "⚠ Could not ask GitHub whether ${current} has merged; carrying on." >&2
     fi
+
     branch="$(just _stack-branch-name '{{name}}')"
     # -A stages everything including untracked files, which is what makes
     # this one command rather than three. The commit message is required
@@ -1186,6 +1206,7 @@ stack-files patch="":
     {{initialise}} "stack-files"
     set +x
     {{stack_repo}}
+
     # Against its own parent, not the trunk: a branch three layers up
     # diffed against main replays every change below it, which is the
     # wall of diff that stacking exists to avoid. Pass 'p' for the full
@@ -1223,11 +1244,14 @@ stack-fresh:
     trunk="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||' || true)"
     trunk="${trunk:-main}"
     git fetch origin "${trunk}" --quiet
+
     if ! git switch --detach --merge "origin/${trunk}" >/dev/null; then
         echo "✗ Could not move this checkout to origin/${trunk}." >&2
         exit 1
     fi
+
     conflicted="$(git diff --name-only --diff-filter=U)"
+
     if [ -n "${conflicted}" ]; then
         echo "✗ The uncommitted work overlaps what has merged, in:" >&2
         echo "${conflicted}" | sed 's/^/    /' >&2
@@ -1235,6 +1259,7 @@ stack-fresh:
         echo "  Settle them by hand, then run: just stack-new <name> \"<message>\"" >&2
         exit 1
     fi
+
     # The spent stack's record still names its merged branches, and a new
     # stack started beside it would be drawn underneath them.
     python3 "{{stack_scripts}}"/stack-forget-merged.py >/dev/null 2>&1 || true
@@ -1249,6 +1274,7 @@ stack-help:
     set +x
     {{initialise}} "stack-help"
     set +x
+
     # Read back out of `just --list` rather than written out here: a hard-coded
     # list is one more thing to update when a recipe gains an argument, and the
     # copy that goes stale is the one being consulted precisely because someone
@@ -1289,6 +1315,7 @@ stack-help:
     signatures=()
     aliases=()
     widest=0
+
     while IFS= read -r line; do
         # `--list` prints "  name args   # description [alias: x]". The alias
         # lives inside the comment, so it has to be lifted out before the
@@ -1315,6 +1342,7 @@ stack-help:
     echo ""
     echo "  Prefix any of these with 'just' or 'j' to run it:"
     echo ""
+
     for index in "${!signatures[@]}"; do
         signature="${signatures[${index}]}"
         alias_name="${aliases[${index}]}"
@@ -1345,6 +1373,7 @@ stack-help:
             printf '  %s\n' "${rendered}"
         fi
     done
+
     echo ""
 
 
@@ -1425,6 +1454,7 @@ stack-move direction="":
             exit 1
             ;;
     esac
+
     python3 "{{stack_scripts}}"/stack-status.py
 
 
@@ -1436,6 +1466,7 @@ stack-new name message:
     {{stack_repo}}
     set -euo pipefail
     branch="$(just _stack-branch-name '{{name}}')"
+
     # init adopts the branch it creates as the bottom of a new stack, based
     # on the default branch. No guard here: there is no stack to span a
     # worktree yet, and this is the command that creates one.
@@ -1464,6 +1495,7 @@ stack-new name message:
         git switch -c "${branch}"
         gh stack init "${branch}"
     fi
+
     # -A stages everything, untracked files included, to match `stack-add`.
     # Splitting a dirty tree across branches is done by committing what is
     # ready and leaving the rest for the branch above - not by naming files
@@ -1492,10 +1524,12 @@ stack-ready:
     # merging is normal. This never merges anything; that stays a human act.
     prs="$(gh stack view --json \
         | jq -r '.branches[] | select(.isMerged | not) | .pr.number // empty')"
+
     if [ -z "${prs}" ]; then
         echo "No open pull requests in this stack."
         exit 0
     fi
+
     for number in ${prs}; do
         state="$(gh pr view "${number}" --json state,isDraft \
             --jq '"\(.state) \(.isDraft)"')"
@@ -1505,6 +1539,7 @@ stack-ready:
             *) echo "#${number} is not open (${state%% *}); skipped." ;;
         esac
     done
+
     python3 "{{stack_scripts}}"/stack-status.py --prs
 
 
@@ -1517,6 +1552,7 @@ stack-rebase:
     set -euo pipefail
     just _stack-guard
     gh stack rebase
+
     # gh stack rebase exits 0 even when it skipped a branch, so the result is
     # verified rather than trusted: `view --json` reports needsRebase
     # correctly for exactly the branch a silent skip leaves behind.
@@ -1531,6 +1567,7 @@ stack-rebase:
         echo "  'just stack-refresh'. See that recipe for why." >&2
         exit 1
     fi
+
     python3 "{{stack_scripts}}"/stack-status.py
 
 
@@ -1560,6 +1597,7 @@ stack-refresh:
     # that have merged are left out, so a stack part-way through landing
     # rebuilds as the units still in flight, based on main.
     branch="$(git branch --show-current)"
+
     if [ -z "${branch}" ] || [ "${branch}" = "main" ]; then
         echo "✗ Run this from a branch in the stack, not main." >&2
         exit 1
@@ -1569,6 +1607,7 @@ stack-refresh:
     # Naming only the current branch would drop the rest of the stack
     # from the record, which is not a repair.
     branches="$(python3 "{{stack_scripts}}"/stack-status.py --rebuild-order)"
+
     if [ -z "${branches}" ]; then
         echo "✗ No unmerged branches in this stack to rebuild." >&2
         exit 1
@@ -1591,6 +1630,7 @@ stack-refresh:
     git fetch origin main --quiet
     echo "Rebuilding the stack record for:"
     echo "${branches}" | sed 's/^/  /'
+
     if python3 "{{stack_scripts}}"/stack-relink.py --needed; then
         # GitHub refuses to unstack a stack holding a merged pull request
         # ("Pull requests #1356, #1358 cannot be removed from this
@@ -1612,6 +1652,7 @@ stack-refresh:
         # shellcheck disable=SC2086
         gh stack init ${branches}
     fi
+
     python3 "{{stack_scripts}}"/stack-status.py
 
 
@@ -1817,6 +1858,7 @@ stack-sync scope="":
     PARENT=$(dirname "${ROOT}")
 
     failed=0
+
     while IFS= read -r WT; do
         # Worktrees outside the checkout's own parent directory are not part
         # of the working set: agent sessions leave detached ones under
@@ -1873,10 +1915,12 @@ stack-update message="":
         echo "  Pass a message to reword the last commit on its own." >&2
         exit 1
     fi
+
     # -A to match stack-new and stack-add: all three stage everything,
     # untracked files included, so the three commands cannot differ in what
     # they quietly leave behind.
     git add -A
+
     if [ -n "{{message}}" ]; then
         git commit --amend -m "{{message}}"
     else
@@ -1902,6 +1946,7 @@ stack-update message="":
     # inside stack-rebase rather than being quietly taken for "no stack".
     stack_state=0
     python3 "{{stack_scripts}}"/stack-status.py --check >/dev/null 2>&1 || stack_state=$?
+
     if [ "${stack_state}" -eq 1 ]; then
         echo "  Amended. Not in a stack, so nothing above needs rebasing."
     else
@@ -2159,6 +2204,7 @@ start-dev build="":
     #!/usr/bin/env bash
     {{initialise}} "start-dev"
 
+    just _dev-stack-guard
     just _start-docker-daemon
     echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
 
@@ -2175,6 +2221,7 @@ start-dev build="":
         docker compose -f compose.dev.yml down' INT TERM
 
     build_args=""
+
     if [ "{{build}}" = "b" ]; then
         COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml down
         docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
@@ -2249,6 +2296,7 @@ alias sp := start-prod
 start-prod build="":
     #!/usr/bin/env bash
     {{initialise}} "start-prod"
+
     if [ "{{build}}" = "b" ]; then \
         docker compose -f compose.yml -f compose.prod.yml up --build --pull missing; \
     else \
@@ -2261,11 +2309,13 @@ start-teaching build="":
     #!/usr/bin/env bash
     {{initialise}} "start-teaching"
 
+    just _dev-stack-guard
     just _start-docker-daemon
     echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
     echo "Clinical services (FHIR/EHRbase) disabled"
 
     build_args=""
+
     if [ "{{build}}" = "b" ]; then
         docker compose -f compose.dev.yml down
         docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
@@ -2703,24 +2753,28 @@ passport-delete env username confirm="":
     # accepted as well as the bare id.
     CONFIRM="{{confirm}}"
     CONFIRM="${CONFIRM#CONFIRM=}"
+
     # Checked here because both go into a comma-separated list of
     # variables, where a stray comma would set something else.
     if ! [[ "{{username}}" =~ ^[A-Za-z0-9._@+-]+$ ]]; then
         echo "✗ '{{username}}' is not a username" >&2
         exit 1
     fi
+
     if [ -n "$CONFIRM" ] && ! [[ "$CONFIRM" =~ ^[0-9a-f]{32}$ ]]; then
         echo "✗ confirm must be the 32-character passport id from a dry run" >&2
         exit 1
     fi
 
     VARS="ADMIN_ACTION=delete-passport,ADMIN_USERNAME={{username}}"
+
     if [ -n "$CONFIRM" ]; then
         VARS="${VARS},CONFIRM=${CONFIRM}"
         echo "Delete {{username}}'s passport on ${PROJECT}"
     else
         echo "Dry run: {{username}}'s passport on ${PROJECT}"
     fi
+
     echo "─────────────────────────────────"
 
     EXECUTION=$(gcloud run jobs execute "quill-admin-{{env}}" \
@@ -2751,6 +2805,7 @@ passport-delete env username confirm="":
             --freshness=1h \
             --format='value(textPayload)'
     fi
+
     exit "${STATUS:-0}"
 
 
@@ -2775,16 +2830,19 @@ newsletter-send env campaign confirm="" only_to="" limit="":
     # accepted as well as the bare value.
     CONFIRM="{{confirm}}"
     CONFIRM="${CONFIRM#CONFIRM=}"
+
     # Checked here because each goes into a comma-separated list of
     # variables, where a stray comma would set something else.
     if ! [[ "{{campaign}}" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
         echo "✗ '{{campaign}}' is not a campaign name" >&2
         exit 1
     fi
+
     if [ -n "$CONFIRM" ] && ! [[ "$CONFIRM" =~ ^[a-z0-9][a-z0-9-]*:[0-9]+$ ]]; then
         echo "✗ confirm must be what the dry run printed, such as {{campaign}}:12" >&2
         exit 1
     fi
+
     if [ -n "{{only_to}}" ] && ! [[ "{{only_to}}" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$ ]]; then
         echo "✗ '{{only_to}}' is not an email address" >&2
         exit 1
@@ -2796,18 +2854,22 @@ newsletter-send env campaign confirm="" only_to="" limit="":
     fi
 
     VARS="ADMIN_ACTION=send-newsletter,NEWSLETTER_CAMPAIGN={{campaign}}"
+
     if [ -n "{{limit}}" ]; then
         VARS="${VARS},NEWSLETTER_LIMIT={{limit}}"
     fi
+
     if [ -n "{{only_to}}" ]; then
         VARS="${VARS},NEWSLETTER_ONLY_TO={{only_to}}"
     fi
+
     if [ -n "$CONFIRM" ]; then
         VARS="${VARS},CONFIRM=${CONFIRM}"
         echo "Send the {{campaign}} newsletter on ${PROJECT}"
     else
         echo "Dry run: the {{campaign}} newsletter on ${PROJECT}"
     fi
+
     echo "─────────────────────────────────"
 
     EXECUTION=$(gcloud run jobs execute "quill-admin-{{env}}" \
@@ -2838,6 +2900,7 @@ newsletter-send env campaign confirm="" only_to="" limit="":
             --freshness=1h \
             --format='value(textPayload)'
     fi
+
     exit "${STATUS:-0}"
 
 
