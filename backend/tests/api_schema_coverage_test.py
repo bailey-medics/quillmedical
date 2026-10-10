@@ -8,15 +8,22 @@ against the function's actual return type, not just trusted.
 
 from __future__ import annotations
 
+import importlib.util
+import sys
 from pathlib import Path
 from typing import Any
 
+from fastapi import APIRouter, FastAPI
+
 from scripts.check_api_schema_coverage import (
+    DEFAULT_APP_DIR,
     PERMANENT_ALLOWED_RETURN_TYPES,
     PERMANENT_MARKER,
     RouteInfo,
     _index_file,
+    check_all,
     check_route_coverage,
+    collect_routes,
     is_opaque_schema,
 )
 
@@ -332,3 +339,91 @@ def test_permanent_marker_fails_when_return_type_unannotated() -> None:
     problems = check_route_coverage(route, _spec(schema=schema))
     assert len(problems) == 1
     assert "unannotated" in problems[0].message
+
+
+# ---------------------------------------------------------------------------
+# Finding the routes at all
+# ---------------------------------------------------------------------------
+#
+# Everything above hands the checker a route. None of it asked whether the
+# checker could find one in a real app, and for a month it could not:
+# FastAPI 0.141 stopped listing an included router's routes in
+# `app.routes`, the walk found none, and the hook passed every commit.
+
+NESTED_ROUTES = """
+from fastapi import APIRouter
+
+inner = APIRouter(prefix="/things")
+outer = APIRouter(prefix="/api")
+
+
+@inner.get("/typed")
+def typed() -> int:
+    return 1
+
+
+@inner.get("/opaque")
+def opaque() -> dict[str, str]:
+    return {}
+
+
+outer.include_router(inner)
+"""
+
+
+def _app_with_nested_routes(tmp_path: Path) -> FastAPI:
+    """An app whose routes are two includes deep, in a file of their own."""
+    source = tmp_path / "nested_routes.py"
+    source.write_text(NESTED_ROUTES)
+
+    spec = importlib.util.spec_from_file_location("nested_routes", source)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["nested_routes"] = module
+    spec.loader.exec_module(module)
+
+    app = FastAPI()
+    outer: APIRouter = module.outer
+    app.include_router(outer)
+
+    return app
+
+
+def test_routes_inside_an_included_router_are_collected(
+    tmp_path: Path,
+) -> None:
+    app = _app_with_nested_routes(tmp_path)
+
+    routes, problems = collect_routes(app, tmp_path.resolve())
+
+    assert problems == []
+    assert {route.path for route in routes} == {
+        "/api/things/typed",
+        "/api/things/opaque",
+    }
+
+
+def test_an_opaque_route_two_includes_deep_is_flagged(tmp_path: Path) -> None:
+    app = _app_with_nested_routes(tmp_path)
+
+    problems = check_all(app, tmp_path.resolve(), min_routes=0)
+
+    assert len(problems) == 1
+    assert "GET /api/things/opaque" in problems[0].message
+
+
+def test_finding_too_few_routes_is_itself_a_failure(tmp_path: Path) -> None:
+    """A check of no routes has nothing to report, so it must say so."""
+    problems = check_all(FastAPI(), tmp_path.resolve())
+
+    assert len(problems) == 1
+    assert "found 0 route(s) to check" in problems[0].message
+
+
+def test_the_real_app_is_walked_and_passes() -> None:
+    from app.main import app
+
+    routes, _ = collect_routes(app, DEFAULT_APP_DIR)
+
+    assert len(routes) > 100
+    assert check_all(app, DEFAULT_APP_DIR) == []
