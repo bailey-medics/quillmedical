@@ -28,11 +28,11 @@
 3. Start the Docker stack:
 
    ```bash
-   just start-teaching   # teaching-only (no FHIR/EHRbase) - alias: j st
-   just start-dev        # full EPR with clinical services - alias: j sd
+   just start-app   # without FHIR and EHRbase - alias: j sa
+   just start-ehr   # with FHIR and EHRbase - alias: j se
    ```
 
-   Both accept a `b` argument to rebuild images: `just st b`
+   Both accept a `b` argument to rebuild images: `just sa b`
 
 4. Create a superadmin user:
 
@@ -96,8 +96,8 @@ Run `just --list` for all available recipes. Key ones:
 
 | Command                  | Alias   | Description                                 |
 | ------------------------ | ------- | ------------------------------------------- |
-| `just start-teaching`    | `j st`  | Start dev (teaching only, no FHIR/EHRbase)  |
-| `just start-dev`         | `j sd`  | Start dev (full EPR with clinical services) |
+| `just start-app`         | `j sa`  | Start dev (no FHIR or EHRbase)              |
+| `just start-ehr`         | `j se`  | Start dev (with FHIR and EHRbase)           |
 | `just stop`              | `j sc`  | Stop all containers                         |
 | `just initial-install`   | `j ii`  | Clone/pull teaching repos                   |
 | `just validate-teaching` | `j vt`  | Validate all teaching content locally       |

@@ -63,7 +63,7 @@ echo ""
 # Check if backend container is running
 info "Checking if backend container is running..."
 if ! docker ps --filter "name=quill_backend" --format "{{.Names}}" 2>/dev/null | grep -q "quill_backend"; then
-    error "Backend container is not running\nPlease start the dev environment: just start-dev"
+    error "Backend container is not running\nPlease start the dev environment: just start-ehr"
 fi
 success "✓ Backend container is running"
 echo ""

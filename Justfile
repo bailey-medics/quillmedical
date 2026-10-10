@@ -34,73 +34,6 @@ stack_repo := 'cd "${STACK_REPO:-.}"'
 stack_scripts := justfile_directory() / "scripts"
 
 
-# Compose project name for this worktree's throwaway test containers.
-#
-# Derived from the worktree directory, so every worktree gets its own
-# node_modules volumes under compose.unit-tests.yml and none of them collides with
-# the dev stack. Lower-cased and stripped to [a-z0-9-], which is all compose
-# accepts in a project name.
-_test-project:
-    @basename "{{justfile_directory()}}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^/quill-test-/'
-
-
-# Compose project name for this worktree's throwaway migration database
-# (compose.migrate.yml). Per worktree for the same reason as `_test-project`.
-_migrate-project:
-    @basename "{{justfile_directory()}}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^/quill-migrate-/'
-
-
-# Compose project name for this worktree's end-to-end stack (compose.ci.yml).
-# Per worktree for the same reason as `_test-project`: several can run at once.
-_e2e-project:
-    @basename "{{justfile_directory()}}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^/quill-e2e-/'
-
-
-# Bring up this worktree's end-to-end stack the way CI does, and print its URL.
-#
-# Same file, same images and same seed as the CI job, so a local run rehearses
-# what CI will do rather than driving the dev stack and whatever state its
-# database is in. E2E_PORT=0 has Docker pick a free host port, which is what
-# lets worktrees run side by side; the URL is read back and printed on stdout
-# (everything else goes to stderr) so `_e2e-run` can capture it.
-_e2e-up:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    project=$(just _e2e-project)
-    compose="docker compose -p ${project} -f compose.ci.yml"
-
-    # The module seed_ci.py syncs, pinned so a local run tests what CI does
-    .github/scripts/ci/fetch-e2e-teaching.sh >&2
-    E2E_PORT=0 ${compose} up --build --wait --wait-timeout 120 >&2
-
-    # The prod image does not migrate on start-up, so the fresh database
-    # needs the schema applied before it is seeded - as in ci.yml.
-    ${compose} exec -T backend alembic upgrade head >&2
-    ${compose} exec -T backend python scripts/seed_ci.py >&2
-    port=$(${compose} port caddy 80 | sed 's/.*://')
-    echo "http://localhost:${port}"
-
-
-# Tear down this worktree's end-to-end stack, database included.
-_e2e-down:
-    #!/usr/bin/env bash
-    docker compose -p "$(just _e2e-project)" -f compose.ci.yml \
-        down --volumes --remove-orphans
-
-
-# Run Playwright against a fresh end-to-end stack, tearing it down afterwards.
-_e2e-run *ARGS:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    # Runs on failure too, so a red run never leaves a stack behind. The exit
-    # status Playwright produced survives the trap.
-    trap 'just _e2e-down' EXIT
-    base_url=$(just _e2e-up)
-    echo "End-to-end stack is up at ${base_url}" >&2
-    cd frontend && E2E_BASE_URL="${base_url}" npx playwright test {{ARGS}}
-
-
 # Refuse to run anywhere but the main checkout, which owns the dev stack:
 # its container names are fixed in compose.dev.yml, so there is only one.
 # The tests, migrations and `just e2e` never call this. They use throwaway
@@ -130,6 +63,211 @@ _dev-stack-guard:
     fi
 
 
+# Tear down this worktree's end-to-end stack, database included.
+_e2e-down:
+    #!/usr/bin/env bash
+    docker compose -p "$(just _e2e-project)" -f compose.ci.yml \
+        down --volumes --remove-orphans
+
+
+# Compose project name for this worktree's end-to-end stack (compose.ci.yml).
+# Per worktree for the same reason as `_test-project`: several can run at once.
+_e2e-project:
+    @basename "{{justfile_directory()}}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^/quill-e2e-/'
+
+
+# Run Playwright against a fresh end-to-end stack, tearing it down afterwards.
+_e2e-run *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Runs on failure too, so a red run never leaves a stack behind. The exit
+    # status Playwright produced survives the trap.
+    trap 'just _e2e-down' EXIT
+    base_url=$(just _e2e-up)
+    echo "End-to-end stack is up at ${base_url}" >&2
+    cd frontend && E2E_BASE_URL="${base_url}" npx playwright test {{ARGS}}
+
+
+# Bring up this worktree's end-to-end stack the way CI does, and print its URL.
+#
+# Same file, same images and same seed as the CI job, so a local run rehearses
+# what CI will do rather than driving the dev stack and whatever state its
+# database is in. E2E_PORT=0 has Docker pick a free host port, which is what
+# lets worktrees run side by side; the URL is read back and printed on stdout
+# (everything else goes to stderr) so `_e2e-run` can capture it.
+_e2e-up:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    project=$(just _e2e-project)
+    compose="docker compose -p ${project} -f compose.ci.yml"
+
+    # The module seed_ci.py syncs, pinned so a local run tests what CI does
+    .github/scripts/ci/fetch-e2e-teaching.sh >&2
+    E2E_PORT=0 ${compose} up --build --wait --wait-timeout 120 >&2
+
+    # The prod image does not migrate on start-up, so the fresh database
+    # needs the schema applied before it is seeded - as in ci.yml.
+    ${compose} exec -T backend alembic upgrade head >&2
+    ${compose} exec -T backend python scripts/seed_ci.py >&2
+    port=$(${compose} port caddy 80 | sed 's/.*://')
+    echo "http://localhost:${port}"
+
+
+_gcp_env_project env:
+    #!/usr/bin/env bash
+
+    # `app` is the only environment. teaching, staging and production were
+    # retired in Batches 8 and 10a of
+    # docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md; a
+    # later dev or ehr environment is a new project, added here when it
+    # exists.
+    case "{{env}}" in
+        app) echo "quill-medical-app" ;;
+        *)   echo "ERROR: env must be app" >&2; exit 1 ;;
+    esac
+
+
+# Compose project name for this worktree's throwaway migration database
+# (compose.migrate.yml). Per worktree for the same reason as `_test-project`.
+_migrate-project:
+    @basename "{{justfile_directory()}}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^/quill-migrate-/'
+
+
+# Bring the running stack's database to head, and say what happened.
+#
+# Shared by `migrate-local` and by `start-app`, so the two cannot
+# drift: one is the same step run on demand rather than at start-up.
+# Deliberately without the worktree guard - `start-app` has just
+# brought this very stack up, so there is nothing to disagree with, and
+# `migrate-local` checks before calling this.
+_migrate-running-stack:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    before=$(docker exec quill_postgres_core \
+        psql -U core_user -d quill_core -tAc \
+        "SELECT version_num FROM alembic_version;" 2>/dev/null || echo "none")
+
+    docker exec quill_backend sh -lc 'alembic upgrade head'
+
+    after=$(docker exec quill_postgres_core \
+        psql -U core_user -d quill_core -tAc \
+        "SELECT version_num FROM alembic_version;" 2>/dev/null || echo "unknown")
+
+    # Said plainly, because "upgrade head" prints nothing when there was
+    # nothing to do, and a silent success is indistinguishable from a
+    # command that did not run.
+    if [ "${before}" = "${after}" ]; then
+        echo "Database already at ${after} - nothing to apply."
+    else
+        echo "Database migrated ${before} → ${after}"
+    fi
+
+
+# Prefix a bare name with feature/, leaving an already-prefixed one alone.
+#
+# Branch protection rejects anything outside feature/*, hotfix/*, copilot/*
+# and renovate/*, and it rejects it at creation time - so a stack branch
+# named without the prefix fails at the push, once the commits already
+# exist. Cheaper to add it here than to unpick a branch by hand.
+_stack-branch-name name:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    case "{{name}}" in
+        feature/*|hotfix/*|copilot/*|renovate/*) echo "{{name}}" ;;
+        *) echo "feature/{{name}}" ;;
+    esac
+
+
+# Refuse a stack operation when a stack branch lives in another worktree.
+#
+# gh-stack keeps its state in $(git rev-parse --git-dir)/gh-stack, which for
+# a worktree is .git/worktrees/<name>/gh-stack: worktree-local, invisible to
+# the other checkouts, and removed with the worktree. So a stack belongs to
+# the worktree that created it.
+#
+# The guard matters because `gh stack rebase` does not enforce that itself.
+# Given a branch checked out elsewhere it prints the git error, skips the
+# branch, and still exits 0 (github/gh-stack#35, reproduced here on
+# 2026-09-14). Anything chaining `rebase && submit` would then push a stack
+# it believed was rebased and was not - the silent-success failure the
+# worktree notes in CLAUDE.md already record once.
+_stack-guard:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    {{stack_repo}}
+    python3 "{{stack_scripts}}"/stack-status.py --check
+    status=$?
+
+    # 1 is "no stack here". The script has already named the recipes and
+    # the skill that start or check out one, so stopping here is what makes
+    # that the last thing on the screen: without it the recipe carried on
+    # into `gh stack rebase`, which answered the same question again in its
+    # own words and buried the useful half under the useless one.
+    if [ "${status}" -eq 1 ]; then
+        exit 1
+    fi
+
+    if [ "${status}" -eq 2 ]; then
+        echo "✗ Refusing to run: this stack spans more than one worktree." >&2
+        echo "  Free the branches above, or run this from the worktree" >&2
+        echo "  that owns the stack." >&2
+        exit 1
+    fi
+
+
+# Check if Docker daemon is running, start Docker Desktop if not (macOS)
+_start-docker-daemon:
+    #!/usr/bin/env bash
+    echo "Checking Docker daemon status..."
+
+    # Check if Docker daemon is responsive
+    if docker info >/dev/null 2>&1; then
+        echo "Docker daemon is running"
+        exit 0
+    fi
+
+    echo "Docker daemon is not running"
+
+    # Check if we're on macOS and Docker Desktop is available
+    if [[ "$OSTYPE" == "darwin"* ]] && [[ -d "/Applications/Docker.app" ]]; then
+        echo "Starting Docker Desktop..."
+        open -a Docker
+
+        # Wait for Docker daemon to start (with timeout)
+        echo "Waiting for Docker daemon to start..."
+        for i in {1..60}; do
+            if docker info >/dev/null 2>&1; then
+                echo "Docker daemon is now running (took ${i} seconds)"
+                exit 0
+            fi
+            echo -n "."
+            sleep 1
+        done
+
+        echo ""
+        echo "Timeout: Docker daemon did not start within 60 seconds"
+        echo "Please check Docker Desktop manually"
+        exit 1
+    else
+        echo "Docker Desktop not found or not on macOS"
+        echo "Please start Docker manually or install Docker Desktop"
+        exit 1
+    fi
+
+
+# Compose project name for this worktree's throwaway test containers.
+#
+# Derived from the worktree directory, so every worktree gets its own
+# node_modules volumes under compose.unit-tests.yml and none of them collides with
+# the dev stack. Lower-cased and stripped to [a-z0-9-], which is all compose
+# accepts in a project name.
+_test-project:
+    @basename "{{justfile_directory()}}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/^/quill-test-/'
+
+
 # For recipes that need the live stack: refuse to run outside the main
 # checkout, or when the container is not running.
 _worktree-guard container:
@@ -139,7 +277,7 @@ _worktree-guard container:
     just _dev-stack-guard || exit 1
 
     if [ -z "$(docker ps -q -f name=^{{container}}$ 2>/dev/null)" ]; then
-        echo "{{container}} is not running. Start it with: just sd" >&2
+        echo "{{container}} is not running. Start it with: just sa or just se" >&2
         exit 1
     fi
 
@@ -161,6 +299,30 @@ abbreviate-just:
 
     echo "Please run the following command to apply the changes to this terminal:"
     echo "source ~/.zshrc"
+
+
+alias ar := add-role-remote
+# Add a role to a user on a remote environment
+add-role-remote env:
+    #!/usr/bin/env bash
+    {{initialise}} "add-role ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    echo "Add role on ${PROJECT}"
+    echo "─────────────────────────────────"
+    read -rp "Username: " username
+    echo "Roles: System Administrator, Clinical Administrator, Clinician,"
+    echo "       Clinical Support Staff, Patient, Patient Advocate"
+    read -rp "Role: " role
+
+    gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "ADMIN_ACTION=add-role,ADMIN_USERNAME=${username},ADMIN_ROLE=${role}" \
+        --wait
 
 
 alias al := aws-login
@@ -221,37 +383,175 @@ aws-login which="emails":
     echo "Use it with: AWS_PROFILE=$profile aws ..."
 
 
-alias ii := initial-install
-initial-install:
+alias ba := build-admin
+# Build and push the admin image, and point the Cloud Run Job at it (app)
+build-admin env:
     #!/usr/bin/env bash
-    {{initialise}} "initial-install"
+    {{initialise}} "build-admin ({{env}})"
     set -euo pipefail
 
-    ORG="bailey-medics"
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+    REGISTRY="${REGION}-docker.pkg.dev"
+    IMAGE="${REGISTRY}/${PROJECT}/quill/admin:latest"
 
-    # --- Teaching content repos ---
-    DEST="teaching-repos"
-    mkdir -p "$DEST"
+    echo "Building admin image for ${PROJECT}..."
+    gcloud auth configure-docker "$REGISTRY" --quiet
 
-    echo "Discovering teaching repos in ${ORG}..."
-    REPOS=$(gh repo list "$ORG" --json name --jq '.[].name' | grep -E -- '-teaching(-testing)?$' || true)
+    docker build \
+        --target admin \
+        --platform linux/amd64 \
+        -t "$IMAGE" \
+        -f backend/Dockerfile \
+        .
 
-    if [ -z "$REPOS" ]; then
-        echo "No *-teaching repos found in ${ORG}."
-    else
-        for REPO in $REPOS; do
-            if [ -d "$DEST/$REPO" ]; then
-                echo "✓ $REPO already cloned - pulling latest..."
-                git -C "$DEST/$REPO" pull --ff-only || echo "  ⚠ pull failed (check for local changes)"
-            else
-                echo "Cloning $REPO..."
-                gh repo clone "$ORG/$REPO" "$DEST/$REPO"
-            fi
-        done
+    echo "Pushing ${IMAGE}..."
+    docker push "$IMAGE"
+    echo "✓ Admin image pushed to ${IMAGE}"
+
+    # Point the job at the new image, and change nothing else. Terraform
+    # owns the job (`job_name = "admin"` in infra/main.tf): its egress, its
+    # environment and its secrets. This used to be `gcloud run jobs deploy`
+    # with its own copy of those, which set the egress back to
+    # private-ranges-only and dropped the PASSPORT_* variables until the
+    # next apply. So the job has to exist already; Terraform creates it.
+    echo "Pointing the Cloud Run Job at the new image..."
+    gcloud run jobs update "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --image="$IMAGE" \
+        --quiet
+    echo "✓ Cloud Run Job updated"
+
+
+alias bc := build-caption
+# Build and push the video caption image, and point the Cloud Run Job at it (app)
+build-caption env:
+    #!/usr/bin/env bash
+    {{initialise}} "build-caption ({{env}})"
+    set -euo pipefail
+
+    if [ "{{env}}" != "app" ]; then
+        echo "ERROR: the caption job exists only in app, the environment with the video buckets" >&2
+        exit 1
     fi
 
-    echo ""
-    echo "Done. Teaching repos are in ./teaching-repos/"
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+    REGISTRY="${REGION}-docker.pkg.dev"
+    IMAGE="${REGISTRY}/${PROJECT}/quill/caption:latest"
+
+    # Its own Dockerfile rather than a target: Whisper pulls torch, which
+    # has no business in the image the API serves from. Expect this build
+    # to be slow and the image to be several gigabytes.
+    echo "Building caption image for ${PROJECT}..."
+    gcloud auth configure-docker "$REGISTRY" --quiet
+
+    docker build \
+        --platform linux/amd64 \
+        -t "$IMAGE" \
+        -f backend/Dockerfile.caption \
+        .
+
+    echo "Pushing ${IMAGE}..."
+    docker push "$IMAGE"
+    echo "✓ Caption image pushed to ${IMAGE}"
+
+    # Only the image moves, as in build-admin: Terraform owns the job
+    # (infra/main.tf), with its egress, its resources and its environment.
+    echo "Pointing the Cloud Run Job at the new image..."
+    gcloud run jobs update "quill-caption-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --image="$IMAGE" \
+        --quiet
+    echo "✓ Cloud Run Job updated"
+
+
+alias bt := build-transcode
+# Build and push the video transcode image, and point the Cloud Run Job at it (app)
+build-transcode env:
+    #!/usr/bin/env bash
+    {{initialise}} "build-transcode ({{env}})"
+    set -euo pipefail
+
+    if [ "{{env}}" != "app" ]; then
+        echo "ERROR: the transcode job exists only in app, the environment with the video buckets" >&2
+        exit 1
+    fi
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+    REGISTRY="${REGION}-docker.pkg.dev"
+    IMAGE="${REGISTRY}/${PROJECT}/quill/transcode:latest"
+
+    echo "Building transcode image for ${PROJECT}..."
+    gcloud auth configure-docker "$REGISTRY" --quiet
+
+    docker build \
+        --target transcode \
+        --platform linux/amd64 \
+        -t "$IMAGE" \
+        -f backend/Dockerfile \
+        .
+
+    echo "Pushing ${IMAGE}..."
+    docker push "$IMAGE"
+    echo "✓ Transcode image pushed to ${IMAGE}"
+
+    # Only the image moves, as in build-admin: Terraform owns the job
+    # (infra/main.tf), with its egress, its resources and its environment.
+    echo "Pointing the Cloud Run Job at the new image..."
+    gcloud run jobs update "quill-transcode-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --image="$IMAGE" \
+        --quiet
+    echo "✓ Cloud Run Job updated"
+
+
+alias ccs := check-competency-seeding
+# List users who would lose a competency when only their rows count (should list nobody)
+check-competency-seeding env:
+    #!/usr/bin/env bash
+    {{initialise}} "check-competency-seeding ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    echo "Check competency seeding on ${PROJECT}"
+    echo "─────────────────────────────────"
+
+    gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "ADMIN_ACTION=check-competency-seeding" \
+        --wait
+
+
+alias cs := create-superadmin
+# Create a superadmin on a remote environment via Cloud Run Job
+create-superadmin env:
+    #!/usr/bin/env bash
+    {{initialise}} "create-superadmin ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    echo "Create superadmin on ${PROJECT}"
+    echo "─────────────────────────────────"
+    read -rp "Username: " username
+    read -rp "Email: " email
+    read -rsp "Password: " password
+    echo
+
+    gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "ADMIN_ACTION=create-superadmin,ADMIN_USERNAME=${username},ADMIN_EMAIL=${email},ADMIN_PASSWORD=${password}" \
+        --wait
 
 
 alias csl := create-superadmin-local
@@ -261,6 +561,15 @@ create-superadmin-local:
     {{initialise}} "create-superadmin-local"
     just _worktree-guard quill_backend
     docker exec -it quill_backend sh -lc "cd scripts && python create_superuser.py"
+
+
+alias dds := docker-daemon-start
+# TODO: #1701 add a windows and linux version
+# Start the Docker daemon (Mac only)
+docker-daemon-start:
+    #!/usr/bin/env bash
+    {{initialise}} "docker-daemon-start"
+    just _start-docker-daemon
 
 
 alias d := docs
@@ -281,13 +590,32 @@ docs:
     open http://127.0.0.1:8000
 
 
-alias dds := docker-daemon-start
-# TODO: #1701 add a windows and linux version
-# Start the Docker daemon (Mac only)
-docker-daemon-start:
+alias ee := e2e
+# Run the end-to-end tests against a fresh CI-identical stack for this worktree
+e2e *ARGS:
     #!/usr/bin/env bash
-    {{initialise}} "docker-daemon-start"
-    just _start-docker-daemon
+    {{initialise}} "e2e"
+
+    # Playwright runs on the host, but the app it drives is this worktree's
+    # own compose.ci.yml stack on a free port - not the dev stack - so this
+    # works from any worktree and matches what CI runs. See `_e2e-up`.
+    just _e2e-run {{ARGS}}
+
+
+alias eer := e2e-report
+# Run end-to-end tests, then open the Playwright HTML report
+e2e-report:
+    #!/usr/bin/env bash
+    {{initialise}} "e2e-report"
+    just _e2e-run && cd frontend && npx playwright show-report
+
+
+alias eeu := e2e-ui
+# Run the end-to-end tests in interactive UI mode
+e2e-ui:
+    #!/usr/bin/env bash
+    {{initialise}} "e2e-ui"
+    just _e2e-run --ui
 
 
 alias ep := email-preview
@@ -424,6 +752,39 @@ hex-32:
     openssl rand -hex 32
 
 
+alias ii := initial-install
+initial-install:
+    #!/usr/bin/env bash
+    {{initialise}} "initial-install"
+    set -euo pipefail
+
+    ORG="bailey-medics"
+
+    # --- Teaching content repos ---
+    DEST="teaching-repos"
+    mkdir -p "$DEST"
+
+    echo "Discovering teaching repos in ${ORG}..."
+    REPOS=$(gh repo list "$ORG" --json name --jq '.[].name' | grep -E -- '-teaching(-testing)?$' || true)
+
+    if [ -z "$REPOS" ]; then
+        echo "No *-teaching repos found in ${ORG}."
+    else
+        for REPO in $REPOS; do
+            if [ -d "$DEST/$REPO" ]; then
+                echo "✓ $REPO already cloned - pulling latest..."
+                git -C "$DEST/$REPO" pull --ff-only || echo "  ⚠ pull failed (check for local changes)"
+            else
+                echo "Cloning $REPO..."
+                gh repo clone "$ORG/$REPO" "$DEST/$REPO"
+            fi
+        done
+    fi
+
+    echo ""
+    echo "Done. Teaching repos are in ./teaching-repos/"
+
+
 alias i := initialise-repo
 # Initialise the repository (run this after pulling the repo for the first time)
 initialise-repo:
@@ -470,87 +831,6 @@ alias lp := local-path
 # Print the path of the shared local/ folder (files kept out of git)
 local-path:
     @bash scripts/local-path.sh
-
-
-alias rd := review-diff
-# Show what changed in a file since it was stamped as read
-review-diff path:
-    @python3 scripts/review-ledger.py diff {{path}}
-
-
-alias rs := review-status
-# Say how much has been read. Pass 'f' for the full list by folder, or a folder to list it file by file.
-review-status path="":
-    @python3 scripts/review-ledger.py status {{path}}
-
-
-alias r := reviewed
-# Stamp files, or every file in a folder, as read. Space separates multiple paths.
-reviewed *paths:
-    @python3 scripts/review-ledger.py mark {{paths}}
-
-
-alias ur := unreviewed
-# Take the read stamp off files, or off every file in a folder
-unreviewed *paths:
-    @python3 scripts/review-ledger.py unmark {{paths}}
-
-
-alias syt := sync-teaching
-# Sync all local question banks into the DB and serve the newest version of each (no restart needed)
-sync-teaching:
-    #!/usr/bin/env bash
-    {{initialise}} "sync-teaching"
-    just _worktree-guard quill_backend
-    ./dev-scripts/sync-teaching-data.sh
-
-
-alias vt := validate-teaching
-# Validate all teaching content (module.yaml, assessment, images, certificate, MDX)
-validate-teaching:
-    #!/usr/bin/env bash
-    {{initialise}} "validate-teaching"
-    set -uo pipefail
-    just _worktree-guard quill_backend || exit 1
-
-    if ! compgen -G "teaching-repos/*/modules" > /dev/null; then
-        echo "No teaching repos found. Clone them with: just initial-install"
-        exit 1
-    fi
-
-    # Version lock compares a branch against origin/main, which is a
-    # pull-request concern rather than a local one, so it is skipped here.
-    FAILED=0
-
-    for REPO in teaching-repos/*/; do
-        NAME=$(basename "${REPO}")
-        if [ -d "${REPO}modules" ]; then
-            echo "▸ Validating ${NAME}..."
-            docker exec quill_backend sh -lc \
-                "python -m app.features.teaching.tooling.cli \
-                 /teaching-repos/${NAME}/modules --skip-version-lock" \
-                || FAILED=1
-            echo ""
-        fi
-    done
-
-    if [ "${FAILED}" -ne 0 ]; then
-        echo "✗ Teaching content validation failed."
-        exit 1
-    fi
-
-    echo "✓ All teaching content valid."
-
-
-alias pcert := preview-certificate
-# Generate a preview certificate PDF and open it (bank: colonoscopy-optical-diagnosis-test)
-preview-certificate bank="colonoscopy-optical-diagnosis-test":
-    #!/usr/bin/env bash
-    {{initialise}} "preview-certificate"
-    just _worktree-guard quill_backend
-    docker exec quill_backend python -m scripts.preview_certificate --bank "{{bank}}"
-    docker cp quill_backend:/tmp/certificate-preview.pdf .
-    open certificate-preview.pdf
 
 
 alias m := migrate
@@ -605,42 +885,230 @@ migrate-local:
     # this the symptom is a column or table that exists in the models
     # and not in Postgres, which surfaces as a 500 far from its cause.
     #
-    # `just st` now does this on every start, so running it by hand is
+    # `just sa` now does this on every start, so running it by hand is
     # for the case where the stack is already up and `main` has moved
     # underneath it.
     just _worktree-guard quill_backend
     just _migrate-running-stack
 
 
-# Bring the running stack's database to head, and say what happened.
-#
-# Shared by `migrate-local` and by `start-teaching`, so the two cannot
-# drift: one is the same step run on demand rather than at start-up.
-# Deliberately without the worktree guard - `start-teaching` has just
-# brought this very stack up, so there is nothing to disagree with, and
-# `migrate-local` checks before calling this.
-_migrate-running-stack:
+alias mr := migrate-remote
+# Run pending Alembic migrations on a remote environment (the deploy does this automatically; use for manual re-runs)
+migrate-remote env:
     #!/usr/bin/env bash
+    {{initialise}} "migrate-remote ({{env}})"
     set -euo pipefail
 
-    before=$(docker exec quill_postgres_core \
-        psql -U core_user -d quill_core -tAc \
-        "SELECT version_num FROM alembic_version;" 2>/dev/null || echo "none")
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
 
-    docker exec quill_backend sh -lc 'alembic upgrade head'
+    echo "Run migrations on ${PROJECT}"
+    echo "─────────────────────────────────"
 
-    after=$(docker exec quill_postgres_core \
-        psql -U core_user -d quill_core -tAc \
-        "SELECT version_num FROM alembic_version;" 2>/dev/null || echo "unknown")
+    gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "ADMIN_ACTION=run-migrations" \
+        --wait
 
-    # Said plainly, because "upgrade head" prints nothing when there was
-    # nothing to do, and a silent success is indistinguishable from a
-    # command that did not run.
-    if [ "${before}" = "${after}" ]; then
-        echo "Database already at ${after} - nothing to apply."
-    else
-        echo "Database migrated ${before} → ${after}"
+
+alias nls := newsletter-send
+# Send a newsletter campaign to everybody who said yes (dry run unless confirm is what the dry run printed)
+newsletter-send env campaign confirm="" only_to="" limit="":
+    #!/usr/bin/env bash
+    {{initialise}} "newsletter-send ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    # A campaign is a template under backend/app/email/templates/campaigns/,
+    # named without its ending. Without confirm this only reports who would
+    # be sent it, and prints the value to pass back. only_to sends a trial
+    # to one address, which is not recorded, so the real send still reaches
+    # them. limit is the most people to reach in one run, for sending in
+    # batches: later runs take up where the last left off. See
+    # backend/app/marketing/newsletter.py.
+    # The dry run ends "run again with CONFIRM=<value>", so that form is
+    # accepted as well as the bare value.
+    CONFIRM="{{confirm}}"
+    CONFIRM="${CONFIRM#CONFIRM=}"
+
+    # Checked here because each goes into a comma-separated list of
+    # variables, where a stray comma would set something else.
+    if ! [[ "{{campaign}}" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+        echo "✗ '{{campaign}}' is not a campaign name" >&2
+        exit 1
     fi
+
+    if [ -n "$CONFIRM" ] && ! [[ "$CONFIRM" =~ ^[a-z0-9][a-z0-9-]*:[0-9]+$ ]]; then
+        echo "✗ confirm must be what the dry run printed, such as {{campaign}}:12" >&2
+        exit 1
+    fi
+
+    if [ -n "{{only_to}}" ] && ! [[ "{{only_to}}" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$ ]]; then
+        echo "✗ '{{only_to}}' is not an email address" >&2
+        exit 1
+    fi
+
+    if [ -n "{{limit}}" ] && ! [[ "{{limit}}" =~ ^[1-9][0-9]*$ ]]; then
+        echo "✗ '{{limit}}' is not a number of people" >&2
+        exit 1
+    fi
+
+    VARS="ADMIN_ACTION=send-newsletter,NEWSLETTER_CAMPAIGN={{campaign}}"
+
+    if [ -n "{{limit}}" ]; then
+        VARS="${VARS},NEWSLETTER_LIMIT={{limit}}"
+    fi
+
+    if [ -n "{{only_to}}" ]; then
+        VARS="${VARS},NEWSLETTER_ONLY_TO={{only_to}}"
+    fi
+
+    if [ -n "$CONFIRM" ]; then
+        VARS="${VARS},CONFIRM=${CONFIRM}"
+        echo "Send the {{campaign}} newsletter on ${PROJECT}"
+    else
+        echo "Dry run: the {{campaign}} newsletter on ${PROJECT}"
+    fi
+
+    echo "─────────────────────────────────"
+
+    EXECUTION=$(gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "$VARS" \
+        --wait \
+        --format='value(metadata.name)') || STATUS=$?
+
+    # A failed execution prints nothing to stdout, so its name is looked
+    # up instead: the failure is exactly when the report matters most.
+    if [ -z "${EXECUTION:-}" ]; then
+        EXECUTION=$(gcloud run jobs executions list \
+            --job="quill-admin-{{env}}" \
+            --project="$PROJECT" \
+            --region="$REGION" \
+            --limit=1 \
+            --format='value(metadata.name)' || true)
+    fi
+
+    # The job prints to Cloud Logging rather than to this terminal, so
+    # its report is read back from there.
+    if [ -n "${EXECUTION:-}" ]; then
+        gcloud logging read \
+            "resource.type=cloud_run_job AND labels.\"run.googleapis.com/execution_name\"=${EXECUTION}" \
+            --project="$PROJECT" \
+            --order=asc \
+            --freshness=1h \
+            --format='value(textPayload)'
+    fi
+
+    exit "${STATUS:-0}"
+
+
+alias na := notifier-app
+# Build the Quill-branded macOS notifier used by the Stop-hook banner (macOS only, one-off)
+notifier-app:
+    #!/usr/bin/env bash
+    {{initialise}} "notifier-app"
+    set -euo pipefail
+
+    ./scripts/build-notifier-app.sh
+
+
+alias psd := passport-delete
+# Delete a test holder's passport, archived for 30 days (dry run unless confirm is the passport id)
+passport-delete env username confirm="":
+    #!/usr/bin/env bash
+    {{initialise}} "passport-delete ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    # Only holders listed in PASSPORT_DELETABLE_USERNAMES, set in Terraform,
+    # can be deleted. Without confirm this only reports, and prints the
+    # passport id to pass back. See delete_passport() in
+    # backend/scripts/admin_cli.py.
+    # The dry run ends "run again with CONFIRM=<id>", so that form is
+    # accepted as well as the bare id.
+    CONFIRM="{{confirm}}"
+    CONFIRM="${CONFIRM#CONFIRM=}"
+
+    # Checked here because both go into a comma-separated list of
+    # variables, where a stray comma would set something else.
+    if ! [[ "{{username}}" =~ ^[A-Za-z0-9._@+-]+$ ]]; then
+        echo "✗ '{{username}}' is not a username" >&2
+        exit 1
+    fi
+
+    if [ -n "$CONFIRM" ] && ! [[ "$CONFIRM" =~ ^[0-9a-f]{32}$ ]]; then
+        echo "✗ confirm must be the 32-character passport id from a dry run" >&2
+        exit 1
+    fi
+
+    VARS="ADMIN_ACTION=delete-passport,ADMIN_USERNAME={{username}}"
+
+    if [ -n "$CONFIRM" ]; then
+        VARS="${VARS},CONFIRM=${CONFIRM}"
+        echo "Delete {{username}}'s passport on ${PROJECT}"
+    else
+        echo "Dry run: {{username}}'s passport on ${PROJECT}"
+    fi
+
+    echo "─────────────────────────────────"
+
+    EXECUTION=$(gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "$VARS" \
+        --wait \
+        --format='value(metadata.name)') || STATUS=$?
+
+    # A failed execution prints nothing to stdout, so its name is looked
+    # up instead: the failure is exactly when the report matters most.
+    if [ -z "${EXECUTION:-}" ]; then
+        EXECUTION=$(gcloud run jobs executions list \
+            --job="quill-admin-{{env}}" \
+            --project="$PROJECT" \
+            --region="$REGION" \
+            --limit=1 \
+            --format='value(metadata.name)' || true)
+    fi
+
+    # The job prints to Cloud Logging rather than to this terminal, so
+    # its report is read back from there.
+    if [ -n "${EXECUTION:-}" ]; then
+        gcloud logging read \
+            "resource.type=cloud_run_job AND labels.\"run.googleapis.com/execution_name\"=${EXECUTION}" \
+            --project="$PROJECT" \
+            --order=asc \
+            --freshness=1h \
+            --format='value(textPayload)'
+    fi
+
+    exit "${STATUS:-0}"
+
+
+alias pi := poetry-install
+# Install the poetry dependencies
+poetry-install:
+    #!/usr/bin/env bash
+    {{initialise}} "poetry-install"
+    cd backend
+    poetry lock
+    poetry install
+
+
+alias pop := poetry-path
+# Show the poetry path
+poetry-path:
+    #!/usr/bin/env bash
+    {{initialise}} "poetry-path"
+    cd backend
+    poetry env info -p
+    echo "To activate the poetry environment, open the Command Palette (Cmd+Shift+P) type in 'Python: Select Interpreter' and then select 'Enter interpreter path's. Then paste the path above."
 
 
 alias pc := pre-commit
@@ -651,110 +1119,15 @@ pre-commit:
     pre-commit run --all-files
 
 
-alias wc := worktree-create
-# Create a sibling worktree on a new branch, and set up its Python venv
-worktree-create branch="":
+alias pcert := preview-certificate
+# Generate a preview certificate PDF and open it (bank: colonoscopy-optical-diagnosis-test)
+preview-certificate bank="colonoscopy-optical-diagnosis-test":
     #!/usr/bin/env bash
-    {{initialise}} "worktree-create"
-
-    if [ -z "{{branch}}" ]; then
-        echo "Usage: just wc feature/my-branch"
-        echo "Creates the branch, or resumes it if it already exists."
-        exit 1
-    fi
-
-    # Branch protection rejects anything outside this set, and finding
-    # that out after the worktree exists means unpicking it by hand.
-    case "{{branch}}" in
-        feature/*|hotfix/*|copilot/*|renovate/*) ;;
-        *)
-            echo "Branch must start with feature/, hotfix/, copilot/ or renovate/"
-            exit 1
-            ;;
-    esac
-
-    ROOT=$(git rev-parse --show-toplevel)
-    NAME=$(basename "$ROOT")
-    PARENT=$(dirname "$ROOT")
-
-    # Walk up from 2 until a free name appears, rather than counting the
-    # existing worktrees: one removed by hand would otherwise make the
-    # next number collide with a directory still on disk.
-    N=2
-
-    while [ -e "$PARENT/$NAME-$N" ]; do
-        N=$((N + 1))
-    done
-
-    DEST="$PARENT/$NAME-$N"
-
-    git -C "$ROOT" fetch origin --quiet
-
-    if git -C "$ROOT" show-ref --verify --quiet "refs/heads/{{branch}}"; then
-        echo "Branch {{branch}} already exists locally - checking it out."
-        git -C "$ROOT" worktree add "$DEST" "{{branch}}"
-    elif git -C "$ROOT" show-ref --verify --quiet "refs/remotes/origin/{{branch}}"; then
-
-        # Resuming work that already exists on the remote. Branching from
-        # main here would silently discard every commit on it.
-        echo "Branch {{branch}} exists on origin - resuming it."
-        git -C "$ROOT" worktree add -b "{{branch}}" "$DEST" "origin/{{branch}}"
-        git -C "$DEST" branch --set-upstream-to="origin/{{branch}}" "{{branch}}"
-    else
-
-        # Branch from origin/main rather than the current HEAD, so a new
-        # worktree never inherits half-finished work from wherever you
-        # happened to be standing.
-        git -C "$ROOT" worktree add -b "{{branch}}" "$DEST" origin/main
-
-        # A new branch made this way tracks main, not itself, so the first
-        # bare `git push` would aim at the protected branch. Leave it unset
-        # rather than relying on push.default to refuse.
-        git -C "$DEST" branch --unset-upstream "{{branch}}" 2>/dev/null || true
-    fi
-
-    # .env files are gitignored, so a new worktree starts without any and
-    # the stack will not come up. Copied rather than symlinked: a branch
-    # may legitimately need a different value, and a symlink would edit
-    # the original from inside the worktree without warning.
-    for f in .env backend/.env frontend/.env; do
-        if [ -f "$ROOT/$f" ]; then
-            cp "$ROOT/$f" "$DEST/$f"
-            echo "Copied $f"
-        fi
-    done
-
-    # Each worktree gets its own venv. The env var is what forces it:
-    # Poetry keys cached environments on the project name, which is
-    # "backend" in every worktree, so without this they all silently
-    # share one - and installing a dependency on one branch changes the
-    # others, which is exactly what a worktree is meant to prevent.
-
-    echo "Creating the backend virtual environment..."
-
-    # `env -u VIRTUAL_ENV` matters as much as the in-project flag. If a
-    # venv is already active in the calling shell - which it is whenever
-    # you run this from a worktree you have been working in - Poetry
-    # honours that over everything else and installs into it, so the new
-    # worktree silently shares its parent's environment.
-    (cd "$DEST/backend" \
-        && env -u VIRTUAL_ENV POETRY_VIRTUALENVS_IN_PROJECT=1 poetry install)
-
-    # The JavaScript half of the same job. node_modules is gitignored, so
-    # Storybook, Playwright and the host-side linters have nothing to run
-    # with until it exists. `--immutable` because a fresh worktree has no
-    # business rewriting the lockfile: if the install would change it, the
-    # branch is what needs fixing.
-    echo "Installing the frontend packages..."
-    (cd "$DEST/frontend" && yarn install --immutable)
-
-    # No hook setup is needed. core.hooksPath lives in the shared git config
-    # and is the relative `.husky`, which git resolves against the root of
-    # the worktree that is committing - so this worktree runs its own
-    # branch's tracked hook from the moment it exists.
-    echo ""
-    echo "Worktree ready at $DEST on {{branch}}"
-    echo "  cd $DEST"
+    {{initialise}} "preview-certificate"
+    just _worktree-guard quill_backend
+    docker exec quill_backend python -m scripts.preview_certificate --bank "{{bank}}"
+    docker cp quill_backend:/tmp/certificate-preview.pdf .
+    open certificate-preview.pdf
 
 
 alias pb := prune-branches
@@ -840,111 +1213,6 @@ prune-branches scope="":
     fi
 
 
-alias pi := poetry-install
-# Install the poetry dependencies
-poetry-install:
-    #!/usr/bin/env bash
-    {{initialise}} "poetry-install"
-    cd backend
-    poetry lock
-    poetry install
-
-
-alias pop := poetry-path
-# Show the poetry path
-poetry-path:
-    #!/usr/bin/env bash
-    {{initialise}} "poetry-path"
-    cd backend
-    poetry env info -p
-    echo "To activate the poetry environment, open the Command Palette (Cmd+Shift+P) type in 'Python: Select Interpreter' and then select 'Enter interpreter path's. Then paste the path above."
-
-
-alias tf-gh := terraform-github
-# Apply GitHub rulesets via Terraform (branch naming, protection rules)
-terraform-github:
-    #!/usr/bin/env bash
-    {{initialise}} "terraform-github"
-    set -euo pipefail
-    cd infra/github
-
-    # The initialise variable sets -x, which would print the token to the
-    # terminal and into anything that output is pasted into. Trace off across
-    # the export; the command substitution needs to be inside the quiet
-    # section too, since bash traces it separately from the assignment.
-    set +x
-    export GITHUB_TOKEN=$(gh auth token)
-    set -x
-
-    # -reconfigure: a checkout initialised before the state moved to GCS on
-    # 2026-09-25 still records a local backend, and a plain init would stop
-    # to ask about migrating it. The state is already in the bucket, so
-    # there is nothing to migrate.
-    # -upgrade: the lock file is gitignored, so each checkout keeps whichever
-    # provider it first downloaded. State written by a newer provider from
-    # another checkout or from CI then refuses to load in an older one.
-    terraform init -input=false -reconfigure -upgrade
-    terraform plan -var-file=terraform.tfvars
-    read -rp "Apply these changes? (yes/no): " confirm
-
-    if [ "$confirm" = "yes" ]; then
-        terraform apply -var-file=terraform.tfvars -auto-approve
-    else
-        echo "Aborted."
-    fi
-
-
-alias tf-aws := terraform-aws
-# Plan/apply the AWS side via Terraform (the organisation, its accounts, and SES in London)
-terraform-aws:
-    #!/usr/bin/env bash
-    {{initialise}} "terraform-aws"
-    set -euo pipefail
-
-    # The account numbers live in backend/.env, which is gitignored, and not
-    # in a tfvars file: this repository is public. Trace off while they are
-    # read, so they are not printed.
-    set +x
-
-    for setting in AWS_EMAILS_ACCOUNT_ID AWS_EMAILS_DEV_ACCOUNT_ID AWS_MANAGEMENT_ACCOUNT_ID AWS_ID_ACCOUNT_ID; do
-        value="$(grep "^${setting}=" backend/.env 2>/dev/null | cut -d= -f2-)"
-        if [ -z "$value" ] || [ "$value" = "CHANGE_ME" ]; then
-            echo "✗ ${setting} is not set in backend/.env."
-            exit 1
-        fi
-    done
-
-    export TF_VAR_app_account_id="$(grep '^AWS_EMAILS_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
-    export TF_VAR_dev_account_id="$(grep '^AWS_EMAILS_DEV_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
-    export TF_VAR_management_account_id="$(grep '^AWS_MANAGEMENT_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
-    export TF_VAR_identity_account_id="$(grep '^AWS_ID_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
-
-    # Both sign-ins are needed: the emails account for App production, and
-    # the management account, which holds the organisation's policy and is
-    # where the development account is reached from.
-    # Checked here so a lapsed session says so plainly, and not as a
-    # provider error halfway through a plan.
-    for profile in quill-emails quill-management; do
-        if ! aws sts get-caller-identity --profile "$profile" >/dev/null 2>&1; then
-            echo "✗ Not signed in to AWS as ${profile}. Run: just al$([ "$profile" = quill-management ] && echo ' management')"
-            exit 1
-        fi
-    done
-
-    cd infra/aws
-
-    # -upgrade: see terraform-github; the lock file is not committed.
-    terraform init -input=false -upgrade
-    terraform plan
-    read -rp "Apply these changes? (yes/no): " confirm
-
-    if [ "$confirm" = "yes" ]; then
-        terraform apply -auto-approve
-    else
-        echo "Aborted."
-    fi
-
-
 alias pub := public-pages
 # Run public pages dev server
 public-pages:
@@ -954,48 +1222,22 @@ public-pages:
     yarn workspace public-pages dev
 
 
-alias sb := storybook
-# Run storybook dev server
-storybook:
-    #!/usr/bin/env bash
-    {{initialise}} "storybook"
-
-    # Render the emails first. The Foundations/Emails stories show the
-    # HTML files under frontend/src/stories/emails/rendered/, which only
-    # `email-preview` writes: Storybook reads them and never renders. So
-    # without this, a template edited since the last render shows its old
-    # email, and nothing says so until the backend tests run.
-    #
-    # A failed render does not stop Storybook. Somebody working on a
-    # component with Docker down, or with a template half written, still
-    # wants it, and the committed renders are there to show.
-    if ! { just _start-docker-daemon && just email-preview; }; then
-        echo "" >&2
-        echo "⚠ The emails could not be rendered, so the email stories show" >&2
-        echo "  the renders already on disk. Run \`just email-preview\` to see why." >&2
-        echo "" >&2
-    fi
-
-    cd frontend
-    yarn storybook
+alias rd := review-diff
+# Show what changed in a file since it was stamped as read
+review-diff path:
+    @python3 scripts/review-ledger.py diff {{path}}
 
 
-alias sbt := storybook-test
-# Run storybook tests, starting storybook first if it is not already running
-storybook-test:
-    #!/usr/bin/env bash
-    {{initialise}} "storybook-test"
-    cd frontend
+alias rs := review-status
+# Say how much has been read. Pass 'f' for the full list by folder, or a folder to list it file by file.
+review-status path="":
+    @python3 scripts/review-ledger.py status {{path}}
 
-    # A Storybook already up is used as it is and left running. Otherwise
-    # the CI script starts one, runs the tests and stops it again.
-    if curl --silent --fail --max-time 5 --output /dev/null http://127.0.0.1:6006/index.json; then
-        echo "Storybook is already running: testing against it."
-        yarn storybook:test
-    else
-        echo "Storybook is not running: starting one for this run."
-        yarn storybook:test:ci
-    fi
+
+alias r := reviewed
+# Stamp files, or every file in a folder, as read. Space separates multiple paths.
+reviewed *paths:
+    @python3 scripts/review-ledger.py mark {{paths}}
 
 
 alias sdc := show-dev-containers
@@ -1004,59 +1246,6 @@ show-dev-containers:
     #!/usr/bin/env bash
     {{initialise}} "show-dev-containers"
     docker compose -f compose.dev.yml ps
-
-
-# Prefix a bare name with feature/, leaving an already-prefixed one alone.
-#
-# Branch protection rejects anything outside feature/*, hotfix/*, copilot/*
-# and renovate/*, and it rejects it at creation time - so a stack branch
-# named without the prefix fails at the push, once the commits already
-# exist. Cheaper to add it here than to unpick a branch by hand.
-_stack-branch-name name:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    case "{{name}}" in
-        feature/*|hotfix/*|copilot/*|renovate/*) echo "{{name}}" ;;
-        *) echo "feature/{{name}}" ;;
-    esac
-
-
-# Refuse a stack operation when a stack branch lives in another worktree.
-#
-# gh-stack keeps its state in $(git rev-parse --git-dir)/gh-stack, which for
-# a worktree is .git/worktrees/<name>/gh-stack: worktree-local, invisible to
-# the other checkouts, and removed with the worktree. So a stack belongs to
-# the worktree that created it.
-#
-# The guard matters because `gh stack rebase` does not enforce that itself.
-# Given a branch checked out elsewhere it prints the git error, skips the
-# branch, and still exits 0 (github/gh-stack#35, reproduced here on
-# 2026-09-14). Anything chaining `rebase && submit` would then push a stack
-# it believed was rebased and was not - the silent-success failure the
-# worktree notes in CLAUDE.md already record once.
-_stack-guard:
-    #!/usr/bin/env bash
-    set -uo pipefail
-    {{stack_repo}}
-    python3 "{{stack_scripts}}"/stack-status.py --check
-    status=$?
-
-    # 1 is "no stack here". The script has already named the recipes and
-    # the skill that start or check out one, so stopping here is what makes
-    # that the last thing on the screen: without it the recipe carried on
-    # into `gh stack rebase`, which answered the same question again in its
-    # own words and buried the useful half under the useless one.
-    if [ "${status}" -eq 1 ]; then
-        exit 1
-    fi
-
-    if [ "${status}" -eq 2 ]; then
-        echo "✗ Refusing to run: this stack spans more than one worktree." >&2
-        echo "  Free the branches above, or run this from the worktree" >&2
-        echo "  that owns the stack." >&2
-        exit 1
-    fi
 
 
 alias sta := stack-add
@@ -1855,27 +2044,15 @@ stack-update message="":
     if [ -n "{{message}}" ]; then
         git commit --amend -m "{{message}}"
     else
-
         # --no-edit keeps the existing message rather than opening an editor,
         # which would hang anywhere non-interactive.
         git commit --amend --no-edit
     fi
 
-    # Amending rewrote this branch's commit, so every branch above it now sits
-    # on a commit that no longer exists. Rebasing is not optional afterwards -
-    # it is the other half of the same operation - so it runs here rather than
-    # being left as something to remember. `stack-rebase` carries the worktree
-    # guard and the check that catches a rebase which reported success and
-    # silently skipped a branch.
-    #
-    # Skipped when this branch is not in a stack: there is nothing above it to
-    # restack, and `stack-rebase` would refuse for want of a stack rather than
-    # for any real problem. That also lets this recipe be used on an ordinary
-    # branch, which is worth having.
-    # --check exits 0 in a stack, 1 when this branch is in none, and 2 when a
-    # stack branch is checked out in another worktree. Only 1 means "nothing
-    # above to restack"; 2 is a real problem and must still reach the guard
-    # inside stack-rebase rather than being quietly taken for "no stack".
+    # Amending rewrote this commit, so the branches above must be rebased
+    # onto the new one. Skipped only when --check exits 1 (not in a stack).
+    # Exit 2 (stack spans worktrees) still goes to stack-rebase, which
+    # refuses.
     stack_state=0
     python3 "{{stack_scripts}}"/stack-status.py --check >/dev/null 2>&1 || stack_state=$?
 
@@ -1895,24 +2072,16 @@ stack-watch:
     set +x
     {{stack_repo}}
 
-    # `stack-log-long` in a loop. A minute is the cadence because CI state
-    # does not change faster than that in any way worth watching, and one
-    # `gh pr list` a minute is 60 calls an hour against a 5000-point limit.
+    # `stack-log-long` in a loop, once a minute. Not `watch(1)`: macOS does
+    # not ship it.
     #
-    # Not `watch(1)`: macOS does not ship it, and this needs to survive the
-    # script exiting non-zero when there is no stack.
-    # The dots a keypress starts run in the background, and a background
-    # job in a script ignores ctrl-c: left alone it would go on printing
-    # into the terminal after the watch had gone. So the interrupt stops
-    # it by name. INT and TERM only, leaving the EXIT trap `initialise`
-    # set to do its own tidying on the way out.
+    # The dots run in the background and would outlive ctrl-c, so the
+    # interrupt kills them by name.
     dots=""
     trap '[ -n "${dots}" ] && kill "${dots}" 2>/dev/null; echo; exit 130' INT TERM
 
-    # A label, then a dot every two seconds until `stop_dots`. What they
-    # cover is a network call: usually about three seconds, sometimes many
-    # more, and a line that keeps growing says it is still going where a
-    # fixed one cannot be told from a hang.
+    # A label, then a dot every two seconds, so a slow network call does
+    # not look like a hang.
     start_dots() {
         printf '  %s' "$1"
         ( while sleep 2; do printf '.'; done ) &
@@ -1931,34 +2100,19 @@ stack-watch:
 
     while true; do
 
-        # Fetch first, then clear. Clearing before the ~3s `gh pr list` call
-        # left the terminal blank for the whole of it, which read as a hang;
-        # capturing the new stack first means the old one stays on screen
-        # until the moment it is replaced.
-        #
-        # `--colour` because capturing makes stdout a pipe, and the script
-        # drops colour when it is not a terminal. `|| true` for the same
-        # reason `stack-log` has it: "no stack here" is an ordinary answer,
-        # and the loop should keep drawing it rather than dying on it.
+        # Fetch first, then clear, so the old stack stays on screen during
+        # the ~3s call.
         drawn=$(python3 "{{stack_scripts}}"/stack-status.py --prs --numbered --colour 2>&1 || true)
 
         # Stop the dots a keypress started, further down.
         stop_dots
 
-        # \033[H homes the cursor, \033[2J clears the screen and \033[3J the
-        # scrollback. The third matters: without it the previous draw is
-        # only pushed up rather than thrown away, so a stack taller than
-        # the window leaves the older copy above the new one and the
-        # status line scrolls out of sight with it.
+        # Home the cursor, clear the screen and clear the scrollback. Without
+        # the last, a tall stack leaves its old copy above the new one.
         printf '\033[H\033[2J\033[3J'
 
-        # The keys, each word carrying the letter that does it: its first,
-        # except for refresh, whose `r` belongs to ready, so it is the `f`.
-        # That letter is bold blue: a colour the drawing below does not use, so
-        # the keys stand apart from the bold yellow of the branch checked
-        # out. Bright blue, 94, because plain blue, 34, is close to
-        # unreadable on a dark terminal. `%b` expands the escapes in the
-        # argument; the time goes in as an argument too, not inline.
+        # The key letter in each word is bold bright blue (94). Plain blue
+        # (34) is unreadable on a dark terminal.
         k='\033[1;94m'
         n='\033[0m'
 
@@ -1971,57 +2125,39 @@ stack-watch:
         # cspell:enable
         printf '%s\n' "${drawn}"
 
-        # The minute's wait doubles as the keyboard: one keypress ends it
-        # early. `r` takes every open pull request in the stack out of
-        # draft, which is `stack-ready` and nothing more; `s` is
-        # `stack-sync`, for when a pull request below has merged; a number
-        # is `stack-move` to the branch drawn with it, which changes the
-        # branch checked out; `f` refreshes the
-        # stack now rather than at the end of the minute. Any other key
-        # does nothing, so a stray keypress in the wrong window costs no
-        # call to GitHub.
+        # The minute's wait doubles as the keyboard: r is `stack-ready`, s is
+        # `stack-sync`, a number is `stack-move`, f refreshes.
         #
-        # No confirmation on any of them, by choice. Marking ready starts
-        # the heavy CI tier on every branch, a sync rebases and pushes the
-        # branches still open, and a move checks out another branch, and
-        # that is exactly what pressing the key here is asking for.
-        #
-        # Without a terminal on stdin `read` returns at once, which would
-        # turn the loop into a spin against the GitHub API, so that case
-        # keeps the plain sleep.
+        # With no terminal on stdin `read` returns at once and the loop
+        # would spin against GitHub, so that case just sleeps.
         if [ ! -t 0 ]; then
             sleep 60
             continue
         fi
 
-        # The key is read silently and then answered in words, rather than
-        # left to echo. A bare `r` on the line says nothing about what it
-        # set off, and the redraw's fetch takes about three seconds, in
-        # which a keypress that showed nothing read as one that was missed.
-        # Silent reading also keeps an arrow key from printing its escape
-        # sequence. A timeout is not a keypress, so it says nothing.
-        #
-        # A key that is not listed is thrown away and the wait carries on
-        # for what is left of the minute, counted against a deadline so
-        # that leaning on the keyboard cannot put the redraw off for ever.
-        # An escape opens the sequence an arrow or function key sends, and
-        # its tail can hold a listed key (page down is `ESC [ 6 ~`, which
-        # would check out the sixth branch), so the rest of the sequence
-        # is drained before reading again.
+        # Read one key silently, within what is left of the minute. A key
+        # not listed is ignored. An escape starts an arrow or function key
+        # sequence, whose tail can hold a listed key (page down ends in 6),
+        # so the rest of it is drained.
         key=""
         deadline=$((SECONDS + 60))
+
         while true; do
             remaining=$((deadline - SECONDS))
+
             if [ "${remaining}" -le 0 ]; then
                 key=""
                 break
             fi
+
             pressed=0
             read -rsn1 -t "${remaining}" key || pressed=$?
+
             if [ "${pressed}" -ne 0 ]; then
                 key=""
                 break
             fi
+
             case "${key}" in
                 r|R|s|S|[1-9]|f|F)
                     break
@@ -2031,14 +2167,14 @@ stack-watch:
                     ;;
             esac
         done
+
         if [ -z "${key}" ]; then
             continue
         fi
 
-        # Whichever key it was, the dots run on into the fetch at the top
-        # of the loop, which is what stops them: one growing line from the
-        # keypress to the redraw.
+        # The dots started here run until the fetch at the top of the loop.
         echo ""
+
         case "${key}" in
             r|R)
                 recipe=(stack-ready)
@@ -2050,13 +2186,9 @@ stack-watch:
                 ;;
             [1-9])
 
-                # One digit is the whole number unless the stack is tall
-                # enough for a second: with eleven branches a `1` may be
-                # branch 1 or the start of 10 or 11. Only then is there a
-                # wait, five seconds, for the second digit; any other key,
-                # or none, settles on the first. Numbers run on without a
-                # gap, so "is there a branch ten times this one" answers
-                # whether any two-digit number opens with this digit.
+                # With ten or more branches, wait 5s for a second digit.
+                # "Is there a branch ten times this one" says whether any
+                # two-digit number starts with it.
                 number="${key}"
                 if python3 "{{stack_scripts}}"/stack-status.py --branch-at "$((key * 10))" >/dev/null 2>&1; then
                     printf '  %s · a second digit within 5s for %s0 and up, or any other key for branch %s ' \
@@ -2069,20 +2201,18 @@ stack-watch:
                     esac
                 fi
 
-                # A number with no branch behind it is said in a line, not
-                # handed to the recipe: its refusal comes back with a
-                # trace round it and is then held as a failure to be read.
-                # The line stays up for the few seconds the refresh takes.
-                # So is the branch already checked out: there is nothing
-                # to move to, and "checking out" would say otherwise.
+                # No such branch, or already on it: say so in a line and
+                # skip the recipe.
                 if ! target="$(python3 "{{stack_scripts}}"/stack-status.py --branch-at "${number}" 2>/dev/null)"; then
                     start_dots "${number} · there is no branch ${number}"
                     continue
                 fi
+
                 if [ "${target}" = "$(git branch --show-current)" ]; then
                     start_dots "${number} · already on branch ${number}"
                     continue
                 fi
+
                 recipe=(stack-move "${number}")
                 start_dots "${number} · checking out branch ${number}"
                 ;;
@@ -2094,31 +2224,8 @@ stack-watch:
                 ;;
         esac
 
-        # The recipe is run for what it does, not for what it prints: its
-        # trace, a line per pull request or branch, and a drawing of the
-        # stack that the redraw is about to replace. So its output is
-        # captured and shown only when something went wrong, and then held
-        # until a key says it has been read, because the redraw would
-        # otherwise wipe it three seconds later.
-        #
-        # "Went wrong" is the exit code or a line opening with a warning
-        # mark. The second half is for `gh stack sync`, which exits 0 after
-        # failing to move the checkout off a merged branch and says so only
-        # in a `⚠` line. A mark part-way along a line is the drawing's own,
-        # a red check or a branch needing a rebase, and is not a failure.
-        #
-        # Two warnings are left out, because neither is anything going
-        # wrong. "Could not update local main" is printed on every sync from
-        # a worktree that does not hold `main`, which is every worktree but
-        # one, and gh rebases onto origin/main instead. "has no PR" is a
-        # branch that has not been submitted yet. Counting those made every
-        # sync here end in "did not finish cleanly", and a message shown
-        # every time is one nobody reads the day it matters.
-        #
-        # Nor is a sync that ends with the stack cleared a failure,
-        # whatever it warned of on the way: the last branch merged, and
-        # gh's complaint about the merged branch it found checked out
-        # describes a state that has just been put right.
+        # Show the recipe's output only if it failed: a non-zero exit, or a
+        # warning line other than the two expected ones.
         recipe_status=0
         recipe_output=$(just "${recipe[@]}" 2>&1) || recipe_status=$?
         if [ "${recipe_status}" -eq 0 ] \
@@ -2126,7 +2233,9 @@ stack-watch:
                 | grep -E '^[[:space:]]*(⚠|✗) ' \
                 | grep -vqE 'Could not update local main|has no PR$'; then
             recipe_status=1
-            if printf '%s\n' "${recipe_output}" | grep -q 'Stack fully merged - cleared'; then
+
+            if printf '%s\n' "${recipe_output}" | grep -q 'Stack fully merged - cleared';
+            then
                 recipe_status=0
             fi
         fi
@@ -2140,104 +2249,11 @@ stack-watch:
     done
 
 
-alias sd := start-dev
-# Start the dev app (build: 'b' will also build the images)
-start-dev build="":
+alias sa := start-app
+# Start the dev app without the EHR services, FHIR and EHRbase (build: 'b' will also build the images)
+start-app build="":
     #!/usr/bin/env bash
-    {{initialise}} "start-dev"
-
-    just _dev-stack-guard
-    just _start-docker-daemon
-    echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
-
-    # Ctrl-C takes the stack down, the same as `just st` and the same as
-    # `just sc` would. A foreground `up` already stops the containers on
-    # its own, but it leaves them stopped rather than removed, so the
-    # next `up` reuses them and a `down` is still owed. Doing it here
-    # means one interrupt leaves nothing behind either way.
-    #
-    # `COMPOSE_PROFILES=clinical` because the clinical services are
-    # behind a profile and a `down` without it leaves them running.
-    trap 'echo; echo "Stopping the stack..."; \
-        COMPOSE_PROFILES=clinical \
-        docker compose -f compose.dev.yml down' INT TERM
-
-    build_args=""
-
-    if [ "{{build}}" = "b" ]; then
-        COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml down
-        docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
-        cd frontend && yarn install && cd ..
-        cd backend && poetry lock && poetry install && cd ..
-        build_args="--build --pull missing"
-    fi
-
-    # Detached first, so the migrations can run before the logs are
-    # attached, exactly as `start-teaching` does it. `--wait` holds until
-    # every service reports healthy, which is what makes the `alembic`
-    # call below safe.
-    #
-    # Without this step the stack came up against whatever schema the
-    # database happened to have. A migration that arrived from `main`, or
-    # one written in another worktree, had never touched it, and the
-    # symptom was a 500 from a column that exists in the models and not
-    # in Postgres, a long way from its cause.
-    # shellcheck disable=SC2086
-    COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml up \
-        --detach --wait --wait-timeout 180 ${build_args}
-
-    just _migrate-running-stack
-
-    # Then follow the logs, which is what a foreground `up` left you
-    # with and what anybody running this expects. The trap above turns
-    # Ctrl-C back into a full `down`.
-    COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml logs --follow
-
-
-# Check if Docker daemon is running, start Docker Desktop if not (macOS)
-_start-docker-daemon:
-    #!/usr/bin/env bash
-    echo "Checking Docker daemon status..."
-
-    # Check if Docker daemon is responsive
-    if docker info >/dev/null 2>&1; then
-        echo "Docker daemon is running"
-        exit 0
-    fi
-
-    echo "Docker daemon is not running"
-
-    # Check if we're on macOS and Docker Desktop is available
-    if [[ "$OSTYPE" == "darwin"* ]] && [[ -d "/Applications/Docker.app" ]]; then
-        echo "Starting Docker Desktop..."
-        open -a Docker
-
-        # Wait for Docker daemon to start (with timeout)
-        echo "Waiting for Docker daemon to start..."
-        for i in {1..60}; do
-            if docker info >/dev/null 2>&1; then
-                echo "Docker daemon is now running (took ${i} seconds)"
-                exit 0
-            fi
-            echo -n "."
-            sleep 1
-        done
-
-        echo ""
-        echo "Timeout: Docker daemon did not start within 60 seconds"
-        echo "Please check Docker Desktop manually"
-        exit 1
-    else
-        echo "Docker Desktop not found or not on macOS"
-        echo "Please start Docker manually or install Docker Desktop"
-        exit 1
-    fi
-
-alias st := start-teaching
-# Start dev without clinical services (FHIR/EHRbase) for teaching work (build: 'b' will also build the images)
-start-teaching build="":
-    #!/usr/bin/env bash
-    {{initialise}} "start-teaching"
+    {{initialise}} "start-app"
 
     just _dev-stack-guard
     just _start-docker-daemon
@@ -2254,45 +2270,61 @@ start-teaching build="":
         build_args="--build --pull missing"
     fi
 
-    # Detached first, so the migrations can run before the logs are
-    # attached. `--wait` holds until every service reports healthy,
-    # which is what makes the `alembic` call below safe: postgres-core
-    # has a health check and the backend depends on it.
-    #
-    # Without this step the stack came up against whatever schema the
-    # database happened to have. A migration that arrived from `main`,
-    # or one written in another worktree, had never touched it, and the
-    # symptom was a 500 from a column that exists in the models and not
-    # in Postgres - a long way from its cause.
+    # Start detached and wait until healthy, so the migrations can run
+    # before the logs are followed.
     # shellcheck disable=SC2086
     CLINICAL_SERVICES_ENABLED=false docker compose -f compose.dev.yml up \
         --detach --wait --wait-timeout 180 ${build_args}
 
     just _migrate-running-stack
 
-    # Now follow the logs, which is what this recipe looked like before
-    # and what anybody running it expects to be left with.
-    #
-    # Ctrl-C stops the stack, matching `just sd` and matching what a
-    # foreground command is expected to do. The containers belong to the
-    # Docker daemon rather than to this shell, so nothing here owns them
-    # and nothing is cleaned up on the way out: without this trap the
-    # log follower died and the stack was left running, which is how a
-    # forgotten stack came to serve another worktree.
-    #
-    # On the trap rather than on `up` in the foreground, because the
-    # migrations have to run between the stack becoming healthy and the
-    # logs being followed, and a foreground `up` leaves no moment to run
-    # them in.
-    # `COMPOSE_PROFILES=clinical` for the same reason `just sc` carries
-    # it: the clinical services are behind a profile, and a `down`
-    # without it leaves them running. This recipe never starts them, but
-    # an earlier `just sd` in the same worktree may have.
+    # Ctrl-C takes the stack down and removes the containers. The clinical
+    # profile is named in case an earlier `just se` started those services.
     trap 'echo; echo "Stopping the stack..."; \
         COMPOSE_PROFILES=clinical \
         docker compose -f compose.dev.yml down' INT TERM
 
+    # Follow the logs. Ctrl-C triggers the trap above.
     docker compose -f compose.dev.yml logs --follow
+
+
+alias se := start-ehr
+# Start the dev app with the EHR services, FHIR and EHRbase (build: 'b' will also build the images)
+start-ehr build="":
+    #!/usr/bin/env bash
+    {{initialise}} "start-ehr"
+
+    just _dev-stack-guard
+    just _start-docker-daemon
+    echo "Access the frontend at: http://$(ipconfig getifaddr en0)"
+
+    # Ctrl-C takes the stack down and removes the containers. The clinical
+    # profile is named so those services are taken down too.
+    trap 'echo; echo "Stopping the stack..."; \
+        COMPOSE_PROFILES=clinical \
+        docker compose -f compose.dev.yml down' INT TERM
+
+    build_args=""
+
+    if [ "{{build}}" = "b" ]; then
+        COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml down
+        docker volume rm -f quillmedical_frontend_node_modules >/dev/null 2>&1 || true
+        cd frontend && yarn install && cd ..
+        cd backend && poetry lock && poetry install && cd ..
+        build_args="--build --pull missing"
+    fi
+
+    # Start detached and wait until healthy, so the migrations can run
+    # before the logs are followed.
+    # shellcheck disable=SC2086
+    COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml up \
+        --detach --wait --wait-timeout 180 ${build_args}
+
+    just _migrate-running-stack
+
+    # Follow the logs. Ctrl-C triggers the trap above.
+    COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml logs --follow
+
 
 alias sc := stop
 # Stop the containers
@@ -2300,6 +2332,160 @@ stop:
     #!/usr/bin/env bash
     {{initialise}} "stop"
     COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml down
+
+
+alias sb := storybook
+# Run storybook dev server
+storybook:
+    #!/usr/bin/env bash
+    {{initialise}} "storybook"
+
+    # Render the emails first: the email stories show saved HTML files and
+    # never render them. A failed render does not stop Storybook.
+    if ! { just _start-docker-daemon && just email-preview; }; then
+        echo "" >&2
+        echo "⚠ The emails could not be rendered, so the email stories show" >&2
+        echo "  the renders already on disk. Run \`just email-preview\` to see why." >&2
+        echo "" >&2
+    fi
+
+    cd frontend
+    yarn storybook
+
+
+alias sbt := storybook-test
+# Run storybook tests, starting storybook first if it is not already running
+storybook-test:
+    #!/usr/bin/env bash
+    {{initialise}} "storybook-test"
+    cd frontend
+
+    # A Storybook already up is used as it is and left running. Otherwise
+    # the CI script starts one, runs the tests and stops it again.
+    if curl --silent --fail --max-time 5 --output /dev/null http://127.0.0.1:6006/index.json; then
+        echo "Storybook is already running: testing against it."
+        yarn storybook:test
+    else
+        echo "Storybook is not running: starting one for this run."
+        yarn storybook:test:ci
+    fi
+
+
+alias syt := sync-teaching
+# Sync all local question banks into the DB and serve the newest version of each (no restart needed)
+sync-teaching:
+    #!/usr/bin/env bash
+    {{initialise}} "sync-teaching"
+    just _worktree-guard quill_backend
+    ./dev-scripts/sync-teaching-data.sh
+
+
+alias tf-aws := terraform-aws
+# Plan/apply the AWS side via Terraform (the organisation, its accounts, and SES in London)
+terraform-aws:
+    #!/usr/bin/env bash
+    {{initialise}} "terraform-aws"
+    set -euo pipefail
+
+    # The account numbers live in backend/.env, which is gitignored, and not
+    # in a tfvars file: this repository is public. Trace off while they are
+    # read, so they are not printed.
+    set +x
+
+    for setting in AWS_EMAILS_ACCOUNT_ID AWS_EMAILS_DEV_ACCOUNT_ID AWS_MANAGEMENT_ACCOUNT_ID AWS_ID_ACCOUNT_ID; do
+        value="$(grep "^${setting}=" backend/.env 2>/dev/null | cut -d= -f2-)"
+        if [ -z "$value" ] || [ "$value" = "CHANGE_ME" ]; then
+            echo "✗ ${setting} is not set in backend/.env."
+            exit 1
+        fi
+    done
+
+    export TF_VAR_app_account_id="$(grep '^AWS_EMAILS_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
+    export TF_VAR_dev_account_id="$(grep '^AWS_EMAILS_DEV_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
+    export TF_VAR_management_account_id="$(grep '^AWS_MANAGEMENT_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
+    export TF_VAR_identity_account_id="$(grep '^AWS_ID_ACCOUNT_ID=' backend/.env | cut -d= -f2-)"
+
+    # Both sign-ins are needed: the emails account for App production, and
+    # the management account, which holds the organisation's policy and is
+    # where the development account is reached from.
+    # Checked here so a lapsed session says so plainly, and not as a
+    # provider error halfway through a plan.
+    for profile in quill-emails quill-management; do
+        if ! aws sts get-caller-identity --profile "$profile" >/dev/null 2>&1; then
+            echo "✗ Not signed in to AWS as ${profile}. Run: just al$([ "$profile" = quill-management ] && echo ' management')"
+            exit 1
+        fi
+    done
+
+    cd infra/aws
+
+    # -upgrade: see terraform-github; the lock file is not committed.
+    terraform init -input=false -upgrade
+    terraform plan
+    read -rp "Apply these changes? (yes/no): " confirm
+
+    if [ "$confirm" = "yes" ]; then
+        terraform apply -auto-approve
+    else
+        echo "Aborted."
+    fi
+
+
+alias tf-gh := terraform-github
+# Apply GitHub rulesets via Terraform (branch naming, protection rules)
+terraform-github:
+    #!/usr/bin/env bash
+    {{initialise}} "terraform-github"
+    set -euo pipefail
+    cd infra/github
+
+    # Trace off, so the token is not printed.
+    set +x
+    export GITHUB_TOKEN=$(gh auth token)
+    set -x
+
+    # -reconfigure: an old checkout may still record a local backend; the
+    # state is in the bucket. -upgrade: the lock file is not committed, so
+    # an older provider could not read state a newer one wrote.
+    terraform init -input=false -reconfigure -upgrade
+    terraform plan -var-file=terraform.tfvars
+    read -rp "Apply these changes? (yes/no): " confirm
+
+    if [ "$confirm" = "yes" ]; then
+        terraform apply -var-file=terraform.tfvars -auto-approve
+    else
+        echo "Aborted."
+    fi
+
+
+alias ts := test-shell-scripts
+# Run the shell script tests where CI runs them (ubuntu-24.04 container)
+test-shell-scripts *ARGS:
+    #!/usr/bin/env bash
+    {{initialise}} "test-shell-scripts"
+
+    just _start-docker-daemon
+
+    # Nothing from the repository is needed to build the image - it is mounted at
+    # run time - so the Dockerfile goes in on stdin with no build context at all.
+    # Rebuilds are a cache hit unless the Dockerfile itself changes.
+    docker build --quiet --tag quill-shell-tests - < .github/Dockerfile
+
+    # Mounted read-only: a test that writes into the working tree is a bug, and
+    # this is where it should surface rather than on someone's machine.
+    run_suite() {
+        docker run --rm --volume "$PWD:/repo:ro" quill-shell-tests \
+            bash .github/scripts/ci/run-shell-tests.sh "$1"
+    }
+
+    # With no argument, run exactly what CI runs: both targets, in order.
+    if [ -n "{{ARGS}}" ]; then
+        run_suite "{{ARGS}}"
+    else
+        run_suite .github/scripts
+        run_suite .claude/hooks
+        run_suite scripts/tests
+    fi
 
 
 alias ub := unit-tests-backend
@@ -2341,62 +2527,47 @@ unit-tests-reset:
     docker compose -f compose.unit-tests.yml build --pull
 
 
-alias ts := test-scripts
-# Run the shell script tests where CI runs them (ubuntu-24.04 container)
-test-scripts *ARGS:
+alias ur := unreviewed
+# Take the read stamp off files, or off every file in a folder
+unreviewed *paths:
+    @python3 scripts/review-ledger.py unmark {{paths}}
+
+
+alias vt := validate-teaching
+# Validate all teaching content (module.yaml, assessment, images, certificate, MDX)
+validate-teaching:
     #!/usr/bin/env bash
-    {{initialise}} "test-scripts"
+    {{initialise}} "validate-teaching"
+    set -uo pipefail
+    just _worktree-guard quill_backend || exit 1
 
-    just _start-docker-daemon
-
-    # Nothing from the repository is needed to build the image - it is mounted at
-    # run time - so the Dockerfile goes in on stdin with no build context at all.
-    # Rebuilds are a cache hit unless the Dockerfile itself changes.
-    docker build --quiet --tag quill-shell-tests - < .github/Dockerfile
-
-    # Mounted read-only: a test that writes into the working tree is a bug, and
-    # this is where it should surface rather than on someone's machine.
-    run_suite() {
-        docker run --rm --volume "$PWD:/repo:ro" quill-shell-tests \
-            bash .github/scripts/ci/run-shell-tests.sh "$1"
-    }
-
-    # With no argument, run exactly what CI runs: both targets, in order.
-    if [ -n "{{ARGS}}" ]; then
-        run_suite "{{ARGS}}"
-    else
-        run_suite .github/scripts
-        run_suite .claude/hooks
-        run_suite scripts/tests
+    if ! compgen -G "teaching-repos/*/modules" > /dev/null; then
+        echo "No teaching repos found. Clone them with: just initial-install"
+        exit 1
     fi
 
+    # Version lock compares a branch against origin/main, which is a
+    # pull-request concern rather than a local one, so it is skipped here.
+    FAILED=0
 
-alias ee := e2e
-# Run the end-to-end tests against a fresh CI-identical stack for this worktree
-e2e *ARGS:
-    #!/usr/bin/env bash
-    {{initialise}} "e2e"
+    for REPO in teaching-repos/*/; do
+        NAME=$(basename "${REPO}")
+        if [ -d "${REPO}modules" ]; then
+            echo "▸ Validating ${NAME}..."
+            docker exec quill_backend sh -lc \
+                "python -m app.features.teaching.tooling.cli \
+                 /teaching-repos/${NAME}/modules --skip-version-lock" \
+                || FAILED=1
+            echo ""
+        fi
+    done
 
-    # Playwright runs on the host, but the app it drives is this worktree's
-    # own compose.ci.yml stack on a free port - not the dev stack - so this
-    # works from any worktree and matches what CI runs. See `_e2e-up`.
-    just _e2e-run {{ARGS}}
+    if [ "${FAILED}" -ne 0 ]; then
+        echo "✗ Teaching content validation failed."
+        exit 1
+    fi
 
-
-alias eer := e2e-report
-# Run end-to-end tests, then open the Playwright HTML report
-e2e-report:
-    #!/usr/bin/env bash
-    {{initialise}} "e2e-report"
-    just _e2e-run && cd frontend && npx playwright show-report
-
-
-alias eeu := e2e-ui
-# Run the end-to-end tests in interactive UI mode
-e2e-ui:
-    #!/usr/bin/env bash
-    {{initialise}} "e2e-ui"
-    just _e2e-run --ui
+    echo "✓ All teaching content valid."
 
 
 alias vk := vapid-key
@@ -2408,6 +2579,112 @@ vapid-key:
     yarn dlx web-push generate-vapid-keys
 
 
+alias wc := worktree-create
+# Create a sibling worktree on a new branch, and set up its Python venv
+worktree-create branch="":
+    #!/usr/bin/env bash
+    {{initialise}} "worktree-create"
+
+    if [ -z "{{branch}}" ]; then
+        echo "Usage: just wc feature/my-branch"
+        echo "Creates the branch, or resumes it if it already exists."
+        exit 1
+    fi
+
+    # Branch protection rejects anything outside this set, and finding
+    # that out after the worktree exists means unpicking it by hand.
+    case "{{branch}}" in
+        feature/*|hotfix/*|copilot/*|renovate/*) ;;
+        *)
+            echo "Branch must start with feature/, hotfix/, copilot/ or renovate/"
+            exit 1
+            ;;
+    esac
+
+    ROOT=$(git rev-parse --show-toplevel)
+    NAME=$(basename "$ROOT")
+    PARENT=$(dirname "$ROOT")
+
+    # Walk up from 2 until a free name appears, rather than counting the
+    # existing worktrees: one removed by hand would otherwise make the
+    # next number collide with a directory still on disk.
+    N=2
+
+    while [ -e "$PARENT/$NAME-$N" ]; do
+        N=$((N + 1))
+    done
+
+    DEST="$PARENT/$NAME-$N"
+
+    git -C "$ROOT" fetch origin --quiet
+
+    if git -C "$ROOT" show-ref --verify --quiet "refs/heads/{{branch}}"; then
+        echo "Branch {{branch}} already exists locally - checking it out."
+        git -C "$ROOT" worktree add "$DEST" "{{branch}}"
+    elif git -C "$ROOT" show-ref --verify --quiet "refs/remotes/origin/{{branch}}"; then
+
+        # Resuming work that already exists on the remote. Branching from
+        # main here would silently discard every commit on it.
+        echo "Branch {{branch}} exists on origin - resuming it."
+        git -C "$ROOT" worktree add -b "{{branch}}" "$DEST" "origin/{{branch}}"
+        git -C "$DEST" branch --set-upstream-to="origin/{{branch}}" "{{branch}}"
+    else
+
+        # Branch from origin/main rather than the current HEAD, so a new
+        # worktree never inherits half-finished work from wherever you
+        # happened to be standing.
+        git -C "$ROOT" worktree add -b "{{branch}}" "$DEST" origin/main
+
+        # A new branch made this way tracks main, not itself, so the first
+        # bare `git push` would aim at the protected branch. Leave it unset
+        # rather than relying on push.default to refuse.
+        git -C "$DEST" branch --unset-upstream "{{branch}}" 2>/dev/null || true
+    fi
+
+    # .env files are gitignored, so a new worktree starts without any and
+    # the stack will not come up. Copied rather than symlinked: a branch
+    # may legitimately need a different value, and a symlink would edit
+    # the original from inside the worktree without warning.
+    for f in .env backend/.env frontend/.env; do
+        if [ -f "$ROOT/$f" ]; then
+            cp "$ROOT/$f" "$DEST/$f"
+            echo "Copied $f"
+        fi
+    done
+
+    # Each worktree gets its own venv. The env var is what forces it:
+    # Poetry keys cached environments on the project name, which is
+    # "backend" in every worktree, so without this they all silently
+    # share one - and installing a dependency on one branch changes the
+    # others, which is exactly what a worktree is meant to prevent.
+
+    echo "Creating the backend virtual environment..."
+
+    # `env -u VIRTUAL_ENV` matters as much as the in-project flag. If a
+    # venv is already active in the calling shell - which it is whenever
+    # you run this from a worktree you have been working in - Poetry
+    # honours that over everything else and installs into it, so the new
+    # worktree silently shares its parent's environment.
+    (cd "$DEST/backend" \
+        && env -u VIRTUAL_ENV POETRY_VIRTUALENVS_IN_PROJECT=1 poetry install)
+
+    # The JavaScript half of the same job. node_modules is gitignored, so
+    # Storybook, Playwright and the host-side linters have nothing to run
+    # with until it exists. `--immutable` because a fresh worktree has no
+    # business rewriting the lockfile: if the install would change it, the
+    # branch is what needs fixing.
+    echo "Installing the frontend packages..."
+    (cd "$DEST/frontend" && yarn install --immutable)
+
+    # No hook setup is needed. core.hooksPath lives in the shared git config
+    # and is the relative `.husky`, which git resolves against the root of
+    # the worktree that is committing - so this worktree runs its own
+    # branch's tracked hook from the moment it exists.
+    echo ""
+    echo "Worktree ready at $DEST on {{branch}}"
+    echo "  cd $DEST"
+
+
 alias yi := yarn-install
 # Run yarn install in the frontend container
 yarn-install:
@@ -2415,413 +2692,3 @@ yarn-install:
     {{initialise}} "yarn-install"
     cd frontend
     yarn install
-
-
-# ── Cloud Run Admin Job (remote environments) ──────────────────────────
-
-_gcp_env_project env:
-    #!/usr/bin/env bash
-
-    # `app` is the only environment. teaching, staging and production were
-    # retired in Batches 8 and 10a of
-    # docs/docs/plans/2026-09-18-environment-isolation-and-iap-plan.md; a
-    # later dev or ehr environment is a new project, added here when it
-    # exists.
-    case "{{env}}" in
-        app) echo "quill-medical-app" ;;
-        *)   echo "ERROR: env must be app" >&2; exit 1 ;;
-    esac
-
-
-alias ba := build-admin
-# Build and push the admin image, and point the Cloud Run Job at it (app)
-build-admin env:
-    #!/usr/bin/env bash
-    {{initialise}} "build-admin ({{env}})"
-    set -euo pipefail
-
-    PROJECT=$(just _gcp_env_project "{{env}}")
-    REGION="europe-west2"
-    REGISTRY="${REGION}-docker.pkg.dev"
-    IMAGE="${REGISTRY}/${PROJECT}/quill/admin:latest"
-
-    echo "Building admin image for ${PROJECT}..."
-    gcloud auth configure-docker "$REGISTRY" --quiet
-
-    docker build \
-        --target admin \
-        --platform linux/amd64 \
-        -t "$IMAGE" \
-        -f backend/Dockerfile \
-        .
-
-    echo "Pushing ${IMAGE}..."
-    docker push "$IMAGE"
-    echo "✓ Admin image pushed to ${IMAGE}"
-
-    # Point the job at the new image, and change nothing else. Terraform
-    # owns the job (`job_name = "admin"` in infra/main.tf): its egress, its
-    # environment and its secrets. This used to be `gcloud run jobs deploy`
-    # with its own copy of those, which set the egress back to
-    # private-ranges-only and dropped the PASSPORT_* variables until the
-    # next apply. So the job has to exist already; Terraform creates it.
-    echo "Pointing the Cloud Run Job at the new image..."
-    gcloud run jobs update "quill-admin-{{env}}" \
-        --project="$PROJECT" \
-        --region="$REGION" \
-        --image="$IMAGE" \
-        --quiet
-    echo "✓ Cloud Run Job updated"
-
-
-alias bc := build-caption
-# Build and push the video caption image, and point the Cloud Run Job at it (app)
-build-caption env:
-    #!/usr/bin/env bash
-    {{initialise}} "build-caption ({{env}})"
-    set -euo pipefail
-
-    if [ "{{env}}" != "app" ]; then
-        echo "ERROR: the caption job exists only in app, the environment with the video buckets" >&2
-        exit 1
-    fi
-
-    PROJECT=$(just _gcp_env_project "{{env}}")
-    REGION="europe-west2"
-    REGISTRY="${REGION}-docker.pkg.dev"
-    IMAGE="${REGISTRY}/${PROJECT}/quill/caption:latest"
-
-    # Its own Dockerfile rather than a target: Whisper pulls torch, which
-    # has no business in the image the API serves from. Expect this build
-    # to be slow and the image to be several gigabytes.
-    echo "Building caption image for ${PROJECT}..."
-    gcloud auth configure-docker "$REGISTRY" --quiet
-
-    docker build \
-        --platform linux/amd64 \
-        -t "$IMAGE" \
-        -f backend/Dockerfile.caption \
-        .
-
-    echo "Pushing ${IMAGE}..."
-    docker push "$IMAGE"
-    echo "✓ Caption image pushed to ${IMAGE}"
-
-    # Only the image moves, as in build-admin: Terraform owns the job
-    # (infra/main.tf), with its egress, its resources and its environment.
-    echo "Pointing the Cloud Run Job at the new image..."
-    gcloud run jobs update "quill-caption-{{env}}" \
-        --project="$PROJECT" \
-        --region="$REGION" \
-        --image="$IMAGE" \
-        --quiet
-    echo "✓ Cloud Run Job updated"
-
-
-alias bt := build-transcode
-# Build and push the video transcode image, and point the Cloud Run Job at it (app)
-build-transcode env:
-    #!/usr/bin/env bash
-    {{initialise}} "build-transcode ({{env}})"
-    set -euo pipefail
-
-    if [ "{{env}}" != "app" ]; then
-        echo "ERROR: the transcode job exists only in app, the environment with the video buckets" >&2
-        exit 1
-    fi
-
-    PROJECT=$(just _gcp_env_project "{{env}}")
-    REGION="europe-west2"
-    REGISTRY="${REGION}-docker.pkg.dev"
-    IMAGE="${REGISTRY}/${PROJECT}/quill/transcode:latest"
-
-    echo "Building transcode image for ${PROJECT}..."
-    gcloud auth configure-docker "$REGISTRY" --quiet
-
-    docker build \
-        --target transcode \
-        --platform linux/amd64 \
-        -t "$IMAGE" \
-        -f backend/Dockerfile \
-        .
-
-    echo "Pushing ${IMAGE}..."
-    docker push "$IMAGE"
-    echo "✓ Transcode image pushed to ${IMAGE}"
-
-    # Only the image moves, as in build-admin: Terraform owns the job
-    # (infra/main.tf), with its egress, its resources and its environment.
-    echo "Pointing the Cloud Run Job at the new image..."
-    gcloud run jobs update "quill-transcode-{{env}}" \
-        --project="$PROJECT" \
-        --region="$REGION" \
-        --image="$IMAGE" \
-        --quiet
-    echo "✓ Cloud Run Job updated"
-
-
-alias ccs := check-competency-seeding
-# List users who would lose a competency when only their rows count (should list nobody)
-check-competency-seeding env:
-    #!/usr/bin/env bash
-    {{initialise}} "check-competency-seeding ({{env}})"
-    set -euo pipefail
-
-    PROJECT=$(just _gcp_env_project "{{env}}")
-    REGION="europe-west2"
-
-    echo "Check competency seeding on ${PROJECT}"
-    echo "─────────────────────────────────"
-
-    gcloud run jobs execute "quill-admin-{{env}}" \
-        --project="$PROJECT" \
-        --region="$REGION" \
-        --update-env-vars "ADMIN_ACTION=check-competency-seeding" \
-        --wait
-
-
-alias cs := create-superadmin
-# Create a superadmin on a remote environment via Cloud Run Job
-create-superadmin env:
-    #!/usr/bin/env bash
-    {{initialise}} "create-superadmin ({{env}})"
-    set -euo pipefail
-
-    PROJECT=$(just _gcp_env_project "{{env}}")
-    REGION="europe-west2"
-
-    echo "Create superadmin on ${PROJECT}"
-    echo "─────────────────────────────────"
-    read -rp "Username: " username
-    read -rp "Email: " email
-    read -rsp "Password: " password
-    echo
-
-    gcloud run jobs execute "quill-admin-{{env}}" \
-        --project="$PROJECT" \
-        --region="$REGION" \
-        --update-env-vars "ADMIN_ACTION=create-superadmin,ADMIN_USERNAME=${username},ADMIN_EMAIL=${email},ADMIN_PASSWORD=${password}" \
-        --wait
-
-
-alias ar := add-role-remote
-# Add a role to a user on a remote environment
-add-role-remote env:
-    #!/usr/bin/env bash
-    {{initialise}} "add-role ({{env}})"
-    set -euo pipefail
-
-    PROJECT=$(just _gcp_env_project "{{env}}")
-    REGION="europe-west2"
-
-    echo "Add role on ${PROJECT}"
-    echo "─────────────────────────────────"
-    read -rp "Username: " username
-    echo "Roles: System Administrator, Clinical Administrator, Clinician,"
-    echo "       Clinical Support Staff, Patient, Patient Advocate"
-    read -rp "Role: " role
-
-    gcloud run jobs execute "quill-admin-{{env}}" \
-        --project="$PROJECT" \
-        --region="$REGION" \
-        --update-env-vars "ADMIN_ACTION=add-role,ADMIN_USERNAME=${username},ADMIN_ROLE=${role}" \
-        --wait
-
-
-alias mr := migrate-remote
-# Run pending Alembic migrations on a remote environment (the deploy does this automatically; use for manual re-runs)
-migrate-remote env:
-    #!/usr/bin/env bash
-    {{initialise}} "migrate-remote ({{env}})"
-    set -euo pipefail
-
-    PROJECT=$(just _gcp_env_project "{{env}}")
-    REGION="europe-west2"
-
-    echo "Run migrations on ${PROJECT}"
-    echo "─────────────────────────────────"
-
-    gcloud run jobs execute "quill-admin-{{env}}" \
-        --project="$PROJECT" \
-        --region="$REGION" \
-        --update-env-vars "ADMIN_ACTION=run-migrations" \
-        --wait
-
-
-alias psd := passport-delete
-# Delete a test holder's passport, archived for 30 days (dry run unless confirm is the passport id)
-passport-delete env username confirm="":
-    #!/usr/bin/env bash
-    {{initialise}} "passport-delete ({{env}})"
-    set -euo pipefail
-
-    PROJECT=$(just _gcp_env_project "{{env}}")
-    REGION="europe-west2"
-
-    # Only holders listed in PASSPORT_DELETABLE_USERNAMES, set in Terraform,
-    # can be deleted. Without confirm this only reports, and prints the
-    # passport id to pass back. See delete_passport() in
-    # backend/scripts/admin_cli.py.
-    # The dry run ends "run again with CONFIRM=<id>", so that form is
-    # accepted as well as the bare id.
-    CONFIRM="{{confirm}}"
-    CONFIRM="${CONFIRM#CONFIRM=}"
-
-    # Checked here because both go into a comma-separated list of
-    # variables, where a stray comma would set something else.
-    if ! [[ "{{username}}" =~ ^[A-Za-z0-9._@+-]+$ ]]; then
-        echo "✗ '{{username}}' is not a username" >&2
-        exit 1
-    fi
-
-    if [ -n "$CONFIRM" ] && ! [[ "$CONFIRM" =~ ^[0-9a-f]{32}$ ]]; then
-        echo "✗ confirm must be the 32-character passport id from a dry run" >&2
-        exit 1
-    fi
-
-    VARS="ADMIN_ACTION=delete-passport,ADMIN_USERNAME={{username}}"
-
-    if [ -n "$CONFIRM" ]; then
-        VARS="${VARS},CONFIRM=${CONFIRM}"
-        echo "Delete {{username}}'s passport on ${PROJECT}"
-    else
-        echo "Dry run: {{username}}'s passport on ${PROJECT}"
-    fi
-
-    echo "─────────────────────────────────"
-
-    EXECUTION=$(gcloud run jobs execute "quill-admin-{{env}}" \
-        --project="$PROJECT" \
-        --region="$REGION" \
-        --update-env-vars "$VARS" \
-        --wait \
-        --format='value(metadata.name)') || STATUS=$?
-
-    # A failed execution prints nothing to stdout, so its name is looked
-    # up instead: the failure is exactly when the report matters most.
-    if [ -z "${EXECUTION:-}" ]; then
-        EXECUTION=$(gcloud run jobs executions list \
-            --job="quill-admin-{{env}}" \
-            --project="$PROJECT" \
-            --region="$REGION" \
-            --limit=1 \
-            --format='value(metadata.name)' || true)
-    fi
-
-    # The job prints to Cloud Logging rather than to this terminal, so
-    # its report is read back from there.
-    if [ -n "${EXECUTION:-}" ]; then
-        gcloud logging read \
-            "resource.type=cloud_run_job AND labels.\"run.googleapis.com/execution_name\"=${EXECUTION}" \
-            --project="$PROJECT" \
-            --order=asc \
-            --freshness=1h \
-            --format='value(textPayload)'
-    fi
-
-    exit "${STATUS:-0}"
-
-
-alias nls := newsletter-send
-# Send a newsletter campaign to everybody who said yes (dry run unless confirm is what the dry run printed)
-newsletter-send env campaign confirm="" only_to="" limit="":
-    #!/usr/bin/env bash
-    {{initialise}} "newsletter-send ({{env}})"
-    set -euo pipefail
-
-    PROJECT=$(just _gcp_env_project "{{env}}")
-    REGION="europe-west2"
-
-    # A campaign is a template under backend/app/email/templates/campaigns/,
-    # named without its ending. Without confirm this only reports who would
-    # be sent it, and prints the value to pass back. only_to sends a trial
-    # to one address, which is not recorded, so the real send still reaches
-    # them. limit is the most people to reach in one run, for sending in
-    # batches: later runs take up where the last left off. See
-    # backend/app/marketing/newsletter.py.
-    # The dry run ends "run again with CONFIRM=<value>", so that form is
-    # accepted as well as the bare value.
-    CONFIRM="{{confirm}}"
-    CONFIRM="${CONFIRM#CONFIRM=}"
-
-    # Checked here because each goes into a comma-separated list of
-    # variables, where a stray comma would set something else.
-    if ! [[ "{{campaign}}" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
-        echo "✗ '{{campaign}}' is not a campaign name" >&2
-        exit 1
-    fi
-
-    if [ -n "$CONFIRM" ] && ! [[ "$CONFIRM" =~ ^[a-z0-9][a-z0-9-]*:[0-9]+$ ]]; then
-        echo "✗ confirm must be what the dry run printed, such as {{campaign}}:12" >&2
-        exit 1
-    fi
-
-    if [ -n "{{only_to}}" ] && ! [[ "{{only_to}}" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$ ]]; then
-        echo "✗ '{{only_to}}' is not an email address" >&2
-        exit 1
-    fi
-
-    if [ -n "{{limit}}" ] && ! [[ "{{limit}}" =~ ^[1-9][0-9]*$ ]]; then
-        echo "✗ '{{limit}}' is not a number of people" >&2
-        exit 1
-    fi
-
-    VARS="ADMIN_ACTION=send-newsletter,NEWSLETTER_CAMPAIGN={{campaign}}"
-
-    if [ -n "{{limit}}" ]; then
-        VARS="${VARS},NEWSLETTER_LIMIT={{limit}}"
-    fi
-
-    if [ -n "{{only_to}}" ]; then
-        VARS="${VARS},NEWSLETTER_ONLY_TO={{only_to}}"
-    fi
-
-    if [ -n "$CONFIRM" ]; then
-        VARS="${VARS},CONFIRM=${CONFIRM}"
-        echo "Send the {{campaign}} newsletter on ${PROJECT}"
-    else
-        echo "Dry run: the {{campaign}} newsletter on ${PROJECT}"
-    fi
-
-    echo "─────────────────────────────────"
-
-    EXECUTION=$(gcloud run jobs execute "quill-admin-{{env}}" \
-        --project="$PROJECT" \
-        --region="$REGION" \
-        --update-env-vars "$VARS" \
-        --wait \
-        --format='value(metadata.name)') || STATUS=$?
-
-    # A failed execution prints nothing to stdout, so its name is looked
-    # up instead: the failure is exactly when the report matters most.
-    if [ -z "${EXECUTION:-}" ]; then
-        EXECUTION=$(gcloud run jobs executions list \
-            --job="quill-admin-{{env}}" \
-            --project="$PROJECT" \
-            --region="$REGION" \
-            --limit=1 \
-            --format='value(metadata.name)' || true)
-    fi
-
-    # The job prints to Cloud Logging rather than to this terminal, so
-    # its report is read back from there.
-    if [ -n "${EXECUTION:-}" ]; then
-        gcloud logging read \
-            "resource.type=cloud_run_job AND labels.\"run.googleapis.com/execution_name\"=${EXECUTION}" \
-            --project="$PROJECT" \
-            --order=asc \
-            --freshness=1h \
-            --format='value(textPayload)'
-    fi
-
-    exit "${STATUS:-0}"
-
-
-alias na := notifier-app
-# Build the Quill-branded macOS notifier used by the Stop-hook banner (macOS only, one-off)
-notifier-app:
-    #!/usr/bin/env bash
-    {{initialise}} "notifier-app"
-    set -euo pipefail
-
-    ./scripts/build-notifier-app.sh

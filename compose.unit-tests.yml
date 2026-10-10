@@ -22,7 +22,7 @@
 services:
   backend:
     # Same image name as compose.dev.yml, so one build serves every worktree
-    # and `just sd b` refreshes it for all of them.
+    # and `just se b` refreshes it for all of them.
     image: quill-backend-dev
     build:
       context: .
