@@ -25,13 +25,13 @@ from typing import Any
 
 import yaml
 
+from app.config import settings
 from app.features.teaching.certificate import (
-    find_certificate_background,
     generate_certificate_pdf,
     parse_certificate_style,
 )
+from app.features.teaching.storage import resolve_local_bank
 
-_DEFAULT_BANK_PATH = Path("/question-banks/questions")
 # A preview for a person to open, on their own machine.
 _OUTPUT_PATH = Path("/tmp/certificate-preview.pdf")  # noqa: S108  # nosec B108
 
@@ -53,7 +53,7 @@ def main() -> None:
     parser.add_argument(
         "--bank",
         default="colonoscopy-optical-diagnosis-test",
-        help="Question bank ID (folder name under question-bank/questions/)",
+        help="Module ID (folder name under a teaching repo's modules/)",
     )
     parser.add_argument(
         "--output",
@@ -62,23 +62,44 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    bg = find_certificate_background(_DEFAULT_BANK_PATH, args.bank)
+    base_path = settings.TEACHING_QUESTION_BANK_PATH
 
-    if not bg:
+    if not base_path:
+        print("TEACHING_QUESTION_BANK_PATH is not set", file=sys.stderr)
+        sys.exit(1)
+
+    # The folder holding the assessment: the same lookup the sync uses,
+    # so a module is found wherever its teaching repo keeps it.
+    bank_dir = resolve_local_bank(base_path, args.bank)
+
+    if bank_dir is None:
         print(
-            f"No certificate-blank.png found for bank '{args.bank}' "
-            f"in {_DEFAULT_BANK_PATH}",
+            f"No module '{args.bank}' found under {base_path}",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    # Load certificate style from config.yaml
-    config_path = _DEFAULT_BANK_PATH / args.bank / "config.yaml"
+    bg = bank_dir / "certificate-blank.png"
+
+    if not bg.is_file():
+        print(
+            f"No certificate-blank.png found for '{args.bank}' in {bank_dir}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # The certificate style sits in assessment.yaml, or config.yaml in
+    # the older layout.
     config: dict[str, Any] = {}
 
-    if config_path.is_file():
-        with open(config_path, encoding="utf-8") as f:
-            config = yaml.safe_load(f) or {}
+    for name in ("assessment.yaml", "config.yaml"):
+        config_path = bank_dir / name
+
+        if config_path.is_file():
+            with open(config_path, encoding="utf-8") as f:
+                config = yaml.safe_load(f) or {}
+
+            break
 
     style = parse_certificate_style(config.get("certificate"))
 

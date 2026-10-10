@@ -30,7 +30,7 @@ try:
         )
     ).scalars().first()
     if not feat:
-        print('No organisation has teaching enabled. Run: just seed-teaching')
+        print('No organisation has teaching enabled. Switch the teaching feature on for one in the admin pages.')
         sys.exit(1)
     org_id = feat.org_unit_id
 
