@@ -9,7 +9,7 @@ disable-model-invocation: true
 1. Retrieve **all** current diagnostics. Use the IDE diagnostics tool
    (`mcp__ide__getDiagnostics`) if it is available in this session. If it is not, say so and
    fall back to running the project's own checks and treating their output as the problem
-   list: `just lint` / pre-commit for Python, and ESLint, Prettier, Stylelint and typecheck
+   list: `just pc` (pre-commit) for Python, and ESLint, Prettier, Stylelint and typecheck
    for TypeScript (see `Justfile` and `./scripts/run-ci-checks.sh`)
 2. For each problem, determine whether it is:
    - **Fixable**: a genuine error or warning that can be resolved by editing code or config

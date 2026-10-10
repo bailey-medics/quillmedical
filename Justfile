@@ -277,19 +277,12 @@ docs:
 
 
 alias dds := docker-daemon-start
-# Start the Docker daemon (Mac only)
 # TODO: #1701 add a windows and linux version
+# Start the Docker daemon (Mac only)
 docker-daemon-start:
     #!/usr/bin/env bash
     {{initialise}} "docker-daemon-start"
-    open /Applications/Docker.app
-
-    while ! docker system info > /dev/null 2>&1; do
-        echo "Waiting for Docker to start..."
-        sleep 1
-    done
-
-    echo "Docker is running."
+    just _start-docker-daemon
 
 
 alias ep := email-preview
@@ -367,12 +360,12 @@ frontend-chunks:
 
 
 alias fu := frontend-update
-# Update frontend dependencies with yarn up
-frontend-update:
+# Upgrade the named frontend packages with yarn up (e.g. just fu react vite)
+frontend-update +packages:
     #!/usr/bin/env bash
     {{initialise}} "frontend-update"
     cd frontend
-    yarn up
+    yarn up {{packages}}
 
 
 alias gl := gcp-login
@@ -451,62 +444,27 @@ initialise-repo:
     just notifier-app || echo "Notifier not built; banners will use the default icon."
 
 
-
 alias kp8 := kill-port-8000
 # Kill any processes listening on port 8000
 kill-port-8000:
     #!/usr/bin/env bash
     {{initialise}} "kill-port-8000"
+    pids=$(lsof -ti :8000 || true)
+
+    if [ -z "${pids}" ]; then
+        echo "Nothing is listening on port 8000."
+        exit 0
+    fi
+
     lsof -i :8000
+    echo "${pids}" | xargs kill
+    echo "Killed."
 
 
 alias lp := local-path
 # Print the path of the shared local/ folder (files kept out of git)
 local-path:
     @bash scripts/local-path.sh
-
-
-alias qbc := question-bank-clone
-# Clone the question bank repo into question-bank/
-question-bank-clone:
-    #!/usr/bin/env bash
-    {{initialise}} "question-bank-clone"
-
-    if [ -d "question-bank/.git" ]; then
-        echo "question-bank/ already exists - use 'just question-bank-pull' to update"
-        exit 1
-    fi
-
-    git clone https://github.com/bailey-medics/quill-question-bank.git question-bank
-    echo "Cloned into question-bank/"
-
-
-alias qbpu := question-bank-pull
-# Pull the latest question bank content
-question-bank-pull:
-    #!/usr/bin/env bash
-    {{initialise}} "question-bank-pull"
-
-    if [ ! -d "question-bank/.git" ]; then
-        echo "question-bank/ not found - run 'just question-bank-clone' first"
-        exit 1
-    fi
-
-    git -C question-bank pull
-
-
-alias qbps := question-bank-push
-# Push question bank changes
-question-bank-push:
-    #!/usr/bin/env bash
-    {{initialise}} "question-bank-push"
-
-    if [ ! -d "question-bank/.git" ]; then
-        echo "question-bank/ not found - run 'just question-bank-clone' first"
-        exit 1
-    fi
-
-    git -C question-bank push
 
 
 alias rd := review-diff
@@ -522,7 +480,7 @@ review-status path="":
 
 
 alias r := reviewed
-# Stamp files, or every file in a folder, as read
+# Stamp files, or every file in a folder, as read. Space separates multiple paths.
 reviewed *paths:
     @python3 scripts/review-ledger.py mark {{paths}}
 
@@ -533,19 +491,12 @@ unreviewed *paths:
     @python3 scripts/review-ledger.py unmark {{paths}}
 
 
-alias sdt := seed-teaching
-# Seed teaching data (org, users, feature, sync) for a fresh DB
-seed-teaching:
-    #!/usr/bin/env bash
-    {{initialise}} "seed-teaching"
-    ./dev-scripts/seed-teaching-data.sh
-
-
 alias syt := sync-teaching
 # Sync all local question banks into the DB and serve the newest version of each (no restart needed)
 sync-teaching:
     #!/usr/bin/env bash
     {{initialise}} "sync-teaching"
+    just _worktree-guard quill_backend
     ./dev-scripts/sync-teaching-data.sh
 
 
@@ -555,12 +506,7 @@ validate-teaching:
     #!/usr/bin/env bash
     {{initialise}} "validate-teaching"
     set -uo pipefail
-    just _worktree-guard quill_backend
-
-    if [ -z "$(docker ps -q -f name=^quill_backend$)" ]; then
-        echo "quill_backend is not running. Start it with: just sd"
-        exit 1
-    fi
+    just _worktree-guard quill_backend || exit 1
 
     if ! compgen -G "teaching-repos/*/modules" > /dev/null; then
         echo "No teaching repos found. Clone them with: just initial-install"
@@ -607,6 +553,7 @@ alias m := migrate
 migrate message:
     #!/usr/bin/env bash
     {{initialise}} "migrate - {{message}}"
+
     # Autogenerate compares models against a database at head. This uses a
     # throwaway Postgres from compose.migrate.yml rather than the dev
     # stack's, so it always compares THIS worktree's models with THIS
@@ -639,11 +586,12 @@ migrate message:
 
 
 alias ml := migrate-local
-# Apply pending migrations to this worktree's dev database
+# Apply pending migrations to this main checkout's dev database
 migrate-local:
     #!/usr/bin/env bash
     {{initialise}} "migrate-local"
     set -euo pipefail
+
     # The step `just migrate` deliberately does not do. That recipe
     # compares models against a throwaway database and drops it, so a
     # migration it writes - or one that arrived from `main` - has never
@@ -773,6 +721,7 @@ worktree-create branch="":
     # "backend" in every worktree, so without this they all silently
     # share one - and installing a dependency on one branch changes the
     # others, which is exactly what a worktree is meant to prevent.
+
     echo "Creating the backend virtual environment..."
     # `env -u VIRTUAL_ENV` matters as much as the in-project flag. If a
     # venv is already active in the calling shell - which it is whenever
@@ -800,14 +749,14 @@ worktree-create branch="":
 
 
 alias pb := prune-branches
-# Remove local branches whose remote tracking branch is gone, and untracked local branches already merged into main. Pass 'a' to prune the teaching content repos too.
+# Remove local branches whose remote tracking branch is gone, and untracked local
+# branches already merged into main. Pass 'a' to prune the teaching content repos
+# too.
 prune-branches scope="":
     #!/usr/bin/env bash
     {{initialise}} "prune-branches"
 
-    # One function, called once per repository, so the teaching repos get
-    # exactly the same care as Quill rather than a hastily written second
-    # copy that skips the worktree check.
+    # One function, called once per repository.
     prune_one() {
         cd "$1" || return 0
         git fetch --prune
@@ -843,6 +792,7 @@ prune-branches scope="":
                 MERGED_UNTRACKED="$MERGED_UNTRACKED $branch"
             fi
         done
+
         if [ -z "$MERGED_UNTRACKED" ]; then
             echo "No merged untracked branches to remove."
         else
@@ -879,26 +829,6 @@ prune-branches scope="":
     fi
 
 
-alias rb := rebase
-# Rebase current feature branch onto an up-to-date main (or just pull if on main)
-rebase:
-    #!/usr/bin/env bash
-    {{initialise}} "rebase"
-    BRANCH=$(git rev-parse --abbrev-ref HEAD)
-
-    if [ "$BRANCH" = "main" ]; then
-        echo "On main - pulling latest..."
-        git pull
-    else
-        echo "Updating main and rebasing $BRANCH onto it..."
-        git checkout main
-        git pull
-        git checkout "$BRANCH"
-        git rebase main
-        git push --force-with-lease
-    fi
-
-
 alias pi := poetry-install
 # Install the poetry dependencies
 poetry-install:
@@ -926,6 +856,7 @@ terraform-github:
     {{initialise}} "terraform-github"
     set -euo pipefail
     cd infra/github
+
     # The initialise variable sets -x, which would print the token to the
     # terminal and into anything that output is pasted into. Trace off across
     # the export; the command substitution needs to be inside the quiet
@@ -933,6 +864,7 @@ terraform-github:
     set +x
     export GITHUB_TOKEN=$(gh auth token)
     set -x
+
     # -reconfigure: a checkout initialised before the state moved to GCS on
     # 2026-09-25 still records a local backend, and a plain init would stop
     # to ask about migrating it. The state is already in the bucket, so
@@ -957,6 +889,7 @@ terraform-aws:
     #!/usr/bin/env bash
     {{initialise}} "terraform-aws"
     set -euo pipefail
+
     # The account numbers live in backend/.env, which is gitignored, and not
     # in a tfvars file: this repository is public. Trace off while they are
     # read, so they are not printed.
@@ -995,38 +928,6 @@ terraform-aws:
 
     if [ "$confirm" = "yes" ]; then
         terraform apply -auto-approve
-    else
-        echo "Aborted."
-    fi
-
-
-alias tf := terraform-infra
-# Plan/apply the GCP infrastructure via Terraform (Cloud Run, load balancer, monitoring)
-terraform-infra env="app":
-    #!/usr/bin/env bash
-    {{initialise}} "terraform-infra"
-    set -euo pipefail
-    cd infra
-    VARS="environments/{{env}}/terraform.tfvars"
-
-    if [ ! -f "$VARS" ]; then
-        echo "No tfvars for environment '{{env}}' at infra/$VARS" >&2
-        exit 1
-    fi
-
-    # -upgrade: see terraform-github; the lock file is not committed, so an
-    # older checkout cannot read state a newer provider wrote.
-    terraform init -input=false -upgrade
-    # Each environment's state is its own workspace. Without selecting it
-    # this planned against the empty default workspace, and so proposed
-    # creating every resource that already exists. `select` and not
-    # `select -or-create`: a mistyped name must fail, not start a new state.
-    terraform workspace select "{{env}}"
-    terraform plan -var-file="$VARS"
-    read -rp "Apply these changes to {{env}}? (yes/no): " confirm
-
-    if [ "$confirm" = "yes" ]; then
-        terraform apply -var-file="$VARS" -auto-approve
     else
         echo "Aborted."
     fi
@@ -2291,18 +2192,6 @@ _start-docker-daemon:
         exit 1
     fi
 
-alias sp := start-prod
-# Start the dev app (build: 'b' will also build the images)
-start-prod build="":
-    #!/usr/bin/env bash
-    {{initialise}} "start-prod"
-
-    if [ "{{build}}" = "b" ]; then \
-        docker compose -f compose.yml -f compose.prod.yml up --build --pull missing; \
-    else \
-        docker compose -f compose.yml -f compose.prod.yml up; \
-    fi
-
 alias st := start-teaching
 # Start dev without clinical services (FHIR/EHRbase) for teaching work (build: 'b' will also build the images)
 start-teaching build="":
@@ -2540,7 +2429,7 @@ build-admin env:
 
 
 alias bc := build-caption
-# Build and push the video caption Docker image (teaching only)
+# Build and push the video caption image, and point the Cloud Run Job at it (app)
 build-caption env:
     #!/usr/bin/env bash
     {{initialise}} "build-caption ({{env}})"
@@ -2572,29 +2461,19 @@ build-caption env:
     docker push "$IMAGE"
     echo "✓ Caption image pushed to ${IMAGE}"
 
-    # Reads and writes the processed bucket only: the transcode job has
-    # usually deleted the master by the time captions are wanted, so the
-    # 720p rendition is the input.
-    PROCESSED_BUCKET="quill-teaching-videos-processed-{{env}}"
-
-    echo "Deploying Cloud Run Job..."
-    gcloud run jobs deploy "quill-caption-{{env}}" \
+    # Only the image moves, as in build-admin: Terraform owns the job
+    # (infra/main.tf), with its egress, its resources and its environment.
+    echo "Pointing the Cloud Run Job at the new image..."
+    gcloud run jobs update "quill-caption-{{env}}" \
         --project="$PROJECT" \
         --region="$REGION" \
         --image="$IMAGE" \
-        --vpc-connector="quill-vpc-cx-{{env}}" \
-        --vpc-egress=private-ranges-only \
-        --max-retries=0 \
-        --task-timeout=3600s \
-        --cpu=4 \
-        --memory=10Gi \
-        --set-env-vars "TEACHING_VIDEOS_BUCKET=${PROCESSED_BUCKET}" \
         --quiet
-    echo "✓ Cloud Run Job deployed"
+    echo "✓ Cloud Run Job updated"
 
 
 alias bt := build-transcode
-# Build and push the video transcode Docker image (teaching only)
+# Build and push the video transcode image, and point the Cloud Run Job at it (app)
 build-transcode env:
     #!/usr/bin/env bash
     {{initialise}} "build-transcode ({{env}})"
@@ -2624,27 +2503,15 @@ build-transcode env:
     docker push "$IMAGE"
     echo "✓ Transcode image pushed to ${IMAGE}"
 
-    # Terraform owns these names and sets the same two variables on the job
-    # it manages. Spelled out again here because this recipe deploys the job
-    # directly, without reading Terraform state - the naming pattern is fixed
-    # in the pipeline module, so the two agree as long as that does.
-    SOURCE_BUCKET="quill-teaching-videos-source-{{env}}"
-    PROCESSED_BUCKET="quill-teaching-videos-processed-{{env}}"
-
-    echo "Deploying Cloud Run Job..."
-    gcloud run jobs deploy "quill-transcode-{{env}}" \
+    # Only the image moves, as in build-admin: Terraform owns the job
+    # (infra/main.tf), with its egress, its resources and its environment.
+    echo "Pointing the Cloud Run Job at the new image..."
+    gcloud run jobs update "quill-transcode-{{env}}" \
         --project="$PROJECT" \
         --region="$REGION" \
         --image="$IMAGE" \
-        --vpc-connector="quill-vpc-cx-{{env}}" \
-        --vpc-egress=private-ranges-only \
-        --max-retries=0 \
-        --task-timeout=1200s \
-        --cpu=4 \
-        --memory=4Gi \
-        --set-env-vars "TEACHING_VIDEOS_SOURCE_BUCKET=${SOURCE_BUCKET},TEACHING_VIDEOS_BUCKET=${PROCESSED_BUCKET}" \
         --quiet
-    echo "✓ Cloud Run Job deployed"
+    echo "✓ Cloud Run Job updated"
 
 
 alias ccs := check-competency-seeding
