@@ -57,6 +57,7 @@ _HERE = Path(__file__).resolve()
 _BACKEND_DIR = _HERE.parents[1]
 sys.path.insert(0, str(_BACKEND_DIR))
 
+from app.utils.route_list import served_routes  # noqa: E402
 from scripts.dump_openapi import import_app  # noqa: E402
 
 PERMANENT_MARKER = "# api-schema-check: allow-opaque-permanent"
@@ -80,6 +81,10 @@ PERMANENT_ALLOWED_RETURN_TYPES: frozenset[str] = frozenset(
 )
 
 DEFAULT_APP_DIR = _BACKEND_DIR / "app"
+
+# The app serves close to two hundred routes. Fewer found than this means
+# the walk missed them, and a check of no routes passes whatever is wrong.
+MIN_ROUTES = 100
 
 SEVERITY_ERROR = "error"
 
@@ -282,12 +287,14 @@ def collect_routes(
     file_indexes: dict[Path, dict[str, _FunctionEntry]] = {}
     routes: list[RouteInfo] = []
 
-    for route in app.routes:
-        endpoint = getattr(route, "endpoint", None)
-        path = getattr(route, "path", None)
-        methods = {m.lower() for m in (getattr(route, "methods", None) or ())}
-        methods &= HTTP_METHODS
-        if endpoint is None or path is None or not methods:
+    # Not `app.routes`: since FastAPI 0.141 that holds an included
+    # router as one entry, so walking it found no routes and this check
+    # passed having checked nothing. See app/utils/route_list.py.
+    for route in served_routes(app):
+        endpoint = route.endpoint
+        path = route.path
+        methods = {m.lower() for m in route.methods} & HTTP_METHODS
+        if not methods:
             continue
 
         # Decorators like slowapi's @limiter.limit(...) wrap the endpoint
@@ -387,10 +394,22 @@ def check_route_coverage(
     ]
 
 
-def check_all(app: Any, app_dir: Path) -> list[Problem]:
+def check_all(
+    app: Any, app_dir: Path, *, min_routes: int = MIN_ROUTES
+) -> list[Problem]:
     """Run the coverage check across every route in `app`."""
     spec: dict[str, Any] = app.openapi()
     routes, problems = collect_routes(app, app_dir)
+
+    if len(routes) < min_routes:
+        problems.append(
+            Problem(
+                SEVERITY_ERROR,
+                f"found {len(routes)} route(s) to check, and the app "
+                f"serves far more than {min_routes}: the check looked in "
+                "the wrong place, so nothing can be said to have passed",
+            )
+        )
 
     for route in routes:
         problems.extend(check_route_coverage(route, spec))
