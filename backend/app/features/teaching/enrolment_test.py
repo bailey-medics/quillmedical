@@ -9,6 +9,7 @@ all comers. See
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -485,7 +486,7 @@ class TestRegistrationChecksTheClinicalLeadAgain:
 
     def _member_of(self, db: Session, name: str) -> set[int]:
         user_id = db.scalar(select(User.id).where(User.username == name))
-        rows = db.execute(
+        rows: Iterable[int] = db.execute(
             select(org_unit_member.c.org_unit_id).where(
                 org_unit_member.c.user_id == user_id
             )

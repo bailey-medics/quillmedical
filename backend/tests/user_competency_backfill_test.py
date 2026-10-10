@@ -98,7 +98,7 @@ def _user(
     removed: str = "[]",
 ) -> int:
     """Insert a user with raw JSON for the two lists, returning the id."""
-    user_id = conn.execute(
+    user_id: int = conn.execute(
         text("""
             INSERT INTO users
                 (username, email, password_hash, is_totp_enabled,
