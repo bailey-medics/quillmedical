@@ -543,13 +543,14 @@ jobs:
       - name: Ensure pipx bin on PATH
         run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      # Through a script and not called bare: Semgrep passes a scan that
+      # opened no files, so the script fails one that scanned too few.
       - name: Run Semgrep
-        working-directory: frontend
         env:
           SEMGREP_LOG_LEVEL: error
           SEMGREP_DISABLE_ANALYTICS: "1"
           SEMGREP_NO_VERSION_CHECK: "1"
-        run: semgrep --config .semgrep.yml --error
+        run: bash .github/scripts/ci/run-semgrep.sh frontend
 
   # ---------- Prebuild CI app images for E2E ----------
   # The layer cache is read here and never written. e2e-image-cache.yml
