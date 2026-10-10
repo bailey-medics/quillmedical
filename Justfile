@@ -115,6 +115,15 @@ _e2e-run *ARGS:
     cd frontend && E2E_BASE_URL="${base_url}" npx playwright test {{ARGS}}
 
 
+# Refuse to run when the backend's Python on this machine is not CI's.
+#
+# For the recipes that use the backend's own Poetry environment on the
+# host. Those that run in a container need no such check: the image is
+# built on the pinned Python, and CI fails if that drifts.
+_python-guard:
+    @bash scripts/check-python-version.sh
+
+
 # Refuse to run when this worktree is not the one the container serves.
 #
 # The dev stack is owned by whichever worktree ran `just sd`: the containers
@@ -304,6 +313,7 @@ alias d := docs
 docs:
     #!/usr/bin/env bash
     {{initialise}} "docs"
+    just _python-guard
     # Copy the Claude configuration to docs for inclusion in MkDocs build
     bash .github/scripts/docs/copy-llm-config.sh . docs/docs/llm
     cd frontend
@@ -347,6 +357,7 @@ alias et := email-themes
 email-themes:
     #!/usr/bin/env bash
     {{initialise}} "email-themes"
+    just _python-guard
     # On the host, through the backend's Poetry environment, as the
     # pre-commit hooks run: it writes one file under backend/ and one
     # under frontend/, and the unit-test container mounts only the first.
@@ -577,6 +588,12 @@ sync-teaching:
     ./dev-scripts/sync-teaching-data.sh
 
 
+alias vr := venv-rebuild
+# Rebuild the backend's Python environment on the version CI runs
+venv-rebuild:
+    @bash scripts/build-backend-venv.sh "{{justfile_directory()}}"
+
+
 alias vt := validate-teaching
 # Validate all teaching content (module.yaml, assessment, images, certificate, MDX)
 validate-teaching:
@@ -797,8 +814,12 @@ worktree-create branch="":
     # you run this from a worktree you have been working in - Poetry
     # honours that over everything else and installs into it, so the new
     # worktree silently shares its parent's environment.
-    (cd "$DEST/backend" \
-        && env -u VIRTUAL_ENV POETRY_VIRTUALENVS_IN_PROJECT=1 poetry install)
+    #
+    # On the Python `.python-version` names, and not whichever one Poetry
+    # finds first: that is how worktrees on one machine came to be on
+    # different versions and none on CI's. Run from $ROOT's copy of the
+    # script, as a branch cut from origin/main may not carry it yet.
+    bash "$ROOT/scripts/build-backend-venv.sh" "$DEST"
 
     # The JavaScript half of the same job. node_modules is gitignored, so
     # Storybook, Playwright and the host-side linters have nothing to run
