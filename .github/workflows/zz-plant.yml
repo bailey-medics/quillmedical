@@ -1,0 +1,12 @@
+# Planted fault. Do not merge. Runs only when started by hand.
+name: Planted fault
+
+on: workflow_dispatch
+
+permissions: {}
+
+jobs:
+  plant:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo "${{ github.no_such_property }}"
