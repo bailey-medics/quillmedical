@@ -64,7 +64,7 @@ it back by `display_name` and `type = "slack"` - see
    It is not a secret - it is a channel name - so it goes in `tfvars`
    directly, unlike the PagerDuty key or the escalation phone number, which
    come from Secret Manager.
-7. Run `just tf` (or let the `Terraform` GitHub Actions workflow apply it) so
+7. Merge the change. The `Terraform` GitHub Actions workflow applies it, so
    tier one's `notification_channels` picks up the new data source.
 
 **Nothing about the channel's lifecycle is managed by Terraform.** If it is
