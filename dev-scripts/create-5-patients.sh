@@ -152,7 +152,7 @@ USER_ROLES=$(echo "$USER_INFO" | jq -r '.roles[]' 2>/dev/null | tr '\n' ',' || e
 debug "User roles: $USER_ROLES"
 
 if ! echo "$USER_ROLES" | grep -q "Clinician"; then
-    error "User $USERNAME does not have 'Clinician' role (has: ${USER_ROLES:-none})\nOnly users with Clinician role can create patients.\nAdd role using: just create-user-with-role (and select option 3: Clinician)"
+    error "User $USERNAME does not have 'Clinician' role (has: ${USER_ROLES:-none})\nOnly users with Clinician role can create patients.\nAdd it with backend/scripts/add_role_to_user.py, run inside quill_backend."
 fi
 success "User has required permissions"
 echo ""

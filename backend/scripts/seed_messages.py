@@ -478,7 +478,7 @@ def main() -> int:
         # Look up the primary dev user (mark.bailey)
         mark = db.query(User).filter(User.username == "mark.bailey").first()
         if mark is None:
-            print("  ✗ User mark.bailey not found - run create-user first.")
+            print("  ✗ User mark.bailey not found - run just csl first.")
             return 1
         print(f"  = Using mark.bailey (id={mark.id}) as participant")
 

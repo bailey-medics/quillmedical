@@ -150,7 +150,7 @@ The dev stack itself is different. It uses fixed container names, so
 **only one worktree can run it at a time**. Starting `just sd` in a second
 worktree will either fail on the name or, worse, attach to the containers
 already serving the first. Recipes that need the live stack - `just eb`,
-the create-user recipes - check which worktree the stack serves and refuse
+`just csl` - check which worktree the stack serves and refuse
 to run from any other, rather than quietly acting on the wrong code.
 
 If you are running the stack in one worktree, the others are still fine for
