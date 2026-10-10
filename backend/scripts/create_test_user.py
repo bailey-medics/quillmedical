@@ -13,7 +13,7 @@ from app.models import User  # noqa: E402
 from app.security import hash_password  # noqa: E402
 
 
-def main():
+def main() -> int:
     """Create test user."""
     username = "test"
     email = "test@example.com"

@@ -28,6 +28,9 @@ membership of a ward is a fact about the ward, and asking for it means
 asking about the ward.
 """
 
+from collections.abc import Sequence
+from typing import cast
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -474,16 +477,19 @@ def get_patient_org_unit_ids(db: Session, patient_id: str) -> list[int]:
     """Return the organisations' org_units the patient belongs to."""
     return sorted(
         int(org_unit_id)
-        for org_unit_id in db.execute(
-            select(org_unit_patient_member.c.org_unit_id).where(
-                org_unit_patient_member.c.patient_id == patient_id,
-                org_unit_patient_member.c.org_unit_id.in_(
-                    organisation_org_unit_ids()
-                ),
+        for org_unit_id in cast(
+            Sequence[int],
+            db.execute(
+                select(org_unit_patient_member.c.org_unit_id).where(
+                    org_unit_patient_member.c.patient_id == patient_id,
+                    org_unit_patient_member.c.org_unit_id.in_(
+                        organisation_org_unit_ids()
+                    ),
+                )
             )
+            .scalars()
+            .all(),
         )
-        .scalars()
-        .all()
     )
 
 

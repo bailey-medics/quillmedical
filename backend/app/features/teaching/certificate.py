@@ -208,9 +208,9 @@ def download_certificate_background_from_gcs(
     does not exist.  The caller is responsible for cleaning up
     the temp file.
     """
-    from google.cloud import storage  # type: ignore[import-untyped]
+    from google.cloud import storage  # type: ignore[attr-defined]
 
-    from app.features.teaching.storage import assessment_prefix
+    from app.features.teaching.object_paths import assessment_prefix
 
     client = storage.Client()
     bucket = client.bucket(bucket_name)

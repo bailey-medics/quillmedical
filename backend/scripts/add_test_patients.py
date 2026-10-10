@@ -2,6 +2,7 @@
 """Add test patients to FHIR server with full demographics."""
 
 import os
+from typing import Any
 
 from fhirclient import client
 from fhirclient.models.codeableconcept import CodeableConcept
@@ -15,14 +16,16 @@ from fhirclient.models.patient import Patient
 FHIR_URL = os.getenv("FHIR_SERVER_URL", "http://localhost/api/fhir")
 
 
-def create_fhir_client():
+def create_fhir_client() -> Any:
     """Create FHIR client."""
     settings = {"app_id": "quill_backend", "api_base": FHIR_URL}
 
     return client.FHIRClient(settings=settings)
 
 
-def create_patient(family, given, birth_date, gender, nhs_number):
+def create_patient(
+    family: str, given: str, birth_date: str, gender: str, nhs_number: str
+) -> Any:
     """Create a patient resource."""
     patient = Patient()
 
@@ -54,7 +57,7 @@ def create_patient(family, given, birth_date, gender, nhs_number):
     return patient
 
 
-def main():
+def main() -> None:
     """Add test patients."""
     fhir_client = create_fhir_client()
 

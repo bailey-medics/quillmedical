@@ -219,11 +219,15 @@ def _already_sent(db: Session, campaign: str) -> set[tuple[str, int]]:
         )
     ).all()
 
-    return {
-        ("user", user_id) if user_id is not None else ("subscriber", sub_id)
-        for user_id, sub_id in rows
-        if user_id is not None or sub_id is not None
-    }
+    sent: set[tuple[str, int]] = set()
+
+    for user_id, sub_id in rows:
+        if user_id is not None:
+            sent.add(("user", user_id))
+        elif sub_id is not None:
+            sent.add(("subscriber", sub_id))
+
+    return sent
 
 
 def unsubscribe_links(person: Person) -> tuple[str, str]:

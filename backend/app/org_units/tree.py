@@ -17,6 +17,9 @@ one. Nothing should ever reach the cap; reaching it means the tree is
 broken, and the guard in the write path exists to stop that happening.
 """
 
+from collections.abc import Sequence
+from typing import cast
+
 from sqlalchemy import Select, literal, select
 from sqlalchemy.orm import Session, aliased
 
@@ -204,13 +207,16 @@ def descendant_ids(db: Session, root_ids: list[int]) -> set[int]:
 
     found = {
         int(row)
-        for row in db.execute(select(walk.c.id).distinct()).scalars().all()
+        for row in cast(
+            Sequence[int],
+            db.execute(select(walk.c.id).distinct()).scalars().all(),
+        )
     }
 
     return found - set(root_ids)
 
 
-def organisation_org_unit_ids() -> Select[tuple[int]]:
+def organisation_org_unit_ids() -> Select[int]:
     """A selectable of every org_unit that is an organisation.
 
     An organisation is an org_unit at the top of a tree, and what makes it

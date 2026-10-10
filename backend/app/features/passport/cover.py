@@ -25,7 +25,9 @@ See ``docs/docs/plans/2026-09-30-passport-professions-plan.md``.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -136,12 +138,15 @@ def switch_on(db: Session, org_unit_id: int, switched_by: User) -> int:
     Returns:
         How many members are covered.
     """
-    members = db.scalars(
-        select(org_unit_member.c.user_id).where(
-            org_unit_member.c.org_unit_id == org_unit_id,
-            org_unit_member.c.capacity.in_(COVERED_CAPACITIES),
-        )
-    ).all()
+    members = cast(
+        Sequence[int],
+        db.scalars(
+            select(org_unit_member.c.user_id).where(
+                org_unit_member.c.org_unit_id == org_unit_id,
+                org_unit_member.c.capacity.in_(COVERED_CAPACITIES),
+            )
+        ).all(),
+    )
 
     for user_id in members:
         _grant(db, org_unit_id, int(user_id), switched_by.id)

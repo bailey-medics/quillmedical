@@ -27,8 +27,10 @@ See
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -481,11 +483,14 @@ def settle_enrolments(
     if unknown:
         raise NotServed(", ".join(unknown))
 
-    member_of = db.scalars(
-        select(org_unit_member.c.org_unit_id).where(
-            org_unit_member.c.user_id == user.id
-        )
-    ).all()
+    member_of = cast(
+        Sequence[int],
+        db.scalars(
+            select(org_unit_member.c.org_unit_id).where(
+                org_unit_member.c.user_id == user.id
+            )
+        ).all(),
+    )
     places = sorted(
         int(unit_id)
         for unit_id in member_of
