@@ -82,7 +82,12 @@ services:
       - ci
 
   postgres-core:
-    image: public.ecr.aws/docker/library/postgres:18-alpine
+    # The public image unless the variable says otherwise. CI sets it to
+    # this repository's own copy in GitHub's registry, where it has one,
+    # so it is not turned away by the public registry's limit on callers
+    # with no login: see .github/scripts/ci/use-mirrored-images.sh. On a
+    # developer's machine the variable is unset and nothing changes.
+    image: ${CI_POSTGRES_IMAGE:-public.ecr.aws/docker/library/postgres:18-alpine}
     environment:
       POSTGRES_DB: quill_core
       POSTGRES_USER: core_user
@@ -98,7 +103,8 @@ services:
       - ci
 
   caddy:
-    image: public.ecr.aws/docker/library/caddy:2-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+    # As for postgres-core above.
+    image: ${CI_CADDY_IMAGE:-public.ecr.aws/docker/library/caddy:2-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b}
     ports:
       - "${E2E_PORT:-80}:80"
     volumes:

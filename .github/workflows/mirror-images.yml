@@ -1,0 +1,77 @@
+# Keep this repository's own copies of the public images CI pulls.
+#
+# The end-to-end job starts Postgres and Caddy from compose.ci.yml. Those
+# images come from a public registry, which limits how often a caller with
+# no login may pull and counts by address. GitHub's runners share addresses,
+# and the merge queue starts six of these jobs at once, so one was sometimes
+# refused with "Rate exceeded". That failed the job, took
+# the pull request out of the queue, and every pull request stacked on it
+# went with it: fourteen, on 10 October 2026, with nothing wrong in any.
+#
+# So the images are copied here, into ghcr.io/<owner>/mirror/, and the job
+# pulls the copies with its own login: see
+# .github/scripts/ci/use-mirrored-images.sh. This workflow is the one thing
+# that still asks the public registry, a few times a week and one job at a
+# time.
+#
+# The packages are private, which is what GitHub makes a new package unless
+# told otherwise. Pushing one from here gives this repository's workflows
+# access to it. Leave them private: a public copy could be pulled by anybody.
+#
+# A copy is exact, so a digest pinned in compose.ci.yml is the copy's digest
+# too. Copying an image that is already there changes nothing.
+name: Mirror images
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    # Whatever names the images, or does the copying.
+    paths:
+      - "compose.ci.yml"
+      - ".github/workflows/mirror-images.yml"
+      - ".github/scripts/mirror-images/**"
+      - ".github/scripts/shared/mirror-ref.sh"
+  # On the pull request that changes any of those too, so the copy of a new
+  # version is made before that pull request's own end-to-end run wants it,
+  # and the first copies exist before this workflow has ever reached main.
+  pull_request:
+    paths:
+      - "compose.ci.yml"
+      - ".github/workflows/mirror-images.yml"
+      - ".github/scripts/mirror-images/**"
+      - ".github/scripts/shared/mirror-ref.sh"
+  # A tag such as postgres:18-alpine moves when a patch is released. Weekly
+  # keeps the copy from falling far behind the image a developer pulls.
+  schedule:
+    - cron: "0 4 * * 1"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: mirror-images-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  copy:
+    # A pull request from a fork is given a token that may not write
+    # packages, so the copy would only fail there.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    name: Copy public images to the mirror
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      # skopeo reads the login this writes.
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copy the images
+        run: bash .github/scripts/mirror-images/copy-images.sh "${{ github.repository_owner }}" compose.ci.yml

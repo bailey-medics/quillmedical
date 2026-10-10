@@ -543,13 +543,14 @@ jobs:
       - name: Ensure pipx bin on PATH
         run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      # Through a script and not called bare: Semgrep passes a scan that
+      # opened no files, so the script fails one that scanned too few.
       - name: Run Semgrep
-        working-directory: frontend
         env:
           SEMGREP_LOG_LEVEL: error
           SEMGREP_DISABLE_ANALYTICS: "1"
           SEMGREP_NO_VERSION_CHECK: "1"
-        run: semgrep --config .semgrep.yml --error
+        run: bash .github/scripts/ci/run-semgrep.sh frontend
 
   # ---------- Prebuild CI app images for E2E ----------
   # The layer cache is read here and never written. e2e-image-cache.yml
@@ -643,6 +644,13 @@ jobs:
       # A module for the teaching tests to open. seed_ci.py syncs it.
       - name: Fetch E2E teaching content
         run: .github/scripts/ci/fetch-e2e-teaching.sh
+
+      # Before the stack starts: Postgres and Caddy come from this
+      # repository's own copies where it has them, pulled with the login
+      # above, and not from the public registry, which refuses a runner
+      # that asks too often. mirror-images.yml makes the copies.
+      - name: Use the mirrored images where they exist
+        run: bash .github/scripts/ci/use-mirrored-images.sh "${{ github.repository_owner }}" compose.ci.yml CI_POSTGRES_IMAGE CI_CADDY_IMAGE
 
       - name: Start CI stack
         run: docker compose -f compose.ci.yml up --wait --wait-timeout 120
