@@ -2377,6 +2377,164 @@ unit-tests-reset:
     docker compose -f compose.unit-tests.yml build --pull
 
 
+alias tc := test-coverage
+# Print test coverage, one line each for Python, TypeScript and shell (or one: py, ts, sh)
+test-coverage which="all":
+    #!/usr/bin/env bash
+    {{initialise}} "test-coverage"
+    set +x
+    # Not -e: a suite with a failed test still has a figure to print, and
+    # the line then says the run failed.
+    set +e
+    set -uo pipefail
+
+    case "{{which}}" in
+        all|py|ts|sh) ;;
+        *) echo "✗ Unknown: {{which}}. Use py, ts, sh, or nothing for all three." >&2; exit 1 ;;
+    esac
+
+    wanted() { [ "{{which}}" = "all" ] || [ "{{which}}" = "$1" ]; }
+
+    # One line for each language. While its suite runs the line counts
+    # the minutes and seconds gone, so a run that takes minutes is seen
+    # to be alive; when the suite ends the count gives way to the figure.
+    # Everything a suite prints goes to a log, named on the line if the
+    # suite failed.
+    logs="$(mktemp -d)"
+    failed=0
+    status=0
+
+    # Runs a suite, given as a function name, with its output in a log,
+    # and keeps the clock on the line until it ends. Leaves the suite's
+    # exit code in `status`. The clock is drawn only on a terminal:
+    # sent to a file or a pipe, the line is just the name and the figure.
+    timed() {
+        local name="$1" suite="$2" log="$3"
+        local started=${SECONDS} gone=0
+
+        "${suite}" > "${log}" 2>&1 &
+        local pid=$!
+
+        printf '%-12s' "${name}"
+
+        while kill -0 "${pid}" 2> /dev/null; do
+            if [ -t 1 ]; then
+                gone=$((SECONDS - started))
+                printf '\r%-12s%d:%02d' "${name}" $((gone / 60)) $((gone % 60))
+            fi
+            sleep 1
+        done
+
+        wait "${pid}"
+        status=$?
+
+        # Back to the start of the line, and clear the clock off it.
+        [ ! -t 1 ] || printf '\r\033[K%-12s' "${name}"
+    }
+
+    report() {
+        local figure="$1" log="$2"
+
+        if [ -z "${figure}" ]; then
+            printf 'no figure: see %s\n' "${log}"
+            failed=1
+        elif [ "${status}" -ne 0 ]; then
+            printf '%s  (some tests failed: see %s)\n' "${figure}" "${log}"
+            failed=1
+        else
+            printf '%s\n' "${figure}"
+        fi
+    }
+
+    project="$(just _test-project)"
+    just _start-docker-daemon > /dev/null
+
+    # Python and TypeScript run as `just ub` and `just uf` run them: in a
+    # throwaway container with this worktree mounted. The coverage data
+    # goes under /tmp inside the container, so nothing is left in the tree.
+    # What is measured, and that tests are not counted as code, is in
+    # [tool.coverage.run] in backend/pyproject.toml.
+    python_suite() {
+        docker compose -p "${project}" -f compose.unit-tests.yml \
+            run --rm -T -e COVERAGE_FILE=/tmp/.coverage backend sh -lc "
+                pytest -q -m 'not integration' --cov --cov-report= -p no:cacheprovider
+                status=\$?
+                coverage report --sort=cover
+                exit \$status
+            "
+    }
+
+    if wanted py; then
+        timed Python python_suite "${logs}/python.log"
+
+        figure="$(awk '$1 == "TOTAL" { print $NF }' "${logs}/python.log" | tail -n 1)"
+        report "${figure}" "${logs}/python.log"
+    fi
+
+    # The share of lines, to match the other two. What is left out of the
+    # count is in vitest.config.ts. `reportOnFailure` gives a figure for a
+    # run with a failed test, which is then said.
+    typescript_suite() {
+        docker compose -p "${project}" -f compose.unit-tests.yml \
+            run --rm -T frontend sh -lc "
+                yarn generate:types > /dev/null 2>&1
+                yarn vitest --environment jsdom --run --watch=false --reporter=dot --silent \
+                    --coverage --coverage.reporter=text-summary \
+                    --coverage.reportOnFailure \
+                    --coverage.reportsDirectory=/tmp/coverage
+            "
+    }
+
+    if wanted ts; then
+        timed TypeScript typescript_suite "${logs}/typescript.log"
+
+        figure="$(awk '$1 == "Lines" { printf "%.0f%%\n", $3 }' "${logs}/typescript.log" | tail -n 1)"
+        report "${figure}" "${logs}/typescript.log"
+    fi
+
+    # kcov watches the bats suites run and records each line of a shell
+    # script as it is executed. It is in an image of its own, built on
+    # the shell test image: see .github/Dockerfile.coverage. Neither
+    # image is part of anything deployed.
+    #
+    # The three suites CI runs go in one run and so one report. kcov only
+    # knows of a script it saw run, so the Python script then adds the
+    # scripts no test ran at all: left out, they would flatter the figure.
+    #
+    # cspell:ignore dont
+    #
+    # A handful of tests fail here that pass under `just ts`. kcov follows
+    # each bash a test starts, and a test that reads back exactly what a
+    # child shell printed can see kcov's own output in it. So a bats
+    # failure is not held against this run: `just ts` is where a test
+    # passes or fails.
+    shell_suite() {
+        docker build --quiet --tag quill-shell-tests - < .github/Dockerfile > /dev/null
+        docker build --quiet --tag quill-shell-coverage - < .github/Dockerfile.coverage > /dev/null
+
+        docker run --rm --volume "$PWD:/repo:ro" quill-shell-coverage bash -c '
+            kcov --bash-dont-parse-binary-dir \
+                --include-pattern=.sh \
+                --exclude-pattern=.bats,node_modules,bats-core \
+                /tmp/kcov bats --recursive .github/scripts .claude/hooks scripts/tests
+            python3 scripts/shell-test-coverage.py /tmp/kcov/bats.*/coverage.json
+        '
+    }
+
+    if wanted sh; then
+        timed Shell shell_suite "${logs}/shell.log"
+
+        figure="$(awk '$1 == "TOTAL" { print $2 }' "${logs}/shell.log" | tail -n 1)"
+        report "${figure}" "${logs}/shell.log"
+    fi
+
+    # The logs hold the detail: the least-covered files, and the scripts
+    # no test runs. Kept only when something went wrong.
+    [ "${failed}" -ne 0 ] || rm -rf "${logs}"
+
+    exit "${failed}"
+
+
 alias ts := test-scripts
 # Run the shell script tests where CI runs them (ubuntu-24.04 container)
 test-scripts *ARGS:
