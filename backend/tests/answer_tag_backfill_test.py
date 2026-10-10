@@ -56,7 +56,7 @@ def _cleanup() -> None:
 def _answers(*resolved: str) -> list[int]:
     """Seed one assessment with an answer per raw JSON value given."""
     with core_engine.begin() as conn:
-        org_id = conn.execute(
+        org_id: int = conn.execute(
             text("""
                 INSERT INTO org_unit (name, type, is_active, created_at,
                                       updated_at)
@@ -65,7 +65,7 @@ def _answers(*resolved: str) -> list[int]:
             """),
             {"name": f"{PREFIX}org"},
         ).scalar_one()
-        user_id = conn.execute(
+        user_id: int = conn.execute(
             text("""
                 INSERT INTO users
                     (username, email, password_hash, is_totp_enabled,
@@ -78,7 +78,7 @@ def _answers(*resolved: str) -> list[int]:
                 "email": f"{PREFIX}learner@example.test",
             },
         ).scalar_one()
-        item_id = conn.execute(
+        item_id: int = conn.execute(
             text("""
                 INSERT INTO question_bank_items
                     (org_unit_id, question_bank_id, bank_version, images,
@@ -88,7 +88,7 @@ def _answers(*resolved: str) -> list[int]:
             """),
             {"org_id": org_id},
         ).scalar_one()
-        assessment_id = conn.execute(
+        assessment_id: int = conn.execute(
             text("""
                 INSERT INTO assessments
                     (user_id, org_unit_id, question_bank_id, bank_version,

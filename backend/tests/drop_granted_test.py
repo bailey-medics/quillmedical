@@ -50,7 +50,7 @@ def _cleanup() -> None:
 
 def test_removal_rows_go_and_grants_stay(before_drop: Config) -> None:
     with core_engine.begin() as conn:
-        user_id = conn.execute(
+        user_id: int = conn.execute(
             text("""
                 INSERT INTO users
                     (username, email, password_hash, is_totp_enabled,
@@ -86,7 +86,7 @@ def test_removal_rows_go_and_grants_stay(before_drop: Config) -> None:
     command.upgrade(before_drop, DROP)
 
     with core_engine.connect() as conn:
-        left = list(
+        left: list[str] = list(
             conn.execute(
                 text("""
                     SELECT competency_id FROM user_competency

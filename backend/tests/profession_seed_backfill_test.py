@@ -73,7 +73,7 @@ def _cleanup() -> None:
 
 
 def _user(conn: Connection, name: str, profession: str) -> int:
-    user_id = conn.execute(
+    user_id: int = conn.execute(
         text("""
             INSERT INTO users
                 (username, email, password_hash, is_totp_enabled,
