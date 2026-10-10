@@ -3189,7 +3189,7 @@ class TotpSetupOut(BaseModel):
 @limiter.limit("5/minute")
 def totp_setup(
     request: Request,
-    current_user: User = DEP_CURRENT_USER,
+    current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> TotpSetupOut:
     """TOTP Two-Factor Setup.
@@ -3258,7 +3258,7 @@ class TotpVerifyIn(BaseModel):
 def totp_verify(
     request: Request,
     payload: TotpVerifyIn,
-    current_user: User = DEP_CURRENT_USER,
+    current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> dict[str, str]:
     """Verify TOTP and Enable Two-Factor.
@@ -3411,7 +3411,7 @@ def change_password(
 
 
 @router.post("/auth/logout", response_model=DetailResponse)
-def logout(response: Response, _u: User = DEP_CURRENT_USER) -> dict[str, str]:
+def logout(response: Response, _u: User = DEP_REQUIRE_CSRF) -> dict[str, str]:
     """User Logout.
 
     Logs out the current user by clearing all authentication cookies (access_token,
@@ -4805,6 +4805,7 @@ async def get_my_competencies(
 async def prescribe_controlled(
     prescription: PrescriptionRequest,
     user: User = Depends(has_competency("prescribe_controlled_schedule_2")),
+    _csrf: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> PrescriptionResponse:
     """Prescribe controlled substance (Schedule 2).

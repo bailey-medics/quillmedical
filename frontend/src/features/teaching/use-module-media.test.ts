@@ -279,6 +279,57 @@ describe("useModuleMedia", () => {
     expect(requests[0].body).toBe(file);
   });
 
+  it("sends the CSRF token with a local upload", async () => {
+    // The local route is ours and checks the token. This request does
+    // not go through `api`, which would have added it.
+    document.cookie = "XSRF-TOKEN=token-123; path=/";
+    const requests = stubUpload();
+    (api.get as Mock).mockResolvedValue(media);
+    (api.post as Mock).mockResolvedValue({
+      upload_url: "/api/teaching/admin/modules/mod-1/media/asset-1/content",
+      asset_id: "asset-1",
+    });
+
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => {
+      await result.current.upload(
+        "lecture-01",
+        new File(["x"], "lecture.mp4", { type: "video/mp4" }),
+      );
+    });
+
+    expect(requests[0].headers["X-CSRF-Token"]).toBe("token-123");
+    document.cookie = "XSRF-TOKEN=; Max-Age=0; path=/";
+  });
+
+  it("does not send the CSRF token to the bucket", async () => {
+    // A signed URL is its own permission, and the signature covers the
+    // headers: one it did not expect is a mismatch.
+    document.cookie = "XSRF-TOKEN=token-123; path=/";
+    const requests = stubUpload();
+    (api.get as Mock).mockResolvedValue(media);
+    (api.post as Mock).mockResolvedValue({
+      upload_url: "https://storage.example/upload",
+      asset_id: "asset-1",
+    });
+
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    await act(async () => {
+      await result.current.upload(
+        "lecture-01",
+        new File(["x"], "lecture.mp4", { type: "video/mp4" }),
+      );
+    });
+
+    expect(requests.length).toBeGreaterThan(0);
+    for (const request of requests) {
+      expect(request.headers["X-CSRF-Token"]).toBeUndefined();
+    }
+    document.cookie = "XSRF-TOKEN=; Max-Age=0; path=/";
+  });
+
   it("does not record a link when the upload fails", async () => {
     // A link without a file is the failure that shows a learner a
     // broken player, so it must not survive a failed upload.

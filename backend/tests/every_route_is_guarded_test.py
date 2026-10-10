@@ -7,14 +7,14 @@ dependency tree for a function that settles who the caller is. A route
 without one must be named in `PUBLIC`, with the reason it is open.
 
 The same walk checks the second rule: a route that changes something for
-a signed-in caller must also check the CSRF token. Those that do not yet
-are named in `CSRF_NOT_YET`, which is a list of gaps and not of
-exceptions: it may only shrink.
+a signed-in caller must also check the CSRF token. There is no list of
+exceptions to that one. A public route is left out by rule, having no
+session for another site to ride on.
 
-Both lists fail the build in both directions. A new route missing a guard
+`PUBLIC` fails the build in both directions. A new route missing a guard
 fails until it is guarded or listed, and an entry whose route has since
 been guarded, renamed or removed fails until the entry is taken out, so
-neither list can drift from the code it describes.
+the list cannot drift from the code it describes.
 """
 
 from __future__ import annotations
@@ -44,6 +44,7 @@ SIGNED_IN: frozenset[str] = frozenset(
 CHECKS_CSRF: frozenset[str] = frozenset(
     {
         "app.main.require_csrf",
+        "app.deps.require_csrf",
         "app.features.teaching.router._require_csrf",
         "app.features.passport.router._require_csrf",
         "app.org_units.router._require_csrf",
@@ -115,63 +116,6 @@ PUBLIC: dict[RouteKey, str] = {
         "the registration page checks a clinical lead's email"
     ),
 }
-
-# Routes that change something for a signed-in caller and do not check
-# the CSRF token. Gaps to close, not exceptions to keep: never add to
-# this. The session cookies are SameSite=Lax, which stops a browser
-# sending them with a cross-site POST, so each of these has that one
-# layer where the rest of the app has two.
-CSRF_NOT_YET: frozenset[RouteKey] = frozenset(
-    {
-        ("POST", "/api/auth/logout"),
-        ("POST", "/api/auth/totp/setup"),
-        ("POST", "/api/auth/totp/verify"),
-        ("POST", "/api/prescriptions/controlled"),
-        ("POST", "/api/push/send-test"),
-        ("POST", "/api/push/subscribe"),
-        (
-            "PUT",
-            "/api/teaching/admin/banks/{bank_id}/org-units/{org_unit_id}"
-            "/active-version",
-        ),
-        (
-            "PUT",
-            "/api/teaching/admin/banks/{bank_id}/org-units/{org_unit_id}"
-            "/settings",
-        ),
-        ("POST", "/api/teaching/admin/modules/{module_id}/media/upload-url"),
-        ("DELETE", "/api/teaching/admin/modules/{module_id}/media/{asset_id}"),
-        (
-            "PUT",
-            "/api/teaching/admin/modules/{module_id}/media/{asset_id}"
-            "/captions",
-        ),
-        (
-            "PUT",
-            "/api/teaching/admin/modules/{module_id}/media/{asset_id}"
-            "/content",
-        ),
-        (
-            "POST",
-            "/api/teaching/admin/modules/{module_id}/media/{media_key}/link",
-        ),
-        (
-            "DELETE",
-            "/api/teaching/admin/modules/{module_id}/media/{media_key}/link",
-        ),
-        ("POST", "/api/teaching/admin/sync-all"),
-        ("POST", "/api/teaching/assessments"),
-        ("POST", "/api/teaching/assessments/{assessment_id}/answer"),
-        (
-            "PUT",
-            "/api/teaching/assessments/{assessment_id}/answer/{answer_id}",
-        ),
-        ("POST", "/api/teaching/assessments/{assessment_id}/complete"),
-        ("POST", "/api/teaching/items/sync"),
-        ("POST", "/api/teaching/items/validate"),
-        ("PUT", "/api/teaching/settings"),
-    }
-)
 
 
 def _name(call: Callable[..., Any]) -> str:
@@ -264,16 +208,7 @@ class TestEveryRouteAsksWhoIsCalling:
 
 
 class TestChangingRoutesCheckCsrf:
-    def test_no_changing_route_skips_csrf_without_being_listed(self) -> None:
-        """A new route that changes something must take the CSRF
-        dependency. CSRF_NOT_YET is not the answer: it only shrinks."""
-        assert _changing_without_csrf() - CSRF_NOT_YET == set()
-
-    def test_no_listed_gap_has_since_been_closed_or_removed(self) -> None:
-        """Closing a gap means taking it off the list in the same
-        change, so the list is always what is still open."""
-        assert CSRF_NOT_YET - _changing_without_csrf() == set()
-
-    def test_a_public_route_is_not_also_listed_as_a_csrf_gap(self) -> None:
-        """A route with no session has no session to ride on."""
-        assert CSRF_NOT_YET & set(PUBLIC) == set()
+    def test_no_route_changes_something_without_checking_csrf(self) -> None:
+        """A route that changes something for a signed-in caller takes
+        the CSRF dependency. There is no list to add it to instead."""
+        assert _changing_without_csrf() == set()

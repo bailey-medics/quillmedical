@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_core_db
-from app.deps import DEP_CURRENT_USER
+from app.deps import DEP_REQUIRE_CSRF
 from app.models import PushSubscription as PushSubscriptionModel
 from app.models import User
 
@@ -64,7 +64,7 @@ class SubscribeOut(BaseModel):
 @router.post("/subscribe", response_model=SubscribeOut)
 def subscribe(
     sub: PushSubscriptionIn,
-    current_user: User = DEP_CURRENT_USER,
+    current_user: User = DEP_REQUIRE_CSRF,
     db: Session = Depends(get_core_db),
 ) -> SubscribeOut:
     """Register a new push notification subscription.

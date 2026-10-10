@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
+import { csrfHeader } from "@lib/csrf";
 import type {
   Captions,
   MediaUploadUrl,
@@ -154,6 +155,7 @@ function sendToSession(
   sessionUrl: string,
   file: File,
   onProgress: (percent: number) => void,
+  headers: Record<string, string> = {},
 ): Promise<void> {
   // XMLHttpRequest rather than fetch: fetch cannot report upload
   // progress, and on a file this size a bar is not decoration.
@@ -161,6 +163,10 @@ function sendToSession(
     const request = new XMLHttpRequest();
     request.open("PUT", sessionUrl);
     request.setRequestHeader("Content-Type", file.type);
+
+    for (const [name, value] of Object.entries(headers)) {
+      request.setRequestHeader(name, value);
+    }
 
     request.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable) {
@@ -198,8 +204,13 @@ async function putToBucket(
 ): Promise<void> {
   // A relative URL is the local route, which receives the body
   // directly. Only GCS speaks the resumable handshake.
+  //
+  // That route is ours and changes something, so it checks the CSRF
+  // token like any other. `api` would add it, but this request cannot
+  // go through `api`. The token is never sent to GCS: a signed URL is
+  // its own permission, and an unexpected header breaks the signature.
   if (!/^https?:\/\//.test(url)) {
-    return sendToSession(url, file, onProgress);
+    return sendToSession(url, file, onProgress, csrfHeader());
   }
 
   const session = await startResumableUpload(url, file);
