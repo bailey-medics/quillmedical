@@ -1948,3 +1948,11 @@ class Feedback(Base):
     )
 
     user: Mapped[User | None] = relationship(foreign_keys=[user_id])
+
+
+class ZzPlant(Base):
+    """Planted table with no migration. Do not merge."""
+
+    __tablename__ = "zz_plant"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
