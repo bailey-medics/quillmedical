@@ -8,11 +8,19 @@ file, the fingerprint git gives its contents. A file whose contents still
 match is **read**; one whose contents have moved on is **changed**; one
 with no line on the card is **unread**.
 
+A stamp also says who made it, taken from the name and email git is
+set up with. Several people may stamp the same file, each on a line of
+their own, and a file counts as read when anybody's stamp matches what
+it holds now.
+
 The commands:
 
-- `mark <paths>` stamps files, or every file in a folder, as read.
-- `unmark <paths>` takes the stamp off again, for a file stamped by
-  mistake.
+- `mark <paths>` stamps files, or every file in a folder, as read by
+  you.
+- `unmark <paths>` takes your stamp off again, for a file stamped by
+  mistake. Nobody else's stamp is touched.
+- `adopt` puts your name on stamps that have none, which are the ones
+  made before stamps carried a name.
 - `status` says how much is read, in two lines. `status f` (or `full`)
   adds the files changed since they were read and the lines left in each
   folder; `status <path>` lists that folder file by file.
@@ -22,7 +30,8 @@ The commands:
   changed file is caught up on by reading the change and not the file.
 
 The card is one tab-separated file, `review-ledger.tsv`, in the shared
-`local/` folder that `local-path.sh` points at. It is kept out of git and
+`local/` folder that `local-path.sh` points at. Each line holds the path,
+the fingerprint, the date, and the reviewer's name and email. It is kept out of git and
 is the same file from every worktree. Paths on it are relative to the
 repository root, which is what lets a stamp made in one worktree count in
 another.
@@ -93,10 +102,35 @@ SUMMARY_DEPTH = 3
 
 @dataclass(frozen=True)
 class Stamp:
-    """One line of the card: what a file's contents were, and when."""
+    """One line of the card: what a file's contents were, when, and who
+    read them.
+
+    The name and email are empty on a stamp made before stamps carried
+    them.
+    """
 
     fingerprint: str
     stamped_on: str
+    reviewer: str = ""
+    email: str = ""
+
+    @property
+    def who(self) -> str:
+        """What tells one reviewer from another: the email, or the name
+        where there is no email. Empty for a stamp with neither."""
+        return (self.email or self.reviewer).lower()
+
+
+@dataclass(frozen=True)
+class Reviewer:
+    """Whoever is running this, as git knows them."""
+
+    name: str
+    email: str
+
+    @property
+    def who(self) -> str:
+        return (self.email or self.name).lower()
 
 
 @dataclass(frozen=True)
@@ -107,6 +141,8 @@ class FileState:
     lines: int
     state: str  # "read", "changed" or "unread"
     stamp: Stamp | None = None
+    # Who has read this version, or for a changed file an earlier one.
+    readers: tuple[str, ...] = ()
 
 
 def git(*args: str, stdin: str | None = None) -> str:
@@ -166,31 +202,78 @@ def ledger_path() -> Path:
     return Path(done.stdout.strip()) / LEDGER_NAME
 
 
-def read_ledger(path: Path) -> dict[str, Stamp]:
-    """Read the card. A missing card is an empty one."""
-    stamps: dict[str, Stamp] = {}
+def current_reviewer() -> Reviewer:
+    """Who is stamping: the name and email git is set up with."""
+    name = git_setting("user.name")
+    email = git_setting("user.email")
+
+    if not name:
+        raise SystemExit(
+            "Git has no name for you, so a stamp could not say who made "
+            'it.\nSet one with: git config --global user.name "Your Name"'
+        )
+
+    return Reviewer(name=name, email=email)
+
+
+def git_setting(key: str) -> str:
+    """One git setting, or an empty string when it is not set."""
+    done = subprocess.run(
+        ["git", "config", "--get", key],
+        cwd=repo_root(),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    # A tab or a line break in a name would break the card's columns.
+    return " ".join(done.stdout.split())
+
+
+Card = dict[str, list[Stamp]]
+
+
+def read_ledger(path: Path) -> Card:
+    """Read the card: for each file, every stamp on it.
+
+    A missing card is an empty one. A line with three columns is from
+    before stamps carried a name, and is read as a stamp with none.
+    """
+    card: Card = {}
 
     if not path.exists():
-        return stamps
+        return card
 
     for line in path.read_text(encoding="utf-8").splitlines():
         parts = line.split("\t")
-        if len(parts) != 3:
+        if len(parts) not in (3, 5):
             continue
-        stamps[parts[0]] = Stamp(fingerprint=parts[1], stamped_on=parts[2])
 
-    return stamps
+        named = len(parts) == 5
+        card.setdefault(parts[0], []).append(
+            Stamp(
+                fingerprint=parts[1],
+                stamped_on=parts[2],
+                reviewer=parts[3] if named else "",
+                email=parts[4] if named else "",
+            )
+        )
+
+    return card
 
 
-def write_ledger(path: Path, stamps: dict[str, Stamp]) -> None:
+def write_ledger(path: Path, card: Card) -> None:
     """Write the card in one step, so a reader never sees half of it."""
     lines = [
         f"{name}\t{stamp.fingerprint}\t{stamp.stamped_on}"
-        for name, stamp in sorted(stamps.items())
+        f"\t{stamp.reviewer}\t{stamp.email}"
+        for name in sorted(card)
+        for stamp in sorted(card[name], key=lambda held: held.who)
     ]
     draft = path.with_suffix(".tsv.tmp")
+    body = "\n".join(lines) + "\n" if lines else ""
 
-    draft.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    draft.write_text(body, encoding="utf-8")
     os.replace(draft, path)
 
 
@@ -299,29 +382,47 @@ def count_lines(path: str) -> int:
     return lines
 
 
-def states_under(path: str, stamps: dict[str, Stamp]) -> list[FileState]:
-    """Every file beneath a path, set against the card."""
+def names_of(stamps: list[Stamp]) -> tuple[str, ...]:
+    """The reviewers behind some stamps, each once, in name order."""
+    return tuple(sorted({held.reviewer for held in stamps if held.reviewer}))
+
+
+def states_under(path: str, card: Card) -> list[FileState]:
+    """Every file beneath a path, set against the card.
+
+    A file is read when anybody's stamp matches what it holds now. The
+    stamp reported is the newest of those that match, or for a changed
+    file the newest there is, which is the one to compare against.
+    """
     paths = files_under(path)
     current = fingerprints(paths, keep=False)
     states: list[FileState] = []
 
     for name in paths:
-        stamp = stamps.get(name)
+        held = card.get(name, [])
+        matching = [
+            stamp for stamp in held if stamp.fingerprint == current[name]
+        ]
 
-        if stamp is None:
-            state = "unread"
-        elif stamp.fingerprint == current[name]:
-            state = "read"
-        else:
-            state = "changed"
+        if not held:
+            states.append(FileState(name, count_lines(name), "unread"))
+            continue
 
-        states.append(FileState(name, count_lines(name), state, stamp))
+        state = "read" if matching else "changed"
+        counted = matching or held
+        newest = max(counted, key=lambda stamp: stamp.stamped_on)
+
+        states.append(
+            FileState(
+                name, count_lines(name), state, newest, names_of(counted)
+            )
+        )
 
     return states
 
 
 def command_mark(raw_paths: list[str]) -> int:
-    """Stamp files, or every file in a folder, as read."""
+    """Stamp files, or every file in a folder, as read by you."""
     if not raw_paths:
         print("Give a file or a folder: just reviewed backend/app/deps.py")
         return 1
@@ -340,35 +441,63 @@ def command_mark(raw_paths: list[str]) -> int:
     today = date.today().isoformat()
     card = ledger_path()
 
+    me = current_reviewer()
+
     with ledger_lock(card):
         stamps = read_ledger(card)
+
         for name in paths:
-            stamps[name] = Stamp(fingerprint=current[name], stamped_on=today)
+            # Mine replaces the one I made before, and one with no name
+            # on it. Anybody else's stays.
+            others = [
+                held
+                for held in stamps.get(name, [])
+                if held.who and held.who != me.who
+            ]
+            stamps[name] = others + [
+                Stamp(
+                    fingerprint=current[name],
+                    stamped_on=today,
+                    reviewer=me.name,
+                    email=me.email,
+                )
+            ]
+
         write_ledger(card, stamps)
 
     total = sum(count_lines(name) for name in paths)
     noun = "file" if len(paths) == 1 else "files"
-    print(f"Stamped {len(paths)} {noun}, {total:,} lines, as read.")
+    print(
+        f"Stamped {len(paths)} {noun}, {total:,} lines, as read "
+        f"by {me.name}."
+    )
 
     # The running total straight after, so a stamp shows what it added.
     return command_status(None)
 
 
 def command_unmark(raw_paths: list[str]) -> int:
-    """Take the stamp off files, or off every file in a folder."""
+    """Take your stamp off files, or off every file in a folder.
+
+    Only yours, and any with no name on it. A stamp is one person saying
+    they read something, so nobody else can take it back for them.
+    """
     if not raw_paths:
         print("Give a file or a folder: just unreviewed backend/app/deps.py")
         return 1
 
     scopes = [relative(raw) for raw in raw_paths]
     card = ledger_path()
+    me = current_reviewer()
+    gone = 0
+    kept_for_others = 0
 
     with ledger_lock(card):
         stamps = read_ledger(card)
 
         # Matched against the card and not the disk, so a stamp can be
         # taken off a file that has since been deleted or renamed.
-        gone = [
+        named = [
             name
             for name in stamps
             if any(
@@ -377,20 +506,87 @@ def command_unmark(raw_paths: list[str]) -> int:
             )
         ]
 
-        for name in gone:
-            del stamps[name]
+        for name in named:
+            others = [
+                held
+                for held in stamps[name]
+                if held.who and held.who != me.who
+            ]
+
+            if len(others) == len(stamps[name]):
+                kept_for_others += 1
+                continue
+
+            gone += 1
+            if others:
+                stamps[name] = others
+            else:
+                del stamps[name]
 
         if gone:
             write_ledger(card, stamps)
 
     if not gone:
-        print("None of those had a stamp.")
+        if kept_for_others:
+            print("None of those had a stamp of yours.")
+        else:
+            print("None of those had a stamp.")
         return 1
 
-    noun = "file" if len(gone) == 1 else "files"
-    print(f"Took the stamp off {len(gone)} {noun}.")
+    noun = "file" if gone == 1 else "files"
+    print(f"Took your stamp off {gone} {noun}.")
 
     return command_status(None)
+
+
+def command_adopt() -> int:
+    """Put your name on every stamp that has none.
+
+    For the stamps made before stamps carried a name. Run once, by the
+    person who made them. Where you have since stamped the same file
+    again, the nameless stamp is simply dropped: yours already says it.
+    """
+    card = ledger_path()
+    me = current_reviewer()
+    adopted = 0
+
+    with ledger_lock(card):
+        stamps = read_ledger(card)
+
+        for name, held in stamps.items():
+            nameless = [stamp for stamp in held if not stamp.who]
+
+            if not nameless:
+                continue
+
+            adopted += 1
+            named = [stamp for stamp in held if stamp.who]
+
+            if any(stamp.who == me.who for stamp in named):
+                stamps[name] = named
+                continue
+
+            newest = max(nameless, key=lambda stamp: stamp.stamped_on)
+            stamps[name] = named + [
+                Stamp(
+                    fingerprint=newest.fingerprint,
+                    stamped_on=newest.stamped_on,
+                    reviewer=me.name,
+                    email=me.email,
+                )
+            ]
+
+        if adopted:
+            write_ledger(card, stamps)
+
+    if not adopted:
+        print("Every stamp already has a name on it.")
+        return 0
+
+    noun = "stamp" if adopted == 1 else "stamps"
+    print(f"Put the name {me.name} on {adopted} {noun} that had none.")
+
+    return 0
 
 
 def summary_line(label: str, states: list[FileState]) -> str:
@@ -454,7 +650,8 @@ def command_status(raw_path: str | None) -> int:
     if raw_path:
         print(f"\nEvery file in {scope}:")
         for item in states:
-            print(f"  {item.state:<8}{item.lines:>7,}  {item.path}")
+            by = f"  ({', '.join(item.readers)})" if item.readers else ""
+            print(f"  {item.state:<8}{item.lines:>7,}  {item.path}{by}")
 
         return 0
 
@@ -478,8 +675,10 @@ def command_states() -> int:
     """Print every file and its state, one to a line, for a program.
 
     Tab-separated: state, lines, the date it was stamped, the fingerprint
-    it was stamped with, code or test, path. The date and the fingerprint
-    are empty for an unread file.
+    it was stamped with, code or test, who read it, path. The date, the
+    fingerprint and the names are empty for an unread file. The names are
+    of everybody whose stamp matches the file now, or for a changed file
+    of everybody who read an earlier version, with ", " between them.
     """
     stamps = read_ledger(ledger_path())
 
@@ -487,9 +686,10 @@ def command_states() -> int:
         stamped_on = item.stamp.stamped_on if item.stamp else ""
         fingerprint = item.stamp.fingerprint if item.stamp else ""
         kind = "test" if is_test(item.path) else "code"
+        readers = ", ".join(item.readers)
         print(
             f"{item.state}\t{item.lines}\t{stamped_on}\t{fingerprint}"
-            f"\t{kind}\t{item.path}"
+            f"\t{kind}\t{readers}\t{item.path}"
         )
 
     return 0
@@ -498,11 +698,17 @@ def command_states() -> int:
 def command_diff(raw_path: str) -> int:
     """Show what changed in one file since it was stamped."""
     path = relative(raw_path)
-    stamp = read_ledger(ledger_path()).get(path)
+    held = read_ledger(ledger_path()).get(path, [])
 
-    if stamp is None:
+    if not held:
         print(f"{path} has not been stamped, so there is nothing to compare.")
         return 1
+
+    # What changed since I read it, where I have: otherwise since
+    # whoever read it last.
+    me = git_setting("user.email") or git_setting("user.name")
+    mine = [stamp for stamp in held if stamp.who == me.lower()]
+    stamp = max(mine or held, key=lambda found: found.stamped_on)
 
     if not (repo_root() / path).is_file():
         print(f"{path} is no longer here.")
@@ -543,8 +749,10 @@ def main() -> int:
     mark = commands.add_parser("mark", help="stamp files or folders as read")
     mark.add_argument("paths", nargs="*")
 
-    unmark = commands.add_parser("unmark", help="take a stamp off again")
+    unmark = commands.add_parser("unmark", help="take your stamp off again")
     unmark.add_argument("paths", nargs="*")
+
+    commands.add_parser("adopt", help="put your name on stamps with none")
 
     status = commands.add_parser("status", help="what is read and unread")
     status.add_argument("path", nargs="?")
@@ -560,6 +768,8 @@ def main() -> int:
         return command_mark(args.paths)
     if args.command == "unmark":
         return command_unmark(args.paths)
+    if args.command == "adopt":
+        return command_adopt()
     if args.command == "status":
         return command_status(args.path)
     if args.command == "states":
