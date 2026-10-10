@@ -421,13 +421,20 @@ This mounts the local `teaching-repos/` directory into the container at `/teachi
    just start-teaching     # alias: st
    ```
 
-3. **Seed the database** (creates org, users, enables feature, syncs questions):
+3. **Create a superadmin** to log in with:
 
    ```bash
-   just seed-teaching      # alias: sdt
+   just csl                # alias for create-superadmin-local
    ```
 
-4. Open `http://localhost` and log in with the seeded credentials.
+4. Open `http://localhost`, log in, and in the admin pages create an
+   organisation and switch its teaching feature on.
+
+5. **Sync the question banks** into the database:
+
+   ```bash
+   just sync-teaching      # alias: syt
+   ```
 
 ### Pushing new questions (no restart needed)
 
@@ -444,12 +451,8 @@ This finds the teaching-enabled organisation, and syncs all question bank direct
 | Command                    | Alias  | Description                                                                |
 | -------------------------- | ------ | -------------------------------------------------------------------------- |
 | `just start-teaching`      | `st`   | Start dev stack without clinical services                                  |
-| `just seed-teaching`       | `sdt`  | Seed fresh DB with teaching org, users, feature flag, and synced questions |
 | `just sync-teaching`       | `syt`  | Sync all local question banks into the DB (no restart needed)              |
 | `just validate-teaching`   | `vt`   | Validate all teaching content locally                                      |
-| `just question-bank-clone` | `qbc`  | Clone the private question bank repo                                       |
-| `just question-bank-push`  | `qbps` | Push local question bank changes                                           |
-| `just question-bank-pull`  | `qbpu` | Pull latest question bank content                                          |
 
 ---
 

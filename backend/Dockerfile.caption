@@ -16,7 +16,7 @@
 # torch out of the serving image.
 #
 # Build context: repository root, like the other two.
-#   just build-caption teaching
+#   just build-caption app
 FROM public.ecr.aws/docker/library/python:3.14-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
