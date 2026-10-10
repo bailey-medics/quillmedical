@@ -418,7 +418,7 @@ This mounts the local `teaching-repos/` directory into the container at `/teachi
 2. **Start the dev stack** (teaching-only, without FHIR/EHRbase):
 
    ```bash
-   just start-teaching     # alias: st
+   just start-app          # alias: sa
    ```
 
 3. **Create a superadmin** to log in with:
@@ -450,7 +450,7 @@ This finds the teaching-enabled organisation, and syncs all question bank direct
 
 | Command                    | Alias  | Description                                                                |
 | -------------------------- | ------ | -------------------------------------------------------------------------- |
-| `just start-teaching`      | `st`   | Start dev stack without clinical services                                  |
+| `just start-app`           | `sa`   | Start dev stack without clinical services                                  |
 | `just sync-teaching`       | `syt`  | Sync all local question banks into the DB (no restart needed)              |
 | `just validate-teaching`   | `vt`   | Validate all teaching content locally                                      |
 
