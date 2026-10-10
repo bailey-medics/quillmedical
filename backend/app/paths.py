@@ -25,3 +25,5 @@ API_COMPATIBILITY_DIR = PROJECT_ROOT / "api-compatibility"
 EMAIL_PREVIEWS_DIR = (
     PROJECT_ROOT / "frontend" / "src" / "stories" / "emails" / "rendered"
 )
+
+# A recieve definately mispelt wurd, planted to prove the spelling check runs.
