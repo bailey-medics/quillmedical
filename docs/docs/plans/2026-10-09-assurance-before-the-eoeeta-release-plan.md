@@ -665,16 +665,28 @@ limit needs checking against stored data first.
 
 ### Unit 2: A cap on the size of a request body
 
-- [ ] One limit of about 1 MB on every request body, in front of all
+- [x] One limit of about 1 MB on every request body, in front of all
       routes. Over it answers 413 with a plain message. It protects
       every unbounded string at once, and does not change the API's
       published shape, so it needs no approval.
 
-- [ ] Check no route rightly sends more. Captions are the largest body;
+- [x] Check no route rightly sends more. Captions are the largest body;
       uploads go straight to the bucket and never through the API.
 
-- [ ] Tests: just under passes, just over is refused, and a request
+- [x] Tests: just under passes, just over is refused, and a request
       that lies about its length is still stopped.
+
+Built on 11 October 2026, and it was a tightening, not a new thing: a
+limit of 10 MB was already in `main.py`, read from `Content-Length`
+alone, with one exception for the local media upload. It is now
+`backend/app/body_limit.py`. One megabyte for any request, and a limit
+of its own for the four routes that take a file: passport evidence
+(10 MB, as before), the mailing list check and import (3 MB) and the
+local media upload (2 GB, as before). The bytes are also counted as
+they arrive, which the old check did not do, so a request with no
+`Content-Length` or a false one is stopped too. Two tests keep the list
+honest: every route on it is one the app serves, and every route that
+takes a file is on it.
 
 ### Unit 3: Limits on the fields where length matters
 

@@ -315,20 +315,16 @@ ALLOWED_EVIDENCE_TYPES: frozenset[str] = frozenset(
     }
 )
 
-#: The most evidence may be, enforced by reading rather than by trusting
-#: a header. `limit_request_body_size` in ``app.main`` applies
-#: ``MAX_REQUEST_BODY_BYTES`` from ``Content-Length``, but skips the
-#: check when the header is absent - so a chunked request would
-#: otherwise be unbounded, and reading it whole would put it all in
-#: memory.
+#: The most evidence may be, enforced by reading and counting, so the
+#: route says in its own words that the file is too big.
 #:
-#: Deliberately below the middleware's ceiling. At the same 10 MB the
-#: route's limit could never be reached: multipart framing adds the
-#: boundaries, the headers and the filename on top of the file itself,
-#: so a 10 MB file always makes an 11 MB body and dies at the
-#: middleware with its plain-text refusal. The gap leaves room for that
-#: overhead, so a file between the two is answered here, by the handler
-#: that knows it is evidence.
+#: Deliberately below the ceiling ``app.body_limit`` gives this route,
+#: which is 10 MB. At the same size the route's limit could never be
+#: reached: multipart framing adds the boundaries, the headers and the
+#: filename on top of the file itself, so a 10 MB file always makes an
+#: 11 MB body and dies at the middleware with its plain-text refusal.
+#: The gap leaves room for that overhead, so a file between the two is
+#: answered here, by the handler that knows it is evidence.
 MAX_EVIDENCE_BYTES = 8 * 1024 * 1024  # 8 MB
 
 #: How much to read at a time while enforcing that ceiling.

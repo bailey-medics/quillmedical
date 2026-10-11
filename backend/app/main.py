@@ -48,6 +48,7 @@ from sqlalchemy.orm import Session
 
 from app.analytics.router import router as analytics_router
 from app.api_compatibility import REQUIRED_CLIENT_GENERATION
+from app.body_limit import BodyLimitMiddleware
 from app.cbac.base_professions import (
     PROFESSION_IDS,
     resolve_user_competencies,
@@ -367,51 +368,10 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-CSRF-Token"],
 )
 
-# --- Request body size limit (10 MB) ---
-MAX_REQUEST_BODY_BYTES = 10 * 1024 * 1024  # 10 MB
-
-# The local media upload is the one route a whole file travels through
-# this application, so the general limit would block the only endpoint
-# designed to exceed it. It is development-only - it refuses outright
-# wherever a media bucket is configured, because in a real deployment
-# the browser uploads straight to GCS and the bytes never come here -
-# and it streams to disk in chunks rather than holding a lecture in
-# memory. A ceiling is still set rather than none at all, so a runaway
-# or mistaken upload cannot fill a developer's disk unbounded.
-MAX_MEDIA_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB
-
-
-def _is_media_upload(request: Request) -> bool:
-    """Whether this is the local media upload route.
-
-    Matched on method and path shape rather than by importing the
-    router, so the middleware stays independent of the teaching
-    feature. The path is ``.../media/{asset_id}/content``.
-    """
-    return (
-        request.method == "PUT"
-        and "/media/" in request.url.path
-        and request.url.path.endswith("/content")
-    )
-
-
-@app.middleware("http")
-async def limit_request_body_size(
-    request: Request,
-    call_next: Callable,  # type: ignore[type-arg]
-) -> Response:
-    """Reject requests with Content-Length exceeding the limit."""
-    limit = (
-        MAX_MEDIA_UPLOAD_BYTES
-        if _is_media_upload(request)
-        else MAX_REQUEST_BODY_BYTES
-    )
-    content_length = request.headers.get("content-length")
-
-    if content_length and int(content_length) > limit:
-        return Response(status_code=413, content="Request body too large")
-
-    return await call_next(request)  # type: ignore[no-any-return]
+# --- Request body size limit ---
+# One megabyte, and more for the few routes that take a file. The limits
+# and the reasons are in app/body_limit.py.
+app.add_middleware(BodyLimitMiddleware)
 
 
 @app.middleware("http")
