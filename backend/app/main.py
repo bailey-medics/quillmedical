@@ -77,8 +77,10 @@ from app.email_send import (
     send_email,
 )
 from app.features.passport.models import Passport
+from app.features.teaching.ci_media import record_captions, record_transcode
 from app.features.teaching.ci_sync import sync_every_bank
 from app.features.teaching.enrolment import current_enrolments
+from app.features.teaching.errors import TeachingError
 from app.features.teaching.models import QuestionBankOrgStatus
 from app.features.teaching.schemas import (
     CaptionCompleteIn,
@@ -407,6 +409,24 @@ async def org_unit_error_handler(
     request: Request, exc: OrgUnitError
 ) -> Response:
     """Answer something refused at an org unit with its own words.
+
+    The status and the message are the class's, fixed where the refusal
+    is defined, so this formats nothing. The body is the one an
+    ``HTTPException`` gives.
+    """
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.message},
+    )
+
+
+@app.exception_handler(TeachingError)
+async def teaching_error_handler(
+    request: Request, exc: TeachingError
+) -> Response:
+    """Answer something refused of teaching content with its own words.
 
     The status and the message are the class's, fixed where the refusal
     is defined, so this formats nothing. The body is the one an
@@ -4727,9 +4747,6 @@ def ci_transcode_complete(
     outputs and rewrites the same columns, which is what makes a manual
     re-run a safe remedy.
     """
-    from app.features.teaching.models import ModuleMediaLink
-    from app.features.teaching.transcode import RENDITION_FLAGS, start_caption
-
     token = settings.TEACHING_TRANSCODE_CALLBACK_TOKEN
 
     if not token:
@@ -4745,62 +4762,9 @@ def ci_transcode_complete(
     if not hmac.compare_digest(provided, token.get_secret_value()):
         raise HTTPException(401, "Invalid token")
 
-    link = db.execute(
-        select(ModuleMediaLink).where(
-            ModuleMediaLink.organisation_id == body.org_id,
-            ModuleMediaLink.question_bank_id == body.module_id,
-            ModuleMediaLink.asset_id == body.asset_id,
-        )
-    ).scalar_one_or_none()
-
-    if link is None:
-        # A job whose link row was deleted while it ran. Not an error the
-        # job can act on, and it must not retry: the bytes it wrote are
-        # orphaned and the lifecycle rule will sweep them.
-        raise HTTPException(404, "No such media asset")
-
-        # The job reports filenames; the suffix-to-column mapping lives here,
-        # in the one org_unit that already owns it. A job that knew column names
-        # would need redeploying whenever one was renamed.
-    names = set(body.outputs)
-    set_flags: list[str] = []
-
-    for field, suffix in RENDITION_FLAGS:
-        present = any(name.endswith(suffix) for name in names)
-        setattr(link, field, present)
-        if present:
-            set_flags.append(field)
-
-            # Last, and only once the flags are right: this is what the
-            # availability gate reads, so setting it before them would open a
-            # window where a module is servable and its renditions unrecorded.
-    link.transcoded_at = datetime.now(UTC)
-    db.flush()
-
-    logger.info(
-        "transcode recorded org=%s module=%s asset=%s outputs=%d",
-        body.org_id,
-        body.module_id,
-        body.asset_id,
-        len(names),
+    set_flags = record_transcode(
+        db, body.org_id, body.module_id, body.asset_id, body.outputs
     )
-
-    # Captions follow the renditions, and only now can they: Whisper
-    # transcribes the 720p file, so firing at upload would race a job
-    # that takes minutes and lose. Fired after the flush, so a caption
-    # job that starts immediately finds the row already recorded.
-    #
-    # Never allowed to fail this request. The renditions are what was
-    # being recorded here, and losing `transcoded_at` over an
-    # unreachable caption job would keep the module hidden - a missing
-    # subtitle track is a smaller fault than a video nobody can watch.
-    if any(name.endswith("-720p.mp4") for name in names):
-        # Recorded before firing, as the transcode invocation is: a card
-        # that says nothing is running over a job that is would be the
-        # worse mistake of the two.
-        link.caption_started_at = datetime.now(UTC)
-        db.flush()
-        start_caption(body.org_id, body.module_id, body.asset_id)
 
     return TranscodeCompleteOut(recorded=True, flags=set_flags)
 
@@ -4828,8 +4792,6 @@ def ci_caption_complete(
     backend asked it to do - and a second secret would be two things to
     rotate for one guarantee.
     """
-    from app.features.teaching.models import ModuleMediaLink
-
     token = settings.TEACHING_TRANSCODE_CALLBACK_TOKEN
 
     if not token:
@@ -4845,31 +4807,7 @@ def ci_caption_complete(
     if not hmac.compare_digest(provided, token.get_secret_value()):
         raise HTTPException(401, "Invalid token")
 
-    link = db.execute(
-        select(ModuleMediaLink).where(
-            ModuleMediaLink.organisation_id == body.org_id,
-            ModuleMediaLink.question_bank_id == body.module_id,
-            ModuleMediaLink.asset_id == body.asset_id,
-        )
-    ).scalar_one_or_none()
-
-    if link is None:
-        raise HTTPException(404, "No such media asset")
-
-        # This column only. `captions_reviewed_at` is a human's statement
-        # that they read the text, and a job re-running must not erase it -
-        # nor claim it, which is why this never sets it either.
-    link.has_captions = True
-    db.flush()
-
-    # No caption text here or anywhere near this log: it is a transcript
-    # of a lecture and this log is not PHI-safe.
-    logger.info(
-        "captions recorded org=%s module=%s asset=%s",
-        body.org_id,
-        body.module_id,
-        body.asset_id,
-    )
+    record_captions(db, body.org_id, body.module_id, body.asset_id)
 
     return CaptionCompleteOut(recorded=True)
 
