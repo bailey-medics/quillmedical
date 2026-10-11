@@ -30,6 +30,7 @@ from app.messaging import (
     list_patient_conversations,
     mark_conversation_read,
     send_message,
+    set_conversation_status,
 )
 from app.models import (
     Conversation,
@@ -1747,3 +1748,102 @@ def test_somebody_neither_staff_here_nor_competent_is_told_about_the_place(
         join_conversation(
             db=db_session, conversation_id=conv.id, user=operator
         )
+
+
+# ---------------------------------------------------------------------------
+# Changing a conversation's status
+# ---------------------------------------------------------------------------
+
+
+def _status_of(db: Session, conv: Conversation) -> str | None:
+    return db.scalar(
+        select(Conversation.status).where(Conversation.id == conv.id)
+    )
+
+
+def test_the_status_of_a_conversation_that_does_not_exist_cannot_be_changed(
+    db_session: Session, nurse: User
+) -> None:
+    with pytest.raises(ConversationNotFound):
+        set_conversation_status(
+            db=db_session, conversation_id=9999, user=nurse, status="closed"
+        )
+
+
+def test_somebody_who_reads_from_outside_cannot_change_the_status(
+    db_session: Session, hospital: OrgUnit, nurse: User, colleague: User
+) -> None:
+    """They are answered as if there were no such conversation."""
+    conv = _conversation(
+        db_session,
+        places=[hospital],
+        participants=[colleague],
+        status="active",
+    )
+
+    with pytest.raises(ConversationNotFound):
+        set_conversation_status(
+            db=db_session,
+            conversation_id=conv.id,
+            user=nurse,
+            status="closed",
+        )
+
+    _settle(db_session)
+
+    assert _status_of(db_session, conv) == "active"
+
+
+def test_a_participant_changes_the_status(
+    db_session: Session, nurse: User, colleague: User
+) -> None:
+    conv = _conversation(
+        db_session, participants=[nurse, colleague], status="active"
+    )
+    other = _conversation(db_session, participants=[nurse], status="active")
+
+    changed, unread = set_conversation_status(
+        db=db_session, conversation_id=conv.id, user=nurse, status="resolved"
+    )
+
+    assert changed.id == conv.id
+    assert changed.status == "resolved"
+    assert unread == 0
+
+    _settle(db_session)
+
+    assert _status_of(db_session, conv) == "resolved"
+    assert _status_of(db_session, other) == "active"
+
+
+@pytest.mark.parametrize(
+    ("read_at_minute", "expected"),
+    [
+        pytest.param(None, 2, id="never opened"),
+        pytest.param(0, 2, id="opened before any of them"),
+        pytest.param(2, 1, id="opened between them"),
+        pytest.param(3, 0, id="opened as the last one arrived"),
+    ],
+)
+def test_changing_the_status_counts_unread_as_the_list_does(
+    db_session: Session,
+    nurse: User,
+    colleague: User,
+    read_at_minute: int | None,
+    expected: int,
+) -> None:
+    """Their own messages never count, read or not."""
+    conv = _conversation(db_session, participants=[nurse, colleague])
+    _message(db_session, conv, colleague, minutes=1)
+    _message(db_session, conv, nurse, minutes=2)
+    _message(db_session, conv, colleague, minutes=3)
+    _message(db_session, conv, nurse, minutes=4)
+
+    if read_at_minute is not None:
+        _read_at(db_session, conv, nurse, _at(read_at_minute))
+
+    _, unread = set_conversation_status(
+        db=db_session, conversation_id=conv.id, user=nurse, status="closed"
+    )
+
+    assert unread == expected

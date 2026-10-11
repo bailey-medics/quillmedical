@@ -119,6 +119,7 @@ from app.messaging import (
     list_patient_conversations,
     mark_conversation_read,
     send_message,
+    set_conversation_status,
 )
 from app.models import (
     Conversation,
@@ -4131,34 +4132,21 @@ def update_conversation_status_endpoint(
     Raises:
         HTTPException: 404 if not found or user is not a participant.
     """
-    conv = db.get(Conversation, conversation_id)
-
-    if conv is None:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-
-    cp = next(
-        (p for p in conv.participants if p.user_id == current_user.id), None
-    )
-
-    if cp is None:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-
-    conv.status = body.status
-    db.flush()
-    db.refresh(conv)
-
-    # Calculate unread
-    if cp.last_read_at:
-        unread = sum(
-            1
-            for m in conv.messages
-            if m.created_at > cp.last_read_at
-            and m.sender_id != current_user.id
+    # A refusal here goes out as a plain sentence, as it always has
+    # from this route. The other conversation routes send a message and
+    # an error code together, and changing this one to match would
+    # change what a caller is sent.
+    try:
+        conv, unread = set_conversation_status(
+            db=db,
+            conversation_id=conversation_id,
+            user=current_user,
+            status=body.status,
         )
-    else:
-        unread = sum(
-            1 for m in conv.messages if m.sender_id != current_user.id
-        )
+    except MessagingError as exc:
+        raise HTTPException(
+            status_code=exc.status_code, detail=exc.message
+        ) from exc
 
     last_msg = (
         max(conv.messages, key=lambda m: m.created_at)
