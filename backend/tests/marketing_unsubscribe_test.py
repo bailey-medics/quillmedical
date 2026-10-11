@@ -70,7 +70,13 @@ class TestTheToken:
 
     def test_a_changed_token_is_refused(self):
         token = create_marketing_unsubscribe_token(42)
-        tampered = token[:-1] + ("A" if token[-1] != "A" else "B")
+
+        # The first character of the signature, not the last: the last
+        # holds only some of its bits, so a change there can leave the
+        # signature as it was, and did about one time in sixteen.
+        body, signature = token.rsplit(".", 1)
+        swapped = "A" if signature[0] != "A" else "B"
+        tampered = f"{body}.{swapped}{signature[1:]}"
 
         assert verify_marketing_unsubscribe_token(tampered) is None
 

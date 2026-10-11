@@ -60,9 +60,17 @@ def _run_out() -> str:
 
 
 def _altered() -> str:
-    token = _invite()
+    """An invite with the first character of its signature changed.
 
-    return token[:-1] + ("A" if token[-1] != "A" else "B")
+    The first and not the last. The last character of a signature holds
+    only some of its bits, so two different characters there can stand
+    for the same signature, and a token "altered" that way still passed
+    about one time in sixteen.
+    """
+    body, signature = _invite().rsplit(".", 1)
+    swapped = "A" if signature[0] != "A" else "B"
+
+    return f"{body}.{swapped}{signature[1:]}"
 
 
 def _accounts(db: Session) -> list[str]:
