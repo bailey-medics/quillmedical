@@ -1245,7 +1245,13 @@ is now 4,654 lines and 69 routes.
       neighbours now name the new module, which is where the routes
       look them up.
 
-- [ ] Move the conversation and messaging routes (9).
+- [x] Move the conversation and messaging routes (9). Done on 12
+      October 2026: `backend/app/messaging_router.py`, beside
+      `messaging.py`, which holds the rules. Ten routes, the nine
+      under `/conversations` and
+      `GET /patients/{patient_id}/conversations`. The comment saying
+      why these routes carry no competency check went with them; it
+      had been sitting, indented, at the foot of the route above.
 
 - [ ] Move the user administration routes (8), with
       `AdminUserCreateIn` and `AdminUserUpdateIn`, which belong in
