@@ -9,18 +9,18 @@ match is **audited**; one whose contents have moved on is **changed**; one
 with no line on the card is **unaudited**.
 
 A stamp also says who made it, taken from the name and email git is
-set up with. Several people may stamp the same file, each on a line of
-their own, and a file counts as audited when anybody's stamp matches what
-it holds now.
+set up with. A file has one stamp. Stamping it again, whoever does it,
+replaces the stamp that was there, and git's history keeps the earlier
+ones.
 
 The commands:
 
 - `mark <paths>` stamps files, or every file in a folder, as audited by
   you.
-- `unmark <paths>` takes your stamp off again, for a file stamped by
-  mistake. Nobody else's stamp is touched.
-- `adopt` puts your name on stamps that have none, which are the ones
-  made before stamps carried a name.
+- `unmark <paths>` takes the stamp off again, for a file stamped by
+  mistake.
+- `check` fails when a file has more than one stamp, which only a merge
+  can leave. The pre-commit hooks run it, and so does CI.
 - `status` says how much is audited, in two lines. `status f` (or `full`)
   adds the files changed since their audit and the lines left in each
   folder; `status <path>` lists that folder file by file.
@@ -36,7 +36,9 @@ in a worktree, committed on a branch and reaches everybody when that
 branch merges, so anybody may audit and git's history says who added
 what. Paths on it are relative to the repository root. `.gitattributes`
 merges the card by keeping both sides' lines, so two people stamping at
-once do not conflict.
+once do not conflict. Where both stamped the same file, that leaves two
+lines for it: `check` refuses them, and stamping the file again leaves
+one.
 """
 
 from __future__ import annotations
@@ -119,8 +121,9 @@ class Stamp:
 
     @property
     def who(self) -> str:
-        """What tells one reviewer from another: the email, or the name
-        where there is no email. Empty for a stamp with neither."""
+        """The email, or the name where there is no email. Empty for a
+        stamp with neither. Only the order of two stamps a merge has left
+        on one file is taken from it."""
         return (self.email or self.reviewer).lower()
 
 
@@ -131,10 +134,6 @@ class Reviewer:
     name: str
     email: str
 
-    @property
-    def who(self) -> str:
-        return (self.email or self.name).lower()
-
 
 @dataclass(frozen=True)
 class FileState:
@@ -144,7 +143,8 @@ class FileState:
     lines: int
     state: str  # "audited", "changed" or "unaudited"
     stamp: Stamp | None = None
-    # Who has audited this version, or for a changed file an earlier one.
+    # Who audited this version, or for a changed file an earlier one. One
+    # name, unless a merge has left two stamps on the file.
     readers: tuple[str, ...] = ()
 
 
@@ -245,7 +245,11 @@ Card = dict[str, list[Stamp]]
 
 
 def read_ledger(path: Path) -> Card:
-    """Read the card: for each file, every stamp on it.
+    """Read the card: for each file, the stamps on it.
+
+    One stamp, unless a merge has left two: see `command_check`. They
+    are read all the same, so that stamping the file again can put it
+    right.
 
     A missing card is an empty one. A line with three columns is from
     before stamps carried a name, and is read as a stamp with none.
@@ -421,9 +425,10 @@ def names_of(stamps: list[Stamp]) -> tuple[str, ...]:
 def states_under(path: str, card: Card) -> list[FileState]:
     """Every file beneath a path, set against the card.
 
-    A file is audited when anybody's stamp matches what it holds now. The
-    stamp reported is the newest of those that match, or for a changed
-    file the newest there is, which is the one to compare against.
+    A file is audited when its stamp matches what it holds now. Where a
+    merge has left two stamps, either matching will do, and the stamp
+    reported is the newest of those that match, or for a changed file
+    the newest there is, which is the one to compare against.
     """
     paths = files_under(path)
     current = fingerprints(paths, keep=False)
@@ -478,14 +483,9 @@ def command_mark(raw_paths: list[str]) -> int:
         stamps = read_ledger(card)
 
         for name in paths:
-            # Mine replaces the one I made before, and one with no name
-            # on it. Anybody else's stays.
-            others = [
-                held
-                for held in stamps.get(name, [])
-                if held.who and held.who != me.who
-            ]
-            stamps[name] = others + [
+            # One stamp a file: this replaces whatever was there, whoever
+            # made it.
+            stamps[name] = [
                 Stamp(
                     fingerprint=current[name],
                     stamped_on=today,
@@ -508,10 +508,9 @@ def command_mark(raw_paths: list[str]) -> int:
 
 
 def command_unmark(raw_paths: list[str]) -> int:
-    """Take your stamp off files, or off every file in a folder.
+    """Take the stamp off files, or off every file in a folder.
 
-    Only yours, and any with no name on it. A stamp is one person saying
-    they audited something, so nobody else can take it back for them.
+    Whoever made it. Git's history says who took it off.
     """
     if not raw_paths:
         print("Give a file or a folder: just unreviewed backend/app/deps.py")
@@ -519,9 +518,6 @@ def command_unmark(raw_paths: list[str]) -> int:
 
     scopes = [relative(raw) for raw in raw_paths]
     card = ledger_path()
-    me = current_reviewer()
-    gone = 0
-    kept_for_others = 0
 
     with ledger_lock():
         stamps = read_ledger(card)
@@ -538,86 +534,55 @@ def command_unmark(raw_paths: list[str]) -> int:
         ]
 
         for name in named:
-            others = [
-                held
-                for held in stamps[name]
-                if held.who and held.who != me.who
-            ]
+            del stamps[name]
 
-            if len(others) == len(stamps[name]):
-                kept_for_others += 1
-                continue
-
-            gone += 1
-            if others:
-                stamps[name] = others
-            else:
-                del stamps[name]
-
-        if gone:
+        if named:
             write_ledger(card, stamps)
 
-    if not gone:
-        if kept_for_others:
-            print("None of those had a stamp of yours.")
-        else:
-            print("None of those had a stamp.")
+    if not named:
+        print("None of those had a stamp.")
         return 1
 
-    noun = "file" if gone == 1 else "files"
-    print(f"Took your stamp off {gone} {noun}.")
+    noun = "file" if len(named) == 1 else "files"
+    print(f"Took the stamp off {len(named)} {noun}.")
 
     return command_status(None)
 
 
-def command_adopt() -> int:
-    """Put your name on every stamp that has none.
+def command_check() -> int:
+    """Fail when a file has more than one stamp on the card.
 
-    For the stamps made before stamps carried a name. Run once, by the
-    person who made them. Where you have since stamped the same file
-    again, the nameless stamp is simply dropped: yours already says it.
+    This script never writes two. A merge does: `.gitattributes` keeps
+    both sides' lines, so two branches that each stamped a file leave two
+    lines for it. That is let through at the merge, so nobody has a
+    conflict to settle by hand, and stopped here.
     """
-    card = ledger_path()
-    me = current_reviewer()
-    adopted = 0
+    stamps = read_ledger(ledger_path())
+    twice = sorted(name for name, held in stamps.items() if len(held) > 1)
 
-    with ledger_lock():
-        stamps = read_ledger(card)
-
-        for name, held in stamps.items():
-            nameless = [stamp for stamp in held if not stamp.who]
-
-            if not nameless:
-                continue
-
-            adopted += 1
-            named = [stamp for stamp in held if stamp.who]
-
-            if any(stamp.who == me.who for stamp in named):
-                stamps[name] = named
-                continue
-
-            newest = max(nameless, key=lambda stamp: stamp.stamped_on)
-            stamps[name] = named + [
-                Stamp(
-                    fingerprint=newest.fingerprint,
-                    stamped_on=newest.stamped_on,
-                    reviewer=me.name,
-                    email=me.email,
-                )
-            ]
-
-        if adopted:
-            write_ledger(card, stamps)
-
-    if not adopted:
-        print("Every stamp already has a name on it.")
+    if not twice:
         return 0
 
-    noun = "stamp" if adopted == 1 else "stamps"
-    print(f"Put the name {me.name} on {adopted} {noun} that had none.")
+    noun = "file has" if len(twice) == 1 else "files have"
+    print(
+        f"{len(twice)} {noun} more than one stamp in {LEDGER_PATH}:",
+        file=sys.stderr,
+    )
 
-    return 0
+    for name in twice:
+        print(f"  {name}", file=sys.stderr)
+
+    print(
+        "A file keeps one stamp. Two branches stamped the same file, and "
+        "the merge kept both lines.\n"
+        "Audit each file as it is now and stamp it again, which leaves "
+        "one stamp:\n"
+        "  just r <path>\n"
+        "Or take the stamp off: just ur <path>",
+        file=sys.stderr,
+    )
+
+    return 1
 
 
 def summary_line(label: str, states: list[FileState]) -> str:
@@ -707,9 +672,9 @@ def command_states() -> int:
 
     Tab-separated: state, lines, the date it was stamped, the fingerprint
     it was stamped with, code or test, who audited it, path. The date, the
-    fingerprint and the names are empty for an unaudited file. The names are
-    of everybody whose stamp matches the file now, or for a changed file
-    of everybody who audited an earlier version, with ", " between them.
+    fingerprint and the name are empty for an unaudited file. Where a
+    merge has left two stamps on a file there are two names, with ", "
+    between them.
     """
     stamps = read_ledger(ledger_path())
 
@@ -735,11 +700,8 @@ def command_diff(raw_path: str) -> int:
         print(f"{path} has not been stamped, so there is nothing to compare.")
         return 1
 
-    # What changed since I audited it, where I have: otherwise since
-    # whoever audited it last.
-    me = git_setting("user.email") or git_setting("user.name")
-    mine = [stamp for stamp in held if stamp.who == me.lower()]
-    stamp = max(mine or held, key=lambda found: found.stamped_on)
+    # One stamp, unless a merge has left two: then the newest.
+    stamp = max(held, key=lambda found: found.stamped_on)
 
     if not (repo_root() / path).is_file():
         print(f"{path} is no longer here.")
@@ -782,10 +744,10 @@ def main() -> int:
     )
     mark.add_argument("paths", nargs="*")
 
-    unmark = commands.add_parser("unmark", help="take your stamp off again")
+    unmark = commands.add_parser("unmark", help="take the stamp off again")
     unmark.add_argument("paths", nargs="*")
 
-    commands.add_parser("adopt", help="put your name on stamps with none")
+    commands.add_parser("check", help="fail when a file has two stamps")
 
     status = commands.add_parser(
         "status", help="what is audited and what is not"
@@ -803,8 +765,8 @@ def main() -> int:
         return command_mark(args.paths)
     if args.command == "unmark":
         return command_unmark(args.paths)
-    if args.command == "adopt":
-        return command_adopt()
+    if args.command == "check":
+        return command_check()
     if args.command == "status":
         return command_status(args.path)
     if args.command == "states":

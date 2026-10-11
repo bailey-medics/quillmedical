@@ -122,6 +122,17 @@ repos:
         files: ^backend/alembic/versions/.*\.py$
         pass_filenames: false
 
+      # A file keeps one stamp in the audit ledger. Git merges the
+      # ledger by keeping both sides' lines (see .gitattributes), so two
+      # branches that stamped the same file leave two lines for it, and
+      # this is what stops them: here, in CI and in the merge queue.
+      - id: check-audit-ledger
+        name: check the audit ledger
+        entry: python3 scripts/review-ledger.py check
+        language: system
+        files: ^(audit/ledger\.tsv|scripts/review-ledger\.py)$
+        pass_filenames: false
+
       - id: check-api-schema-coverage
         name: check API schema coverage
         entry: env -u VIRTUAL_ENV poetry -C backend run python3 scripts/check_api_schema_coverage.py --all --dev
