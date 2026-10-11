@@ -56,9 +56,6 @@ from app.cbac.competencies import (
 )
 from app.cbac.grant_scope import scope_for
 from app.cbac.grants import sync_competency_rows
-from app.cbac.positions import (
-    clinical_leads_of,
-)
 from app.cbac.practising import competencies_at
 from app.compat_harness_endpoints import test_api_router
 from app.config import settings
@@ -81,12 +78,7 @@ from app.email_send import (
     send_email,
 )
 from app.features.passport.models import Passport
-from app.features.teaching.access import (
-    MODULES_COMPETENCY,
-    give_place,
-)
 from app.features.teaching.enrolment import current_enrolments
-from app.features.teaching.enrolment import enrol as enrol_on_module
 from app.features.teaching.models import QuestionBankOrgStatus
 from app.features.teaching.schemas import (
     CaptionCompleteIn,
@@ -145,13 +137,9 @@ from app.org_units import (
 from app.org_units.errors import OrgUnitError
 from app.org_units.router import router as org_units_router
 from app.org_units.tree import (
-    descendant_ids,
     organisation_org_unit_ids,
-    organisation_org_unit_of_site,
-    root_ids_of,
 )
 from app.organisations import (
-    add_org_unit_member,
     feature_holder_ids_of,
     get_accessible_patient_ids,
     get_org_unit_staff_ids,
@@ -167,7 +155,6 @@ from app.push_send import router as push_send_router
 from app.rate_limit import limiter
 from app.schemas.auth import (
     ChangePasswordIn,
-    ClinicalLeadSite,
     DetailResponse,
     ForgotPasswordIn,
     HealthCheckOut,
@@ -260,6 +247,11 @@ from app.security import (
 )
 from app.users.create import NewAccount, create_account
 from app.users.errors import UserAdminError
+from app.users.register import (
+    Registration,
+    clinical_lead_site,
+    register_account,
+)
 from app.users.scope import check_account_in_scope
 from app.users.update import AccountChanges, update_account
 
@@ -1039,7 +1031,6 @@ def list_teaching_modules_public(
     """
     from app.features.teaching.models import (
         QuestionBankConfig,
-        QuestionBankOrgStatus,
     )
 
     registrable_bank_ids = (
@@ -1095,121 +1086,6 @@ class ValidateClinicalLeadIn(BaseModel):
     bank_id: str
 
     model_config = {"extra": "forbid"}
-
-
-def clinical_lead_site(
-    db: Session, email: str, bank_id: str
-) -> ValidateClinicalLeadOut:
-    """Work out where a clinical lead's email admits somebody for a bank.
-
-    The one place this rule lives. The first step of registration asks it
-    through ``validate_clinical_lead`` to say which site a delegate is
-    joining, and ``register`` asks it again, because what the browser
-    sends back in between proves nothing.
-
-    Args:
-        db: Database session.
-        email: The clinical lead's email, as typed.
-        bank_id: The teaching module being joined.
-
-    Returns:
-        ``valid`` is true only where the email belongs to somebody who is
-        clinical lead at a site beneath an organisation that has opened
-        the bank to registration. ``sites`` lists every such site by
-        name. The single site and organisation come with it only where
-        there is one: with several the delegate chooses.
-    """
-    from app.features.teaching.models import QuestionBankOrgStatus
-
-    email = normalise_email(email)
-
-    # Find the user by email (case-insensitive)
-    user = (
-        db.execute(select(User).where(User.email.ilike(email)))
-        .scalars()
-        .first()
-    )
-
-    if not user:
-        return ValidateClinicalLeadOut(valid=False)
-
-    # The org_units offering this bank for site registration. Counted in
-    # org_unit ids, which is what the table holds.
-    place_ids = (
-        db.execute(
-            select(QuestionBankOrgStatus.org_unit_id).where(
-                QuestionBankOrgStatus.question_bank_id == bank_id,
-                QuestionBankOrgStatus.site_registration.is_(True),
-            )
-        )
-        .scalars()
-        .all()
-    )
-    offering = [p for p in place_ids if p is not None]
-
-    if not offering:
-        return ValidateClinicalLeadOut(valid=False)
-
-    # Every org_unit beneath them, at any depth. The offering org_units are
-    # organisations' own rows, so they are roots and excluded - a lead
-    # holds their post at a ward, not at the trust.
-    site_ids = sorted(descendant_ids(db, offering))
-
-    if not site_ids:
-        return ValidateClinicalLeadOut(valid=False)
-
-    # Which of those sites this user holds the clinical lead post at.
-    # Read from positions rather than site_member.role: the post is
-    # the thing being asked about, and a post can be vacant, which a role
-    # column cannot express.
-    leads = clinical_leads_of(db, list(site_ids))
-    held_at = [site_id for site_id, lead in leads.items() if lead == user.id]
-
-    if not held_at:
-        return ValidateClinicalLeadOut(valid=False)
-
-    # Every one of them, not the first. A lead may hold the post at two
-    # hospitals, and taking whichever came first put a delegate at a site
-    # nobody had chosen. Kept only where the organisation accountable for
-    # the site is one offering the bank.
-    names = {
-        row.id: row.name
-        for row in db.execute(
-            select(OrgUnit.id, OrgUnit.name).where(OrgUnit.id.in_(held_at))
-        )
-    }
-    roots = root_ids_of(db, held_at)
-    sites: list[ClinicalLeadSite] = []
-
-    for held_site_id in held_at:
-        accountable = roots.get(held_site_id)
-        if accountable is None or accountable not in offering:
-            continue
-        sites.append(
-            ClinicalLeadSite(
-                site_id=held_site_id,
-                site_name=names.get(held_site_id, ""),
-                org_unit_id=accountable,
-            )
-        )
-    sites.sort(key=lambda site: (site.site_name.casefold(), site.site_id))
-    if not sites:
-        return ValidateClinicalLeadOut(valid=False)
-
-    # One site is the answer. Several are a question for the delegate,
-    # so the single fields are left empty and nothing is picked here.
-    if len(sites) > 1:
-        return ValidateClinicalLeadOut(valid=True, sites=sites)
-
-    only = sites[0]
-
-    return ValidateClinicalLeadOut(
-        valid=True,
-        sites=sites,
-        site_name=only.site_name,
-        org_unit_id=only.org_unit_id,
-        site_id=only.site_id,
-    )
 
 
 @router.post(
@@ -1275,11 +1151,11 @@ def register(
 
     Raises:
         HTTPException: 403 if clinical services are enabled.
-        HTTPException: 400 if validation fails or constraints violated:
-            - "Missing fields" if username, email, or password empty
-            - "Password must be at least 8 characters" if shorter
-            - "Username already exists" if username taken
-            - "Email already exists" if email taken
+        UserAdminError: 400 for whatever ``register_account`` refuses.
+            See :mod:`app.users.register` for each. A username or an
+            address that is taken gets one answer, which does not say
+            which.
+        HTTPException: 400 if this environment may not email the address.
         HTTPException: 429 if that address has had its hour's allowance.
         HTTPException: 502 if the verification email could not be sent,
             in which case no account was created.
@@ -1290,217 +1166,20 @@ def register(
             detail="Self-registration is not available in this environment",
         )
 
-    username = payload.username.strip()
-    email = normalise_email(payload.email)
-
-    if not username or not email or not payload.password:
-        raise HTTPException(status_code=400, detail="Missing fields")
-
-    if len(payload.password) < 8:
-        raise HTTPException(
-            status_code=400,
-            detail="Password must be at least 8 characters",
-        )
-
-        # Use generic message to prevent account enumeration
-    existing = db.scalar(select(User).where(User.username == username))
-
-    if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="Username or email already in use",
-        )
-
-    existing = db.scalar(select(User).where(User.email == email))
-
-    if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="Username or email already in use",
-        )
-
-    # A site or a module is only ever reached through a clinical lead.
-    # The first step checked theirs and told the browser which site and
-    # organisation that meant; the browser then sends those back, and a
-    # crafted request could send any others. So the lead is named again
-    # here and the server works both out for itself. What the browser
-    # sent is only compared with that, and refused if it differs.
-    #
-    # An organisation named on its own is held to the same rule. It used
-    # to join that organisation as a trainee with nothing checked: no
-    # page sends it, but a crafted request could.
-    org_unit_id = payload.org_unit_id
-    site_id = payload.site_id
-
-    if (
-        payload.org_unit_id is not None
-        or payload.site_id is not None
-        or payload.teaching_module_id is not None
-    ):
-        if (
-            payload.clinical_lead_email is None
-            or payload.teaching_module_id is None
-        ):
-            raise HTTPException(
-                status_code=400,
-                detail="A clinical lead and a module are required to "
-                "join a site",
-            )
-        admitted = clinical_lead_site(
-            db, payload.clinical_lead_email, payload.teaching_module_id
-        )
-        if not admitted.valid or not admitted.sites:
-            raise HTTPException(
-                status_code=400, detail="Clinical lead not recognised"
-            )
-        # A lead at one site needs no site named. A lead at several
-        # does: the delegate chose on the page, and a request without
-        # the choice is refused, never settled by taking the first.
-        if payload.site_id is None:
-            if len(admitted.sites) > 1:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Choose which of the clinical lead's sites "
-                    "to join",
-                )
-            chosen = admitted.sites[0]
-        else:
-            matching = [
-                site
-                for site in admitted.sites
-                if site.site_id == payload.site_id
-            ]
-            if not matching:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Site does not match the clinical lead",
-                )
-            chosen = matching[0]
-        if payload.org_unit_id not in (None, chosen.org_unit_id):
-            raise HTTPException(
-                status_code=400,
-                detail="Site does not match the clinical lead",
-            )
-        org_unit_id = chosen.org_unit_id
-        site_id = chosen.site_id
-
-    user = User(
-        username=username,
-        full_name=(
-            payload.full_name.strip()
-            if payload.full_name and payload.full_name.strip()
-            else None
+    user = register_account(
+        db,
+        Registration(
+            username=payload.username,
+            email=payload.email,
+            password=payload.password,
+            full_name=payload.full_name,
+            org_unit_id=payload.org_unit_id,
+            site_id=payload.site_id,
+            marketing_opt_out=payload.marketing_opt_out,
+            teaching_module_id=payload.teaching_module_id,
+            clinical_lead_email=payload.clinical_lead_email,
         ),
-        email=email,
-        password_hash=hash_password(payload.password),
-        # Self-registration is refused above where clinical services are
-        # on, so everybody arriving here is a teaching delegate. Given
-        # to the constructor, not assigned afterwards: the constructor
-        # is what writes a profession's competencies as rows, and it
-        # wrote a patient's for an account that was then relabelled. A
-        # registered delegate held nothing from teaching at all.
-        base_profession="teaching_delegate",
     )
-
-    db.add(user)
-    db.flush()  # Assigns user.id so we can create memberships
-
-    # Registration is an opt-out: somebody shown the sentence who leaves
-    # the box unticked is sent news. A form that never showed it sends
-    # nothing here, and that person is left unsubscribed.
-    if payload.marketing_opt_out is not None:
-        set_marketing_preference(
-            db,
-            user,
-            wants=not payload.marketing_opt_out,
-            source="registration",
-            wording_version=MARKETING_WORDING_VERSION,
-            first_answer=True,
-        )
-
-    # Add the user to the org_unit they named. It has to be an
-    # organisation: registration offers the tops of trees, and a
-    # membership of a ward is what the site branch below writes.
-    if org_unit_id is not None:
-        if org_unit_id not in organisation_org_units_of(db, [org_unit_id]):
-            raise HTTPException(
-                status_code=400, detail="Organisation not found"
-            )
-        # Public registration is how teaching delegates arrive, and they
-        # are not staff. Recording that here is what lets the admin page
-        # and the messaging self-join check tell them apart; previously
-        # nothing could.
-        add_org_unit_member(db, org_unit_id, user.id, "trainee")
-
-    # Add the user to the selected site as a trainee
-    if site_id is not None:
-        if org_unit_id is None:
-            raise HTTPException(
-                status_code=400,
-                detail="org_unit_id required when site_id is provided",
-            )
-        # Verify the org_unit exists AND sits beneath the organisation given
-        site = db.get(OrgUnit, site_id)
-        # There is more than one kind of organisation - a practice and a
-        # teaching establishment are both tops of trees - so the test is
-        # the flag, not one name.
-        if site is None or site.type in ROOT_TYPE_IDS:
-            raise HTTPException(status_code=400, detail="Site not found")
-        if organisation_org_unit_of_site(db, site_id) != org_unit_id:
-            raise HTTPException(status_code=400, detail="Site not found")
-        db.execute(
-            org_unit_member.insert().values(
-                org_unit_id=site_id,
-                user_id=user.id,
-                capacity="trainee",
-            )
-        )
-
-    # Belonging somewhere is not enough to take its modules: teaching
-    # asks for a row saying where. Registering through a centre's link
-    # is how a delegate arrives, so the row is written here, at the site
-    # they named or else the organisation. Nobody is signed in to be
-    # named as having authorised it; the link admitted them.
-    place_id = site_id or org_unit_id
-
-    if (
-        place_id is not None
-        and MODULES_COMPETENCY in user.get_final_competencies()
-    ):
-        give_place(db, user, place_id)
-
-    # The join link names a module, and arriving through it enrols the
-    # person on that module and no other. Only where the organisation
-    # has opened the module to registration, which is what the public
-    # module list reads: otherwise a crafted request could enrol
-    # somebody on anything the organisation serves.
-    if payload.teaching_module_id is not None:
-        if org_unit_id is None:
-            raise HTTPException(
-                status_code=400,
-                detail="org_unit_id required when teaching_module_id "
-                "is provided",
-            )
-        open_to_registration = db.scalar(
-            select(QuestionBankOrgStatus.id).where(
-                QuestionBankOrgStatus.org_unit_id == org_unit_id,
-                QuestionBankOrgStatus.question_bank_id
-                == payload.teaching_module_id,
-                QuestionBankOrgStatus.site_registration.is_(True),
-            )
-        )
-        if open_to_registration is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Module is not open to registration",
-            )
-        enrol_on_module(
-            db,
-            user.id,
-            org_unit_id=org_unit_id,
-            question_bank_id=payload.teaching_module_id,
-            source="registration",
-        )
 
     # The mail goes before the commit, and a failure abandons the whole
     # registration. An account nobody can verify is worse than no
@@ -1510,12 +1189,12 @@ def register(
     #
     # Nothing here needs the commit. The token is signed from the email
     # address alone, so it can be minted before the row is durable.
-    token = create_email_verify_token(email)
+    token = create_email_verify_token(user.email)
     verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
 
     try:
         send_email(
-            to=email,
+            to=user.email,
             **send_args(_verification_email(user, verify_url, welcome=True)),
         )
     except EmailRateLimitError:

@@ -33,6 +33,11 @@ it.
 Nothing else may be passed: no account id, no query, no name, and
 nothing a person typed.
 
+The refusals of :mod:`app.users.register` are here too, though the
+person refused is making their own account and administering nobody's.
+One of them, :class:`UsernameOrEmailInUse`, is deliberately one class
+for two reasons, so its words cannot come to say which.
+
 ``app.main`` registers one handler for :class:`UserAdminError`, which
 answers with the class's status and ``{"detail": message}``. That is the
 body an ``HTTPException`` gives, so a rule moved out of a route answers
@@ -224,3 +229,54 @@ class PracticeRefused(UserAdminError):
 
         self.status_code = refusals[0].status_code
         super().__init__(" ".join(reasons))
+
+
+class RegistrationFieldsMissing(UserAdminError):
+    message = "Missing fields"
+
+
+class UsernameOrEmailInUse(UserAdminError):
+    """A registration naming a username or an address an account has.
+
+    One refusal for two reasons, in the same words. Registration is
+    open to anybody, so an answer that said which was taken would tell
+    a stranger whether an address has an account.
+    """
+
+    message = "Username or email already in use"
+
+
+class ClinicalLeadAndModuleRequired(UserAdminError):
+    message = "A clinical lead and a module are required to join a site"
+
+
+class ClinicalLeadNotRecognised(UserAdminError):
+    message = "Clinical lead not recognised"
+
+
+class SiteNotChosen(UserAdminError):
+    message = "Choose which of the clinical lead's sites to join"
+
+
+class SiteNotTheClinicalLeads(UserAdminError):
+    message = "Site does not match the clinical lead"
+
+
+class OrganisationNotFound(UserAdminError):
+    message = "Organisation not found"
+
+
+class SiteNotFound(UserAdminError):
+    message = "Site not found"
+
+
+class OrganisationRequiredForSite(UserAdminError):
+    message = "org_unit_id required when site_id is provided"
+
+
+class OrganisationRequiredForModule(UserAdminError):
+    message = "org_unit_id required when teaching_module_id is provided"
+
+
+class ModuleNotOpenToRegistration(UserAdminError):
+    message = "Module is not open to registration"
