@@ -16,8 +16,10 @@ name and email as git has them.
 
 The fingerprint is the point. A file edited after its audit no longer
 matches, so it shows as changed and not as audited, and what has to be
-looked at is the change. Several people may stamp the same file, each on
-a line of their own.
+looked at is the change.
+
+A file has one stamp. Stamping it again, whoever does it, replaces the
+stamp that was there. The earlier ones are in git's history.
 
 ## Stamping
 
@@ -26,7 +28,7 @@ just r backend/app/deps.py    # stamp a file, or a folder, as audited by you
 just rs                       # how much is audited
 just rs backend/app           # one folder, file by file, with who audited each
 just rd backend/app/deps.py   # what changed since the stamp
-just ur backend/app/deps.py   # take your own stamp off
+just ur backend/app/deps.py   # take the stamp off
 ```
 
 Or in the editor, with the extension in `tools/review-marks/`: a tick on
@@ -51,6 +53,20 @@ then land the lot as one small pull request.
 Git's history is the proof of who added each stamp, and the way back
 from a mistake. `.gitattributes` merges this file by keeping both sides'
 lines, so two people stamping at once do not conflict.
+
+## Two stamps on one file
+
+Where two branches both stamped the same file, that merge leaves two
+lines for it. Nothing stops the merge. The check that follows does:
+
+```bash
+python3 scripts/review-ledger.py check
+```
+
+It runs in the pre-commit hooks, and so in CI and in the merge queue,
+and names each file with more than one stamp. Audit the file as it is
+now and stamp it again with `just r`, which leaves one stamp, or take
+the stamp off with `just ur`.
 
 ## What is on the card
 

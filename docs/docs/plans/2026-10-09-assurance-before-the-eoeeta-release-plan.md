@@ -111,6 +111,25 @@ carries on from there as a standing part of how Quill is built.
       check can do is tell a real audit from a line typed in with the
       right fingerprint; git's history says who added each line.
 
+- [x] Keep one stamp for each file. Done on 11 October 2026, the same
+      day, and it replaces "several people may stamp the same file"
+      two steps above. Mark: "one stamp per file, full stop. git can
+      show us the history of who stamped what and when". Stamping a
+      file replaces whatever stamp was there, whoever made it, and
+      `just ur` takes the stamp off whoever made it. `adopt` is gone:
+      no stamp on the card was without a name. Two branches that both
+      stamp one file still merge without a conflict, because the merge
+      keeps both lines, and that leaves the file with two. Mark chose
+      to let the merge through and fail afterwards, over a plain git
+      conflict, which would also fire for two files that sit next to
+      each other on the card. `scripts/review-ledger.py check` fails
+      and names each such file, from a hook in
+      `.pre-commit-config.yaml`, so it runs at commit, in the required
+      `Python pre-commit` check and in the merge queue. Stamping the
+      file again leaves one stamp. Not changed: a stamp taken off on
+      one branch can still come back in a merge, when the other branch
+      changed a line beside it.
+
 - [x] Call it what it is. The words the tool prints, the editor shows
       and the recipes describe changed from "read" to "audited", and
       the three states are audited, changed and unaudited.
@@ -1073,7 +1092,7 @@ found as a bug to fix on its own branch before going on.
   folder, and was overwritten there on 11 October 2026 with nothing to
   restore it from. One file for everybody, not one for each auditor:
   the union merge in `.gitattributes` takes care of two people stamping
-  at once.
+  at once, and a check fails where both stamped the same file.
 
 - **The auditor may be the author** - the audit is a third look at the
   code as it stands, and there is one developer. Whoever wrote a file

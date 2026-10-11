@@ -36,6 +36,32 @@ as_reader() {
     git -C "$MAIN" config user.email "$2"
 }
 
+# merge_keeping_both_sides: give both branches the rule .gitattributes
+# holds for the card, `audit/ledger.tsv merge=union`.
+merge_keeping_both_sides() {
+    printf 'audit/ledger.tsv merge=union\n' > "${MAIN}/.gitattributes"
+    git -C "$MAIN" add .gitattributes
+    git -C "$MAIN" -c user.name=t -c user.email=t@example.com \
+        commit -q -m "merge rule"
+    git -C "$OTHER" -c user.name=t -c user.email=t@example.com \
+        merge -q "$(git -C "$MAIN" branch --show-current)"
+}
+
+# stamp_and_commit <worktree> <name> <email> <path>: stamp one file as
+# that person and commit the card on the worktree's branch.
+stamp_and_commit() {
+    local where="$1"
+    local name="$2"
+    local email="$3"
+    local stamped="$4"
+
+    git -C "$where" config user.name "$name"
+    git -C "$where" config user.email "$email"
+    ledger "$where" mark "$stamped"
+    git -C "$where" add audit/ledger.tsv
+    git -C "$where" commit -q -m "audit: ${stamped}"
+}
+
 # ledger <worktree> <args...>: run the script from the root of a worktree.
 ledger() {
     local where="$1"
@@ -145,24 +171,9 @@ ledger() {
 }
 
 @test "two people stamping on two branches merge without a conflict" {
-    # What `audit/ledger.tsv merge=union` in .gitattributes is for.
-    printf 'audit/ledger.tsv merge=union\n' > "${MAIN}/.gitattributes"
-    git -C "$MAIN" add .gitattributes
-    git -C "$MAIN" -c user.name=t -c user.email=t@example.com \
-        commit -q -m "merge rule"
-    git -C "$OTHER" -c user.name=t -c user.email=t@example.com \
-        merge -q "$(git -C "$MAIN" branch --show-current)"
-
-    as_reader "Ada Reader" "ada@example.com"
-    ledger "$MAIN" mark backend/app/deps.py
-    git -C "$MAIN" add audit/ledger.tsv
-    git -C "$MAIN" commit -q -m "audit: deps"
-
-    git -C "$OTHER" config user.name "Ben Checker"
-    git -C "$OTHER" config user.email "ben@example.com"
-    ledger "$OTHER" mark backend/app/security.py
-    git -C "$OTHER" add audit/ledger.tsv
-    git -C "$OTHER" commit -q -m "audit: security"
+    merge_keeping_both_sides
+    stamp_and_commit "$MAIN" "Ada Reader" "ada@example.com" backend/app/deps.py
+    stamp_and_commit "$OTHER" "Ben Checker" "ben@example.com" backend/app/security.py
 
     run git -C "$MAIN" merge -q other
     [ "$status" -eq 0 ]
@@ -170,6 +181,101 @@ ledger() {
     run ledger "$MAIN" status backend/app
     [[ "$output" == *"audited         3  backend/app/deps.py  (Ada Reader)"* ]]
     [[ "$output" == *"audited         2  backend/app/security.py  (Ben Checker)"* ]]
+
+    run ledger "$MAIN" check
+    [ "$status" -eq 0 ]
+}
+
+@test "two people stamping the same file merge without a conflict, and the check then fails" {
+    merge_keeping_both_sides
+    stamp_and_commit "$MAIN" "Ada Reader" "ada@example.com" backend/app/deps.py
+    stamp_and_commit "$OTHER" "Ben Checker" "ben@example.com" backend/app/deps.py
+
+    run git -C "$MAIN" merge -q other
+    [ "$status" -eq 0 ]
+    [ "$(wc -l < "$CARD" | tr -d ' ')" -eq 2 ]
+
+    run ledger "$MAIN" check
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"1 file has more than one stamp"* ]]
+    [[ "$output" == *"  backend/app/deps.py"* ]]
+    [[ "$output" == *"just r <path>"* ]]
+}
+
+@test "a file a merge left with two stamps still reads as audited, by both" {
+    merge_keeping_both_sides
+    stamp_and_commit "$MAIN" "Ada Reader" "ada@example.com" backend/app/deps.py
+    stamp_and_commit "$OTHER" "Ben Checker" "ben@example.com" backend/app/deps.py
+    git -C "$MAIN" merge -q other
+
+    run ledger "$MAIN" status backend/app
+    [[ "$output" == *"audited         3  backend/app/deps.py  (Ada Reader, Ben Checker)"* ]]
+}
+
+@test "stamping a file a merge left with two stamps leaves one, and the check passes" {
+    merge_keeping_both_sides
+    stamp_and_commit "$MAIN" "Ada Reader" "ada@example.com" backend/app/deps.py
+    stamp_and_commit "$OTHER" "Ben Checker" "ben@example.com" backend/app/deps.py
+    git -C "$MAIN" merge -q other
+
+    # Worktrees share one git config, so whoever stamped last is who
+    # stamps now.
+    ledger "$MAIN" mark backend/app/deps.py
+
+    [ "$(wc -l < "$CARD" | tr -d ' ')" -eq 1 ]
+    [ "$(cut -f4 "$CARD")" = "Ben Checker" ]
+
+    run ledger "$MAIN" check
+    [ "$status" -eq 0 ]
+}
+
+@test "taking the stamp off a file a merge left with two takes both" {
+    merge_keeping_both_sides
+    stamp_and_commit "$MAIN" "Ada Reader" "ada@example.com" backend/app/deps.py
+    stamp_and_commit "$OTHER" "Ben Checker" "ben@example.com" backend/app/deps.py
+    git -C "$MAIN" merge -q other
+
+    run ledger "$MAIN" unmark backend/app/deps.py
+    [ "${lines[0]}" = "Took the stamp off 1 file." ]
+    [ ! -s "$CARD" ]
+}
+
+@test "one person stamping a file on two branches leaves two stamps as well" {
+    merge_keeping_both_sides
+    printf 'one\ntwo\nthree\nmain\n' > "${MAIN}/backend/app/deps.py"
+    stamp_and_commit "$MAIN" "Ada Reader" "ada@example.com" backend/app/deps.py
+    git -C "$MAIN" commit -q -a -m "edit on main"
+    printf 'zero\none\ntwo\nthree\n' > "${OTHER}/backend/app/deps.py"
+    stamp_and_commit "$OTHER" "Ada Reader" "ada@example.com" backend/app/deps.py
+    git -C "$OTHER" commit -q -a -m "edit on other"
+    git -C "$MAIN" merge -q other
+
+    # Neither stamp is of the file as the merge left it.
+    run ledger "$MAIN" status backend/app
+    [[ "$output" == *"changed         5  backend/app/deps.py  (Ada Reader)"* ]]
+
+    run ledger "$MAIN" check
+    [ "$status" -eq 1 ]
+}
+
+@test "the check passes where there is no card yet" {
+    run ledger "$MAIN" check
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "the check names every file with two stamps, and counts them" {
+    ledger "$MAIN" mark backend/app
+    grep -v deps_test "$CARD" > "${CARD}.again"
+    cat "${CARD}.again" >> "$CARD"
+    rm "${CARD}.again"
+
+    run ledger "$MAIN" check
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"2 files have more than one stamp"* ]]
+    [[ "$output" == *"  backend/app/deps.py"* ]]
+    [[ "$output" == *"  backend/app/security.py"* ]]
+    [[ "$output" != *"  backend/app/deps_test.py"* ]]
 }
 
 @test "the headline counts code and tests apart" {
@@ -296,7 +402,7 @@ ledger() {
 
     run ledger "$MAIN" unmark backend/app/deps.py
     [ "$status" -eq 0 ]
-    [ "${lines[0]}" = "Took your stamp off 1 file." ]
+    [ "${lines[0]}" = "Took the stamp off 1 file." ]
 
     run ledger "$MAIN" status backend/app
     [[ "$output" == *"unaudited       3  backend/app/deps.py"* ]]
@@ -307,7 +413,7 @@ ledger() {
     ledger "$MAIN" mark backend/app
 
     run ledger "$MAIN" unmark backend/app
-    [ "${lines[0]}" = "Took your stamp off 3 files." ]
+    [ "${lines[0]}" = "Took the stamp off 3 files." ]
     [ ! -s "$CARD" ] || [ -z "$(tr -d '\n' < "$CARD")" ]
 }
 
@@ -327,7 +433,7 @@ ledger() {
 
     run ledger "$MAIN" unmark backend/app/deps.py
     [ "$status" -eq 0 ]
-    [ "${lines[0]}" = "Took your stamp off 1 file." ]
+    [ "${lines[0]}" = "Took the stamp off 1 file." ]
 }
 
 @test "taking off a stamp that is not there says so" {
@@ -360,33 +466,16 @@ ledger() {
     [ "$(cut -f5 "$CARD")" = "ada@example.org" ]
 }
 
-@test "a second reviewer's stamp sits beside the first, not over it" {
+@test "a second auditor's stamp replaces the first" {
     ledger "$MAIN" mark backend/app/deps.py
     as_reader "Ben Checker" "ben@example.org"
-    ledger "$MAIN" mark backend/app/deps.py
-
-    [ "$(wc -l < "$CARD" | tr -d ' ')" -eq 2 ]
-    [ "$(cut -f4 "$CARD" | sort | tr '\n' ',')" = "Ada Reader,Ben Checker," ]
-}
-
-@test "stamping again replaces your own stamp and nobody else's" {
-    ledger "$MAIN" mark backend/app/deps.py
-    as_reader "Ben Checker" "ben@example.org"
-    ledger "$MAIN" mark backend/app/deps.py
-    ledger "$MAIN" mark backend/app/deps.py
-
-    [ "$(wc -l < "$CARD" | tr -d ' ')" -eq 2 ]
-}
-
-@test "one person is one reviewer, however the email is capitalised" {
-    ledger "$MAIN" mark backend/app/deps.py
-    as_reader "Ada Reader" "Ada@Example.org"
     ledger "$MAIN" mark backend/app/deps.py
 
     [ "$(wc -l < "$CARD" | tr -d ' ')" -eq 1 ]
+    [ "$(cut -f4 "$CARD")" = "Ben Checker" ]
 }
 
-@test "a file is audited when anybody's stamp matches it" {
+@test "a changed file stamped by somebody else names them, and not the first auditor" {
     ledger "$MAIN" mark backend/app/deps.py
     echo "four" >> "${MAIN}/backend/app/deps.py"
     as_reader "Ben Checker" "ben@example.org"
@@ -394,15 +483,6 @@ ledger() {
 
     run ledger "$MAIN" status backend/app
     [[ "$output" == *"audited         4  backend/app/deps.py  (Ben Checker)"* ]]
-}
-
-@test "the listing names everybody who has audited the file as it is" {
-    ledger "$MAIN" mark backend/app/deps.py
-    as_reader "Ben Checker" "ben@example.org"
-    ledger "$MAIN" mark backend/app/deps.py
-
-    run ledger "$MAIN" status backend/app
-    [[ "$output" == *"backend/app/deps.py  (Ada Reader, Ben Checker)"* ]]
 }
 
 @test "a changed file names who audited the earlier version" {
@@ -422,27 +502,17 @@ ledger() {
     [[ "$output" != *"Ada Reader"* ]]
 }
 
-@test "taking a stamp off takes only your own" {
-    ledger "$MAIN" mark backend/app/deps.py
-    as_reader "Ben Checker" "ben@example.org"
-    ledger "$MAIN" mark backend/app/deps.py
-
-    run ledger "$MAIN" unmark backend/app/deps.py
-    [ "${lines[0]}" = "Took your stamp off 1 file." ]
-    [ "$(cut -f4 "$CARD")" = "Ada Reader" ]
-}
-
-@test "you cannot take off a stamp somebody else made" {
+@test "a stamp can be taken off by somebody who did not make it" {
     ledger "$MAIN" mark backend/app/deps.py
     as_reader "Ben Checker" "ben@example.org"
 
     run ledger "$MAIN" unmark backend/app/deps.py
-    [ "$status" -eq 1 ]
-    [[ "$output" == *"None of those had a stamp of yours."* ]]
-    [ "$(cut -f4 "$CARD")" = "Ada Reader" ]
+    [ "$status" -eq 0 ]
+    [ "${lines[0]}" = "Took the stamp off 1 file." ]
+    [ ! -s "$CARD" ]
 }
 
-@test "diff compares against your own stamp where you have one" {
+@test "diff compares against the stamp there is now, whoever made it" {
     ledger "$MAIN" mark backend/app/deps.py
     echo "four" >> "${MAIN}/backend/app/deps.py"
     as_reader "Ben Checker" "ben@example.org"
@@ -451,7 +521,7 @@ ledger() {
     as_reader "Ada Reader" "ada@example.org"
 
     run ledger "$MAIN" diff backend/app/deps.py
-    [[ "$output" == *"+four"* ]]
+    [[ "$output" != *"+four"* ]]
     [[ "$output" == *"+five"* ]]
 }
 
@@ -464,29 +534,6 @@ ledger() {
     run ledger "$MAIN" status backend/app
     [[ "$output" == *"audited         3  backend/app/deps.py"* ]]
     [[ "$output" != *"backend/app/deps.py  ("* ]]
-}
-
-@test "adopt puts your name on stamps that have none, keeping their date" {
-    mkdir -p "$(dirname "$CARD")"
-    printf '%s\t%s\t%s\n' "backend/app/deps.py" \
-        "$(git -C "$MAIN" hash-object backend/app/deps.py)" "2026-10-09" \
-        > "$CARD"
-
-    run ledger "$MAIN" adopt
-    [ "$status" -eq 0 ]
-    [ "$output" = "Put the name Ada Reader on 1 stamp that had none." ]
-    [ "$(cut -f3 "$CARD")" = "2026-10-09" ]
-    [ "$(cut -f4 "$CARD")" = "Ada Reader" ]
-    [ "$(cut -f5 "$CARD")" = "ada@example.org" ]
-}
-
-@test "adopt leaves a named stamp alone" {
-    ledger "$MAIN" mark backend/app/deps.py
-    as_reader "Ben Checker" "ben@example.org"
-
-    run ledger "$MAIN" adopt
-    [ "$output" = "Every stamp already has a name on it." ]
-    [ "$(cut -f4 "$CARD")" = "Ada Reader" ]
 }
 
 @test "stamping a file that has a nameless stamp replaces it with yours" {
