@@ -44,12 +44,21 @@ def get_inbox(
     A source that fails is left out and logged, not allowed to take the
     rest down with it. The envelope is on every page, and one feature's
     fault must not blank the count for all the others.
+
+    Each source runs inside a savepoint, which is what makes that true
+    on Postgres. There, one failed statement leaves the whole
+    transaction refusing every statement after it, so catching the
+    error is not enough: the sources that follow would fail too, and
+    the count would read nought. Rolling back to the savepoint undoes
+    only the failed source. SQLite, which the unit tests run on, does
+    not behave this way, so it could not show the fault.
     """
     items: list[InboxSourceOut] = []
 
     for key, source in SOURCES.items():
         try:
-            count = source.count(db, current_user)
+            with db.begin_nested():
+                count = source.count(db, current_user)
         except Exception:
             # Broad on purpose: whatever one source did, the others
             # still answer.
@@ -81,7 +90,9 @@ def get_inbox_items(
 
     for key, source in SOURCES.items():
         try:
-            lines = source.lines(db, current_user, done)
+            # In a savepoint, for the reason given in `get_inbox`.
+            with db.begin_nested():
+                lines = source.lines(db, current_user, done)
         except Exception:
             logger.exception("inbox source failed", extra={"source": key})
             continue
