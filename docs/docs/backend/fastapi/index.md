@@ -65,7 +65,16 @@ app/
 │   └── practising.py    # What somebody may practise at one place
 ├── features/
 │   ├── gating.py        # Feature-gating utilities (requires_feature dependency)
+│   ├── passport/        # Clinician passport feature module
 │   └── teaching/        # Teaching feature module
+├── analytics/           # Analytics ingest and reporting
+├── email/               # Branded email: brand values, themes and the renderer
+├── feedback/            # User feedback and its status
+├── guides/              # The in-app guides' pictures
+├── inbox/               # What is waiting on somebody
+├── marketing/           # Marketing email: who is sent news, and sending it
+├── org_units/           # The governance tree: router and type capability flags
+├── users/               # Administering people's accounts, without the HTTP
 ├── schemas/
 │   ├── __init__.py      # Schema module exports
 │   ├── auth.py          # Authentication request/response models
@@ -244,10 +253,10 @@ def list_org_unit_members(
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitMembersOut:
-    _require_visible(db, current_user, unit_id, "manage_users")
+    require_visible(db, current_user, unit_id, "manage_users")
     return _members_of(db, unit_id)
 
-# CBAC-protected endpoint
+# Role-protected endpoint
 @router.post(
     "/patients/{id}/letters",
     dependencies=[DEP_REQUIRE_CSRF]

@@ -108,7 +108,7 @@ settings.EHRBASE_URL            # EHRbase API
 New structure at `backend/app/db/`:
 
 ```python
-from app.db import get_core_db, core_engine, CoreBase
+from app.db import get_core_db, core_engine, CoreSessionLocal
 
 # Use in FastAPI routes
 @router.get("/users")
@@ -117,7 +117,7 @@ def list_users(db: Session = Depends(get_core_db)):
     return users
 ```
 
-The old `app.db` module still works for backwards compatibility but imports from the new structure.
+`app.db` is now a package: `from app.db import ...` re-exports from `app.db.core_db`, so existing imports of `app.db` keep working.
 
 ## Docker Compose Changes
 
@@ -125,7 +125,7 @@ The old `app.db` module still works for backwards compatibility but imports from
 
 Services now depend on specific databases:
 
-- **backend**: Depends on all three databases
+- **backend**: Depends only on `postgres-core`
 - **fhir**: Depends only on `postgres-fhir`
 - **ehrbase**: Depends only on `postgres-ehrbase`
 
@@ -166,7 +166,7 @@ Each database has independent resource limits:
 Run Alembic migrations for the core database:
 
 ```bash
-just migrate "migrate to three database architecture"
+just migrate-local
 ```
 
 ## Benefits
@@ -193,7 +193,7 @@ If existing code references old variables:
 
 - Replace `settings.DATABASE_URL` with `settings.CORE_DATABASE_URL`
 - Replace `EHRBASE_USER` with `EHRBASE_API_USER`
-- Import from `app.db` instead of `app.db.py`
+- Import from `app.db` (the package), which re-exports from `app.db.core_db`
 
 ## Further Reading
 

@@ -123,6 +123,8 @@ def check_fhir_health() -> dict[str, bool | int | str]:
     Safety-critical: False positive could cause clinical staff to think
     database is empty when it's still loading.
     """
+    if not settings.CLINICAL_SERVICES_ENABLED:
+        return {"available": False, "error": "Clinical services disabled"}
     try:
         response = httpx.get(
             f"{settings.FHIR_SERVER_URL}/Patient?_count=1", timeout=5.0
