@@ -7,9 +7,10 @@
  * - Optional user account creation
  * - API submission
  *
- * KNOWN LIMITATION: Mantine v8.3.1 Select dropdowns do not work in JSDOM.
- * Tests that require selecting from dropdowns (Sex field) are skipped.
- * See temp.md for detailed analysis. Require E2E tests (Playwright/Cypress).
+ * The Sex field is a Mantine Select, which is a combobox and not a textbox.
+ * Eleven of these tests were skipped for months on the belief that a Select
+ * could not be opened under JSDOM. It can: they were asking for the wrong
+ * role, and typing the national number into the box beside it.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
@@ -56,9 +57,7 @@ describe("NewPatientPage", () => {
       expect(
         screen.getAllByLabelText(/national number system/i)[0],
       ).toBeInTheDocument();
-      expect(
-        screen.getByPlaceholderText(/national number/i),
-      ).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("1234567890")).toBeInTheDocument();
     });
 
     it("shows validation errors when trying to proceed with empty fields", async () => {
@@ -78,9 +77,7 @@ describe("NewPatientPage", () => {
       ).toBeInTheDocument();
     });
 
-    // TODO: Mantine Select dropdowns don't work in JSDOM
-    // Requires E2E testing (Playwright/Cypress). See temp.md for analysis.
-    it.skip("proceeds to step 2 when validation passes", async () => {
+    it("proceeds to step 2 when validation passes", async () => {
       const user = userEvent.setup();
       renderWithRouter(<NewPatientPage />);
 
@@ -92,14 +89,11 @@ describe("NewPatientPage", () => {
         "1980-05-12",
       );
 
-      // Select sex using Mantine's official testing pattern
-      await user.click(screen.getByRole("textbox", { name: /sex/i }));
+      // A Mantine Select is a combobox, and opens when clicked.
+      await user.click(screen.getByRole("combobox", { name: /sex/i }));
       await user.click(screen.getByRole("option", { name: /female/i }));
 
-      await user.type(
-        screen.getByPlaceholderText(/national number/i),
-        "1234567890",
-      );
+      await user.type(screen.getByPlaceholderText("1234567890"), "1234567890");
 
       await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -120,27 +114,23 @@ describe("NewPatientPage", () => {
         "1980-05-12",
       );
 
-      await user.click(screen.getByRole("textbox", { name: /sex/i }));
+      await user.click(screen.getByRole("combobox", { name: /sex/i }));
       await user.click(screen.getByRole("option", { name: /female/i }));
 
       // Wait for the select value to be set
       await waitFor(() => {
         expect(
-          (screen.getByRole("textbox", { name: /sex/i }) as HTMLInputElement)
+          (screen.getByRole("combobox", { name: /sex/i }) as HTMLInputElement)
             .value,
         ).toBe("Female");
       });
 
-      await user.type(
-        screen.getByPlaceholderText(/national number/i),
-        "1234567890",
-      );
+      await user.type(screen.getByPlaceholderText("1234567890"), "1234567890");
 
       await user.click(screen.getByRole("button", { name: /next/i }));
     }
 
-    // TODO: Mantine Select dropdowns don't work in JSDOM - requires E2E tests
-    it.skip("renders user account option checkbox", async () => {
+    it("renders user account option checkbox", async () => {
       const user = userEvent.setup();
       renderWithRouter(<NewPatientPage />);
 
@@ -154,8 +144,7 @@ describe("NewPatientPage", () => {
       ).toBeInTheDocument();
     });
 
-    // TODO: Mantine Select dropdowns don't work in JSDOM - requires E2E tests
-    it.skip("shows user account fields when checkbox is enabled", async () => {
+    it("shows user account fields when checkbox is enabled", async () => {
       const user = userEvent.setup();
       renderWithRouter(<NewPatientPage />);
 
@@ -177,8 +166,7 @@ describe("NewPatientPage", () => {
       expect(screen.getByLabelText(/initial password/i)).toBeInTheDocument();
     });
 
-    // TODO: Mantine Select dropdowns don't work in JSDOM - requires E2E tests
-    it.skip("validates user account fields when enabled", async () => {
+    it("validates user account fields when enabled", async () => {
       const user = userEvent.setup();
       renderWithRouter(<NewPatientPage />);
 
@@ -207,8 +195,7 @@ describe("NewPatientPage", () => {
       expect(screen.getByText("Password is required")).toBeInTheDocument();
     });
 
-    // TODO: Mantine Select dropdowns don't work in JSDOM - requires E2E tests
-    it.skip("validates email format", async () => {
+    it("validates email format", async () => {
       const user = userEvent.setup();
       renderWithRouter(<NewPatientPage />);
 
@@ -235,8 +222,7 @@ describe("NewPatientPage", () => {
       });
     });
 
-    // TODO: Mantine Select dropdowns don't work in JSDOM - requires E2E tests
-    it.skip("validates password length", async () => {
+    it("validates password length", async () => {
       const user = userEvent.setup();
       renderWithRouter(<NewPatientPage />);
 
@@ -265,8 +251,7 @@ describe("NewPatientPage", () => {
       });
     });
 
-    // TODO: Mantine Select dropdowns don't work in JSDOM - requires E2E tests
-    it.skip("navigates back to step 1", async () => {
+    it("navigates back to step 1", async () => {
       const user = userEvent.setup();
       renderWithRouter(<NewPatientPage />);
 
@@ -285,11 +270,8 @@ describe("NewPatientPage", () => {
   });
 
   describe("Form submission", () => {
-    // TODO: Mantine Select dropdowns don't work in JSDOM - requires E2E tests
-    it.skip("submits patient data without user account", async () => {
-      const mockPost = vi
-        .fn()
-        .mockResolvedValue({ data: { id: "patient-123" } });
+    it("submits patient data without user account", async () => {
+      const mockPost = vi.fn().mockResolvedValue({ id: "patient-123" });
       (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
 
       const user = userEvent.setup();
@@ -303,13 +285,10 @@ describe("NewPatientPage", () => {
         "1980-05-12",
       );
 
-      await user.click(screen.getByRole("textbox", { name: /sex/i }));
+      await user.click(screen.getByRole("combobox", { name: /sex/i }));
       await user.click(screen.getByRole("option", { name: /female/i }));
 
-      await user.type(
-        screen.getByPlaceholderText(/national number/i),
-        "1234567890",
-      );
+      await user.type(screen.getByPlaceholderText("1234567890"), "1234567890");
 
       await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -332,12 +311,11 @@ describe("NewPatientPage", () => {
       });
     });
 
-    // TODO: Mantine Select dropdowns don't work in JSDOM - requires E2E tests
-    it.skip("submits patient and user account when enabled", async () => {
+    it("submits patient and user account when enabled", async () => {
       const mockPost = vi
         .fn()
-        .mockResolvedValueOnce({ data: { id: "patient-123" } })
-        .mockResolvedValueOnce({ data: { id: 1 } });
+        .mockResolvedValueOnce({ id: "patient-123" })
+        .mockResolvedValueOnce({ id: 1 });
       (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
 
       const user = userEvent.setup();
@@ -351,13 +329,10 @@ describe("NewPatientPage", () => {
         "1980-05-12",
       );
 
-      await user.click(screen.getByRole("textbox", { name: /sex/i }));
+      await user.click(screen.getByRole("combobox", { name: /sex/i }));
       await user.click(screen.getByRole("option", { name: /female/i }));
 
-      await user.type(
-        screen.getByPlaceholderText(/national number/i),
-        "1234567890",
-      );
+      await user.type(screen.getByPlaceholderText("1234567890"), "1234567890");
 
       await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -396,23 +371,16 @@ describe("NewPatientPage", () => {
       });
 
       await waitFor(() => {
-        expect(mockPost).toHaveBeenCalledWith(
-          "/users",
-          expect.objectContaining({
-            name: "Jane Smith",
-            email: "jane.smith@example.com",
-            username: "janesmith",
-            password: "password123",
-          }),
-        );
+        expect(mockPost).toHaveBeenCalledWith("/auth/register", {
+          username: "janesmith",
+          email: "jane.smith@example.com",
+          password: "password123",
+        });
       });
     });
 
-    // TODO: Mantine Select dropdowns don't work in JSDOM - requires E2E tests
-    it.skip("shows success confirmation after successful submission", async () => {
-      const mockPost = vi
-        .fn()
-        .mockResolvedValue({ data: { id: "patient-123" } });
+    it("shows success confirmation after successful submission", async () => {
+      const mockPost = vi.fn().mockResolvedValue({ id: "patient-123" });
       (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
 
       const user = userEvent.setup();
@@ -426,13 +394,10 @@ describe("NewPatientPage", () => {
         "1980-05-12",
       );
 
-      await user.click(screen.getByRole("textbox", { name: /sex/i }));
+      await user.click(screen.getByRole("combobox", { name: /sex/i }));
       await user.click(screen.getByRole("option", { name: /female/i }));
 
-      await user.type(
-        screen.getByPlaceholderText(/national number/i),
-        "1234567890",
-      );
+      await user.type(screen.getByPlaceholderText("1234567890"), "1234567890");
 
       await user.click(screen.getByRole("button", { name: /next/i }));
 
@@ -461,11 +426,8 @@ describe("NewPatientPage", () => {
       expect(mockNavigate).toHaveBeenCalledWith("/admin");
     });
 
-    // TODO: Mantine Select dropdowns don't work in JSDOM - requires E2E tests
-    it.skip("navigates back to admin from confirmation", async () => {
-      const mockPost = vi
-        .fn()
-        .mockResolvedValue({ data: { id: "patient-123" } });
+    it("navigates back to admin from confirmation", async () => {
+      const mockPost = vi.fn().mockResolvedValue({ id: "patient-123" });
       (apiModule.api.post as ReturnType<typeof vi.fn>) = mockPost;
 
       const user = userEvent.setup();
@@ -479,13 +441,10 @@ describe("NewPatientPage", () => {
         "1980-05-12",
       );
 
-      await user.click(screen.getByRole("textbox", { name: /sex/i }));
+      await user.click(screen.getByRole("combobox", { name: /sex/i }));
       await user.click(screen.getByRole("option", { name: /female/i }));
 
-      await user.type(
-        screen.getByPlaceholderText(/national number/i),
-        "1234567890",
-      );
+      await user.type(screen.getByPlaceholderText("1234567890"), "1234567890");
 
       await user.click(screen.getByRole("button", { name: /next/i }));
 
