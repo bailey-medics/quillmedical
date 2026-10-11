@@ -27,9 +27,9 @@ from app.organisations import add_org_unit_member
 OWN_PATIENT = "made-up-own"
 OTHER_PATIENT = "made-up-other"
 
-LIST = "app.main.list_fhir_patients"
-READ = "app.main.read_fhir_patient"
-UPDATE = "app.main.update_fhir_patient"
+LIST = "app.patients.router.list_fhir_patients"
+READ = "app.patients.router.read_fhir_patient"
+UPDATE = "app.patients.router.update_fhir_patient"
 
 LEAK = "connection refused: made-up-secret at made-up-host:5432"
 

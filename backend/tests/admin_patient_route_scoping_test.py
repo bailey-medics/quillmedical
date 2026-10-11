@@ -41,7 +41,7 @@ from tests.competencies import hold
 OUTSIDE_PATIENT = "fhir-patient-other-trust"
 OWN_PATIENT = "fhir-patient-own-trust"
 
-FHIR_TARGET = "app.main.read_fhir_patient"
+FHIR_TARGET = "app.patients.router.read_fhir_patient"
 
 
 def _fhir(patient_id: str) -> dict[str, object]:

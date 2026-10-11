@@ -1229,20 +1229,21 @@ is now 4,654 lines and 69 routes.
       sign-in routes use them, so they go with those routes in the
       last step.
 
-- [ ] Take out the routers' own `_get_current_user` and `_require_csrf`.
-      Six routers and `features/gating.py` each wrap the two checks in
-      a function that imports them inside its body, because importing
-      `main.py` at the top would have been a circle. They now import
-      from `deps.py`, where there is no circle, so the wrappers do
-      nothing but add a name: the routes can take `DEP_CURRENT_USER`
-      and `DEP_REQUIRE_CSRF` directly. The route guard test lists the
-      wrappers by name and fails on one that is no longer used, so
-      its lists shrink in the same pull request. Left out of the
-      first step to keep that one a move.
-
-- [ ] Move the patient routes (18) to a router of their own. First of
+- [x] Move the patient routes (18) to a router of their own. First of
       the groups because it is the biggest, and it is behind the
       clinical-services check, so the teaching release is not touched.
+      Done on 12 October 2026: `backend/app/patients/router.py`, 984
+      lines taken out of `main.py` word for word, by a script and not
+      by hand. The eighteen are the seventeen under `/patients` and
+      `PATCH /users/{user_id}/link-patient`, which ties an account to
+      a patient record. `GET /patients/{patient_id}/conversations`
+      goes with the conversations. How each move in this phase is
+      checked: the document describing the API is written out before
+      and after and must be the same to the letter, and the whole
+      backend suite is run, since `main.py` is shared by everything.
+      Tests that swapped out `app.main.read_fhir_patient` and its
+      neighbours now name the new module, which is where the routes
+      look them up.
 
 - [ ] Move the conversation and messaging routes (9).
 
@@ -1255,6 +1256,18 @@ is now 4,654 lines and 69 routes.
 
 - [ ] Move what is left that is not sign-in (`/cbac`, `/prescriptions`
       and the odd single routes), each to the module it belongs with.
+
+- [ ] Take out the routers' own `_get_current_user` and `_require_csrf`.
+      Six routers and `features/gating.py` each wrap the two checks in
+      a function that imports them inside its body, because importing
+      `main.py` at the top would have been a circle. They now import
+      from `deps.py`, where there is no circle, so the wrappers do
+      nothing but add a name: the routes can take `DEP_CURRENT_USER`
+      and `DEP_REQUIRE_CSRF` directly. The route guard test lists the
+      wrappers by name and fails on one that is no longer used, so
+      its lists shrink in the same pull request. Left out of the
+      first step to keep that one a move, and put here, after the
+      moves, so that the splitting is not held up by it.
 
 - [ ] Move the sign-in routes last, **after the EoEETA release**: login,
       logout, refresh, register, password reset, change password, TOTP
