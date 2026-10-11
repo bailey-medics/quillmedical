@@ -11,6 +11,7 @@ setup() {
     STUBS="${BATS_TEST_TMPDIR}/stubs"
     mkdir -p "${REPO}/backend" "$STUBS"
     echo "3.14.7" > "${REPO}/.python-version"
+    hooks_on "python3.14"
 
     # LOCAL_PYTHON is the version the environment is on. Unset, there is
     # no environment, and Poetry fails as it does then.
@@ -26,6 +27,21 @@ EOF
     PATH="${STUBS}:${PATH}"
 
     cd "$REPO" || return
+}
+
+# Writes a pre-commit config with one hook told to run on the Python
+# given, as `.pre-commit-config.yaml` has for black.
+hooks_on() {
+    local language_version="$1"
+
+    cat > "${REPO}/.pre-commit-config.yaml" <<EOF
+repos:
+  - repo: https://github.com/psf/black
+    rev: 26.10.1
+    hooks:
+      - id: black
+        language_version: ${language_version}
+EOF
 }
 
 @test "passes, and says nothing, when the environment is on the pinned Python" {
@@ -81,6 +97,7 @@ EOF
 
 @test "follows the pin when the pin moves" {
     echo "3.15.2" > .python-version
+    hooks_on "python3.15"
 
     LOCAL_PYTHON=3.14.7 run bash "$SCRIPT"
     [ "$status" -eq 1 ]
@@ -104,4 +121,87 @@ EOF
 
     [ "$status" -eq 1 ]
     [[ "$output" == *".python-version is not here"* ]]
+}
+
+@test "refuses a hook told to run on another Python, and says which" {
+    hooks_on "python3.13"
+
+    LOCAL_PYTHON=3.14.7 run bash "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"set to run on Python 3.13"* ]]
+    [[ "$output" == *"pinned to 3.14.7"* ]]
+    [[ "$output" == *"language_version: python3.14"* ]]
+}
+
+@test "refuses a hook left behind when the pin moves" {
+    echo "3.15.2" > .python-version
+
+    LOCAL_PYTHON=3.15.0 run bash "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"language_version: python3.15"* ]]
+}
+
+@test "checks the hooks before the environment" {
+    # A wrong hook is reported even with no environment to ask.
+    hooks_on "python3.13"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"set to run on Python 3.13"* ]]
+}
+
+@test "refuses when any one of several hooks is on another Python" {
+    cat >> .pre-commit-config.yaml <<'EOF'
+      - id: another
+        language_version: python3.12
+EOF
+
+    LOCAL_PYTHON=3.14.7 run bash "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"set to run on Python 3.12"* ]]
+}
+
+@test "reads a hook's Python written in quotes" {
+    hooks_on '"python3.13"'
+
+    LOCAL_PYTHON=3.14.7 run bash "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+}
+
+@test "passes when no hook names a Python" {
+    echo "repos: []" > .pre-commit-config.yaml
+
+    LOCAL_PYTHON=3.14.7 run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+}
+
+@test "leaves alone a language_version that is not a Python" {
+    hooks_on "20.11.0"
+
+    LOCAL_PYTHON=3.14.7 run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+}
+
+@test "leaves alone a language_version in a comment" {
+    echo "        # language_version: python3.12" >> .pre-commit-config.yaml
+
+    LOCAL_PYTHON=3.14.7 run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+}
+
+@test "fails when the pre-commit config is missing" {
+    rm .pre-commit-config.yaml
+
+    LOCAL_PYTHON=3.14.7 run bash "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *".pre-commit-config.yaml is not here"* ]]
 }

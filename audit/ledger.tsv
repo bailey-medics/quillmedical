@@ -121,6 +121,7 @@
 .github/workflows/typescript-hold-check.yml	7877d4b34f8afd26d16a6f5bff3a6405a7639be7	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .github/workflows/zap-scan.yml	b0b1cd50362a853c4e09d34314aa5de873b19ad6	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .husky/pre-commit	6488e6c35b03de1f0a9629bd1d80093016a0dddf	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
+.pre-commit-config.yaml	b01db3d064c4a1545ef60edc741faeff8a1316a3	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .zap/rules.tsv	0eda966020905b57d3d630384620c1c23b58898c	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 Justfile	e1d8bb68ab695a829da610be1c80f7894ced7a87	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/alembic/env.py	c0fcceae82c039152024664139d465a74232f695	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
@@ -154,3 +155,4 @@ backend/app/email/templates/password_reset.html.j2	9432e0453b4c33091007b8dd7eda5
 backend/app/email/templates/previews/newsletter_personal_sample.html.j2	12e0c2e66cc9e1ba6e574fb9067816c7ca883912	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/app/email/templates/previews/newsletter_sample.html.j2	03f175d4bd81a9be2b28ee5770a4118f3ee853f8	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/app/email/templates/teaching_certificate.html.j2	9055f66f56fbebf32c93824839da4c5fe2d38369	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
+scripts/check-python-version.sh	e9ba5acc38524cdd3b8c10fdd371c2e9771ce114	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
