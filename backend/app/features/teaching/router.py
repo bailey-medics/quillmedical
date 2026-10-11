@@ -33,9 +33,13 @@ from app.features.gating import requires_feature
 from app.features.teaching.access import (
     MODULES_COMPETENCY,
     RESULTS_COMPETENCY,
+    delegates_in_view,
+    modules_open_to,
+    modules_served_where_they_belong,
     organisations_open_for_modules,
 )
 from app.features.teaching.enrolment import enrolled_on_offer, is_enrolled
+from app.features.teaching.listing import delegate_rows, learning_module_rows
 from app.features.teaching.models import (
     Assessment,
     AssessmentAnswer,
@@ -119,7 +123,6 @@ from app.models import (
 from app.organisations import (
     get_member_org_unit_ids,
     media_prefix_of,
-    organisation_org_unit_member,
 )
 from app.rate_limit import limiter
 
@@ -842,126 +845,10 @@ def list_learning_modules(
 
     Filtered rather than gated on *membership*: an empty list is the
     correct answer for a user whose organisations have nothing live, not
-    an error. Without
-    this filter the route enumerated every module in the bucket,
-    handing every user the full catalogue including modules their
-    organisation never licensed.
+    an error. Which modules is ``modules_open_to``; what is said of each
+    is ``learning_module_rows``.
     """
-    from app.config import settings
-    from app.features.teaching.mdx_parser import (
-        load_learning_content,
-        load_module_yaml,
-        parse_mdx_to_slides,
-    )
-    from app.features.teaching.media import module_media_is_complete
-    from app.features.teaching.storage import (
-        discover_local_banks,
-        download_learning_mdx_from_gcs,
-        download_module_yaml_from_gcs,
-        has_learning_content_gcs,
-        list_banks_in_gcs,
-    )
-
-    bucket = settings.TEACHING_GCS_BUCKET
-    base_path = settings.TEACHING_QUESTION_BANK_PATH
-
-    # The permissive union: every bank any of the user's organisations
-    # has live. Resolved once here rather than per module, so the list
-    # costs one query regardless of how many modules the bucket holds.
-    try:
-        org_ids = _get_user_org_ids(user, db)
-    except HTTPException:
-        # No organisation, nothing visible. Not an error for a list.
-        return []
-
-        # Which organisation makes each bank visible, not merely whether one
-        # does. Completeness is per organisation, so the media check below
-        # has to be asked of the same organisation that grants the view.
-    visible_org_by_bank: dict[str, int] = {}
-
-    for status in (
-        db.execute(
-            select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.org_unit_id.in_(org_ids),
-                enrolled_on_offer(user.id),
-            )
-        )
-        .scalars()
-        .all()
-    ):
-        if status.is_live:
-            if status.org_unit_id is not None:
-                visible_org_by_bank.setdefault(
-                    status.question_bank_id, int(status.org_unit_id)
-                )
-
-    visible_bank_ids = set(visible_org_by_bank)
-
-    if not visible_bank_ids:
-        return []
-
-    if bucket:
-        # Production: discover from GCS
-        try:
-            bank_ids = list_banks_in_gcs(bucket)
-        except Exception:
-            return []
-    elif base_path:
-        bank_ids = discover_local_banks(base_path)
-    else:
-        return []
-
-    modules: list[dict[str, Any]] = []
-
-    for bank_id in bank_ids:
-        if bank_id not in visible_bank_ids:
-            continue
-            # Hidden, not shown disabled. A learner who can see a module
-            # they cannot open raises a support question the admin cannot
-            # answer from the learner's side.
-        if not module_media_is_complete(
-            db, visible_org_by_bank[bank_id], bank_id
-        ):
-            continue
-        if bucket:
-            meta = download_module_yaml_from_gcs(bucket, bank_id) or {}
-            if not meta:
-                continue
-            has_learning = has_learning_content_gcs(bucket, bank_id)
-            if has_learning:
-                mdx = download_learning_mdx_from_gcs(bucket, bank_id)
-                slide_count = len(parse_mdx_to_slides(mdx)) if mdx else 0
-            else:
-                slide_count = 0
-        else:
-            module_dir = resolve_module_dir(base_path or "", bank_id)
-            if not module_dir:
-                continue
-            meta = load_module_yaml(module_dir)
-            if not meta:
-                continue
-            learning_path = module_dir / "learning" / "content.mdx"
-            has_learning = learning_path.is_file()
-            slide_count = (
-                len(load_learning_content(module_dir)) if has_learning else 0
-            )
-
-        modules.append(
-            {
-                "module_id": meta.get("moduleId", bank_id),
-                "title": meta.get("title", bank_id),
-                "order": meta.get("order", 0),
-                "status": meta.get("status", "draft"),
-                "renewal_months": meta.get("renewalMonths"),
-                "has_learning": has_learning,
-                "slide_count": slide_count,
-                "description": meta.get("description"),
-            }
-        )
-
-    modules.sort(key=lambda m: m["order"])
-
-    return modules
+    return learning_module_rows(db, modules_open_to(db, user))
 
 
 @teaching_router.post(
@@ -2924,49 +2811,11 @@ def list_delegate_modules(
     since its results are still wanted.
 
     Each is named by the title of the version being served, and the list
-    is in title order.
+    is in title order. The rule is ``modules_served_where_they_belong``.
     """
-    caller_org_ids = get_member_org_unit_ids(db, user.id)
-
-    if not caller_org_ids:
-        return []
-
-    served: dict[str, tuple[int, int]] = {}
-
-    for status in db.execute(
-        select(QuestionBankOrgStatus).where(
-            QuestionBankOrgStatus.org_unit_id.in_(caller_org_ids),
-            QuestionBankOrgStatus.active_version.is_not(None),
-        )
-    ).scalars():
-        if status.org_unit_id is None or status.active_version is None:
-            continue
-        served.setdefault(
-            status.question_bank_id,
-            (status.org_unit_id, status.active_version),
-        )
-    if not served:
-        return []
-
-    titles: dict[str, str] = {}
-
-    for config in db.execute(
-        select(QuestionBankConfig).where(
-            QuestionBankConfig.org_unit_id.in_(caller_org_ids),
-            QuestionBankConfig.question_bank_id.in_(served),
-        )
-    ).scalars():
-        if served[config.question_bank_id] == (
-            config.org_unit_id,
-            config.version,
-        ):
-            titles[config.question_bank_id] = config.title
-
     return [
-        DelegateModuleOut(bank_id=bank_id, title=title)
-        for bank_id, title in sorted(
-            titles.items(), key=lambda item: (item[1].lower(), item[0])
-        )
+        DelegateModuleOut(bank_id=module.module_id, title=module.title)
+        for module in modules_served_where_they_belong(db, user)
     ]
 
 
@@ -2995,196 +2844,13 @@ def list_delegates(
     assessment is listed, whether or not they finished it, and that
     includes the caller if they have. Without it, every member but the
     caller is listed, a result or none.
+
+    Who is listed is ``delegates_in_view``; what is said of each is
+    ``delegate_rows``.
     """
-    from app.models import org_unit_member
-    from app.org_units.tree import descendant_ids
+    view = delegates_in_view(db, user, one_module=bank_id is not None)
 
-    # Which organisations the caller is a member of. Direct membership,
-    # not reach: this route lists the people *below* the caller, so a
-    # trainee reaching up via a site link must not thereby list its staff.
-    caller_org_ids = get_member_org_unit_ids(db, user.id)
-
-    if not caller_org_ids:
-        return []
-
-        # Get all members: org staff + site staff for linked sites
-    org_member_ids = set(
-        row[0]
-        for row in db.execute(
-            select(organisation_org_unit_member.c.user_id).where(
-                organisation_org_unit_member.c.org_unit_id.in_(caller_org_ids),
-            )
-        ).all()
-    )
-
-    caller_site_ids = descendant_ids(db, caller_org_ids)
-    site_member_ids = set(
-        row[0]
-        for row in db.execute(
-            select(org_unit_member.c.user_id).where(
-                org_unit_member.c.org_unit_id.in_(caller_site_ids)
-            )
-        ).all()
-    )
-
-    member_ids = org_member_ids | site_member_ids
-
-    # Listing every member, the caller leaves themselves out: they are
-    # looking at the people below them. Asked about one module, the list
-    # is of who has attempted it, and an admin who sat it is one of them.
-    if bank_id is None:
-        member_ids.discard(user.id)
-
-    if not member_ids:
-        return []
-
-        # Fetch user details. Every member of the caller's organisations is
-        # listed: this used to exclude anyone whose rank said "admin" or
-        # "superadmin", which was a display preference rather than a check -
-        # the route is already gated by ``_DEP_MANAGE`` and scoped to the
-        # caller's own organisations. It also read the column being retired,
-        # and an administrator who is also a trainee is an ordinary case
-        # rather than one worth hiding.
-    user_ids = list(member_ids)
-    users_map: dict[int, User] = {
-        u.id: u
-        for u in db.execute(select(User).where(User.id.in_(user_ids)))
-        .unique()
-        .scalars()
-        .all()
-    }
-
-    user_ids = list(users_map.keys())
-
-    if not user_ids:
-        return []
-
-        # Get assessments for these users in caller's orgs
-    assessments = (
-        db.execute(
-            select(Assessment)
-            .where(
-                Assessment.org_unit_id.in_(caller_org_ids),
-                Assessment.user_id.in_(user_ids),
-                *(
-                    [Assessment.question_bank_id == bank_id]
-                    if bank_id is not None
-                    else []
-                ),
-            )
-            .order_by(Assessment.started_at.desc())
-        )
-        .scalars()
-        .all()
-    )
-
-    latest_by_user: dict[int, Assessment] = {}
-    all_by_user: dict[int, list[Assessment]] = {}
-
-    for a in assessments:
-        all_by_user.setdefault(a.user_id, []).append(a)
-        if a.user_id not in latest_by_user:
-            latest_by_user[a.user_id] = a
-
-            # Get site and clinical lead info for each delegate
-    site_info: dict[int, tuple[str | None, str | None]] = {}
-
-    for uid in user_ids:
-        site_row = db.execute(
-            select(OrgUnit.id, OrgUnit.name)
-            .join(
-                org_unit_member,
-                org_unit_member.c.org_unit_id == OrgUnit.id,
-            )
-            .where(
-                org_unit_member.c.user_id == uid,
-                OrgUnit.id.in_(caller_site_ids),
-            )
-            # Where they are a trainee, if anywhere. Failing that, a site
-            # they belong to in another capacity: an admin or a nurse who
-            # sat the module is at a site as staff, and used to be shown
-            # with no site and so no clinical lead.
-            .order_by(
-                (org_unit_member.c.capacity != "trainee"),
-                OrgUnit.id,
-            )
-        ).first()
-
-        site_id = site_row[0] if site_row else None
-        site_name = site_row[1] if site_row else None
-
-        # Whoever holds that site's clinical lead post. Keyed on the site's
-        # id rather than its name: two organisations may each have a
-        # "Ward 1", and matching on name named the wrong trust's lead.
-        lead_name: str | None = None
-        if site_id is not None:
-            lead_id = clinical_leads_of(db, [int(site_id)]).get(int(site_id))
-            if lead_id is not None:
-                lead_row = db.execute(
-                    select(User.full_name, User.username).where(
-                        User.id == lead_id
-                    )
-                ).first()
-                if lead_row:
-                    lead_name = lead_row[0] or lead_row[1]
-
-        site_info[uid] = (site_name, lead_name)
-
-        # Build response
-    delegates: list[DelegateOut] = []
-
-    for uid in user_ids:
-        u = users_map.get(uid)
-        if not u:
-            continue
-
-        latest = latest_by_user.get(uid)
-
-        # Asked about one module, the list is of who has attempted it.
-        # Somebody who never started it is not a delegate of that module.
-        if bank_id is not None and latest is None:
-            continue
-
-        # Determine assessment result
-        result: str | None = None
-        first_time_pass = False
-        assessment_date = None
-
-        if latest:
-            if latest.is_passed is True:
-                result = "pass"
-            elif latest.is_passed is False:
-                result = "fail"
-            elif latest.completed_at is None:
-                result = "incomplete"
-            assessment_date = latest.completed_at
-
-            # First time pass: passed on first attempt
-            user_assessments = all_by_user.get(uid, [])
-            completed_assessments = [
-                a for a in user_assessments if a.completed_at is not None
-            ]
-            first_time_pass = (
-                latest.is_passed is True and len(completed_assessments) == 1
-            )
-
-        s_name, cl_name = site_info.get(uid, (None, None))
-
-        delegates.append(
-            DelegateOut(
-                id=uid,
-                name=u.full_name or u.username,
-                email=u.email,
-                site_name=s_name,
-                clinical_lead=cl_name,
-                learning_completed=None,
-                assessment_result=result,
-                assessment_date=assessment_date,
-                first_time_pass=first_time_pass,
-            )
-        )
-
-    return delegates
+    return delegate_rows(db, view, bank_id=bank_id)
 
     # ------------------------------------------------------------------
     # Admin endpoints - teaching modules overview

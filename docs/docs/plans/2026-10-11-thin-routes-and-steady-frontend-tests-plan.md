@@ -429,7 +429,7 @@ more.
         `update_my_competencies`** - 40 to 73 lines with one or two
         branches each. They build a response and decide almost nothing.
 
-- [ ] Decide what to do about the invite to a patient's record,
+- [x] Record, for when there are real patients, the invite to a patient's record,
       `POST /accept-invite`, found on 11 October 2026 while moving it.
       It is the invite an external clinician or a patient's advocate
       is sent, part of EHR production. None is changed here; each is
@@ -448,6 +448,13 @@ more.
         cannot sign in to use it.
       - **The address is not marked verified**, though the invite was
         sent to it, and the username is not trimmed.
+
+      **Not built here.** Mark, on 11 October 2026: these belong to EHR
+      production, which holds no patients, and are to be fixed when it
+      does. They are written into `docs/docs/plans/todo.md`, under
+      "BEFORE ANY REAL PATIENT IS IN THE SYSTEM", with the other
+      questions about who may read and write one patient's record, to
+      be settled together as a plan of their own.
 
 - [x] Let `update_patient` change only a patient its caller can reach.
       Found on 11 October 2026 while moving the patient routes: **it
@@ -509,7 +516,7 @@ more.
       - **Left: one FHIR record that fails validation empties the
         whole list.** That is the list route, not this one.
 
-- [ ] Decide what to do about what listing people gives away, found on
+- [x] Record, for when there are real patients, what listing people gives away, found on
       11 October 2026 while moving `list_users`. None is changed here.
 
       - **The picker of people around a patient never asks whether the
@@ -526,6 +533,13 @@ more.
       - **`sites` names every org unit somebody belongs to,
         organisations included**, so a trust shows in both lists.
       - **An empty `patient_id` falls through to the full list.**
+
+      **Not built here.** Mark, on 11 October 2026: these belong to EHR
+      production, which holds no patients, and are to be fixed when it
+      does. They are written into `docs/docs/plans/todo.md`, under
+      "BEFORE ANY REAL PATIENT IS IN THE SYSTEM", with the other
+      questions about who may read and write one patient's record, to
+      be settled together as a plan of their own.
 
 - [x] List a bank whose content did not load as failed, in what the
       content sync answers. Five things were found on 11 October 2026
@@ -649,15 +663,52 @@ moves beneath it.
 inside route bodies, and 27 routes of 40 lines or more: the highest
 share of any router.
 
-- [ ] `list_delegates` (189 lines, 17 branches) and
-      `list_learning_modules` (115 lines, 16 branches). Both work out
-      who may see what, which is what
-      `backend/app/features/teaching/access.py` exists to hold. Move
-      the rule there and not into a new module.
-- [ ] `get_learning_content` (199 lines), `list_question_banks` (127)
-      and `start_assessment` (127).
-- [ ] The remaining long routes: measure again, write them here, and
-      do them largest first.
+Measured again on 11 October 2026, when this phase was reached: 38
+routes, 27 of them 40 lines or more. Routes that do one job together go
+in one pull request, in the order a learner meets them last, so the
+administrator's lists go first and taking an assessment, which matters
+most, goes when the shape is most settled. A refusal here is a
+`TeachingError`, in `backend/app/features/teaching/errors.py`, which
+the video callbacks already brought in.
+
+- [x] **Who may see which delegates and modules** - `list_delegates`
+      (189 lines, 17 branches), `list_delegate_modules` (42 lines, 6
+      branches) and `list_learning_modules` (115 lines, 16 branches).
+      Each works out who may see what, which is what
+      `backend/app/features/teaching/access.py` exists to hold: the
+      rule goes there and not into a new module.
+      Done: the rules are `delegates_in_view`,
+      `modules_served_where_they_belong` and `modules_open_to` in
+      `access.py`. What is said of each row is `delegate_rows` and
+      `learning_module_rows` in a new `listing.py` beside it, because
+      rows read attempts, sites and the content store, which is not a
+      question of who may see what. None of the three routes refuses
+      anybody itself, so no `TeachingError` was added. `delegate_rows`
+      still asks up to three queries for each person listed, as the
+      route did.
+- [ ] **What a learner is shown of a module** - `get_learning_content`
+      (199 lines, 11 branches), `list_question_banks` (127 lines, 12
+      branches) and `get_question_bank` (67 lines).
+- [ ] **Starting an assessment** - `start_assessment` (127 lines, 7
+      branches), with `get_current_item` and `get_item_by_order`.
+- [ ] **Answering and finishing one** - `submit_answer` (98 lines, 7
+      branches), `update_answer` (66 lines, 6 branches) and
+      `complete_assessment` (97 lines).
+- [ ] **What comes after** - `download_certificate` (113 lines, 12
+      branches) and `get_assessment_question_results` (71 lines).
+- [ ] **Syncing by hand** - `sync_all_banks` (99 lines, 13 branches),
+      folded into `sync_every_bank` in `ci_sync.py`, which is the same
+      loop. It has the fault the CI sync had, and the fold closes it: a
+      bank that did not load is listed as failed and not as synced.
+      With `validate_items` and `sync_items`.
+- [ ] **The administrator's view of the banks** - `list_admin_banks`
+      (83 lines), `get_admin_bank_detail` (88 lines) and
+      `list_bank_organisations` (54 lines).
+- [ ] **Video and other media** - `grant_video_access` (100 lines),
+      `create_media_upload_url` (88 lines), `link_module_media` (91
+      lines), `upload_media_content_locally` (84 lines),
+      `delete_media_asset` (47 lines) and `put_media_captions` (44
+      lines). Two pull requests if one is too much to read.
 
 ## Phase 4: The org units and passport routers
 

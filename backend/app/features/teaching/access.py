@@ -41,16 +41,24 @@ from app.cbac.practising import authorise_practice
 from app.features.teaching.enrolment import (
     current_enrolments,
     enrol,
+    enrolled_on_offer,
     is_enrolled,
     set_end,
     withdraw,
 )
 from app.features.teaching.models import (
     ENROLMENT_SOURCES,
+    QuestionBankConfig,
     QuestionBankOrgStatus,
 )
 from app.models import PractisingCompetency, User, org_unit_member
-from app.organisations import organisation_org_units_of, reach_of_org_units
+from app.org_units.tree import descendant_ids
+from app.organisations import (
+    get_member_org_unit_ids,
+    organisation_org_unit_member,
+    organisation_org_units_of,
+    reach_of_org_units,
+)
 
 #: The competency that opens teaching and somebody's own results.
 RESULTS_COMPETENCY = "view_teaching_results"
@@ -531,3 +539,223 @@ def settle_enrolments(
             source="admin",
             granted_by=settled_by,
         )
+
+
+# --- What a caller is shown in a list ---------------------------------------
+#
+# The three lists below ask "who" and "which" only. What is said about
+# each person or module is ``app.features.teaching.listing``.
+
+
+def modules_open_to(db: Session, user: User) -> dict[str, int]:
+    """Return the modules *user* may be shown, and who opens each.
+
+    The permissive union: every module that any organisation open to
+    them has live and that they hold a current enrolment on there. One
+    query, whatever the number of modules.
+
+    Nobody is refused. Somebody with no place, or whose organisations
+    have nothing live, is shown nothing, which for a list is an answer
+    and not an error. Holding ``take_teaching_modules`` is asked here
+    as well as at the route, through ``organisations_open_for_modules``.
+
+    Args:
+        db: Core database session.
+        user: The person asked about.
+
+    Returns:
+        Module id to the organisation that makes it visible. Which
+        organisation, not merely whether one does: whether a module's
+        media is complete is per organisation, so that has to be asked
+        of the same organisation that grants the view. Where two
+        organisations open the same module, the one kept is whichever
+        row the database gives first, and the query sets no order.
+    """
+    organisation_ids = organisations_open_for_modules(db, user)
+
+    # No organisation, nothing visible. Not an error for a list.
+    if not organisation_ids:
+        return {}
+
+    opened_by: dict[str, int] = {}
+
+    for status in (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.org_unit_id.in_(organisation_ids),
+                enrolled_on_offer(user.id),
+            )
+        )
+        .scalars()
+        .all()
+    ):
+        if status.is_live:
+            if status.org_unit_id is not None:
+                opened_by.setdefault(
+                    status.question_bank_id, int(status.org_unit_id)
+                )
+
+    return opened_by
+
+
+@dataclass(frozen=True)
+class DelegatesInView:
+    """Whose results one caller is shown, and where they were looked for."""
+
+    #: The organisations the caller is a member of, ascending.
+    organisation_ids: list[int]
+    #: Every org_unit beneath those organisations, at any depth.
+    place_ids: set[int]
+    #: The members of the organisations and of everything beneath them.
+    people_ids: set[int]
+
+
+def delegates_in_view(
+    db: Session, user: User, *, one_module: bool
+) -> DelegatesInView:
+    """Return whose teaching results *user* may be shown.
+
+    Every member, in any capacity, of the organisations the caller is a
+    member of, and every member of an org_unit beneath one of them.
+    Nothing is asked of the caller's own capacity there, nor of what
+    they hold: ``manage_teaching`` is the route's question.
+
+    Nobody is refused. A caller who is a member of no organisation, an
+    operator included, is shown nobody.
+
+    Args:
+        db: Core database session.
+        user: The caller.
+        one_module: Whether the list is of one module's attempts. When
+            it is not, the caller is left out of their own list.
+
+    Returns:
+        The organisations, the org_units beneath them and the people.
+        All three are empty, after one query, where the caller is a
+        member of no organisation.
+    """
+    # Which organisations the caller is a member of. Direct membership,
+    # not reach: this route lists the people *below* the caller, so a
+    # trainee reaching up via a site link must not thereby list its staff.
+    organisation_ids = get_member_org_unit_ids(db, user.id)
+
+    if not organisation_ids:
+        return DelegatesInView(
+            organisation_ids=[], place_ids=set(), people_ids=set()
+        )
+
+    # Get all members: org staff + site staff for linked sites
+    organisation_member_ids = set(
+        row[0]
+        for row in db.execute(
+            select(organisation_org_unit_member.c.user_id).where(
+                organisation_org_unit_member.c.org_unit_id.in_(
+                    organisation_ids
+                ),
+            )
+        ).all()
+    )
+
+    place_ids = descendant_ids(db, organisation_ids)
+    place_member_ids = set(
+        row[0]
+        for row in db.execute(
+            select(org_unit_member.c.user_id).where(
+                org_unit_member.c.org_unit_id.in_(place_ids)
+            )
+        ).all()
+    )
+
+    people_ids = organisation_member_ids | place_member_ids
+
+    # Listing every member, the caller leaves themselves out: they are
+    # looking at the people below them. Asked about one module, the list
+    # is of who has attempted it, and an admin who sat it is one of them.
+    if not one_module:
+        people_ids.discard(user.id)
+
+    return DelegatesInView(
+        organisation_ids=organisation_ids,
+        place_ids=place_ids,
+        people_ids=people_ids,
+    )
+
+
+@dataclass(frozen=True)
+class ServedModule:
+    """One module an organisation serves, by the title being served."""
+
+    module_id: str
+    title: str
+
+
+def modules_served_where_they_belong(
+    db: Session, user: User
+) -> list[ServedModule]:
+    """Return the modules served by the organisations *user* belongs to.
+
+    What the all-delegates view narrows by. An organisation serves a
+    module once it has a ``QuestionBankOrgStatus`` row with an active
+    version, which is the rule the learner's own module list uses. A
+    module that has only been synced is not listed: every organisation's
+    sync may bring in modules it was never given. One closed to new
+    attempts is still listed, since its results are still wanted.
+
+    Membership of the organisation itself, in any capacity, as
+    ``delegates_in_view`` asks. Nobody is refused: a caller who is a
+    member of no organisation is shown nothing.
+
+    Args:
+        db: Core database session.
+        user: The caller.
+
+    Returns:
+        Each module once, named by the title of the version being
+        served, in title order and then id order. A module whose served
+        version has no synced row to take a title from is left out.
+        Where two of the caller's organisations serve the same module,
+        the title is that of whichever status row the database gives
+        first, and the query sets no order.
+    """
+    organisation_ids = get_member_org_unit_ids(db, user.id)
+
+    if not organisation_ids:
+        return []
+
+    served: dict[str, tuple[int, int]] = {}
+
+    for status in db.execute(
+        select(QuestionBankOrgStatus).where(
+            QuestionBankOrgStatus.org_unit_id.in_(organisation_ids),
+            QuestionBankOrgStatus.active_version.is_not(None),
+        )
+    ).scalars():
+        if status.org_unit_id is None or status.active_version is None:
+            continue
+        served.setdefault(
+            status.question_bank_id,
+            (status.org_unit_id, status.active_version),
+        )
+    if not served:
+        return []
+
+    titles: dict[str, str] = {}
+
+    for config in db.execute(
+        select(QuestionBankConfig).where(
+            QuestionBankConfig.org_unit_id.in_(organisation_ids),
+            QuestionBankConfig.question_bank_id.in_(served),
+        )
+    ).scalars():
+        if served[config.question_bank_id] == (
+            config.org_unit_id,
+            config.version,
+        ):
+            titles[config.question_bank_id] = config.title
+
+    return [
+        ServedModule(module_id=module_id, title=title)
+        for module_id, title in sorted(
+            titles.items(), key=lambda item: (item[1].lower(), item[0])
+        )
+    ]
