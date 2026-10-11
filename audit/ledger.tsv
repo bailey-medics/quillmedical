@@ -105,7 +105,7 @@
 .github/workflows/alert-route-test.yml	062f4f6cbe2045dfcc31a870eae930e635be0847	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .github/workflows/auto-pr.yml	33d08bfe7a1e39eaf05964f0644b26b173ee3675	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .github/workflows/aws-terraform.yml	bef00673d253c8033cc020ca2f00eec174909c68	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
-.github/workflows/ci.yml	a046701e2f79cac642d62c208816ce8ea3e81b50	2026-10-10	Cotswoldsmaker	mark.allan.bailey@gmail.com
+.github/workflows/ci.yml	a7aa6e643ea35287453eb7df1e8d724530be6632	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .github/workflows/deploy.yml	ee6f0eaa52755fa9ca5810c971758c00b911646a	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .github/workflows/docs.yml	acfa35551d211620f25be99d1ee6e77f0b8b131c	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .github/workflows/e2e-image-cache.yml	e0e42ecb4a1ae69d793e49bbe1c7dfd65e0173d4	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
