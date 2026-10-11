@@ -37,6 +37,7 @@ from app.users.errors import (
     PlatformRoleNotAllowed,
     PractisingWhereNotAMember,
     ProfessionOutOfScope,
+    SuperadminRoleNotAllowed,
     UsernameTaken,
 )
 from tests.competencies import hold
@@ -206,6 +207,20 @@ def manager(db_session: Session, trust: OrgUnit, ward: OrgUnit) -> User:
     user = _person(db_session, "manager", "system_administrator")
     administers(db_session, user.id, trust.id)
     administers(db_session, user.id, ward.id)
+
+    return user
+
+
+@pytest.fixture
+def operator(db_session: Session, trust: OrgUnit) -> User:
+    """Operates Quill, and holds ``manage_users`` through doing so."""
+    user = _person(
+        db_session,
+        "operator",
+        "superadmin_profession",
+        platform_role="superadmin",
+    )
+    administers(db_session, user.id, trust.id)
 
     return user
 
@@ -436,30 +451,65 @@ def test_somebody_holding_manage_users_is_asked_none_of_that(
     assert _memberships(db_session, made) == {}
 
 
-def test_a_user_manager_can_make_an_operator_who_holds_nothing_for_it(
+def test_a_user_manager_who_is_not_an_operator_may_not_make_one(
     db_session: Session, manager: User
 ) -> None:
-    """A known hole, pinned as it is so that moving the rules moved nothing.
+    """Only an operator may make another, here as when a page is saved.
 
-    Saving a page refuses this caller the ``superadmin`` platform role
-    and merges the operator competencies in when an operator gives it.
-    Creating does neither. It is recorded in Phase 1 of
-    ``docs/docs/plans/2026-10-11-thin-routes-and-steady-frontend-tests-plan.md``
-    as a step of its own. Whoever closes it changes this test.
+    ``manage_users`` says what somebody may administer, and never that
+    they may make somebody to run the platform. The words are the ones a
+    refused promotion gives, and nobody is left behind.
     """
     assert manager.platform_role != "superadmin"
 
+    with pytest.raises(SuperadminRoleNotAllowed) as refused:
+        create_account(
+            db_session,
+            manager,
+            _new(base_profession="patient", platform_role="superadmin"),
+        )
+
+    assert refused.value.status_code == 403
+    assert refused.value.message == "Cannot grant the superadmin platform role"
+    assert _account(db_session, "starter") is None
+
+
+def test_an_operator_makes_an_operator_who_holds_the_operator_competencies(
+    db_session: Session, operator: User
+) -> None:
+    """Without them every competency gate would refuse the new operator.
+
+    They are held beside what the profession and the form gave, and the
+    profession sent is the one kept.
+    """
     made = create_account(
         db_session,
-        manager,
-        _new(base_profession="patient", platform_role="superadmin"),
+        operator,
+        _new(
+            base_profession="consultant",
+            additional_competencies=[TEACHING],
+            platform_role="superadmin",
+        ),
     )
     db_session.commit()
 
     assert made.platform_role == "superadmin"
-    assert _held(made).isdisjoint(
+    assert made.base_profession == "consultant"
+    assert _held(made) >= {HELD, TEACHING} | set(
         get_profession_base_competencies(SUPERADMIN_PROFESSION)
     )
+
+
+def test_an_operator_making_a_standard_account_adds_nothing_to_it(
+    db_session: Session, operator: User
+) -> None:
+    made = create_account(
+        db_session, operator, _new(base_profession="patient")
+    )
+    db_session.commit()
+
+    assert made.platform_role == "standard"
+    assert _held(made) == set(get_profession_base_competencies("patient"))
 
 
 # --- which refusal comes first ----------------------------------------------

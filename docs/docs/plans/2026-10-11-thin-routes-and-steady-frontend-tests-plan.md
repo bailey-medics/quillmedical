@@ -180,18 +180,33 @@ that work is larger and each step of it is safe to land alone.
       Phases 1 and 2 so far. The test that pinned the old answer now
       pins the new one.
 
-- [ ] Decide what to do about a hole found on the way, in
-      `create_user_with_cbac`: **somebody holding `manage_users` who is
-      not an operator can create an account with the `superadmin`
-      platform role.** `update_user` refuses exactly that ("Cannot
-      grant the superadmin platform role"), and creating has no such
-      check, so the refusal is stepped round by making a new account in
-      place of promoting an old one. The account made also misses the
-      operator competencies that a promotion merges in. Found on
-      11 October 2026 while moving the competency rules, and left as it
-      is: this plan moves rules and does not change them, and closing
-      it changes what a caller may do. The fix is small, the same
-      refusal on create, and wants its own pull request.
+- [x] Close a hole found on the way, in `create_user_with_cbac`:
+      **somebody holding `manage_users` who is not an operator could
+      create an account with the `superadmin` platform role.**
+      `update_user` refuses exactly that ("Cannot grant the superadmin
+      platform role"), and creating had no such check, so the refusal
+      was stepped round by making a new account in place of promoting
+      an old one. The account made also missed the operator
+      competencies that a promotion merges in. Found on 11 October 2026
+      while moving the competency rules, and left as it was then: this
+      plan moves rules and does not change them, and closing it changes
+      what a caller may do. Closed the same day, as a change of its own.
+      - **Before**: `POST /api/users` from that caller answered 200 and
+        made an operator who held only what their profession gave.
+      - **Now**: it answers 403 "Cannot grant the superadmin platform
+        role" (`SuperadminRoleNotAllowed`, the class and words a save
+        gives) and writes nothing. An operator creating an operator is
+        answered 200 as before, and the new account now holds the
+        `superadmin_profession` competencies beside its own.
+      - **One rule, asked twice**: `additional_for_platform_role` in
+        `backend/app/users/competencies.py` refuses and merges, and
+        both `settle_competencies` and `create_account` call it.
+      - **Where it is asked on create**: last of the checks, after the
+        ones on a limited scope and before the account is written. A
+        save asks it after "You may not set a platform role." too, so a
+        caller whose scope has a limit is still told that first, on
+        both routes. Every other platform role and caller is answered
+        as before.
 
 - [ ] Prove nothing changed. The route tests in `backend/tests/` that
       drive `update_user` through the API must pass **unchanged**,
@@ -300,7 +315,7 @@ more.
       every org unit somebody belongs to, organisations among them; the
       patient picker does not ask whether the caller shares an org unit
       with the patient; and an empty `patient_id` is the admin list.
-- [ ] The remaining routes of 40 lines or more. Measured again on
+- [x] The remaining routes of 40 lines or more. Measured again on
       11 October 2026, once the five above were done: `main.py` had 60
       routes and 15 of 40 lines or more, none over 76, where it began
       with one of 294. Two of the 15 are `register` and `update_user`
@@ -488,6 +503,15 @@ more.
       - **`sync_all_banks` in the teaching router is the same loop a
         second time**, started by a person. Phase 3 should fold the two
         into one.
+
+The steps above headed "Decide what to do about" were written as each
+thing was found, and each waits for somebody. That is against how this
+plan is meant to run, so each is now built, in its own pull request, as
+a change of behaviour and labelled as one: the pull request says what a
+caller was answered before and what they are answered now. Where there
+was a choice, the more cautious one was taken and is written into the
+step. Mark reviews each, and any can be dropped without touching the
+moves beneath it.
 
 ## Phase 3: The teaching router
 
