@@ -90,6 +90,7 @@ nav:
       - Overview: github/index.md
   - CI/CD:
       - Pipeline overview: cicd/index.md
+      - Stacked branches: cicd/stacked-branches.md
   - Cybersecurity:
       - Overview: cybersecurity/index.md
   - Dependencies:
