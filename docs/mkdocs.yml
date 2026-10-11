@@ -151,6 +151,7 @@ nav:
   - Teaching:
       - Overview: teaching/index.md
       - Content pipeline: teaching/content-pipeline.md
+      - An exam in progress: teaching/exam-in-progress.md
   - Learnings:
       - Overview: learnings/index.md
       - FHIR & EHRbase Staging Issues: learnings/fhir-ehrbase-issues.md
