@@ -114,11 +114,19 @@ that work is larger and each step of it is safe to land alone.
             route takes its competency id from the path and checks it
             against nothing, so a scoped manager refused there is
             handed back whatever they typed.
-      - [ ] **Practice** - `_settle_practice`, shared with
+      - [x] **Practice** - `_settle_practice`, shared with
             `create_user_with_cbac`. It gathers every refusal and
             answers once, with the first one's status and all their
             reasons joined, so somebody is told everything wrong with
-            the form in one go. That stays.
+            the form in one go. That stays. Now `settle_practice` in
+            `app/users/practice.py`, taking a mapping of org unit id to
+            competency ids, which each route builds with
+            `_practice_wanted` beside the request model. The gathered
+            answer is `PracticeRefused` in `app/users/errors.py`, a
+            refusal made of the org unit refusals it is handed. The
+            other two refusals had no test of their words, so
+            `tests/user_practice_refusals_test.py` pins them on both
+            routes.
       - [ ] **The whole save as one function**, calling the parts above
             in order, with the route left to find the person, check the
             caller may reach them, and return.

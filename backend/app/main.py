@@ -61,12 +61,7 @@ from app.cbac.grants import sync_competency_rows
 from app.cbac.positions import (
     clinical_leads_of,
 )
-from app.cbac.practising import (
-    authorise_practice,
-    authorised_at,
-    competencies_at,
-    withdraw_practice,
-)
+from app.cbac.practising import competencies_at
 from app.compat_harness_endpoints import test_api_router
 from app.config import settings
 from app.db import get_core_db
@@ -151,7 +146,6 @@ from app.org_units import (
     ROOT_TYPE_IDS,
 )
 from app.org_units.errors import OrgUnitError
-from app.org_units.practice import practice_refusal
 from app.org_units.router import router as org_units_router
 from app.org_units.tree import (
     descendant_ids,
@@ -276,6 +270,7 @@ from app.users.membership import (
     org_units_the_caller_administers,
     settle_membership,
 )
+from app.users.practice import settle_practice
 from app.users.scope import (
     check_account_in_scope,
     check_changes_in_scope,
@@ -1946,6 +1941,18 @@ def _one_entry_per_org_unit(
     return value
 
 
+def _practice_wanted(
+    practising: list[PractisingAtIn],
+) -> dict[int, list[str]]:
+    """Turn the form's practice list into the plain values the rules take.
+
+    For each org_unit, in the order sent, what they may practise there.
+    Nothing is lost in a mapping: the models refuse an org_unit named
+    twice.
+    """
+    return {entry.org_unit_id: entry.competencies for entry in practising}
+
+
 class AdminUserCreateIn(BaseModel):
     """Admin User Creation Request.
 
@@ -2139,149 +2146,6 @@ class AdminUserUpdateIn(BaseModel):
         return value
 
 
-def _settle_practice(
-    db: Session,
-    current_user: User,
-    person: User,
-    practising: list[PractisingAtIn],
-) -> None:
-    """Make a person's practice rows match what the user form sent.
-
-    Called once their membership and competencies are settled and
-    flushed, in the same transaction, so a new starter is never left
-    created and authorised nowhere.
-
-    For each org_unit sent, the list is the whole answer for the
-    competencies the person now holds: listed ones are authorised there,
-    and ones they hold and are not listed are withdrawn. Three things
-    are deliberately left alone:
-
-    - **An org_unit that was not sent.** The form names only the
-      org_units it showed, so an admin who cannot see one does not
-      empty it by saving.
-    - **A row for a competency outside their ceiling.** Those are the
-      "authorised here but not held" rows the member practice page
-      shows on purpose, and the form has no switch for them. Its
-      silence about one is not an instruction to withdraw it.
-    - **A row that does not change.** It keeps who authorised it and
-      when; ``authorise_practice`` writes nothing for a repeat.
-
-    Every change is checked before any is written, and one refusal
-    refuses the save: this is one request and one transaction, and a
-    user half created is worse than one not created. A list that
-    changes nothing is never refused, because the form sends every
-    field on every save.
-
-    Args:
-        db: Core database session.
-        current_user: The caller.
-        person: Whose practice it is, with membership and competencies
-            already settled.
-        practising: One entry per org_unit to settle.
-
-    Raises:
-        HTTPException: 422 for an org_unit the person does not belong
-            to; 403 when the caller may not set practice at all; and
-            whatever ``practice_refusal`` answers for a change they may
-            not make, with every such change named.
-    """
-    member_of = set(
-        cast(
-            Sequence[int],
-            db.execute(
-                select(org_unit_member.c.org_unit_id).where(
-                    org_unit_member.c.user_id == person.id
-                )
-            )
-            .scalars()
-            .all(),
-        )
-    )
-    strangers = sorted(
-        entry.org_unit_id
-        for entry in practising
-        if entry.org_unit_id not in member_of
-    )
-
-    if strangers:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                "Practice can be set only where they belong. Not a member "
-                "of place " + ", ".join(str(unit) for unit in strangers) + "."
-            ),
-        )
-
-    held = set(person.get_final_competencies())
-    # (org_unit, competency, authorising), in the order they were sent.
-    changes: list[tuple[int, str, bool]] = []
-
-    for entry in practising:
-        current = authorised_at(db, person.id, org_unit_id=entry.org_unit_id)
-        wanted = set(entry.competencies)
-        changes.extend(
-            (entry.org_unit_id, competency, True)
-            for competency in sorted(wanted - current)
-        )
-        changes.extend(
-            (entry.org_unit_id, competency, False)
-            for competency in sorted((current & held) - wanted)
-        )
-    if not changes:
-        return
-
-    # The practice routes sit behind a dependency asking this; the user
-    # routes admit `manage_users` alone, which is not authority to set
-    # where somebody practises.
-    callers = set(current_user.get_final_competencies())
-
-    if "manage_practising_competencies" not in callers and callers.isdisjoint(
-        SCOPED_MANAGER_IDS
-    ):
-        raise HTTPException(
-            status_code=403,
-            detail="You may not set where somebody practises.",
-        )
-
-    refusals: list[OrgUnitError] = []
-
-    for org_unit_id, competency, authorising in changes:
-        refusal = practice_refusal(
-            db,
-            current_user,
-            unit_id=org_unit_id,
-            user_id=person.id,
-            competency=competency,
-            authorising=authorising,
-        )
-        if refusal is not None:
-            refusals.append(refusal)
-    if refusals:
-        # One status, the first's, and every distinct reason: the form
-        # shows one message and it should say everything that was wrong.
-        reasons = list(dict.fromkeys(r.message for r in refusals))
-        raise HTTPException(
-            status_code=refusals[0].status_code, detail=" ".join(reasons)
-        )
-
-    for org_unit_id, competency, authorising in changes:
-        if authorising:
-            authorise_practice(
-                db,
-                user_id=person.id,
-                org_unit_id=org_unit_id,
-                competency=competency,
-                authorised_by=current_user.id,
-            )
-        else:
-            withdraw_practice(
-                db,
-                user_id=person.id,
-                org_unit_id=org_unit_id,
-                competency=competency,
-            )
-
-
 @router.post(
     "/users",
     response_model=UserActionOut,
@@ -2422,7 +2286,9 @@ def create_user_with_cbac(
     # Last, once they belong somewhere and hold something: where they
     # may practise it. Same transaction as the account itself.
     if payload.practising:
-        _settle_practice(db, current_user, user, payload.practising)
+        settle_practice(
+            db, current_user, user, _practice_wanted(payload.practising)
+        )
 
     # After practice, so a place the form set is already there and
     # naming a module adds only what is still missing.
@@ -2611,7 +2477,9 @@ def update_user(
     # After membership and competencies, because practice is checked
     # against both as they now stand.
     if payload.practising:
-        _settle_practice(db, current_user, user, payload.practising)
+        settle_practice(
+            db, current_user, user, _practice_wanted(payload.practising)
+        )
 
     # After practice, so a place the form set is already there and
     # naming a module adds only what is still missing. An empty list for
