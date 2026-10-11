@@ -1,0 +1,21 @@
+// One line that breaks each rule in .semgrep.yml, and nothing else.
+//
+// This is never run and never imported. It ends in .txt so that neither
+// TypeScript nor ESLint takes it for code. .github/scripts/ci/run-semgrep.sh
+// copies it to a scratch folder as a .tsx file, scans it with the rules,
+// and fails the job when any rule has not found its line here: a rule that
+// matches nothing passes every scan, and this is how that is noticed.
+//
+// Add a line with each new rule. The names are made up.
+
+// js.dom.xss.innerhtml
+element.innerHTML = userText;
+
+// js.dangerous.eval
+eval(userText);
+
+// js.url.concat
+const address = "http" + rest;
+
+// js.regex.superlinear
+const slow = /(x+)+y/;

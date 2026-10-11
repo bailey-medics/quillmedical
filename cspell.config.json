@@ -340,6 +340,7 @@
     "HSTS",
     "hstspreload",
     "htmlcov",
+    "httponly",
     "httpx",
     "humanname",
     "hyperlegible",

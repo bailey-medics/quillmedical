@@ -650,6 +650,10 @@ def set_auth_cookies(
         path=f"{settings.API_PREFIX}/auth/refresh",
         **COOKIE_KW,
     )
+    # Not HTTP-only on purpose: the frontend reads this cookie to send its
+    # value back as the CSRF header, which is the whole of how the check
+    # works. It holds no session and is useless without the other two.
+    # nosemgrep: py.cookie.script-can-read-it
     response.set_cookie(
         "XSRF-TOKEN",
         xsrf,

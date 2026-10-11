@@ -571,13 +571,30 @@ jobs:
         run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       # Through a script and not called bare: Semgrep passes a scan that
-      # opened no files, so the script fails one that scanned too few.
-      - name: Run Semgrep
+      # opened no files, and a rule that matches nothing. The script fails
+      # a scan of fewer files than the number given, and first checks each
+      # rule finds its line in the folder's canary file.
+      #
+      # The frontend is about 1,250 files, so 500 is well under it.
+      - name: Run Semgrep on the frontend
         env:
           SEMGREP_LOG_LEVEL: error
           SEMGREP_DISABLE_ANALYTICS: "1"
           SEMGREP_NO_VERSION_CHECK: "1"
-        run: bash .github/scripts/ci/run-semgrep.sh frontend
+        run: bash .github/scripts/ci/run-semgrep.sh frontend 500
+
+      # In this job and not one of its own, so the backend scan is behind
+      # the same required check from the day it lands. The job keeps the
+      # name the branch rules know it by.
+      #
+      # The backend is about 160 files once its tests and migrations are
+      # left out, as the backend's own Semgrep ignore file does.
+      - name: Run Semgrep on the backend
+        env:
+          SEMGREP_LOG_LEVEL: error
+          SEMGREP_DISABLE_ANALYTICS: "1"
+          SEMGREP_NO_VERSION_CHECK: "1"
+        run: bash .github/scripts/ci/run-semgrep.sh backend 100
 
   # ---------- Prebuild CI app images for E2E ----------
   # The layer cache is read here and never written. e2e-image-cache.yml
