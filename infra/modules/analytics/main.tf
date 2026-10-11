@@ -269,6 +269,18 @@ resource "google_bigquery_dataset" "analytics" {
   # window that was actually intended.
   default_partition_expiration_ms = var.retention_days * 24 * 60 * 60 * 1000
 
+  # Let Terraform delete the dataset with its tables in it. Without this a
+  # change that replaces the dataset, such as moving it to another
+  # location, fails at the destroy: the sink has been writing tables into
+  # it, and BigQuery refuses to delete a dataset that holds any. Nothing
+  # here is worth keeping across a replacement: the rows expire after
+  # `retention_days` in any case.
+  #
+  # It has to be applied on its own before any change that replaces the
+  # dataset. The destroy reads this from the state as it was, so setting
+  # it in the same apply as the replacement comes too late.
+  delete_contents_on_destroy = true
+
   labels = {
     environment = var.environment
     contains    = "no-phi"
