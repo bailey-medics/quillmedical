@@ -125,6 +125,18 @@ class SuperadminRoleNotAllowed(UserAdminError):
     message = "Cannot grant the superadmin platform role"
 
 
+class PatientPickerNotAllowed(UserAdminError):
+    """The people around a patient, asked for by a limited scope.
+
+    The words are the ones the competency gate gives somebody without
+    ``manage_users``, which is what a caller whose scope has a limit
+    is, here.
+    """
+
+    status_code = 403
+    message = "Forbidden: User lacks required competency 'manage_users'"
+
+
 class SelfGranting(UserAdminError):
     status_code = 403
     message = (

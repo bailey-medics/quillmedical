@@ -137,12 +137,9 @@ from app.org_units.tree import (
 from app.organisations import (
     feature_holder_ids_of,
     get_accessible_patient_ids,
-    get_org_unit_staff_ids,
-    get_patient_org_unit_ids,
     get_shared_org_unit_ids,
     is_member_within,
     org_units_whose_people_reached_by,
-    organisation_org_unit_member,
     organisation_org_units_of,
 )
 from app.push import router as push_router
@@ -176,7 +173,6 @@ from app.schemas.auth import (
     UserIdActionOut,
     UserOut,
     UsersListOut,
-    UserSummaryItem,
     ValidateClinicalLeadOut,
     VerifyEmailIn,
 )
@@ -242,6 +238,13 @@ from app.security import (
 )
 from app.users.create import NewAccount, create_account
 from app.users.errors import UserAdminError
+from app.users.listing import (
+    admin_rows,
+    people_around_a_patient,
+    people_to_list,
+    people_within_reach,
+    picker_rows,
+)
 from app.users.register import (
     Registration,
     clinical_lead_site,
@@ -2562,157 +2565,23 @@ def list_users(
 
     Raises:
         HTTPException: 403 if user lacks permissions.
+        UserAdminError: 403 if ``patient_id`` is sent by somebody whose
+            scope has a limit. See :mod:`app.users.listing`.
+        HTTPException: 500 if the list could not be read.
     """
     if patient_id:
-        # The message participant picker, which is about a patient and
-        # nothing to do with teaching, so a limited scope does not reach it.
-        if not scope_for(current_user).unlimited:
-            raise HTTPException(
-                status_code=403,
-                detail="Forbidden: User lacks required competency "
-                "'manage_users'",
-            )
-        # Filtered mode: staff in patient's orgs + external with access
-        patient_orgs = get_patient_org_unit_ids(db, patient_id)
-        staff_ids = (
-            get_org_unit_staff_ids(db, patient_orgs) if patient_orgs else set()
-        )
-
-        # Also include external users with active access to this patient
-        external_rows = db.execute(
-            select(ExternalPatientAccess.user_id).where(
-                ExternalPatientAccess.patient_id == patient_id,
-                ExternalPatientAccess.revoked_at.is_(None),
-            )
-        ).all()
-        external_ids = {r[0] for r in external_rows}
-
-        all_ids = staff_ids | external_ids
-        if not all_ids:
-            return UsersListOut(users=[])
-
-        users = (
-            db.execute(select(User).where(User.id.in_(all_ids)))
-            .scalars()
-            .unique()
-            .all()
-        )
         return UsersListOut(
-            users=[
-                UserSummaryItem(
-                    id=user.id,
-                    username=user.username,
-                    email=user.email,
-                    platform_role=user.platform_role,
-                    competencies=user.get_final_competencies(),
-                    is_active=user.is_active,
-                )
-                for user in users
-            ]
-        )
-
-        # Unfiltered mode: admin/superadmin only
-    stmt = select(User)
-
-    # Exclude people who are already members of the org_unit being
-    # added to. A caller sending nothing excludes nobody.
-    if exclude_org_unit is not None:
-        stmt = stmt.where(
-            User.id.notin_(
-                select(org_unit_member.c.user_id).where(
-                    org_unit_member.c.org_unit_id == exclude_org_unit
-                )
+            users=picker_rows(
+                people_around_a_patient(db, current_user, patient_id)
             )
         )
 
-        # Anyone but an operator sees only users at their own org_units;
-        # operators see everyone.
-    if current_user.platform_role != "superadmin":
-        # Everybody at an org_unit the admin belongs to, or at one
-        # beneath it: the same reach the routes acting on one user
-        # check, so nobody is listed who cannot then be opened.
-        reached = org_units_whose_people_reached_by(db, current_user)
-        all_scoped_ids: set[int] = (
-            {
-                row[0]
-                for row in db.execute(
-                    select(org_unit_member.c.user_id).where(
-                        org_unit_member.c.org_unit_id.in_(reached)
-                    )
-                ).all()
-            }
-            if reached
-            else set()
-        )
-        if not all_scoped_ids:
-            return UsersListOut(users=[])
-        stmt = stmt.where(User.id.in_(all_scoped_ids))
-
-        # An operator who belongs to one of those org_units is listed
-        # with everybody else. They were filtered out here, while the
-        # org_unit's own staff table went on naming them, so an admin
-        # saw a colleague on one page and not the other. Seeing is all
-        # it is: every route that changes an account still refuses a
-        # non-operator acting on an operator.
+    within = people_within_reach(db, current_user)
 
     try:
-        users = db.execute(stmt).scalars().unique().all()
+        people = people_to_list(db, within, exclude_org_unit=exclude_org_unit)
 
-        # Batch-load organisation and site memberships
-        user_ids = [user.id for user in users]
-        # Joined on the org_unit, which is what the membership row holds.
-        # This read ``Organisation.id == ...org_unit_id`` for a release:
-        # an organisation id compared against an org_unit id, which matches
-        # on a small installation because the two sequences agree, and
-        # stops matching the moment a ward is created between two
-        # organisations. A user's organisations then came back empty, or
-        # named somebody else's.
-        org_rows = db.execute(
-            select(
-                organisation_org_unit_member.c.user_id,
-                OrgUnit.name,
-            )
-            .join(
-                OrgUnit,
-                OrgUnit.id == organisation_org_unit_member.c.org_unit_id,
-            )
-            .where(organisation_org_unit_member.c.user_id.in_(user_ids))
-        ).all()
-        user_orgs: dict[int, list[str]] = {}
-        for row in org_rows:
-            user_orgs.setdefault(row[0], []).append(row[1])
-
-        site_rows = db.execute(
-            select(
-                org_unit_member.c.user_id,
-                OrgUnit.name,
-            )
-            .join(
-                OrgUnit,
-                OrgUnit.id == org_unit_member.c.org_unit_id,
-            )
-            .where(org_unit_member.c.user_id.in_(user_ids))
-        ).all()
-        user_sites: dict[int, list[str]] = {}
-        for row in site_rows:
-            user_sites.setdefault(row[0], []).append(row[1])
-
-        return UsersListOut(
-            users=[
-                UserSummaryItem(
-                    id=user.id,
-                    username=user.username,
-                    email=user.email,
-                    full_name=user.full_name or "",
-                    platform_role=user.platform_role,
-                    competencies=user.get_final_competencies(),
-                    is_active=user.is_active,
-                    organisations=user_orgs.get(user.id, []),
-                    sites=user_sites.get(user.id, []),
-                )
-                for user in users
-            ]
-        )
+        return UsersListOut(users=admin_rows(db, people))
     except Exception as e:
         logger.exception("Failed to list users")
         raise HTTPException(
