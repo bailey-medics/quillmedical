@@ -728,9 +728,18 @@ the video callbacks already brought in.
       takes any organisation's synced copy where reading asks for the
       learner's organisation's own, so an attempt started on another
       organisation's copy answers 500 when read.
-- [ ] **Answering and finishing one** - `submit_answer` (98 lines, 7
+- [x] **Answering and finishing one** - `submit_answer` (98 lines, 7
       branches), `update_answer` (66 lines, 6 branches) and
-      `complete_assessment` (97 lines).
+      `complete_assessment` (97 lines). Now `record_answer`,
+      `change_answer` and `finish_attempt` in `attempts.py`, with
+      `TimeLimitExceeded`, `AllItemsAlreadyAnswered` and
+      `AnswerNotFound` added to `errors.py`; the commit and the emails
+      about a pass stay in the route. Found and pinned, not changed:
+      finishing never asks about time, so an attempt long past its
+      limit is still marked and can pass; it does not ask for every
+      answer either; a bank with no pass criteria passes every attempt;
+      what is chosen is not checked against the options; and an answer
+      can be "changed" on a question never answered.
 - [ ] **What comes after** - `download_certificate` (113 lines, 12
       branches) and `get_assessment_question_results` (71 lines).
 - [ ] **Syncing by hand** - `sync_all_banks` (99 lines, 13 branches),
@@ -758,6 +767,20 @@ for him to rule on before the go-live. Most serious first.
   counts attempts. A second start writes a second attempt, and both
   stay open and answerable. There is no limit on attempts and no check
   of time at the start.
+- **An attempt long past its time limit can still be finished, marked
+  and passed.** Answering is refused after the deadline, but
+  `complete_assessment` never asks about time. It marks whatever was
+  answered in time, and a pass gets its exam reference and its email.
+- **Finishing does not ask that every question was answered**, and **a
+  bank with no pass criteria passes every attempt**, one with no
+  answers included.
+- **An attempt on a bank that gives no time limit can never be
+  answered.** The limit is stored as 0, which is read as no time and
+  not as no limit.
+- **What a learner chooses is not checked against the question's
+  options.** Any text is stored and marked wrong.
+- **The route for changing an answer does not need one to have been
+  given**, so a question can be answered ahead of its turn.
 - **An attempt can be started on a bank whose media is incomplete.**
   Reading that bank is refused, with a comment saying "assessment
   included". Starting it never asks.

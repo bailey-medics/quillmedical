@@ -42,8 +42,11 @@ from app.features.teaching.attempts import (
     attempt_of,
     bank_to_sit,
     begin_attempt,
+    change_answer,
+    finish_attempt,
     item_at_position,
     next_unanswered_item,
+    record_answer,
 )
 from app.features.teaching.enrolment import enrolled_on_offer, is_enrolled
 from app.features.teaching.listing import (
@@ -112,11 +115,6 @@ from app.features.teaching.schemas import (
     ValidationMessageOut,
     ValidationResultOut,
     VideoAccessOut,
-)
-from app.features.teaching.scoring import (
-    evaluate_pass_criteria,
-    score_answer_uniform,
-    score_answer_variable,
 )
 from app.features.teaching.storage import (
     download_bank_from_gcs,
@@ -990,99 +988,26 @@ def submit_answer(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
-    """Submit an answer, score it, and return the next item."""
-    assessment = db.get(Assessment, assessment_id)
+    """Submit an answer, score it, and return the next item.
 
-    if not assessment or assessment.user_id != user.id:
-        raise HTTPException(404, "Assessment not found")
+    Whose attempt it is comes first, then whether they may still enter
+    its module, then ``record_answer``. Whether the answer was right is
+    stored and never sent back.
+    """
+    assessment = attempt_of(db, user.id, assessment_id)
     _require_place_for_attempt(db, user, assessment)
-    if assessment.completed_at:
-        raise HTTPException(409, "Assessment already completed")
 
-        # Time limit check
-    now = datetime.now(UTC)
-    deadline = assessment.started_at.replace(tzinfo=UTC) + timedelta(
-        minutes=assessment.time_limit_minutes
-    )
-
-    if now > deadline:
-        raise HTTPException(409, "Time limit exceeded")
-
-        # Find current unanswered item
-    current = (
-        db.execute(
-            select(AssessmentAnswer)
-            .where(
-                AssessmentAnswer.assessment_id == assessment_id,
-                AssessmentAnswer.selected_option.is_(None),
-            )
-            .order_by(AssessmentAnswer.display_order)
-        )
-        .scalars()
-        .first()
-    )
-
-    if not current:
-        raise HTTPException(409, "All items already answered")
-
-        # Load config
-    config_row = (
-        db.execute(
-            select(QuestionBankConfig).where(
-                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
-                QuestionBankConfig.question_bank_id
-                == assessment.question_bank_id,
-                QuestionBankConfig.version == assessment.bank_version,
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if not config_row:
-        raise HTTPException(500, "Config not found for assessment")
-
-    config = config_row.config_yaml
-    item = current.item
-
-    # Score the answer
-    if config_row.type == "uniform":
-        is_correct, resolved_tags = score_answer_uniform(
-            body.selected_option, config, item.metadata_json
-        )
-    else:
-        is_correct, resolved_tags = score_answer_variable(
-            body.selected_option,
-            item.options or [],
-            item.correct_option_id or "",
-        )
-
-        # Persist
-    current.selected_option = body.selected_option
-    current.is_correct = is_correct
-    current.set_tags(resolved_tags)
-    current.answered_at = now
-    db.flush()
-
-    # Find next unanswered
-    next_answer = (
-        db.execute(
-            select(AssessmentAnswer)
-            .where(
-                AssessmentAnswer.assessment_id == assessment_id,
-                AssessmentAnswer.selected_option.is_(None),
-            )
-            .order_by(AssessmentAnswer.display_order)
-        )
-        .scalars()
-        .first()
-    )
+    recorded = record_answer(db, assessment, body.selected_option)
 
     next_item = None
-    all_answered = next_answer is None
+    all_answered = recorded.next_answer is None
 
-    if next_answer:
-        next_item = _build_candidate_item(next_answer, config, config_row.type)
+    if recorded.next_answer:
+        next_item = _build_candidate_item(
+            recorded.next_answer,
+            recorded.config.config_yaml,
+            recorded.config.type,
+        )
 
     return {
         "answered": True,
@@ -1103,73 +1028,19 @@ def update_answer(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> CandidateItemOut:
-    """Update an already-answered item (before assessment completion)."""
-    assessment = db.get(Assessment, assessment_id)
+    """Update an already-answered item (before assessment completion).
 
-    if not assessment or assessment.user_id != user.id:
-        raise HTTPException(404, "Assessment not found")
+    Whose attempt it is comes first, then whether they may still enter
+    its module, then ``change_answer``.
+    """
+    assessment = attempt_of(db, user.id, assessment_id)
     _require_place_for_attempt(db, user, assessment)
-    if assessment.completed_at:
-        raise HTTPException(409, "Assessment already completed")
 
-    now = datetime.now(UTC)
-    deadline = assessment.started_at.replace(tzinfo=UTC) + timedelta(
-        minutes=assessment.time_limit_minutes
+    changed = change_answer(db, assessment, answer_id, body.selected_option)
+
+    return _build_candidate_item(
+        changed.answer, changed.config.config_yaml, changed.config.type
     )
-
-    if now > deadline:
-        raise HTTPException(409, "Time limit exceeded")
-
-    answer = (
-        db.execute(
-            select(AssessmentAnswer).where(
-                AssessmentAnswer.id == answer_id,
-                AssessmentAnswer.assessment_id == assessment_id,
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if not answer:
-        raise HTTPException(404, "Answer not found")
-
-    config_row = (
-        db.execute(
-            select(QuestionBankConfig).where(
-                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
-                QuestionBankConfig.question_bank_id
-                == assessment.question_bank_id,
-                QuestionBankConfig.version == assessment.bank_version,
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if not config_row:
-        raise HTTPException(500, "Config not found for assessment")
-
-    config = config_row.config_yaml
-    item = answer.item
-
-    if config_row.type == "uniform":
-        is_correct, resolved_tags = score_answer_uniform(
-            body.selected_option, config, item.metadata_json
-        )
-    else:
-        is_correct, resolved_tags = score_answer_variable(
-            body.selected_option,
-            item.options or [],
-            item.correct_option_id or "",
-        )
-
-    answer.selected_option = body.selected_option
-    answer.is_correct = is_correct
-    answer.set_tags(resolved_tags)
-    answer.answered_at = now
-
-    return _build_candidate_item(answer, config, config_row.type)
 
     # ------------------------------------------------------------------
     # Certificate email helper
@@ -1399,93 +1270,35 @@ def complete_assessment(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
-    """Finalise the assessment and compute aggregate scores."""
-    assessment = db.get(Assessment, assessment_id)
+    """Finalise the assessment and compute aggregate scores.
 
-    if not assessment or assessment.user_id != user.id:
-        raise HTTPException(404, "Assessment not found")
+    Whose attempt it is comes first, then whether they may still enter
+    its module, then ``finish_attempt``, which marks it. The emails
+    about a pass are queued from here, after the result is committed.
+    """
+    assessment = attempt_of(db, user.id, assessment_id)
     _require_place_for_attempt(db, user, assessment)
-    if assessment.completed_at:
-        raise HTTPException(409, "Assessment already completed")
 
-        # Load config
-    config_row = (
-        db.execute(
-            select(QuestionBankConfig).where(
-                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
-                QuestionBankConfig.question_bank_id
-                == assessment.question_bank_id,
-                QuestionBankConfig.version == assessment.bank_version,
-            )
-        )
-        .scalars()
-        .first()
-    )
+    finished = finish_attempt(db, assessment)
 
-    if not config_row:
-        raise HTTPException(500, "Config not found for assessment")
-
-    config = config_row.config_yaml
-    pass_criteria = config.get("pass_criteria", [])
-
-    # Gather scored answers
-    answers = (
-        db.execute(
-            select(AssessmentAnswer).where(
-                AssessmentAnswer.assessment_id == assessment_id
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-    # Tags from the `assessment_answer_tag` rows, the copy taken when each
-    # answer was given.
-    answer_dicts = [
-        {
-            "selected_option": a.selected_option,
-            "is_correct": a.is_correct,
-            "resolved_tags": sorted(row.tag for row in a.tags),
-        }
-        for a in answers
-    ]
-
-    criteria_results = evaluate_pass_criteria(
-        pass_criteria, answer_dicts, assessment.total_items
-    )
-    overall_passed = all(c["passed"] for c in criteria_results)
-
-    score_breakdown = {
-        "criteria": criteria_results,
-        "overall_passed": overall_passed,
-    }
-
-    assessment.completed_at = datetime.now(UTC)
-    assessment.score_breakdown = score_breakdown
-    assessment.is_passed = overall_passed
-
-    # Generate exam reference from prefix in config
-    exam_ref_prefix = config.get("results", {}).get("exam_ref_prefix", "")
-
-    if exam_ref_prefix:
-        assessment.exam_ref = f"{exam_ref_prefix}{assessment.id}"
-
+    # A checkpoint: the result is kept even if building the certificate
+    # or queueing the emails below fails.
     db.commit()
 
     # --- Email certificate on pass ---
-    if overall_passed:
+    if finished.overall_passed:
         _maybe_enqueue_certificate_emails(
             background_tasks=background_tasks,
             assessment=assessment,
-            config_row=config_row,
+            config_row=finished.config,
             user=user,
             db=db,
-            criteria_results=criteria_results,
+            criteria_results=finished.criteria_results,
             exam_ref=assessment.exam_ref,
         )
 
     return {
-        "is_passed": overall_passed,
+        "is_passed": finished.overall_passed,
         "criteria": [
             CriterionResult(
                 name=c["name"],
@@ -1493,9 +1306,9 @@ def complete_assessment(
                 threshold=c["threshold"],
                 passed=c["passed"],
             )
-            for c in criteria_results
+            for c in finished.criteria_results
         ],
-        "score_breakdown": score_breakdown,
+        "score_breakdown": finished.score_breakdown,
     }
 
     # ------------------------------------------------------------------
