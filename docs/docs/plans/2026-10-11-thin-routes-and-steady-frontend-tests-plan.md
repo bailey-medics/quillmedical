@@ -81,10 +81,34 @@ that work is larger and each step of it is safe to land alone.
             `PlaceNotFound`, repeats the org unit id the request sent.
             The create route keeps its own insert loop: a new account
             has nothing to clear and no capacity to carry.
-      - [ ] **Practice and teaching enrolments** - `_settle_practice`
-            and `_settle_teaching_enrolments`, both shared with
-            `create_user_with_cbac`.
-      - [ ] **The whole save as one function**, calling the five above
+      - [x] **Teaching enrolments** - `_settle_teaching_enrolments`,
+            shared with `create_user_with_cbac`. Its input models are
+            defined in `main.py`, so the plain function takes ordinary
+            values: for each organisation, the modules wanted and when
+            each ends. Now `settle_teaching_enrolments` in
+            `backend/app/users/enrolments.py`, taking a mapping of
+            organisation to module to end date, which the two routes
+            build with `_enrolments_wanted` beside the models. Its last
+            refusal, for somebody who belongs nowhere under the
+            organisation, cannot be reached through a request, because
+            an earlier check asks the same thing; the tests pin its
+            words by making the writer raise it.
+      - [ ] **The practice rules of the org units router** - brought
+            forward from Phase 4, on 11 October 2026, because the next
+            part cannot be done without it. `_settle_practice` asks
+            `practice_refusal` in `backend/app/org_units/router.py`
+            whether each change is allowed, and that function lives in
+            a router and answers with an `HTTPException`. A plain
+            function cannot call it. So `practice_refusal` and the
+            checks it rests on move out of the router first, to a plain
+            module beside it, with the two practice routes still
+            answering as they do.
+      - [ ] **Practice** - `_settle_practice`, shared with
+            `create_user_with_cbac`. It gathers every refusal and
+            answers once, with the first one's status and all their
+            reasons joined, so somebody is told everything wrong with
+            the form in one go. That stays.
+      - [ ] **The whole save as one function**, calling the parts above
             in order, with the route left to find the person, check the
             caller may reach them, and return.
 
