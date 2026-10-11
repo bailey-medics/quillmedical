@@ -30,8 +30,11 @@ from app.features.teaching.access import (
     modules_open_to,
     modules_served_by,
     modules_served_where_they_belong,
+    newest_copies_held_by,
+    newest_copy_held_by,
     organisation_serving,
     organisations_open_for_modules,
+    organisations_with_teaching_on,
     places_for_modules,
     settle_enrolments,
     why_not,
@@ -45,6 +48,7 @@ from app.features.teaching.models import (
 )
 from app.models import (
     OrgUnit,
+    OrgUnitFeature,
     OrgUnitLink,
     PractisingCompetency,
     User,
@@ -2389,3 +2393,139 @@ def test_their_own_attempt_is_given_finished_or_with_no_place_left(
         attempt_belonging_to(db_session, learner.id, assessment.id)
         is assessment
     )
+
+
+# --- newest_copies_held_by and newest_copy_held_by --------------------------
+
+
+def test_an_organisation_with_nothing_synced_holds_no_copies(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+
+    assert newest_copies_held_by(db_session, org.id) == {}
+    assert newest_copy_held_by(db_session, org.id, BANK) is None
+
+
+def test_the_newest_copy_of_each_bank_is_given_in_bank_id_order(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    _sync(db_session, org, BANK, "Polyps, first", version=1)
+    _sync(db_session, org, BANK, "Polyps, third", version=3)
+    _sync(db_session, org, BANK, "Polyps, second", version=2)
+    _sync(db_session, org, OTHER_BANK, "Bleeding", version=1)
+
+    held = newest_copies_held_by(db_session, org.id)
+
+    assert list(held) == [OTHER_BANK, BANK]
+    assert (held[BANK].version, held[BANK].title) == (3, "Polyps, third")
+    assert held[OTHER_BANK].version == 1
+
+
+def test_a_copy_is_held_whether_or_not_anything_is_served_of_it(
+    db_session: Session,
+) -> None:
+    """Nothing is asked of promotion: an administrator sees what is synced."""
+    org = _organisation(db_session)
+    _sync(db_session, org, BANK, "Polyps")
+    _sync(db_session, org, OTHER_BANK, "Bleeding")
+    _serve(db_session, org, OTHER_BANK, active_version=None, is_live=False)
+
+    assert set(newest_copies_held_by(db_session, org.id)) == {BANK, OTHER_BANK}
+
+
+def test_a_copy_another_organisation_holds_is_not_among_the_copies(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    other = _organisation(db_session, "Another Trust")
+    _sync(db_session, org, BANK, "Polyps", version=1)
+    _sync(db_session, other, BANK, "Their polyps", version=9)
+    _sync(db_session, other, OTHER_BANK, "Their bleeding")
+
+    held = newest_copies_held_by(db_session, org.id)
+
+    assert list(held) == [BANK]
+    assert (held[BANK].version, held[BANK].title) == (1, "Polyps")
+
+
+def test_the_newest_copy_of_one_bank_is_given(db_session: Session) -> None:
+    org = _organisation(db_session)
+    _sync(db_session, org, BANK, "Polyps, first", version=1)
+    _sync(db_session, org, BANK, "Polyps, second", version=2)
+    _sync(db_session, org, OTHER_BANK, "Bleeding", version=7)
+
+    copy_held = newest_copy_held_by(db_session, org.id, BANK)
+
+    assert copy_held is not None
+    assert (copy_held.version, copy_held.title) == (2, "Polyps, second")
+
+
+def test_a_bank_only_another_organisation_holds_gives_no_copy(
+    db_session: Session,
+) -> None:
+    """The same answer as a bank nobody holds, so an id is not confirmed."""
+    org = _organisation(db_session)
+    other = _organisation(db_session, "Another Trust")
+    _sync(db_session, other, BANK, "Their polyps")
+
+    assert newest_copy_held_by(db_session, org.id, BANK) is None
+    assert newest_copy_held_by(db_session, org.id, "no-such-bank") is None
+
+
+# --- organisations_with_teaching_on -----------------------------------------
+
+
+def _switch_on(db: Session, unit: OrgUnit, feature: str = "teaching") -> None:
+    db.add(
+        OrgUnitFeature(org_unit_id=unit.id, feature_key=feature, enabled_by=1)
+    )
+    db.flush()
+
+
+def test_with_teaching_on_nowhere_no_organisation_is_given(
+    db_session: Session,
+) -> None:
+    _organisation(db_session)
+
+    assert organisations_with_teaching_on(db_session) == []
+
+
+def test_every_organisation_with_teaching_on_is_given_in_name_order(
+    db_session: Session,
+) -> None:
+    """Nobody is passed in, so it is not narrowed to anybody: every
+    organisation that teaches is given, whoever is asking.
+    """
+    second = _organisation(db_session, "Second Trust")
+    first = _organisation(db_session, "First Trust")
+    _organisation(db_session, "Trust that does not teach")
+    _switch_on(db_session, second)
+    _switch_on(db_session, first)
+
+    given = organisations_with_teaching_on(db_session)
+
+    assert [org.name for org in given] == ["First Trust", "Second Trust"]
+
+
+def test_a_ward_with_teaching_on_is_not_an_organisation(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    _switch_on(db_session, org)
+    _switch_on(db_session, _ward(db_session, org))
+    _switch_on(db_session, _detached_ward(db_session))
+
+    given = organisations_with_teaching_on(db_session)
+
+    assert [unit.id for unit in given] == [org.id]
+
+
+def test_an_organisation_with_another_feature_on_is_not_given(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    _switch_on(db_session, org, "passport")
+
+    assert organisations_with_teaching_on(db_session) == []

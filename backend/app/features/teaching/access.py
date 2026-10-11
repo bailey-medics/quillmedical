@@ -52,8 +52,14 @@ from app.features.teaching.models import (
     QuestionBankConfig,
     QuestionBankOrgStatus,
 )
-from app.models import PractisingCompetency, User, org_unit_member
-from app.org_units.tree import descendant_ids
+from app.models import (
+    OrgUnit,
+    OrgUnitFeature,
+    PractisingCompetency,
+    User,
+    org_unit_member,
+)
+from app.org_units.tree import descendant_ids, organisation_org_unit_ids
 from app.organisations import (
     get_member_org_unit_ids,
     organisation_org_unit_member,
@@ -972,3 +978,122 @@ def attempt_belonging_to(
         return None
 
     return assessment
+
+
+# --- What an administrator is shown of the banks ----------------------------
+#
+# The three below are asked by the administrator's pages, behind
+# ``manage_teaching``. They do not draw the same line. The synced
+# copies are one organisation's own, the one the route found the caller
+# to belong to. The organisations a bank is listed against are every
+# organisation teaching is on at, the caller's or not.
+
+
+def newest_copies_held_by(
+    db: Session, org_unit_id: int
+) -> dict[str, QuestionBankConfig]:
+    """Return the newest synced copy of each bank one organisation holds.
+
+    Only copies synced into *org_unit_id* are read. A bank another
+    organisation holds, and this one does not, is not in the answer.
+    Nothing is asked of whether a version has been promoted or the bank
+    is open: an administrator is shown what has been synced, served or
+    not.
+
+    Args:
+        db: Core database session.
+        org_unit_id: The organisation the caller administers.
+
+    Returns:
+        Bank id to its copy with the highest version, in bank id order.
+    """
+    copies = (
+        db.execute(
+            select(QuestionBankConfig)
+            .where(QuestionBankConfig.org_unit_id == org_unit_id)
+            .order_by(
+                QuestionBankConfig.question_bank_id,
+                QuestionBankConfig.version.desc(),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    # De-duplicate: keep only the latest version per bank_id
+    newest: dict[str, QuestionBankConfig] = {}
+
+    for copy in copies:
+        if copy.question_bank_id not in newest:
+            newest[copy.question_bank_id] = copy
+
+    return newest
+
+
+def newest_copy_held_by(
+    db: Session, org_unit_id: int, bank_id: str
+) -> QuestionBankConfig | None:
+    """Return the newest synced copy of one bank an organisation holds.
+
+    ``newest_copies_held_by`` for a single bank, and the same line: only
+    a copy synced into *org_unit_id* is given.
+
+    Args:
+        db: Core database session.
+        org_unit_id: The organisation the caller administers.
+        bank_id: The question bank.
+
+    Returns:
+        The copy with the highest version, or None both when no
+        organisation holds the bank and when only another one does, so
+        a caller cannot tell the two apart.
+    """
+    return (
+        db.execute(
+            select(QuestionBankConfig)
+            .where(
+                QuestionBankConfig.org_unit_id == org_unit_id,
+                QuestionBankConfig.question_bank_id == bank_id,
+            )
+            .order_by(QuestionBankConfig.version.desc())
+        )
+        .scalars()
+        .first()
+    )
+
+
+def organisations_with_teaching_on(db: Session) -> list[OrgUnit]:
+    """Return every organisation that has teaching switched on.
+
+    What a bank's list of organisations is drawn from. **It is not
+    narrowed to the caller**: nobody is passed in, and an administrator
+    at one organisation is given every other one that teaches. The
+    route asks only that the caller belongs to some organisation.
+
+    Organisations only. A site may have teaching switched on as well,
+    but a bank is set live for an organisation and reaches its sites
+    from there, so the settings route refuses anything else. A site
+    listed here was a row whose settings could never be saved.
+
+    Args:
+        db: Core database session.
+
+    Returns:
+        The organisations, in name order.
+    """
+    return list(
+        db.execute(
+            select(OrgUnit)
+            .join(
+                OrgUnitFeature,
+                OrgUnitFeature.org_unit_id == OrgUnit.id,
+            )
+            .where(
+                OrgUnitFeature.feature_key == "teaching",
+                OrgUnit.id.in_(organisation_org_unit_ids()),
+            )
+            .order_by(OrgUnit.name)
+        )
+        .scalars()
+        .all()
+    )
