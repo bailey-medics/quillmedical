@@ -262,23 +262,20 @@ from app.security import (
     verify_password_reset_token,
     verify_totp_code,
 )
-from app.users.competencies import settle_competencies
 from app.users.enrolments import settle_teaching_enrolments
 from app.users.errors import UserAdminError
-from app.users.identity import change_identity
 from app.users.membership import (
     capacity_at,
     org_units_the_caller_administers,
-    settle_membership,
 )
 from app.users.practice import settle_practice
 from app.users.scope import (
     check_account_in_scope,
     check_changes_in_scope,
     check_may_set_platform_role,
-    check_not_granting_to_self,
     check_profession_in_scope,
 )
+from app.users.update import AccountChanges, update_account
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -2327,131 +2324,31 @@ def update_user(
 
     _require_shared_org_with_user(db, current_user, user)
 
-    # Anything beyond the competency lists acts on the account as a whole,
-    # which a limited scope reaches only for somebody whose profession it
-    # could have given.
-    # A field counts only when it would change something. The user form
-    # sends every field on every save, so asking whether a field was sent
-    # would refuse a teaching admin who changed only a delegate's
-    # teaching competencies, or anybody's, because the form also carried
-    # their unchanged name.
-    # Every org_unit they belong to, as `get_user` reports them and so as
-    # the form sends them back.
-    current_org_unit_ids = set(
-        cast(
-            Sequence[int],
-            db.execute(
-                select(org_unit_member.c.org_unit_id).where(
-                    org_unit_member.c.user_id == user.id
-                )
-            )
-            .scalars()
-            .all(),
-        )
-    )
-    changes_profession = (
-        payload.base_profession is not None
-        and payload.base_profession != user.base_profession
-    )
-    changes_platform_role = (
-        payload.platform_role is not None
-        and payload.platform_role != user.platform_role
-    )
-    acts_on_account = (
-        changes_profession
-        or changes_platform_role
-        or bool(payload.password)
-        or (
-            payload.username is not None
-            and payload.username.strip() != user.username
-        )
-        or (
-            payload.name is not None
-            and payload.name.strip() != (user.full_name or "")
-        )
-        or (payload.email is not None and payload.email.strip() != user.email)
-        or (
-            payload.org_unit_ids is not None
-            and set(payload.org_unit_ids) != current_org_unit_ids
-        )
-    )
-
-    if acts_on_account:
-        check_account_in_scope(current_user, user)
-    if changes_profession and payload.base_profession is not None:
-        check_profession_in_scope(current_user, payload.base_profession)
-
-    check_may_set_platform_role(
-        current_user, sets_platform_role=changes_platform_role
-    )
-
-    held_before = set(user.get_final_competencies())
-
-    # Sent is enough: the user form carries all four on every save, so
-    # an administrator saving their own page is refused whether or not
-    # anything differs. Why nobody grants to themselves is told where
-    # the rule is.
-    check_not_granting_to_self(
-        current_user,
-        user,
-        sends_granting_field=(
-            payload.base_profession is not None
-            or payload.additional_competencies is not None
-            or payload.removed_competencies is not None
-            or payload.platform_role is not None
-        ),
-    )
-
-    change_identity(
-        db,
-        user,
+    # The form's values as the rules take them. A field that was not
+    # sent stays None, so it is not touched.
+    changes = AccountChanges(
         username=payload.username,
         name=payload.name,
         email=payload.email,
         password=payload.password,
-    )
-
-    # Update CBAC fields if provided
-    settle_competencies(
-        user,
-        current_user,
-        held_before=held_before,
         base_profession=payload.base_profession,
         additional_competencies=payload.additional_competencies,
         removed_competencies=payload.removed_competencies,
         platform_role=payload.platform_role,
+        org_unit_ids=payload.org_unit_ids,
+        practising=(
+            _practice_wanted(payload.practising)
+            if payload.practising is not None
+            else None
+        ),
+        teaching_enrolments=(
+            _enrolments_wanted(payload.teaching_enrolments)
+            if payload.teaching_enrolments is not None
+            else None
+        ),
     )
 
-    # The one list, in org_unit ids. Left out, membership is not touched.
-    if payload.org_unit_ids is not None:
-        settle_membership(db, current_user, user, payload.org_unit_ids)
-
-    # Flush before refreshing: refresh reloads the row from the database,
-    # so pending in-memory changes are discarded unless they have been
-    # written first. The payload assignments above happen to survive
-    # because the session flushes automatically on the queries between
-    # them; an assignment after the last query would not.
-    db.flush()
-    db.refresh(user)
-
-    # After membership and competencies, because practice is checked
-    # against both as they now stand.
-    if payload.practising:
-        settle_practice(
-            db, current_user, user, _practice_wanted(payload.practising)
-        )
-
-    # After practice, so a place the form set is already there and
-    # naming a module adds only what is still missing. An empty list for
-    # an organisation is an answer, ending what they are on, so the
-    # test is for the field and not for its truth.
-    if payload.teaching_enrolments is not None:
-        settle_teaching_enrolments(
-            db,
-            current_user,
-            user,
-            _enrolments_wanted(payload.teaching_enrolments),
-        )
+    update_account(db, current_user, user, changes)
 
     return UserActionOut(
         detail="updated",
