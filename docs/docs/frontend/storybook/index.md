@@ -332,8 +332,7 @@ Every story is checked against WCAG 2.2 AA by [axe-core](https://github.com/dequ
 
 ### Running the checks locally
 
-- `just sbtci` starts Storybook, runs every story's tests including both a11y passes, and stops it. CI runs the same tests, against a static build.
-- `just sbt` runs the same tests against a Storybook already running from `just sb`. If none is running, it starts one for the run and stops it afterwards, as `just sbtci` does.
+- `just sbt` runs every story's tests, including both a11y passes. It uses a Storybook already running from `just sb` and leaves it running. If none is running, it starts one for the run and stops it afterwards. CI runs the same tests, against a static build.
 - To check a few files, run `yarn test-storybook --url http://localhost:6006 src/path/to/Thing.stories.tsx` in `frontend/`.
 - **Restart Storybook after changing `.storybook/main.ts`.** A server started before a change there does not pick it up, and the test-runner then fails every story with `ReferenceError: Cannot access 'StorybookTestRunnerError' before initialization`, which says nothing about the real cause.
 

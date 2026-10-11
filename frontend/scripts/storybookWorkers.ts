@@ -2,8 +2,7 @@
 //
 // Works out how many workers the Storybook interaction tests may use.
 // Read by `test-runner-jest.config.js`, so the cap applies however the
-// tests are started: `just sbt`, `just sbtci` or a bare `yarn
-// storybook:test`.
+// tests are started: `just sbt` or a bare `yarn storybook:test`.
 //
 // The number comes from `SB_MAX_WORKERS`, in the environment or, failing
 // that, in the root `.env`. Only that one line of the file is read: the
