@@ -198,6 +198,24 @@
     }
   },
   {
+    "id": "enrolment-reminder",
+    "label": "EoEETA enrolment reminder",
+    "quill": {
+      "file": "enrolment-reminder--quill.html",
+      "subject": "A reminder: Optical diagnosis of diminutive colorectal polyps",
+      "preheader": "You are enrolled and have not yet taken the assessment.",
+      "fromName": "EoEETA via Quill Medical",
+      "replyTo": "coordinator@eoeeta.example"
+    },
+    "ldd": {
+      "file": "enrolment-reminder--ldd.html",
+      "subject": "A reminder: Optical diagnosis of diminutive colorectal polyps",
+      "preheader": "You are enrolled and have not yet taken the assessment.",
+      "fromName": "EoEETA via Let's Do Digital",
+      "replyTo": "coordinator@eoeeta.example"
+    }
+  },
+  {
     "id": "certificate",
     "label": "EoEETA certificate",
     "quill": {

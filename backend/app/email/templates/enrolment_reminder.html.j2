@@ -1,0 +1,36 @@
+{#-
+  Reminds somebody enrolled on a module that they have not yet finished
+  an attempt at it. Sent on the schedule the module itself sets, and only
+  the number of times it says. Context:
+    name          who to greet: their full name, or their username where
+                  the account has none
+    module_title  the module they are enrolled on
+    module_url    the link to the module in Quill
+    is_last       true on the last reminder they will get
+-#}
+{% extends "base.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+{% block subject %}A reminder: {{ module_title }}{% endblock subject %}
+{% block preheader %}You are enrolled and have not yet taken the assessment.{% endblock preheader %}
+{% block body %}
+{{ c.heading("Your module is *waiting*") }}
+{{ c.paragraph("Hi " ~ name ~ ",") }}
+{% call c.paragraph() %}You are enrolled on <strong>{{ module_title }}</strong> and have not yet completed an assessment attempt.{% endcall %}
+{{ c.button("Open the module", module_url) }}
+{% if is_last %}
+{{ c.small("This is the last reminder we will send about this module.") }}
+{% endif %}
+{% endblock body %}
+{% block reason %}You are receiving this because you are enrolled on this module in Quill.{% endblock reason %}
+
+{% block text %}
+Hi {{ name }},
+
+You are enrolled on {{ module_title }} and have not yet completed an assessment attempt.
+
+Open the module: {{ module_url }}
+{% if is_last %}
+
+This is the last reminder we will send about this module.
+{% endif %}
+{% endblock text %}

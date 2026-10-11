@@ -280,6 +280,21 @@ def previews() -> list[Preview]:
             context={"url": "https://quill-medical.com/feedback"},
         ),
         Preview(
+            id="enrolment-reminder",
+            label="EoEETA enrolment reminder",
+            template="enrolment_reminder.html.j2",
+            context={
+                "name": "John Smith",
+                "module_title": _EOEETA.context,
+                "module_url": (
+                    "https://quill-medical.com/teaching/"
+                    "colonoscopy-optical-diagnosis"
+                ),
+                "is_last": False,
+            },
+            partner=_EOEETA,
+        ),
+        Preview(
             id="certificate",
             label="EoEETA certificate",
             template="teaching_certificate.html.j2",
