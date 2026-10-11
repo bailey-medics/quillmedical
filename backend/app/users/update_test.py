@@ -302,17 +302,28 @@ def test_a_blank_name_is_no_change_for_somebody_with_no_name(
     )
 
 
-def test_an_address_in_other_capitals_counts_as_a_change(
+def test_an_address_in_other_capitals_is_no_change(
     surgeon: User, trust: OrgUnit, ward: OrgUnit
 ) -> None:
-    """Compared as sent, trimmed only, though it is stored in lower case.
+    """Every address is held in lower case, so it is compared that way.
 
-    ``change_identity`` goes on to treat it as no change. The route has
-    always asked the question this way, and the rule moved as it was.
+    The user form sends the address on every save. Typed back with a
+    capital, it once counted as a change, and a scoped manager saving
+    somebody outside their scope was refused for changing nothing.
     """
+    assert not acts_on_whole_account(
+        surgeon,
+        AccountChanges(email="  Surgeon@Example.Test "),
+        member_of={trust.id, ward.id},
+    )
+
+
+def test_a_different_address_in_any_capitals_is_a_change(
+    surgeon: User, trust: OrgUnit, ward: OrgUnit
+) -> None:
     assert acts_on_whole_account(
         surgeon,
-        AccountChanges(email="Surgeon@Example.Test"),
+        AccountChanges(email="Somebody.Else@Example.Test"),
         member_of={trust.id, ward.id},
     )
 

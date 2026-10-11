@@ -166,17 +166,19 @@ that work is larger and each step of it is safe to land alone.
       handler's body is `{"detail": message}`, which is what an
       `HTTPException` gives.
 
-- [ ] Decide what to do about an address sent in other capitals, in
+- [x] Compare an address as it would be stored, in
       `acts_on_whole_account` in `backend/app/users/update.py`. Every
       address is stored in lower case, by `normalise_email` on each
-      write. But the question "does this save change the address?" is
+      write. But the question "does this save change the address?" was
       asked of the address as typed, trimmed and not lower-cased, so
-      `Sam@nhs.net` against a stored `sam@nhs.net` counts as a change.
-      The scope check then runs, and a scoped manager saving somebody
-      outside their scope is refused for a change that is not one. It
-      was so before the rule moved; a test pins it as it is. The fix is
-      to normalise before comparing, and to turn that test round. Mark
-      asked about it on 11 October 2026.
+      `Sam@nhs.net` against a stored `sam@nhs.net` counted as a change.
+      The scope check then ran, and a scoped manager saving somebody
+      outside their scope was refused for a change that was not one.
+      It was so before the rule moved, and was moved as it was. Mark
+      asked about it on 11 October 2026, and it is fixed in a pull
+      request of its own: the one deliberate change of behaviour in
+      Phases 1 and 2 so far. The test that pinned the old answer now
+      pins the new one.
 
 - [ ] Decide what to do about a hole found on the way, in
       `create_user_with_cbac`: **somebody holding `manage_users` who is
