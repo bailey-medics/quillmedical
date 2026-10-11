@@ -223,6 +223,21 @@ def _csrf(client: TestClient) -> dict[str, str]:
 
 
 class TestTheUpdate:
+    @pytest.fixture(autouse=True)
+    def _the_clinician_is_at_the_patients_trust(
+        self, test_clinician: User, db_session: Session, own_trust: OrgUnit
+    ) -> None:
+        """An update is refused to somebody who cannot reach the patient.
+
+        That rule is pinned in ``patient_update_route_scoping_test.py``.
+        The tests here are about what FHIR is sent and what is answered,
+        so the clinician is placed where the patient is cared for.
+        """
+        add_org_unit_member(
+            db_session, own_trust.id, test_clinician.id, "staff"
+        )
+        db_session.commit()
+
     def test_fhir_is_sent_the_four_demographics_under_its_clients_names(
         self, authenticated_clinician_client: TestClient
     ) -> None:

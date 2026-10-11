@@ -449,20 +449,65 @@ more.
       - **The address is not marked verified**, though the invite was
         sent to it, and the username is not trimmed.
 
-- [ ] Decide what to do about `update_patient`, found on 11 October
-      2026 while moving the patient routes. **It asks nothing about who
-      is calling beyond that they are signed in.** No competency, and no
-      shared org unit: any signed-in user can change any patient's
-      name, date of birth and gender by naming the patient's id. Its
-      own docstring says "any role can update patients". It is part of
-      EHR production and nobody uses that yet, which is the only reason
-      this is a step in a plan and not an incident; it must be closed
-      before anybody does. Left unpinned by any test, on purpose, so
-      that closing it does not read as a regression. Smaller, in the
-      same routes: a FHIR outage on update answers 500 where every
-      other route answers 502; an NHS number or MRN sent in the body is
-      accepted and ignored; and one FHIR record that fails validation
-      empties the whole list.
+- [x] Let `update_patient` change only a patient its caller can reach.
+      Found on 11 October 2026 while moving the patient routes: **it
+      asked nothing about who was calling beyond that they were signed
+      in.** No competency, and no shared org unit: any signed-in user
+      could change any patient's name, date of birth and gender by
+      naming the patient's id. Its own docstring said "any role can
+      update patients". It is part of EHR production and nobody uses
+      that yet, which is the only reason this was a step in a plan and
+      not an incident. It was left unpinned by any test, on purpose, so
+      that closing it would not read as a regression.
+
+      - **Fixed here: the caller must share an org unit with the
+        patient.** `PATCH /api/patients/{patient_id}` now calls
+        `_require_shared_org_with_patient` in `main.py`, the check the
+        routes that deactivate and reactivate a patient and revoke
+        external access already make, before FHIR is asked anything.
+        Before, anybody signed in was answered 200 and the change was
+        made. Now somebody who shares no org unit with the patient is
+        answered 404 `Patient not found`, the words a patient that does
+        not exist is answered with, so the refusal does not confirm
+        there is one; FHIR is neither read nor written. An operator is
+        let through, as that check lets one through everywhere else.
+        Pinned in `backend/tests/patient_update_route_scoping_test.py`.
+      - **Chosen: the siblings' own check, called from the route.** It
+        raises an `HTTPException` in `main.py` as it does for them, so
+        there is no `app/patients/errors.py` and no new handler: the
+        point was to answer exactly as they do. It asks for the shared
+        org unit and not `check_user_patient_access`, so a patient may
+        not change their own demographics through this route and nor
+        may somebody with an external grant. Neither is what the form
+        that calls it is for, and refusing is the cautious side.
+      - **Still open: which competency editing demographics asks for.**
+        None is asked. The catalogue has no single answer: the admin
+        form that calls this route sits behind `manage_users`,
+        `modify_patient_records` is defined and held by twelve clinical
+        professions but asked for by no route, and
+        `manage_patient_membership` is what inviting somebody to a
+        record asks. Picking one decides who may edit a patient, which
+        is a person's decision. Until then any member of an org unit
+        the patient is cared for at may edit them, a receptionist and a
+        trainee included.
+      - **Found beside it, left: `upsert_demographics` and
+        `write_letter` have the same hole.** `PUT
+        /patients/{patient_id}/demographics` writes the same record and
+        more, and `POST /patients/{patient_id}/letters` writes a
+        letter, each asking only the `Clinician` role and no shared org
+        unit. `get_patient`, `get_demographics`, the two letter reads
+        and `get_patient_metadata` read one patient asking only that
+        the caller is signed in. Left because this step is one route
+        and one fix; they want a step of their own before anybody uses
+        EHR production.
+      - **Left: a FHIR outage on update answers 500** where every other
+        route answers 502. A different fault, and changing a status is
+        a change a client can see; it wants its own pull request.
+      - **Left: an NHS number or MRN sent in the body is accepted and
+        ignored.** Whether to refuse them or to write them is a
+        decision about the form, not about access.
+      - **Left: one FHIR record that fails validation empties the
+        whole list.** That is the list route, not this one.
 
 - [ ] Decide what to do about what listing people gives away, found on
       11 October 2026 while moving `list_users`. None is changed here.
