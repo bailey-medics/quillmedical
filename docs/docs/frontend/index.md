@@ -83,7 +83,7 @@ The application adapts to the user's device capabilities:
 
 - **Home**: Overview and quick access to recent activity
 - **Messages**: View and manage conversations
-- **Letters**: Access clinical correspondence
+- **Letters**: Access clinical correspondence, from within a patient's record
 - **Patients**: (Staff only) Manage patient records
 - **Settings**: Account preferences and security
 

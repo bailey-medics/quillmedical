@@ -146,10 +146,5 @@ Or to ignore just this major version:
 
 ## Slack notifications
 
-When a Renovate PR fails CI, the Slack notification shows:
-
-- **Title**: `Renovate TypeScript <task> checks failed` (instead of
-  `Feature`)
-- **Icon**: Renovate bot avatar (for legacy incoming webhooks)
-
-This helps distinguish dependency failures from feature work at a glance.
+CI does not post to Slack when a Renovate PR fails, or when any other PR
+does. A failure shows on the PR's checks only.

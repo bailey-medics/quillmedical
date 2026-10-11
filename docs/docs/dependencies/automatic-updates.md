@@ -54,6 +54,7 @@ Routine updates run **every Wednesday** (`Europe/London` timezone) with a **3-da
 | GitHub Actions                  | Grouped PR, no automerge       |
 | pre-commit hooks                | Grouped PR, no automerge       |
 | Terraform providers             | Grouped PR, no automerge       |
+| Docker base images              | Grouped PR, no automerge       |
 | Lock file maintenance           | Single weekly PR, no automerge |
 
 No Renovate PR is merged automatically. Every one is reviewed and added to
@@ -88,7 +89,7 @@ Packages: **fhirclient** (HAPI FHIR), **httpx** (EHRbase via direct HTTP)
 
 ### Tier 2 - Infrastructure
 
-Packages: FastAPI, SQLAlchemy, Uvicorn, Pydantic, Alembic, GCP SDKs, Mantine, React, React Router
+Packages: FastAPI, SQLAlchemy, Uvicorn, Pydantic, Alembic, GCP SDKs, Mantine, React, React Router, Docker base images
 
 - **No automerge**; code review required.
 - Major version bumps labelled `major-version-bump`.
@@ -134,11 +135,10 @@ After committing these files, the following settings must be configured manually
    - Repository → _Settings_ → _Security & analysis_ → enable **Dependabot alerts** and **Dependabot security updates** (leave security updates off - Renovate handles fix PRs).
 
 2. **Enable the GitHub Security tab**
-   - Repository → _Settings_ → _Security & analysis_ → enable **Secret scanning** and **Code scanning** if applicable.
+   - Repository → _Settings_ → _Security & analysis_ → enable **Code scanning** if applicable. **Secret scanning** and push protection are already enabled by Terraform in `infra/github/security.tf`.
 
 3. **Branch protection rules**
    - `main`: require a pull request (0 approvals while solo), require status checks to pass, disallow direct push. Managed by Terraform in `infra/github/branch_rules.tf`.
-   - `clinical-live`: require PR reviews (≥ 2), require status checks to pass, disallow direct push, restrict who can push.
 
 4. **Notification routing for `info@quill-medical.com`**
    - The GitHub account associated with `info@quill-medical.com` should **Watch** this repository (_All activity_ or _Custom - Security alerts_).

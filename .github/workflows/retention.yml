@@ -1,0 +1,61 @@
+# Delete what the privacy policy says is no longer kept.
+#
+# Section 7 of the privacy policy gives a period for each kind of data.
+# backend/app/retention.py carries out the ones the database can, and this
+# runs it each night as the `apply-retention` action on the admin job.
+#
+# The app does the deleting, and not this workflow, so that GitHub holds
+# no database credential: it only starts the job.
+#
+# A run started by hand is a report unless `apply` is ticked. It prints
+# how many rows are past their period and deletes nothing.
+name: Retention
+
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Delete what is past its period. Unticked, it only counts.
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write # Workload Identity Federation, to start the admin job
+
+concurrency:
+  group: retention
+  cancel-in-progress: false
+
+env:
+  GCP_REGION: europe-west2
+
+jobs:
+  retention:
+    name: Apply retention periods
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_APP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v3.0.1
+
+      - name: Run the retention action on the admin job
+        env:
+          GCP_PROJECT: ${{ secrets.GCP_APP_PROJECT_ID }}
+          # The nightly run deletes. A run by hand does only when asked.
+          APPLY: ${{ github.event_name == 'schedule' || inputs.apply }}
+        run: |
+          gcloud run jobs execute quill-admin-app \
+            --project="${GCP_PROJECT}" \
+            --region="${GCP_REGION}" \
+            --update-env-vars="^|^ADMIN_ACTION=apply-retention|RETENTION_APPLY=${APPLY}" \
+            --wait

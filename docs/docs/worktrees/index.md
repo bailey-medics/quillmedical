@@ -148,7 +148,7 @@ Two things follow from how that works:
   branch changes `package.json`, run `just utr` to drop them and rebuild;
   otherwise the old packages linger.
 - **Dependencies live in the image**, so a backend dependency change also
-  needs a rebuild: `just utr`, or `just se b` from the worktree that owns
+  needs a rebuild: `just utr`, or `just se b` from the main checkout, which owns
   the stack. One image serves every worktree.
 
 The end-to-end tests need a whole application, so `just e2e` builds one:
@@ -172,12 +172,12 @@ drops it again. It fails on an empty result rather than leaving a no-op
 revision to be found in review.
 
 The dev stack itself is different. It uses fixed container names, so
-**only one worktree can run it at a time**. Starting `just se` in a second
-worktree will either fail on the name or, worse, attach to the containers
-already serving the first. Recipes that need the live stack - `just eb`,
-`just csl` - check which worktree the stack serves and refuse
-to run from any other, rather than quietly acting on the wrong code.
+there is only one, and **it belongs to the main checkout**. `just sa` and
+`just se` refuse to start from any other worktree. Recipes that need the
+live stack - `just eb`, `just csl` - refuse to run outside the main
+checkout, or when the container is not running, rather than quietly
+acting on the wrong code.
 
-If you are running the stack in one worktree, the others are still fine for
-editing, reviewing and testing. Bring the stack down first only for the
-recipes that need it.
+With the stack running in the main checkout, the other worktrees are still
+fine for editing, reviewing and testing. Run the recipes that need the
+stack from the main checkout.

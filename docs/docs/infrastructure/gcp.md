@@ -47,24 +47,25 @@ Only app is deployed. Staging, teaching and production were retired and their co
   └──────────┘
 ```
 
-The first three routes are on the app host, and the fourth is on the landing hosts. The load balancer's four routes (`infra/modules/load-balancer/main.tf`):
+The first four routes are on the app host, and the fifth is on the landing hosts. The load balancer's five routes (`infra/modules/load-balancer/main.tf`; the diagram above leaves out `/guide-assets/*`):
 
 - **`/api/*` on the app host** - the backend Cloud Run service (FastAPI)
 - **`/videos/*` on the app host** - the teaching videos bucket, through Cloud CDN, which checks a signed cookie
+- **`/guide-assets/*` on the app host** - the public screenshots bucket for the in-app guides, through Cloud CDN
 - **Everything else on the app host** - the frontend Cloud Run service (Caddy serving the built React app)
 - **Every path on `quill-medical.com` and `www.quill-medical.com`** - the landing site's bucket, through Cloud CDN
 
-The Cloud Armor policy, a rate limit, is attached to the two Cloud Run backend services only. The two buckets have none.
+The Cloud Armor policy, a rate limit, is attached to the two Cloud Run backend services only. The three buckets have none.
 
 The app environment has:
 
 - **Global HTTPS Load Balancer** - host and path routing, Google-managed SSL
 - **Cloud Run** - backend (FastAPI) and frontend (React/Vite), auto-scaling, plus the admin, transcode and caption jobs
 - **Cloud SQL** - one PostgreSQL instance, the core database. There is no FHIR or EHRbase database (`enable_fhir = false`)
-- **Cloud Storage** - the landing site, the teaching videos, the teaching content (question bank YAML and images, deployed by CI from the `eoeeta-teaching` and `respiratory-teaching` content repos) and the clinician passport
+- **Cloud Storage** - the landing site, the teaching videos, the teaching content (question bank YAML and images, deployed by CI from the `eoeeta-teaching` and `respiratory-teaching` content repos) , the clinician passport and the in-app guides' screenshots
 - **Secret Manager** - JWT keys, database passwords, VAPID keys
 - **VPC** - private networking, no public database IPs
-- **Monitoring** - uptime checks on `/api/health` with email alerts
+- **Monitoring** - uptime checks on `/api/health` (and `/` on the landing site) with email, Slack, SMS and PagerDuty alerts
 
 ## What has been set up
 
@@ -178,18 +179,20 @@ Additional secret:
 | ------------------- | ------------------------------------------- |
 | `SLACK_WEBHOOK_URL` | Slack incoming webhook for CI notifications |
 
-#### quill-question-bank repository
+#### Content repositories (eoeeta-teaching, respiratory-teaching)
 
-Four repository secrets for the question bank CI/CD pipeline:
+Six repository secrets for the teaching content pipeline:
 
-| Secret                         | Purpose                                        |
-| ------------------------------ | ---------------------------------------------- |
-| `GCP_TEACHING_WIF_PROVIDER`    | WIF provider path for teaching project         |
-| `GCP_TEACHING_SERVICE_ACCOUNT` | Service account for GCS access                 |
-| `GCP_TEACHING_GCS_BUCKET`      | GCS bucket name (`quill-images-teaching`)      |
-| `SLACK_CICD_WEBHOOK_URL`       | Slack incoming webhook for CI/CD notifications |
+| Secret                           | Purpose                                        |
+| -------------------------------- | ---------------------------------------------- |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | WIF provider path for the app project          |
+| `GCP_SERVICE_ACCOUNT`            | Service account for GCS access (`content-sync`) |
+| `GCP_TEACHING_GCS_BUCKET`        | GCS bucket name (`quill-images-app`)           |
+| `BACKEND_SYNC_URL`               | Base URL of the app, for the sync call         |
+| `BACKEND_SYNC_TOKEN`             | Bearer token for `/api/ci/teaching/sync`       |
+| `SLACK_WEBHOOK_URL`              | Slack incoming webhook for CI/CD notifications |
 
-These secrets authenticate the question bank deploy workflow (`deploy.yml`) to sync validated question bank content to the teaching GCS bucket on merge to main.
+These secrets authenticate the reusable teaching pipeline (`teaching-pipeline.yml` in this repository, which each content repository calls) to sync validated question bank content to the teaching GCS bucket and trigger the backend sync on merge to main.
 
 ### Terraform configuration (done)
 
@@ -201,13 +204,14 @@ The infrastructure is defined in `infra/` using Terraform modules:
 | `networking`              | VPC, subnet, Cloud NAT, VPC connector, firewall rules                   |
 | `cloud-sql`               | PostgreSQL instances with private IP, backups, auto-generated passwords |
 | `cloud-run`               | Backend and frontend services with secret injection                     |
-| `cloud-run-job`           | Admin CLI jobs (create-superadmin, add-role, run-migrations)            |
+| `cloud-run-job`           | Admin CLI job (create-superadmin, add-role, run-migrations), and the transcode and caption jobs |
 | `load-balancer`           | Global HTTPS LB, Cloud Armor rate limiting, serverless NEGs, SSL certs  |
 | `compute-fhir`            | VM running HAPI FHIR + EHRbase (prod/staging only)                      |
-| `monitoring`              | Uptime checks and email alerting                                        |
+| `monitoring`              | Uptime checks and alerting by email, Slack, SMS and PagerDuty           |
 | `cloud-storage`           | Image bucket (teaching only)                                            |
 | `teaching-video-pipeline` | Lecture video buckets, CDN backend and signing key                      |
 | `passport-storage`        | Clinician passport bucket                                               |
+| `guide-assets`            | Public and private buckets for the in-app guides' screenshots, CDN backend |
 | `analytics`               | Page-view and client-error metrics                                      |
 
 The Cloud DNS zone and its records are in `infra/dns.tf`, in the root module, not in a module of their own.
@@ -442,7 +446,7 @@ The backend logs `Failed to list GCS banks` and the Admin > Teaching page shows 
 - **Attribute condition on WIF** - only `bailey-medics/quillmedical` can authenticate (production/staging); teaching also allows `bailey-medics/quill-question-bank`
 - **Least-privilege service accounts** - each environment has its own service account
 - **Explicit GCS IAM bindings** - Cloud Run service accounts need bucket-level `roles/storage.objectViewer` even when they are project editors (see [Cloud Storage IAM](#cloud-storage-iam))
-- **Cloud Armor rate limiting** - 500 req/min per IP on the backend and frontend services of every load balancer. The landing and video buckets carry no policy
+- **Cloud Armor rate limiting** - 500 req/min per IP on the backend and frontend services of every load balancer. The landing, video and guide asset buckets carry no policy
 - **HTTPS enforced** - HTTP to HTTPS redirect on all environments, Google-managed SSL certificates
 - **Google-managed TLS** - certificates auto-provisioned and auto-renewed, no manual cert management
 - **Content Security Policy** - browser-enforced allowlists per resource type (see [CSP headers](#content-security-policy-csp-headers) below)
@@ -454,6 +458,7 @@ A `Content-Security-Policy` response header tells the browser which origins are 
 - **The application's pages** - the production Caddyfile (`caddy/prod/Caddyfile`), with the policy below.
 - **API responses, `/api/*`** - the load balancer's backend service (`infra/modules/load-balancer/main.tf`), with `default-src 'none'; frame-ancestors 'self'`. These go straight to the backend and never pass through Caddy.
 - **Teaching videos, `/videos/*`** - none. The videos backend bucket sets the other security headers, but a policy does nothing on a media file.
+- **Guide screenshots, `/guide-assets/*`** - none. The guide assets backend bucket sets the other security headers, but a policy does nothing on an image.
 - **The landing site** - its backend bucket, in the load balancer module, with its own policy.
 
 See [Which layer sets the headers](../cybersecurity/index.md#which-layer-sets-the-headers) for the full set of headers on each.

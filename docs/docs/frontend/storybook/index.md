@@ -1,6 +1,6 @@
 # Storybook
 
-**Status:** Storybook is configured and operational with 215 story files covering core UI components. Component documentation and interactive development environment are available.
+**Status:** Storybook is configured and operational with 228 story files covering core UI components. Component documentation and interactive development environment are available.
 
 ## Overview
 
@@ -32,7 +32,11 @@ All stories are wrapped with essential providers via a `createMemoryRouter`:
       element: (
         <AuthProvider>
           <MantineProvider theme={theme}>
-            <AuthWrapper>{Story()}</AuthWrapper>
+            <ConnectivityProvider>
+              <ForcedReloadProvider>
+                <AuthWrapper>{Story()}</AuthWrapper>
+              </ForcedReloadProvider>
+            </ConnectivityProvider>
           </MantineProvider>
         </AuthProvider>
       ),
@@ -45,7 +49,9 @@ This ensures components have access to:
 
 - **Authentication context** (AuthProvider)
 - **Mantine theming and components** (MantineProvider)
-- **React Router navigation** (MemoryRouter)
+- **Connectivity state** (ConnectivityProvider)
+- **Forced reload handling** (ForcedReloadProvider)
+- **React Router navigation** (createMemoryRouter)
 
 ### Story Sorting
 
@@ -53,7 +59,7 @@ Stories are alphabetically sorted in the sidebar for easy navigation.
 
 ## Available Stories
 
-The project includes **215 component story files** across various UI categories:
+The project includes **228 component story files** across various UI categories:
 
 ### Core Components
 
@@ -192,7 +198,6 @@ The project includes **215 component story files** across various UI categories:
 - **AssessmentClosing** - Assessment closing/completion screen
 - **AssessmentHistoryTable** - Assessment history data table
 - **AssessmentIntro** - Assessment introduction screen
-- **AssessmentProgress** - Assessment progress indicator
 - **AssessmentResult** - Assessment result display
 - **AssessmentTimer** - Assessment countdown timer
 - **ExamCloseButton** - Button to close/abandon an exam early
@@ -380,6 +385,6 @@ export const SwatchSamples: Story = {
 
 ## Further Documentation
 
-- **Component API Docs**: See [TypeDoc documentation](../code/frontend/)
+- **Component API Docs**: See [TypeDoc documentation](../../code/frontend/)
 - **Component Tests**: See individual `.test.tsx` files in `frontend/src/components/`
 - **Storybook Official Docs**: [storybook.js.org](https://storybook.js.org/)

@@ -24,8 +24,8 @@ The four journeys that are scripted for assistive-technology testing, in
   a narrow screen. Automated keyboard test: no. Screen reader: not yet run.
 - **Open and complete a teaching lecture** - delegates on the teaching
   platform. Covers the learning materials list, the slide reader, video
-  with captions, and the slide list. Automated keyboard test: no, because
-  CI seeds no teaching modules. Screen reader: not yet run.
+  with captions, and the slide list. Automated keyboard test: in part, a
+  lecture is opened and a slide turned. Screen reader: not yet run.
 - **Sign off a passport competency** - assessors. Covers the sign-off
   inbox, a request's evidence, and the sign-off form with its errors.
   Automated keyboard test: no. Screen reader: not yet run.

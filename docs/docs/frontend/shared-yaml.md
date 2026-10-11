@@ -3,7 +3,7 @@
 The files under `shared/` are the one source for things the backend and the
 frontend must agree on: the competency catalogue, the base professions, the
 org unit types, the jurisdiction's registration bodies, the brand colours and
-the passport specialties. This page follows a change to one of them to both
+the specialties a framework may be filed under. This page follows a change to one of them to both
 sides, and lists what somebody adding a field or a whole new file has to
 touch.
 
@@ -16,7 +16,7 @@ It was written from `frontend/scripts/generate-json-from-yaml.ts`,
 
 - **`competency-definitions/*.yaml`** - the competency catalogue, split by
   kind and merged into one. Backend: `backend/app/cbac/competencies.py`.
-  Frontend: `competencies.json`.
+  Frontend: `competencies.json` and `frameworks.json`.
 - **`base-professions.yaml`** - Backend: `backend/app/cbac/base_professions.py`.
   Frontend: `base-professions.json`.
 - **`org-unit-types.yaml`** - Backend: `backend/app/org_units/types.py`.
@@ -25,9 +25,8 @@ It was written from `frontend/scripts/generate-json-from-yaml.ts`,
   Frontend: `jurisdiction-config.json`.
 - **`brand.yaml`** - Backend: `backend/app/email/brand.py`, for the email
   themes. Frontend: `brand.json`, read by `theme.ts`.
-- **`passport-specialties/*.yaml`** - one file per specialty. Backend:
-  `backend/app/features/passport/specialties.py`. Frontend:
-  `passport-specialties.json`.
+- **`specialties.yaml`** - the words a framework may be filed under. Backend:
+  `backend/app/cbac/competencies.py`. Frontend: `specialties.json`.
 
 ## The two paths
 
@@ -54,11 +53,11 @@ The frontend cannot read YAML at build time, so
 `frontend/scripts/generate-json-from-yaml.ts` writes one JSON file per
 source into `frontend/src/generated/`:
 
-- each of the four single files is copied across as JSON
+- each of the five single files is copied across as JSON
 - `competency-definitions/` is merged into one `competencies.json`, in
   sorted filename order, and a duplicate id is an error
-- `passport-specialties/` is merged into one `passport-specialties.json`,
-  in sorted filename order
+- the `framework:` block of each file in `competency-definitions/` that
+  declares one is collected into `frameworks.json`
 
 Run it with `yarn generate:types`, from `frontend/`.
 
@@ -73,14 +72,15 @@ It is called explicitly wherever the JSON is needed:
 - `yarn typecheck:all`, `yarn unit-test`, `yarn unit-test:run` and
   `yarn unit-test:coverage` each run it first
 - `yarn storybook` and `yarn storybook:build` each run it first
-- the `build` stage of `frontend/Dockerfile` runs it before `yarn build`
+- `yarn dev` and `yarn build` each run it first, so the `build` stage of
+  `frontend/Dockerfile` gets it through `yarn build`
 - the public pages run it through `pages:gen`
 - `docs.yml` runs it as its own step
 
-`package.json` also has `predev` and `prebuild` scripts that call it. Do
-not rely on them: the Dockerfile's own comment says Yarn 4 skips `pre*`
-hooks, which is why the build stage calls the script by name. A new script
-or workflow that needs the JSON must call `yarn generate:types` itself.
+`package.json` has no `predev` or `prebuild` scripts: the Dockerfile's own
+comment says Yarn 4 skips `pre*` hooks, which is why `dev` and `build` call
+the script by name. A new script or workflow that needs the JSON must call
+`yarn generate:types` itself.
 
 After changing a file under `shared/`, run `yarn generate:types` again, or
 the frontend keeps reading the old JSON.
@@ -97,20 +97,20 @@ There are two routes, and they behave differently.
   `BaseProfessionId` from the JSON's own contents, so those two types are
   exactly the ids in the YAML.
 
-**`index.d.ts` is written by hand.** Its header says the files are
-auto-generated, which is true of the JSON and not of the declaration. It is
-tracked in git, the script never writes it, and nothing checks it against
-the YAML. Two things show the cost:
+**`index.d.ts` is written by hand.** Its header says so: the JSON is
+generated and the declaration is not. It is tracked in git and the script
+never writes it. `frontend/src/types/generated-declarations.test.ts` checks
+it against the JSON: it fails `yarn typecheck:all` when a declaration names
+a field the JSON lacks, gives one the wrong type, or misses a field the JSON
+holds. One thing shows the cost of going without that check:
 
 - its declaration for `jurisdiction-config.json` was wrong for as long as
   nothing imported the file. The comment in `index.d.ts` records that the
   first reader had to cast around it.
-- its `BaseProfession` still declares a `notes` field, which
-  `shared/base-professions.yaml` no longer has.
 
-So a field added to a YAML file does not appear on the alias route until
-somebody adds it to `index.d.ts`, and a field removed stays declared until
-somebody takes it out.
+So a field added to a YAML file fails `yarn typecheck:all` until somebody
+adds it to `index.d.ts`, and a field removed fails it until somebody takes
+it out.
 
 `Competency` in `types/cbac.ts` is also declared by hand, on purpose. The
 comment there gives the reason: inferring it from the JSON produced a union
@@ -153,9 +153,9 @@ All of the above, and:
 2. Add a `declare module` block for its JSON to `index.d.ts`.
 3. Add a backend loader that finds it through `SHARED_DIR`.
 4. Check the workflow path filters. `deploy.yml`, `docs.yml` and
-   `e2e-image-cache.yml` watch all of `shared/**`. `public-site.yml` names
-   `shared/brand.yaml` alone, so a new file the public site depends on has
-   to be added there by name.
+   `e2e-image-cache.yml` watch all of `shared/**`. `public-site.yml` and
+   `guide-screenshots.yml` name `shared/brand.yaml` alone, so a new file
+   either depends on has to be added there by name.
 
 ## Not recorded
 

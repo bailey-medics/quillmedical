@@ -30,7 +30,7 @@ A safe route says so on its route object in `frontend/src/routes.tsx`:
 ```tsx
 {
   path: "/passport/logbook",
-  lazy: () => import("./pages/passport/PassportLogbookPage"),
+  lazy: lazyFrom(loadPassport, "PassportLogbookPage"),
   handle: { safeForReload: true },
 },
 ```
@@ -131,8 +131,8 @@ offline fallback page. So without recovery the result is a dead page.
   in flight. Typed text is saved first, then the page reloads and the
   navigation completes against the current build.
 - **Defer**, when reloading would destroy something. The error is let
-  through, and the nearest `ErrorBoundary` shows its fallback with a reload
-  button.
+  through, and the router shows the root route's `errorElement`,
+  `RouteErrorFallback`, the same fallback with a reload button.
 
 It also defers if this tab already made a recovery reload in the last 60
 seconds. A reload that did not fix the problem fails again within seconds, so

@@ -47,11 +47,12 @@ These run in continuous integration and block a change from merging.
   [Storybook page](storybook/index.md#accessibility-testing) for how the
   checks run and how to read a failure.
 - **Whole pages** are scanned by axe in the end-to-end tests, in both
-  colour schemes: the login page, the teaching dashboard and the settings
-  pages.
+  colour schemes: the login page, the teaching dashboard, a teaching
+  module, an assessment question and its result, the settings pages and
+  a member's page in Admin.
 - **Keyboard-only journeys** in the end-to-end tests log in with
-  two-factor authentication, use the skip link and reach Settings
-  through the navigation, using only the keyboard.
+  two-factor authentication, use the skip link, open a lecture and reach
+  Settings through the navigation, using only the keyboard.
 - **Lint rules** (`eslint-plugin-jsx-a11y`) catch missing alt text,
   unlabelled controls and click handlers on elements a keyboard cannot
   reach, before code is committed. Icon-only buttons and images cannot
