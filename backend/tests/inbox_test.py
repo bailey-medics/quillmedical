@@ -546,3 +546,42 @@ class TestTheRoute:
         assert [item["source"] for item in lines.json()["items"]] == [
             "feedback_new"
         ]
+
+    def test_each_source_runs_inside_a_savepoint(
+        self,
+        authenticated_superadmin_client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """What makes "the rest answer" true on Postgres.
+
+        There, one failed statement leaves the transaction refusing
+        every statement after it, so a source that fails takes the later
+        ones with it unless it ran in a savepoint that can be rolled
+        back on its own. SQLite does not behave that way, so the test
+        above passes with or without one. This asks the session
+        directly whether it is in a savepoint while a source runs.
+        """
+        seen: dict[str, bool] = {}
+
+        def count(db: Session, user: User) -> int:
+            seen["count"] = db.in_nested_transaction()
+
+            return 0
+
+        def lines(
+            db: Session, user: User, done: bool
+        ) -> list[sources.InboxLine]:
+            seen["lines"] = db.in_nested_transaction()
+
+            return []
+
+        monkeypatch.setitem(
+            sources.SOURCES,
+            "watching_source",
+            sources.InboxSource(count=count, lines=lines),
+        )
+
+        assert authenticated_superadmin_client.get(ENDPOINT).status_code == 200
+        assert authenticated_superadmin_client.get(ITEMS).status_code == 200
+
+        assert seen == {"count": True, "lines": True}

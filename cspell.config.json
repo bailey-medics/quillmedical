@@ -493,6 +493,7 @@
     "libdw",
     "libiberty",
     "nosec",
+    "savepoint",
     "vulns",
     "xact",
     "nosniff",

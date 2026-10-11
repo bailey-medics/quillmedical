@@ -925,6 +925,13 @@ found as a bug to fix on its own branch before going on.
     is given the membership and not the competency, so they cannot
     sign. `accept_assessor_invite` in `router.py`. Fixed on 11 October 2026.
 
+  - **Inbox: one failing source blanks the rest on Postgres.** A failed
+    statement leaves the transaction aborted, with nothing to roll
+    back to,
+    so every later source fails too and the count shows nought. The
+    SQLite tests cannot see it. `inbox/router.py`. Fixed on 11 October 2026: each
+    source now runs in a savepoint.
+
   **Fix before go-live** (each loses something without saying so, or
   gives a wrong answer; Mark agreed on 11 October 2026)
 
@@ -934,11 +941,6 @@ found as a bug to fix on its own branch before going on.
   - **Passport: the export has no evidence files.** The records name
     them by hash and the files themselves are not in the zip.
     `export.py`.
-  - **Inbox: one failing source blanks the rest on Postgres.** A failed
-    statement leaves the transaction aborted, with nothing to roll
-    back to,
-    so every later source fails too and the count shows nought. The
-    SQLite tests cannot see it. `inbox/router.py`.
 
   **Suggested: fix after go-live**
 
