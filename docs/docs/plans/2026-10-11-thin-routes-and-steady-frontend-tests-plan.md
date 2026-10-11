@@ -504,6 +504,53 @@ more.
         second time**, started by a person. Phase 3 should fold the two
         into one.
 
+- [x] Save a registration before sending its email, in `register`.
+      Found on 11 October 2026 while moving the route's rules out:
+      the route sent the verification email and only then committed.
+      The order was deliberate, so that an email which could not be
+      sent abandoned the registration by raising before the commit.
+      The gap was the other way round: if the send worked and the
+      commit after it failed, somebody held a verification link to an
+      account that did not exist. Mark chose the fix on
+      11 October 2026: commit first, then send, and take the account
+      away again if the send fails.
+
+      - **Before** - a caller whose email went and whose commit then
+        failed was answered with an error, and was sent a link that
+        verified nothing.
+      - **Now** - the account is committed, then the email is sent. A
+        commit that fails raises before anything is sent, and the
+        session dependency rolls back. A send that fails is answered
+        exactly as before, with the same three statuses and words (429
+        rate limited, 400 not an allowed recipient, 502 could not be
+        sent), and still leaves no account: the username and the
+        address are free to register again.
+      - **How the account is taken away** - `undo_registration` in
+        `backend/app/users/register.py` removes this person's rows
+        from every table a registration writes, by name, then the
+        account: `module_enrolment`, `practising_competency`,
+        `org_unit_member`, `marketing_preference_change`,
+        `user_competency`, `users`. The database would cascade most of
+        them, but the unit tests' SQLite does not enforce foreign
+        keys, so each is named. It refuses, with a `ValueError`, an
+        account that is verified, has had its password changed, has
+        two-factor sign-in, is not a plain teaching delegate, or
+        whose profession rows were written more than five minutes
+        ago. `users` has no date of its own, which is why the rows
+        date it. Signing in is refused until an address is verified,
+        so unverified also means never signed in.
+      - **If the undo itself fails** - it is logged with the user id
+        only, the caller is still answered for the failed send, and
+        the account is left saved and unverified, which is what the
+        resend route is for. This was the choice the task left open,
+        and the same answer was kept so a caller cannot tell the two
+        apart.
+
+      Tests are beside the module in
+      `backend/app/users/register_test.py` and through the route in
+      `backend/tests/register_saves_before_it_sends_test.py`. No
+      existing test was changed: the promise they pin is kept.
+
 The steps above headed "Decide what to do about" were written as each
 thing was found, and each waits for somebody. That is against how this
 plan is meant to run, so each is now built, in its own pull request, as
