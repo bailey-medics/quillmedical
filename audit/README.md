@@ -34,6 +34,13 @@ an audited file, a mark on a changed one, and a click to stamp.
 
 Never edit `ledger.tsv` by hand. The scripts write it.
 
+CI runs `python3 scripts/review-ledger.py verify` on every push, as the
+`Audit ledger` job. It fails on a line that is not a stamp: a file the
+card does not cover or the branch never held, a missing name, a date or
+a fingerprint that is not one. It cannot tell a real audit from a line
+typed in with the right fingerprint, and does not pretend to: git's
+history says who added each line.
+
 ## How a stamp reaches everybody
 
 The ledger is a tracked file, so a stamp is a change like any other. It

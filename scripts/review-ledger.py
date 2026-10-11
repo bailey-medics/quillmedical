@@ -26,6 +26,8 @@ The commands:
   folder; `status <path>` lists that folder file by file.
 - `states` prints every file and its state, one to a line, for a
   program to read.
+- `verify` checks every stamp names a version of its file that was
+  committed. It is what CI runs.
 - `diff <path>` shows what changed in a file since it was stamped, so a
   changed file is caught up on by auditing the change and not the file.
 
@@ -44,6 +46,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Iterator
@@ -53,6 +56,9 @@ from datetime import date
 from pathlib import Path
 
 LEDGER_PATH = "audit/ledger.tsv"
+
+#: What git gives a file's contents: forty characters of hexadecimal.
+FINGERPRINT = re.compile(r"[0-9a-f]{40}")
 
 # Files that are not audited as code: pictures and sounds, lock files, and
 # anything a script writes. Prose is left out too; the card is about code.
@@ -773,6 +779,97 @@ def command_diff(raw_path: str) -> int:
     return 0
 
 
+def versions_of(path: str) -> set[str]:
+    """Every fingerprint a path has had in the history of this branch."""
+    done = subprocess.run(
+        ["git", "log", "--format=", "--raw", "--no-abbrev", "--", path],
+        cwd=repo_root(),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    found: set[str] = set()
+
+    for line in done.stdout.splitlines():
+        # ":100644 100644 <before> <after> M\tpath"
+        parts = line.split()
+
+        if line.startswith(":") and len(parts) >= 4:
+            found.update(parts[2:4])
+
+    return found
+
+
+def command_verify() -> int:
+    """Check every stamp on the card is a stamp, for CI.
+
+    The card is a text file that anybody can edit, and its merge keeps
+    both sides' lines without looking at them. So each line must name a
+    file this card covers that the branch has held, carry a date and a
+    name, and hold something shaped like a fingerprint.
+
+    A fingerprint the file never had in a commit is said, and does not
+    fail. It comes about honestly, from stamping a file and then
+    editing it before committing, and it costs nothing: such a stamp
+    matches no version anybody can check out, so the file reads as
+    changed and is audited again. This check cannot tell a real audit
+    from a line typed in with the right fingerprint, and does not
+    pretend to. Git's history says who added each line.
+
+    Needs the whole history, so the job checks out with fetch-depth: 0.
+    """
+    card = read_ledger(ledger_path())
+    faults: list[str] = []
+    never_committed: list[str] = []
+    stamps = 0
+
+    for path in sorted(card):
+        had = versions_of(path)
+
+        for stamp in card[path]:
+            stamps += 1
+
+            if is_skipped(path):
+                faults.append(f"{path}: this file is left off the card")
+            elif not had:
+                faults.append(f"{path}: no such file in this branch's history")
+            elif not FINGERPRINT.fullmatch(stamp.fingerprint):
+                faults.append(
+                    f"{path}: '{stamp.fingerprint}' is not a fingerprint"
+                )
+            elif stamp.fingerprint not in had:
+                never_committed.append(path)
+
+            if not stamp.reviewer:
+                faults.append(f"{path}: a stamp with no name on it")
+
+            try:
+                date.fromisoformat(stamp.stamped_on)
+            except ValueError:
+                faults.append(f"{path}: '{stamp.stamped_on}' is not a date")
+
+    for path in never_committed:
+        print(
+            f"{path}: stamped at a version that was never committed, so "
+            "it reads as changed until it is stamped again"
+        )
+
+    if faults:
+        for fault in faults:
+            print(fault)
+        print(
+            f"\n{len(faults)} of {stamps} stamps do not hold up. Take "
+            "the line off with `just ur <path>` and stamp the file again "
+            "with `just r <path>`. Never edit the card by hand."
+        )
+
+        return 1
+
+    print(f"All {stamps} stamps hold up.")
+
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     commands = parser.add_subparsers(dest="command", required=True)
@@ -797,6 +894,10 @@ def main() -> int:
     diff = commands.add_parser("diff", help="what changed since the stamp")
     diff.add_argument("path")
 
+    commands.add_parser(
+        "verify", help="check every stamp names a committed version"
+    )
+
     args = parser.parse_args()
 
     if args.command == "mark":
@@ -809,6 +910,8 @@ def main() -> int:
         return command_status(args.path)
     if args.command == "states":
         return command_states()
+    if args.command == "verify":
+        return command_verify()
 
     return command_diff(args.path)
 

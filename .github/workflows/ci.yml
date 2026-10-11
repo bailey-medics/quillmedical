@@ -302,6 +302,27 @@ jobs:
         run: bash .github/scripts/ci/run-gitleaks.sh origin/main
 
 
+  # ---------- Audit ledger ----------
+  # audit/ledger.tsv is a text file that anybody can edit, and its merge
+  # keeps both sides' lines without looking at them. This checks every
+  # line is a stamp: a file the card covers, that the branch has held,
+  # with a name, a date and a fingerprint. See audit/README.md.
+  audit_ledger:
+    if: github.event_name == 'push' || github.event_name == 'merge_group'
+    runs-on: ubuntu-24.04
+    name: Audit ledger
+    timeout-minutes: 5
+    steps:
+      # The whole history: a stamp names a version of a file, and the
+      # check looks that version up.
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Check every stamp holds up
+        run: python3 scripts/review-ledger.py verify
+
+
   # ---------- Shell scripts ----------
   shell_checks:
     if: github.event_name == 'push'
