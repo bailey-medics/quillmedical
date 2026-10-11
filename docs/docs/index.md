@@ -115,7 +115,7 @@ This approach ensures:
 
 - Docker Desktop - runs the application in containers
 - Node.js 22+ - for frontend development
-- Python 3.13+ - for backend development
+- Python 3.14 - for backend development
 - Yarn - JavaScript package manager
 - Just - command runner for common tasks
 

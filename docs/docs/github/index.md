@@ -96,7 +96,7 @@ Same PR and force-push rules as quillmedical. The required status checks are `pi
 
 ### Ruleset 4 - Branch naming (teaching content repos)
 
-Same `^(feature|hotfix|copilot|renovate)/.+` pattern as quillmedical.
+The `^(feature|hotfix|copilot|renovate)/.+` pattern: quillmedical's, without the merge queue's prefix.
 
 ## Required status checks
 
@@ -157,10 +157,9 @@ GitHub Actions secrets are configured per-environment. Never commit tokens or ke
 | -------------------------------- | --------------------------------------------- |
 | `GCP_APP_WIF_PROVIDER`           | Workload Identity Federation for app          |
 | `GCP_APP_DEPLOY_SERVICE_ACCOUNT` | App deploy service account                    |
+| `GCP_APP_PLAN_SERVICE_ACCOUNT`   | Read-only account for Terraform plan          |
+| `GCP_APP_SERVICE_ACCOUNT`        | Terraform apply service account               |
 | `GCP_APP_PROJECT_ID`             | App GCP project ID                            |
-| `GCP_PROD_WIF_PROVIDER`          | WIF for production _(not yet active)_         |
-| `GCP_PROD_SERVICE_ACCOUNT`       | Production service account _(not yet active)_ |
-| `GCP_PROD_PROJECT_ID`            | Production GCP project ID _(not yet active)_  |
 
 Authentication to GCP uses **Workload Identity Federation** - no long-lived service account keys.
 
@@ -174,9 +173,9 @@ The Team plan supports repository rulesets but only evaluates metadata restricti
 
 The `infra/github/` Terraform manages GitHub rulesets (branch protection, naming conventions). Its state is remote, beside the GCP state, but unlike the GCP Terraform (which has a CI-driven apply), GitHub ruleset changes must be applied manually after merging, with `just terraform-github`.
 
-### All 11 status checks should be required
+### All status checks should be required
 
-Initially only 5 "lean" checks were configured (Python styling, Python unit, eslint, typecheck, unit tests). This was expanded to all 11 checks including prettier, stylelint, storybook build, storybook tests, Semgrep, and E2E because in a healthcare application, bad UX can lead to patient harm - every check catches a different class of issue.
+Initially only 5 "lean" checks were configured (Python styling, Python unit, eslint, typecheck, unit tests). This was expanded to all 11 checks including prettier, stylelint, storybook build, storybook tests, Semgrep, and E2E because in a healthcare application, bad UX can lead to patient harm - every check catches a different class of issue. The API, migration, Alembic drift and competency catalogue checks have since been added, making 18.
 
 ### Auto-PR creation on feature and hotfix push
 

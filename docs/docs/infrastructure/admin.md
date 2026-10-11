@@ -93,7 +93,7 @@ When you run `just create-superadmin app`, what happens behind the scenes:
 2. It prompts you for username, email, and password
 3. It calls `gcloud run jobs execute quill-admin-app` with those values as environment variables
 4. Google Cloud spins up the admin container inside the VPC
-5. The container connects to the Cloud SQL auth database (via private IP)
+5. The container connects to the Cloud SQL core database (via private IP)
 6. It creates/updates the user, sets permissions, assigns the role
 7. The container shuts down and the job execution is marked complete
 
