@@ -298,12 +298,63 @@ more.
       every org unit somebody belongs to, organisations among them; the
       patient picker does not ask whether the caller shares an org unit
       with the patient; and an empty `patient_id` is the admin list.
-- [ ] The remaining routes of 40 lines or more, thirteen at the time of
-      measuring. Measure again when this step is reached, since the
-      list will have moved, write the routes here, and do them largest
-      first. A route under 40 lines is left alone unless
-      it holds a rule worth a test: most of them check, call and
-      return, which is what a route should do.
+- [ ] The remaining routes of 40 lines or more. Measured again on
+      11 October 2026, once the five above were done: `main.py` had 60
+      routes and 15 of 40 lines or more, none over 76, where it began
+      with one of 294. Two of the 15 are `register` and `update_user`
+      themselves, now only building plain values from the request.
+      Forty lines is a guide and not a rule, so the rest are sorted by
+      whether they hold a rule worth a test of its own, which the count
+      of branches says better than the count of lines.
+
+      - [x] **The two callbacks CI makes when a video is done** -
+            `ci_transcode_complete` (76 lines, 7 branches) and
+            `ci_caption_complete` (44 lines, 4 branches). One pull
+            request: they are the same job for two kinds of file. Now
+            `record_transcode` and `record_captions` in
+            `backend/app/features/teaching/ci_media.py`, with the one
+            rule they share, finding the upload, written once. Teaching
+            gets its error base here: `TeachingError` in
+            `backend/app/features/teaching/errors.py`, with one
+            refusal, `MediaAssetNotFound`, and one handler in
+            `main.py`. Each route keeps its token check; the three
+            refusals are still written out in all three CI routes,
+            because the sync uses another token and other words for
+            the 503. Neither route committed, and neither function
+            does. None of the words were pinned, so
+            `backend/tests/ci_media_callback_refusals_test.py` does it.
+            Found on the way, and left as they are: a transcode report
+            naming no files still stamps `transcoded_at`; and the
+            caption job is fired after a flush and before the commit,
+            so its start time is not yet visible to another session.
+      - [ ] **Patients** - `list_patients` (61 lines, 6 branches) and
+            `update_patient` (36 lines, 7 branches, under forty lines
+            and still the most branched route left).
+      - [ ] **Accepting an invite** - `accept_invite` (65 lines, 6
+            branches).
+      - [ ] **Deactivating somebody, and sending an invite** -
+            `deactivate_user` (42 lines, 4 branches) and
+            `send_invite_email` (40 lines), with the shared
+            `_require_shared_org_with_user`, which six routes call and
+            which is the last helper of the people routes still in
+            `main.py`.
+      - [ ] **A conversation's status** -
+            `update_conversation_status_endpoint` (57 lines, 3
+            branches). The messaging rules already live in
+            `messaging.py`; this is what is left in the route.
+
+      **Left as they are, on purpose:**
+
+      - **`login`, `refresh`, `reset_password` and `change_password`** -
+        61 lines at most. Most of each is cookies, tokens and the rate
+        limiter, which are the request and belong in a route, and what
+        is left decides who may sign in. Moving that for tidiness, in a
+        long unattended run, is the wrong trade: a mistake there is not
+        a failed test but somebody locked out, or let in. If they are
+        wanted, they want a pull request each and a person watching.
+      - **`get_user`, `me`, `list_teaching_modules_public` and
+        `update_my_competencies`** - 40 to 73 lines with one or two
+        branches each. They build a response and decide almost nothing.
 
 - [ ] Decide what to do about what listing people gives away, found on
       11 October 2026 while moving `list_users`. None is changed here.
