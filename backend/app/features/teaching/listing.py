@@ -1,0 +1,323 @@
+"""What the teaching lists say about each delegate and each module.
+
+Who is listed is not decided here. ``app.features.teaching.access``
+answers that, and hands its answer in: ``delegates_in_view`` for the
+all-delegates view and ``modules_open_to`` for a learner's module list.
+These functions take that answer and build the rows, and refuse nobody.
+
+They are apart from ``access`` because of what they read. A delegate's
+row needs their attempts, their site and its clinical lead; a module's
+row needs its ``module.yaml`` and its slides, from the bucket or from
+disk. None of that is a question of who may see what.
+
+The content store is reached through the ``storage``, ``media`` and
+``mdx_parser`` modules by name, never by importing a function out of
+them, so a test that replaces one of their functions replaces it here.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.cbac.positions import clinical_leads_of
+from app.config import settings
+from app.features.teaching import mdx_parser, media, storage
+from app.features.teaching.access import DelegatesInView
+from app.features.teaching.models import Assessment
+from app.features.teaching.schemas import DelegateOut
+from app.models import OrgUnit, User, org_unit_member
+
+
+def delegate_rows(
+    db: Session, view: DelegatesInView, *, bank_id: str | None
+) -> list[DelegateOut]:
+    """One row for each delegate in view, with their latest result.
+
+    Only attempts made at the caller's organisations are read. Without
+    *bank_id* every module's attempts are read together, so with two
+    modules a delegate's latest attempt may be in either, and an attempt
+    at one counts against a first-time pass in the other.
+
+    With *bank_id*, only somebody who has started that module's
+    assessment is listed, whether or not they finished it. Without it,
+    everybody in view is listed, a result or none. A module the caller's
+    organisations do not serve has no attempts there, so naming one
+    lists nobody.
+
+    The site and its clinical lead are looked up one person at a time:
+    up to three queries for each person listed.
+
+    Args:
+        db: Core database session.
+        view: What ``delegates_in_view`` gave for the caller.
+        bank_id: The module to narrow to, or None for every module.
+
+    Returns:
+        The rows, in the order the database gives the people. Nobody,
+        without asking the database, where nobody is in view.
+    """
+    if not view.people_ids:
+        return []
+
+    # Fetch user details. Every member of the caller's organisations is
+    # listed: this used to exclude anyone whose rank said "admin" or
+    # "superadmin", which was a display preference rather than a check -
+    # the route is already gated by ``manage_teaching`` and scoped to the
+    # caller's own organisations. It also read the column being retired,
+    # and an administrator who is also a trainee is an ordinary case
+    # rather than one worth hiding.
+    people: dict[int, User] = {
+        person.id: person
+        for person in db.execute(
+            select(User).where(User.id.in_(list(view.people_ids)))
+        )
+        .unique()
+        .scalars()
+        .all()
+    }
+    people_ids = list(people.keys())
+
+    if not people_ids:
+        return []
+
+    # Get assessments for these users in caller's orgs
+    assessments = (
+        db.execute(
+            select(Assessment)
+            .where(
+                Assessment.org_unit_id.in_(view.organisation_ids),
+                Assessment.user_id.in_(people_ids),
+                *(
+                    [Assessment.question_bank_id == bank_id]
+                    if bank_id is not None
+                    else []
+                ),
+            )
+            .order_by(Assessment.started_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+    latest_by_person: dict[int, Assessment] = {}
+    all_by_person: dict[int, list[Assessment]] = {}
+
+    for assessment in assessments:
+        all_by_person.setdefault(assessment.user_id, []).append(assessment)
+        if assessment.user_id not in latest_by_person:
+            latest_by_person[assessment.user_id] = assessment
+
+    # Get site and clinical lead info for each delegate
+    site_and_lead = {
+        person_id: _site_and_lead(db, person_id, view.place_ids)
+        for person_id in people_ids
+    }
+    rows: list[DelegateOut] = []
+
+    for person_id, person in people.items():
+        latest = latest_by_person.get(person_id)
+
+        # Asked about one module, the list is of who has attempted it.
+        # Somebody who never started it is not a delegate of that module.
+        if bank_id is not None and latest is None:
+            continue
+
+        # Determine assessment result
+        result: str | None = None
+        first_time_pass = False
+        assessment_date: datetime | None = None
+
+        if latest:
+            if latest.is_passed is True:
+                result = "pass"
+            elif latest.is_passed is False:
+                result = "fail"
+            elif latest.completed_at is None:
+                result = "incomplete"
+            assessment_date = latest.completed_at
+
+            # First time pass: passed on first attempt
+            completed = [
+                attempt
+                for attempt in all_by_person.get(person_id, [])
+                if attempt.completed_at is not None
+            ]
+            first_time_pass = latest.is_passed is True and len(completed) == 1
+
+        site_name, lead_name = site_and_lead[person_id]
+
+        rows.append(
+            DelegateOut(
+                id=person_id,
+                name=person.full_name or person.username,
+                email=person.email,
+                site_name=site_name,
+                clinical_lead=lead_name,
+                learning_completed=None,
+                assessment_result=result,
+                assessment_date=assessment_date,
+                first_time_pass=first_time_pass,
+            )
+        )
+
+    return rows
+
+
+def _site_and_lead(
+    db: Session, person_id: int, place_ids: set[int]
+) -> tuple[str | None, str | None]:
+    """The site one person is shown at, and who leads it.
+
+    Args:
+        db: Core database session.
+        person_id: The person.
+        place_ids: The org_units beneath the caller's organisations. A
+            membership anywhere else is not looked at.
+
+    Returns:
+        The site's name and its clinical lead's name, either of which
+        may be None: no site among *place_ids*, a vacant post, or a post
+        held by an account that is no longer there.
+    """
+    site_row = db.execute(
+        select(OrgUnit.id, OrgUnit.name)
+        .join(
+            org_unit_member,
+            org_unit_member.c.org_unit_id == OrgUnit.id,
+        )
+        .where(
+            org_unit_member.c.user_id == person_id,
+            OrgUnit.id.in_(place_ids),
+        )
+        # Where they are a trainee, if anywhere. Failing that, a site
+        # they belong to in another capacity: an admin or a nurse who
+        # sat the module is at a site as staff, and used to be shown
+        # with no site and so no clinical lead.
+        .order_by(
+            (org_unit_member.c.capacity != "trainee"),
+            OrgUnit.id,
+        )
+    ).first()
+    site_id = site_row[0] if site_row else None
+    site_name = site_row[1] if site_row else None
+
+    # Whoever holds that site's clinical lead post. Keyed on the site's
+    # id rather than its name: two organisations may each have a
+    # "Ward 1", and matching on name named the wrong trust's lead.
+    lead_name: str | None = None
+
+    if site_id is not None:
+        lead_id = clinical_leads_of(db, [int(site_id)]).get(int(site_id))
+        if lead_id is not None:
+            lead_row = db.execute(
+                select(User.full_name, User.username).where(User.id == lead_id)
+            ).first()
+            if lead_row:
+                lead_name = lead_row[0] or lead_row[1]
+
+    return site_name, lead_name
+
+
+def learning_module_rows(
+    db: Session, opened_by: dict[str, int]
+) -> list[dict[str, Any]]:
+    """What a learner's module list says about each module open to them.
+
+    Filtered rather than gated: without this filter the list named every
+    module in the bucket, handing every user the full catalogue including
+    modules their organisation was never given.
+
+    The content is read from the bucket where one is configured, and
+    otherwise from the content path on disk. A module is left out when
+    its media is incomplete for the organisation that opens it, or when
+    it has no ``module.yaml`` to describe it.
+
+    The rows are plain values, not ``LearningModuleOut``: the list is
+    put in order by what ``module.yaml`` says before the route's
+    response model checks it, and building the model here would move
+    that check ahead of the sort.
+
+    Args:
+        db: Core database session.
+        opened_by: What ``modules_open_to`` gave: module id to the
+            organisation that makes it visible.
+
+    Returns:
+        One row for each module, in the order ``module.yaml`` gives.
+        Nothing, without reading the content store, where no module is
+        open. Nothing where neither a bucket nor a content path is
+        configured, or the bucket cannot be listed.
+    """
+    if not opened_by:
+        return []
+
+    bucket = settings.TEACHING_GCS_BUCKET
+    base_path = settings.TEACHING_QUESTION_BANK_PATH
+
+    if bucket:
+        # Production: discover from GCS
+        try:
+            bank_ids = storage.list_banks_in_gcs(bucket)
+        except Exception:
+            return []
+    elif base_path:
+        bank_ids = storage.discover_local_banks(base_path)
+    else:
+        return []
+
+    modules: list[dict[str, Any]] = []
+
+    for bank_id in bank_ids:
+        if bank_id not in opened_by:
+            continue
+        # Hidden, not shown disabled. A learner who can see a module
+        # they cannot open raises a support question the admin cannot
+        # answer from the learner's side.
+        if not media.module_media_is_complete(db, opened_by[bank_id], bank_id):
+            continue
+        if bucket:
+            meta = storage.download_module_yaml_from_gcs(bucket, bank_id) or {}
+            if not meta:
+                continue
+            has_learning = storage.has_learning_content_gcs(bucket, bank_id)
+            if has_learning:
+                mdx = storage.download_learning_mdx_from_gcs(bucket, bank_id)
+                slide_count = (
+                    len(mdx_parser.parse_mdx_to_slides(mdx)) if mdx else 0
+                )
+            else:
+                slide_count = 0
+        else:
+            module_dir = storage.resolve_module_dir(base_path or "", bank_id)
+            if not module_dir:
+                continue
+            meta = mdx_parser.load_module_yaml(module_dir)
+            if not meta:
+                continue
+            learning_path = module_dir / "learning" / "content.mdx"
+            has_learning = learning_path.is_file()
+            slide_count = (
+                len(mdx_parser.load_learning_content(module_dir))
+                if has_learning
+                else 0
+            )
+
+        modules.append(
+            {
+                "module_id": meta.get("moduleId", bank_id),
+                "title": meta.get("title", bank_id),
+                "order": meta.get("order", 0),
+                "status": meta.get("status", "draft"),
+                "renewal_months": meta.get("renewalMonths"),
+                "has_learning": has_learning,
+                "slide_count": slide_count,
+                "description": meta.get("description"),
+            }
+        )
+
+    modules.sort(key=lambda m: m["order"])
+
+    return modules

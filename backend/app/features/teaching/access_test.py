@@ -14,12 +14,17 @@ from app.features.teaching.access import (
     RESULTS_COMPETENCY,
     Admitted,
     BelongsNowhere,
+    DelegatesInView,
     NotServed,
+    ServedModule,
     admit,
+    delegates_in_view,
     enrol_everyone_with_a_place,
     give_place,
     may_enter_module,
+    modules_open_to,
     modules_served_by,
+    modules_served_where_they_belong,
     organisation_serving,
     organisations_open_for_modules,
     places_for_modules,
@@ -29,6 +34,7 @@ from app.features.teaching.access import (
 from app.features.teaching.enrolment import enrol, is_enrolled
 from app.features.teaching.models import (
     ModuleEnrolment,
+    QuestionBankConfig,
     QuestionBankOrgStatus,
 )
 from app.models import (
@@ -1551,4 +1557,429 @@ def test_ending_every_enrolment_needs_no_membership(
 
     assert not is_enrolled(
         db_session, consultant.id, org_unit_id=org.id, question_bank_id=BANK
+    )
+
+
+# --- modules_open_to --------------------------------------------------------
+
+
+def _operator(db: Session, username: str = "operator") -> User:
+    """Somebody who operates the deployment and belongs nowhere."""
+    user = _person(db, username, "superadmin_profession")
+    user.platform_role = "superadmin"
+    db.flush()
+
+    return user
+
+
+def test_a_live_module_they_are_enrolled_on_is_open_through_its_organisation(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", _ward(db_session, org))
+    _serve(db_session, org)
+    _enrol(db_session, learner, org)
+
+    assert modules_open_to(db_session, learner) == {BANK: org.id}
+
+
+def test_every_module_open_to_them_is_named(db_session: Session) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org)
+    _serve(db_session, org, OTHER_BANK)
+    _enrol(db_session, learner, org)
+    _enrol(db_session, learner, org, OTHER_BANK)
+
+    assert modules_open_to(db_session, learner) == {
+        BANK: org.id,
+        OTHER_BANK: org.id,
+    }
+
+
+def test_a_module_they_are_not_enrolled_on_is_not_open(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org)
+    _serve(db_session, org, OTHER_BANK)
+    _enrol(db_session, learner, org)
+
+    assert modules_open_to(db_session, learner) == {BANK: org.id}
+
+
+def test_a_module_that_is_not_live_is_not_open(db_session: Session) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org, is_live=False)
+    _enrol(db_session, learner, org)
+
+    assert modules_open_to(db_session, learner) == {}
+
+
+def test_a_module_of_an_organisation_beyond_their_reach_is_not_open(
+    db_session: Session,
+) -> None:
+    """Enrolled there, even, and it stays shut without a place."""
+    org = _organisation(db_session)
+    elsewhere = _organisation(db_session, "Elsewhere")
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, elsewhere)
+    _enrol(db_session, learner, elsewhere)
+
+    assert modules_open_to(db_session, learner) == {}
+
+
+def test_a_delegate_with_no_place_is_shown_no_module(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    member = _member(db_session, "member", org, "teaching_delegate")
+    _serve(db_session, org)
+    _enrol(db_session, member, org)
+
+    assert modules_open_to(db_session, member) == {}
+
+
+def test_a_place_opens_no_module_to_somebody_without_the_competency(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org)
+    _enrol(db_session, learner, org)
+    withhold(learner, MODULES_COMPETENCY)
+    db_session.flush()
+
+    assert modules_open_to(db_session, learner) == {}
+
+
+def test_somebody_who_only_views_results_is_shown_no_module(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    viewer = _member(db_session, "viewer", org)
+    hold(viewer, RESULTS_COMPETENCY)
+    _place(db_session, viewer, org)
+    _serve(db_session, org)
+    _enrol(db_session, viewer, org)
+
+    assert modules_open_to(db_session, viewer) == {}
+
+
+def test_managing_teaching_at_an_organisation_opens_no_module_by_itself(
+    db_session: Session,
+) -> None:
+    """A teaching admin learns through a place and an enrolment too."""
+    org = _organisation(db_session)
+    manager = _member(db_session, "manager", org, "teaching_admin")
+    _serve(db_session, org)
+
+    assert modules_open_to(db_session, manager) == {}
+
+
+def test_an_operator_who_belongs_nowhere_is_shown_no_module(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    _serve(db_session, org)
+
+    assert modules_open_to(db_session, _operator(db_session)) == {}
+
+
+def test_with_nothing_served_no_module_is_open(db_session: Session) -> None:
+    learner = _learner(db_session, "learner", _organisation(db_session))
+
+    assert modules_open_to(db_session, learner) == {}
+
+
+# --- delegates_in_view ------------------------------------------------------
+
+
+def test_a_manager_is_shown_the_members_of_their_organisation_and_its_wards(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    ward = _ward(db_session, org)
+    manager = _member(db_session, "manager", org, "teaching_admin")
+    at_the_trust = _member(db_session, "trust", org)
+    on_the_ward = _member(db_session, "ward", ward, "teaching_delegate")
+
+    assert delegates_in_view(
+        db_session, manager, one_module=False
+    ) == DelegatesInView(
+        organisation_ids=[org.id],
+        place_ids={ward.id},
+        people_ids={at_the_trust.id, on_the_ward.id},
+    )
+
+
+def test_a_member_of_a_ward_beneath_a_ward_is_in_view(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    ward = _ward(db_session, org)
+    bay = _ward(db_session, ward, "Bay 2")
+    manager = _member(db_session, "manager", org, "teaching_admin")
+    in_the_bay = _member(db_session, "bay", bay)
+
+    view = delegates_in_view(db_session, manager, one_module=False)
+
+    assert view.place_ids == {ward.id, bay.id}
+    assert view.people_ids == {in_the_bay.id}
+
+
+def test_the_caller_is_left_out_of_the_list_of_everybody(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    manager = _member(db_session, "manager", org, "teaching_admin")
+
+    view = delegates_in_view(db_session, manager, one_module=False)
+
+    assert view.organisation_ids == [org.id]
+    assert view.people_ids == set()
+
+
+def test_the_caller_is_kept_in_the_list_for_one_module(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    manager = _member(db_session, "manager", org, "teaching_admin")
+    other = _member(db_session, "other", org)
+
+    view = delegates_in_view(db_session, manager, one_module=True)
+
+    assert view.people_ids == {manager.id, other.id}
+
+
+def test_another_organisations_people_and_wards_are_out_of_view(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    elsewhere = _organisation(db_session, "Elsewhere")
+    their_ward = _ward(db_session, elsewhere, "Ward 3")
+    manager = _member(db_session, "manager", org, "teaching_admin")
+    _member(db_session, "theirs", elsewhere)
+    _member(db_session, "their-ward", their_ward)
+
+    view = delegates_in_view(db_session, manager, one_module=False)
+
+    assert view.organisation_ids == [org.id]
+    assert view.place_ids == set()
+    assert view.people_ids == set()
+
+
+def test_a_manager_of_two_organisations_is_shown_both(
+    db_session: Session,
+) -> None:
+    first = _organisation(db_session, "First")
+    second = _organisation(db_session, "Second")
+    manager = _member(db_session, "manager", first, "teaching_admin")
+    add_org_unit_member(db_session, second.id, manager.id, "staff")
+    one = _member(db_session, "one", first)
+    two = _member(db_session, "two", second)
+
+    view = delegates_in_view(db_session, manager, one_module=False)
+
+    assert view.organisation_ids == sorted([first.id, second.id])
+    assert view.people_ids == {one.id, two.id}
+
+
+def test_belonging_to_a_ward_alone_shows_nobody(db_session: Session) -> None:
+    """Membership of the organisation itself, not reach up to it."""
+    org = _organisation(db_session)
+    ward = _ward(db_session, org)
+    manager = _member(db_session, "manager", ward, "teaching_admin")
+    _member(db_session, "trust", org)
+    _member(db_session, "ward", ward)
+
+    assert delegates_in_view(
+        db_session, manager, one_module=True
+    ) == DelegatesInView(
+        organisation_ids=[], place_ids=set(), people_ids=set()
+    )
+
+
+def test_an_operator_who_belongs_nowhere_is_shown_nobody(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    _member(db_session, "trust", org)
+
+    view = delegates_in_view(
+        db_session, _operator(db_session), one_module=False
+    )
+
+    assert view.people_ids == set()
+
+
+def test_who_is_in_view_does_not_ask_what_the_caller_holds(
+    db_session: Session,
+) -> None:
+    """``manage_teaching`` is the route's question, not this one's.
+
+    A delegate who is a trainee at the organisation gets the same
+    answer a manager would. The route never lets them ask.
+    """
+    org = _organisation(db_session)
+    delegate = _person(db_session, "delegate")
+    add_org_unit_member(db_session, org.id, delegate.id, "trainee")
+    other = _member(db_session, "other", org)
+
+    view = delegates_in_view(db_session, delegate, one_module=False)
+
+    assert view.people_ids == {other.id}
+
+
+# --- modules_served_where_they_belong ---------------------------------------
+
+
+def _sync(
+    db: Session,
+    org: OrgUnit,
+    bank_id: str,
+    title: str,
+    version: int = 1,
+) -> None:
+    """One version of a module, synced into the organisation."""
+    db.add(
+        QuestionBankConfig(
+            org_unit_id=org.id,
+            question_bank_id=bank_id,
+            version=version,
+            title=title,
+            description="A question bank.",
+            type="uniform",
+            config_yaml={},
+        )
+    )
+    db.flush()
+
+
+def test_served_modules_are_named_in_title_order_whatever_the_case(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    manager = _member(db_session, "manager", org, "teaching_admin")
+    _serve(db_session, org, "zebra")
+    _sync(db_session, org, "zebra", "anatomy")
+    _serve(db_session, org, "apple")
+    _sync(db_session, org, "apple", "Bleeding")
+
+    assert modules_served_where_they_belong(db_session, manager) == [
+        ServedModule(module_id="zebra", title="anatomy"),
+        ServedModule(module_id="apple", title="Bleeding"),
+    ]
+
+
+def test_two_modules_with_one_title_are_in_id_order(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    manager = _member(db_session, "manager", org, "teaching_admin")
+    _serve(db_session, org, "second")
+    _sync(db_session, org, "second", "Polyps")
+    _serve(db_session, org, "first")
+    _sync(db_session, org, "first", "Polyps")
+
+    assert [
+        module.module_id
+        for module in modules_served_where_they_belong(db_session, manager)
+    ] == ["first", "second"]
+
+
+def test_a_module_is_named_by_the_version_being_served(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    manager = _member(db_session, "manager", org, "teaching_admin")
+    _serve(db_session, org, active_version=1)
+    _sync(db_session, org, BANK, "Served title", version=1)
+    _sync(db_session, org, BANK, "Later title", version=2)
+
+    assert modules_served_where_they_belong(db_session, manager) == [
+        ServedModule(module_id=BANK, title="Served title")
+    ]
+
+
+def test_a_module_that_was_only_synced_is_not_listed(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    manager = _member(db_session, "manager", org, "teaching_admin")
+    _serve(db_session, org, active_version=None)
+    _sync(db_session, org, BANK, "Polyps")
+
+    assert modules_served_where_they_belong(db_session, manager) == []
+
+
+def test_a_served_module_closed_to_new_attempts_is_still_listed(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    manager = _member(db_session, "manager", org, "teaching_admin")
+    _serve(db_session, org, is_live=False)
+    _sync(db_session, org, BANK, "Polyps")
+
+    assert modules_served_where_they_belong(db_session, manager) == [
+        ServedModule(module_id=BANK, title="Polyps")
+    ]
+
+
+def test_a_served_version_with_nothing_synced_to_name_it_is_left_out(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    manager = _member(db_session, "manager", org, "teaching_admin")
+    _serve(db_session, org, active_version=2)
+    _sync(db_session, org, BANK, "Polyps", version=1)
+
+    assert modules_served_where_they_belong(db_session, manager) == []
+
+
+def test_another_organisations_modules_are_not_listed_for_a_manager(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    elsewhere = _organisation(db_session, "Elsewhere")
+    manager = _member(db_session, "manager", org, "teaching_admin")
+    _serve(db_session, elsewhere)
+    _sync(db_session, elsewhere, BANK, "Polyps")
+
+    assert modules_served_where_they_belong(db_session, manager) == []
+
+
+def test_with_nothing_served_no_module_is_listed(db_session: Session) -> None:
+    org = _organisation(db_session)
+    manager = _member(db_session, "manager", org, "teaching_admin")
+    _sync(db_session, org, BANK, "Polyps")
+
+    assert modules_served_where_they_belong(db_session, manager) == []
+
+
+def test_belonging_to_a_ward_alone_lists_no_module(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    manager = _member(
+        db_session, "manager", _ward(db_session, org), "teaching_admin"
+    )
+    _serve(db_session, org)
+    _sync(db_session, org, BANK, "Polyps")
+
+    assert modules_served_where_they_belong(db_session, manager) == []
+
+
+def test_an_operator_who_belongs_nowhere_is_listed_no_module(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    _serve(db_session, org)
+    _sync(db_session, org, BANK, "Polyps")
+
+    assert (
+        modules_served_where_they_belong(db_session, _operator(db_session))
+        == []
     )
