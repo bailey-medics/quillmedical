@@ -21,7 +21,7 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import User, org_unit_member
+from app.models import User, normalise_email, org_unit_member
 from app.users.competencies import settle_competencies
 from app.users.enrolments import settle_teaching_enrolments
 from app.users.identity import change_identity
@@ -135,7 +135,12 @@ def acts_on_whole_account(
             changes.name is not None
             and changes.name.strip() != (user.full_name or "")
         )
-        or (changes.email is not None and changes.email.strip() != user.email)
+        or (
+            # As it would be stored, so the same address in other
+            # capitals is no change: every address is held in lower case.
+            changes.email is not None
+            and normalise_email(changes.email) != user.email
+        )
         or (
             changes.org_unit_ids is not None
             and set(changes.org_unit_ids) != member_of
