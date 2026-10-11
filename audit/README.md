@@ -1,7 +1,8 @@
 # Audit ledger
 
 `ledger.tsv` is the record of which code has been audited, by whom, and
-at which version.
+at which version. The full account, with good practice, is in
+`docs/docs/conventions/audit-ledger.md`.
 
 Code reaches `main` through its author and the automated checks. The
 audit is a third pair of eyes after those two: somebody reads a file as
