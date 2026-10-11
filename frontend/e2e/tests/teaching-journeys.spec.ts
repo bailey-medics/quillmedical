@@ -147,6 +147,49 @@ test.describe("Teaching module journeys", () => {
           expect(await notReloaded()).toBe(true);
           await scanPage("teaching-assessment-question");
           await mark();
+
+          // That scan reloaded the page, and the loop goes on from the
+          // same attempt: the address is the attempt's own, not /new,
+          // which would have started a second one.
+          await expect(page).toHaveURL(/\/teaching\/assessment\/\d+$/);
+        }
+
+        // On question two the answer is saved and its reply is lost, as
+        // on a connection that drops at the wrong moment. The question
+        // must stay, with the answer still chosen, and pressing Next
+        // again must go on to question three without sending the answer
+        // a second time, which would put it on question three.
+        if (question === 2) {
+          let answersSent = 0;
+          await page.route(
+            "**/api/teaching/assessments/*/answer",
+            async (route) => {
+              answersSent += 1;
+              if (answersSent === 1) {
+                await route.fetch();
+                await route.abort();
+                return;
+              }
+              await route.continue();
+            },
+          );
+
+          await page.getByRole("radio").first().check();
+          await page.getByRole("button", { name: "Next", exact: true }).click();
+          await expect(
+            page.getByText("Could not save your answer"),
+          ).toBeVisible({ timeout: 10_000 });
+          await expect(
+            page.getByRole("heading", { name: "Question 2" }),
+          ).toBeVisible();
+          await expect(page.getByRole("radio").first()).toBeChecked();
+
+          await page.getByRole("button", { name: "Next", exact: true }).click();
+          await expect(
+            page.getByRole("heading", { name: "Question 3" }),
+          ).toBeVisible({ timeout: 10_000 });
+          expect(answersSent).toBe(1);
+          continue;
         }
 
         await page.getByRole("radio").first().check();

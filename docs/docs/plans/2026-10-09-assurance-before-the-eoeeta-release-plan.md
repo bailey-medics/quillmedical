@@ -566,6 +566,15 @@ backend/tests`: `r` without the dash is a target, not the recurse
         rules about `jwt.decode` still find their lines in the canary
         file, since PyJWT's module is also called `jwt`.
 
+    **Two decisions for the swap, made by Mark on 11 October 2026.** A
+    token says what kind it is, and one of the wrong kind is refused:
+    an access token gains `type: access`, and a request's token must
+    carry it, so a refresh token in the access cookie no longer signs
+    anybody in. And a token with no expiry is refused. Both are pinned
+    as today's behaviour in `security_tokens_test.py`, so those two
+    tests change with the swap, on purpose, and the pull request says
+    so.
+
     **Show Mark the diff of `security.py` before the second step is
     committed.** It should be about thirty changed lines. This is
     the one step in the plan that waits for him, because it changes
@@ -830,6 +839,129 @@ and each username and full name input has its own.
       `TotpVerifyIn` and `ValidateClinicalLeadIn`. The test fails on
       each entry the day it gets one, so the list empties itself.
 
+## Phase 4b: Make the exam survive what happens to it
+
+Added on 11 October 2026. The automated review of
+`frontend/src/features/teaching/pages/AssessmentAttempt.tsx`, the page a
+delegate sits an exam on, found four faults. Each was then read through
+in the code and holds. They are the part of the release a delegate is
+most likely to meet, so they come before go-live.
+
+Two of the fixes have a half in the backend, in
+`backend/app/features/teaching/router.py`. The thin routes plan is
+moving the exam routes out of that file now, so those halves wait for
+its pull request "move answering and finishing an assessment out of the
+teaching router" to merge. The frontend halves do not wait.
+
+- [x] Keep the exam on screen when a call fails. Every call the page
+      makes during an exam, saving an answer, going back a question and
+      finishing, ends the same way on a failure: the page switches to
+      its error screen. The question, the timer and the End exam button
+      go, the warnings about leaving the page are switched off, and the
+      only way back is to reload, while the clock runs on at the
+      server. A second without a network does it. The fix: a failure
+      during the exam shows a message above the question, "Could not
+      save your answer. Check your connection and try again", and
+      leaves everything else where it was, the chosen answer included.
+      The error screen is kept for the one case it suits, an exam that
+      could not be loaded at all, and gains a Try again button.
+      Built on 11 October 2026. The messages are fixed wording now,
+      where the page used to print whatever text the failure carried.
+      A refusal that means the exam is over (409: finished, or out of
+      time) is not a failure to retry: the page closes the exam.
+
+- [x] Make trying again safe. `POST /assessments/{id}/answer` does not
+      say which question it answers: the server puts the answer on
+      whichever question is current. If the answer was saved and only
+      the reply was lost, pressing the button again would put the same
+      choice on the next question. So before sending again, the page
+      asks the server which question is current
+      (`GET /assessments/{id}/current`). If it has moved on, the answer
+      landed, and the page moves on with it. The page half was built
+      on 11 October 2026 and is the ticked part of this step.
+
+- [ ] Backend half of the step above, after the thin routes work: the
+      request names the question it answers, and the server ignores a
+      repeat for a question already answered.
+
+- [x] Finish the exam when the delegate leaves or the time runs out.
+      Mark, 11 October 2026: these should submit the exam, however much
+      of it is done. Today neither does. The message on leaving says
+      "Your progress will be submitted" and the page then only
+      navigates away; when the timer runs out the page shows its
+      closing screen and waits for a button. The attempt stays
+      "Incomplete" for good, as only `POST /assessments/{id}/complete`
+      sets it finished. That route already takes an exam with
+      questions unanswered, and one past its time. The fix: running out
+      of time calls it and then shows the closing screen; agreeing to
+      leave calls it and then leaves. If that call fails, the delegate
+      is told and kept on the page. Built on 11 October 2026, with two
+      things decided on the way. Answering the last question finishes
+      the attempt too: the closing screen offers nothing but "View
+      results", so there was no reason to leave the attempt open behind
+      it, and a delegate who closed the tab there was left
+      "Incomplete". And when the time runs out the closing screen shows
+      at once, with the call made behind it, so no more answers can be
+      given while it is in flight; if it fails the delegate is told,
+      and "View results" tries again.
+
+- [ ] Finish an exam nobody came back to. A closed tab, a flat battery
+      or a lost connection cannot be made to call anything. Backend
+      half, after the thin routes work: an attempt past its time limit
+      counts as finished. The simplest form is to finish it the next
+      time anything reads it, the delegate's own list or a clinical
+      lead's view of results, so no timer or background job is needed.
+      An attempt with no time limit stays open until its delegate
+      finishes it.
+
+- [ ] Stop a reload from starting a second attempt. Where a question
+      bank has no intro page, the page starts the attempt as it opens
+      and its address stays `/teaching/assessment/new?bank=...`. A
+      reload, or the browser restoring the tab, runs that again: a
+      second attempt from question one, and the first left unfinished
+      with its answers out of reach. Pressing Begin on a bank with an
+      intro page does move to the attempt's own address, so only the
+      no-intro case is exposed. Frontend fix: move to the attempt's own
+      address as soon as it exists, in both cases. Built on 11 October
+      2026, and that page half is what is ticked in the step below
+      this one; this step stays open for its backend half, after
+      the thin routes work, and the stronger of the two: starting an
+      exam when the delegate has one unfinished for that bank, and
+      still inside its time, returns that one. That also covers a
+      second tab. A double click on Begin is not a way in: the button
+      disables itself on the first press, which a test now pins. Mark asked, rightly, why an unfinished
+      attempt would exist at all once leaving submits. It exists only
+      where the delegate did not get to leave: a reload, a crashed
+      browser, a lost connection, a laptop shut mid-exam. Those are the
+      cases this is for. Without it a reload is also a way to get a
+      fresh paper and a fresh clock. An attempt past its time is
+      finished first, by the step above, and a new one is then started
+      as asked.
+
+- [x] Stop the page loading the exam a second time after Begin. This is
+      not Begin being pressed twice, and not the back button. Pressing
+      Begin starts the attempt and changes the address from `new` to
+      the attempt's number. The code that loads the page runs whenever
+      the address changes, so it runs again, straight away, as though
+      resuming: three more calls whose answers overwrite what Begin had
+      just set. If one fails, an exam that started cleanly shows the
+      error screen; if the delegate answers quickly, a late reply can
+      put the answered question back. The fix: the loading code leaves
+      alone an attempt the page already holds. Built on 11 October
+      2026, together with the page half of the step above: an exam
+      with no intro page now moves to its own address too.
+
+- [x] Tests for each of the above in `AssessmentAttempt.test.tsx`, and
+      an end-to-end test that sits an exam through a failed answer and
+      a reload. Done on 11 October 2026 for the page halves. The
+      end-to-end test is the existing exam sitting in
+      `frontend/e2e/tests/teaching-journeys.spec.ts`, made longer and
+      not a second test, because two sittings by the seeded user at
+      once collide. The time running out is tested in the unit tests
+      only: the seeded module allows an hour, and an end-to-end test of
+      it wants a module with a limit of seconds. The backend halves
+      bring their own tests when they are built.
+
 ## Phase 5: Audit the security paths by hand
 
 Audit in this order, stamping each in the ledger, and treating anything
@@ -956,22 +1088,10 @@ found as a bug to fix on its own branch before going on.
   All seven that were marked to fix before go-live are fixed, as Mark
   agreed on 11 October 2026.
 
-  **For Mark to sort: the frontend pass** (found on 11 October 2026,
-  not yet agreed; the first four are the exam a delegate sits)
-  - **Exam: any failed call ends the exam screen.** A moment without
-    network while answering shows an error with no way back, and takes
-    the leave-page guards off, while the clock runs on.
-    `AssessmentAttempt.tsx`.
-  - **Exam: leaving does not submit.** The message says progress will
-    be submitted, and nothing completes the attempt, on leaving or when
-    time runs out. It stays "Incomplete". `AssessmentAttempt.tsx`.
-  - **Exam: a reload can start a second attempt.** Where a bank has no
-    intro page the address stays at `new`, so reloading starts again
-    from question one and orphans the first. `AssessmentAttempt.tsx`.
-  - **Exam: Begin fetches the exam again mid-way.** The address changes
-    and the page loads everything a second time, which can put an
-    answered question back or show an error on an exam that had
-    started. `AssessmentAttempt.tsx`.
+  **For Mark to sort: the frontend pass** (found on 11 October 2026.
+  The four in the exam a delegate sits are now Phase 4b; these six are
+  not yet agreed)
+
   - **Video: one failed renewal removes a playing video**, with five
     minutes of access left and no retry. `use-video-access.ts`.
   - **Slides: the arrow keys change slide while the video has focus**,

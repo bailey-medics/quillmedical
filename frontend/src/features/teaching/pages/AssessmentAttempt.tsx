@@ -4,14 +4,23 @@
  * Active assessment exam page. Displays questions with images, options,
  * a countdown timer, and navigation. Handles answer submission, exam
  * completion, and early abandonment with navigation blocking.
+ *
+ * Three rules hold the page together:
+ *
+ * - A call that fails during the exam leaves the exam on screen, with a
+ *   message above the question. Only an exam that could not be loaded
+ *   at all replaces the page.
+ * - Leaving, running out of time and answering the last question each
+ *   finish the attempt at the server, however much of it is done.
+ * - The address is the attempt's own from the moment it exists, so a
+ *   reload comes back to the same attempt and never starts another.
  */
 
 import { Group, Stack } from "@mantine/core";
 import LoadingSpinner from "@/components/loading-spinner";
 import PageHeader from "@/components/page-header";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
-import { StateMessage } from "@/components/message-cards";
-import { IconAlertCircle } from "@/components/icons/appIcons";
+import ErrorState from "@/components/error-state/ErrorState";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useBlocker,
@@ -37,6 +46,30 @@ import type {
 } from "@/features/teaching/types";
 
 type Phase = "loading" | "intro" | "questions" | "closing" | "error";
+
+const COULD_NOT_LOAD =
+  "The exam could not be loaded. Check your connection and try again.";
+const COULD_NOT_START =
+  "The exam could not be started. Check your connection and try again.";
+const COULD_NOT_SAVE =
+  "Could not save your answer. Check your connection and try again.";
+const COULD_NOT_GO_BACK =
+  "Could not load the previous question. Check your connection and try again.";
+const COULD_NOT_FINISH =
+  "Could not submit your exam. Check your connection and try again.";
+
+/**
+ * Whether the server refused a call because the attempt is over: it is
+ * finished already, or its time has run out.
+ */
+function isConflict(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "status" in err &&
+    err.status === 409
+  );
+}
 
 export default function AssessmentAttempt() {
   const { id } = useParams<{ id: string }>();
@@ -75,10 +108,59 @@ export default function AssessmentAttempt() {
   const [completing, setCompleting] = useState(false);
   const [viewingPrevious, setViewingPrevious] = useState(false);
   const [furthestItem, setFurthestItem] = useState<CandidateItem | null>(null);
+  // A failure during the exam, shown above the question
+  const [examError, setExamError] = useState<string | null>(null);
+  // Counts the times loading has been tried, so "Try again" runs it again
+  const [loadAttempt, setLoadAttempt] = useState(0);
+
+  // The attempt this page started itself. Its address changes from
+  // /new to its own as soon as it exists, and the load below must not
+  // then fetch what the page is already holding.
+  const heldAttemptRef = useRef<number | null>(null);
+  // Set while an exam with no intro page is being started, so that the
+  // load running twice starts one attempt
+  const startingRef = useRef(false);
+  // Set after a failed answer: the answer may have been saved and only
+  // the reply lost, so the server is asked before it is sent again
+  const unsureOfAnswerRef = useRef(false);
+  const finishedRef = useRef(false);
+  const finishingRef = useRef<Promise<boolean> | null>(null);
+
+  /**
+   * Finish the attempt at the server, once. Answers whether it is
+   * finished: true as well when it already was, here or in another tab.
+   */
+  const finish = useCallback((assessmentId: number): Promise<boolean> => {
+    if (finishedRef.current) return Promise.resolve(true);
+    if (finishingRef.current) return finishingRef.current;
+
+    setCompleting(true);
+    setExamError(null);
+
+    const finishing = api
+      .post<CompletionResult>(`/teaching/assessments/${assessmentId}/complete`)
+      .then(
+        () => true,
+        (err: unknown) => isConflict(err),
+      )
+      .then((done) => {
+        finishedRef.current = done;
+        finishingRef.current = null;
+        setCompleting(false);
+        if (!done) setExamError(COULD_NOT_FINISH);
+
+        return done;
+      });
+    finishingRef.current = finishing;
+
+    return finishing;
+  }, []);
 
   // Initialise assessment - either create new or resume existing
   useEffect(() => {
     async function init() {
+      if (id !== "new" && String(heldAttemptRef.current) === id) return;
+
       try {
         if (id === "new") {
           const bankId = searchParams.get("bank");
@@ -98,15 +180,24 @@ export default function AssessmentAttempt() {
           if (introPage) {
             setPhase("intro");
           } else {
-            // No intro - start immediately
+            // No intro - start immediately, and once
+            if (startingRef.current) return;
+            startingRef.current = true;
+
             const result = await api.post<AssessmentWithFirstItem>(
               "/teaching/assessments",
               { question_bank_id: bankId },
             );
+            heldAttemptRef.current = result.assessment.id;
             setAssessment(result.assessment);
             setCurrentItem(result.first_item);
             setAnsweredCount(0);
             setPhase("questions");
+            // The attempt's own address, so a reload resumes this
+            // attempt where /new would start a second
+            navigate(`/teaching/assessment/${result.assessment.id}`, {
+              replace: true,
+            });
           }
         } else {
           // Resume existing assessment
@@ -137,20 +228,26 @@ export default function AssessmentAttempt() {
             setAnsweredCount(item.display_order - 1);
             setPhase("questions");
           } else {
-            // All answered, show closing
+            // All answered: finish it and show closing
             setAnsweredCount(existing.total_items);
             setPhase("closing");
+            void finish(existing.id);
           }
         }
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load assessment",
-        );
+      } catch {
+        startingRef.current = false;
+        setError(COULD_NOT_LOAD);
         setPhase("error");
       }
     }
     init();
-  }, [id, searchParams, navigate]);
+  }, [id, searchParams, navigate, finish, loadAttempt]);
+
+  const handleTryLoadingAgain = useCallback(() => {
+    setError(null);
+    setPhase("loading");
+    setLoadAttempt((attempt) => attempt + 1);
+  }, []);
 
   const [beginning, setBeginning] = useState(false);
 
@@ -168,6 +265,7 @@ export default function AssessmentAttempt() {
         "/teaching/assessments",
         { question_bank_id: bankId },
       );
+      heldAttemptRef.current = result.assessment.id;
       setAssessment(result.assessment);
       setCurrentItem(result.first_item);
       setAnsweredCount(0);
@@ -177,41 +275,84 @@ export default function AssessmentAttempt() {
       });
       setPhase("questions");
       scrollToTop();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to start assessment",
-      );
+    } catch {
+      setError(COULD_NOT_START);
       setPhase("error");
     } finally {
       setBeginning(false);
     }
   }, [searchParams, navigate, scrollToTop]);
 
+  /** Show the closing screen and finish the attempt behind it. */
+  const closeExam = useCallback(
+    (assessmentId: number) => {
+      setCurrentItem(null);
+      setSelectedOption(null);
+      setPhase("closing");
+      void finish(assessmentId);
+    },
+    [finish],
+  );
+
   const handleSubmitAnswer = useCallback(async () => {
     if (!assessment || !currentItem || !selectedOption) return;
+
     setSubmitting(true);
+    setExamError(null);
     try {
+      // The request does not name its question: the server puts the
+      // answer on whichever is current. So after a failure, find out
+      // whether that answer landed before sending it a second time,
+      // or it would go on the question after.
+      if (unsureOfAnswerRef.current) {
+        const current = await api.get<CandidateItem | null>(
+          `/teaching/assessments/${assessment.id}/current`,
+        );
+
+        if (current === null) {
+          unsureOfAnswerRef.current = false;
+          setAnsweredCount(assessment.total_items);
+          closeExam(assessment.id);
+          return;
+        }
+
+        if (current.display_order > currentItem.display_order) {
+          unsureOfAnswerRef.current = false;
+          setSelectedOption(null);
+          setAnsweredCount(current.display_order - 1);
+          setCurrentItem(current);
+          scrollToTop();
+          return;
+        }
+      }
+
       const result = await api.post<AnswerResult>(
         `/teaching/assessments/${assessment.id}/answer`,
         { selected_option: selectedOption },
       );
+      unsureOfAnswerRef.current = false;
       setSelectedOption(null);
       setAnsweredCount((prev) => prev + 1);
 
       if (result.all_answered) {
-        setCurrentItem(null);
-        setPhase("closing");
+        closeExam(assessment.id);
       } else {
         setCurrentItem(result.next_item);
         scrollToTop();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit answer");
-      setPhase("error");
+      // Refused because the attempt is over: finished, or out of time
+      if (isConflict(err)) {
+        closeExam(assessment.id);
+        return;
+      }
+
+      unsureOfAnswerRef.current = true;
+      setExamError(COULD_NOT_SAVE);
     } finally {
       setSubmitting(false);
     }
-  }, [assessment, currentItem, selectedOption, scrollToTop]);
+  }, [assessment, currentItem, selectedOption, scrollToTop, closeExam]);
 
   const handlePrevious = useCallback(async () => {
     if (!assessment || !currentItem || currentItem.display_order <= 1) return;
@@ -220,6 +361,7 @@ export default function AssessmentAttempt() {
       setFurthestItem(currentItem);
     }
 
+    setExamError(null);
     try {
       const item = await api.get<CandidateItem>(
         `/teaching/assessments/${assessment.id}/item/${currentItem.display_order - 1}`,
@@ -227,11 +369,8 @@ export default function AssessmentAttempt() {
       setCurrentItem(item);
       setSelectedOption(item.selected_option ?? null);
       setViewingPrevious(true);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load previous item",
-      );
-      setPhase("error");
+    } catch {
+      setExamError(COULD_NOT_GO_BACK);
     }
   }, [assessment, currentItem, viewingPrevious]);
 
@@ -239,8 +378,9 @@ export default function AssessmentAttempt() {
     if (!assessment || !currentItem || !selectedOption) return;
 
     setSubmitting(true);
+    setExamError(null);
     try {
-      // Save updated answer
+      // Save updated answer. Sending it twice is safe: it names its answer
       await api.put<CandidateItem>(
         `/teaching/assessments/${assessment.id}/answer/${currentItem.answer_id}`,
         { selected_option: selectedOption },
@@ -263,44 +403,60 @@ export default function AssessmentAttempt() {
       setCurrentItem(item);
       setSelectedOption(item.selected_option ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save answer");
-      setPhase("error");
+      if (isConflict(err)) {
+        closeExam(assessment.id);
+        return;
+      }
+
+      setExamError(COULD_NOT_SAVE);
     } finally {
       setSubmitting(false);
     }
-  }, [assessment, currentItem, selectedOption, answeredCount, furthestItem]);
+  }, [
+    assessment,
+    currentItem,
+    selectedOption,
+    answeredCount,
+    furthestItem,
+    closeExam,
+  ]);
 
   const handleComplete = useCallback(async () => {
     if (!assessment) return;
-    setCompleting(true);
-    try {
-      await api.post<CompletionResult>(
-        `/teaching/assessments/${assessment.id}/complete`,
-      );
-      navigate(`/teaching/assessment/${assessment.id}/result`, {
-        state: { fromExam: true },
-      });
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to complete assessment",
-      );
-      setPhase("error");
-    } finally {
-      setCompleting(false);
-    }
-  }, [assessment, navigate]);
+
+    const finished = await finish(assessment.id);
+    if (!finished) return;
+
+    navigate(`/teaching/assessment/${assessment.id}/result`, {
+      state: { fromExam: true },
+    });
+  }, [assessment, navigate, finish]);
 
   const handleExpire = useCallback(() => {
-    // Timer expired - go to closing phase
-    setPhase("closing");
-  }, []);
+    // Out of time: the exam is submitted as it stands
+    if (!assessment) return;
+
+    closeExam(assessment.id);
+  }, [assessment, closeExam]);
 
   // Track whether we've already called proceed - prevents ConfirmModal's
   // automatic onClose (after onAccept) from calling reset and cancelling
   // the in-flight navigation.
   const proceededRef = useRef(false);
 
-  function handleBlockerProceed() {
+  async function handleBlockerProceed() {
+    // Leaving submits the exam as it stands. On the intro page there is
+    // no attempt yet, so nothing to submit.
+    if (phase === "questions" && assessment) {
+      const finished = await finish(assessment.id);
+
+      // Not submitted: keep the delegate here, where they can try again
+      if (!finished) {
+        blocker.reset?.();
+        return;
+      }
+    }
+
     proceededRef.current = true;
     blocker.proceed?.();
   }
@@ -340,6 +496,7 @@ export default function AssessmentAttempt() {
         onClose={handleBlockerClose}
         onAccept={handleBlockerProceed}
         acceptLabel="Leave exam"
+        submittingLabel="Submitting\u2026"
         cancelLabel="Continue exam"
         icon={<IconAlertTriangle />}
       >
@@ -350,12 +507,19 @@ export default function AssessmentAttempt() {
       {phase === "loading" && <LoadingSpinner label="Loading assessment" />}
 
       {phase === "error" && (
-        <StateMessage
-          icon={<IconAlertCircle />}
-          title="Error loading data"
-          description={error ?? "An unexpected error occurred"}
-          colour="alert"
+        <ErrorState
+          title="Error loading exam"
+          message={error ?? COULD_NOT_LOAD}
+          action={
+            searchParams.get("bank") || id !== "new"
+              ? { label: "Try again", onClick: handleTryLoadingAgain }
+              : undefined
+          }
         />
+      )}
+
+      {examError && (phase === "questions" || phase === "closing") && (
+        <ErrorState title="Not saved" message={examError} />
       )}
 
       {phase === "intro" && (
