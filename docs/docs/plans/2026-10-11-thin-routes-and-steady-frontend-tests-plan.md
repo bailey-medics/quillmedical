@@ -48,13 +48,20 @@ that work is larger and each step of it is safe to land alone.
             the words of these four refusals, so
             `backend/tests/user_update_identity_refusals_test.py` now
             does, through the route.
-      - [ ] **Who may change what** - the checks that the caller's
+      - [x] **Who may change what** - the checks that the caller's
             scope reaches the account, the profession and the
             competencies changed (`_require_account_in_scope`,
             `_require_profession_in_scope`, `_require_changes_in_scope`)
             and the rule that nobody grants themselves a competency.
             `create_user_with_cbac` uses the same helpers, so they move
             once and both routes call them.
+            Now `check_account_in_scope`,
+            `check_profession_in_scope`, `check_changes_in_scope`,
+            `check_may_set_platform_role` and
+            `check_not_granting_to_self` in
+            `backend/app/users/scope.py`. Two of the refusals carry
+            catalogue ids (the competencies, the profession), so their
+            words did not change.
       - [ ] **The competency lists** - what `additional` and `removed`
             come to after a change of profession and a promotion to
             `superadmin`, and the write through `sync_competency_rows`.
