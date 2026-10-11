@@ -1,0 +1,522 @@
+# Documentation review follow-ups plan
+
+The documentation review of 11 October 2026 (pull requests #1766 to #1787)
+checked every page under `docs/docs/` against the code. It corrected the
+pages, but it was not allowed to change code, so it left behind a list of
+places where the code was the half that was wrong, and four places where
+the unpublished privacy policy and the code disagree. Mark decided each
+one the same day. This plan carries those decisions out.
+
+Nothing here is urgent and nothing depends on a user: production has no
+real users yet. Each phase is one small unit on its own stacked branch, in
+the order below, and no step waits for a person.
+
+## Phase 1: Record what is deliberately left
+
+- [ ] Add an item to `docs/docs/plans/todo.md`, under "Security and
+      compliance": **update the privacy policy when push notifications
+      are turned on again.** Notifications are not enabled at all today:
+      the Settings card is hidden behind `settingsNotificationsCardEnabled`
+      in `frontend/src/pages/Settings.tsx`. Section 3.7 of
+      `docs/docs/legal/privacy-policy.md` says consent is withdrawn "by
+      turning notifications off in your browser or in Settings", but the
+      card only has an enable button and `backend/app/push.py` has one
+      route, `POST /subscribe`, with no unsubscribe. So before the card is
+      shown again, either build the off switch or drop "or in Settings".
+      The policy is left as written until then.
+
+- [ ] Add a second item to `todo.md`, marked _(clinical)_: **review the
+      "Clinician" role gate before there are real patients.**
+      `DEP_REQUIRE_ROLES_CLINICIAN` in `backend/app/main.py` gates three
+      patient write routes (`/patients/verify`, demographics and letters),
+      yet no API route assigns a role: only `backend/scripts/admin_cli.py`
+      and `add_role_to_user.py` do. The `Role` model predates competencies
+      and the three-layer access model never mentions it.
+      `docs/docs/plans/2026-09-06-org-scoped-access-findings.md` records
+      that its consumers were never traced. Left alone now because Quill
+      holds no patients.
+
+## Phase 2: Stop sending a username to Slack
+
+- [ ] In `backend/app/feedback/router.py` and `backend/app/feedback/slack.py`,
+      take the sender's username out of the notice posted to Slack. The
+      notice keeps the category, the page and the link to the feedback.
+      Update `slack_test.py` and the router's test to match.
+
+      The review found that Slack receives each notice with
+      `sender=current_user.username`, while section 5.1 of the privacy
+      policy names three outside companies and section 3.8 says an
+      operator is emailed. Mark's answer was "you decide". Naming Slack as
+      a fourth processor would also mean a transfer outside the United
+      Kingdom to describe in section 8, for the sake of one word in a
+      notification. Without the username the notice carries no personal
+      data, the policy is true as written, and the operator loses nothing:
+      the link opens the feedback, which shows who sent it.
+
+- [ ] Correct the docstring in `router.py` that says "the same is posted
+      to Slack", since the two notices now differ.
+
+## Phase 3: Say the opt-out is remembered on the device
+
+- [ ] In section 3.9 of `docs/docs/legal/privacy-policy.md`, replace "We
+      do not use an analytics service, tracking cookies or anything stored
+      on your device for this, and the totals do not identify you." with
+      wording that says nothing is stored on the device unless the person
+      switches the counting off in Settings, when that choice is
+      remembered there. Mark agreed this one.
+      `frontend/src/lib/page-views/optOut.ts` writes the key
+      `quill.pageViews.optOut` to `localStorage`; the session identifier
+      itself is held in memory only, so the rest of the sentence stands.
+
+- [ ] The policy is still version 1.0 and unpublished, so it is corrected
+      in place, as `docs/docs/legal/index.md` records for the earlier
+      revision. Add one sentence there dating this one.
+
+## Phase 4: Keep the public site's log archive in London
+
+- [ ] Set `dataset_location = "europe-west2"` for the analytics module, in
+      `infra/main.tf` where the module is called, and change the default
+      and its description in `infra/modules/analytics/variables.tf`.
+
+      The module archives the public site's load balancer logs, which
+      carry visitors' IP addresses, to a BigQuery dataset for 30 days.
+      Its location defaults to `"EU"`, Google's multi-region across the
+      European Union. The privacy policy says in three places that
+      everything Google holds is in London. Moving the dataset makes the
+      policy true without adding an exception to it.
+
+- [ ] A BigQuery dataset cannot change location in place: Terraform
+      destroys it and makes a new one, and the log sink that writes to it
+      with it. Up to 30 days of archived request logs are lost. That is
+      accepted, because nobody uses production yet and the archive is not
+      relied on. Read the plan on the pull request to confirm it replaces
+      the dataset and the sink and nothing else.
+
+- [ ] After the merge, check the `Terraform` run applied, and that the new
+      dataset reports `europe-west2`. No deploy is needed: nothing on a
+      Cloud Run service changes.
+
+- [ ] Leave the public site's static bucket, `location = "EU"` in
+      `infra/modules/load-balancer/main.tf`. It holds the site's own pages
+      and no personal data, and moving a bucket means recreating it under
+      live traffic.
+
+## Phase 5: Let `stack-add` tell two pull requests apart
+
+- [ ] Change the guard at the top of `stack-add` in the `Justfile`. It
+      asks `gh pr list --head <branch> --state merged`, so it refuses any
+      branch whose name an earlier merged pull request also used. That
+      stopped the review run part-way, when #1772 reused the branch name
+      of #1378. Refuse only when a merged pull request exists for the
+      branch **and no open one does**: a branch with an open pull request
+      is by definition not spent.
+
+- [ ] Check `stack-sync` and `scripts/stack-forget-merged.py` for the same
+      question asked the same way, and apply the same rule if they do. The
+      run avoided `stack-sync` for that reason without testing it.
+
+- [ ] Add a test beside the other stack tests in `scripts/tests/`, with a
+      stubbed `gh`: merged and open together is allowed, merged alone is
+      refused, neither is allowed.
+
+- [ ] Update the "marks in `stack-log` can be stale" trap in
+      `docs/docs/cicd/stacked-branches.md`, which currently tells the
+      reader to avoid reusing a name.
+
+## Phase 6: One check for every Node pin
+
+- [ ] Make `.github/workflows/dependency-audit.yml` set Node up through
+      `.github/actions/setup-frontend`, as the other workflows do, if that
+      action does nothing the audit job cannot afford. If it installs
+      dependencies the audit must not have, keep the job's own
+      `actions/setup-node` step and teach
+      `.github/scripts/ci/check-version-consistency.sh` to read that file
+      as well. Prefer the first: one home is better than a check across
+      three.
+
+- [ ] Update `check-version-consistency.bats` for whichever was done, and
+      the "Known exception - Node" note in
+      `docs/docs/conventions/index.md`, which #1771 changed to say three
+      homes.
+
+## Phase 7: Python 3.14 and the hotfix wording
+
+- [ ] Change `python = "^3.13.8"` to `"^3.14"` in `backend/pyproject.toml`
+      and regenerate `poetry.lock`. `.python-version` is 3.14.7,
+      `backend/Dockerfile` builds from `python:3.14-slim`, and mypy is
+      already set to 3.14 in the same file.
+
+- [ ] This is a dependency file, so run the full backend suite, `just ub`
+      with no filter, after `just utr` has rebuilt the image.
+
+- [ ] In `renovate.json`, rewrite the lines of the description block that
+      say "Hotfix branch off the latest production tag". There is no
+      production tag and no promotion step: `deploy.yml` deploys every
+      merge to `main`. Say the hotfix branches from `main` and deploys on
+      merge.
+
+- [ ] Make the same correction in
+      `docs/docs/dependencies/automatic-updates.md` (the severity table,
+      the "Hotfix flow" steps and "next promotion") and step 4 of the
+      security section in `managing-renovate-prs.md`. Pull request #1774
+      left these as a question. In the labels list of the first file, swap
+      `hotfix` and `back-merge`, which nothing uses, for
+      `lock-file-maintenance`, which `renovate.json` adds.
+
+## Phase 8: Test that a public page is on the guest list
+
+- [ ] Move `guestPaths` out of `request` in `frontend/src/lib/api.ts` to
+      an exported constant in the same file. It is the list of paths where
+      a 401 does not send the visitor to `/login`.
+
+- [ ] Add a test in `frontend/src/routes.test.ts` that walks `routes` and
+      fails for any route reachable without `RequireAuth` whose path is
+      not covered by `guestPaths`. A page for somebody not signed in needs
+      both, and the comments in `api.ts` record the second being forgotten
+      three times.
+
+- [ ] Expect the test to find routes that are deliberately off the list,
+      such as the 404. Give it a short, named list of exceptions with a
+      reason beside each, so adding one is a decision somebody reads.
+
+- [ ] Update the "A page for somebody not signed in needs two things"
+      section of `docs/docs/frontend/sessions-and-requests.md`, which says
+      no test checks this.
+
+## Phase 9: Remove a setting that does nothing
+
+- [ ] Remove `randomise_selection` from the `assessment` type in
+      `frontend/src/features/teaching/types.ts`, from the fixture in
+      `backend/app/features/teaching/router_test.py`, and from the
+      `assessment.yaml` example in `docs/docs/teaching/index.md`.
+      `start_assessment` always picks questions with `random.sample` and
+      reads only `randomise_order`, so the key has never had an effect.
+
+- [ ] Do not make the validator reject the key. The content repositories
+      may still carry it, and refusing it would block their next merge
+      for no gain. Search `teaching-repos/` in the main checkout and list
+      any bank that has it in the pull request, to be tidied in those
+      repositories separately.
+
+## Phase 10: Make the AWS account check say what it does
+
+- [ ] In `infra/aws/organisation.tf`, change the comment above
+      `check "every_account_is_listed"` from "This fails a plan" to say
+      that it warns. A failed `check` block in Terraform is reported as a
+      warning and stops nothing.
+
+- [ ] Make the same change in `docs/docs/infrastructure/aws.md`: "A plan
+      warns if the organisation holds an account the code does not list."
+
+      The wording changes, not the mechanism. `infra/aws` is applied by a
+      person, who reads the plan, and the opposite mistake already fails
+      loudly: an account listed but not held breaks the lookup.
+
+## Phase 11: Bring CLAUDE.md up to date
+
+- [ ] In the hand-written "Claude-specific" section at the foot of
+      `CLAUDE.md`, rewrite the paragraph beginning "Recipes that still
+      need the live stack". It says they refuse to run from a worktree the
+      stack does not serve. Since `_dev-stack-guard` was added to the
+      `Justfile`, the dev stack belongs to the main checkout, and `just
+      sa`, `just se` and the live-stack recipes refuse anywhere else. The
+      `docker inspect` command beneath it goes too if nothing reads the
+      owning path any more.
+
+- [ ] Search `.github/copilot-instructions.md` for `cbac/scoped.py`. The
+      file is `backend/app/cbac/practising.py`. If the name is still
+      there, correct it in that file, which is the source, and run
+      `/sync-copilot-config`. A search of `CLAUDE.md` on 11 October found
+      no mention left, so this may already be done.
+
+## Phase 12: Carry out the retention periods the database can
+
+Mark asked for this on 11 October, after the review found that section 7
+of the privacy policy gives periods that no code carried out. It was built
+ahead of Phases 1 to 11, which are untouched.
+
+- [x] Add `backend/app/retention.py`, with `apply_retention`. It deletes
+      three things, each with the period the policy gives: an assessor
+      invitation nobody accepted, 90 days after it expires; feedback, two
+      years after it was sent; and the record of somebody's answers about
+      news and updates, six years after the last one. An accepted
+      invitation is never deleted, because the policy says it becomes part
+      of the sign-off record. The marketing period runs from the last
+      answer, so one recent answer keeps every earlier one, and the
+      current answer on the account itself is left.
+
+- [x] Add the `apply-retention` action to `backend/scripts/admin_cli.py`.
+      It only counts unless `RETENTION_APPLY=true`, so a run by hand
+      deletes nothing. It prints counts and never a row's contents, and a
+      failure prints the error's type alone.
+
+- [x] Add `.github/workflows/retention.yml`, which runs the action on the
+      admin job each night at 03:30 UTC with `RETENTION_APPLY=true`, as
+      `accessibility-review.yml` runs its own. GitHub starts the job and
+      holds no database credential. A run started by hand is a report
+      unless `apply` is ticked.
+
+- [x] Test it in `backend/app/retention_test.py`: each period at one day
+      inside and one day past, the accepted invitation, two people's
+      marketing records kept apart, the report that deletes nothing, and
+      the action's three outcomes. Run with `just ub
+      app/retention_test.py`, 13 passing.
+
+- [ ] After the first nightly run, read its log and check the counts are
+      what a report by hand gave the day before.
+
+## Phase 13: Take attempt limits out of the terms
+
+- [x] In clause 7.2 of `docs/docs/legal/terms-of-service.md`, remove "the
+      number of attempts allowed and the gap between them". Quill has no
+      limit on attempts and none is planned, so the clause promised
+      something the modules cannot set. Pass marks and time limits stay.
+
+## Phase 14: Remind somebody who is enrolled and has not started
+
+- [ ] Add two optional keys to `module.yaml`, in `ModuleYaml` in
+      `backend/app/features/teaching/tooling/module_schema.py`:
+      `enrolmentReminderEveryDays` and `enrolmentReminderCount`, both whole
+      numbers above zero. Mark's decision on 11 October: how often and how
+      many times is the module's to set, in the teaching repository, not
+      Quill's. camelCase because the file's other keys are, and the schema
+      says renaming them would break every bank. A module with neither key
+      sends no reminders, so a module that has not asked for them is left
+      alone; one key without the other is a validation error.
+
+- [ ] Carry both through sync to wherever `renewalMonths` already goes,
+      so the backend reads them from the database and not from a file.
+
+- [ ] Send a reminder to anybody enrolled on a module who has no completed
+      attempt at it, passed or failed: an `Assessment` row with
+      `completed_at` set, for the same person, organisation and
+      `question_bank_id` as the `ModuleEnrolment` row. The first goes
+      `enrolmentReminderEveryDays` after `starts_on`, then one each
+      interval, up to `enrolmentReminderCount`. Only a current enrolment
+      counts (`is_current`), on an active account with a verified address.
+
+- [ ] Record each reminder, so the interval is counted from the last one
+      sent and a repeated run does not send twice: `last_reminded_at` and
+      `reminders_sent` on `module_enrolment`, added with `just migrate`.
+
+- [ ] Write the template, `enrolment_reminder.html.j2`, with a preview,
+      following `docs/docs/backend/email.md`. Send it for the partner, as
+      the certificate email is, from the organisation's
+      `TeachingOrgSettings`.
+
+- [ ] Run it as an admin action from a scheduled workflow, as Phase 12
+      does, with the same report-unless-told default.
+
+- [ ] In the `eoeeta-teaching` repository, a separate pull request there:
+      set `enrolmentReminderEveryDays: 7` and `enrolmentReminderCount: 6`
+      on the module. Six weekly reminders is what Mark gave for EoEETA.
+
+## Phase 15: Tell somebody when a pass is due to be repeated
+
+- [ ] Send one notice when a pass reaches the module's `renewalMonths`.
+      The period is already in `module.yaml` (`renewalMonths: 36` on the
+      EoEETA module), already validated, and already served to the
+      frontend as `renewal_months`: an earlier note in this plan that the
+      code held no such period was wrong. The EoEETA agreement sets both
+      the period and the moment: "The delegate will be notified
+      automatically that their assessment needs repeating again 3 years
+      after the last successful assessment date." So the notice goes at
+      three years from the latest passed attempt, not ahead of it.
+
+- [ ] Count from the latest `Assessment` with `is_passed` true for that
+      person, organisation and module. A later pass restarts the period,
+      which is the agreement's "last successful assessment".
+
+- [ ] Record that the notice was sent, against the pass it was sent for,
+      so it goes once: a column on `assessments`, added with `just
+      migrate`.
+
+- [ ] Template, preview, admin action and schedule as in Phase 14. One
+      action can send both kinds of email in one nightly run.
+
+## Phase 16: Keep a closed account's records for the sponsor's period
+
+- [ ] Add `deactivated_at` to `User`, set wherever `is_active` becomes
+      false and cleared when it becomes true again. The policy's two years
+      run from that date, and today nothing holds it.
+
+- [ ] Keep an EoEETA delegate's records for three and a half years after
+      their account closes, then delete them. Mark's decision on 11
+      October. The reasoning: a pass lasts three years, so the records are
+      needed that long anyway, and the extra six months covers the time
+      around a renewal, when a delegate who has lapsed comes back and
+      their last result is asked for.
+
+- [ ] Hold the period for each sponsor, not in code: a
+      `records_kept_months_after_closure` column on `TeachingOrgSettings`,
+      added with `just migrate`, set to 42 for EoEETA. It is the sponsor's
+      instruction, which is what the privacy policy says decides how long
+      a sponsor's training records are kept, and another sponsor may give
+      another. Empty means nothing is deleted automatically for that
+      organisation.
+
+- [ ] Extend `apply_retention` in `backend/app/retention.py`: for a user
+      whose `deactivated_at` is older than their organisation's period,
+      delete their assessments, answers and enrolments at that
+      organisation. Work out first what else points at those rows and at
+      the user. Several foreign keys to `users` are `RESTRICT`, and a
+      person can be enrolled at more than one organisation, so one
+      organisation's period ending must not take another's records.
+
+- [ ] Keep the account itself for as long as the records. A result is no
+      use to a sponsor without the name on it, so a delegate's account
+      cannot go at two years while their results stay to three and a half.
+      The same run that deletes the records deletes the account, if no
+      other organisation still holds records for that person.
+
+- [ ] Say so in `docs/docs/legal/privacy-policy.md`, in the two places
+      that give the account's period. Both now say two years with no
+      exception:
+
+      - **Section 3.1, "How long"** - after "for two years after it is
+        closed or deactivated", add that where a sponsor gave the person
+        access, the account is kept for as long as that sponsor's
+        training records are, which may be longer.
+      - **Section 7, "Your account"** - the same, in one clause: "while
+        it exists, and two years after it is closed or deactivated, or
+        for as long as a sponsor's training records about you are kept,
+        if that is longer."
+
+- [ ] Name EoEETA's period in the privacy policy, in a subsection of its
+      own. Mark's decision on 11 October: the privacy policy and the terms
+      are being built with a subsection for each sponsor, and a sponsor's
+      period belongs there, stated outright. An earlier draft of this step
+      kept the number out of the policy; that was wrong.
+
+      Checked on 11 October, on this branch and on `main`: neither
+      document names any sponsor yet, so this is the first such
+      subsection. Both already speak about a sponsor's retention in
+      general, and those are the places it hangs from:
+
+      - **Privacy policy 4.5** - "Your sponsor decides how long your
+        records are kept. Training bodies commonly keep them for six
+        years or more after training ends." Add the EoEETA subsection
+        after it: for the East of England Endoscopy Training Academy,
+        training records and the account they belong to are kept for
+        three and a half years after the account is closed or
+        deactivated, then deleted. Give the reason: a pass lasts three
+        years, and the further six months covers a renewal.
+      - **Privacy policy section 7** - change "Training records held for
+        a sponsor - as your sponsor instructs" to point at 4.5 and its
+        sponsor subsections, and give EoEETA's period beside it.
+      - **Terms 22.1, in Part B** - "your sponsor keeps its copy of your
+        training records for the period its agreement and its own
+        retention rules set, and you keep access to your own account".
+        Add the matching EoEETA subsection under clause 22, with the same
+        period. Check 22.1 still reads true beside it: it promises access
+        to the account after leaving, and the account now ends when the
+        records do.
+      - **Terms clause 11.1** - the notice that a pass is due to be
+        repeated. EoEETA's three years belongs in its subsection too.
+
+      One heading for each sponsor, holding only what differs for that
+      sponsor, so the general clauses above it stay true for all.
+
+      Two things in the policy as drafted pull the other way, found on
+      reading it whole, and both need rewording in the same change:
+
+      - **It was written to leave a sponsor's period to the sponsor's own
+        notice.** 4.5 says "Your sponsor's privacy notice should say",
+        and section 2.2 makes the sponsor the controller who decides "how
+        long they are kept". So write the subsection as what EoEETA has
+        instructed, not as a period Bailey Medics chose, and change "Your
+        sponsor's privacy notice should say" to say that where a sponsor
+        has given us a period, it is set out below.
+      - **4.5 says training bodies "commonly keep them for six years or
+        more".** Beside a named sponsor keeping them three and a half
+        years, that sentence misleads. Drop it or move it clear of the
+        subsection.
+
+- [ ] Keep the number in one place the code reads and one the reader
+      reads. `records_kept_months_after_closure` on `TeachingOrgSettings`
+      is what deletes; the subsection is what promises. A change to one
+      without the other is the fault this plan started from, so say in
+      the column's comment that the privacy policy names the same period.
+
+- [ ] The policy is still version 1.0 and unpublished, so it is corrected
+      in place; add a dated sentence to `docs/docs/legal/index.md`, as
+      Phase 3 does, and say there that sponsors have subsections.
+
+- [ ] The EoEETA agreement does not contradict this, and does not ask for
+      it. It gives no period for one delegate's records. Clause 5 has
+      Bailey Medics delete or return shared personal data at EoEETA's
+      written direction when the agreement ends, and clause 12 lets it
+      destroy the customer's data then unless a copy is asked for within
+      ten days. So tell EoEETA the period, since the policy calls it their
+      instruction.
+
+- [ ] Add a `todo.md` item: build an end-of-agreement export and delete
+      for a sponsor's records, which clause 12 already promises on
+      request, and decide what deleting a closed account means once there
+      are accounts with no sponsor.
+
+## Phase 17: Give EoEETA its own part of the privacy policy and terms
+
+Mark's decision on 11 October: somebody who reaches Quill through a
+sponsor, and not directly, needs that sponsor's details set out. EoEETA is
+the first. Phase 16 adds the retention period; this phase gathers the rest
+so the subsection is written once, whole.
+
+- [ ] Write the EoEETA subsection of `docs/docs/legal/privacy-policy.md`,
+      under section 4, from what is settled. Each line below is either
+      Mark's decision or the EoEETA agreement, and is built or planned in
+      the phase named:
+
+      - **Who it is** - the East of England Endoscopy Training Academy,
+        at Norfolk and Norwich University Hospitals NHS Foundation Trust,
+        the controller of a delegate's training records.
+      - **How long records are kept** - three and a half years after the
+        account is closed or deactivated (Phase 16).
+      - **How long a pass lasts** - three years, and the delegate is told
+        when it is due to be repeated (Phase 15, and the agreement's
+        schedule).
+      - **Reminders** - weekly, up to six, to a delegate who is enrolled
+        and has not finished an attempt (Phase 14).
+      - **Who is sent a certificate** - the delegate and EoEETA's clinical
+        lead, as the agreement's schedule says. The policy's 4.3 already
+        says this in general; name the role here.
+
+- [ ] Write the matching subsection of
+      `docs/docs/legal/terms-of-service.md`, in Part B, "If you use Quill
+      through a sponsor". It carries what a delegate is told to expect:
+      the three-year pass and its notice (beside clause 11.1), that a
+      failed attempt can be repeated at once, which the agreement says
+      and which is why clause 7.2 lost its attempt limits in Phase 13,
+      and the retention period (beside clause 22).
+
+- [ ] Do not put the agreement's commercial terms in either document:
+      fees, user numbers and the subscription term are between EoEETA and
+      Bailey Medics.
+
+- [ ] Do this phase after Phases 14 to 16 are built, not before. The
+      review that started this plan found a policy promising things no
+      code did; a subsection written ahead of the code would repeat that.
+      If the documents must be published first, leave out any line whose
+      phase is not yet merged.
+
+- [ ] Tell EoEETA what the subsections say before they are published.
+      They describe its instructions as controller, so it should have
+      seen them.
+
+## Decisions
+
+- **The code changes to keep the policy's promises, not the other way
+  round** - in Phases 2 and 4 the choice was between describing what the
+  code does and changing the code to match what the policy says. A privacy
+  policy is a promise, and where a small code change keeps it, that is
+  better than an exception the policy then has to carry.
+
+- **Server logs are not in Phase 12** - the policy gives them 30 days,
+  which is Cloud Logging's own default for a project. No Terraform pins
+  it, so it holds only as long as nobody changes the default.
+
+- **Two documents were not written** - patient record access and
+  messaging both need reasons that are recorded nowhere: why the role
+  gate survives, and why a message body is kept in both FHIR and SQL.
+  They wait for Mark's account, and the first also waits on the `todo.md`
+  item in Phase 1.

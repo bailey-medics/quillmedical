@@ -10,7 +10,8 @@ Environment Variables:
     ADMIN_ACTION:     Required.  One of: create-superadmin, add-role,
                       verify-email, run-migrations,
                       check-competency-seeding, delete-passport,
-                      send-newsletter, accessibility-reminder.
+                      send-newsletter, accessibility-reminder,
+                      apply-retention.
     ADMIN_USERNAME:   Required.  Target username.
     ADMIN_EMAIL:      Required for create-superadmin.
     ADMIN_PASSWORD:   Required for create-superadmin.
@@ -293,6 +294,17 @@ def accessibility_reminder() -> int:
     from app.email.accessibility_reminder import main as reminder_main
 
     return reminder_main()
+
+
+def apply_retention() -> int:
+    """Delete what the privacy policy says is no longer kept.
+
+    Run each day by the retention workflow. A report unless
+    ``RETENTION_APPLY`` is ``true``. See ``app.retention``.
+    """
+    from app.retention import main as retention_main
+
+    return retention_main()
 
 
 def send_newsletter() -> int:
@@ -612,6 +624,11 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "accessibility-reminder": (
         accessibility_reminder,
         "Email the accessibility statement review reminder",
+    ),
+    "apply-retention": (
+        apply_retention,
+        "Delete data past its retention period (a report without "
+        "RETENTION_APPLY=true)",
     ),
     "send-newsletter": (
         send_newsletter,
