@@ -82,6 +82,7 @@ nav:
       - Google Cloud Platform: infrastructure/gcp.md
       - Amazon Web Services: infrastructure/aws.md
       - Remote admin tasks: infrastructure/admin.md
+      - Terraform and the deploy: infrastructure/terraform-and-the-deploy.md
       - Monitoring and alerting: infrastructure/monitoring.md
   - GitHub:
       - Overview: github/index.md
