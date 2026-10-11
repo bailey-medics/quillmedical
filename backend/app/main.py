@@ -76,6 +76,7 @@ from app.email_send import (
     EmailRateLimitError,
     send_email,
 )
+from app.features.passport.errors import PassportError
 from app.features.passport.models import Passport
 from app.features.teaching.ci_media import record_captions, record_transcode
 from app.features.teaching.ci_sync import sync_every_bank
@@ -413,6 +414,24 @@ async def org_unit_error_handler(
     request: Request, exc: OrgUnitError
 ) -> Response:
     """Answer something refused at an org unit with its own words.
+
+    The status and the message are the class's, fixed where the refusal
+    is defined, so this formats nothing. The body is the one an
+    ``HTTPException`` gives.
+    """
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.message},
+    )
+
+
+@app.exception_handler(PassportError)
+async def passport_error_handler(
+    request: Request, exc: PassportError
+) -> Response:
+    """Answer something refused of a passport with its own words.
 
     The status and the message are the class's, fixed where the refusal
     is defined, so this formats nothing. The body is the one an

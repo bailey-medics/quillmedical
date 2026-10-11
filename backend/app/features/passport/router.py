@@ -38,13 +38,9 @@ importing them at module scope would be circular.
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import re
-import uuid
-from collections.abc import Sequence
-from datetime import UTC, datetime, timedelta
-from typing import cast
+from datetime import UTC, datetime
 
 from fastapi import (
     APIRouter,
@@ -69,25 +65,14 @@ from app.email_send import (
     send_email,
 )
 from app.features.gating import requires_feature, user_has_feature
-from app.marketing.subscribers import fold_into_account
-from app.models import (
-    OrgUnitFeature,
-    ProfessionalRegistration,
-    User,
-    UserCompetency,
-    normalise_email,
-    org_unit_member,
-)
+from app.models import User, normalise_email, org_unit_member
 from app.org_units.tree import descendant_ids
 from app.organisations import (
-    add_org_unit_member,
-    feature_holder_ids_of,
     get_member_org_unit_ids,
     get_reachable_org_unit_ids,
     remove_org_unit_member,
 )
 from app.passport_storage import get_blob_store, get_passport_store
-from app.registrations import REGISTRATION_AUTHORITIES, canonical_authority
 from app.schemas.passport import (
     AppraisalPeriodOut,
     AppraisalPeriodsIn,
@@ -131,14 +116,10 @@ from app.schemas.passport import (
     SignOffResultOut,
     WholeLogbookOut,
 )
-from app.security import (
-    PASSPORT_INVITE_TTL_DAYS,
-    create_passport_invite_token,
-    decode_passport_invite_token,
-    hash_password,
-)
+from app.security import PASSPORT_INVITE_TTL_DAYS
 
 from . import (
+    assessor_invites,
     definitions,
     email_templates,
     export,
@@ -150,6 +131,7 @@ from . import (
     records,
     render,
     service,
+    sign_off_requests,
 )
 from .blobs import (
     BlobConflictError,
@@ -163,7 +145,6 @@ from .gcs_store import GcsBlobStore
 from .locking import lock_passport_for_write
 from .models import (
     Passport,
-    PassportAssessorInvite,
     PassportLogbookConfirmationRequest,
     PassportSignOffRequest,
 )
@@ -1188,104 +1169,6 @@ def get_passport(
     return _detail(db, row, store)
 
 
-def _requests_today(db: Session, passport_id: str) -> int:
-    """How many sign-offs this passport has asked for in the last day.
-
-    Counted for the same reason invitations are, and alongside them:
-    asking now sends mail to an address somebody typed, so a limit on
-    one and not the other is no limit at all. A rolling twenty-four
-    hours rather than a calendar day, which would let twice the limit
-    go out either side of midnight.
-    """
-    since = _now() - timedelta(days=1)
-
-    sign_offs = db.scalar(
-        select(func.count())
-        .select_from(PassportSignOffRequest)
-        .where(
-            PassportSignOffRequest.passport_id == passport_id,
-            PassportSignOffRequest.created_at >= since,
-        )
-    )
-    # Asking a supervisor to confirm a logbook entry mails an address
-    # somebody typed too, so it counts against the same limit.
-    confirmations = db.scalar(
-        select(func.count())
-        .select_from(PassportLogbookConfirmationRequest)
-        .where(
-            PassportLogbookConfirmationRequest.passport_id == passport_id,
-            PassportLogbookConfirmationRequest.created_at >= since,
-        )
-    )
-
-    return (sign_offs or 0) + (confirmations or 0)
-
-
-def _join_as_external(db: Session, user_id: int, org_unit_id: int) -> None:
-    """Make somebody an external member of an org_unit, unless they
-    already belong there in any capacity.
-
-    Checked first because writing a membership that exists changes its
-    capacity, and a staff member asked to assess must not be demoted to
-    external at the org_unit they work for.
-    """
-    already = db.scalar(
-        select(org_unit_member.c.user_id).where(
-            org_unit_member.c.org_unit_id == org_unit_id,
-            org_unit_member.c.user_id == user_id,
-        )
-    )
-
-    if already is None:
-        add_org_unit_member(db, org_unit_id, user_id, "external")
-
-
-def _let_existing_account_assess(
-    db: Session, assessor: User, passport_id: str, holder: User
-) -> None:
-    """Give an existing account what it needs to open the request.
-
-    Somebody new to Quill gets this by accepting the invitation: the
-    `passport_external_assessor` profession, which carries
-    `assess_clinician_passport`, and an external membership where the
-    holder is, which reaches the passport feature. An existing account is
-    sent no invitation, so it got neither, on the assumption that every
-    existing account asked to assess is a clinician at an organisation
-    with the passport. A teaching delegate asked on 28 September 2026 was
-    neither, and met a 404 on the page and a 403 from the API.
-
-    So it gets the same two things here: the membership, and the
-    competency as a grant of its own, leaving its profession alone. What
-    it may act on is still only the requests that name it. Runs before
-    the email, in the same transaction, so a failed send takes it back.
-    """
-    try:
-        org_unit_id = _holder_org_unit(db, passport_id)
-    except HTTPException as error:
-        if error.status_code != 409:
-            raise
-        # Said to the holder here, where `_holder_org_unit` speaks to the
-        # person accepting an invitation.
-        raise HTTPException(
-            409,
-            "You do not belong anywhere on Quill, so your assessor "
-            "cannot be given access to your request.",
-        ) from None
-    _join_as_external(db, assessor.id, org_unit_id)
-
-    if "assess_clinician_passport" not in assessor.get_final_competencies():
-        assessor.competency_grants.append(
-            UserCompetency(
-                competency_id="assess_clinician_passport",
-                starts_on=_now(),
-                source="sign_off_request",
-                org_unit_id=org_unit_id,
-                granted_by=holder.id,
-            )
-        )
-    db.flush()
-
-
 def _checked_request(
     competency_id: str, level_id: str | None, scope_id: str | None = None
 ) -> LevelRef | None:
@@ -1376,30 +1259,13 @@ def _email_sign_off_request(
         url = f"{settings.FRONTEND_URL.rstrip('/')}/inbox"
         expires_in_days = PASSPORT_INVITE_TTL_DAYS
     else:
-        # token_hash is empty only until the token is made, just below.
-        invite = PassportAssessorInvite(  # nosec B106
-            id=str(uuid.uuid4()),
+        token = assessor_invites.invite_for(
+            db,
             passport_id=passport_id,
             invited_by_user_id=invited_by_user_id,
-            # The holder gave an address and nothing else. The assessor
-            # states their own name and registration when they accept,
-            # which is the more trustworthy source for both, and is why
-            # this row no longer carries columns for them.
             email=assessor_email,
-            # So the accept page can say what they were asked to judge.
-            # Not what they may sign: that is still resolved from the
-            # request rows naming them.
             competency_id=competency_id,
-            token_hash="",
-            expires_at=_now() + timedelta(days=PASSPORT_INVITE_TTL_DAYS),
         )
-        token = create_passport_invite_token(
-            invite_id=invite.id,
-            email=invite.email,
-        )
-        invite.token_hash = hashlib.sha256(token.encode()).hexdigest()
-        db.add(invite)
-        db.flush()
 
         url = email_templates.accept_url(settings.FRONTEND_URL, token)
         expires_in_days = PASSPORT_INVITE_TTL_DAYS
@@ -1605,39 +1471,13 @@ def request_sign_off(
         else None
     )
 
-    assessor_email = body.assessor_email.strip().lower()
-
-    if assessor_email == user.email.strip().lower():
-        raise HTTPException(
-            400,
-            "You cannot ask yourself to sign off your own competency.",
-        )
-
-    # The same backstop the invite route carries, for the same reason:
-    # this route now sends mail to an address somebody typed, so without
-    # it a holder could mail an unbounded number of strangers in Quill's
-    # name. Requests alone are the whole count: asking is now the only
-    # thing that sends this mail, and an invitation is minted by an ask
-    # rather than beside one - so adding the two together would charge a
-    # single ask twice and halve the limit without saying so.
-    if _requests_today(db, row.id) >= INVITES_PER_DAY:
-        raise HTTPException(
-            429,
-            (
-                f"You can ask up to {INVITES_PER_DAY} assessors a day. "
-                "Try again tomorrow."
-            ),
-        )
-
-    # Whether they already have an account decides what the email asks
-    # them to do, so it is looked up here. A missing account is not an
-    # error: the invitation below is what brings them in.
-    assessor = db.scalar(
-        select(User).where(func.lower(User.email) == assessor_email)
+    asked = sign_off_requests.who_is_asked(
+        db,
+        row.id,
+        user,
+        body.assessor_email,
+        daily_limit=INVITES_PER_DAY,
     )
-
-    if assessor is not None:
-        _let_existing_account_assess(db, assessor, row.id, user)
 
     # The mail goes before the record, which is the whole shape of this
     # route. A failed send must leave nothing behind, and only the
@@ -1651,8 +1491,8 @@ def request_sign_off(
     # competency and the holder, neither of which the write creates.
     _email_sign_off_request(
         holder=user,
-        assessor_email=assessor_email,
-        assessor=assessor,
+        assessor_email=asked.email,
+        assessor=asked.account,
         competency_id=competency_id,
         level_name=requested_level.name if requested_level else None,
         scope_name=requested_scope.name if requested_scope else None,
@@ -1690,21 +1530,14 @@ def request_sign_off(
             "Your request could not be saved. The team has been told.",
         ) from None
 
-    db.add(
-        PassportSignOffRequest(
-            passport_id=row.id,
-            signoff_id=name,
-            competency_id=competency_id,
-            assessor_email=assessor_email,
-            # Null until somebody signs. Who was asked is the address
-            # above; this records who actually signed, taken from the
-            # signer rather than from here.
-            assessor_user_id=None,
-            status="open",
-        )
+    sign_off_requests.record_ask(
+        db,
+        row,
+        signoff_id=name,
+        competency_id=competency_id,
+        assessor_email=asked.email,
+        commit=commit,
     )
-    row.head_commit = commit
-    db.flush()
 
     return SignOffResultOut(name=name, status="requested", commit=commit)
 
@@ -2593,7 +2426,7 @@ def _ask_a_supervisor(
     if email == holder.email.strip().lower():
         raise HTTPException(400, "You cannot confirm your own logbook entry.")
 
-    if _requests_today(db, row.id) >= INVITES_PER_DAY:
+    if sign_off_requests.asks_today(db, row.id) >= INVITES_PER_DAY:
         raise HTTPException(
             429,
             (
@@ -2605,7 +2438,9 @@ def _ask_a_supervisor(
     supervisor = db.scalar(select(User).where(func.lower(User.email) == email))
 
     if supervisor is not None:
-        _let_existing_account_assess(db, supervisor, row.id, holder)
+        assessor_invites.let_existing_account_assess(
+            db, supervisor, row.id, holder
+        )
 
     _email_sign_off_request(
         holder=holder,
@@ -3572,123 +3407,6 @@ passport_public_router = APIRouter(
 )
 
 
-def _decoded_invite(
-    db: Session, token: str
-) -> tuple[PassportAssessorInvite, str]:
-    """The invitation a token names, with the email it was sent to.
-
-    Raises:
-        HTTPException: 400 if the token is unreadable, expired, or names
-            an invitation that no longer exists. One message for all
-            three: a caller holding a bad token learns only that it is
-            bad, never whether a given invitation exists.
-    """
-    from jose import JWTError
-
-    try:
-        payload = decode_passport_invite_token(token)
-    except JWTError:
-        raise HTTPException(
-            400, "This invitation link is not valid or has expired."
-        ) from None
-
-    invite = db.get(PassportAssessorInvite, str(payload.get("invite_id", "")))
-
-    if invite is None:
-        raise HTTPException(
-            400, "This invitation link is not valid or has expired."
-        ) from None
-
-        # The token carries its own expiry and ``jwt.decode`` has already
-        # enforced it. The row is checked as well, because the row is what
-        # an administrator can see and reason about, and the two must not be
-        # able to disagree.
-    if _as_utc(invite.expires_at) <= _now():
-        raise HTTPException(
-            400, "This invitation link is not valid or has expired."
-        )
-
-    return invite, str(payload["email"])
-
-
-def _holder_org_unit(db: Session, passport_id: str) -> int:
-    """The org_unit an assessor should join to reach this passport.
-
-    One of the holder's own org_units where the passport is switched on,
-    so joining it gives the assessor the access they need. What kind of
-    org_unit it is does not matter: the tree has one kind of node, and a
-    type says what a node is, never whether it may be chosen here.
-
-    This once had two branches, one for a site and one for an
-    organisation, and only the site branch looked for the passport. A
-    holder whose only passport org_unit was an organisation had an
-    assessor put in their first organisation instead, which on 28
-    September 2026 was a teaching one: the assessor was granted the
-    competency and still could not see the passport.
-
-    Where several qualify, the lowest id. That is arbitrary, but stable,
-    and any of them reaches the feature.
-
-    Returns:
-        The org_unit id.
-
-    Raises:
-        HTTPException: 409 if the holder belongs nowhere. Nothing can be
-            derived then, and inventing an org_unit would be worse than
-            saying so.
-    """
-    passport = db.get(Passport, passport_id)
-
-    if passport is None:
-        raise HTTPException(400, "This invitation is no longer valid.")
-
-    member_ids = sorted(
-        int(row)
-        for row in cast(
-            Sequence[int],
-            db.execute(
-                select(org_unit_member.c.org_unit_id).where(
-                    org_unit_member.c.user_id == passport.user_id
-                )
-            )
-            .scalars()
-            .all(),
-        )
-    )
-
-    # The same question `requires_feature` asks, so one that passes here
-    # is one the gate will accept.
-    with_feature = [
-        unit_id
-        for unit_id in member_ids
-        if db.scalar(
-            select(OrgUnitFeature.id).where(
-                OrgUnitFeature.org_unit_id.in_(
-                    feature_holder_ids_of(db, [unit_id])
-                ),
-                OrgUnitFeature.feature_key == "passport",
-            )
-        )
-        is not None
-    ]
-
-    # A holder always reaches the passport, or they could not have asked,
-    # so `with_feature` is empty only for data the gate would already
-    # refuse. Falling back to any membership keeps that case as it was.
-    usable = with_feature or member_ids
-
-    if usable:
-        return usable[0]
-
-    raise HTTPException(
-        409,
-        (
-            "The clinician who invited you does not belong anywhere on "
-            "Quill, so there is nowhere to add you."
-        ),
-    )
-
-
 def _competency_name_or_none(competency_id: str | None) -> str | None:
     """The competency's display name, or nothing.
 
@@ -3721,7 +3439,7 @@ def preview_assessor_invite(
     closes the tab, or who starts registering and is interrupted, comes
     back to exactly this.
     """
-    invite, email = _decoded_invite(db, token)
+    invite, email = assessor_invites.invite_named_by(db, token)
 
     holder = db.get(Passport, invite.passport_id)
     holder_user = db.get(User, holder.user_id) if holder else None
@@ -3770,118 +3488,20 @@ def accept_assessor_invite(
     time. The token cannot enforce single use - a JWT carries no record
     of having been spent - so the row does.
     """
-    invite, email = _decoded_invite(db, body.token)
-
-    if invite.accepted_at is not None:
-        raise HTTPException(
-            409,
-            (
-                "This invitation has already been accepted. "
-                "Please sign in instead."
-            ),
-        )
-
-    existing = db.scalar(
-        select(User).where(User.email == normalise_email(email))
+    accepted = assessor_invites.accept_invite(
+        db,
+        body.token,
+        username=body.username,
+        password=body.password,
+        full_name=body.full_name,
+        registration_authority=body.registration_authority,
+        registration_number=body.registration_number,
     )
 
-    if existing is not None:
-        user = existing
-        status = "linked"
-        # Nothing about an existing account is changed: not their
-        # profession, not their competencies. All fourteen clinical
-        # professions already carry assess_clinician_passport, and what
-        # they may act on is resolved from the request rows naming them.
-    else:
-        if not body.username or not body.password:
-            raise HTTPException(
-                422,
-                "A username and password are needed to create your account.",
-            )
-
-        if len(body.password) < 8:
-            raise HTTPException(400, "Password must be at least 8 characters")
-
-        # Stated here rather than taken from the invitation. A trainee
-        # asking for a sign-off gives an address and nothing else, so
-        # the invitation carries no name or registration to copy - and
-        # a number typed by its holder is worth more than one typed by
-        # somebody who half-remembered it.
-        full_name = (body.full_name or "").strip()
-        authority = (body.registration_authority or "").strip()
-        number = (body.registration_number or "").strip()
-
-        if not full_name:
-            raise HTTPException(
-                422, "Your full name is needed to create your account."
-            )
-
-        if not authority or not number:
-            raise HTTPException(
-                422,
-                (
-                    "Your registering body and registration number are "
-                    "needed to create your account."
-                ),
-            )
-
-        # A body the jurisdiction lists, in its own spelling: `gmc` is
-        # taken to mean `GMC`. Anything else is refused here rather than
-        # by the model, which would answer with a 500.
-        listed = canonical_authority(authority)
-        if listed is None:
-            raise HTTPException(
-                422,
-                (
-                    "That registering body is not one Quill recognises. "
-                    "Choose one of: "
-                    + ", ".join(REGISTRATION_AUTHORITIES)
-                    + "."
-                ),
-            )
-        authority = listed
-
-        if db.scalar(
-            select(User).where(User.username == body.username.strip())
-        ):
-            raise HTTPException(409, "That username is already taken.")
-
-        user = User(
-            username=body.username.strip(),
-            email=email,
-            full_name=full_name,
-            password_hash=hash_password(body.password),
-            # The profession is the whole grant: access to the passport
-            # and nothing else. No PractisingCompetency row is written,
-            # so the clinical authorisation table keeps meaning only
-            # clinical things.
-            base_profession="passport_external_assessor",
-            is_active=True,
-            # The invitation went to this address and the token proves
-            # they read it, which is the same thing verification asks.
-            email_verified=True,
-        )
-        user.registrations.append(
-            ProfessionalRegistration(authority=authority, number=number)
-        )
-        db.add(user)
-        db.flush()
-        # The invitation proved the address, so if it is on the mailing
-        # list of people with no account, one record of them is kept.
-        fold_into_account(db, user)
-        status = "registered"
-
-    org_unit_id = _holder_org_unit(db, invite.passport_id)
-    _join_as_external(db, user.id, org_unit_id)
-
-    invite.accepted_at = _now()
-    invite.accepted_user_id = user.id
-    db.flush()
-
     return AssessorInviteAcceptOut(
-        status=status,
-        user_id=user.id,
-        org_unit_id=org_unit_id,
+        status=accepted.status,
+        user_id=accepted.user_id,
+        org_unit_id=accepted.org_unit_id,
     )
 
 
@@ -4035,20 +3655,3 @@ def export_bundle(
 def _now() -> datetime:
     """The current moment, isolated so tests can see one clock."""
     return datetime.now(UTC)
-
-
-def _as_utc(moment: datetime) -> datetime:
-    """A stored timestamp as an aware UTC one.
-
-    Postgres hands back what it was given, but SQLite has no timezone
-    type and drops the offset, so a column declared
-    ``DateTime(timezone=True)`` reads back naive under the unit suite.
-    Comparing that against ``_now()`` raises rather than returning a
-    wrong answer, which is the good version of this bug - but it still
-    has to be handled, and assuming UTC is safe because UTC is the only
-    thing ever written.
-    """
-    if moment.tzinfo is None:
-        return moment.replace(tzinfo=UTC)
-
-    return moment.astimezone(UTC)
