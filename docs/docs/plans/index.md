@@ -100,3 +100,4 @@
 - [Preparing for NHS Procurement](2026-10-08-preparing-for-nhs-procurement-plan.md)
 - [Campaign Manager](2026-10-09-campaign-manager-plan.md)
 - [Tests Beside the Source](2026-10-09-tests-beside-the-source-plan.md)
+- [Thin Routes and Steady Frontend Tests](2026-10-11-thin-routes-and-steady-frontend-tests-plan.md)

@@ -1,0 +1,94 @@
+"""Changing who an account says somebody is: name, email and password.
+
+The part of saving a person's page that any holder of the account could
+also do for themselves. What somebody may do, and where, is in the
+modules beside this one.
+"""
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models import User, normalise_email
+from app.security import hash_password
+from app.users.errors import (
+    EmailRequired,
+    EmailTaken,
+    PasswordTooShort,
+    UsernameTaken,
+)
+
+#: The fewest characters a password set by an administrator may have.
+MIN_PASSWORD_LENGTH = 8
+
+
+def change_identity(
+    db: Session,
+    user: User,
+    *,
+    username: str | None = None,
+    name: str | None = None,
+    email: str | None = None,
+    password: str | None = None,
+) -> None:
+    """Set the parts of somebody's identity that were given.
+
+    A field left as ``None`` is not touched. The user form sends every
+    field on every save, so a value that matches what is already held is
+    not an error: somebody's own username is not "taken" by them.
+
+    Nothing is flushed. The caller's transaction decides whether the
+    change is kept.
+
+    Args:
+        db: The database session.
+        user: The account to change.
+        username: The new username. Trimmed.
+        name: The new full name. Trimmed, and an empty one clears it.
+        email: The new address. Held trimmed and in lower case.
+        password: The new password. An empty string is not a change.
+
+    Raises:
+        UsernameTaken: If another account has the username.
+        EmailRequired: If the address is changed to nothing.
+        EmailTaken: If another account has the address.
+        PasswordTooShort: If the password is under eight characters.
+    """
+    if username is not None:
+        _change_username(db, user, username.strip())
+
+    if name is not None:
+        user.full_name = name.strip() or None
+
+    if email is not None:
+        _change_email(db, user, normalise_email(email))
+
+    if password:
+        if len(password) < MIN_PASSWORD_LENGTH:
+            raise PasswordTooShort()
+
+        user.password_hash = hash_password(password)
+
+
+def _change_username(db: Session, user: User, username: str) -> None:
+    """Give *user* the username, unless it is theirs already or taken."""
+    if username == user.username:
+        return
+
+    if db.scalar(select(User).where(User.username == username)):
+        raise UsernameTaken()
+
+    user.username = username
+
+
+def _change_email(db: Session, user: User, email: str) -> None:
+    """Give *user* the address, unless it is theirs already or taken."""
+    if email == user.email:
+        return
+
+    if not email:
+        raise EmailRequired()
+
+    if db.scalar(select(User).where(User.email == email)):
+        raise EmailTaken()
+
+    user.email = email
