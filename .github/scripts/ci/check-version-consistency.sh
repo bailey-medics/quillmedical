@@ -43,23 +43,45 @@ check_python() {
   return "$fail"
 }
 
+# Prints every `node-version:` under .github/ as "<file> <major>", one a
+# line. Workflows and composite actions alike, and either kind of quote:
+# the setup action writes '24' and a workflow that sets Node up for itself
+# may write "24".
+node_pins() {
+  local file major
+
+  while IFS= read -r file; do
+    while IFS= read -r major; do
+      echo "${file} ${major}"
+    done < <(grep -oE "node-version: *['\"]?[0-9]+" "$file" | grep -oE '[0-9]+$')
+  done < <(find .github -type f \( -name '*.yml' -o -name '*.yaml' \) | sort)
+}
+
 check_node() {
-  local ci docker fail=0
+  local docker pins file major fail=0
 
-  ci="$(grep -oE "node-version: '[0-9]+'" .github/actions/setup-frontend/action.yml | grep -oE '[0-9]+' | sort -u)"
   docker="$(grep -oE 'node:[0-9]+' frontend/Dockerfile | head -1 | cut -d: -f2)"
+  pins="$(node_pins)"
 
-  if [ "$(printf '%s\n' "$ci" | grep -c .)" -ne 1 ]; then
-    error "setup-frontend action has more than one distinct node-version major: $(echo "$ci" | tr '\n' ' ')"
-    fail=1
+  log "Node major - frontend/Dockerfile: ${docker:-<none>}"
+
+  if [ -z "$pins" ]; then
+    error "No node-version found under .github/, so CI's Node cannot be compared with frontend/Dockerfile"
+    return 1
   fi
 
-  log "Node major - .github/actions/setup-frontend/action.yml: ${ci:-<none>}, frontend/Dockerfile: ${docker:-<none>}"
+  # Every place CI names Node, not the setup action alone. A workflow that
+  # sets Node up for itself, as dependency-audit.yml does so that it need
+  # install nothing, is a pin too, and went unchecked until it was found
+  # by reading.
+  while read -r file major; do
+    log "Node major - ${file}: ${major}"
 
-  if [ "$ci" != "$docker" ]; then
-    error "Node major mismatch: setup-frontend action is '$ci' but frontend/Dockerfile is '$docker'"
-    fail=1
-  fi
+    if [ "$major" != "$docker" ]; then
+      error "Node major mismatch: ${file} is '${major}' but frontend/Dockerfile is '${docker}'"
+      fail=1
+    fi
+  done <<< "$pins"
 
   return "$fail"
 }

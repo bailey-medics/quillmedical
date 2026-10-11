@@ -51,8 +51,8 @@ the canonical file above.
 The Node version is pinned as `node-version: '24'` for CI in
 `.github/actions/setup-frontend/action.yml`, repeated in
 `.github/workflows/dependency-audit.yml`, and again in `frontend/Dockerfile`;
-`check-version-consistency.sh` fails the build if the setup action and the Dockerfile
-disagree. There is no `.nvmrc` or `engines` entry yet, so this is the one toolchain
+`check-version-consistency.sh` fails the build if any `node-version` under `.github/`
+disagrees with the Dockerfile. There is no `.nvmrc` or `engines` entry yet, so this is the one toolchain
 version with three homes rather than one. Prefer adding an `.nvmrc` before introducing further Node version references.
 
 ## Type safety

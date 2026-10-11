@@ -161,6 +161,41 @@ EOF
   [[ "$output" == *"hardcoded instead of read"* ]]
 }
 
+@test "fails when the setup action's Node differs from the Dockerfile" {
+  printf "runs:\n  steps:\n    - with:\n        node-version: '22'\n" \
+    > "${REPO}/.github/actions/setup-frontend/action.yml"
+  run run_check
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Node major mismatch"* ]]
+  [[ "$output" == *"setup-frontend/action.yml is '22'"* ]]
+}
+
+@test "fails when a workflow sets up its own, different Node" {
+  # The pin that went unchecked: a workflow with its own setup-node step,
+  # written with double quotes where the action uses single.
+  mkdir -p "${REPO}/.github/workflows"
+  printf 'jobs:\n  a:\n    steps:\n      - with:\n          node-version: "22"\n' \
+    > "${REPO}/.github/workflows/dependency-audit.yml"
+  run run_check
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"dependency-audit.yml is '22'"* ]]
+}
+
+@test "passes when a workflow's own Node agrees" {
+  mkdir -p "${REPO}/.github/workflows"
+  printf 'jobs:\n  a:\n    steps:\n      - with:\n          node-version: "24"\n' \
+    > "${REPO}/.github/workflows/dependency-audit.yml"
+  run run_check
+  [ "$status" -eq 0 ]
+}
+
+@test "fails when nothing under .github names a Node version" {
+  rm "${REPO}/.github/actions/setup-frontend/action.yml"
+  run run_check
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"No node-version found"* ]]
+}
+
 @test "a Python mismatch still fails, alongside the Poetry checks" {
   echo "3.12.0" > "${REPO}/.python-version"
   run run_check
