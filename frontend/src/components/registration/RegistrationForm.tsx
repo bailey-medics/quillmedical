@@ -32,6 +32,7 @@ import {
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
 import { Controller } from "react-hook-form";
+import { MAX_FULL_NAME, MAX_USERNAME } from "@/lib/fieldLimits";
 
 export interface RegistrationFormData {
   username: string;
@@ -96,12 +97,14 @@ function RegistrationFields({
       )}
       <TextField
         label="Full name"
+        maxLength={MAX_FULL_NAME}
         {...methods.register("fullName", { required: true })}
         placeholder="As it should appear on certificates"
         required
       />
       <TextField
         label="Username"
+        maxLength={MAX_USERNAME}
         {...methods.register("username", { required: true })}
         required
       />

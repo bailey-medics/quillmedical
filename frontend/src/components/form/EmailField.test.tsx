@@ -2,10 +2,20 @@ import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine, remToPx } from "@test/test-utils";
+import { MAX_EMAIL } from "@/lib/fieldLimits";
 import EmailField from "./EmailField";
 import { EMAIL_PATTERN } from "./emailPattern";
 
 describe("EmailField", () => {
+  it("stops at the most characters the backend takes", () => {
+    renderWithMantine(<EmailField label="Email" />);
+
+    expect(screen.getByLabelText("Email")).toHaveAttribute(
+      "maxlength",
+      String(MAX_EMAIL),
+    );
+  });
+
   it("renders with a label", () => {
     renderWithMantine(<EmailField label="Email address" />);
     expect(screen.getByText("Email address")).toBeInTheDocument();

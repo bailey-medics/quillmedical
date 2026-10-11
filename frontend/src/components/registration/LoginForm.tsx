@@ -22,6 +22,7 @@ import {
   useFormContext,
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
+import { MAX_USERNAME } from "@/lib/fieldLimits";
 
 export interface LoginFormData {
   username: string;
@@ -96,6 +97,7 @@ function LoginFields({
       )}
       <TextField
         label="Username"
+        maxLength={MAX_USERNAME}
         {...methods.register("username", { required: true })}
         required
         autoComplete="username"

@@ -76,6 +76,7 @@ import {
   type EnrolmentByOrganisation,
   type EnrolmentOrganisation,
 } from "@/components/teaching/module-enrolment-editor";
+import { MAX_FULL_NAME, MAX_USERNAME } from "@/lib/fieldLimits";
 
 /**
  * An organisation and the org_units inside it, all in place ids.
@@ -289,6 +290,7 @@ function Step1BasicDetails({
 
       <TextField
         label="Full name"
+        maxLength={MAX_FULL_NAME}
         placeholder="Dr Jane Smith"
         required
         value={formData.name}
@@ -313,6 +315,7 @@ function Step1BasicDetails({
 
       <TextField
         label="Username"
+        maxLength={MAX_USERNAME}
         placeholder="janesmith"
         required
         autoComplete="off"

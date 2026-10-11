@@ -2,9 +2,28 @@ import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine, remToPx } from "@test/test-utils";
+import { MAX_PASSWORD } from "@/lib/fieldLimits";
 import PasswordField from "./PasswordField";
 
 describe("PasswordField", () => {
+  it("stops at the most characters the backend takes", () => {
+    renderWithMantine(<PasswordField label="Password" />);
+
+    expect(screen.getByLabelText("Password")).toHaveAttribute(
+      "maxlength",
+      String(MAX_PASSWORD),
+    );
+  });
+
+  it("takes a shorter limit when one is given", () => {
+    renderWithMantine(<PasswordField label="Password" maxLength={20} />);
+
+    expect(screen.getByLabelText("Password")).toHaveAttribute(
+      "maxlength",
+      "20",
+    );
+  });
+
   it("renders with a label", () => {
     renderWithMantine(<PasswordField label="Password" />);
     expect(screen.getByText("Password")).toBeInTheDocument();

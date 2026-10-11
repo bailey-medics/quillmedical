@@ -7,7 +7,9 @@ resource itself.
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.limits import MAX_EMAIL
 
 # ---------------------------------------------------------------------------
 # FHIR Patient resource
@@ -171,7 +173,7 @@ class DemographicsContactIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     phone: str | None = None
-    email: str | None = None
+    email: str | None = Field(default=None, max_length=MAX_EMAIL)
 
 
 class DemographicsIn(BaseModel):

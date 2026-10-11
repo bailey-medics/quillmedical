@@ -43,6 +43,12 @@ from app.features.passport.schemas import (
     SignOffStatus,
     Supervision,
 )
+from app.schemas.limits import (
+    MAX_FULL_NAME,
+    MAX_PASSWORD,
+    MAX_TOKEN,
+    MAX_USERNAME,
+)
 
 # The enums are imported rather than restated. They are the same closed
 # vocabularies in both org_units, and a second copy would drift: a new CPD
@@ -804,10 +810,10 @@ class AssessorInviteAcceptIn(_In):
     are already on it.
     """
 
-    token: NonEmptyText
-    username: str | None = None
-    password: str | None = None
-    full_name: str | None = None
+    token: NonEmptyText = Field(max_length=MAX_TOKEN)
+    username: str | None = Field(default=None, max_length=MAX_USERNAME)
+    password: str | None = Field(default=None, max_length=MAX_PASSWORD)
+    full_name: str | None = Field(default=None, max_length=MAX_FULL_NAME)
     registration_authority: str | None = None
     registration_number: str | None = None
 
