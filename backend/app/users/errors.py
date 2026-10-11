@@ -100,6 +100,37 @@ class AccountOutOfScope(UserAdminError):
     message = "This account is outside what you may manage."
 
 
+class UserNotFound(UserAdminError):
+    """An account the caller named that is not theirs to act on.
+
+    One refusal for two reasons, in the same words: no account has that
+    id, or one does at no org unit the caller reaches. The answer never
+    confirms that somebody exists to a caller who may not see them.
+    """
+
+    status_code = 404
+    message = "User not found"
+
+
+class OperatorAccountNotAllowed(UserAdminError):
+    """An operator's account, acted on by somebody who is not one."""
+
+    status_code = 403
+    message = "Cannot modify superadmin users"
+
+
+class DeactivatingYourself(UserAdminError):
+    message = "Cannot deactivate your own account"
+
+
+class AlreadyDeactivated(UserAdminError):
+    message = "User is already deactivated"
+
+
+class AlreadyActive(UserAdminError):
+    message = "User is already active"
+
+
 class ProfessionOutOfScope(UserAdminError):
     """A base profession the caller may not give, named by its id."""
 

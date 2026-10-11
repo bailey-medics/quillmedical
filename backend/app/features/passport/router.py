@@ -3430,7 +3430,7 @@ INVITES_PER_DAY = 100
 # ``manage_users`` says *what* somebody may do and is global; membership
 # says *where*. Either alone is wrong - the competency on its own would
 # make an admin at one trust an administrator of every assessor in Quill,
-# which is the trap ``_require_shared_org_with_user`` exists to close for
+# which is the trap ``check_account_within_reach`` exists to close for
 # the admin routes in ``main``. Both are required here, in that order.
 #
 # The admin's authority comes from *membership* of the organisation
@@ -3450,7 +3450,7 @@ def _require_org_admin_over(
 
     Raises:
         HTTPException: 404 if they share no organisation, matching
-            ``_require_shared_org_with_user``: the response must not
+            ``check_account_within_reach``: the response must not
             confirm that an assessor exists to somebody who may not act
             on them.
     """

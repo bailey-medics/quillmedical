@@ -366,12 +366,25 @@ more.
             account's password is asked no length, its username is not
             trimmed and its address is not marked verified; and the
             route has no rate limit.
-      - [ ] **Deactivating somebody, and sending an invite** -
+      - [x] **Deactivating somebody, and sending an invite** -
             `deactivate_user` (42 lines, 4 branches) and
             `send_invite_email` (40 lines), with the shared
             `_require_shared_org_with_user`, which six routes call and
             which is the last helper of the people routes still in
-            `main.py`.
+            `main.py`. The helper is now `check_account_within_reach`
+            in `app/users/reach.py`, beside
+            `account_the_caller_may_act_on`, the one sequence that
+            deactivating, reactivating and inviting share; the rules
+            are `deactivate_account` and `reactivate_account` in
+            `activation.py` and `setup_invite_for` in
+            `setup_invite.py`, and the operator check is
+            `check_may_act_on_operator` in `scope.py`. Found:
+            deactivating only sets `is_active`, with no check for the
+            last holder of `manage_users` at a place; an operator out
+            of the caller's reach answers 403, not 404, because that
+            check comes first; and `invites_test.py`'s altered-token
+            case fails about one run in sixteen, when the token ends
+            in `A`.
       - [ ] **A conversation's status** -
             `update_conversation_status_endpoint` (57 lines, 3
             branches). The messaging rules already live in
