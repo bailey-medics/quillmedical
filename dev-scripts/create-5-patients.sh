@@ -104,7 +104,7 @@ info "Checking if backend is running..."
 # Backend returns 401 for /auth/me when not authenticated, which is expected
 HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -m 5 "$API_BASE/auth/me" 2>/dev/null || echo "000")
 if [ "$HTTP_STATUS" = "000" ]; then
-    error "Backend is not running at $API_BASE\nPlease start the dev environment: just start-dev"
+    error "Backend is not running at $API_BASE\nPlease start the dev environment: just start-ehr"
 fi
 success "Backend is running"
 echo ""
