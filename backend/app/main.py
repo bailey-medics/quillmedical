@@ -26,7 +26,6 @@ import logging
 import time
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any, cast
 from uuid import uuid4
 
@@ -78,13 +77,12 @@ from app.email_send import (
     send_email,
 )
 from app.features.passport.models import Passport
+from app.features.teaching.ci_sync import sync_every_bank
 from app.features.teaching.enrolment import current_enrolments
 from app.features.teaching.models import QuestionBankOrgStatus
 from app.features.teaching.schemas import (
     CaptionCompleteIn,
     CaptionCompleteOut,
-    CiSyncBankResult,
-    CiSyncErrorItem,
     CiTeachingSyncOut,
     TranscodeCompleteIn,
     TranscodeCompleteOut,
@@ -130,9 +128,6 @@ from app.models import (
     normalise_email,
     org_unit_member,
     validate_platform_role,
-)
-from app.org_units import (
-    ROOT_TYPE_IDS,
 )
 from app.org_units.errors import OrgUnitError
 from app.org_units.router import router as org_units_router
@@ -4802,19 +4797,6 @@ def ci_teaching_sync(
     either way, because a partial sync still needs to say which banks
     succeeded and which did not.
     """
-    import shutil
-
-    from app.features.teaching.router import (
-        _build_image_inventory,
-        _resolve_bank_path_or_gcs,
-    )
-    from app.features.teaching.storage import (
-        discover_local_banks,
-        get_module_status_from_gcs,
-        list_banks_in_gcs,
-    )
-    from app.features.teaching.sync import sync_question_bank
-
     # Validate service token
     token = settings.TEACHING_SYNC_TOKEN
 
@@ -4831,145 +4813,15 @@ def ci_teaching_sync(
     if not hmac.compare_digest(provided, token.get_secret_value()):
         raise HTTPException(401, "Invalid token")
 
-        # Discover banks
-    bucket = settings.TEACHING_GCS_BUCKET
-    base_path = settings.TEACHING_QUESTION_BANK_PATH
-    bank_ids: list[str] = []
+    outcome = sync_every_bank(db)
 
-    if bucket:
-        try:
-            bank_ids = list_banks_in_gcs(bucket)
-        except Exception:
-            logger.exception("CI sync: failed to list GCS banks")
-    elif base_path:
-        bank_ids = discover_local_banks(base_path)
-
-    if not bank_ids:
-        return CiTeachingSyncOut(
-            synced=[], errors=[], message="No banks found"
-        )
-
-        # Resolve the org_unit to sync into - the one an existing bank is
-        # already held by, or the first organisation in the system.
-        #
-        # It used to fall back to the literal 1, which was a guess that
-        # happened to be right while organisations were numbered from one
-        # and nothing else shared their numbering. Teaching answers in
-        # org_unit ids now, where 1 may well be a ward.
-    from app.features.teaching.models import QuestionBankConfig
-
-    existing_config = db.execute(
-        select(QuestionBankConfig).limit(1)
-    ).scalar_one_or_none()
-    org_id = (
-        existing_config.org_unit_id
-        if existing_config
-        else db.scalar(
-            select(OrgUnit.id)
-            .where(OrgUnit.type.in_(ROOT_TYPE_IDS))
-            .order_by(OrgUnit.id)
-            .limit(1)
-        )
-    )
-
-    if org_id is None:
-        return CiTeachingSyncOut(
-            synced=[],
-            errors=[],
-            message="No organisation to sync into",
-        )
-
-    synced: list[CiSyncBankResult] = []
-    errors: list[CiSyncErrorItem] = []
-
-    for bank_id in bank_ids:
-        bank_path: Path | None = None
-        is_temp = False
-        tooling_module_dir: Path | None = None
-        tooling_is_temp = False
-        try:
-            # Module metadata and learning content. The assessment is
-            # validated inside sync_question_bank against the GCS
-            # inventory, which a module directory cannot supply - together
-            # the two cover everything exactly once.
-            from app.features.teaching.tooling.validate import (
-                validate_module_metadata,
-            )
-
-            if base_path and not bucket:
-                from app.features.teaching.storage import (
-                    resolve_module_dir,
-                )
-
-                tooling_module_dir = resolve_module_dir(base_path, bank_id)
-            elif bucket:
-                from app.features.teaching.storage import (
-                    download_module_from_gcs,
-                )
-
-                tooling_module_dir = download_module_from_gcs(bucket, bank_id)
-                tooling_is_temp = tooling_module_dir is not None
-
-            if tooling_module_dir:
-                metadata = validate_module_metadata(tooling_module_dir)
-                if not metadata.is_valid:
-                    msg = "; ".join(e.message for e in metadata.errors[:5])
-                    errors.append(CiSyncErrorItem(bank_id=bank_id, error=msg))
-                    continue
-            else:
-                errors.append(
-                    CiSyncErrorItem(
-                        bank_id=bank_id,
-                        error=(
-                            "module directory not found - "
-                            "cannot validate module metadata"
-                        ),
-                    )
-                )
-                continue
-
-            bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
-            inventory = _build_image_inventory(bank_id, is_temp)
-
-            # Resolve module status for version guard
-            status: str | None = None
-            if is_temp and bucket:
-                status = get_module_status_from_gcs(bucket, bank_id)
-
-            _validation, sync_record = sync_question_bank(
-                bank_path,
-                org_id,
-                # No user: the deploy pipeline did this. Recorded as
-                # synced_by_actor="deploy_bot" rather than a fabricated id -
-                # 0 was passed here and violated the users foreign key, so
-                # every CI sync failed while the endpoint still returned 200.
-                None,
-                db,
-                image_inventory=inventory,
-                module_status=status,
-            )
-            if sync_record:
-                synced.append(
-                    CiSyncBankResult(
-                        bank_id=bank_id, version=str(sync_record.version)
-                    )
-                )
-        except Exception as exc:
-            logger.exception("CI sync: failed to sync bank '%s'", bank_id)
-            errors.append(CiSyncErrorItem(bank_id=bank_id, error=str(exc)))
-        finally:
-            if is_temp and bank_path:
-                shutil.rmtree(bank_path.parent, ignore_errors=True)
-            if tooling_is_temp and tooling_module_dir:
-                shutil.rmtree(tooling_module_dir.parent, ignore_errors=True)
-
-    if errors:
+    if outcome.errors:
         # Non-2xx so the caller's curl fails. Without this a rejected bank
         # is indistinguishable from a clean sync, which is what let a
         # malformed certificate block reach GCS unnoticed.
         response.status_code = 422
 
-    return CiTeachingSyncOut(synced=synced, errors=errors)
+    return outcome
 
     # --- Transcode completion callback (service token auth) ---
     #
