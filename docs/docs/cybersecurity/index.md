@@ -61,6 +61,8 @@ CSRF attacks trick a user's browser into making unwanted requests to a site wher
 
 This works because an attacker's website can trigger a request that includes the cookie, but cannot read the cookie value to include it in the header.
 
+The check is not left to each route to remember. `backend/tests/every_route_is_guarded_test.py` walks every route the application serves and fails the build if one that changes something for a signed-in caller does not take the CSRF dependency. There is no list of exceptions.
+
 ### Two-factor authentication (2FA) - time-based one-time password (TOTP)
 
 2FA adds an extra layer of security beyond a password. TOTP generates a short-lived code (typically six digits) using an authenticator app on the user's phone.
@@ -143,11 +145,17 @@ These components wrap pages to control who can see them:
 
 ## Input validation and injection prevention
 
+### Every route asks who is calling
+
+A route with no guard is open to anybody who can reach the server, and nothing about it looks wrong: it works and its tests pass. So one test, `backend/tests/every_route_is_guarded_test.py`, walks every route the application serves, wherever it is written, and looks in its dependencies for the function that settles who the caller is. A route without one must be named in that test's `PUBLIC` list with the reason it is open. The list fails the build in both directions: a new unguarded route fails until it is guarded or listed, and an entry whose route has since been guarded or removed fails until it is taken out.
+
 ### Pydantic schema hardening
 
 All data sent to the API is validated before processing, rejecting anything unexpected or malformed.
 
-- All request schemas use `model_config = ConfigDict(extra="forbid")` to reject unexpected fields (prevents mass assignment attacks, where an attacker sends extra fields to modify data they should not be able to change).
+- **Unexpected fields are refused.** Every model a request body is read into sets `model_config = ConfigDict(extra="forbid")`. This prevents mass assignment attacks, where an attacker sends extra fields to modify data they should not be able to change. `backend/tests/every_request_model_forbids_extra_test.py` walks every route and fails on a model that does not, with no exceptions.
+- **A request body is capped at one megabyte**, by `backend/app/body_limit.py`. The four routes that take a file each have a larger limit of their own. The `Content-Length` header is read first, and the bytes are then counted as they arrive, so a request that leaves the header out or lies in it is stopped at the limit too.
+- **The fields that matter most have a length limit of their own**: passwords (128 characters), usernames (150), full names and email addresses (255), emailed tokens (2,048) and one-time codes (16). The limits are in `backend/app/schemas/limits.py`, and `backend/tests/request_fields_have_limits_test.py` holds every request model to them by the field's name. The frontend's inputs stop at the same numbers.
 - Email fields use `EmailStr` (Pydantic + `email-validator`) for RFC-compliant validation.
 - Password minimum length standardised to 8 characters across all endpoints (aligned with National Institute of Standards and Technology (NIST) Special Publication (SP) 800-63B).
 
@@ -165,7 +173,9 @@ XSS attacks inject malicious scripts into web pages viewed by other users. The p
 
 ### Server-side request forgery (SSRF) and command injection
 
-SSRF attacks trick the server into making requests to unintended destinations. No user-controllable URLs are used for server-side requests. FHIR and EHRbase service URLs are configured via environment variables, not user input.
+SSRF attacks trick the server into making requests to unintended destinations. FHIR and EHRbase service URLs are configured via environment variables, not user input.
+
+One address does come from a user: the endpoint in a Web Push subscription, which the server later sends each notification to. It is checked when it is stored, in `backend/app/push.py`. It must be `https`, on port 443, with no user name, written only in plain address characters, and its host must be a plain host name belonging to one of the push services browsers use (Google, Mozilla, Apple or Microsoft). The host is checked strictly because the check and the client that sends the notification have to agree on where the host ends, and two parsers can read an unusual address differently. A test asks the sending client's own parser to confirm it agrees for every address the check lets through.
 
 ## Infrastructure security
 
@@ -252,22 +262,28 @@ CI/CD (continuous integration / continuous deployment) automates the process of 
 
 Static analysis tools examine the source code without running it, catching potential vulnerabilities early:
 
-| Tool              | Scope                                                                       | Trigger                                                                 |
-| ----------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| **Bandit**        | Python security linting (backend, excluding tests)                          | Pre-commit hook on every commit                                         |
-| **Gitleaks**      | Detects accidentally committed secrets (API keys, tokens, passwords)        | Pre-commit hook on every commit                                         |
-| **Semgrep**       | Security rules for the frontend (JavaScript/TypeScript) and the backend (Python) | CI pipeline on every non-draft pull request (PR) and in the merge queue |
-| **Ruff**          | Python linting rules including security-relevant checks (E, F, W, I, UP, B) | Pre-commit hook                                                         |
-| **mypy --strict** | Type safety - catches type confusion and null safety issues                 | Pre-commit hook and CI                                                  |
+- **Bandit** - Python security linting of the backend, excluding tests. Pre-commit hook on every commit.
+- **Gitleaks** - detects committed secrets (API keys, tokens, passwords). Pre-commit hook on staged changes, and a `Secret scan` job in CI over every commit a branch adds.
+- **Semgrep** - security rules kept in the repository, for the frontend (`frontend/.semgrep.yml`) and the backend (`backend/.semgrep.yml`). The backend rules cover what Bandit has no check for: a token read without checking its signature, `jwt.decode` with no list of algorithms, SQL built from strings, cookies missing their flags, CORS allowing any origin with credentials, a secret written to a log, and a signature compared with `==`. CI on every non-draft pull request (PR) and in the merge queue.
+- **Ruff** - Python linting including security-relevant checks (E, F, W, I, UP, B). Pre-commit hook.
+- **mypy --strict** - type safety, catching type confusion and null safety issues. Pre-commit hook and CI, run from `backend/` so that it reads the project's configuration and sees the real libraries.
+- **ESLint, Prettier and stylelint** - over every frontend source file. Pre-commit hook and CI.
+
+### Proving the checks are live
+
+A check that scans nothing passes, and a green tick does not say which kind it is. In October 2026 five checks were found to have been passing while looking at little or nothing: a typo in an argument, a configuration file that replaced the rules it was meant to add to, a library upgrade that changed what a list held, a setting nothing read, and a file pattern that reached one folder down. Each was fixed, and each check now has to show that it worked:
+
+- **A floor.** A check that reports how much it scanned is held to a minimum, so a wrong path fails the build. Bandit must report at least 10,000 lines, Semgrep at least 500 frontend files and 100 backend files, the frontend linters at least 500 files, strict mypy at least 100 files, the API schema check at least 100 routes, and the dependency audit at least 50 packages.
+- **A canary.** A check that looks for a pattern is first given something it must find. The secret scan writes a made-up key into a scratch folder and fails without scanning if gitleaks does not report it. Each Semgrep rule has a line written to break it, and the job fails if any rule does not find its line.
+- **A list that fails in both directions.** Where a test allows exceptions, an exception that is no longer needed fails the build too, so a list cannot drift from the code it describes.
 
 ### Dependency scanning
 
 Third-party libraries can contain known vulnerabilities. Dependency scanning tools monitor for these and alert the team:
 
-| Tool           | Scope                                                                | Frequency                                                                                                                          |
-| -------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Dependabot** | Vulnerability alerts for pip, npm, Docker, Terraform, GitHub Actions | Weekly scan against `main`                                                                                                         |
-| **Renovate**   | Version-bump PRs with 3-tier severity policy                         | Weekly, on Wednesdays; fixes for Common Vulnerabilities and Exposures (CVEs) skip the schedule and open immediately against `main` |
+- **Dependency audit** - `.github/workflows/dependency-audit.yml` checks the packages the application ships: the backend's production packages with `pip-audit`, and the frontend's with `yarn npm audit`. It runs on any pull request that changes what is installed, every morning against `main` with a Slack message on failure, and on demand. An advisory that does not apply is excused by name with a written reason, and an excuse that no longer matches anything fails the audit.
+- **Dependabot** - vulnerability alerts for pip, npm, Docker, Terraform and GitHub Actions. Weekly scan against `main`.
+- **Renovate** - version-bump PRs with a 3-tier severity policy. Weekly, on Wednesdays; fixes for Common Vulnerabilities and Exposures (CVEs) skip the schedule and open immediately against `main`.
 
 ### Penetration testing
 
@@ -281,6 +297,8 @@ Penetration testing simulates real-world attacks to verify defences hold. Automa
   - Privilege escalation (user→admin, CBAC self-update)
   - Injection testing (SQL injection, XSS, extra fields, fuzz testing)
   - Cookie security and unauthenticated endpoint protection
+- **Token behaviour**, in `backend/app/security_tokens_test.py`, which runs with the unit tests on every push: every kind of signed token the backend reads is offered expired, tampered with, signed with another secret, signed under another algorithm and with no signature at all. Each bad token is built by hand, so the tests do not depend on the library they are testing.
+- **OWASP ZAP baseline scan** of the live application, weekly, via `.github/workflows/zap-scan.yml`. Findings are filed as GitHub issues.
 - **Schedule**: 1st of each month at 03:00 UTC.
 - **Artefacts**: JUnit XML results uploaded with 90-day retention.
 - **Notifications**: Slack alert on both success and failure - the success "dead man's switch" ping confirms the infrequent monthly run actually executed, so silence is never mistaken for a pass.
@@ -290,14 +308,19 @@ Penetration testing simulates real-world attacks to verify defences hold. Automa
 Secret scanning prevents credentials from being committed to the repository, catching mistakes before they become security incidents.
 
 - **Pre-commit (gitleaks)**: Scans staged changes for over 150 secret patterns (API keys, tokens, passwords, private keys) before each commit. If a secret is detected, the commit is blocked and the developer is alerted.
+- **CI (gitleaks)**: The `Secret scan` job scans every commit a branch adds to `main`, so a commit made where the hook is not installed, or pushed with `--no-verify`, still meets the scan. It proves its rules fire before it scans, as described under "Proving the checks are live".
 - **GitHub secret scanning**: Server-side scanning of the full repository history. Enabled via Terraform (`infra/github/security.tf`).
 - **Push protection**: Blocks pushes containing detected secrets at the GitHub server level - even if the pre-commit hook is bypassed, the secret cannot reach the remote repository.
+
+### Code audit
+
+Code reaches `main` through its author and the automated checks above. An audit is a third pair of eyes after those two: somebody reads a file as it stands and stamps it. The stamps are kept in `audit/ledger.tsv`, each recording the file, a fingerprint of the exact version, the date and the auditor, so a file edited after its audit shows as changed. See [The audit ledger](../conventions/audit-ledger.md).
 
 ### Recommended improvements
 
 | Priority | Item                                 | Status                                    |
 | -------- | ------------------------------------ | ----------------------------------------- |
-| Medium   | Migrate `python-jose` → `PyJWT`      | Pending (eliminates ecdsa CVE-2024-23342) |
+| Medium   | Migrate `python-jose` → `PyJWT`      | Planned (eliminates ecdsa CVE-2024-23342 and CVE-2026-85394; today's behaviour is pinned by tests first) |
 | Low      | Encrypt TOTP secrets at rest         | Under consideration                       |
 | Low      | `__Host-` / `__Secure-` cookie names | Pending (see cookie configuration)        |
 

@@ -744,8 +744,9 @@ limit needs checking against stored data first.
 - [x] Tests: each refusal, each allowed host, and that an extra field
       gets a 422.
 
-- [ ] This changes what the API accepts, so Mark approves the
-      breaking-change gate. The gate runs when the pull request leaves
+- [x] This changes what the API accepts, so Mark approves the
+      breaking-change gate. Approved, and merged as pull request #1750,
+      with eight decision files. The gate runs when the pull request leaves
       draft and names each change it counts; the `api-compatibility/`
       decision files are written from those names, with
       `forces_reload: false`, as an open tab sends the same body as
@@ -792,8 +793,9 @@ takes a file is on it.
 - [x] Extend the request-model test: every field on a named list must
       have a limit.
 
-- [ ] Write the `api-compatibility/` decision files. Mark approves the
-      breaking-change gate.
+- [x] Write the `api-compatibility/` decision files. Mark approves the
+      breaking-change gate. Twenty-five files, approved and merged as
+      pull request #1755.
       The gate names each change when the pull request leaves draft;
       the files are written from those names.
 
@@ -817,72 +819,6 @@ and each username and full name input has its own.
       routes plan has passed `AdminUserCreateIn`, `AdminUserUpdateIn`,
       `TotpVerifyIn` and `ValidateClinicalLeadIn`. The test fails on
       each entry the day it gets one, so the list empties itself.
-
-## Phase 4b: Split `main.py` into modules
-
-Added on 11 October 2026 at Mark's request, as the next thing to do.
-
-**Moved to after the request tightening the same day, and waiting.**
-The thin routes plan
-(`2026-10-11-thin-routes-and-steady-frontend-tests-plan.md`, which
-arrives with its first pull request) is going through `main.py` at the
-same time, in another worktree: it
-takes the rules out of each long route into plain functions under
-`backend/app/users/` and its neighbours, with nine pull requests open
-and more of `main.py` still to do. Moving those same routes into
-routers now would rewrite the lines it is rewriting, and whichever
-landed second would conflict on every one. So this phase starts when
-that plan's Phases 1 and 2 have merged. It is also the better order: a
-route that is already thin is a few lines to move, and the moving and
-the thinning are then two diffs that can each be read alone.
-`backend/app/main.py` is over 6,200 lines and holds about 66 routes,
-which is too much to hold in mind as one file. Eight routers
-already live outside it, so the pattern exists.
-
-It is safe to do now in a way it was not before. The route guard test
-and the request-model test walk every served route wherever it is
-defined, so a route that loses its guard or its CSRF check in a move
-fails the build. Moving the local media routes on 11 October was a
-small rehearsal: the one thing it broke was a test that read `main.py`
-as text.
-
-A moved file needs a fresh stamp in the ledger, which is a reason to
-move a group before its audit and not after.
-
-Rules for every step: one group to a pull request, moved and not
-rewritten, with the route addresses, guards and response models
-unchanged. A test that reads `main.py` as text is pointed at the new
-file in the same pull request.
-
-- [ ] Move the shared pieces first: `get_current_user`, the `DEP_*`
-      constants and the cookie helpers go to `backend/app/deps.py`,
-      where copies of some already exist. This also settles the Phase 5
-      question of why there are two definitions and which the routes
-      use. Everything after depends on it.
-
-- [ ] Move the patient routes (18) to a router of their own. First of
-      the groups because it is the biggest, and it is behind the
-      clinical-services check, so the teaching release is not touched.
-
-- [ ] Move the conversation and messaging routes (9).
-
-- [ ] Move the user administration routes (8), with
-      `AdminUserCreateIn` and `AdminUserUpdateIn`, which belong in
-      `backend/app/schemas/`.
-
-- [ ] Move the three job callbacks under `/ci/teaching/` to the
-      teaching feature, beside the routes they report to.
-
-- [ ] Move what is left that is not sign-in (`/cbac`, `/prescriptions`
-      and the odd single routes), each to the module it belongs with.
-
-- [ ] Move the sign-in routes last, **after the EoEETA release**: login,
-      logout, refresh, register, password reset, change password, TOTP
-      and `/api/auth/me`. Phase 5 audits them where they are, and moving them
-      before the release would undo those stamps for no gain.
-
-- [ ] When it is done, `main.py` builds the app, adds the middleware and
-      includes the routers, and holds no route of its own.
 
 ## Phase 5: Audit the security paths by hand
 
@@ -1038,11 +974,15 @@ found as a bug to fix on its own branch before going on.
 
 ## Phase 7: Describe the controls and release
 
-- [ ] Bring the `docs/docs/cybersecurity/` pages up to date with the
+- [x] Bring the `docs/docs/cybersecurity/` pages up to date with the
       controls that now exist: the checks proven live in Phase 2, the
       route guard and request-model tests, the dependency audit, and the
       audit ledger. It is the record to answer from if EoEETA or a DTAC
-      assessor asks how the code is assured.
+      assessor asks how the code is assured. Done on 11 October 2026:
+      the page gained the route guard test, the body cap and field
+      limits, the checked push address, the backend Semgrep rules, the
+      dependency audit, the secret scan in CI, a section on how each
+      check proves it is live, and a pointer to the audit ledger.
 
 - [ ] Release the teaching materials to EoEETA on the agreed date.
 
@@ -1053,6 +993,74 @@ found as a bug to fix on its own branch before going on.
 
 - [ ] Each time a file changes after its audit, read its diff before
       stamping it again, so a stamp always means the version on disk.
+
+## Phase 9: Split `main.py` into modules
+
+Added on 11 October 2026 at Mark's request, as the next thing to do.
+
+**Moved to the end of the plan on 11 October 2026, at Mark's
+request, as that is when it is likely to be done.** It was first put
+straight after Phase 4, then after the request tightening, and waits.
+The thin routes plan
+(`2026-10-11-thin-routes-and-steady-frontend-tests-plan.md`, which
+arrives with its first pull request) is going through `main.py` at the
+same time, in another worktree: it
+takes the rules out of each long route into plain functions under
+`backend/app/users/` and its neighbours, with nine pull requests open
+and more of `main.py` still to do. Moving those same routes into
+routers now would rewrite the lines it is rewriting, and whichever
+landed second would conflict on every one. So this phase starts when
+that plan's Phases 1 and 2 have merged. It is also the better order: a
+route that is already thin is a few lines to move, and the moving and
+the thinning are then two diffs that can each be read alone.
+`backend/app/main.py` is over 6,200 lines and holds about 66 routes,
+which is too much to hold in mind as one file. Eight routers
+already live outside it, so the pattern exists.
+
+It is safe to do now in a way it was not before. The route guard test
+and the request-model test walk every served route wherever it is
+defined, so a route that loses its guard or its CSRF check in a move
+fails the build. Moving the local media routes on 11 October was a
+small rehearsal: the one thing it broke was a test that read `main.py`
+as text.
+
+A moved file needs a fresh stamp in the ledger, which is a reason to
+move a group before its audit and not after.
+
+Rules for every step: one group to a pull request, moved and not
+rewritten, with the route addresses, guards and response models
+unchanged. A test that reads `main.py` as text is pointed at the new
+file in the same pull request.
+
+- [ ] Move the shared pieces first: `get_current_user`, the `DEP_*`
+      constants and the cookie helpers go to `backend/app/deps.py`,
+      where copies of some already exist. This also settles the Phase 5
+      question of why there are two definitions and which the routes
+      use. Everything after depends on it.
+
+- [ ] Move the patient routes (18) to a router of their own. First of
+      the groups because it is the biggest, and it is behind the
+      clinical-services check, so the teaching release is not touched.
+
+- [ ] Move the conversation and messaging routes (9).
+
+- [ ] Move the user administration routes (8), with
+      `AdminUserCreateIn` and `AdminUserUpdateIn`, which belong in
+      `backend/app/schemas/`.
+
+- [ ] Move the three job callbacks under `/ci/teaching/` to the
+      teaching feature, beside the routes they report to.
+
+- [ ] Move what is left that is not sign-in (`/cbac`, `/prescriptions`
+      and the odd single routes), each to the module it belongs with.
+
+- [ ] Move the sign-in routes last, **after the EoEETA release**: login,
+      logout, refresh, register, password reset, change password, TOTP
+      and `/api/auth/me`. Phase 5 audits them where they are, and moving them
+      before the release would undo those stamps for no gain.
+
+- [ ] When it is done, `main.py` builds the app, adds the middleware and
+      includes the routers, and holds no route of its own.
 
 ## Decisions
 
