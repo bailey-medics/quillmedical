@@ -1567,6 +1567,7 @@ def request_sign_off(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
 ) -> SignOffResultOut:
     """Ask an assessor, by email, to sign off a competency.
 
@@ -1598,6 +1599,12 @@ def request_sign_off(
     requested_level = _checked_request(
         competency_id, body.level_id, body.scope_id
     )
+    # Before the email too, and for the same reason: evidence named here
+    # that is not stored against this passport refuses the request, and
+    # an assessor must not be emailed about a request that was refused.
+    # Until 11 October 2026 the evidence was accepted and then dropped,
+    # so the record an assessor signed carried none of it.
+    attachments = _attachments(blobs, row.id, body.attachments)
     # Already checked, so this only fetches the wording for the email.
     requested_scope = (
         definitions.scope_ref(competency_id, body.scope_id)
@@ -1672,6 +1679,7 @@ def request_sign_off(
             scope_id=body.scope_id,
             comments=body.comments,
             reflection=body.reflection,
+            attachments=attachments,
         )
     except (
         definitions.UnknownCompetencyError,
@@ -2944,7 +2952,7 @@ def amend_logbook_entry(
         also_counts_towards=body.also_counts_towards,
         attachments=(
             _attachments(blobs, row.id, body.attachments)
-            if body.attachments
+            if "attachments" in body.model_fields_set
             else existing.attachments
         ),
     )
@@ -3136,7 +3144,7 @@ def amend_reflection(
         competencies=_competency_refs(body.competencies),
         attachments=(
             _attachments(blobs, row.id, body.attachments)
-            if body.attachments
+            if "attachments" in body.model_fields_set
             else existing.attachments
         ),
     )
@@ -3345,7 +3353,7 @@ def amend_cpd_entry(
         notes=body.notes,
         attachments=(
             _attachments(blobs, row.id, body.attachments)
-            if body.attachments
+            if "attachments" in body.model_fields_set
             else existing.attachments
         ),
     )

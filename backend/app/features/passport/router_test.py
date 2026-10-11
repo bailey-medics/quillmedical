@@ -3451,6 +3451,168 @@ class TestEvidence:
             uploaded["hash"]
         ]
 
+    def test_an_empty_list_takes_the_attachments_off_a_logbook_entry(
+        self, holder_client: TestClient
+    ) -> None:
+        """Leaving the field out keeps the files; sending it empty is the
+        holder saying there are none. Until 11 October 2026 an empty list
+        was read as left out, so the only way to take a wrong scan off
+        was to delete the whole entry."""
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+        created = holder_client.post(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
+            json={
+                "performed_on": "2026-03-12",
+                "attachments": [uploaded],
+                "scope_id": SCOPE,
+            },
+        )
+        assert created.status_code == 201, created.text
+        stem = created.json()["name"]
+
+        response = holder_client.patch(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}/{stem}",
+            json={
+                "performed_on": "2026-03-12",
+                "scope_id": SCOPE,
+                "attachments": [],
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        entry = holder_client.get(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}"
+        ).json()["entries"][0]
+        assert entry["attachments"] == []
+
+    def test_an_empty_list_takes_the_attachments_off_a_cpd_activity(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+        created = holder_client.post(
+            f"/api/passport/{passport_id}/cpd",
+            json={
+                "activity_on": "2026-03-12",
+                "title": "Airway course",
+                "activity_type": "course",
+                "attachments": [uploaded],
+            },
+        )
+        assert created.status_code == 201, created.text
+        stem = created.json()["name"]
+
+        response = holder_client.patch(
+            f"/api/passport/{passport_id}/cpd/2026/{stem}",
+            json={
+                "activity_on": "2026-03-12",
+                "title": "Airway course",
+                "activity_type": "course",
+                "attachments": [],
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        entry = holder_client.get(
+            f"/api/passport/{passport_id}/cpd/2026"
+        ).json()[0]
+        assert entry["attachments"] == []
+
+    def test_an_empty_list_takes_the_attachments_off_a_reflection(
+        self, holder_client: TestClient
+    ) -> None:
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+        created = holder_client.post(
+            f"/api/passport/{passport_id}/reflections",
+            json={
+                "title": "Difficult airway",
+                "written_on": "2026-03-12",
+                "body": "What I would do differently.",
+                "anonymised_confirmed": True,
+                "attachments": [uploaded],
+            },
+        )
+        assert created.status_code == 201, created.text
+        stem = created.json()["name"]
+
+        response = holder_client.patch(
+            f"/api/passport/{passport_id}/reflections/{stem}",
+            json={
+                "title": "Difficult airway",
+                "written_on": "2026-03-12",
+                "body": "What I would do differently.",
+                "anonymised_confirmed": True,
+                "attachments": [],
+            },
+        )
+
+        assert response.status_code == 200, response.text
+        reflection = holder_client.get(
+            f"/api/passport/{passport_id}/reflections"
+        ).json()[0]
+        assert reflection["attachments"] == []
+
+    def test_evidence_named_on_a_sign_off_request_is_kept(
+        self, holder_client: TestClient, assessor: User
+    ) -> None:
+        """It was accepted and then dropped, so the record the assessor
+        signed, and the fingerprint taken over it, had none of it."""
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
+            json={
+                "assessor_email": assessor.email,
+                "scope_id": SCOPE,
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
+                "attachments": [uploaded],
+            },
+        )
+
+        assert response.status_code == 201, response.text
+        listed = holder_client.get(
+            f"/api/passport/{passport_id}/sign-offs"
+        ).json()
+        assert [a["hash"] for a in listed[0]["attachments"]] == [
+            uploaded["hash"]
+        ]
+
+    def test_a_sign_off_request_naming_evidence_that_is_not_stored_is_refused_before_any_email(
+        self,
+        holder_client: TestClient,
+        assessor: User,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Nothing can be unsent, so the evidence is checked first."""
+        passport_id = _create_passport(holder_client)
+        uploaded = self._upload(holder_client, passport_id).json()
+        mailed: list[str] = []
+        monkeypatch.setattr(
+            router, "send_email", lambda **kw: mailed.append(str(kw["to"]))
+        )
+
+        response = holder_client.post(
+            f"/api/passport/{passport_id}/competencies/{COMPETENCY}/requests",
+            json={
+                "assessor_email": assessor.email,
+                "scope_id": SCOPE,
+                "observed_on": "2026-03-14",
+                "level_id": LEVEL,
+                "attachments": [{**uploaded, "hash": "sha256:" + "0" * 64}],
+            },
+        )
+
+        assert response.status_code == 400, response.text
+        assert mailed == []
+        assert (
+            holder_client.get(f"/api/passport/{passport_id}/sign-offs").json()
+            == []
+        )
+
     def test_correcting_a_missing_reflection_is_a_404(
         self, holder_client: TestClient
     ) -> None:

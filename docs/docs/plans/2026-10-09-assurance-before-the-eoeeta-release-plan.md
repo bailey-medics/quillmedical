@@ -911,21 +911,22 @@ found as a bug to fix on its own branch before going on.
     Found in the pull request that added the check, before it merged,
     and fixed there. `backend/app/push.py`.
 
-  **Suggested: fix before go-live** (each loses something without
-  saying so, or gives a wrong answer)
-
   - **Passport: evidence attached to a sign-off request is dropped.**
     `request_sign_off` takes `attachments` and never passes them on, so
-    the record the assessor signs has none. `router.py`.
+    the record the assessor signs has none. `router.py`. Fixed on 11 October 2026.
+  - **Passport: an empty list cannot take an attachment off** a logbook
+    entry, a reflection or a CPD entry. The only way to remove a wrong
+    scan is to delete the entry. `router.py`. Fixed on 11 October 2026.
+
+  **Fix before go-live** (each loses something without saying so, or
+  gives a wrong answer; Mark agreed on 11 October 2026)
+
   - **Passport: the export has no history where there is a bucket.**
     `passport.bundle` is only written for the local store, and the
     README inside the zip tells the holder to keep it. `export.py`.
   - **Passport: the export has no evidence files.** The records name
     them by hash and the files themselves are not in the zip.
     `export.py`.
-  - **Passport: an empty list cannot take an attachment off** a logbook
-    entry, a reflection or a CPD entry. The only way to remove a wrong
-    scan is to delete the entry. `router.py`.
   - **Passport: a supervisor is emailed before the entry is checked.**
     If the entry is then refused, they hold a link to nothing.
     `router.py`.
