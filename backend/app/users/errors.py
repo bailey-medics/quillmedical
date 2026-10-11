@@ -4,7 +4,7 @@ The same shape as ``MessagingError`` in :mod:`app.messaging`. Each
 refusal is a class that fixes its own words and status, so nothing can
 reach a caller that somebody did not write for them to read.
 
-All but three take no arguments. Two name catalogue ids:
+All but five take no arguments. Two name catalogue ids:
 :class:`CompetenciesOutOfScope` lists competency ids from
 ``shared/competency-definitions/``, and :class:`ProfessionOutOfScope`
 names one base profession id from ``shared/base-professions.yaml``.
@@ -15,10 +15,20 @@ or one the person's own grant rows hold, which is the single place an
 id comes from the database: it is still a catalogue id, and it is what
 the caller is being told they may not remove.
 
-The third, :class:`PlaceNotFound`, repeats an org unit id the caller
-sent in the request, as an integer. It is the caller's own number handed
-back to them, and it is never looked up to build the words: the refusal
-reads the same whether or not an org unit has that id.
+Two repeat org unit ids the caller sent in the request, as integers:
+:class:`PlaceNotFound` repeats one and
+:class:`PractisingWhereNotAMember` lists several. They are the caller's
+own numbers handed back to them, and are never looked up to build the
+words: the refusal names no org unit and says nothing of whether one has
+that id.
+
+The fifth, :class:`PracticeRefused`, is a refusal made of other
+refusals. It takes the :class:`app.org_units.errors.OrgUnitError`
+refusals that ``practice_refusal`` gave for the changes a save asked
+for, and joins their words. Each of those already has fixed words or
+names a catalogue id, under the same rule in
+:mod:`app.org_units.errors`, so nothing new can reach a caller through
+it.
 
 Nothing else may be passed: no account id, no query, no name, and
 nothing a person typed.
@@ -29,14 +39,16 @@ body an ``HTTPException`` gives, so a rule moved out of a route answers
 exactly as it did inside it.
 """
 
+from app.org_units.errors import OrgUnitError
+
 
 class UserAdminError(Exception):
     """A change to somebody's account that may not, or cannot, be made.
 
     A subclass fixes ``message`` as a class attribute and is raised with
-    no arguments. The two that name catalogue ids, and the one that
-    repeats an org unit id from the request, build their own words and
-    hand them up.
+    no arguments. The two that name catalogue ids, the two that repeat
+    org unit ids from the request, and the one made of other refusals
+    build their own words and hand them up.
     """
 
     status_code: int = 400
@@ -161,3 +173,46 @@ class EnrolledBelongingNowhere(UserAdminError):
         "They must belong to an org unit under the organisation before "
         "they can be enrolled."
     )
+
+
+class PractisingWhereNotAMember(UserAdminError):
+    """Practice sent for org units the person does not belong to.
+
+    Takes the ids as the caller sent them, lowest first. They are not
+    looked up: the words say only that the person is not a member there.
+    """
+
+    status_code = 422
+
+    def __init__(self, org_unit_ids: list[int]) -> None:
+        super().__init__(
+            "Practice can be set only where they belong. Not a member "
+            "of place " + ", ".join(str(unit) for unit in org_unit_ids) + "."
+        )
+
+
+class PracticeNotAllowed(UserAdminError):
+    status_code = 403
+    message = "You may not set where somebody practises."
+
+
+class PracticeRefused(UserAdminError):
+    """Changes to somebody's practice that the caller may not make.
+
+    A refusal made of other refusals: the ones ``practice_refusal`` in
+    :mod:`app.org_units.practice` gave, one for each change refused.
+    Each already has fixed words or names a catalogue id, so joining
+    them writes nothing new.
+
+    One status, the first's, and every distinct reason: the form shows
+    one message and it should say everything that was wrong.
+    """
+
+    def __init__(self, refusals: list[OrgUnitError]) -> None:
+        if not refusals:
+            raise ValueError("A refusal needs at least one reason.")
+
+        reasons = list(dict.fromkeys(r.message for r in refusals))
+
+        self.status_code = refusals[0].status_code
+        super().__init__(" ".join(reasons))
