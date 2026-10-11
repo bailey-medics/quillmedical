@@ -9,13 +9,13 @@ The avatar gradient system has been refactored from storing explicit color value
 ### New Exports in `gradients.ts`
 
 ```typescript
-// Total number of available gradients
-export const GRADIENT_COUNT = 30;
-
 // Access gradients by index
 export const AVATAR_GRADIENTS: AvatarGradient[] = [
   /* 30 gradients */
 ];
+
+// Get a gradient by index (wraps round past the end)
+export function getGradient(index: number): AvatarGradient;
 ```
 
 ### ProfilePic Component API
@@ -88,7 +88,7 @@ add_avatar_gradient_extension(patient)  # Random index 0-29
 
 Existing patients with `colorFrom`/`colorTo` extensions will need migrating to gradient indices using a backfill script.
 
-**Backfill Script** (to be created):
+**Backfill Script** (written, run and since removed from `backend/scripts/`):
 
 ```python
 # Pseudo-code for migration script
@@ -103,20 +103,13 @@ for patient in get_all_patients():
 
 ## Frontend Reading FHIR Extensions
 
-The frontend should read the gradient index from FHIR:
+The frontend reads the gradient index from FHIR:
 
 ```typescript
-// Extract gradient index from FHIR Patient extension
-function getGradientIndex(patient: FHIRPatient): number {
-  const extension = patient.extension?.find(
-    ext => ext.url === "urn:quillmedical:avatar-gradient"
-  );
+import { extractAvatarGradientIndex } from "@lib/fhir-patient";
 
-  return extension?.valueInteger ?? 0; // Fallback to gradient 0
-}
-
-// Use in component
-<ProfilePic gradientIndex={getGradientIndex(patient)} />
+// undefined when the patient has no extension; ProfilePic then uses gradient 0
+<ProfilePic gradientIndex={extractAvatarGradientIndex(fhirPatient)} />
 ```
 
 ## Benefits of New System
@@ -148,8 +141,7 @@ If you add more gradients to the frontend:
 ### Frontend Tests
 
 ```bash
-cd frontend
-yarn test ProfilePic
+just uf src/components/profile-pic/ProfilePic.test.tsx
 ```
 
 ### Backend Tests
@@ -172,8 +164,8 @@ If migration causes issues:
 1. ✅ Frontend gradient index system implemented
 2. ✅ Backend random gradient index generator created
 3. ✅ FHIR extension updated to use `valueInteger`
-4. 🔲 Create backfill script to migrate existing patients
-5. 🔲 Update patient creation scripts to use new API
-6. 🔲 Update frontend Home.tsx to read gradient index from FHIR
-7. 🔲 Add tests for new gradient index system
+4. ✅ Create backfill script to migrate existing patients (since removed)
+5. ✅ Update patient creation scripts to use new API
+6. ✅ Update frontend Home.tsx to read gradient index from FHIR
+7. ✅ Add tests for new gradient index system
 8. 🔲 Update API documentation

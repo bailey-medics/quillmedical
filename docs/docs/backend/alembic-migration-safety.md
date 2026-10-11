@@ -168,7 +168,7 @@ rejection of code comments as proof of a human approval.
 When destructive migrations are detected, a Slack notification lands in
 `#cicd` (the same channel used for API breaking-change warnings) with:
 
-- The migration's revision ID and description
+- The migration's filename and revision ID
 - The destructive operations found (`drop_column`, `drop_table`, or
   `drop_constraint`)
 - The PR link
@@ -176,10 +176,10 @@ When destructive migrations are detected, a Slack notification lands in
   environment
 
 A pull request is told **once per distinct set of destructive migrations**,
-not once per push. `db_destructive_migration_gate_notify` hashes the
-detected migrations and operations, then asks whether any comment on the PR
-already carries that hash (`gate-notify.sh`, marker key
-`db-destructive-migration-hash`). A later commit that leaves the same
+not once per push. `db_destructive_migration_check` hashes the
+detected migrations and operations, and `db_destructive_migration_gate_notify`
+then asks whether the gate's newest comment on the PR already carries that
+hash (`gate-notify.sh`, marker key `db-destructive-migration-hash`). A later commit that leaves the same
 migration(s) in place stays silent - a formatting fix or a rebase onto new
 main shouldn't re-announce a finding nobody has acted on. Add a second
 destructive migration and the hash moves, so a fresh message lands.
@@ -192,7 +192,7 @@ change-set the PR held earlier counts as a change like any other and is
 announced again - each comment records a transition, not a standing claim.
 
 A return to clean is recorded too. When the last destructive migration is
-removed the gate posts an all-clear comment (✅, "no longer present"), so the
+removed the gate posts an all-clear comment (✅, "have been reverted"), so the
 timeline shows the risk arriving *and* going. Slack is not told - nobody needs
 paging to say a risk went away - and a PR that never had a destructive
 migration stays silent, since there is nothing to report the disappearance of.
