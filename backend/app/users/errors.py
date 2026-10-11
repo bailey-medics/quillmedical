@@ -61,6 +61,10 @@ class UserAdminError(Exception):
         super().__init__(self.message)
 
 
+class MissingRequiredFields(UserAdminError):
+    message = "Missing required fields"
+
+
 class UsernameTaken(UserAdminError):
     message = "Username already exists"
 
@@ -75,6 +79,10 @@ class EmailTaken(UserAdminError):
 
 class PasswordTooShort(UserAdminError):
     message = "Password must be at least 8 characters"
+
+
+class NoPlaceChosen(UserAdminError):
+    message = "Choose at least one organisation or site."
 
 
 class AccountOutOfScope(UserAdminError):

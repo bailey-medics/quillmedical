@@ -208,13 +208,27 @@ has tests of its own. Measured on 9 October 2026, `main.py` had 64
 routes, 2,636 lines inside route bodies, and 18 routes of 40 lines or
 more.
 
+- [x] `create_user_with_cbac`, 119 lines. Do it with `update_user`
+      fresh in mind: the two share rules, and the split should leave
+      one copy of each. Listed fourth by size and brought forward to
+      first, on 11 October 2026, for that reason. Now `create_account`
+      in `backend/app/users/create.py`, taking a `NewAccount`: a
+      frozen dataclass the route builds from the request, and handing
+      back the account. The route sends nothing, so it is left with
+      building that, the call and the response. Two new refusals,
+      `MissingRequiredFields` and `NoPlaceChosen`; the short password,
+      the taken username and the taken address are the classes a save
+      raises, and the three checks behind them are now one function
+      each in `backend/app/users/identity.py`, called by both. The
+      words of those five refusals were not pinned on this route, so
+      `backend/tests/user_create_refusals_test.py` does it. The hole
+      in Phase 1 is left open, and a test in `create_test.py` pins it
+      as it is. Found on the way: a username given is kept exactly as
+      sent, untrimmed, where a save trims it. Left as it is.
 - [ ] `register`, 270 lines and 24 branches. It decides several things
       in a row, and is the first thing a new person meets.
 - [ ] `ci_teaching_sync`, 168 lines.
 - [ ] `list_users`, 159 lines.
-- [ ] `create_user_with_cbac`, 119 lines. Do it with `update_user`
-      fresh in mind: the two share rules, and the split should leave
-      one copy of each.
 - [ ] The remaining routes of 40 lines or more, thirteen at the time of
       measuring. Measure again when this step is reached, since the
       list will have moved, write the routes here, and do them largest
