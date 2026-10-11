@@ -13,6 +13,11 @@ from fastapi import HTTPException
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
+from app.features.teaching.attempt_results import (
+    chosen_option_label,
+    question_number_of,
+    scored_criteria,
+)
 from app.features.teaching.models import (
     Assessment,
     AssessmentAnswer,
@@ -22,11 +27,8 @@ from app.features.teaching.models import (
     QuestionBankOrgStatus,
 )
 from app.features.teaching.router import (
-    chosen_option_label,
     image_label,
-    question_number_of,
     resolve_visible_module,
-    scored_criteria,
 )
 from app.models import (
     OrgUnit,
