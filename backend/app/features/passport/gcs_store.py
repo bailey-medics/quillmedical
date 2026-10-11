@@ -344,6 +344,20 @@ class GcsPassportStore(PassportStore):
         """
         return _Checkout(self, passport_id)
 
+    def bundle_bytes(self, passport_id: str) -> bytes:
+        """The passport's whole history, as the `git bundle` held here.
+
+        For the export, which hands the holder their history as one
+        file. The bucket already holds exactly that file, so it is
+        passed on as it is and nothing is cloned.
+
+        Raises:
+            PassportNotFoundError: If there is no bundle.
+        """
+        data, _generation = self._download(passport_id)
+
+        return data
+
     def _download(self, passport_id: str) -> tuple[bytes, int | None]:
         """Fetch a passport's bundle and the generation it was at.
 

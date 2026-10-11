@@ -3637,6 +3637,7 @@ def export_bundle(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
+    blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
 ) -> Response:
     """The portable bundle: the record, the renderings and the history.
 
@@ -3652,6 +3653,7 @@ def export_bundle(
             row.id,
             requested_by=str(user.id),
             head_commit=row.head_commit,
+            blobs=blobs,
         )
     except PassportNotFoundError:
         raise HTTPException(404, "Passport not found") from None

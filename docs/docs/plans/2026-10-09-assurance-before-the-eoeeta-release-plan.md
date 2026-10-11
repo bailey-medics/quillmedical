@@ -100,7 +100,7 @@ carries on from there as a standing part of how Quill is built.
 
 - [x] Check the card in CI. Done on 11 October 2026: an `Audit ledger`
       job in the fast tier runs `python3 scripts/review-ledger.py
-      verify`. It fails on a line that is not a stamp: a file the card
+    verify`. It fails on a line that is not a stamp: a file the card
       does not cover or the branch never held, no name, a date or a
       fingerprint that is not one. The first idea, to fail any stamp
       whose version was never committed, was dropped on meeting the
@@ -513,7 +513,6 @@ backend/tests`: `r` without the dash is a target, not the recurse
       and checks every sign-in token, every invite link and every
       emailed token, so a mistake fails for everybody at once. Three
       steps, each its own pull request, in this order.
-
   - [x] Pin today's behaviour first, with no change to the code. Tests
         of `backend/app/security.py` that say what each kind of token
         does now: a good one is read; an expired one is refused; one
@@ -567,10 +566,10 @@ backend/tests`: `r` without the dash is a target, not the recurse
         rules about `jwt.decode` still find their lines in the canary
         file, since PyJWT's module is also called `jwt`.
 
-      **Show Mark the diff of `security.py` before the second step is
-      committed.** It should be about thirty changed lines. This is
-      the one step in the plan that waits for him, because it changes
-      how sign-in is decided.
+    **Show Mark the diff of `security.py` before the second step is
+    committed.** It should be about thirty changed lines. This is
+    the one step in the plan that waits for him, because it changes
+    how sign-in is decided.
 
 - [ ] Rename the Semgrep job to "SAST". Added on 11 October 2026 at
       Mark's request. It is `Semgrep (frontend SAST)` and now scans the
@@ -598,9 +597,21 @@ backend/tests`: `r` without the dash is a target, not the recurse
       1.2.2. `braces` is the one advisory left against any package,
       shipped or not, and waits for a release.
 
-- [ ] Rerun the pentest and ZAP workflows (`security-pentest.yml`,
+- [x] Rerun the pentest and ZAP workflows (`security-pentest.yml`,
       `zap-scan.yml`) against App production once Phase 2 and Phase 4
       have landed, and read the reports rather than the job status.
+      Run on 11 October 2026, with Mark's word. The pentest suite is 39
+      tests run against the application in CI, not against the live
+      site: all 39 passed. The ZAP baseline scan is passive and does
+      look at `https://app.quill-medical.com`: no failures, 62 checks
+      passed, 8 warnings. The warnings are all of the low, passive
+      kind: a Content Security Policy directive with no fallback, no
+      Cross-Origin-Embedder-Policy header, no Sec-Fetch-Dest check,
+      cache headers worth a second look on some pages, and three that
+      are about what a page's source shows (base64 strings, comments
+      in scripts, and that it is a modern web application). None says
+      a control is missing. The two about headers are worth a look
+      with the security headers in `docs/docs/cybersecurity/`.
 
 ## Phase 3: Audit the tooling layer in full
 
@@ -608,14 +619,13 @@ Audit each file below in full, and stamp it in the ledger. This is the
 layer that decides whether every other safety net runs, so it comes
 before any feature.
 
-- [x] Every workflow in `.github/workflows/`. Stamped on 10 October
-      2026.
+- [x] Every workflow in `.github/workflows/`. Stamped on 10 October 2026.
 - [x] Everything else under `.github`. Stamped on 10 October 2026. The
       LLM prompts and instructions were last audited in July 2026 and
       are due again.
 - [x] `.husky/pre-commit`. Stamped on 10 October 2026.
 - [x] The `Justfile`. Stamped on 11 October 2026.
-- [ ] `.pre-commit-config.yaml`.
+- [x] `.pre-commit-config.yaml`.
 - [ ] `compose.ci.yml`.
 - [ ] `compose.dev.yml`.
 - [ ] `compose.migrate.yml`.
@@ -897,16 +907,19 @@ found as a bug to fix on its own branch before going on.
       **First pass on 11 October 2026**: `/code-review high` over
       passport, inbox, guides and push, the folders the thin routes
       plan is not working in. Twenty findings, listed in the next step.
-      Still to run: `main.py` once that plan has finished with it, the
-      frontend by feature folder, and `/security-review` over all of
-      them.
+      **Second pass the same day**, over the frontend that the release
+      leans on: `frontend/src/features/teaching`, `frontend/src/auth`
+      and the API client. Ten more findings, listed below under "For
+      Mark to sort". None was run to confirm it; each is from reading.
+      Still to run: `main.py` and the teaching router once the thin
+      routes plan has finished with them, the rest of the frontend by
+      feature folder, and `/security-review` over all of them.
 
 - [ ] Triage every finding as fix now, fix after go-live, or not a bug,
       and record the list in this step. The sorting below is a
       suggestion; the decision on each is Mark's.
 
   **Fixed already**
-
   - **Push: the address check could be got past with a backslash.**
     Found in the pull request that added the check, before it merged,
     and fixed there. `backend/app/push.py`.
@@ -931,19 +944,51 @@ found as a bug to fix on its own branch before going on.
     so every later source fails too and the count shows nought. The
     SQLite tests cannot see it. `inbox/router.py`. Fixed on 11 October 2026: each
     source now runs in a savepoint.
-
-  **Fix before go-live** (each loses something without saying so, or
-  gives a wrong answer; Mark agreed on 11 October 2026)
-
   - **Passport: the export has no history where there is a bucket.**
     `passport.bundle` is only written for the local store, and the
     README inside the zip tells the holder to keep it. `export.py`.
+    Fixed on 11 October 2026: the bucket's own bundle goes in.
   - **Passport: the export has no evidence files.** The records name
     them by hash and the files themselves are not in the zip.
-    `export.py`.
+    `export.py`. Fixed on 11 October 2026: each file a record names is
+    fetched and put in under `passport/files/`.
+
+  All seven that were marked to fix before go-live are fixed, as Mark
+  agreed on 11 October 2026.
+
+  **For Mark to sort: the frontend pass** (found on 11 October 2026,
+  not yet agreed; the first four are the exam a delegate sits)
+  - **Exam: any failed call ends the exam screen.** A moment without
+    network while answering shows an error with no way back, and takes
+    the leave-page guards off, while the clock runs on.
+    `AssessmentAttempt.tsx`.
+  - **Exam: leaving does not submit.** The message says progress will
+    be submitted, and nothing completes the attempt, on leaving or when
+    time runs out. It stays "Incomplete". `AssessmentAttempt.tsx`.
+  - **Exam: a reload can start a second attempt.** Where a bank has no
+    intro page the address stays at `new`, so reloading starts again
+    from question one and orphans the first. `AssessmentAttempt.tsx`.
+  - **Exam: Begin fetches the exam again mid-way.** The address changes
+    and the page loads everything a second time, which can put an
+    answered question back or show an error on an exam that had
+    started. `AssessmentAttempt.tsx`.
+  - **Video: one failed renewal removes a playing video**, with five
+    minutes of access left and no retry. `use-video-access.ts`.
+  - **Slides: the arrow keys change slide while the video has focus**,
+    so skipping forward in a video leaves it. `SlideReader.tsx`.
+  - **Sign-in: any failure to ask "who am I" reads as signed out.**
+    Offline, or a 502 during a deploy, sends a signed-in user to the
+    login page. `AuthContext.tsx`.
+  - **Sign-out: a failed sign-out still shows the login page**, with
+    the session cookies not cleared. On a shared computer the next
+    person to reload is in. `AuthContext.tsx`.
+  - **Errors: a refused field shows as "HTTP 422"** with no message,
+    because the list of field errors is not read. `api.ts`.
+  - **Sign-in: a one-time code pasted with a space is refused.** The
+    length is checked trimmed and the value sent untrimmed.
+    `AuthContext.tsx`.
 
   **Suggested: fix after go-live**
-
   - **Passport: withdrawing a sign-off request answers "declined".**
     There is no `withdrawn` status to answer with. `router.py`.
   - **Passport: a CPD entry stays filed under its old year** when its
@@ -963,7 +1008,6 @@ found as a bug to fix on its own branch before going on.
 
   **Suggested: fix when push is built out** (the send route is for an
   operator only, and nothing sends a real notification yet)
-
   - **Push: any error from a push service deletes the subscription**,
     where only "gone" should. One click with a wrong key would delete
     them all. `push_send.py`.

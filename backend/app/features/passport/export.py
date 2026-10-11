@@ -6,7 +6,8 @@ read, check and keep the record, in one file that outlives Quill:
 - ``README.md`` - plain English, written for somebody who has never seen
   this system and may be opening the zip in ten years.
 - ``passport/`` - the canonical files, exactly as they sit in the
-  repository: YAML, Markdown, and the evidence blobs.
+  repository: YAML and Markdown, and under ``passport/files/`` the
+  evidence each record names, fetched from where evidence is kept.
 - ``passport.md`` and ``passport.pdf`` - the rendered views, for reading
   rather than parsing.
 - ``VERIFY.md`` - how to check the hashes with no software beyond what
@@ -29,6 +30,7 @@ from __future__ import annotations
 
 import io
 import logging
+import re
 import subprocess  # noqa: S404 - git bundle, argument list never a string
 import tempfile
 import zipfile
@@ -36,6 +38,8 @@ from datetime import datetime
 from pathlib import Path, PurePosixPath
 
 from . import paths, pdf, render
+from .blobs import BlobError, BlobStore
+from .gcs_store import GcsBlobStore, GcsPassportStore
 from .hashing import VERIFY_TEMPLATE
 from .schemas import Profile
 from .serialise import from_yaml
@@ -124,12 +128,15 @@ def build_bundle(
     requested_by: str | None = None,
     head_commit: str | None = None,
     generated_at: datetime | None = None,
+    blobs: BlobStore | GcsBlobStore | None = None,
 ) -> bytes:
     """Package a whole passport as a zip.
 
     Args:
         store: Where the passport lives.
         passport_id: Whose passport.
+        blobs: Where its evidence is kept. Without it the records are
+            exported and the files they name are not.
         requested_by: The user id that asked for this, recorded in the
             audit line. Optional because a background or administrative
             export has no user, and a line saying ``unattributed`` is
@@ -161,7 +168,8 @@ def build_bundle(
         )
         archive.writestr("VERIFY.md", VERIFY_TEMPLATE)
 
-        _write_record(archive, store, passport_id)
+        named = _write_record(archive, store, passport_id)
+        _write_evidence(archive, blobs, passport_id, named)
         _write_views(archive, store, passport_id, head_commit, moment)
         _write_history(archive, store, passport_id)
 
@@ -184,16 +192,31 @@ def build_bundle(
     return data
 
 
+#: An attachment as a record names it: the key `hash`, then the digest.
+#: Matched in the file's own text, and only on that key, so the
+#: fingerprint taken over a sign-off, which is also a SHA-256, is not
+#: mistaken for a file.
+_ATTACHMENT_HASH = re.compile(
+    rb"""^\s*-?\s*hash:\s*['"]?(sha256:[0-9a-f]{64})""", re.MULTILINE
+)
+
+
 def _write_record(
     archive: zipfile.ZipFile, store: PassportStore, passport_id: str
-) -> None:
+) -> list[str]:
     """Copy the canonical files in, exactly as they are.
 
     Walked from the repository rather than re-serialised from the
     models: a byte-for-byte copy is what makes the export a copy of the
     record rather than a rendering of it, and a round trip through
     Pydantic could quietly normalise something.
+
+    Returns:
+        The digest of every attachment the files name, each once, in
+        the order first met.
     """
+    named: list[str] = []
+
     for path in _walk(store, passport_id, PurePosixPath(".")):
         try:
             data = store.read(passport_id, path)
@@ -202,6 +225,50 @@ def _write_record(
             continue
 
         archive.writestr(f"{_RECORD_DIR}/{path}", data)
+
+        for found in _ATTACHMENT_HASH.findall(data):
+            digest = found.decode("ascii")
+            if digest not in named:
+                named.append(digest)
+
+    return named
+
+
+def _write_evidence(
+    archive: zipfile.ZipFile,
+    blobs: BlobStore | GcsBlobStore | None,
+    passport_id: str,
+    named: list[str],
+) -> None:
+    """Add each file the records name, where the record says it is.
+
+    Evidence is not in the repository. A record holds a file's digest,
+    and the bytes are kept apart, by that digest. So copying the
+    repository copies the names and none of the files, and until 11
+    October 2026 that is what an export held: a certificate naming a
+    scan that was not in the zip.
+
+    Each file goes in at the path its digest gives, under the record
+    directory, which is where somebody following a record would look.
+    A file that cannot be fetched is logged and left out, and does not
+    fail the export: the rest of the record is still worth having.
+    """
+    if blobs is None:
+        return
+
+    for digest in named:
+        try:
+            data = blobs.get(passport_id, digest)
+        except (BlobError, paths.PassportPathError):
+            logger.warning(
+                "Evidence named by a record could not be exported: "
+                "passport=%s digest=%s",
+                passport_id,
+                digest,
+            )
+            continue
+
+        archive.writestr(f"{_RECORD_DIR}/{paths.blob(digest)}", data)
 
 
 def _walk(
@@ -306,11 +373,22 @@ def _write_history(
     does not fail the export. A holder with the files and no history is
     better off than one with nothing, and the log says what happened.
 
-    Only the local backend can be bundled directly: the bucket backend
-    holds a bundle already, but reaching for it would need the concrete
-    type anyway. Both cases end up asking the store where its repository
-    is, which only the local one can answer.
+    The bucket backend holds exactly this file already, so its copy is
+    passed on as it is. Until 11 October 2026 it was skipped, and since
+    the live application keeps passports in a bucket, every export
+    there shipped a README telling the holder to keep a file that was
+    not in the zip. The local backend is bundled from its repository.
     """
+    if isinstance(store, GcsPassportStore):
+        try:
+            archive.writestr(
+                "passport.bundle", store.bundle_bytes(passport_id)
+            )
+        except Exception:  # noqa: BLE001 - never fail the export
+            logger.exception("Could not add passport.bundle to the export")
+
+        return
+
     if not isinstance(store, LocalPassportStore):
         logger.info(
             "Skipping git history: %s cannot expose a working repository",
