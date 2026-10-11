@@ -177,9 +177,8 @@ qualification, an accreditation or a decision about your practice is for
 your sponsor or the relevant professional body to decide under its own
 rules.
 
-7.2 Pass marks, time limits, the number of attempts allowed and the gap
-between them are set by the module and by your sponsor, and are shown
-before you start. We may change a module's content or questions between
+7.2 Pass marks and time limits are set by the module and by your
+sponsor, and are shown before you start. We may change a module's content or questions between
 versions. A result stays attached to the version of the module you took.
 
 7.3 A certificate issued through Quill records that you completed a
