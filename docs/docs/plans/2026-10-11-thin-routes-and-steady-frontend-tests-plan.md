@@ -385,10 +385,21 @@ more.
             check comes first; and `invites_test.py`'s altered-token
             case fails about one run in sixteen, when the token ends
             in `A`.
-      - [ ] **A conversation's status** -
+      - [x] **A conversation's status** -
             `update_conversation_status_endpoint` (57 lines, 3
             branches). The messaging rules already live in
-            `messaging.py`; this is what is left in the route.
+            `messaging.py`; this is what is left in the route. The
+            rule is now `set_conversation_status` there, raising the
+            existing `ConversationNotFound` both for no conversation
+            and for a caller not taking part; which statuses there
+            are stays with the request model's pattern. Found: this
+            route answers a refusal with a plain sentence where its
+            siblings send a message and an error code, so it maps
+            `exc.message` alone to keep that; and its response gives
+            each participant's username as their display name and
+            leaves `is_participant`, `can_write` and
+            `include_patient_as_participant` at false, unlike the
+            list routes. Both are kept as they were.
 
       **Left as they are, on purpose:**
 

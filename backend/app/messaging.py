@@ -706,6 +706,64 @@ def mark_conversation_read(
     return True
 
 
+def set_conversation_status(
+    *,
+    db: Session,
+    conversation_id: int,
+    user: User,
+    status: str,
+) -> tuple[Conversation, int]:
+    """Change a conversation's status, for somebody taking part in it.
+
+    Only a participant may. Somebody who reads the conversation from
+    outside, through their organisation or a grant, may not, and is
+    answered exactly as if there were no such conversation.
+
+    Which statuses there are is not checked here: the request model,
+    ``ConversationStatusUpdateIn``, holds that list.
+
+    The row is flushed, not committed.
+
+    Args:
+        db: The database session.
+        conversation_id: The conversation to change.
+        user: Who is asking.
+        status: The status to give it.
+
+    Returns:
+        The conversation as it now is, and how many of its messages
+        from other people this participant has not read.
+
+    Raises:
+        ConversationNotFound: If there is no such conversation, or the
+            user is not taking part in it.
+    """
+    conv = db.get(Conversation, conversation_id)
+
+    if conv is None:
+        raise ConversationNotFound()
+
+    cp = next((p for p in conv.participants if p.user_id == user.id), None)
+
+    if cp is None:
+        raise ConversationNotFound()
+
+    conv.status = status
+    db.flush()
+    db.refresh(conv)
+
+    if cp.last_read_at:
+        unread = sum(
+            1
+            for m in conv.messages
+            if m.created_at > cp.last_read_at and m.sender_id != user.id
+        )
+    else:
+        unread = sum(1 for m in conv.messages if m.sender_id != user.id)
+
+    return conv, unread
+
+
 def list_patient_conversations(
     *,
     db: Session,
