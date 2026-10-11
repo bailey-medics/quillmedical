@@ -3247,6 +3247,7 @@ def update_patient(
     patient_id: str,
     data: FHIRPatientCreateIn,
     current_user: User = DEP_CURRENT_USER,
+    db: Session = DEP_GET_SESSION,
 ) -> FhirPatientResource:
     """Update Patient in FHIR.
 
@@ -3257,15 +3258,23 @@ def update_patient(
     Args:
         patient_id: FHIR Patient resource ID to update.
         data: Updated patient demographics.
-        current_user: Currently authenticated user (any role can update patients).
+        current_user: Currently authenticated user, who must share an
+            organisation with the patient, or be an operator.
+        db: Database session.
 
     Returns:
         dict: Complete updated FHIR Patient resource.
 
     Raises:
+        HTTPException: 404 if the caller shares no organisation with the
+            patient, in the words a missing patient is answered with.
         HTTPException: 404 if patient not found in FHIR server.
         HTTPException: 500 if FHIR update operation fails.
     """
+    # Asked before FHIR is, so somebody who may not reach the patient
+    # learns nothing from it, not even whether the patient exists.
+    _require_shared_org_with_patient(db, current_user, patient_id)
+
     try:
         # Read existing patient to verify it exists
         existing = read_fhir_patient(patient_id)
