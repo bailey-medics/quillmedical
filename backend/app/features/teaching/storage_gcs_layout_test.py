@@ -71,7 +71,7 @@ class TestTheDevRouteMatchesTheUrlsItServes:
     def test_the_route_registered_for_it_has_the_same_shape(self) -> None:
         """These are declared in different files and only agree by hand, so
         a mismatch would 404 every image in local development."""
-        main = (_STORAGE.parent.parent / "main.py").read_text()
+        routes = (_STORAGE / "local_media.py").read_text()
 
-        assert '"/api/teaching/images/modules/{bank_id}"' in main
-        assert '"/assessment/{item_folder}/{filename}"' in main
+        assert '"/api/teaching/images/modules/{bank_id}"' in routes
+        assert '"/assessment/{item_folder}/{filename}"' in routes
