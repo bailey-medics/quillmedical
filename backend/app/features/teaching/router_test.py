@@ -140,7 +140,6 @@ SAMPLE_CONFIG_YAML = {
         "items_per_attempt": 3,
         "time_limit_minutes": 60,
         "min_pool_size": 3,
-        "randomise_selection": False,
         "randomise_order": False,
         "allow_immediate_retry": True,
         "intro_page": {"title": "Intro", "body": "Start the test."},

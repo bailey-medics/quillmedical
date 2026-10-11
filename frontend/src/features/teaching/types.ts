@@ -32,7 +32,6 @@ export interface AssessmentConfigYaml {
   items_per_attempt?: number;
   time_limit_minutes?: number;
   min_pool_size?: number;
-  randomise_selection?: boolean;
   randomise_order?: boolean;
   allow_immediate_retry?: boolean;
   intro_page?: AssessmentPageConfig;
