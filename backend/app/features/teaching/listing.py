@@ -2,7 +2,8 @@
 
 Who is listed is not decided here. ``app.features.teaching.access``
 answers that, and hands its answer in: ``delegates_in_view`` for the
-all-delegates view and ``modules_open_to`` for a learner's module list.
+all-delegates view, ``modules_open_to`` for a learner's module list and
+``banks_on_show_to`` for their list of question banks.
 These functions take that answer and build the rows, and refuse nobody.
 
 They are apart from ``access`` because of what they read. A delegate's
@@ -26,8 +27,9 @@ from sqlalchemy.orm import Session
 from app.cbac.positions import clinical_leads_of
 from app.config import settings
 from app.features.teaching import mdx_parser, media, storage
-from app.features.teaching.access import DelegatesInView
-from app.features.teaching.models import Assessment
+from app.features.teaching.access import BankOnShow, DelegatesInView
+from app.features.teaching.models import Assessment, QuestionBankConfig
+from app.features.teaching.module_content import module_is_servable
 from app.features.teaching.schemas import DelegateOut
 from app.models import OrgUnit, User, org_unit_member
 
@@ -321,3 +323,115 @@ def learning_module_rows(
     modules.sort(key=lambda m: m["order"])
 
     return modules
+
+
+def question_bank_rows(
+    db: Session, shown: dict[str, BankOnShow]
+) -> list[dict[str, Any]]:
+    """What a learner's list says about each question bank on show.
+
+    One row for each bank, describing the version promoted for the
+    learner and never a newer one that has only been synced. The synced
+    copy read is whichever comes first for that bank and version: it is
+    not asked whose copy it is, since the content may be owned by
+    another (educator) organisation.
+
+    A bank is left out when its media is incomplete for the
+    organisation *shown* names for it, or when the promoted version has
+    no synced copy. A bank closed to new attempts is listed, with
+    ``is_live`` false.
+
+    Whether the media is complete is asked once for each synced version
+    read, newest first, until the promoted one is reached, and each
+    asking reads the module's pages from the content store. So is
+    whether the bank has learning pages, once for each row built.
+
+    Args:
+        db: Core database session.
+        shown: What ``banks_on_show_to`` gave: bank id to how it stands.
+
+    Returns:
+        The fields of ``QuestionBankOut`` for each bank, as plain
+        values, in bank id order. Nothing, without asking the database,
+        where no bank is on show.
+    """
+    if not shown:
+        return []
+
+    # Fetch configs for visible banks (may be owned by a different org)
+    configs = (
+        db.execute(
+            select(QuestionBankConfig)
+            .where(QuestionBankConfig.question_bank_id.in_(list(shown)))
+            .order_by(
+                QuestionBankConfig.question_bank_id,
+                QuestionBankConfig.version.desc(),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    # Check which banks have learning content in the local repos
+    base_path = settings.TEACHING_QUESTION_BANK_PATH or ""
+
+    # De-duplicate by question_bank_id (user may be in multiple orgs
+    # with the same bank configured)
+    seen: set[str] = set()
+    rows: list[dict[str, Any]] = []
+
+    for config in configs:
+        if config.question_bank_id in seen:
+            continue
+
+        on_show = shown[config.question_bank_id]
+
+        # A module missing any of its media is not offered at all -
+        # hidden rather than shown disabled, because a learner who can
+        # see a module they cannot open raises a support question the
+        # admin cannot answer from the learner's side.
+        if not module_is_servable(
+            db, on_show.organisation_id, config.question_bank_id
+        ):
+            continue
+        # Only the promoted version, not whichever happens to be newest.
+        if config.version != on_show.version:
+            continue
+        seen.add(config.question_bank_id)
+
+        cover_image_url: str | None = None
+
+        if config.cover_image_filename:
+            bucket = settings.TEACHING_GCS_BUCKET
+            if bucket:
+                cover_image_url = storage.get_cover_image_url_gcs(
+                    bucket,
+                    config.question_bank_id,
+                    config.cover_image_filename,
+                )
+            else:
+                cover_image_url = storage.local_cover_image_url(
+                    base_path,
+                    config.question_bank_id,
+                    config.cover_image_filename,
+                )
+
+        rows.append(
+            {
+                "id": config.id,
+                "question_bank_id": config.question_bank_id,
+                "version": config.version,
+                "title": config.title,
+                "description": config.description,
+                "type": config.type,
+                "synced_at": config.synced_at,
+                "is_live": on_show.is_live,
+                "has_learning": storage.has_learning_content(
+                    base_path, config.question_bank_id
+                ),
+                "cover_image_url": cover_image_url,
+                "cover_image_focus": config.cover_image_focus,
+            }
+        )
+
+    return rows

@@ -44,3 +44,53 @@ class MediaAssetNotFound(TeachingError):
 
     status_code = 404
     message = "No such media asset"
+
+
+class InvalidBankId(TeachingError):
+    """A question bank was named by something that cannot be an id.
+
+    Letters, digits, hyphens and underscores only. Asked before anything
+    is looked up, so the words say nothing of what exists.
+    """
+
+    status_code = 400
+    message = "Invalid bank_id"
+
+
+class QuestionBankNotFound(TeachingError):
+    """No question bank by that id is there for this learner to be shown.
+
+    The same words whichever it is: no such bank, one that is not
+    theirs, one with no version promoted, one whose promoted version
+    was never synced, or one whose media is incomplete. The caller
+    cannot tell them apart, which is the point.
+    """
+
+    status_code = 404
+    message = "Question bank not found"
+
+
+class ModuleNotFound(TeachingError):
+    """No module by that id is there for this learner to be given.
+
+    The words a module that is not theirs is refused with, so a module
+    whose media is incomplete, or which is missing from the content
+    path, cannot be told from one that was never open to them.
+    """
+
+    status_code = 404
+    message = "Module not found"
+
+
+class NoLearningContent(TeachingError):
+    """The module is open to the learner and has no learning pages."""
+
+    status_code = 404
+    message = "No learning content for this module"
+
+
+class TeachingContentNotConfigured(TeachingError):
+    """Neither a bucket nor a content path is set, so nothing can be read."""
+
+    status_code = 404
+    message = "Teaching content not configured"

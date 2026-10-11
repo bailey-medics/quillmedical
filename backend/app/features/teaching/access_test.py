@@ -13,11 +13,14 @@ from app.features.teaching.access import (
     MODULES_COMPETENCY,
     RESULTS_COMPETENCY,
     Admitted,
+    BankOnShow,
     BelongsNowhere,
     DelegatesInView,
     NotServed,
     ServedModule,
     admit,
+    bank_status_on_show,
+    banks_on_show_to,
     delegates_in_view,
     enrol_everyone_with_a_place,
     give_place,
@@ -1982,4 +1985,233 @@ def test_an_operator_who_belongs_nowhere_is_listed_no_module(
     assert (
         modules_served_where_they_belong(db_session, _operator(db_session))
         == []
+    )
+
+
+# --- banks_on_show_to -------------------------------------------------------
+
+
+def _second_place(db: Session, user: User, unit: OrgUnit) -> None:
+    """Have *user* belong to another org unit, with a place there too."""
+    add_org_unit_member(db, unit.id, user.id, "staff")
+    _place(db, user, unit)
+
+
+def test_a_bank_they_are_enrolled_on_is_on_show_at_its_promoted_version(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", _ward(db_session, org))
+    _serve(db_session, org, active_version=3)
+    _enrol(db_session, learner, org)
+
+    assert banks_on_show_to(db_session, learner) == {
+        BANK: BankOnShow(version=3, is_live=True, organisation_id=org.id)
+    }
+
+
+def test_a_bank_closed_to_new_attempts_is_on_show_and_said_to_be_closed(
+    db_session: Session,
+) -> None:
+    """Where ``modules_open_to`` leaves it out, this does not."""
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org, is_live=False)
+    _enrol(db_session, learner, org)
+
+    assert banks_on_show_to(db_session, learner) == {
+        BANK: BankOnShow(version=1, is_live=False, organisation_id=org.id)
+    }
+
+
+def test_a_bank_with_no_version_promoted_is_not_on_show(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org, active_version=None)
+    _enrol(db_session, learner, org)
+
+    assert banks_on_show_to(db_session, learner) == {}
+
+
+def test_a_bank_they_are_not_enrolled_on_is_not_on_show(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org)
+    _serve(db_session, org, OTHER_BANK)
+    _enrol(db_session, learner, org)
+
+    assert list(banks_on_show_to(db_session, learner)) == [BANK]
+
+
+def test_a_bank_of_an_organisation_beyond_their_reach_is_not_on_show(
+    db_session: Session,
+) -> None:
+    """Enrolled there, even, and it is not shown without a place."""
+    org = _organisation(db_session)
+    elsewhere = _organisation(db_session, "Elsewhere")
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, elsewhere)
+    _enrol(db_session, learner, elsewhere)
+
+    assert banks_on_show_to(db_session, learner) == {}
+
+
+def test_a_delegate_with_no_place_is_shown_no_bank(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    member = _member(db_session, "member", org, "teaching_delegate")
+    _serve(db_session, org)
+    _enrol(db_session, member, org)
+
+    assert banks_on_show_to(db_session, member) == {}
+
+
+def test_somebody_who_only_views_results_is_shown_no_bank(
+    db_session: Session,
+) -> None:
+    """The list is reached with the results competency alone."""
+    org = _organisation(db_session)
+    viewer = _member(db_session, "viewer", org)
+    hold(viewer, RESULTS_COMPETENCY)
+    _place(db_session, viewer, org)
+    _serve(db_session, org)
+    _enrol(db_session, viewer, org)
+
+    assert banks_on_show_to(db_session, viewer) == {}
+
+
+def test_a_bank_two_organisations_serve_shows_the_highest_version_and_is_live(
+    db_session: Session,
+) -> None:
+    """Live at either is live, and the higher version is the one shown.
+
+    The organisation named is whichever row the database gave first, so
+    it is only said here to be one of the two.
+    """
+    closed = _organisation(db_session, "Closed Trust")
+    live = _organisation(db_session, "Live Trust")
+    learner = _learner(db_session, "learner", closed)
+    _second_place(db_session, learner, live)
+    _serve(db_session, closed, active_version=5, is_live=False)
+    _serve(db_session, live, active_version=2)
+    _enrol(db_session, learner, closed)
+    _enrol(db_session, learner, live)
+
+    on_show = banks_on_show_to(db_session, learner)[BANK]
+
+    assert on_show.version == 5
+    assert on_show.is_live is True
+    assert on_show.organisation_id in {closed.id, live.id}
+
+
+def test_an_organisation_with_no_version_promoted_adds_nothing_to_a_bank(
+    db_session: Session,
+) -> None:
+    """Not its being live, and not its name for the media question."""
+    nothing_promoted = _organisation(db_session, "Nothing Promoted")
+    serving = _organisation(db_session, "Serving")
+    learner = _learner(db_session, "learner", nothing_promoted)
+    _second_place(db_session, learner, serving)
+    _serve(db_session, nothing_promoted, active_version=None)
+    _serve(db_session, serving, active_version=2, is_live=False)
+    _enrol(db_session, learner, nothing_promoted)
+    _enrol(db_session, learner, serving)
+
+    assert banks_on_show_to(db_session, learner) == {
+        BANK: BankOnShow(version=2, is_live=False, organisation_id=serving.id)
+    }
+
+
+# --- bank_status_on_show ----------------------------------------------------
+
+
+def test_the_row_for_a_bank_they_are_enrolled_on_is_given(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org, active_version=4)
+    _enrol(db_session, learner, org)
+
+    row = bank_status_on_show(
+        db_session, learner.id, organisation_ids=[org.id], bank_id=BANK
+    )
+
+    assert row is not None
+    assert (row.org_unit_id, row.question_bank_id) == (org.id, BANK)
+    assert row.active_version == 4
+
+
+def test_a_row_is_given_whether_or_not_the_bank_is_live_or_promoted(
+    db_session: Session,
+) -> None:
+    """Both are left for the caller to ask."""
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org, active_version=None, is_live=False)
+    _enrol(db_session, learner, org)
+
+    row = bank_status_on_show(
+        db_session, learner.id, organisation_ids=[org.id], bank_id=BANK
+    )
+
+    assert row is not None
+    assert row.active_version is None
+    assert row.is_live is False
+
+
+def test_no_row_is_given_for_a_bank_they_are_not_enrolled_on(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org)
+
+    assert (
+        bank_status_on_show(
+            db_session, learner.id, organisation_ids=[org.id], bank_id=BANK
+        )
+        is None
+    )
+
+
+def test_no_row_is_given_for_another_bank_than_the_one_asked_about(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org)
+    _enrol(db_session, learner, org)
+
+    assert (
+        bank_status_on_show(
+            db_session,
+            learner.id,
+            organisation_ids=[org.id],
+            bank_id=OTHER_BANK,
+        )
+        is None
+    )
+
+
+def test_no_row_is_given_from_an_organisation_that_was_not_named(
+    db_session: Session,
+) -> None:
+    """Enrolled there, and it is still not one of theirs to ask."""
+    org = _organisation(db_session)
+    elsewhere = _organisation(db_session, "Elsewhere")
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, elsewhere)
+    _enrol(db_session, learner, elsewhere)
+
+    assert (
+        bank_status_on_show(
+            db_session, learner.id, organisation_ids=[org.id], bank_id=BANK
+        )
+        is None
     )
