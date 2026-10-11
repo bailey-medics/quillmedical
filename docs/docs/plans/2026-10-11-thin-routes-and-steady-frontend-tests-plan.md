@@ -19,7 +19,7 @@ that work is larger and each step of it is safe to land alone.
 
 ## Phase 1: Set the shape on one route, `update_user`
 
-- [ ] Split `update_user` in `backend/app/main.py` in two. It is the
+- [x] Split `update_user` in `backend/app/main.py` in two. It is the
       largest route in the backend, 294 lines and 28 branches, so if
       the shape works here it works anywhere. It is too much to read as
       one pull request, so it goes a part at a time, each its own pull
@@ -127,9 +127,21 @@ that work is larger and each step of it is safe to land alone.
             other two refusals had no test of their words, so
             `tests/user_practice_refusals_test.py` pins them on both
             routes.
-      - [ ] **The whole save as one function**, calling the parts above
+      - [x] **The whole save as one function**, calling the parts above
             in order, with the route left to find the person, check the
-            caller may reach them, and return.
+            caller may reach them, and return. Now `update_account` in
+            `backend/app/users/update.py`, taking an `AccountChanges`:
+            a frozen dataclass with one field for each thing the form
+            can send, `None` when it was not sent, which the route
+            builds from the request. Whether a save acts on the whole
+            account is its own function, `acts_on_whole_account`, with
+            `changes_profession` and `changes_platform_role` beside it.
+            The route keeps the 404, "Cannot modify superadmin users"
+            and `_require_shared_org_with_user`, which five other
+            routes share and which run in that order before anything
+            else. Found on the way: an address sent in other capitals
+            counts as acting on the account, though `change_identity`
+            then treats it as no change. Left as it is.
 
 - [x] Put the plain functions in a module for each area, beside the
       code they belong with, each with its `_test.py` beside it:
@@ -171,12 +183,22 @@ that work is larger and each step of it is safe to land alone.
       drive `update_user` through the API must pass **unchanged**,
       before and after. They are the safety net for the whole plan. A
       route test that fails means the split moved the behaviour: put
-      the split right, and leave the test as it is.
+      the split right, and leave the test as it is. Done for every
+      part: the files in `backend/tests/` that drive `/api/users`,
+      thirty-one of them when the last part landed, were run unedited
+      with each one, `security_pentest_test.py` among them, beside
+      `no_raw_exceptions_in_details_test.py`,
+      `every_route_is_guarded_test.py` and
+      `api_schema_coverage_test.py`.
 
 - [ ] Write the tests the split makes possible: one for each branch of
       the plain function, called directly. This is the point of the
       work. Run `just tc py` before and after and record both figures
-      for `main.py` here.
+      for `main.py` here. Before, measured on 10 October 2026:
+      `app/main.py` at 80%, 1,516 statements with 300 missed. The
+      tests are written, one file beside each module in
+      `backend/app/users/`. The after figure is to be taken with
+      `just tc py` once the stack has merged.
 
 ## Phase 2: The rest of `main.py`
 
