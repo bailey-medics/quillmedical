@@ -50,9 +50,6 @@ from app.analytics.router import router as analytics_router
 from app.api_compatibility import REQUIRED_CLIENT_GENERATION
 from app.cbac.base_professions import (
     PROFESSION_IDS,
-    SUPERADMIN_PROFESSION,
-    competencies_kept_across_profession_change,
-    get_profession_base_competencies,
     resolve_user_competencies,
 )
 from app.cbac.competencies import (
@@ -279,6 +276,7 @@ from app.security import (
     verify_password_reset_token,
     verify_totp_code,
 )
+from app.users.competencies import settle_competencies
 from app.users.errors import UserAdminError
 from app.users.identity import change_identity
 from app.users.scope import (
@@ -2750,80 +2748,14 @@ def update_user(
     )
 
     # Update CBAC fields if provided
-    # Both lists start from the person's current rows, and are settled
-    # here before anything is written.
-    additional = user.additional_competency_ids
-    removed = user.removed_competency_ids
-
-    # Named explicitly, the list replaces what they held outside their
-    # profession. A profession change is then worked out on top of it, so
-    # a payload carrying both fields does not discard what the old
-    # profession granted.
-    if payload.additional_competencies is not None:
-        additional = list(payload.additional_competencies)
-
-    # A profession is a template, not state: `additional` and `removed`
-    # exist precisely so reality can diverge from it. So changing one
-    # *adds* what the new profession grants and keeps what the person has
-    # already become - a patient who becomes a healthcare assistant keeps
-    # the competency for their own record, rather than losing it by being
-    # given a clinical role.
-    #
-    # Assigning the field alone dropped every competency from the old
-    # profession unless it happened to be listed in
-    # `additional_competencies`, silently. The superadmin promotion below
-    # has always merged for the same reason.
-    if payload.base_profession is not None:
-        additional = competencies_kept_across_profession_change(
-            additional,
-            old_profession=user.base_profession,
-            new_profession=payload.base_profession,
-        )
-        user.base_profession = payload.base_profession
-
-    if payload.removed_competencies is not None:
-        removed = list(payload.removed_competencies)
-
-    if payload.platform_role is not None:
-        # Only an operator may make another. The competency that opens
-        # this route says *what* someone may administer and never that
-        # they may promote someone to run the platform.
-        if (
-            current_user.platform_role != "superadmin"
-            and payload.platform_role == "superadmin"
-        ):
-            raise HTTPException(
-                status_code=403,
-                detail="Cannot grant the superadmin platform role",
-            )
-        user.platform_role = payload.platform_role
-        # Same reasoning as the promotion below: an operator holding no
-        # profession competencies would be refused by every gate.
-        if payload.platform_role == "superadmin":
-            granted = set(additional)
-            granted.update(
-                get_profession_base_competencies(SUPERADMIN_PROFESSION)
-            )
-            additional = sorted(granted)
-
-    check_changes_in_scope(
-        current_user,
-        held_before,
-        set(
-            resolve_user_competencies(
-                user.base_profession, additional, removed
-            )
-        ),
-    )
-
-    # Written once, from the lists as finally settled above: after the
-    # profession carry-over and the superadmin promotion, not before.
-    sync_competency_rows(
+    settle_competencies(
         user,
-        additional=additional,
-        removed=removed,
-        source="admin",
-        granted_by=current_user.id,
+        current_user,
+        held_before=held_before,
+        base_profession=payload.base_profession,
+        additional_competencies=payload.additional_competencies,
+        removed_competencies=payload.removed_competencies,
+        platform_role=payload.platform_role,
     )
 
     # The one list, in org_unit ids. It settles membership of every org_unit

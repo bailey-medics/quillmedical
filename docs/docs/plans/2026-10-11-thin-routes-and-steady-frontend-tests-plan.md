@@ -62,9 +62,16 @@ that work is larger and each step of it is safe to land alone.
             `backend/app/users/scope.py`. Two of the refusals carry
             catalogue ids (the competencies, the profession), so their
             words did not change.
-      - [ ] **The competency lists** - what `additional` and `removed`
+      - [x] **The competency lists** - what `additional` and `removed`
             come to after a change of profession and a promotion to
             `superadmin`, and the write through `sync_competency_rows`.
+            Now `settle_competencies` in
+            `backend/app/users/competencies.py`, which also sets the
+            profession and the platform role, since neither can be
+            separated from the lists. `create_user_with_cbac` was left
+            as it is: a new account has no carry-over and no merge on
+            promotion, so the two share only the scope check and the
+            write, which are one function each already.
       - [ ] **Where they belong** - membership of the org units the
             caller administers, and keeping passport cover in step.
       - [ ] **Practice and teaching enrolments** - `_settle_practice`
@@ -96,6 +103,19 @@ that work is larger and each step of it is safe to land alone.
       from every route that calls it, with nothing to remember. The
       handler's body is `{"detail": message}`, which is what an
       `HTTPException` gives.
+
+- [ ] Decide what to do about a hole found on the way, in
+      `create_user_with_cbac`: **somebody holding `manage_users` who is
+      not an operator can create an account with the `superadmin`
+      platform role.** `update_user` refuses exactly that ("Cannot
+      grant the superadmin platform role"), and creating has no such
+      check, so the refusal is stepped round by making a new account in
+      place of promoting an old one. The account made also misses the
+      operator competencies that a promotion merges in. Found on
+      11 October 2026 while moving the competency rules, and left as it
+      is: this plan moves rules and does not change them, and closing
+      it changes what a caller may do. The fix is small, the same
+      refusal on create, and wants its own pull request.
 
 - [ ] Prove nothing changed. The route tests in `backend/tests/` that
       drive `update_user` through the API must pass **unchanged**,

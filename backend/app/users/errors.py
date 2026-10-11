@@ -87,6 +87,11 @@ class PlatformRoleNotAllowed(UserAdminError):
     message = "You may not set a platform role."
 
 
+class SuperadminRoleNotAllowed(UserAdminError):
+    status_code = 403
+    message = "Cannot grant the superadmin platform role"
+
+
 class SelfGranting(UserAdminError):
     status_code = 403
     message = (
