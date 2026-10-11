@@ -15,6 +15,7 @@ from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.cbac.competencies import SCOPED_MANAGER_IDS
 from app.cbac.practising import can_practise_at
 from app.config import settings
 from app.db import get_core_db
@@ -88,8 +89,8 @@ def require_csrf(
     The token is also signed for one username, so one user's token is no
     use against another.
 
-    The same check as ``require_csrf`` in ``app.main``, here so that a
-    router ``main`` imports can take it without importing ``main`` back.
+    The one definition of this check. ``main`` takes it from here, as
+    every router does, so a router never has to import ``main`` back.
 
     Returns:
         User: the signed-in user, so a route can take this in place of
@@ -420,3 +421,93 @@ def requires_any_competency(
         return user
 
     return check_any_competency
+
+
+def require_roles(*need: str) -> Callable[[Request, User], User]:
+    """Create Role Authorization Dependency.
+
+    Factory function that creates a FastAPI dependency to enforce role-based
+    access control. The returned dependency checks if the authenticated user
+    possesses all required roles. Used in route decorators to protect endpoints.
+
+    Usage Example:
+        @router.get("/patients", dependencies=[require_roles("Clinician")])
+        def list_patients(): ...
+
+    Args:
+        *need: One or more role names required (e.g., "Clinician", "Administrator").
+
+    Returns:
+        Callable: FastAPI dependency function that validates roles.
+
+    Raises:
+        HTTPException: 403 Forbidden if user lacks any required role.
+    """
+
+    def dep(request: Request, _u: User = DEP_CURRENT_USER) -> User:
+        have = set(getattr(request.state, "roles", []))
+
+        if not set(need).issubset(have):
+            raise HTTPException(403, "Forbidden")
+
+        return _u
+
+    return dep
+
+
+DEP_REQUIRE_ROLES_CLINICIAN = Depends(require_roles("Clinician"))
+
+#: Administering the users of an org_unit. Replaces the
+#: ``system_permissions in ("admin", "superadmin")`` string comparisons,
+#: which said what someone is on the platform rather than what they may
+#: do - a rank that was global in the column and scoped in practice.
+#:
+#: It answers *what*, never *where*. Every route carrying it keeps the
+#: org_unit check beside it: ``check_account_within_reach``,
+#: ``_require_site_in_own_org`` or
+#: ``_require_shared_org_with_patient``. Without one of those this
+#: competency is global, which is strictly weaker than the rank it
+#: replaces.
+DEP_REQUIRE_MANAGE_USERS = Depends(has_competency("manage_users"))
+
+#: Managing people's accounts, either without limit or within a whitelist.
+#: ``manage_users`` may grant anything. A scoped manager, such as
+#: ``manage_teaching``, may grant and remove only what its ``may_grant``
+#: list names, give only the professions its ``may_assign_professions``
+#: list names, and act on an account as a whole only when its profession
+#: is one of those. The gate admits either, and the route body then asks
+#: ``app.cbac.grant_scope``.
+#: A ``manage_users`` holder finds every check passes, so nothing changes
+#: for them. See
+#: ``docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md``.
+DEP_REQUIRE_MANAGE_PEOPLE = Depends(
+    requires_any_competency("manage_users", *SCOPED_MANAGER_IDS)
+)
+
+#: Who belongs to an organisation or a site. Separate from
+#: ``DEP_REQUIRE_MANAGE_USERS`` because adding an existing colleague to a
+#: ward is not the authority to create, delete or re-competency an
+#: account, and ``manage_users`` carries twenty-nine routes including
+#: site deletion. Adding a nurse to a ward should not imply the power to
+#: delete the ward.
+#:
+#: It mirrors ``DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP`` below, which made
+#: the same separation for patients. Like the rest it answers *what*,
+#: never *where*, so the four routes carrying it keep their org_unit check.
+DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP = Depends(
+    has_competency("manage_staff_membership")
+)
+
+#: Which patients are cared for at an org_unit. Separate from
+#: ``DEP_REQUIRE_MANAGE_USERS`` because a patient is not a user: a user is
+#: an account here, a patient is a record FHIR owns, and the two are
+#: linked through ``User.fhir_patient_id`` only where the same human is
+#: both. One competency over both would be authority over two unrelated
+#: populations.
+#:
+#: It grants no access to a patient's record - that is
+#: ``access_patient_records``. Like the rest it answers *what*, never
+#: *where*, so the routes carrying it keep their org_unit check.
+DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP = Depends(
+    has_competency("manage_patient_membership")
+)

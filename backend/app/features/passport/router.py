@@ -256,14 +256,14 @@ _DEP_SESSION = Depends(get_core_db)
 
 def _get_current_user(request: Request, db: Session = _DEP_SESSION) -> User:
     """Resolve the authenticated user (lazy import, as teaching does)."""
-    from app.main import get_current_user
+    from app.deps import get_current_user
 
     return get_current_user(request, db)
 
 
 def _require_csrf(request: Request, db: Session = _DEP_SESSION) -> None:
     """Validate the CSRF token, lazily for the same reason."""
-    from app.main import require_csrf
+    from app.deps import require_csrf
 
     require_csrf(request, _get_current_user(request, db))
 

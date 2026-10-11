@@ -50,7 +50,6 @@ from app.api_compatibility import REQUIRED_CLIENT_GENERATION
 from app.body_limit import BodyLimitMiddleware
 from app.cbac.base_professions import PROFESSION_IDS
 from app.cbac.competencies import (
-    SCOPED_MANAGER_IDS,
     validate_competency_ids,
 )
 from app.cbac.grant_scope import scope_for
@@ -60,9 +59,14 @@ from app.compat_harness_endpoints import test_api_router
 from app.config import settings
 from app.db import get_core_db
 from app.deps import (
+    DEP_CURRENT_USER,
+    DEP_GET_SESSION,
     DEP_REQUIRE_CLINICAL,
+    DEP_REQUIRE_CSRF,
+    DEP_REQUIRE_MANAGE_PEOPLE,
+    DEP_REQUIRE_MANAGE_USERS,
+    DEP_REQUIRE_ROLES_CLINICIAN,
     has_competency,
-    requires_any_competency,
 )
 from app.ehrbase_client import (
     EhrbaseClientError,
@@ -232,7 +236,6 @@ from app.security import (
     hash_password,
     make_csrf,
     totp_provisioning_uri,
-    verify_csrf,
     verify_email_verify_token,
     verify_password,
     verify_password_reset_token,
@@ -525,9 +528,6 @@ async def log_requests(
 
 app.include_router(push_send_router)
 
-DEP_GET_SESSION = Depends(get_core_db)
-
-
 # Type the cookie kwargs properly to avoid mypy complaints
 COOKIE_KW: dict[str, Any] = {
     "httponly": True,
@@ -738,186 +738,6 @@ def health_check() -> HealthCheckOut:
             services,
         ),
     )
-
-
-def get_current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
-    """Get Currently Authenticated User.
-
-    FastAPI dependency that extracts and validates the JWT access token from
-    cookies, then loads the corresponding user from the database. The user's
-    roles are stored in request.state for authorization checks.
-
-    Token Validation:
-    - Checks for access_token cookie presence
-    - Verifies JWT signature and expiration
-    - Loads user from database by username
-    - Verifies user account is active
-
-    Args:
-        request: Incoming FastAPI request with cookies.
-        db: Active SQLAlchemy database session.
-
-    Returns:
-        User: The authenticated and active user with roles loaded.
-
-    Raises:
-        HTTPException: 401 if token missing, invalid, expired, or user inactive.
-    """
-    tok = request.cookies.get("access_token")
-
-    if not tok:
-        raise HTTPException(401, "Not authenticated")
-    try:
-        payload = decode_token(tok)
-    except Exception as e:
-        raise HTTPException(401, "Invalid token") from e
-
-    sub = payload.get("sub")
-    user = db.scalar(select(User).where(User.username == sub))
-
-    if not user or not user.is_active:
-        raise HTTPException(401, "Inactive user")
-        # Reject tokens minted before a password change
-    if payload.get("tv", 0) != user.token_version:
-        raise HTTPException(401, "Session invalidated")
-
-    request.state.roles = [r.name for r in user.roles]
-
-    return user
-
-
-DEP_CURRENT_USER = Depends(get_current_user)
-
-
-def require_roles(*need: str) -> Callable[[Request, User], User]:
-    """Create Role Authorization Dependency.
-
-    Factory function that creates a FastAPI dependency to enforce role-based
-    access control. The returned dependency checks if the authenticated user
-    possesses all required roles. Used in route decorators to protect endpoints.
-
-    Usage Example:
-        @router.get("/patients", dependencies=[require_roles("Clinician")])
-        def list_patients(): ...
-
-    Args:
-        *need: One or more role names required (e.g., "Clinician", "Administrator").
-
-    Returns:
-        Callable: FastAPI dependency function that validates roles.
-
-    Raises:
-        HTTPException: 403 Forbidden if user lacks any required role.
-    """
-
-    def dep(request: Request, _u: User = DEP_CURRENT_USER) -> User:
-        have = set(getattr(request.state, "roles", []))
-
-        if not set(need).issubset(have):
-            raise HTTPException(403, "Forbidden")
-
-        return _u
-
-    return dep
-
-
-def require_csrf(
-    request: Request, current_user: User = DEP_CURRENT_USER
-) -> User:
-    """Validate CSRF Token.
-
-    FastAPI dependency that validates CSRF tokens to protect against cross-site
-    request forgery attacks. Compares the X-CSRF-Token header with the XSRF-TOKEN
-    cookie, verifies they match, and validates the signature against the user's
-    identity. Required for all state-changing operations (POST/PUT/PATCH/DELETE).
-
-    CSRF Protection Flow:
-    1. Extract X-CSRF-Token header and XSRF-TOKEN cookie
-    2. Verify both exist and match exactly
-    3. Verify signature is valid for authenticated user
-    4. Return user if validation passes
-
-    Args:
-        request: Incoming request with headers and cookies.
-        current_user: Current authenticated user from JWT.
-
-    Returns:
-        User: The validated user (pass-through for chaining).
-
-    Raises:
-        HTTPException: 403 Forbidden if CSRF validation fails.
-    """
-    header = request.headers.get("x-csrf-token")
-    cookie = request.cookies.get("XSRF-TOKEN")
-
-    if (
-        not header
-        or not cookie
-        or header != cookie
-        or not verify_csrf(cookie, current_user.username)
-    ):
-        raise HTTPException(403, "CSRF failed")
-
-    return current_user
-
-
-DEP_REQUIRE_ROLES_CLINICIAN = Depends(require_roles("Clinician"))
-DEP_REQUIRE_CSRF = Depends(require_csrf)
-
-#: Administering the users of an org_unit. Replaces the
-#: ``system_permissions in ("admin", "superadmin")`` string comparisons,
-#: which said what someone is on the platform rather than what they may
-#: do - a rank that was global in the column and scoped in practice.
-#:
-#: It answers *what*, never *where*. Every route carrying it keeps the
-#: org_unit check beside it: ``check_account_within_reach``,
-#: ``_require_site_in_own_org`` or
-#: ``_require_shared_org_with_patient``. Without one of those this
-#: competency is global, which is strictly weaker than the rank it
-#: replaces.
-DEP_REQUIRE_MANAGE_USERS = Depends(has_competency("manage_users"))
-
-#: Managing people's accounts, either without limit or within a whitelist.
-#: ``manage_users`` may grant anything. A scoped manager, such as
-#: ``manage_teaching``, may grant and remove only what its ``may_grant``
-#: list names, give only the professions its ``may_assign_professions``
-#: list names, and act on an account as a whole only when its profession
-#: is one of those. The gate admits either, and the route body then asks
-#: ``app.cbac.grant_scope``.
-#: A ``manage_users`` holder finds every check passes, so nothing changes
-#: for them. See
-#: ``docs/docs/plans/2026-09-30-manage-teaching-competency-plan.md``.
-DEP_REQUIRE_MANAGE_PEOPLE = Depends(
-    requires_any_competency("manage_users", *SCOPED_MANAGER_IDS)
-)
-
-#: Who belongs to an organisation or a site. Separate from
-#: ``DEP_REQUIRE_MANAGE_USERS`` because adding an existing colleague to a
-#: ward is not the authority to create, delete or re-competency an
-#: account, and ``manage_users`` carries twenty-nine routes including
-#: site deletion. Adding a nurse to a ward should not imply the power to
-#: delete the ward.
-#:
-#: It mirrors ``DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP`` below, which made
-#: the same separation for patients. Like the rest it answers *what*,
-#: never *where*, so the four routes carrying it keep their org_unit check.
-DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP = Depends(
-    has_competency("manage_staff_membership")
-)
-
-#: Which patients are cared for at an org_unit. Separate from
-#: ``DEP_REQUIRE_MANAGE_USERS`` because a patient is not a user: a user is
-#: an account here, a patient is a record FHIR owns, and the two are
-#: linked through ``User.fhir_patient_id`` only where the same human is
-#: both. One competency over both would be authority over two unrelated
-#: populations.
-#:
-#: It grants no access to a patient's record - that is
-#: ``access_patient_records``. Like the rest it answers *what*, never
-#: *where*, so the routes carrying it keep their org_unit check.
-DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP = Depends(
-    has_competency("manage_patient_membership")
-)
 
 
 @router.post("/auth/login", response_model=LoginOut)

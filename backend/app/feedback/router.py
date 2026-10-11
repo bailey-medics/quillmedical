@@ -73,7 +73,7 @@ def _require_csrf(request: Request, db: Session = _DEP_SESSION) -> None:
     ``main`` imports this router, so importing ``require_csrf`` at module
     level would be a cycle. The org_units and teaching routers do the same.
     """
-    from app.main import require_csrf
+    from app.deps import require_csrf
 
     require_csrf(request, get_current_user(request, db))
 

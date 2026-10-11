@@ -28,13 +28,12 @@ from app.utils.route_list import ServedRoute, dependency_calls, served_routes
 RouteKey = tuple[str, str]
 
 # Functions that settle who the caller is, and refuse a request with no
-# valid session. The two routers' own `_get_current_user` and
-# `_require_csrf` only call the ones in `app.main`, lazily, to avoid a
-# circular import.
+# valid session. There is one definition of each check, in `app.deps`.
+# The routers' own `_get_current_user` and `_require_csrf` only call
+# those.
 SIGNED_IN: frozenset[str] = frozenset(
     {
         "app.deps.get_current_user",
-        "app.main.get_current_user",
         "app.features.teaching.router._get_current_user",
         "app.features.passport.router._get_current_user",
     }
@@ -43,7 +42,6 @@ SIGNED_IN: frozenset[str] = frozenset(
 # Functions that check the CSRF token. Each also needs a session.
 CHECKS_CSRF: frozenset[str] = frozenset(
     {
-        "app.main.require_csrf",
         "app.deps.require_csrf",
         "app.features.teaching.router._require_csrf",
         "app.features.passport.router._require_csrf",
