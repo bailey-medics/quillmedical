@@ -1,4 +1,4 @@
-"""What a learner is given of one module: its question bank, its pages.
+"""What a learner is given of one module: its bank, its pages, its video.
 
 Who may be given it is not decided here. ``app.features.teaching.access``
 answers that for a question bank, and the router's
@@ -26,7 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.features.teaching import mdx_parser, media, storage
+from app.features.teaching import mdx_parser, media, storage, video_access
 from app.features.teaching.access import bank_status_on_show
 from app.features.teaching.errors import (
     InvalidBankId,
@@ -36,6 +36,7 @@ from app.features.teaching.errors import (
     TeachingContentNotConfigured,
 )
 from app.features.teaching.models import ModuleMediaLink, QuestionBankConfig
+from app.organisations import media_prefix_of
 
 _SAFE_BANK_ID = re.compile(r"^[a-zA-Z0-9_-]+$")
 
@@ -251,6 +252,75 @@ def learning_content(
             for slide in slides
         ],
     }
+
+
+def check_video_may_be_granted(
+    db: Session, *, organisation_id: int, module_id: str
+) -> None:
+    """Refuse a module's video where its learning pages would be refused.
+
+    The caller has already found that the learner may be given the
+    module, and through which organisation. This asks the one thing
+    left: the pages hide a module missing any of its media, so granting
+    its video would open material the learner cannot reach.
+
+    Args:
+        db: Core database session.
+        organisation_id: The organisation that makes the module visible
+            to the learner.
+        module_id: The module.
+
+    Raises:
+        ModuleNotFound: If the module is missing any of its media for
+            that organisation.
+    """
+    if not media.module_media_is_complete(db, organisation_id, module_id):
+        raise ModuleNotFound()
+
+
+def video_prefix_to_grant(
+    db: Session, *, organisation_id: int, module_id: str, base_url: str
+) -> str:
+    """The address everything a grant of one module's video covers sits under.
+
+    One module at one organisation, and nothing wider: the prefix is
+    ``{base_url}/{storage prefix}/{module_id}/``, where the storage
+    prefix is the number that organisation's media is filed under. The
+    grant signed over it reaches that module's files at that
+    organisation and no other module's, and no other organisation's
+    copy of the same module.
+
+    Nothing is signed here. The caller holds the key.
+
+    Args:
+        db: Core database session.
+        organisation_id: The organisation that makes the module visible
+            to the learner.
+        module_id: The module.
+        base_url: Where video is served from.
+
+    Returns:
+        The prefix, ending in a slash.
+
+    Raises:
+        ModuleNotFound: If there is no such organisation, or the module
+            id could not be part of an address.
+    """
+    storage_prefix_id = media_prefix_of(db, organisation_id)
+
+    if storage_prefix_id is None:
+        raise ModuleNotFound()
+
+    try:
+        return video_access.build_url_prefix(
+            base_url, storage_prefix_id, module_id
+        )
+    except ValueError:
+        # An unsafe module_id reached the prefix builder. Refuse rather
+        # than sign anything: the prefix is the entire authorisation
+        # boundary, so a traversal here would grant every module in the
+        # bucket. Same 404 as any other refusal.
+        raise ModuleNotFound() from None
 
 
 def _image_url(bucket: str | None, module_id: str, filename: str) -> str:

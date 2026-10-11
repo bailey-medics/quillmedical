@@ -251,3 +251,73 @@ class BankNotHeldHere(TeachingError):
 
     status_code = 404
     message = "Question bank not found"
+
+
+class NoModuleToUploadTo(TeachingError):
+    """An upload was asked for where there is nowhere to file it.
+
+    The same words for an organisation with no storage prefix and, where
+    uploads go to disk, for a module that is not on the content path.
+    They are the words of :class:`ModuleNotFound`, which is the
+    learner's refusal and asks different questions.
+    """
+
+    status_code = 404
+    message = "Module not found"
+
+
+class MediaUploadNotConfigured(TeachingError):
+    """Neither a source bucket nor a content path is set for uploads."""
+
+    status_code = 503
+    message = "Media upload is not configured"
+
+
+class LocalUploadNotOffered(TeachingError):
+    """An upload was sent through this application where a bucket is set.
+
+    Uploads come through the application only where there is no source
+    bucket. Where there is one, the route answers as if it were not
+    there.
+    """
+
+    status_code = 404
+    message = "Not found"
+
+
+class InvalidAssetId(TeachingError):
+    """An upload was named by something that cannot be an asset id.
+
+    Letters, digits, hyphens and underscores only. Asked before the id
+    becomes a file name.
+    """
+
+    status_code = 400
+    message = "Invalid asset id"
+
+
+class MediaAssetNotHeldHere(TeachingError):
+    """The administrator's organisation holds no such upload of the module.
+
+    The same words for an upload nobody holds and for one that only
+    another organisation holds, so an id is never confirmed. They are
+    the words of :class:`MediaAssetNotFound`, which is the refusal a
+    video job is given.
+    """
+
+    status_code = 404
+    message = "No such media asset"
+
+
+class CaptionsNotWebVTT(TeachingError):
+    """The corrected captions do not begin with the line a track must."""
+
+    status_code = 400
+    message = "Captions must be WebVTT, beginning with the line WEBVTT"
+
+
+class CaptionsCannotBeSaved(TeachingError):
+    """No bucket of processed video is set, so there is nowhere to save."""
+
+    status_code = 503
+    message = "No video bucket configured; captions cannot be saved"
