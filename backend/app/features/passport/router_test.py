@@ -43,7 +43,7 @@ from jose import jwt
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from app import main
+from app.body_limit import limit_for
 from app.config import settings
 from app.email_send import EmailNotAllowedError, EmailRateLimitError
 from app.features.passport import definitions, router
@@ -3114,28 +3114,28 @@ class TestEvidence:
     ) -> None:
         """Enforced by reading, not by trusting `Content-Length`.
 
-        The middleware's limit reads that header and skips the check
-        when it is absent, so the route counts the bytes it actually
-        receives.
+        The route counts the bytes it actually receives, and answers
+        in its own words.
 
         The size is chosen to land between the two ceilings, which is
         the only band where this proves anything. An earlier version of
         this test used ``MAX_EVIDENCE_BYTES + 1`` while the two limits
         were equal, so the multipart envelope pushed every case past the
         middleware and it answered first: deleting the route's check
-        outright left the test green. Here the body stays under
-        ``MAX_REQUEST_BODY_BYTES``, so a 413 can only have come from the
-        route.
+        outright left the test green. Here the body stays under the
+        middleware's limit for this route, so a 413 can only have come
+        from the route.
         """
         passport_id = _create_passport(holder_client)
-        assert router.MAX_EVIDENCE_BYTES < main.MAX_REQUEST_BODY_BYTES, (
+        ceiling = limit_for("POST", f"/api/passport/{passport_id}/evidence")
+        assert router.MAX_EVIDENCE_BYTES < ceiling, (
             "The route's ceiling must sit below the middleware's, or "
             "the middleware answers first and this test proves nothing"
         )
 
         oversized = b"%PDF-" + b"\x00" * (router.MAX_EVIDENCE_BYTES)
         assert len(oversized) > router.MAX_EVIDENCE_BYTES
-        assert len(oversized) < main.MAX_REQUEST_BODY_BYTES
+        assert len(oversized) < ceiling
 
         response = self._upload(holder_client, passport_id, content=oversized)
 
