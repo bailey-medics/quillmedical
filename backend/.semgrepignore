@@ -1,0 +1,10 @@
+# Tests break these rules on purpose, to check the code refuses.
+*_test.py
+tests/
+conftest.py
+
+# Frozen once merged, and never the place a token or a cookie is handled.
+alembic/versions/
+
+.venv/
+__pycache__/

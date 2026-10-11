@@ -1,0 +1,119 @@
+# Semgrep rules for the backend.
+#
+# Bandit already scans this folder for the general Python mistakes: shell
+# commands, weak hashes, requests with no timeout, TLS checks switched off.
+# These rules are the ones Bandit has no check for, each about how this
+# backend signs people in or talks to its database.
+#
+# Every rule has a line that breaks it in .semgrep-canary.py.txt, and
+# .github/scripts/ci/run-semgrep.sh fails the job when a rule does not find
+# its line. So a rule that has stopped matching anything cannot sit here
+# passing. Add the breaking line with the rule.
+#
+# To let one line through, end it with
+#   # nosemgrep: <rule id> - <why it is safe>
+rules:
+  - id: py.jwt.signature-not-checked
+    languages: [python]
+    severity: ERROR
+    message: >-
+      This reads a token without checking who signed it, so anybody can
+      write one. Use jwt.decode with the key and leave verify_signature on.
+    pattern-either:
+      - pattern: 'jwt.decode(..., options={..., "verify_signature": False, ...}, ...)'
+      - pattern: 'jwt.get_unverified_claims(...)'
+      - pattern: 'jwt.get_unverified_header(...)'
+
+  - id: py.jwt.algorithms-not-named
+    languages: [python]
+    severity: ERROR
+    message: >-
+      jwt.decode with no algorithms list accepts whichever algorithm the
+      token names for itself. Pass algorithms=[...] naming the one this
+      backend signs with.
+    patterns:
+      - pattern: 'jwt.decode(...)'
+      - pattern-not: 'jwt.decode(..., algorithms=$A, ...)'
+
+  - id: py.sql.text-built-from-strings
+    languages: [python]
+    severity: ERROR
+    message: >-
+      SQL put together from strings can be rewritten by whatever is in
+      them. Write the value as :name in the SQL and pass it as a parameter.
+    pattern-either:
+      - pattern: 'sqlalchemy.text(f"...")'
+      - pattern: 'sqlalchemy.text($X + $Y)'
+      - pattern: 'sqlalchemy.text($X % $Y)'
+      - pattern: 'sqlalchemy.text($X.format(...))'
+      - pattern: '$DB.execute(f"...", ...)'
+      - pattern: '$DB.execute($X + $Y, ...)'
+      - pattern: '$DB.execute($X % $Y, ...)'
+      - pattern: '$DB.execute($X.format(...), ...)'
+
+  - id: py.cookie.script-can-read-it
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A cookie set without httponly=True can be read by any script on the
+      page. Set it, or say on this line why a script has to read this one.
+      COOKIE_KW in main.py carries the three settings for the sign-in
+      cookies, so a call that spreads it passes.
+    patterns:
+      - pattern: '$RESPONSE.set_cookie(...)'
+      - pattern-not: '$RESPONSE.set_cookie(..., httponly=True, ...)'
+      - pattern-not: '$RESPONSE.set_cookie(..., **COOKIE_KW)'
+
+  - id: py.cookie.secure-or-samesite-left-to-default
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Say secure= and samesite= on every cookie. Left out, the cookie is
+      sent over plain HTTP and the browser picks the cross-site rule.
+    patterns:
+      - pattern: '$RESPONSE.set_cookie(...)'
+      - pattern-not: '$RESPONSE.set_cookie(..., secure=$S, ..., samesite=$T, ...)'
+      - pattern-not: '$RESPONSE.set_cookie(..., samesite=$T, ..., secure=$S, ...)'
+      - pattern-not: '$RESPONSE.set_cookie(..., **COOKIE_KW)'
+
+  - id: py.cors.any-origin-with-credentials
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Any origin together with credentials lets every website call this API
+      as the person signed in. Name the origins.
+    pattern-either:
+      - pattern: '$APP.add_middleware(CORSMiddleware, ..., allow_origins=["*"], ..., allow_credentials=True, ...)'
+      - pattern: '$APP.add_middleware(CORSMiddleware, ..., allow_credentials=True, ..., allow_origins=["*"], ...)'
+
+  - id: py.log.secret-written-out
+    languages: [python]
+    severity: ERROR
+    message: >-
+      This writes a secret into the logs, where it is kept and read by
+      people who should not hold it. Log that it was used, not what it is.
+    pattern-either:
+      - patterns:
+          - pattern-either:
+              - pattern: '$LOG.$LEVEL(..., $S.get_secret_value(), ...)'
+              - pattern: '$LOG.$LEVEL(f"...{$S.get_secret_value()}...", ...)'
+          - metavariable-regex:
+              metavariable: $LEVEL
+              regex: ^(debug|info|warning|error|exception|critical|log)$
+      - pattern: 'print(..., $S.get_secret_value(), ...)'
+      - pattern: 'print(f"...{$S.get_secret_value()}...", ...)'
+
+  - id: py.secret.compared-with-equals
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Comparing a signature or a token with == takes longer the more of it
+      is right, which leaks it a character at a time. Use
+      hmac.compare_digest or secrets.compare_digest.
+    patterns:
+      - pattern-either:
+          - pattern: '$A == $B'
+          - pattern: '$A != $B'
+      - metavariable-regex:
+          metavariable: $A
+          regex: ^(\w+\.)*(expected_|provided_|given_|stored_)?(signature|digest|csrf_token|token_hash|hmac|mac)$
