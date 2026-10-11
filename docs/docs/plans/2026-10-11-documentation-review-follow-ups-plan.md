@@ -112,7 +112,7 @@ the order below, and no step waits for a person.
 
 ## Phase 5: Let `stack-add` tell two pull requests apart
 
-- [ ] Change the guard at the top of `stack-add` in the `Justfile`. It
+- [x] Change the guard at the top of `stack-add` in the `Justfile`. It
       asks `gh pr list --head <branch> --state merged`, so it refuses any
       branch whose name an earlier merged pull request also used. That
       stopped the review run part-way, when #1772 reused the branch name
@@ -120,15 +120,18 @@ the order below, and no step waits for a person.
       branch **and no open one does**: a branch with an open pull request
       is by definition not spent.
 
-- [ ] Check `stack-sync` and `scripts/stack-forget-merged.py` for the same
+- [x] Check `stack-sync` and `scripts/stack-forget-merged.py` for the same
       question asked the same way, and apply the same rule if they do. The
       run avoided `stack-sync` for that reason without testing it.
+      Checked: neither does. `stack-add` was the only place that asked
+      GitHub by branch name; `stack-forget-merged.py` asks about the pull
+      request number the record holds, which a reused name cannot fool.
 
-- [ ] Add a test beside the other stack tests in `scripts/tests/`, with a
+- [x] Add a test beside the other stack tests in `scripts/tests/`, with a
       stubbed `gh`: merged and open together is allowed, merged alone is
       refused, neither is allowed.
 
-- [ ] Update the "marks in `stack-log` can be stale" trap in
+- [x] Update the "marks in `stack-log` can be stale" trap in
       `docs/docs/cicd/stacked-branches.md`, which currently tells the
       reader to avoid reusing a name.
 

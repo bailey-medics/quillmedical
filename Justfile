@@ -1195,20 +1195,28 @@ stack-add name message:
     # branch level with the trunk, finds it empty, and commits onto it
     # rather than making a new branch, so the new unit lands under the
     # merged unit's name. Ask GitHub, which knows.
+    #
+    # The asking is in stack-branch-merged.sh, where it can be tested. A
+    # merged pull request is not enough on its own: a branch name is
+    # sometimes reused, and one with an open pull request is not spent.
     current="$(git branch --show-current)"
+    merged_status=0
+    merged="$(bash "{{stack_scripts}}"/stack-branch-merged.sh "${current}")" || merged_status=$?
 
-    if merged="$(gh pr list --head "${current}" --state merged --json number --jq '.[0].number // empty')"; then
-        if [ -n "${merged}" ]; then
+    case "${merged_status}" in
+        0) ;;
+        1)
             echo "✗ Refusing to stack on ${current}: its pull request #${merged} has merged." >&2
             echo "  Bring the stack up to date, then stack on what is left," >&2
             echo "  or start a new stack from main if nothing is:" >&2
             echo "    just stack-sync" >&2
             echo "    just stack-new {{name}} \"<message>\"" >&2
             exit 1
-        fi
-    else
-        echo "⚠ Could not ask GitHub whether ${current} has merged; carrying on." >&2
-    fi
+            ;;
+        *)
+            echo "⚠ Could not ask GitHub whether ${current} has merged; carrying on." >&2
+            ;;
+    esac
 
     branch="$(just _stack-branch-name '{{name}}')"
 

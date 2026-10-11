@@ -102,9 +102,11 @@ something syncs. A pull request merged on GitHub since then still draws as
 open. `stack-add` therefore asks GitHub before stacking, and refuses a
 branch whose pull request has merged.
 
-That check goes by branch name alone. **A branch name that an earlier,
-merged pull request also used is refused in the same way**, even though
-today's pull request is open. Give every branch a name no earlier one had.
+That check goes by branch name, and a name is sometimes reused. So a
+merged pull request alone does not make a branch spent: one that also has
+an open pull request is left alone. `scripts/stack-branch-merged.sh` holds
+the rule, and its tests record the case that prompted it, an earlier pull
+request merged from a name that a later one reused.
 
 ### A queued pull request must not be pushed
 
