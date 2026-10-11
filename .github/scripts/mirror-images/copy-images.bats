@@ -1,0 +1,103 @@
+#!/usr/bin/env bats
+# Tests for copy-images.sh
+#
+# With stand-ins for docker and skopeo on PATH, so nothing is pulled or
+# pushed. The stand-in for skopeo writes down what it was asked to copy.
+
+setup() {
+  SCRIPT="${BATS_TEST_DIRNAME}/copy-images.sh"
+  BIN="${BATS_TEST_TMPDIR}/bin"
+  COPIES="${BATS_TEST_TMPDIR}/copies"
+  mkdir -p "$BIN"
+  : > "$COPIES"
+
+  cat > "${BIN}/skopeo" <<STUB
+#!/usr/bin/env bash
+echo "\$*" >> "${COPIES}"
+exit "\${SKOPEO_EXIT:-0}"
+STUB
+  chmod +x "${BIN}/skopeo"
+
+  PATH="${BIN}:${PATH}"
+}
+
+# Puts a docker on PATH whose `compose config --images` prints these lines.
+stub_images() {
+  printf '%s\n' "$@" > "${BATS_TEST_TMPDIR}/images"
+
+  cat > "${BIN}/docker" <<STUB
+#!/usr/bin/env bash
+cat "${BATS_TEST_TMPDIR}/images"
+STUB
+  chmod +x "${BIN}/docker"
+}
+
+@test "copies each public image to the mirror, for every platform" {
+  stub_images \
+    "quillmedical-ci_backend:latest" \
+    "public.ecr.aws/docker/library/postgres:18-alpine"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$COPIES")" = "copy --all docker://public.ecr.aws/docker/library/postgres:18-alpine docker://ghcr.io/bailey-medics/mirror/postgres:18-alpine" ]
+}
+
+@test "an image CI builds itself is left alone" {
+  stub_images \
+    "quillmedical-ci_backend:latest" \
+    "quillmedical-ci_frontend:latest" \
+    "public.ecr.aws/docker/library/postgres:18-alpine"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml
+
+  [ "$(wc -l < "$COPIES" | tr -d ' ')" -eq 1 ]
+  [[ "$(cat "$COPIES")" != *"quillmedical-ci"* ]]
+}
+
+@test "a pinned image is copied from its digest to its tag" {
+  stub_images "public.ecr.aws/docker/library/caddy:2-alpine@sha256:abc123"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$COPIES")" = "copy --all docker://public.ecr.aws/docker/library/caddy@sha256:abc123 docker://ghcr.io/bailey-medics/mirror/caddy:2-alpine" ]
+}
+
+@test "an image named twice is copied once" {
+  stub_images \
+    "public.ecr.aws/docker/library/postgres:18-alpine" \
+    "public.ecr.aws/docker/library/postgres:18-alpine"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml
+
+  [ "$(wc -l < "$COPIES" | tr -d ' ')" -eq 1 ]
+}
+
+@test "fails when the compose file names no public image" {
+  # A check that copies nothing would pass for ever, and the mirror would
+  # quietly go stale.
+  stub_images "quillmedical-ci_backend:latest"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"nothing to copy"* ]]
+  [ ! -s "$COPIES" ]
+}
+
+@test "fails when a copy fails" {
+  stub_images "public.ecr.aws/docker/library/postgres:18-alpine"
+
+  SKOPEO_EXIT=1 run bash "$SCRIPT" bailey-medics compose.ci.yml
+
+  [ "$status" -ne 0 ]
+  [[ "$output" != *"Copied"* ]]
+}
+
+@test "fails without an owner and a compose file" {
+  run bash "$SCRIPT" bailey-medics
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Usage"* ]]
+}
