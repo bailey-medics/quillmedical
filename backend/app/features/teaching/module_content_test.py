@@ -23,9 +23,11 @@ from app.features.teaching.models import (
 )
 from app.features.teaching.module_content import (
     check_bank_id,
+    check_video_may_be_granted,
     learning_content,
     module_is_servable,
     question_bank_detail,
+    video_prefix_to_grant,
 )
 from app.models import OrgUnit, User
 
@@ -797,3 +799,119 @@ def test_a_link_is_used_before_a_file_placed_by_hand(
     _media(monkeypatch)
 
     assert _video(db_session, org)["video_src"] == "asset1-720p.mp4"
+
+
+# --- check_video_may_be_granted ---------------------------------------------
+
+
+def test_the_video_of_a_module_missing_some_of_its_media_is_not_found(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    asked = _media(monkeypatch, complete=False)
+
+    with pytest.raises(ModuleNotFound) as refused:
+        check_video_may_be_granted(
+            db_session, organisation_id=7, module_id=BANK
+        )
+
+    assert refused.value.status_code == 404
+    assert refused.value.message == "Module not found"
+    # Asked of the organisation that makes the module visible, and no other.
+    assert asked == [(7, BANK)]
+
+
+def test_the_video_of_a_module_with_all_its_media_may_be_granted(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    asked = _media(monkeypatch, complete=True)
+
+    check_video_may_be_granted(db_session, organisation_id=7, module_id=BANK)
+
+    assert asked == [(7, BANK)]
+
+
+# --- video_prefix_to_grant --------------------------------------------------
+
+VIDEO_BASE = "https://video.example.test/videos"
+
+
+def test_a_grant_covers_one_module_at_one_organisation(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+
+    prefix = video_prefix_to_grant(
+        db_session,
+        organisation_id=org.id,
+        module_id=BANK,
+        base_url=VIDEO_BASE,
+    )
+
+    # The closing slash is what stops it also covering "polyps-2".
+    assert prefix == f"{VIDEO_BASE}/{org.id}/{BANK}/"
+
+
+def test_two_organisations_are_granted_different_prefixes_for_one_module(
+    db_session: Session,
+) -> None:
+    ours = _organisation(db_session, "Ours")
+    theirs = _organisation(db_session, "Theirs")
+
+    def prefix(org: OrgUnit) -> str:
+        return video_prefix_to_grant(
+            db_session,
+            organisation_id=org.id,
+            module_id=BANK,
+            base_url=VIDEO_BASE,
+        )
+
+    assert prefix(ours) != prefix(theirs)
+    assert not prefix(theirs).startswith(prefix(ours))
+
+
+def test_a_grant_is_filed_under_the_prefix_the_organisation_records(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    org.media_prefix_id = 4242
+    db_session.flush()
+
+    prefix = video_prefix_to_grant(
+        db_session,
+        organisation_id=org.id,
+        module_id=BANK,
+        base_url=VIDEO_BASE,
+    )
+
+    assert prefix == f"{VIDEO_BASE}/4242/{BANK}/"
+
+
+def test_no_prefix_is_given_for_an_organisation_that_is_not_there(
+    db_session: Session,
+) -> None:
+    with pytest.raises(ModuleNotFound):
+        video_prefix_to_grant(
+            db_session,
+            organisation_id=999_999,
+            module_id=BANK,
+            base_url=VIDEO_BASE,
+        )
+
+
+@pytest.mark.parametrize(
+    "module_id", ["", "..", "../other", "a/b", "polyps.", "two words"]
+)
+def test_no_prefix_is_given_for_a_module_id_that_cannot_be_an_address(
+    db_session: Session, module_id: str
+) -> None:
+    org = _organisation(db_session)
+
+    with pytest.raises(ModuleNotFound) as refused:
+        video_prefix_to_grant(
+            db_session,
+            organisation_id=org.id,
+            module_id=module_id,
+            base_url=VIDEO_BASE,
+        )
+
+    assert refused.value.message == "Module not found"

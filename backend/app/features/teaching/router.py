@@ -7,7 +7,6 @@ Educator routes additionally require ``manage_teaching`` competency.
 from __future__ import annotations
 
 import logging
-import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -72,6 +71,15 @@ from app.features.teaching.manual_sync import (
     sync_bank,
     sync_banks_by_hand,
 )
+from app.features.teaching.media_uploads import (
+    delete_upload,
+    link_upload,
+    local_upload_file,
+    local_upload_root,
+    new_upload_target,
+    save_captions,
+    upload_held_by,
+)
 from app.features.teaching.models import (
     Assessment,
     AssessmentAnswer,
@@ -84,8 +92,10 @@ from app.features.teaching.models import (
 )
 from app.features.teaching.module_content import (
     check_bank_id,
+    check_video_may_be_granted,
     learning_content,
     question_bank_detail,
+    video_prefix_to_grant,
 )
 from app.features.teaching.schemas import (
     AdminBankDetailOut,
@@ -135,10 +145,8 @@ from app.features.teaching.storage import (
     download_bank_from_gcs,
     get_storage_backend,
     list_bank_images_in_gcs,
-    resolve_module_dir,
 )
 from app.features.teaching.video_access import (
-    build_url_prefix,
     sign_cookie,
 )
 from app.models import (
@@ -146,7 +154,6 @@ from app.models import (
 )
 from app.organisations import (
     get_member_org_unit_ids,
-    media_prefix_of,
 )
 from app.rate_limit import limiter
 
@@ -507,7 +514,6 @@ def grant_video_access(
     organisation has live, one 404 at a time.
     """
     from app.config import settings
-    from app.features.teaching.media import module_media_is_complete
 
     # One helper, shared with the learning content routes, so the video
     # gate and the content gate cannot drift apart. Raises 404 for "not
@@ -517,8 +523,7 @@ def grant_video_access(
     # The content gate hides an incomplete module, so minting a cookie
     # for one would grant access to material the learner cannot reach.
     # Refused the same way, for the same reason.
-    if not module_media_is_complete(db, org_id, module_id):
-        raise HTTPException(404, "Module not found")
+    check_video_may_be_granted(db, organisation_id=org_id, module_id=module_id)
 
     base_url = settings.TEACHING_VIDEO_BASE_URL
     key_name = settings.TEACHING_VIDEO_SIGNING_KEY_NAME
@@ -544,17 +549,11 @@ def grant_video_access(
             expires_at=expires_at,
         )
 
-    try:
-        storage_prefix_id = media_prefix_of(db, org_id)
-        if storage_prefix_id is None:
-            raise HTTPException(404, "Module not found")
-        url_prefix = build_url_prefix(base_url, storage_prefix_id, module_id)
-    except ValueError:
-        # An unsafe module_id reached the prefix builder. Refuse rather
-        # than sign anything: the prefix is the entire authorisation
-        # boundary, so a traversal here would grant every module in the
-        # bucket. Same 404 as any other refusal.
-        raise HTTPException(404, "Module not found") from None
+    # One module at one organisation: the prefix is everything the
+    # cookie signed below can reach.
+    url_prefix = video_prefix_to_grant(
+        db, organisation_id=org_id, module_id=module_id, base_url=base_url
+    )
 
     cookie = sign_cookie(
         url_prefix,
@@ -1246,14 +1245,6 @@ def download_certificate(
 
 _DEP_MANAGE = Depends(has_competency("manage_teaching"))
 
-#: What a generated asset id may contain before it becomes a filename.
-#:
-#: The id is minted here with ``uuid4().hex``, so this can never fail in
-#: normal use - it is here because the value reaches a path, and a path
-#: component is checked rather than trusted regardless of who produced
-#: it. The same shape as ``storage._SAFE_BANK_ID``.
-_SAFE_ASSET_ID = re.compile(r"[a-zA-Z0-9_-]+")
-
 
 @teaching_router.get(
     "/items",
@@ -1483,9 +1474,6 @@ def create_media_upload_url(
     recorded as data and shown back to the admin so they recognise their
     own file.
     """
-    import uuid
-
-    from app.config import settings
     from app.features.teaching.storage import (
         ALLOWED_MEDIA_TYPES,
         create_resumable_upload_url,
@@ -1510,32 +1498,15 @@ def create_media_upload_url(
         )
 
     org_id = _get_user_org_id(user, db)
-    # Media objects live at {prefix}/{module}/{asset} in the bucket, so
-    # that number addresses a real file rather than filtering a table.
-    # The org_unit records which one, because the objects already written
-    # are under the organisation id the org_unit used to have.
-    storage_prefix_id = media_prefix_of(db, org_id)
+    target = new_upload_target(db, org_id)
+    asset_id = target.asset_id
 
-    if storage_prefix_id is None:
-        raise HTTPException(404, "Module not found")
-
-    asset_id = uuid.uuid4().hex
-
-    bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
-
-    if not bucket:
+    if target.bucket is None:
         # Development: no bucket, so the bytes come through this API to
         # the module's own learning/ directory instead. The frontend
         # PUTs to whatever URL it is handed, so pointing it at a local
         # route is the whole difference - nothing above this learns
         # which environment it is in.
-        #
-        # Only where content is on disk. A deployment with neither a
-        # bucket nor a content path can genuinely not accept an upload,
-        # and should say so rather than pretend.
-        if not settings.TEACHING_QUESTION_BANK_PATH:
-            raise HTTPException(503, "Media upload is not configured")
-
         logger.info(
             "media upload url issued (local) user=%s org=%s module=%s "
             "asset=%s",
@@ -1554,7 +1525,11 @@ def create_media_upload_url(
 
     try:
         url = create_resumable_upload_url(
-            bucket, storage_prefix_id, module_id, asset_id, body.content_type
+            target.bucket,
+            target.storage_prefix_id,
+            module_id,
+            asset_id,
+            body.content_type,
         )
     except ValueError:
         # An unsafe module_id reached the path builder. The path is what
@@ -1661,9 +1636,7 @@ def link_module_media(
     first. The previous asset stays in the bucket and reappears as
     unattached, so nothing is lost by re-pointing.
     """
-    from app.features.teaching.media import transcode_is_configured
     from app.features.teaching.storage import ALLOWED_MEDIA_TYPES
-    from app.features.teaching.transcode import start_transcode
 
     # The same allow-list the upload URL was minted against. A caller
     # controls this body, so trusting it to describe what it uploaded
@@ -1674,82 +1647,17 @@ def link_module_media(
 
     org_id = _get_user_org_id(user, db)
 
-    existing = db.execute(
-        select(ModuleMediaLink).where(
-            ModuleMediaLink.org_unit_id == org_id,
-            ModuleMediaLink.question_bank_id == module_id,
-            ModuleMediaLink.media_key == media_key,
-        )
-    ).scalar_one_or_none()
-
-    if existing:
-        existing.asset_id = body.asset_id
-        existing.original_filename = body.original_filename
-        existing.content_type = body.content_type
-        existing.size_bytes = body.size_bytes
-        existing.uploaded_by = user.id
-        existing.uploaded_at = datetime.now(UTC)
-        link = existing
-    else:
-        link = ModuleMediaLink(
-            org_unit_id=org_id,
-            question_bank_id=module_id,
-            media_key=media_key,
-            asset_id=body.asset_id,
-            original_filename=body.original_filename,
-            content_type=body.content_type,
-            size_bytes=body.size_bytes,
-            uploaded_by=user.id,
-            uploaded_at=datetime.now(UTC),
-        )
-        db.add(link)
-
-        # Re-linking points the key at different bytes, so whatever the old
-        # asset's job produced says nothing about this one. Cleared rather
-        # than left behind: a stale `has_1080p` would have the player ask
-        # for a rendition of a file that no longer backs this reference.
-    link.transcoded_at = None
-    link.has_1080p = False
-    link.has_poster = False
-    link.has_captions = False
-    # The timings go too. A previous asset's start times would have the
-    # card report progress for work that is not happening on this file.
-    link.transcode_started_at = None
-    link.caption_started_at = None
-
-    db.flush()
-    db.refresh(link)
-    logger.info(
-        "media linked user=%s org=%s module=%s key=%s asset=%s",
-        user.id,
-        org_id,
-        module_id,
-        media_key,
-        body.asset_id,
+    link = link_upload(
+        db,
+        user_id=user.id,
+        org_unit_id=org_id,
+        module_id=module_id,
+        media_key=media_key,
+        asset_id=body.asset_id,
+        original_filename=body.original_filename,
+        content_type=body.content_type,
+        size_bytes=body.size_bytes,
     )
-
-    # The trigger. Fired after the row is flushed, so the link exists
-    # before anything can act on it, and deliberately not awaited -
-    # encoding a lecture takes minutes. It never raises: the upload the
-    # admin asked for has already succeeded, and failing the request now
-    # would report that as a failure. A job that never runs leaves the
-    # module incomplete and hidden, which is the safe direction.
-    # Recorded before firing, not after: if the invocation raises inside
-    # its own try/except the job may still have started, and a card
-    # saying "nothing is running" over a job that is would be the worse
-    # of the two errors. An overstated start shows as "running a long
-    # time", which prompts a look; an understated one shows as nothing.
-    # Only where a job exists to start. Recording a start time for one
-    # that was never configured is what had the card report "Preparing
-    # the video" on a developer's machine until the patience ran out and
-    # it became "Processing seems to have failed" - a failure that never
-    # happened, over a job that was never fired. Asked of the same
-    # helper the learner gate uses, so the two cannot disagree.
-    if transcode_is_configured():
-        link.transcode_started_at = datetime.now(UTC)
-        db.flush()
-
-    start_transcode(org_id, module_id, body.asset_id)
 
     return MediaAssetOut.model_validate(link)
 
@@ -2323,21 +2231,9 @@ async def upload_media_content_locally(
     acceptable on a developer's machine and is not a thing to have
     running anywhere a bucket exists.
     """
-    from app.config import settings
-    from app.features.teaching.storage import (
-        ALLOWED_MEDIA_TYPES,
-        resolve_module_dir,
-    )
+    from app.features.teaching.storage import ALLOWED_MEDIA_TYPES
 
-    if settings.TEACHING_VIDEOS_SOURCE_BUCKET:
-        # Not 404: a deployment with a bucket has a real upload path,
-        # and this route existing there at all would be the surprise.
-        raise HTTPException(404, "Not found")
-
-    base_path = settings.TEACHING_QUESTION_BANK_PATH
-
-    if not base_path:
-        raise HTTPException(503, "Media upload is not configured")
+    base_path = local_upload_root()
 
     content_type = request.headers.get("content-type", "")
 
@@ -2345,28 +2241,9 @@ async def upload_media_content_locally(
         allowed = ", ".join(sorted(set(ALLOWED_MEDIA_TYPES.values())))
         raise HTTPException(400, f"Unsupported type (allowed: {allowed})")
 
-        # The asset id is generated server-side and lands in a filename, so
-        # it is held to the same shape as every other path component rather
-        # than trusted because we made it.
-    if not _SAFE_ASSET_ID.fullmatch(asset_id):
-        raise HTTPException(400, "Invalid asset id")
-
-    module_dir = resolve_module_dir(base_path, module_id)
-
-    if not module_dir:
-        raise HTTPException(404, "Module not found")
-
-    suffix = next(
-        (
-            ext
-            for ext, mime in ALLOWED_MEDIA_TYPES.items()
-            if mime == content_type
-        ),
-        ".mp4",
+    destination = local_upload_file(
+        base_path, module_id, asset_id, content_type
     )
-    learning_dir = module_dir / "learning"
-    learning_dir.mkdir(parents=True, exist_ok=True)
-    destination = learning_dir / f"{asset_id}{suffix}"
 
     # Streamed rather than read whole: a lecture is hundreds of
     # megabytes and holding one in memory to write it out again is a
@@ -2409,48 +2286,6 @@ async def upload_media_content_locally(
     return Response(status_code=204)
 
 
-def _delete_local_media_object(
-    module_id: str,
-    asset_id: str,
-    content_type: str,
-) -> None:
-    """Remove a locally uploaded asset from the module's directory.
-
-    The development counterpart of ``delete_media_object``. The file is
-    named for its asset id, so the id validation that guards the write
-    guards the delete too - a traversal here would reach outside the
-    module.
-
-    A missing file is not an error, matching the bucket path: the link
-    row is what the admin acts on, and a file already gone should still
-    let the row be cleared rather than leaving it undeletable.
-    """
-    from app.config import settings
-    from app.features.teaching.storage import ALLOWED_MEDIA_TYPES
-
-    base_path = settings.TEACHING_QUESTION_BANK_PATH
-
-    if not base_path:
-        return
-    if not _SAFE_ASSET_ID.fullmatch(asset_id):
-        return
-
-    module_dir = resolve_module_dir(base_path, module_id)
-
-    if not module_dir:
-        return
-
-    suffix = next(
-        (
-            ext
-            for ext, mime in ALLOWED_MEDIA_TYPES.items()
-            if mime == content_type
-        ),
-        ".mp4",
-    )
-    (module_dir / "learning" / f"{asset_id}{suffix}").unlink(missing_ok=True)
-
-
 # A 204 carries no body at all, so there is no schema for oasdiff to
 # diff. Same shape as the unlink 204 above.
 # api-schema-check: allow-opaque-permanent
@@ -2477,76 +2312,17 @@ def delete_media_asset(
     the transaction rolls back, so a link never survives without its
     file - the failure mode that would show a learner a broken player.
     """
-    from app.config import settings
-    from app.features.teaching.storage import delete_media_object
-
     org_id = _get_user_org_id(user, db)
 
-    link = db.execute(
-        select(ModuleMediaLink).where(
-            ModuleMediaLink.org_unit_id == org_id,
-            ModuleMediaLink.question_bank_id == module_id,
-            ModuleMediaLink.asset_id == asset_id,
-        )
-    ).scalar_one_or_none()
-
-    # Scoped to the caller's organisation, so another trust's asset is
-    # not found rather than refused: whether they hold one is not this
-    # caller's to learn.
-    if link is None:
-        raise HTTPException(404, "No such media asset")
-
-    db.delete(link)
-    db.flush()
-
-    bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
-
-    if bucket:
-        # The row remembers which organisation's prefix its object was
-        # written under, which is the only thing that can say where the
-        # file is.
-        delete_media_object(bucket, link.organisation_id, module_id, asset_id)
-    else:
-        # Development, where the upload landed on disk rather than in a
-        # bucket. Refusing here would leave the admin unable to undo the
-        # one thing they can now do locally, and the row would outlive
-        # every attempt to clear it.
-        _delete_local_media_object(module_id, asset_id, link.content_type)
-
-        # Destructive, so the actor and the module are recorded. No
-        # filename: this line goes to a log that is not PHI-safe.
-    logger.info(
-        "media asset deleted user=%s org=%s module=%s asset=%s",
-        user.id,
-        org_id,
-        module_id,
-        asset_id,
+    delete_upload(
+        db,
+        user_id=user.id,
+        org_unit_id=org_id,
+        module_id=module_id,
+        asset_id=asset_id,
     )
 
     return Response(status_code=204)
-
-
-def _caption_link_or_404(
-    db: Session, org_id: int, module_id: str, asset_id: str
-) -> ModuleMediaLink:
-    """The link for one asset, scoped to the caller's organisation.
-
-    Scoped rather than refused, so another trust's asset is *not found*
-    instead of forbidden: whether they hold one is not this caller's to
-    learn. The same shape as ``delete_media_asset``.
-    """
-    link = db.execute(
-        select(ModuleMediaLink).where(
-            ModuleMediaLink.org_unit_id == org_id,
-            ModuleMediaLink.question_bank_id == module_id,
-            ModuleMediaLink.asset_id == asset_id,
-        )
-    ).scalar_one_or_none()
-
-    if link is None:
-        raise HTTPException(404, "No such media asset")
-
-    return link
 
 
 @teaching_router.get(
@@ -2574,7 +2350,7 @@ def get_media_captions(
     from app.features.teaching.storage import read_caption_object
 
     org_id = _get_user_org_id(user, db)
-    link = _caption_link_or_404(db, org_id, module_id, asset_id)
+    link = upload_held_by(db, org_id, module_id, asset_id)
 
     bucket = settings.TEACHING_VIDEOS_BUCKET
 
@@ -2621,47 +2397,13 @@ def put_media_captions(
     shows no captions and says nothing about why, so the cheap check
     earns its org_unit.
     """
-    from app.config import settings
-    from app.features.teaching.storage import write_caption_object
-
     org_id = _get_user_org_id(user, db)
-    link = _caption_link_or_404(db, org_id, module_id, asset_id)
 
-    text = body.webvtt.strip()
-
-    if not text.startswith("WEBVTT"):
-        raise HTTPException(
-            400, "Captions must be WebVTT, beginning with the line WEBVTT"
-        )
-
-    bucket = settings.TEACHING_VIDEOS_BUCKET
-
-    if not bucket:
-        raise HTTPException(
-            503, "No video bucket configured; captions cannot be saved"
-        )
-
-    write_caption_object(bucket, org_id, module_id, asset_id, text)
-
-    # Recorded only once the write succeeded: claiming a review for text
-    # that never reached the bucket would tell the next person the
-    # captions had been checked when what they will hear is Whisper's.
-    link.captions_reviewed_at = datetime.now(UTC)
-    link.has_captions = True
-    db.flush()
-
-    # No caption text in the log - it is a transcript of a lecture and
-    # this log is not PHI-safe.
-    logger.info(
-        "captions saved user=%s org=%s module=%s asset=%s",
-        user.id,
-        org_id,
-        module_id,
-        asset_id,
-    )
-
-    return CaptionsOut(
+    return save_captions(
+        db,
+        user_id=user.id,
+        org_unit_id=org_id,
+        module_id=module_id,
         asset_id=asset_id,
-        webvtt=text,
-        reviewed_at=link.captions_reviewed_at,
+        webvtt=body.webvtt,
     )

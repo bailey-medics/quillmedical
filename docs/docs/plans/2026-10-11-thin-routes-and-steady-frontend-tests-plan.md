@@ -810,11 +810,37 @@ the video callbacks already brought in.
       change for one that is not theirs is refused by the settings
       route. The list counts the newest version's items and the detail
       counts every version's.
-- [ ] **Video and other media** - `grant_video_access` (100 lines),
+- [x] **Video and other media** - `grant_video_access` (100 lines),
       `create_media_upload_url` (88 lines), `link_module_media` (91
       lines), `upload_media_content_locally` (84 lines),
       `delete_media_asset` (47 lines) and `put_media_captions` (44
       lines). Two pull requests if one is too much to read.
+      All six in one. The learner's rule is
+      `check_video_may_be_granted` and `video_prefix_to_grant` in
+      `module_content.py`; the route keeps the key, the signing and
+      the cookie. The administrator's are in a new `media_uploads.py`:
+      `new_upload_target`, `link_upload`, `upload_held_by` (which
+      `get_media_captions` now uses too), `delete_upload`,
+      `save_captions`, `local_upload_root` and `local_upload_file`,
+      with seven refusals added to `errors.py`. Driven through the
+      routes by `backend/tests/teaching_video_and_media_test.py`.
+      **Left in the routes:** the three refusals of a file type, whose
+      words carry the allow-list, and one of them the suffix of the
+      file name the caller sent; signing the upload address; and
+      streaming the bytes to disk.
+      **A grant is one module at one organisation**, and is refused
+      by the same door as the learning pages. **An administrator
+      names no organisation**, so another's uploads are not found.
+      **Found and not changed**, each pinned by a test saying so:
+      linking a reference again keeps the old upload's captions marked
+      as checked; linking records whatever asset id and size it is
+      sent, and an id that cannot be a path then cannot be deleted
+      where there is a bucket; the transcode job and the captions are
+      given the organisation's own id where the video is filed under
+      its storage prefix; deleting removes the uploaded file and
+      leaves its renditions and captions; and the route that takes
+      bytes on a developer's machine asks for no organisation and does
+      not check the shape of the module id.
 
 **Found in the teaching router, and not changed.** This phase moves
 rules and fixes nothing: Mark stopped the run on 11 October 2026 to say
@@ -866,6 +892,23 @@ for him to rule on before the go-live. Most serious first.
 - **Syncing one live bank whose version has not moved answers 500
   "Sync failed unexpectedly"**, though nothing is wrong: there is
   nothing new to load.
+- **Linking a new video over an old one keeps the old one's "captions
+  checked" mark.** Everything else from the old upload's jobs is
+  cleared. So the new video counts as having had its captions read by
+  a person, and can reach learners as soon as it has been transcoded.
+- **Linking a video records whatever asset id the request sends.** It
+  cannot reach outside its folder, but an id of the wrong shape makes
+  the row impossible to delete where there is a bucket: every delete
+  answers 500.
+- **No media route checks that the module exists**, and nothing limits
+  the size recorded for an upload.
+- **Deleting a video removes the uploaded file only.** Its renditions,
+  poster and captions are left in the processed bucket.
+- **A video grant already issued lasts until it expires**, half an hour
+  by default, even if the enrolment ends meanwhile.
+- **Some calls are given the organisation's id where its storage prefix
+  is meant.** The same number unless a prefix has been recorded for
+  the org unit, when the job would look in the wrong place.
 - **Downloading a certificate can write.** For an older attempt with
   no exam reference, the download gives it one and saves it, and keeps
   it even if drawing the certificate then fails.
