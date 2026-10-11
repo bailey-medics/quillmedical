@@ -18,7 +18,7 @@ teaching content repos (Git)
         │                                                    │
         ▼                                                    ▼
   Local filesystem                                   PostgreSQL (core DB)
-  (images served via StaticFiles)                    (config + items + assessments)
+  (images served via FastAPI routes)                 (config + items + assessments)
 ```
 
 ### Three layers
@@ -81,12 +81,12 @@ modules/colonoscopy-optical-diagnosis-test/
     ├── assessment.yaml
     ├── question_001/
     │   ├── question.yaml
-    │   ├── image_1.jpg
-    │   └── image_2.jpg
+    │   ├── wli.png
+    │   └── nbi.png
     ├── question_002/
     │   ├── question.yaml
-    │   ├── image_1.jpg
-    │   └── image_2.jpg
+    │   ├── wli.png
+    │   └── nbi.png
     └── ...
 ```
 
@@ -174,7 +174,9 @@ Options come from the shared `options` list in `assessment.yaml`.
 For variable banks, each question defines its own options:
 
 ```yaml
+question_type: single
 text: "What is shown in this image?"
+images: []
 options:
   - id: option_a
     label: "Normal mucosa"
@@ -305,7 +307,7 @@ Checks performed:
 - Assessment section: `items_per_attempt`, `time_limit_minutes`, `min_pool_size`
 - Uniform: `options` list and `images_per_item` required
 - Per-item: correct image count, answer field presence, answer value in allowed values
-- Variable: `options` list with `id`/`label`/`tags`, valid `correct_option_id`
+- Variable: `question_type` (`single` or `multiple`), `images` list, `options` list with `id`/`label`/`tags`, valid `correct_option_id`
 
 ---
 
@@ -333,10 +335,20 @@ Routes are wrapped in `<RequireFeature feature="teaching">`:
 {
   path: "/teaching",
   element: (
-    <RequireFeature feature="teaching">
-      <TeachingDashboard />
-    </RequireFeature>
+    <RequireAuth>
+      <RequireFeature feature="teaching" fallback={...}>
+        <RequireCompetency competency="view_teaching_results">
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
+        </RequireCompetency>
+      </RequireFeature>
+    </RequireAuth>
   ),
+  children: [
+    { index: true, lazy: lazyFrom(loadTeaching, "TeachingDashboard") },
+    // ...
+  ],
 }
 ```
 
@@ -461,7 +473,7 @@ This finds the teaching-enabled organisation, and syncs all question bank direct
 In production, question bank content lives in a **GCS bucket** rather than the local filesystem:
 
 1. CI/CD pushes updated question bank content to GCS via `gsutil rsync`
-2. The pipeline then calls `POST /api/ci/teaching/sync` with a service token; an educator can also trigger a sync from the `/teaching/sync` page
+2. The pipeline then calls `POST /api/ci/teaching/sync` with a service token; a Quill operator can also trigger a sync from the `/admin/teaching/modules` page
 3. The backend reads config and item YAML from GCS, persists to the database
 4. Images are served via signed GCS URLs (15-minute expiry)
 
@@ -471,7 +483,7 @@ Sync serves the newest version of each bank that is switched on, so a merged rev
 
 ## Testing
 
-Backend tests live in `backend/tests/` and use pytest. The teaching tests cover:
+Backend tests use pytest. A test of one module sits beside it in `backend/app/features/teaching/`, in a file ending `_test.py`; tests of rules that cross modules live in `backend/tests/`. The teaching tests cover:
 
 - Scoring logic (uniform + variable)
 - Pass criteria evaluation

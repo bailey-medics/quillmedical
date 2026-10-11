@@ -36,7 +36,8 @@ this repository. The pipeline picks its job from the event that triggered it.
 ## From a branch to a learner
 
 1. **A push to `feature/**`** runs `auto-pr`, which opens a draft pull
-   request with Quill's own `auto-pr/create-pr.sh`.
+   request with Quill's own `auto-pr/create-pr.sh`. The two jobs in the
+   next step run on that push as well.
 
 2. **A pull request** runs two jobs, and both are required before a merge:
 
