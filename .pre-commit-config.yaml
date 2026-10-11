@@ -47,26 +47,27 @@ repos:
         # environment of its own, without FastAPI or Pydantic, and no
         # config, so it is a basic check and not a strict one. It suits
         # the tests, which are not held to `strict`.
-        exclude: '^backend/(app|scripts)/(?!.*_test\.py$).*\.py$'
+        # Two things are left out. The backend's own code, which the
+        # strict hook checks. And merged migrations: they may not be
+        # edited, so a finding in one could not be acted on.
+        exclude: '^backend/((app|scripts)/(?!.*_test\.py$).*\.py|alembic/versions/.*\.py)$'
         # The mirror's two defaults, and one more: errors in a file this
         # hook was not given are left to the hook that owns it. A test
         # imports the backend's code, and without this mypy would report
-        # on that code a second time, against this environment's older
-        # SQLAlchemy and without `strict`.
+        # on that code a second time, without `strict`.
         args:
           - --ignore-missing-imports
           - --scripts-are-modules
           - --follow-imports=silent
-        # alembic and sqlalchemy are pinned here. Unpinned, this
-        # environment took whatever PyPI had newest, and failed every PR
-        # on typing the pinned version did not share. SQLAlchemy is behind
-        # backend/poetry.lock, which is on 2.1: under 2.1 this hook reports
-        # a missing annotation in several merged migrations, which may not
-        # be edited.
+        # alembic and sqlalchemy are pinned to backend/poetry.lock, so the
+        # tests are checked against the versions they run on. Unpinned,
+        # this environment took whatever PyPI had newest, and failed every
+        # PR on typing the locked version did not share. Bump these
+        # together with the lock file, never one without the other.
         additional_dependencies:
           [
             alembic==1.20.0,
-            sqlalchemy==2.0.54,
+            sqlalchemy==2.1.1,
             types-requests,
             types-pyyaml,
             types-Markdown,

@@ -57,7 +57,7 @@ def _cleanup() -> None:
 
 
 def _user(conn: Connection, name: str, profession: str) -> int:
-    user_id = conn.execute(
+    user_id: int = conn.execute(
         text("""
             INSERT INTO users
                 (username, email, password_hash, is_totp_enabled,
@@ -76,7 +76,7 @@ def _user(conn: Connection, name: str, profession: str) -> int:
 
 
 def _org(conn: Connection) -> int:
-    org_id = conn.execute(
+    org_id: int = conn.execute(
         text("""
             INSERT INTO org_unit (name, type, is_active, created_at,
                                   updated_at)
