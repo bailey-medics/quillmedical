@@ -143,7 +143,7 @@ describe("EnableNotificationsButton Component", () => {
       });
     });
 
-    it("sends subscription to backend", async () => {
+    it("sends the backend the fields it stores, and no others", async () => {
       const user = userEvent.setup();
       const mockSubscription = {
         endpoint: "https://example.com/push",
@@ -165,10 +165,11 @@ describe("EnableNotificationsButton Component", () => {
       await user.click(button);
 
       await vi.waitFor(() => {
-        expect(apiLib.api.post).toHaveBeenCalledWith(
-          "/push/subscribe",
-          mockSub,
-        );
+        expect(apiLib.api.post).toHaveBeenCalledWith("/push/subscribe", {
+          endpoint: "https://example.com/push",
+          expirationTime: null,
+          keys: { p256dh: "key1", auth: "key2" },
+        });
       });
     });
 

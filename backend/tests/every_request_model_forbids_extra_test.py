@@ -28,17 +28,10 @@ from pydantic import BaseModel, ValidationError
 from app.main import app
 from app.utils.route_list import served_routes
 
-# Models that take fields they do not name, and why each does.
-ALLOWS_EXTRA: dict[str, str] = {
-    "app.push.PushSubscriptionIn": (
-        "The body is the browser's own PushSubscription, a shape the "
-        "web standard sets and a browser may add to. Refusing a new "
-        "field would stop notifications being turned on in that browser."
-    ),
-    "app.push.PushKeys": (
-        "The keys inside the browser's PushSubscription, as above."
-    ),
-}
+# Models that take fields they do not name, and why each does. Empty,
+# and meant to stay so. The push subscription was here, as a shape the
+# browser sets; the frontend now picks out the fields it sends.
+ALLOWS_EXTRA: dict[str, str] = {}
 
 # The app has 78 request models, read by 78 routes. Far fewer means the
 # walk has stopped finding them, and a walk that finds nothing passes.
