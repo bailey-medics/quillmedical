@@ -185,7 +185,7 @@ Security headers are instructions sent by the server that tell the browser how t
 
 ### Which layer sets the headers
 
-Caddy only sees the responses it serves, so in production three other kinds of response get their headers from the load balancer instead, through `custom_response_headers` in Terraform. The dev and end-to-end stacks have no load balancer, so there only Caddy's headers exist.
+Caddy only sees the responses it serves, so in production three other kinds of response get their headers from the load balancer instead, through `custom_response_headers` in Terraform. The dev and end-to-end stacks have no load balancer. The end-to-end stack serves the application's pages through the production Caddyfile, so there only Caddy's headers exist; the dev stack's Caddyfile (`caddy/dev/Caddyfile`) sets none of them.
 
 - **The application's pages and static files** - Caddy (`caddy/prod/Caddyfile`), with the values in the table above.
 - **API responses, `/api/*`** - the load balancer's backend service (`infra/modules/load-balancer/main.tf`). `Content-Security-Policy` is `default-src 'none'; frame-ancestors 'self'`, far tighter than the application's because an API response should load nothing. `X-Frame-Options` is `SAMEORIGIN` rather than `DENY`, because the certificate page shows a PDF from the API in an iframe. `Strict-Transport-Security`, `X-Content-Type-Options` and `Referrer-Policy` match the table.
@@ -256,7 +256,7 @@ Static analysis tools examine the source code without running it, catching poten
 | ----------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | **Bandit**        | Python security linting (backend, excluding tests)                          | Pre-commit hook on every commit                                         |
 | **Gitleaks**      | Detects accidentally committed secrets (API keys, tokens, passwords)        | Pre-commit hook on every commit                                         |
-| **Semgrep**       | JavaScript/TypeScript security rules (frontend)                             | CI pipeline on every non-draft pull request (PR) and in the merge queue |
+| **Semgrep**       | Security rules for the frontend (JavaScript/TypeScript) and the backend (Python) | CI pipeline on every non-draft pull request (PR) and in the merge queue |
 | **Ruff**          | Python linting rules including security-relevant checks (E, F, W, I, UP, B) | Pre-commit hook                                                         |
 | **mypy --strict** | Type safety - catches type confusion and null safety issues                 | Pre-commit hook and CI                                                  |
 
@@ -266,7 +266,7 @@ Third-party libraries can contain known vulnerabilities. Dependency scanning too
 
 | Tool           | Scope                                                                | Frequency                                                                                                                          |
 | -------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Dependabot** | Vulnerability alerts for pip, npm, Docker, Terraform, GitHub Actions | Weekly scan against `main` and `clinical-live`                                                                                     |
+| **Dependabot** | Vulnerability alerts for pip, npm, Docker, Terraform, GitHub Actions | Weekly scan against `main`                                                                                                         |
 | **Renovate**   | Version-bump PRs with 3-tier severity policy                         | Weekly, on Wednesdays; fixes for Common Vulnerabilities and Exposures (CVEs) skip the schedule and open immediately against `main` |
 
 ### Penetration testing
