@@ -1864,6 +1864,46 @@ class TestAcceptingAnInvitation:
 
         return client.post("/api/passport/assessor-invites/accept", json=body)
 
+    def test_somebody_who_got_an_account_before_accepting_can_still_assess(
+        self,
+        holder_client: TestClient,
+        test_client: TestClient,
+        db_session: Session,
+        sent: list[dict[str, str]],
+    ) -> None:
+        """Invited with no account, then given one another way, as a
+        teaching delegate is. Accepting once joined them to the org unit
+        and gave them nothing else, so every passport route refused
+        them and the request could not be signed."""
+        passport_id = _create_passport(holder_client)
+        self._invite(
+            holder_client, passport_id, email="delegate@example.nhs.uk"
+        )
+        token = self._token(sent)
+        delegate = _make_user(
+            db_session, "delegate", profession="teaching_delegate"
+        )
+        assert (
+            "assess_clinician_passport"
+            not in delegate.get_final_competencies()
+        )
+
+        response = self._accept(
+            test_client,
+            token,
+            username=None,
+            password=None,
+            full_name=None,
+            registration_authority=None,
+            registration_number=None,
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["status"] == "linked"
+        db_session.refresh(delegate)
+        assert "assess_clinician_passport" in delegate.get_final_competencies()
+        assert delegate.base_profession == "teaching_delegate"
+
     def test_the_link_can_be_opened_repeatedly(
         self,
         holder_client: TestClient,

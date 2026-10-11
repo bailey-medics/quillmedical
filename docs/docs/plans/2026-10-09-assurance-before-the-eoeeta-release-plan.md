@@ -918,6 +918,13 @@ found as a bug to fix on its own branch before going on.
     entry, a reflection or a CPD entry. The only way to remove a wrong
     scan is to delete the entry. `router.py`. Fixed on 11 October 2026.
 
+  - **Passport: a supervisor is emailed before the entry is checked.**
+    If the entry is then refused, they hold a link to nothing.
+    `router.py`. Fixed on 11 October 2026.
+  - **Passport: somebody invited to assess who already has an account**
+    is given the membership and not the competency, so they cannot
+    sign. `accept_assessor_invite` in `router.py`. Fixed on 11 October 2026.
+
   **Fix before go-live** (each loses something without saying so, or
   gives a wrong answer; Mark agreed on 11 October 2026)
 
@@ -927,12 +934,6 @@ found as a bug to fix on its own branch before going on.
   - **Passport: the export has no evidence files.** The records name
     them by hash and the files themselves are not in the zip.
     `export.py`.
-  - **Passport: a supervisor is emailed before the entry is checked.**
-    If the entry is then refused, they hold a link to nothing.
-    `router.py`.
-  - **Passport: somebody invited to assess who already has an account**
-    is given the membership and not the competency, so they cannot
-    sign. `accept_assessor_invite` in `router.py`.
   - **Inbox: one failing source blanks the rest on Postgres.** A failed
     statement leaves the transaction aborted, with nothing to roll
     back to,

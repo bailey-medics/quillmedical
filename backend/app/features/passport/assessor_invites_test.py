@@ -763,28 +763,33 @@ def test_somebody_already_at_the_holders_place_keeps_their_capacity(
 # --- found on the way, and pinned as it stands ------------------------------
 
 
-def test_an_account_linked_by_accepting_is_not_given_the_competency(
+def test_an_account_linked_by_accepting_is_given_the_competency(
     db_session: Session,
     passport: Passport,
     team: OrgUnit,
     delegate: User,
 ) -> None:
-    """Found while moving this rule, and pinned, not fixed.
+    """Found while moving this rule, pinned, and then fixed.
 
     An account asked directly is given ``assess_clinician_passport`` by
     ``let_existing_account_assess``. One that accepts an invitation,
-    having got its account after the invitation was sent, is given the
+    having got its account after the invitation was sent, was given the
     membership and not the competency, on the belief that every account
-    already holds it. A teaching delegate does not, so they are a
-    member of the holder's org_unit and still cannot open the request.
+    already holds it. A teaching delegate does not, so they were a
+    member of the holder's org_unit and still could not open the
+    request. Accepting now gives the competency too, as a grant of its
+    own, and leaves the profession alone.
     """
     token = _invite(db_session, passport, email=delegate.email)
+    profession = delegate.base_profession
+    assert ASSESS not in delegate.get_final_competencies()
 
     accepted = _accept(db_session, token)
 
     assert accepted.status == "linked"
     assert _capacity(db_session, team.id, delegate) == "external"
-    assert ASSESS not in delegate.get_final_competencies()
+    assert ASSESS in delegate.get_final_competencies()
+    assert delegate.base_profession == profession
 
 
 def test_an_account_that_is_switched_off_is_still_linked(

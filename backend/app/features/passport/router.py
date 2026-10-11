@@ -2601,13 +2601,11 @@ def add_logbook_entry(
     _offered_refs(store, row.id, [competency_id])
     scope = _logbook_scope(competency_id, body.scope_id)
 
-    # Before the entry is written, for the reason a sign-off request
-    # mails first: an email cannot be unsent, and a failed send must
-    # leave nothing behind.
-    supervisor_email = _ask_a_supervisor(
-        db, row, user, competency_id, body.confirmer_email
-    )
-
+    # Built before the supervisor is emailed, because building it can
+    # still refuse the request: evidence that is not stored, or a field
+    # the record will not take. An email cannot be unsent, and until 11
+    # October 2026 one went first, leaving a supervisor with a link to
+    # an entry that was then never written.
     entry = LogbookEntry(
         performed_on=body.performed_on,
         scope=scope,
@@ -2619,6 +2617,12 @@ def add_logbook_entry(
         notes=body.notes,
         also_counts_towards=body.also_counts_towards,
         attachments=_attachments(blobs, row.id, body.attachments),
+    )
+
+    # Before the entry is written, for the reason a sign-off request
+    # mails first: a failed send must leave nothing behind.
+    supervisor_email = _ask_a_supervisor(
+        db, row, user, competency_id, body.confirmer_email
     )
 
     stem, commit = records.add_logbook_entry(
@@ -2769,12 +2773,11 @@ def amend_logbook_entry(
         raise HTTPException(404, "Logbook entry not found") from None
 
     scope = _logbook_scope(competency_id, body.scope_id)
-    supervisor_email = _ask_a_supervisor(
-        db, row, user, competency_id, body.confirmer_email
-    )
 
     # Built afresh from what was sent, so a confirmation on the entry is
     # not carried over: the supervisor confirmed what it said before.
+    # And built before the supervisor is emailed, as in
+    # `add_logbook_entry`: this can still refuse the request.
     entry = LogbookEntry(
         performed_on=body.performed_on,
         scope=scope,
@@ -2790,6 +2793,10 @@ def amend_logbook_entry(
             if "attachments" in body.model_fields_set
             else existing.attachments
         ),
+    )
+
+    supervisor_email = _ask_a_supervisor(
+        db, row, user, competency_id, body.confirmer_email
     )
 
     try:

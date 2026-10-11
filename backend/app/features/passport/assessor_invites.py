@@ -232,18 +232,31 @@ def let_existing_account_assess(
         # person accepting an invitation.
         raise HolderBelongsNowhere() from None
     join_as_external(db, assessor.id, org_unit_id)
-
-    if ASSESSOR_COMPETENCY not in assessor.get_final_competencies():
-        assessor.competency_grants.append(
-            UserCompetency(
-                competency_id=ASSESSOR_COMPETENCY,
-                starts_on=datetime.now(UTC),
-                source="sign_off_request",
-                org_unit_id=org_unit_id,
-                granted_by=holder.id,
-            )
-        )
+    grant_assessing(assessor, org_unit_id, granted_by=holder.id)
     db.flush()
+
+
+def grant_assessing(
+    assessor: User, org_unit_id: int, *, granted_by: int | None
+) -> None:
+    """Give an account `assess_clinician_passport` if it lacks it.
+
+    As a grant of its own, leaving the account's profession alone. What
+    the account may act on is still only the requests that name it.
+    Nothing is flushed: the caller does that.
+    """
+    if ASSESSOR_COMPETENCY in assessor.get_final_competencies():
+        return
+
+    assessor.competency_grants.append(
+        UserCompetency(
+            competency_id=ASSESSOR_COMPETENCY,
+            starts_on=datetime.now(UTC),
+            source="sign_off_request",
+            org_unit_id=org_unit_id,
+            granted_by=granted_by,
+        )
+    )
 
 
 def invite_for(
@@ -489,10 +502,13 @@ def accept_invite(
     if existing is not None:
         user = existing
         status = "linked"
-        # Nothing about an existing account is changed: not their
-        # profession, not their competencies. All fourteen clinical
-        # professions already carry assess_clinician_passport, and what
-        # they may act on is resolved from the request rows naming them.
+        # An existing account keeps its profession. It is given the one
+        # competency it needs below, if it lacks it. This branch once
+        # changed nothing, on the assumption that an existing account is
+        # a clinician who already holds it. That fails for somebody who
+        # was invited with no account and got one another way before
+        # accepting, as a teaching delegate does: they were joined to
+        # the org unit and then refused by every passport route.
     else:
         user = _new_assessor(
             db,
@@ -507,6 +523,11 @@ def accept_invite(
 
     org_unit_id = holder_org_unit(db, invite.passport_id)
     join_as_external(db, user.id, org_unit_id)
+
+    if existing is not None:
+        grant_assessing(
+            user, org_unit_id, granted_by=invite.invited_by_user_id
+        )
 
     invite.accepted_at = datetime.now(UTC)
     invite.accepted_user_id = user.id
