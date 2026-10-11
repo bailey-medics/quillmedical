@@ -12,7 +12,8 @@ package unusable as a standalone CI tool, since ``Settings`` requires
 ``JWT_SECRET`` and ``CORE_DB_PASSWORD``.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from typing import cast
 
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select
@@ -43,13 +44,16 @@ def feature_holders_for(db: Session, user_id: int) -> set[int]:
         db,
         [
             int(org_unit_id)
-            for org_unit_id in db.execute(
-                select(org_unit_member.c.org_unit_id).where(
-                    org_unit_member.c.user_id == user_id
+            for org_unit_id in cast(
+                Sequence[int],
+                db.execute(
+                    select(org_unit_member.c.org_unit_id).where(
+                        org_unit_member.c.user_id == user_id
+                    )
                 )
+                .scalars()
+                .all(),
             )
-            .scalars()
-            .all()
         ],
     )
 

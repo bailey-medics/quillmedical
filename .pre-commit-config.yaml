@@ -41,11 +41,28 @@ repos:
     rev: v2.3.1
     hooks:
       - id: mypy
-        # alembic and sqlalchemy are pinned to backend/poetry.lock. Unpinned,
-        # this environment took whatever PyPI had newest: SQLAlchemy 2.1.0,
-        # released 2026-09-24, arrived through alembic's SQLAlchemy>=2.0 and
-        # failed every PR on typing the locked 2.0.54 does not share. Bump
-        # these together with the lock file, never one without the other.
+        name: mypy (tests and tooling)
+        # Everything but the backend's own code, which the strict hook
+        # below checks with its real libraries installed. This one has an
+        # environment of its own, without FastAPI or Pydantic, and no
+        # config, so it is a basic check and not a strict one. It suits
+        # the tests, which are not held to `strict`.
+        exclude: '^backend/(app|scripts)/(?!.*_test\.py$).*\.py$'
+        # The mirror's two defaults, and one more: errors in a file this
+        # hook was not given are left to the hook that owns it. A test
+        # imports the backend's code, and without this mypy would report
+        # on that code a second time, against this environment's older
+        # SQLAlchemy and without `strict`.
+        args:
+          - --ignore-missing-imports
+          - --scripts-are-modules
+          - --follow-imports=silent
+        # alembic and sqlalchemy are pinned here. Unpinned, this
+        # environment took whatever PyPI had newest, and failed every PR
+        # on typing the pinned version did not share. SQLAlchemy is behind
+        # backend/poetry.lock, which is on 2.1: under 2.1 this hook reports
+        # a missing annotation in several merged migrations, which may not
+        # be edited.
         additional_dependencies:
           [
             alembic==1.20.0,
@@ -73,6 +90,18 @@ repos:
 
   - repo: local
     hooks:
+      # The backend's own code, with `strict` on. Through Poetry from
+      # backend/, so mypy reads `[tool.mypy]` in backend/pyproject.toml
+      # and sees the real libraries: see the script for why both matter.
+      # It checks the whole of app/ and scripts/ each time, as one file's
+      # types depend on another's.
+      - id: mypy-backend-strict
+        name: mypy (backend, strict)
+        entry: bash .github/scripts/ci/run-mypy.sh
+        language: system
+        files: ^backend/((app|scripts)/.*\.py|pyproject\.toml|poetry\.lock)$
+        pass_filenames: false
+
       - id: check-migrations
         name: check Alembic migrations
         entry: python3 backend/scripts/check_migrations.py --all

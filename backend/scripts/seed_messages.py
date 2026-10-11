@@ -20,6 +20,8 @@ proj_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if proj_root not in sys.path:
     sys.path.insert(0, proj_root)
 
+from sqlalchemy.orm import Session  # noqa: E402
+
 from app.db import CoreSessionLocal  # noqa: E402
 from app.models import (  # noqa: E402
     Conversation,
@@ -42,7 +44,7 @@ def _ago(**kwargs: float) -> datetime:
 
 
 def get_or_create_user(
-    db,
+    db: Session,
     *,
     username: str,
     email: str,
@@ -71,7 +73,7 @@ def _fhir_id() -> str:
 
 
 def add_message(
-    db,
+    db: Session,
     *,
     conversation: Conversation,
     sender: User,
@@ -94,7 +96,7 @@ def add_message(
 
 
 def seed_conversation_1(
-    db,
+    db: Session,
     emily: User,
     mark: User,
     patient_id: str,
@@ -176,7 +178,7 @@ def seed_conversation_1(
 
 
 def seed_conversation_2(
-    db,
+    db: Session,
     imogen: User,
     david: User,
     mark: User,
@@ -324,7 +326,7 @@ def seed_conversation_2(
 
 
 def seed_conversation_3(
-    db,
+    db: Session,
     lisa: User,
     james: User,
     mark: User,
@@ -395,7 +397,7 @@ def seed_conversation_3(
 
 
 def seed_conversation_4(
-    db,
+    db: Session,
     emily: User,
     mark: User,
     patient_id: str,

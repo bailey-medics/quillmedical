@@ -21,7 +21,7 @@ from itsdangerous import (
     URLSafeSerializer,
     URLSafeTimedSerializer,
 )
-from jose import jwt  # type: ignore[import-untyped]
+from jose import jwt
 
 from app.config import settings
 

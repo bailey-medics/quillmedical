@@ -726,7 +726,7 @@ def _bucket_for(bucket_name: str, client: Any) -> _Bucket:
     disk, and the tests, which drive a fake.
     """
     if client is None:
-        from google.cloud import storage  # type: ignore[import-untyped]
+        from google.cloud import storage  # type: ignore[attr-defined]
 
         client = storage.Client()
 
