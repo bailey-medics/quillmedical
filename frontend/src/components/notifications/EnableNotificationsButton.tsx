@@ -8,6 +8,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { subscriptionBody } from "@/lib/push/subscriptionBody";
 
 // Convert URL-safe Base64 VAPID key to Uint8Array for subscribe()
 function b64ToUint8Array(base64: string) {
@@ -45,8 +46,8 @@ export default function EnableNotificationsButton() {
         applicationServerKey: b64ToUint8Array(vapid),
       });
 
-      // 4) Send subscription to your backend for storage
-      await api.post("/push/subscribe", sub);
+      // 4) Send the backend the fields it stores, and no others
+      await api.post("/push/subscribe", subscriptionBody(sub));
 
       setState("ok");
     } catch (e) {

@@ -612,9 +612,106 @@ before any feature.
       test accepts both, and the duplication goes on the audit list in
       Phase 5.
 
-## Phase 4a: Split `main.py` into modules
+## Phase 4a: Tighten what a request may carry
+
+Added on 11 October 2026, from what the request-model test and the
+dependency audit turned up. Three units, in this order. There are no real users, so no
+limit needs checking against stored data first.
+
+### Unit 1: The push subscription
+
+- [x] The frontend sends only `endpoint`, `expirationTime` and `keys`
+      (`p256dh`, `auth`), in both `EnableNotificationsButton.tsx` and
+      `Settings.tsx`. Today it passes the browser's whole
+      `PushSubscription` through.
+
+- [x] `PushSubscriptionIn` and `PushKeys` in `backend/app/push.py` get
+      `extra="forbid"`, and the `ALLOWS_EXTRA` list in
+      `backend/tests/every_request_model_forbids_extra_test.py` is
+      emptied.
+
+- [x] `endpoint` must be an `https` address on a known push host
+      (Google, Mozilla, Apple, Microsoft) and at most about 2,000
+      characters. The server later sends to this address, so it must be one
+      of the push services and nothing else. Built on 11 October 2026 in
+      `backend/app/push.py`: two exact hosts, `fcm.googleapis.com`
+      (Chrome, Edge on Android, Opera, Brave, Samsung Internet) and
+      `updates.push.services.mozilla.com` (Firefox), and two domains
+      that hand out many hosts, `.push.apple.com` (Safari) and
+      `.notify.windows.com` (Edge on Windows). Port 443 only, and no
+      user name in the address.
+
+- [x] `p256dh` and `auth` get length limits matching their fixed sizes.
+
+- [x] A refused address logs its host name only. That is how a browser
+      vendor adding or renaming a push host shows itself.
+
+- [x] A type test pins TypeScript's `PushSubscriptionJSON` to those
+      three fields. The standard is how the shape changes; TypeScript's
+      description of it is generated from the standard, so a TypeScript
+      update that adds a field fails the type check on the pull request
+      that brings it. A weekly probe was considered and left: the push
+      services only deliver, the browser sets the shape.
+
+- [x] Tests: each refusal, each allowed host, and that an extra field
+      gets a 422.
+
+- [ ] This changes what the API accepts, so Mark approves the
+      breaking-change gate. The gate runs when the pull request leaves
+      draft and names each change it counts; the `api-compatibility/`
+      decision files are written from those names, with
+      `forces_reload: false`, as an open tab sends the same body as
+      before only when it is on the new build.
+
+### Unit 2: A cap on the size of a request body
+
+- [ ] One limit of about 1 MB on every request body, in front of all
+      routes. Over it answers 413 with a plain message. It protects
+      every unbounded string at once, and does not change the API's
+      published shape, so it needs no approval.
+
+- [ ] Check no route rightly sends more. Captions are the largest body;
+      uploads go straight to the bucket and never through the API.
+
+- [ ] Tests: just under passes, just over is refused, and a request
+      that lies about its length is still stopped.
+
+### Unit 3: Limits on the fields where length matters
+
+- [ ] Add `max_length` to passwords, usernames, emails, full names,
+      reset and invite tokens, and TOTP codes. About a dozen of the 130
+      unbounded string fields.
+
+- [ ] Leave long free text (reflections, message bodies, notes) to the
+      body cap. A tight limit there only gets in the way of somebody
+      writing.
+
+- [ ] Match the limits in the frontend forms, so the user is told
+      before sending.
+
+- [ ] Extend the request-model test: every field on a named list must
+      have a limit.
+
+- [ ] Write the `api-compatibility/` decision files. Mark approves the
+      breaking-change gate.
+
+## Phase 4b: Split `main.py` into modules
 
 Added on 11 October 2026 at Mark's request, as the next thing to do.
+
+**Moved to after the request tightening the same day, and waiting.**
+The thin routes plan
+(`2026-10-11-thin-routes-and-steady-frontend-tests-plan.md`, which
+arrives with its first pull request) is going through `main.py` at the
+same time, in another worktree: it
+takes the rules out of each long route into plain functions under
+`backend/app/users/` and its neighbours, with nine pull requests open
+and more of `main.py` still to do. Moving those same routes into
+routers now would rewrite the lines it is rewriting, and whichever
+landed second would conflict on every one. So this phase starts when
+that plan's Phases 1 and 2 have merged. It is also the better order: a
+route that is already thin is a few lines to move, and the moving and
+the thinning are then two diffs that can each be read alone.
 `backend/app/main.py` is over 6,200 lines and holds about 66 routes,
 which is too much to hold in mind as one file. Eight routers
 already live outside it, so the pattern exists.
@@ -663,79 +760,6 @@ file in the same pull request.
 
 - [ ] When it is done, `main.py` builds the app, adds the middleware and
       includes the routers, and holds no route of its own.
-
-## Phase 4b: Tighten what a request may carry
-
-Added on 11 October 2026, from what the request-model test and the
-dependency audit turned up. Three units, in this order. There are no real users, so no
-limit needs checking against stored data first.
-
-### Unit 1: The push subscription
-
-- [ ] The frontend sends only `endpoint`, `expirationTime` and `keys`
-      (`p256dh`, `auth`), in both `EnableNotificationsButton.tsx` and
-      `Settings.tsx`. Today it passes the browser's whole
-      `PushSubscription` through.
-
-- [ ] `PushSubscriptionIn` and `PushKeys` in `backend/app/push.py` get
-      `extra="forbid"`, and the `ALLOWS_EXTRA` list in
-      `backend/tests/every_request_model_forbids_extra_test.py` is
-      emptied.
-
-- [ ] `endpoint` must be an `https` address on a known push host
-      (Google, Mozilla, Apple, Microsoft) and at most about 2,000
-      characters. The server later sends to this address, so it must be one
-      of the push services and nothing else.
-
-- [ ] `p256dh` and `auth` get length limits matching their fixed sizes.
-
-- [ ] A refused address logs its host name only. That is how a browser
-      vendor adding or renaming a push host shows itself.
-
-- [ ] A type test pins TypeScript's `PushSubscriptionJSON` to those
-      three fields. The standard is how the shape changes; TypeScript's
-      description of it is generated from the standard, so a TypeScript
-      update that adds a field fails the type check on the pull request
-      that brings it. A weekly probe was considered and left: the push
-      services only deliver, the browser sets the shape.
-
-- [ ] Tests: each refusal, each allowed host, and that an extra field
-      gets a 422.
-
-- [ ] This changes what the API accepts, so Mark approves the
-      breaking-change gate.
-
-### Unit 2: A cap on the size of a request body
-
-- [ ] One limit of about 1 MB on every request body, in front of all
-      routes. Over it answers 413 with a plain message. It protects
-      every unbounded string at once, and does not change the API's
-      published shape, so it needs no approval.
-
-- [ ] Check no route rightly sends more. Captions are the largest body;
-      uploads go straight to the bucket and never through the API.
-
-- [ ] Tests: just under passes, just over is refused, and a request
-      that lies about its length is still stopped.
-
-### Unit 3: Limits on the fields where length matters
-
-- [ ] Add `max_length` to passwords, usernames, emails, full names,
-      reset and invite tokens, and TOTP codes. About a dozen of the 130
-      unbounded string fields.
-
-- [ ] Leave long free text (reflections, message bodies, notes) to the
-      body cap. A tight limit there only gets in the way of somebody
-      writing.
-
-- [ ] Match the limits in the frontend forms, so the user is told
-      before sending.
-
-- [ ] Extend the request-model test: every field on a named list must
-      have a limit.
-
-- [ ] Write the `api-compatibility/` decision files. Mark approves the
-      breaking-change gate.
 
 ## Phase 5: Audit the security paths by hand
 
@@ -794,7 +818,7 @@ found as a bug to fix on its own branch before going on.
       worker jobs were checked to send only the named fields. Two are
       listed as exceptions with the reason: the push subscription, whose
       shape is the browser's.
-      **The second half is Phase 4b**: a cap on the size of a request
+      **The second half is Phase 4a**: a cap on the size of a request
       body, and limits on the fields where length matters.
 
 - [ ] Frontend: `frontend/src/auth/` in full and `frontend/src/lib/api.ts`.

@@ -26,6 +26,7 @@ import IconTextButton from "@/components/button/IconTextButton";
 import SolidSwitch from "@/components/form/SolidSwitch";
 import { InstallAppModal } from "@/components/install-app-modal";
 import { api } from "@/lib/api";
+import { subscriptionBody } from "@/lib/push/subscriptionBody";
 import { appFeatureFlags } from "@/lib/featureFlags";
 import { useHasFeature } from "@/lib/features";
 import { useHasCompetency } from "@/lib/cbac/hooks";
@@ -181,7 +182,7 @@ export default function Settings() {
         applicationServerKey: b64ToUint8Array(vapid),
       });
 
-      await api.post<unknown>("/push/subscribe", sub.toJSON());
+      await api.post<unknown>("/push/subscribe", subscriptionBody(sub));
       setNotificationState("ok");
     } catch (error) {
       console.error(error);

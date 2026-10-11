@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-property-pattern-added POST /api/push/subscribe added the pattern `^[A-Za-z0-9_-]+=*$` to the request property `keys/p256dh`"
+reason: "Push public key must be URL-safe base64. That is the only form the Push API gives it in. The frontend builds this request itself, in subscriptionBody, from the browser's own push subscription, and a real subscription is always inside this limit. An open tab on an older build sends the same value, taken from the same browser object. Nothing a real browser sends is refused, so the silent background update is enough. No forced reload."
