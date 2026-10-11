@@ -49,10 +49,7 @@ from sqlalchemy.orm import Session
 from app.analytics.router import router as analytics_router
 from app.api_compatibility import REQUIRED_CLIENT_GENERATION
 from app.body_limit import BodyLimitMiddleware
-from app.cbac.base_professions import (
-    PROFESSION_IDS,
-    resolve_user_competencies,
-)
+from app.cbac.base_professions import PROFESSION_IDS
 from app.cbac.competencies import (
     SCOPED_MANAGER_IDS,
     validate_competency_ids,
@@ -83,7 +80,6 @@ from app.email_send import (
     EmailRateLimitError,
     send_email,
 )
-from app.features.passport import cover as passport_cover
 from app.features.passport.models import Passport
 from app.features.teaching.access import (
     MODULES_COMPETENCY,
@@ -262,19 +258,9 @@ from app.security import (
     verify_password_reset_token,
     verify_totp_code,
 )
-from app.users.enrolments import settle_teaching_enrolments
+from app.users.create import NewAccount, create_account
 from app.users.errors import UserAdminError
-from app.users.membership import (
-    capacity_at,
-    org_units_the_caller_administers,
-)
-from app.users.practice import settle_practice
-from app.users.scope import (
-    check_account_in_scope,
-    check_changes_in_scope,
-    check_may_set_platform_role,
-    check_profession_in_scope,
-)
+from app.users.scope import check_account_in_scope
 from app.users.update import AccountChanges, update_account
 
 setup_logging()
@@ -2138,124 +2124,25 @@ def create_user_with_cbac(
         HTTPException: 403 if the requesting user lacks ``manage_users``.
         HTTPException: 400 if validation fails or constraints violated.
     """
-    # Check authorization
-    # Validation
-    email = normalise_email(payload.email)
-    password = payload.password
-    username = (
-        payload.username or payload.name.strip().replace(" ", "").lower()
-    )
-
-    if not email or not password:
-        raise HTTPException(status_code=400, detail="Missing required fields")
-
-    if len(password) < 8:
-        raise HTTPException(
-            status_code=400, detail="Password must be at least 8 characters"
-        )
-
-        # Check uniqueness
-    existing = db.scalar(select(User).where(User.username == username))
-
-    if existing:
-        raise HTTPException(status_code=400, detail="Username already exists")
-
-    existing = db.scalar(select(User).where(User.email == email))
-
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already exists")
-
-    places = org_units_the_caller_administers(
-        db, current_user, payload.org_unit_ids or []
-    )
-
-    if not scope_for(current_user).unlimited:
-        # Somebody with a limited scope reaches an account only through a
-        # shared org_unit, so one they create in none would be out of
-        # their reach the moment it existed.
-        if not places:
-            raise HTTPException(
-                status_code=400,
-                detail="Choose at least one organisation or site.",
-            )
-        check_may_set_platform_role(
-            current_user,
-            sets_platform_role=payload.platform_role != "standard",
-        )
-        check_profession_in_scope(current_user, payload.base_profession)
-        check_changes_in_scope(
-            current_user,
-            set(),
-            set(
-                resolve_user_competencies(
-                    payload.base_profession,
-                    payload.additional_competencies,
-                    payload.removed_competencies,
-                )
-            ),
-        )
-
-    # Create user
-    user = User(
-        username=username,
-        full_name=payload.name.strip(),
-        email=email,
-        password_hash=hash_password(password),
+    # The form's values as the rules take them. An entry for nowhere, in
+    # either list, is the same as no entry.
+    new = NewAccount(
+        name=payload.name,
+        username=payload.username,
+        email=payload.email,
+        password=payload.password,
         base_profession=payload.base_profession,
+        additional_competencies=payload.additional_competencies,
+        removed_competencies=payload.removed_competencies,
         platform_role=payload.platform_role,
-        email_verified=True,
+        org_unit_ids=payload.org_unit_ids or [],
+        practising=_practice_wanted(payload.practising or []),
+        teaching_enrolments=_enrolments_wanted(
+            payload.teaching_enrolments or []
+        ),
     )
-    sync_competency_rows(
-        user,
-        additional=payload.additional_competencies,
-        removed=payload.removed_competencies,
-        source="admin",
-        granted_by=current_user.id,
-    )
-    db.add(user)
-    db.flush()
-    # An admin vouches for the address, so if it is on the mailing list
-    # of people with no account, one record of them is kept.
-    fold_into_account(db, user)
 
-    # The one list, in org_unit ids. Organisations and the org_units inside
-    # them are rows in the same table, so there is nothing to split.
-    for place in places:
-        db.execute(
-            org_unit_member.insert().values(
-                org_unit_id=place.id,
-                user_id=user.id,
-                capacity=capacity_at(place),
-            )
-        )
-    # Joining an org_unit whose passport cover is on grants writing.
-    passport_cover.memberships_changed(
-        db,
-        user.id,
-        before={},
-        after=passport_cover.capacities_of(db, user.id),
-        changed_by=current_user,
-    )
-    db.flush()
-
-    db.refresh(user)
-
-    # Last, once they belong somewhere and hold something: where they
-    # may practise it. Same transaction as the account itself.
-    if payload.practising:
-        settle_practice(
-            db, current_user, user, _practice_wanted(payload.practising)
-        )
-
-    # After practice, so a place the form set is already there and
-    # naming a module adds only what is still missing.
-    if payload.teaching_enrolments:
-        settle_teaching_enrolments(
-            db,
-            current_user,
-            user,
-            _enrolments_wanted(payload.teaching_enrolments),
-        )
+    user = create_account(db, current_user, new)
 
     return UserActionOut(
         detail="created",

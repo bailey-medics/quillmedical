@@ -12,7 +12,12 @@ from app.users.errors import (
     UserAdminError,
     UsernameTaken,
 )
-from app.users.identity import change_identity
+from app.users.identity import (
+    change_identity,
+    check_email_free,
+    check_password_long_enough,
+    check_username_free,
+)
 
 OLD_PASSWORD = "OldPassword123!"
 
@@ -216,3 +221,35 @@ def test_the_first_thing_wrong_is_the_one_reported(
             email="alex@example.test",
             password="short",
         )
+
+
+# --- the checks creating an account shares ----------------------------------
+
+
+def test_the_password_check_draws_the_line_at_eight() -> None:
+    check_password_long_enough("12345678")
+
+    with pytest.raises(PasswordTooShort):
+        check_password_long_enough("1234567")
+
+
+def test_the_username_check_refuses_only_one_that_is_held(
+    db_session: Session,
+) -> None:
+    _person(db_session, "alex")
+
+    check_username_free(db_session, "nobody")
+
+    with pytest.raises(UsernameTaken):
+        check_username_free(db_session, "alex")
+
+
+def test_the_address_check_refuses_only_one_that_is_held(
+    db_session: Session,
+) -> None:
+    _person(db_session, "alex")
+
+    check_email_free(db_session, "nobody@example.test")
+
+    with pytest.raises(EmailTaken):
+        check_email_free(db_session, "alex@example.test")
