@@ -1,5 +1,5 @@
 // Review marks: show in the explorer, on tabs, in the status bar and beside
-// the lines of a file which code has been stamped as read, and what has
+// the lines of a file which code has been stamped as audited, and what has
 // changed since.
 //
 // It keeps no record of its own. Every answer comes from
@@ -18,9 +18,9 @@ const os = require("os");
 const path = require("path");
 
 const SCRIPT = path.join("scripts", "review-ledger.py");
-const READ = "read";
+const AUDITED = "audited";
 const CHANGED = "changed";
-const UNREAD = "unread";
+const UNAUDITED = "unaudited";
 
 // Absolute path of a file or folder -> what is known about it.
 let marks = new Map();
@@ -133,12 +133,12 @@ function rootOf(file) {
  * Turn the ledger's `states` output into marks, for files and folders.
  *
  * One line a file: state, lines, the date it was stamped, the fingerprint
- * it was stamped with, code or test, who read it, path, with tabs between.
+ * it was stamped with, code or test, who audited it, path, with tabs between.
  * A ledger from before stamps carried a name leaves the names out, and
  * its lines are one column shorter: the path is always the last.
  *
  * A folder gets a mark worked out from the files beneath it: changed if
- * any of them has changed, read if every one is read, and unread
+ * any of them has changed, audited if every one is audited, and unaudited
  * otherwise.
  */
 function marksFrom(output, root) {
@@ -171,7 +171,7 @@ function marksFrom(output, root) {
     let dir = path.dirname(full);
 
     while (dir.startsWith(root + path.sep)) {
-      const tally = folders.get(dir) || { read: 0, changed: 0, unread: 0 };
+      const tally = folders.get(dir) || { audited: 0, changed: 0, unaudited: 0 };
       tally[state] += 1;
       folders.set(dir, tally);
       dir = path.dirname(dir);
@@ -179,12 +179,12 @@ function marksFrom(output, root) {
   }
 
   for (const [dir, tally] of folders) {
-    let state = UNREAD;
+    let state = UNAUDITED;
 
     if (tally.changed > 0) {
       state = CHANGED;
-    } else if (tally.unread === 0) {
-      state = READ;
+    } else if (tally.unaudited === 0) {
+      state = AUDITED;
     }
 
     found.set(dir, {
@@ -230,7 +230,7 @@ async function refresh() {
       const was = before.get(key);
       const now = next.get(key);
 
-      // Unread shows no mark, the same as a file that is not counted.
+      // Unaudited shows no mark, the same as a file that is not counted.
       if (shown(was) !== shown(now)) {
         touched.push(vscode.Uri.file(key));
       }
@@ -253,13 +253,13 @@ async function refresh() {
   }
 }
 
-// "by Ada Reader" for a mark that names who read the file, or nothing.
+// "by Ada Reader" for a mark that names who audited the file, or nothing.
 function byWhom(mark) {
   return mark.readers ? ` by ${mark.readers}` : "";
 }
 
 function shown(mark) {
-  return mark && mark.state !== UNREAD ? mark.state : undefined;
+  return mark && mark.state !== UNAUDITED ? mark.state : undefined;
 }
 
 function refreshSoon() {
@@ -277,13 +277,13 @@ const decorations = {
       return undefined;
     }
 
-    if (mark.state === READ) {
+    if (mark.state === AUDITED) {
       return {
         badge: "✓",
         color: new vscode.ThemeColor("charts.green"),
         tooltip: mark.folder
-          ? "Every file in here is read"
-          : `Read${byWhom(mark)} on ${mark.stampedOn}`,
+          ? "Every file in here is audited"
+          : `Audited${byWhom(mark)} on ${mark.stampedOn}`,
       };
     }
 
@@ -292,8 +292,8 @@ const decorations = {
         badge: "≠",
         color: new vscode.ThemeColor("charts.orange"),
         tooltip: mark.folder
-          ? `${mark.tally.changed} changed since read, in here`
-          : `Changed since it was read${byWhom(mark)} on ${mark.stampedOn}`,
+          ? `${mark.tally.changed} changed since audit, in here`
+          : `Changed since it was audited${byWhom(mark)} on ${mark.stampedOn}`,
       };
     }
 
@@ -307,7 +307,7 @@ function clearBars(editor) {
 }
 
 // Paint the bars for one editor, or clear them when its file is not one
-// that has changed since it was read.
+// that has changed since it was audited.
 async function paintBars(editor, round) {
   const uri = editor.document.uri;
   const mark = uri.scheme === "file" ? marks.get(uri.fsPath) : undefined;
@@ -393,18 +393,18 @@ function updateStatus() {
 
   statusItem.backgroundColor = undefined;
 
-  if (mark.state === READ) {
-    statusItem.text = "$(check) Read";
-    statusItem.tooltip = `Read${byWhom(mark)} on ${mark.stampedOn}. Click for more.`;
+  if (mark.state === AUDITED) {
+    statusItem.text = "$(check) Audited";
+    statusItem.tooltip = `Audited${byWhom(mark)} on ${mark.stampedOn}. Click for more.`;
   } else if (mark.state === CHANGED) {
-    statusItem.text = "$(warning) Changed since read";
-    statusItem.tooltip = `Read${byWhom(mark)} on ${mark.stampedOn}, and edited since. Click to see the change or stamp it.`;
+    statusItem.text = "$(warning) Changed since audit";
+    statusItem.tooltip = `Audited${byWhom(mark)} on ${mark.stampedOn}, and edited since. Click to see the change or stamp it.`;
     statusItem.backgroundColor = new vscode.ThemeColor(
       "statusBarItem.warningBackground"
     );
   } else {
-    statusItem.text = "$(circle-large-outline) Unread";
-    statusItem.tooltip = "Click to stamp this file as read.";
+    statusItem.text = "$(circle-large-outline) Not audited";
+    statusItem.tooltip = "Click to stamp this file as audited.";
   }
 
   statusItem.show();
@@ -485,8 +485,8 @@ async function showChange(uri) {
 
   if (mark.state !== CHANGED) {
     vscode.window.showInformationMessage(
-      mark.state === READ
-        ? "Nothing has changed since you read this file."
+      mark.state === AUDITED
+        ? "Nothing has changed since this file was audited."
         : "This file has not been stamped, so there is nothing to compare."
     );
     return;
@@ -503,11 +503,11 @@ async function showChange(uri) {
       "vscode.diff",
       vscode.Uri.file(old),
       vscode.Uri.file(file),
-      `${path.basename(file)}: as read on ${mark.stampedOn} ↔ now`
+      `${path.basename(file)}: as audited on ${mark.stampedOn} ↔ now`
     );
   } catch (error) {
     vscode.window.showWarningMessage(
-      "Git no longer holds this file as it was when you read it. Read the whole file, then stamp it again."
+      "Git no longer holds this file as it was when it was audited. Audit the whole file, then stamp it again."
     );
     log.appendLine(String(error));
   }
@@ -521,25 +521,25 @@ async function statusClick() {
     return;
   }
 
-  if (mark.state === UNREAD) {
+  if (mark.state === UNAUDITED) {
     await stamp();
     return;
   }
 
   const options =
     mark.state === CHANGED
-      ? ["Show what changed", "Stamp as read", "Take the stamp off"]
+      ? ["Show what changed", "Stamp as audited", "Take the stamp off"]
       : ["Take the stamp off"];
   const choice = await vscode.window.showQuickPick(options, {
     placeHolder:
       mark.state === CHANGED
-        ? `Read${byWhom(mark)} on ${mark.stampedOn}, and edited since`
-        : `Read${byWhom(mark)} on ${mark.stampedOn}`,
+        ? `Audited${byWhom(mark)} on ${mark.stampedOn}, and edited since`
+        : `Audited${byWhom(mark)} on ${mark.stampedOn}`,
   });
 
   if (choice === "Show what changed") {
     await showChange();
-  } else if (choice === "Stamp as read") {
+  } else if (choice === "Stamp as audited") {
     await stamp();
   } else if (choice === "Take the stamp off") {
     await removeStamp();

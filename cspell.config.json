@@ -10,6 +10,7 @@
     "poetry.lock",
     "yarn.lock",
     "cookies.txt",
+    "audit/ledger.tsv",
     ".pnp.*",
     "temp"
   ],

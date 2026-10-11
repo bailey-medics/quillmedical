@@ -42,7 +42,7 @@ XML
   <Metadata>
     <Identity Language="en-US" Id="review-marks" Version="${version}" Publisher="local"/>
     <DisplayName>Review marks</DisplayName>
-    <Description xml:space="preserve">Shows which files have been stamped as read.</Description>
+    <Description xml:space="preserve">Shows which files have been audited.</Description>
     <Properties>
       <Property Id="Microsoft.VisualStudio.Code.Engine" Value="^1.80.0"/>
       <Property Id="Microsoft.VisualStudio.Code.ExtensionKind" Value="workspace"/>

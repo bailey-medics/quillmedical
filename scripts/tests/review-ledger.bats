@@ -1,9 +1,9 @@
 #!/usr/bin/env bats
-# Tests for review-ledger.py, the card of which files have been read.
+# Tests for review-ledger.py, the audit card of the code.
 #
 # Each test builds a throwaway repository with one extra worktree and a
-# copy of the two scripts, so the card it writes is the throwaway's own
-# and nothing here touches the real one.
+# copy of the script, so the card it writes is the throwaway's own and
+# nothing here touches the real one.
 
 setup() {
     MAIN="${BATS_TEST_TMPDIR}/main"
@@ -16,7 +16,6 @@ setup() {
     as_reader "Ada Reader" "ada@example.org"
     mkdir -p "${MAIN}/scripts" "${MAIN}/backend/app" "${MAIN}/docs"
     cp "${BATS_TEST_DIRNAME}/../review-ledger.py" "${MAIN}/scripts/"
-    cp "${BATS_TEST_DIRNAME}/../local-path.sh" "${MAIN}/scripts/"
 
     printf 'one\ntwo\nthree\n' > "${MAIN}/backend/app/deps.py"
     printf 'a\nb\n' > "${MAIN}/backend/app/security.py"
@@ -28,7 +27,7 @@ setup() {
         commit -q -m "start"
     git -C "$MAIN" worktree add -q "$OTHER" -b other
 
-    CARD="$(cd -P "$MAIN" && pwd)/local/review-ledger.tsv"
+    CARD="$(cd -P "$MAIN" && pwd)/audit/ledger.tsv"
 }
 
 # as_reader <name> <email>: make this the person git says is at the keys.
@@ -44,18 +43,18 @@ ledger() {
     (cd "$where" && python3 scripts/review-ledger.py "$@")
 }
 
-@test "a file starts unread" {
+@test "a file starts unaudited" {
     run ledger "$MAIN" status backend/app
     [ "$status" -eq 0 ]
-    [[ "$output" == *"unread"*"backend/app/deps.py"* ]]
+    [[ "$output" == *"unaudited"*"backend/app/deps.py"* ]]
 }
 
-@test "a stamped file reads as read" {
+@test "a stamped file reads as audited" {
     ledger "$MAIN" mark backend/app/deps.py
 
     run ledger "$MAIN" status backend/app
-    [[ "$output" == *"read          3  backend/app/deps.py"* ]]
-    [[ "$output" == *"unread        2  backend/app/security.py"* ]]
+    [[ "$output" == *"audited         3  backend/app/deps.py"* ]]
+    [[ "$output" == *"unaudited       2  backend/app/security.py"* ]]
 }
 
 @test "a stamped file that is then edited reads as changed" {
@@ -63,7 +62,7 @@ ledger() {
     echo "four" >> "${MAIN}/backend/app/deps.py"
 
     run ledger "$MAIN" status f
-    [[ "$output" == *"Changed since you read them (1):"* ]]
+    [[ "$output" == *"Changed since their audit (1):"* ]]
     [[ "$output" == *"  backend/app/deps.py"* ]]
 }
 
@@ -77,41 +76,41 @@ ledger() {
     [[ "${lines[1]}" == Tests* ]]
 }
 
-@test "status on its own adds a count when a read file has changed" {
+@test "status on its own adds a count when an audited file has changed" {
     ledger "$MAIN" mark backend/app/deps.py
     echo "four" >> "${MAIN}/backend/app/deps.py"
 
     run ledger "$MAIN" status
     [ "${#lines[@]}" -eq 3 ]
-    [ "${lines[2]}" = "Changed since you read them: 1" ]
+    [ "${lines[2]}" = "Changed since their audit: 1" ]
 }
 
 @test "full is spelt f or full" {
     run ledger "$MAIN" status full
-    [[ "$output" == *"Lines left to read, by folder:"* ]]
+    [[ "$output" == *"Lines left to audit, by folder:"* ]]
 }
 
-@test "stamping a changed file again makes it read" {
+@test "stamping a changed file again makes it audited" {
     ledger "$MAIN" mark backend/app/deps.py
     echo "four" >> "${MAIN}/backend/app/deps.py"
     ledger "$MAIN" mark backend/app/deps.py
 
     run ledger "$MAIN" status f
-    [[ "$output" != *"Changed since you read them"* ]]
+    [[ "$output" != *"Changed since their audit"* ]]
 }
 
 @test "a folder stamps every file in it" {
     run ledger "$MAIN" mark backend/app
     [ "$status" -eq 0 ]
-    [ "${lines[0]}" = "Stamped 3 files, 7 lines, as read by Ada Reader." ]
+    [ "${lines[0]}" = "Stamped 3 files, 7 lines, as audited by Ada Reader." ]
 }
 
 @test "a stamp is followed by the running total" {
     run ledger "$MAIN" mark backend/app/deps.py
     [ "$status" -eq 0 ]
     [ "${#lines[@]}" -eq 3 ]
-    [ "${lines[0]}" = "Stamped 1 file, 3 lines, as read by Ada Reader." ]
-    [[ "${lines[1]}" == Code*"3 of"*"lines read"* ]]
+    [ "${lines[0]}" = "Stamped 1 file, 3 lines, as audited by Ada Reader." ]
+    [[ "${lines[1]}" == Code*"3 of"*"lines audited"* ]]
     [[ "${lines[2]}" == Tests* ]]
 }
 
@@ -129,19 +128,56 @@ ledger() {
     [ "$(cut -f3 "$CARD")" = "$(date +%F)" ]
 }
 
-@test "a stamp made in one worktree counts in another" {
+@test "a stamp travels with its branch, and reaches another by merging" {
     ledger "$OTHER" mark backend/app/deps.py
 
     run ledger "$MAIN" status backend/app
-    [[ "$output" == *"read          3  backend/app/deps.py"* ]]
+    [[ "$output" == *"unaudited       3  backend/app/deps.py"* ]]
+
+    git -C "$OTHER" add audit/ledger.tsv
+    git -C "$OTHER" -c user.name=t -c user.email=t@example.com \
+        commit -q -m "audit: deps"
+    git -C "$MAIN" -c user.name=t -c user.email=t@example.com \
+        merge -q other
+
+    run ledger "$MAIN" status backend/app
+    [[ "$output" == *"audited         3  backend/app/deps.py"* ]]
+}
+
+@test "two people stamping on two branches merge without a conflict" {
+    # What `audit/ledger.tsv merge=union` in .gitattributes is for.
+    printf 'audit/ledger.tsv merge=union\n' > "${MAIN}/.gitattributes"
+    git -C "$MAIN" add .gitattributes
+    git -C "$MAIN" -c user.name=t -c user.email=t@example.com \
+        commit -q -m "merge rule"
+    git -C "$OTHER" -c user.name=t -c user.email=t@example.com \
+        merge -q "$(git -C "$MAIN" branch --show-current)"
+
+    as_reader "Ada Reader" "ada@example.com"
+    ledger "$MAIN" mark backend/app/deps.py
+    git -C "$MAIN" add audit/ledger.tsv
+    git -C "$MAIN" commit -q -m "audit: deps"
+
+    git -C "$OTHER" config user.name "Ben Checker"
+    git -C "$OTHER" config user.email "ben@example.com"
+    ledger "$OTHER" mark backend/app/security.py
+    git -C "$OTHER" add audit/ledger.tsv
+    git -C "$OTHER" commit -q -m "audit: security"
+
+    run git -C "$MAIN" merge -q other
+    [ "$status" -eq 0 ]
+
+    run ledger "$MAIN" status backend/app
+    [[ "$output" == *"audited         3  backend/app/deps.py  (Ada Reader)"* ]]
+    [[ "$output" == *"audited         2  backend/app/security.py  (Ben Checker)"* ]]
 }
 
 @test "the headline counts code and tests apart" {
     ledger "$MAIN" mark backend/app/deps.py
 
     run ledger "$MAIN" status
-    [[ "${lines[0]}" == Code*"3 of"*"lines read"* ]]
-    [[ "${lines[1]}" == Tests*"0 of         2 lines read (0%)"* ]]
+    [[ "${lines[0]}" == Code*"3 of"*"lines audited"* ]]
+    [[ "${lines[1]}" == Tests*"0 of         2 lines audited (0%)"* ]]
 }
 
 @test "prose is left off the card" {
@@ -191,7 +227,7 @@ ledger() {
     ledger "$MAIN" mark backend/app/deps.py
 
     run ledger "$MAIN" status f
-    [[ "$output" == *"Lines left to read, by folder:"* ]]
+    [[ "$output" == *"Lines left to audit, by folder:"* ]]
     [[ "$output" == *"backend/app"*"4"* ]]
 }
 
@@ -236,12 +272,23 @@ ledger() {
     [[ "$output" == *"is not inside this worktree"* ]]
 }
 
-@test "the card is never shown to git" {
+@test "a stamp is a change to the card, and to nothing else" {
+    # The card is tracked, so a stamp shows up to be committed. The lock
+    # the script holds while it writes must not.
     ledger "$MAIN" mark backend/app
-    ledger "$OTHER" mark backend/app
 
-    [ -z "$(git -C "$MAIN" status --short)" ]
-    [ -z "$(git -C "$OTHER" status --short)" ]
+    [ "$(git -C "$MAIN" status --short --untracked-files=all)" = "?? audit/ledger.tsv" ]
+}
+
+@test "the card itself is left off the card" {
+    ledger "$MAIN" mark backend/app
+
+    run ledger "$MAIN" status f
+    [[ "$output" != *"audit"$'\n'* ]]
+
+    run ledger "$MAIN" mark audit
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Nothing to stamp"* ]]
 }
 
 @test "a stamp can be taken off again" {
@@ -252,8 +299,8 @@ ledger() {
     [ "${lines[0]}" = "Took your stamp off 1 file." ]
 
     run ledger "$MAIN" status backend/app
-    [[ "$output" == *"unread        3  backend/app/deps.py"* ]]
-    [[ "$output" == *"read          2  backend/app/security.py"* ]]
+    [[ "$output" == *"unaudited       3  backend/app/deps.py"* ]]
+    [[ "$output" == *"audited         2  backend/app/security.py"* ]]
 }
 
 @test "taking the stamp off a folder takes it off every file in it" {
@@ -298,8 +345,8 @@ ledger() {
     run ledger "$MAIN" states
     [ "$status" -eq 0 ]
     [[ "$output" == *"changed${tab}4${tab}$(date +%F)${tab}"*"${tab}code${tab}Ada Reader${tab}backend/app/deps.py"* ]]
-    [[ "$output" == *"read${tab}2${tab}$(date +%F)${tab}${fingerprint}${tab}code${tab}Ada Reader${tab}backend/app/security.py"* ]]
-    [[ "$output" == *"unread${tab}2${tab}${tab}${tab}test${tab}${tab}backend/app/deps_test.py"* ]]
+    [[ "$output" == *"audited${tab}2${tab}$(date +%F)${tab}${fingerprint}${tab}code${tab}Ada Reader${tab}backend/app/security.py"* ]]
+    [[ "$output" == *"unaudited${tab}2${tab}${tab}${tab}test${tab}${tab}backend/app/deps_test.py"* ]]
 }
 
 # ---------------------------------------------------------------------
@@ -339,17 +386,17 @@ ledger() {
     [ "$(wc -l < "$CARD" | tr -d ' ')" -eq 1 ]
 }
 
-@test "a file is read when anybody's stamp matches it" {
+@test "a file is audited when anybody's stamp matches it" {
     ledger "$MAIN" mark backend/app/deps.py
     echo "four" >> "${MAIN}/backend/app/deps.py"
     as_reader "Ben Checker" "ben@example.org"
     ledger "$MAIN" mark backend/app/deps.py
 
     run ledger "$MAIN" status backend/app
-    [[ "$output" == *"read          4  backend/app/deps.py  (Ben Checker)"* ]]
+    [[ "$output" == *"audited         4  backend/app/deps.py  (Ben Checker)"* ]]
 }
 
-@test "the listing names everybody who has read the file as it is" {
+@test "the listing names everybody who has audited the file as it is" {
     ledger "$MAIN" mark backend/app/deps.py
     as_reader "Ben Checker" "ben@example.org"
     ledger "$MAIN" mark backend/app/deps.py
@@ -358,16 +405,16 @@ ledger() {
     [[ "$output" == *"backend/app/deps.py  (Ada Reader, Ben Checker)"* ]]
 }
 
-@test "a changed file names who read the earlier version" {
+@test "a changed file names who audited the earlier version" {
     ledger "$MAIN" mark backend/app/deps.py
     echo "four" >> "${MAIN}/backend/app/deps.py"
 
     run ledger "$MAIN" status backend/app
-    [[ "$output" == *"changed       4  backend/app/deps.py  (Ada Reader)"* ]]
+    [[ "$output" == *"changed         4  backend/app/deps.py  (Ada Reader)"* ]]
 }
 
-@test "the full status keeps no score of who has read how much" {
-    # Who read one file is on the record. A total for each person is
+@test "the full status keeps no score of who has audited how much" {
+    # Who audited one file is on the record. A total for each person is
     # not: reading is not a race.
     ledger "$MAIN" mark backend/app/deps.py backend/app/security.py
 
@@ -415,7 +462,7 @@ ledger() {
         > "$CARD"
 
     run ledger "$MAIN" status backend/app
-    [[ "$output" == *"read          3  backend/app/deps.py"* ]]
+    [[ "$output" == *"audited         3  backend/app/deps.py"* ]]
     [[ "$output" != *"backend/app/deps.py  ("* ]]
 }
 
@@ -462,4 +509,36 @@ ledger() {
     [ "$status" -ne 0 ]
     [[ "$output" == *"Git has no name for you"* ]]
     [ ! -e "$CARD" ]
+}
+
+@test "a card with a line this version cannot read is left alone" {
+    # A version from before stamps carried a name once read a card full
+    # of named stamps, understood none, and wrote back only its own.
+    ledger "$MAIN" mark backend/app/deps.py
+    printf 'backend/app/security.py\tabc\t2026-10-10\tAda\tada@example.com\tsigned\textra\n' >> "$CARD"
+    before="$(cat "$CARD")"
+
+    run ledger "$MAIN" mark backend/app/deps_test.py
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Line 2 of"*"written by a"*"newer one"* ]]
+    [[ "$output" == *"Nothing has been changed"* ]]
+    [ "$(cat "$CARD")" = "$before" ]
+}
+
+@test "a card it cannot read stops a status too, and does not read as empty" {
+    mkdir -p "$(dirname "$CARD")"
+    printf 'one\ttwo\n' > "$CARD"
+
+    run ledger "$MAIN" status
+    [ "$status" -ne 0 ]
+    [[ "$output" != *"0 of"* ]]
+}
+
+@test "a blank line on the card is not a fault" {
+    ledger "$MAIN" mark backend/app/deps.py
+    printf '\n' >> "$CARD"
+
+    run ledger "$MAIN" status backend/app
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"audited         3  backend/app/deps.py"* ]]
 }

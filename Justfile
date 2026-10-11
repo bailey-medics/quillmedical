@@ -1148,25 +1148,25 @@ public-pages:
 
 
 alias rd := review-diff
-# Show what changed in a file since it was stamped as read
+# Show what changed in a file since it was audited
 review-diff path:
     @python3 scripts/review-ledger.py diff {{path}}
 
 
 alias rmi := review-marks-install
-# Install the VS Code extension that shows what has been read (then reload the window)
+# Install the VS Code extension that shows what has been audited (then reload the window)
 review-marks-install:
     @bash tools/review-marks/install.sh
 
 
 alias rs := review-status
-# Say how much has been read. Pass 'f' for the full list by folder, or a folder to list it file by file.
+# Say how much has been audited. Pass 'f' for the full list by folder, or a folder to list it file by file.
 review-status path="":
     @python3 scripts/review-ledger.py status {{path}}
 
 
 alias r := reviewed
-# Stamp files, or every file in a folder, as read. Space separates multiple paths.
+# Stamp files, or every file in a folder, as audited. Space separates multiple paths.
 reviewed *paths:
     @python3 scripts/review-ledger.py mark {{paths}}
 
