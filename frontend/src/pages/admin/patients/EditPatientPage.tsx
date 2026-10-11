@@ -1,24 +1,17 @@
 /**
  * Edit Patient Page
  *
- * Allows administrators to edit patient records.
- * Can be accessed in two ways:
- * 1. With patient ID in route params: /admin/patients/:patientId/edit
- * 2. Without patient ID: /admin/patients/edit (shows patient selection list)
+ * The list an administrator picks a patient from to edit, at
+ * /admin/patients/edit. Choosing one opens /admin/patients/:id/edit, which
+ * is NewPatientPage in its edit mode: the form itself is there, not here.
  */
 
 import { useEffect, useState } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Stack, Table, Skeleton, Center } from "@mantine/core";
 import { IconEdit } from "@components/icons/appIcons";
 import IconButton from "@/components/button/IconButton";
-import BaseCard from "@/components/base-card/BaseCard";
-import {
-  BodyText,
-  BodyTextBold,
-  Heading,
-  EmptyState,
-} from "@/components/typography";
+import { BodyTextBold, EmptyState } from "@/components/typography";
 import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
 import ErrorState from "@/components/error-state/ErrorState";
@@ -30,52 +23,25 @@ interface Patient {
   gender?: string;
 }
 
-interface LocationState {
-  patient?: Patient;
-}
-
 /**
  * Edit Patient Page
  *
- * Displays patient edit form if patient ID provided in route/state,
- * otherwise shows a list of patients to select for editing.
+ * Lists every patient, each with a button that opens its edit form.
  *
- * @returns Edit patient page component
+ * @returns Edit patient selection page component
  */
 export default function EditPatientPage() {
   const navigate = useNavigate();
-  const { patientId } = useParams<{ patientId: string }>();
-  const location = useLocation();
-  const locationState = location.state as LocationState | null;
 
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(
-    locationState?.patient || null,
-  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchData() {
+    async function fetchPatients() {
       try {
-        // If we have a patient ID but no patient data, fetch it
-        if (patientId && !selectedPatient) {
-          const patientData = await api.get<Patient & { id?: string }>(
-            `/patients/${patientId}`,
-          );
-          if (
-            !patientData ||
-            typeof patientData !== "object" ||
-            !patientData.id
-          ) {
-            throw new Error("Invalid patient data received");
-          }
-          setSelectedPatient(patientData);
-        } else if (!patientId) {
-          // No patient ID, fetch all patients for selection
-          const data = await api.get<{ patients?: Patient[] }>("/patients");
-          setPatients(data.patients || []);
-        }
+        const data = await api.get<{ patients?: Patient[] }>("/patients");
+        setPatients(data.patients || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -83,8 +49,8 @@ export default function EditPatientPage() {
       }
     }
 
-    fetchData();
-  }, [patientId, selectedPatient]);
+    fetchPatients();
+  }, []);
 
   const formatName = (
     nameArray: Array<{ given?: string[]; family?: string }>,
@@ -100,31 +66,6 @@ export default function EditPatientPage() {
     navigate(`/admin/patients/${id}/edit`);
   };
 
-  // If we have a selected patient (from route params or state), show the edit form
-  if (selectedPatient) {
-    return (
-      <Stack gap="lg">
-        <PageHeader title={`Edit ${formatName(selectedPatient.name)}`} />
-
-        {loading ? (
-          <Skeleton height={400} />
-        ) : error ? (
-          <ErrorState title="Error loading patient" message={error} />
-        ) : (
-          <BaseCard>
-            <Heading>TODO: Patient edit form</Heading>
-            <BodyText>
-              Patient edit functionality is not yet implemented. This page will
-              contain a form to edit patient demographics including name, birth
-              date, gender, and identifiers.
-            </BodyText>
-          </BaseCard>
-        )}
-      </Stack>
-    );
-  }
-
-  // Otherwise, show the patient selection list
   return (
     <Stack gap="lg">
       <PageHeader title="Edit patient" />

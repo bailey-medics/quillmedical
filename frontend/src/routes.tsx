@@ -525,9 +525,12 @@ export const routes: RouteObject[] = [
                 lazy: lazyFrom(loadAdmin, "PatientAdminPage"),
                 handle: { safeForReload: true },
               },
+              // The form that edits one patient is NewPatientPage, which
+              // edits when its address carries an id. EditPatientPage,
+              // further down, is only the list to pick a patient from.
               {
-                path: "patients/:patientId/edit",
-                lazy: lazyFrom(loadAdmin, "EditPatientPage"),
+                path: "patients/:id/edit",
+                lazy: lazyFrom(loadAdmin, "NewPatientPage"),
               },
               {
                 path: "patients/:patientId/deactivate",
@@ -544,10 +547,6 @@ export const routes: RouteObject[] = [
               {
                 path: "patients/deactivate",
                 lazy: lazyFrom(loadAdmin, "DeactivatePatientPage"),
-              },
-              {
-                path: "patients/:id/edit",
-                lazy: lazyFrom(loadAdmin, "NewPatientPage"),
               },
             ],
           },
