@@ -13,7 +13,7 @@ the order below, and no step waits for a person.
 
 ## Phase 1: Record what is deliberately left
 
-- [ ] Add an item to `docs/docs/plans/todo.md`, under "Security and
+- [x] Add an item to `docs/docs/plans/todo.md`, under "Security and
       compliance": **update the privacy policy when push notifications
       are turned on again.** Notifications are not enabled at all today:
       the Settings card is hidden behind `settingsNotificationsCardEnabled`
@@ -25,7 +25,7 @@ the order below, and no step waits for a person.
       shown again, either build the off switch or drop "or in Settings".
       The policy is left as written until then.
 
-- [ ] Add a second item to `todo.md`, marked _(clinical)_: **review the
+- [x] Add a second item to `todo.md`, marked _(clinical)_: **review the
       "Clinician" role gate before there are real patients.**
       `DEP_REQUIRE_ROLES_CLINICIAN` in `backend/app/main.py` gates three
       patient write routes (`/patients/verify`, demographics and letters),
@@ -502,6 +502,61 @@ so the subsection is written once, whole.
 - [ ] Tell EoEETA what the subsections say before they are published.
       They describe its instructions as controller, so it should have
       seen them.
+
+## Phase 18: Stop a stacked pull request merging into the branch below
+
+On 11 October fourteen pull requests of one stack were merged and none
+reached `main`. Each was based on the branch below it, and a merge goes
+into the base. Only the bottom four went through the merge queue, which
+exists for `main` alone; the rest were merged directly, eight of them
+within seven seconds, into feature branches that no ruleset protects.
+Pull request #1808 carried the work to `main` afterwards.
+
+- [ ] Make it impossible, in `infra/github/`. Two settings together:
+
+      - **Allow merge commits only.** Set `allow_squash_merge` and
+        `allow_rebase_merge` to false on the repository, in
+        `security.tf`. Every merge into `main` is already a merge commit:
+        the queue's `merge_method` is `MERGE`.
+      - **Require linear history on every branch but `main`.** Add
+        `required_linear_history` to the `branch_naming` ruleset in
+        `branch_rules.tf`, which already targets all branches except
+        `main` and the merge queue's own.
+
+      A branch that must stay linear refuses a merge commit, and with the
+      other two methods switched off there is no way left to merge a pull
+      request into a feature branch. Pushing and force-pushing a stack is
+      unaffected, because a stack's branches hold one commit each and are
+      rebased, never merged.
+
+      A required check was considered and will not do it: a check only
+      blocks a merge where a ruleset requires it, and a ruleset strict
+      enough to require one on a feature branch also refuses the pushes a
+      stack is made of.
+
+- [ ] Prove it before relying on it. This has not been tried here. After
+      `just terraform-github`, make two throwaway branches, open a pull
+      request from one into the other, and confirm GitHub offers no merge.
+      Then confirm `just stack-submit` still pushes a stack. If the rule
+      does not block the merge, take it out again and keep the alarm
+      below as the only guard.
+
+- [ ] Check nothing merges `main` into a feature branch. `just rebase`
+      and the stack recipes rebase; Renovate must be set to rebase too, or
+      its branches will be refused. Read `renovate.json` for
+      `rebaseWhen` and any `automergeType` before applying.
+
+- [ ] Add an alarm for whatever slips through: a small workflow on
+      `pull_request: closed` that posts to Slack, through
+      `slack-notify.yml`, when a pull request was merged and its base was
+      not `main`. Say in the message that the work has not reached `main`
+      and name the pull request. Fourteen merges went unnoticed for about
+      ten minutes, and only because somebody asked.
+
+- [ ] Update the "Traps" section of `docs/docs/cicd/stacked-branches.md`
+      with this one, and the rule that follows from it: only the bottom of
+      a stack is merged, and `just stack-sync` is what brings the next
+      branch down to `main`.
 
 ## Decisions
 
