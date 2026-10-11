@@ -23,7 +23,7 @@ whatever a user or key in it is allowed.
 
 The organisation, the four accounts and that policy are in Terraform, in
 `infra/aws/organisation.tf`, and Terraform will not delete any of them.
-A plan fails if the organisation holds an account the code does not
+A plan warns if the organisation holds an account the code does not
 list. To add one: make it in the console, put its number in
 `backend/.env`, and add it to `organisation.tf`.
 

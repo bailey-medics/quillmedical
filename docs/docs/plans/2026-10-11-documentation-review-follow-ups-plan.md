@@ -223,12 +223,12 @@ the order below, and no step waits for a person.
 
 ## Phase 10: Make the AWS account check say what it does
 
-- [ ] In `infra/aws/organisation.tf`, change the comment above
+- [x] In `infra/aws/organisation.tf`, change the comment above
       `check "every_account_is_listed"` from "This fails a plan" to say
       that it warns. A failed `check` block in Terraform is reported as a
       warning and stops nothing.
 
-- [ ] Make the same change in `docs/docs/infrastructure/aws.md`: "A plan
+- [x] Make the same change in `docs/docs/infrastructure/aws.md`: "A plan
       warns if the organisation holds an account the code does not list."
 
       The wording changes, not the mechanism. `infra/aws` is applied by a
