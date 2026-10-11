@@ -93,7 +93,7 @@ that work is larger and each step of it is safe to land alone.
             organisation, cannot be reached through a request, because
             an earlier check asks the same thing; the tests pin its
             words by making the writer raise it.
-      - [ ] **The practice rules of the org units router** - brought
+      - [x] **The practice rules of the org units router** - brought
             forward from Phase 4, on 11 October 2026, because the next
             part cannot be done without it. `_settle_practice` asks
             `practice_refusal` in `backend/app/org_units/router.py`
@@ -103,6 +103,17 @@ that work is larger and each step of it is safe to land alone.
             checks it rests on move out of the router first, to a plain
             module beside it, with the two practice routes still
             answering as they do.
+            Now `practice_refusal` in
+            `backend/app/org_units/practice.py`, which hands back an
+            `OrgUnitError` from `backend/app/org_units/errors.py` and
+            still never raises. The checks every org unit route shares
+            (`require_visible`, `through_a_scope`, `require_member`,
+            `require_in_scope`) moved once, to
+            `backend/app/org_units/access.py`, and the routes' bodies
+            were not otherwise touched. Found on the way: the withdraw
+            route takes its competency id from the path and checks it
+            against nothing, so a scoped manager refused there is
+            handed back whatever they typed.
       - [ ] **Practice** - `_settle_practice`, shared with
             `create_user_with_cbac`. It gathers every refusal and
             answers once, with the first one's status and all their
