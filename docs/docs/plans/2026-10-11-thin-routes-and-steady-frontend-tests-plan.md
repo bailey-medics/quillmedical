@@ -740,8 +740,24 @@ the video callbacks already brought in.
       answer either; a bank with no pass criteria passes every attempt;
       what is chosen is not checked against the options; and an answer
       can be "changed" on a question never answered.
-- [ ] **What comes after** - `download_certificate` (113 lines, 12
-      branches) and `get_assessment_question_results` (71 lines).
+- [x] **What comes after** - `download_certificate` (113 lines, 12
+      branches) and `get_assessment_question_results` (71 lines). Now
+      `certificate_due`, `certificate_background`,
+      `give_exam_reference`, `certificate_pdf` and `question_results`
+      in a new `attempt_results.py`, with `question_number_of`,
+      `chosen_option_label` and `scored_criteria` moved there from the
+      router, and `AssessmentNotComplete`, `CertificateNotEarned`,
+      `CertificatesNotEnabled` and `NoCertificateBackground` added to
+      `errors.py`. Both routes find the attempt with `attempt_of`, so
+      only the person who sat it is given either, whatever anybody
+      else holds. The commit of a late exam reference, the file name
+      and the response stay in the route; drawing the PDF is untouched
+      in `certificate.py`. `get_assessment` and `assessment_history`
+      are left as they were. Found and pinned, not changed: the blank
+      certificate is looked for by bank id alone, not by the version
+      sat; a background fetched from the bucket is left behind when
+      drawing fails; and the marked answers are still given when the
+      bank's synced copy has gone, where the certificate answers 500.
 - [ ] **Syncing by hand** - `sync_all_banks` (99 lines, 13 branches),
       folded into `sync_every_bank` in `ci_sync.py`, which is the same
       loop. It has the fault the CI sync had, and the fold closes it: a
@@ -793,6 +809,16 @@ for him to rule on before the go-live. Most serious first.
 - **Reading a question does not ask about time.** A question of an
   attempt long past its limit is still handed out. Only answering
   checks the deadline.
+- **Downloading a certificate can write.** For an older attempt with
+  no exam reference, the download gives it one and saves it, and keeps
+  it even if drawing the certificate then fails.
+- **The blank certificate is found by the bank's id alone**, so it is
+  whatever is in the content store today and not what was there for
+  the version sat.
+- **Nobody but the person who sat an attempt can read its certificate
+  or its question results**, a teaching manager at the same
+  organisation included. That may be meant; it is recorded because the
+  competency is called `view_teaching_results`.
 - **Somebody enrolled on a bank closed to new attempts is still shown
   it**, with its whole assessment configuration though never the
   correct answers. Comments in the code say this is meant.

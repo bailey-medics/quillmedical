@@ -175,3 +175,43 @@ class AnswerNotFound(TeachingError):
 
     status_code = 404
     message = "Answer not found"
+
+
+class AssessmentNotComplete(TeachingError):
+    """The attempt is still under way, so its marked answers are not given.
+
+    Said before anything of the attempt is read: mid-attempt, the marks
+    would say which of the answers so far are right.
+    """
+
+    status_code = 409
+    message = "Assessment is not complete"
+
+
+class CertificateNotEarned(TeachingError):
+    """The attempt has no certificate, because it was not passed.
+
+    The same words for an attempt still under way, one that failed, and
+    one finished with no verdict stored.
+    """
+
+    status_code = 400
+    message = "Certificate only available for passed assessments"
+
+
+class CertificatesNotEnabled(TeachingError):
+    """The bank the attempt was sat on does not issue certificates."""
+
+    status_code = 404
+    message = "Certificates not enabled for this bank"
+
+
+class NoCertificateBackground(TeachingError):
+    """The bank issues certificates and has no blank one to print on.
+
+    Neither the content path nor the bucket holds the image, or neither
+    is set.
+    """
+
+    status_code = 404
+    message = "No certificate background found for this bank"

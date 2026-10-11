@@ -21,7 +21,6 @@ from fastapi import (
     Request,
 )
 from fastapi.responses import Response
-from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -37,6 +36,13 @@ from app.features.teaching.access import (
     modules_open_to,
     modules_served_where_they_belong,
     organisations_open_for_modules,
+)
+from app.features.teaching.attempt_results import (
+    certificate_background,
+    certificate_due,
+    certificate_pdf,
+    give_exam_reference,
+    question_results,
 )
 from app.features.teaching.attempts import (
     attempt_of,
@@ -75,7 +81,6 @@ from app.features.teaching.schemas import (
     AnswerResultOut,
     AssessmentHistoryOut,
     AssessmentOut,
-    AssessmentQuestionResultOut,
     AssessmentQuestionResultsOut,
     AssessmentWithFirstItem,
     BankOrgRow,
@@ -740,21 +745,6 @@ def get_assessment(
     return out
 
 
-_QUESTION_NUMBER = re.compile(r"(\d+)$")
-
-
-def question_number_of(source_dir: str) -> int | None:
-    """The question's number in its bank, from its directory name.
-
-    Sync only accepts directories named ``question_<digits>``, so
-    ``question_007`` gives 7. Anything without trailing digits gives
-    ``None`` rather than a guess.
-    """
-    match = _QUESTION_NUMBER.search(source_dir)
-
-    return int(match.group(1)) if match else None
-
-
 def image_label(
     image: dict[str, Any], index: int, config: dict[str, Any]
 ) -> str | None:
@@ -790,48 +780,6 @@ def image_label(
     return None
 
 
-def chosen_option_label(
-    options: list[dict[str, Any]], selected_option: str | None
-) -> str | None:
-    """The label of the option a candidate chose, as they were shown it.
-
-    Falls back to the option's id when the bank no longer lists it or
-    gives it no label, so an answer is never shown blank. ``None`` only
-    when nothing was chosen.
-    """
-    if selected_option is None:
-        return None
-    for option in options:
-        if option.get("id") == selected_option:
-            label = option.get("label")
-            return str(label) if label else selected_option
-
-    return selected_option
-
-
-def scored_criteria(
-    score_breakdown: dict[str, Any] | None,
-) -> list[CriterionResult]:
-    """The pass criteria as scored at completion, from the stored breakdown.
-
-    The breakdown is a stored document, so an entry that does not have
-    the shape ``evaluate_pass_criteria`` writes is left out rather than
-    failing the whole page.
-    """
-    if not score_breakdown:
-        return []
-
-    results: list[CriterionResult] = []
-
-    for criterion in score_breakdown.get("criteria", []):
-        try:
-            results.append(CriterionResult.model_validate(criterion))
-        except ValidationError:
-            logger.warning("Skipped a malformed stored pass criterion")
-
-    return results
-
-
 @teaching_router.get(
     "/assessments/{assessment_id}/question-results",
     dependencies=[_DEP_RESULTS],
@@ -844,83 +792,13 @@ def get_assessment_question_results(
 ) -> AssessmentQuestionResultsOut:
     """A finished attempt's answers, right and wrong, by question number.
 
-    For audit: each question is named by its number in the bank rather
-    than the shuffled position it was shown at, alongside the bank
-    version the attempt was sat against. Only the candidate may see it,
-    and only once the attempt is complete, since mid-exam it would say
-    which answers so far are right.
+    Only the candidate may see it, which is ``attempt_of``, and only
+    once the attempt is complete, which is ``question_results`` with
+    the rest.
     """
-    assessment = db.get(Assessment, assessment_id)
+    assessment = attempt_of(db, user.id, assessment_id)
 
-    if not assessment or assessment.user_id != user.id:
-        raise HTTPException(404, "Assessment not found")
-    if assessment.completed_at is None:
-        raise HTTPException(409, "Assessment is not complete")
-
-    config_row = (
-        db.execute(
-            select(QuestionBankConfig).where(
-                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
-                QuestionBankConfig.question_bank_id
-                == assessment.question_bank_id,
-                QuestionBankConfig.version == assessment.bank_version,
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    # A uniform bank lists its options once, in its config; a variable
-    # bank lists them on each item, as the candidate view reads them.
-    uniform_options: list[dict[str, Any]] | None = (
-        config_row.config_yaml.get("options", [])
-        if config_row is not None and config_row.type == "uniform"
-        else None
-    )
-
-    questions: list[AssessmentQuestionResultOut] = []
-
-    for answer in assessment.answers:
-        source_dir = str(answer.item.metadata_json.get("_source_dir", ""))
-        options = (
-            uniform_options
-            if uniform_options is not None
-            else (answer.item.options or [])
-        )
-        questions.append(
-            AssessmentQuestionResultOut(
-                question_number=question_number_of(source_dir),
-                question_ref=source_dir,
-                display_order=answer.display_order,
-                answered=answer.selected_option is not None,
-                selected_answer=chosen_option_label(
-                    options, answer.selected_option
-                ),
-                is_correct=answer.is_correct,
-                answered_at=answer.answered_at,
-            )
-        )
-    # Numerically, so question 10 follows 9 rather than 1; anything
-    # without a number goes last, by name.
-    questions.sort(
-        key=lambda q: (
-            q.question_number is None,
-            q.question_number or 0,
-            q.question_ref,
-        )
-    )
-
-    return AssessmentQuestionResultsOut(
-        assessment_id=assessment.id,
-        question_bank_id=assessment.question_bank_id,
-        bank_version=assessment.bank_version,
-        bank_title=config_row.title if config_row else None,
-        exam_ref=assessment.exam_ref,
-        completed_at=assessment.completed_at,
-        is_passed=assessment.is_passed,
-        criteria=scored_criteria(assessment.score_breakdown),
-        questions=questions,
-    )
+    return question_results(db, assessment)
 
 
 @teaching_router.get(
@@ -1326,110 +1204,24 @@ def download_certificate(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> Response:
-    """Generate and return a PDF certificate for a passed assessment."""
-    from app.config import settings
-    from app.features.teaching.certificate import (
-        certificate_pass_summary,
-        download_certificate_background_from_gcs,
-        generate_certificate_pdf,
-        parse_certificate_style,
-    )
+    """Generate and return a PDF certificate for a passed assessment.
 
-    assessment = db.get(Assessment, assessment_id)
+    Whose attempt it is comes first, then ``certificate_due``, which
+    says whether it has a certificate, then the blank one it is printed
+    on. The attempt is given its exam reference before the certificate
+    is drawn, if it has none.
+    """
+    assessment = attempt_of(db, user.id, assessment_id)
 
-    if not assessment or assessment.user_id != user.id:
-        raise HTTPException(404, "Assessment not found")
+    due = certificate_due(db, assessment)
+    background = certificate_background(assessment.question_bank_id)
 
-    if not assessment.completed_at or not assessment.is_passed:
-        raise HTTPException(
-            400, "Certificate only available for passed assessments"
-        )
+    if give_exam_reference(assessment, due.config):
+        # A checkpoint: the reference is kept even if drawing the
+        # certificate below fails.
+        db.commit()
 
-        # Load config to check certificate_download is enabled
-    config_row = (
-        db.execute(
-            select(QuestionBankConfig).where(
-                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
-                QuestionBankConfig.question_bank_id
-                == assessment.question_bank_id,
-                QuestionBankConfig.version == assessment.bank_version,
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if not config_row:
-        raise HTTPException(500, "Config not found for assessment")
-
-    config = config_row.config_yaml
-
-    if not config.get("results", {}).get("certificate_download"):
-        raise HTTPException(404, "Certificates not enabled for this bank")
-
-        # Find background image (local path or GCS)
-    bg: Path | None = None
-    tmp_bg: Path | None = None
-    bank_path_str = settings.TEACHING_QUESTION_BANK_PATH
-
-    if bank_path_str:
-        from app.features.teaching.storage import resolve_local_bank
-
-        bank_dir = resolve_local_bank(
-            bank_path_str, assessment.question_bank_id
-        )
-        if bank_dir:
-            cert_file = bank_dir / "certificate-blank.png"
-            if cert_file.is_file():
-                bg = cert_file
-
-    if not bg and settings.TEACHING_GCS_BUCKET:
-        tmp_bg = download_certificate_background_from_gcs(
-            settings.TEACHING_GCS_BUCKET,
-            assessment.question_bank_id,
-        )
-        bg = tmp_bg
-
-    if not bg:
-        raise HTTPException(
-            404, "No certificate background found for this bank"
-        )
-
-    # The scores the certificate lists, as saved at completion
-    criteria = (assessment.score_breakdown or {}).get("criteria", [])
-
-    # Format date
-    completion_date = assessment.completed_at.strftime("%-d %B %Y")
-
-    # Candidate name
-    candidate_name = user.full_name or user.username
-
-    # Lazily generate exam_ref for assessments completed before the feature
-    exam_ref = assessment.exam_ref
-
-    if not exam_ref:
-        prefix = config.get("results", {}).get("exam_ref_prefix", "")
-        if prefix:
-            exam_ref = f"{prefix}{assessment.id}"
-            assessment.exam_ref = exam_ref
-            db.commit()
-
-            # Parse certificate style from config
-    style = parse_certificate_style(config.get("certificate"))
-
-    pdf_bytes = generate_certificate_pdf(
-        background_path=bg,
-        exam_title=config_row.title,
-        candidate_name=candidate_name,
-        pass_summary=certificate_pass_summary(criteria),
-        completion_date=completion_date,
-        style=style,
-        exam_ref=exam_ref,
-    )
-
-    # Clean up temp file downloaded from GCS
-    if tmp_bg:
-        tmp_bg.unlink(missing_ok=True)
+    pdf_bytes = certificate_pdf(assessment, due, background, candidate=user)
 
     filename = f"certificate-{assessment.question_bank_id}-{assessment.id}.pdf"
 
