@@ -96,8 +96,20 @@ carries on from there as a standing part of how Quill is built.
       lines, so two people stamping on two branches do not conflict.
       Anybody working on Quill may audit, and may audit their own code:
       Mark, "yes you can self-audit". One file and not one for each
-      auditor, also Mark's call. Still to do: a CI check that every
-      stamp names a version of its file that git holds.
+      auditor, also Mark's call.
+
+- [x] Check the card in CI. Done on 11 October 2026: an `Audit ledger`
+      job in the fast tier runs `python3 scripts/review-ledger.py
+      verify`. It fails on a line that is not a stamp: a file the card
+      does not cover or the branch never held, no name, a date or a
+      fingerprint that is not one. The first idea, to fail any stamp
+      whose version was never committed, was dropped on meeting the
+      real card: one stamp is like that, honestly, from a file stamped
+      and then edited before its commit. Such a stamp matches nothing
+      anybody can check out, so the file reads as changed and is
+      audited again, and the check says so without failing. What no
+      check can do is tell a real audit from a line typed in with the
+      right fingerprint; git's history says who added each line.
 
 - [x] Call it what it is. The words the tool prints, the editor shows
       and the recipes describe changed from "read" to "audited", and
@@ -927,9 +939,83 @@ found as a bug to fix on its own branch before going on.
       findings stay readable. This is a further pass beside the audit,
       not in place of it: a machine reads differently from a person and
       finds different things.
+      **First pass on 11 October 2026**: `/code-review high` over
+      passport, inbox, guides and push, the folders the thin routes
+      plan is not working in. Twenty findings, listed in the next step.
+      Still to run: `main.py` once that plan has finished with it, the
+      frontend by feature folder, and `/security-review` over all of
+      them.
 
 - [ ] Triage every finding as fix now, fix after go-live, or not a bug,
-      and record the list in this step.
+      and record the list in this step. The sorting below is a
+      suggestion; the decision on each is Mark's.
+
+  **Fixed already**
+
+  - **Push: the address check could be got past with a backslash.**
+    Found in the pull request that added the check, before it merged,
+    and fixed there. `backend/app/push.py`.
+
+  **Suggested: fix before go-live** (each loses something without
+  saying so, or gives a wrong answer)
+
+  - **Passport: evidence attached to a sign-off request is dropped.**
+    `request_sign_off` takes `attachments` and never passes them on, so
+    the record the assessor signs has none. `router.py`.
+  - **Passport: the export has no history where there is a bucket.**
+    `passport.bundle` is only written for the local store, and the
+    README inside the zip tells the holder to keep it. `export.py`.
+  - **Passport: the export has no evidence files.** The records name
+    them by hash and the files themselves are not in the zip.
+    `export.py`.
+  - **Passport: an empty list cannot take an attachment off** a logbook
+    entry, a reflection or a CPD entry. The only way to remove a wrong
+    scan is to delete the entry. `router.py`.
+  - **Passport: a supervisor is emailed before the entry is checked.**
+    If the entry is then refused, they hold a link to nothing.
+    `router.py`.
+  - **Passport: somebody invited to assess who already has an account**
+    is given the membership and not the competency, so they cannot
+    sign. `accept_assessor_invite` in `router.py`.
+  - **Inbox: one failing source blanks the rest on Postgres.** A failed
+    statement leaves the transaction aborted, with nothing to roll
+    back to,
+    so every later source fails too and the count shows nought. The
+    SQLite tests cannot see it. `inbox/router.py`.
+
+  **Suggested: fix after go-live**
+
+  - **Passport: withdrawing a sign-off request answers "declined".**
+    There is no `withdrawn` status to answer with. `router.py`.
+  - **Passport: a CPD entry stays filed under its old year** when its
+    date is corrected into another. `router.py`.
+  - **Passport: revoking an assessor looks in one org unit only**, the
+    lowest-numbered one the admin and the assessor share. `router.py`.
+  - **Passport: every read on the bucket store downloads and clones
+    the whole passport.** A write costs hundreds of round trips as the
+    record grows. `gcs_store.py`.
+  - **Inbox: one store read for each open sign-off request**, one after
+    another, on every load. `inbox/sources.py`.
+  - **Inbox: the "lately dealt with" lists are ordered by the wrong
+    date**, so a recent one can fall outside the fifty shown.
+    `inbox/sources.py`.
+  - **Guides: a new storage client for every picture**, and only one
+    kind of failure is caught. `guides/router.py`.
+
+  **Suggested: fix when push is built out** (the send route is for an
+  operator only, and nothing sends a real notification yet)
+
+  - **Push: any error from a push service deletes the subscription**,
+    where only "gone" should. One click with a wrong key would delete
+    them all. `push_send.py`.
+  - **Push: any other error stops the whole send**, so one bad
+    subscription breaks it for everybody. `push_send.py`.
+  - **Push: no timeout on the call to the push service.**
+    `push_send.py`.
+  - **Push: one browser's subscription can belong to two people**, on a
+    shared computer. `push.py`.
+  - **Push: the signing key is read from the environment** at import
+    and not through the settings class. `push_send.py`.
 
 ## Phase 7: Describe the controls and release
 

@@ -542,3 +542,92 @@ ledger() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"audited         3  backend/app/deps.py"* ]]
 }
+
+# commit_all: commit whatever is in the main worktree.
+commit_all() {
+    git -C "$MAIN" add -A
+    git -C "$MAIN" -c user.name=t -c user.email=t@example.com \
+        commit -q -m "more"
+}
+
+@test "verify passes a card of real stamps" {
+    as_reader "Ada Reader" "ada@example.com"
+    ledger "$MAIN" mark backend/app
+
+    run ledger "$MAIN" verify
+    [ "$status" -eq 0 ]
+    [ "$output" = "All 3 stamps hold up." ]
+}
+
+@test "verify passes an empty card" {
+    run ledger "$MAIN" verify
+    [ "$status" -eq 0 ]
+    [ "$output" = "All 0 stamps hold up." ]
+}
+
+@test "verify still passes when a stamped file has since been edited and committed" {
+    as_reader "Ada Reader" "ada@example.com"
+    ledger "$MAIN" mark backend/app/deps.py
+    echo "four" >> "${MAIN}/backend/app/deps.py"
+    commit_all
+
+    run ledger "$MAIN" verify
+    [ "$status" -eq 0 ]
+}
+
+@test "verify fails a line for a file the branch never held" {
+    as_reader "Ada Reader" "ada@example.com"
+    ledger "$MAIN" mark backend/app/deps.py
+    sed -i.bak 's|^backend/app/deps.py|backend/app/nothing.py|' "$CARD" && rm "${CARD}.bak"
+
+    run ledger "$MAIN" verify
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"backend/app/nothing.py: no such file in this branch's history"* ]]
+    [[ "$output" == *"1 of 1 stamps do not hold up"* ]]
+}
+
+@test "verify fails a line whose fingerprint is not one" {
+    as_reader "Ada Reader" "ada@example.com"
+    ledger "$MAIN" mark backend/app/deps.py
+    printf 'backend/app/security.py\tnot-a-hash\t2026-10-10\tAda Reader\tada@example.com\n' >> "$CARD"
+
+    run ledger "$MAIN" verify
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"backend/app/security.py: 'not-a-hash' is not a fingerprint"* ]]
+}
+
+@test "verify fails a line with no name or with a date that is not one" {
+    fingerprint="$(git -C "$MAIN" hash-object backend/app/deps.py)"
+    mkdir -p "$(dirname "$CARD")"
+    printf 'backend/app/deps.py\t%s\tyesterday\t\t\n' "$fingerprint" > "$CARD"
+
+    run ledger "$MAIN" verify
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"a stamp with no name on it"* ]]
+    [[ "$output" == *"'yesterday' is not a date"* ]]
+}
+
+@test "verify fails a line for a file that is left off the card" {
+    mkdir -p "$(dirname "$CARD")"
+    printf 'docs/notes.md\t%s\t2026-10-10\tAda Reader\tada@example.com\n' \
+        "$(git -C "$MAIN" hash-object docs/notes.md)" > "$CARD"
+
+    run ledger "$MAIN" verify
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"docs/notes.md: this file is left off the card"* ]]
+}
+
+@test "verify says so, and passes, when a file was stamped at a version never committed" {
+    # Stamped, then edited before the commit: honest, and harmless, as
+    # the file reads as changed until it is stamped again.
+    as_reader "Ada Reader" "ada@example.com"
+    echo "draft" >> "${MAIN}/backend/app/deps.py"
+    ledger "$MAIN" mark backend/app/deps.py
+    echo "final" >> "${MAIN}/backend/app/deps.py"
+    commit_all
+
+    run ledger "$MAIN" verify
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"backend/app/deps.py: stamped at a version that was never committed"* ]]
+    [[ "$output" == *"All 1 stamps hold up."* ]]
+}
