@@ -107,19 +107,19 @@ Packages: eslint, `@types/*`, pytest, devDependencies, GitHub Actions, pre-commi
 
 | Severity        | Tier             | Action                                                                                          |
 | --------------- | ---------------- | ----------------------------------------------------------------------------------------------- |
-| Critical / High | Tier 1 or Tier 2 | Hotfix branch off latest production tag within 24-48 hrs. Safety assessment required before merge. |
-| Medium          | Tier 2           | Next available working day. Include in next promotion if imminent.                              |
+| Critical / High | Tier 1 or Tier 2 | Hotfix branch off `main` within 24-48 hrs. Safety assessment required before merge.              |
+| Medium          | Tier 2           | Next available working day. Merging it deploys it.                                              |
 | Low             | Any              | Pick up in next scheduled Wednesday Renovate run. No hotfix required.                           |
 | Any severity    | Tier 3           | Pick up in next scheduled Wednesday Renovate run. No hotfix required.                           |
 
 ## Hotfix flow
 
-For critical/high vulnerabilities in Tier 1 or Tier 2 dependencies. Renovate's own alert PR targets `main`; the hotfix branch off the production tag is cut by hand and carries the same fix:
+For critical/high vulnerabilities in Tier 1 or Tier 2 dependencies. Renovate's own alert PR targets `main`; a hotfix branch cut by hand carries the same fix:
 
-1. Create a `hotfix/sec-*` branch from the latest production CalVer tag.
+1. Create a `hotfix/sec-*` branch from `main`.
 2. Apply the dependency fix.
 3. CI validates (fast tier on push, heavy tier when PR is marked ready).
-4. Merge to `main` and promote to production via the deploy workflow approval gate.
+4. Merge to `main`. The deploy workflow then deploys it to App production; there is no separate promotion step.
 
 See the [branching plan](../plans/2026-05-25-github-branching-plan.md#production-hotfixes) for full hotfix details.
 
@@ -148,4 +148,4 @@ After committing these files, the following settings must be configured manually
    - Install the [Renovate GitHub App](https://github.com/apps/renovate) on the `bailey-medics` organisation and grant it access to this repository.
 
 6. **Labels**
-   - Create the following labels in the repository if they do not already exist: `dependencies`, `security`, `hotfix`, `back-merge`, `tier-1-clinical`, `major-version-bump`.
+   - Create the following labels in the repository if they do not already exist: `dependencies`, `security`, `lock-file-maintenance`, `tier-1-clinical`, `major-version-bump`.

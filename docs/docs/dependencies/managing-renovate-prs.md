@@ -98,9 +98,8 @@ the response policy in [Automatic updates](automatic-updates.md).
 1. Review the security advisory linked in the PR
 2. Verify CI passes (fast tier on push, heavy tier when marked ready)
 3. Merge to `main`
-4. For a critical or high alert in a Tier 1 or Tier 2 package, cut a
-   `hotfix/sec-*` branch from the production tag by hand and promote it
-   via the deploy workflow approval gate
+4. Merging to `main` deploys the fix to App production. There is no
+   separate promotion step
 
 ## Troubleshooting
 

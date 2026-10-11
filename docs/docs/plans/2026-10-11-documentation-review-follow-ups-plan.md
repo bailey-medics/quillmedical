@@ -167,13 +167,13 @@ the order below, and no step waits for a person.
 - [x] This is a dependency file, so run the full backend suite, `just ub`
       with no filter, after `just utr` has rebuilt the image.
 
-- [ ] In `renovate.json`, rewrite the lines of the description block that
+- [x] In `renovate.json`, rewrite the lines of the description block that
       say "Hotfix branch off the latest production tag". There is no
       production tag and no promotion step: `deploy.yml` deploys every
       merge to `main`. Say the hotfix branches from `main` and deploys on
       merge.
 
-- [ ] Make the same correction in
+- [x] Make the same correction in
       `docs/docs/dependencies/automatic-updates.md` (the severity table,
       the "Hotfix flow" steps and "next promotion") and step 4 of the
       security section in `managing-renovate-prs.md`. Pull request #1774
