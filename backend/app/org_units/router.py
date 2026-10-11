@@ -18,18 +18,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import delete, func, insert, select
 from sqlalchemy.orm import Session
 
-from app.cbac.base_professions import (
-    competencies_kept_across_profession_change,
-    get_profession_base_competencies,
-    resolve_user_competencies,
-)
 from app.cbac.competencies import FRAMEWORK_IDS, SCOPED_MANAGER_IDS
-from app.cbac.grant_scope import (
-    may_assign_profession,
-    may_manage_account,
-    scope_for,
-)
-from app.cbac.grants import sync_competency_rows
+from app.cbac.grant_scope import scope_for
 from app.cbac.positions import clinical_leads_of, set_clinical_lead
 from app.cbac.practising import authorise_practice, withdraw_practice
 from app.db import get_core_db
@@ -41,10 +31,8 @@ from app.deps import (
     requires_any_competency,
 )
 from app.features.passport import cover
-from app.features.passport.cover import COVER_FEATURE
 from app.features.passport.models import OrgUnitPassportFramework
 from app.models import (
-    MEMBER_CAPACITIES,
     OrgUnit,
     OrgUnitFeature,
     OrgUnitLink,
@@ -52,39 +40,27 @@ from app.models import (
     User,
     org_unit_member,
     org_unit_patient_member,
-    validate_member_capacity,
 )
 from app.org_units.access import (
-    require_in_scope,
+    require_editable,
     require_member,
     require_visible,
     scoped_manager_ids,
     through_a_scope,
     visible_ids,
 )
-from app.org_units.practice import practice_refusal
-from app.org_units.relations import (
-    ORG_UNIT_RELATION_IDS,
-    get_org_unit_relation,
-    validate_org_unit_relation,
+from app.org_units.detail import names_of, org_unit_detail
+from app.org_units.features import switch_feature
+from app.org_units.links import add_link
+from app.org_units.members import add_member, name_clinical_lead
+from app.org_units.practice import (
+    grant_refusal,
+    grant_then_authorise,
+    practice_refusal,
 )
-from app.org_units.tree import (
-    organisation_org_unit_ids,
-    would_make_a_cycle,
-)
-from app.org_units.types import (
-    ORG_UNIT_TYPE_IDS,
-    get_org_unit_type,
-    type_can_have_members,
-    type_can_hold_competencies,
-    type_can_hold_positions,
-    type_requires_parent,
-    validate_org_unit_type,
-)
-from app.organisations import (
-    is_member_within,
-    org_units_whose_people_reached_by,
-)
+from app.org_units.relations import get_org_unit_relation
+from app.org_units.structure import add_org_unit, change_org_unit
+from app.org_units.types import get_org_unit_type, type_requires_parent
 from app.rate_limit import limiter
 from app.schemas.org_units import (
     AddOrgUnitMemberIn,
@@ -121,6 +97,7 @@ from app.schemas.organisations import (
     OrgUnitLinkItem,
     OrgUnitLinksOut,
 )
+from app.users.scope import check_account_in_scope
 
 _DEP_SESSION = Depends(get_core_db)
 
@@ -165,118 +142,10 @@ DEP_REQUIRE_MANAGE_PRACTISING_OR_SCOPED = Depends(
 
 router = APIRouter(prefix="/org-units", tags=["org-units"])
 
-#: Features that are switched on for an organisation and nowhere else.
-#:
-#: Teaching: a question bank is set live for an organisation and reaches
-#: its sites from there, and assessments are recorded against it. On a
-#: site the switch let its members in and gave them nothing, with no way
-#: to open a bank for them. Kept in step with the same list in the
-#: frontend's ``OrgFeaturesPage``.
-ORGANISATION_ONLY_FEATURES: frozenset[str] = frozenset({"teaching"})
-
 
 # ------------------------------------------------------------------
 # Who may see what
 # ------------------------------------------------------------------
-
-
-def _require_editable(db: Session, user: User, unit_id: int) -> OrgUnit:
-    """Return the org_unit the caller may edit, or refuse.
-
-    ``manage_users`` edits what it administers, as it always has. A
-    scoped manager such as ``manage_teaching`` edits a site they act at:
-    whoever runs teaching there keeps its name, kind, address and whether
-    it is in use right. An organisation is not theirs to edit, since
-    that reshapes more than teaching, and it stays with ``manage_users``.
-
-    Args:
-        db: Core database session.
-        user: The caller.
-        unit_id: The org_unit.
-    """
-    unit = require_visible(db, user, unit_id, "manage_users")
-
-    if through_a_scope(user, "manage_users") and not type_requires_parent(
-        unit.type
-    ):
-        raise HTTPException(
-            status_code=403,
-            detail="Editing an organisation requires manage_users.",
-        )
-
-    return unit
-
-
-def _require_parent_is_an_organisation(parent: OrgUnit) -> None:
-    """Refuse a parent that is not an organisation.
-
-    **The tree is two levels for now**: an organisation, and the sites
-    directly inside it. Nothing reads a site inside a site yet, on the
-    organisation and site pages or in teaching, so one made here would be
-    a place nobody could find their way to.
-
-    This is a rule about what may be created or moved today, not about
-    what the tree can hold. ``descendant_ids`` and the type vocabulary
-    still describe any depth, and rows already deeper are left alone.
-    When a third level is wanted, this is the one check to take out.
-
-    Args:
-        parent: The org_unit something is being put inside.
-    """
-    if type_requires_parent(parent.type):
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                "A site sits directly inside an organisation, not inside "
-                "another site."
-            ),
-        )
-
-
-def _require_account_in_scope(user: User, person: User) -> None:
-    """Refuse an act on an account holding more than the caller may grant.
-
-    Raises:
-        HTTPException: 403 if the account is outside their scope.
-    """
-    if not may_manage_account(user, person):
-        raise HTTPException(
-            status_code=403,
-            detail="This account is outside what you may manage.",
-        )
-
-
-def _known_type(value: str) -> str:
-    """Return the type, or refuse with a message naming the known ones.
-
-    The message is written here rather than taken from the exception: a
-    caught exception's text must not reach a client, because the next
-    person to raise one may put something in it that should not travel.
-    """
-    try:
-        return validate_org_unit_type(value)
-    except ValueError:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                "Unknown kind of place. Must be one of: "
-                + ", ".join(ORG_UNIT_TYPE_IDS)
-            ),
-        ) from None
-
-
-def _known_capacity(value: str) -> str:
-    """Return the capacity, or refuse naming the known ones."""
-    try:
-        return validate_member_capacity(value)
-    except ValueError:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                "Unknown capacity. Must be one of: "
-                + ", ".join(MEMBER_CAPACITIES)
-            ),
-        ) from None
 
 
 def _is_root(unit: OrgUnit) -> bool:
@@ -308,25 +177,6 @@ def _item(unit: OrgUnit) -> OrgUnitItem:
         created_at=unit.created_at.isoformat(),
         updated_at=unit.updated_at.isoformat(),
     )
-
-
-def _names_of(db: Session, user_ids: set[int]) -> dict[int, str]:
-    """Return a readable name for each of *user_ids*.
-
-    Resolved in one query so a list of org_units does not cost one request
-    per row to say who leads it.
-    """
-    if not user_ids:
-        return {}
-
-    return {
-        row.id: row.full_name or row.username
-        for row in db.execute(
-            select(User.id, User.full_name, User.username).where(
-                User.id.in_(user_ids)
-            )
-        ).all()
-    }
 
 
 def _authorised_counts(db: Session, unit_id: int) -> dict[int, int]:
@@ -461,49 +311,17 @@ def create_org_unit(
     they act at: a teaching body signs up member hospitals as it signs up
     their delegates. They never create an organisation, which stays with
     an operator whatever the caller holds. They may edit a site too, see
-    ``_require_editable``; deleting one, and its features, still take
+    ``require_editable``; deleting one, and its features, still take
     ``manage_users``.
     """
-    unit_type = _known_type(body.type)
-
-    needs_parent = type_requires_parent(unit_type)
-
-    if body.parent_id is None:
-        if needs_parent:
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    f"A {unit_type} sits inside something. Name the place "
-                    "it belongs to."
-                ),
-            )
-        if current_user.platform_role != "superadmin":
-            raise HTTPException(
-                status_code=403,
-                detail="Requires superadmin permissions",
-            )
-    else:
-        if not needs_parent:
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    f"A {unit_type} is the top of a tree and does not sit "
-                    "inside anything."
-                ),
-            )
-        _require_parent_is_an_organisation(
-            require_visible(db, current_user, body.parent_id, "manage_users")
-        )
-
-    unit = OrgUnit(
-        name=body.name.strip(),
-        type=unit_type,
+    unit = add_org_unit(
+        db,
+        current_user,
+        name=body.name,
+        unit_type=body.type,
         parent_id=body.parent_id,
-        location=body.location.strip() if body.location else None,
+        location=body.location,
     )
-    db.add(unit)
-    db.flush()
-    db.refresh(unit)
 
     return _item(unit)
 
@@ -531,56 +349,9 @@ def get_org_unit(
     ``manage_users`` or ``manage_patient_membership``. Left out means
     empty, so the shape of the response does not change.
     """
-    unit = require_visible(db, current_user, unit_id, "manage_users")
-    held = set(current_user.get_final_competencies())
-    sees_features = "manage_users" in held
-    sees_patients = bool(held & {"manage_users", "manage_patient_membership"})
-
-    children = list(
-        db.execute(
-            select(OrgUnit)
-            .where(OrgUnit.parent_id == unit_id)
-            .order_by(OrgUnit.name)
-        )
-        .scalars()
-        .all()
-    )
-    leads = clinical_leads_of(db, [child.id for child in children])
-    lead_names = _names_of(db, set(leads.values()))
-
-    features: list[str] = []
-    patient_ids: list[str] = []
-
-    if sees_features:
-        features = list(
-            db.execute(
-                select(OrgUnitFeature.feature_key)
-                .where(OrgUnitFeature.org_unit_id == unit_id)
-                .order_by(OrgUnitFeature.feature_key)
-            )
-            .scalars()
-            .all()
-        )
-    if sees_patients:
-        patient_ids = list(
-            db.execute(
-                select(org_unit_patient_member.c.patient_id)
-                .where(org_unit_patient_member.c.org_unit_id == unit_id)
-                .order_by(org_unit_patient_member.c.patient_id)
-            )
-            .scalars()
-            .all()
-        )
-
-    parent_name = ""
-    parent_is_root = False
-
-    if unit.parent_id is not None:
-        parent = db.get(OrgUnit, unit.parent_id)
-        if parent is not None:
-            parent_name = parent.name
-            parent_is_root = _is_root(parent)
-
+    detail = org_unit_detail(db, current_user, unit_id)
+    unit = detail.unit
+    parent = detail.parent
     definition = get_org_unit_type(unit.type)
 
     return OrgUnitDetailOut(
@@ -592,8 +363,8 @@ def get_org_unit(
         ),
         is_root=_is_root(unit),
         parent_id=unit.parent_id,
-        parent_name=parent_name,
-        parent_is_root=parent_is_root,
+        parent_name=parent.name if parent is not None else "",
+        parent_is_root=_is_root(parent) if parent is not None else False,
         location=unit.location or "",
         is_active=unit.is_active,
         created_at=unit.created_at.isoformat(),
@@ -605,14 +376,16 @@ def get_org_unit(
                 name=child.name,
                 type=child.type,
                 is_active=child.is_active,
-                clinical_lead_id=leads.get(child.id),
-                clinical_lead_name=lead_names.get(leads.get(child.id, 0), ""),
+                clinical_lead_id=detail.child_leads.get(child.id),
+                clinical_lead_name=detail.lead_names.get(
+                    detail.child_leads.get(child.id, 0), ""
+                ),
             )
-            for child in children
+            for child in detail.children
         ],
-        features=features,
-        patient_ids=patient_ids,
-        clinical_lead_id=clinical_leads_of(db, [unit_id]).get(unit_id),
+        features=detail.features,
+        patient_ids=detail.patient_ids,
+        clinical_lead_id=detail.clinical_lead_id,
     )
 
 
@@ -634,56 +407,17 @@ def update_org_unit(
 
     Requires ``manage_users``, or a scoped manager such as
     ``manage_teaching`` editing a site they act at. See
-    ``_require_editable``.
+    ``require_editable``.
     """
-    unit = _require_editable(db, current_user, unit_id)
-
-    if body.type is not None:
-        new_type = _known_type(body.type)
-        if type_requires_parent(new_type) is not type_requires_parent(
-            unit.type
-        ):
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    "That type would change whether this place sits inside "
-                    "another. Move it first, or create a new one."
-                ),
-            )
-        unit.type = new_type
-
-    if body.name is not None:
-        unit.name = body.name.strip()
-    if body.location is not None:
-        unit.location = body.location.strip() or None
-
-    if body.parent_id is not None:
-        # The type says whether an org_unit sits inside another. An
-        # organisation given a parent would be a top of tree with
-        # something above it: `is_root` would keep saying yes while
-        # every walk up found somebody else's trust.
-        if not type_requires_parent(unit.type):
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    f"A {unit.type} is the top of a tree and does not sit "
-                    "inside anything."
-                ),
-            )
-        if would_make_a_cycle(db, unit_id, body.parent_id):
-            raise HTTPException(
-                status_code=400,
-                detail="A place cannot sit inside itself",
-            )
-        new_parent = require_visible(
-            db, current_user, body.parent_id, "manage_users"
-        )
-        if body.parent_id != unit.parent_id:
-            _require_parent_is_an_organisation(new_parent)
-        unit.parent_id = body.parent_id
-
-    db.flush()
-    db.refresh(unit)
+    unit = change_org_unit(
+        db,
+        current_user,
+        unit_id,
+        name=body.name,
+        unit_type=body.type,
+        parent_id=body.parent_id,
+        location=body.location,
+    )
 
     return _item(unit)
 
@@ -702,9 +436,9 @@ def set_org_unit_active(
     """Put an org_unit in or out of use.
 
     Requires ``manage_users``, or a scoped manager such as
-    ``manage_teaching`` at a site they act at. See ``_require_editable``.
+    ``manage_teaching`` at a site they act at. See ``require_editable``.
     """
-    unit = _require_editable(db, current_user, unit_id)
+    unit = require_editable(db, current_user, unit_id)
     unit.is_active = body.is_active
     db.flush()
     db.refresh(unit)
@@ -888,124 +622,15 @@ def add_org_unit_member(
     grants only what it may grant, and gives a profession or changes an
     existing capacity only for somebody whose profession it may give.
     """
-    unit = require_visible(
-        db, current_user, unit_id, "manage_staff_membership"
-    )
-
-    if not type_can_have_members(unit.type):
-        raise HTTPException(
-            status_code=422,
-            detail=f"Nobody belongs to a {unit.type}.",
-        )
-
-    capacity = _known_capacity(body.capacity)
-
-    person = db.get(User, body.user_id)
-
-    if person is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    existing = db.scalar(
-        select(org_unit_member.c.capacity).where(
-            org_unit_member.c.org_unit_id == unit_id,
-            org_unit_member.c.user_id == body.user_id,
-        )
-    )
-
-    if existing is None:
-        db.execute(
-            insert(org_unit_member).values(
-                org_unit_id=unit_id,
-                user_id=body.user_id,
-                capacity=capacity,
-            )
-        )
-        status = "added"
-    else:
-        db.execute(
-            org_unit_member.update()
-            .where(
-                org_unit_member.c.org_unit_id == unit_id,
-                org_unit_member.c.user_id == body.user_id,
-            )
-            .values(capacity=capacity)
-        )
-        status = "updated"
-
-    if through_a_scope(current_user, "manage_staff_membership"):
-        # Anybody may be added: being at an org_unit is not a change to
-        # their account, and somebody running the passport at a site
-        # has to be able to bring a consultant into it. What stays
-        # limited is everything that *is* a change to the account: the
-        # capacity of somebody already here, a new profession, and
-        # (below) the competencies granted.
-        if existing is not None or body.base_profession is not None:
-            _require_account_in_scope(current_user, person)
-        if body.base_profession is not None:
-            if not may_assign_profession(current_user, body.base_profession):
-                raise HTTPException(
-                    status_code=403,
-                    detail=(
-                        "You may not give the profession "
-                        f"{body.base_profession}."
-                    ),
-                )
-        held_before = set(person.get_final_competencies())
-    else:
-        held_before = None
-
-    # Read against the profession they have now, before any change to it:
-    # asked afterwards, the new profession's competencies would all read
-    # as "not held" and be kept from them.
-    removed = person.removed_competency_ids
-    outside = set(person.additional_competency_ids)
-
-    if body.base_profession is not None:
-        outside = set(
-            competencies_kept_across_profession_change(
-                outside,
-                old_profession=person.base_profession,
-                new_profession=body.base_profession,
-            )
-        )
-        person.base_profession = body.base_profession
-
-    # Granted on top of whatever they already held, never in its place.
-    outside.update(body.additional_competencies or [])
-    additional = sorted(outside)
-
-    if held_before is not None:
-        require_in_scope(
-            current_user,
-            held_before
-            ^ set(
-                resolve_user_competencies(
-                    person.base_profession, additional, removed
-                )
-            ),
-        )
-    # The term comes with the grant, for the reason the grant comes with
-    # the membership: `passport_write` is written with its end date in
-    # the same row, so a new starter is never left holding it with no
-    # term, able to open their passport and not write to it.
-    sync_competency_rows(
-        person,
-        additional=additional,
-        removed=removed,
-        source="admin",
-        granted_by=current_user.id,
-        org_unit_id=unit_id,
-    )
-    cover.membership_changed(
+    status = add_member(
         db,
+        current_user,
         unit_id,
-        body.user_id,
-        before=existing,
-        after=capacity,
-        changed_by=current_user,
+        user_id=body.user_id,
+        capacity=body.capacity,
+        base_profession=body.base_profession,
+        additional_competencies=body.additional_competencies,
     )
-
-    db.flush()
 
     return OrgUnitStatusOut(status=status)
 
@@ -1039,7 +664,7 @@ def remove_org_unit_member(
 
     if through_a_scope(current_user, "manage_staff_membership"):
         person = require_member(db, unit_id, user_id)
-        _require_account_in_scope(current_user, person)
+        check_account_in_scope(current_user, person)
 
     if clinical_leads_of(db, [unit_id]).get(unit_id) == user_id:
         set_clinical_lead(db, unit, None, appointed_by=current_user)
@@ -1104,49 +729,9 @@ def set_org_unit_clinical_lead(
     "Clinical lead" role, and this route then refused it after the person
     had been added.
     """
-    unit = require_visible(
-        db, current_user, unit_id, "manage_staff_membership"
-    )
+    status = name_clinical_lead(db, current_user, unit_id, body.user_id)
 
-    if not type_can_hold_positions(unit.type):
-        raise HTTPException(
-            status_code=422,
-            detail=f"Nobody is clinical lead of a {unit.type}.",
-        )
-
-    lead: User | None = None
-
-    if body.user_id is not None:
-        lead = db.get(User, body.user_id)
-        if lead is None:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        at_this_org_unit = db.scalar(
-            select(org_unit_member.c.user_id).where(
-                org_unit_member.c.org_unit_id == unit_id,
-                org_unit_member.c.user_id == body.user_id,
-            )
-        )
-        if at_this_org_unit is None:
-            raise HTTPException(
-                status_code=422,
-                detail="That person is not at this place.",
-            )
-
-    try:
-        set_clinical_lead(db, unit, lead, appointed_by=current_user)
-    except ValueError:
-        # The post refused them: it is full, or asks for a competency
-        # they may not practise here. Said in words written here, since a
-        # caught exception's text must not reach a client, and as a 409,
-        # not left to surface as a 500.
-        raise HTTPException(
-            status_code=409,
-            detail="That person cannot be made clinical lead here.",
-        ) from None
-    db.flush()
-
-    return OrgUnitStatusOut(status="vacant" if lead is None else "set")
+    return OrgUnitStatusOut(status=status)
 
 
 # ------------------------------------------------------------------
@@ -1320,45 +905,6 @@ def withdraw_practising_competency(
 # ------------------------------------------------------------------
 
 
-def _grant_refusal(
-    db: Session, caller: User, person: User
-) -> HTTPException | None:
-    """Why *caller* may not add to *person*'s competencies, or None.
-
-    The same three rules ``update_user`` applies, so this route is not a
-    way round them: nobody grants themselves a competency, only an
-    operator changes an operator, and an administrator acts only on
-    somebody at an org_unit they reach, as
-    ``org_units_whose_people_reached_by`` answers it. An operator passes
-    all three.
-    """
-    held = set(caller.get_final_competencies())
-
-    if "manage_users" not in held and held.isdisjoint(SCOPED_MANAGER_IDS):
-        return HTTPException(status_code=403, detail="Not allowed")
-    if caller.platform_role == "superadmin":
-        return None
-    if person.platform_role == "superadmin":
-        return HTTPException(
-            status_code=403, detail="Cannot modify superadmin users"
-        )
-    if person.id == caller.id:
-        return HTTPException(
-            status_code=403,
-            detail=(
-                "Competencies must be changed by another user who holds "
-                "manage_users"
-            ),
-        )
-
-    reached = org_units_whose_people_reached_by(db, caller)
-
-    if reached is not None and not is_member_within(db, person.id, reached):
-        return HTTPException(status_code=404, detail="Member not found")
-
-    return None
-
-
 @router.get(
     "/{unit_id}/members/{user_id}/practice",
     response_model=MemberPracticeOut,
@@ -1402,7 +948,7 @@ def get_member_practice(
         .scalars()
         .all()
     )
-    names = _names_of(
+    names = names_of(
         db, {row.authorised_by for row in rows if row.authorised_by}
     )
 
@@ -1423,7 +969,7 @@ def get_member_practice(
             )
             for row in rows
         ],
-        may_grant=_grant_refusal(db, current_user, person) is None,
+        may_grant=grant_refusal(db, current_user, person) is None,
         may_change=(
             sorted(in_scope)
             if through_teaching and in_scope is not None
@@ -1462,71 +1008,15 @@ def grant_and_authorise(
     a scoped manager for a competency it may grant, at an org_unit the
     caller belongs to.
     """
-    needs = ("manage_users", "manage_practising_competencies")
-    through_teaching = through_a_scope(current_user, *needs)
-
-    if not through_teaching and not set(needs) <= set(
-        current_user.get_final_competencies()
-    ):
-        raise HTTPException(status_code=403, detail="Not allowed")
-
-    unit = require_visible(db, current_user, unit_id, *needs)
-
-    if not type_can_hold_competencies(unit.type):
-        raise HTTPException(
-            status_code=422,
-            detail=f"Nobody practises anything at a {unit.type}.",
-        )
-
-    person = require_member(db, unit_id, user_id)
-
-    refusal = _grant_refusal(db, current_user, person)
-
-    if refusal is not None:
-        raise refusal
-
-    competency = body.competency
-
-    if through_teaching:
-        require_in_scope(current_user, {competency})
-
-    granted = competency not in person.get_final_competencies()
-
-    if granted:
-        template = set(
-            get_profession_base_competencies(person.base_profession)
-        )
-        additional = set(person.additional_competency_ids)
-        removed = set(person.removed_competency_ids)
-        # A competency their profession gives is restored by taking it
-        # off the removed list; anything else is added beyond it.
-        removed.discard(competency)
-        if competency not in template:
-            additional.add(competency)
-        sync_competency_rows(
-            person,
-            additional=sorted(additional),
-            removed=sorted(removed),
-            source="admin",
-            granted_by=current_user.id,
-            org_unit_id=unit_id,
-        )
-
-    authorised = authorise_practice(
+    status = grant_then_authorise(
         db,
+        current_user,
+        unit_id=unit_id,
         user_id=user_id,
-        org_unit_id=unit_id,
-        competency=competency,
-        authorised_by=current_user.id,
+        competency=body.competency,
     )
 
-    db.flush()
-    if granted:
-        return OrgUnitStatusOut(status="granted_and_authorised")
-    if authorised:
-        return OrgUnitStatusOut(status="authorised")
-
-    return OrgUnitStatusOut(status="unchanged")
+    return OrgUnitStatusOut(status=status)
 
 
 # ------------------------------------------------------------------
@@ -1599,96 +1089,11 @@ def set_org_unit_feature(
     gate here would have taken a working thing away from every admin the
     day that surface was retired.
     """
-    require_visible(db, current_user, unit_id)
-
-    # Passport cover gives away the paid half of the passport, so whoever
-    # switches it controls the price. A superadmin only, in both
-    # directions: a trust admin must not be able to make writing free
-    # across their trust.
-    if (
-        feature_key == COVER_FEATURE
-        and current_user.platform_role != "superadmin"
-    ):
-        raise HTTPException(
-            status_code=403,
-            detail="Only an operator may switch passport cover.",
-        )
-
-    existing = db.scalar(
-        select(OrgUnitFeature).where(
-            OrgUnitFeature.org_unit_id == unit_id,
-            OrgUnitFeature.feature_key == feature_key,
-        )
+    status = switch_feature(
+        db, current_user, unit_id, feature_key, enabled=body.enabled
     )
 
-    if body.enabled:
-        if existing is not None:
-            return OrgUnitStatusOut(status="already_enabled")
-        if (
-            feature_key in ORGANISATION_ONLY_FEATURES
-            and db.scalar(
-                organisation_org_unit_ids().where(OrgUnit.id == unit_id)
-            )
-            is None
-        ):
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    "That feature is switched on for an organisation, "
-                    "and reaches its sites from there."
-                ),
-            )
-        if feature_key == COVER_FEATURE and not _has_feature(
-            db, unit_id, "passport"
-        ):
-            raise HTTPException(
-                status_code=422,
-                detail="Switch the passport on here before its cover.",
-            )
-        db.add(
-            OrgUnitFeature(
-                org_unit_id=unit_id,
-                feature_key=feature_key,
-                enabled_by=current_user.id,
-            )
-        )
-        db.flush()
-        if feature_key == COVER_FEATURE:
-            cover.switch_on(db, unit_id, current_user)
-        return OrgUnitStatusOut(status="enabled")
-
-    if existing is None:
-        return OrgUnitStatusOut(status="already_disabled")
-    db.delete(existing)
-    if feature_key == "passport":
-        # The cover means nothing without the passport, so it goes too.
-        cover_row = db.scalar(
-            select(OrgUnitFeature).where(
-                OrgUnitFeature.org_unit_id == unit_id,
-                OrgUnitFeature.feature_key == COVER_FEATURE,
-            )
-        )
-        if cover_row is not None:
-            db.delete(cover_row)
-            cover.switch_off(db, unit_id)
-    if feature_key == COVER_FEATURE:
-        cover.switch_off(db, unit_id)
-    db.flush()
-
-    return OrgUnitStatusOut(status="disabled")
-
-
-def _has_feature(db: Session, unit_id: int, feature_key: str) -> bool:
-    """Whether *feature_key* is switched on at the org_unit itself."""
-    return (
-        db.scalar(
-            select(OrgUnitFeature.id).where(
-                OrgUnitFeature.org_unit_id == unit_id,
-                OrgUnitFeature.feature_key == feature_key,
-            )
-        )
-        is not None
-    )
+    return OrgUnitStatusOut(status=status)
 
 
 @router.get(
@@ -1937,45 +1342,13 @@ def create_org_unit_link(
     Requires ``manage_users``, and the org_unit the link is *from* must be
     one the caller may administer.
     """
-    require_visible(db, current_user, unit_id)
-
-    if body.target_id == unit_id:
-        raise HTTPException(
-            status_code=400, detail="A place cannot be linked to itself"
-        )
-
-    if db.get(OrgUnit, body.target_id) is None:
-        raise HTTPException(status_code=404, detail="Target place not found")
-
-    try:
-        relation = validate_org_unit_relation(body.relation)
-    except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Invalid relation. Must be one of: "
-                + ", ".join(ORG_UNIT_RELATION_IDS)
-            ),
-        ) from None
-
-    existing = db.scalar(
-        select(OrgUnitLink).where(
-            OrgUnitLink.source_id == unit_id,
-            OrgUnitLink.target_id == body.target_id,
-            OrgUnitLink.relation == relation,
-        )
+    add_link(
+        db,
+        current_user,
+        unit_id,
+        target_id=body.target_id,
+        relation=body.relation,
     )
-
-    if existing is None:
-        db.add(
-            OrgUnitLink(
-                source_id=unit_id,
-                target_id=body.target_id,
-                relation=relation,
-                created_by=current_user.id,
-            )
-        )
-        db.flush()
 
     return _links_out(db, unit_id)
 

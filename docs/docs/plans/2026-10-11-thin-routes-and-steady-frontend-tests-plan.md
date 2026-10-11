@@ -929,10 +929,38 @@ for him to rule on before the go-live. Most serious first.
 
 ## Phase 4: The org units and passport routers
 
-- [ ] `backend/app/org_units/router.py`: `add_org_unit_member` (120
+- [x] `backend/app/org_units/router.py`: `add_org_unit_member` (120
       lines), `get_org_unit` (85), `set_org_unit_feature` (77 lines, 10
       branches) and `grant_and_authorise` (65). 26 routes, 9 of them
       long.
+      Measured again on 11 October 2026, counting the lines inside
+      each route body after its docstring: `add_org_unit_member` 120
+      (9 `if`s), `get_org_unit` 83 (4), `set_org_unit_feature` 77
+      (10), `grant_and_authorise` 65 (8), and four more of 40 lines or
+      over with several branches, which joined the list:
+      `update_org_unit` 50 (8), `set_org_unit_clinical_lead` 43 (4),
+      `create_org_unit` 42 (4) and `create_org_unit_link` 41 (3). The
+      ninth long route, `get_member_practice` at 49 lines, has no `if`
+      in it and is all response, so it stays.
+      Each rule is now a plain function beside the router:
+      `add_member` and `name_clinical_lead` in `members.py`,
+      `switch_feature` in `features.py`, `grant_then_authorise` and
+      `grant_refusal` in `practice.py`, `org_unit_detail` in
+      `detail.py`, `add_org_unit` and `change_org_unit` in
+      `structure.py`, `add_link` in `links.py`, and `require_editable`
+      in `access.py`. Every refusal is an `OrgUnitError` in
+      `errors.py`, and the router fell from 2,061 lines to 1,434 with
+      no route over 49. The router's own account check went: it said
+      what `check_account_in_scope` in `app/users/scope.py` says, in
+      the same words and status, so both member routes call that.
+      Three files in `backend/tests/`, named
+      `org_unit_*_refusals_test.py`, pin the status and words of each
+      refusal through the routes; almost none had a test of its words.
+      Found on the way: adding a member writes the membership before
+      it checks a scoped manager's limits, so a refusal there rests on
+      the request being rolled back, which the tests now pin; and the
+      feature key in the path is checked against nothing, so any text
+      is stored as a feature.
 - [ ] `backend/app/features/passport/router.py`: `request_sign_off`
       (120 lines) and `accept_assessor_invite` (113). This router is in
       better shape than its 4,017 lines suggest, with more plain helper
