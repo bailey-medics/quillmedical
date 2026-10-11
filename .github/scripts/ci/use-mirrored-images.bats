@@ -134,15 +134,49 @@ STUB
   [[ "$output" == *"GITHUB_ENV"* ]]
 }
 
-@test "the variables the workflow names are ones the real compose file reads" {
-  # The workflow step and compose.ci.yml are edited apart, so pin them
+@test "the variables each workflow names are ones the real compose file reads" {
+  # The workflow steps and compose.ci.yml are edited apart, so pin them
   # together here.
   root="${BATS_TEST_DIRNAME}/../../.."
-  named="$(grep -o 'use-mirrored-images.sh.*' "${root}/.github/workflows/ci.yml" | grep -o 'CI_[A-Z_]*_IMAGE')"
+  named="$(grep -h -o 'use-mirrored-images.sh.*' "${root}"/.github/workflows/*.yml | grep -o 'CI_[A-Z_]*_IMAGE' | sort -u)"
 
   [ -n "$named" ]
 
   for variable in $named; do
     grep -q "\${${variable}:-" "${root}/compose.ci.yml"
+  done
+}
+
+@test "every image variable in the compose file is named by each workflow that uses the mirror" {
+  root="${BATS_TEST_DIRNAME}/../../.."
+  # A workflow that runs the script, not one that only mentions it.
+  wanted="$(grep -o '\${CI_[A-Z_]*_IMAGE:-' "${root}/compose.ci.yml" | grep -o 'CI_[A-Z_]*_IMAGE' | sort -u)"
+
+  [ -n "$wanted" ]
+
+  for workflow in $(grep -l 'run: bash .*use-mirrored-images.sh' "${root}"/.github/workflows/*.yml); do
+    for variable in $wanted; do
+      grep 'use-mirrored-images.sh' "$workflow" | grep -q "$variable"
+    done
+  done
+}
+
+@test "every workflow that starts the CI stack points it at the mirror first" {
+  # The end-to-end job had the step and the guide screenshots did not,
+  # and were refused by the public registry on 11 October 2026.
+  root="${BATS_TEST_DIRNAME}/../../.."
+  starters="$(grep -l 'compose.ci.yml up' "${root}"/.github/workflows/*.yml)"
+
+  [ "$(wc -l <<<"$starters")" -ge 2 ]
+
+  for workflow in $starters; do
+    mirror_line="$(grep -n 'use-mirrored-images.sh' "$workflow" | head -n 1 | cut -d: -f1)"
+    login_line="$(grep -n 'registry: ghcr.io' "$workflow" | head -n 1 | cut -d: -f1)"
+    up_line="$(grep -n 'compose.ci.yml up' "$workflow" | head -n 1 | cut -d: -f1)"
+
+    [ -n "$mirror_line" ]
+    [ -n "$login_line" ]
+    [ "$login_line" -lt "$mirror_line" ]
+    [ "$mirror_line" -lt "$up_line" ]
   done
 }

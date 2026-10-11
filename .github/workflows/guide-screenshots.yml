@@ -34,6 +34,7 @@ on:
 permissions:
   contents: read
   id-token: write # Workload Identity Federation
+  packages: read # the mirrored Postgres and Caddy images, in GHCR
 
 # One at a time, newest wins: the bucket is mirrored, so two runs finishing
 # out of order would leave the older set published.
@@ -53,6 +54,21 @@ jobs:
       # A module for the teaching pages to show. seed_ci.py syncs it.
       - name: Fetch E2E teaching content
         run: .github/scripts/ci/fetch-e2e-teaching.sh
+
+      # Postgres and Caddy come from this repository's own copies where it
+      # has them, pulled with this login, and not from the public
+      # registry, which refuses a runner that asks too often. That
+      # refusal failed this workflow on 11 October 2026 with no screen
+      # changed. mirror-images.yml makes the copies.
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Use the mirrored images where they exist
+        run: bash .github/scripts/ci/use-mirrored-images.sh "${{ github.repository_owner }}" compose.ci.yml CI_POSTGRES_IMAGE CI_CADDY_IMAGE
 
       # Built here, where ci.yml's end-to-end job pulls images it prebuilt
       # for a pull request: on a push to main there are none to pull.
