@@ -327,9 +327,28 @@ more.
             naming no files still stamps `transcoded_at`; and the
             caption job is fired after a flush and before the commit,
             so its start time is not yet visible to another session.
-      - [ ] **Patients** - `list_patients` (61 lines, 6 branches) and
+      - [x] **Patients** - `list_patients` (61 lines, 6 branches) and
             `update_patient` (36 lines, 7 branches, under forty lines
-            and still the most branched route left).
+            and still the most branched route left). A new package,
+            `backend/app/patients/`: `patients_shown` in `listing.py`
+            is the list for one caller, made of
+            `patients_within_reach`, `sees_deactivated`,
+            `activation_by_patient` and `patient_rows`; and
+            `changes_to_send` in `update.py` is what an update sends
+            to FHIR. The calls to FHIR stay in the two routes, because
+            existing tests fake them at `app.main`, and so do the
+            update's two refusals, which each answer what FHIR said:
+            there is no errors module and no new handler. Nothing
+            pinned either route, so
+            `backend/tests/patient_list_and_update_routes_test.py`
+            does. Found on the way, and left as they are:
+            `update_patient` asks nothing about the caller beyond
+            being signed in, so no competency and no shared org unit
+            is needed to change a patient; a FHIR outage there is
+            answered 500 where the list answers 502; the
+            request's NHS number, MRN and patient id are accepted and
+            ignored; and one record FHIR returns that will not
+            validate empties the whole list as `fhir_ready: false`.
       - [ ] **Accepting an invite** - `accept_invite` (65 lines, 6
             branches).
       - [ ] **Deactivating somebody, and sending an invite** -
@@ -355,6 +374,21 @@ more.
       - **`get_user`, `me`, `list_teaching_modules_public` and
         `update_my_competencies`** - 40 to 73 lines with one or two
         branches each. They build a response and decide almost nothing.
+
+- [ ] Decide what to do about `update_patient`, found on 11 October
+      2026 while moving the patient routes. **It asks nothing about who
+      is calling beyond that they are signed in.** No competency, and no
+      shared org unit: any signed-in user can change any patient's
+      name, date of birth and gender by naming the patient's id. Its
+      own docstring says "any role can update patients". It is part of
+      EHR production and nobody uses that yet, which is the only reason
+      this is a step in a plan and not an incident; it must be closed
+      before anybody does. Left unpinned by any test, on purpose, so
+      that closing it does not read as a regression. Smaller, in the
+      same routes: a FHIR outage on update answers 500 where every
+      other route answers 502; an NHS number or MRN sent in the body is
+      accepted and ignored; and one FHIR record that fails validation
+      empties the whole list.
 
 - [ ] Decide what to do about what listing people gives away, found on
       11 October 2026 while moving `list_users`. None is changed here.

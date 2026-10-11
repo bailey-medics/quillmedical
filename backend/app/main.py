@@ -138,12 +138,13 @@ from app.org_units.tree import (
 )
 from app.organisations import (
     feature_holder_ids_of,
-    get_accessible_patient_ids,
     get_shared_org_unit_ids,
     is_member_within,
     org_units_whose_people_reached_by,
     organisation_org_units_of,
 )
+from app.patients.listing import patients_shown
+from app.patients.update import changes_to_send
 from app.push import router as push_router
 from app.push_send import router as push_send_router
 from app.rate_limit import limiter
@@ -212,7 +213,6 @@ from app.schemas.patients import (
     LetterOut,
     LettersListOut,
     PatientActivationOut,
-    PatientListItem,
     PatientMetadataOut,
     PatientsListOut,
     PatientVerifyOut,
@@ -2879,62 +2879,16 @@ def list_patients(
         dict: Response with patients array and fhir_ready flag.
     """
     try:
-        patients = list_fhir_patients()
-
-        # Fetch all patient metadata from database
-        stmt = select(PatientMetadata)
-        metadata_records = db.execute(stmt).scalars().all()
-        metadata_map = {m.patient_id: m.is_active for m in metadata_records}
-
-        # Determine which patients are accessible.
-        #
-        # Seeing every patient in the deployment is not an administrative
-        # act at an org_unit - it is reach unbounded by any org_unit, which is
-        # what the platform role records. An admin at one trust is
-        # confined to the patients they share an organisation with, the
-        # same as anyone else.
-        is_operator = current_user.platform_role == "superadmin"
-        admin_scope = scope == "admin" and is_operator
-
-        # Seeing *deactivated* patients is a narrower question than
-        # seeing every patient: it applies within the list the caller can
-        # already reach, so it asks the patient competency rather than
-        # the platform role. Someone administering their own
-        # organisation's caseload has reason to see its deactivated
-        # patients; that is not a claim to reach every trust.
-        manages_patients = (
-            "manage_patient_membership"
-            in current_user.get_final_competencies()
+        records = list_fhir_patients()
+        shown = patients_shown(
+            db,
+            current_user,
+            records,
+            scope=scope,
+            include_inactive=include_inactive,
         )
 
-        accessible_ids: set[str] | None = None
-        if admin_scope:
-            accessible_ids = None  # no filtering
-        else:
-            accessible_ids = get_accessible_patient_ids(db, current_user)
-
-            # Enrich patients with activation status and filter
-        enriched_patients: list[PatientListItem] = []
-        for patient in patients:
-            patient_id = patient.get("id")
-            if patient_id is None:
-                continue
-
-                # Org-based filtering (skip for admin scope)
-            if accessible_ids is not None and patient_id not in accessible_ids:
-                continue
-
-            is_active = metadata_map.get(patient_id, True)
-
-            # Filter based on activation status
-            if is_active or (include_inactive and manages_patients):
-                enriched_patients.append(
-                    PatientListItem.model_validate(
-                        {**patient, "is_active": is_active}
-                    )
-                )
-
-        return PatientsListOut(patients=enriched_patients, fhir_ready=True)
+        return PatientsListOut(patients=shown, fhir_ready=True)
     except FhirClientError:
         raise
     except Exception:
@@ -3355,19 +3309,14 @@ def update_patient(
         if not existing:
             raise HTTPException(status_code=404, detail="Patient not found")
 
-            # Build update dict in the format update_fhir_patient expects
-        updates: dict[str, Any] = {}
+        updates = changes_to_send(
+            given_name=data.given_name,
+            family_name=data.family_name,
+            birth_date=data.birth_date,
+            gender=data.gender,
+        )
 
-        if data.given_name:
-            updates["given_name"] = data.given_name
-        if data.family_name:
-            updates["family_name"] = data.family_name
-        if data.birth_date:
-            updates["date_of_birth"] = data.birth_date
-        if data.gender:
-            updates["sex"] = data.gender
-
-            # Perform update
+        # Perform update
         updated_patient = update_fhir_patient(patient_id, updates)
         if not updated_patient:
             raise HTTPException(
