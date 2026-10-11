@@ -878,6 +878,75 @@ class TestConfirmingALogbookEntry:
             assessor.email
         )
 
+    def test_an_entry_that_is_refused_emails_nobody(
+        self,
+        passport: tuple[TestClient, str],
+        assessor: User,
+        db_session: Session,
+        mailed: list[str],
+    ) -> None:
+        """Evidence that is not stored refuses the entry. The supervisor
+        was once emailed first, and held a link to an entry that was
+        then never written."""
+        client, passport_id = passport
+
+        response = client.post(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
+            json={
+                "performed_on": "2026-03-12",
+                "scope_id": SCOPE,
+                "confirmer_email": assessor.email,
+                "attachments": [
+                    {
+                        "hash": "sha256:" + "0" * 64,
+                        "filename": "scan.pdf",
+                        "size_bytes": 10,
+                        "media_type": "application/pdf",
+                    }
+                ],
+            },
+        )
+
+        assert response.status_code == 400, response.text
+        assert mailed == []
+        assert (
+            db_session.query(PassportLogbookConfirmationRequest).count() == 0
+        )
+
+    def test_a_correction_that_is_refused_emails_nobody(
+        self,
+        passport: tuple[TestClient, str],
+        assessor: User,
+        mailed: list[str],
+    ) -> None:
+        client, passport_id = passport
+        created = client.post(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}",
+            json={"performed_on": "2026-03-12", "scope_id": SCOPE},
+        )
+        assert created.status_code == 201, created.text
+        stem = created.json()["name"]
+
+        response = client.patch(
+            f"/api/passport/{passport_id}/logbook/{COMPETENCY}/{stem}",
+            json={
+                "performed_on": "2026-03-12",
+                "scope_id": SCOPE,
+                "confirmer_email": assessor.email,
+                "attachments": [
+                    {
+                        "hash": "sha256:" + "0" * 64,
+                        "filename": "scan.pdf",
+                        "size_bytes": 10,
+                        "media_type": "application/pdf",
+                    }
+                ],
+            },
+        )
+
+        assert response.status_code == 400, response.text
+        assert mailed == []
+
     def test_a_holder_cannot_ask_themselves(
         self,
         passport: tuple[TestClient, str],
