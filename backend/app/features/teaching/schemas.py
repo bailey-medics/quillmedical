@@ -156,6 +156,8 @@ class CandidateItemOut(BaseModel):
 class StartAssessmentIn(BaseModel):
     """Request body for starting a new assessment."""
 
+    model_config = ConfigDict(extra="forbid")
+
     question_bank_id: str
 
 
@@ -242,6 +244,8 @@ class AssessmentQuestionResultsOut(BaseModel):
 
 class SubmitAnswerIn(BaseModel):
     """Request body for submitting an answer."""
+
+    model_config = ConfigDict(extra="forbid")
 
     selected_option: str
 
@@ -434,6 +438,8 @@ class TeachingOrgSettingsIn(BaseModel):
     branding somebody else set.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     coordinator_email: str
     institution_name: str
     #: For the sender line, "EoEETA via Quill Medical". No quotes, angle
@@ -545,6 +551,8 @@ class QuestionBankOrgStatusIn(BaseModel):
 class PromoteBankVersionIn(BaseModel):
     """Which version this organisation's candidates should receive."""
 
+    model_config = ConfigDict(extra="forbid")
+
     version: int = Field(ge=1)
 
 
@@ -560,6 +568,8 @@ class PromoteBankVersionOut(BaseModel):
 
 class QuestionBankOrgSettingsIn(BaseModel):
     """Combined settings update for a bank-org pair."""
+
+    model_config = ConfigDict(extra="forbid")
 
     is_live: bool
     site_registration: bool = False
@@ -650,6 +660,8 @@ class VideoAccessOut(BaseModel):
 
 class MediaUploadUrlIn(BaseModel):
     """Ask for somewhere to upload one media file."""
+
+    model_config = ConfigDict(extra="forbid")
 
     #: The MDX reference this upload is destined for.
     media_key: str
@@ -763,6 +775,8 @@ class CaptionsOut(BaseModel):
 class CaptionsIn(BaseModel):
     """Corrected WebVTT, replacing what the caption job produced."""
 
+    model_config = ConfigDict(extra="forbid")
+
     #: The whole file, not a patch. The editor hands back what it was
     #: given with the text fixed, so there is nothing to merge.
     webvtt: str
@@ -780,6 +794,8 @@ class TranscodeCompleteIn(BaseModel):
     The three ids are the ones the job was invoked with, so the callback
     addresses the same link row the invocation came from.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     org_id: int
     module_id: str
@@ -807,6 +823,8 @@ class CaptionCompleteIn(BaseModel):
     value to validate and nothing to learn from it.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     org_id: int
     module_id: str
     asset_id: str
@@ -827,6 +845,8 @@ class MediaLinkIn(BaseModel):
     one minted by ``upload-url``, so it addresses an object this
     organisation was given somewhere to write.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     asset_id: str
     #: Recorded as data and shown back to the uploader. Never used to
