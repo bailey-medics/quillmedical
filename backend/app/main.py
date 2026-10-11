@@ -284,6 +284,8 @@ from app.security import (
     verify_password_reset_token,
     verify_totp_code,
 )
+from app.users.errors import UserAdminError
+from app.users.identity import change_identity
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -455,6 +457,24 @@ async def fhir_client_error_handler(
     )
 
     # --- EHRbase client error handler ---
+
+
+@app.exception_handler(UserAdminError)
+async def user_admin_error_handler(
+    request: Request, exc: UserAdminError
+) -> Response:
+    """Answer a refused change to an account with its own words.
+
+    The status and the message are the class's, fixed where the refusal
+    is defined, so this formats nothing. The body is the one an
+    ``HTTPException`` gives.
+    """
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.message},
+    )
 
 
 @app.exception_handler(EhrbaseClientError)
@@ -2798,46 +2818,16 @@ def update_user(
                 ),
             )
 
-            # Validate and update username
-    if payload.username is not None:
-        username = payload.username.strip()
-        if username != user.username:
-            existing = db.scalar(select(User).where(User.username == username))
-            if existing:
-                raise HTTPException(
-                    status_code=400, detail="Username already exists"
-                )
-            user.username = username
+    change_identity(
+        db,
+        user,
+        username=payload.username,
+        name=payload.name,
+        email=payload.email,
+        password=payload.password,
+    )
 
-            # Update full name
-    if payload.name is not None:
-        user.full_name = payload.name.strip() or None
-
-        # Validate and update email
-    if payload.email is not None:
-        email = normalise_email(payload.email)
-        if email != user.email:
-            if not email:
-                raise HTTPException(
-                    status_code=400, detail="Email is required"
-                )
-            existing = db.scalar(select(User).where(User.email == email))
-            if existing:
-                raise HTTPException(
-                    status_code=400, detail="Email already exists"
-                )
-            user.email = email
-
-            # Update password if provided
-    if payload.password is not None and payload.password:
-        if len(payload.password) < 8:
-            raise HTTPException(
-                status_code=400,
-                detail="Password must be at least 8 characters",
-            )
-        user.password_hash = hash_password(payload.password)
-
-        # Update CBAC fields if provided
+    # Update CBAC fields if provided
     # Both lists start from the person's current rows, and are settled
     # here before anything is written.
     additional = user.additional_competency_ids
