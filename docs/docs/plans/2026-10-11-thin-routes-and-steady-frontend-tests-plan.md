@@ -527,27 +527,65 @@ more.
         organisations included**, so a trust shows in both lists.
       - **An empty `patient_id` falls through to the full list.**
 
-- [ ] Decide what to do about what the content sync answers, found on
-      11 October 2026 while moving it. None is changed here.
+- [x] List a bank whose content did not load as failed, in what the
+      content sync answers. Five things were found on 11 October 2026
+      while moving it, and none was changed then. Two are fixed here
+      and three are left.
 
-      - **A failed assessment is reported as synced** - when
-        `sync_question_bank` records a sync whose status is `failed`,
-        the record is still there, so the bank is listed under `synced`
-        and CI is answered 200. Only a failed module check, or an
-        exception, gives a 422. So CI can go green on content that did
-        not load. This is the one that matters.
-      - **A draft whose version is not 1 is on neither list**, and so
-        is also a 200.
-      - **An exception's own words are sent back to CI**, for a bank
-        whose sync raised. It is behind the sync token and is about
-        content, never a patient, but it is text nobody wrote for a
-        reader.
-      - **Nothing is rolled back after a bank raises**, so a database
-        error part way could leave the session unusable for the banks
-        after it.
+      A sync record has three statuses. `in_progress` is what it is
+      made with, and `sync_question_bank` never hands one back in that
+      state. `failed` is written when the assessment does not pass its
+      checks: nothing of the bank is loaded. `success` is written when
+      its questions went in. `sync_every_bank` now counts a bank as
+      synced only on `success`, and any other status as failed.
+
+      - **A failed assessment was reported as synced: fixed.**
+        *Before*, a record whose status was `failed` was still a
+        record, so the bank was listed under `synced` and CI was
+        answered 200. Only a failed module check, or an exception,
+        gave a 422, so CI could go green on content that did not load.
+        *Now* the bank is listed under `errors` with the first five
+        things the checks said, and the answer is 422. The response
+        has the same fields as before. The path beside each message is
+        left out, as it already is for a module that fails its checks:
+        for a bank read from the bucket it begins with the folder the
+        server downloaded it into. The paths are still on the sync
+        record.
+      - **A draft whose version is not 1 was on neither list: fixed.**
+        It is a rejection, not a skip: `sync_question_bank` logs
+        "Rejecting sync for draft bank", adds "Draft module version
+        must be 1, got N" to what the checks found, and makes no
+        record. *Before*, no record meant neither list, and a 200.
+        *Now* no record together with a fault from the checks means
+        `errors`, with those words, and a 422.
+      - **No record and no fault is still neither list, and right.**
+        That is a live bank whose version has not moved on: there is
+        nothing new to load, only its card details are refreshed, and
+        it happens to every unchanged bank at every deploy.
+      - **A choice made here** - `sync_question_bank` hands back no
+        record in two cases, and the fault is the only thing that
+        tells them apart from outside. So a live bank whose version
+        has not moved on, and whose assessment no longer passes its
+        checks, is now also listed as failed where it was a 200. That
+        is content in the bucket that could not be loaded if it were
+        asked for, and the same validator runs at the merge gate, so
+        it was taken as the cautious reading and not narrowed away.
+      - **An exception's own words are sent back to CI: left.** For a
+        bank whose sync raised. It is behind the sync token and is
+        about content, never a patient, but it is text nobody wrote
+        for a reader. Changing it changes what an author sees when
+        something breaks, which is its own decision.
+      - **Nothing is rolled back after a bank raises: left.** A
+        database error part way could leave the session unusable for
+        the banks after it. Not part of what CI is answered.
       - **`sync_all_banks` in the teaching router is the same loop a
-        second time**, started by a person. Phase 3 should fold the two
-        into one.
+        second time: left**, for Phase 3 to fold the two into one.
+        **It has the same defects and they are not fixed here.** It
+        puts a failed record in its `synced` list and answers 200,
+        and a draft turned away for its version is on neither of its
+        lists. The failed record does carry its own `status` and
+        `errors` in that answer, so a page that reads them can tell,
+        but the list it is in says synced.
 
 - [x] Save a registration before sending its email, in `register`.
       Found on 11 October 2026 while moving the route's rules out:

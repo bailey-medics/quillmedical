@@ -26,6 +26,7 @@ from app.features.teaching.ci_sync import (
 from app.features.teaching.models import (
     SYNC_ACTOR_DEPLOY_BOT,
     QuestionBankConfig,
+    QuestionBankSync,
 )
 from app.features.teaching.schemas import (
     CiSyncBankResult,
@@ -48,8 +49,19 @@ _VALID_MODULE_ID = "valid-module"
 _NOT_FOUND = "module directory not found - cannot validate module metadata"
 
 
+#: A module that passes its own checks and whose assessment does not.
+_BAD_ASSESSMENT_ID = "bad-assessment"
+
+#: What the checks say of it, as the pipeline is told.
+_BAD_ASSESSMENT_REASON = "uniform type requires 'options'"
+
+
 def _base_with(
-    tmp_path: Path, *, good: bool = False, bad: bool = False
+    tmp_path: Path,
+    *,
+    good: bool = False,
+    bad: bool = False,
+    bad_assessment: bool = False,
 ) -> str:
     """Build a modules-layout tree and return it as the base path."""
     modules = tmp_path / "repo" / "modules"
@@ -57,6 +69,25 @@ def _base_with(
 
     if good:
         shutil.copytree(_VALID_MODULE, modules / _VALID_MODULE_ID)
+
+    if bad_assessment:
+        module = modules / _BAD_ASSESSMENT_ID
+        shutil.copytree(_VALID_MODULE, module)
+        metadata = module / "module.yaml"
+        metadata.write_text(
+            metadata.read_text().replace(_VALID_MODULE_ID, _BAD_ASSESSMENT_ID)
+        )
+        # The module still passes. Only the assessment is at fault, so
+        # the sync gets as far as recording that it failed.
+        assessment = module / "assessment" / "assessment.yaml"
+        assessment.write_text(
+            "\n".join(
+                line
+                for line in assessment.read_text().splitlines()
+                if not line.startswith(("options:", "- "))
+            )
+            + "\n"
+        )
 
     if bad:
         broken = modules / "bad-bank"
@@ -123,6 +154,7 @@ def _fake_the_bucket(
     module_found: bool = True,
     metadata: ValidationResult | None = None,
     sync_returns: Any = "a record",
+    sync_found: ValidationResult | None = None,
     sync_raises: Exception | None = None,
 ) -> tuple[_Calls, Path, Path]:
     """Stand in for a bucket holding one module.
@@ -146,12 +178,12 @@ def _fake_the_bucket(
             raise sync_raises
 
         record = (
-            SimpleNamespace(version=3)
+            SimpleNamespace(version=3, status="success")
             if sync_returns == "a record"
             else sync_returns
         )
 
-        return ValidationResult(), record
+        return sync_found or ValidationResult(), record
 
     def fake_status(bucket: str, bank_id: str) -> str:
         calls.status_asked_for.append(bank_id)
@@ -269,6 +301,85 @@ class TestSyncEveryBank:
 
         assert sync_every_bank(db_session) == CiTeachingSyncOut(
             synced=[], errors=[]
+        )
+
+    def test_a_bank_whose_assessment_failed_is_listed_as_failed(
+        self,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        organisation: OrgUnit,
+    ) -> None:
+        """The sync keeps a record of it, but nothing of it was loaded."""
+        _read_from(
+            monkeypatch,
+            base_path=_base_with(tmp_path, bad_assessment=True),
+        )
+
+        outcome = sync_every_bank(db_session)
+
+        assert outcome == CiTeachingSyncOut(
+            synced=[],
+            errors=[
+                CiSyncErrorItem(
+                    bank_id=_BAD_ASSESSMENT_ID, error=_BAD_ASSESSMENT_REASON
+                )
+            ],
+        )
+        assert db_session.scalar(select(QuestionBankConfig)) is None
+
+        record = db_session.execute(select(QuestionBankSync)).scalar_one()
+
+        assert record.status == "failed"
+
+    def test_a_failed_assessment_and_a_good_bank_are_each_listed(
+        self,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        organisation: OrgUnit,
+    ) -> None:
+        _read_from(
+            monkeypatch,
+            base_path=_base_with(tmp_path, good=True, bad_assessment=True),
+        )
+
+        outcome = sync_every_bank(db_session)
+
+        assert [bank.bank_id for bank in outcome.synced] == [_VALID_MODULE_ID]
+        assert outcome.errors == [
+            CiSyncErrorItem(
+                bank_id=_BAD_ASSESSMENT_ID, error=_BAD_ASSESSMENT_REASON
+            )
+        ]
+
+    def test_a_bank_turned_away_with_no_record_is_listed_as_failed(
+        self,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        organisation: OrgUnit,
+    ) -> None:
+        turned_away = ValidationResult()
+        turned_away.add_error(
+            "/tmp/a-bank", "Draft module version must be 1, got 2"
+        )
+        _read_from(monkeypatch, bucket="a-bucket")
+        monkeypatch.setattr(
+            ci_sync, "list_banks_in_gcs", lambda bucket: ["a-bank"]
+        )
+        _fake_the_bucket(
+            monkeypatch, tmp_path, sync_returns=None, sync_found=turned_away
+        )
+
+        assert sync_every_bank(db_session) == CiTeachingSyncOut(
+            synced=[],
+            errors=[
+                CiSyncErrorItem(
+                    bank_id="a-bank",
+                    error="Draft module version must be 1, got 2",
+                )
+            ],
         )
 
 
@@ -543,6 +654,111 @@ class TestSyncOneBankFromTheBucket:
         outcome = _sync_one_bank(db_session, "a-bank", 1, "a-bucket", None)
 
         assert outcome is None
+
+    def test_a_sync_recorded_as_failed_is_listed_with_what_was_wrong(
+        self,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """In the checks' own words, without the path beside each."""
+        failed = SimpleNamespace(
+            version=3,
+            status="failed",
+            errors=[
+                {
+                    "path": "assessment/question_001/question.yaml",
+                    "message": "missing required 'text' field",
+                },
+                {"path": "tmp/a-bank", "message": "no questions found"},
+            ],
+        )
+        _fake_the_bucket(monkeypatch, tmp_path, sync_returns=failed)
+
+        outcome = _sync_one_bank(db_session, "a-bank", 1, "a-bucket", None)
+
+        assert outcome == CiSyncErrorItem(
+            bank_id="a-bank",
+            error="missing required 'text' field; no questions found",
+        )
+
+    def test_only_the_first_five_recorded_faults_are_given(
+        self,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        failed = SimpleNamespace(
+            version=3,
+            status="failed",
+            errors=[
+                {"path": "", "message": f"fault {number}"}
+                for number in range(1, 8)
+            ],
+        )
+        _fake_the_bucket(monkeypatch, tmp_path, sync_returns=failed)
+
+        outcome = _sync_one_bank(db_session, "a-bank", 1, "a-bucket", None)
+
+        assert outcome == CiSyncErrorItem(
+            bank_id="a-bank",
+            error="fault 1; fault 2; fault 3; fault 4; fault 5",
+        )
+
+    def test_a_failed_sync_that_recorded_no_fault_is_still_listed(
+        self,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        failed = SimpleNamespace(version=3, status="failed", errors=[])
+        _fake_the_bucket(monkeypatch, tmp_path, sync_returns=failed)
+
+        outcome = _sync_one_bank(db_session, "a-bank", 1, "a-bucket", None)
+
+        assert outcome == CiSyncErrorItem(
+            bank_id="a-bank",
+            error="the sync did not succeed and recorded no reason",
+        )
+
+    def test_a_sync_left_in_progress_is_not_taken_for_a_success(
+        self,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Only a success is a success, whatever else a record may say."""
+        unfinished = SimpleNamespace(
+            version=3, status="in_progress", errors=[]
+        )
+        _fake_the_bucket(monkeypatch, tmp_path, sync_returns=unfinished)
+
+        outcome = _sync_one_bank(db_session, "a-bank", 1, "a-bucket", None)
+
+        assert isinstance(outcome, CiSyncErrorItem)
+
+    def test_a_draft_turned_away_for_its_version_is_listed(
+        self,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """No record is made of it, and the checks say why. The folder
+        the fault names is the server's own, and is not passed on.
+        """
+        turned_away = ValidationResult()
+        turned_away.add_error(
+            "/tmp/a-bank", "Draft module version must be 1, got 2"
+        )
+        _fake_the_bucket(
+            monkeypatch, tmp_path, sync_returns=None, sync_found=turned_away
+        )
+
+        outcome = _sync_one_bank(db_session, "a-bank", 1, "a-bucket", None)
+
+        assert outcome == CiSyncErrorItem(
+            bank_id="a-bank", error="Draft module version must be 1, got 2"
+        )
 
     def test_what_was_downloaded_is_removed_after_a_sync(
         self,
