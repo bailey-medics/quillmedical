@@ -94,3 +94,51 @@ class TeachingContentNotConfigured(TeachingError):
 
     status_code = 404
     message = "Teaching content not configured"
+
+
+class AssessmentNotOpen(TeachingError):
+    """The question bank is not one this learner may start an attempt on.
+
+    The same words whichever it is: no such bank, one that is not
+    theirs, one they are not enrolled on, one closed to new attempts,
+    or one with no version promoted.
+    """
+
+    status_code = 403
+    message = "This assessment is not currently open"
+
+
+class AssessmentNotFound(TeachingError):
+    """No attempt by that id is this learner's.
+
+    The same words for an attempt that does not exist and for one that
+    is somebody else's, so an id is never confirmed.
+    """
+
+    status_code = 404
+    message = "Assessment not found"
+
+
+class AssessmentAlreadyCompleted(TeachingError):
+    """The attempt is finished, so its questions are no longer handed out."""
+
+    status_code = 409
+    message = "Assessment already completed"
+
+
+class ItemNotFound(TeachingError):
+    """The attempt has no question at the position asked for."""
+
+    status_code = 404
+    message = "Item not found"
+
+
+class AssessmentConfigNotFound(TeachingError):
+    """The version of the bank an attempt was started on is no longer there.
+
+    Not something the learner did: the synced copy the attempt names
+    has gone, so its questions cannot be laid out.
+    """
+
+    status_code = 500
+    message = "Config not found for assessment"

@@ -710,8 +710,24 @@ the video callbacks already brought in.
       the pages. And where two organisations serve one bank, the list
       asks about its media at whichever row came first and the detail
       reads only the first row, neither in any set order.
-- [ ] **Starting an assessment** - `start_assessment` (127 lines, 7
+- [x] **Starting an assessment** - `start_assessment` (127 lines, 7
       branches), with `get_current_item` and `get_item_by_order`.
+      Done in a new `attempts.py`: `bank_to_sit` and `begin_attempt`
+      for starting, `attempt_of`, `next_unanswered_item` and
+      `item_at_position` for reading, over two rules added to
+      `access.py`, `bank_status_open_for_attempts` and
+      `attempt_belonging_to`. The draw is still `random.sample` and
+      `random.shuffle` through the `random` module, which a test
+      replaces. Two things stay in the router: the 409 for too small a
+      pool, because its words carry two counts, and
+      `_build_candidate_item` with `_require_place_for_attempt`, which
+      the answering routes share. Found and pinned, not changed:
+      nothing stops a second attempt while one is under way, or counts
+      attempts; a bank missing its media can still be started; reading
+      a question does not ask whether time has run out; and starting
+      takes any organisation's synced copy where reading asks for the
+      learner's organisation's own, so an attempt started on another
+      organisation's copy answers 500 when read.
 - [ ] **Answering and finishing one** - `submit_answer` (98 lines, 7
       branches), `update_answer` (66 lines, 6 branches) and
       `complete_assessment` (97 lines).
@@ -730,6 +746,37 @@ the video callbacks already brought in.
       lines), `upload_media_content_locally` (84 lines),
       `delete_media_asset` (47 lines) and `put_media_captions` (44
       lines). Two pull requests if one is too much to read.
+
+**Found in the teaching router, and not changed.** This phase moves
+rules and fixes nothing: Mark stopped the run on 11 October 2026 to say
+that fixing what was found had gone further than he asked. Each of these
+is pinned by a test as it stands, with the test saying so, and is here
+for him to rule on before the go-live. Most serious first.
+
+- **A learner can hold two attempts in progress on one bank.**
+  `start_assessment` never looks for an unfinished attempt and never
+  counts attempts. A second start writes a second attempt, and both
+  stay open and answerable. There is no limit on attempts and no check
+  of time at the start.
+- **An attempt can be started on a bank whose media is incomplete.**
+  Reading that bank is refused, with a comment saying "assessment
+  included". Starting it never asks.
+- **Starting and reading look for different copies of the bank.** Start
+  takes any organisation's copy of the bank at that version; reading
+  asks for the copy held by the learner's own organisation. Where the
+  learner's organisation only points at another's content, the attempt
+  starts, the first question is sent, and every later read answers 500
+  "Config not found for assessment".
+- **Reading a question does not ask about time.** A question of an
+  attempt long past its limit is still handed out. Only answering
+  checks the deadline.
+- **Somebody enrolled on a bank closed to new attempts is still shown
+  it**, with its whole assessment configuration though never the
+  correct answers. Comments in the code say this is meant.
+- **The three routes that show a module ask "may they see it" in three
+  different ways**: whether it must be live, whether a version must
+  have been chosen, and what somebody with nowhere to take modules is
+  answered.
 
 ## Phase 4: The org units and passport routers
 
