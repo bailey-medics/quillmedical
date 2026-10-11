@@ -12,6 +12,9 @@
  *   at all replaces the page.
  * - Leaving, running out of time and answering the last question each
  *   finish the attempt at the server, however much of it is done.
+ * - Running out of time goes straight to the result, whether it is this
+ *   page's clock or the server that says so. An attempt with no time
+ *   limit (none, or 0) has no clock and is never submitted by one.
  * - The address is the attempt's own from the moment it exists, so a
  *   reload comes back to the same attempt and never starts another.
  */
@@ -45,7 +48,8 @@ import type {
   QuestionBankDetail,
 } from "@/features/teaching/types";
 
-type Phase = "loading" | "intro" | "questions" | "closing" | "error";
+type Phase =
+  "loading" | "intro" | "questions" | "submitting" | "closing" | "error";
 
 const COULD_NOT_LOAD =
   "The exam could not be loaded. Check your connection and try again.";
@@ -68,6 +72,24 @@ function isConflict(err: unknown): boolean {
     err !== null &&
     "status" in err &&
     err.status === 409
+  );
+}
+
+// The server's own words for the two refusals that mean the attempt has
+// been finished there, by the clock or otherwise
+const OUT_OF_TIME = "Time limit exceeded";
+const ALREADY_COMPLETED = "Assessment already completed";
+
+/**
+ * Whether the server refused a call because it has finished the attempt.
+ * A conflict in other words, such as every question being answered
+ * already, is not this: the attempt may still be open.
+ */
+function isFinishedAtServer(err: unknown): boolean {
+  return (
+    isConflict(err) &&
+    err instanceof Error &&
+    (err.message === OUT_OF_TIME || err.message === ALREADY_COMPLETED)
   );
 }
 
@@ -122,6 +144,12 @@ export default function AssessmentAttempt() {
   const startingRef = useRef(false);
   const finishedRef = useRef(false);
   const finishingRef = useRef<Promise<boolean> | null>(null);
+  // Set once the time has run out, so that the clock firing again, and
+  // the server refusing an answer at the same moment, submit once
+  const endingRef = useRef(false);
+  // Set once the delegate has been sent to their result, so that the
+  // clock and "End exam" together send them there once
+  const shownResultRef = useRef(false);
 
   /**
    * Finish the attempt at the server, once. Answers whether it is
@@ -291,6 +319,45 @@ export default function AssessmentAttempt() {
     [finish],
   );
 
+  /** Go to the result, once, however many things ask for it. */
+  const showResult = useCallback(
+    (assessmentId: number) => {
+      if (shownResultRef.current) return;
+      shownResultRef.current = true;
+
+      navigate(`/teaching/assessment/${assessmentId}/result`, {
+        state: { fromExam: true },
+      });
+    },
+    [navigate],
+  );
+
+  /**
+   * The time has run out, by this page's clock or by the server's word:
+   * submit the exam as it stands, once, and go to the result. If it
+   * could not be submitted the closing screen is shown, with the
+   * message and "View results" to try again.
+   */
+  const submitAndShowResult = useCallback(
+    async (assessmentId: number) => {
+      if (endingRef.current) return;
+      endingRef.current = true;
+
+      setCurrentItem(null);
+      setSelectedOption(null);
+      setPhase("submitting");
+
+      const finished = await finish(assessmentId);
+      if (!finished) {
+        setPhase("closing");
+        return;
+      }
+
+      showResult(assessmentId);
+    },
+    [finish, showResult],
+  );
+
   const handleSubmitAnswer = useCallback(async () => {
     if (!assessment || !currentItem || !selectedOption) return;
 
@@ -318,7 +385,13 @@ export default function AssessmentAttempt() {
         scrollToTop();
       }
     } catch (err) {
-      // Refused because the attempt is over: finished, or out of time
+      // Refused because the server has finished the attempt: out of time
+      if (isFinishedAtServer(err)) {
+        void submitAndShowResult(assessment.id);
+        return;
+      }
+
+      // Refused for another reason that means there is no more to answer
       if (isConflict(err)) {
         closeExam(assessment.id);
         return;
@@ -328,7 +401,14 @@ export default function AssessmentAttempt() {
     } finally {
       setSubmitting(false);
     }
-  }, [assessment, currentItem, selectedOption, scrollToTop, closeExam]);
+  }, [
+    assessment,
+    currentItem,
+    selectedOption,
+    scrollToTop,
+    closeExam,
+    submitAndShowResult,
+  ]);
 
   const handlePrevious = useCallback(async () => {
     if (!assessment || !currentItem || currentItem.display_order <= 1) return;
@@ -345,10 +425,15 @@ export default function AssessmentAttempt() {
       setCurrentItem(item);
       setSelectedOption(item.selected_option ?? null);
       setViewingPrevious(true);
-    } catch {
+    } catch (err) {
+      if (isFinishedAtServer(err)) {
+        void submitAndShowResult(assessment.id);
+        return;
+      }
+
       setExamError(COULD_NOT_GO_BACK);
     }
-  }, [assessment, currentItem, viewingPrevious]);
+  }, [assessment, currentItem, viewingPrevious, submitAndShowResult]);
 
   const handleNextPrevious = useCallback(async () => {
     if (!assessment || !currentItem || !selectedOption) return;
@@ -379,6 +464,11 @@ export default function AssessmentAttempt() {
       setCurrentItem(item);
       setSelectedOption(item.selected_option ?? null);
     } catch (err) {
+      if (isFinishedAtServer(err)) {
+        void submitAndShowResult(assessment.id);
+        return;
+      }
+
       if (isConflict(err)) {
         closeExam(assessment.id);
         return;
@@ -395,6 +485,7 @@ export default function AssessmentAttempt() {
     answeredCount,
     furthestItem,
     closeExam,
+    submitAndShowResult,
   ]);
 
   const handleComplete = useCallback(async () => {
@@ -403,17 +494,15 @@ export default function AssessmentAttempt() {
     const finished = await finish(assessment.id);
     if (!finished) return;
 
-    navigate(`/teaching/assessment/${assessment.id}/result`, {
-      state: { fromExam: true },
-    });
-  }, [assessment, navigate, finish]);
+    showResult(assessment.id);
+  }, [assessment, finish, showResult]);
 
   const handleExpire = useCallback(() => {
     // Out of time: the exam is submitted as it stands
     if (!assessment) return;
 
-    closeExam(assessment.id);
-  }, [assessment, closeExam]);
+    void submitAndShowResult(assessment.id);
+  }, [assessment, submitAndShowResult]);
 
   // Track whether we've already called proceed - prevents ConfirmModal's
   // automatic onClose (after onAccept) from calling reset and cancelling
@@ -447,18 +536,26 @@ export default function AssessmentAttempt() {
   const introPage = bankDetail?.config_yaml?.assessment?.intro_page;
   const closingPage = bankDetail?.config_yaml?.assessment?.closing_page;
 
-  // The timer and "End exam" sit in the ribbon while questions are showing,
-  // so they stay in view however far the question scrolls
-  const examControls =
-    phase === "questions" &&
+  // A limit of 0, or none, means the attempt is untimed: it has no clock,
+  // and nothing submits it but the delegate
+  const isTimed =
     assessment?.time_limit_minutes != null &&
-    assessment.started_at ? (
+    assessment.time_limit_minutes > 0 &&
+    Boolean(assessment.started_at);
+
+  // The timer and "End exam" sit in the ribbon while questions are showing,
+  // so they stay in view however far the question scrolls. An untimed
+  // attempt has "End exam" alone.
+  const examControls =
+    phase === "questions" && assessment ? (
       <Group gap="sm" wrap="nowrap">
-        <AssessmentTimer
-          timeLimitMinutes={assessment.time_limit_minutes}
-          startedAt={assessment.started_at}
-          onExpire={handleExpire}
-        />
+        {isTimed && (
+          <AssessmentTimer
+            timeLimitMinutes={assessment.time_limit_minutes}
+            startedAt={assessment.started_at}
+            onExpire={handleExpire}
+          />
+        )}
         <ExamCloseButton onConfirm={handleComplete} />
       </Group>
     ) : undefined;
@@ -481,6 +578,10 @@ export default function AssessmentAttempt() {
       </ConfirmModal>
 
       {phase === "loading" && <LoadingSpinner label="Loading assessment" />}
+
+      {phase === "submitting" && (
+        <LoadingSpinner label="Submitting your exam" />
+      )}
 
       {phase === "error" && (
         <ErrorState

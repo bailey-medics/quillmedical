@@ -4,7 +4,15 @@
  * The page a delegate sits an exam on. These begin with how an attempt
  * is started, since starting one twice costs the delegate their first.
  */
-import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+} from "vitest";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { PageMessageProvider } from "@/components/page-message";
@@ -217,9 +225,13 @@ function getsAnswer(answers: Record<string, unknown>) {
   });
 }
 
-function refusal(status: number) {
-  return Object.assign(new Error(`HTTP ${status}`), { status });
+/** A refusal from the server, with its own words where they matter. */
+function refusal(status: number, detail = `HTTP ${status}`) {
+  return Object.assign(new Error(detail), { status });
 }
+
+const OUT_OF_TIME = "Time limit exceeded";
+const ALREADY_COMPLETED = "Assessment already completed";
 
 /** The exam beside another page, so that leaving it can be tried. */
 function renderExamAt(initialRoute: string) {
@@ -388,10 +400,73 @@ describe("AssessmentAttempt, a call that fails during the exam", () => {
     expect(screen.getByRole("radio", { name: "Adenoma" })).toBeChecked();
   });
 
-  it("closes the exam when an answer is refused because the time is up", async () => {
+  it("goes to the result, with no error, when an answer is refused because the time is up", async () => {
+    // The server has finished the attempt behind the refusal, so the
+    // page's own submit is told it is already completed
     resumeAttempt();
     (api.post as Mock)
-      .mockRejectedValueOnce(refusal(409))
+      .mockRejectedValueOnce(refusal(409, OUT_OF_TIME))
+      .mockRejectedValueOnce(refusal(409, ALREADY_COMPLETED));
+
+    await chooseAndPressNext();
+
+    expect(await screen.findByText("Result page")).toBeInTheDocument();
+    expect(api.post).toHaveBeenCalledTimes(2);
+    expect(api.post).toHaveBeenLastCalledWith(
+      "/teaching/assessments/7/complete",
+    );
+    expect(
+      screen.queryByText(/could not save your answer/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("goes to the result when a changed answer is refused because the time is up", async () => {
+    getsAnswer({
+      "/teaching/assessments/7": attempt(),
+      "/teaching/question-banks/colonoscopy": bankWithoutIntro,
+      "/teaching/assessments/7/current": question(2),
+      "/teaching/assessments/7/item/1": question(1),
+    });
+    (api.put as Mock).mockRejectedValue(refusal(409, OUT_OF_TIME));
+    (api.post as Mock).mockRejectedValue(refusal(409, ALREADY_COMPLETED));
+    renderExamAt("/teaching/assessment/7");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Previous" }));
+    await screen.findByText("Question 1 text");
+    await chooseAndPressNext();
+
+    expect(await screen.findByText("Result page")).toBeInTheDocument();
+    expect(api.put).toHaveBeenCalledTimes(1);
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByText(/could not save your answer/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("goes to the result when an earlier question is refused because the attempt is finished", async () => {
+    getsAnswer({
+      "/teaching/assessments/7": attempt(),
+      "/teaching/question-banks/colonoscopy": bankWithoutIntro,
+      "/teaching/assessments/7/current": question(2),
+      "/teaching/assessments/7/item/1": refusal(409, ALREADY_COMPLETED),
+    });
+    (api.post as Mock).mockRejectedValue(refusal(409, ALREADY_COMPLETED));
+    renderExamAt("/teaching/assessment/7");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Previous" }));
+
+    expect(await screen.findByText("Result page")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/could not load the previous question/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("closes the exam when an answer is refused because every question is answered", async () => {
+    // A conflict that is not the server finishing the attempt: the
+    // closing screen is shown and the exam submitted behind it
+    resumeAttempt();
+    (api.post as Mock)
+      .mockRejectedValueOnce(refusal(409, "All items already answered"))
       .mockResolvedValueOnce({});
 
     await chooseAndPressNext();
@@ -424,33 +499,98 @@ describe("AssessmentAttempt, a call that fails during the exam", () => {
 describe("AssessmentAttempt, finishing the exam", () => {
   const anHourAndABitAgo = new Date(Date.now() - 61 * 60 * 1000).toISOString();
 
-  it("submits the exam when the time runs out", async () => {
-    (api.post as Mock).mockResolvedValue({});
-    resumeAttempt({ started_at: anHourAndABitAgo });
-
-    expect(
-      await screen.findByRole("button", { name: "View results" }),
-    ).toBeInTheDocument();
-    await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith("/teaching/assessments/7/complete");
-    });
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it("does not submit a second time on View results", async () => {
-    (api.post as Mock).mockResolvedValue({});
-    const router = resumeAttempt({ started_at: anHourAndABitAgo });
+  /**
+   * Hold the page's clock still and its ticks in hand. Only the ticking
+   * and the date are faked: the waits in these tests need real timeouts.
+   */
+  function holdTheClock() {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+  }
 
-    const viewResults = await screen.findByRole("button", {
-      name: "View results",
+  /** Let one second of the page's clock pass. */
+  function tick() {
+    act(() => {
+      vi.advanceTimersByTime(1000);
     });
-    await waitFor(() => expect(viewResults).toBeEnabled());
-    fireEvent.click(viewResults);
+  }
+
+  function startedWithSecondsLeft(seconds: number): string {
+    return new Date(Date.now() - (60 * 60 - seconds) * 1000).toISOString();
+  }
+
+  /** How many times the page went to the result, by history entry. */
+  function countVisitsToResult(router: ReturnType<typeof renderExamAt>) {
+    const visits = new Set<string>();
+    router.subscribe((state) => {
+      if (state.location.pathname === "/teaching/assessment/7/result") {
+        visits.add(state.location.key);
+      }
+    });
+
+    return visits;
+  }
+
+  it("submits the exam once and goes to the result when the clock reaches zero", async () => {
+    holdTheClock();
+    (api.post as Mock).mockResolvedValue({ is_passed: false });
+    const router = resumeAttempt({ started_at: startedWithSecondsLeft(2) });
+    const visits = countVisitsToResult(router);
+
+    await screen.findByText("Question 1 text");
+    expect(screen.getByText("00:02")).toBeInTheDocument();
+    tick();
+    expect(api.post).not.toHaveBeenCalled();
+    tick();
+    vi.useRealTimers();
 
     expect(await screen.findByText("Result page")).toBeInTheDocument();
     expect(api.post).toHaveBeenCalledTimes(1);
+    expect(api.post).toHaveBeenCalledWith("/teaching/assessments/7/complete");
+    expect(visits.size).toBe(1);
+  });
+
+  it("submits the exam and goes to the result when it is opened after its time", async () => {
+    (api.post as Mock).mockResolvedValue({});
+    const router = resumeAttempt({ started_at: anHourAndABitAgo });
+
+    expect(await screen.findByText("Result page")).toBeInTheDocument();
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(api.post).toHaveBeenCalledWith("/teaching/assessments/7/complete");
     expect(router.state.location.pathname).toBe(
       "/teaching/assessment/7/result",
     );
+  });
+
+  it("submits once when End exam is confirmed as the clock reaches zero", async () => {
+    holdTheClock();
+    let answerComplete: (value: unknown) => void = () => {};
+    (api.post as Mock).mockReturnValue(
+      new Promise((resolve) => {
+        answerComplete = resolve;
+      }),
+    );
+    const router = resumeAttempt({ started_at: startedWithSecondsLeft(1) });
+    const visits = countVisitsToResult(router);
+
+    await screen.findByText("Question 1 text");
+    fireEvent.click(screen.getByRole("button", { name: "End exam" }));
+    // The confirmation has an "End exam" button of its own
+    const endExam = await screen.findAllByRole("button", { name: "End exam" });
+    fireEvent.click(endExam[endExam.length - 1]);
+    expect(api.post).toHaveBeenCalledTimes(1);
+    tick();
+    vi.useRealTimers();
+    await act(async () => {
+      answerComplete({});
+    });
+
+    expect(await screen.findByText("Result page")).toBeInTheDocument();
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(visits.size).toBe(1);
   });
 
   it("says so when the time runs out and the exam is not submitted, and tries again on View results", async () => {
@@ -468,17 +608,13 @@ describe("AssessmentAttempt, finishing the exam", () => {
     expect(api.post).toHaveBeenCalledTimes(2);
   });
 
-  it("counts an exam the server says is already finished as submitted", async () => {
-    (api.post as Mock).mockRejectedValue(refusal(409));
+  it("goes to the result when the server says the exam is already finished", async () => {
+    // The server finished it first, when the time ran out
+    (api.post as Mock).mockRejectedValue(refusal(409, ALREADY_COMPLETED));
     resumeAttempt({ started_at: anHourAndABitAgo });
 
-    const viewResults = await screen.findByRole("button", {
-      name: "View results",
-    });
-    await waitFor(() => expect(viewResults).toBeEnabled());
-    fireEvent.click(viewResults);
-
     expect(await screen.findByText("Result page")).toBeInTheDocument();
+    expect(api.post).toHaveBeenCalledTimes(1);
     expect(
       screen.queryByText(/could not submit your exam/i),
     ).not.toBeInTheDocument();
@@ -530,6 +666,57 @@ describe("AssessmentAttempt, finishing the exam", () => {
     expect(router.state.location.pathname).toBe("/teaching/assessment/7");
     expect(screen.getByText("Question 1 text")).toBeInTheDocument();
     expect(screen.queryByText("Teaching home")).not.toBeInTheDocument();
+  });
+
+  it("shows the timer and End exam on a timed attempt", async () => {
+    resumeAttempt();
+
+    await screen.findByText("Question 1 text");
+
+    expect(screen.getByText(/^\d\d:\d\d$/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "End exam" }),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ["a time limit of 0", 0],
+    ["no time limit", null],
+  ])(
+    "shows no timer, submits nothing by itself and still offers End exam with %s",
+    async (_name, limit) => {
+      // Started long ago: a clock, if there were one, would have run out
+      resumeAttempt({
+        time_limit_minutes: limit,
+        started_at: anHourAndABitAgo,
+      });
+
+      await screen.findByText("Question 1 text");
+      // Long enough for a clock to have submitted the exam
+      await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+
+      expect(screen.getByText("Question 1 text")).toBeInTheDocument();
+      expect(screen.queryByText(/^\d\d:\d\d$/)).not.toBeInTheDocument();
+      expect(screen.queryByText("Time up")).not.toBeInTheDocument();
+      expect(api.post).not.toHaveBeenCalled();
+      expect(
+        screen.getByRole("button", { name: "End exam" }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("submits an untimed attempt when End exam is confirmed", async () => {
+    (api.post as Mock).mockResolvedValue({});
+    resumeAttempt({ time_limit_minutes: 0 });
+
+    await screen.findByText("Question 1 text");
+    fireEvent.click(screen.getByRole("button", { name: "End exam" }));
+    const endExam = await screen.findAllByRole("button", { name: "End exam" });
+    fireEvent.click(endExam[endExam.length - 1]);
+
+    expect(await screen.findByText("Result page")).toBeInTheDocument();
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(api.post).toHaveBeenCalledWith("/teaching/assessments/7/complete");
   });
 
   it("submits nothing when the delegate leaves from the intro page", async () => {
