@@ -175,7 +175,9 @@ The `public-site.yml` workflow triggers on pushes to `main` that change:
 | File type                                     | Cache-Control                         | Reason                                   |
 | --------------------------------------------- | ------------------------------------- | ---------------------------------------- |
 | Hashed assets (`assets/*.js`, `assets/*.css`) | `public, max-age=31536000, immutable` | Filename hash changes on content change  |
-| HTML files (`*.html`)                         | `no-cache`                            | Always revalidate to pick up new deploys |
+| HTML pages (`index.html`, `not-found.html`, and the rest uploaded without `.html`) | `no-cache` | Always revalidate to pick up new deploys |
+| Email images (`email/`) | `public, max-age=86400` | Fixed names, so a replaced image must not stay stale |
+| Other static files (images, icons, manifest) | `public, max-age=2592000` | Rarely change |
 
 ### Infrastructure
 
@@ -183,7 +185,7 @@ The GCS landing bucket sits behind the Global HTTPS Load Balancer (managed by Te
 
 - **SSL** - Google-managed certificate covering `quill-medical.com` and `www.quill-medical.com`
 - **CDN** - Enabled on the backend bucket for edge caching
-- **404 page** - Load balancer serves `not-found.html` for missing paths
+- **404 page** - The bucket's website configuration serves `not-found.html` for missing paths
 - **Cloud Armor** - not applied to this site. The rate limit (500 req/min per IP) is attached to the application's two backend services, and the landing bucket carries no policy
 
 ### DNS
