@@ -67,6 +67,7 @@ nav:
       - Public Pages: frontend/public-pages.md
       - User Workflows: frontend/workflows.md
       - Security: frontend/security.md
+      - Sessions and requests: frontend/sessions-and-requests.md
       - Client updates: frontend/client-updates.md
       - Shared YAML: frontend/shared-yaml.md
       - In-app guides: frontend/guides.md
