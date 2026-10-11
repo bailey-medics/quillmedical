@@ -349,8 +349,21 @@ more.
             request's NHS number, MRN and patient id are accepted and
             ignored; and one record FHIR returns that will not
             validate empties the whole list as `fhir_ready: false`.
-      - [ ] **Accepting an invite** - `accept_invite` (65 lines, 6
-            branches).
+      - [x] **Accepting an invite** - `accept_invite` (65 lines, 6
+            branches). Now `accept_external_invite` in
+            `backend/app/users/invites.py`, returning `InviteAccepted`
+            (the account, and whether the invite made it), with
+            `InviteTokenInvalid` (400), `InviteNeedsUsernameAndPassword`
+            (422) and `InviteUsernameTaken` (409). This is the invite
+            to a patient's record, not a way into an account: it signs
+            nobody in and sets no password on an account that exists.
+            Found, and kept as it was: nothing records that a token was
+            used, so it works again until it runs out, and a second use
+            gives back access that was revoked; an account with the
+            address is given access whether or not it is active; a new
+            account's password is asked no length, its username is not
+            trimmed and its address is not marked verified; and the
+            route has no rate limit.
       - [ ] **Deactivating somebody, and sending an invite** -
             `deactivate_user` (42 lines, 4 branches) and
             `send_invite_email` (40 lines), with the shared
@@ -374,6 +387,26 @@ more.
       - **`get_user`, `me`, `list_teaching_modules_public` and
         `update_my_competencies`** - 40 to 73 lines with one or two
         branches each. They build a response and decide almost nothing.
+
+- [ ] Decide what to do about the invite to a patient's record,
+      `POST /accept-invite`, found on 11 October 2026 while moving it.
+      It is the invite an external clinician or a patient's advocate
+      is sent, part of EHR production. None is changed here; each is
+      pinned by a test as it stands.
+
+      - **A token can be used again, and using it again gives back
+        access that was taken away.** Nothing records that a token was
+        used, so it works for its seven days. After an administrator
+        revokes somebody's access, replaying the token clears the
+        revocation. This is the one that matters.
+      - **A new account made through an invite is asked no minimum
+        password length.** One character is accepted, where every other
+        way of setting a password asks eight.
+      - **The route has no rate limiter**, and is open to anybody.
+      - **A deactivated account is still given access**, though it
+        cannot sign in to use it.
+      - **The address is not marked verified**, though the invite was
+        sent to it, and the username is not trimmed.
 
 - [ ] Decide what to do about `update_patient`, found on 11 October
       2026 while moving the patient routes. **It asks nothing about who

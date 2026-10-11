@@ -226,7 +226,6 @@ from app.security import (
     create_jwt_with_competencies,
     create_password_reset_token,
     create_refresh_token,
-    decode_invite_token,
     decode_token,
     generate_totp_secret,
     hash_password,
@@ -240,6 +239,7 @@ from app.security import (
 )
 from app.users.create import NewAccount, create_account
 from app.users.errors import UserAdminError
+from app.users.invites import accept_external_invite
 from app.users.listing import (
     admin_rows,
     people_around_a_patient,
@@ -3933,72 +3933,19 @@ def accept_invite(
 
     Returns:
         dict: Status and redirect information.
+
+    Raises:
+        UserAdminError: 400, 422 or 409 for whatever
+            ``accept_external_invite`` refuses.
     """
-    from jose import JWTError
-
-    try:
-        payload = decode_invite_token(body.token)
-    except JWTError as err:
-        raise HTTPException(
-            status_code=400, detail="Invalid or expired invite token"
-        ) from err
-
-    patient_id: str = payload["patient_id"]
-    email: str = normalise_email(payload["email"])
-    user_type: str = payload["user_type"]
-
-    # Check if user already exists
-    existing = db.scalar(select(User).where(User.email == email))
-
-    if existing is not None:
-        # Grant access to existing user (idempotent)
-        grant = db.scalar(
-            select(ExternalPatientAccess).where(
-                ExternalPatientAccess.user_id == existing.id,
-                ExternalPatientAccess.patient_id == patient_id,
-            )
-        )
-        if grant is None:
-            db.add(
-                ExternalPatientAccess(
-                    user_id=existing.id,
-                    patient_id=patient_id,
-                    granted_by_user_id=existing.id,
-                )
-            )
-        elif grant.revoked_at is not None:
-            grant.revoked_at = None
-        return AcceptInviteOut(status="access_granted", user_id=existing.id)
-
-        # New user registration
-    if not body.username or not body.password:
-        raise HTTPException(
-            status_code=422,
-            detail="username and password required for new registration",
-        )
-
-        # Validate uniqueness
-    if db.scalar(select(User).where(User.username == body.username)):
-        raise HTTPException(status_code=409, detail="Username already taken")
-
-    new_user = User(
-        username=body.username,
-        email=email,
-        password_hash=hash_password(body.password),
-        base_profession=user_type,
-    )
-    db.add(new_user)
-    db.flush()
-
-    db.add(
-        ExternalPatientAccess(
-            user_id=new_user.id,
-            patient_id=patient_id,
-            granted_by_user_id=new_user.id,
-        )
+    accepted = accept_external_invite(
+        db, body.token, username=body.username, password=body.password
     )
 
-    return AcceptInviteOut(status="registered", user_id=new_user.id)
+    return AcceptInviteOut(
+        status="registered" if accepted.registered else "access_granted",
+        user_id=accepted.user.id,
+    )
 
 
 @router.delete(

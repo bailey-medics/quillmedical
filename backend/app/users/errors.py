@@ -38,6 +38,11 @@ person refused is making their own account and administering nobody's.
 One of them, :class:`UsernameOrEmailInUse`, is deliberately one class
 for two reasons, so its words cannot come to say which.
 
+The refusals of :mod:`app.users.invites` are here as well. The person
+refused holds an invite to a patient's record and may have no account
+yet. :class:`InviteTokenInvalid` is one class for every way a token can
+be wrong, so its words cannot come to say which.
+
 ``app.main`` registers one handler for :class:`UserAdminError`, which
 answers with the class's status and ``{"detail": message}``. That is the
 body an ``HTTPException`` gives, so a rule moved out of a route answers
@@ -292,3 +297,30 @@ class OrganisationRequiredForModule(UserAdminError):
 
 class ModuleNotOpenToRegistration(UserAdminError):
     message = "Module is not open to registration"
+
+
+class InviteTokenInvalid(UserAdminError):
+    """An invite whose token cannot be taken as one.
+
+    One refusal for every reason, in the same words: a token that has
+    run out, one that was altered, one that was never a token, and one
+    signed here for some other purpose.
+    """
+
+    message = "Invalid or expired invite token"
+
+
+class InviteNeedsUsernameAndPassword(UserAdminError):
+    status_code = 422
+    message = "username and password required for new registration"
+
+
+class InviteUsernameTaken(UserAdminError):
+    """A username an account already has, chosen while accepting an invite.
+
+    Not :class:`UsernameTaken`: this route has always answered 409 and
+    in these words.
+    """
+
+    status_code = 409
+    message = "Username already taken"
