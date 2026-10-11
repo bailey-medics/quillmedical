@@ -100,6 +100,14 @@ Caddy runs inside the frontend container on port 8080 (Cloud Run strips `cap_net
     @hashed path_regexp \.[-a-zA-Z0-9]{8,}\.(js|css|woff2?|png|jpg|svg|ico)$
     header @hashed Cache-Control "public, max-age=31536000, immutable"
 
+    # Everything the build writes to /assets/ - cache aggressively (1 year)
+    @built path /assets/*
+    header @built Cache-Control "public, max-age=31536000, immutable"
+
+    # The build's list of its own file names - always revalidate
+    @buildManifest path /.vite/manifest.json
+    header @buildManifest Cache-Control "no-cache"
+
     # HTML and non-hashed files - always revalidate
     @html path *.html /
     header @html Cache-Control "no-cache"
@@ -115,7 +123,7 @@ Caddy runs inside the frontend container on port 8080 (Cloud Run strips `cap_net
 - **`admin off`** - disables the Caddy admin API (not needed in Cloud Run)
 - **Security headers** - HSTS (2 years), CSP, X-Frame-Options DENY, nosniff, referrer policy, permissions policy, server header removal
 - **`/healthz`** - returns `200 ok` for Cloud Run startup/liveness probes
-- **Cache strategy** - hashed assets get 1 year immutable cache; HTML always revalidates
+- **Cache strategy** - hashed assets and everything under `/assets/` get 1 year immutable cache; HTML and the build manifest always revalidate
 - **`try_files`** - SPA fallback to `index.html` for client-side routing
 
 ## CI (`caddy/ci/Caddyfile`)

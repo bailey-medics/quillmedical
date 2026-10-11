@@ -49,8 +49,8 @@ altogether is for a request to erase somebody's data.
 - **`users.marketing_emails`** - the current answer.
 
 - **`marketing_preference_change`** - one row for every answer given:
-  what they chose, when, where (`registration`, `invite`, `settings` or
-  `unsubscribe_link`) and which wording was on screen. This is the
+  what they chose, when, where (`registration`, `invite`, `settings`,
+  `unsubscribe_link`, `mailing_list`, `bounce` or `complaint`) and which wording was on screen. This is the
   evidence that somebody was offered the choice. Rows are never updated.
   Rows written before the cut-over may carry `resend`, from when Resend
   told Quill of an unsubscribe.

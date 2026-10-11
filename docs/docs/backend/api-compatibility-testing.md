@@ -82,7 +82,7 @@ The CI workflow will:
 
 **Check the CI logs:**
 
-In the **Checks** tab of your PR, find the `api_schema_diff` job and click **View workflow run**:
+In the **Checks** tab of your PR, find the `API breaking-change check` job (`api_schema_diff`) and click **View workflow run**:
 
 - Look for the step: "Check for undeclared breaking API changes"
 - The log ends with `Breaking API change(s) detected` if your change was detected

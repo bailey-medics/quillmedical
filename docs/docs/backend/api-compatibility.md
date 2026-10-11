@@ -123,10 +123,10 @@ who could each be equally lazy.
   the gate asks for approval whenever the pull request's code changes, see
   above, but re-sending an identical Slack ping on every one of those
   commits is just noise, not a safety property.
-  `api_breaking_change_gate_notify` hashes the set of breaking
+  `api_schema_diff` hashes the set of breaking
   changes (`compute-breaking-change-hash.sh`, sorted so ordering doesn't
-  affect the hash) and asks whether any comment on the PR already carries
-  that hash (`gate-notify.sh` with marker key `breaking-api-change-hash`,
+  affect the hash) and `api_breaking_change_gate_notify` asks whether the
+  gate's newest comment on the PR already carries that hash (`gate-notify.sh` with marker key `breaking-api-change-hash`,
   matched on a hidden `<!-- breaking-api-change-hash: <hash> -->` first
   line). Slack only fires when the answer is no - the first breaking change
   on a PR, or a later commit that alters which changes are breaking - never
@@ -143,7 +143,7 @@ who could each be equally lazy.
   earlier is announced again rather than swallowed - each comment records a
   transition, not a standing claim.
 - **A return to clean is recorded too**: when the last breaking change is
-  removed the gate posts an all-clear comment (✅, "no longer present"), so the
+  removed the gate posts an all-clear comment (✅, "have been reverted"), so the
   timeline shows the break arriving *and* going. Slack is not told - the notify
   job is gated on `oasdiff` having found something as well as on
   `should_notify` - and a PR that never had a break stays silent. The gate's
@@ -222,8 +222,8 @@ Once a file is merged to `main`, the `generation`, `forces_reload`, and
 `change` fields become immutable - editing them retroactively would make
 the original approval meaningless for compliance purposes. The `reason`
 field may be edited in later PRs to fix typos or add context, and comments
-may be added, but only via the same `api-breaking-change-review` gate to
-keep the audit trail clear. Deleting an existing file is never permitted;
+may be added; such an edit passes without the `api-breaking-change-review`
+gate, which fires only on an `oasdiff` finding. Deleting an existing file is never permitted;
 if a decision is superseded, record a new decision file instead.
 
 ## Client-side reassurance: the status strip and "Updating…" overlay
