@@ -119,6 +119,26 @@ class User(Base):
         String(255), unique=True, nullable=False
     )
 
+    @validates("is_active")
+    def _record_when_closed(self, _key: str, value: bool) -> bool:
+        """Keep ``deactivated_at`` in step with ``is_active``.
+
+        Here, on the model, and not in the route that deactivates
+        somebody: a script or a later route that sets ``is_active`` would
+        otherwise close an account with no date, and a retention period
+        counted from that date would never end.
+
+        Closing an account that is already closed keeps the first date.
+        Reopening one clears it, so that closing it again starts a new
+        period.
+        """
+        if value:
+            self.deactivated_at = None
+        elif self.deactivated_at is None:
+            self.deactivated_at = datetime.now(UTC)
+
+        return value
+
     @validates("email")
     def _email_as_held(self, _key: str, value: str) -> str:
         """Hold every address trimmed and in lower case.
@@ -136,6 +156,14 @@ class User(Base):
     totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
     is_totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    #: When the account was closed or deactivated. Null while it is
+    #: active, and for an account closed before this column existed. The
+    #: privacy policy keeps an account, and a sponsor's records about its
+    #: owner, for a period counted from here. Set and cleared by
+    #: ``_record_when_closed`` below, never by a route.
+    deactivated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     email_verified: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false"
     )

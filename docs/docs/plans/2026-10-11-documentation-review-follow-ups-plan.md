@@ -374,9 +374,13 @@ ahead of Phases 1 to 11, which are untouched.
 
 ## Phase 16: Keep a closed account's records for the sponsor's period
 
-- [ ] Add `deactivated_at` to `User`, set wherever `is_active` becomes
+- [x] Add `deactivated_at` to `User`, set wherever `is_active` becomes
       false and cleared when it becomes true again. The policy's two years
-      run from that date, and today nothing holds it.
+      run from that date, and today nothing holds it. Kept in step by a
+      validator on the model, not by the route, so a script or a route
+      written later cannot close an account without a date. An account
+      closed before the column existed has none, and so is never deleted
+      by a period counted from it: say so when the deleting is built.
 
 - [ ] Keep an EoEETA delegate's records for three and a half years after
       their account closes, then delete them. Mark's decision on 11
