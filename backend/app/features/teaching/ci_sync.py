@@ -10,6 +10,10 @@ stop: it is listed with the reason and the next bank is tried, so one
 answer says which banks went in and which did not. The route decides
 what status that answer is sent with.
 
+A bank counts as synced only where its sync was recorded as a success.
+One whose assessment failed its checks has a record too, but nothing of
+it was loaded, so it is listed as failed with what the checks said.
+
 Each bank is its own checkpoint. ``sync_question_bank`` commits as it
 finishes a bank, so a bank that fails later does not take back one
 already recorded. Nothing is committed here.
@@ -26,7 +30,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.features.teaching.models import QuestionBankConfig
+from app.features.teaching.models import (
+    QuestionBankConfig,
+    QuestionBankSync,
+)
 from app.features.teaching.schemas import (
     CiSyncBankResult,
     CiSyncErrorItem,
@@ -45,6 +52,16 @@ from app.models import OrgUnit
 from app.org_units import ROOT_TYPE_IDS
 
 logger = logging.getLogger(__name__)
+
+#: The one status of a sync record that says the bank was loaded. Any
+#: other is read as a failure, so a status added later is not taken for
+#: a success by default.
+_SYNC_SUCCEEDED = "success"
+
+#: How many of a bank's faults are given. The rest are in its record.
+_FAULTS_GIVEN = 5
+
+_NO_REASON_RECORDED = "the sync did not succeed and recorded no reason"
 
 
 def sync_every_bank(db: Session) -> CiTeachingSyncOut:
@@ -152,10 +169,10 @@ def _sync_one_bank(
     downloaded to check or to sync is removed again either way.
 
     Returns:
-        The bank and its version where a sync was recorded, the bank
-        and the reason where it could not be synced, and None where the
-        sync recorded nothing: a live bank whose version has not moved
-        on, for one.
+        The bank and its version where its sync succeeded, the bank and
+        the reason where it could not be synced, and None where there
+        was nothing to load and nothing wrong: a live bank whose
+        version has not moved on.
     """
     # The two helpers still live in the teaching router, which is where
     # its own sync routes use them. Imported here, not at the top, so
@@ -204,7 +221,7 @@ def _sync_one_bank(
         if is_temp and bucket:
             status = get_module_status_from_gcs(bucket, bank_id)
 
-        _validation, sync_record = sync_question_bank(
+        validation, sync_record = sync_question_bank(
             bank_path,
             org_unit_id,
             # No user: the deploy pipeline did this. Recorded as
@@ -218,7 +235,31 @@ def _sync_one_bank(
         )
 
         if not sync_record:
+            # No record is right for a live bank whose version has not
+            # moved on: there is nothing new to load. It is wrong where
+            # the checks found fault, as they do with a draft whose
+            # version is not 1. That is turned away, not skipped, and
+            # the pipeline has to hear of it.
+            if not validation.is_valid:
+                return CiSyncErrorItem(
+                    bank_id=bank_id,
+                    error=_first_few(
+                        [fault.message for fault in validation.errors]
+                    ),
+                )
+
             return None
+
+        # Only a success loaded anything. A record is also kept of a
+        # sync whose assessment failed its checks, and it was once
+        # taken for a sync, so the pipeline went green on content that
+        # never went in.
+        if sync_record.status != _SYNC_SUCCEEDED:
+            return CiSyncErrorItem(
+                bank_id=bank_id,
+                error=_first_few(_faults_recorded(sync_record))
+                or _NO_REASON_RECORDED,
+            )
 
         return CiSyncBankResult(
             bank_id=bank_id, version=str(sync_record.version)
@@ -232,3 +273,19 @@ def _sync_one_bank(
             shutil.rmtree(bank_path.parent, ignore_errors=True)
         if tooling_is_temp and tooling_module_dir:
             shutil.rmtree(tooling_module_dir.parent, ignore_errors=True)
+
+
+def _first_few(faults: list[str]) -> str:
+    """Join the first few faults into one reason."""
+    return "; ".join(faults[:_FAULTS_GIVEN])
+
+
+def _faults_recorded(sync_record: QuestionBankSync) -> list[str]:
+    """What a failed sync's record says was wrong, a line for each fault.
+
+    These are the checks' own findings about the content, written for
+    whoever wrote it. The path beside each is left out, as it is for a
+    module that fails its checks: for a bank read from the bucket it
+    begins with the folder the server downloaded it into.
+    """
+    return [str(fault.get("message", "")) for fault in sync_record.errors]

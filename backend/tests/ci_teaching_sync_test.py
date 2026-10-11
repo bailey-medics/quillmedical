@@ -7,8 +7,10 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
+from sqlalchemy import select
 
 from app.config import settings
+from app.features.teaching.models import QuestionBankConfig, QuestionBankItem
 from app.models import OrgUnit
 
 _VALID_MODULE = (
@@ -16,6 +18,12 @@ _VALID_MODULE = (
 )
 #: The fixture's declared moduleId, which its directory name must match.
 _VALID_MODULE_ID = "valid-module"
+
+#: A module that passes its own checks and whose assessment does not.
+_BAD_ASSESSMENT_ID = "bad-assessment"
+
+#: What the checks say of it, as the pipeline is told.
+_BAD_ASSESSMENT_REASON = "uniform type requires 'options'"
 
 
 class TestCiTeachingSync:
@@ -75,11 +83,38 @@ class TestRejectedBanksFailTheDeploy:
     """
 
     def _base_with(
-        self, tmp_path: Path, *, good: bool = False, bad: bool = False
+        self,
+        tmp_path: Path,
+        *,
+        good: bool = False,
+        bad: bool = False,
+        bad_assessment: bool = False,
     ) -> str:
         """Build a modules-layout tree and return it as the base path."""
         modules = tmp_path / "repo" / "modules"
         modules.mkdir(parents=True)
+
+        if bad_assessment:
+            module = modules / _BAD_ASSESSMENT_ID
+            shutil.copytree(_VALID_MODULE, module)
+            metadata = module / "module.yaml"
+            metadata.write_text(
+                metadata.read_text().replace(
+                    _VALID_MODULE_ID, _BAD_ASSESSMENT_ID
+                )
+            )
+            # The module still passes its own checks. Only the
+            # assessment is at fault, so the sync gets as far as
+            # recording that it failed.
+            assessment = module / "assessment" / "assessment.yaml"
+            assessment.write_text(
+                "\n".join(
+                    line
+                    for line in assessment.read_text().splitlines()
+                    if not line.startswith(("options:", "- "))
+                )
+                + "\n"
+            )
 
         if good:
             # Named for the fixture's own moduleId - validation
@@ -162,6 +197,45 @@ class TestRejectedBanksFailTheDeploy:
         data = resp.json()
         assert [e["bank_id"] for e in data["errors"]] == ["bad-bank"]
         assert [s["bank_id"] for s in data["synced"]] == [_VALID_MODULE_ID]
+
+    def test_a_bank_whose_assessment_failed_returns_422(
+        self, test_client: TestClient, monkeypatch, tmp_path: Path, db_session
+    ):
+        """A sync recorded as failed loaded nothing.
+
+        It was once listed as synced and answered 200, because a record
+        of it exists either way, so the content deploy went green on
+        content that never went in.
+        """
+        base = self._base_with(tmp_path, bad_assessment=True)
+        resp = self._sync(test_client, monkeypatch, base, db_session)
+
+        assert resp.status_code == 422
+        assert resp.json() == {
+            "synced": [],
+            "errors": [
+                {
+                    "bank_id": _BAD_ASSESSMENT_ID,
+                    "error": _BAD_ASSESSMENT_REASON,
+                }
+            ],
+            "message": None,
+        }
+        assert db_session.scalar(select(QuestionBankConfig)) is None
+        assert db_session.scalar(select(QuestionBankItem)) is None
+
+    def test_a_failed_assessment_beside_a_good_bank_returns_422(
+        self, test_client: TestClient, monkeypatch, tmp_path: Path, db_session
+    ):
+        base = self._base_with(tmp_path, good=True, bad_assessment=True)
+        resp = self._sync(test_client, monkeypatch, base, db_session)
+
+        assert resp.status_code == 422
+        data = resp.json()
+        assert [s["bank_id"] for s in data["synced"]] == [_VALID_MODULE_ID]
+        assert data["errors"] == [
+            {"bank_id": _BAD_ASSESSMENT_ID, "error": _BAD_ASSESSMENT_REASON}
+        ]
 
     def test_no_banks_found_is_not_a_failure(
         self, test_client: TestClient, monkeypatch, tmp_path: Path, db_session
