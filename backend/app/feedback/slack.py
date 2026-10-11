@@ -1,10 +1,15 @@
 """Post to Slack that feedback has arrived.
 
-Beside the email in :mod:`app.feedback.router`, and under the same rule:
-the post says who sent the feedback, what kind it is, which page it came
-from and where to read it, and **never the message**. Somebody may send
-feedback from a patient's record, so the message may hold patient data,
-and a post would copy it into a system outside Quill.
+Beside the email in :mod:`app.feedback.router`. The post says what kind
+of feedback it is, which page it came from and where to read it, and
+**never the message**. Somebody may send feedback from a patient's
+record, so the message may hold patient data, and a post would copy it
+into a system outside Quill.
+
+**Nor who sent it.** The email goes to an operator's own mailbox; this
+goes to another company. With a username in it the post would be
+personal data sent to Slack, which the privacy policy would then have to
+name as a processor. The link opens the feedback, and that says who.
 
 The webhook URL is the credential: anybody holding it can post to the
 channel. So it is a ``SecretStr`` in the settings, it is never logged,
@@ -32,18 +37,15 @@ def _escape(text: str) -> str:
 
     Slack reads ``<...>`` as a link or a mention and ``&`` as the start
     of an entity, and asks for exactly these three to be replaced. A
-    username is typed by a person, so it is escaped before it is posted.
+    route arrives from the browser, so it is escaped before it is posted.
     """
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def feedback_notice_text(
-    *, sender: str, category: str | None, route: str, url: str
-) -> str:
+def feedback_notice_text(*, category: str | None, route: str, url: str) -> str:
     """The words of the post.
 
     Args:
-        sender: The username of whoever sent the feedback.
         category: What they said it was about, as stored, or None.
         route: The page it was sent from, as a route pattern, or "".
         url: The link to the feedback in the admin area.
@@ -51,7 +53,7 @@ def feedback_notice_text(
     Returns:
         The message, in Slack's own markup.
     """
-    lines = [f"*Feedback from {_escape(sender)}*"]
+    lines = ["*New feedback*"]
     label = CATEGORY_LABELS.get(category or "")
 
     if label:
@@ -68,7 +70,6 @@ def post_feedback_notice(
     *,
     webhook_url: str,
     feedback_id: int,
-    sender: str,
     category: str | None,
     route: str,
     url: str,
@@ -82,14 +83,11 @@ def post_feedback_notice(
     Args:
         webhook_url: The Slack incoming webhook. Never logged.
         feedback_id: The feedback's id, for the log line alone.
-        sender: The username of whoever sent it.
         category: What they said it was about, as stored, or None.
         route: The page it was sent from, as a route pattern, or "".
         url: The link to the feedback in the admin area.
     """
-    text = feedback_notice_text(
-        sender=sender, category=category, route=route, url=url
-    )
+    text = feedback_notice_text(category=category, route=route, url=url)
 
     try:
         response = httpx.post(

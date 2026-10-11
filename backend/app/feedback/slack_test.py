@@ -17,13 +17,13 @@ URL = "https://example.test/admin/feedback/1"
 
 
 class TestTheWordsOfThePost:
-    def test_says_who_what_kind_which_page_and_where_to_read_it(self) -> None:
+    def test_says_what_kind_which_page_and_where_to_read_it(self) -> None:
         text = feedback_notice_text(
-            sender="sam", category="broken", route="/teaching/:bankId", url=URL
+            category="broken", route="/teaching/:bankId", url=URL
         )
 
         assert text == (
-            "*Feedback from sam*\n"
+            "*New feedback*\n"
             "Something is broken\n"
             "Sent from `/teaching/:bankId`\n"
             f"<{URL}|Read it in Quill>"
@@ -31,22 +31,20 @@ class TestTheWordsOfThePost:
 
     def test_what_a_person_typed_cannot_make_a_link_or_a_mention(self) -> None:
         text = feedback_notice_text(
-            sender="<!channel> & co", category=None, route="", url=URL
+            category=None, route="<!channel> & co", url=URL
         )
 
         assert "<!channel>" not in text
         assert "&lt;!channel&gt; &amp; co" in text
 
     def test_no_category_and_no_route_are_simply_left_out(self) -> None:
-        text = feedback_notice_text(
-            sender="sam", category=None, route="", url=URL
-        )
+        text = feedback_notice_text(category=None, route="", url=URL)
 
-        assert text == f"*Feedback from sam*\n<{URL}|Read it in Quill>"
+        assert text == f"*New feedback*\n<{URL}|Read it in Quill>"
 
     def test_a_category_with_no_label_is_left_out(self) -> None:
         text = feedback_notice_text(
-            sender="sam", category="not-a-category", route="", url=URL
+            category="not-a-category", route="", url=URL
         )
 
         assert "not-a-category" not in text
@@ -58,7 +56,6 @@ class TestPosting:
         post_feedback_notice(
             webhook_url=WEBHOOK,
             feedback_id=feedback_id,
-            sender="sam",
             category="broken",
             route="/teaching",
             url=URL,
@@ -82,7 +79,7 @@ class TestPosting:
         assert call["url"] == WEBHOOK
         assert call["json"] == {
             "text": feedback_notice_text(
-                sender="sam", category="broken", route="/teaching", url=URL
+                category="broken", route="/teaching", url=URL
             )
         }
         assert isinstance(call["timeout"], float) and call["timeout"] > 0

@@ -170,8 +170,8 @@ def submit_feedback(
 
     Where ``FEEDBACK_NOTIFY_EMAIL`` is set, each address in it is told
     once the response has gone, with a link and without the message.
-    Where ``FEEDBACK_SLACK_WEBHOOK_URL`` is set, the same is posted to
-    Slack.
+    Where ``FEEDBACK_SLACK_WEBHOOK_URL`` is set, a notice is posted to
+    Slack as well, without the sender's name.
     """
     feedback = Feedback(
         user_id=current_user.id,
@@ -205,8 +205,9 @@ def submit_feedback(
             route=feedback.route,
         )
 
-    # The same notice in Slack, where a webhook is set. The same rule
-    # too: who, what kind, which page and a link, and never the message.
+    # A notice in Slack as well, where a webhook is set: what kind, which
+    # page and a link. Never the message, and unlike the email never who
+    # sent it, so that nothing personal goes to Slack.
     webhook = settings.FEEDBACK_SLACK_WEBHOOK_URL
     webhook_url = webhook.get_secret_value().strip() if webhook else ""
 
@@ -215,7 +216,6 @@ def submit_feedback(
             post_feedback_notice,
             webhook_url=webhook_url,
             feedback_id=feedback.id,
-            sender=current_user.username,
             category=feedback.category,
             route=feedback.route,
             url=f"{settings.FRONTEND_URL}/admin/feedback/{feedback.id}",
