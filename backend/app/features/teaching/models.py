@@ -219,6 +219,13 @@ class Assessment(Base):
         String(100), nullable=True, unique=True, index=True
     )
 
+    #: When the holder was told this pass is due to be repeated. Null
+    #: until then, and for an attempt that was not a pass. Kept on the
+    #: pass it was sent for, so that a later pass starts its own count;
+    #: see ``app.features.teaching.reminders``.
+    renewal_notice_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     answers: Mapped[list[AssessmentAnswer]] = relationship(
         back_populates="assessment",
         cascade="all, delete-orphan",

@@ -1,0 +1,69 @@
+# Send the teaching reminders that are due.
+#
+# Two kinds of email, both promised in the privacy policy and the terms:
+# a reminder to somebody enrolled on a module who has not finished an
+# attempt, on the schedule the module sets in its own module.yaml, and a
+# notice to somebody whose pass is due to be repeated.
+# backend/app/features/teaching/reminders.py decides who is due, and this
+# runs it each morning as the `send-teaching-reminders` action on the
+# admin job.
+#
+# The app sends the email, and not this workflow, so that GitHub holds no
+# mail credential and no database credential: it only starts the job.
+#
+# A run started by hand is a report unless `apply` is ticked. It prints
+# how many of each would go and sends nothing.
+#
+# The job exits 1 when any email could not be sent, so this run goes red
+# and somebody looks. What could not be sent is tried again the next day.
+name: Teaching reminders
+
+on:
+  schedule:
+    # 7am UTC: the start of the working day in the UK, summer or winter.
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Send what is due. Unticked, it only counts.
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write # Workload Identity Federation, to start the admin job
+
+concurrency:
+  group: teaching-reminders
+  cancel-in-progress: false
+
+env:
+  GCP_REGION: europe-west2
+
+jobs:
+  reminders:
+    name: Send teaching reminders
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v3.0.0
+        with:
+          workload_identity_provider: ${{ secrets.GCP_APP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_APP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v3.0.1
+
+      - name: Run the reminders action on the admin job
+        env:
+          GCP_PROJECT: ${{ secrets.GCP_APP_PROJECT_ID }}
+          # The morning run sends. A run by hand does only when asked.
+          APPLY: ${{ github.event_name == 'schedule' || inputs.apply }}
+        run: |
+          gcloud run jobs execute quill-admin-app \
+            --project="${GCP_PROJECT}" \
+            --region="${GCP_REGION}" \
+            --update-env-vars="^|^ADMIN_ACTION=send-teaching-reminders|REMINDERS_APPLY=${APPLY}" \
+            --wait

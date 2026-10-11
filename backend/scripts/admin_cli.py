@@ -11,7 +11,7 @@ Environment Variables:
                       verify-email, run-migrations,
                       check-competency-seeding, delete-passport,
                       send-newsletter, accessibility-reminder,
-                      apply-retention.
+                      apply-retention, send-teaching-reminders.
     ADMIN_USERNAME:   Required.  Target username.
     ADMIN_EMAIL:      Required for create-superadmin.
     ADMIN_PASSWORD:   Required for create-superadmin.
@@ -305,6 +305,20 @@ def apply_retention() -> int:
     from app.retention import main as retention_main
 
     return retention_main()
+
+
+def send_teaching_reminders() -> int:
+    """Send the teaching reminders that are due.
+
+    Two kinds: to somebody enrolled on a module who has not finished an
+    attempt, on the schedule the module sets, and to somebody whose pass
+    is due to be repeated. Run each day by the teaching-reminders
+    workflow. A report unless ``REMINDERS_APPLY`` is ``true``. See
+    ``app.features.teaching.reminders``.
+    """
+    from app.features.teaching.reminders import main as reminders_main
+
+    return reminders_main()
 
 
 def send_newsletter() -> int:
@@ -629,6 +643,11 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
         apply_retention,
         "Delete data past its retention period (a report without "
         "RETENTION_APPLY=true)",
+    ),
+    "send-teaching-reminders": (
+        send_teaching_reminders,
+        "Send enrolment reminders and renewal notices (a report without "
+        "REMINDERS_APPLY=true)",
     ),
     "send-newsletter": (
         send_newsletter,

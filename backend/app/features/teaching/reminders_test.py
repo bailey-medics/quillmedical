@@ -19,8 +19,11 @@ from app.features.teaching.models import (
 )
 from app.features.teaching.reminders import (
     ReminderResult,
+    add_months,
     due_enrolment_reminders,
+    due_renewal_notices,
     send_enrolment_reminders,
+    send_renewal_notices,
 )
 from app.models import OrgUnit, User
 
@@ -63,6 +66,7 @@ def _module(
     *,
     every: int | None = 7,
     count: int | None = 6,
+    renewal_months: int | None = None,
     is_live: bool = True,
     active_version: int | None = 1,
 ) -> QuestionBankConfig:
@@ -77,6 +81,7 @@ def _module(
         config_yaml={},
         enrolment_reminder_every_days=every,
         enrolment_reminder_count=count,
+        renewal_months=renewal_months,
         synced_by_actor="deploy_bot",
     )
     db.add(config)
@@ -425,3 +430,287 @@ class TestSending:
         for record in caplog.records:
             assert "ann@example.nhs.uk" not in record.getMessage()
             assert "ann@example.nhs.uk" not in str(record.__dict__)
+
+
+def _pass(
+    db: Session, org: OrgUnit, user: User, *, on: datetime
+) -> Assessment:
+    """A passed attempt, finished at *on*."""
+    assessment = Assessment(
+        user_id=user.id,
+        org_unit_id=org.id,
+        question_bank_id=BANK,
+        bank_version=1,
+        started_at=on - timedelta(hours=1),
+        completed_at=on,
+        time_limit_minutes=60,
+        total_items=3,
+        is_passed=True,
+    )
+    db.add(assessment)
+    db.flush()
+
+    return assessment
+
+
+THREE_YEARS_AGO = datetime(2027, 6, 1, 9, 0, tzinfo=UTC)
+
+
+class TestAddMonths:
+    def test_three_years_on_is_the_same_day_three_years_later(self) -> None:
+        assert add_months(THREE_YEARS_AGO, 36) == NOW
+
+    def test_a_day_the_month_lacks_becomes_its_last_day(self) -> None:
+        end_of_january = datetime(2030, 1, 31, tzinfo=UTC)
+
+        assert add_months(end_of_january, 1) == datetime(
+            2030, 2, 28, tzinfo=UTC
+        )
+
+    def test_a_leap_day_three_years_on_is_the_28th(self) -> None:
+        leap_day = datetime(2028, 2, 29, tzinfo=UTC)
+
+        assert add_months(leap_day, 36) == datetime(2031, 2, 28, tzinfo=UTC)
+
+    def test_it_carries_over_the_end_of_a_year(self) -> None:
+        november = datetime(2029, 11, 15, tzinfo=UTC)
+
+        assert add_months(november, 3) == datetime(2030, 2, 15, tzinfo=UTC)
+
+
+class TestRenewalNotices:
+    """Told once, when the latest pass reaches the age the module gives."""
+
+    def test_three_years_after_a_pass(
+        self, db_session: Session, org: OrgUnit
+    ) -> None:
+        _module(db_session, org, renewal_months=36)
+        user = _user(db_session, "sam")
+        _enrol(db_session, org, user, days_ago=1200)
+        passed = _pass(db_session, org, user, on=THREE_YEARS_AGO)
+
+        [due] = due_renewal_notices(db_session, NOW)
+
+        assert due.assessment.id == passed.id
+
+    def test_not_the_day_before(
+        self, db_session: Session, org: OrgUnit
+    ) -> None:
+        _module(db_session, org, renewal_months=36)
+        user = _user(db_session, "sam")
+        _enrol(db_session, org, user, days_ago=1200)
+        _pass(db_session, org, user, on=THREE_YEARS_AGO)
+
+        assert due_renewal_notices(db_session, NOW - A_DAY) == []
+
+    def test_a_later_pass_starts_the_count_again(
+        self, db_session: Session, org: OrgUnit
+    ) -> None:
+        """The agreement counts from the last successful assessment."""
+        _module(db_session, org, renewal_months=36)
+        user = _user(db_session, "sam")
+        _enrol(db_session, org, user, days_ago=1200)
+        _pass(db_session, org, user, on=THREE_YEARS_AGO)
+        _pass(db_session, org, user, on=NOW - timedelta(days=30))
+
+        assert due_renewal_notices(db_session, NOW) == []
+
+    def test_a_failed_attempt_since_does_not_start_it_again(
+        self, db_session: Session, org: OrgUnit
+    ) -> None:
+        _module(db_session, org, renewal_months=36)
+        user = _user(db_session, "sam")
+        _enrol(db_session, org, user, days_ago=1200)
+        _pass(db_session, org, user, on=THREE_YEARS_AGO)
+        _attempt(db_session, org, user, completed=True, passed=False)
+
+        assert len(due_renewal_notices(db_session, NOW)) == 1
+
+    def test_a_module_that_gives_no_period_tells_nobody(
+        self, db_session: Session, org: OrgUnit
+    ) -> None:
+        _module(db_session, org, renewal_months=None)
+        user = _user(db_session, "sam")
+        _enrol(db_session, org, user, days_ago=1200)
+        _pass(db_session, org, user, on=THREE_YEARS_AGO)
+
+        assert due_renewal_notices(db_session, NOW) == []
+
+    def test_somebody_no_longer_enrolled_is_not_told(
+        self, db_session: Session, org: OrgUnit
+    ) -> None:
+        """They could not repeat it if they were."""
+        _module(db_session, org, renewal_months=36)
+        user = _user(db_session, "sam")
+        _enrol(db_session, org, user, days_ago=1200, ends_on=NOW - A_DAY)
+        _pass(db_session, org, user, on=THREE_YEARS_AGO)
+
+        assert due_renewal_notices(db_session, NOW) == []
+
+    def test_a_closed_account_is_not_told(
+        self, db_session: Session, org: OrgUnit
+    ) -> None:
+        _module(db_session, org, renewal_months=36)
+        user = _user(db_session, "sam", is_active=False)
+        _enrol(db_session, org, user, days_ago=1200)
+        _pass(db_session, org, user, on=THREE_YEARS_AGO)
+
+        assert due_renewal_notices(db_session, NOW) == []
+
+    def test_it_is_sent_once_and_names_the_day_they_passed(
+        self,
+        db_session: Session,
+        org: OrgUnit,
+        sent: list[dict[str, Any]],
+    ) -> None:
+        _module(db_session, org, renewal_months=36)
+        user = _user(db_session, "sam")
+        _enrol(db_session, org, user, days_ago=1200)
+        passed = _pass(db_session, org, user, on=THREE_YEARS_AGO)
+
+        first = send_renewal_notices(db_session, NOW, apply=True)
+        second = send_renewal_notices(db_session, NOW + A_DAY, apply=True)
+
+        assert first == ReminderResult(due=1, sent=1, failed=0)
+        assert second == ReminderResult(due=0, sent=0, failed=0)
+        [email] = sent
+        assert email["to"] == user.email
+        assert "due to be repeated" in email["subject"]
+        assert "1 June 2027" in email["html_body"]
+        assert passed.renewal_notice_sent_at is not None
+
+    def test_a_report_counts_and_sends_nothing(
+        self,
+        db_session: Session,
+        org: OrgUnit,
+        sent: list[dict[str, Any]],
+    ) -> None:
+        _module(db_session, org, renewal_months=36)
+        user = _user(db_session, "sam")
+        _enrol(db_session, org, user, days_ago=1200)
+        passed = _pass(db_session, org, user, on=THREE_YEARS_AGO)
+
+        result = send_renewal_notices(db_session, NOW, apply=False)
+
+        assert result == ReminderResult(due=1, sent=0, failed=0)
+        assert sent == []
+        assert passed.renewal_notice_sent_at is None
+
+    def test_one_that_cannot_be_sent_is_tried_again_next_time(
+        self,
+        db_session: Session,
+        org: OrgUnit,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _module(db_session, org, renewal_months=36)
+        user = _user(db_session, "sam")
+        _enrol(db_session, org, user, days_ago=1200)
+        passed = _pass(db_session, org, user, on=THREE_YEARS_AGO)
+
+        def refuse(**kwargs: Any) -> None:
+            raise EmailSendError("could not reach the mail provider")
+
+        monkeypatch.setattr(reminders, "send_email", refuse)
+
+        result = send_renewal_notices(db_session, NOW, apply=True)
+
+        assert result == ReminderResult(due=1, sent=0, failed=1)
+        assert passed.renewal_notice_sent_at is None
+        assert len(due_renewal_notices(db_session, NOW)) == 1
+
+
+class TestMain:
+    """The admin action: a report unless told to send."""
+
+    @pytest.fixture
+    def one_of_each_due(
+        self,
+        db_session: Session,
+        org: OrgUnit,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """One reminder and one notice due right now, and ``main`` handed
+        the test session."""
+        import app.db.core_db as core_db
+
+        monkeypatch.setattr(core_db, "CoreSessionLocal", lambda: db_session)
+        monkeypatch.setattr(db_session, "close", lambda: None)
+        now = datetime.now(UTC)
+        _module(db_session, org, renewal_months=36)
+        starter = _user(db_session, "ann")
+        db_session.add(
+            ModuleEnrolment(
+                user_id=starter.id,
+                org_unit_id=org.id,
+                question_bank_id=BANK,
+                starts_on=now - timedelta(days=8),
+                source="admin",
+            )
+        )
+        holder = _user(db_session, "bob")
+        db_session.add(
+            ModuleEnrolment(
+                user_id=holder.id,
+                org_unit_id=org.id,
+                question_bank_id=BANK,
+                starts_on=now - timedelta(days=1500),
+                source="admin",
+            )
+        )
+        _pass(db_session, org, holder, on=now - timedelta(days=1200))
+        db_session.commit()
+
+    def test_it_only_reports_by_default(
+        self,
+        one_of_each_due: None,
+        sent: list[dict[str, Any]],
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        monkeypatch.delenv("REMINDERS_APPLY", raising=False)
+
+        assert reminders.main() == 0
+
+        out = capsys.readouterr().out
+        assert "Would send 1 enrolment reminders" in out
+        assert "Would send 1 renewal notices" in out
+        assert sent == []
+
+    def test_it_sends_both_kinds_when_told_to(
+        self,
+        one_of_each_due: None,
+        sent: list[dict[str, Any]],
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        monkeypatch.setenv("REMINDERS_APPLY", "true")
+
+        assert reminders.main() == 0
+
+        out = capsys.readouterr().out
+        assert "Sent 1 of 1 enrolment reminders" in out
+        assert "Sent 1 of 1 renewal notices" in out
+        assert {email["to"] for email in sent} == {
+            "ann@example.nhs.uk",
+            "bob@example.nhs.uk",
+        }
+
+    def test_a_send_that_fails_makes_the_run_fail(
+        self,
+        one_of_each_due: None,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """So the workflow goes red and somebody looks."""
+
+        def refuse(**kwargs: Any) -> None:
+            raise EmailSendError("could not reach bob@example.nhs.uk")
+
+        monkeypatch.setattr(reminders, "send_email", refuse)
+        monkeypatch.setenv("REMINDERS_APPLY", "true")
+
+        assert reminders.main() == 1
+
+        captured = capsys.readouterr()
+        assert "2 could not be sent" in captured.err
+        assert "example.nhs.uk" not in captured.out + captured.err

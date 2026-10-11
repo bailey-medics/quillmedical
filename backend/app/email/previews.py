@@ -295,6 +295,21 @@ def previews() -> list[Preview]:
             partner=_EOEETA,
         ),
         Preview(
+            id="renewal-notice",
+            label="EoEETA assessment due to be repeated",
+            template="renewal_notice.html.j2",
+            context={
+                "name": "John Smith",
+                "module_title": _EOEETA.context,
+                "passed_on": "1 June 2027",
+                "module_url": (
+                    "https://quill-medical.com/teaching/"
+                    "colonoscopy-optical-diagnosis"
+                ),
+            },
+            partner=_EOEETA,
+        ),
+        Preview(
             id="certificate",
             label="EoEETA certificate",
             template="teaching_certificate.html.j2",

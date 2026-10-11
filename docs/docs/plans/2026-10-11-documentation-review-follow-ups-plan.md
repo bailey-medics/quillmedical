@@ -338,7 +338,7 @@ ahead of Phases 1 to 11, which are untouched.
       the certificate email is, from the organisation's
       `TeachingOrgSettings`.
 
-- [ ] Run it as an admin action from a scheduled workflow, as Phase 12
+- [x] Run it as an admin action from a scheduled workflow, as Phase 12
       does, with the same report-unless-told default.
 
 - [ ] In the `eoeeta-teaching` repository, a separate pull request there:
@@ -347,7 +347,7 @@ ahead of Phases 1 to 11, which are untouched.
 
 ## Phase 15: Tell somebody when a pass is due to be repeated
 
-- [ ] Send one notice when a pass reaches the module's `renewalMonths`.
+- [x] Send one notice when a pass reaches the module's `renewalMonths`.
       The period is already in `module.yaml` (`renewalMonths: 36` on the
       EoEETA module), already validated, and already served to the
       frontend as `renewal_months`: an earlier note in this plan that the
@@ -357,15 +357,19 @@ ahead of Phases 1 to 11, which are untouched.
       after the last successful assessment date." So the notice goes at
       three years from the latest passed attempt, not ahead of it.
 
-- [ ] Count from the latest `Assessment` with `is_passed` true for that
+- [x] Count from the latest `Assessment` with `is_passed` true for that
       person, organisation and module. A later pass restarts the period,
       which is the agreement's "last successful assessment".
+      Only somebody still enrolled on the module, on an active account
+      with a verified address, is told: a person the organisation has
+      withdrawn could not repeat it. Three years is counted in calendar
+      months, so a pass on 1 June 2027 is due on 1 June 2030.
 
-- [ ] Record that the notice was sent, against the pass it was sent for,
+- [x] Record that the notice was sent, against the pass it was sent for,
       so it goes once: a column on `assessments`, added with `just
       migrate`.
 
-- [ ] Template, preview, admin action and schedule as in Phase 14. One
+- [x] Template, preview, admin action and schedule as in Phase 14. One
       action can send both kinds of email in one nightly run.
 
 ## Phase 16: Keep a closed account's records for the sponsor's period

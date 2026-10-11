@@ -16,12 +16,19 @@ Somebody is reminded while all of these hold:
 Each reminder is recorded on the enrolment row as it is sent, so a run
 that is repeated, or stopped part-way, never sends one twice.
 
+**A second email tells somebody a pass is due to be repeated.** A module
+says how long a pass lasts with ``renewalMonths``. When somebody's latest
+pass reaches that age they are told, once. A later pass starts the count
+again, which is what "the last successful assessment" means in the
+EoEETA agreement that asks for this.
+
 Run as the ``send-teaching-reminders`` admin action, on a schedule. It
 reports unless ``REMINDERS_APPLY`` is ``true``.
 """
 
 from __future__ import annotations
 
+import calendar
 import logging
 import os
 import sys
@@ -272,13 +279,216 @@ def send_enrolment_reminders(
     return ReminderResult(due=len(due), sent=sent, failed=failed)
 
 
+@dataclass(frozen=True)
+class DueRenewal:
+    """One pass whose holder should be told now that it is due again.
+
+    Attributes:
+        assessment: The pass: their latest at this module.
+        user: Who passed.
+        config: The version of the module their organisation serves.
+        passed_at: When they passed.
+    """
+
+    assessment: Assessment
+    user: User
+    config: QuestionBankConfig
+    passed_at: datetime
+
+
+def add_months(moment: datetime, months: int) -> datetime:
+    """*moment* moved on by whole calendar months.
+
+    The day is kept where the month has it and pulled back to the
+    month's last day where it does not: 31 January and one month is 28
+    or 29 February.
+    """
+    index = moment.month - 1 + months
+    year = moment.year + index // 12
+    month = index % 12 + 1
+    day = min(moment.day, calendar.monthrange(year, month)[1])
+
+    return moment.replace(year=year, month=month, day=day)
+
+
+def _is_enrolled(db: Session, assessment: Assessment, now: datetime) -> bool:
+    """Whether they are still enrolled on the module they passed."""
+    enrolments = db.scalars(
+        select(ModuleEnrolment).where(
+            ModuleEnrolment.user_id == assessment.user_id,
+            ModuleEnrolment.org_unit_id == assessment.org_unit_id,
+            ModuleEnrolment.question_bank_id == assessment.question_bank_id,
+        )
+    )
+
+    return any(enrolment.is_current(now) for enrolment in enrolments)
+
+
+def due_renewal_notices(db: Session, now: datetime) -> list[DueRenewal]:
+    """Every pass whose holder should be told at *now*.
+
+    Only somebody's **latest** pass at a module counts. An older pass has
+    been repeated already, so it is never due, however old it is.
+
+    Args:
+        db: The database session.
+        now: The moment to judge by.
+
+    Returns:
+        The notices due, oldest pass first.
+    """
+    rows = (
+        db.execute(
+            select(Assessment, User)
+            .join(User, User.id == Assessment.user_id)
+            .where(
+                Assessment.is_passed.is_(True),
+                Assessment.completed_at.is_not(None),
+                User.is_active.is_(True),
+                User.email_verified.is_(True),
+            )
+            .order_by(Assessment.completed_at.desc(), Assessment.id.desc())
+        )
+        .unique()
+        .all()
+    )
+    seen: set[tuple[int, int, str]] = set()
+    due: list[DueRenewal] = []
+
+    for assessment, user in rows:
+        key = (
+            assessment.user_id,
+            assessment.org_unit_id,
+            assessment.question_bank_id,
+        )
+
+        # Newest first, so the first one met for a key is the latest pass
+        # and every other is one they have since repeated.
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        # The query asks for a finish time; this is for the type checker.
+        if assessment.completed_at is None:
+            continue
+        if assessment.renewal_notice_sent_at is not None:
+            continue
+
+        config = _served_config(
+            db, assessment.org_unit_id, assessment.question_bank_id
+        )
+
+        if config is None or config.renewal_months is None:
+            continue
+
+        passed_at = _aware(assessment.completed_at)
+
+        if now < add_months(passed_at, config.renewal_months):
+            continue
+        if not _is_enrolled(db, assessment, now):
+            continue
+
+        due.append(
+            DueRenewal(
+                assessment=assessment,
+                user=user,
+                config=config,
+                passed_at=passed_at,
+            )
+        )
+
+    due.reverse()
+
+    return due
+
+
+def _send_renewal(db: Session, renewal: DueRenewal) -> None:
+    """Send one notice. Raises what ``send_email`` raises."""
+    assessment = renewal.assessment
+    config = renewal.config
+    passed_at = renewal.passed_at
+    org_settings = db.scalar(
+        select(TeachingOrgSettings).where(
+            TeachingOrgSettings.org_unit_id == assessment.org_unit_id
+        )
+    )
+    rendered = render_email(
+        "renewal_notice.html.j2",
+        "quill",
+        {
+            "name": renewal.user.full_name or renewal.user.username,
+            "module_title": config.title,
+            "passed_on": f"{passed_at.day} {passed_at:%B %Y}",
+            "module_url": (
+                f"{settings.FRONTEND_URL}/teaching/"
+                f"{assessment.question_bank_id}"
+            ),
+        },
+        partner=email_partner(org_settings, config.title),
+    )
+
+    send_email(to=renewal.user.email, **send_args(rendered))
+
+
+def send_renewal_notices(
+    db: Session, now: datetime, *, apply: bool
+) -> ReminderResult:
+    """Tell everybody whose pass is due to be repeated, or count them.
+
+    Args:
+        db: The database session.
+        now: The moment to judge by, and to record against each send.
+        apply: True to send. False counts and sends nothing.
+
+    Returns:
+        How many were due, sent and failed.
+    """
+    due = due_renewal_notices(db, now)
+
+    if not apply:
+        return ReminderResult(due=len(due), sent=0, failed=0)
+
+    sent = 0
+    failed = 0
+
+    for renewal in due:
+        assessment = renewal.assessment
+
+        try:
+            _send_renewal(db, renewal)
+        except (
+            EmailNotAllowedError,
+            EmailRateLimitError,
+            EmailSendError,
+        ) as exc:
+            failed += 1
+            logger.warning(
+                "renewal notice not sent",
+                extra={
+                    "assessment_id": assessment.id,
+                    "reason": type(exc).__name__,
+                },
+            )
+
+            continue
+
+        assessment.renewal_notice_sent_at = now
+        # Committed after each send, for the reason given in
+        # send_enrolment_reminders: this notice goes once.
+        db.commit()
+        sent += 1
+
+    return ReminderResult(due=len(due), sent=sent, failed=failed)
+
+
 def main() -> int:
     """Run the reminders from the environment and print the counts.
 
     Reads ``REMINDERS_APPLY``. Anything but ``true`` is a report.
 
     Returns:
-        The exit status: 0 when every reminder due was sent, or for a
+        The exit status: 0 when every email due was sent, or for a
         report; 1 when it could not run or any could not be sent.
     """
     from app.db.core_db import CoreSessionLocal
@@ -286,8 +496,11 @@ def main() -> int:
     apply = os.environ.get("REMINDERS_APPLY", "").strip().lower() == "true"
     db = CoreSessionLocal()
 
+    now = datetime.now(UTC)
+
     try:
-        result = send_enrolment_reminders(db, datetime.now(UTC), apply=apply)
+        result = send_enrolment_reminders(db, now, apply=apply)
+        renewals = send_renewal_notices(db, now, apply=apply)
     except Exception as exc:
         db.rollback()
         print(
@@ -301,14 +514,18 @@ def main() -> int:
 
     if not apply:
         print(f"Would send {result.due} enrolment reminders")
+        print(f"Would send {renewals.due} renewal notices")
         print("A report only. Set REMINDERS_APPLY=true to send.")
 
         return 0
 
     print(f"Sent {result.sent} of {result.due} enrolment reminders")
+    print(f"Sent {renewals.sent} of {renewals.due} renewal notices")
 
-    if result.failed:
-        print(f"✗ {result.failed} could not be sent", file=sys.stderr)
+    failed = result.failed + renewals.failed
+
+    if failed:
+        print(f"✗ {failed} could not be sent", file=sys.stderr)
 
         return 1
 
