@@ -60,9 +60,13 @@ def _run_out() -> str:
 
 
 def _altered() -> str:
-    token = _invite()
+    # The first character of the signature, never the last. The last one
+    # carries two bits that are not part of the signature, so swapping an
+    # "A" there for a "B" leaves a token that still verifies.
+    head, signature = _invite().rsplit(".", 1)
+    swapped = "A" if signature[0] != "A" else "B"
 
-    return token[:-1] + ("A" if token[-1] != "A" else "B")
+    return f"{head}.{swapped}{signature[1:]}"
 
 
 def _accounts(db: Session) -> list[str]:
