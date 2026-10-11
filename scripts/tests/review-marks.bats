@@ -57,7 +57,7 @@ row() {
         "$1" "10" "$2" "$3" "code" "${5-Ada Reader}" "$4"
 }
 
-# readers <states output> <path>: who the mark for one file says read it.
+# readers <states output> <path>: who the mark for one file says audited it.
 readers() {
     NODE_PATH="$MODULES" node -e '
 const { marksFrom } = require(process.argv[1]);
@@ -67,30 +67,30 @@ console.log(mark.readers);
 }
 
 @test "a file keeps the state the ledger gave it" {
-    run marks "$(row read 2026-10-10 abc backend/app/deps.py)"
+    run marks "$(row audited 2026-10-10 abc backend/app/deps.py)"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"read"$'\t'"backend/app/deps.py"* ]]
+    [[ "$output" == *"audited"$'\t'"backend/app/deps.py"* ]]
 }
 
-@test "a folder is read when every file beneath it is read" {
-    run marks "$(row read 2026-10-10 abc backend/app/a.py)
-$(row read 2026-10-10 def backend/app/b.py)"
+@test "a folder is audited when every file beneath it is audited" {
+    run marks "$(row audited 2026-10-10 abc backend/app/a.py)
+$(row audited 2026-10-10 def backend/app/b.py)"
 
-    [[ "$output" == *"read"$'\t'"backend/app/"* ]]
-    [[ "$output" == *"read"$'\t'"backend/"* ]]
+    [[ "$output" == *"audited"$'\t'"backend/app/"* ]]
+    [[ "$output" == *"audited"$'\t'"backend/"* ]]
 }
 
-@test "a folder is unread when one file beneath it is unread" {
-    run marks "$(row read 2026-10-10 abc backend/app/a.py)
-$(row unread '' '' backend/app/b.py)"
+@test "a folder is unaudited when one file beneath it is unaudited" {
+    run marks "$(row audited 2026-10-10 abc backend/app/a.py)
+$(row unaudited '' '' backend/app/b.py)"
 
-    [[ "$output" == *"unread"$'\t'"backend/app/"* ]]
+    [[ "$output" == *"unaudited"$'\t'"backend/app/"* ]]
 }
 
 @test "a folder is changed when one file beneath it has changed, whatever the rest are" {
-    run marks "$(row read 2026-10-10 abc backend/app/a.py)
-$(row unread '' '' backend/app/b.py)
+    run marks "$(row audited 2026-10-10 abc backend/app/a.py)
+$(row unaudited '' '' backend/app/b.py)
 $(row changed 2026-10-10 def backend/app/c.py)"
 
     [[ "$output" == *"changed"$'\t'"backend/app/"* ]]
@@ -98,7 +98,7 @@ $(row changed 2026-10-10 def backend/app/c.py)"
 
 @test "a change deep down marks every folder above it" {
     run marks "$(row changed 2026-10-10 abc backend/app/cbac/grants.py)
-$(row read 2026-10-10 def backend/app/deps.py)"
+$(row audited 2026-10-10 def backend/app/deps.py)"
 
     [[ "$output" == *"changed"$'\t'"backend/app/cbac/"* ]]
     [[ "$output" == *"changed"$'\t'"backend/app/"* ]]
@@ -107,15 +107,15 @@ $(row read 2026-10-10 def backend/app/deps.py)"
 
 @test "one folder's change does not mark its neighbour" {
     run marks "$(row changed 2026-10-10 abc backend/app/cbac/grants.py)
-$(row read 2026-10-10 def backend/app/db/core_db.py)"
+$(row audited 2026-10-10 def backend/app/db/core_db.py)"
 
-    [[ "$output" == *"read"$'\t'"backend/app/db/"* ]]
+    [[ "$output" == *"audited"$'\t'"backend/app/db/"* ]]
 }
 
 @test "a file at the top of the repository makes no folder mark" {
-    run marks "$(row read 2026-10-10 abc Justfile)"
+    run marks "$(row audited 2026-10-10 abc Justfile)"
 
-    [ "$output" = "read"$'\t'"Justfile" ]
+    [ "$output" = "audited"$'\t'"Justfile" ]
 }
 
 @test "no output makes no marks" {
@@ -125,15 +125,15 @@ $(row read 2026-10-10 def backend/app/db/core_db.py)"
     [ -z "$output" ]
 }
 
-@test "a file's mark says who read it" {
-    run readers "$(row read 2026-10-10 abc backend/app/deps.py "Ada Reader, Ben Checker")" \
+@test "a file's mark says who audited it" {
+    run readers "$(row audited 2026-10-10 abc backend/app/deps.py "Ada Reader, Ben Checker")" \
         backend/app/deps.py
 
     [ "$output" = "Ada Reader, Ben Checker" ]
 }
 
-@test "an unread file's mark names nobody" {
-    run readers "$(row unread '' '' backend/app/deps.py '')" backend/app/deps.py
+@test "an unaudited file's mark names nobody" {
+    run readers "$(row unaudited '' '' backend/app/deps.py '')" backend/app/deps.py
 
     [ -z "$output" ]
 }
@@ -142,10 +142,10 @@ $(row read 2026-10-10 def backend/app/db/core_db.py)"
     # Six columns and not seven: a branch whose ledger script is older
     # than the extension. The path is still the last column.
     local old_line
-    old_line="$(printf '%s\t%s\t%s\t%s\t%s\t%s\n' read 10 2026-10-10 abc code backend/app/deps.py)"
+    old_line="$(printf '%s\t%s\t%s\t%s\t%s\t%s\n' audited 10 2026-10-10 abc code backend/app/deps.py)"
 
     run marks "$old_line"
-    [[ "$output" == *"read"$'\t'"backend/app/deps.py"* ]]
+    [[ "$output" == *"audited"$'\t'"backend/app/deps.py"* ]]
 
     run readers "$old_line" backend/app/deps.py
     [ -z "$output" ]

@@ -1,0 +1,4 @@
+# The audit card is a list of stamps, one a line, that several people add
+# to on different branches. Keeping both sides' lines is always the right
+# merge: the script reads the newest stamp each auditor made for a file.
+audit/ledger.tsv merge=union

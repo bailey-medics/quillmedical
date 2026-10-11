@@ -1,40 +1,42 @@
 #!/usr/bin/env python3
-"""Keep a card of which files have been read, and notice when one changes.
+"""Keep an audit card of the code, and notice when an audited file changes.
 
-Reading a file and remembering that it was read are two jobs, and the
-second is the one that goes wrong: a file read in September and edited in
-October is no longer the file that was read. So the card holds, for each
+Auditing a file and remembering that it was audited are two jobs, and the
+second is the one that goes wrong: a file audited in September and edited
+in October is no longer the file that was audited. So the card holds, for each
 file, the fingerprint git gives its contents. A file whose contents still
-match is **read**; one whose contents have moved on is **changed**; one
-with no line on the card is **unread**.
+match is **audited**; one whose contents have moved on is **changed**; one
+with no line on the card is **unaudited**.
 
 A stamp also says who made it, taken from the name and email git is
 set up with. Several people may stamp the same file, each on a line of
-their own, and a file counts as read when anybody's stamp matches what
+their own, and a file counts as audited when anybody's stamp matches what
 it holds now.
 
 The commands:
 
-- `mark <paths>` stamps files, or every file in a folder, as read by
+- `mark <paths>` stamps files, or every file in a folder, as audited by
   you.
 - `unmark <paths>` takes your stamp off again, for a file stamped by
   mistake. Nobody else's stamp is touched.
 - `adopt` puts your name on stamps that have none, which are the ones
   made before stamps carried a name.
-- `status` says how much is read, in two lines. `status f` (or `full`)
-  adds the files changed since they were read and the lines left in each
+- `status` says how much is audited, in two lines. `status f` (or `full`)
+  adds the files changed since their audit and the lines left in each
   folder; `status <path>` lists that folder file by file.
 - `states` prints every file and its state, one to a line, for a
   program to read.
 - `diff <path>` shows what changed in a file since it was stamped, so a
-  changed file is caught up on by reading the change and not the file.
+  changed file is caught up on by auditing the change and not the file.
 
-The card is one tab-separated file, `review-ledger.tsv`, in the shared
-`local/` folder that `local-path.sh` points at. Each line holds the path,
-the fingerprint, the date, and the reviewer's name and email. It is kept out of git and
-is the same file from every worktree. Paths on it are relative to the
-repository root, which is what lets a stamp made in one worktree count in
-another.
+The card is one tab-separated file, `audit/ledger.tsv`, tracked in the
+repository. Each line holds the path, the fingerprint, the date, and the
+auditor's name and email. A stamp is a change like any other: it is made
+in a worktree, committed on a branch and reaches everybody when that
+branch merges, so anybody may audit and git's history says who added
+what. Paths on it are relative to the repository root. `.gitattributes`
+merges the card by keeping both sides' lines, so two people stamping at
+once do not conflict.
 """
 
 from __future__ import annotations
@@ -50,9 +52,9 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-LEDGER_NAME = "review-ledger.tsv"
+LEDGER_PATH = "audit/ledger.tsv"
 
-# Files that are not read as code: pictures and sounds, lock files, and
+# Files that are not audited as code: pictures and sounds, lock files, and
 # anything a script writes. Prose is left out too; the card is about code.
 SKIPPED_SUFFIXES = (
     ".png",
@@ -74,6 +76,7 @@ SKIPPED_SUFFIXES = (
 SKIPPED_NAMES = ("yarn.lock", "poetry.lock", "package-lock.json")
 SKIPPED_FOLDERS = (
     ".vscode/",
+    "audit/",
     "api-compatibility/",
     "backend/alembic/versions/",
     "docs/",
@@ -103,7 +106,7 @@ SUMMARY_DEPTH = 3
 @dataclass(frozen=True)
 class Stamp:
     """One line of the card: what a file's contents were, when, and who
-    read them.
+    audited them.
 
     The name and email are empty on a stamp made before stamps carried
     them.
@@ -139,9 +142,9 @@ class FileState:
 
     path: str
     lines: int
-    state: str  # "read", "changed" or "unread"
+    state: str  # "audited", "changed" or "unaudited"
     stamp: Stamp | None = None
-    # Who has read this version, or for a changed file an earlier one.
+    # Who has audited this version, or for a changed file an earlier one.
     readers: tuple[str, ...] = ()
 
 
@@ -186,20 +189,28 @@ def repo_root() -> Path:
 
 
 def ledger_path() -> Path:
-    """Where the card is: the shared local/ folder, from any worktree."""
-    helper = Path(__file__).resolve().parent / "local-path.sh"
+    """Where the card is: `audit/ledger.tsv`, in the repository.
+
+    It is a tracked file, so a stamp is a change like any other. It is
+    seen in the worktree it was made in, travels with its branch, and
+    reaches everybody when that branch merges. Git's history is the
+    record of who added each stamp, and the way back from a bad write.
+    """
+    return repo_root() / LEDGER_PATH
+
+
+def lock_path() -> Path:
+    """A file to hold while the card is rewritten, inside git's own
+    folder so it is never something to commit."""
     done = subprocess.run(
-        ["bash", str(helper)],
+        ["git", "rev-parse", "--git-path", "review-ledger.lock"],
         cwd=repo_root(),
         capture_output=True,
         text=True,
-        check=False,
+        check=True,
     )
 
-    if done.returncode != 0:
-        raise SystemExit(done.stderr.strip() or "local-path.sh failed")
-
-    return Path(done.stdout.strip()) / LEDGER_NAME
+    return (repo_root() / done.stdout.strip()).resolve()
 
 
 def current_reviewer() -> Reviewer:
@@ -238,16 +249,34 @@ def read_ledger(path: Path) -> Card:
 
     A missing card is an empty one. A line with three columns is from
     before stamps carried a name, and is read as a stamp with none.
+
+    A line of any other shape stops the run. It means the card was
+    written by a newer version of this script than the one reading it,
+    and every command that stamps writes the whole card back: a line
+    skipped here would be a line deleted there. That happened on 11
+    October 2026, when a version from before stamps carried a name read
+    a card full of named stamps, understood none, and wrote back the one
+    stamp it had just made.
     """
     card: Card = {}
 
     if not path.exists():
         return card
 
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for number, line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(), start=1
+    ):
+        if not line.strip():
+            continue
+
         parts = line.split("\t")
         if len(parts) not in (3, 5):
-            continue
+            raise SystemExit(
+                f"Line {number} of {path} is not one this version of "
+                "review-ledger.py can read, so the card was written by a "
+                "newer one. Nothing has been changed. Bring this "
+                "worktree up to date with main and try again."
+            )
 
         named = len(parts) == 5
         card.setdefault(parts[0], []).append(
@@ -273,14 +302,16 @@ def write_ledger(path: Path, card: Card) -> None:
     draft = path.with_suffix(".tsv.tmp")
     body = "\n".join(lines) + "\n" if lines else ""
 
+    path.parent.mkdir(parents=True, exist_ok=True)
     draft.write_text(body, encoding="utf-8")
     os.replace(draft, path)
 
 
 @contextmanager
-def ledger_lock(path: Path) -> Iterator[None]:
-    """Hold the card while it is rewritten: two worktrees share it."""
-    lock = path.with_suffix(".lock")
+def ledger_lock() -> Iterator[None]:
+    """Hold the card while it is rewritten, so two commands at once in
+    one worktree cannot each write over the other."""
+    lock = lock_path()
 
     with lock.open("w", encoding="utf-8") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX)
@@ -390,7 +421,7 @@ def names_of(stamps: list[Stamp]) -> tuple[str, ...]:
 def states_under(path: str, card: Card) -> list[FileState]:
     """Every file beneath a path, set against the card.
 
-    A file is read when anybody's stamp matches what it holds now. The
+    A file is audited when anybody's stamp matches what it holds now. The
     stamp reported is the newest of those that match, or for a changed
     file the newest there is, which is the one to compare against.
     """
@@ -405,10 +436,10 @@ def states_under(path: str, card: Card) -> list[FileState]:
         ]
 
         if not held:
-            states.append(FileState(name, count_lines(name), "unread"))
+            states.append(FileState(name, count_lines(name), "unaudited"))
             continue
 
-        state = "read" if matching else "changed"
+        state = "audited" if matching else "changed"
         counted = matching or held
         newest = max(counted, key=lambda stamp: stamp.stamped_on)
 
@@ -422,7 +453,7 @@ def states_under(path: str, card: Card) -> list[FileState]:
 
 
 def command_mark(raw_paths: list[str]) -> int:
-    """Stamp files, or every file in a folder, as read by you."""
+    """Stamp files, or every file in a folder, as audited by you."""
     if not raw_paths:
         print("Give a file or a folder: just reviewed backend/app/deps.py")
         return 1
@@ -443,7 +474,7 @@ def command_mark(raw_paths: list[str]) -> int:
 
     me = current_reviewer()
 
-    with ledger_lock(card):
+    with ledger_lock():
         stamps = read_ledger(card)
 
         for name in paths:
@@ -468,7 +499,7 @@ def command_mark(raw_paths: list[str]) -> int:
     total = sum(count_lines(name) for name in paths)
     noun = "file" if len(paths) == 1 else "files"
     print(
-        f"Stamped {len(paths)} {noun}, {total:,} lines, as read "
+        f"Stamped {len(paths)} {noun}, {total:,} lines, as audited "
         f"by {me.name}."
     )
 
@@ -480,7 +511,7 @@ def command_unmark(raw_paths: list[str]) -> int:
     """Take your stamp off files, or off every file in a folder.
 
     Only yours, and any with no name on it. A stamp is one person saying
-    they read something, so nobody else can take it back for them.
+    they audited something, so nobody else can take it back for them.
     """
     if not raw_paths:
         print("Give a file or a folder: just unreviewed backend/app/deps.py")
@@ -492,7 +523,7 @@ def command_unmark(raw_paths: list[str]) -> int:
     gone = 0
     kept_for_others = 0
 
-    with ledger_lock(card):
+    with ledger_lock():
         stamps = read_ledger(card)
 
         # Matched against the card and not the disk, so a stamp can be
@@ -550,7 +581,7 @@ def command_adopt() -> int:
     me = current_reviewer()
     adopted = 0
 
-    with ledger_lock(card):
+    with ledger_lock():
         stamps = read_ledger(card)
 
         for name, held in stamps.items():
@@ -590,15 +621,15 @@ def command_adopt() -> int:
 
 
 def summary_line(label: str, states: list[FileState]) -> str:
-    """One line of the headline: how much of a kind of file is read."""
+    """One line of the headline: how much of a kind of file is audited."""
     total = sum(item.lines for item in states)
-    read = sum(item.lines for item in states if item.state == "read")
-    files_read = sum(1 for item in states if item.state == "read")
-    share = round(100 * read / total) if total else 0
+    audited = sum(item.lines for item in states if item.state == "audited")
+    files_audited = sum(1 for item in states if item.state == "audited")
+    share = round(100 * audited / total) if total else 0
 
     return (
-        f"{label:<6} {read:>9,} of {total:>9,} lines read ({share}%)"
-        f"   {files_read:,} of {len(states):,} files"
+        f"{label:<6} {audited:>9,} of {total:>9,} lines audited ({share}%)"
+        f"   {files_audited:,} of {len(states):,} files"
     )
 
 
@@ -613,7 +644,7 @@ def folder_of(path: str) -> str:
 
 
 def command_status(raw_path: str | None) -> int:
-    """Say what is read, changed and unread."""
+    """Say what is audited, changed and unaudited."""
     full = raw_path in FULL_WORDS
     if full:
         raw_path = None
@@ -623,7 +654,7 @@ def command_status(raw_path: str | None) -> int:
     states = states_under(scope, stamps)
 
     if not states:
-        print(f"No files to read at {raw_path or 'the repository root'}")
+        print(f"No files to audit at {raw_path or 'the repository root'}")
         return 1
 
     code = [item for item in states if not is_test(item.path)]
@@ -635,15 +666,15 @@ def command_status(raw_path: str | None) -> int:
     changed = [item for item in states if item.state == "changed"]
 
     if changed and not full and not raw_path:
-        # The one thing the short form must not hide: a read file has
+        # The one thing the short form must not hide: an audited file has
         # moved on. Counted here, listed by the full form.
-        print(f"Changed since you read them: {len(changed)}")
+        print(f"Changed since their audit: {len(changed)}")
 
     if not full and not raw_path:
         return 0
 
     if changed:
-        print(f"\nChanged since you read them ({len(changed)}):")
+        print(f"\nChanged since their audit ({len(changed)}):")
         for item in changed:
             print(f"  {item.path}")
 
@@ -651,20 +682,20 @@ def command_status(raw_path: str | None) -> int:
         print(f"\nEvery file in {scope}:")
         for item in states:
             by = f"  ({', '.join(item.readers)})" if item.readers else ""
-            print(f"  {item.state:<8}{item.lines:>7,}  {item.path}{by}")
+            print(f"  {item.state:<10}{item.lines:>7,}  {item.path}{by}")
 
         return 0
 
     left: dict[str, int] = {}
 
     for item in states:
-        if item.state != "read":
+        if item.state != "audited":
             folder = folder_of(item.path)
             left[folder] = left.get(folder, 0) + item.lines
 
     if left:
         width = max(len(folder) for folder in left)
-        print("\nLines left to read, by folder:")
+        print("\nLines left to audit, by folder:")
         for folder in sorted(left):
             print(f"  {folder:<{width}}  {left[folder]:>9,}")
 
@@ -675,10 +706,10 @@ def command_states() -> int:
     """Print every file and its state, one to a line, for a program.
 
     Tab-separated: state, lines, the date it was stamped, the fingerprint
-    it was stamped with, code or test, who read it, path. The date, the
-    fingerprint and the names are empty for an unread file. The names are
+    it was stamped with, code or test, who audited it, path. The date, the
+    fingerprint and the names are empty for an unaudited file. The names are
     of everybody whose stamp matches the file now, or for a changed file
-    of everybody who read an earlier version, with ", " between them.
+    of everybody who audited an earlier version, with ", " between them.
     """
     stamps = read_ledger(ledger_path())
 
@@ -704,8 +735,8 @@ def command_diff(raw_path: str) -> int:
         print(f"{path} has not been stamped, so there is nothing to compare.")
         return 1
 
-    # What changed since I read it, where I have: otherwise since
-    # whoever read it last.
+    # What changed since I audited it, where I have: otherwise since
+    # whoever audited it last.
     me = git_setting("user.email") or git_setting("user.name")
     mine = [stamp for stamp in held if stamp.who == me.lower()]
     stamp = max(mine or held, key=lambda found: found.stamped_on)
@@ -728,7 +759,7 @@ def command_diff(raw_path: str) -> int:
     if known.returncode != 0:
         print(
             f"Git no longer holds {path} as it was on {stamp.stamped_on}.\n"
-            "Read the whole file, then stamp it again."
+            "Audit the whole file, then stamp it again."
         )
         return 1
 
@@ -746,7 +777,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     commands = parser.add_subparsers(dest="command", required=True)
 
-    mark = commands.add_parser("mark", help="stamp files or folders as read")
+    mark = commands.add_parser(
+        "mark", help="stamp files or folders as audited"
+    )
     mark.add_argument("paths", nargs="*")
 
     unmark = commands.add_parser("unmark", help="take your stamp off again")
@@ -754,7 +787,9 @@ def main() -> int:
 
     commands.add_parser("adopt", help="put your name on stamps with none")
 
-    status = commands.add_parser("status", help="what is read and unread")
+    status = commands.add_parser(
+        "status", help="what is audited and what is not"
+    )
     status.add_argument("path", nargs="?")
 
     commands.add_parser("states", help="every file's state, for a program")
