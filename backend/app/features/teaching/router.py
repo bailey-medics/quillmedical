@@ -7,7 +7,6 @@ Educator routes additionally require ``manage_teaching`` competency.
 from __future__ import annotations
 
 import logging
-import random
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -38,6 +37,13 @@ from app.features.teaching.access import (
     modules_open_to,
     modules_served_where_they_belong,
     organisations_open_for_modules,
+)
+from app.features.teaching.attempts import (
+    attempt_of,
+    bank_to_sit,
+    begin_attempt,
+    item_at_position,
+    next_unanswered_item,
 )
 from app.features.teaching.enrolment import enrolled_on_offer, is_enrolled
 from app.features.teaching.listing import (
@@ -607,132 +613,42 @@ def start_assessment(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
-    """Start a new assessment for the current user."""
+    """Start a new assessment for the current user.
+
+    Which bank, and every refusal but one, is ``bank_to_sit``; the draw
+    and the writes are ``begin_attempt``. The refusal for too small a
+    pool stays here, between the two, because its words carry two
+    counts: how many items are published and how many the bank asks
+    for.
+    """
     org_ids = _get_user_org_ids(user, db)
 
-    # Block assessment start when bank is not live for user's org
-    status_row = (
-        db.execute(
-            select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.org_unit_id.in_(org_ids),
-                enrolled_on_offer(user.id),
-                QuestionBankOrgStatus.question_bank_id
-                == body.question_bank_id,
-                QuestionBankOrgStatus.is_live.is_(True),
-            )
-        )
-        .scalars()
-        .first()
+    bank = bank_to_sit(
+        db,
+        user.id,
+        organisation_ids=org_ids,
+        bank_id=body.question_bank_id,
     )
 
-    if not status_row:
-        raise HTTPException(403, "This assessment is not currently open")
-
-        # The version this organisation has promoted, not the newest imported.
-        # Syncing a revision must not change what a candidate sits mid-cohort;
-        # advancing the pointer is a deliberate act by a staff org admin.
-    if status_row.active_version is None:
-        raise HTTPException(403, "This assessment is not currently open")
-
-        # May be owned by a different org - content is shared, the pointer is not.
-    config_row = (
-        db.execute(
-            select(QuestionBankConfig).where(
-                QuestionBankConfig.question_bank_id == body.question_bank_id,
-                QuestionBankConfig.version == status_row.active_version,
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if not config_row:
-        raise HTTPException(404, "Question bank not found")
-
-    config = config_row.config_yaml
-    assessment_cfg = config.get("assessment", {})
-    items_per_attempt = assessment_cfg.get("items_per_attempt", 0)
-    time_limit = assessment_cfg.get("time_limit_minutes", 0)
-    min_pool = assessment_cfg.get("min_pool_size", 0)
-
-    # Load published items for this bank + version (from config owner org)
-    published_items = (
-        db.execute(
-            select(QuestionBankItem).where(
-                QuestionBankItem.org_unit_id == config_row.org_unit_id,
-                QuestionBankItem.question_bank_id == body.question_bank_id,
-                QuestionBankItem.bank_version == config_row.version,
-                QuestionBankItem.status == "published",
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-    if len(published_items) < min_pool:
+    if len(bank.published_items) < bank.min_pool_size:
         raise HTTPException(
             409,
-            f"Insufficient items: {len(published_items)} published, "
-            f"need {min_pool}",
+            f"Insufficient items: {len(bank.published_items)} published, "
+            f"need {bank.min_pool_size}",
         )
 
-        # Randomly select and order items
-    # Not a secret: which questions an attempt draws, and in what order.
-    selected = random.sample(  # nosec B311
-        list(published_items),
-        min(items_per_attempt, len(published_items)),
-    )
-
-    if assessment_cfg.get("randomise_order", True):
-        random.shuffle(selected)
-
-        # Create assessment
-    assessment = Assessment(
-        user_id=user.id,
-        org_unit_id=status_row.org_unit_id,
-        question_bank_id=body.question_bank_id,
-        bank_version=config_row.version,
-        time_limit_minutes=time_limit,
-        total_items=len(selected),
-    )
-    db.add(assessment)
-    db.flush()
-
-    # Create answer rows
-    for idx, item in enumerate(selected, start=1):
-        db.add(
-            AssessmentAnswer(
-                assessment_id=assessment.id,
-                item_id=item.id,
-                display_order=idx,
-            )
-        )
-    db.flush()
-    db.refresh(assessment)
+    attempt = begin_attempt(db, user.id, bank)
 
     # Build first item
-    first_answer = (
-        db.execute(
-            select(AssessmentAnswer)
-            .where(
-                AssessmentAnswer.assessment_id == assessment.id,
-                AssessmentAnswer.selected_option.is_(None),
-            )
-            .order_by(AssessmentAnswer.display_order)
-        )
-        .scalars()
-        .first()
-    )
-
     first_item = None
 
-    if first_answer:
+    if attempt.first_answer:
         first_item = _build_candidate_item(
-            first_answer, config, config_row.type
+            attempt.first_answer, bank.config.config_yaml, bank.config.type
         )
 
     return {
-        "assessment": assessment,
+        "assessment": attempt.assessment,
         "first_item": first_item,
     }
 
@@ -1019,49 +935,21 @@ def get_current_item(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> CandidateItemOut | None:
-    """Get the next unanswered item (for resuming after disconnect)."""
-    assessment = db.get(Assessment, assessment_id)
+    """Get the next unanswered item (for resuming after disconnect).
 
-    if not assessment or assessment.user_id != user.id:
-        raise HTTPException(404, "Assessment not found")
+    Whose attempt it is comes first, then whether they may still enter
+    its module, then ``next_unanswered_item``.
+    """
+    assessment = attempt_of(db, user.id, assessment_id)
     _require_place_for_attempt(db, user, assessment)
-    if assessment.completed_at:
-        raise HTTPException(409, "Assessment already completed")
 
-    next_answer = (
-        db.execute(
-            select(AssessmentAnswer)
-            .where(
-                AssessmentAnswer.assessment_id == assessment_id,
-                AssessmentAnswer.selected_option.is_(None),
-            )
-            .order_by(AssessmentAnswer.display_order)
-        )
-        .scalars()
-        .first()
-    )
+    item = next_unanswered_item(db, assessment)
 
-    if not next_answer:
+    if item is None:
         return None
 
-    config_row = (
-        db.execute(
-            select(QuestionBankConfig).where(
-                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
-                QuestionBankConfig.question_bank_id
-                == assessment.question_bank_id,
-                QuestionBankConfig.version == assessment.bank_version,
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if not config_row:
-        raise HTTPException(500, "Config not found for assessment")
-
     return _build_candidate_item(
-        next_answer, config_row.config_yaml, config_row.type
+        item.answer, item.config.config_yaml, item.config.type
     )
 
 
@@ -1076,47 +964,18 @@ def get_item_by_order(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> CandidateItemOut:
-    """Get a specific item by display order (for navigating back)."""
-    assessment = db.get(Assessment, assessment_id)
+    """Get a specific item by display order (for navigating back).
 
-    if not assessment or assessment.user_id != user.id:
-        raise HTTPException(404, "Assessment not found")
+    Whose attempt it is comes first, then whether they may still enter
+    its module, then ``item_at_position``.
+    """
+    assessment = attempt_of(db, user.id, assessment_id)
     _require_place_for_attempt(db, user, assessment)
-    if assessment.completed_at:
-        raise HTTPException(409, "Assessment already completed")
 
-    answer = (
-        db.execute(
-            select(AssessmentAnswer).where(
-                AssessmentAnswer.assessment_id == assessment_id,
-                AssessmentAnswer.display_order == display_order,
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if not answer:
-        raise HTTPException(404, "Item not found")
-
-    config_row = (
-        db.execute(
-            select(QuestionBankConfig).where(
-                QuestionBankConfig.org_unit_id == assessment.org_unit_id,
-                QuestionBankConfig.question_bank_id
-                == assessment.question_bank_id,
-                QuestionBankConfig.version == assessment.bank_version,
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if not config_row:
-        raise HTTPException(500, "Config not found for assessment")
+    item = item_at_position(db, assessment, display_order)
 
     return _build_candidate_item(
-        answer, config_row.config_yaml, config_row.type
+        item.answer, item.config.config_yaml, item.config.type
     )
 
 

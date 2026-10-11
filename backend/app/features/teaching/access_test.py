@@ -19,7 +19,9 @@ from app.features.teaching.access import (
     NotServed,
     ServedModule,
     admit,
+    attempt_belonging_to,
     bank_status_on_show,
+    bank_status_open_for_attempts,
     banks_on_show_to,
     delegates_in_view,
     enrol_everyone_with_a_place,
@@ -36,6 +38,7 @@ from app.features.teaching.access import (
 )
 from app.features.teaching.enrolment import enrol, is_enrolled
 from app.features.teaching.models import (
+    Assessment,
     ModuleEnrolment,
     QuestionBankConfig,
     QuestionBankOrgStatus,
@@ -2214,4 +2217,175 @@ def test_no_row_is_given_from_an_organisation_that_was_not_named(
             db_session, learner.id, organisation_ids=[org.id], bank_id=BANK
         )
         is None
+    )
+
+
+# --- bank_status_open_for_attempts ------------------------------------------
+
+
+def test_the_row_for_a_bank_open_to_new_attempts_is_given(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org, active_version=4)
+    _enrol(db_session, learner, org)
+
+    row = bank_status_open_for_attempts(
+        db_session, learner.id, organisation_ids=[org.id], bank_id=BANK
+    )
+
+    assert row is not None
+    assert (row.org_unit_id, row.question_bank_id) == (org.id, BANK)
+    assert row.active_version == 4
+
+
+def test_no_row_is_given_for_a_bank_closed_to_new_attempts(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org, is_live=False)
+    _enrol(db_session, learner, org)
+
+    assert (
+        bank_status_open_for_attempts(
+            db_session, learner.id, organisation_ids=[org.id], bank_id=BANK
+        )
+        is None
+    )
+
+
+def test_an_open_bank_with_no_version_promoted_is_given_for_the_caller_to_ask(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org, active_version=None)
+    _enrol(db_session, learner, org)
+
+    row = bank_status_open_for_attempts(
+        db_session, learner.id, organisation_ids=[org.id], bank_id=BANK
+    )
+
+    assert row is not None
+    assert row.active_version is None
+
+
+def test_no_open_row_is_given_for_a_bank_they_are_not_enrolled_on(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org)
+
+    assert (
+        bank_status_open_for_attempts(
+            db_session, learner.id, organisation_ids=[org.id], bank_id=BANK
+        )
+        is None
+    )
+
+
+def test_no_open_row_is_given_for_another_bank_than_the_one_asked_about(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, org)
+    _enrol(db_session, learner, org)
+
+    assert (
+        bank_status_open_for_attempts(
+            db_session,
+            learner.id,
+            organisation_ids=[org.id],
+            bank_id=OTHER_BANK,
+        )
+        is None
+    )
+
+
+def test_no_open_row_is_given_from_an_organisation_that_was_not_named(
+    db_session: Session,
+) -> None:
+    """Enrolled there, and it is still not one of theirs to ask."""
+    org = _organisation(db_session)
+    elsewhere = _organisation(db_session, "Elsewhere")
+    learner = _learner(db_session, "learner", org)
+    _serve(db_session, elsewhere)
+    _enrol(db_session, learner, elsewhere)
+
+    assert (
+        bank_status_open_for_attempts(
+            db_session, learner.id, organisation_ids=[org.id], bank_id=BANK
+        )
+        is None
+    )
+
+
+# --- attempt_belonging_to ---------------------------------------------------
+
+
+def _attempt(db: Session, user: User, org: OrgUnit) -> Assessment:
+    assessment = Assessment(
+        user_id=user.id,
+        org_unit_id=org.id,
+        question_bank_id=BANK,
+        bank_version=1,
+        time_limit_minutes=30,
+        total_items=0,
+    )
+    db.add(assessment)
+    db.flush()
+
+    return assessment
+
+
+def test_an_attempt_is_given_to_the_person_whose_it_is(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    assessment = _attempt(db_session, learner, org)
+
+    assert (
+        attempt_belonging_to(db_session, learner.id, assessment.id)
+        is assessment
+    )
+
+
+def test_an_attempt_is_not_given_to_anybody_else(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+    other = _learner(db_session, "other", org)
+    assessment = _attempt(db_session, other, org)
+
+    assert attempt_belonging_to(db_session, learner.id, assessment.id) is None
+
+
+def test_an_attempt_that_does_not_exist_is_given_to_nobody(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _learner(db_session, "learner", org)
+
+    assert attempt_belonging_to(db_session, learner.id, 4242) is None
+
+
+def test_their_own_attempt_is_given_finished_or_with_no_place_left(
+    db_session: Session,
+) -> None:
+    """Ownership is the whole of it: neither is this function's question."""
+    org = _organisation(db_session)
+    learner = _person(db_session, "learner")
+    assessment = _attempt(db_session, learner, org)
+    assessment.completed_at = datetime.now(UTC)
+    db_session.flush()
+
+    assert (
+        attempt_belonging_to(db_session, learner.id, assessment.id)
+        is assessment
     )

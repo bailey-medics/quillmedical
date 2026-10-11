@@ -48,6 +48,7 @@ from app.features.teaching.enrolment import (
 )
 from app.features.teaching.models import (
     ENROLMENT_SOURCES,
+    Assessment,
     QuestionBankConfig,
     QuestionBankOrgStatus,
 )
@@ -897,3 +898,77 @@ def bank_status_on_show(
         .scalars()
         .first()
     )
+
+
+# --- What a learner may start, and whose attempt one is ---------------------
+
+
+def bank_status_open_for_attempts(
+    db: Session,
+    user_id: int,
+    *,
+    organisation_ids: list[int],
+    bank_id: str,
+) -> QuestionBankOrgStatus | None:
+    """Return the row that lets a learner start an attempt on one bank.
+
+    ``bank_status_on_show`` with one thing more asked: the bank is open
+    to new attempts there. Whether a version has been promoted is the
+    caller's question. Whether the bank's media is complete is not asked
+    by anything on the way to starting an attempt.
+
+    Where two of the organisations have the bank open, the one returned
+    is whichever the database gives first, and the query sets no order.
+    The attempt is recorded against that organisation.
+
+    Args:
+        db: Core database session.
+        user_id: The person asked about.
+        organisation_ids: The organisations whose modules they may
+            take, as ``organisations_open_for_modules`` gives them.
+        bank_id: The question bank.
+
+    Returns:
+        The row, or None when no organisation of theirs has the bank
+        open and them enrolled on it.
+    """
+    return (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.org_unit_id.in_(organisation_ids),
+                enrolled_on_offer(user_id),
+                QuestionBankOrgStatus.question_bank_id == bank_id,
+                QuestionBankOrgStatus.is_live.is_(True),
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+
+def attempt_belonging_to(
+    db: Session, user_id: int, assessment_id: int
+) -> Assessment | None:
+    """Return one attempt, only if it is this person's own.
+
+    The whole of the ownership check: the attempt is read by its id and
+    given back only where its ``user_id`` is the person asking. Nothing
+    is asked of where they may take modules, nor of whether the attempt
+    is finished.
+
+    Args:
+        db: Core database session.
+        user_id: The person asking.
+        assessment_id: The attempt asked for.
+
+    Returns:
+        The attempt, or None both when there is none by that id and
+        when it is somebody else's, so a caller cannot tell the two
+        apart.
+    """
+    assessment = db.get(Assessment, assessment_id)
+
+    if not assessment or assessment.user_id != user_id:
+        return None
+
+    return assessment
