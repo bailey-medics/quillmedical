@@ -21,9 +21,9 @@ variable "app_domain" {
 }
 
 variable "dataset_location" {
-  description = "BigQuery dataset location. EU keeps analytics data in the European Union."
+  description = "BigQuery dataset location. London, because the rows carry visitors' IP addresses and the privacy policy says everything Google holds for Quill is in its London region. A dataset cannot change location in place: changing this destroys and recreates it."
   type        = string
-  default     = "EU"
+  default     = "europe-west2"
 }
 
 variable "retention_days" {

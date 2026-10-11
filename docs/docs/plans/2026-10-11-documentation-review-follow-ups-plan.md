@@ -83,7 +83,7 @@ the order below, and no step waits for a person.
       before the change of location, not with it. Merge this one, let the
       `Terraform` run apply, and only then merge the next.
 
-- [ ] Set `dataset_location = "europe-west2"` for the analytics module, in
+- [x] Set `dataset_location = "europe-west2"` for the analytics module, in
       `infra/main.tf` where the module is called, and change the default
       and its description in `infra/modules/analytics/variables.tf`.
 
@@ -94,7 +94,7 @@ the order below, and no step waits for a person.
       everything Google holds is in London. Moving the dataset makes the
       policy true without adding an exception to it.
 
-- [ ] A BigQuery dataset cannot change location in place: Terraform
+- [x] A BigQuery dataset cannot change location in place: Terraform
       destroys it and makes a new one, and the log sink that writes to it
       with it. Up to 30 days of archived request logs are lost. That is
       accepted, because nobody uses production yet and the archive is not
@@ -105,7 +105,7 @@ the order below, and no step waits for a person.
       dataset reports `europe-west2`. No deploy is needed: nothing on a
       Cloud Run service changes.
 
-- [ ] Leave the public site's static bucket, `location = "EU"` in
+- [x] Leave the public site's static bucket, `location = "EU"` in
       `infra/modules/load-balancer/main.tf`. It holds the site's own pages
       and no personal data, and moving a bucket means recreating it under
       live traffic.
