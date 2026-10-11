@@ -469,24 +469,60 @@ backend/tests`: `r` without the dash is a target, not the recurse
       seen to go from red to green.
 
 - [ ] Replace `python-jose` with PyJWT. Added on 11 October 2026 at
-      Mark's request. `python-jose` 3.5.0 carries CVE-2026-85394, a key
-      confusion fault reported for the second time, with no fixed
-      version, and brings in `ecdsa`, whose timing fault its authors
-      will not fix. Neither applies today (tokens are HS256 with a
-      shared secret, and every decode names its algorithms), so both
-      are excused in `backend/.pip-audit-ignore`. The fix is to stop
-      depending on them. The calls are all in
-      `backend/app/security.py`: five `jwt.encode` and three
-      `jwt.decode`, plus the exceptions caught around them. PyJWT's
-      `encode` and `decode` take the same arguments for HS256; its
-      errors are `jwt.InvalidTokenError` and
-      `jwt.ExpiredSignatureError` where jose has `JWTError` and
-      `ExpiredSignatureError`. Tokens signed by one are read by the
-      other, so nobody is signed out by the change. When it lands, take
-      both lines out of `.pip-audit-ignore` (the audit fails until they
-      go) and check the two Semgrep JWT rules still find their canary
-      lines. This changes how sign-in tokens are read, so it is one to
-      stop and show Mark before it is committed.
+      Mark's request, and set out in full the same day. **Waits for the
+      thin routes plan to finish with `main.py`**, as one of the two
+      places that name the library's error is in that file.
+      `python-jose` 3.5.0 carries CVE-2026-85394, a key confusion fault
+      reported for the second time, with no fixed version, and brings
+      in `ecdsa`, whose timing fault its authors will not fix. Neither
+      applies today (tokens are HS256 with a shared secret, and every
+      decode names its algorithms), so both are excused in
+      `backend/.pip-audit-ignore`. The fix is to stop depending on
+      them. It is small in lines and wide in reach: this library signs
+      and checks every sign-in token, every invite link and every
+      emailed token, so a mistake fails for everybody at once. Three
+      steps, each its own pull request, in this order.
+
+  - [ ] Pin today's behaviour first, with no change to the code. Tests
+        of `backend/app/security.py` that say what each kind of token
+        does now: a good one is read; an expired one is refused; one
+        with a changed payload is refused; one signed with another
+        secret is refused; one signed with another algorithm, `none`
+        among them, is refused; one with no expiry; one with a claim
+        missing; and one kind of token offered where another is wanted,
+        an invite token as an access token and the reverse. Each test
+        asserts the outcome a caller sees, a 401 or the claims, and
+        never the name of the library's error, so the same tests can
+        judge the new library. This step is safe to land at any time.
+
+  - [ ] Swap the library, with those tests unchanged. The calls are all
+        in `backend/app/security.py`: five `jwt.encode` and three
+        `jwt.decode`. PyJWT's take the same arguments for HS256. The
+        errors are named differently: `jwt.InvalidTokenError` where
+        jose has `JWTError`, and both have `ExpiredSignatureError`.
+        Two places outside `security.py` catch the error by name, the
+        invite route in `backend/app/main.py` and the assessor invite
+        route in `backend/app/features/passport/router.py`; and
+        `security.py` raises it itself in two places, for a token of
+        the wrong kind. Give `security.py` one error of its own for "this
+        token is not acceptable" and have those four use it, so no
+        route names a library again. Four test files import the old
+        library and move with it. Replace `python-jose` with `PyJWT`
+        in `backend/pyproject.toml`. Where the two libraries differ on
+        an edge the first step did not pin, such as clock drift or a
+        claim of the wrong type, stop and add the test before going on.
+        Tokens signed by one are read by the other, so nobody is signed
+        out by the deploy.
+
+  - [ ] Take the two lines out of `backend/.pip-audit-ignore`, which
+        the audit fails on until they go, and check the two Semgrep
+        rules about `jwt.decode` still find their lines in the canary
+        file, since PyJWT's module is also called `jwt`.
+
+      **Show Mark the diff of `security.py` before the second step is
+      committed.** It should be about thirty changed lines. This is
+      the one step in the plan that waits for him, because it changes
+      how sign-in is decided.
 
 - [ ] Rename the Semgrep job to "SAST". Added on 11 October 2026 at
       Mark's request. It is `Semgrep (frontend SAST)` and now scans the
@@ -500,7 +536,7 @@ backend/tests`: `r` without the dash is a target, not the recurse
       both names required for one merge, then apply the rules. See
       "Breaking the deadlock" in `.claude/rules/ci.md`.
 
-- [ ] Update the three build tools with advisories against them. Found
+- [x] Update the three build tools with advisories against them. Found
       by the audit on 11 October 2026; none is shipped, so none is
       gated. `shell-quote` 1.9.0 (critical) is pinned by `concurrently`
       10.0.5, and 10.0.6 pins the fixed 1.12.0: `yarn up concurrently`.
@@ -509,6 +545,10 @@ backend/tests`: `r` without the dash is a target, not the recurse
       (high) is the newest there is, so there is nothing to move to;
       it comes in under `chokidar` and `micromatch`, and the fault needs
       a hostile glob pattern, which nothing here takes from outside.
+      Done on 11 October 2026 for the two that can be: `concurrently`
+      is on 10.0.6 with `shell-quote` 1.12.0, and `source-map-js` is on
+      1.2.2. `braces` is the one advisory left against any package,
+      shipped or not, and waits for a release.
 
 - [ ] Rerun the pentest and ZAP workflows (`security-pentest.yml`,
       `zap-scan.yml`) against App production once Phase 2 and Phase 4
