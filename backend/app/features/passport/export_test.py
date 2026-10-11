@@ -20,6 +20,7 @@ nothing, so a failure there is logged and skipped.
 
 from __future__ import annotations
 
+import subprocess
 import zipfile
 from datetime import date
 from io import BytesIO
@@ -27,9 +28,15 @@ from pathlib import Path
 
 import pytest
 
-from app.features.passport import export, records, service
+from app.features.passport import export, paths, records, service
+from app.features.passport.blobs import BlobStore
 from app.features.passport.commits import Actor
-from app.features.passport.schemas import Certificate, LogbookEntry, Reflection
+from app.features.passport.schemas import (
+    Attachment,
+    Certificate,
+    LogbookEntry,
+    Reflection,
+)
 from app.features.passport.store import (
     LocalPassportStore,
     PassportNotFoundError,
@@ -324,3 +331,142 @@ class TestNothingDeniesTheExport:
 
         assert "README.md" in names
         assert "passport/manifest.yaml" in names
+
+
+class TestTheEvidenceTravels:
+    """A record names its evidence by digest and the files are kept
+    apart, so copying the repository copies the names and no files."""
+
+    @pytest.fixture
+    def blobs(self, tmp_path: Path) -> BlobStore:
+        return BlobStore(tmp_path / "blobs")
+
+    def _certificate_with(
+        self,
+        store: LocalPassportStore,
+        holder: Actor,
+        attachment: Attachment,
+    ) -> None:
+        records.add_certificate(
+            store,
+            PASSPORT_ID,
+            holder,
+            Certificate(
+                id=service.next_id(),
+                title="SACT course",
+                issuer="UKONS",
+                awarded_on=date(2026, 2, 11),
+                attachments=[attachment],
+            ),
+        )
+
+    def test_a_file_a_record_names_is_in_the_zip(
+        self, store: LocalPassportStore, holder: Actor, blobs: BlobStore
+    ) -> None:
+        scan = b"%PDF-1.4 the certificate itself"
+        attachment = blobs.put(
+            PASSPORT_ID,
+            scan,
+            filename="certificate.pdf",
+            media_type="application/pdf",
+        )
+        self._certificate_with(store, holder, attachment)
+
+        data = export.build_bundle(store, PASSPORT_ID, blobs=blobs)
+
+        name = f"passport/{paths.blob(attachment.hash)}"
+        assert name in _names(data)
+        assert _read(data, name) == scan
+
+    def test_a_file_named_twice_goes_in_once(
+        self, store: LocalPassportStore, holder: Actor, blobs: BlobStore
+    ) -> None:
+        attachment = blobs.put(
+            PASSPORT_ID,
+            b"%PDF-1.4 one scan",
+            filename="scan.pdf",
+            media_type="application/pdf",
+        )
+        self._certificate_with(store, holder, attachment)
+        self._certificate_with(store, holder, attachment)
+
+        data = export.build_bundle(store, PASSPORT_ID, blobs=blobs)
+
+        held = [n for n in _names(data) if n.startswith("passport/files/")]
+        assert held == [f"passport/{paths.blob(attachment.hash)}"]
+
+    def test_a_file_that_cannot_be_fetched_does_not_stop_the_export(
+        self,
+        store: LocalPassportStore,
+        holder: Actor,
+        blobs: BlobStore,
+        tmp_path: Path,
+    ) -> None:
+        """Named in a record, missing from the store. The rest of the
+        record is still worth having."""
+        elsewhere = BlobStore(tmp_path / "elsewhere")
+        attachment = elsewhere.put(
+            PASSPORT_ID,
+            b"%PDF-1.4 stored somewhere else",
+            filename="scan.pdf",
+            media_type="application/pdf",
+        )
+        self._certificate_with(store, holder, attachment)
+
+        data = export.build_bundle(store, PASSPORT_ID, blobs=blobs)
+
+        assert "passport/profile.yaml" in _names(data)
+        assert not any(n.startswith("passport/files/") for n in _names(data))
+
+    def test_a_sign_offs_fingerprint_is_not_taken_for_a_file(
+        self, populated: LocalPassportStore, blobs: BlobStore
+    ) -> None:
+        """A sign-off carries a SHA-256 of its own, over the record."""
+        data = export.build_bundle(populated, PASSPORT_ID, blobs=blobs)
+
+        assert not any(n.startswith("passport/files/") for n in _names(data))
+
+    def test_with_nowhere_to_fetch_from_the_records_still_export(
+        self, populated: LocalPassportStore
+    ) -> None:
+        data = export.build_bundle(populated, PASSPORT_ID)
+
+        assert "passport/profile.yaml" in _names(data)
+
+
+class TestTheHistoryTravelsFromABucket:
+    """The live application keeps passports in a bucket, as one
+    `git bundle` each. The export once skipped the history there."""
+
+    def test_the_bundle_in_the_bucket_is_the_one_in_the_zip(
+        self, holder: Actor, tmp_path: Path
+    ) -> None:
+        from app.features.passport.gcs_store import GcsPassportStore
+        from app.features.passport.gcs_store_test import FakeBucket
+
+        bucket = FakeBucket()
+        store = GcsPassportStore(bucket)
+        service.create_passport(
+            store,
+            PASSPORT_ID,
+            holder,
+            user_id="1",
+            registrations=[{"body": "GMC", "number": "1234567"}],
+        )
+
+        data = export.build_bundle(store, PASSPORT_ID)
+
+        assert "passport.bundle" in _names(data)
+        assert _read(data, "passport.bundle") == store.bundle_bytes(
+            PASSPORT_ID
+        )
+
+        target = tmp_path / "from-bucket.bundle"
+        target.write_bytes(_read(data, "passport.bundle"))
+        cloned = subprocess.run(
+            ["git", "clone", "--quiet", str(target), str(tmp_path / "back")],
+            capture_output=True,
+            check=False,
+        )
+        assert cloned.returncode == 0, cloned.stderr
+        assert (tmp_path / "back" / "profile.yaml").is_file()
