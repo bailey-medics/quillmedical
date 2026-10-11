@@ -174,8 +174,6 @@ from app.organisations import (
     get_patient_org_unit_ids,
     get_shared_org_unit_ids,
     is_member_within,
-    org_units_administered_by,
-    org_units_run_by_scoped_manager,
     org_units_whose_people_reached_by,
     organisation_org_unit_member,
     organisation_org_units_of,
@@ -279,6 +277,11 @@ from app.security import (
 from app.users.competencies import settle_competencies
 from app.users.errors import UserAdminError
 from app.users.identity import change_identity
+from app.users.membership import (
+    capacity_at,
+    org_units_the_caller_administers,
+    settle_membership,
+)
 from app.users.scope import (
     check_account_in_scope,
     check_changes_in_scope,
@@ -2107,51 +2110,6 @@ class AdminUserUpdateIn(BaseModel):
         return value
 
 
-def _capacity_at(place: OrgUnit) -> str:
-    """What a person added through the user form is at an org_unit.
-
-    Staff at an organisation and a trainee at an org_unit inside one, which
-    is what the two older lists each did. Keeping the difference means
-    this step widens the request without changing who counts as staff
-    anywhere; settling on one answer is a separate decision from
-    replacing two lists with one.
-    """
-    return "staff" if place.type in ROOT_TYPE_IDS else "trainee"
-
-
-def _org_units_the_caller_places_people_in(
-    db: Session, current_user: User
-) -> set[int] | None:
-    """The org_units whose membership the caller may settle, or None for all.
-
-    Where they administer through a ``manage_users`` practising row, as
-    ever. And, for a scoped manager such as ``manage_teaching``, the
-    org_units they belong to and everything beneath those, which is
-    where the org_unit routes let them act: somebody running teaching at
-    a trust signs delegates up to it and to its sites, and somebody
-    running the passport at one site signs people up to that site.
-
-    Args:
-        db: Core database session.
-        current_user: The caller.
-
-    Returns:
-        The org_unit ids, or None for an operator.
-    """
-    allowed = org_units_administered_by(db, current_user)
-
-    if allowed is None:
-        return None
-    if not set(current_user.get_final_competencies()).isdisjoint(
-        SCOPED_MANAGER_IDS
-    ):
-        allowed = allowed | org_units_run_by_scoped_manager(
-            db, current_user.id
-        )
-
-    return allowed
-
-
 def _settle_teaching_enrolments(
     db: Session,
     current_user: User,
@@ -2421,32 +2379,6 @@ def _settle_practice(
             )
 
 
-def _require_org_units_the_caller_administers(
-    db: Session, current_user: User, place_ids: list[int]
-) -> list[OrgUnit]:
-    """Load the org_units named, refusing any the caller may not administer.
-
-    404 rather than 403 for an org_unit outside their organisations, matching
-    the org_unit surface: the answer must not confirm that an org_unit exists to
-    somebody who cannot see it.
-    """
-    allowed = _org_units_the_caller_places_people_in(db, current_user)
-
-    places: list[OrgUnit] = []
-
-    for org_unit_id in place_ids:
-        place = db.get(OrgUnit, org_unit_id)
-        if place is None or (
-            allowed is not None and org_unit_id not in allowed
-        ):
-            raise HTTPException(
-                status_code=404, detail=f"Place {org_unit_id} not found"
-            )
-        places.append(place)
-
-    return places
-
-
 @router.post(
     "/users",
     response_model=UserActionOut,
@@ -2509,7 +2441,7 @@ def create_user_with_cbac(
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
 
-    places = _require_org_units_the_caller_administers(
+    places = org_units_the_caller_administers(
         db, current_user, payload.org_unit_ids or []
     )
 
@@ -2569,7 +2501,7 @@ def create_user_with_cbac(
             org_unit_member.insert().values(
                 org_unit_id=place.id,
                 user_id=user.id,
-                capacity=_capacity_at(place),
+                capacity=capacity_at(place),
             )
         )
     # Joining an org_unit whose passport cover is on grants writing.
@@ -2758,56 +2690,15 @@ def update_user(
         platform_role=payload.platform_role,
     )
 
-    # The one list, in org_unit ids. It settles membership of every org_unit
-    # the caller may administer: the org_units named are kept, the rest of
-    # theirs are cleared. org_units outside their organisations are left
-    # alone, because somebody else's tree is not theirs to empty.
+    # The one list, in org_unit ids. Left out, membership is not touched.
     if payload.org_unit_ids is not None:
-        places = _require_org_units_the_caller_administers(
-            db, current_user, payload.org_unit_ids
-        )
-        theirs = _org_units_the_caller_places_people_in(db, current_user)
-        memberships_before = passport_cover.capacities_of(db, user_id)
-        clearing = org_unit_member.delete().where(
-            org_unit_member.c.user_id == user_id
-        )
-        if theirs is not None:
-            clearing = clearing.where(
-                org_unit_member.c.org_unit_id.in_(theirs)
-            )
-        db.execute(clearing)
+        settle_membership(db, current_user, user, payload.org_unit_ids)
 
-        for place in places:
-            db.execute(
-                org_unit_member.insert().values(
-                    user_id=user_id,
-                    org_unit_id=place.id,
-                    # A membership they already had keeps its capacity.
-                    # Writing the default back would turn a member of
-                    # staff at a site into a trainee each time their
-                    # page was saved, and passport cover treats the two
-                    # differently when somebody leaves.
-                    capacity=memberships_before.get(
-                        place.id, _capacity_at(place)
-                    ),
-                )
-            )
-
-        # Keep passport cover in step with what changed. Clearing and
-        # writing back the same membership is no change at all.
-        passport_cover.memberships_changed(
-            db,
-            user_id,
-            before=memberships_before,
-            after=passport_cover.capacities_of(db, user_id),
-            changed_by=current_user,
-        )
-
-        # Flush before refreshing: refresh reloads the row from the database,
-        # so pending in-memory changes are discarded unless they have been
-        # written first. The payload assignments above happen to survive
-        # because the session flushes automatically on the queries between
-        # them; an assignment after the last query would not.
+    # Flush before refreshing: refresh reloads the row from the database,
+    # so pending in-memory changes are discarded unless they have been
+    # written first. The payload assignments above happen to survive
+    # because the session flushes automatically on the queries between
+    # them; an assignment after the last query would not.
     db.flush()
     db.refresh(user)
 

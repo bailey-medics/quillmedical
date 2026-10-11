@@ -72,8 +72,15 @@ that work is larger and each step of it is safe to land alone.
             as it is: a new account has no carry-over and no merge on
             promotion, so the two share only the scope check and the
             write, which are one function each already.
-      - [ ] **Where they belong** - membership of the org units the
+      - [x] **Where they belong** - membership of the org units the
             caller administers, and keeping passport cover in step.
+            `settle_membership` in `backend/app/users/membership.py`,
+            beside `org_units_the_caller_administers`,
+            `org_units_the_caller_places_people_in` and `capacity_at`,
+            which `create_user_with_cbac` calls too. Its one refusal,
+            `PlaceNotFound`, repeats the org unit id the request sent.
+            The create route keeps its own insert loop: a new account
+            has nothing to clear and no capacity to carry.
       - [ ] **Practice and teaching enrolments** - `_settle_practice`
             and `_settle_teaching_enrolments`, both shared with
             `create_user_with_cbac`.
