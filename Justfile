@@ -537,6 +537,12 @@ review-diff path:
     @python3 scripts/review-ledger.py diff {{path}}
 
 
+alias rmi := review-marks-install
+# Install the VS Code extension that shows what has been read (then reload the window)
+review-marks-install:
+    @bash tools/review-marks/install.sh
+
+
 alias rs := review-status
 # Say how much has been read. Pass 'f' for the full list by folder, or a folder to list it file by file.
 review-status path="":
