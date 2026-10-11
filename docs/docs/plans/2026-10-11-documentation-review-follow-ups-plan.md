@@ -183,21 +183,21 @@ the order below, and no step waits for a person.
 
 ## Phase 8: Test that a public page is on the guest list
 
-- [ ] Move `guestPaths` out of `request` in `frontend/src/lib/api.ts` to
+- [x] Move `guestPaths` out of `request` in `frontend/src/lib/api.ts` to
       an exported constant in the same file. It is the list of paths where
       a 401 does not send the visitor to `/login`.
 
-- [ ] Add a test in `frontend/src/routes.test.ts` that walks `routes` and
+- [x] Add a test in `frontend/src/routes.test.ts` that walks `routes` and
       fails for any route reachable without `RequireAuth` whose path is
       not covered by `guestPaths`. A page for somebody not signed in needs
       both, and the comments in `api.ts` record the second being forgotten
       three times.
 
-- [ ] Expect the test to find routes that are deliberately off the list,
+- [x] Expect the test to find routes that are deliberately off the list,
       such as the 404. Give it a short, named list of exceptions with a
       reason beside each, so adding one is a decision somebody reads.
 
-- [ ] Update the "A page for somebody not signed in needs two things"
+- [x] Update the "A page for somebody not signed in needs two things"
       section of `docs/docs/frontend/sessions-and-requests.md`, which says
       no test checks this.
 

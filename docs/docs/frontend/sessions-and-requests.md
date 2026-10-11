@@ -3,7 +3,7 @@
 This page follows two things through the frontend: how a page load becomes
 a signed-in screen, and what happens to every request on its way to the
 API and back. Each step is clear in its own file. What no file shows is the
-order, or the three rules near the end that nothing enforces.
+order, or the three rules near the end.
 
 It was written from `frontend/src/lib/api.ts`, `frontend/src/lib/csrf.ts`,
 `frontend/src/auth/AuthContext.tsx`, `frontend/src/auth/RequireAuth.tsx`,
@@ -86,7 +86,7 @@ An upload that reports its progress is sent with `XMLHttpRequest`. It must
 add the CSRF header itself, with `csrfHeader()` from `lib/csrf.ts`, and it
 gets none of the steps above.
 
-## Rules nothing enforces
+## Rules kept by convention
 
 ### A page for somebody not signed in needs two things
 
@@ -94,16 +94,19 @@ A page a visitor can open with no account, such as an invitation link,
 needs both of these:
 
 - **no `RequireAuth` around its route** in `routes.tsx`, and
-- **its path in `guestPaths`** in `api.ts`.
+- **its path in `GUEST_PATHS`** in `api.ts`.
 
 The second is the one that gets forgotten. The page loads, `AuthProvider`
 asks `/api/auth/me`, the 401 arrives as it should, and step 9 above sends
 the visitor to `/login` before they can do anything. The comments in
-`guestPaths` record this happening to the invited assessor's page, the
+`GUEST_PATHS` record this happening to the invited assessor's page, the
 public guides and the newsletter unsubscribe link.
 
-A path on the list also covers everything beneath it. No test checks that
-a route without a guard is on the list.
+A path on the list also covers everything beneath it.
+
+`frontend/src/routes.test.ts` holds the two together: a top-level route
+with no `RequireAuth` fails the test until its path is on the list, or is
+named in the test as deliberately left off, with the reason.
 
 ### `login()` does not set the signed-in state
 

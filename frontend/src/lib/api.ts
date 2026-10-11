@@ -49,6 +49,55 @@ function checkCompatHeader(res: Response): void {
 }
 
 /**
+ * Guest paths
+ *
+ * The pages somebody who is not signed in may be on. A 401 anywhere else
+ * sends the browser to `/login`; on one of these it does not, because the
+ * 401 is expected: `AuthContext` asks `/api/auth/me` on every page load,
+ * and for a visitor with no session that is the answer.
+ *
+ * A page open to somebody not signed in needs two things, and this list
+ * is the one that gets forgotten: no `RequireAuth` round its route in
+ * `routes.tsx`, and its path here. `routes.test.ts` holds the two
+ * together, so a route added without a guard fails until it is listed.
+ *
+ * A path covers everything beneath it.
+ */
+export const GUEST_PATHS: readonly string[] = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+  "/verify-email-pending",
+  // Opened by somebody with no account at all: the signed token in
+  // the URL is what authenticates them. Without this the page loads,
+  // AuthContext asks /api/auth/me, gets the 401 it should expect,
+  // and this handler sends an invited assessor to /login before
+  // they can register.
+  "/passport/assessors/accept",
+  // Some guides are read before there is an account to sign in to:
+  // how to join is linked from the public site. The same 401 from
+  // /api/auth/me would otherwise send that reader to /login. The
+  // list at `/guides` is still kept signed-in by RequireAuth, and
+  // GuidePage shows a 404 for a guide not marked `public`.
+  "/guides",
+  // Opened from the link in a newsletter, often by somebody who is
+  // not signed in on this device. The signed token in the URL is
+  // what says whose preference it is. Without this the page showed
+  // for a moment and was then replaced by /login, which is an
+  // unsubscribe refused.
+  "/unsubscribe",
+];
+
+/** Whether *pathname* is a guest path, or sits beneath one. */
+export function isGuestPath(pathname: string): boolean {
+  return GUEST_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(path + "/"),
+  );
+}
+
+/**
  * HTTP Methods
  *
  * Supported HTTP methods for API requests.
@@ -205,37 +254,8 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
     // Skip redirect for guest-accessible paths (password reset, register, etc.)
     const base = (import.meta.env.BASE_URL as string) || "/";
     const loginPath = `${base.replace(/\/$/, "")}/login`;
-    const guestPaths = [
-      "/login",
-      "/register",
-      "/forgot-password",
-      "/reset-password",
-      "/verify-email",
-      "/verify-email-pending",
-      // Opened by somebody with no account at all: the signed token in
-      // the URL is what authenticates them. Without this the page loads,
-      // AuthContext asks /api/auth/me, gets the 401 it should expect,
-      // and this handler sends an invited assessor to /login before
-      // they can register.
-      "/passport/assessors/accept",
-      // Some guides are read before there is an account to sign in to:
-      // how to join is linked from the public site. The same 401 from
-      // /api/auth/me would otherwise send that reader to /login. The
-      // list at `/guides` is still kept signed-in by RequireAuth, and
-      // GuidePage shows a 404 for a guide not marked `public`.
-      "/guides",
-      // Opened from the link in a newsletter, often by somebody who is
-      // not signed in on this device. The signed token in the URL is
-      // what says whose preference it is. Without this the page showed
-      // for a moment and was then replaced by /login, which is an
-      // unsubscribe refused.
-      "/unsubscribe",
-    ];
     const currentPath = window.location.pathname;
-    const isGuestPath = guestPaths.some(
-      (p) => currentPath === p || currentPath.startsWith(p + "/"),
-    );
-    if (!isGuestPath && currentPath !== loginPath) {
+    if (!isGuestPath(currentPath) && currentPath !== loginPath) {
       window.location.assign(loginPath);
     }
   }
