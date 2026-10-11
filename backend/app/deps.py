@@ -20,7 +20,7 @@ from app.config import settings
 from app.db import get_core_db
 from app.log_context import user_id_var
 from app.models import User
-from app.security import decode_token
+from app.security import decode_token, verify_csrf
 
 DEP_GET_SESSION = Depends(get_core_db)
 
@@ -74,6 +74,46 @@ def get_current_user(request: Request, db: Session = DEP_GET_SESSION) -> User:
 
 
 DEP_CURRENT_USER = Depends(get_current_user)
+
+
+def require_csrf(
+    request: Request, current_user: User = DEP_CURRENT_USER
+) -> User:
+    """Refuse a request that does not carry the caller's CSRF token.
+
+    The token is set in the ``XSRF-TOKEN`` cookie at sign-in, readable by
+    the page, and sent back in the ``X-CSRF-Token`` header. Another site
+    can make a browser send the cookie but cannot read it to fill in the
+    header, so the two matching shows the request came from our own page.
+    The token is also signed for one username, so one user's token is no
+    use against another.
+
+    The same check as ``require_csrf`` in ``app.main``, here so that a
+    router ``main`` imports can take it without importing ``main`` back.
+
+    Returns:
+        User: the signed-in user, so a route can take this in place of
+        ``DEP_CURRENT_USER``.
+
+    Raises:
+        HTTPException: 403 if the header or the cookie is missing, they
+            differ, or the token was not signed for this user.
+    """
+    header = request.headers.get("x-csrf-token")
+    cookie = request.cookies.get("XSRF-TOKEN")
+
+    if (
+        not header
+        or not cookie
+        or header != cookie
+        or not verify_csrf(cookie, current_user.username)
+    ):
+        raise HTTPException(403, "CSRF failed")
+
+    return current_user
+
+
+DEP_REQUIRE_CSRF = Depends(require_csrf)
 
 
 def get_optional_user(

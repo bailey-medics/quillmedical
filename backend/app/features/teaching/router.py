@@ -1100,7 +1100,7 @@ def grant_video_access(
 
 @teaching_router.post(
     "/assessments",
-    dependencies=[_DEP_MODULES],
+    dependencies=[_DEP_MODULES, _DEP_REQUIRE_CSRF],
     response_model=AssessmentWithFirstItem,
 )
 def start_assessment(
@@ -1623,7 +1623,7 @@ def get_item_by_order(
 
 @teaching_router.post(
     "/assessments/{assessment_id}/answer",
-    dependencies=[_DEP_MODULES],
+    dependencies=[_DEP_MODULES, _DEP_REQUIRE_CSRF],
     response_model=AnswerResultOut,
 )
 def submit_answer(
@@ -1735,7 +1735,7 @@ def submit_answer(
 
 @teaching_router.put(
     "/assessments/{assessment_id}/answer/{answer_id}",
-    dependencies=[_DEP_MODULES],
+    dependencies=[_DEP_MODULES, _DEP_REQUIRE_CSRF],
     response_model=CandidateItemOut,
 )
 def update_answer(
@@ -2032,7 +2032,7 @@ def _maybe_enqueue_certificate_emails(
 
 @teaching_router.post(
     "/assessments/{assessment_id}/complete",
-    dependencies=[_DEP_MODULES],
+    dependencies=[_DEP_MODULES, _DEP_REQUIRE_CSRF],
     response_model=CompletionResultOut,
 )
 def complete_assessment(
@@ -2402,7 +2402,7 @@ def _build_image_inventory(
 @teaching_router.post(
     "/items/validate",
     response_model=ValidationResultOut,
-    dependencies=[_DEP_MANAGE],
+    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
 )
 def validate_items(
     body: dict[str, str],
@@ -2456,7 +2456,7 @@ def validate_items(
 @teaching_router.post(
     "/items/sync",
     response_model=SyncResultOut,
-    dependencies=[_DEP_MANAGE],
+    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
 )
 def sync_items(
     body: dict[str, str],
@@ -2534,7 +2534,7 @@ def list_results(
 @teaching_router.post(
     "/admin/modules/{module_id}/media/upload-url",
     response_model=MediaUploadUrlOut,
-    dependencies=[_DEP_MANAGE],
+    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
 )
 def create_media_upload_url(
     module_id: str,
@@ -2711,7 +2711,7 @@ def get_module_media(
 @teaching_router.post(
     "/admin/modules/{module_id}/media/{media_key}/link",
     response_model=MediaAssetOut,
-    dependencies=[_DEP_MANAGE],
+    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
 )
 def link_module_media(
     module_id: str,
@@ -2831,7 +2831,7 @@ def link_module_media(
 @teaching_router.delete(
     "/admin/modules/{module_id}/media/{media_key}/link",
     status_code=204,
-    dependencies=[_DEP_MANAGE],
+    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
 )
 def unlink_module_media(
     module_id: str,
@@ -3289,7 +3289,7 @@ def list_admin_banks(
 @teaching_router.post(
     "/admin/sync-all",
     response_model=SyncAllResultOut,
-    dependencies=[_DEP_MANAGE],
+    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
 )
 def sync_all_banks(
     user: User = _DEP_USER,
@@ -3400,7 +3400,7 @@ def sync_all_banks(
 @teaching_router.put(
     "/settings",
     response_model=TeachingOrgSettingsOut,
-    dependencies=[_DEP_MANAGE],
+    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
 )
 def update_settings(
     body: TeachingOrgSettingsIn,
@@ -3731,7 +3731,7 @@ def _promote_bank_version(
 @teaching_router.put(
     "/admin/banks/{bank_id}/org-units/{org_unit_id}/settings",
     response_model=QuestionBankOrgSettingsOut,
-    dependencies=[_DEP_MANAGE],
+    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
 )
 def update_bank_org_unit_settings(
     bank_id: str,
@@ -3751,7 +3751,7 @@ def update_bank_org_unit_settings(
 @teaching_router.put(
     "/admin/banks/{bank_id}/org-units/{org_unit_id}/active-version",
     response_model=PromoteBankVersionOut,
-    dependencies=[_DEP_MANAGE],
+    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
 )
 def promote_bank_version_at_org_unit(
     bank_id: str,
@@ -3872,7 +3872,7 @@ def _update_bank_org_settings(
 @teaching_router.put(
     "/admin/modules/{module_id}/media/{asset_id}/content",
     status_code=204,
-    dependencies=[_DEP_MANAGE],
+    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
 )
 async def upload_media_content_locally(
     module_id: str,
@@ -4034,7 +4034,7 @@ def _delete_local_media_object(
 @teaching_router.delete(
     "/admin/modules/{module_id}/media/{asset_id}",
     status_code=204,
-    dependencies=[_DEP_MANAGE],
+    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
 )
 def delete_media_asset(
     module_id: str,
@@ -4175,7 +4175,7 @@ def get_media_captions(
 @teaching_router.put(
     "/admin/modules/{module_id}/media/{asset_id}/captions",
     response_model=CaptionsOut,
-    dependencies=[_DEP_MANAGE],
+    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
 )
 def put_media_captions(
     module_id: str,
