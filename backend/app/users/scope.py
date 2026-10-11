@@ -20,6 +20,7 @@ from app.models import User
 from app.users.errors import (
     AccountOutOfScope,
     CompetenciesOutOfScope,
+    OperatorAccountNotAllowed,
     PlatformRoleNotAllowed,
     ProfessionOutOfScope,
     SelfGranting,
@@ -84,6 +85,29 @@ def check_account_in_scope(actor: User, target: User) -> None:
     """
     if not may_manage_account(actor, target):
         raise AccountOutOfScope()
+
+
+def check_may_act_on_operator(actor: User, target: User) -> None:
+    """Refuse an act on an operator's account by somebody who is not one.
+
+    Only an operator may change, deactivate, reactivate or invite
+    another operator, on every route that does something to an account.
+    Looking at one is not refused: the list names them, so the row has
+    to open.
+
+    Args:
+        actor: The caller.
+        target: The person whose account is being acted on.
+
+    Raises:
+        OperatorAccountNotAllowed: If the target is an operator and the
+            caller is not.
+    """
+    if (
+        actor.platform_role != "superadmin"
+        and target.platform_role == "superadmin"
+    ):
+        raise OperatorAccountNotAllowed()
 
 
 def check_may_set_platform_role(

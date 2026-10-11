@@ -139,7 +139,6 @@ from app.org_units.tree import (
 from app.organisations import (
     feature_holder_ids_of,
     get_shared_org_unit_ids,
-    is_member_within,
     org_units_whose_people_reached_by,
     organisation_org_units_of,
 )
@@ -237,6 +236,7 @@ from app.security import (
     verify_password_reset_token,
     verify_totp_code,
 )
+from app.users.activation import deactivate_account, reactivate_account
 from app.users.create import NewAccount, create_account
 from app.users.errors import UserAdminError
 from app.users.invites import accept_external_invite
@@ -247,12 +247,14 @@ from app.users.listing import (
     people_within_reach,
     picker_rows,
 )
+from app.users.reach import check_account_within_reach
 from app.users.register import (
     Registration,
     clinical_lead_site,
     register_account,
 )
-from app.users.scope import check_account_in_scope
+from app.users.scope import check_may_act_on_operator
+from app.users.setup_invite import setup_invite_for
 from app.users.update import AccountChanges, update_account
 
 setup_logging()
@@ -847,8 +849,8 @@ DEP_REQUIRE_CSRF = Depends(require_csrf)
 #: do - a rank that was global in the column and scoped in practice.
 #:
 #: It answers *what*, never *where*. Every route carrying it keeps the
-#: org_unit check beside it: ``_require_shared_org_with_user``,
-#: ``_require_site_in_own_org``, ``_require_shared_org_with_user`` or
+#: org_unit check beside it: ``check_account_within_reach``,
+#: ``_require_site_in_own_org`` or
 #: ``_require_shared_org_with_patient``. Without one of those this
 #: competency is global, which is strictly weaker than the rank it
 #: replaces.
@@ -1897,16 +1899,9 @@ def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-        # Only an operator may modify another operator
-    if (
-        current_user.platform_role != "superadmin"
-        and user.platform_role == "superadmin"
-    ):
-        raise HTTPException(
-            status_code=403, detail="Cannot modify superadmin users"
-        )
-
-    _require_shared_org_with_user(db, current_user, user)
+    # Only an operator may modify another operator
+    check_may_act_on_operator(current_user, user)
+    check_account_within_reach(db, current_user, user)
 
     # The form's values as the rules take them. A field that was not
     # sent stays None, so it is not touched.
@@ -1969,46 +1964,10 @@ def deactivate_user(
 
     Raises:
         HTTPException: 403 if the requesting user lacks ``manage_users``.
-        HTTPException: 404 if user not found.
-        HTTPException: 400 if user is already inactive or trying to
-            deactivate self.
+        UserAdminError: 404, 403 or 400 for whatever
+            ``deactivate_account`` refuses.
     """
-    user = db.scalar(select(User).where(User.id == user_id))
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-        # Only an operator may deactivate another operator
-    if (
-        current_user.platform_role != "superadmin"
-        and user.platform_role == "superadmin"
-    ):
-        raise HTTPException(
-            status_code=403, detail="Cannot modify superadmin users"
-        )
-
-    _require_shared_org_with_user(db, current_user, user)
-    check_account_in_scope(current_user, user)
-
-    if user.id == current_user.id:
-        raise HTTPException(
-            status_code=400, detail="Cannot deactivate your own account"
-        )
-
-    if not user.is_active:
-        raise HTTPException(
-            status_code=400, detail="User is already deactivated"
-        )
-
-    user.is_active = False
-
-    # The mailing list is deliberately left alone. Closing an account is
-    # not the person saying "stop emailing me": it is usually an admin
-    # who does it, and somebody who has left may still want to hear what
-    # would bring them back. They keep the unsubscribe link in every
-    # newsletter. Taking somebody off the list altogether is for a
-    # request to erase their data, which is `remove_contact`'s job and
-    # has no route yet.
+    user = deactivate_account(db, current_user, user_id)
 
     return UserIdActionOut(
         detail="deactivated",
@@ -2043,30 +2002,10 @@ def reactivate_user(
 
     Raises:
         HTTPException: 403 if the requesting user lacks ``manage_users``.
-        HTTPException: 404 if user not found.
-        HTTPException: 400 if user is already active.
+        UserAdminError: 404, 403 or 400 for whatever
+            ``reactivate_account`` refuses.
     """
-    user = db.scalar(select(User).where(User.id == user_id))
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-        # Only an operator may reactivate another operator
-    if (
-        current_user.platform_role != "superadmin"
-        and user.platform_role == "superadmin"
-    ):
-        raise HTTPException(
-            status_code=403, detail="Cannot modify superadmin users"
-        )
-
-    _require_shared_org_with_user(db, current_user, user)
-    check_account_in_scope(current_user, user)
-
-    if user.is_active:
-        raise HTTPException(status_code=400, detail="User is already active")
-
-    user.is_active = True
+    user = reactivate_account(db, current_user, user_id)
 
     return UserIdActionOut(
         detail="reactivated",
@@ -2102,31 +2041,17 @@ def send_invite_email(
 
     Raises:
         HTTPException: 403 if the requesting user lacks ``manage_users``.
-        HTTPException: 404 if user not found.
+        UserAdminError: 404 or 403 for whatever ``setup_invite_for``
+            refuses.
     """
-    user = db.scalar(select(User).where(User.id == user_id))
+    invite = setup_invite_for(db, current_user, user_id)
+    user = invite.user
 
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # Only an operator may act on another operator, as on every other
-    # route that does something to an account.
-    if (
-        current_user.platform_role != "superadmin"
-        and user.platform_role == "superadmin"
-    ):
-        raise HTTPException(
-            status_code=403, detail="Cannot modify superadmin users"
-        )
-
-    _require_shared_org_with_user(db, current_user, user)
-    check_account_in_scope(current_user, user)
-
-    token = create_password_reset_token(user.email)
     # `invite=1` is what makes the page ask the marketing question: the
     # same page serves a forgotten password, where it is not asked.
     reset_url = (
-        f"{settings.FRONTEND_URL}/reset-password?token={token}&invite=1"
+        f"{settings.FRONTEND_URL}/reset-password"
+        f"?token={invite.token}&invite=1"
     )
     send_email(
         to=user.email,
@@ -2662,7 +2587,7 @@ def get_user(
     # they belong to, as anybody else there may: the list names them,
     # so the row has to open. Changing them stays an operator's alone,
     # refused on each route that writes.
-    _require_shared_org_with_user(db, current_user, user)
+    check_account_within_reach(db, current_user, user)
     reached = org_units_whose_people_reached_by(db, current_user)
 
     user_org_unit_ids = [
@@ -3750,47 +3675,6 @@ def _require_shared_org_with_patient(
         raise HTTPException(status_code=404, detail="Patient not found")
 
 
-def _require_shared_org_with_user(
-    db: Session, current_user: User, target: User
-) -> None:
-    """Refuse a user who is at no org_unit the admin reaches.
-
-    The org_unit check for the admin routes that act on one user by id. Being
-    an admin says what someone may do, never where: the column is global
-    and the authority is not, so without this an admin at one trust can
-    act on a user at another by naming their id.
-
-    The admin reaches the org_units they belong to and everything
-    beneath those, which is what the user list shows them. It
-    asked for a shared *organisation* until somebody running one site
-    could add a person there and then not open them.
-
-    A user in no org_unit at all is refused rather than treated as
-    everyone's, so a record that has slipped out of the membership tables
-    fails closed.
-
-    404 rather than 403, matching the org_unit checks, so the response does
-    not confirm that a user exists to somebody who may not see them.
-
-    Args:
-        db: Core database session.
-        current_user: The admin making the request.
-        target: The user being acted on.
-
-    Raises:
-        HTTPException: 404 if the target is at none of them.
-    """
-    if target.id == current_user.id:
-        return
-
-    reached = org_units_whose_people_reached_by(db, current_user)
-
-    if reached is None:
-        return
-    if not is_member_within(db, target.id, reached):
-        raise HTTPException(status_code=404, detail="User not found")
-
-
 @router.patch(
     "/users/{user_id}/link-patient",
     response_model=LinkPatientOut,
@@ -3830,7 +3714,7 @@ def link_patient_to_user(
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    _require_shared_org_with_user(db, current_user, target)
+    check_account_within_reach(db, current_user, target)
 
     # Check not already linked to another user
     clash = db.scalar(

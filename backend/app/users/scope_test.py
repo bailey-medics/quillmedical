@@ -9,6 +9,7 @@ from app.security import hash_password
 from app.users.errors import (
     AccountOutOfScope,
     CompetenciesOutOfScope,
+    OperatorAccountNotAllowed,
     PlatformRoleNotAllowed,
     ProfessionOutOfScope,
     SelfGranting,
@@ -17,6 +18,7 @@ from app.users.errors import (
 from app.users.scope import (
     check_account_in_scope,
     check_changes_in_scope,
+    check_may_act_on_operator,
     check_may_set_platform_role,
     check_not_granting_to_self,
     check_profession_in_scope,
@@ -303,3 +305,40 @@ def test_a_refusal_naming_an_id_leaves_the_others_their_own_words() -> None:
         "You may not give the profession patient."
     )
     assert UserAdminError().message == "The request could not be completed"
+
+
+# --- an operator's account --------------------------------------------------
+
+
+@pytest.fixture
+def operator(db_session: Session) -> User:
+    return _person(
+        db_session, "operator", "superadmin_profession", "superadmin"
+    )
+
+
+def test_somebody_who_is_not_an_operator_may_not_act_on_one(
+    user_manager: User, operator: User
+) -> None:
+    with pytest.raises(OperatorAccountNotAllowed) as refusal:
+        check_may_act_on_operator(user_manager, operator)
+
+    assert refusal.value.status_code == 403
+    assert refusal.value.message == "Cannot modify superadmin users"
+
+
+def test_an_operator_may_act_on_another_operator(
+    db_session: Session, operator: User
+) -> None:
+    other = _person(
+        db_session, "second_operator", "superadmin_profession", "superadmin"
+    )
+
+    check_may_act_on_operator(operator, other)
+
+
+def test_anybody_may_act_on_an_account_that_is_not_an_operators(
+    user_manager: User, operator: User, delegate: User
+) -> None:
+    check_may_act_on_operator(user_manager, delegate)
+    check_may_act_on_operator(operator, delegate)
