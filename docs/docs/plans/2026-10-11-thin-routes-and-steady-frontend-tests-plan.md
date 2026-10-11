@@ -961,10 +961,86 @@ for him to rule on before the go-live. Most serious first.
       the request being rolled back, which the tests now pin; and the
       feature key in the path is checked against nothing, so any text
       is stored as a feature.
-- [ ] `backend/app/features/passport/router.py`: `request_sign_off`
+- [x] `backend/app/features/passport/router.py`: `request_sign_off`
       (120 lines) and `accept_assessor_invite` (113). This router is in
       better shape than its 4,017 lines suggest, with more plain helper
       functions than routes and only 7 long routes, so it comes last.
+      Measured again on 11 October 2026, counting the lines inside
+      each route body after its docstring: 44 routes, 9 of them of 40
+      lines or over. `request_sign_off` 120 (4 `if`, `for` or `try`),
+      `accept_assessor_invite` 113 (8), `upload_evidence` 83 (5),
+      `sign_off` 69 (4), `revoke_assessor_membership` 52 (2),
+      `amend_logbook_entry` 50 (3), `answer_logbook_confirmation` 43
+      (3), `decline_sign_off` 42 (4) and `search_assessors` 40 (1).
+      Only the two named were done. `upload_evidence` and `sign_off`
+      are over 60 lines with several branches and were left, each for
+      a reason: the first is reading an upload in pieces, which is the
+      route's own work, and the second answers `Already <status>` with
+      a value read from the database and repeats the text of a caught
+      `SignOffError`, neither of which a refusal class may carry.
+      The rules are now in two plain modules beside the router.
+      `assessor_invites.py` has `holder_org_unit`, `join_as_external`,
+      `let_existing_account_assess`, `invite_for` (the invitation row
+      and its token), `invite_named_by` and `accept_invite`.
+      `sign_off_requests.py` has `asks_today`, `who_is_asked` and
+      `record_ask`. `accept_assessor_invite` is 15 lines with no
+      branch, and the router fell from 4,054 lines to 3,657.
+      `request_sign_off` is 87 lines with one `try`: what is left is
+      comment, the email, and three things that stay on purpose. They
+      are `_offered_refs` and `_checked_request`, which repeat a caught
+      exception's text and log through the router's logger that the
+      tests listen to, and the 500 given when the record refuses a
+      request whose email has gone. Sending, and the link built from
+      settings, stay in `_email_sign_off_request`, since the tests
+      replace `send_email` and `INVITES_PER_DAY` on the router: the
+      route hands the limit to the rule.
+      The passport's own modules raise exceptions with no status,
+      which the router answers one route at a time. That did not fit
+      thirteen refusals with four statuses between them, so they are
+      `PassportError` classes in a new `errors.py`, with one handler in
+      `main.py`. One carries a value, the daily limit, a number fixed
+      in the code. The logbook's ask for a supervisor and the invite
+      preview call the moved functions and answer as they did.
+      Two files in `backend/tests/`, named `passport_*_refusals_test.py`,
+      pin the status and words of each refusal through the routes;
+      none had a test of its words.
+      Found on the way, and pinned by tests that say so, not fixed:
+      withdrawing a request leaves its invitation usable for the rest
+      of its fortnight, and nothing withdraws an invitation; nobody
+      asked is checked for the right to assess, since an account that
+      is asked is given `assess_clinician_passport` and a membership by
+      the ask itself, an inactive account included; an account that
+      comes by its address after the invitation went is linked on
+      accepting and given the membership without the competency; the
+      address on the invitation row and its `token_hash` are written
+      and never compared with the token; an address asked twice holds
+      two invitations, and the second is accepted as the account the
+      first made, with no sign-in; and a username of only spaces is
+      stored as an empty one.
+**Found in the org units and passport routers, and not changed.** As
+in Phase 3: each is pinned by a test as it stands, and is here for Mark
+to rule on.
+
+- **Asking somebody to sign off a competency gives them the right to
+  assess.** An existing account that is asked is given the
+  `assess_clinician_passport` competency and a membership at the
+  holder's org unit, by the ask, before any email is sent. A holder may
+  ask any address but their own, up to a daily limit. So the check made
+  when somebody signs is met by what the holder caused. An inactive
+  account is given it all the same.
+- **An invitation to assess cannot be withdrawn.** Withdrawing the
+  request leaves the invitation as it was, and for the rest of its
+  fourteen days the link still makes an account that may assess.
+- **An address asked twice holds two invitations.** The first makes the
+  account; the second is then accepted as that account with no sign-in.
+- **The address an invitation was sent to is never compared with the
+  token**, though the model's own docstring says it is.
+- **Adding a member to an org unit writes the row, then checks a
+  scoped manager's limits.** A refusal there relies on the request
+  rolling back.
+- **A feature's key is checked against nothing**: any text can be
+  switched on as a feature of an org unit.
+
 - [ ] Record the coverage of each of the four routers, from
       `just tc py`'s log, beside the figures taken in Phase 1.
 
