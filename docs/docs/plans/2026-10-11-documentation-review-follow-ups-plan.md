@@ -237,20 +237,23 @@ the order below, and no step waits for a person.
 
 ## Phase 11: Bring CLAUDE.md up to date
 
-- [ ] In the hand-written "Claude-specific" section at the foot of
-      `CLAUDE.md`, rewrite the paragraph beginning "Recipes that still
-      need the live stack". It says they refuse to run from a worktree the
-      stack does not serve. Since `_dev-stack-guard` was added to the
-      `Justfile`, the dev stack belongs to the main checkout, and `just
-      sa`, `just se` and the live-stack recipes refuse anywhere else. The
-      `docker inspect` command beneath it goes too if nothing reads the
-      owning path any more.
+- [x] Rewrite the paragraph in the hand-written "Claude-specific" section
+      beginning "Recipes that still need the live stack", which said they
+      refuse to run from a worktree the stack does not serve. Found already
+      done on `main` when this phase was reached: the paragraph says
+      `_worktree-guard` calls `_dev-stack-guard`, so those recipes run from
+      the main checkout only. The review had read a copy of the file from
+      before `main` was pulled.
 
-- [ ] Search `.github/copilot-instructions.md` for `cbac/scoped.py`. The
-      file is `backend/app/cbac/practising.py`. If the name is still
-      there, correct it in that file, which is the source, and run
-      `/sync-copilot-config`. A search of `CLAUDE.md` on 11 October found
-      no mention left, so this may already be done.
+- [x] Correct `cbac/scoped.py` to `backend/app/cbac/practising.py`. Also
+      already done on `main`, in `.github/copilot-instructions.md` and so
+      in `CLAUDE.md`.
+
+- [x] Change "Python 3.13" to "Python 3.14" in the stack overview, found
+      while checking the two above. Changed in
+      `.github/copilot-instructions.md`, which is the source, and the same
+      line in `CLAUDE.md`, which is what `/sync-copilot-config` would
+      write. Phase 7 moved the backend's package file to 3.14.
 
 ## Phase 12: Carry out the retention periods the database can
 
