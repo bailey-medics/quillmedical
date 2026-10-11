@@ -33,13 +33,18 @@ from app.features.gating import requires_feature
 from app.features.teaching.access import (
     MODULES_COMPETENCY,
     RESULTS_COMPETENCY,
+    banks_on_show_to,
     delegates_in_view,
     modules_open_to,
     modules_served_where_they_belong,
     organisations_open_for_modules,
 )
 from app.features.teaching.enrolment import enrolled_on_offer, is_enrolled
-from app.features.teaching.listing import delegate_rows, learning_module_rows
+from app.features.teaching.listing import (
+    delegate_rows,
+    learning_module_rows,
+    question_bank_rows,
+)
 from app.features.teaching.models import (
     Assessment,
     AssessmentAnswer,
@@ -49,6 +54,11 @@ from app.features.teaching.models import (
     QuestionBankOrgStatus,
     QuestionBankSync,
     TeachingOrgSettings,
+)
+from app.features.teaching.module_content import (
+    check_bank_id,
+    learning_content,
+    question_bank_detail,
 )
 from app.features.teaching.schemas import (
     AdminBankDetailOut,
@@ -106,7 +116,6 @@ from app.features.teaching.storage import (
     download_bank_from_gcs,
     get_module_status_from_gcs,
     get_storage_backend,
-    has_learning_content,
     list_bank_images_in_gcs,
     list_banks_in_gcs,
     resolve_module_dir,
@@ -346,33 +355,6 @@ def _build_candidate_item(
     # ------------------------------------------------------------------
 
 
-def _module_is_servable(
-    db: Session,
-    organisation_id: int | None,
-    module_id: str,
-) -> bool:
-    """Whether a module may be shown to a learner at all.
-
-    A module missing any of its media is not served - not the learning
-    half of it, the whole thing, assessment included. Half a module is
-    not a lesser version of the module: it is a module whose author
-    intended a video the learner would never see, and the assessment
-    may well examine exactly that content.
-
-    Per organisation, because media links are. The same module can be
-    servable for one organisation and hidden from another.
-
-    A module referencing no media is servable, which is most of them -
-    this gate is invisible to content that never had video.
-    """
-    if organisation_id is None:
-        return False
-
-    from app.features.teaching.media import module_media_is_complete
-
-    return module_media_is_complete(db, organisation_id, module_id)
-
-
 @teaching_router.get(
     "/question-banks",
     dependencies=[_DEP_RESULTS],
@@ -388,134 +370,13 @@ def list_question_banks(
     QuestionBankOrgStatus row for it. The actual QuestionBankConfig
     may be owned by a different (educator) organisation - we fetch
     configs by bank ID regardless of owning org.
+
+    The page that lists modules is the one that lists results, so it is
+    reached with the results competency alone. Which banks is
+    ``banks_on_show_to``, which asks for the modules competency itself;
+    what is said of each is ``question_bank_rows``.
     """
-    from app.config import settings
-
-    # The page that lists modules is the one that lists results, so it is
-    # reached with the results competency alone. Somebody who may not
-    # enter a module is told nothing about any: an empty list, which the
-    # page shows as it shows an organisation with nothing open.
-    # The same answer for somebody with nowhere to take them.
-    org_ids = organisations_open_for_modules(db, user)
-
-    if not org_ids:
-        return []
-
-    # Look up status for each bank across the user's orgs
-    statuses = (
-        db.execute(
-            select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.org_unit_id.in_(org_ids),
-                enrolled_on_offer(user.id),
-            )
-        )
-        .scalars()
-        .all()
-    )
-    # A bank is live if ANY of the user's orgs has it live, and it shows the
-    # highest version any of them has promoted - the same permissive union.
-    # A null pointer contributes nothing: that organisation has promoted no
-    # version, so it has nothing to show.
-    live_map: dict[str, bool] = {}
-    active_map: dict[str, int] = {}
-    visible_bank_ids: set[str] = set()
-    org_by_bank: dict[str, int] = {}
-
-    for s in statuses:
-        if s.active_version is None:
-            continue
-        visible_bank_ids.add(s.question_bank_id)
-        active_map[s.question_bank_id] = max(
-            active_map.get(s.question_bank_id, 0), s.active_version
-        )
-        if s.is_live:
-            live_map[s.question_bank_id] = True
-            # Which organisation makes this bank visible, for the media
-            # gate below. Media links are per organisation, so completeness
-            # has no global answer - only one per organisation.
-        if s.org_unit_id is not None:
-            org_by_bank.setdefault(s.question_bank_id, int(s.org_unit_id))
-
-    if not visible_bank_ids:
-        return []
-
-        # Fetch configs for visible banks (may be owned by a different org)
-    configs = (
-        db.execute(
-            select(QuestionBankConfig)
-            .where(QuestionBankConfig.question_bank_id.in_(visible_bank_ids))
-            .order_by(
-                QuestionBankConfig.question_bank_id,
-                QuestionBankConfig.version.desc(),
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-    # Check which banks have learning content in the local repos
-    base_path = settings.TEACHING_QUESTION_BANK_PATH or ""
-
-    # De-duplicate by question_bank_id (user may be in multiple orgs
-    # with the same bank configured)
-    seen: set[str] = set()
-    results: list[dict[str, Any]] = []
-
-    for c in configs:
-        if c.question_bank_id in seen:
-            continue
-            # A module missing any of its media is not offered at all -
-            # hidden rather than shown disabled, because a learner who can
-            # see a module they cannot open raises a support question the
-            # admin cannot answer from the learner's side.
-        if not _module_is_servable(
-            db, org_by_bank.get(c.question_bank_id), c.question_bank_id
-        ):
-            continue
-            # Only the promoted version, not whichever happens to be newest.
-        if c.version != active_map.get(c.question_bank_id):
-            continue
-        seen.add(c.question_bank_id)
-
-        cover_image_url: str | None = None
-        if c.cover_image_filename:
-            bucket = settings.TEACHING_GCS_BUCKET
-            if bucket:
-                from app.features.teaching.storage import (
-                    get_cover_image_url_gcs,
-                )
-
-                cover_image_url = get_cover_image_url_gcs(
-                    bucket, c.question_bank_id, c.cover_image_filename
-                )
-            else:
-                from app.features.teaching.storage import (
-                    local_cover_image_url,
-                )
-
-                cover_image_url = local_cover_image_url(
-                    base_path, c.question_bank_id, c.cover_image_filename
-                )
-
-        results.append(
-            {
-                "id": c.id,
-                "question_bank_id": c.question_bank_id,
-                "version": c.version,
-                "title": c.title,
-                "description": c.description,
-                "type": c.type,
-                "synced_at": c.synced_at,
-                "is_live": live_map.get(c.question_bank_id, False),
-                "has_learning": has_learning_content(
-                    base_path, c.question_bank_id
-                ),
-                "cover_image_url": cover_image_url,
-                "cover_image_focus": c.cover_image_focus,
-            }
-        )
-
-    return results
+    return question_bank_rows(db, banks_on_show_to(db, user))
 
 
 @teaching_router.get(
@@ -528,74 +389,19 @@ def get_question_bank(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
-    """Get full detail for a question bank config."""
-    from app.config import settings
+    """Get full detail for a question bank config.
 
-    _SAFE_BANK_ID = re.compile(r"^[a-zA-Z0-9_-]+$")
-
-    if not bank_id or not _SAFE_BANK_ID.match(bank_id):
-        raise HTTPException(400, "Invalid bank_id")
+    The id is checked before the caller's organisations are, so a bad
+    id is answered 400 whoever sends it. What is shown, and every 404,
+    is ``question_bank_detail``.
+    """
+    check_bank_id(bank_id)
 
     org_ids = _get_user_org_ids(user, db)
 
-    # Check the bank is visible to the user's orgs via status
-    status_row = (
-        db.execute(
-            select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.org_unit_id.in_(org_ids),
-                enrolled_on_offer(user.id),
-                QuestionBankOrgStatus.question_bank_id == bank_id,
-            )
-        )
-        .scalars()
-        .first()
+    return question_bank_detail(
+        db, user.id, organisation_ids=org_ids, bank_id=bank_id
     )
-
-    if not status_row:
-        raise HTTPException(404, "Question bank not found")
-
-        # A bank with nothing promoted has nothing to show: describing a version
-        # this organisation does not serve would be worse than saying it is not
-        # there.
-    if status_row.active_version is None:
-        raise HTTPException(404, "Question bank not found")
-
-        # Fetch the promoted version from whichever org owns the content.
-    config = (
-        db.execute(
-            select(QuestionBankConfig).where(
-                QuestionBankConfig.question_bank_id == bank_id,
-                QuestionBankConfig.version == status_row.active_version,
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    if not config:
-        raise HTTPException(404, "Question bank not found")
-
-        # Missing media hides the whole module, assessment included. Same
-        # 404 as every other refusal here, so "incomplete" is
-        # indistinguishable from "not yours" and "no such bank".
-    if not _module_is_servable(db, status_row.org_unit_id, bank_id):
-        raise HTTPException(404, "Question bank not found")
-
-    return {
-        "id": config.id,
-        "question_bank_id": config.question_bank_id,
-        "version": config.version,
-        "title": config.title,
-        "description": config.description,
-        "type": config.type,
-        "synced_at": config.synced_at,
-        "config_yaml": config.config_yaml,
-        "is_live": status_row.is_live,
-        "has_learning": has_learning_content(
-            settings.TEACHING_QUESTION_BANK_PATH or "",
-            config.question_bank_id,
-        ),
-    }
 
     # ------------------------------------------------------------------
     # Learning modules (read - all teaching users)
@@ -627,205 +433,11 @@ def get_learning_content(
     module's slides by guessing its ID, including modules their
     organisation never licensed.
     """
-    from app.config import settings
-    from app.features.teaching.mdx_parser import (
-        ParsedSlide,
-        load_learning_content,
-        load_module_yaml,
-        parse_mdx_to_slides,
-    )
-    from app.features.teaching.media import module_media_is_complete
-    from app.features.teaching.storage import (
-        ALLOWED_MEDIA_TYPES,
-        download_learning_mdx_from_gcs,
-        download_module_yaml_from_gcs,
-    )
-
     # Before any bucket or filesystem read, so an unauthorised caller
     # cannot infer a module's existence from an error or from timing.
     org_id = resolve_visible_module(user, db, module_id)
 
-    # A module missing any of its media is not served at all. Same 404
-    # as every other refusal here, so "incomplete" is indistinguishable
-    # from "not yours" and "no such module" from outside.
-    if not module_media_is_complete(db, org_id, module_id):
-        raise HTTPException(404, "Module not found")
-
-    bucket = settings.TEACHING_GCS_BUCKET
-    base_path = settings.TEACHING_QUESTION_BANK_PATH
-
-    # Bound on both branches: only the local one sets it below, and the
-    # fallback in _resolve_video_filename reads it either way.
-    module_dir: Path | None = None
-
-    if bucket:
-        # Production: load from GCS
-        meta = download_module_yaml_from_gcs(bucket, module_id) or {}
-        mdx_content = download_learning_mdx_from_gcs(bucket, module_id)
-        if not mdx_content:
-            raise HTTPException(404, "No learning content for this module")
-        slides = parse_mdx_to_slides(mdx_content)
-    elif base_path:
-        # Local dev: load from filesystem
-        module_dir = resolve_module_dir(base_path, module_id)
-        if not module_dir:
-            raise HTTPException(404, "Module not found")
-        meta = load_module_yaml(module_dir)
-        slides = load_learning_content(module_dir)
-        if not slides:
-            raise HTTPException(404, "No learning content for this module")
-    else:
-        raise HTTPException(404, "Teaching content not configured")
-
-    def _resolve_image_url(module_id: str, filename: str) -> str:
-        """Build a URL for a learning image."""
-        if bucket:
-            from app.features.teaching.storage import (
-                get_learning_image_url_gcs,
-            )
-
-            return get_learning_image_url_gcs(bucket, module_id, filename)
-
-        return f"/api/teaching/images/learning/{module_id}/{filename}"
-
-        # Every link this module has, so resolving a ref below is a dict
-        # lookup rather than a query per slide.
-
-    _links = {
-        row.media_key: row
-        for row in db.execute(
-            select(ModuleMediaLink).where(
-                ModuleMediaLink.org_unit_id == org_id,
-                ModuleMediaLink.question_bank_id == module_id,
-            )
-        )
-        .scalars()
-        .all()
-    }
-
-    def _resolve_video_filename(video_ref: str) -> dict[str, str | None]:
-        """Resolve an MDX ``ref`` to the files under the module prefix.
-
-        Filenames, not URLs: the player composes each full address from
-        the ``base_url`` that ``/video-access`` returns, which differs
-        between the CDN and the local development route. Splitting it
-        this way is what lets the frontend stay blind to the difference.
-
-        An uploaded asset is named for its generated id, never for the
-        ref or the uploader's filename, so this is a link lookup. The
-        old ``<ref>.mp4`` convention survives only as a fallback, for
-        content whose video was dropped on disk by hand before there
-        was an upload path - the plan sanctions that for local work and
-        it still plays.
-
-        ``src`` is what plays by default. The rest are what the
-        transcode and caption jobs produce, and each appears only where
-        the link records that job having produced it - never inferred
-        from the naming convention, because a name that resolves to a
-        file nobody wrote is a 404 the player cannot explain.
-
-        Every value is None where a ref has no link at all, which the
-        availability gate has already made unreachable for a learner: an
-        incomplete module is not served at all.
-        """
-        empty: dict[str, str | None] = {
-            "src": None,
-            "src_1080p": None,
-            "poster": None,
-            "captions": None,
-        }
-
-        link = _links.get(video_ref)
-
-        if link is not None:
-            asset = link.asset_id
-
-            # Before the transcode job has run there are no renditions,
-            # only the original upload - so the default rendition falls
-            # back to it and the alternatives stay absent. A module in
-            # that state is hidden from learners anyway, but the shape
-            # has to be right for the admin card and for a dev machine
-            # with no job configured at all.
-            if link.transcoded_at is None:
-                suffix = next(
-                    (
-                        ext
-                        for ext, mime in ALLOWED_MEDIA_TYPES.items()
-                        if mime == link.content_type
-                    ),
-                    ".mp4",
-                )
-                return {**empty, "src": f"{asset}{suffix}"}
-
-                # Deterministic names, matching what the job writes. The
-                # flags say which of them exist; the cookie covers the
-                # prefix rather than each file, so nothing has to ask the
-                # bucket what is there.
-            return {
-                "src": f"{asset}-720p.mp4",
-                "src_1080p": (
-                    f"{asset}-1080p.mp4" if link.has_1080p else None
-                ),
-                "poster": (f"{asset}-poster.jpg" if link.has_poster else None),
-                "captions": f"{asset}.vtt" if link.has_captions else None,
-            }
-
-            # Hand-placed file, the convention from before uploads existed.
-            # Guarded before use rather than after: module_dir is None on
-            # the GCS branch, where this fallback does not apply at all.
-        if base_path and module_dir:
-            candidate = module_dir / "learning" / f"{video_ref}.mp4"
-            if candidate.is_file():
-                return {**empty, "src": f"{video_ref}.mp4"}
-
-        return empty
-
-    def _slide_out(s: ParsedSlide) -> dict[str, Any]:
-        """One slide as the API returns it.
-
-        A function rather than a comprehension because video now
-        resolves to four fields from one lookup, and doing that inline
-        would call the resolver once per field.
-        """
-        video = (
-            _resolve_video_filename(s.video_ref)
-            if s.video_ref
-            else {
-                "src": None,
-                "src_1080p": None,
-                "poster": None,
-                "captions": None,
-            }
-        )
-
-        return {
-            "slide_index": s.slide_index,
-            "layout": s.layout,
-            "title": s.title,
-            "body": s.body,
-            "callout_type": s.callout_type,
-            "callout_body": s.callout_body,
-            "youtube_id": s.youtube_id,
-            "duration_seconds": s.duration_seconds,
-            "image_src": (
-                _resolve_image_url(module_id, s.figure_src)
-                if s.figure_src
-                else None
-            ),
-            "image_alt": s.figure_alt,
-            "image_caption": s.figure_caption,
-            "image_position": s.figure_position,
-            "video_src": video["src"],
-            "video_src_1080p": video["src_1080p"],
-            "video_poster": video["poster"],
-            "video_captions": video["captions"],
-        }
-
-    return {
-        "module_id": module_id,
-        "title": meta.get("title", module_id),
-        "slides": [_slide_out(s) for s in slides],
-    }
+    return learning_content(db, organisation_id=org_id, module_id=module_id)
 
 
 @teaching_router.get(

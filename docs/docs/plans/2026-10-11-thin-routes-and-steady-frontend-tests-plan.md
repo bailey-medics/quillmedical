@@ -686,9 +686,30 @@ the video callbacks already brought in.
       anybody itself, so no `TeachingError` was added. `delegate_rows`
       still asks up to three queries for each person listed, as the
       route did.
-- [ ] **What a learner is shown of a module** - `get_learning_content`
+- [x] **What a learner is shown of a module** - `get_learning_content`
       (199 lines, 11 branches), `list_question_banks` (127 lines, 12
-      branches) and `get_question_bank` (67 lines).
+      branches) and `get_question_bank` (67 lines). Which banks is
+      `banks_on_show_to` and `bank_status_on_show` in `access.py`; what
+      the list says of each is `question_bank_rows` in `listing.py`;
+      and a new `module_content.py` holds `check_bank_id`,
+      `question_bank_detail`, `learning_content` and
+      `module_is_servable`, which no other route used. Five refusals:
+      `InvalidBankId` (400), `QuestionBankNotFound`, `ModuleNotFound`,
+      `NoLearningContent` and `TeachingContentNotConfigured` (all 404).
+      `resolve_visible_module` and `_get_user_org_ids` stay in the
+      router, since other routes use them and they raise
+      `HTTPException`. None of the words were pinned, so
+      `backend/tests/teaching_module_shown_refusals_test.py` does it.
+      **The three routes do not ask "may this person see this module"
+      the same way, and they were moved as they are.** The learning
+      pages want the module live; the list and the detail show a closed
+      bank to somebody enrolled on it, the detail with its whole
+      `config_yaml`. The list and the detail want a version promoted;
+      the learning pages do not ask. Somebody with nowhere to take
+      modules gets an empty list, a 403 from the detail and a 404 from
+      the pages. And where two organisations serve one bank, the list
+      asks about its media at whichever row came first and the detail
+      reads only the first row, neither in any set order.
 - [ ] **Starting an assessment** - `start_assessment` (127 lines, 7
       branches), with `get_current_item` and `get_item_by_order`.
 - [ ] **Answering and finishing one** - `submit_answer` (98 lines, 7

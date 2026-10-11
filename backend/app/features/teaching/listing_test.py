@@ -8,9 +8,13 @@ from sqlalchemy.orm import Session
 
 from app.cbac.positions import set_clinical_lead
 from app.features.teaching import media, storage
-from app.features.teaching.access import DelegatesInView
-from app.features.teaching.listing import delegate_rows, learning_module_rows
-from app.features.teaching.models import Assessment
+from app.features.teaching.access import BankOnShow, DelegatesInView
+from app.features.teaching.listing import (
+    delegate_rows,
+    learning_module_rows,
+    question_bank_rows,
+)
+from app.features.teaching.models import Assessment, QuestionBankConfig
 from app.features.teaching.schemas import DelegateOut
 from app.models import OrgUnit, Position, PositionHolding, User
 from app.organisations import add_org_unit_member
@@ -829,3 +833,318 @@ def test_a_module_whose_folder_cannot_be_found_gets_no_row(
     )
 
     assert learning_module_rows(db_session, {BANK: 1}) == []
+
+
+# --- question_bank_rows -----------------------------------------------------
+
+
+def _synced(
+    db: Session,
+    org: OrgUnit,
+    bank_id: str = BANK,
+    *,
+    version: int = 1,
+    title: str = "Polyps",
+    cover: str | None = None,
+) -> QuestionBankConfig:
+    """One version of a bank, synced into the organisation."""
+    config = QuestionBankConfig(
+        org_unit_id=org.id,
+        question_bank_id=bank_id,
+        version=version,
+        title=title,
+        description="A question bank.",
+        type="uniform",
+        cover_image_filename=cover,
+        cover_image_focus="top" if cover else None,
+        config_yaml={},
+    )
+    db.add(config)
+    db.flush()
+
+    return config
+
+
+def _on_show(
+    org: OrgUnit | None, *, version: int = 1, is_live: bool = True
+) -> BankOnShow:
+    return BankOnShow(
+        version=version,
+        is_live=is_live,
+        organisation_id=org.id if org is not None else None,
+    )
+
+
+def _bank_store(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    bucket: str | None = None,
+    base_path: str | None = "/content",
+    incomplete: tuple[str, ...] = (),
+    with_learning: tuple[str, ...] = (),
+) -> tuple[list[tuple[int, str]], list[tuple[str, str]]]:
+    """A content store, and each question asked of it.
+
+    Returns:
+        Each asking whether a bank's media is complete, as organisation
+        and bank, and each asking whether a bank has learning pages, as
+        content path and bank.
+    """
+    media_asked: list[tuple[int, str]] = []
+    learning_asked: list[tuple[str, str]] = []
+
+    def is_complete(db: Session, organisation_id: int, bank_id: str) -> bool:
+        media_asked.append((organisation_id, bank_id))
+
+        return bank_id not in incomplete
+
+    def has_learning(path: str, bank_id: str) -> bool:
+        learning_asked.append((path, bank_id))
+
+        return bank_id in with_learning
+
+    monkeypatch.setattr("app.config.settings.TEACHING_GCS_BUCKET", bucket)
+    monkeypatch.setattr(
+        "app.config.settings.TEACHING_QUESTION_BANK_PATH", base_path
+    )
+    monkeypatch.setattr(media, "module_media_is_complete", is_complete)
+    monkeypatch.setattr(storage, "has_learning_content", has_learning)
+
+    return media_asked, learning_asked
+
+
+def test_with_no_bank_on_show_there_are_no_rows_and_nothing_is_asked(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _synced(db_session, _organisation(db_session))
+    media_asked, learning_asked = _bank_store(monkeypatch)
+
+    assert question_bank_rows(db_session, {}) == []
+    assert media_asked == []
+    assert learning_asked == []
+
+
+def test_a_bank_row_says_what_the_promoted_version_says(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    config = _synced(db_session, org)
+    _bank_store(monkeypatch, with_learning=(BANK,))
+
+    assert question_bank_rows(db_session, {BANK: _on_show(org)}) == [
+        {
+            "id": config.id,
+            "question_bank_id": BANK,
+            "version": 1,
+            "title": "Polyps",
+            "description": "A question bank.",
+            "type": "uniform",
+            "synced_at": config.synced_at,
+            "is_live": True,
+            "has_learning": True,
+            "cover_image_url": None,
+            "cover_image_focus": None,
+        }
+    ]
+
+
+def test_a_bank_closed_to_new_attempts_is_listed_and_said_to_be_closed(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    _synced(db_session, org)
+    _bank_store(monkeypatch)
+
+    (row,) = question_bank_rows(
+        db_session, {BANK: _on_show(org, is_live=False)}
+    )
+
+    assert row["is_live"] is False
+
+
+def test_the_row_is_of_the_promoted_version_and_not_the_newest(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    _synced(db_session, org, version=1, title="As promoted")
+    _synced(db_session, org, version=2, title="Only synced")
+    _bank_store(monkeypatch)
+
+    (row,) = question_bank_rows(db_session, {BANK: _on_show(org, version=1)})
+
+    assert (row["version"], row["title"]) == (1, "As promoted")
+
+
+def test_completeness_is_asked_for_each_version_read_down_to_the_promoted_one(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Newest first, and not again for a version older than the promoted."""
+    org = _organisation(db_session)
+    _synced(db_session, org, version=1)
+    _synced(db_session, org, version=2)
+    _synced(db_session, org, version=3)
+    media_asked, learning_asked = _bank_store(monkeypatch)
+
+    question_bank_rows(db_session, {BANK: _on_show(org, version=2)})
+
+    assert media_asked == [(org.id, BANK), (org.id, BANK)]
+    assert learning_asked == [("/content", BANK)]
+
+
+def test_a_bank_missing_some_of_its_media_gets_no_row(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    _synced(db_session, org)
+    _synced(db_session, org, OTHER_BANK, title="Bleeding")
+    _bank_store(monkeypatch, incomplete=(BANK,))
+
+    rows = question_bank_rows(
+        db_session, {BANK: _on_show(org), OTHER_BANK: _on_show(org)}
+    )
+
+    assert [row["question_bank_id"] for row in rows] == [OTHER_BANK]
+
+
+def test_a_bank_with_no_organisation_to_ask_about_its_media_gets_no_row(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _synced(db_session, _organisation(db_session))
+    media_asked, _ = _bank_store(monkeypatch)
+
+    assert question_bank_rows(db_session, {BANK: _on_show(None)}) == []
+    assert media_asked == []
+
+
+def test_a_promoted_version_that_was_never_synced_gets_no_row(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    _synced(db_session, org, version=1)
+    _bank_store(monkeypatch)
+
+    assert (
+        question_bank_rows(db_session, {BANK: _on_show(org, version=2)}) == []
+    )
+
+
+def test_a_bank_nobody_synced_at_all_gets_no_row(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    _bank_store(monkeypatch)
+
+    assert question_bank_rows(db_session, {BANK: _on_show(org)}) == []
+
+
+def test_a_bank_synced_into_two_organisations_gets_one_row(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The copy read is not asked whose it is, and only one is read."""
+    org = _organisation(db_session)
+    educator = _organisation(db_session, "Educator")
+    first = _synced(db_session, educator)
+    second = _synced(db_session, org)
+    _bank_store(monkeypatch)
+
+    (row,) = question_bank_rows(db_session, {BANK: _on_show(org)})
+
+    assert row["id"] in {first.id, second.id}
+
+
+def test_a_bank_another_organisation_synced_is_listed_for_this_one(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Media is asked of the organisation on show, not the one that synced."""
+    org = _organisation(db_session)
+    educator = _organisation(db_session, "Educator")
+    config = _synced(db_session, educator)
+    media_asked, _ = _bank_store(monkeypatch)
+
+    (row,) = question_bank_rows(db_session, {BANK: _on_show(org)})
+
+    assert row["id"] == config.id
+    assert media_asked == [(org.id, BANK)]
+
+
+def test_bank_rows_are_in_bank_id_order(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    _synced(db_session, org, "zebra", title="Zebra")
+    _synced(db_session, org, "aardvark", title="Aardvark")
+    _bank_store(monkeypatch)
+
+    rows = question_bank_rows(
+        db_session, {"zebra": _on_show(org), "aardvark": _on_show(org)}
+    )
+
+    assert [row["question_bank_id"] for row in rows] == ["aardvark", "zebra"]
+
+
+def test_with_no_content_path_set_learning_is_asked_of_an_empty_one(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    _synced(db_session, org)
+    _, learning_asked = _bank_store(monkeypatch, base_path=None)
+
+    (row,) = question_bank_rows(db_session, {BANK: _on_show(org)})
+
+    assert learning_asked == [("", BANK)]
+    assert row["has_learning"] is False
+
+
+def test_a_cover_with_a_bucket_is_given_the_address_storage_signs(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    _synced(db_session, org, cover="cover.jpg")
+    _bank_store(monkeypatch, bucket="a-bucket")
+    monkeypatch.setattr(
+        storage,
+        "get_cover_image_url_gcs",
+        lambda bucket, bank_id, filename: (
+            f"signed:{bucket}/{bank_id}/{filename}"
+        ),
+    )
+
+    (row,) = question_bank_rows(db_session, {BANK: _on_show(org)})
+
+    assert row["cover_image_url"] == f"signed:a-bucket/{BANK}/cover.jpg"
+    assert row["cover_image_focus"] == "top"
+
+
+def test_a_cover_with_no_bucket_is_given_the_local_address(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    _synced(db_session, org, cover="cover.jpg")
+    _bank_store(monkeypatch)
+    monkeypatch.setattr(
+        storage,
+        "local_cover_image_url",
+        lambda base_path, bank_id, filename: (
+            f"local:{base_path}/{bank_id}/{filename}"
+        ),
+    )
+
+    (row,) = question_bank_rows(db_session, {BANK: _on_show(org)})
+
+    assert row["cover_image_url"] == f"local:/content/{BANK}/cover.jpg"
+
+
+def test_a_bank_with_no_cover_has_no_address_and_none_is_asked_for(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def refuse(*args: object) -> str:
+        raise AssertionError("no cover to give an address for")
+
+    org = _organisation(db_session)
+    _synced(db_session, org)
+    _bank_store(monkeypatch, bucket="a-bucket")
+    monkeypatch.setattr(storage, "get_cover_image_url_gcs", refuse)
+
+    (row,) = question_bank_rows(db_session, {BANK: _on_show(org)})
+
+    assert row["cover_image_url"] is None

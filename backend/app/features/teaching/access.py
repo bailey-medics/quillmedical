@@ -759,3 +759,141 @@ def modules_served_where_they_belong(
             titles.items(), key=lambda item: (item[1].lower(), item[0])
         )
     ]
+
+
+# --- What a learner is shown of a question bank -----------------------------
+#
+# The two below ask which question banks a learner is shown, in their
+# list and one at a time. Neither asks whether a bank is open to new
+# attempts: one that is closed is still shown, and said to be closed.
+# ``modules_open_to`` above, and the learning pages, do ask it.
+
+
+@dataclass(frozen=True)
+class BankOnShow:
+    """One question bank in a learner's list, and how it stands for them."""
+
+    #: The highest version any of their organisations has promoted.
+    version: int
+    #: Whether any of their organisations has it open to new attempts.
+    is_live: bool
+    #: The organisation asked whether the bank's media is complete.
+    #: Whichever status row the database gave first, which need not be
+    #: the organisation that has it open, nor the one whose version is
+    #: the highest.
+    organisation_id: int | None
+
+
+def banks_on_show_to(db: Session, user: User) -> dict[str, BankOnShow]:
+    """Return the question banks *user* is shown in their list.
+
+    Every bank that an organisation open to them serves, with a version
+    promoted, and that they hold a current enrolment on there. One
+    query, whatever the number of banks.
+
+    Nobody is refused. Somebody who may not enter a module is told
+    nothing about any: an empty answer, which the page shows as it
+    shows an organisation with nothing open. The same answer for
+    somebody with nowhere to take them. Holding
+    ``take_teaching_modules`` is asked here and not at the route, which
+    is reached with the results competency alone, through
+    ``organisations_open_for_modules``.
+
+    Args:
+        db: Core database session.
+        user: The person asked about.
+
+    Returns:
+        Bank id to how it stands. A bank is live if ANY of their
+        organisations has it live, and it shows the highest version any
+        of them has promoted: the same permissive union. A status row
+        with no version promoted contributes nothing, since that
+        organisation has nothing to show.
+    """
+    organisation_ids = organisations_open_for_modules(db, user)
+
+    if not organisation_ids:
+        return {}
+
+    # Look up status for each bank across the user's orgs
+    statuses = (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.org_unit_id.in_(organisation_ids),
+                enrolled_on_offer(user.id),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    live: set[str] = set()
+    version_of: dict[str, int] = {}
+    organisation_of: dict[str, int] = {}
+
+    for status in statuses:
+        if status.active_version is None:
+            continue
+        version_of[status.question_bank_id] = max(
+            version_of.get(status.question_bank_id, 0), status.active_version
+        )
+        if status.is_live:
+            live.add(status.question_bank_id)
+        # Which organisation makes this bank visible, for the media
+        # gate. Media links are per organisation, so completeness has
+        # no global answer - only one per organisation.
+        if status.org_unit_id is not None:
+            organisation_of.setdefault(
+                status.question_bank_id, int(status.org_unit_id)
+            )
+
+    return {
+        bank_id: BankOnShow(
+            version=version,
+            is_live=bank_id in live,
+            organisation_id=organisation_of.get(bank_id),
+        )
+        for bank_id, version in version_of.items()
+    }
+
+
+def bank_status_on_show(
+    db: Session,
+    user_id: int,
+    *,
+    organisation_ids: list[int],
+    bank_id: str,
+) -> QuestionBankOrgStatus | None:
+    """Return the row that puts one question bank before a learner.
+
+    A status row for the bank at one of *organisation_ids* that the
+    person holds a current enrolment on there. Whether a version has
+    been promoted there is the caller's question, and so is whether the
+    bank's media is complete.
+
+    Where two of the organisations have a row for the bank, the one
+    returned is whichever the database gives first, and the query sets
+    no order. The others are not looked at: if the first has no version
+    promoted, the caller is not told that a second has.
+
+    Args:
+        db: Core database session.
+        user_id: The person asked about.
+        organisation_ids: The organisations whose modules they may
+            take, as ``organisations_open_for_modules`` gives them.
+        bank_id: The question bank.
+
+    Returns:
+        The row, or None when no organisation of theirs has one that
+        they are enrolled on.
+    """
+    return (
+        db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.org_unit_id.in_(organisation_ids),
+                enrolled_on_offer(user_id),
+                QuestionBankOrgStatus.question_bank_id == bank_id,
+            )
+        )
+        .scalars()
+        .first()
+    )
