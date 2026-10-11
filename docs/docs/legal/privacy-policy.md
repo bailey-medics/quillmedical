@@ -232,8 +232,10 @@ applies instead.
 
 - **What** - totals worked out from the server logs in section 3.2, such
   as how many people visited a page or completed a module. We do not use
-  an analytics service, tracking cookies or anything stored on your
-  device for this, and the totals do not identify you.
+  an analytics service or tracking cookies for this, and the totals do
+  not identify you. Nothing is stored on your device for it unless you
+  switch the counting off in Settings, when that choice is remembered on
+  the device so that it is respected next time.
 - **Why** - to see what is used and what is not.
 - **Legal basis** - our legitimate interest in improving the service
   (Article 6(1)(f)).

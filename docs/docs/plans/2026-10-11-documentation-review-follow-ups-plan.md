@@ -58,7 +58,7 @@ the order below, and no step waits for a person.
 
 ## Phase 3: Say the opt-out is remembered on the device
 
-- [ ] In section 3.9 of `docs/docs/legal/privacy-policy.md`, replace "We
+- [x] In section 3.9 of `docs/docs/legal/privacy-policy.md`, replace "We
       do not use an analytics service, tracking cookies or anything stored
       on your device for this, and the totals do not identify you." with
       wording that says nothing is stored on the device unless the person
@@ -68,7 +68,7 @@ the order below, and no step waits for a person.
       `quill.pageViews.optOut` to `localStorage`; the session identifier
       itself is held in memory only, so the rest of the sentence stands.
 
-- [ ] The policy is still version 1.0 and unpublished, so it is corrected
+- [x] The policy is still version 1.0 and unpublished, so it is corrected
       in place, as `docs/docs/legal/index.md` records for the earlier
       revision. Add one sentence there dating this one.
 
