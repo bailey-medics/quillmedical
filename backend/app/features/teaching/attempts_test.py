@@ -14,17 +14,23 @@ from app.features.teaching.attempts import (
     attempt_of,
     bank_to_sit,
     begin_attempt,
+    change_answer,
+    finish_attempt,
     item_at_position,
     next_unanswered_item,
+    record_answer,
 )
 from app.features.teaching.enrolment import enrol
 from app.features.teaching.errors import (
+    AllItemsAlreadyAnswered,
+    AnswerNotFound,
     AssessmentAlreadyCompleted,
     AssessmentConfigNotFound,
     AssessmentNotFound,
     AssessmentNotOpen,
     ItemNotFound,
     QuestionBankNotFound,
+    TimeLimitExceeded,
 )
 from app.features.teaching.models import (
     Assessment,
@@ -871,3 +877,806 @@ def test_a_question_is_given_by_position_after_the_time_has_run_out(
     db_session.flush()
 
     assert item_at_position(db_session, assessment, 1).answer.item_id
+
+
+# --- Answering and finishing: what the tests below share --------------------
+
+RIGHT = "opt-right"
+WRONG = "opt-wrong"
+
+#: The options every item of a variable bank below carries.
+ITEM_OPTIONS = [
+    {"id": RIGHT, "label": "Adenoma", "tags": ["sure", "adenoma"]},
+    {"id": WRONG, "label": "Serrated", "tags": ["unsure"]},
+]
+
+#: A bank whose options are its own, and whose right answer is each
+#: item's ``diagnosis``.
+UNIFORM_CONFIG: dict[str, Any] = {
+    "id": BANK,
+    "options": [
+        {"id": "high_a", "tags": ["high_confidence", "adenoma"]},
+        {"id": "low_s", "tags": ["low_confidence", "serrated"]},
+    ],
+    "correct_answer_field": "diagnosis",
+}
+
+#: Passed by choosing the option tagged ``sure`` for at least half.
+HALF_SURE = [
+    {
+        "name": "Sure of it",
+        "rule": "tag_percentage",
+        "tag": "sure",
+        "threshold": 0.5,
+    }
+]
+
+
+def _sitting(
+    db: Session,
+    org: OrgUnit,
+    user: User,
+    *,
+    questions: int = 3,
+    bank_type: str = "variable",
+    config: dict[str, Any] | None = None,
+    minutes: int = 30,
+) -> Assessment:
+    """An attempt under way on a bank whose answers can be scored."""
+    if config is None:
+        config = dict(UNIFORM_CONFIG) if bank_type == "uniform" else {}
+
+    db.add(
+        QuestionBankConfig(
+            org_unit_id=org.id,
+            question_bank_id=BANK,
+            version=1,
+            title="Polyps",
+            description="A question bank.",
+            type=bank_type,
+            config_yaml=config,
+        )
+    )
+    assessment = Assessment(
+        user_id=user.id,
+        org_unit_id=org.id,
+        question_bank_id=BANK,
+        bank_version=1,
+        time_limit_minutes=minutes,
+        total_items=questions,
+    )
+    db.add(assessment)
+    db.flush()
+
+    for position in range(1, questions + 1):
+        if bank_type == "uniform":
+            item = QuestionBankItem(
+                org_unit_id=org.id,
+                question_bank_id=BANK,
+                bank_version=1,
+                status="published",
+                images=[],
+                metadata_json={"diagnosis": "adenoma"},
+            )
+        else:
+            item = QuestionBankItem(
+                org_unit_id=org.id,
+                question_bank_id=BANK,
+                bank_version=1,
+                status="published",
+                images=[],
+                options=ITEM_OPTIONS,
+                correct_option_id=RIGHT,
+                metadata_json={},
+            )
+        db.add(item)
+        db.flush()
+        db.add(
+            AssessmentAnswer(
+                assessment_id=assessment.id,
+                item_id=item.id,
+                display_order=position,
+            )
+        )
+    db.flush()
+
+    return assessment
+
+
+def _rows(db: Session, assessment: Assessment) -> list[AssessmentAnswer]:
+    """The answer rows of an attempt, by position."""
+    return list(
+        db.scalars(
+            select(AssessmentAnswer)
+            .where(AssessmentAnswer.assessment_id == assessment.id)
+            .order_by(AssessmentAnswer.display_order)
+        ).all()
+    )
+
+
+def _tags(row: AssessmentAnswer) -> list[str]:
+    return sorted(tag.tag for tag in row.tags)
+
+
+def _out_of_time(db: Session, assessment: Assessment) -> None:
+    assessment.started_at = datetime.now(UTC) - timedelta(days=2)
+    db.flush()
+
+
+def _finished(db: Session, assessment: Assessment) -> None:
+    assessment.completed_at = datetime.now(UTC)
+    db.flush()
+
+
+def _lose_the_bank(db: Session) -> None:
+    for config in db.scalars(select(QuestionBankConfig)).all():
+        db.delete(config)
+    db.flush()
+
+
+def _stop_the_clock(monkeypatch: pytest.MonkeyPatch, at: datetime) -> None:
+    """Make the time ``attempts`` reads be *at*, and nothing else's."""
+
+    class Stopped(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> "Stopped":
+            return cls.fromtimestamp(at.timestamp(), tz)
+
+    monkeypatch.setattr(attempts, "datetime", Stopped)
+
+
+# --- record_answer ----------------------------------------------------------
+
+
+def test_an_answer_goes_to_the_first_question_without_one(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+
+    record_answer(db_session, assessment, RIGHT)
+    record_answer(db_session, assessment, WRONG)
+
+    first, second, third = _rows(db_session, assessment)
+
+    assert (first.selected_option, second.selected_option) == (RIGHT, WRONG)
+    assert third.selected_option is None
+
+
+def test_the_right_option_is_stored_as_right_with_its_tags(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+
+    record_answer(db_session, assessment, RIGHT)
+
+    first = _rows(db_session, assessment)[0]
+
+    assert first.is_correct is True
+    assert _tags(first) == ["adenoma", "sure"]
+    assert first.answered_at is not None
+
+
+def test_another_option_is_stored_as_wrong_with_its_own_tags(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+
+    record_answer(db_session, assessment, WRONG)
+
+    first = _rows(db_session, assessment)[0]
+
+    assert first.is_correct is False
+    assert _tags(first) == ["unsure"]
+
+
+def test_a_bank_with_shared_options_is_scored_from_them_and_the_item(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, bank_type="uniform")
+
+    record_answer(db_session, assessment, "high_a")
+    record_answer(db_session, assessment, "low_s")
+
+    first, second, _ = _rows(db_session, assessment)
+
+    assert first.is_correct is True
+    assert _tags(first) == ["adenoma", "high_confidence"]
+    assert second.is_correct is False
+    assert _tags(second) == ["low_confidence", "serrated"]
+
+
+def test_something_that_is_no_option_is_stored_and_scored_as_wrong(
+    db_session: Session,
+) -> None:
+    """As the route stood: what is chosen is not checked against the options.
+
+    Anything sent is stored as it came, wrong and with no tags, and the
+    question counts as answered. Pinned and not changed.
+    """
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+
+    recorded = record_answer(db_session, assessment, "no-such-option")
+
+    first = _rows(db_session, assessment)[0]
+
+    assert first.selected_option == "no-such-option"
+    assert first.is_correct is False
+    assert _tags(first) == []
+    assert recorded.next_answer is not None
+    assert recorded.next_answer.display_order == 2
+
+
+def test_the_question_after_is_handed_back_with_the_bank(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+
+    recorded = record_answer(db_session, assessment, RIGHT)
+
+    assert recorded.next_answer is not None
+    assert recorded.next_answer.display_order == 2
+    assert recorded.next_answer.assessment_id == assessment.id
+    assert recorded.config.question_bank_id == BANK
+    assert recorded.config.org_unit_id == org.id
+
+
+def test_the_last_answer_leaves_no_question_after_it(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, questions=1)
+
+    recorded = record_answer(db_session, assessment, RIGHT)
+
+    assert recorded.next_answer is None
+    assert assessment.completed_at is None
+
+
+def test_answering_when_every_question_has_an_answer_is_refused(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, questions=1)
+    record_answer(db_session, assessment, WRONG)
+
+    with pytest.raises(AllItemsAlreadyAnswered) as refused:
+        record_answer(db_session, assessment, RIGHT)
+
+    assert refused.value.status_code == 409
+    assert refused.value.message == "All items already answered"
+    assert _rows(db_session, assessment)[0].selected_option == WRONG
+
+
+def test_an_answer_to_a_finished_attempt_is_refused(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    _finished(db_session, assessment)
+
+    with pytest.raises(AssessmentAlreadyCompleted) as refused:
+        record_answer(db_session, assessment, RIGHT)
+
+    assert refused.value.status_code == 409
+    assert refused.value.message == "Assessment already completed"
+    assert _rows(db_session, assessment)[0].selected_option is None
+
+
+def test_an_answer_after_the_time_has_run_out_is_refused(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    _out_of_time(db_session, assessment)
+
+    with pytest.raises(TimeLimitExceeded) as refused:
+        record_answer(db_session, assessment, RIGHT)
+
+    assert refused.value.status_code == 409
+    assert refused.value.message == "Time limit exceeded"
+    assert _rows(db_session, assessment)[0].selected_option is None
+
+
+def test_an_answer_at_the_last_moment_is_in_time_and_one_after_is_not(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The time runs for exactly the minutes allowed from the start."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, minutes=30)
+    started = datetime(2026, 3, 1, 9, 0, tzinfo=UTC)
+    assessment.started_at = started
+    db_session.flush()
+
+    _stop_the_clock(monkeypatch, started + timedelta(minutes=30))
+    record_answer(db_session, assessment, RIGHT)
+
+    _stop_the_clock(
+        monkeypatch, started + timedelta(minutes=30, microseconds=1)
+    )
+    with pytest.raises(TimeLimitExceeded):
+        record_answer(db_session, assessment, RIGHT)
+
+    first, second, _ = _rows(db_session, assessment)
+
+    assert first.selected_option == RIGHT
+    assert first.answered_at is not None
+    assert first.answered_at.replace(tzinfo=UTC) == started + timedelta(
+        minutes=30
+    )
+    assert second.selected_option is None
+
+
+def test_an_attempt_with_no_time_limit_takes_no_answer_at_all(
+    db_session: Session,
+) -> None:
+    """As the route stood: a limit of 0 is no time, not unlimited time.
+
+    A bank that gives no ``time_limit_minutes`` starts attempts with a
+    limit of 0, and every answer to one is out of time. Pinned and not
+    changed.
+    """
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, minutes=0)
+
+    with pytest.raises(TimeLimitExceeded):
+        record_answer(db_session, assessment, RIGHT)
+
+
+def test_an_answer_to_an_attempt_whose_bank_has_gone_is_refused(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    _lose_the_bank(db_session)
+
+    with pytest.raises(AssessmentConfigNotFound) as refused:
+        record_answer(db_session, assessment, RIGHT)
+
+    assert refused.value.status_code == 500
+    assert refused.value.message == "Config not found for assessment"
+    assert _rows(db_session, assessment)[0].selected_option is None
+
+
+def test_what_stops_an_answer_is_said_in_a_fixed_order(
+    db_session: Session,
+) -> None:
+    """Finished, then out of time, then nothing left, then the bank gone."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, questions=1)
+    record_answer(db_session, assessment, RIGHT)
+    _lose_the_bank(db_session)
+
+    with pytest.raises(AllItemsAlreadyAnswered):
+        record_answer(db_session, assessment, RIGHT)
+
+    _out_of_time(db_session, assessment)
+
+    with pytest.raises(TimeLimitExceeded):
+        record_answer(db_session, assessment, RIGHT)
+
+    _finished(db_session, assessment)
+
+    with pytest.raises(AssessmentAlreadyCompleted):
+        record_answer(db_session, assessment, RIGHT)
+
+
+# --- change_answer ----------------------------------------------------------
+
+
+def test_a_changed_answer_replaces_the_choice_the_mark_and_the_tags(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    record_answer(db_session, assessment, WRONG)
+    first = _rows(db_session, assessment)[0]
+
+    changed = change_answer(db_session, assessment, first.id, RIGHT)
+    db_session.flush()
+
+    assert changed.answer is first
+    assert changed.config.question_bank_id == BANK
+    assert first.selected_option == RIGHT
+    assert first.is_correct is True
+    assert _tags(first) == ["adenoma", "sure"]
+
+
+def test_a_change_to_something_that_is_no_option_clears_the_tags(
+    db_session: Session,
+) -> None:
+    """As the route stood: the new choice is not checked either."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    record_answer(db_session, assessment, RIGHT)
+    first = _rows(db_session, assessment)[0]
+
+    change_answer(db_session, assessment, first.id, "no-such-option")
+    db_session.flush()
+
+    assert first.selected_option == "no-such-option"
+    assert first.is_correct is False
+    assert _tags(first) == []
+
+
+def test_a_question_never_answered_can_be_answered_by_changing_it(
+    db_session: Session,
+) -> None:
+    """As the route stood: the row is not asked to hold an answer already.
+
+    So a question can be answered ahead of its turn, and the next one
+    handed out is then the first still without an answer. Pinned and
+    not changed.
+    """
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    third = _rows(db_session, assessment)[2]
+
+    change_answer(db_session, assessment, third.id, RIGHT)
+    db_session.flush()
+
+    recorded = record_answer(db_session, assessment, WRONG)
+
+    assert third.selected_option == RIGHT
+    assert third.is_correct is True
+    assert recorded.next_answer is not None
+    assert recorded.next_answer.display_order == 2
+
+
+def test_an_answer_of_another_attempt_is_not_found_nor_is_one_not_there(
+    db_session: Session,
+) -> None:
+    """Only the rows of the attempt named are searched, whoever owns it."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    other = _person(db_session, "other")
+    mine = _sitting(db_session, org, learner)
+    theirs = _attempt(db_session, org, other, synced=False)
+    their_row = _rows(db_session, theirs)[0]
+
+    with pytest.raises(AnswerNotFound) as not_mine:
+        change_answer(db_session, mine, their_row.id, RIGHT)
+    with pytest.raises(AnswerNotFound) as not_there:
+        change_answer(db_session, mine, their_row.id + 1000, RIGHT)
+
+    assert not_mine.value.status_code == not_there.value.status_code == 404
+    assert not_mine.value.message == "Answer not found"
+    assert not_there.value.message == "Answer not found"
+    assert their_row.selected_option is None
+
+
+def test_an_answer_of_a_finished_attempt_cannot_be_changed(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    record_answer(db_session, assessment, WRONG)
+    first = _rows(db_session, assessment)[0]
+    _finished(db_session, assessment)
+
+    with pytest.raises(AssessmentAlreadyCompleted) as refused:
+        change_answer(db_session, assessment, first.id, RIGHT)
+
+    assert refused.value.status_code == 409
+    assert refused.value.message == "Assessment already completed"
+    assert first.selected_option == WRONG
+    assert first.is_correct is False
+
+
+def test_an_answer_cannot_be_changed_after_the_time_has_run_out(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    record_answer(db_session, assessment, WRONG)
+    first = _rows(db_session, assessment)[0]
+    _out_of_time(db_session, assessment)
+
+    with pytest.raises(TimeLimitExceeded) as refused:
+        change_answer(db_session, assessment, first.id, RIGHT)
+
+    assert refused.value.status_code == 409
+    assert refused.value.message == "Time limit exceeded"
+    assert first.selected_option == WRONG
+
+
+def test_a_change_to_an_attempt_whose_bank_has_gone_is_refused(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    first = _rows(db_session, assessment)[0]
+    _lose_the_bank(db_session)
+
+    with pytest.raises(AssessmentConfigNotFound) as refused:
+        change_answer(db_session, assessment, first.id, RIGHT)
+
+    assert refused.value.status_code == 500
+    assert refused.value.message == "Config not found for assessment"
+    assert first.selected_option is None
+
+
+def test_what_stops_a_change_is_said_in_a_fixed_order(
+    db_session: Session,
+) -> None:
+    """Finished, then out of time, then no such answer, then the bank gone."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    nowhere = _rows(db_session, assessment)[0].id + 1000
+    _lose_the_bank(db_session)
+
+    with pytest.raises(AnswerNotFound):
+        change_answer(db_session, assessment, nowhere, RIGHT)
+
+    _out_of_time(db_session, assessment)
+
+    with pytest.raises(TimeLimitExceeded):
+        change_answer(db_session, assessment, nowhere, RIGHT)
+
+    _finished(db_session, assessment)
+
+    with pytest.raises(AssessmentAlreadyCompleted):
+        change_answer(db_session, assessment, nowhere, RIGHT)
+
+
+# --- finish_attempt ---------------------------------------------------------
+
+
+def test_an_attempt_that_meets_every_criterion_is_marked_as_passed(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(
+        db_session,
+        org,
+        learner,
+        questions=2,
+        config={
+            "pass_criteria": HALF_SURE,
+            "results": {"exam_ref_prefix": "POLYP-"},
+        },
+    )
+    record_answer(db_session, assessment, RIGHT)
+    record_answer(db_session, assessment, WRONG)
+
+    finished = finish_attempt(db_session, assessment)
+
+    criteria = [
+        {"name": "Sure of it", "value": 0.5, "threshold": 0.5, "passed": True}
+    ]
+
+    assert finished.overall_passed is True
+    assert finished.criteria_results == criteria
+    assert finished.score_breakdown == {
+        "criteria": criteria,
+        "overall_passed": True,
+    }
+    assert finished.config.question_bank_id == BANK
+    assert assessment.completed_at is not None
+    assert assessment.is_passed is True
+    assert assessment.score_breakdown == finished.score_breakdown
+    assert assessment.exam_ref == f"POLYP-{assessment.id}"
+
+
+def test_an_attempt_that_misses_a_criterion_is_marked_as_failed(
+    db_session: Session,
+) -> None:
+    """The reference is written all the same: it names the attempt."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(
+        db_session,
+        org,
+        learner,
+        questions=2,
+        config={
+            "pass_criteria": HALF_SURE,
+            "results": {"exam_ref_prefix": "POLYP-"},
+        },
+    )
+    record_answer(db_session, assessment, WRONG)
+    record_answer(db_session, assessment, WRONG)
+
+    finished = finish_attempt(db_session, assessment)
+
+    assert finished.overall_passed is False
+    assert finished.criteria_results[0]["value"] == 0.0
+    assert assessment.completed_at is not None
+    assert assessment.is_passed is False
+    assert assessment.score_breakdown == finished.score_breakdown
+    assert assessment.exam_ref == f"POLYP-{assessment.id}"
+
+
+def test_a_bank_that_gives_no_prefix_leaves_the_reference_unset(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(
+        db_session, org, learner, config={"pass_criteria": HALF_SURE}
+    )
+
+    finish_attempt(db_session, assessment)
+
+    assert assessment.completed_at is not None
+    assert assessment.exam_ref is None
+
+
+def test_a_bank_that_names_no_criteria_passes_whatever_was_answered(
+    db_session: Session,
+) -> None:
+    """As the route stood: with nothing to fail, the attempt passes.
+
+    Every criterion passing is the test, and a bank with none has none
+    that failed, so an attempt with no answer given at all is marked as
+    passed. Pinned and not changed.
+    """
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+
+    finished = finish_attempt(db_session, assessment)
+
+    assert finished.criteria_results == []
+    assert finished.overall_passed is True
+    assert assessment.is_passed is True
+    assert assessment.score_breakdown == {
+        "criteria": [],
+        "overall_passed": True,
+    }
+
+
+def test_an_attempt_with_questions_left_is_marked_as_it_stands(
+    db_session: Session,
+) -> None:
+    """As the route stood: finishing does not ask for every answer.
+
+    A question left unanswered counts towards the total, so one right
+    answer of four is a quarter. Pinned and not changed.
+    """
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(
+        db_session,
+        org,
+        learner,
+        questions=4,
+        config={"pass_criteria": HALF_SURE},
+    )
+    record_answer(db_session, assessment, RIGHT)
+
+    finished = finish_attempt(db_session, assessment)
+
+    assert finished.criteria_results[0]["value"] == 0.25
+    assert finished.overall_passed is False
+    assert assessment.completed_at is not None
+    assert [row.selected_option for row in _rows(db_session, assessment)] == [
+        RIGHT,
+        None,
+        None,
+        None,
+    ]
+
+
+def test_an_attempt_long_out_of_time_can_still_be_finished(
+    db_session: Session,
+) -> None:
+    """As the route stood: finishing does not ask about time.
+
+    Only sending an answer does. An attempt two days past its limit is
+    marked on the answers given while there was time, and passes if
+    they are enough. Pinned and not changed.
+    """
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(
+        db_session,
+        org,
+        learner,
+        questions=2,
+        config={"pass_criteria": HALF_SURE},
+    )
+    record_answer(db_session, assessment, RIGHT)
+    _out_of_time(db_session, assessment)
+
+    finished = finish_attempt(db_session, assessment)
+
+    assert finished.overall_passed is True
+    assert assessment.is_passed is True
+    assert assessment.completed_at is not None
+
+
+def test_an_attempt_is_marked_once_and_its_mark_does_not_change(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(
+        db_session,
+        org,
+        learner,
+        questions=2,
+        config={
+            "pass_criteria": HALF_SURE,
+            "results": {"exam_ref_prefix": "POLYP-"},
+        },
+    )
+    record_answer(db_session, assessment, WRONG)
+    record_answer(db_session, assessment, WRONG)
+    finish_attempt(db_session, assessment)
+    db_session.flush()
+    marked_at = assessment.completed_at
+    breakdown = assessment.score_breakdown
+
+    # Even were the answers to become right ones afterwards.
+    for row in _rows(db_session, assessment):
+        row.set_tags(["sure"])
+    db_session.flush()
+
+    with pytest.raises(AssessmentAlreadyCompleted) as refused:
+        finish_attempt(db_session, assessment)
+
+    assert refused.value.status_code == 409
+    assert refused.value.message == "Assessment already completed"
+    assert assessment.completed_at == marked_at
+    assert assessment.score_breakdown == breakdown
+    assert assessment.is_passed is False
+    assert assessment.exam_ref == f"POLYP-{assessment.id}"
+
+
+def test_an_attempt_whose_bank_has_gone_is_not_marked(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    _lose_the_bank(db_session)
+
+    with pytest.raises(AssessmentConfigNotFound) as refused:
+        finish_attempt(db_session, assessment)
+
+    assert refused.value.status_code == 500
+    assert refused.value.message == "Config not found for assessment"
+    assert assessment.completed_at is None
+    assert assessment.is_passed is None
+    assert assessment.score_breakdown is None
+
+
+def test_a_finished_attempt_is_said_before_a_missing_bank(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    _finished(db_session, assessment)
+    _lose_the_bank(db_session)
+
+    with pytest.raises(AssessmentAlreadyCompleted):
+        finish_attempt(db_session, assessment)

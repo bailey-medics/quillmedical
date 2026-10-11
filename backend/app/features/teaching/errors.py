@@ -142,3 +142,36 @@ class AssessmentConfigNotFound(TeachingError):
 
     status_code = 500
     message = "Config not found for assessment"
+
+
+class TimeLimitExceeded(TeachingError):
+    """The attempt's time has run out, so no answer is taken or changed.
+
+    Asked only when an answer is sent. Finishing the attempt does not
+    ask it.
+    """
+
+    status_code = 409
+    message = "Time limit exceeded"
+
+
+class AllItemsAlreadyAnswered(TeachingError):
+    """Every question of the attempt has an answer, so there is no next.
+
+    An answer already given is changed by naming it, not by answering
+    again.
+    """
+
+    status_code = 409
+    message = "All items already answered"
+
+
+class AnswerNotFound(TeachingError):
+    """The attempt has no answer row by the id asked for.
+
+    The same words for a row that does not exist and for one that is
+    another attempt's, so an id is never confirmed.
+    """
+
+    status_code = 404
+    message = "Answer not found"
