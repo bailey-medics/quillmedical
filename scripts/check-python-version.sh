@@ -22,12 +22,23 @@
 set -euo pipefail
 
 readonly PIN_FILE=".python-version"
+readonly HOOKS_FILE=".pre-commit-config.yaml"
 
 # Prints the first two parts of a version: 3.14 from 3.14.7.
 minor_of() {
   local version="$1"
 
   cut -d. -f1,2 <<<"$version"
+}
+
+# Prints the Python each hook in the pre-commit config is told to run
+# on, one to a line: 3.14 from `language_version: python3.14`. Nothing
+# when no hook names one. A `language_version` for another language, such
+# as node, is not a Python and is left alone.
+hook_pythons() {
+  { grep -E '^[[:space:]]*language_version:' "$HOOKS_FILE" || true; } \
+    | { grep -oE 'python[0-9]+(\.[0-9]+)*' || true; } \
+    | sed 's/^python//'
 }
 
 # Prints the version of the Python the backend's Poetry environment
@@ -45,8 +56,24 @@ main() {
     exit 1
   fi
 
+  if [ ! -f "$HOOKS_FILE" ]; then
+    echo "${HOOKS_FILE} is not here, so the Python its hooks run on cannot be checked. Run this from the repository root." >&2
+    exit 1
+  fi
+
   local pinned=""
   pinned="$(tr -d '[:space:]' < "$PIN_FILE")"
+
+  local hook_python=""
+
+  while IFS= read -r hook_python; do
+    if [ "$hook_python" != "$(minor_of "$pinned")" ]; then
+      echo "A hook in ${HOOKS_FILE} is set to run on Python ${hook_python} (language_version: python${hook_python})." >&2
+      echo "This repository is pinned to ${pinned} (${PIN_FILE}), which is what CI runs." >&2
+      echo "Change it to: language_version: python$(minor_of "$pinned")" >&2
+      exit 1
+    fi
+  done < <(hook_pythons)
 
   local found=""
   found="$(backend_python)"

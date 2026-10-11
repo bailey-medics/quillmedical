@@ -1,12 +1,12 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.1
+    rev: v0.15.22
     hooks:
       - id: ruff
         args: [--fix]
 
   - repo: https://github.com/psf/black
-    rev: 26.5.0
+    rev: 26.10.1
     hooks:
       - id: black
         language_version: python3.14
@@ -22,7 +22,7 @@ repos:
       - id: check-json
 
   - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v10.2.0
+    rev: v10.3.0
     hooks:
       - id: cspell
         name: cspell (spelling checker)
@@ -34,28 +34,21 @@ repos:
         exclude: '^(.*/)?(yarn\.lock|\.yarn/.*|poetry\.lock)$|^infra/aws/policies/.*\.json$|^audit/ledger\.tsv$'
         args:
           - --no-progress
-          # - --no-summary
           - --config
           - cspell.config.json
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.3.1
+    rev: v2.4.0
     hooks:
       - id: mypy
         name: mypy (tests and tooling)
-        # Everything but the backend's own code, which the strict hook
-        # below checks with its real libraries installed. This one has an
-        # environment of its own, without FastAPI or Pydantic, and no
-        # config, so it is a basic check and not a strict one. It suits
-        # the tests, which are not held to `strict`.
-        # Two things are left out. The backend's own code, which the
-        # strict hook checks. And merged migrations: they may not be
-        # edited, so a finding in one could not be acted on.
+        # A basic check, not a strict one: its environment has no FastAPI
+        # or Pydantic and it reads no config. Left out are the backend's
+        # own code, which the strict hook below checks, and merged
+        # migrations, which may not be edited.
         exclude: '^backend/((app|scripts)/(?!.*_test\.py$).*\.py|alembic/versions/.*\.py)$'
-        # The mirror's two defaults, and one more: errors in a file this
-        # hook was not given are left to the hook that owns it. A test
-        # imports the backend's code, and without this mypy would report
-        # on that code a second time, without `strict`.
+        # The mirror's two defaults, plus `--follow-imports=silent` so
+        # backend code a test imports is not reported a second time here.
         args:
           - --ignore-missing-imports
           - --scripts-are-modules
@@ -79,10 +72,8 @@ repos:
     rev: 1.9.4
     hooks:
       # Run through a script of ours and not straight from the hook, so
-      # the script can check that the scan covered the backend. Bandit
-      # passes a scan of nothing, and for a year this hook passed "r"
-      # where "-r" was meant and scanned no lines. What is scanned, and
-      # what is left out, is in the script.
+      # the script can check that the scan covered the backend. What is
+      # scanned, and what is left out, is in the script.
       - id: bandit
         name: bandit (backend)
         entry: .github/scripts/ci/run-bandit.sh
@@ -101,7 +92,7 @@ repos:
         name: local Python matches CI
         entry: bash scripts/check-python-version.sh
         language: system
-        files: ^(backend/|shared/brand\.yaml$|\.python-version$)
+        files: ^(backend/|shared/brand\.yaml$|\.python-version$|\.pre-commit-config\.yaml$)
         pass_filenames: false
 
       # The backend's own code, with `strict` on. Through Poetry from
