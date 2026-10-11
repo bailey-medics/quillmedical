@@ -1,0 +1,40 @@
+# Say so when a pull request is merged into a branch other than main.
+#
+# A stacked pull request's base is the branch below it, and a merge goes
+# into the base. Only the bottom of a stack points at main. On 2026-10-11
+# fourteen pull requests of one stack were merged, each into the branch
+# beneath it, and none of the work reached main. Every one of them showed
+# as "Merged", and it went unnoticed until somebody asked why the next run
+# could not find its own plan.
+#
+# The merge queue and the required checks cover main alone, so nothing
+# stops this. infra/github can block it, behind
+# var.block_merges_into_feature_branches, but that is off until it has
+# been tried. This is the alarm for whatever gets through either way.
+#
+# What to do when it fires: the work is safe in the branch it landed in.
+# Open one pull request from that branch into main.
+name: Merged outside main
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    name: A pull request missed main
+    # Merged, not merely closed, and into something other than main.
+    if: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref != 'main' }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: app
+      text: |
+        *⚠️ Pull request #${{ github.event.pull_request.number }} was merged into `${{ github.event.pull_request.base.ref }}`, not `main`*
+
+        ${{ github.event.pull_request.html_url }}
+
+        Its work has *not* reached `main`. It is safe in that branch: open one pull request from `${{ github.event.pull_request.base.ref }}` into `main` to carry it there. Only the bottom of a stack is merged; `just stack-sync` brings the next branch down.
+    secrets: inherit

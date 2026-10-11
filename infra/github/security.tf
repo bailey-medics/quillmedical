@@ -31,6 +31,13 @@ resource "github_repository" "quillmedical" {
 
   delete_branch_on_merge = true
 
+  # Merge commits only, when merges into feature branches are blocked: see
+  # var.block_merges_into_feature_branches in branch_rules.tf. With the
+  # variable false all three stay on, as they have always been.
+  allow_merge_commit = true
+  allow_squash_merge = !var.block_merges_into_feature_branches
+  allow_rebase_merge = !var.block_merges_into_feature_branches
+
   security_and_analysis {
     secret_scanning {
       status = "enabled"
@@ -55,9 +62,6 @@ resource "github_repository" "quillmedical" {
       archived,
       archive_on_destroy,
       is_template,
-      allow_merge_commit,
-      allow_squash_merge,
-      allow_rebase_merge,
       allow_auto_merge,
       pages,
       template,
