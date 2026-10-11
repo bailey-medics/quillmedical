@@ -75,7 +75,10 @@ backend/app/deps.py      - has_competency(), FastAPI dependencies
 shared/
 ├── competency-definitions/  - All competency definitions, merged at load
 │   ├── clinical.yaml        - What may be done in the care of a patient
-│   ├── oncology.yaml        - Oncology competencies, clinical in kind
+│   ├── retired-oncology.yaml - The first oncology competencies, all retired
+│   ├── uk_sact_board_2023.yaml        - Passport framework
+│   ├── ruh_sact_passport.yaml         - Passport framework
+│   ├── ghnft_radiotherapy_record.yaml - Passport framework
 │   ├── clinical-admin.yaml  - Running the clinical service
 │   ├── admin.yaml           - Administering a place
 │   ├── teaching.yaml        - Who may use the teaching feature
@@ -134,11 +137,17 @@ Defines all available competencies in the system. Located at
 `shared/competency-definitions/`, a directory whose files are merged into
 one flat catalogue at load time.
 
-The split is by kind, for the reader: `clinical.yaml` and `oncology.yaml` hold
+The split is by kind, for the reader: `clinical.yaml` holds
 what may be done in the care of a patient; `clinical-admin.yaml`,
 `admin.yaml`, `teaching.yaml`, `passport.yaml` and `safety.yaml` hold what
-may be done to Quill itself. The code sees one catalogue and the id is what everything
-references, so moving an entry between files changes nothing. **Ids must
+may be done to Quill itself; `uk_sact_board_2023.yaml`,
+`ruh_sact_passport.yaml` and `ghnft_radiotherapy_record.yaml` are passport
+frameworks, and `retired-oncology.yaml` keeps the first oncology list, all
+retired. The code sees one catalogue and the id is what everything
+references, so moving an entry between files changes nothing to access
+control. The one meaning a file carries is to the passport: a file that
+declares a `framework:` block is a framework, and its assessable entries are
+that framework's items. **Ids must
 be unique across the whole directory**, not merely within a file - a
 duplicate is refused at load, and in CI.
 
@@ -156,7 +165,7 @@ competencies:
 - `id`: Unique competency identifier (used in code)
 - `display_name`: Human-readable name
 - `retired_on`: The date the competency stopped being available for new use. Entries are retired, not deleted
-- `levels`, `expires_after_months`, `assessable`: read by the clinician passport; CBAC ignores them
+- `levels`, `scopes`, `expires_after_months`, `assessable`: read by the clinician passport; CBAC ignores them
 - `may_grant`, `may_assign_professions`: what a holder may grant to other people
 
 An entry may carry no other field: the loader refuses anything else.
@@ -169,7 +178,7 @@ An entry may carry no other field: the loader refuses anything else.
 - `patient_management`: Patient admission, discharge, and referral
 - `consent`: Informed consent and mental capacity assessment
 - `diagnostics`: Requesting diagnostic imaging (X-ray, CT, MRI)
-- `administrative`: Clinic admin, user management, letter approval
+- `patient_records`: Reading and modifying patient records, letter approval
 - `specialty`: Specialist clinical skills (diabetes, anticoagulation, ECG)
 
 ### base-professions.yaml
@@ -367,13 +376,13 @@ removed_competencies = ["certify_death"]  # Not yet trained
 
 ```python
 base_profession = "consultant"
-additional_competencies = ["prescribe_sact"]  # Completed SACT training
+additional_competencies = ["take_teaching_modules"]  # Also takes teaching modules
 removed_competencies = []
 
-# Result: consultant base + prescribe_sact
+# Result: consultant base + take_teaching_modules
 # - All consultant competencies (including certify_cremation, certify_death)
 # - prescribe_controlled_schedule_2
-# - prescribe_sact (added)
+# - take_teaching_modules (added)
 ```
 
 **Example 4: Advanced Nurse Practitioner**

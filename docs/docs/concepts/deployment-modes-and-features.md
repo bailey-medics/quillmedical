@@ -70,7 +70,9 @@ and by whom.
 - **A row means enabled. There is no boolean.** Switching a feature off
   deletes the row, which avoids a row that exists but says "disabled".
 - **A feature key is a string**, so a new feature needs no migration.
-- **Any org unit may carry a feature**, whatever its type.
+- **Any org unit may carry a feature**, whatever its type. The exception is
+  `teaching`, which is switched on for an organisation alone and reaches its
+  sites from there.
 
 ### Who a feature reaches
 

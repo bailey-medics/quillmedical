@@ -36,15 +36,16 @@ separately.
 
 One competency registry, `shared/competency-definitions/`, used by both.
 
-A competency id means the same thing everywhere: `prescribe_sact` is one
+A competency id means the same thing everywhere: `perform_lumbar_puncture` is one
 identifier whether it appears in a user's CBAC competencies or a passport
 sign-off. The passport adds optional fields to those definitions - levels,
 expiry guidance - rather than introducing a parallel framework registry. One
 name, nothing to drift, no second schema to maintain.
 
-What a passport contains is whatever its holder has evidence for. Which
-competencies constitute a given regional passport is local policy, and is
-deliberately not encoded centrally.
+What a passport offers is what the frameworks its holder works to contain. A
+framework is one published document, such as one hospital's sign-off sheet,
+kept as a file in the same registry that declares a `framework:` block. The
+holder chooses which frameworks they work to.
 
 ## Reaching the passport at all
 
@@ -58,8 +59,8 @@ The flag is waived for a holder reading their own passport, so somebody
 removed from the place that had it can still open and export their record.
 
 Passing both says only that the passport exists for this person. Whether they
-may read a *particular* record is a third question, answered by whether they
-are the holder or are named on a request against them.
+may read a *particular* record is a third question: the holder reads the
+whole passport, and an assessor reads only the sign-off they are named on.
 
 ## Assessing comes with the profession; holding comes by entitlement
 
@@ -74,7 +75,7 @@ to an existing account when it is asked to sign off, never by entitlement, and
 never lapses.
 
 **Holding is the product.** `passport_write` grants the right to create a
-passport and add to it. No base profession carries it: it reaches a person
+passport and add to it. No base profession carries it but `passport_admin`: it reaches a person
 through an organisation that pays, granted at onboarding, through a Passport
 admin at their own org units, or through an individual subscription. Most clinicians at a paying organisation hold both
 competencies, and neither implies the other is beneath it - a consultant of
