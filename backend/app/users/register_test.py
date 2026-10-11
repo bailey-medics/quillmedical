@@ -1,18 +1,25 @@
 """Registering: what is checked first, and what is written."""
 
+from datetime import UTC, datetime
+
 import pytest
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.cbac.positions import set_clinical_lead
 from app.features.teaching.enrolment import is_enrolled
-from app.features.teaching.models import QuestionBankOrgStatus
+from app.features.teaching.models import (
+    ModuleEnrolment,
+    QuestionBankOrgStatus,
+)
 from app.marketing.preferences import MARKETING_WORDING_VERSION
 from app.models import (
+    Base,
     MarketingPreferenceChange,
     OrgUnit,
     PractisingCompetency,
     User,
+    UserCompetency,
     org_unit_member,
 )
 from app.security import hash_password, verify_password
@@ -33,9 +40,11 @@ from app.users.errors import (
     UsernameOrEmailInUse,
 )
 from app.users.register import (
+    UNDO_WINDOW,
     Registration,
     clinical_lead_site,
     register_account,
+    undo_registration,
 )
 
 PASSWORD = "Password123!"
@@ -839,3 +848,242 @@ def test_a_lead_at_several_sites_is_answered_with_all_and_no_one_site(
     assert answer.site_id is None
     assert answer.site_name is None
     assert answer.org_unit_id is None
+
+
+# --- undoing a registration -------------------------------------------------
+
+
+def _every_row(db: Session) -> dict[str, list[tuple[object, ...]]]:
+    """Every row of every table, by table name."""
+    return {
+        table.name: sorted(
+            (tuple(row) for row in db.execute(select(table)).all()),
+            key=repr,
+        )
+        for table in Base.metadata.sorted_tables
+    }
+
+
+def _rows_written_for(db: Session, user_id: int) -> dict[str, int]:
+    """How many rows each table a registration writes holds for one person."""
+    counted = {
+        "users": select(User.id).where(User.id == user_id),
+        "user_competency": select(UserCompetency.id).where(
+            UserCompetency.user_id == user_id
+        ),
+        "marketing_preference_change": select(
+            MarketingPreferenceChange.id
+        ).where(MarketingPreferenceChange.user_id == user_id),
+        "org_unit_member": select(org_unit_member.c.org_unit_id).where(
+            org_unit_member.c.user_id == user_id
+        ),
+        "practising_competency": select(PractisingCompetency.id).where(
+            PractisingCompetency.user_id == user_id
+        ),
+        "module_enrolment": select(ModuleEnrolment.id).where(
+            ModuleEnrolment.user_id == user_id
+        ),
+    }
+
+    return {
+        name: len(db.execute(query).all()) for name, query in counted.items()
+    }
+
+
+def _registered_through_the_link(db: Session, username: str) -> int:
+    """Register somebody through the link, saved, and give their id."""
+    user = register_account(
+        db,
+        _through_the_link(
+            username=username,
+            email=f"{username}@example.test",
+            marketing_opt_out=False,
+        ),
+    )
+    user_id = user.id
+    db.commit()
+
+    return user_id
+
+
+def test_undoing_removes_every_row_the_registration_wrote(
+    db_session: Session, lead: User, trust: OrgUnit, hospital: OrgUnit
+) -> None:
+    """Joining a site through a lead and a module writes the most rows."""
+    user_id = _registered_through_the_link(db_session, "delegate")
+
+    assert _rows_written_for(db_session, user_id) == {
+        "users": 1,
+        "user_competency": 2,
+        "marketing_preference_change": 1,
+        "org_unit_member": 2,
+        "practising_competency": 1,
+        "module_enrolment": 1,
+    }
+
+    undo_registration(db_session, user_id)
+    db_session.commit()
+
+    assert _rows_written_for(db_session, user_id) == {
+        "users": 0,
+        "user_competency": 0,
+        "marketing_preference_change": 0,
+        "org_unit_member": 0,
+        "practising_competency": 0,
+        "module_enrolment": 0,
+    }
+
+
+def test_undoing_one_registration_leaves_other_peoples_rows_alone(
+    db_session: Session, lead: User, trust: OrgUnit, hospital: OrgUnit
+) -> None:
+    """Every table is as it was before the one undone was registered."""
+    other_id = _registered_through_the_link(db_session, "another")
+    before = _every_row(db_session)
+
+    user_id = _registered_through_the_link(db_session, "delegate")
+    assert _every_row(db_session) != before
+
+    undo_registration(db_session, user_id)
+    db_session.commit()
+
+    assert _every_row(db_session) == before
+    assert _rows_written_for(db_session, other_id) == {
+        "users": 1,
+        "user_competency": 2,
+        "marketing_preference_change": 1,
+        "org_unit_member": 2,
+        "practising_competency": 1,
+        "module_enrolment": 1,
+    }
+
+
+def test_undoing_frees_the_username_and_the_address(
+    db_session: Session,
+) -> None:
+    user = register_account(db_session, _new())
+    user_id = user.id
+    db_session.commit()
+
+    undo_registration(db_session, user_id)
+    db_session.commit()
+
+    again = register_account(db_session, _new())
+
+    assert again.username == "delegate"
+    assert again.email == "delegate@example.test"
+
+
+def test_undoing_is_flushed_and_left_to_the_caller_to_commit(
+    db_session: Session,
+) -> None:
+    user = register_account(db_session, _new())
+    user_id = user.id
+    db_session.commit()
+
+    undo_registration(db_session, user_id)
+    db_session.rollback()
+
+    assert _account(db_session) is not None
+
+
+def test_an_account_nobody_has_cannot_be_undone(db_session: Session) -> None:
+    with pytest.raises(ValueError, match="No user 99999"):
+        undo_registration(db_session, 99999)
+
+
+def _refused(db: Session, user_id: int, words: str) -> None:
+    """Undoing is refused in *words*, and nothing at all is removed."""
+    db.commit()
+    before = _every_row(db)
+
+    with pytest.raises(ValueError, match=words):
+        undo_registration(db, user_id)
+
+    db.commit()
+
+    assert _every_row(db) == before
+
+
+def test_a_verified_account_is_never_undone(
+    db_session: Session, lead: User, trust: OrgUnit, hospital: OrgUnit
+) -> None:
+    user_id = _registered_through_the_link(db_session, "delegate")
+    db_session.get_one(User, user_id).email_verified = True
+
+    _refused(db_session, user_id, "is verified")
+
+
+def test_an_account_whose_password_was_changed_is_never_undone(
+    db_session: Session,
+) -> None:
+    user = register_account(db_session, _new())
+    user.token_version = 1
+
+    _refused(db_session, user.id, "changed their password")
+
+
+def test_an_account_with_two_factor_switched_on_is_never_undone(
+    db_session: Session,
+) -> None:
+    user = register_account(db_session, _new())
+    user.is_totp_enabled = True
+
+    _refused(db_session, user.id, "two-factor")
+
+
+def test_an_account_with_a_two_factor_secret_is_never_undone(
+    db_session: Session,
+) -> None:
+    user = register_account(db_session, _new())
+    user.totp_secret = "JBSWY3DPEHPK3PXP"
+
+    _refused(db_session, user.id, "two-factor")
+
+
+def test_an_account_of_another_profession_is_never_undone(
+    db_session: Session,
+) -> None:
+    """Unverified and new, but not something registration makes."""
+    user = User(
+        username="nurse",
+        email="nurse@example.test",
+        password_hash=hash_password(PASSWORD),
+        base_profession="registered_nurse",
+    )
+    db_session.add(user)
+    db_session.flush()
+
+    _refused(db_session, user.id, "not a registered delegate")
+
+
+def test_an_operator_is_never_undone(db_session: Session) -> None:
+    user = register_account(db_session, _new())
+    user.platform_role = "superadmin"
+
+    _refused(db_session, user.id, "not a registered delegate")
+
+
+def test_an_account_older_than_the_window_is_never_undone(
+    db_session: Session,
+) -> None:
+    user = register_account(db_session, _new())
+    db_session.execute(
+        update(UserCompetency)
+        .where(UserCompetency.user_id == user.id)
+        .values(created_at=datetime.now(UTC) - UNDO_WINDOW * 2)
+    )
+
+    _refused(db_session, user.id, "not registered just now")
+
+
+def test_an_account_that_cannot_be_dated_is_never_undone(
+    db_session: Session,
+) -> None:
+    """With no row from its profession there is nothing to date it by."""
+    user = register_account(db_session, _new())
+    db_session.execute(
+        delete(UserCompetency).where(UserCompetency.user_id == user.id)
+    )
+
+    _refused(db_session, user.id, "cannot be dated")

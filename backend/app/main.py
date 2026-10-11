@@ -253,6 +253,7 @@ from app.users.register import (
     Registration,
     clinical_lead_site,
     register_account,
+    undo_registration,
 )
 from app.users.scope import check_may_act_on_operator
 from app.users.setup_invite import setup_invite_for
@@ -1155,13 +1156,15 @@ def register(
     - Username must be unique across all users
     - Email must be unique across all users
 
-    **No verification email, no account.** The email is sent before the
-    commit, and a failure to send abandons the registration. An account
-    whose verification link never arrived cannot be recovered by the
-    person who made it: the address is taken, so registering again is
-    refused as a duplicate, and only somebody with database access can
-    undo it. Rolling back leaves the address free and the person able to
-    try again.
+    **No verification email, no account, and no email without one.**
+    The account is committed first and the email sent second, so a link
+    never goes out for an account that failed to save. If the email then
+    cannot be sent, the account is removed again. An account whose
+    verification link never arrived cannot be recovered by the person
+    who made it: the address is taken, so registering again is refused
+    as a duplicate, and only somebody with database access can undo it.
+    Removing it leaves the address free and the person able to try
+    again.
 
     Args:
         payload: Registration data (username, email, password).
@@ -1202,14 +1205,23 @@ def register(
         ),
     )
 
-    # The mail goes before the commit, and a failure abandons the whole
-    # registration. An account nobody can verify is worse than no
+    # The account is saved before the mail goes. Sending first left a
+    # gap: the mail could go and the commit after it fail, and somebody
+    # then held a verification link to an account that did not exist.
+    # Now a commit that fails raises here, before anything is sent, and
+    # the session dependency rolls the registration back.
+    #
+    # This commit is deliberate, where a route normally leaves it to the
+    # dependency: it is what makes the account durable before the mail.
+    user_id = user.id
+    db.commit()
+
+    # A mail that cannot be sent still abandons the whole registration,
+    # as it always has. An account nobody can verify is worse than no
     # account: the address is taken, so registering again is refused as
     # a duplicate, and the only way out is somebody editing the database.
-    # Rolling back instead leaves the person able to simply try again.
-    #
-    # Nothing here needs the commit. The token is signed from the email
-    # address alone, so it can be minted before the row is durable.
+    # The account is by now saved, so it is removed again, which leaves
+    # the person able to simply try again.
     token = create_email_verify_token(user.email)
     verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"
 
@@ -1222,6 +1234,7 @@ def register(
         # The address has had its hour's allowance, which on this route
         # means somebody registering the same address repeatedly.
         logger.warning("registration mail not sent: address rate limited")
+        _take_back_registration(db, user_id)
         raise HTTPException(
             status_code=429,
             detail=(
@@ -1232,6 +1245,7 @@ def register(
         # Only reachable where EMAIL_ALLOWED_RECIPIENTS is set, which is
         # a development machine.
         logger.warning("registration mail not sent: recipient not allowed")
+        _take_back_registration(db, user_id)
         raise HTTPException(
             status_code=400,
             detail=(
@@ -1240,9 +1254,10 @@ def register(
             ),
         ) from None
     except Exception:
-        # Unreachable, refused, timed out. The account is abandoned by
-        # raising before the commit, so the address stays free.
+        # Unreachable, refused, timed out. The account is removed again,
+        # so the address stays free.
         logger.exception("registration mail could not be sent")
+        _take_back_registration(db, user_id)
         raise HTTPException(
             status_code=502,
             detail=(
@@ -1251,9 +1266,31 @@ def register(
             ),
         ) from None
 
-    db.commit()
-
     return DetailResponse(detail="created")
+
+
+def _take_back_registration(db: Session, user_id: int) -> None:
+    """Remove the account whose verification email could not be sent.
+
+    Never raises. The caller is about to answer for the email that
+    failed, and that answer stands whatever happens here. If the account
+    cannot be removed it is left as it is, saved and unverified, which
+    is the state the resend route exists for: the person can ask for the
+    email again. It is logged so somebody can look.
+
+    Args:
+        db: Core database session. Committed here, so the removal lasts
+            through the rollback that follows the caller's refusal.
+        user_id: The account ``register_account`` returned.
+    """
+    try:
+        undo_registration(db, user_id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception(
+            "registration could not be undone for user %s", user_id
+        )
 
 
 @router.post("/auth/verify-email", response_model=DetailResponse)

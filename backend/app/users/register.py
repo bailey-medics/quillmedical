@@ -12,25 +12,39 @@ then the clinical lead. The account is written only after all three,
 and the checks that follow it rest on the rollback of the caller's
 transaction to leave nobody behind.
 
-Sending the verification email is not here. The route sends it once
-this has returned and before anything is committed, so a message that
-could not be sent abandons the registration.
+Sending the verification email is not here. The route commits what
+this wrote and then sends it, so no message goes out for an account
+that failed to save. A message that could not be sent still abandons
+the registration: the route hands the account to ``undo_registration``,
+which removes everything written here for it.
 """
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.cbac.positions import clinical_leads_of
 from app.features.teaching.access import MODULES_COMPETENCY, give_place
 from app.features.teaching.enrolment import enrol as enrol_on_module
-from app.features.teaching.models import QuestionBankOrgStatus
+from app.features.teaching.models import (
+    ModuleEnrolment,
+    QuestionBankOrgStatus,
+)
 from app.marketing.preferences import (
     MARKETING_WORDING_VERSION,
     set_marketing_preference,
 )
-from app.models import OrgUnit, User, normalise_email, org_unit_member
+from app.models import (
+    MarketingPreferenceChange,
+    OrgUnit,
+    PractisingCompetency,
+    User,
+    UserCompetency,
+    normalise_email,
+    org_unit_member,
+)
 from app.org_units import ROOT_TYPE_IDS
 from app.org_units.tree import (
     descendant_ids,
@@ -54,6 +68,15 @@ from app.users.errors import (
     UsernameOrEmailInUse,
 )
 from app.users.identity import check_password_long_enough
+
+#: The profession ``register_account`` gives everybody, and so the only
+#: one ``undo_registration`` will remove.
+REGISTERED_PROFESSION = "teaching_delegate"
+
+#: How long after it was written a registration may still be undone.
+#: The undo follows the failed email within seconds. An account older
+#: than this is not one that has just been registered.
+UNDO_WINDOW = timedelta(minutes=5)
 
 
 @dataclass(frozen=True)
@@ -160,7 +183,7 @@ def register_account(db: Session, new: Registration) -> User:
         # rows, and it wrote a patient's for an account that was then
         # relabelled. A registered delegate held nothing from teaching
         # at all.
-        base_profession="teaching_delegate",
+        base_profession=REGISTERED_PROFESSION,
     )
 
     db.add(user)
@@ -202,6 +225,109 @@ def register_account(db: Session, new: Registration) -> User:
         _enrol_through_the_link(db, user, new.teaching_module_id, org_unit_id)
 
     return user
+
+
+def undo_registration(db: Session, user_id: int) -> None:
+    """Remove an account just registered, and all that went with it.
+
+    For the one case where the verification email could not be sent.
+    The account is by then committed, and nobody can verify it, so it is
+    taken away again and the username and the address are free.
+
+    Every table ``register_account`` writes to is cleared of this
+    person's rows by name, and then the account goes. The database
+    would remove most of them itself as the account went, but that is
+    not relied on: each table is named so a reader can see the whole
+    list, and so the unit tests, whose SQLite does not enforce foreign
+    keys, prove the same thing.
+
+    It refuses anything that is not plainly a registration made moments
+    ago, so it can never be turned on a real account by mistake. Each
+    refusal is a ``ValueError``: a mistake in the calling code, not
+    something a person did.
+
+    The rows are flushed away, not committed.
+
+    Args:
+        db: Core database session.
+        user_id: The account ``register_account`` just returned.
+
+    Raises:
+        ValueError: If there is no such account, or it is verified, has
+            had its password changed, has two-factor sign-in set up, is
+            not a registered delegate, is an operator, or was not
+            written within ``UNDO_WINDOW``.
+    """
+    user = db.get(User, user_id)
+
+    if user is None:
+        raise ValueError(f"No user {user_id} to undo the registration of.")
+
+    # Signing in is refused until the address is verified, so an
+    # unverified account is also one nobody has signed in to.
+    if user.email_verified:
+        raise ValueError(f"User {user_id} is verified, so is not undone.")
+
+    if user.token_version != 0:
+        raise ValueError(
+            f"User {user_id} has changed their password, so is not undone."
+        )
+
+    if user.is_totp_enabled or user.totp_secret is not None:
+        raise ValueError(
+            f"User {user_id} has two-factor sign-in, so is not undone."
+        )
+
+    if (
+        user.base_profession != REGISTERED_PROFESSION
+        or user.platform_role != "standard"
+    ):
+        raise ValueError(
+            f"User {user_id} is not a registered delegate, so is not undone."
+        )
+
+    # The account has no date of its own. The rows its profession wrote
+    # were made with it, so the oldest of them says when it was made. An
+    # account with none cannot be dated, and is refused.
+    written_at = db.scalar(
+        select(func.min(UserCompetency.created_at)).where(
+            UserCompetency.user_id == user_id
+        )
+    )
+
+    if written_at is None:
+        raise ValueError(f"User {user_id} cannot be dated, so is not undone.")
+
+    # SQLite hands the date back without its timezone. It was written
+    # as UTC.
+    if written_at.tzinfo is None:
+        written_at = written_at.replace(tzinfo=UTC)
+
+    if datetime.now(UTC) - written_at > UNDO_WINDOW:
+        raise ValueError(
+            f"User {user_id} was not registered just now, so is not undone."
+        )
+
+    # Everything that points at the account first, then the account.
+    db.execute(
+        delete(ModuleEnrolment).where(ModuleEnrolment.user_id == user_id)
+    )
+    db.execute(
+        delete(PractisingCompetency).where(
+            PractisingCompetency.user_id == user_id
+        )
+    )
+    db.execute(
+        org_unit_member.delete().where(org_unit_member.c.user_id == user_id)
+    )
+    db.execute(
+        delete(MarketingPreferenceChange).where(
+            MarketingPreferenceChange.user_id == user_id
+        )
+    )
+    db.execute(delete(UserCompetency).where(UserCompetency.user_id == user_id))
+    db.execute(delete(User).where(User.id == user_id))
+    db.flush()
 
 
 def _check_username_and_email_free(
