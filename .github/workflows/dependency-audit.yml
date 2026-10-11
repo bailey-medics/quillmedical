@@ -1,0 +1,122 @@
+# Check the packages the app ships against the lists of known
+# vulnerabilities.
+#
+# Two audits, one for each lock file:
+#
+# - the backend's production packages, with pip-audit
+# - the packages the frontend sends to a browser, with `yarn npm audit`
+#
+# Build and test tools are left out of both. They run on a developer's
+# machine and in CI and are never served, and Dependabot's alerts and
+# Renovate's pull requests already cover them.
+#
+# This is a workflow of its own and not a job in ci.yml, on purpose. An
+# advisory is published against code that has not changed, so a check
+# in ci.yml would turn the merge queue red for every pull request on the
+# day one appears, whatever that pull request touches. Here it runs:
+#
+# - on a pull request that changes what is installed, where a failure
+#   belongs to that pull request
+# - every morning against main, where a failure is news and goes to Slack
+# - on demand
+#
+# An advisory that does not apply is excused by name with a reason:
+# backend/.pip-audit-ignore for Python, npmAuditIgnoreAdvisories in
+# frontend/.yarnrc.yml for npm.
+name: Dependency audit
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "backend/poetry.lock"
+      - "backend/pyproject.toml"
+      - "backend/.pip-audit-ignore"
+      - "frontend/yarn.lock"
+      - "frontend/package.json"
+      - "frontend/.yarnrc.yml"
+      - ".python-version"
+      - ".poetry-version"
+      - ".github/workflows/dependency-audit.yml"
+      - ".github/scripts/dependency-audit/**"
+  schedule:
+    - cron: "30 5 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend packages (pip-audit)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Set up Python
+        uses: ./.github/actions/setup-python
+        with:
+          install-backend-deps: "false"
+
+      # The production packages only, into backend/.venv, from the lock
+      # file: what the image installs. The shared action installs the
+      # development tools as well, which is why it is not asked to here.
+      - name: Install the production packages
+        working-directory: backend
+        run: |
+          python -m pip install "poetry==$(cat ../.poetry-version)"
+          poetry config virtualenvs.in-project true
+          poetry install --only main --no-root --no-interaction --no-ansi
+
+      - name: Install pip-audit
+        run: python -m pip install pip-audit==2.10.1
+
+      # 91 production packages on 11 October 2026, so 50 is well under it.
+      - name: Audit the backend packages
+        run: bash .github/scripts/dependency-audit/run-pip-audit.sh backend/.venv backend/.pip-audit-ignore 50
+
+  frontend:
+    name: Frontend packages (yarn npm audit)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      # Node and Yarn only. The audit reads yarn.lock and asks the
+      # registry, so nothing has to be installed.
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "24"
+
+      - name: Enable Corepack
+        working-directory: frontend
+        run: |
+          corepack enable
+          corepack install
+
+      - name: Audit the frontend packages
+        run: bash .github/scripts/dependency-audit/run-yarn-audit.sh frontend
+
+  notify:
+    name: Notify that an audit failed
+    needs: [backend, frontend]
+    # The morning run only. On a pull request the failed check is the
+    # notice, and it is in front of the person who caused it.
+    if: ${{ always() && github.event_name == 'schedule' && (needs.backend.result == 'failure' || needs.frontend.result == 'failure') }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: app
+      text: |
+        *⚠️ A package the app ships has a known vulnerability*
+
+        *Backend:* ${{ needs.backend.result }}
+        *Frontend:* ${{ needs.frontend.result }}
+
+        The run names the package, the advisory and the version that fixes it. Update the package, or if the advisory does not apply, excuse it by name with a reason: `backend/.pip-audit-ignore` or `npmAuditIgnoreAdvisories` in `frontend/.yarnrc.yml`.
+
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit

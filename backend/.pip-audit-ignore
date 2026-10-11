@@ -1,0 +1,16 @@
+# Advisories against a backend package that are accepted for now.
+#
+# One a line: the advisory's id, then why it does not apply here. Any name
+# the advisory goes by will do. .github/scripts/dependency-audit/run-pip-audit.sh
+# reads this, refuses a line with no reason, and fails on a line that no
+# installed package matches any more, so nothing stays here after its
+# advisory is fixed.
+
+# python-jose accepts a public key as an HMAC secret, so somebody holding
+# it could forge an HS256 token where the caller does not say which
+# algorithms it accepts. No fixed version exists.
+CVE-2026-85394 Tokens here are signed with a shared secret, there is no public key to misuse, and every jwt.decode names its algorithms, which the py.jwt.algorithms-not-named Semgrep rule enforces.
+
+# ecdsa leaks its private key through timing when it signs. It comes in
+# with python-jose, and its authors do not plan a fix.
+CVE-2024-23342 Nothing here signs with ECDSA. Tokens are HS256, which does not use this package.
