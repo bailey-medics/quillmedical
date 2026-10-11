@@ -4,11 +4,15 @@
  * Standardised password input wrapper around Mantine's PasswordInput.
  * Includes a visibility toggle button and enforces consistent font sizing,
  * label styling, and error display across the application.
+ *
+ * Stops at `MAX_PASSWORD` characters, the most the backend takes, unless
+ * a `maxLength` is passed.
  */
 
 import { PasswordInput, type PasswordInputProps } from "@mantine/core";
 import { ErrorMessage } from "@components/typography";
 import FieldDescription from "@components/typography/FieldDescription";
+import { MAX_PASSWORD } from "@/lib/fieldLimits";
 import classes from "./PasswordField.module.css";
 
 const fieldStyles = {
@@ -33,6 +37,7 @@ export default function PasswordField({
 }: PasswordInputProps) {
   return (
     <PasswordInput
+      maxLength={MAX_PASSWORD}
       {...props}
       description={
         description ? (

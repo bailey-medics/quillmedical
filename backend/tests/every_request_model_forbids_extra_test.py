@@ -20,13 +20,10 @@ entry is taken out.
 
 from __future__ import annotations
 
-from typing import Any, get_args
-
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from app.main import app
-from app.utils.route_list import served_routes
+from tests.request_models import collect, name_of, request_models
 
 # Models that take fields they do not name, and why each does. Empty,
 # and meant to stay so. The push subscription was here, as a shape the
@@ -39,70 +36,24 @@ MIN_MODELS = 60
 MIN_ROUTES_WITH_A_BODY = 60
 
 
-def _name(model: type[BaseModel]) -> str:
-    return f"{model.__module__}.{model.__qualname__}"
-
-
-def _collect(annotation: Any, found: set[type[BaseModel]]) -> None:
-    """Add every model in a type to `found`, and those inside them.
-
-    A type may be a model, or hold one: `list[Model]`, `Model | None`.
-    A model's own fields are followed the same way, since a field that
-    is itself a model is read from the same request.
-    """
-    if isinstance(annotation, type) and issubclass(annotation, BaseModel):
-        model: type[BaseModel] = annotation
-
-        if model in found:
-            return
-
-        found.add(model)
-
-        for field in model.model_fields.values():
-            _collect(field.annotation, found)
-
-        return
-
-    for inner in get_args(annotation):
-        _collect(inner, found)
-
-
-def _request_models() -> tuple[set[type[BaseModel]], int]:
-    """Every model a request body is read into, and how many routes
-    read one."""
-    found: set[type[BaseModel]] = set()
-    routes_with_a_body = 0
-
-    for served in served_routes(app):
-        body_params = served.dependant.body_params
-
-        if body_params:
-            routes_with_a_body += 1
-
-        for param in body_params:
-            _collect(param.field_info.annotation, found)
-
-    return found, routes_with_a_body
-
-
 def _forbids_extra(model: type[BaseModel]) -> bool:
     return model.model_config.get("extra") == "forbid"
 
 
 def test_the_walk_finds_the_request_models() -> None:
-    models, routes_with_a_body = _request_models()
+    models, routes_with_a_body = request_models()
 
     assert len(models) >= MIN_MODELS
     assert routes_with_a_body >= MIN_ROUTES_WITH_A_BODY
 
 
 def test_every_request_model_forbids_extra_fields() -> None:
-    models, _ = _request_models()
+    models, _ = request_models()
 
     loose = sorted(
-        _name(model)
+        name_of(model)
         for model in models
-        if not _forbids_extra(model) and _name(model) not in ALLOWS_EXTRA
+        if not _forbids_extra(model) and name_of(model) not in ALLOWS_EXTRA
     )
 
     assert loose == [], (
@@ -113,8 +64,8 @@ def test_every_request_model_forbids_extra_fields() -> None:
 
 
 def test_every_listed_exception_still_needs_listing() -> None:
-    models, _ = _request_models()
-    by_name = {_name(model): model for model in models}
+    models, _ = request_models()
+    by_name = {name_of(model): model for model in models}
 
     stale = sorted(
         name
@@ -147,7 +98,7 @@ def test_the_collector_follows_nested_and_optional_models() -> None:
 
     found: set[type[BaseModel]] = set()
 
-    _collect(Outer, found)
+    collect(Outer, found)
 
     assert found == {Outer, Middle, Inner}
 

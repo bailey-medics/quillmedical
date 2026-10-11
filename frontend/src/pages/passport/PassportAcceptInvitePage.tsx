@@ -30,6 +30,7 @@ import {
   registrationAuthorities,
 } from "@lib/passport";
 import type { InvitePreview } from "@lib/passport";
+import { MAX_FULL_NAME, MAX_USERNAME } from "@/lib/fieldLimits";
 
 export function Component() {
   const navigate = useNavigate();
@@ -208,6 +209,7 @@ export function Component() {
               <>
                 <TextField
                   label="Your full name"
+                  maxLength={MAX_FULL_NAME}
                   description="As it should read on the sign-offs you make."
                   value={fullName}
                   onChange={(event) => setFullName(event.currentTarget.value)}
@@ -233,6 +235,7 @@ export function Component() {
                 />
                 <TextField
                   label="Choose a username"
+                  maxLength={MAX_USERNAME}
                   value={username}
                   onChange={(event) => setUsername(event.currentTarget.value)}
                   required

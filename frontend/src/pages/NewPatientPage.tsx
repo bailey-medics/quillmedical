@@ -39,6 +39,7 @@ import DirtyFormNavigation from "@/components/warnings";
 import PageHeader from "@/components/page-header";
 import { api } from "@/lib/api";
 import ErrorState from "@/components/error-state/ErrorState";
+import { MAX_USERNAME } from "@/lib/fieldLimits";
 
 /**
  * Patient form data state
@@ -230,6 +231,7 @@ function Step2UserAccount({
 
           <TextField
             label="Username"
+            maxLength={MAX_USERNAME}
             placeholder="janesmith"
             required
             value={formData.userUsername || ""}

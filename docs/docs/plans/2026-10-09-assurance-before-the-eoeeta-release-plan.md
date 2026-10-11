@@ -690,22 +690,45 @@ takes a file is on it.
 
 ### Unit 3: Limits on the fields where length matters
 
-- [ ] Add `max_length` to passwords, usernames, emails, full names,
+- [x] Add `max_length` to passwords, usernames, emails, full names,
       reset and invite tokens, and TOTP codes. About a dozen of the 130
       unbounded string fields.
 
-- [ ] Leave long free text (reflections, message bodies, notes) to the
+- [x] Leave long free text (reflections, message bodies, notes) to the
       body cap. A tight limit there only gets in the way of somebody
       writing.
 
-- [ ] Match the limits in the frontend forms, so the user is told
+- [x] Match the limits in the frontend forms, so the user is told
       before sending.
 
-- [ ] Extend the request-model test: every field on a named list must
+- [x] Extend the request-model test: every field on a named list must
       have a limit.
 
 - [ ] Write the `api-compatibility/` decision files. Mark approves the
       breaking-change gate.
+      The gate names each change when the pull request leaves draft;
+      the files are written from those names.
+
+Built on 11 October 2026. The limits are in
+`backend/app/schemas/limits.py`: a username 150 and a full name 255,
+the width of their columns; an email 255; a password 128; a token from
+an emailed link 2,048; a one-time code 16. Seventeen fields in
+`schemas/auth.py` took them, with the two invite models and a patient's
+contact email, which the new test found. No limit was checked against
+stored values, as there are no real users.
+`backend/tests/request_fields_have_limits_test.py` goes by the field's
+name across every request model, so a new model with a `password` field
+is held to it unasked. Eight fields are listed in its `NOT_YET` and
+wait: they are on models written in `main.py`, which the thin routes
+plan is taking apart, and giving them limits now would cut across that
+work. The frontend has the same numbers in `src/lib/fieldLimits.ts`:
+`PasswordField` and `EmailField` stop at theirs wherever they are used,
+and each username and full name input has its own.
+
+- [ ] Give the eight fields in `NOT_YET` their limits, once the thin
+      routes plan has passed `AdminUserCreateIn`, `AdminUserUpdateIn`,
+      `TotpVerifyIn` and `ValidateClinicalLeadIn`. The test fails on
+      each entry the day it gets one, so the list empties itself.
 
 ## Phase 4b: Split `main.py` into modules
 

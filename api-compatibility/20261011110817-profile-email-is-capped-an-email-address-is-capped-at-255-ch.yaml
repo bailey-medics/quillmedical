@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-property-max-length-set PATCH /api/auth/profile the `email/anyOf[subschema #1]/` request property's maxLength was set to `255`"
+reason: "Profile email is capped. An email address is capped at 255 characters, the width of the users.email column, and no valid address is longer than 254. The frontend's own inputs stop at the same number, and no real value is this long, so an open tab on an older build sends nothing that is now refused. The silent background update is enough. No forced reload."

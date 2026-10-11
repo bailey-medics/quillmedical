@@ -2,6 +2,7 @@ import { forwardRef } from "react";
 import { TextInput, type TextInputProps } from "@mantine/core";
 import { ErrorMessage } from "@components/typography";
 import FieldDescription from "@components/typography/FieldDescription";
+import { MAX_EMAIL } from "@/lib/fieldLimits";
 import classes from "./TextField.module.css";
 
 const fieldStyles = {
@@ -23,7 +24,8 @@ type EmailFieldProps = Omit<TextInputProps, "type">;
 /**
  * EmailField - a TextField preset for email addresses.
  *
- * Sets `type="email"` and `autoComplete="email"` automatically.
+ * Sets `type="email"` and `autoComplete="email"` automatically, and
+ * stops at `MAX_EMAIL` characters, the most the backend takes.
  * Pair with `EMAIL_PATTERN` from `emailPattern.ts` in your `register`
  * call for RHF validation.
  */
@@ -34,6 +36,7 @@ const EmailField = forwardRef<HTMLInputElement, EmailFieldProps>(
         ref={ref}
         type="email"
         autoComplete="email"
+        maxLength={MAX_EMAIL}
         {...props}
         description={
           description ? (

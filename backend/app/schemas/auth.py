@@ -8,6 +8,15 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from app.schemas.limits import (
+    MAX_EMAIL,
+    MAX_FULL_NAME,
+    MAX_PASSWORD,
+    MAX_TOKEN,
+    MAX_TOTP_CODE,
+    MAX_USERNAME,
+)
+
 
 class LoginIn(BaseModel):
     """Login request payload.
@@ -20,9 +29,9 @@ class LoginIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    username: str
-    password: str
-    totp_code: str | None = None
+    username: str = Field(max_length=MAX_USERNAME)
+    password: str = Field(max_length=MAX_PASSWORD)
+    totp_code: str | None = Field(default=None, max_length=MAX_TOTP_CODE)
 
 
 class RegisterIn(BaseModel):
@@ -57,10 +66,10 @@ class RegisterIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    username: str
-    full_name: str | None = None
-    email: EmailStr
-    password: str
+    username: str = Field(max_length=MAX_USERNAME)
+    full_name: str | None = Field(default=None, max_length=MAX_FULL_NAME)
+    email: EmailStr = Field(max_length=MAX_EMAIL)
+    password: str = Field(max_length=MAX_PASSWORD)
     org_unit_id: int | None = None
     site_id: int | None = None
     marketing_opt_out: bool | None = None
@@ -80,8 +89,8 @@ class ChangePasswordIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    current_password: str
-    new_password: str
+    current_password: str = Field(max_length=MAX_PASSWORD)
+    new_password: str = Field(max_length=MAX_PASSWORD)
 
 
 class ForgotPasswordIn(BaseModel):
@@ -93,7 +102,7 @@ class ForgotPasswordIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    email: EmailStr
+    email: EmailStr = Field(max_length=MAX_EMAIL)
 
 
 class ResetPasswordIn(BaseModel):
@@ -112,8 +121,8 @@ class ResetPasswordIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    token: str
-    new_password: str
+    token: str = Field(max_length=MAX_TOKEN)
+    new_password: str = Field(max_length=MAX_PASSWORD)
     marketing_opt_out: bool | None = None
 
 
@@ -128,7 +137,7 @@ class TotpDisableIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    password: str
+    password: str = Field(max_length=MAX_PASSWORD)
 
 
 class VerifyEmailIn(BaseModel):
@@ -140,7 +149,7 @@ class VerifyEmailIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    token: str
+    token: str = Field(max_length=MAX_TOKEN)
 
 
 class ResendVerificationIn(BaseModel):
@@ -152,7 +161,7 @@ class ResendVerificationIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    email: EmailStr
+    email: EmailStr = Field(max_length=MAX_EMAIL)
 
 
 class UpdateProfileIn(BaseModel):
@@ -167,8 +176,8 @@ class UpdateProfileIn(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    full_name: str | None = None
-    email: EmailStr | None = None
+    full_name: str | None = Field(default=None, max_length=MAX_FULL_NAME)
+    email: EmailStr | None = Field(default=None, max_length=MAX_EMAIL)
 
 
 class DetailResponse(BaseModel):

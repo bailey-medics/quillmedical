@@ -22,6 +22,7 @@ import {
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
 import { api } from "@/lib/api";
+import { MAX_FULL_NAME } from "@/lib/fieldLimits";
 
 interface AccountFormValues {
   fullName: string;
@@ -59,6 +60,7 @@ function AccountFields() {
           <FormStatus />
           <TextField
             label="Full name"
+            maxLength={MAX_FULL_NAME}
             {...methods.register("fullName")}
             error={methods.formState.errors.fullName?.message as string}
           />

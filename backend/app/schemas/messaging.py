@@ -7,6 +7,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.schemas.limits import (
+    MAX_PASSWORD,
+    MAX_TOKEN,
+    MAX_USERNAME,
+)
+
 # ---------------------------------------------------------------------------
 # Requests
 # ---------------------------------------------------------------------------
@@ -96,9 +102,9 @@ class AcceptInviteIn(BaseModel):
         password: Password for new user registration (optional if existing).
     """
 
-    token: str
-    username: str | None = None
-    password: str | None = None
+    token: str = Field(max_length=MAX_TOKEN)
+    username: str | None = Field(default=None, max_length=MAX_USERNAME)
+    password: str | None = Field(default=None, max_length=MAX_PASSWORD)
 
     model_config = {"extra": "forbid"}
 
