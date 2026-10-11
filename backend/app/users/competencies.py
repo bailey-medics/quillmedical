@@ -130,13 +130,39 @@ def _set_platform_role(
     The list handed back is *additional*, with the operator competencies
     merged in when the role is ``superadmin``.
     """
+    additional = additional_for_platform_role(actor, platform_role, additional)
+    user.platform_role = platform_role
+
+    return additional
+
+
+def additional_for_platform_role(
+    actor: User, platform_role: str, additional: list[str]
+) -> list[str]:
+    """What somebody given *platform_role* holds beyond their profession.
+
+    The one rule for making an operator, asked both when a page is saved
+    and when an account is made, so the two cannot differ. Nothing is
+    written: the caller sets the role and writes the rows.
+
+    Args:
+        actor: The caller.
+        platform_role: The platform role the person is to have.
+        additional: What they are to hold beyond their profession.
+
+    Returns:
+        *additional* as it was, unless the role is ``superadmin``, when
+        the operator competencies are merged into it.
+
+    Raises:
+        SuperadminRoleNotAllowed: If the caller is not an operator and
+            the role is ``superadmin``.
+    """
     # Only an operator may make another. The competency that opens
     # this route says *what* someone may administer and never that
     # they may promote someone to run the platform.
     if actor.platform_role != "superadmin" and platform_role == "superadmin":
         raise SuperadminRoleNotAllowed()
-
-    user.platform_role = platform_role
 
     if platform_role != "superadmin":
         return additional

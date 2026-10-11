@@ -25,6 +25,7 @@ from app.features.passport import cover as passport_cover
 from app.marketing.subscribers import fold_into_account
 from app.models import OrgUnit, User, normalise_email, org_unit_member
 from app.security import hash_password
+from app.users.competencies import additional_for_platform_role
 from app.users.enrolments import settle_teaching_enrolments
 from app.users.errors import MissingRequiredFields, NoPlaceChosen
 from app.users.identity import (
@@ -100,10 +101,11 @@ def create_account(db: Session, actor: User, new: NewAccount) -> User:
     An address the caller gives is taken as verified: an administrator
     vouches for it.
 
-    Unlike a save, nothing here asks whether the caller may make an
-    operator, and an operator made here is not given the operator
-    competencies. Both are as the route always was, and are written down
-    in the plan this module came from as a hole to close on its own.
+    Making an operator follows the rule a save follows, from the one
+    function both call: only an operator may make another, and the new
+    one is given the operator competencies beside whatever else they
+    hold. It is asked last of the checks, as a save asks it after the
+    checks on the caller's scope, and before anything is written.
 
     Everything is flushed and nothing is committed: the caller's
     transaction decides whether the account is kept, so a refusal
@@ -132,6 +134,8 @@ def create_account(db: Session, actor: User, new: NewAccount) -> User:
         ProfessionOutOfScope: If the caller may not give the profession.
         CompetenciesOutOfScope: If the account would hold a competency
             the caller may not grant.
+        SuperadminRoleNotAllowed: If the caller is not an operator and
+            the account is to have the ``superadmin`` platform role.
         UserAdminError: Whatever practice or enrolments refuse, in that
             order, once the account is written.
     """
@@ -150,6 +154,13 @@ def create_account(db: Session, actor: User, new: NewAccount) -> User:
     if not scope_for(actor).unlimited:
         _check_within_a_limited_scope(actor, new, places)
 
+    # After the scope checks, as on a save, so a caller whose scope has
+    # a limit is still told they may set no platform role at all. The
+    # last thing that can refuse before the account is written.
+    additional = additional_for_platform_role(
+        actor, new.platform_role, new.additional_competencies
+    )
+
     user = User(
         username=username,
         full_name=new.name.strip(),
@@ -161,7 +172,7 @@ def create_account(db: Session, actor: User, new: NewAccount) -> User:
     )
     sync_competency_rows(
         user,
-        additional=new.additional_competencies,
+        additional=additional,
         removed=new.removed_competencies,
         source="admin",
         granted_by=actor.id,
