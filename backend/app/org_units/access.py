@@ -19,8 +19,10 @@ from app.models import OrgUnit, User, org_unit_member
 from app.org_units.errors import (
     CompetenciesOutOfScope,
     MemberNotFound,
+    OrganisationNeedsManageUsers,
     OrgUnitNotFound,
 )
+from app.org_units.types import type_requires_parent
 from app.organisations import (
     org_units_administered_by,
     org_units_run_by_scoped_manager,
@@ -113,6 +115,36 @@ def require_visible(
         visible = visible_ids(db, user)
     if visible is not None and unit_id not in visible:
         raise OrgUnitNotFound()
+
+    return unit
+
+
+def require_editable(db: Session, user: User, unit_id: int) -> OrgUnit:
+    """Return the org_unit the caller may edit, or refuse.
+
+    ``manage_users`` edits what it administers, as it always has. A
+    scoped manager such as ``manage_teaching`` edits a site they act at:
+    whoever runs teaching there keeps its name, kind, address and whether
+    it is in use right. An organisation is not theirs to edit, since
+    that reshapes more than teaching, and it stays with ``manage_users``.
+
+    Args:
+        db: Core database session.
+        user: The caller.
+        unit_id: The org_unit.
+
+    Raises:
+        OrgUnitNotFound: If no org_unit has that id, or one does that
+            the caller may not see.
+        OrganisationNeedsManageUsers: If it is an organisation and the
+            caller reaches it only through a scoped manager.
+    """
+    unit = require_visible(db, user, unit_id, "manage_users")
+
+    if through_a_scope(user, "manage_users") and not type_requires_parent(
+        unit.type
+    ):
+        raise OrganisationNeedsManageUsers()
 
     return unit
 

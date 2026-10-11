@@ -3,19 +3,28 @@
 import pytest
 from sqlalchemy.orm import Session
 
+from app.cbac.practising import competencies_at
 from app.models import OrgUnit, User
 from app.org_units.errors import (
     CompetenciesOutOfScope,
     CompetencyNotHeld,
+    GrantingNotAllowed,
+    GrantingToYourself,
     MemberNotFound,
     NobodyPractisesHere,
+    OperatorAccountNotAllowed,
     OrgUnitError,
     OrgUnitNotFound,
     UserNotFound,
 )
-from app.org_units.practice import practice_refusal
+from app.org_units.practice import (
+    grant_refusal,
+    grant_then_authorise,
+    practice_refusal,
+)
 from app.organisations import add_org_unit_member
 from app.security import hash_password
+from tests.competencies import hold, withhold
 from tests.places import administers
 
 #: An id no org unit and no user has.
@@ -422,3 +431,255 @@ def test_a_scoped_manager_cannot_authorise_what_a_member_does_not_hold(
         "They do not hold view_teaching_analytics, so it cannot be "
         "authorised here. Grant it to them first."
     )
+
+
+# --- who may add to somebody's competencies ---------------------------------
+
+
+def _grant(
+    db: Session, caller: User, unit_id: int, user_id: int, competency: str
+) -> str:
+    return grant_then_authorise(
+        db, caller, unit_id=unit_id, user_id=user_id, competency=competency
+    )
+
+
+def _practises(db: Session, user: User, unit: OrgUnit) -> set[str]:
+    return competencies_at(db, user, org_unit_id=unit.id)
+
+
+@pytest.fixture
+def colleague(db_session: Session, trust: OrgUnit) -> User:
+    """A consultant who belongs to the trust."""
+    user = _person(db_session, "colleague", "consultant")
+    add_org_unit_member(db_session, trust.id, user.id, "staff")
+    db_session.commit()
+
+    return user
+
+
+@pytest.fixture
+def operator(db_session: Session, trust: OrgUnit) -> User:
+    """An operator, who also belongs to the trust."""
+    user = _person(
+        db_session,
+        "operator",
+        "superadmin_profession",
+        platform_role="superadmin",
+    )
+    add_org_unit_member(db_session, trust.id, user.id, "staff")
+    db_session.commit()
+
+    return user
+
+
+@pytest.fixture
+def admin(db_session: Session, manager: User, trust: OrgUnit) -> User:
+    """The manager, who also belongs to the trust they administer.
+
+    Reaching somebody's account goes by where the administrator belongs,
+    not by where they administer.
+    """
+    add_org_unit_member(db_session, trust.id, manager.id, "staff")
+    db_session.commit()
+
+    return manager
+
+
+def test_somebody_holding_nothing_that_grants_may_not_grant(
+    db_session: Session, surgeon: User, colleague: User
+) -> None:
+    refusal = grant_refusal(db_session, surgeon, colleague)
+
+    assert isinstance(refusal, GrantingNotAllowed)
+
+
+def test_an_operator_may_grant_to_anybody_themselves_included(
+    db_session: Session, operator: User, surgeon: User
+) -> None:
+    assert grant_refusal(db_session, operator, surgeon) is None
+    assert grant_refusal(db_session, operator, operator) is None
+
+
+def test_only_an_operator_grants_to_an_operator(
+    db_session: Session, manager: User, operator: User
+) -> None:
+    refusal = grant_refusal(db_session, manager, operator)
+
+    assert isinstance(refusal, OperatorAccountNotAllowed)
+
+
+def test_nobody_grants_to_themselves(
+    db_session: Session, manager: User
+) -> None:
+    refusal = grant_refusal(db_session, manager, manager)
+
+    assert isinstance(refusal, GrantingToYourself)
+
+
+def test_somebody_at_no_org_unit_the_caller_reaches_is_not_found(
+    db_session: Session, manager: User, surgeon: User
+) -> None:
+    refusal = grant_refusal(db_session, manager, surgeon)
+
+    assert isinstance(refusal, MemberNotFound)
+
+
+def test_administering_where_they_do_not_belong_reaches_nobody(
+    db_session: Session, manager: User, colleague: User
+) -> None:
+    """A row to administer the trust opens its pages, not its accounts."""
+    refusal = grant_refusal(db_session, manager, colleague)
+
+    assert isinstance(refusal, MemberNotFound)
+
+
+def test_an_administrator_may_grant_to_somebody_they_reach(
+    db_session: Session, admin: User, colleague: User
+) -> None:
+    assert grant_refusal(db_session, admin, colleague) is None
+
+
+def test_a_scoped_manager_may_grant_to_somebody_they_reach(
+    db_session: Session, teaching_admin: User, colleague: User
+) -> None:
+    """What it may grant them is asked separately, of its whitelist."""
+    assert grant_refusal(db_session, teaching_admin, colleague) is None
+
+
+# --- granting and authorising together --------------------------------------
+
+
+def test_granting_needs_both_competencies_or_a_scoped_manager(
+    db_session: Session, trust: OrgUnit, surgeon: User, colleague: User
+) -> None:
+    """``manage_users`` alone is not enough, even administering the trust."""
+    hold(surgeon, "manage_users")
+    db_session.commit()
+    administers(db_session, surgeon.id, trust.id)
+
+    with pytest.raises(GrantingNotAllowed):
+        _grant(db_session, surgeon, trust.id, colleague.id, TEACHING)
+
+    assert TEACHING not in colleague.get_final_competencies()
+
+
+def test_granting_at_an_org_unit_outside_their_reach_is_not_found(
+    db_session: Session, manager: User, other_trust: OrgUnit, colleague: User
+) -> None:
+    with pytest.raises(OrgUnitNotFound):
+        _grant(db_session, manager, other_trust.id, colleague.id, TEACHING)
+
+
+def test_nothing_is_granted_at_a_room(
+    db_session: Session, manager: User, room: OrgUnit, colleague: User
+) -> None:
+    with pytest.raises(NobodyPractisesHere) as refused:
+        _grant(db_session, manager, room.id, colleague.id, TEACHING)
+
+    assert refused.value.message == "Nobody practises anything at a room."
+    assert TEACHING not in colleague.get_final_competencies()
+
+
+def test_granting_to_somebody_who_is_not_a_member_here_is_not_found(
+    db_session: Session, manager: User, trust: OrgUnit, surgeon: User
+) -> None:
+    with pytest.raises(MemberNotFound):
+        _grant(db_session, manager, trust.id, surgeon.id, TEACHING)
+
+    with pytest.raises(MemberNotFound):
+        _grant(db_session, manager, trust.id, NOBODY, TEACHING)
+
+
+def test_granting_to_yourself_at_your_own_org_unit_is_refused(
+    db_session: Session, manager: User, trust: OrgUnit
+) -> None:
+    add_org_unit_member(db_session, trust.id, manager.id, "staff")
+    db_session.commit()
+
+    with pytest.raises(GrantingToYourself):
+        _grant(db_session, manager, trust.id, manager.id, TEACHING)
+
+    assert TEACHING not in manager.get_final_competencies()
+
+
+def test_a_scoped_manager_may_not_grant_off_its_whitelist(
+    db_session: Session, teaching_admin: User, trust: OrgUnit, tutor: User
+) -> None:
+    with pytest.raises(CompetenciesOutOfScope) as refused:
+        _grant(db_session, teaching_admin, trust.id, tutor.id, HELD)
+
+    assert refused.value.message == (
+        "You may not grant or remove: perform_venepuncture."
+    )
+    assert HELD not in tutor.get_final_competencies()
+    assert _practises(db_session, tutor, trust) == set()
+
+
+def test_a_competency_new_to_them_is_granted_and_authorised(
+    db_session: Session, admin: User, trust: OrgUnit, colleague: User
+) -> None:
+    assert (
+        _grant(db_session, admin, trust.id, colleague.id, TEACHING)
+        == "granted_and_authorised"
+    )
+
+    assert TEACHING in colleague.get_final_competencies()
+    assert TEACHING in colleague.additional_competency_ids
+    assert _practises(db_session, colleague, trust) == {TEACHING}
+
+
+def test_a_competency_they_hold_is_only_authorised(
+    db_session: Session, admin: User, trust: OrgUnit, colleague: User
+) -> None:
+    held = set(colleague.get_final_competencies())
+
+    assert (
+        _grant(db_session, admin, trust.id, colleague.id, HELD) == "authorised"
+    )
+
+    assert set(colleague.get_final_competencies()) == held
+    assert _practises(db_session, colleague, trust) == {HELD}
+
+
+def test_asking_again_once_both_are_in_place_changes_nothing(
+    db_session: Session, admin: User, trust: OrgUnit, colleague: User
+) -> None:
+    _grant(db_session, admin, trust.id, colleague.id, TEACHING)
+
+    assert (
+        _grant(db_session, admin, trust.id, colleague.id, TEACHING)
+        == "unchanged"
+    )
+
+    assert _practises(db_session, colleague, trust) == {TEACHING}
+
+
+def test_one_their_profession_gives_is_restored_and_not_added_beyond_it(
+    db_session: Session, admin: User, trust: OrgUnit, colleague: User
+) -> None:
+    """Taken off the removed list: it was never beyond their profession."""
+    withhold(colleague, HELD)
+    db_session.commit()
+    assert HELD in colleague.removed_competency_ids
+
+    assert (
+        _grant(db_session, admin, trust.id, colleague.id, HELD)
+        == "granted_and_authorised"
+    )
+
+    assert HELD in colleague.get_final_competencies()
+    assert HELD not in colleague.removed_competency_ids
+    assert HELD not in colleague.additional_competency_ids
+
+
+def test_a_scoped_manager_grants_within_its_whitelist(
+    db_session: Session, teaching_admin: User, trust: OrgUnit, colleague: User
+) -> None:
+    assert (
+        _grant(db_session, teaching_admin, trust.id, colleague.id, TEACHING)
+        == "granted_and_authorised"
+    )
+
+    assert TEACHING in colleague.get_final_competencies()
+    assert _practises(db_session, colleague, trust) == {TEACHING}

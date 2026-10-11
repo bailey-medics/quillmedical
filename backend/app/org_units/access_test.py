@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models import OrgUnit, User
 from app.org_units.access import (
+    require_editable,
     require_in_scope,
     require_member,
     require_visible,
@@ -15,6 +16,7 @@ from app.org_units.access import (
 from app.org_units.errors import (
     CompetenciesOutOfScope,
     MemberNotFound,
+    OrganisationNeedsManageUsers,
     OrgUnitError,
     OrgUnitNotFound,
 )
@@ -344,3 +346,41 @@ def test_an_id_nobody_has_reads_the_same(
 
     assert refusal.value.status_code == 404
     assert refusal.value.message == "Member not found"
+
+
+# --- require_editable -------------------------------------------------------
+
+
+def test_an_administrator_may_edit_an_organisation_they_administer(
+    db_session: Session, manager: User, trust: OrgUnit
+) -> None:
+    assert require_editable(db_session, manager, trust.id) is trust
+
+
+def test_an_org_unit_outside_their_reach_is_not_found_to_edit(
+    db_session: Session, manager: User, other_trust: OrgUnit
+) -> None:
+    with pytest.raises(OrgUnitNotFound):
+        require_editable(db_session, manager, other_trust.id)
+
+    with pytest.raises(OrgUnitNotFound):
+        require_editable(db_session, manager, NOWHERE)
+
+
+def test_a_scoped_manager_may_edit_a_site_they_act_at(
+    db_session: Session, teaching_admin: User, ward: OrgUnit
+) -> None:
+    assert require_editable(db_session, teaching_admin, ward.id) is ward
+
+
+def test_a_scoped_manager_may_not_edit_an_organisation(
+    db_session: Session, teaching_admin: User, trust: OrgUnit
+) -> None:
+    """They see it, and it stays with ``manage_users`` to edit."""
+    with pytest.raises(OrganisationNeedsManageUsers) as refused:
+        require_editable(db_session, teaching_admin, trust.id)
+
+    assert refused.value.status_code == 403
+    assert refused.value.message == (
+        "Editing an organisation requires manage_users."
+    )
