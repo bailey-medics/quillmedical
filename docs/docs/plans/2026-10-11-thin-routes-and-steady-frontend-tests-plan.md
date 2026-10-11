@@ -166,6 +166,18 @@ that work is larger and each step of it is safe to land alone.
       handler's body is `{"detail": message}`, which is what an
       `HTTPException` gives.
 
+- [ ] Decide what to do about an address sent in other capitals, in
+      `acts_on_whole_account` in `backend/app/users/update.py`. Every
+      address is stored in lower case, by `normalise_email` on each
+      write. But the question "does this save change the address?" is
+      asked of the address as typed, trimmed and not lower-cased, so
+      `Sam@nhs.net` against a stored `sam@nhs.net` counts as a change.
+      The scope check then runs, and a scoped manager saving somebody
+      outside their scope is refused for a change that is not one. It
+      was so before the rule moved; a test pins it as it is. The fix is
+      to normalise before comparing, and to turn that test round. Mark
+      asked about it on 11 October 2026.
+
 - [ ] Decide what to do about a hole found on the way, in
       `create_user_with_cbac`: **somebody holding `manage_users` who is
       not an operator can create an account with the `superadmin`
@@ -225,8 +237,27 @@ more.
       in Phase 1 is left open, and a test in `create_test.py` pins it
       as it is. Found on the way: a username given is kept exactly as
       sent, untrimmed, where a save trims it. Left as it is.
-- [ ] `register`, 270 lines and 24 branches. It decides several things
-      in a row, and is the first thing a new person meets.
+- [x] `register`, 270 lines and 24 branches. It decides several things
+      in a row, and is the first thing a new person meets. Now
+      `register_account` in `backend/app/users/register.py`, taking a
+      `Registration` and handing back the account, flushed.
+      `clinical_lead_site` moved there with it, unchanged, since the
+      rule asks it and a module cannot import from `main.py`. The route
+      keeps the rate limit, the refusal where clinical services are on,
+      the verification email with its three refusals, and the commit:
+      the email is still sent after every write and before the commit,
+      so a refusal or a failed send leaves nobody behind. Eleven new
+      refusals in `errors.py`; the short password is the class a save
+      raises. A taken username and a taken address are one class,
+      `UsernameOrEmailInUse`, so the two cannot come to answer
+      differently, and the shared checks in `identity.py`, which say
+      which was taken, are not used. None of the words were pinned, so
+      `backend/tests/register_refusals_test.py` does it. Found on the
+      way: four refusals no request can reach, because the organisation
+      and the site now both come from the clinical lead's address (the
+      two asking for an organisation, a site beneath another
+      organisation, and a module not open to registration). Kept, and
+      tested by calling the part that raises them.
 - [ ] `ci_teaching_sync`, 168 lines.
 - [ ] `list_users`, 159 lines.
 - [ ] The remaining routes of 40 lines or more, thirteen at the time of

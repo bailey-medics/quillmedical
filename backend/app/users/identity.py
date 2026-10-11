@@ -17,7 +17,7 @@ from app.users.errors import (
     UsernameTaken,
 )
 
-#: The fewest characters a password set by an administrator may have.
+#: The fewest characters a password may have, whoever sets it.
 MIN_PASSWORD_LENGTH = 8
 
 
@@ -68,7 +68,7 @@ def change_identity(
 
 
 def check_password_long_enough(password: str) -> None:
-    """Refuse a password an administrator sets that is too short.
+    """Refuse a password that is too short, whoever is setting it.
 
     Raises:
         PasswordTooShort: If it is under eight characters.
