@@ -26,6 +26,11 @@ London. It is still version 1.0: that version had never been published or
 shown to anybody, so it was corrected in place and no earlier version is
 kept. The terms of service name no email provider and did not change.
 
+It was corrected again on 11 October 2026, after a review of the
+documentation against the code: section 3.9 now says that switching the
+usage count off in Settings is remembered on the device. Still version
+1.0, for the same reason.
+
 ## Versioning
 
 Every version carries a version number and the date it took effect,
