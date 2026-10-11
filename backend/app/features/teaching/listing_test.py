@@ -10,12 +10,19 @@ from app.cbac.positions import set_clinical_lead
 from app.features.teaching import media, storage
 from app.features.teaching.access import BankOnShow, DelegatesInView
 from app.features.teaching.listing import (
+    admin_bank_rows,
+    bank_organisation_rows,
     delegate_rows,
     learning_module_rows,
     question_bank_rows,
 )
-from app.features.teaching.models import Assessment, QuestionBankConfig
-from app.features.teaching.schemas import DelegateOut
+from app.features.teaching.models import (
+    Assessment,
+    QuestionBankConfig,
+    QuestionBankItem,
+    QuestionBankOrgStatus,
+)
+from app.features.teaching.schemas import AdminBankOut, BankOrgRow, DelegateOut
 from app.models import OrgUnit, Position, PositionHolding, User
 from app.organisations import add_org_unit_member
 
@@ -1148,3 +1155,296 @@ def test_a_bank_with_no_cover_has_no_address_and_none_is_asked_for(
     (row,) = question_bank_rows(db_session, {BANK: _on_show(org)})
 
     assert row["cover_image_url"] is None
+
+
+# --- admin_bank_rows --------------------------------------------------------
+
+
+def _items(db: Session, org: OrgUnit, count: int, *, version: int = 1) -> None:
+    """Items of one version of the bank, held by the organisation."""
+    for _ in range(count):
+        db.add(
+            QuestionBankItem(
+                org_unit_id=org.id,
+                question_bank_id=BANK,
+                bank_version=version,
+                status="published",
+            )
+        )
+
+    db.flush()
+
+
+def _status(
+    db: Session,
+    org: OrgUnit,
+    bank_id: str = BANK,
+    *,
+    active_version: int | None = 1,
+    is_live: bool = True,
+    site_registration: bool = False,
+) -> None:
+    db.add(
+        QuestionBankOrgStatus(
+            org_unit_id=org.id,
+            question_bank_id=bank_id,
+            is_live=is_live,
+            active_version=active_version,
+            site_registration=site_registration,
+        )
+    )
+    db.flush()
+
+
+def _admin_bucket(
+    monkeypatch: pytest.MonkeyPatch, *bank_ids: str
+) -> list[str]:
+    """A bucket holding these banks, and each time it was listed."""
+    listed: list[str] = []
+
+    def list_it(bucket: str) -> list[str]:
+        listed.append(bucket)
+
+        return list(bank_ids)
+
+    monkeypatch.setattr("app.config.settings.TEACHING_GCS_BUCKET", "a-bucket")
+    monkeypatch.setattr(storage, "list_banks_in_gcs", list_it)
+
+    return listed
+
+
+def _no_admin_bucket(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No bucket, and a failure if one is listed all the same."""
+
+    def refuse(bucket: str) -> list[str]:
+        raise AssertionError("there is no bucket to list")
+
+    monkeypatch.setattr("app.config.settings.TEACHING_GCS_BUCKET", None)
+    monkeypatch.setattr(storage, "list_banks_in_gcs", refuse)
+
+
+def test_with_nothing_held_and_no_bucket_an_administrator_has_no_rows(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    _no_admin_bucket(monkeypatch)
+
+    assert admin_bank_rows(db_session, org.id, {}) == []
+
+
+def test_a_held_bank_is_described_by_the_copy_handed_in(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    copy_held = _synced(db_session, org, version=2)
+    _items(db_session, org, 3, version=2)
+    _status(db_session, org, active_version=1)
+    _no_admin_bucket(monkeypatch)
+
+    rows = admin_bank_rows(db_session, org.id, {BANK: copy_held})
+
+    assert rows == [
+        AdminBankOut(
+            bank_id=BANK,
+            title="Polyps",
+            version=2,
+            active_version=1,
+            type="uniform",
+            synced_at=copy_held.synced_at,
+            in_gcs=False,
+            in_db=True,
+            item_count=3,
+        )
+    ]
+
+
+def test_only_the_items_of_the_newest_version_are_counted(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    _synced(db_session, org, version=1)
+    newest = _synced(db_session, org, version=2)
+    _items(db_session, org, 5, version=1)
+    _items(db_session, org, 2, version=2)
+    _no_admin_bucket(monkeypatch)
+
+    (row,) = admin_bank_rows(db_session, org.id, {BANK: newest})
+
+    assert row.item_count == 2
+
+
+def test_another_organisations_items_and_served_version_are_not_read(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    other = _organisation(db_session, "Another Trust")
+    copy_held = _synced(db_session, org)
+    _items(db_session, org, 1)
+    _items(db_session, other, 6)
+    _status(db_session, other, active_version=1)
+    _no_admin_bucket(monkeypatch)
+
+    (row,) = admin_bank_rows(db_session, org.id, {BANK: copy_held})
+
+    assert row.item_count == 1
+    assert row.active_version is None
+
+
+def test_a_held_bank_nothing_is_served_of_has_no_active_version(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    copy_held = _synced(db_session, org)
+    _status(db_session, org, active_version=None)
+    _no_admin_bucket(monkeypatch)
+
+    (row,) = admin_bank_rows(db_session, org.id, {BANK: copy_held})
+
+    assert row.active_version is None
+    assert row.item_count == 0
+
+
+def test_a_bank_only_in_the_bucket_is_named_and_nothing_else_said_of_it(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The bucket is listed whole, whoever each bank was written for."""
+    org = _organisation(db_session)
+    listed = _admin_bucket(monkeypatch, OTHER_BANK)
+
+    rows = admin_bank_rows(db_session, org.id, {})
+
+    assert rows == [AdminBankOut(bank_id=OTHER_BANK, in_gcs=True, in_db=False)]
+    assert listed == ["a-bucket"]
+
+
+def test_a_bank_held_and_in_the_bucket_has_one_row_saying_both(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    copy_held = _synced(db_session, org)
+    _admin_bucket(monkeypatch, BANK)
+
+    (row,) = admin_bank_rows(db_session, org.id, {BANK: copy_held})
+
+    assert row.in_gcs is True
+    assert row.in_db is True
+    assert row.title == "Polyps"
+
+
+def test_an_administrators_rows_are_in_bank_id_order(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    copy_held = _synced(db_session, org)
+    _admin_bucket(monkeypatch, "varices", OTHER_BANK)
+
+    rows = admin_bank_rows(db_session, org.id, {BANK: copy_held})
+
+    assert [row.bank_id for row in rows] == [OTHER_BANK, BANK, "varices"]
+    assert [row.in_db for row in rows] == [False, True, False]
+
+
+def test_a_bucket_that_cannot_be_listed_leaves_the_held_banks_listed(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def refuse(bucket: str) -> list[str]:
+        raise RuntimeError("no credentials")
+
+    org = _organisation(db_session)
+    copy_held = _synced(db_session, org)
+    monkeypatch.setattr("app.config.settings.TEACHING_GCS_BUCKET", "a-bucket")
+    monkeypatch.setattr(storage, "list_banks_in_gcs", refuse)
+
+    (row,) = admin_bank_rows(db_session, org.id, {BANK: copy_held})
+
+    assert row.bank_id == BANK
+    assert row.in_gcs is False
+
+
+def test_with_no_bucket_the_content_path_is_not_read_for_banks(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Only the bucket adds rows. Banks on disk are not looked for."""
+
+    def refuse(base_path: str) -> list[str]:
+        raise AssertionError("the content path is not read here")
+
+    org = _organisation(db_session)
+    _no_admin_bucket(monkeypatch)
+    monkeypatch.setattr(
+        "app.config.settings.TEACHING_QUESTION_BANK_PATH", "/content"
+    )
+    monkeypatch.setattr(storage, "discover_local_banks", refuse)
+
+    assert admin_bank_rows(db_session, org.id, {}) == []
+
+
+# --- bank_organisation_rows -------------------------------------------------
+
+
+def test_with_no_organisations_a_bank_has_no_rows(db_session: Session) -> None:
+    assert bank_organisation_rows(db_session, BANK, []) == []
+
+
+def test_each_organisation_is_listed_with_how_the_bank_stands_there(
+    db_session: Session,
+) -> None:
+    open_here = _organisation(db_session, "Open Trust")
+    closed_here = _organisation(db_session, "Closed Trust")
+    _status(db_session, open_here, is_live=True, site_registration=True)
+    _status(db_session, closed_here, is_live=False)
+
+    rows = bank_organisation_rows(db_session, BANK, [open_here, closed_here])
+
+    assert rows == [
+        BankOrgRow(
+            org_unit_id=open_here.id,
+            organisation_name="Open Trust",
+            is_live=True,
+            site_registration=True,
+        ),
+        BankOrgRow(
+            org_unit_id=closed_here.id,
+            organisation_name="Closed Trust",
+            is_live=False,
+            site_registration=False,
+        ),
+    ]
+
+
+def test_an_organisation_with_no_status_for_the_bank_is_listed_as_closed(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+
+    (row,) = bank_organisation_rows(db_session, BANK, [org])
+
+    assert row.is_live is False
+    assert row.site_registration is False
+
+
+def test_how_another_bank_stands_is_not_said_of_this_one(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    _status(db_session, org, OTHER_BANK, is_live=True, site_registration=True)
+
+    (row,) = bank_organisation_rows(db_session, BANK, [org])
+
+    assert row.is_live is False
+    assert row.site_registration is False
+
+
+def test_only_the_organisations_handed_in_are_listed(
+    db_session: Session,
+) -> None:
+    """Who is listed is the caller's answer. A status row elsewhere
+    adds nobody.
+    """
+    listed = _organisation(db_session, "Listed Trust")
+    not_listed = _organisation(db_session, "Another Trust")
+    _status(db_session, not_listed)
+
+    rows = bank_organisation_rows(db_session, BANK, [listed])
+
+    assert [row.organisation_name for row in rows] == ["Listed Trust"]

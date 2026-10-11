@@ -35,8 +35,11 @@ from app.features.teaching.access import (
     delegates_in_view,
     modules_open_to,
     modules_served_where_they_belong,
+    newest_copies_held_by,
     organisations_open_for_modules,
+    organisations_with_teaching_on,
 )
+from app.features.teaching.admin_banks import admin_bank_detail
 from app.features.teaching.attempt_results import (
     certificate_background,
     certificate_due,
@@ -56,9 +59,18 @@ from app.features.teaching.attempts import (
 )
 from app.features.teaching.enrolment import enrolled_on_offer, is_enrolled
 from app.features.teaching.listing import (
+    admin_bank_rows,
+    bank_organisation_rows,
     delegate_rows,
     learning_module_rows,
     question_bank_rows,
+)
+from app.features.teaching.manual_sync import (
+    bank_named_in,
+    check_bank,
+    discard_download,
+    sync_bank,
+    sync_banks_by_hand,
 )
 from app.features.teaching.models import (
     Assessment,
@@ -92,7 +104,6 @@ from app.features.teaching.schemas import (
     DelegateModuleOut,
     DelegateOut,
     EducatorResultOut,
-    EmailTemplateOut,
     ItemImageOut,
     LearningContentOut,
     LearningModuleOut,
@@ -117,16 +128,13 @@ from app.features.teaching.schemas import (
     SyncResultOut,
     TeachingOrgSettingsIn,
     TeachingOrgSettingsOut,
-    ValidationMessageOut,
     ValidationResultOut,
     VideoAccessOut,
 )
 from app.features.teaching.storage import (
     download_bank_from_gcs,
-    get_module_status_from_gcs,
     get_storage_backend,
     list_bank_images_in_gcs,
-    list_banks_in_gcs,
     resolve_module_dir,
 )
 from app.features.teaching.video_access import (
@@ -134,8 +142,6 @@ from app.features.teaching.video_access import (
     sign_cookie,
 )
 from app.models import (
-    OrgUnit,
-    OrgUnitFeature,
     User,
 )
 from app.organisations import (
@@ -1371,49 +1377,28 @@ def validate_items(
     body: dict[str, str],
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
-) -> dict[str, Any]:
-    """Dry-run validation of a question bank (no import)."""
-    import shutil
+) -> ValidationResultOut:
+    """Dry-run validation of a question bank (no import).
 
-    from app.features.teaching.sync import sync_question_bank
-
-    bank_id = body.get("bank_id", "")
-
-    if not bank_id:
-        raise HTTPException(400, "bank_id is required")
-
+    The bank is looked for before the caller's membership is asked, so
+    where both are wrong it is the bank that is reported. The check
+    itself is ``check_bank``.
+    """
+    bank_id = bank_named_in(body)
     bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
 
     try:
         org_id = _get_user_org_id(user, db)
-        inventory = _build_image_inventory(bank_id, is_temp)
-        result, _ = sync_question_bank(
-            bank_path,
-            org_id,
-            user.id,
+
+        return check_bank(
             db,
-            validate_only=True,
-            image_inventory=inventory,
+            bank_path,
+            org_unit_id=org_id,
+            user_id=user.id,
+            image_inventory=_build_image_inventory(bank_id, is_temp),
         )
     finally:
-        if is_temp:
-            shutil.rmtree(bank_path.parent, ignore_errors=True)
-
-    return {
-        "bank_id": result.bank_id,
-        "version": result.version,
-        "is_valid": result.is_valid,
-        "errors": [
-            ValidationMessageOut(path=e.path, message=e.message)
-            for e in result.errors
-        ],
-        "warnings": [
-            ValidationMessageOut(path=w.path, message=w.message)
-            for w in result.warnings
-        ],
-        "item_count": result.item_count,
-        "summary": result.summary(),
-    }
+        discard_download(bank_path, is_temp)
 
 
 @teaching_router.post(
@@ -1426,47 +1411,28 @@ def sync_items(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> QuestionBankSync:
-    """Trigger sync from filesystem/GCS to database."""
-    import shutil
+    """Trigger sync from filesystem/GCS to database.
 
-    from app.features.teaching.sync import sync_question_bank
-
-    bank_id = body.get("bank_id", "")
-
-    if not bank_id:
-        raise HTTPException(400, "bank_id is required")
-
+    The bank is looked for before the caller's membership is asked, as
+    in ``validate_items``. The sync itself is ``sync_bank``.
+    """
+    bank_id = bank_named_in(body)
     bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
 
     try:
         org_id = _get_user_org_id(user, db)
-        inventory = _build_image_inventory(bank_id, is_temp)
 
-        # Resolve module status for version guard
-        status: str | None = None
-        if is_temp:
-            from app.config import settings
-
-            bucket = settings.TEACHING_GCS_BUCKET
-            if bucket:
-                status = get_module_status_from_gcs(bucket, bank_id)
-
-        validation, sync_record = sync_question_bank(
-            bank_path,
-            org_id,
-            user.id,
+        return sync_bank(
             db,
-            image_inventory=inventory,
-            module_status=status,
+            bank_path,
+            bank_id=bank_id,
+            downloaded=is_temp,
+            org_unit_id=org_id,
+            user_id=user.id,
+            image_inventory=_build_image_inventory(bank_id, is_temp),
         )
     finally:
-        if is_temp:
-            shutil.rmtree(bank_path.parent, ignore_errors=True)
-
-    if sync_record is None:
-        raise HTTPException(500, "Sync failed unexpectedly")
-
-    return sync_record
+        discard_download(bank_path, is_temp)
 
 
 @teaching_router.get(
@@ -1942,90 +1908,15 @@ def list_admin_banks(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> list[AdminBankOut]:
-    """List all teaching modules (from DB + GCS)."""
-    from app.config import settings
+    """List all teaching modules (from DB + GCS).
 
+    Which synced copies are the caller's to see is
+    ``newest_copies_held_by``; what is said of each bank, and of the
+    banks in the bucket, is ``admin_bank_rows``.
+    """
     org_id = _get_user_org_id(user, db)
 
-    # DB banks - latest version per bank_id
-    db_configs = (
-        db.execute(
-            select(QuestionBankConfig)
-            .where(QuestionBankConfig.org_unit_id == org_id)
-            .order_by(
-                QuestionBankConfig.question_bank_id,
-                QuestionBankConfig.version.desc(),
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-    # De-duplicate: keep only the latest version per bank_id
-    seen: dict[str, QuestionBankConfig] = {}
-
-    for c in db_configs:
-        if c.question_bank_id not in seen:
-            seen[c.question_bank_id] = c
-
-            # Count items per bank
-    item_counts: dict[str, int] = {}
-
-    for bank_id, cfg in seen.items():
-        count = db.execute(
-            select(QuestionBankItem.id).where(
-                QuestionBankItem.org_unit_id == org_id,
-                QuestionBankItem.question_bank_id == bank_id,
-                QuestionBankItem.bank_version == cfg.version,
-            )
-        ).all()
-        item_counts[bank_id] = len(count)
-
-        # What this organisation actually serves, which is not necessarily the
-        # newest imported. Showing both is the point: "version 3 active, version
-        # 4 available" is the state an admin needs to notice.
-    active_versions: dict[str, int | None] = {
-        row.question_bank_id: row.active_version
-        for row in db.execute(
-            select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.org_unit_id == org_id,
-            )
-        )
-        .scalars()
-        .all()
-    }
-
-    # GCS banks
-    gcs_bank_ids: set[str] = set()
-    bucket = settings.TEACHING_GCS_BUCKET
-
-    if bucket:
-        try:
-            gcs_bank_ids = set(list_banks_in_gcs(bucket))
-        except Exception:
-            logger.exception("Failed to list GCS banks")
-
-            # Merge
-    all_bank_ids = set(seen.keys()) | gcs_bank_ids
-    result: list[AdminBankOut] = []
-
-    for bank_id in sorted(all_bank_ids):
-        bank_cfg = seen.get(bank_id)
-        result.append(
-            AdminBankOut(
-                bank_id=bank_id,
-                title=bank_cfg.title if bank_cfg else None,
-                version=bank_cfg.version if bank_cfg else None,
-                active_version=active_versions.get(bank_id),
-                type=bank_cfg.type if bank_cfg else None,
-                synced_at=bank_cfg.synced_at if bank_cfg else None,
-                in_gcs=bank_id in gcs_bank_ids,
-                in_db=bank_id in seen,
-                item_count=item_counts.get(bank_id, 0),
-            )
-        )
-
-    return result
+    return admin_bank_rows(db, org_id, newest_copies_held_by(db, org_id))
 
 
 @teaching_router.post(
@@ -2037,106 +1928,22 @@ def sync_all_banks(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
-    """Sync all question banks from GCS (or local filesystem)."""
-    import shutil
+    """Sync all question banks from GCS (or local filesystem).
 
-    from app.config import settings
-    from app.features.teaching.sync import sync_question_bank
-    from app.features.teaching.tooling.validate import (
-        validate_module_metadata,
+    The loop is ``sync_banks_by_hand``. It is handed the two helpers
+    that find a bank and list its images, which stay here because other
+    routes use them.
+    """
+    org_id = _get_user_org_id(user, db)
+    outcome = sync_banks_by_hand(
+        db,
+        org_unit_id=org_id,
+        user_id=user.id,
+        find_bank=_resolve_bank_path_or_gcs,
+        list_images=_build_image_inventory,
     )
 
-    org_id = _get_user_org_id(user, db)
-    bucket = settings.TEACHING_GCS_BUCKET
-    base_path = settings.TEACHING_QUESTION_BANK_PATH
-
-    # Discover bank IDs
-    bank_ids: list[str] = []
-
-    if bucket:
-        try:
-            bank_ids = list_banks_in_gcs(bucket)
-        except Exception:
-            logger.exception("Failed to list GCS banks")
-    elif base_path:
-        from app.features.teaching.storage import discover_local_banks
-
-        bank_ids = discover_local_banks(base_path)
-
-    synced: list[QuestionBankSync] = []
-    errors: list[dict[str, str]] = []
-
-    for bank_id in bank_ids:
-        bank_path: Path | None = None
-        is_temp = False
-        tooling_module_dir: Path | None = None
-        tooling_is_temp = False
-        try:
-            # Module metadata and learning content. The assessment is
-            # validated inside sync_question_bank against the GCS
-            # inventory, which a module directory cannot supply - together
-            # the two cover everything exactly once.
-            if base_path and not bucket:
-                from app.features.teaching.storage import (
-                    resolve_module_dir,
-                )
-
-                tooling_module_dir = resolve_module_dir(base_path, bank_id)
-            elif bucket:
-                from app.features.teaching.storage import (
-                    download_module_from_gcs,
-                )
-
-                tooling_module_dir = download_module_from_gcs(bucket, bank_id)
-                tooling_is_temp = tooling_module_dir is not None
-
-            if tooling_module_dir:
-                metadata = validate_module_metadata(tooling_module_dir)
-                if not metadata.is_valid:
-                    msg = "; ".join(e.message for e in metadata.errors[:5])
-                    errors.append({"bank_id": bank_id, "error": msg})
-                    continue
-            else:
-                # No module directory found - block sync for safety
-                errors.append(
-                    {
-                        "bank_id": bank_id,
-                        "error": (
-                            "module directory not found - "
-                            "cannot validate module metadata"
-                        ),
-                    }
-                )
-                continue
-
-            bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
-            inventory = _build_image_inventory(bank_id, is_temp)
-
-            # Resolve module status for version guard
-            status: str | None = None
-            if is_temp and bucket:
-                status = get_module_status_from_gcs(bucket, bank_id)
-
-            _validation, sync_record = sync_question_bank(
-                bank_path,
-                org_id,
-                user.id,
-                db,
-                image_inventory=inventory,
-                module_status=status,
-            )
-            if sync_record:
-                synced.append(sync_record)
-        except Exception as exc:
-            logger.exception("Failed to sync bank '%s'", bank_id)
-            errors.append({"bank_id": bank_id, "error": str(exc)})
-        finally:
-            if is_temp and bank_path:
-                shutil.rmtree(bank_path.parent, ignore_errors=True)
-            if tooling_is_temp and tooling_module_dir:
-                shutil.rmtree(tooling_module_dir.parent, ignore_errors=True)
-
-    return {"synced": synced, "errors": errors}
+    return {"synced": outcome.synced, "errors": outcome.errors}
 
 
 @teaching_router.put(
@@ -2219,95 +2026,13 @@ def get_admin_bank_detail(
     user: User = _DEP_USER,
     db: Session = _DEP_SESSION,
 ) -> AdminBankDetailOut:
-    """Return detailed admin view of a single question bank."""
+    """Return detailed admin view of a single question bank.
+
+    The rules are ``admin_bank_detail``.
+    """
     org_id = _get_user_org_id(user, db)
 
-    # Get bank config from DB
-    config_row = (
-        db.execute(
-            select(QuestionBankConfig)
-            .where(
-                QuestionBankConfig.org_unit_id == org_id,
-                QuestionBankConfig.question_bank_id == bank_id,
-            )
-            .order_by(QuestionBankConfig.version.desc())
-        )
-        .scalars()
-        .first()
-    )
-
-    if not config_row:
-        raise HTTPException(404, "Question bank not found")
-
-        # Item count
-    item_count = (
-        db.execute(
-            select(QuestionBankItem.id).where(
-                QuestionBankItem.org_unit_id == org_id,
-                QuestionBankItem.question_bank_id == bank_id,
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-    config = config_row.config_yaml
-    results = config.get("results", {})
-    email_student_on_pass: bool = results.get("email_student_on_pass", False)
-    email_coordinator_on_pass: bool = results.get(
-        "email_coordinator_on_pass", False
-    )
-
-    # Load email templates if either email flag is enabled
-    coordinator_template: EmailTemplateOut | None = None
-    student_template: EmailTemplateOut | None = None
-
-    if email_student_on_pass or email_coordinator_on_pass:
-        from app.features.teaching.email_templates import (
-            extract_email_template,
-        )
-
-        ct = extract_email_template(config, "coordinator_email")
-        if ct:
-            coordinator_template = EmailTemplateOut(
-                subject=ct["subject"],
-                body=ct["body"],
-                attach_certificate=ct.get("attach_certificate", True),
-                preheader=ct.get("preheader") or None,
-            )
-        st = extract_email_template(config, "student_email")
-        if st:
-            student_template = EmailTemplateOut(
-                subject=st["subject"],
-                body=st["body"],
-                attach_certificate=st.get("attach_certificate", True),
-                preheader=st.get("preheader") or None,
-            )
-
-            # The pointer for this organisation, which may lag the newest import.
-    status_row = (
-        db.execute(
-            select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.org_unit_id == org_id,
-                QuestionBankOrgStatus.question_bank_id == bank_id,
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-    return AdminBankDetailOut(
-        bank_id=bank_id,
-        title=config_row.title,
-        version=config_row.version,
-        active_version=status_row.active_version if status_row else None,
-        type=config_row.type,
-        item_count=len(item_count),
-        email_student_on_pass=email_student_on_pass,
-        email_coordinator_on_pass=email_coordinator_on_pass,
-        coordinator_email_template=coordinator_template,
-        student_email_template=student_template,
-    )
+    return admin_bank_detail(db, org_id, bank_id)
 
 
 @teaching_router.get(
@@ -2326,61 +2051,17 @@ def list_bank_organisations(
     a bank is set live for an organisation and reaches its sites from
     there, so ``_update_bank_org_settings`` refuses anything else. A site
     listed here was a row whose settings could never be saved.
-    """
-    from app.org_units.tree import organisation_org_unit_ids
 
+    Which organisations is ``organisations_with_teaching_on``, and it is
+    every one of them, not only the caller's. What is said of each is
+    ``bank_organisation_rows``.
+    """
     # Verify caller has an organisation (i.e. is an educator)
     _get_user_org_id(user, db)
 
-    # All orgs that have the "teaching" feature enabled
-    orgs = (
-        db.execute(
-            select(OrgUnit)
-            .join(
-                OrgUnitFeature,
-                OrgUnitFeature.org_unit_id == OrgUnit.id,
-            )
-            .where(
-                OrgUnitFeature.feature_key == "teaching",
-                OrgUnit.id.in_(organisation_org_unit_ids()),
-            )
-            .order_by(OrgUnit.name)
-        )
-        .scalars()
-        .all()
+    return bank_organisation_rows(
+        db, bank_id, organisations_with_teaching_on(db)
     )
-
-    place_ids = [place.id for place in orgs]
-
-    # Get bank status rows for these orgs
-    statuses = {
-        row.org_unit_id: row
-        for row in db.execute(
-            select(QuestionBankOrgStatus).where(
-                QuestionBankOrgStatus.question_bank_id == bank_id,
-                QuestionBankOrgStatus.org_unit_id.in_(place_ids),
-            )
-        )
-        .scalars()
-        .all()
-    }
-
-    rows: list[BankOrgRow] = []
-
-    for place in orgs:
-        status = statuses.get(place.id)
-        rows.append(
-            BankOrgRow(
-                org_unit_id=place.id,
-                organisation_name=place.name,
-                is_live=status.is_live if status else False,
-                site_registration=(
-                    status.site_registration if status else False
-                ),
-            )
-        )
-
-    return rows
 
 
 def _promote_bank_version(

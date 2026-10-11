@@ -758,14 +758,58 @@ the video callbacks already brought in.
       sat; a background fetched from the bucket is left behind when
       drawing fails; and the marked answers are still given when the
       bank's synced copy has gone, where the certificate answers 500.
-- [ ] **Syncing by hand** - `sync_all_banks` (99 lines, 13 branches),
-      folded into `sync_every_bank` in `ci_sync.py`, which is the same
-      loop. It has the fault the CI sync had, and the fold closes it: a
-      bank that did not load is listed as failed and not as synced.
-      With `validate_items` and `sync_items`.
-- [ ] **The administrator's view of the banks** - `list_admin_banks`
+- [x] **Syncing by hand** - `sync_all_banks` (99 lines, 13 branches),
+      with `validate_items` and `sync_items`. Moved as it is. It is
+      the same loop as `sync_every_bank` in `ci_sync.py`, and it has
+      the fault the CI sync had: a bank that did not load is listed as
+      synced, and the admin page shows it as imported. Folding the two
+      into one would close that, and would change what the manual sync
+      answers, so it is not done in this phase: it is recorded above
+      with the other things found, for Mark to rule on.
+      Done in a new `manual_sync.py`: `bank_named_in`, `check_bank`,
+      `sync_bank`, `discard_download` and `sync_banks_by_hand`, with
+      `BankIdRequired` (400) and `SyncRecordedNothing` (500) added to
+      `errors.py`. It shares nothing with `ci_sync.py`, not even the
+      listing of bank ids, so neither loop can change what the other
+      answers. The fault is pinned as it stands, in
+      `manual_sync_test.py` and through the route in
+      `backend/tests/teaching_syncing_by_hand_test.py`, which are the
+      first tests to drive these three routes. `_resolve_bank_path_or_gcs`
+      and `_build_image_inventory` stay in the router, raising
+      `HTTPException`: both loops send an exception's own words back,
+      and an `HTTPException`'s begin with its status ("400: Neither
+      ..."), which `ci_sync_test.py` pins, so a `TeachingError` in
+      their place would change both answers. The routes call them and
+      `sync_banks_by_hand` is handed the two functions; `ci_sync.py`
+      still imports them inside its function. Found and pinned, not
+      changed: syncing one live bank whose version has not moved on
+      answers 500 "Sync failed unexpectedly", where the sync of every
+      bank leaves it off both lists with a 200; a draft turned away
+      for its version is on neither list of the sync of every bank;
+      and the two single-bank routes look for the bank before asking
+      whether the caller belongs to an organisation.
+- [x] **The administrator's view of the banks** - `list_admin_banks`
       (83 lines), `get_admin_bank_detail` (88 lines) and
-      `list_bank_organisations` (54 lines).
+      `list_bank_organisations` (54 lines). Which copies and which
+      organisations is `newest_copies_held_by`, `newest_copy_held_by`
+      and `organisations_with_teaching_on` in `access.py`; the rows
+      are `admin_bank_rows` and `bank_organisation_rows` in
+      `listing.py`; and a new `admin_banks.py` holds
+      `admin_bank_detail`, with `BankNotHeldHere` (404) added to
+      `errors.py`. `_get_user_org_id` stays in the router. None of the
+      three was driven for what it refuses or whose rows it shows, so
+      `backend/tests/teaching_admin_banks_view_test.py` does it.
+      **The three do not draw the same line, and were moved as they
+      are.** Synced copies, items and the served version are read for
+      the caller's own organisation only. The list also names every
+      bank in the bucket by its id, whichever organisation it was
+      written for, and says nothing else of it. The list of
+      organisations for a bank is every organisation with teaching
+      on, with whether the bank is open and takes site registration
+      at each, whether or not the caller belongs there; saving a
+      change for one that is not theirs is refused by the settings
+      route. The list counts the newest version's items and the detail
+      counts every version's.
 - [ ] **Video and other media** - `grant_video_access` (100 lines),
       `create_media_upload_url` (88 lines), `link_module_media` (91
       lines), `upload_media_content_locally` (84 lines),
@@ -809,6 +853,19 @@ for him to rule on before the go-live. Most serious first.
 - **Reading a question does not ask about time.** A question of an
   attempt long past its limit is still handed out. Only answering
   checks the deadline.
+- **The manual sync lists a bank that did not load as synced**, and
+  the admin page shows it as imported. The CI's sync had the same
+  fault and no longer does. Folding the two loops into one would close
+  it here too.
+- **An administrator is shown things beyond their own organisation in
+  two places.** The list of organisations for a bank shows every
+  organisation with teaching switched on, and whether the bank is live
+  there, whether or not the caller belongs to it. The list of banks
+  names every bank id in the bucket. Saving settings for an
+  organisation that is not theirs is refused, so this is reading only.
+- **Syncing one live bank whose version has not moved answers 500
+  "Sync failed unexpectedly"**, though nothing is wrong: there is
+  nothing new to load.
 - **Downloading a certificate can write.** For an older attempt with
   no exam reference, the download gives it one and saves it, and keeps
   it even if drawing the certificate then fails.

@@ -215,3 +215,39 @@ class NoCertificateBackground(TeachingError):
 
     status_code = 404
     message = "No certificate background found for this bank"
+
+
+class BankIdRequired(TeachingError):
+    """A sync or a dry run was asked for without saying of which bank.
+
+    The body names no ``bank_id``, or an empty one. Asked before
+    anything is looked for.
+    """
+
+    status_code = 400
+    message = "bank_id is required"
+
+
+class SyncRecordedNothing(TeachingError):
+    """The sync of one bank by hand came back with no record of it.
+
+    The same words whichever it is: a draft turned away for its
+    version, and a live bank whose version has not moved on, which has
+    nothing new to load and is not a failure at all.
+    """
+
+    status_code = 500
+    message = "Sync failed unexpectedly"
+
+
+class BankNotHeldHere(TeachingError):
+    """The administrator's organisation holds no synced copy of the bank.
+
+    The same words for a bank nobody holds and for one that only
+    another organisation holds, so an id is never confirmed. They are
+    the words of :class:`QuestionBankNotFound`, which is the learner's
+    refusal and asks different questions.
+    """
+
+    status_code = 404
+    message = "Question bank not found"

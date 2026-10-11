@@ -2,8 +2,10 @@
 
 Who is listed is not decided here. ``app.features.teaching.access``
 answers that, and hands its answer in: ``delegates_in_view`` for the
-all-delegates view, ``modules_open_to`` for a learner's module list and
-``banks_on_show_to`` for their list of question banks.
+all-delegates view, ``modules_open_to`` for a learner's module list,
+``banks_on_show_to`` for their list of question banks, and
+``newest_copies_held_by`` and ``organisations_with_teaching_on`` for
+the administrator's two lists.
 These functions take that answer and build the rows, and refuse nobody.
 
 They are apart from ``access`` because of what they read. A delegate's
@@ -18,6 +20,7 @@ them, so a test that replaces one of their functions replaces it here.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Any
 
@@ -28,10 +31,21 @@ from app.cbac.positions import clinical_leads_of
 from app.config import settings
 from app.features.teaching import mdx_parser, media, storage
 from app.features.teaching.access import BankOnShow, DelegatesInView
-from app.features.teaching.models import Assessment, QuestionBankConfig
+from app.features.teaching.models import (
+    Assessment,
+    QuestionBankConfig,
+    QuestionBankItem,
+    QuestionBankOrgStatus,
+)
 from app.features.teaching.module_content import module_is_servable
-from app.features.teaching.schemas import DelegateOut
+from app.features.teaching.schemas import (
+    AdminBankOut,
+    BankOrgRow,
+    DelegateOut,
+)
 from app.models import OrgUnit, User, org_unit_member
+
+logger = logging.getLogger(__name__)
 
 
 def delegate_rows(
@@ -432,6 +446,143 @@ def question_bank_rows(
                 "cover_image_url": cover_image_url,
                 "cover_image_focus": config.cover_image_focus,
             }
+        )
+
+    return rows
+
+
+def admin_bank_rows(
+    db: Session, org_unit_id: int, held: dict[str, QuestionBankConfig]
+) -> list[AdminBankOut]:
+    """What an administrator's list says about each bank.
+
+    One row for each bank the organisation holds a synced copy of, and
+    one for each bank in the bucket, a bank that is both having one row.
+    **The bucket is listed whole**: a bank the organisation has never
+    synced is named by its id because it is there to be synced,
+    whichever organisation it was written for. Such a row says nothing
+    else of the bank: no title, no version and no items.
+
+    A bucket that cannot be listed is logged and read as holding
+    nothing, so the synced banks are still listed. With no bucket set,
+    only they are: the content path on disk is not read.
+
+    The items are counted with one query for each bank held, and are
+    those of the newest version only.
+
+    Args:
+        db: Core database session.
+        org_unit_id: The organisation the caller administers.
+        held: What ``newest_copies_held_by`` gave for it.
+
+    Returns:
+        The rows, in bank id order.
+    """
+    # Count items per bank
+    item_counts: dict[str, int] = {}
+
+    for bank_id, copy in held.items():
+        count = db.execute(
+            select(QuestionBankItem.id).where(
+                QuestionBankItem.org_unit_id == org_unit_id,
+                QuestionBankItem.question_bank_id == bank_id,
+                QuestionBankItem.bank_version == copy.version,
+            )
+        ).all()
+        item_counts[bank_id] = len(count)
+
+    # What this organisation actually serves, which is not necessarily the
+    # newest imported. Showing both is the point: "version 3 active, version
+    # 4 available" is the state an admin needs to notice.
+    active_versions: dict[str, int | None] = {
+        row.question_bank_id: row.active_version
+        for row in db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.org_unit_id == org_unit_id,
+            )
+        )
+        .scalars()
+        .all()
+    }
+
+    # GCS banks
+    gcs_bank_ids: set[str] = set()
+    bucket = settings.TEACHING_GCS_BUCKET
+
+    if bucket:
+        try:
+            gcs_bank_ids = set(storage.list_banks_in_gcs(bucket))
+        except Exception:
+            logger.exception("Failed to list GCS banks")
+
+    # Merge
+    all_bank_ids = set(held.keys()) | gcs_bank_ids
+    rows: list[AdminBankOut] = []
+
+    for bank_id in sorted(all_bank_ids):
+        copy_held = held.get(bank_id)
+        rows.append(
+            AdminBankOut(
+                bank_id=bank_id,
+                title=copy_held.title if copy_held else None,
+                version=copy_held.version if copy_held else None,
+                active_version=active_versions.get(bank_id),
+                type=copy_held.type if copy_held else None,
+                synced_at=copy_held.synced_at if copy_held else None,
+                in_gcs=bank_id in gcs_bank_ids,
+                in_db=bank_id in held,
+                item_count=item_counts.get(bank_id, 0),
+            )
+        )
+
+    return rows
+
+
+def bank_organisation_rows(
+    db: Session, bank_id: str, organisations: list[OrgUnit]
+) -> list[BankOrgRow]:
+    """How one bank stands at each of the organisations handed in.
+
+    Whether it is open to new attempts there, and to site registration.
+    An organisation with no status row for the bank is listed as closed
+    to both. The bank is not looked up: an id nobody holds gives every
+    organisation, each closed.
+
+    Args:
+        db: Core database session.
+        bank_id: The question bank.
+        organisations: What ``organisations_with_teaching_on`` gave.
+
+    Returns:
+        One row for each organisation, in the order they were given.
+    """
+    place_ids = [place.id for place in organisations]
+
+    # Get bank status rows for these orgs
+    statuses = {
+        row.org_unit_id: row
+        for row in db.execute(
+            select(QuestionBankOrgStatus).where(
+                QuestionBankOrgStatus.question_bank_id == bank_id,
+                QuestionBankOrgStatus.org_unit_id.in_(place_ids),
+            )
+        )
+        .scalars()
+        .all()
+    }
+    rows: list[BankOrgRow] = []
+
+    for place in organisations:
+        status = statuses.get(place.id)
+        rows.append(
+            BankOrgRow(
+                org_unit_id=place.id,
+                organisation_name=place.name,
+                is_live=status.is_live if status else False,
+                site_registration=(
+                    status.site_registration if status else False
+                ),
+            )
         )
 
     return rows
