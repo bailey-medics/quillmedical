@@ -246,7 +246,7 @@ class TestTellingAnOperator:
 
 
 class TestTellingSlack:
-    """A webhook, where one is set, is posted the same notice."""
+    """A webhook, where one is set, is posted a notice with no name in it."""
 
     WEBHOOK = "https://hooks.slack.com/services/T000/B000/not-a-real-key"
 
@@ -273,7 +273,7 @@ class TestTellingSlack:
             SecretStr(self.WEBHOOK),
         )
 
-    def test_posts_who_what_kind_which_page_and_a_link(
+    def test_posts_what_kind_which_page_and_a_link(
         self,
         client: TestClient,
         test_user: User,
@@ -286,7 +286,6 @@ class TestTellingSlack:
         [post] = posted
         assert post["url"] == self.WEBHOOK
         text = str(post["json"])
-        assert test_user.username in text
         assert "Something is wrong or inaccurate" in text
         assert "/teaching/:bankId" in text
         assert f"/admin/feedback/{resp.json()['id']}|Read it in Quill" in text
@@ -302,6 +301,21 @@ class TestTellingSlack:
         [post] = posted
         assert SECRET_MESSAGE not in str(post)
         assert "Example-Leak" not in str(post)
+
+    def test_the_post_never_says_who_sent_it(
+        self,
+        client: TestClient,
+        test_user: User,
+        posted: list[dict[str, object]],
+        webhook_set: None,
+    ) -> None:
+        """A name in the post would be personal data sent to Slack, which
+        the privacy policy does not name as somebody who receives any."""
+        client.post(ENDPOINT, json=VALID)
+
+        [post] = posted
+        assert test_user.username not in str(post)
+        assert test_user.email not in str(post)
 
     @pytest.mark.parametrize("value", [None, SecretStr(""), SecretStr("  ")])
     def test_posts_nothing_when_no_webhook_is_set(

@@ -38,7 +38,7 @@ the order below, and no step waits for a person.
 
 ## Phase 2: Stop sending a username to Slack
 
-- [ ] In `backend/app/feedback/router.py` and `backend/app/feedback/slack.py`,
+- [x] In `backend/app/feedback/router.py` and `backend/app/feedback/slack.py`,
       take the sender's username out of the notice posted to Slack. The
       notice keeps the category, the page and the link to the feedback.
       Update `slack_test.py` and the router's test to match.
@@ -53,7 +53,7 @@ the order below, and no step waits for a person.
       data, the policy is true as written, and the operator loses nothing:
       the link opens the feedback, which shows who sent it.
 
-- [ ] Correct the docstring in `router.py` that says "the same is posted
+- [x] Correct the docstring in `router.py` that says "the same is posted
       to Slack", since the two notices now differ.
 
 ## Phase 3: Say the opt-out is remembered on the device
