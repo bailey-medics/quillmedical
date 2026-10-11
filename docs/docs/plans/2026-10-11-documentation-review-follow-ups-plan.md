@@ -74,6 +74,15 @@ the order below, and no step waits for a person.
 
 ## Phase 4: Keep the public site's log archive in London
 
+- [x] First, in a pull request of its own, set `delete_contents_on_destroy
+      = true` on `google_bigquery_dataset.analytics` in
+      `infra/modules/analytics/main.tf`. Found while building this phase:
+      the sink has written tables into the dataset, and BigQuery refuses
+      to delete a dataset that holds any. Terraform reads that setting
+      from the state as it was when it destroys, so it has to be applied
+      before the change of location, not with it. Merge this one, let the
+      `Terraform` run apply, and only then merge the next.
+
 - [ ] Set `dataset_location = "europe-west2"` for the analytics module, in
       `infra/main.tf` where the module is called, and change the default
       and its description in `infra/modules/analytics/variables.tf`.
