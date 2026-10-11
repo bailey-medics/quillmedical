@@ -208,7 +208,7 @@ that work is larger and each step of it is safe to land alone.
         both routes. Every other platform role and caller is answered
         as before.
 
-- [ ] Prove nothing changed. The route tests in `backend/tests/` that
+- [x] Prove nothing changed. The route tests in `backend/tests/` that
       drive `update_user` through the API must pass **unchanged**,
       before and after. They are the safety net for the whole plan. A
       route test that fails means the split moved the behaviour: put
@@ -220,14 +220,16 @@ that work is larger and each step of it is safe to land alone.
       `every_route_is_guarded_test.py` and
       `api_schema_coverage_test.py`.
 
-- [ ] Write the tests the split makes possible: one for each branch of
+- [x] Write the tests the split makes possible: one for each branch of
       the plain function, called directly. This is the point of the
-      work. Run `just tc py` before and after and record both figures
-      for `main.py` here. Before, measured on 10 October 2026:
-      `app/main.py` at 80%, 1,516 statements with 300 missed. The
-      tests are written, one file beside each module in
-      `backend/app/users/`. The after figure is to be taken with
-      `just tc py` once the stack has merged.
+      work. The figures for `main.py`, lines run by the unit tests:
+      **80% before** (1,516 statements, 300 not run, on 10 October
+      2026) and **88% after** (990 statements, 121 not run, on
+      11 October 2026, with every pull request of Phases 1 to 4
+      applied). A third of the file's statements have left it, and
+      what left is tested where it now lives: the modules under
+      `app/users/` and `app/patients/` are 781 statements with none
+      not run.
 
 ## Phase 2: The rest of `main.py`
 
@@ -1041,8 +1043,23 @@ to rule on.
 - **A feature's key is checked against nothing**: any text can be
   switched on as a feature of an org unit.
 
-- [ ] Record the coverage of each of the four routers, from
-      `just tc py`'s log, beside the figures taken in Phase 1.
+- [x] Record the coverage of each of the four routers, beside the
+      figures taken in Phase 1. Measured on 11 October 2026 by running
+      the whole backend suite with coverage, with every pull request
+      of Phases 1 to 4 applied:
+
+      - **`main.py`** - 88%, from 80%. 990 statements, from 1,516.
+      - **Teaching router** - 95%, from 77%. 539 statements, from
+        1,164. The ten teaching modules the rules moved into are 1,062
+        statements with two not run.
+      - **Org units router** - 99%. 256 statements, three not run. No
+        figure was taken before.
+      - **Passport router** - 88%. 856 statements, 103 not run. No
+        figure was taken before; two routes moved, and it had the
+        fewest long routes to begin with.
+      - **The backend as a whole** - 94%, from 91%. 803 statements not
+        run, from 1,250, though the code has grown by about 1,300
+        statements of new modules.
 
 ## Phase 5: Find why frontend tests fail under load
 
@@ -1054,7 +1071,7 @@ the "Clinician passport" heading, `CertificateForm` timed out, and
 `UserInfoUpdatePage`, `NewPatientPage` and `ResetPasswordPage` failed in
 another run. The slowest run took 510 seconds against a usual 260.
 
-- [ ] Confirm the cause before fixing anything, and write what was
+- [x] Confirm the cause before fixing anything, and write what was
       found here. The likely one is a
       mismatch between two limits. `testTimeout` in
       `frontend/vitest.config.ts` was raised to 15 seconds, with a
@@ -1067,13 +1084,91 @@ another run. The slowest run took 510 seconds against a usual 260.
       running the failing files alone under load and seeing whether the
       failures are all of the "could not find it in time" kind.
 
-- [ ] Find a way to reproduce it on demand, so that a fix can be shown
+      **Found, on 11 October 2026: the mismatch is real, and it is one
+      of three causes, not the only one.** All six files named above
+      failed again under load, and the failures were of these kinds:
+
+      - **A correct wait that ran out of its one second.** Proven. The
+        test used `findBy` or `waitFor`, the thing arrived late, and the
+        error was `Unable to find role=...`. Nineteen of these in the
+        two runs of the third attempt below, among them the two seen on
+        10 October: the "Clinician passport" heading in `Settings` and
+        the "View results by question" link on `AssessmentResultPage`.
+      - **A whole test that ran out of its fifteen seconds.** The larger
+        share once the machine is badly loaded: about 190 of the 369
+        failures. These are the tests that fill a form in through
+        `userEvent`, a key at a time. `CertificateForm` on 10 October
+        was one. No wait inside them is wrong, and the one second has
+        nothing to do with them.
+      - **A knock-on from a timeout earlier in the same file.** About
+        155 of the 369. Once one test in a file times out, later tests
+        in that file can find nothing at all: the page they print is an
+        empty `<body><div /></body>`. `navCoverage.test.tsx` lost over
+        seventy tests this way after one timeout, and
+        `SignOffRequestForm` and `ExamCloseButton` lost theirs the same
+        way. The likely reason is that the test that timed out is
+        still running inside React's `act`, so the next test's render
+        waits behind it. That reason was read from the output and not
+        proven.
+
+      Two things failed that are not tests failing at all. Under load
+      vitest could not start some workers (`Failed to start forks
+      worker`, `Timeout waiting for worker to respond`), so up to
+      fifteen files in a run were never run, and the run still printed
+      a count as if they did not exist. And
+      `featureChunks.test.ts` timed out importing a whole feature chunk
+      inside the fifteen seconds, which was the only failure in two
+      otherwise clean runs.
+
+      What the load is made of matters. The test container starts
+      sixteen workers, one for each core Docker has, and Docker has
+      7.65 GB of memory. One suite uses about half of that. Two at once
+      came close to all of it, and during the third attempt two other
+      worktrees were running their own tests as well. So a "busy
+      machine" here mostly means a second worktree testing at the same
+      time.
+
+- [x] Find a way to reproduce it on demand, so that a fix can be shown
       to work. Running the suite twice at once did it by accident.
       Something repeatable, such as running the suite with coverage
       while a second copy runs, belongs in a `just` recipe or a note
       here.
 
-- [ ] Sort the failures into two kinds, because they have different
+      **A note, not a recipe: it reproduces, but not to order.** What
+      was run, each from the repository root:
+
+      - Quiet, the six named files alone: `just uf` followed by
+        `src/features/teaching/pages/pages.test.tsx`,
+        `src/pages/Settings.test.tsx`,
+        `src/components/passport/CertificateForm.test.tsx`,
+        `src/pages/UserInfoUpdatePage.test.tsx`,
+        `src/pages/NewPatientPage.test.tsx` and
+        `src/pages/ResetPasswordPage.test.tsx`. 136 tests passed in 54
+        seconds.
+      - First attempt: `just uf`, and beside it the six files three
+        times over. The six files passed all three times, in 158, 102
+        and 48 seconds. The whole suite took 266 seconds with one
+        failure, the `featureChunks` timeout. Not a reproduction.
+      - Second attempt: `just tc ts`, and `just uf` fifteen seconds
+        later. The coverage run stopped after 5 minutes 39 seconds with
+        no figure and a long row of failures its dot reporter does not
+        name. The other took 523 seconds, failed `featureChunks`
+        again, and never ran fifteen files because their workers did
+        not start.
+      - Third attempt, the one that worked: `just uf --coverage
+        --coverage.reporter=text-summary --coverage.reportOnFailure
+        --coverage.reportsDirectory=/tmp/coverage`, which is the
+        coverage run with a reporter that names what failed, and `just
+        uf` fifteen seconds later. They took 1,214 and 1,161 seconds
+        and failed 206 of 4,465 tests and 163 of 4,492.
+
+      The third attempt was as bad as it was partly because two other
+      worktrees were testing at the time, which nobody arranged. So
+      the honest recipe is "run the coverage suite and the plain suite
+      together, and expect anything from one failure to two hundred".
+      A `just` recipe would promise more than that, so there is none.
+
+- [x] Sort the failures into two kinds, because they have different
       fixes. A test that waits correctly and simply ran out of time is
       fixed by the limit. A test that reads the page once with `getBy`
       before the page has finished loading is wrong at any speed and
@@ -1081,9 +1176,47 @@ another run. The slowest run took 510 seconds against a usual 260.
       are about 3,500 `getBy` calls, most of them correct, so look only
       at the tests that have been seen to fail.
 
+      **Found: every one is of the first kind, or is not a waiting
+      failure at all. None of the second kind turned up.** Each bare
+      `getBy` that failed did so on an empty page after a timeout
+      earlier in its file, which is the knock-on above and not a test
+      reading too early.
+
+      Waited correctly and ran out of the one second:
+
+      - `src/pages/Settings.test.tsx` lines 297, 307 and 400, each a
+        `findByRole` for the "Clinician passport" heading.
+      - `src/features/teaching/pages/pages.test.tsx` lines 304, 351 and
+        369, each a `findByRole` for the "View results by question"
+        link, and line 361, for the certificate button.
+      - `src/pages/UserInfoUpdatePage.test.tsx` line 411, a `waitFor`
+        on the "Review" heading.
+      - Outside the six: `PassportPage.test.tsx` lines 230 and 254,
+        `PassportCpdEntryPage.test.tsx` line 84,
+        `PassportCpdPage.test.tsx` line 93,
+        `AdminFeedbackPage.test.tsx` line 95,
+        `AddStaffToOrgPage.test.tsx` line 280,
+        `OrganisationAdminPage.test.tsx` line 167,
+        `AddStaffToSitePage.test.tsx` line 88 and
+        `CreateSitePage.test.tsx` line 95.
+
+      Ran out of the whole fifteen seconds, with nothing wrong in how
+      they wait:
+
+      - `src/components/passport/CertificateForm.test.tsx`, the tests
+        at lines 79, 100 and 120, all of which fill the form in first.
+      - `src/pages/NewPatientPage.test.tsx`, seven tests from line 136
+        to line 432.
+      - `src/pages/ResetPasswordPage.test.tsx`, the test at line 73.
+      - `src/pages/UserInfoUpdatePage.test.tsx`, 25 of its 38 tests.
+        Four of them already carry a limit of thirty seconds of their
+        own and ran out of that.
+      - `src/pages/Settings.test.tsx`, the tests at lines 208, 301 and
+        450.
+
 ## Phase 6: Make the frontend tests steady
 
-- [ ] Raise how long Testing Library waits, once Phase 5 has confirmed
+- [x] Raise how long Testing Library waits, once Phase 5 has confirmed
       the cause: `configure({ asyncUtilTimeout: ... })` in
       `frontend/src/test/setup.ts`. A passing test is no slower for it,
       since a wait ends the moment the thing appears. Only a test that
@@ -1092,10 +1225,21 @@ another run. The slowest run took 510 seconds against a usual 260.
       wait that runs out is reported as the thing it could not find and
       not as a bare timeout.
 
-- [ ] Fix each test of the second kind from Phase 5, the ones that read
+      **Done: five seconds.** The loaded runs took between two and
+      five times as long as a quiet one, and the waits that
+      ran out are on pages that appear in well under half a second
+      alone, so five times the old limit covers what was measured.
+      It is a third of `testTimeout`, which leaves a wait room to run
+      out and say what it could not find before the test itself is
+      stopped.
+
+- [x] Fix each test of the second kind from Phase 5, the ones that read
       the page before it was ready.
 
-- [ ] Look at whether the suite starves itself. vitest reported 392
+      **Nothing to fix.** Phase 5 found none among the tests seen to
+      fail, so no test file was changed.
+
+- [x] Look at whether the suite starves itself. vitest reported 392
       workers spawned for 392 files, about two seconds of start-up
       each, and that `isolate: false` would save about 54 seconds. Less
       start-up work means less load and fewer timing failures, but
@@ -1103,13 +1247,77 @@ another run. The slowest run took 510 seconds against a usual 260.
       Measure it, and turn it on only if the suite passes repeatedly
       with it.
 
-- [ ] Show it worked: the reproduction from Phase 5, run five times,
+      **Not measured, and not turned on.** No run was made with
+      `isolate: false`. What there is comes from vitest's own estimate
+      at the foot of each run: 42 to 51 seconds saved on a quiet run of
+      about 220 to 266 seconds, and 137 to 234 seconds on the loaded
+      runs, where each of 391 workers took about five and a half
+      seconds to start. Phase 5 adds a reason to look: the suite does
+      starve itself, but of memory as much as of start-up time, with
+      sixteen workers in a 7.65 GB machine. Running fewer workers at
+      once is the other way to the same end and carries no risk of
+      one test reaching the next. Either is its own decision, so this
+      stays open.
+
+      **Closed without being done, by Mark's decision on 12 October
+      2026.** The failures under load are accepted as they are. They
+      show only on his own machine, when two worktrees run their suites
+      at once inside Docker's 7.65 GB, and he has seen little trouble
+      from it. CI splits the suite over three runners and has not shown
+      them. If it becomes a real nuisance, the place to start is fewer
+      vitest workers in the local test container only, so that CI keeps
+      its speed.
+
+- [x] Show it worked: the reproduction from Phase 5, run five times,
       passing five times.
 
-- [ ] Leave CI as it is unless Phase 5 shows it failing there too. CI
+      **Not shown, and it will not pass five times as things stand.**
+      The third attempt was run once more with the five seconds in
+      place. Each run takes ten to twenty minutes and slows every
+      other worktree while it lasts, so it was not run five times.
+
+      - The coverage run took 557 seconds and failed 41 of 4,531
+        tests. One was a wait that ran out, down from nine and ten in
+        the two runs before the change. The rest were tests running
+        out of their fifteen seconds and what follows from that. The
+        machine was also less loaded this time, so the fall from 206
+        to 41 is not all the change's doing.
+      - The plain run beside it was ended from outside after 4 minutes
+        12 seconds (exit code 129) and gave no result.
+      - Alone, `just uf` passed: 398 files, 4,538 tests, 222 seconds.
+
+      So the change removes the kind of failure seen on 10 October,
+      which was mostly `Unable to find`, and leaves the two kinds a
+      longer wait cannot reach. What is left to do, none of it done
+      here:
+
+      - Tests that fill in a long form run out of fifteen seconds
+        under heavy load. Fewer workers, or more memory for Docker,
+        goes at the cause; a longer `testTimeout` only moves the line.
+      - One timeout takes the rest of its file with it, which is what
+        turns ten slow tests into two hundred failures.
+      - `featureChunks.test.ts` imports a whole feature inside the
+        ordinary limit, and was the first thing to fail every time.
+      - A worker that does not start drops its file from the run
+        without failing a test, though the run does still end red.
+
+      **Closed without being done, by Mark's decision on 12 October
+      2026.** The failures under load are accepted as they are. They
+      show only on his own machine, when two worktrees run their suites
+      at once inside Docker's 7.65 GB, and he has seen little trouble
+      from it. CI splits the suite over three runners and has not shown
+      them. If it becomes a real nuisance, the place to start is fewer
+      vitest workers in the local test container only, so that CI keeps
+      its speed.
+
+- [x] Leave CI as it is unless Phase 5 shows it failing there too. CI
       splits the suite across three runners and has not shown these
       failures. A retry in CI is not the fix: it hides a test that is
       wrong, which is the thing this phase removes.
+
+      **Left alone.** Phase 5 looked only at this machine. Nothing
+      under `.github/workflows` was changed and no retry was added
+      anywhere.
 
 ## Decisions
 
