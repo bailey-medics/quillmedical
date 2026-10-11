@@ -10,9 +10,11 @@ setup() {
   HELD="${BATS_TEST_TMPDIR}/held"
   COMPOSE="${BATS_TEST_TMPDIR}/compose.ci.yml"
   export GITHUB_ENV="${BATS_TEST_TMPDIR}/github_env"
+  export GITHUB_OUTPUT="${BATS_TEST_TMPDIR}/github_output"
   mkdir -p "$BIN"
   : > "$HELD"
   : > "$GITHUB_ENV"
+  : > "$GITHUB_OUTPUT"
 
   cat > "$COMPOSE" <<'COMPOSE'
 services:
@@ -78,6 +80,33 @@ STUB
 
   [ "$status" -eq 0 ]
   [ "$(cat "$GITHUB_ENV")" = "CI_CADDY_IMAGE=ghcr.io/bailey-medics/mirror/caddy@sha256:abc123" ]
+}
+
+@test "hands on the images left on the public registry, for the Slack message" {
+  run bash "$SCRIPT" bailey-medics "$COMPOSE" CI_POSTGRES_IMAGE CI_CADDY_IMAGE
+
+  [ "$status" -eq 0 ]
+  [ "$(cat "$GITHUB_OUTPUT")" = "fell_back=public.ecr.aws/docker/library/postgres:18-alpine, public.ecr.aws/docker/library/caddy:2-alpine@sha256:abc123" ]
+}
+
+@test "hands on only the image that was left behind" {
+  echo "ghcr.io/bailey-medics/mirror/caddy@sha256:abc123" > "$HELD"
+
+  run bash "$SCRIPT" bailey-medics "$COMPOSE" CI_POSTGRES_IMAGE CI_CADDY_IMAGE
+
+  [ "$(cat "$GITHUB_OUTPUT")" = "fell_back=public.ecr.aws/docker/library/postgres:18-alpine" ]
+}
+
+@test "hands on nothing when every image came from the mirror" {
+  # An empty output is what keeps the Slack job from running.
+  printf '%s\n' \
+    "ghcr.io/bailey-medics/mirror/postgres:18-alpine" \
+    "ghcr.io/bailey-medics/mirror/caddy@sha256:abc123" > "$HELD"
+
+  run bash "$SCRIPT" bailey-medics "$COMPOSE" CI_POSTGRES_IMAGE CI_CADDY_IMAGE
+
+  [ "$status" -eq 0 ]
+  [ ! -s "$GITHUB_OUTPUT" ]
 }
 
 @test "fails on a variable the compose file does not read an image from" {

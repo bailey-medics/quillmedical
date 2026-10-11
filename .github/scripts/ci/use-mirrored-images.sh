@@ -20,8 +20,12 @@
 # request out of the queue, and every pull request stacked on it with it.
 # A copy in our own registry is pulled with the job's own login.
 #
-# An image the mirror does not hold is left on its public default, and the
-# log says so. That is what happens on the pull request that changes an
+# An image the mirror does not hold is left on its public default, the log
+# says so, and the images left behind are written to $GITHUB_OUTPUT as
+# `fell_back`, for the workflow to post to Slack. Nothing is written when
+# every image came from the mirror, so an empty `fell_back` means all is well.
+#
+# That is what happens on the pull request that changes an
 # image's version, before the mirror has caught up, so a version change
 # never has to wait for the mirror.
 set -euo pipefail
@@ -66,6 +70,7 @@ main() {
   local variable=""
   local public=""
   local mirrored=""
+  local fell_back=""
 
   for variable in "$@"; do
     public="$(default_image "$compose_file" "$variable")"
@@ -82,8 +87,13 @@ main() {
       log "${variable}: using the mirror, ${mirrored}"
     else
       log "${variable}: the mirror does not hold ${mirrored}, so staying on ${public}"
+      fell_back="${fell_back:+${fell_back}, }${public}"
     fi
   done
+
+  if [ -n "$fell_back" ] && [ -n "${GITHUB_OUTPUT:-}" ]; then
+    echo "fell_back=${fell_back}" >> "$GITHUB_OUTPUT"
+  fi
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
