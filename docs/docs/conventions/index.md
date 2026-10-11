@@ -48,11 +48,12 @@ module needs the Python version, the Yarn version, or a competency definition, i
 the canonical file above.
 
 !!! note "Known exception - Node"
-The Node version is pinned as `node-version: '24'` in one place for CI,
-`.github/actions/setup-frontend/action.yml`, and again in `frontend/Dockerfile`;
-`check-version-consistency.sh` fails the build if the two disagree. There is no `.nvmrc`
-or `engines` entry yet, so this is the one toolchain version with two homes rather than
-one. Prefer adding an `.nvmrc` before introducing further Node version references.
+The Node version is pinned as `node-version: '24'` for CI in
+`.github/actions/setup-frontend/action.yml`, repeated in
+`.github/workflows/dependency-audit.yml`, and again in `frontend/Dockerfile`;
+`check-version-consistency.sh` fails the build if the setup action and the Dockerfile
+disagree. There is no `.nvmrc` or `engines` entry yet, so this is the one toolchain
+version with three homes rather than one. Prefer adding an `.nvmrc` before introducing further Node version references.
 
 ## Type safety
 
