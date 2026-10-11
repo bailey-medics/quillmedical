@@ -483,7 +483,7 @@ backend/tests`: `r` without the dash is a target, not the recurse
       emailed token, so a mistake fails for everybody at once. Three
       steps, each its own pull request, in this order.
 
-  - [ ] Pin today's behaviour first, with no change to the code. Tests
+  - [x] Pin today's behaviour first, with no change to the code. Tests
         of `backend/app/security.py` that say what each kind of token
         does now: a good one is read; an expired one is refused; one
         with a changed payload is refused; one signed with another
@@ -494,6 +494,23 @@ backend/tests`: `r` without the dash is a target, not the recurse
         asserts the outcome a caller sees, a 401 or the claims, and
         never the name of the library's error, so the same tests can
         judge the new library. This step is safe to land at any time.
+        Done on 11 October 2026 in
+        `backend/app/security_tokens_test.py`. Every bad token is built
+        by hand, from base64 and an HMAC, so no test leans on a library
+        to make what it then asks a library to refuse. All four
+        decoders refuse a token that has run out, was signed with
+        another secret, had its payload changed, claims `alg: none`, or
+        was signed with our secret under another algorithm. **Two
+        things were pinned as they are and want a decision from Mark.**
+        A request's token is checked for its signature, expiry, user
+        and version, and not for its type, so a refresh token offered
+        in the access cookie signs the caller in for its seven days. It
+        gives nobody a power they lacked, as a refresh token can be
+        exchanged for an access token anyway, but the two are meant to
+        be different things. And a token with no expiry at all is read.
+        Only somebody holding the secret could make one, so it is not a
+        way in; PyJWT can be told to require an expiry, and the swap is
+        the moment to decide.
 
   - [ ] Swap the library, with those tests unchanged. The calls are all
         in `backend/app/security.py`: five `jwt.encode` and three
