@@ -304,8 +304,8 @@ function flatten(list: RouteObject[], parent = ""): Page[] {
 }
 
 // Two routes can differ only in what they call a parameter, as
-// `patients/:id/edit` and `patients/:patientId/edit` do; they are one
-// address and one menu, so one check.
+// `patients/:id/edit` and `patients/:patientId/edit` once did; they are
+// one address and one menu, so one check.
 const PAGES: Page[] = flatten(routes).filter(
   (page, index, all) =>
     all.findIndex((other) => other.address === page.address) === index,
