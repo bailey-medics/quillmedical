@@ -37,7 +37,7 @@ user form came to write the same rows, at which point two copies of "a
 repeat is not an error, and an unchanged row keeps its author" would have
 been free to drift. Who may write a row is not decided here: that is the
 caller's question, answered by ``practice_refusal`` in
-``app/org_units/router.py``.
+``app/org_units/practice.py``.
 """
 
 from __future__ import annotations

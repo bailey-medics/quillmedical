@@ -255,8 +255,8 @@ def has_competency_at(
     ``places_administered_by``, which returns None for an operator to mean
     "all of them".
 
-    Refusal is **404, not 403**, matching ``_require_visible`` in
-    ``app.org_units.router`` and the frontend guards: a refusal must not
+    Refusal is **404, not 403**, matching ``require_visible`` in
+    ``app.org_units.access`` and the frontend guards: a refusal must not
     confirm that an org_unit exists to somebody who may not see it. The
     competency is not named in the detail either, for the same reason.
 

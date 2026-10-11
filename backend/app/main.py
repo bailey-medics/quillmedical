@@ -150,7 +150,8 @@ from app.models import (
 from app.org_units import (
     ROOT_TYPE_IDS,
 )
-from app.org_units.router import practice_refusal
+from app.org_units.errors import OrgUnitError
+from app.org_units.practice import practice_refusal
 from app.org_units.router import router as org_units_router
 from app.org_units.tree import (
     descendant_ids,
@@ -460,6 +461,24 @@ async def user_admin_error_handler(
     request: Request, exc: UserAdminError
 ) -> Response:
     """Answer a refused change to an account with its own words.
+
+    The status and the message are the class's, fixed where the refusal
+    is defined, so this formats nothing. The body is the one an
+    ``HTTPException`` gives.
+    """
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.message},
+    )
+
+
+@app.exception_handler(OrgUnitError)
+async def org_unit_error_handler(
+    request: Request, exc: OrgUnitError
+) -> Response:
+    """Answer something refused at an org unit with its own words.
 
     The status and the message are the class's, fixed where the refusal
     is defined, so this formats nothing. The body is the one an
@@ -2224,7 +2243,7 @@ def _settle_practice(
             detail="You may not set where somebody practises.",
         )
 
-    refusals: list[HTTPException] = []
+    refusals: list[OrgUnitError] = []
 
     for org_unit_id, competency, authorising in changes:
         refusal = practice_refusal(
@@ -2240,7 +2259,7 @@ def _settle_practice(
     if refusals:
         # One status, the first's, and every distinct reason: the form
         # shows one message and it should say everything that was wrong.
-        reasons = list(dict.fromkeys(str(r.detail) for r in refusals))
+        reasons = list(dict.fromkeys(r.message for r in refusals))
         raise HTTPException(
             status_code=refusals[0].status_code, detail=" ".join(reasons)
         )
