@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.features.teaching.tooling.annotations import Whole
 
@@ -72,5 +72,29 @@ class ModuleYaml(BaseModel):
     order: Whole
     status: ModuleStatus
     renewalMonths: Whole | None = Field(default=None, gt=0)
+    #: How many days apart to remind somebody who is enrolled and has not
+    #: finished an attempt, and how many reminders to send before
+    #: stopping. Both or neither: a module with neither sends none.
+    enrolmentReminderEveryDays: Whole | None = Field(default=None, gt=0)
+    enrolmentReminderCount: Whole | None = Field(default=None, gt=0)
     coverImage: str | None = None
     coverImageFocus: Whole | None = None
+
+    @model_validator(mode="after")
+    def _reminders_are_both_or_neither(self) -> ModuleYaml:
+        """Refuse one reminder setting without the other.
+
+        How often with no limit would remind somebody for ever, and a
+        limit with no interval says nothing about when. Either is a
+        mistake in the file, not a default to guess at.
+        """
+        every = self.enrolmentReminderEveryDays
+        count = self.enrolmentReminderCount
+
+        if (every is None) != (count is None):
+            raise ValueError(
+                "enrolmentReminderEveryDays and enrolmentReminderCount "
+                "must be set together, or both left out"
+            )
+
+        return self

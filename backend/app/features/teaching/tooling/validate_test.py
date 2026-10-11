@@ -79,6 +79,59 @@ class TestModuleYamlSchema:
             )
 
 
+class TestEnrolmentReminderSettings:
+    """How often to remind somebody enrolled, and how many times."""
+
+    @staticmethod
+    def _module(**settings: object) -> ModuleYaml:
+        return ModuleYaml(
+            moduleId="test-module",
+            title="Test",
+            order=1,
+            status="live",
+            **settings,  # type: ignore[arg-type]
+        )
+
+    def test_a_module_with_neither_sends_no_reminders(self) -> None:
+        module = self._module()
+
+        assert module.enrolmentReminderEveryDays is None
+        assert module.enrolmentReminderCount is None
+
+    def test_both_together_are_accepted(self) -> None:
+        module = self._module(
+            enrolmentReminderEveryDays=7, enrolmentReminderCount=6
+        )
+
+        assert module.enrolmentReminderEveryDays == 7
+        assert module.enrolmentReminderCount == 6
+
+    @pytest.mark.parametrize(
+        "settings",
+        [
+            {"enrolmentReminderEveryDays": 7},
+            {"enrolmentReminderCount": 6},
+        ],
+    )
+    def test_one_without_the_other_is_refused(
+        self, settings: dict[str, int]
+    ) -> None:
+        """An interval with no limit would remind somebody for ever."""
+        with pytest.raises(ValidationError, match="set together"):
+            self._module(**settings)
+
+    @pytest.mark.parametrize("bad", [0, -1, 1.5, "seven", True])
+    def test_only_a_whole_number_above_zero_will_do(self, bad: object) -> None:
+        with pytest.raises(ValidationError):
+            self._module(
+                enrolmentReminderEveryDays=bad, enrolmentReminderCount=6
+            )
+        with pytest.raises(ValidationError):
+            self._module(
+                enrolmentReminderEveryDays=7, enrolmentReminderCount=bad
+            )
+
+
 class TestValidateModulesDir:
     """Test full directory validation."""
 

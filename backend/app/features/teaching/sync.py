@@ -11,11 +11,13 @@ The sync process:
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -27,6 +29,7 @@ from app.features.teaching.models import (
     QuestionBankOrgStatus,
     QuestionBankSync,
 )
+from app.features.teaching.tooling.module_schema import ModuleYaml
 from app.features.teaching.tooling.validate import (
     ValidationResult,
     validate_assessment_dir,
@@ -156,6 +159,64 @@ def _load_module_metadata(
         "cover_image": None,
         "cover_image_focus": None,
     }
+
+
+@dataclass(frozen=True)
+class ModuleSchedule:
+    """The timings a module's ``module.yaml`` sets, for the reminder jobs.
+
+    Attributes:
+        renewal_months: How long a pass lasts, or None.
+        enrolment_reminder_every_days: Days between reminders to somebody
+            enrolled who has not finished an attempt, or None.
+        enrolment_reminder_count: How many such reminders to send, or
+            None.
+    """
+
+    renewal_months: int | None = None
+    enrolment_reminder_every_days: int | None = None
+    enrolment_reminder_count: int | None = None
+
+
+def _load_module_schedule(bank_dir: Path) -> ModuleSchedule:
+    """Read the module's timings from module.yaml in the parent directory.
+
+    Read through :class:`ModuleYaml`, the schema the validator uses, so
+    that what a sync stores is exactly what validation accepted: the same
+    refusal of a boolean, and the two reminder settings together or not
+    at all.
+
+    Nothing set, for a file that is missing, unreadable or does not fit
+    the schema. The validator has already refused a bad file before a
+    sync gets here, so this never raises: a reminder setting is not
+    worth failing a content sync over.
+    """
+    module_yaml = bank_dir.parent / "module.yaml"
+
+    if not module_yaml.is_file():
+        return ModuleSchedule()
+    try:
+        with open(module_yaml) as f:
+            module = ModuleYaml.model_validate(yaml.safe_load(f))
+    except (yaml.YAMLError, OSError, ValidationError):
+        return ModuleSchedule()
+
+    return ModuleSchedule(
+        renewal_months=module.renewalMonths,
+        enrolment_reminder_every_days=module.enrolmentReminderEveryDays,
+        enrolment_reminder_count=module.enrolmentReminderCount,
+    )
+
+
+def _apply_schedule(
+    config: QuestionBankConfig, schedule: ModuleSchedule
+) -> None:
+    """Copy a module's timings onto its config row."""
+    config.renewal_months = schedule.renewal_months
+    config.enrolment_reminder_every_days = (
+        schedule.enrolment_reminder_every_days
+    )
+    config.enrolment_reminder_count = schedule.enrolment_reminder_count
 
 
 def _actor_for(user_id: int | None) -> str:
@@ -326,6 +387,9 @@ def sync_question_bank(
                 existing_config.cover_image_focus = module_meta[
                     "cover_image_focus"
                 ]
+                _apply_schedule(
+                    existing_config, _load_module_schedule(bank_dir)
+                )
                 existing_config.synced_at = datetime.now(UTC)
                 existing_config.synced_by = user_id
                 existing_config.synced_by_actor = _actor_for(user_id)
@@ -369,6 +433,7 @@ def sync_question_bank(
     )
     cover_image = module_meta["cover_image"]
     cover_image_focus = module_meta["cover_image_focus"]
+    schedule = _load_module_schedule(bank_dir)
 
     existing_config = db.execute(
         select(QuestionBankConfig).where(
@@ -385,6 +450,7 @@ def sync_question_bank(
         existing_config.cover_image_focus = cover_image_focus
         existing_config.type = bank_type
         existing_config.config_yaml = config
+        _apply_schedule(existing_config, schedule)
         existing_config.synced_at = datetime.now(UTC)
         existing_config.synced_by = user_id
         existing_config.synced_by_actor = _actor_for(user_id)
@@ -400,6 +466,11 @@ def sync_question_bank(
                 cover_image_focus=cover_image_focus,
                 type=bank_type,
                 config_yaml=config,
+                renewal_months=schedule.renewal_months,
+                enrolment_reminder_every_days=(
+                    schedule.enrolment_reminder_every_days
+                ),
+                enrolment_reminder_count=schedule.enrolment_reminder_count,
                 synced_by=user_id,
                 synced_by_actor=_actor_for(user_id),
             )

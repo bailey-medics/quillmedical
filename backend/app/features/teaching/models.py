@@ -86,6 +86,21 @@ class QuestionBankConfig(Base):
         String(50), nullable=True
     )
     config_yaml: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    #: How long a pass lasts, in months, from ``renewalMonths`` in the
+    #: module's ``module.yaml``. Null where the module gives none. Copied
+    #: here at sync, as the title is, so that a job with no access to the
+    #: content bucket can still read it.
+    renewal_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: How many days apart to remind somebody who is enrolled and has not
+    #: finished an attempt, and how many reminders to send, from
+    #: ``enrolmentReminderEveryDays`` and ``enrolmentReminderCount``.
+    #: Both null for a module that sends none.
+    enrolment_reminder_every_days: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    enrolment_reminder_count: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     synced_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
