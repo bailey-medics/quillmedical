@@ -29,8 +29,9 @@ repos:
         # The AWS policy files are lists of AWS's own service names. They
         # are in cspell.config.json's ignorePaths too, but a run handed
         # only ignored files checks none and fails, so they are kept from
-        # the hook here as the lock files are.
-        exclude: '^(.*/)?(yarn\.lock|\.yarn/.*|poetry\.lock)$|^infra/aws/policies/.*\.json$'
+        # the hook here as the lock files are. The audit ledger is the
+        # same: a commit of stamps alone holds nothing else.
+        exclude: '^(.*/)?(yarn\.lock|\.yarn/.*|poetry\.lock)$|^infra/aws/policies/.*\.json$|^audit/ledger\.tsv$'
         args:
           - --no-progress
           # - --no-summary
