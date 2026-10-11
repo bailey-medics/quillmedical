@@ -91,6 +91,18 @@ repos:
 
   - repo: local
     hooks:
+      # First of the hooks that run in the backend's own Poetry
+      # environment on this machine, which every other hook in this block
+      # that names `poetry` does. It refuses when that environment is on
+      # a different Python from the one CI runs, so none of them gives an
+      # answer here that CI would not.
+      - id: local-python-matches-ci
+        name: local Python matches CI
+        entry: bash scripts/check-python-version.sh
+        language: system
+        files: ^(backend/|shared/brand\.yaml$|\.python-version$)
+        pass_filenames: false
+
       # The backend's own code, with `strict` on. Through Poetry from
       # backend/, so mypy reads `[tool.mypy]` in backend/pyproject.toml
       # and sees the real libraries: see the script for why both matter.
