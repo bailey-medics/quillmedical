@@ -36,7 +36,7 @@ Each type declares four flags, and rules ask the flag instead of carrying their 
 - `can_hold_competencies` - whether somebody can be authorised to practise there
 - `can_have_members` - whether anybody can be a member
 
-Today `room` is the only type with the last three set false. Features and patient lists are not a flag: any org unit may hold them, whatever its type.
+Today `room` is the only type with the last three set false. Features and patient lists are not a flag: any org unit may hold them, whatever its type, except that the `teaching` feature is switched on for an organisation alone.
 
 ## 4. Membership, features and reach
 
@@ -79,8 +79,8 @@ Everything is under `/api/org-units` (`backend/app/org_units/router.py`). There 
 - `GET /api/org-units/{id}/features` - list feature flags
 - `PUT /api/org-units/{id}/features/{feature_key}` - enable or disable a feature
 - `GET /api/org-units/{id}/passport-cover` - clinician passport cover
-- `GET /api/org-units/{id}/passport-specialties` - lead specialties for the clinician passport
-- `PUT /api/org-units/{id}/passport-specialties` - set them
+- `GET /api/org-units/{id}/passport-frameworks` - lead frameworks for the clinician passport
+- `PUT /api/org-units/{id}/passport-frameworks` - set them
 - `POST /api/org-units/{id}/patients` - add a patient
 - `DELETE /api/org-units/{id}/patients/{patient_id}` - remove a patient
 - `GET /api/org-units/{id}/links` - list links
