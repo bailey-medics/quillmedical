@@ -640,6 +640,10 @@ jobs:
     name: E2E (Playwright)
     timeout-minutes: 20
     needs: [heavy_e2e_images]
+    outputs:
+      # The public images the job had to use because the mirror did not
+      # hold them. Empty when every image came from the mirror.
+      mirror_fell_back: ${{ steps.mirror.outputs.fell_back }}
     env:
       CI_IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_backend:${{ github.sha }}
       CI_IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_frontend:${{ github.sha }}
@@ -677,6 +681,7 @@ jobs:
       # above, and not from the public registry, which refuses a runner
       # that asks too often. mirror-images.yml makes the copies.
       - name: Use the mirrored images where they exist
+        id: mirror
         run: bash .github/scripts/ci/use-mirrored-images.sh "${{ github.repository_owner }}" compose.ci.yml CI_POSTGRES_IMAGE CI_CADDY_IMAGE
 
       - name: Start CI stack
@@ -735,6 +740,35 @@ jobs:
       - name: Dump container logs on failure
         if: failure()
         run: docker compose -f compose.ci.yml logs --tail=100
+
+  # The end-to-end job carries on with the public image when the mirror
+  # does not hold one, which is safe but is the very thing the mirror is
+  # there to stop, so it is said out loud and not left in a log.
+  #
+  # In the merge queue only. That is where a refused pull costs something,
+  # and a pull request that changes an image's version starts its own
+  # end-to-end run before the mirror has caught up, which is expected and
+  # would be a false alarm every time.
+  #
+  # always(), because the run that most needs reporting is the one where
+  # the public registry then refused the pull and the job failed.
+  heavy_e2e_mirror_fell_back:
+    name: Notify that E2E used a public image
+    needs: [heavy_e2e]
+    if: ${{ always() && github.event_name == 'merge_group' && needs.heavy_e2e.outputs.mirror_fell_back != '' }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: app
+      text: |
+        *⚠️ E2E pulled from the public registry, not the mirror*
+
+        The mirror did not hold: ${{ needs.heavy_e2e.outputs.mirror_fell_back }}
+
+        The run carried on with the public image, which can be refused when several jobs pull at once. Run the `Mirror images` workflow to fill the mirror, and if it is already full, check the packages under `mirror/` still give this repository access.
+
+        *E2E result:* ${{ needs.heavy_e2e.result }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit
 
   # ---------- Competency catalogue ----------
   # A competency is retired, never deleted. Deleting one from
