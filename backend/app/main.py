@@ -59,12 +59,7 @@ from app.cbac.competencies import (
     SCOPED_MANAGER_IDS,
     validate_competency_ids,
 )
-from app.cbac.grant_scope import (
-    may_assign_profession,
-    may_manage_account,
-    out_of_scope_competencies,
-    scope_for,
-)
+from app.cbac.grant_scope import scope_for
 from app.cbac.grants import sync_competency_rows
 from app.cbac.positions import (
     clinical_leads_of,
@@ -286,6 +281,13 @@ from app.security import (
 )
 from app.users.errors import UserAdminError
 from app.users.identity import change_identity
+from app.users.scope import (
+    check_account_in_scope,
+    check_changes_in_scope,
+    check_may_set_platform_role,
+    check_not_granting_to_self,
+    check_profession_in_scope,
+)
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -2421,68 +2423,6 @@ def _settle_practice(
             )
 
 
-def _require_changes_in_scope(
-    current_user: User, before: set[str], after: set[str]
-) -> None:
-    """Refuse a change to anybody's competencies outside the caller's scope.
-
-    Compares what the person held with what they would hold, so every
-    route into a change is covered the same way: a list edited by hand, a
-    profession carrying competencies over, or a new profession's template.
-    Removal counts as much as granting.
-
-    Args:
-        current_user: The caller.
-        before: What the person holds now; empty for a new account.
-        after: What they would hold once the request is applied.
-
-    Raises:
-        HTTPException: 403 naming every competency out of scope.
-    """
-    refused = out_of_scope_competencies(current_user, before ^ after)
-
-    if refused:
-        raise HTTPException(
-            status_code=403,
-            detail=(
-                "You may not grant or remove: " + ", ".join(refused) + "."
-            ),
-        )
-
-
-def _require_profession_in_scope(current_user: User, profession: str) -> None:
-    """Refuse a profession the caller may not give.
-
-    Raises:
-        HTTPException: 403 naming the profession.
-    """
-    if not may_assign_profession(current_user, profession):
-        raise HTTPException(
-            status_code=403,
-            detail=f"You may not give the profession {profession}.",
-        )
-
-
-def _require_account_in_scope(current_user: User, target: User) -> None:
-    """Refuse an act on a whole account the caller may not manage.
-
-    A change of profession, name, email or password, a deactivation, a
-    reactivation or an invite acts on the whole account. A scoped manager
-    such as ``manage_teaching`` may do these only for somebody whose every
-    competency is one they may grant, so a clinician who also sits
-    teaching assessments stays out of their reach, and so does a delegate
-    who holds anything more.
-
-    Raises:
-        HTTPException: 403 if the account is outside their scope.
-    """
-    if not may_manage_account(current_user, target):
-        raise HTTPException(
-            status_code=403,
-            detail="This account is outside what you may manage.",
-        )
-
-
 def _require_org_units_the_caller_administers(
     db: Session, current_user: User, place_ids: list[int]
 ) -> list[OrgUnit]:
@@ -2584,13 +2524,12 @@ def create_user_with_cbac(
                 status_code=400,
                 detail="Choose at least one organisation or site.",
             )
-        if payload.platform_role != "standard":
-            raise HTTPException(
-                status_code=403,
-                detail="You may not set a platform role.",
-            )
-        _require_profession_in_scope(current_user, payload.base_profession)
-        _require_changes_in_scope(
+        check_may_set_platform_role(
+            current_user,
+            sets_platform_role=payload.platform_role != "standard",
+        )
+        check_profession_in_scope(current_user, payload.base_profession)
+        check_changes_in_scope(
             current_user,
             set(),
             set(
@@ -2776,47 +2715,30 @@ def update_user(
     )
 
     if acts_on_account:
-        _require_account_in_scope(current_user, user)
+        check_account_in_scope(current_user, user)
     if changes_profession and payload.base_profession is not None:
-        _require_profession_in_scope(current_user, payload.base_profession)
-    if changes_platform_role and not scope_for(current_user).unlimited:
-        raise HTTPException(
-            status_code=403, detail="You may not set a platform role."
-        )
+        check_profession_in_scope(current_user, payload.base_profession)
+
+    check_may_set_platform_role(
+        current_user, sets_platform_role=changes_platform_role
+    )
 
     held_before = set(user.get_final_competencies())
 
-    # Nobody awards themselves competencies. Ask another holder of
-    # `manage_users` to do it, so the person granting and the person
-    # gaining are never the same - which is what stops the competency
-    # becoming the key to its own lock. The same separation the NHS
-    # Registration Authority model relies on: an administrator records
-    # access that somebody else verified.
-    #
-    # An operator is exempt. They already reach everything, so the
-    # restriction would be theatre, and somebody has to be able to
-    # bootstrap a deployment.
-    #
-    # Name, email and password are deliberately not covered: those are
-    # ordinary self-service, available on the profile routes anyway, and
-    # blocking them here would be inconsistent rather than stricter.
-    if user.id == current_user.id and current_user.platform_role != (
-        "superadmin"
-    ):
-        self_granting = (
+    # Sent is enough: the user form carries all four on every save, so
+    # an administrator saving their own page is refused whether or not
+    # anything differs. Why nobody grants to themselves is told where
+    # the rule is.
+    check_not_granting_to_self(
+        current_user,
+        user,
+        sends_granting_field=(
             payload.base_profession is not None
             or payload.additional_competencies is not None
             or payload.removed_competencies is not None
             or payload.platform_role is not None
-        )
-        if self_granting:
-            raise HTTPException(
-                status_code=403,
-                detail=(
-                    "Competencies and platform role must be changed by "
-                    "another user who holds manage_users"
-                ),
-            )
+        ),
+    )
 
     change_identity(
         db,
@@ -2884,7 +2806,7 @@ def update_user(
             )
             additional = sorted(granted)
 
-    _require_changes_in_scope(
+    check_changes_in_scope(
         current_user,
         held_before,
         set(
@@ -3025,7 +2947,7 @@ def deactivate_user(
         )
 
     _require_shared_org_with_user(db, current_user, user)
-    _require_account_in_scope(current_user, user)
+    check_account_in_scope(current_user, user)
 
     if user.id == current_user.id:
         raise HTTPException(
@@ -3098,7 +3020,7 @@ def reactivate_user(
         )
 
     _require_shared_org_with_user(db, current_user, user)
-    _require_account_in_scope(current_user, user)
+    check_account_in_scope(current_user, user)
 
     if user.is_active:
         raise HTTPException(status_code=400, detail="User is already active")
@@ -3157,7 +3079,7 @@ def send_invite_email(
         )
 
     _require_shared_org_with_user(db, current_user, user)
-    _require_account_in_scope(current_user, user)
+    check_account_in_scope(current_user, user)
 
     token = create_password_reset_token(user.email)
     # `invite=1` is what makes the page ask the marketing question: the
