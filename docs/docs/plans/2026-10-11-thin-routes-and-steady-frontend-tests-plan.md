@@ -277,13 +277,51 @@ more.
       user, which Phase 3 can fold into this one. The two helpers that
       find a bank still live in that router and raise `HTTPException`,
       so they are imported from it until Phase 3 moves them.
-- [ ] `list_users`, 159 lines.
+- [x] `list_users`, 159 lines. Now five functions in
+      `backend/app/users/listing.py`, since the route answers two
+      questions. Asked about a patient: `people_around_a_patient`, then
+      `picker_rows`. Asked about nobody: `people_within_reach` gives
+      the ids the caller may see, or None for an operator,
+      `people_to_list` reads those people less the members of the org
+      unit excluded, and `admin_rows` says where each belongs. One new
+      refusal, `PatientPickerNotAllowed`, for a scoped manager asking
+      about a patient. The 500 for a list that cannot be read stays in
+      the route, because its `detail` is a message and a code and not a
+      sentence; the reach is still worked out before that `try`, as it
+      was. Neither answer was pinned, so
+      `backend/tests/user_listing_refusals_test.py` does it. No query
+      runs once for each person: the two reads of where people belong
+      take every id at once. Found on the way, and left as they are:
+      neither list is put in an order; `exclude_org_unit` is not
+      checked against the caller's reach, and leaves out the members of
+      that org unit alone and not of those beneath it; `sites` names
+      every org unit somebody belongs to, organisations among them; the
+      patient picker does not ask whether the caller shares an org unit
+      with the patient; and an empty `patient_id` is the admin list.
 - [ ] The remaining routes of 40 lines or more, thirteen at the time of
       measuring. Measure again when this step is reached, since the
       list will have moved, write the routes here, and do them largest
       first. A route under 40 lines is left alone unless
       it holds a rule worth a test: most of them check, call and
       return, which is what a route should do.
+
+- [ ] Decide what to do about what listing people gives away, found on
+      11 October 2026 while moving `list_users`. None is changed here.
+
+      - **The picker of people around a patient never asks whether the
+        caller shares an org unit with that patient.** Somebody holding
+        `manage_users` at one trust who names a patient of another is
+        given that trust's people. It belongs to messaging, so to EHR
+        production, but it is a list of staff handed across an
+        organisation boundary. This is the one that matters.
+      - **`exclude_org_unit` is not checked against what the caller may
+        see**, and leaves out the members of that org unit only, not of
+        those beneath it.
+      - **Neither list is in any order.** There is no `order_by`, so the
+        order is whatever the database gives.
+      - **`sites` names every org unit somebody belongs to,
+        organisations included**, so a trust shows in both lists.
+      - **An empty `patient_id` falls through to the full list.**
 
 - [ ] Decide what to do about what the content sync answers, found on
       11 October 2026 while moving it. None is changed here.
