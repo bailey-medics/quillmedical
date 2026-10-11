@@ -67,6 +67,7 @@ nav:
       - Public Pages: frontend/public-pages.md
       - User Workflows: frontend/workflows.md
       - Security: frontend/security.md
+      - Sessions and requests: frontend/sessions-and-requests.md
       - Client updates: frontend/client-updates.md
       - Shared YAML: frontend/shared-yaml.md
       - In-app guides: frontend/guides.md
@@ -82,6 +83,7 @@ nav:
       - Google Cloud Platform: infrastructure/gcp.md
       - Amazon Web Services: infrastructure/aws.md
       - Remote admin tasks: infrastructure/admin.md
+      - Terraform and the deploy: infrastructure/terraform-and-the-deploy.md
       - Monitoring and alerting: infrastructure/monitoring.md
   - GitHub:
       - Overview: github/index.md
@@ -149,6 +151,7 @@ nav:
   - Teaching:
       - Overview: teaching/index.md
       - Content pipeline: teaching/content-pipeline.md
+      - An exam in progress: teaching/exam-in-progress.md
   - Learnings:
       - Overview: learnings/index.md
       - FHIR & EHRbase Staging Issues: learnings/fhir-ehrbase-issues.md
