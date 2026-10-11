@@ -121,3 +121,43 @@ class PlaceNotFound(UserAdminError):
 
     def __init__(self, org_unit_id: int) -> None:
         super().__init__(f"Place {org_unit_id} not found")
+
+
+class EnrolmentNotAllowed(UserAdminError):
+    """Teaching enrolments the caller may not settle.
+
+    One refusal for two reasons, in the same words: the caller does not
+    run teaching at all, or does not reach the organisation named. The
+    answer does not say which.
+    """
+
+    status_code = 403
+    message = "Not allowed"
+
+
+class EnrolmentOutsideTheirOrganisations(UserAdminError):
+    status_code = 422
+    message = "Enrolment can be set only at an organisation they belong to."
+
+
+class EnrolmentEndPassed(UserAdminError):
+    status_code = 422
+    message = "An enrolment's end date has already passed."
+
+
+class SelfEnrolment(UserAdminError):
+    status_code = 403
+    message = "Somebody else must enrol you in teaching."
+
+
+class ModuleNotServed(UserAdminError):
+    status_code = 422
+    message = "A module was named that the organisation does not serve."
+
+
+class EnrolledBelongingNowhere(UserAdminError):
+    status_code = 422
+    message = (
+        "They must belong to an org unit under the organisation before "
+        "they can be enrolled."
+    )

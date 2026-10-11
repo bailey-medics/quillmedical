@@ -92,15 +92,7 @@ from app.features.passport.models import Passport
 from app.features.teaching.access import (
     MODULES_COMPETENCY,
     give_place,
-    settle_enrolments,
 )
-from app.features.teaching.access import (
-    RESULTS_COMPETENCY as TEACHING_RESULTS_COMPETENCY,
-)
-from app.features.teaching.access import (
-    BelongsNowhere as TeachingBelongsNowhere,
-)
-from app.features.teaching.access import NotServed as TeachingNotServed
 from app.features.teaching.enrolment import current_enrolments
 from app.features.teaching.enrolment import enrol as enrol_on_module
 from app.features.teaching.models import QuestionBankOrgStatus
@@ -275,6 +267,7 @@ from app.security import (
     verify_totp_code,
 )
 from app.users.competencies import settle_competencies
+from app.users.enrolments import settle_teaching_enrolments
 from app.users.errors import UserAdminError
 from app.users.identity import change_identity
 from app.users.membership import (
@@ -1865,6 +1858,23 @@ def _one_entry_per_organisation(
     return value
 
 
+def _enrolments_wanted(
+    enrolments: list[TeachingEnrolmentsAtIn],
+) -> dict[int, dict[str, datetime | None]]:
+    """Turn the form's enrolments into the plain values the rules take.
+
+    For each organisation, in the order sent, each module and when its
+    enrolment ends. Nothing is lost in a mapping: the models above
+    refuse an organisation named twice and a module named twice.
+    """
+    return {
+        entry.org_unit_id: {
+            module.module_id: module.ends_on for module in entry.modules
+        }
+        for entry in enrolments
+    }
+
+
 class PractisingAtIn(BaseModel):
     """What somebody may practise at one org_unit, as the user form sends it.
 
@@ -2108,132 +2118,6 @@ class AdminUserUpdateIn(BaseModel):
             )
 
         return value
-
-
-def _settle_teaching_enrolments(
-    db: Session,
-    current_user: User,
-    person: User,
-    enrolments: list[TeachingEnrolmentsAtIn],
-) -> None:
-    """Make a person's teaching enrolments match what the user form sent.
-
-    Called once their membership and competencies are settled and
-    flushed, in the same transaction, so somebody new is enrolled in the
-    one save that creates them. Every entry is checked before any is
-    written, and one refusal refuses the save.
-
-    Naming a module does everything: ``settle_enrolments`` gives the two
-    learner competencies and a place if they are missing, so an admin
-    who skipped those steps does not leave somebody enrolled and unable
-    to enter.
-
-    Args:
-        db: Core database session.
-        current_user: The caller.
-        person: Whose enrolments they are, with membership settled.
-        enrolments: One entry per organisation to settle.
-
-    Raises:
-        HTTPException: 403 unless the caller runs teaching
-            (``manage_teaching``, or an operator), is somebody other
-            than the person where a competency would be given, and
-            reaches each organisation named. 422 for an organisation
-            the person does not belong to or beneath, a module it does
-            not serve, or an end date already passed.
-    """
-    is_operator = current_user.platform_role == "superadmin"
-
-    if (
-        not is_operator
-        and "manage_teaching" not in current_user.get_final_competencies()
-    ):
-        raise HTTPException(status_code=403, detail="Not allowed")
-
-    member_of = [
-        int(unit_id)
-        for unit_id in cast(
-            Sequence[int],
-            db.execute(
-                select(org_unit_member.c.org_unit_id).where(
-                    org_unit_member.c.user_id == person.id
-                )
-            )
-            .scalars()
-            .all(),
-        )
-    ]
-    theirs = organisation_org_units_of(db, member_of)
-    reached = org_units_whose_people_reached_by(db, current_user)
-    now = datetime.now(UTC)
-    held = set(person.get_final_competencies())
-    gives_a_competency = (
-        not {
-            TEACHING_RESULTS_COMPETENCY,
-            MODULES_COMPETENCY,
-        }
-        <= held
-    )
-
-    for entry in enrolments:
-        if entry.org_unit_id not in theirs:
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    "Enrolment can be set only at an organisation they "
-                    "belong to."
-                ),
-            )
-        if reached is not None and entry.org_unit_id not in reached:
-            raise HTTPException(status_code=403, detail="Not allowed")
-        for module in entry.modules:
-            if module.ends_on is None:
-                continue
-            ends_on = module.ends_on
-            if ends_on.tzinfo is None:
-                ends_on = ends_on.replace(tzinfo=UTC)
-            if ends_on <= now:
-                raise HTTPException(
-                    status_code=422,
-                    detail="An enrolment's end date has already passed.",
-                )
-        # Nobody gives themselves a competency, here as on every other
-        # route. Changing their own enrolments, holding both already,
-        # gives nothing and is allowed.
-        if (
-            entry.modules
-            and gives_a_competency
-            and person.id == current_user.id
-            and not is_operator
-        ):
-            raise HTTPException(
-                status_code=403,
-                detail="Somebody else must enrol you in teaching.",
-            )
-
-    try:
-        for entry in enrolments:
-            settle_enrolments(
-                db,
-                person,
-                organisation_id=entry.org_unit_id,
-                wanted={m.module_id: m.ends_on for m in entry.modules},
-                settled_by=current_user.id,
-            )
-    except TeachingNotServed:
-        raise HTTPException(
-            status_code=422,
-            detail="A module was named that the organisation does not serve.",
-        ) from None
-    except TeachingBelongsNowhere:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                "They must belong to an org unit under the organisation "
-                "before they can be enrolled."
-            ),
-        ) from None
-    db.flush()
 
 
 def _settle_practice(
@@ -2524,8 +2408,11 @@ def create_user_with_cbac(
     # After practice, so a place the form set is already there and
     # naming a module adds only what is still missing.
     if payload.teaching_enrolments:
-        _settle_teaching_enrolments(
-            db, current_user, user, payload.teaching_enrolments
+        settle_teaching_enrolments(
+            db,
+            current_user,
+            user,
+            _enrolments_wanted(payload.teaching_enrolments),
         )
 
     return UserActionOut(
@@ -2712,8 +2599,11 @@ def update_user(
     # an organisation is an answer, ending what they are on, so the
     # test is for the field and not for its truth.
     if payload.teaching_enrolments is not None:
-        _settle_teaching_enrolments(
-            db, current_user, user, payload.teaching_enrolments
+        settle_teaching_enrolments(
+            db,
+            current_user,
+            user,
+            _enrolments_wanted(payload.teaching_enrolments),
         )
 
     return UserActionOut(
