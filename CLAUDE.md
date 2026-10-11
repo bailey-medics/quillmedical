@@ -42,7 +42,7 @@ See the `Justfile` if you want to know more.
   - a rebase onto `main` hit conflicts
   - the change touches a shared module with wide blast radius: `models.py`, `conftest.py`, `api.ts`, `shared/` YAML and its generated types, a dependency bump
 - **Never claim a suite passed that was not run.** Name the exact commands that were run; "tests pass" on its own is not a report
-- Storybook: runs on the host - `just sb` (dev server), `just sbt` (tests), `just sbtci` (CI mode)
+- Storybook: runs on the host - `just sb` (dev server), `just sbt` (tests; starts Storybook itself if none is running)
 - E2E: `just e2e` brings up a fresh per-worktree `compose.ci.yml` stack (the CI one) on a free port, runs Playwright against it and tears it down - never the dev stack
 - **Never run Storybook tests and `just e2e` at the same time** - both saturate the machine, and the Storybook runner then times out loading its own pages and reports mass failures that pass on their own
 - Backend: pytest with fixtures from `backend/conftest.py`. Every test file ends `_test.py`. A test of one module sits beside it as `<module>_test.py`; a test of a rule or a journey is in `backend/tests/` - see `.claude/rules/backend.md`

@@ -85,7 +85,7 @@ preference.
 - Run backend and frontend unit tests **inside Docker containers**, never directly on the
   host: `just ub` (backend) and `just uf` (frontend), with targeted runs preferred during
   development.
-- Storybook runs on the host: `just sb` (dev), `just sbt` / `just sbtci` (tests).
+- Storybook runs on the host: `just sb` (dev), `just sbt` (tests).
 - End-to-end tests: `just e2e` brings up a fresh per-worktree `compose.ci.yml` stack on
   a free port, runs Playwright against it and tears it down. It never uses the dev stack.
 - Never run the Storybook tests and `just e2e` at the same time. Both saturate the
