@@ -219,9 +219,12 @@ jobs:
         working-directory: frontend
         run: |
           case "${{ matrix.task }}" in
-            eslint)   yarn eslint ;;
-            prettier) yarn prettier ;;
-            stylelint) yarn stylelint ;;
+            # Through a script and not called bare: each of these passes
+            # when given no files, so the script fails one that looked at
+            # too few.
+            eslint)   bash ../.github/scripts/ci/run-frontend-lint.sh eslint ;;
+            prettier) bash ../.github/scripts/ci/run-frontend-lint.sh prettier ;;
+            stylelint) bash ../.github/scripts/ci/run-frontend-lint.sh stylelint ;;
             "typecheck:all") yarn typecheck:all ;;
             "storybook:build") yarn storybook:build ;;
           esac

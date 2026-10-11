@@ -15,10 +15,7 @@ import {
 import BadgeSkeleton from "./BadgeSkeleton";
 
 export type AppointmentStatusType =
-  | "upcoming"
-  | "completed"
-  | "cancelled"
-  | "no-show";
+  "upcoming" | "completed" | "cancelled" | "no-show";
 
 type Props = {
   /** The appointment status to display */
