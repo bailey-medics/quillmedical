@@ -6,9 +6,37 @@
  */
 
 import "@testing-library/jest-dom/vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import { afterEach } from "vitest";
 import { act } from "react";
+
+/**
+ * How long `findBy*` and `waitFor` keep looking.
+ *
+ * Testing Library gives up after 1000ms unless told otherwise, and
+ * nothing here had told it. `testTimeout` in vitest.config.ts had
+ * already been raised to fifteen seconds for a busy machine, so a test
+ * had fifteen seconds to run and one second to see each thing appear.
+ * With two suites running at once, a page that loads in a tenth of a
+ * second alone took longer than that second, and tests that wait
+ * properly failed with `Unable to find role="heading"` on a heading
+ * that arrived a moment later. `Settings` and `AssessmentResultPage`
+ * were the ones seen, and never the same tests twice.
+ *
+ * A passing test is no slower for this: a wait ends the moment the
+ * thing appears. Only a test that is going to fail takes longer to say
+ * so.
+ *
+ * Five seconds is a third of `testTimeout` on purpose. A wait that runs
+ * out is then reported as the thing it could not find, with the page
+ * as it stood, and not as a bare `Test timed out in 15000ms` that says
+ * nothing about where. Raise the two together or not at all.
+ *
+ * This does nothing for a test that reads the page once with `getBy*`
+ * before it is ready. That test is wrong at any speed and needs
+ * changing to wait.
+ */
+configure({ asyncUtilTimeout: 5000 });
 
 /**
  * Timers still pending when a test ends.
