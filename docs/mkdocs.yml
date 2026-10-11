@@ -39,6 +39,7 @@ nav:
   - Engineering conventions:
       - Overview: conventions/index.md
       - Finished-response notifications: conventions/finished-response-notifications.md
+      - The audit ledger: conventions/audit-ledger.md
   - Backend:
       - Overview: backend/index.md
       - Three-Database Migration: backend/three-database-migration.md
