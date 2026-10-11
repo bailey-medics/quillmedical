@@ -258,7 +258,25 @@ more.
       two asking for an organisation, a site beneath another
       organisation, and a module not open to registration). Kept, and
       tested by calling the part that raises them.
-- [ ] `ci_teaching_sync`, 168 lines.
+- [x] `ci_teaching_sync`, 168 lines. Now `sync_every_bank` in
+      `backend/app/features/teaching/ci_sync.py`, beside the sync it
+      drives. It refuses nothing, so there is no error class: a bank
+      that cannot be synced is listed with its reason and the next is
+      tried, and the function hands back the answer the route sends.
+      The route keeps the token check with its three refusals, and
+      sets the 422 where any bank is listed. The route never committed:
+      `sync_question_bank` commits as each bank finishes, and still
+      does. The words of the three refusals were not pinned, so
+      `backend/tests/ci_teaching_sync_refusals_test.py` does it. Found
+      on the way, and left as they are: the reason for a bank whose
+      sync raises is the exception's own text, sent to the pipeline;
+      an assessment that fails its checks is recorded as a failed sync
+      and still listed under `synced`, so the answer is 200; a draft
+      whose version is not 1 is on neither list; and `sync_all_banks`
+      in the teaching router is the same loop a second time, with a
+      user, which Phase 3 can fold into this one. The two helpers that
+      find a bank still live in that router and raise `HTTPException`,
+      so they are imported from it until Phase 3 moves them.
 - [ ] `list_users`, 159 lines.
 - [ ] The remaining routes of 40 lines or more, thirteen at the time of
       measuring. Measure again when this step is reached, since the
@@ -266,6 +284,28 @@ more.
       first. A route under 40 lines is left alone unless
       it holds a rule worth a test: most of them check, call and
       return, which is what a route should do.
+
+- [ ] Decide what to do about what the content sync answers, found on
+      11 October 2026 while moving it. None is changed here.
+
+      - **A failed assessment is reported as synced** - when
+        `sync_question_bank` records a sync whose status is `failed`,
+        the record is still there, so the bank is listed under `synced`
+        and CI is answered 200. Only a failed module check, or an
+        exception, gives a 422. So CI can go green on content that did
+        not load. This is the one that matters.
+      - **A draft whose version is not 1 is on neither list**, and so
+        is also a 200.
+      - **An exception's own words are sent back to CI**, for a bank
+        whose sync raised. It is behind the sync token and is about
+        content, never a patient, but it is text nobody wrote for a
+        reader.
+      - **Nothing is rolled back after a bank raises**, so a database
+        error part way could leave the session unusable for the banks
+        after it.
+      - **`sync_all_banks` in the teaching router is the same loop a
+        second time**, started by a person. Phase 3 should fold the two
+        into one.
 
 ## Phase 3: The teaching router
 
