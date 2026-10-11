@@ -51,14 +51,17 @@ from app.features.teaching.attempt_results import (
     question_results,
 )
 from app.features.teaching.attempts import (
+    AttemptFinished,
     attempt_of,
     bank_to_sit,
     begin_attempt,
     change_answer,
     finish_attempt,
+    finish_if_out_of_time,
     item_at_position,
     next_unanswered_item,
     record_answer,
+    unfinished_attempts,
 )
 from app.features.teaching.enrolment import enrolled_on_offer, is_enrolled
 from app.features.teaching.listing import (
@@ -611,7 +614,15 @@ def start_assessment(
     pool stays here, between the two, because its words carry two
     counts: how many items are published and how many the bank asks
     for.
+
+    Before any of that, each unfinished attempt of theirs on the bank
+    whose time has run out is finished.
     """
+    for unfinished in unfinished_attempts(
+        db, user.id, bank_id=body.question_bank_id
+    ):
+        _finish_if_out_of_time(db, user, unfinished)
+
     org_ids = _get_user_org_ids(user, db)
 
     bank = bank_to_sit(
@@ -653,7 +664,15 @@ def assessment_history(
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> list[AssessmentHistoryOut]:
-    """List the current user's past assessments."""
+    """List the current user's past assessments.
+
+    Each unfinished attempt of theirs whose time has run out is
+    finished first, so one nobody came back to is listed with its
+    result and not as still under way.
+    """
+    for unfinished in unfinished_attempts(db, user.id):
+        _finish_if_out_of_time(db, user, unfinished)
+
     rows = db.execute(
         select(Assessment, QuestionBankConfig.title)
         .outerjoin(
@@ -703,11 +722,15 @@ def get_assessment(
     would otherwise ask for the module, which is behind the modules
     competency: somebody keeping their results after losing their way
     into modules would see a result with no title and no certificate.
+
+    An attempt whose time has run out is finished before it is read.
     """
     assessment = db.get(Assessment, assessment_id)
 
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
+
+    _finish_if_out_of_time(db, user, assessment)
 
     config_row = (
         db.execute(
@@ -782,9 +805,10 @@ def get_assessment_question_results(
 
     Only the candidate may see it, which is ``attempt_of``, and only
     once the attempt is complete, which is ``question_results`` with
-    the rest.
+    the rest. An attempt whose time has run out is finished first.
     """
     assessment = attempt_of(db, user.id, assessment_id)
+    _finish_if_out_of_time(db, user, assessment)
 
     return question_results(db, assessment)
 
@@ -802,9 +826,12 @@ def get_current_item(
     """Get the next unanswered item (for resuming after disconnect).
 
     Whose attempt it is comes first, then whether they may still enter
-    its module, then ``next_unanswered_item``.
+    its module, then ``next_unanswered_item``. An attempt whose time
+    has run out is finished as soon as it is known to be theirs, and
+    is then refused as a finished one.
     """
     assessment = attempt_of(db, user.id, assessment_id)
+    _finish_if_out_of_time(db, user, assessment)
     _require_place_for_attempt(db, user, assessment)
 
     item = next_unanswered_item(db, assessment)
@@ -831,9 +858,12 @@ def get_item_by_order(
     """Get a specific item by display order (for navigating back).
 
     Whose attempt it is comes first, then whether they may still enter
-    its module, then ``item_at_position``.
+    its module, then ``item_at_position``. An attempt whose time has
+    run out is finished as soon as it is known to be theirs, and is
+    then refused as a finished one.
     """
     assessment = attempt_of(db, user.id, assessment_id)
+    _finish_if_out_of_time(db, user, assessment)
     _require_place_for_attempt(db, user, assessment)
 
     item = item_at_position(db, assessment, display_order)
@@ -858,9 +888,12 @@ def submit_answer(
 
     Whose attempt it is comes first, then whether they may still enter
     its module, then ``record_answer``. Whether the answer was right is
-    stored and never sent back.
+    stored and never sent back. An attempt whose time has run out is
+    finished as soon as it is known to be theirs, and the answer is
+    then refused as out of time.
     """
     assessment = attempt_of(db, user.id, assessment_id)
+    _finish_if_out_of_time(db, user, assessment)
     _require_place_for_attempt(db, user, assessment)
 
     recorded = record_answer(
@@ -899,9 +932,12 @@ def update_answer(
     """Update an already-answered item (before assessment completion).
 
     Whose attempt it is comes first, then whether they may still enter
-    its module, then ``change_answer``.
+    its module, then ``change_answer``. An attempt whose time has run
+    out is finished as soon as it is known to be theirs, and the change
+    is then refused as out of time.
     """
     assessment = attempt_of(db, user.id, assessment_id)
+    _finish_if_out_of_time(db, user, assessment)
     _require_place_for_attempt(db, user, assessment)
 
     changed = change_answer(db, assessment, answer_id, body.selected_option)
@@ -1127,6 +1163,88 @@ def _maybe_enqueue_certificate_emails(
                     )
 
 
+def _finish_if_out_of_time(
+    db: Session, user: User, assessment: Assessment
+) -> AttemptFinished | None:
+    """Finish a learner's attempt if its time has run out, and say so.
+
+    Every route that touches one attempt calls this as soon as it knows
+    the attempt is the caller's own. Whether there is anything to do,
+    and the marking, is ``finish_if_out_of_time``. What follows it here
+    is what ``complete_assessment`` does after marking an attempt: the
+    result is committed, and a pass is written to whoever the bank says
+    to write to.
+
+    The emails are sent before this returns, and not queued behind the
+    response as ``complete_assessment`` queues them. Many of the routes
+    go on to refuse the request, and anything queued behind a response
+    is dropped when the route raises, so a learner who passed by the
+    clock would never be sent their certificate.
+
+    Only the call that finished the attempt writes to anybody. A second
+    request for the same attempt, at the same moment or later, is given
+    None by ``finish_if_out_of_time`` and does nothing here, so the
+    emails go once for each attempt.
+
+    Args:
+        db: Core database session.
+        user: The learner, whose own attempt it is.
+        assessment: Their attempt.
+
+    Returns:
+        What the marking gave when this call finished the attempt, and
+        None when there was nothing to do.
+    """
+    from app.email_send import (
+        EmailNotAllowedError,
+        EmailRateLimitError,
+        EmailSendError,
+    )
+
+    finished = finish_if_out_of_time(db, assessment)
+
+    if finished is None:
+        return None
+
+    # A checkpoint: the result is kept, and the lock on the attempt let
+    # go, whatever the route goes on to answer. A route that refuses the
+    # request rolls back everything it has not committed.
+    db.commit()
+
+    if not finished.overall_passed:
+        return finished
+
+    queued = BackgroundTasks()
+    _maybe_enqueue_certificate_emails(
+        background_tasks=queued,
+        assessment=assessment,
+        config_row=finished.config,
+        user=user,
+        db=db,
+        criteria_results=finished.criteria_results,
+        exam_ref=assessment.exam_ref,
+    )
+
+    for task in queued.tasks:
+        try:
+            task.func(*task.args, **task.kwargs)
+        except (
+            EmailNotAllowedError,
+            EmailRateLimitError,
+            EmailSendError,
+        ) as exc:
+            # The result stands and the request is still answered, as
+            # when an email queued behind a response fails. The address
+            # and the provider's words stay out of the log.
+            logger.error(
+                "Certificate email not sent for assessment %d: %s",
+                assessment.id,
+                type(exc).__name__,
+            )
+
+    return finished
+
+
 @teaching_router.post(
     "/assessments/{assessment_id}/complete",
     dependencies=[_DEP_MODULES, DEP_REQUIRE_CSRF],
@@ -1143,27 +1261,33 @@ def complete_assessment(
     Whose attempt it is comes first, then whether they may still enter
     its module, then ``finish_attempt``, which marks it. The emails
     about a pass are queued from here, after the result is committed.
+
+    An attempt whose time has run out is finished as soon as it is
+    known to be theirs, as on every route, and its result is what is
+    sent back: the learner asked for it to be finished and it has been.
     """
     assessment = attempt_of(db, user.id, assessment_id)
+    finished = _finish_if_out_of_time(db, user, assessment)
     _require_place_for_attempt(db, user, assessment)
 
-    finished = finish_attempt(db, assessment)
+    if finished is None:
+        finished = finish_attempt(db, assessment)
 
-    # A checkpoint: the result is kept even if building the certificate
-    # or queueing the emails below fails.
-    db.commit()
+        # A checkpoint: the result is kept even if building the
+        # certificate or queueing the emails below fails.
+        db.commit()
 
-    # --- Email certificate on pass ---
-    if finished.overall_passed:
-        _maybe_enqueue_certificate_emails(
-            background_tasks=background_tasks,
-            assessment=assessment,
-            config_row=finished.config,
-            user=user,
-            db=db,
-            criteria_results=finished.criteria_results,
-            exam_ref=assessment.exam_ref,
-        )
+        # --- Email certificate on pass ---
+        if finished.overall_passed:
+            _maybe_enqueue_certificate_emails(
+                background_tasks=background_tasks,
+                assessment=assessment,
+                config_row=finished.config,
+                user=user,
+                db=db,
+                criteria_results=finished.criteria_results,
+                exam_ref=assessment.exam_ref,
+            )
 
     return {
         "is_passed": finished.overall_passed,
@@ -1199,9 +1323,11 @@ def download_certificate(
     Whose attempt it is comes first, then ``certificate_due``, which
     says whether it has a certificate, then the blank one it is printed
     on. The attempt is given its exam reference before the certificate
-    is drawn, if it has none.
+    is drawn, if it has none. An attempt whose time has run out is
+    finished first, so one that passes by the clock has its certificate.
     """
     assessment = attempt_of(db, user.id, assessment_id)
+    _finish_if_out_of_time(db, user, assessment)
 
     due = certificate_due(db, assessment)
     background = certificate_background(assessment.question_bank_id)

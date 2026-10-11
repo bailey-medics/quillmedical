@@ -1319,6 +1319,219 @@ another run. The slowest run took 510 seconds against a usual 260.
       under `.github/workflows` was changed and no retry was added
       anywhere.
 
+## Phase 7: Close what Mark ruled on
+
+Phases 3 and 4 moved rules and fixed nothing, and left lists of what
+they found. Mark ruled on five of those on 12 October 2026. Four are
+steps here. Each changes what somebody is answered, on purpose, so each
+is its own pull request and says what was answered before and what is
+answered now. Each has a test today that pins the old behaviour and
+says so: that test is turned round, as the proof. Not built yet.
+
+The timer comes first and one attempt at a time second, the other way
+round from how Mark's rulings were listed. "In progress" in the second
+means "not finished and still in time", so it stands on the first: an
+attempt out of time has to be finished before it can be told from one
+still under way. Reordered on 12 October 2026, when the building began.
+Where a step changes both the server and the page, the server goes
+first in its own pull request, since it is what makes the rule true,
+and the page follows.
+
+- [ ] **When the time runs out, the attempt is finished.** Mark: "as
+      soon as the timer runs out, the exam MUST finish via submit."
+      Today answering is refused after the deadline, but the attempt
+      stays open, and `finish_attempt` never asks about time: one
+      found two days late is marked and can pass.
+
+      - **An attempt past its time is finished as it stood at the
+        deadline.** It is marked on the answers given in time, which
+        is what a paper handed in when the invigilator calls time is
+        marked on. Its completion time is the deadline, not the moment
+        somebody noticed.
+      - **It can still pass.** If the answers given in time are enough,
+        the attempt passes, with its exam reference and certificate as
+        for any other. Running out of time is not a failure in itself.
+        Mark agreed this on 12 October 2026.
+      - **The browser submits when its clock reaches zero**, so the
+        learner sees their result and not a page that has stopped
+        taking answers.
+      - **The server does not rely on the browser.** A tab can be
+        shut. So every route that touches an attempt finishes it first
+        if its time has run out: reading a question, answering,
+        changing an answer, finishing, and starting a new one. An
+        attempt nobody ever comes back to is finished the next time
+        its results are listed. No background job is needed for that,
+        and none is added.
+      - **A bank that gives no time limit has none.** Today such a
+        bank stores a limit of 0, which is read as no time at all, so
+        every answer is refused. That is the same reading of the same
+        number, and is put right here: 0 or nothing means untimed.
+      - **The learner is told that the time ran out.** Their result
+        page says so, in plain words, beside the result itself, so
+        that somebody who was half way through a question is not left
+        wondering where their answer went. It needs one new field on
+        the attempt that is sent back, saying whether it was finished
+        by the clock. Adding a field is allowed; nothing is taken away.
+      - **The server half is built; the page half is not, so this step
+        stays open.** `finish_if_out_of_time` in
+        `backend/app/features/teaching/attempts.py` finishes a late
+        attempt, and `finish_attempt` itself now records one found
+        late as finished at its deadline, so there is one marking and
+        not two. The deadline is read in one place, `deadline_of`,
+        where 0 means untimed. The new field is `timed_out`: a column
+        on `assessments` (migration `c5dcc392f20a`, false for every
+        row already there) and an optional field on `AssessmentOut`,
+        `AssessmentHistoryOut` and `CompletionResultOut`. Each route
+        calls the router's `_finish_if_out_of_time` as soon as the
+        attempt is known to be the caller's own, before the check
+        that they may still enter the module, so every refusal that
+        was given before is still given, in the same order.
+        `start_assessment` does it for the learner's unfinished
+        attempts on that bank and `assessment_history` for all of
+        theirs. Pinned in
+        `backend/tests/teaching_attempts_out_of_time_test.py`.
+      - **What a learner is answered for an attempt past its time.**
+        Reading a question: was 200 with the question, now 409
+        "Assessment already completed". Answering or changing an
+        answer: 409 "Time limit exceeded" as before, on every try,
+        with the attempt now finished behind it. Finishing: 200 with
+        the result as before, now marked as at the deadline and with
+        `timed_out` true; a second call is 409 "Assessment already
+        completed" as for any attempt. The result, the marked answers
+        and the certificate: were those of an attempt still under
+        way (the last two refused), now those of a finished one.
+      - **Choices made where the step left one.** The emails for a
+        pass by the clock are sent before the request is answered,
+        not queued behind the response as `complete_assessment`
+        queues its own: most of these routes go on to refuse, and
+        FastAPI drops anything queued when a route raises. Only the
+        call that finished the attempt sends, so they go once; a send
+        that fails is logged and the request still answered. Two
+        requests at once are kept apart by reading the row again
+        under `SELECT ... FOR UPDATE` (Postgres; SQLite has one
+        writer and leaves the lock out, so there the read again is
+        the guard). An attempt whose bank has gone cannot be marked
+        and is left unfinished, answered as it was before.
+      - **Left for the page.** Submit when the clock reaches zero,
+        and take either 200 from `complete` or 409 "Assessment
+        already completed" as "go to the result". Say that the time
+        ran out, from `timed_out` on `GET /assessments/{id}`. Treat
+        `time_limit_minutes` of 0 as no timer: `AssessmentAttempt.tsx`
+        shows the timer whenever the limit is not null, so a limit of
+        0 starts a timer that expires at once, and the "End exam"
+        button is shown only beside the timer. Handle 409 from the
+        two question routes by going to the result.
+      - **Not covered, and not asked for.** The admin lists of
+        results (`list_results`) and of delegates (`listing.py`)
+        read attempts without finishing them, so a late attempt
+        nobody has come back to is missing from the first and shows
+        as unfinished in the second until its learner next asks for
+        anything.
+
+- [ ] **Only one attempt in progress at a time.** Mark: "Only one can
+      be in progress at any one time." Today `begin_attempt` in
+      `backend/app/features/teaching/attempts.py` never looks for an
+      unfinished attempt, so starting twice gives a learner two, both
+      open and answerable.
+
+      - **Starting while one is in progress hands back that one**, and
+        does not refuse. A learner who shut the tab, or whose phone
+        died, starts again and is put back where they were, with the
+        same questions and the time already running. A refusal would
+        strand them with no way back to it. Mark agreed this on
+        12 October 2026.
+      - **"In progress" means not finished and still in time.** One
+        that has run out of time is finished first, by the next step,
+        and then a new one starts.
+      - **The database holds the rule too**, so two requests at the
+        same instant cannot both pass the check: a unique index on the
+        learner, the bank and the organisation, over attempts with no
+        completion time. That is a partial index, so it is declared in
+        the model for both databases (`postgresql_where` and
+        `sqlite_where`, as `.claude/rules/backend.md` sets out) and
+        made by `just migrate`.
+      - **Before that index can be made, any learner who already holds
+        two must be down to one.** The migration finishes all but the
+        newest unfinished attempt for each learner and bank, marking
+        them on what was answered, as the next step does for one out
+        of time. Nobody uses App production yet, so there should be
+        none; the migration must still be right if there are.
+
+- [ ] **Deleting a video deletes everything made from it, and a new
+      video starts clean.** Mark: "fix this. deleting the old video to
+      add a new one must delete the captions on deleting the video."
+      Two faults, one cause: what belongs to a video outlives it.
+
+      - **Deleting a video removes its captions, its renditions and its
+        poster**, as well as the file that was uploaded. Today
+        `delete_upload` in
+        `backend/app/features/teaching/media_uploads.py` removes the
+        upload only, and the rest stays in the processed bucket.
+      - **Linking a new video over an old one clears the mark that a
+        person has checked the captions.** Today everything else from
+        the old upload's jobs is cleared and `captions_reviewed_at` is
+        not, so the new video counts as checked and can reach learners
+        as soon as it is transcoded, with captions nobody has read.
+      - **Linking over an old video also deletes the old video's
+        files**, by the same code as deleting, so there is one way
+        that a video's files go and not two.
+      - **If the store refuses**, the row stays and the answer says the
+        video could not be deleted, as today. A row without its files
+        is put right by deleting again; files without a row are found
+        by nothing.
+
+- [ ] **The manual content sync says when a bank did not load.** Mark:
+      "fix this." Today `sync_banks_by_hand` in
+      `backend/app/features/teaching/manual_sync.py` lists a bank
+      whose assessment failed its checks as synced, and the admin page
+      shows it as imported. The CI's sync had the same fault until
+      #1794.
+
+      - **One loop, not two.** The manual sync calls the same code as
+        the CI's, `sync_every_bank` in `ci_sync.py`, so the two cannot
+        differ again. A bank is synced only when its record says
+        `success`; anything else is listed as failed with the
+        validator's messages.
+      - **The admin page shows a failed bank as failed**, with its
+        reasons, and not as imported.
+        `frontend/src/pages/admin/teaching/AdminTeachingPage.tsx` reads
+        only the list of synced banks today.
+      - **Syncing one bank whose version has not moved answers that
+        there was nothing to do**, and not 500 "Sync failed
+        unexpectedly", which is what it answers now though nothing is
+        wrong.
+      - **The response keeps its shape if it can.** If the admin page
+        needs a field it does not have, adding one is allowed; taking
+        one away is a breaking change and goes through the process in
+        `.claude/rules/backend.md`.
+
+**Asked, and not a step: "what is wrong with this?"** Mark's question,
+of the finding that asking somebody to sign off a competency gives them
+the right to assess. Nothing is wrong with the ask giving the right:
+an assessor from outside has to be let in somehow, and the holder
+naming them is how. What was flagged is narrower, and is three things
+that sit beside it. **Discussed on 12 October 2026 and deliberately
+left.** It is clutter and not access: somebody asked once stays an
+`external` member of the holder's org unit, and can still do nothing
+but sign a request that names them. Leaving it also means asking the
+same assessor again simply works. Mark: "if it is an issue in the
+future we can fix it." If an org unit's member list does fill with
+outside assessors, the tidy answer is to keep `external` members off
+the ordinary staff list, not to take them away.
+
+- **The competency given is not tied to the request.**
+  `assess_clinician_passport` is one competency, held or not. Once
+  somebody has it they pass the first check on every assessing route.
+  What stops them signing anything else is the second check, that the
+  request names their address. That second check is doing all the
+  work, and it is the only one.
+- **It is never taken back.** When the request is signed, declined or
+  withdrawn, the competency and the membership at the holder's org
+  unit stay. Somebody asked once, a year ago, is still a member of
+  that org unit as `external`, and still shows wherever members are
+  listed.
+- **An account that has been deactivated is given it all the same.**
+
 ## Decisions
 
 - **Routes first** - Mark's order, on 11 October 2026. It is the larger

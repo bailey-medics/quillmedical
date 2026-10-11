@@ -4,17 +4,19 @@
 ``GET /assessments/{id}/item/{position}``. The rules are tested on their
 own in ``app/features/teaching/attempts_test.py`` and
 ``access_test.py``; this says what a caller is told, in which words,
-exactly what of a question is sent before it is answered, and pins four
+exactly what of a question is sent before it is answered, and pins three
 things the routes do not ask, each as it stands:
 
 - **An attempt already under way.** Starting again gives a second
   attempt on the same bank, and both stay open.
 - **Media.** A bank missing some of its media has its detail hidden,
   and an attempt on it can still be started.
-- **Time, when reading.** A question of an attempt long past its limit
-  is still handed out. Only answering asks about time.
 - **Whose copy of the bank.** Starting takes any organisation's synced
   copy; reading asks for the learner's organisation's own.
+
+Time is asked when reading. An attempt whose time has run out is
+finished before a question of it is read:
+``teaching_attempts_out_of_time_test.py`` has the whole rule.
 """
 
 from __future__ import annotations
@@ -729,27 +731,37 @@ def test_a_finished_attempt_hands_out_no_more_questions(
         assert resp.json() == COMPLETED, url
 
 
-def test_an_attempt_out_of_time_still_hands_out_its_questions(
+def test_an_attempt_out_of_time_hands_out_no_more_questions(
     test_client: TestClient, db_session: Session, trust: OrgUnit
 ) -> None:
-    """As the routes stand: reading a question does not ask about time.
+    """Reading a question finishes an attempt whose time has run out.
 
-    The limit is asked when an answer is sent. An attempt two days past
-    a thirty minute limit, and never finished, still has each question
-    read by its owner. Pinned here and not changed.
+    An attempt two days past a thirty minute limit, and never finished,
+    used to have each question read by its owner. It is now finished
+    as it stood when its time ended, and refused as a finished one.
     """
     pool = _serve(db_session, trust)
     learner = _learner(db_session, trust)
     mine = _attempt(db_session, trust, learner, pool)
-    mine.started_at = datetime.now(UTC) - timedelta(days=2)
+    started = datetime.now(UTC) - timedelta(days=2)
+    mine.started_at = started
     db_session.commit()
     client, _ = _signed_in(test_client)
 
     for url in _reads(mine.id):
         resp = client.get(url)
 
-        assert resp.status_code == 200, url
-        assert resp.json()["display_order"] == 1, url
+        assert resp.status_code == 409, url
+        assert resp.json() == COMPLETED, url
+
+    db_session.expire_all()
+    stored = db_session.get(Assessment, mine.id)
+
+    assert stored is not None
+    assert stored.completed_at is not None
+    assert stored.completed_at.replace(tzinfo=UTC) == started + timedelta(
+        minutes=30
+    )
 
 
 def test_an_attempt_answered_in_full_has_no_current_question(

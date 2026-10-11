@@ -7,9 +7,6 @@ caller is told, in which words, exactly what is sent back after an
 answer, what finishing writes, and pins what the routes do not ask,
 each as it stands:
 
-- **Time, when finishing.** Only sending an answer asks whether the
-  attempt's time has run out. An attempt long past its limit can still
-  be finished, and passes if the answers given in time are enough.
 - **Every answer, when finishing.** An attempt with questions left is
   marked as it stands.
 - **Whether what was chosen is an option.** Anything sent is stored and
@@ -19,6 +16,10 @@ each as it stands:
   its turn.
 - **A bank with no pass criteria.** It passes every attempt, answered
   or not.
+
+Time is asked by all three. An attempt whose time has run out is
+finished as it stood when the time ended, by whichever route meets it
+first: ``teaching_attempts_out_of_time_test.py`` has the whole rule.
 """
 
 from __future__ import annotations
@@ -420,12 +421,14 @@ def test_a_finished_attempt_takes_nothing_more(
 
 
 @pytest.mark.parametrize("route", ["answer", "change"])
-def test_an_attempt_out_of_time_takes_no_answer_and_no_change(
+def test_an_attempt_out_of_time_takes_no_answer_and_is_finished_for_them(
     test_client: TestClient,
     db_session: Session,
     trust: OrgUnit,
     route: str,
 ) -> None:
+    """The answer is refused in the words it always was, and the
+    attempt, which used to be left open, is finished behind them."""
     learner = _learner(db_session, trust)
     mine = _attempt(db_session, trust, learner)
     first = _rows(db_session, mine.id)[0].id
@@ -438,6 +441,10 @@ def test_an_attempt_out_of_time_takes_no_answer_and_no_change(
     assert resp.status_code == 409
     assert resp.json() == OUT_OF_TIME
     assert _rows(db_session, mine.id)[0].selected_option is None
+
+    stored = _stored(db_session, mine.id)
+
+    assert stored.completed_at is not None
 
 
 def test_answering_when_every_question_has_an_answer_is_refused(
@@ -788,37 +795,44 @@ def test_finishing_twice_is_refused_and_changes_nothing(
     assert sent == ["learner@test.local"]
 
 
-def test_an_attempt_long_out_of_time_can_still_be_finished_and_pass(
+def test_an_attempt_long_out_of_time_is_finished_as_at_its_time_and_can_pass(
     test_client: TestClient,
     db_session: Session,
     trust: OrgUnit,
     sent: list[str],
 ) -> None:
-    """As the route stands: finishing does not ask about time.
+    """Running out of time finishes the attempt, and is not a failure.
 
-    Answering and changing an answer are refused once the time has run
-    out. Finishing is not: an attempt two days past a thirty minute
-    limit is marked on the answers given while there was time, passes
-    if they are enough, and the learner is written to. Whether a late
-    attempt should be marked as it is, failed, or closed for them when
-    the time ends is a question for the owner. Pinned here and not
-    changed.
+    An attempt two days past a thirty minute limit used to stay open
+    until somebody finished it, and was then recorded as finished two
+    days late. It is now finished by the first request that meets it,
+    here an answer that is refused: marked on the answers given while
+    there was time, recorded as finished when the time ended, passed
+    if those answers are enough, and the learner is written to. Asking
+    to finish it afterwards finds it finished.
     """
     learner = _learner(db_session, trust)
     mine = _attempt(db_session, trust, learner)
     client, headers = _signed_in(test_client)
     _send(client, headers, "answer", mine.id)
     late = _stored(db_session, mine.id)
-    late.started_at = datetime.now(UTC) - timedelta(days=2)
+    started = datetime.now(UTC) - timedelta(days=2)
+    late.started_at = started
     db_session.commit()
 
     refused = _send(client, headers, "answer", mine.id)
     resp = _send(client, headers, "complete", mine.id)
 
+    stored = _stored(db_session, mine.id)
+
     assert (refused.status_code, refused.json()) == (409, OUT_OF_TIME)
-    assert resp.status_code == 200
-    assert resp.json()["is_passed"] is True
-    assert _stored(db_session, mine.id).is_passed is True
+    assert (resp.status_code, resp.json()) == (409, COMPLETED)
+    assert stored.is_passed is True
+    assert stored.completed_at is not None
+    assert stored.completed_at.replace(tzinfo=UTC) == started + timedelta(
+        minutes=30
+    )
+    assert stored.exam_ref == f"POLYP-{mine.id}"
     assert sent == ["learner@test.local"]
 
 

@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.features.teaching import attempts, media
@@ -15,10 +15,13 @@ from app.features.teaching.attempts import (
     bank_to_sit,
     begin_attempt,
     change_answer,
+    deadline_of,
     finish_attempt,
+    finish_if_out_of_time,
     item_at_position,
     next_unanswered_item,
     record_answer,
+    unfinished_attempts,
 )
 from app.features.teaching.enrolment import enrol
 from app.features.teaching.errors import (
@@ -729,13 +732,15 @@ def test_the_next_question_of_an_attempt_whose_bank_has_gone_is_refused(
     assert refused.value.message == "Config not found for assessment"
 
 
-def test_the_next_question_is_given_after_the_time_has_run_out(
+def test_the_next_question_does_not_itself_ask_about_time(
     db_session: Session,
 ) -> None:
-    """As the route stood: reading a question does not ask about time.
+    """Reading a question leaves time to the route.
 
-    Only answering does. An attempt long past its limit and never
-    finished can still have its questions read. Pinned and not changed.
+    The route finishes an attempt whose time has run out before it
+    reads it, with ``finish_if_out_of_time``, and this then refuses it
+    as finished. Handed a late attempt nobody has finished, it gives
+    the question.
     """
     org = _organisation(db_session)
     learner = _person(db_session)
@@ -866,10 +871,11 @@ def test_a_missing_position_is_said_before_a_missing_bank(
     assert refused.value.message == "Config not found for assessment"
 
 
-def test_a_question_is_given_by_position_after_the_time_has_run_out(
+def test_a_question_by_position_does_not_itself_ask_about_time(
     db_session: Session,
 ) -> None:
-    """As the route stood: reading a question does not ask about time."""
+    """Reading a question leaves time to the route, which finishes an
+    attempt whose time has run out before it reads it."""
     org = _organisation(db_session)
     learner = _person(db_session)
     assessment = _attempt(db_session, org, learner)
@@ -1001,6 +1007,15 @@ def _tags(row: AssessmentAnswer) -> list[str]:
 def _out_of_time(db: Session, assessment: Assessment) -> None:
     assessment.started_at = datetime.now(UTC) - timedelta(days=2)
     db.flush()
+
+
+def _started_long_ago(db: Session, assessment: Assessment) -> datetime:
+    """Start an attempt two days ago, at a moment the test can name."""
+    started = datetime.now(UTC) - timedelta(days=2)
+    assessment.started_at = started
+    db.flush()
+
+    return started
 
 
 def _finished(db: Session, assessment: Assessment) -> None:
@@ -1223,21 +1238,26 @@ def test_an_answer_at_the_last_moment_is_in_time_and_one_after_is_not(
     assert second.selected_option is None
 
 
-def test_an_attempt_with_no_time_limit_takes_no_answer_at_all(
+def test_an_attempt_with_no_time_limit_takes_an_answer_however_late(
     db_session: Session,
 ) -> None:
-    """As the route stood: a limit of 0 is no time, not unlimited time.
+    """A limit of 0 is no limit, not no time.
 
     A bank that gives no ``time_limit_minutes`` starts attempts with a
-    limit of 0, and every answer to one is out of time. Pinned and not
-    changed.
+    limit of 0. Such an attempt is not timed, so an answer to it is in
+    time two days on, and so is a change to one.
     """
     org = _organisation(db_session)
     learner = _person(db_session)
     assessment = _sitting(db_session, org, learner, minutes=0)
+    _out_of_time(db_session, assessment)
 
-    with pytest.raises(TimeLimitExceeded):
-        record_answer(db_session, assessment, RIGHT)
+    record_answer(db_session, assessment, WRONG)
+    first = _rows(db_session, assessment)[0]
+    change_answer(db_session, assessment, first.id, RIGHT)
+
+    assert first.selected_option == RIGHT
+    assert assessment.completed_at is None
 
 
 def test_an_answer_to_an_attempt_whose_bank_has_gone_is_refused(
@@ -1731,14 +1751,14 @@ def test_an_attempt_with_questions_left_is_marked_as_it_stands(
     ]
 
 
-def test_an_attempt_long_out_of_time_can_still_be_finished(
+def test_an_attempt_finished_after_its_time_is_finished_as_at_that_time(
     db_session: Session,
 ) -> None:
-    """As the route stood: finishing does not ask about time.
+    """Running out of time is not a failure in itself.
 
-    Only sending an answer does. An attempt two days past its limit is
-    marked on the answers given while there was time, and passes if
-    they are enough. Pinned and not changed.
+    An attempt found two days past its limit is marked on the answers
+    given while there was time, and passes if they are enough. It is
+    recorded as finished when its time ended, not when it was found.
     """
     org = _organisation(db_session)
     learner = _person(db_session)
@@ -1747,16 +1767,56 @@ def test_an_attempt_long_out_of_time_can_still_be_finished(
         org,
         learner,
         questions=2,
-        config={"pass_criteria": HALF_SURE},
+        config={
+            "pass_criteria": HALF_SURE,
+            "results": {"exam_ref_prefix": "POLYP-"},
+        },
     )
     record_answer(db_session, assessment, RIGHT)
-    _out_of_time(db_session, assessment)
+    started = _started_long_ago(db_session, assessment)
 
     finished = finish_attempt(db_session, assessment)
 
     assert finished.overall_passed is True
     assert assessment.is_passed is True
+    assert assessment.completed_at == started + timedelta(minutes=30)
+    assert assessment.exam_ref == f"POLYP-{assessment.id}"
+
+
+def test_an_attempt_finished_in_time_is_finished_as_at_now(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The last moment is in time, as it is for an answer."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, minutes=30)
+    started = datetime(2026, 3, 1, 9, 0, tzinfo=UTC)
+    assessment.started_at = started
+    db_session.flush()
+    _stop_the_clock(monkeypatch, started + timedelta(minutes=30))
+
+    finish_attempt(db_session, assessment)
+    db_session.flush()
+    db_session.refresh(assessment)
+
     assert assessment.completed_at is not None
+    assert assessment.completed_at.replace(tzinfo=UTC) == started + timedelta(
+        minutes=30
+    )
+
+
+def test_an_attempt_with_no_time_limit_is_finished_as_at_now(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, minutes=0)
+    started = _started_long_ago(db_session, assessment)
+
+    finish_attempt(db_session, assessment)
+
+    assert assessment.completed_at is not None
+    assert assessment.completed_at > started + timedelta(days=1)
 
 
 def test_an_attempt_is_marked_once_and_its_mark_does_not_change(
@@ -1824,5 +1884,326 @@ def test_a_finished_attempt_is_said_before_a_missing_bank(
     _finished(db_session, assessment)
     _lose_the_bank(db_session)
 
+    with pytest.raises(AssessmentAlreadyCompleted):
+        finish_attempt(db_session, assessment)
+
+
+# --- deadline_of ------------------------------------------------------------
+
+
+def test_an_attempts_time_ends_its_limit_after_its_start(
+    db_session: Session,
+) -> None:
+    """Read as UTC whatever zone the start came back with."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, minutes=45)
+    assessment.started_at = datetime(2026, 3, 1, 9, 0)
+    db_session.flush()
+
+    assert deadline_of(assessment) == datetime(2026, 3, 1, 9, 45, tzinfo=UTC)
+
+
+def test_an_attempt_with_a_limit_of_nought_has_no_deadline(
+    db_session: Session,
+) -> None:
+    """What a bank that gives no time limit stores is 0: untimed."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, minutes=0)
+
+    assert deadline_of(assessment) is None
+
+
+def test_starting_on_a_bank_that_gives_no_limit_starts_an_untimed_attempt(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    bank = _bank(db_session, org, pool=2, assessment={"items_per_attempt": 2})
+
+    assessment = begin_attempt(db_session, learner.id, bank).assessment
+
+    assert assessment.time_limit_minutes == 0
+    assert deadline_of(assessment) is None
+
+
+# --- unfinished_attempts ----------------------------------------------------
+
+
+def test_a_learners_unfinished_attempts_are_found_oldest_first(
+    db_session: Session,
+) -> None:
+    """Their own only, and not one that is finished."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    other = _person(db_session, "other")
+    first = _attempt(db_session, org, learner)
+    done = _attempt(db_session, org, learner, synced=False)
+    _finished(db_session, done)
+    second = _attempt(db_session, org, learner, synced=False)
+    _attempt(db_session, org, other, synced=False)
+
+    found = unfinished_attempts(db_session, learner.id)
+
+    assert [attempt.id for attempt in found] == [first.id, second.id]
+
+
+def test_unfinished_attempts_can_be_asked_for_on_one_bank(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    mine = _attempt(db_session, org, learner)
+    elsewhere = _attempt(db_session, org, learner, synced=False)
+    elsewhere.question_bank_id = OTHER_BANK
+    db_session.flush()
+
+    found = unfinished_attempts(db_session, learner.id, bank_id=BANK)
+
+    assert [attempt.id for attempt in found] == [mine.id]
+    assert unfinished_attempts(db_session, learner.id, bank_id="none") == []
+
+
+# --- finish_if_out_of_time --------------------------------------------------
+
+POLYP_CONFIG: dict[str, Any] = {
+    "pass_criteria": HALF_SURE,
+    "results": {"exam_ref_prefix": "POLYP-"},
+}
+
+
+def test_an_attempt_past_its_time_is_finished_as_it_stood_at_the_deadline(
+    db_session: Session,
+) -> None:
+    """Marked as a submitted one is, so enough answers given in time
+    pass it, with its reference."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(
+        db_session, org, learner, questions=2, config=POLYP_CONFIG
+    )
+    record_answer(db_session, assessment, RIGHT)
+    started = _started_long_ago(db_session, assessment)
+
+    finished = finish_if_out_of_time(db_session, assessment)
+    db_session.flush()
+    db_session.refresh(assessment)
+
+    criteria = [
+        {"name": "Sure of it", "value": 0.5, "threshold": 0.5, "passed": True}
+    ]
+
+    assert finished is not None
+    assert finished.overall_passed is True
+    assert finished.criteria_results == criteria
+    assert assessment.completed_at is not None
+    assert assessment.completed_at.replace(tzinfo=UTC) == started + timedelta(
+        minutes=30
+    )
+    assert assessment.is_passed is True
+    assert assessment.score_breakdown == {
+        "criteria": criteria,
+        "overall_passed": True,
+    }
+    assert assessment.exam_ref == f"POLYP-{assessment.id}"
+
+
+def test_an_attempt_past_its_time_fails_when_its_answers_are_not_enough(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(
+        db_session, org, learner, questions=4, config=POLYP_CONFIG
+    )
+    record_answer(db_session, assessment, RIGHT)
+    _out_of_time(db_session, assessment)
+
+    finished = finish_if_out_of_time(db_session, assessment)
+
+    assert finished is not None
+    assert finished.overall_passed is False
+    assert finished.criteria_results[0]["value"] == 0.25
+    assert assessment.is_passed is False
+    assert assessment.completed_at is not None
+    assert assessment.exam_ref == f"POLYP-{assessment.id}"
+
+
+def test_an_attempt_with_time_left_is_left_alone(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The last moment is in time. One moment later is not."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, minutes=30)
+    started = datetime(2026, 3, 1, 9, 0, tzinfo=UTC)
+    assessment.started_at = started
+    db_session.flush()
+
+    _stop_the_clock(monkeypatch, started + timedelta(minutes=30))
+
+    assert finish_if_out_of_time(db_session, assessment) is None
+    assert assessment.completed_at is None
+
+    _stop_the_clock(
+        monkeypatch, started + timedelta(minutes=30, microseconds=1)
+    )
+
+    assert finish_if_out_of_time(db_session, assessment) is not None
+
+
+def test_an_attempt_with_no_time_limit_never_runs_out(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, minutes=0)
+    _out_of_time(db_session, assessment)
+
+    assert finish_if_out_of_time(db_session, assessment) is None
+    assert assessment.completed_at is None
+    assert assessment.is_passed is None
+
+
+def test_an_attempt_its_learner_finished_is_not_finished_again_by_the_clock(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, config=POLYP_CONFIG)
+    finish_attempt(db_session, assessment)
+    db_session.flush()
+    marked_at = assessment.completed_at
+    _out_of_time(db_session, assessment)
+
+    assert finish_if_out_of_time(db_session, assessment) is None
+    assert assessment.completed_at == marked_at
+
+
+def test_finishing_by_the_clock_twice_changes_nothing(
+    db_session: Session,
+) -> None:
+    """The second call finds the attempt finished and does nothing."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(
+        db_session, org, learner, questions=2, config=POLYP_CONFIG
+    )
+    record_answer(db_session, assessment, WRONG)
+    _out_of_time(db_session, assessment)
+
+    assert finish_if_out_of_time(db_session, assessment) is not None
+
+    db_session.flush()
+    marked_at = assessment.completed_at
+    breakdown = assessment.score_breakdown
+
+    # Even were the answers to become right ones afterwards.
+    for row in _rows(db_session, assessment):
+        row.set_tags(["sure"])
+    db_session.flush()
+
+    assert finish_if_out_of_time(db_session, assessment) is None
+    assert assessment.completed_at == marked_at
+    assert assessment.score_breakdown == breakdown
+    assert assessment.is_passed is False
+
+
+def test_an_attempt_another_request_finished_first_is_left_as_that_left_it(
+    db_session: Session,
+) -> None:
+    """Two requests can find the same attempt out of time.
+
+    This one read the attempt before the other marked it, so what it
+    holds says unfinished. The row is read again before anything is
+    marked, and says otherwise.
+    """
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, config=POLYP_CONFIG)
+    started = _started_long_ago(db_session, assessment)
+    marked_at = started + timedelta(minutes=30)
+    db_session.refresh(assessment)
+
+    # The other request, straight to the row and behind this one's back.
+    db_session.connection().execute(
+        update(Assessment)
+        .where(Assessment.id == assessment.id)
+        .values(
+            completed_at=marked_at,
+            is_passed=False,
+            exam_ref="POLYP-FIRST",
+        )
+    )
+
+    assert assessment.__dict__["completed_at"] is None
+    assert finish_if_out_of_time(db_session, assessment) is None
+    assert assessment.completed_at is not None
+    assert assessment.completed_at.replace(tzinfo=UTC) == marked_at
+    assert assessment.is_passed is False
+    assert assessment.exam_ref == "POLYP-FIRST"
+    assert assessment.score_breakdown is None
+
+
+def test_an_attempt_past_its_time_whose_bank_has_gone_is_left_unfinished(
+    db_session: Session,
+) -> None:
+    """It cannot be marked, and nothing is raised: each route goes on
+    to answer as it did before for an attempt with no bank."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    _out_of_time(db_session, assessment)
+    _lose_the_bank(db_session)
+
+    assert finish_if_out_of_time(db_session, assessment) is None
+    assert assessment.completed_at is None
+    assert assessment.is_passed is None
+
+
+# --- Answers to an attempt the clock finished -------------------------------
+
+
+def test_an_answer_to_an_attempt_the_clock_finished_is_told_out_of_time(
+    db_session: Session,
+) -> None:
+    """Not that it is finished: a late answer is told what it was told
+    before such an attempt was finished for it."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    record_answer(db_session, assessment, WRONG)
+    first = _rows(db_session, assessment)[0]
+    _out_of_time(db_session, assessment)
+    finish_if_out_of_time(db_session, assessment)
+    db_session.flush()
+
+    with pytest.raises(TimeLimitExceeded):
+        record_answer(db_session, assessment, RIGHT)
+    with pytest.raises(TimeLimitExceeded):
+        change_answer(db_session, assessment, first.id, RIGHT)
+
+    assert [row.selected_option for row in _rows(db_session, assessment)] == [
+        WRONG,
+        None,
+        None,
+    ]
+
+
+def test_an_attempt_the_clock_finished_gives_no_question_and_is_marked_once(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    _out_of_time(db_session, assessment)
+    finish_if_out_of_time(db_session, assessment)
+    db_session.flush()
+
+    with pytest.raises(AssessmentAlreadyCompleted):
+        next_unanswered_item(db_session, assessment)
+    with pytest.raises(AssessmentAlreadyCompleted):
+        item_at_position(db_session, assessment, 1)
     with pytest.raises(AssessmentAlreadyCompleted):
         finish_attempt(db_session, assessment)
