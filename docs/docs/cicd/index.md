@@ -89,7 +89,7 @@ The `create-pr` job in `auto-pr.yml` auto-creates a **draft** PR for `feature/*`
 
 - Push to branch → fast checks run (~2 min)
 - Mark PR ready → heavy checks run (~5-10 min)
-- All 18 required checks pass → merge button enabled
+- All 18 required checks pass → the PR can be added to the merge queue
 
 ## Workflows
 
@@ -97,7 +97,7 @@ The `create-pr` job in `auto-pr.yml` auto-creates a **draft** PR for `feature/*`
 
 **Triggers:**
 
-- `push` to any branch except `main` (fast tier)
+- `push` to any branch except `main` and the merge queue's `gh-readonly-queue/**` (fast tier)
 - `pull_request` types `ready_for_review` and `synchronize` targeting `main` or `feature/**` (heavy tier)
 - `merge_group` (both tiers, when a PR enters the merge queue)
 
@@ -120,13 +120,13 @@ The production promotion job and its CalVer tag were removed with the production
 
 ### Documentation (`docs.yml`)
 
-**Triggers:** Push to `main` when docs/backend/frontend/shared files change.
+**Triggers:** Push to `main` when docs/backend/frontend/shared files, `CLAUDE.md`, `.claude/` or the docs workflow's own files change, or `workflow_dispatch`.
 
 Builds MkDocs + TypeDoc + Storybook + OpenAPI and deploys to GitHub Pages.
 
 ### Terraform (`terraform.yml`)
 
-**Triggers:** Push/PR to `main` when `infra/**` changes (except `infra/github/**`).
+**Triggers:** Push/PR to `main` when `infra/**` changes (except `infra/github/**` and `infra/aws/**`), or `workflow_dispatch`.
 
 - PRs: `terraform plan` posted as comment
 - Push to `main`: `terraform apply` for app
@@ -168,10 +168,9 @@ The `transcode` stage is the last stage - building without `--target` produces t
 | -------------------------------- | --------------------------------------------- |
 | `GCP_APP_WIF_PROVIDER`           | Workload Identity Federation for app          |
 | `GCP_APP_DEPLOY_SERVICE_ACCOUNT` | App deploy service account                    |
+| `GCP_APP_PLAN_SERVICE_ACCOUNT`   | Read-only account for Terraform plan          |
+| `GCP_APP_SERVICE_ACCOUNT`        | Terraform apply service account               |
 | `GCP_APP_PROJECT_ID`             | App GCP project ID                            |
-| `GCP_PROD_WIF_PROVIDER`          | WIF for production _(not yet active)_         |
-| `GCP_PROD_SERVICE_ACCOUNT`       | Production service account _(not yet active)_ |
-| `GCP_PROD_PROJECT_ID`            | Production GCP project ID _(not yet active)_  |
 
 Authentication uses **Workload Identity Federation** - no long-lived service account keys.
 
