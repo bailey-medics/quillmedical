@@ -2,7 +2,7 @@
 
 ## Stack Overview
 
-- **Backend**: FastAPI (Python 3.13), Poetry, PostgreSQL core DB
+- **Backend**: FastAPI (Python 3.14), Poetry, PostgreSQL core DB
 - **Frontend**: React 19 + TypeScript + Vite + Mantine UI (Yarn 4, **never use npm**)
 - **Healthcare**: HAPI FHIR (demographics) and EHRbase (all other clinical data)
 - **Infrastructure**: Docker Compose, GCP Cloud Run + Global HTTPS Load Balancer (prod), Caddy (dev proxy + prod static serving), GCS (public site)
