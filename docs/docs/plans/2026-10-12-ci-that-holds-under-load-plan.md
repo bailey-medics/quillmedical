@@ -183,10 +183,49 @@ dependencies and not by slowing the queue down.
 
 ## Phase 4: Do not let one flake empty the queue
 
-- [ ] Tell an infrastructure failure from a code failure. A job that
+- [x] Research first whether GitHub lets a workflow add a pull request to
+      a merge queue, and with what permission. If it does not, the
+      fallback is a Slack message naming the pull requests to re-queue and
+      the reason, which is still better than finding out by looking.
+
+      Moved to the top of the phase, because the answer decided the
+      rest. A workflow can add a pull request to the queue, through the
+      `enqueuePullRequest` call, but not usefully with its own token.
+      GitHub starts no workflow from anything its built-in token did, and
+      several projects report the result: the entry gets no checks and
+      waits for ever. One counted eighteen pull requests, and those
+      queued by the built-in token got no run at all. GitHub's own pages
+      do not mention the case. The fix those projects used is a GitHub
+      App, or a personal token, for that one call.
+
+      So the fallback is what is built here, and the App is left as a
+      step of its own below. Nothing in this repository holds a token of
+      that kind today.
+
+- [x] Tell an infrastructure failure from a code failure. A job that
       failed before any test ran, at checkout, setup or a pull, did not
       fail on the code. Give each such step a recognisable exit, or read
       the failed step's name from the run.
+
+      `.github/scripts/ci/report-queue-failure.sh` reads the log of each
+      failed job in a queue run. It looks at the thirty lines leading up
+      to the first error and calls the failure outside the code when
+      they carry the mark of a refused or unreachable service: a 429, a
+      5xx, a name that cannot be looked up, a dropped connection, a lost
+      runner, or the line `retry-once.sh` from Phase 3 prints when a
+      call fails twice. That last one is the recognisable exit. Only
+      those lines, because a test's own output may mention a 504.
+
+      It is a reading of a log and can be wrong, so its message says
+      "looks like". A job whose log cannot be fetched counts as a real
+      failure.
+
+- [x] Say so in Slack, naming the pull request and the reason. Two jobs
+      at the foot of `ci.yml` run in the merge queue when any job
+      failed, and post one of three messages: removed by a fault outside
+      the code, so add it to the queue again; removed by a failed check;
+      or some of each. This is Phase 8 as well, done here because it is
+      the same message.
 
 - [ ] Put a pull request back in the queue when it was removed for an
       infrastructure failure. A workflow on the queue's removal event,
@@ -197,10 +236,11 @@ dependencies and not by slowing the queue down.
       stops broken code reaching `main`. This only stops a 504 being
       counted as broken code.
 
-- [ ] Research first whether GitHub lets a workflow add a pull request to
-      a merge queue, and with what permission. If it does not, the
-      fallback is a Slack message naming the pull requests to re-queue and
-      the reason, which is still better than finding out by looking.
+      Waits on two things. A GitHub App installed on this repository,
+      allowed to write pull requests and nothing else, for the reason
+      above: Mark has to create it. And a week or two of the Slack
+      messages, to see that "outside the code" is right every time
+      before anything acts on it unattended.
 
 ## Phase 5: Build each image once and reuse it
 
@@ -238,10 +278,14 @@ dependencies and not by slowing the queue down.
 
 ## Phase 8: Alert on infrastructure failures
 
-- [ ] Post to Slack, through `slack-notify.yml`, when a job fails for a
+- [x] Post to Slack, through `slack-notify.yml`, when a job fails for a
       reason outside the code, naming the service that refused and the
       pull requests affected. Today a queue failure is found by noticing
       that pull requests have gone.
+
+      Done in Phase 4, for the merge queue. It names the pull request
+      whose run failed. Those stacked on it are removed with it and get
+      no message of their own, since their runs are stopped, not failed.
 
 ## Phase 9: Write the limits down
 
