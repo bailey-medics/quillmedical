@@ -349,7 +349,7 @@ resource "google_monitoring_alert_policy" "cloud_run_startup" {
 # Retention and the teaching reminders run each day on a timer, with nobody
 # watching (infra/scheduled-jobs.tf). A run that fails, or never starts,
 # would otherwise go unseen until somebody asked why no reminder had
-# arrived. Two ways to fail, so two conditions:
+# arrived. Two ways to fail, both in the one condition below:
 #
 # - The action ran and said it could not finish. Matched on the words the
 #   two actions print when they fail, so a failed migration or smoke test
@@ -383,27 +383,27 @@ resource "google_monitoring_alert_policy" "scheduled_action" {
     EOT
   }
 
+  # One condition holding both, joined by OR in the filter. Monitoring
+  # allows a policy that matches log lines only a single condition: two
+  # were refused when this was first applied, on 12 October 2026, and
+  # neither alert nor scheduler job was made.
   conditions {
-    display_name = "The action reported a failure"
+    display_name = "A scheduled action failed, or could not be started"
 
     condition_matched_log {
       filter = <<-EOT
-        resource.type = "cloud_run_job"
-        resource.labels.job_name = "${var.scheduled_job_name}"
-        (textPayload =~ "Nothing was deleted"
-          OR textPayload =~ "The reminders could not run"
-          OR textPayload =~ "could not be sent")
-      EOT
-    }
-  }
-
-  conditions {
-    display_name = "Cloud Scheduler could not start the job"
-
-    condition_matched_log {
-      filter = <<-EOT
-        resource.type = "cloud_scheduler_job"
-        severity >= ERROR
+        (
+          resource.type = "cloud_run_job"
+          resource.labels.job_name = "${var.scheduled_job_name}"
+          (textPayload =~ "Nothing was deleted"
+            OR textPayload =~ "The reminders could not run"
+            OR textPayload =~ "could not be sent")
+        )
+        OR
+        (
+          resource.type = "cloud_scheduler_job"
+          severity >= ERROR
+        )
       EOT
     }
   }
