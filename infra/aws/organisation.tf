@@ -116,7 +116,13 @@ import {
 }
 
 # An account made in the console and not added above would otherwise go
-# unnoticed. This fails a plan until the two lists agree.
+# unnoticed. This warns on every plan and apply until the two lists agree.
+#
+# A warning, not a failure: a `check` block that does not hold is reported
+# and stops nothing. That is enough here, because this Terraform is
+# applied by a person, who reads the plan. The opposite mistake, an
+# account listed above that the organisation does not hold, does fail:
+# the lookup of its email address has nothing to find.
 check "every_account_is_listed" {
   assert {
     condition = (
