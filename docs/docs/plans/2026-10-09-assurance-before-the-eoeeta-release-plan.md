@@ -638,7 +638,8 @@ before any feature.
 - [ ] `compose.ci.yml`.
 - [ ] `compose.dev.yml`.
 - [ ] `compose.migrate.yml`.
-- [ ] `compose.prod.cloud-run.yml`.
+- [x] `compose.prod.cloud-run.yml`. Deleted on 12 October 2026, not
+      audited: nothing built or deployed from it.
 - [ ] `compose.prod.fhir-openehr.yml`.
 - [ ] `compose.unit-tests.yml`.
 - [ ] `backend/Dockerfile`.
