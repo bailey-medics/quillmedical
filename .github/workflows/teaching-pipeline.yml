@@ -97,11 +97,30 @@ jobs:
           path: tooling
           sparse-checkout: |
             backend/app/features/teaching/tooling
+            .github/scripts/shared
 
       # Quill's .github/actions/setup-python is not usable here: its paths
       # assume Quill is the workspace root, which in a reusable workflow is
       # the content repo, and its caching is tied to a full Poetry install
       # of the backend that this deliberately does not need.
+      #
+      # What it does to keep the installed Python between runs is copied
+      # here, with the same key. setup-python otherwise downloads the exact
+      # version from GitHub's releases on every run, and a 504 from that
+      # download fails the content repo's check. The cache is the content
+      # repo's own, since that is whose run this is.
+      - name: Read the Python version
+        id: python_version
+        run: |
+          echo "version=$(tr -d '[:space:]' < tooling/.python-version)" >> "$GITHUB_OUTPUT"
+          echo "image=${ImageOS:-unknown}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the installed Python
+        uses: actions/cache@v6.1.0
+        with:
+          path: ${{ runner.tool_cache }}/Python/${{ steps.python_version.outputs.version }}
+          key: python-install-${{ runner.os }}-${{ runner.arch }}-${{ steps.python_version.outputs.image }}-${{ steps.python_version.outputs.version }}
+
       - name: Set up Python
         uses: actions/setup-python@v7.0.0
         with:
@@ -122,10 +141,10 @@ jobs:
       - name: Install validator dependencies
         working-directory: tooling/backend/app/features/teaching/tooling
         run: |
-          python -m pip install -U pip
-          python -m pip install "poetry==$(cat "${GITHUB_WORKSPACE}/tooling/.poetry-version")"
+          bash "${GITHUB_WORKSPACE}/tooling/.github/scripts/shared/retry-once.sh" python -m pip install -U pip
+          bash "${GITHUB_WORKSPACE}/tooling/.github/scripts/shared/retry-once.sh" python -m pip install "poetry==$(cat "${GITHUB_WORKSPACE}/tooling/.poetry-version")"
           poetry config virtualenvs.create false
-          poetry install --no-interaction --no-ansi
+          bash "${GITHUB_WORKSPACE}/tooling/.github/scripts/shared/retry-once.sh" poetry install --no-interaction --no-ansi
 
       # Run from inside the question bank checkout so the version lock
       # check can resolve its repository root and diff against origin/main.
