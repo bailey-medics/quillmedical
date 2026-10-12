@@ -27,10 +27,8 @@ from collections.abc import Callable, Sequence
 from typing import Any, cast
 from uuid import uuid4
 
-import httpx
 from fastapi import (
     APIRouter,
-    Depends,
     FastAPI,
     HTTPException,
     Request,
@@ -47,14 +45,13 @@ from app.analytics.router import router as analytics_router
 from app.api_compatibility import REQUIRED_CLIENT_GENERATION
 from app.body_limit import BodyLimitMiddleware
 from app.cbac.grant_scope import scope_for
-from app.cbac.grants import sync_competency_rows
+from app.cbac.router import router as cbac_router
 from app.compat_harness_endpoints import test_api_router
 from app.config import settings
 from app.deps import (
     DEP_CURRENT_USER,
     DEP_GET_SESSION,
     DEP_REQUIRE_CSRF,
-    has_competency,
 )
 from app.ehrbase_client import (
     EhrbaseClientError,
@@ -70,12 +67,16 @@ from app.features.passport.errors import PassportError
 from app.features.passport.models import Passport
 from app.features.teaching.ci_router import router as teaching_ci_router
 from app.features.teaching.errors import TeachingError
-from app.features.teaching.models import QuestionBankOrgStatus
+from app.features.teaching.public_router import (
+    router as teaching_public_router,
+)
 from app.feedback.router import router as feedback_router
 from app.fhir_client import (
     FhirClientError,
 )
 from app.guides.router import router as guides_router
+from app.health import check_ehrbase_health, check_fhir_health
+from app.health import router as health_router
 from app.inbox.router import router as inbox_router
 from app.log_context import request_id_var, user_id_var
 from app.logging_config import setup_logging
@@ -110,7 +111,6 @@ from app.schemas.auth import (
     ChangePasswordIn,
     DetailResponse,
     ForgotPasswordIn,
-    HealthCheckOut,
     LoginIn,
     LoginOut,
     MeOut,
@@ -120,19 +120,9 @@ from app.schemas.auth import (
     RegisterIn,
     ResendVerificationIn,
     ResetPasswordIn,
-    ServiceHealthStatus,
-    TeachingModuleItem,
-    TeachingModulesOut,
     TotpDisableIn,
     UpdateProfileIn,
-    ValidateClinicalLeadOut,
     VerifyEmailIn,
-)
-from app.schemas.cbac import (
-    PrescriptionRequest,
-    PrescriptionResponse,
-    UpdateCompetenciesRequest,
-    UserCompetenciesResponse,
 )
 from app.schemas.messaging import (
     AcceptInviteIn,
@@ -159,7 +149,6 @@ from app.users.errors import UserAdminError
 from app.users.invites import accept_external_invite
 from app.users.register import (
     Registration,
-    clinical_lead_site,
     register_account,
     undo_registration,
 )
@@ -417,62 +406,7 @@ COOKIE_KW: dict[str, Any] = {
 }
 
 
-def check_fhir_health() -> dict[str, bool | int | str]:
-    """Check if FHIR server is available and ready to serve data.
-
-    Tests actual patient data access rather than just metadata endpoint,
-    since HAPI FHIR can return metadata before it's ready to serve resources.
-
-    Safety-critical: This determines whether frontend shows "Database initialising"
-    vs "No patients to show". False positive could cause clinical staff to think
-    database is empty when it's still loading.
-
-    Returns:
-        dict with 'available' boolean and optional 'error' message
-    """
-    if not settings.CLINICAL_SERVICES_ENABLED:
-        return {"available": False, "error": "Clinical services disabled"}
-    try:
-        # Test actual data access, not just metadata
-        # This ensures database is ready and indexes are loaded
-        response = httpx.get(
-            f"{settings.FHIR_SERVER_URL}/Patient?_count=1", timeout=5.0
-        )
-        # 200 = success (even if 0 patients), means FHIR is truly ready
-        # Other codes mean FHIR still loading or has errors
-        return {
-            "available": response.status_code == 200,
-            "status_code": response.status_code,
-        }
-    except Exception as e:
-        return {"available": False, "error": str(e)}
-
-
-def check_ehrbase_health() -> dict[str, bool | int | str]:
-    """Check if EHRbase server is available.
-
-    Returns:
-        dict with 'available' boolean and optional 'error' message
-    """
-    if not settings.CLINICAL_SERVICES_ENABLED:
-        return {"available": False, "error": "Clinical services disabled"}
-    try:
-        # Use get_secret_value() to extract the actual password string
-        api_user = settings.EHRBASE_API_USER
-        api_password: str = settings.EHRBASE_API_PASSWORD.get_secret_value()
-
-        response = httpx.get(
-            f"{settings.EHRBASE_URL}/rest/openehr/v1/definition/template/adl1.4",
-            timeout=5.0,
-            auth=(api_user, api_password),
-        )
-        return {
-            "available": response.status_code
-            in (200, 404),  # 404 = no templates but server works
-            "status_code": response.status_code,
-        }
-    except Exception as e:
-        return {"available": False, "error": str(e)}
+router.include_router(health_router)
 
 
 @app.on_event("startup")
@@ -571,52 +505,6 @@ def clear_auth_cookies(response: Response) -> None:
     )
     response.delete_cookie(
         "XSRF-TOKEN", path="/", domain=settings.COOKIE_DOMAIN
-    )
-
-
-@router.get("/health", response_model=HealthCheckOut)
-def health_check() -> HealthCheckOut:
-    """Health Check Endpoint.
-
-    Checks availability of all required services (FHIR, EHRbase).
-    Returns overall status and detailed service availability.
-
-    Returns:
-        dict: Health status with service availability details
-    """
-    services: dict[str, dict[str, bool | int | str]] = {
-        "core_db": {
-            "available": True
-        },  # If we can respond, core DB is working
-    }
-
-    # Only check FHIR/EHRbase when clinical services are enabled
-    if settings.CLINICAL_SERVICES_ENABLED:
-        services["fhir"] = check_fhir_health()
-        services["ehrbase"] = check_ehrbase_health()
-    else:
-        services["fhir"] = {
-            "available": False,
-            "error": "Not provisioned",
-        }
-        services["ehrbase"] = {
-            "available": False,
-            "error": "Not provisioned",
-        }
-
-    all_healthy = all(s.get("available", False) for s in services.values())
-
-    return HealthCheckOut(
-        status="healthy" if all_healthy else "degraded",
-        # The same dictionaries, under the wider type the model declares:
-        # a dict is not accepted where one with more value types is asked
-        # for, though every value here fits.
-        services=cast(
-            dict[
-                str, ServiceHealthStatus | dict[str, bool | int | str | None]
-            ],
-            services,
-        ),
     )
 
 
@@ -756,99 +644,7 @@ def list_organisations_public(
     )
 
 
-@router.get("/teaching/public/modules", response_model=TeachingModulesOut)
-def list_teaching_modules_public(
-    db: Session = DEP_GET_SESSION,
-) -> TeachingModulesOut:
-    """List teaching modules available for registration.
-
-    Public endpoint (no authentication required) that returns question
-    banks where at least one organisation has site registration enabled.
-    Used by the teaching registration page to populate the module selector.
-
-    Returns:
-        dict with key ``modules`` containing a list of
-        ``{value, label}`` objects.
-    """
-    from app.features.teaching.models import (
-        QuestionBankConfig,
-    )
-
-    registrable_bank_ids = (
-        db.execute(
-            select(QuestionBankOrgStatus.question_bank_id).where(
-                QuestionBankOrgStatus.site_registration.is_(True)
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-    if not registrable_bank_ids:
-        return TeachingModulesOut(modules=[])
-
-    # Newest version first, so the first row met for a bank is the one
-    # everybody is served. Every version ever synced is kept, and each
-    # organisation holds its own copy, so a bank has many rows here.
-    configs = (
-        db.execute(
-            select(QuestionBankConfig)
-            .where(
-                QuestionBankConfig.question_bank_id.in_(registrable_bank_ids)
-            )
-            .order_by(QuestionBankConfig.version.desc())
-        )
-        .scalars()
-        .all()
-    )
-
-    # One entry per bank, named by its newest version. This used to sort
-    # the rows by title and keep the first, which named a bank by
-    # whichever of its titles came first in the alphabet: a module
-    # retitled "… Test" in a later version went on showing the old name,
-    # the same as the module it had been renamed apart from.
-    seen: set[str] = set()
-    modules: list[TeachingModuleItem] = []
-
-    for c in configs:
-        if c.question_bank_id not in seen:
-            seen.add(c.question_bank_id)
-            modules.append(
-                TeachingModuleItem(value=c.question_bank_id, label=c.title)
-            )
-
-    return TeachingModulesOut(modules=sorted(modules, key=lambda m: m.label))
-
-
-class ValidateClinicalLeadIn(BaseModel):
-    """Request body for clinical lead validation."""
-
-    email: str
-    bank_id: str
-
-    model_config = {"extra": "forbid"}
-
-
-@router.post(
-    "/teaching/public/validate-clinical-lead",
-    response_model=ValidateClinicalLeadOut,
-)
-@limiter.limit("10/minute")
-def validate_clinical_lead(
-    request: Request,
-    payload: ValidateClinicalLeadIn,
-    db: Session = DEP_GET_SESSION,
-) -> ValidateClinicalLeadOut:
-    """Validate that an email belongs to a clinical lead for a bank.
-
-    Public endpoint used during registration. Checks whether the given
-    email belongs to a user who is a clinical_lead at a site linked to
-    an organisation that has the specified bank enabled for registration.
-
-    Returns:
-        dict with ``valid`` (bool) and ``site_name`` (str | None).
-    """
-    return clinical_lead_site(db, payload.email, payload.bank_id)
+router.include_router(teaching_public_router)
 
 
 @router.post("/auth/register", response_model=DetailResponse)
@@ -1686,170 +1482,12 @@ def refresh(
 router.include_router(patients_router)
 
 
+router.include_router(cbac_router)
+
+
 # ==========================================================================
-# CBAC (Competency-Based Access Control) Routes
+# EXTERNAL ACCESS (invite / accept / revoke)
 # ==========================================================================
-
-
-@router.get(
-    "/cbac/my-competencies",
-    response_model=UserCompetenciesResponse,
-    tags=["cbac"],
-)
-async def get_my_competencies(
-    user: User = DEP_CURRENT_USER,
-) -> UserCompetenciesResponse:
-    """Get current user's resolved competencies.
-
-    Returns the authenticated user's base profession and final competencies
-    after resolving base profession + additional - removed competencies.
-
-    Returns:
-        UserCompetenciesResponse: User's competency information
-    """
-    return UserCompetenciesResponse(
-        user_id=user.id,
-        username=user.username,
-        base_profession=user.base_profession,
-        additional_competencies=user.additional_competency_ids,
-        removed_competencies=user.removed_competency_ids,
-        final_competencies=user.get_final_competencies(),
-    )
-
-
-@router.post(
-    "/prescriptions/controlled",
-    response_model=PrescriptionResponse,
-    tags=["cbac", "prescriptions"],
-    status_code=201,
-)
-async def prescribe_controlled(
-    prescription: PrescriptionRequest,
-    user: User = Depends(has_competency("prescribe_controlled_schedule_2")),
-    _csrf: User = DEP_REQUIRE_CSRF,
-    db: Session = DEP_GET_SESSION,
-) -> PrescriptionResponse:
-    """Prescribe controlled substance (Schedule 2).
-
-    Example endpoint demonstrating CBAC protection. Only users with
-    'prescribe_controlled_schedule_2' competency can access this endpoint.
-
-    Requires:
-        - Competency: prescribe_controlled_schedule_2
-        - Authentication: JWT cookie
-
-    Args:
-        prescription: Prescription details
-        user: Authenticated user (injected by dependency)
-        db: Database session
-
-    Returns:
-        PrescriptionResponse: Prescription confirmation
-
-    Raises:
-        HTTPException: 403 if user lacks competency
-    """
-    # In real implementation, this would create prescription in database
-    return PrescriptionResponse(
-        status="success",
-        prescription_id="RX001",
-        prescriber=user.username,
-        patient_id=prescription.patient_id,
-        medication=prescription.medication,
-        dose=prescription.dose,
-        duration_days=prescription.duration_days,
-    )
-
-
-@router.patch(
-    "/cbac/my-competencies",
-    response_model=UserCompetenciesResponse,
-    tags=["cbac"],
-    dependencies=[DEP_REQUIRE_CSRF],
-)
-async def update_my_competencies(
-    data: UpdateCompetenciesRequest,
-    user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
-) -> UserCompetenciesResponse:
-    """Update the **caller's own** additional/removed competencies.
-
-    Self-scoped by construction: ``UpdateCompetenciesRequest`` carries no
-    target user, so this edits ``current_user`` and can edit nobody else.
-    To change someone else's competencies use ``PATCH /users/{user_id}``,
-    which takes the same three CBAC fields, refuses an admin editing a
-    superadmin, and is scoped to the admin's own organisations.
-
-    An earlier docstring described this as the route by which administrators
-    edit "a user's" competencies. It never was, and reading it that way
-    hides what the admin gate below actually permits: an admin granting
-    themselves any competency, clinical ones included. That is deliberate
-    for now and is to be revisited with end-to-end tests - see
-    ``docs/docs/plans/2026-09-09-platform-role-plan.md``.
-
-    Args:
-        data: Additional and removed competencies to write to the caller.
-        user: Authenticated user, who is also the subject of the edit.
-        db: Database session
-
-    Returns:
-        UserCompetenciesResponse: The caller's updated competency information
-
-    Raises:
-        HTTPException: 403 unless the caller's ``platform_role`` is
-            ``superadmin``.
-    """
-    # Self-granting, so only an operator may use it. Everyone else asks
-    # another holder of `manage_users`, through `PATCH /users/{id}`,
-    # which does the same job with an org_unit check and a second person.
-    #
-    # Gating this on `manage_users` was considered and rejected: holding
-    # the competency would then be what lets a holder keep granting it to
-    # themselves, and the competency becomes the key to its own lock.
-    if user.platform_role != "superadmin":
-        raise HTTPException(
-            status_code=403,
-            detail=(
-                "Competencies must be changed by another user who holds "
-                "manage_users"
-            ),
-        )
-
-        # Update user's competencies
-    # A list left out of the request keeps what the rows hold now.
-    additional = (
-        list(data.additional_competencies)
-        if data.additional_competencies is not None
-        else user.additional_competency_ids
-    )
-    removed = (
-        list(data.removed_competencies)
-        if data.removed_competencies is not None
-        else user.removed_competency_ids
-    )
-    sync_competency_rows(
-        user,
-        additional=additional,
-        removed=removed,
-        source="operator",
-        granted_by=user.id,
-    )
-
-    db.flush()
-    db.refresh(user)
-
-    return UserCompetenciesResponse(
-        user_id=user.id,
-        username=user.username,
-        base_profession=user.base_profession,
-        additional_competencies=user.additional_competency_ids,
-        removed_competencies=user.removed_competency_ids,
-        final_competencies=user.get_final_competencies(),
-    )
-
-    # ==========================================================================
-    # EXTERNAL ACCESS (invite / accept / revoke)
-    # ==========================================================================
 
 
 @router.post("/accept-invite", response_model=AcceptInviteOut)
