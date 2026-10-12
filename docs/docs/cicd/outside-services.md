@@ -10,6 +10,7 @@ It was written from `.github/workflows/ci.yml`,
 `.github/workflows/mirror-images.yml`, `.github/actions/setup-python/`,
 `.github/actions/setup-frontend/`, `.github/scripts/shared/retry-once.sh`,
 `.github/scripts/ci/check-mirrored-images.sh`,
+`.github/scripts/ci/check-renovate-tracks-images.sh`,
 `.github/scripts/ci/use-mirrored-base-images.sh` and
 `.github/scripts/ci/report-queue-failure.sh`. The reasons are in the
 [CI that holds under load plan](../plans/2026-10-12-ci-that-holds-under-load-plan.md).
@@ -47,6 +48,10 @@ It was written from `.github/workflows/ci.yml`,
 - **How it failed** - it has not.
 - **Cover** - one retry on each `docker pull`. Pulls are signed in with
   the workflow's own token.
+- **Also** - Renovate's own image, pulled by
+  `renovate-tracks-images.yml`. That runs only on a pull request that
+  changes how an image is written or how Renovate is set up, and never in
+  the merge queue.
 
 ### GitHub's releases
 
@@ -110,6 +115,14 @@ It was written from `.github/workflows/ci.yml`,
 - **The Postgres image of the migration drift check**, named directly in
   `ci.yml`. It was refused on 12 October 2026. `check-mirrored-images.sh`
   carries it as a named exception until it is moved to the mirror.
+
+## Who moves the pins
+
+Every image above is pinned to a digest, so it changes only when Renovate
+opens a pull request moving the pin. `renovate-tracks-images.yml` runs
+Renovate read-only and `check-renovate-tracks-images.sh` fails when an
+image the mirror copies is missing from what Renovate found. Without it, a
+pin Renovate had lost sight of would look healthy for ever.
 
 ## Adding something CI fetches
 

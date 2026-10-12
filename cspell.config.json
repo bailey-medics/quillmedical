@@ -999,7 +999,8 @@
     "unserved",
     "toomanyrequests",
     "ETIMEDOUT",
-    "ECONNRESET"
+    "ECONNRESET",
+    "renovatebot"
   ],
   "ignoreWords": [
     "Exampletown",

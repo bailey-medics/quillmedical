@@ -83,6 +83,23 @@ dependencies and not by slowing the queue down.
       in the compose file or a Dockerfile's `_IMAGE` argument, so the
       schedule cannot become needed again without a check failing.
 
+- [x] Check that Renovate can see every pin. Pinning hands the job of
+      keeping an image patched to Renovate, and a pin Renovate cannot
+      see never moves, with nothing failing. Renovate reads these
+      images through two forms it could lose: a compose image that is a
+      variable's default, and a base image named in an `ARG`.
+
+      `renovate-tracks-images.yml` runs Renovate over the checkout with
+      `--platform=local --dry-run=extract`, which writes a report and
+      changes nothing, and `check-renovate-tracks-images.sh` fails when
+      an image the mirror copies is not in it with its digest. Only on a
+      pull request that changes one of those files or `renovate.json`,
+      and never in the merge queue, because it pulls Renovate's image.
+
+      Run by hand on 12 October with Renovate 44.151.5: it found all six
+      images, in both forms. So the `ARG` form from the first step of
+      this phase is read, which had not been seen until then.
+
 ## Phase 2: Stop downloading tools on every job
 
 - [x] Find every job that installs Python or Node afresh. Ten workflow
