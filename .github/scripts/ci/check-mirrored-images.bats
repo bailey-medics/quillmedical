@@ -14,13 +14,13 @@ setup() {
   cat > "${REPO}/compose.ci.yml" <<'COMPOSE'
 services:
   postgres:
-    image: ${CI_POSTGRES_IMAGE:-public.ecr.aws/docker/library/postgres:18-alpine}
+    image: ${CI_POSTGRES_IMAGE:-public.ecr.aws/docker/library/postgres:18-alpine@sha256:abc}
   backend:
     image: quillmedical-ci_backend:latest
 COMPOSE
 
   cat > "${REPO}/backend/Dockerfile" <<'DOCKERFILE'
-ARG PYTHON_IMAGE=public.ecr.aws/docker/library/python:3.14-slim
+ARG PYTHON_IMAGE=public.ecr.aws/docker/library/python:3.14-slim@sha256:abc
 FROM ${PYTHON_IMAGE} AS base
 FROM base AS prod
 DOCKERFILE
@@ -75,7 +75,7 @@ DOCKERFILE
 
 @test "a later stage may build on an earlier one, and on scratch" {
   cat > "${REPO}/backend/Dockerfile" <<'DOCKERFILE'
-ARG PYTHON_IMAGE=public.ecr.aws/docker/library/python:3.14-slim
+ARG PYTHON_IMAGE=public.ecr.aws/docker/library/python:3.14-slim@sha256:abc
 FROM ${PYTHON_IMAGE} AS base
 FROM base AS build
 FROM --platform=linux/amd64 build AS prod
@@ -121,6 +121,37 @@ COMPOSE
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"compose.ci.yml: image public.ecr.aws/docker/library/caddy:2-alpine"* ]]
+}
+
+@test "fails for a compose image named by tag alone" {
+  cat > "${REPO}/compose.ci.yml" <<'COMPOSE'
+services:
+  postgres:
+    image: ${CI_POSTGRES_IMAGE:-public.ecr.aws/docker/library/postgres:18-alpine}
+COMPOSE
+
+  run run_check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"compose.ci.yml: image public.ecr.aws/docker/library/postgres:18-alpine is named by tag alone"* ]]
+}
+
+@test "fails for a base image named by tag alone" {
+  cat > "${REPO}/backend/Dockerfile" <<'DOCKERFILE'
+ARG PYTHON_IMAGE=public.ecr.aws/docker/library/python:3.14-slim
+FROM ${PYTHON_IMAGE} AS base
+DOCKERFILE
+
+  run run_check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"backend/Dockerfile: base image public.ecr.aws/docker/library/python:3.14-slim is named by tag alone"* ]]
+}
+
+@test "the mirror runs on no timer, which is what the pins are for" {
+  run grep -E '^[[:space:]]*schedule:' "${ROOT}/.github/workflows/mirror-images.yml"
+
+  [ "$status" -eq 1 ]
 }
 
 @test "fails for a workflow that names a public image" {

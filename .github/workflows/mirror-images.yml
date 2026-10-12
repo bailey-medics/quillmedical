@@ -12,8 +12,8 @@
 # So the images are copied here, into ghcr.io/<owner>/mirror/, and the job
 # pulls the copies with its own login: see
 # .github/scripts/ci/use-mirrored-images.sh. This workflow is the one thing
-# that still asks the public registry, a few times a week and one job at a
-# time.
+# that still asks the public registry, when an image's version changes and
+# one job at a time.
 #
 # The packages are private, which is what GitHub makes a new package unless
 # told otherwise. Pushing one from here gives this repository's workflows
@@ -48,10 +48,9 @@ on:
       - ".github/workflows/mirror-images.yml"
       - ".github/scripts/mirror-images/**"
       - ".github/scripts/shared/mirror-ref.sh"
-  # A tag such as postgres:18-alpine moves when a patch is released. Weekly
-  # keeps the copy from falling far behind the image a developer pulls.
-  schedule:
-    - cron: "0 4 * * 1"
+  # No schedule. Every image is pinned to a digest, so none can change
+  # without a pull request changing its name, and that pull request runs
+  # this. An image named by tag alone would need copying again on a timer.
 
 permissions:
   contents: read

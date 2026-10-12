@@ -70,6 +70,19 @@ dependencies and not by slowing the queue down.
       tests. `compose.dev.yml` and `compose.migrate.yml` are for a
       developer's machine and are left out.
 
+- [x] Pin the last image named by tag, and drop the mirror's weekly run.
+      Postgres in `compose.ci.yml` was `postgres:18-alpine` with no
+      digest, and a tag moves when a patch is released, so
+      `mirror-images.yml` copied everything again each Monday to keep
+      up. It is now pinned to the digest `compose.dev.yml` uses. With
+      every image pinned, none changes outside a pull request, that pull
+      request makes the copy, and the schedule is gone. Mark's decision,
+      12 October, after Phase 6.
+
+      `check-mirrored-images.sh` now refuses an image named by tag alone,
+      in the compose file or a Dockerfile's `_IMAGE` argument, so the
+      schedule cannot become needed again without a check failing.
+
 ## Phase 2: Stop downloading tools on every job
 
 - [x] Find every job that installs Python or Node afresh. Ten workflow
