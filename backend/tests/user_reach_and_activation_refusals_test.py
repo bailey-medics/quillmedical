@@ -296,7 +296,7 @@ def test_reactivating_an_account_already_open_is_a_400_with_the_reason(
 def test_the_invite_carries_a_link_that_resets_that_accounts_password(
     authenticated_admin_client: TestClient, colleague: User
 ) -> None:
-    with patch("app.main.send_email") as mock_send:
+    with patch("app.users.router.send_email") as mock_send:
         response = authenticated_admin_client.post(
             f"/api/users/{colleague.id}/send-invite"
         )
@@ -315,7 +315,7 @@ def test_the_invite_carries_a_link_that_resets_that_accounts_password(
 def test_no_invite_is_sent_when_the_account_is_refused(
     authenticated_admin_client: TestClient, trust: OrgUnit, outsider: User
 ) -> None:
-    with patch("app.main.send_email") as mock_send:
+    with patch("app.users.router.send_email") as mock_send:
         response = authenticated_admin_client.post(
             f"/api/users/{outsider.id}/send-invite"
         )

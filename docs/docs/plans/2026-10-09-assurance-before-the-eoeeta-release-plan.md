@@ -1253,9 +1253,21 @@ is now 4,654 lines and 69 routes.
       why these routes carry no competency check went with them; it
       had been sitting, indented, at the foot of the route above.
 
-- [ ] Move the user administration routes (8), with
+- [x] Move the user administration routes (8), with
       `AdminUserCreateIn` and `AdminUserUpdateIn`, which belong in
-      `backend/app/schemas/`.
+      `backend/app/schemas/`. Done on 12 October 2026. Seven routes
+      went to `backend/app/users/router.py`; the eighth,
+      `PATCH /users/{user_id}/link-patient`, had already gone with
+      the patient routes. The request bodies are in
+      `backend/app/schemas/users_admin.py`. One helper was used on
+      both sides of the cut, by the invite route and by the sign-in
+      routes that stay: what every account email says about whose
+      account it is. It went to `backend/app/email/account.py`, and
+      lost the underscore from its name, since two modules now
+      import it. With the request bodies out of `main.py`, the six
+      username, email and password fields that the field-limit test
+      lists as waiting can now be given their limits; that is the
+      Phase 4a step, not this one.
 
 - [ ] Move the three job callbacks under `/ci/teaching/` to the
       teaching feature, beside the routes they report to.

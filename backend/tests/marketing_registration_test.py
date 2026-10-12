@@ -207,10 +207,12 @@ class TestTheInviteEmail:
         self, authenticated_superadmin_client, db_session, monkeypatch
     ):
         """That is what makes the page ask the marketing question."""
-        from app import main
+        from app.users import router as users_routes
 
         sent: list[dict] = []
-        monkeypatch.setattr(main, "send_email", lambda **kw: sent.append(kw))
+        monkeypatch.setattr(
+            users_routes, "send_email", lambda **kw: sent.append(kw)
+        )
         user = User(
             username="invited",
             email="invited@example.com",

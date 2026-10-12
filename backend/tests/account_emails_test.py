@@ -83,7 +83,7 @@ class TestRoutesSendBrandedEmail:
         db_session.add(user)
         db_session.commit()
 
-        with patch("app.main.send_email") as mock_send:
+        with patch("app.users.router.send_email") as mock_send:
             response = authenticated_superadmin_client.post(
                 f"/api/users/{user.id}/send-invite"
             )
