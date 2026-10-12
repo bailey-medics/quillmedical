@@ -17,12 +17,12 @@
 #
 # Named in an ARG and not in the FROM line so that CI can build on its own
 # copy of the same image: `--build-arg PYTHON_IMAGE=ghcr.io/<owner>/mirror/...`.
-# Amazon's registry also limits how often it may be asked, and on 12 October
-# 2026 it refused this image to a merge queue run, which took seven pull
-# requests out of the queue. With no build argument, as on a developer's
-# machine, the build uses the public image below. Any ARG ending `_IMAGE`
-# before a FROM is copied to the mirror by mirror-images.yml.
+# Amazon's registry also limits how often it may be asked. With no build
+# argument, as on a developer's machine, the build uses the public image
+# below. Any ARG ending `_IMAGE` before a FROM is copied to the mirror by
+# mirror-images.yml.
 ARG PYTHON_IMAGE=public.ecr.aws/docker/library/python:3.14-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d
+
 FROM ${PYTHON_IMAGE} AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -30,10 +30,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
-
-# (Optional) OS deps if you ever have to compile wheels; keep minimal.
-# Most of our deps ship many linux wheels, so you can usually skip build-essential.
-# RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
 
 # Poetry's version comes from .poetry-version so this image and CI install
 # the same one. Copied separately from the rest so a dependency change does
@@ -47,6 +43,7 @@ RUN pip install --no-cache-dir "poetry==$(cat .poetry-version)" \
 
 # Install Python deps into the system site-packages (no venv = simpler image)
 COPY backend/pyproject.toml backend/poetry.lock* ./
+
 # Main group only. The prod, admin and CI images run the app and its
 # scripts and need nothing from the dev group (pytest, mypy, the mkdocs
 # toolchain), so shipping it only widened the production image's
@@ -108,6 +105,7 @@ RUN --mount=type=cache,target=/root/.cache/pypoetry \
         sleep 5; \
     done; \
     exit 1
+
 # Where passports live when no GCS bucket is configured, which is every
 # local run. `compose.dev.yml` mounts a named volume here; Docker copies
 # this directory's ownership onto an empty volume when it first mounts
