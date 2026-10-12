@@ -1,27 +1,27 @@
-# Send the teaching reminders that are due.
+# Run the teaching reminders by hand: a report, or a real run when asked.
 #
-# Two kinds of email, both promised in the privacy policy and the terms:
-# a reminder to somebody enrolled on a module who has not finished an
+# Two kinds of email, both promised in the privacy policy and the terms: a
+# reminder to somebody enrolled on a module who has not finished an
 # attempt, on the schedule the module sets in its own module.yaml, and a
 # notice to somebody whose pass is due to be repeated.
-# backend/app/features/teaching/reminders.py decides who is due, and this
-# runs it each morning as the `send-teaching-reminders` action on the
-# admin job.
+# backend/app/features/teaching/reminders.py decides who is due, as the
+# `send-teaching-reminders` action on the admin job.
+#
+# **This does not run on a timer.** Cloud Scheduler starts the morning run,
+# from infra/scheduled-jobs.tf. It began here, as a scheduled workflow, and
+# was moved: GitHub's schedule is best effort, and nothing in the
+# repository decides who is due.
+#
+# What is left is the button. Start it from the Actions tab to see how
+# many of each would go. It sends nothing unless `apply` is ticked, which
+# is for sending again after a failed morning. What was already sent is
+# recorded, so nobody is sent one twice.
 #
 # The app sends the email, and not this workflow, so that GitHub holds no
 # mail credential and no database credential: it only starts the job.
-#
-# A run started by hand is a report unless `apply` is ticked. It prints
-# how many of each would go and sends nothing.
-#
-# The job exits 1 when any email could not be sent, so this run goes red
-# and somebody looks. What could not be sent is tried again the next day.
 name: Teaching reminders
 
 on:
-  schedule:
-    # 7am UTC: the start of the working day in the UK, summer or winter.
-    - cron: "0 7 * * *"
   workflow_dispatch:
     inputs:
       apply:
@@ -59,8 +59,8 @@ jobs:
       - name: Run the reminders action on the admin job
         env:
           GCP_PROJECT: ${{ secrets.GCP_APP_PROJECT_ID }}
-          # The morning run sends. A run by hand does only when asked.
-          APPLY: ${{ github.event_name == 'schedule' || inputs.apply }}
+          # A report unless `apply` was ticked.
+          APPLY: ${{ inputs.apply }}
         run: |
           gcloud run jobs execute quill-admin-app \
             --project="${GCP_PROJECT}" \
