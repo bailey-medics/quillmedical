@@ -15,7 +15,7 @@ dependencies and not by slowing the queue down.
 
 ## Phase 1: Mirror every image CI pulls
 
-- [ ] Mirror the base images the Dockerfiles build from: Python
+- [x] Mirror the base images the Dockerfiles build from: Python
       (`backend/Dockerfile` and `backend/Dockerfile.caption`), and Node
       and Caddy (`frontend/Dockerfile`). All three are pulled from
       `public.ecr.aws` each time an image is built, in `ci.yml`,
@@ -27,6 +27,14 @@ dependencies and not by slowing the queue down.
       `.github/scripts/mirror-images/copy-images.sh`. It only knows about
       the images the end-to-end job runs, Postgres and Caddy. Teach it to
       read the `FROM` lines of the Dockerfiles as well.
+
+      Built a little differently. Each Dockerfile now names its base
+      image in an `ARG` ending `_IMAGE`, with the public image as the
+      default, and `FROM` reads the argument. `copy-images.sh` copies
+      whatever those arguments default to. That one change serves both
+      this step and the next: the argument is what lets CI hand a build
+      the copy. A developer's build passes no argument and uses the
+      public image as before.
 
 - [ ] Have the builds pull the copies. A `FROM` line cannot ask whether a
       mirror holds an image, so give each base image a build argument that

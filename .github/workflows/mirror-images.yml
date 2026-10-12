@@ -1,7 +1,8 @@
 # Keep this repository's own copies of the public images CI pulls.
 #
-# The end-to-end job starts Postgres and Caddy from compose.ci.yml. Those
-# images come from a public registry, which limits how often a caller with
+# The end-to-end job starts Postgres and Caddy from compose.ci.yml, and the
+# image builds start from Python, Node and Caddy, named in the Dockerfiles.
+# All of those come from a public registry, which limits how often a caller with
 # no login may pull and counts by address. GitHub's runners share addresses,
 # and the merge queue starts six of these jobs at once, so one was sometimes
 # refused with "Rate exceeded". That failed the job, took
@@ -29,6 +30,9 @@ on:
     # Whatever names the images, or does the copying.
     paths:
       - "compose.ci.yml"
+      - "backend/Dockerfile"
+      - "backend/Dockerfile.caption"
+      - "frontend/Dockerfile"
       - ".github/workflows/mirror-images.yml"
       - ".github/scripts/mirror-images/**"
       - ".github/scripts/shared/mirror-ref.sh"
@@ -38,6 +42,9 @@ on:
   pull_request:
     paths:
       - "compose.ci.yml"
+      - "backend/Dockerfile"
+      - "backend/Dockerfile.caption"
+      - "frontend/Dockerfile"
       - ".github/workflows/mirror-images.yml"
       - ".github/scripts/mirror-images/**"
       - ".github/scripts/shared/mirror-ref.sh"
@@ -74,4 +81,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Copy the images
-        run: bash .github/scripts/mirror-images/copy-images.sh "${{ github.repository_owner }}" compose.ci.yml
+        run: |
+          bash .github/scripts/mirror-images/copy-images.sh "${{ github.repository_owner }}" compose.ci.yml \
+            backend/Dockerfile backend/Dockerfile.caption frontend/Dockerfile

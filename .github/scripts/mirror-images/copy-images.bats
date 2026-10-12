@@ -74,6 +74,100 @@ STUB
   [ "$(wc -l < "$COPIES" | tr -d ' ')" -eq 1 ]
 }
 
+# Writes a Dockerfile naming these base images, each in an ARG.
+dockerfile_with() {
+  local path="${BATS_TEST_TMPDIR}/$1"
+  shift
+  : > "$path"
+
+  local number=0
+  local image=""
+
+  for image in "$@"; do
+    number=$((number + 1))
+    echo "ARG BASE${number}_IMAGE=${image}" >> "$path"
+    echo "FROM \${BASE${number}_IMAGE} AS stage${number}" >> "$path"
+  done
+
+  echo "$path"
+}
+
+@test "copies the image a Dockerfile builds on, named in an ARG" {
+  stub_images "public.ecr.aws/docker/library/postgres:18-alpine"
+  dockerfile="$(dockerfile_with Dockerfile "public.ecr.aws/docker/library/python:3.14-slim@sha256:abc")"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml "$dockerfile"
+
+  [ "$status" -eq 0 ]
+  grep -q "docker://public.ecr.aws/docker/library/python@sha256:abc docker://ghcr.io/bailey-medics/mirror/python:3.14-slim" "$COPIES"
+  grep -q "mirror/postgres:18-alpine" "$COPIES"
+}
+
+@test "copies every base image of every Dockerfile given" {
+  stub_images "public.ecr.aws/docker/library/postgres:18-alpine"
+  backend="$(dockerfile_with backend.Dockerfile "public.ecr.aws/docker/library/python:3.14-slim")"
+  frontend="$(dockerfile_with frontend.Dockerfile \
+    "public.ecr.aws/docker/library/node:24-slim" \
+    "public.ecr.aws/docker/library/caddy:2-alpine")"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml "$backend" "$frontend"
+
+  [ "$status" -eq 0 ]
+  [ "$(wc -l < "$COPIES" | tr -d ' ')" -eq 4 ]
+  grep -q "mirror/node:24-slim" "$COPIES"
+  grep -q "mirror/caddy:2-alpine" "$COPIES"
+}
+
+@test "an image a Dockerfile and the compose file both use is copied once" {
+  stub_images "public.ecr.aws/docker/library/caddy:2-alpine"
+  dockerfile="$(dockerfile_with Dockerfile "public.ecr.aws/docker/library/caddy:2-alpine")"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml "$dockerfile"
+
+  [ "$status" -eq 0 ]
+  [ "$(wc -l < "$COPIES" | tr -d ' ')" -eq 1 ]
+}
+
+@test "fails for a Dockerfile that names no base image in an ARG" {
+  # Copying nothing for it would look like success.
+  stub_images "public.ecr.aws/docker/library/postgres:18-alpine"
+  path="${BATS_TEST_TMPDIR}/Dockerfile"
+  echo "FROM public.ecr.aws/docker/library/python:3.14-slim" > "$path"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml "$path"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"names no base image"* ]]
+  [ ! -s "$COPIES" ]
+}
+
+@test "fails for a Dockerfile that is not there" {
+  stub_images "public.ecr.aws/docker/library/postgres:18-alpine"
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml "${BATS_TEST_TMPDIR}/no-such-file"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"does not exist"* ]]
+}
+
+@test "reads the real Dockerfiles: each names its base images in ARGs" {
+  # The contract between the Dockerfiles and this script, checked against
+  # the files themselves, so a FROM changed back to a bare image is caught
+  # here and not by a rate limit.
+  stub_images "public.ecr.aws/docker/library/postgres:18-alpine"
+  root="${BATS_TEST_DIRNAME}/../../.."
+
+  run bash "$SCRIPT" bailey-medics compose.ci.yml \
+    "${root}/backend/Dockerfile" \
+    "${root}/backend/Dockerfile.caption" \
+    "${root}/frontend/Dockerfile"
+
+  [ "$status" -eq 0 ]
+  grep -q "mirror/python:" "$COPIES"
+  grep -q "mirror/node:" "$COPIES"
+  grep -q "mirror/caddy:" "$COPIES"
+}
+
 @test "fails when the compose file names no public image" {
   # A check that copies nothing would pass for ever, and the mirror would
   # quietly go stale.
