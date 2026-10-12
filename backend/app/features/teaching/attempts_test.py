@@ -14,6 +14,7 @@ from app.features.teaching.attempts import (
     BankToSit,
     attempt_in_progress,
     attempt_of,
+    attempts_out_of_time,
     bank_to_sit,
     begin_attempt,
     begin_or_pick_up_attempt,
@@ -2274,6 +2275,32 @@ def test_unfinished_attempts_can_be_asked_for_on_one_bank(
 
     assert [attempt.id for attempt in found] == [mine.id]
     assert unfinished_attempts(db_session, learner.id, bank_id="none") == []
+
+
+def test_the_attempts_out_of_time_are_of_every_learner_and_only_those_past_it(
+    db_session: Session,
+) -> None:
+    """Not one with time left, one with no limit or one finished."""
+    org = _organisation(db_session)
+    late = _attempt(db_session, org, _person(db_session, "late"))
+    later = _attempt(
+        db_session, org, _person(db_session, "later"), synced=False
+    )
+    _attempt(db_session, org, _person(db_session, "in_time"), synced=False)
+    untimed = _attempt(
+        db_session, org, _person(db_session, "untimed"), synced=False
+    )
+    done = _attempt(db_session, org, _person(db_session, "done"), synced=False)
+    untimed.time_limit_minutes = 0
+
+    for attempt in (late, later, untimed, done):
+        _out_of_time(db_session, attempt)
+
+    _finished(db_session, done)
+
+    found = attempts_out_of_time(db_session)
+
+    assert [attempt.id for attempt in found] == [late.id, later.id]
 
 
 # --- finish_if_out_of_time --------------------------------------------------

@@ -799,3 +799,21 @@ class TestDeletePassport:
         result = self._run({"ADMIN_USERNAME": "no-passport"}, roots)
 
         assert result == 1
+
+
+class TestFinishExamsOutOfTime:
+    """Tests for the finish-exams-out-of-time action."""
+
+    def test_runs_the_sweep_and_hands_back_its_exit_status(self) -> None:
+        with patch(
+            "app.features.teaching.out_of_time.main", return_value=7
+        ) as sweep:
+            from scripts.admin_cli import ACTIONS, finish_exams_out_of_time
+
+            result = ACTIONS["finish-exams-out-of-time"][0]()
+
+        assert (
+            ACTIONS["finish-exams-out-of-time"][0] is finish_exams_out_of_time
+        )
+        assert result == 7
+        sweep.assert_called_once_with()

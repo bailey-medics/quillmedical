@@ -931,16 +931,23 @@ teaching router" to merge. The frontend halves do not wait.
       given while it is in flight; if it fails the delegate is told,
       and "View results" tries again.
 
-- [ ] Finish an exam nobody came back to. A closed tab, a flat battery
+- [x] Finish an exam nobody came back to. A closed tab, a flat battery
       or a lost connection cannot be made to call anything. Backend
       half, after the thin routes work: an attempt past its time limit
       counts as finished. The simplest form is to finish it the next
       time anything reads it, the delegate's own list or a clinical
       lead's view of results, so no timer or background job is needed.
       An attempt with no time limit stays open until its delegate
-      finishes it.
+      finishes it. Built on 12 October 2026, in Phases 7 and 8 of the
+      [thin routes plan](2026-10-11-thin-routes-and-steady-frontend-tests-plan.md)
+      and not in pull request #1857, which was closed for it. It went
+      further than this step asked: an attempt past its time is
+      finished when its delegate next touches it, and a job on the
+      server, `finish-exams-out-of-time`, finishes the ones nobody
+      touches, with no page loaded by anybody. Mark, the same day:
+      "when the time has passed, the exam is submitted, that is final."
 
-- [ ] Stop a reload from starting a second attempt. Where a question
+- [x] Stop a reload from starting a second attempt. Where a question
       bank has no intro page, the page starts the attempt as it opens
       and its address stays `/teaching/assessment/new?bank=...`. A
       reload, or the browser restoring the tab, runs that again: a
@@ -962,7 +969,10 @@ teaching router" to merge. The frontend halves do not wait.
       cases this is for. Without it a reload is also a way to get a
       fresh paper and a fresh clock. An attempt past its time is
       finished first, by the step above, and a new one is then started
-      as asked.
+      as asked. Built on 12 October 2026, in Phase 7 of the thin routes
+      plan and not in pull request #1859, which was closed for it. A
+      unique index holds it as well, so two starts in the same instant
+      cannot write two attempts.
 
 - [x] Stop the page loading the exam a second time after Begin. This is
       not Begin being pressed twice, and not the back button. Pressing
