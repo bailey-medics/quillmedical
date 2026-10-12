@@ -23,10 +23,6 @@ them, and each is pinned by a test as it stands:
   Starting again writes a second attempt beside the first, and both
   stay open.
 - **How many attempts they have made.** Nothing counts them.
-- **Whether an attempt's time has run out, when one of its questions is
-  read or when it is finished.** Only sending an answer asks that. An
-  attempt may be finished long after its time, and is marked on the
-  answers given while there was time.
 - **Whether what was chosen is one of the question's options.**
   Anything sent is stored, and scored as wrong with no tags.
 - **Whether every question has an answer, when the attempt is
@@ -34,6 +30,14 @@ them, and each is pinned by a test as it stands:
 - **Whether a question has been answered before, when its answer is
   changed by id.** A question never answered can be answered that way,
   out of turn.
+
+An attempt's time is read in one place, ``deadline_of``. It runs from
+the start for as many minutes as the bank allowed, and an attempt that
+holds a limit of 0 has no limit and never runs out. When the time has
+run out the attempt is finished: ``finish_if_out_of_time`` marks it as
+it stood at that moment, and every route that touches an attempt calls
+it first. The functions that read a question do not ask about time
+themselves, and those that take an answer still refuse a late one.
 
 The draw is made through the ``random`` module by name, so a test that
 replaces ``random.sample`` or ``random.shuffle`` fixes it.
@@ -332,7 +336,9 @@ def next_unanswered_item(
     attempt is the caller's to have found as the learner's own, and to
     have checked they may still enter its module.
 
-    Whether the attempt's time has run out is not asked.
+    Whether the attempt's time has run out is not asked here. The route
+    finishes such an attempt first, with ``finish_if_out_of_time``, so
+    it is refused below as finished.
 
     Args:
         db: Core database session.
@@ -370,7 +376,9 @@ def item_at_position(
     the caller's to have found as the learner's own, and to have
     checked they may still enter its module.
 
-    Whether the attempt's time has run out is not asked.
+    Whether the attempt's time has run out is not asked here. The route
+    finishes such an attempt first, with ``finish_if_out_of_time``, so
+    it is refused below as finished.
 
     Args:
         db: Core database session.
@@ -436,7 +444,8 @@ def record_answer(
     The attempt is the caller's to have found as the learner's own, and
     to have checked they may still enter its module. The checks here
     run in this order, so the first that fails is the one reported:
-    finished, out of time, nothing left to answer, bank gone.
+    finished, out of time, nothing left to answer, bank gone. An
+    attempt the clock finished is told it is out of time, not finished.
 
     The answer is flushed, not committed, so the question after it can
     be looked for.
@@ -453,8 +462,9 @@ def record_answer(
         Whether the answer was right is stored and not handed back.
 
     Raises:
-        AssessmentAlreadyCompleted: If the attempt is finished.
-        TimeLimitExceeded: If the attempt's time has run out.
+        AssessmentAlreadyCompleted: If the learner finished the attempt.
+        TimeLimitExceeded: If the attempt's time has run out, whether
+            or not it has been finished for that yet.
         AnswerNotFound: If ``answer_id`` is given and is no question of
             this attempt, or is one further on than the next.
         AllItemsAlreadyAnswered: If every question has an answer, and
@@ -462,8 +472,7 @@ def record_answer(
         AssessmentConfigNotFound: If the organisation the attempt was
             recorded against holds no synced copy of the version sat.
     """
-    if assessment.completed_at:
-        raise AssessmentAlreadyCompleted()
+    _refuse_an_answer_to_a_finished_attempt(assessment)
 
     now = _now_within_time(assessment)
 
@@ -512,7 +521,8 @@ def change_answer(
     The attempt is the caller's to have found as the learner's own, and
     to have checked they may still enter its module. The checks here
     run in this order: finished, out of time, no such answer, bank
-    gone.
+    gone. An attempt the clock finished is told it is out of time, not
+    finished.
 
     Nothing is flushed. The route did not, and nothing is read back
     after the change: it is written when the request is committed.
@@ -527,14 +537,14 @@ def change_answer(
         The answer row as changed, and the bank it is laid out from.
 
     Raises:
-        AssessmentAlreadyCompleted: If the attempt is finished.
-        TimeLimitExceeded: If the attempt's time has run out.
+        AssessmentAlreadyCompleted: If the learner finished the attempt.
+        TimeLimitExceeded: If the attempt's time has run out, whether
+            or not it has been finished for that yet.
         AnswerNotFound: If this attempt has no answer row by that id.
         AssessmentConfigNotFound: If the organisation the attempt was
             recorded against holds no synced copy of the version sat.
     """
-    if assessment.completed_at:
-        raise AssessmentAlreadyCompleted()
+    _refuse_an_answer_to_a_finished_attempt(assessment)
 
     now = _now_within_time(assessment)
 
@@ -573,13 +583,20 @@ def finish_attempt(db: Session, assessment: Assessment) -> AttemptFinished:
     id, and is left unset where the bank gives no prefix. It is written
     whether or not the attempt passed.
 
+    An attempt found after its time has run out is finished as it stood
+    when the time ended: it is marked on the answers it holds, which
+    were all given in time since a late answer is refused, and it is
+    recorded as finished at that moment and not at this one. It is
+    marked exactly as any other, so it passes if those answers are
+    enough. Nothing records how an attempt came to be finished, only
+    that it was and when.
+
     An attempt is marked once. A second call is refused before anything
     is read, so its score and its reference never change.
 
-    Two things are not asked, as the route never asked them: whether
-    the attempt's time has run out, and whether every question has an
-    answer. A question left unanswered counts towards the total and
-    towards no tag.
+    Whether every question has an answer is not asked, as the route
+    never asked it. A question left unanswered counts towards the total
+    and towards no tag.
 
     The attempt is the caller's to have found as the learner's own, and
     to have checked they may still enter its module. Nothing is flushed
@@ -638,7 +655,16 @@ def finish_attempt(db: Session, assessment: Assessment) -> AttemptFinished:
         "overall_passed": overall_passed,
     }
 
-    assessment.completed_at = datetime.now(UTC)
+    # An attempt found after its time is finished as at the moment the
+    # time ended, not as at the moment somebody noticed.
+    now = datetime.now(UTC)
+    deadline = deadline_of(assessment)
+
+    if deadline is not None and now > deadline:
+        assessment.completed_at = deadline
+    else:
+        assessment.completed_at = now
+
     assessment.score_breakdown = score_breakdown
     assessment.is_passed = overall_passed
 
@@ -684,16 +710,145 @@ def _require_answered_already(
         raise AnswerNotFound()
 
 
+def deadline_of(assessment: Assessment) -> datetime | None:
+    """The moment an attempt's time ends, or None where it has no limit.
+
+    The one place an attempt's time limit is read. The time runs from
+    when the attempt was started for as many minutes as its bank
+    allowed. The start is read as UTC whatever zone it came back from
+    the database with.
+
+    An attempt started on a bank that gave no time limit holds a limit
+    of 0. That, like no limit at all, means the attempt is not timed:
+    it has no deadline and never runs out.
+    """
+    if not assessment.time_limit_minutes:
+        return None
+
+    return assessment.started_at.replace(tzinfo=UTC) + timedelta(
+        minutes=assessment.time_limit_minutes
+    )
+
+
+def unfinished_attempts(
+    db: Session, user_id: int, *, bank_id: str | None = None
+) -> list[Assessment]:
+    """A learner's attempts that are not finished, oldest first.
+
+    For finishing those whose time has run out before a new attempt is
+    started or their results are listed. Nothing is written.
+
+    Args:
+        db: Core database session.
+        user_id: The learner.
+        bank_id: Only attempts on this question bank, or on every bank
+            where none is given.
+    """
+    query = select(Assessment).where(
+        Assessment.user_id == user_id,
+        Assessment.completed_at.is_(None),
+    )
+
+    if bank_id is not None:
+        query = query.where(Assessment.question_bank_id == bank_id)
+
+    return list(db.execute(query.order_by(Assessment.id)).scalars().all())
+
+
+def finish_if_out_of_time(
+    db: Session, assessment: Assessment
+) -> AttemptFinished | None:
+    """Finish an attempt whose time has run out, and leave any other.
+
+    Every route that touches an attempt calls this once it knows whose
+    the attempt is and before anything else, so an attempt past its time
+    is finished before it is read or written. The marking is
+    ``finish_attempt``'s, which records the attempt as finished when
+    its time ended.
+
+    Safe to call twice, and by two requests at once. The attempt's row
+    is read again and locked before it is marked, so the second caller
+    waits for the first, then finds the attempt finished and does
+    nothing. The lock is ``SELECT ... FOR UPDATE``, held until the
+    caller commits. SQLite has no such lock and leaves it out: there
+    the read again is what tells a second call the work is done.
+
+    An attempt whose bank has gone cannot be marked. It is left as it
+    is and nothing is raised, so each route goes on to answer as it did
+    before for such an attempt.
+
+    Anything pending on the attempt must be flushed first, since the
+    row is read again. Nothing is flushed or committed here: the caller
+    commits, before anything is sent to anybody about the result.
+
+    Args:
+        db: Core database session.
+        assessment: The learner's own attempt.
+
+    Returns:
+        What ``finish_attempt`` gives when this call finished the
+        attempt. None when it did not: the attempt was finished
+        already, has time left, has no time limit, or has lost its
+        bank.
+    """
+    if not _is_out_of_time(assessment):
+        return None
+
+    # Two requests can find the same attempt out of time. Only the one
+    # holding the row marks it; the other reads what that one wrote.
+    db.refresh(assessment, with_for_update=True)
+
+    if not _is_out_of_time(assessment):
+        return None
+
+    try:
+        return finish_attempt(db, assessment)
+    except AssessmentConfigNotFound:
+        return None
+
+
+def _is_out_of_time(assessment: Assessment) -> bool:
+    """Whether an unfinished attempt's time has run out by now."""
+    if assessment.completed_at:
+        return False
+
+    deadline = deadline_of(assessment)
+
+    return deadline is not None and datetime.now(UTC) > deadline
+
+
+def _refuse_an_answer_to_a_finished_attempt(assessment: Assessment) -> None:
+    """Refuse an answer to a finished attempt, in the words that fit.
+
+    An attempt its learner finished takes nothing more. One recorded
+    as finished at the very moment its time ended is refused as out of
+    time, which is what a late answer was told before such an attempt
+    was finished for them, and what it is told still. Nothing is stored
+    to say how an attempt came to be finished: one found past its time
+    is dated at its deadline exactly, and that date is what is read.
+
+    Raises:
+        TimeLimitExceeded: If the attempt is recorded as finished at
+            the moment its time ended.
+        AssessmentAlreadyCompleted: If it was finished at any other.
+    """
+    if not assessment.completed_at:
+        return
+
+    finished_at = assessment.completed_at.replace(tzinfo=UTC)
+
+    if finished_at == deadline_of(assessment):
+        raise TimeLimitExceeded()
+
+    raise AssessmentAlreadyCompleted()
+
+
 def _now_within_time(assessment: Assessment) -> datetime:
     """The time now, where an attempt still has time left.
 
-    An attempt's time runs from when it was started for as many minutes
-    as its bank allowed. The start is read as UTC whatever zone it came
-    back from the database with. An answer sent at the very last moment
-    is in time: only one sent after it is refused.
-
-    An attempt started on a bank that gave no time limit holds a limit
-    of 0, so it is out of time from the moment it starts.
+    When the time ends is ``deadline_of``. An answer sent at the very
+    last moment is in time: only one sent after it is refused. An
+    attempt with no time limit always has time left.
 
     Returns:
         The moment the question was asked, which the caller stores as
@@ -704,11 +859,9 @@ def _now_within_time(assessment: Assessment) -> datetime:
     """
     # Time limit check
     now = datetime.now(UTC)
-    deadline = assessment.started_at.replace(tzinfo=UTC) + timedelta(
-        minutes=assessment.time_limit_minutes
-    )
+    deadline = deadline_of(assessment)
 
-    if now > deadline:
+    if deadline is not None and now > deadline:
         raise TimeLimitExceeded()
 
     return now

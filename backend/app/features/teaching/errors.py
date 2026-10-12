@@ -147,8 +147,8 @@ class AssessmentConfigNotFound(TeachingError):
 class TimeLimitExceeded(TeachingError):
     """The attempt's time has run out, so no answer is taken or changed.
 
-    Asked only when an answer is sent. Finishing the attempt does not
-    ask it.
+    Said when an answer is sent, both to an attempt whose time has run
+    out and to one that was finished because it did.
     """
 
     status_code = 409
