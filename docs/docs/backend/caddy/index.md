@@ -6,7 +6,7 @@ Caddy is our reverse proxy, handling path-based routing in development and servi
 
 | File                   | Environment            | Purpose                                                 |
 | ---------------------- | ---------------------- | ------------------------------------------------------- |
-| `caddy/dev/Caddyfile`  | Local Docker Compose   | Routes to backend, frontend dev server, and EHRbase     |
+| `caddy/dev/Caddyfile`  | Local Docker Compose   | Routes to backend and frontend dev server               |
 | `caddy/prod/Caddyfile` | Production (Cloud Run) | Serves built SPA with security headers and health check |
 | `caddy/ci/Caddyfile`   | E2E testing            | Routes API to backend, SPA to frontend prod container   |
 
@@ -22,12 +22,6 @@ Caddy listens on port 80 and reverse-proxies to local Docker services:
   @api path /api/*
   handle @api {
     reverse_proxy backend:8000
-  }
-
-  # EHRbase requests → ehrbase
-  @ehrbase path /ehrbase/*
-  handle @ehrbase {
-    reverse_proxy ehrbase:8080
   }
 
   # PWA manifest with correct MIME type
@@ -47,7 +41,6 @@ Caddy listens on port 80 and reverse-proxies to local Docker services:
 | Path             | Destination     | Service         |
 | ---------------- | --------------- | --------------- |
 | `/api/*`         | `backend:8000`  | FastAPI         |
-| `/ehrbase/*`     | `ehrbase:8080`  | OpenEHR server  |
 | `/*.webmanifest` | Headers applied | PWA manifest    |
 | `/*`             | `frontend:5173` | Vite dev server |
 
@@ -155,7 +148,6 @@ Used in E2E tests. Routes API to backend and everything else to the frontend pro
 
 ```
 Browser → Caddy (:80) → backend:8000 (/api/*)
-                       → ehrbase:8080 (/ehrbase/*)
                        → frontend:5173 (everything else)
 ```
 

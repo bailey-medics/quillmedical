@@ -7,12 +7,6 @@
     reverse_proxy backend:8000
   }
 
-  # 1b) EHRbase requests → ehrbase
-  @ehrbase path /ehrbase/*
-  handle @ehrbase {
-    reverse_proxy ehrbase:8080
-  }
-
   # 2) Ensure the PWA manifest is served with the correct MIME type
   @webmanifest path /*.webmanifest
   header @webmanifest Content-Type "application/manifest+json"
