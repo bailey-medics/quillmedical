@@ -5,6 +5,7 @@ functions and ``start_transcode`` are replaced by ones that note what
 they were asked for, and uploads to disk go to a folder the test made.
 """
 
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -13,19 +14,22 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.features.teaching import storage, transcode
+from app.features.teaching import media, storage, transcode
 from app.features.teaching.errors import (
     CaptionsCannotBeSaved,
     CaptionsNotWebVTT,
     InvalidAssetId,
     LocalUploadNotOffered,
     MediaAssetNotHeldHere,
+    MediaCannotBeDeleted,
     MediaUploadNotConfigured,
     NoModuleToUploadTo,
     TeachingError,
 )
 from app.features.teaching.media_uploads import (
+    StoredVideo,
     delete_upload,
+    delete_video_files,
     link_upload,
     local_upload_file,
     local_upload_root,
@@ -45,6 +49,13 @@ CAPTIONS = "WEBVTT\n\n00:00.000 --> 00:02.000\nThe caecum."
 
 #: Each transcode asked for: the three ids, and the start time on the row.
 Transcodes = list[tuple[int, str, str, datetime | None]]
+
+#: Each file the store was asked to remove: the bucket, the three ids,
+#: and the end of the file's name ("" for the upload itself).
+Removed = list[tuple[str, int, str, str, str]]
+
+#: What the jobs make of one upload, in the order it is removed.
+MADE_FROM_IT = ("-720p.mp4", "-1080p.mp4", "-poster.jpg", ".vtt")
 
 
 def _organisation(db: Session, name: str = "Trust") -> OrgUnit:
@@ -154,6 +165,42 @@ def transcodes(
     _transcode_job(monkeypatch, None)
 
     return asked
+
+
+@pytest.fixture()
+def removed(monkeypatch: pytest.MonkeyPatch) -> Removed:
+    """Each file either bucket was asked to remove, with both buckets set."""
+    asked: Removed = []
+
+    def fake_delete(
+        bucket: str, org_id: int, module_id: str, asset_id: str
+    ) -> None:
+        asked.append((bucket, org_id, module_id, asset_id, ""))
+
+    def fake_delete_processed(
+        bucket: str, org_id: int, module_id: str, asset_id: str, suffix: str
+    ) -> None:
+        asked.append((bucket, org_id, module_id, asset_id, suffix))
+
+    monkeypatch.setattr(storage, "delete_media_object", fake_delete)
+    monkeypatch.setattr(
+        storage, "delete_processed_media_object", fake_delete_processed
+    )
+    _source_bucket(monkeypatch, "source")
+    _captions_bucket(monkeypatch, "processed")
+
+    return asked
+
+
+def _every_file(org_id: int, asset_id: str = ASSET) -> Removed:
+    """Every file of one video: the upload, then what was made from it."""
+    return [
+        ("source", org_id, MODULE, asset_id, ""),
+        *(
+            ("processed", org_id, MODULE, asset_id, suffix)
+            for suffix in MADE_FROM_IT
+        ),
+    ]
 
 
 def _link(
@@ -351,26 +398,202 @@ def test_linking_again_forgets_what_the_jobs_made_of_the_old_upload(
     assert link.caption_started_at is None
 
 
-def test_linking_again_keeps_the_old_uploads_captions_marked_as_checked(
+def test_linking_again_forgets_that_the_old_uploads_captions_were_checked(
     db_session: Session, transcodes: Transcodes
 ) -> None:
-    """Found, and not changed: the review of the old captions stays.
+    """The review was of the old video's captions, so it goes with them.
 
-    Everything else the old upload's jobs recorded is cleared when a
-    reference is pointed at a different upload. ``captions_reviewed_at``
-    is not, so the new video counts as having had its captions checked
-    by a person before any exist for it.
+    Left behind, the new video would count as having had its captions
+    checked by a person before any exist for it.
     """
     org = _organisation(db_session)
     old = _upload(db_session, org, asset_id="old")
-    reviewed = datetime(2026, 1, 1, tzinfo=UTC)
-    old.captions_reviewed_at = reviewed
+    old.captions_reviewed_at = datetime(2026, 1, 1, tzinfo=UTC)
     db_session.flush()
 
     link = _link(db_session, org, _person(db_session), asset_id="new")
 
     assert link.asset_id == "new"
-    assert link.captions_reviewed_at is not None
+    assert link.captions_reviewed_at is None
+
+
+def test_a_new_video_is_hidden_until_its_own_jobs_and_review_are_done(
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    transcodes: Transcodes,
+) -> None:
+    org = _organisation(db_session)
+    old = _upload(db_session, org, asset_id="old")
+    old.transcoded_at = datetime(2026, 1, 1, tzinfo=UTC)
+    old.has_captions = True
+    old.captions_reviewed_at = datetime(2026, 1, 2, tzinfo=UTC)
+    db_session.flush()
+    _transcode_job(monkeypatch, "projects/p/locations/l/jobs/transcode")
+    monkeypatch.setattr(
+        settings, "TEACHING_CAPTION_JOB", "projects/p/locations/l/jobs/cc"
+    )
+    monkeypatch.setattr(media, "get_referenced_media_keys", lambda _id: [KEY])
+
+    assert media.module_media_is_complete(db_session, org.id, MODULE) is True
+
+    link = _link(db_session, org, _person(db_session), asset_id="new")
+
+    assert media.module_media_is_complete(db_session, org.id, MODULE) is False
+
+    # Its own renditions are not enough: nobody has read its captions.
+    link.transcoded_at = datetime.now(UTC)
+    link.has_captions = True
+    db_session.flush()
+
+    assert media.module_media_is_complete(db_session, org.id, MODULE) is False
+
+    link.captions_reviewed_at = datetime.now(UTC)
+    db_session.flush()
+
+    assert media.module_media_is_complete(db_session, org.id, MODULE) is True
+
+
+def test_linking_over_an_old_video_removes_the_old_videos_files_only(
+    db_session: Session, transcodes: Transcodes, removed: Removed
+) -> None:
+    org = _organisation(db_session)
+    _upload(db_session, org, asset_id="old")
+
+    link = _link(db_session, org, _person(db_session), asset_id="new")
+
+    assert link.asset_id == "new"
+    assert removed == _every_file(org.id, "old")
+
+
+def test_the_old_videos_files_go_only_once_the_new_link_is_written(
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    transcodes: Transcodes,
+    removed: Removed,
+) -> None:
+    org = _organisation(db_session)
+    _upload(db_session, org, asset_id="old")
+    linked_when_asked: list[list[str]] = []
+
+    def fake_delete(*args: object) -> None:
+        linked_when_asked.append([row.asset_id for row in _links(db_session)])
+
+    monkeypatch.setattr(storage, "delete_media_object", fake_delete)
+
+    _link(db_session, org, _person(db_session), asset_id="new")
+
+    assert linked_when_asked == [["new"]]
+    # The new video's job was asked for before the old files went.
+    assert [asked[2] for asked in transcodes] == ["new"]
+
+
+def test_a_store_that_will_not_remove_the_old_files_still_links_the_new_video(
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    transcodes: Transcodes,
+    removed: Removed,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    org = _organisation(db_session)
+    old = _upload(db_session, org, asset_id="old")
+    old.captions_reviewed_at = datetime(2026, 1, 1, tzinfo=UTC)
+    db_session.flush()
+
+    def refuse(*args: object) -> None:
+        raise RuntimeError("the bucket said no")
+
+    monkeypatch.setattr(storage, "delete_media_object", refuse)
+
+    with caplog.at_level(logging.ERROR):
+        link = _link(db_session, org, _person(db_session), asset_id="new")
+
+    assert [row.asset_id for row in _links(db_session)] == ["new"]
+    assert link.captions_reviewed_at is None
+    assert [asked[2] for asked in transcodes] == ["new"]
+    assert "replaced media not deleted" in caplog.text
+    assert "asset=old" in caplog.text
+
+
+def test_linking_the_upload_a_reference_already_has_removes_no_files(
+    db_session: Session, transcodes: Transcodes, removed: Removed
+) -> None:
+    """A request sent twice must not delete the files it is linking.
+
+    The columns are cleared all the same: the transcode is asked for
+    again, and its captions will be written over what a person read.
+    """
+    org = _organisation(db_session)
+    row = _upload(db_session, org)
+    row.transcoded_at = datetime(2026, 1, 1, tzinfo=UTC)
+    row.captions_reviewed_at = datetime(2026, 1, 2, tzinfo=UTC)
+    db_session.flush()
+
+    link = _link(db_session, org, _person(db_session))
+
+    assert link.id == row.id
+    assert removed == []
+    assert link.transcoded_at is None
+    assert link.captions_reviewed_at is None
+
+
+def test_a_first_link_removes_no_files(
+    db_session: Session, transcodes: Transcodes, removed: Removed
+) -> None:
+    org = _organisation(db_session)
+
+    _link(db_session, org, _person(db_session))
+
+    assert removed == []
+
+
+def test_an_old_upload_another_reference_still_names_keeps_its_files(
+    db_session: Session, transcodes: Transcodes, removed: Removed
+) -> None:
+    org = _organisation(db_session)
+    _upload(db_session, org, asset_id="old")
+    other = _upload(db_session, org, media_key="lecture-02", asset_id="old")
+
+    link = _link(db_session, org, _person(db_session), asset_id="new")
+
+    assert _links(db_session) == [link, other]
+    assert other.asset_id == "old"
+    assert removed == []
+
+
+def test_an_old_upload_whose_id_cannot_be_a_path_is_replaced_without_asking(
+    db_session: Session, transcodes: Transcodes, removed: Removed
+) -> None:
+    org = _organisation(db_session)
+    _upload(db_session, org, asset_id="not.safe")
+
+    link = _link(db_session, org, _person(db_session), asset_id="new")
+
+    assert link.asset_id == "new"
+    assert removed == []
+
+
+def test_with_no_bucket_the_old_upload_is_removed_from_the_modules_folder(
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    transcodes: Transcodes,
+) -> None:
+    org = _organisation(db_session)
+    _upload(db_session, org, asset_id="old", content_type="video/webm")
+    module = _module_on_disk(tmp_path)
+    (module / "learning").mkdir()
+    old_file = module / "learning" / "old.webm"
+    old_file.write_bytes(b"old video")
+    new_file = module / "learning" / "new.mp4"
+    new_file.write_bytes(b"new video")
+    _source_bucket(monkeypatch, None)
+    _captions_bucket(monkeypatch, None)
+    _content_path(monkeypatch, str(tmp_path))
+
+    _link(db_session, org, _person(db_session), asset_id="new")
+
+    assert not old_file.exists()
+    assert new_file.exists()
 
 
 def test_linking_leaves_another_organisations_link_for_the_same_reference(
@@ -538,21 +761,92 @@ def _delete(db: Session, org: OrgUnit, asset_id: str = ASSET) -> None:
     )
 
 
-def test_deleting_removes_the_row_and_the_uploaded_file(
-    db_session: Session,
-    monkeypatch: pytest.MonkeyPatch,
-    deleted: list[tuple[str, int, str, str]],
+def test_deleting_removes_the_row_the_upload_and_everything_made_from_it(
+    db_session: Session, removed: Removed
 ) -> None:
     org = _organisation(db_session)
     _upload(db_session, org)
-    _source_bucket(monkeypatch, "source")
 
     _delete(db_session, org)
 
     assert _links(db_session) == []
-    # One object, the upload itself. Nothing is asked of the bucket the
-    # renditions and captions are in.
-    assert deleted == [("source", org.id, MODULE, ASSET)]
+    # The upload from its own bucket, then each rendition, the poster
+    # and the captions from the bucket the jobs write to.
+    assert removed == [
+        ("source", org.id, MODULE, ASSET, ""),
+        ("processed", org.id, MODULE, ASSET, "-720p.mp4"),
+        ("processed", org.id, MODULE, ASSET, "-1080p.mp4"),
+        ("processed", org.id, MODULE, ASSET, "-poster.jpg"),
+        ("processed", org.id, MODULE, ASSET, ".vtt"),
+    ]
+
+
+def test_every_file_is_asked_for_whatever_the_row_says_was_made(
+    db_session: Session, removed: Removed
+) -> None:
+    """The row's flags are not trusted to say what is in the bucket."""
+    org = _organisation(db_session)
+    row = _upload(db_session, org)
+
+    assert (row.has_1080p, row.has_poster, row.has_captions) == (
+        False,
+        False,
+        False,
+    )
+
+    _delete(db_session, org)
+
+    assert removed == _every_file(org.id)
+
+
+def test_what_was_made_is_looked_for_under_the_prefix_and_the_own_id(
+    db_session: Session, removed: Removed
+) -> None:
+    """Each file is looked for where it was written.
+
+    The upload is under the storage prefix. A job that reported wrote
+    under the prefix too, and captions a person saved are under the
+    organisation's own id, so both are asked and nothing is missed.
+    """
+    org = _organisation(db_session)
+    org.media_prefix_id = 4242
+    db_session.flush()
+    _upload(db_session, org)
+
+    _delete(db_session, org)
+
+    assert removed == [
+        *_every_file(4242),
+        *_every_file(org.id)[1:],
+    ]
+
+
+def test_with_no_bucket_of_processed_video_only_the_upload_is_asked_for(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch, removed: Removed
+) -> None:
+    org = _organisation(db_session)
+    _upload(db_session, org)
+    _captions_bucket(monkeypatch, None)
+
+    _delete(db_session, org)
+
+    assert removed == [("source", org.id, MODULE, ASSET, "")]
+
+
+def test_the_files_of_one_video_are_removed_from_where_it_says_they_are(
+    removed: Removed,
+) -> None:
+    delete_video_files(
+        StoredVideo(
+            storage_prefix_id=7,
+            org_unit_id=7,
+            module_id=MODULE,
+            asset_id=ASSET,
+            content_type="video/mp4",
+        )
+    )
+
+    assert removed == _every_file(7)
 
 
 def test_the_file_is_removed_from_under_the_prefix_the_row_records(
@@ -623,21 +917,25 @@ def test_the_row_is_removed_before_the_bucket_is_asked(
     assert rows_when_asked == [0]
 
 
-def test_a_bucket_that_refuses_fails_the_delete_and_the_row_comes_back(
-    db_session: Session, monkeypatch: pytest.MonkeyPatch
+def test_a_bucket_that_refuses_is_reported_and_the_row_comes_back(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch, removed: Removed
 ) -> None:
     org = _organisation(db_session)
     _upload(db_session, org)
     db_session.commit()
-    _source_bucket(monkeypatch, "source")
 
     def refuse(*args: object) -> None:
         raise RuntimeError("the bucket said no")
 
     monkeypatch.setattr(storage, "delete_media_object", refuse)
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(MediaCannotBeDeleted) as refused:
         _delete(db_session, org)
+
+    assert isinstance(refused.value, TeachingError)
+    assert refused.value.status_code == 502
+    assert refused.value.message == "The video could not be deleted"
+    assert "the bucket said no" not in refused.value.message
 
     # What the session the route was handed does when a route raises.
     db_session.rollback()
@@ -645,26 +943,47 @@ def test_a_bucket_that_refuses_fails_the_delete_and_the_row_comes_back(
     assert [row.asset_id for row in _links(db_session)] == [ASSET]
 
 
-def test_an_upload_whose_id_cannot_be_a_path_cannot_be_deleted_from_a_bucket(
-    db_session: Session, monkeypatch: pytest.MonkeyPatch
+def test_a_refusal_from_the_bucket_of_processed_video_is_reported_the_same(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch, removed: Removed
 ) -> None:
-    """Found, and not changed: such a row can never be removed.
-
-    Linking records whatever id it is sent. Where there is a bucket,
-    the path builder then refuses the id with a ``ValueError`` nothing
-    catches, every time, so the delete fails and the row stays.
-    """
     org = _organisation(db_session)
-    _upload(db_session, org, asset_id="not.safe")
+    _upload(db_session, org)
     db_session.commit()
-    _source_bucket(monkeypatch, "source")
 
-    with pytest.raises(ValueError, match="Invalid asset_id"):
-        _delete(db_session, org, "not.safe")
+    def refuse(*args: object) -> None:
+        raise RuntimeError("the bucket said no")
+
+    monkeypatch.setattr(storage, "delete_processed_media_object", refuse)
+
+    with pytest.raises(MediaCannotBeDeleted):
+        _delete(db_session, org)
 
     db_session.rollback()
 
-    assert [row.asset_id for row in _links(db_session)] == ["not.safe"]
+    assert [row.asset_id for row in _links(db_session)] == [ASSET]
+    # The upload had gone before the store refused. Deleting again
+    # finds it gone, which is not an error, and carries on.
+    assert removed == [("source", org.id, MODULE, ASSET, "")]
+
+
+@pytest.mark.parametrize("asset_id", ["not.safe", "../escape", "a/b"])
+def test_an_upload_whose_id_cannot_be_a_path_is_deleted_without_the_store(
+    db_session: Session, removed: Removed, asset_id: str
+) -> None:
+    """Such an upload has no files, so its row goes and nothing is asked.
+
+    Linking records whatever id it is sent, and every writer's path
+    builder refuses one of the wrong shape, so nothing can have been
+    written under it. Asking the store would be refused the same way
+    every time, and the row could never be removed.
+    """
+    org = _organisation(db_session)
+    _upload(db_session, org, asset_id=asset_id)
+
+    _delete(db_session, org, asset_id)
+
+    assert _links(db_session) == []
+    assert removed == []
 
 
 @pytest.mark.parametrize(

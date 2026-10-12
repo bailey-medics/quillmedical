@@ -57,6 +57,7 @@ PASSWORD = "Password123!"  # noqa: S105
 
 MODULE_NOT_FOUND = {"detail": "Module not found"}
 NO_SUCH_ASSET = {"detail": "No such media asset"}
+NOT_DELETED = {"detail": "The video could not be deleted"}
 UPLOAD_NOT_CONFIGURED = {"detail": "Media upload is not configured"}
 UNSUPPORTED_TYPE = {
     "detail": (
@@ -1004,16 +1005,175 @@ def test_an_upload_nobody_holds_is_not_found_in_the_same_words(
     assert asked == []
 
 
-def test_a_bucket_that_refuses_leaves_the_row_where_it_was(
+def _both_buckets_deleting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> list[tuple[str, str]]:
+    """Each file either bucket was asked to remove: the bucket and the path."""
+    asked: list[tuple[str, str]] = []
+
+    def delete(
+        bucket: str, org_id: int, module_id: str, asset_id: str
+    ) -> None:
+        asked.append((bucket, f"{org_id}/{module_id}/{asset_id}"))
+
+    def delete_processed(
+        bucket: str, org_id: int, module_id: str, asset_id: str, suffix: str
+    ) -> None:
+        asked.append((bucket, f"{org_id}/{module_id}/{asset_id}{suffix}"))
+
+    _source_bucket(monkeypatch, "source")
+    monkeypatch.setattr(settings, "TEACHING_VIDEOS_BUCKET", "processed")
+    monkeypatch.setattr(
+        "app.features.teaching.storage.delete_media_object", delete
+    )
+    monkeypatch.setattr(
+        "app.features.teaching.storage.delete_processed_media_object",
+        delete_processed,
+    )
+
+    return asked
+
+
+def _every_file_of(org: OrgUnit, asset_id: str) -> list[tuple[str, str]]:
+    stem = f"{org.id}/{MODULE}/{asset_id}"
+
+    return [
+        ("source", stem),
+        ("processed", f"{stem}-720p.mp4"),
+        ("processed", f"{stem}-1080p.mp4"),
+        ("processed", f"{stem}-poster.jpg"),
+        ("processed", f"{stem}.vtt"),
+    ]
+
+
+def test_deleting_a_video_removes_its_renditions_poster_and_captions_too(
     test_client: TestClient,
     db_session: Session,
     trust: OrgUnit,
     admin: User,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """What the bucket raised is not caught, so nothing is committed."""
     _upload(db_session, trust)
-    _source_bucket(monkeypatch, "source")
+    asked = _both_buckets_deleting(monkeypatch)
+
+    resp = test_client.delete(
+        f"{MEDIA}/asset1", headers=_login(test_client, admin)
+    )
+
+    assert resp.status_code == 204
+    assert _links(db_session) == []
+    assert asked == _every_file_of(trust, "asset1")
+
+
+@pytest.mark.parametrize(
+    "refusing", ["delete_media_object", "delete_processed_media_object"]
+)
+def test_a_bucket_that_refuses_is_answered_502_and_the_row_stays(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    admin: User,
+    monkeypatch: pytest.MonkeyPatch,
+    refusing: str,
+) -> None:
+    """The caller is told in fixed words, and nothing is committed.
+
+    Nothing of what the bucket said reaches them.
+    """
+    _upload(db_session, trust)
+    _both_buckets_deleting(monkeypatch)
+
+    def refuse(*args: object) -> None:
+        raise RuntimeError("the bucket said no")
+
+    monkeypatch.setattr(f"app.features.teaching.storage.{refusing}", refuse)
+
+    resp = test_client.delete(
+        f"{MEDIA}/asset1", headers=_login(test_client, admin)
+    )
+
+    assert resp.status_code == 502
+    assert resp.json() == NOT_DELETED
+    assert [row.asset_id for row in _links(db_session)] == ["asset1"]
+
+
+def test_an_upload_whose_id_cannot_be_a_path_is_deleted_and_no_bucket_asked(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    admin: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Was a 500 on every try, so the row could never be removed."""
+    _upload(db_session, trust, asset_id="not.safe")
+    asked = _both_buckets_deleting(monkeypatch)
+
+    resp = test_client.delete(
+        f"{MEDIA}/not.safe", headers=_login(test_client, admin)
+    )
+
+    assert resp.status_code == 204
+    assert _links(db_session) == []
+    assert asked == []
+
+
+def test_linking_a_new_video_over_an_old_one_starts_clean(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    admin: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Nothing the old video's jobs or its reviewer recorded is kept.
+
+    The old video's files are removed, and none of the new one's.
+    """
+    _upload(db_session, trust, asset_id="old")
+    old = _links(db_session)[0]
+    old.transcoded_at = datetime(2026, 1, 1, tzinfo=UTC)
+    old.has_1080p = True
+    old.has_poster = True
+    old.has_captions = True
+    old.transcode_started_at = datetime(2026, 1, 1, tzinfo=UTC)
+    old.caption_started_at = datetime(2026, 1, 1, tzinfo=UTC)
+    old.captions_reviewed_at = datetime(2026, 1, 2, tzinfo=UTC)
+    db_session.commit()
+    asked = _both_buckets_deleting(monkeypatch)
+
+    resp = test_client.post(
+        LINK,
+        json=_link_request(asset_id="new"),
+        headers=_login(test_client, admin),
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["asset_id"] == "new"
+    assert resp.json()["has_captions"] is False
+    assert [
+        (
+            row.asset_id,
+            row.transcoded_at,
+            row.has_1080p,
+            row.has_poster,
+            row.has_captions,
+            row.transcode_started_at,
+            row.caption_started_at,
+            row.captions_reviewed_at,
+        )
+        for row in _links(db_session)
+    ] == [("new", None, False, False, False, None, None, None)]
+    assert asked == _every_file_of(trust, "old")
+
+
+def test_old_files_that_will_not_delete_do_not_stop_the_new_video_linking(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    admin: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _upload(db_session, trust, asset_id="old")
+    _both_buckets_deleting(monkeypatch)
 
     def refuse(*args: object) -> None:
         raise RuntimeError("the bucket said no")
@@ -1021,12 +1181,34 @@ def test_a_bucket_that_refuses_leaves_the_row_where_it_was(
     monkeypatch.setattr(
         "app.features.teaching.storage.delete_media_object", refuse
     )
-    headers = _login(test_client, admin)
 
-    with pytest.raises(RuntimeError):
-        test_client.delete(f"{MEDIA}/asset1", headers=headers)
+    resp = test_client.post(
+        LINK,
+        json=_link_request(asset_id="new"),
+        headers=_login(test_client, admin),
+    )
 
+    assert resp.status_code == 200, resp.text
+    assert [row.asset_id for row in _links(db_session)] == ["new"]
+
+
+def test_linking_the_same_upload_again_removes_none_of_its_files(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    admin: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _upload(db_session, trust)
+    asked = _both_buckets_deleting(monkeypatch)
+
+    resp = test_client.post(
+        LINK, json=_link_request(), headers=_login(test_client, admin)
+    )
+
+    assert resp.status_code == 200, resp.text
     assert [row.asset_id for row in _links(db_session)] == ["asset1"]
+    assert asked == []
 
 
 # --- /admin/modules/{module_id}/media/{asset_id}/captions -------------------

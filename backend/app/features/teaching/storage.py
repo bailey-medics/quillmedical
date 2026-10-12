@@ -866,3 +866,36 @@ def delete_media_object(
         bucket.blob(path).delete()
     except gcs_exceptions.NotFound:
         return
+
+
+def delete_processed_media_object(
+    bucket_name: str,
+    org_id: int,
+    module_id: str,
+    asset_id: str,
+    suffix: str,
+) -> None:
+    """Remove one file a job made from an asset, from the processed bucket.
+
+    A rendition, the poster or the captions: ``suffix`` is the end of
+    the file's name after the asset id, such as ``-720p.mp4`` or
+    ``.vtt``. It is one of the fixed endings the jobs write and never
+    something a caller sent.
+
+    Built on ``media_object_path`` for the same reason
+    ``delete_media_object`` is, and a missing object is not an error for
+    the same reason: not every video has every file, and one already
+    gone must not stop the rest being cleared.
+    """
+    from google.api_core import exceptions as gcs_exceptions
+    from google.cloud import storage  # type: ignore[attr-defined]
+
+    path = f"{media_object_path(org_id, module_id, asset_id)}{suffix}"
+
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+
+    try:
+        bucket.blob(path).delete()
+    except gcs_exceptions.NotFound:
+        return
