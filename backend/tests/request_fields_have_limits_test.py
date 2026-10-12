@@ -36,22 +36,11 @@ LIMITED: frozenset[str] = frozenset(
     }
 )
 
-_WAITING = (
-    "Written in `main.py`, which the thin routes plan is taking apart. "
-    "Its limit goes on when that work has passed this model."
-)
-
-# Fields that should have a limit and do not yet, and why.
-NOT_YET: dict[str, str] = {
-    "app.schemas.users_admin.AdminUserCreateIn.username": _WAITING,
-    "app.schemas.users_admin.AdminUserCreateIn.email": _WAITING,
-    "app.schemas.users_admin.AdminUserCreateIn.password": _WAITING,
-    "app.schemas.users_admin.AdminUserUpdateIn.username": _WAITING,
-    "app.schemas.users_admin.AdminUserUpdateIn.email": _WAITING,
-    "app.schemas.users_admin.AdminUserUpdateIn.password": _WAITING,
-    "app.main.TotpVerifyIn.code": _WAITING,
-    "app.features.teaching.public_router.ValidateClinicalLeadIn.email": _WAITING,
-}
+# Fields that should have a limit and do not yet, and why. Empty since
+# 12 October 2026, when the last eight were given theirs. It stays, with
+# the test that checks it, so that the next exception has somewhere to
+# be written down and cannot outlive its reason.
+NOT_YET: dict[str, str] = {}
 
 # The app has about thirty such fields. Far fewer means the walk has
 # stopped finding them.

@@ -834,10 +834,22 @@ work. The frontend has the same numbers in `src/lib/fieldLimits.ts`:
 `PasswordField` and `EmailField` stop at theirs wherever they are used,
 and each username and full name input has its own.
 
-- [ ] Give the eight fields in `NOT_YET` their limits, once the thin
+- [x] Give the eight fields in `NOT_YET` their limits, once the thin
       routes plan has passed `AdminUserCreateIn`, `AdminUserUpdateIn`,
       `TotpVerifyIn` and `ValidateClinicalLeadIn`. The test fails on
       each entry the day it gets one, so the list empties itself.
+      Done on 12 October 2026, and ten fields, not eight. The two
+      admin models also take a `name`, which is written to the full
+      name column and had no limit: the test goes by the field's name
+      and `name` is not one it looks for, since a place has a name
+      too. Both now stop at 255. `NOT_YET` is empty and stays, with
+      the test that checks it. A new test,
+      `backend/tests/over_long_fields_are_refused_test.py`, gives each
+      of the ten its longest value and then one character more. The
+      one-time code box on the two-factor setup page stops at 16; the
+      other forms already stopped at their numbers. Ten decision
+      files are written for the breaking-change gate, which Mark
+      approves.
 
 ## Phase 4b: Make the exam survive what happens to it
 

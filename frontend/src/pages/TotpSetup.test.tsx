@@ -93,6 +93,14 @@ describe("TotpSetup", () => {
     });
   });
 
+  it("stops the code at the length the backend takes", async () => {
+    renderWithRouter(<TotpSetup />);
+
+    const code = await screen.findByLabelText(/6-digit code/i);
+
+    expect(code).toHaveAttribute("maxlength", "16");
+  });
+
   it("submits verification code and shows success", async () => {
     (apiModule.api.post as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce({

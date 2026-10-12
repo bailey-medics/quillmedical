@@ -14,6 +14,12 @@ from app.cbac.competencies import (
 from app.models import (
     validate_platform_role,
 )
+from app.schemas.limits import (
+    MAX_EMAIL,
+    MAX_FULL_NAME,
+    MAX_PASSWORD,
+    MAX_USERNAME,
+)
 
 
 class TeachingModuleIn(BaseModel):
@@ -155,10 +161,10 @@ class AdminUserCreateIn(BaseModel):
 
     model_config = {"extra": "forbid"}
 
-    name: str
-    username: str | None = None
-    email: str
-    password: str
+    name: str = Field(max_length=MAX_FULL_NAME)
+    username: str | None = Field(default=None, max_length=MAX_USERNAME)
+    email: str = Field(max_length=MAX_EMAIL)
+    password: str = Field(max_length=MAX_PASSWORD)
     base_profession: str = "patient"
     additional_competencies: list[str] = []
     removed_competencies: list[str] = []
@@ -252,10 +258,10 @@ class AdminUserUpdateIn(BaseModel):
 
     model_config = {"extra": "forbid"}
 
-    name: str | None = None
-    username: str | None = None
-    email: str | None = None
-    password: str | None = None
+    name: str | None = Field(default=None, max_length=MAX_FULL_NAME)
+    username: str | None = Field(default=None, max_length=MAX_USERNAME)
+    email: str | None = Field(default=None, max_length=MAX_EMAIL)
+    password: str | None = Field(default=None, max_length=MAX_PASSWORD)
     base_profession: str | None = None
     additional_competencies: list[str] | None = None
     removed_competencies: list[str] | None = None
