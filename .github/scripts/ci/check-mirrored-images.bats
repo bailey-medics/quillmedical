@@ -25,13 +25,8 @@ FROM ${PYTHON_IMAGE} AS base
 FROM base AS prod
 DOCKERFILE
 
-  # The one exception the script knows, so that it is seen to be used.
   cat > "${REPO}/.github/workflows/ci.yml" <<'WORKFLOW'
 jobs:
-  drift:
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:18-alpine@sha256:abc
   build:
     steps:
       - with:
@@ -195,31 +190,22 @@ WORKFLOW
   [ "$status" -eq 0 ]
 }
 
-@test "the known exception covers its own file only" {
-  # The same image in another workflow is not excused.
-  cp "${REPO}/.github/workflows/ci.yml" "${REPO}/.github/workflows/other.yml"
-
-  run run_check
-
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"other.yml: image public.ecr.aws/docker/library/postgres:18-alpine"* ]]
-}
-
-@test "an exception that matches nothing any more fails, so it gets removed" {
-  # Once pull request #1842 has moved the drift check's Postgres to the
-  # mirror, the exception for it is a hole and nothing else.
+@test "a job's service container may not come from a public registry, pinned or not" {
+  # How the drift check named its Postgres until 12 October 2026, when a
+  # refused pull of it took a pull request out of the merge queue. There
+  # is no list of exceptions to add one to.
   cat > "${REPO}/.github/workflows/ci.yml" <<'WORKFLOW'
 jobs:
-  build:
-    steps:
-      - with:
-          driver-opts: image=mirror.gcr.io/moby/buildkit:buildx-stable-1
+  drift:
+    services:
+      postgres:
+        image: public.ecr.aws/docker/library/postgres:18-alpine@sha256:abc
 WORKFLOW
 
   run run_check
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"matches nothing any more"* ]]
+  [[ "$output" == *"ci.yml: image public.ecr.aws/docker/library/postgres:18-alpine@sha256:abc is pulled from a public registry"* ]]
 }
 
 @test "every offender is reported, not just the first" {

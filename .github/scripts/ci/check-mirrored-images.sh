@@ -26,7 +26,9 @@
 #     default of a variable, `${CI_X_IMAGE:-...}`, so that
 #     use-mirrored-images.sh can point it at the copy.
 #   - a workflow or action that names an image from anywhere but GitHub's
-#     own registry or Google's mirror of Docker Hub.
+#     own registry or Google's mirror of Docker Hub. There are no
+#     exceptions: the last, the drift check's Postgres, went to the
+#     mirror on 12 October 2026.
 #   - an image the mirror copies that is named by tag alone, with no
 #     `@sha256:` digest. A tag moves when a patch is released and the copy
 #     does not follow it: mirror-images.yml runs when a name changes, on no
@@ -43,13 +45,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "check-mirrored-ima
 # job's login. Google's mirror of Docker Hub has no limit for a caller with
 # no login, and holds BuildKit's own image and the Dockerfile syntax image.
 ALLOWED_REGISTRIES=("ghcr.io/" "mirror.gcr.io/")
-
-# Images in a workflow that are known to be public still, each with why.
-# "<file>|<start of the image>|<why>". Remove a line once it is no longer
-# true: an exception that matches nothing fails this check.
-KNOWN_PUBLIC=(
-  ".github/workflows/ci.yml|public.ecr.aws/docker/library/postgres:|the drift check's Postgres service, moved to the mirror by pull request #1842"
-)
 
 fail=0
 
@@ -131,28 +126,6 @@ check_compose() {
   done < <(sed -n -E 's/^[[:space:]]*image:[[:space:]]*"?([^"[:space:]]+)"?.*$/\1/p' "$compose_file")
 }
 
-# Says whether an image in a workflow is one of the known exceptions, and
-# notes that the exception was used.
-is_known_public() {
-  local file="$1"
-  local image="$2"
-  local entry=""
-  local index=0
-
-  for entry in "${KNOWN_PUBLIC[@]}"; do
-    IFS='|' read -r known_file known_image _ <<<"$entry"
-
-    if [ "$file" = "$known_file" ] && [[ "$image" == "$known_image"* ]]; then
-      used[index]=1
-      return 0
-    fi
-
-    index=$((index + 1))
-  done
-
-  return 1
-}
-
 # A workflow or action may name an image only from an allowed registry, or
 # through an expression, which is one this repository built.
 check_workflow() {
@@ -174,7 +147,7 @@ check_workflow() {
       fi
     done
 
-    if [ "$allowed" -eq 1 ] || is_known_public "$file" "$image"; then
+    if [ "$allowed" -eq 1 ]; then
       continue
     fi
 
@@ -194,8 +167,6 @@ main() {
 
   shift
 
-  used=()
-
   check_compose "$compose_file"
 
   local dockerfile=""
@@ -207,16 +178,6 @@ main() {
   while IFS= read -r file; do
     check_workflow "$file"
   done < <(find .github/workflows .github/actions -type f \( -name '*.yml' -o -name '*.yaml' \) 2>/dev/null | sed 's|^\./||' | sort)
-
-  local index=0
-  local entry=""
-  for entry in "${KNOWN_PUBLIC[@]}"; do
-    if [ -z "${used[index]:-}" ]; then
-      offender "the exception '${entry%%|*} ${entry#*|}' matches nothing any more. Remove it from KNOWN_PUBLIC in check-mirrored-images.sh"
-    fi
-
-    index=$((index + 1))
-  done
 
   if [ "$fail" -ne 0 ]; then
     exit 1
