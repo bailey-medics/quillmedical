@@ -344,6 +344,79 @@ resource "google_monitoring_alert_policy" "cloud_run_startup" {
   }
 }
 
+# ---------- Alert policy - a scheduled action failed ----------
+#
+# Retention and the teaching reminders run each day on a timer, with nobody
+# watching (infra/scheduled-jobs.tf). A run that fails, or never starts,
+# would otherwise go unseen until somebody asked why no reminder had
+# arrived. Two ways to fail, so two conditions:
+#
+# - The action ran and said it could not finish. Matched on the words the
+#   two actions print when they fail, so a failed migration or smoke test
+#   on the same job, which the deploy already reports, does not raise this.
+# - Cloud Scheduler could not start the job at all: a permission taken
+#   away, the job renamed.
+resource "google_monitoring_alert_policy" "scheduled_action" {
+  count = var.scheduled_job_name != null ? 1 : 0
+
+  project      = var.project_id
+  display_name = "Scheduled action failed (${var.environment})"
+  combiner     = "OR"
+
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "A scheduled action failed"
+    content   = <<-EOT
+      One of the daily scheduled actions did not finish: deleting data past
+      its retention period, or sending the teaching reminders.
+
+      **Nothing is lost.** Each is safe to run again and picks up what was
+      left: a reminder is recorded only once it has been sent, and
+      retention deletes only what is already past its period.
+
+      Find out which and why in the job's logs, then run it by hand from
+      the Actions tab ("Retention" or "Teaching reminders"), unticked first
+      for a report.
+
+      Logs: https://console.cloud.google.com/logs/query?project=$${project}
+    EOT
+  }
+
+  conditions {
+    display_name = "The action reported a failure"
+
+    condition_matched_log {
+      filter = <<-EOT
+        resource.type = "cloud_run_job"
+        resource.labels.job_name = "${var.scheduled_job_name}"
+        (textPayload =~ "Nothing was deleted"
+          OR textPayload =~ "The reminders could not run"
+          OR textPayload =~ "could not be sent")
+      EOT
+    }
+  }
+
+  conditions {
+    display_name = "Cloud Scheduler could not start the job"
+
+    condition_matched_log {
+      filter = <<-EOT
+        resource.type = "cloud_scheduler_job"
+        severity >= ERROR
+      EOT
+    }
+  }
+
+  notification_channels = local.notification_channels
+
+  alert_strategy {
+    auto_close = "1800s" # 30 minutes
+    notification_rate_limit {
+      period = "3600s" # At most one notification an hour
+    }
+  }
+}
+
 # ---------- Alert policy - backend 5xx responses ----------
 #
 # The uptime check above only proves that /api/health answers. A service

@@ -742,6 +742,9 @@ module "monitoring" {
   slack_channel_display_name = var.slack_channel_display_name
   cloud_run_services         = var.cloud_run_services
 
+  # The job the daily scheduled actions run on: see scheduled-jobs.tf.
+  scheduled_job_name = module.cloud_run_admin_job.job_name
+
   # The analytics module is conditional on a landing domain, so the metric may
   # not exist. Null here means the browser error policy is not created, rather
   # than a policy pointing at a metric that was never made.

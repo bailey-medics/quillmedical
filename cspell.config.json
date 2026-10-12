@@ -114,6 +114,7 @@
     "cloudfunctions",
     "cloudresourcemanager",
     "cloudrun",
+    "cloudscheduler",
     "cloudsql",
     "CNOM",
     "cobblestoning",
