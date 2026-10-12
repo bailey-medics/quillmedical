@@ -58,7 +58,12 @@ dependencies and not by slowing the queue down.
       open from another worktree on 12 October, does this. Check whether
       it has merged before doing it again.
 
-- [ ] Add a check that fails when a workflow or a Dockerfile names a
+      Still open when the check below was written, so it is left to that
+      pull request and not done twice. The check knows that one image as
+      a named exception, and fails once the exception matches nothing, so
+      it is removed when #1842 lands and cannot outlive its reason.
+
+- [x] Add a check that fails when a workflow or a Dockerfile names a
       public registry with no mirror behind it, so the next image added
       cannot quietly bring the problem back. Beside
       `check-version-consistency.sh` in `.github/scripts/ci/`, with bats

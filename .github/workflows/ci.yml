@@ -479,6 +479,13 @@ jobs:
       - name: Check pinned versions are consistent
         run: bash .github/scripts/ci/check-version-consistency.sh
 
+      # A public registry refuses a caller that asks too often, and one
+      # refused pull takes a pull request, and everything stacked on it,
+      # out of the merge queue. So every image CI pulls has to be named in
+      # a way the mirror can stand in for. See the script.
+      - name: Check every image CI pulls can come from the mirror
+        run: bash .github/scripts/ci/check-mirrored-images.sh compose.ci.yml backend/Dockerfile backend/Dockerfile.caption frontend/Dockerfile
+
 
   # ==============================================================================
   # HEAVY TIER - runs on non-draft PRs targeting main only
