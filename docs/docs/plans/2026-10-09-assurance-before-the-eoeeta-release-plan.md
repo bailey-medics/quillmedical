@@ -640,7 +640,9 @@ before any feature.
 - [ ] `compose.migrate.yml`.
 - [x] `compose.prod.cloud-run.yml`. Deleted on 12 October 2026, not
       audited: nothing built or deployed from it.
-- [ ] `compose.prod.fhir-openehr.yml`.
+- [x] `compose.prod.fhir-openehr.yml`. Deleted on 12 October 2026, not
+      audited: the clinical VM is built from
+      `infra/modules/compute-fhir/startup.sh`, which never read it.
 - [ ] `compose.unit-tests.yml`.
 - [ ] `backend/Dockerfile`.
 - [ ] `frontend/Dockerfile`.

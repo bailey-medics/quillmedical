@@ -105,7 +105,8 @@ clinical/NHS go-live.
 
 - [ ] Redesign `infra/modules/compute-fhir/startup.sh` for COS (Docker Compose cannot run on Container-Optimised OS) — script acknowledges COS constraints (line 7) but still generates docker-compose.yml (line 41) and runs `docker compose up` (line 87)
 - [ ] Automate `uuid-ossp` extension creation for EHRbase Cloud SQL database — currently applied manually per `docs/docs/learnings/fhir-ehrbase-issues.md`; could add to startup.sh before EHRbase start
-- [ ] Add missing EHRbase env vars (`DB_USER_ADMIN`, `DB_PASS_ADMIN`) to Terraform compute-fhir module — startup.sh only has `DB_USER`/`DB_PASS` (lines 67-68); working examples in `compose.prod.fhir-openehr.yml` lines 96-97
+- [ ] Add missing EHRbase env vars (`DB_USER_ADMIN`, `DB_PASS_ADMIN`) to Terraform compute-fhir module: startup.sh only has `DB_USER`/`DB_PASS` (lines 67-68). Give both the same user and password as `DB_USER` and `DB_PASS`, as the `ehrbase` service in `compose.dev.yml` does
+- [ ] Pin the images in `infra/modules/compute-fhir/startup.sh` by version and digest: it uses `hapiproject/hapi:latest` and `ehrbase/ehrbase:latest`, so a rebuilt VM could pull a different server. The last pinned pair was `hapiproject/hapi:v8.12.0-1@sha256:d7f38d3676900b07e8a7d3500426eaf8d90ea9ced9a6726416f080f68e230fb0` and `ehrbase/ehrbase:2.36.0@sha256:c8e642264b73637e0576ec01b5c73f5dc9be6f34eb3644f0ced890c5f916640a`
 - [ ] Write backup restore SOP (daily restore vs PITR, step-by-step, permissions, comms plan, quarterly drill) — the restore guidance that was in `docs/docs/infrastructure/gcp.md` went when production was retired; planned as Phase 3 of the [Disaster recovery](2026-09-17-disaster-recovery-plan.md) plan
 
 ## Documentation
