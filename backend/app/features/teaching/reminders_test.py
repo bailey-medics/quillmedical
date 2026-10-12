@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -30,6 +31,13 @@ from app.models import OrgUnit, User
 NOW = datetime(2030, 6, 1, 9, 0, tzinfo=UTC)
 BANK = "colonoscopy-optical-diagnosis"
 A_DAY = timedelta(days=1)
+
+#: The line a real run ends on, as the "has not run" alert counts it in
+#: infra/modules/monitoring/main.tf. The two must be the same text:
+#: .github/scripts/terraform/scheduled-action-heartbeat.bats holds them to
+#: it. Change the line the action prints and this, and that test says the
+#: alert has to change too.
+RUN_FINISHED = r"^Sent [0-9]+ of [0-9]+ renewal notices$"
 
 
 @pytest.fixture
@@ -694,6 +702,53 @@ class TestMain:
             "ann@example.nhs.uk",
             "bob@example.nhs.uk",
         }
+
+    def test_a_real_run_ends_on_the_line_the_alert_counts(
+        self,
+        one_of_each_due: None,
+        sent: list[dict[str, Any]],
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Once, so that one run is one count."""
+        monkeypatch.setenv("REMINDERS_APPLY", "true")
+
+        assert reminders.main() == 0
+
+        lines = capsys.readouterr().out.splitlines()
+        assert len([ln for ln in lines if re.search(RUN_FINISHED, ln)]) == 1
+
+    def test_a_report_does_not_print_the_line_the_alert_counts(
+        self,
+        one_of_each_due: None,
+        sent: list[dict[str, Any]],
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """A report run by hand must not look like the daily run."""
+        monkeypatch.delenv("REMINDERS_APPLY", raising=False)
+
+        assert reminders.main() == 0
+
+        lines = capsys.readouterr().out.splitlines()
+        assert not [ln for ln in lines if re.search(RUN_FINISHED, ln)]
+
+    def test_a_run_that_could_not_start_does_not_print_the_line(
+        self,
+        one_of_each_due: None,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        def explode(*args: object, **kwargs: object) -> None:
+            raise RuntimeError("no database")
+
+        monkeypatch.setenv("REMINDERS_APPLY", "true")
+        monkeypatch.setattr(reminders, "send_enrolment_reminders", explode)
+
+        assert reminders.main() == 1
+
+        lines = capsys.readouterr().out.splitlines()
+        assert not [ln for ln in lines if re.search(RUN_FINISHED, ln)]
 
     def test_a_send_that_fails_makes_the_run_fail(
         self,
