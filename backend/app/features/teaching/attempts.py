@@ -407,7 +407,10 @@ def item_at_position(
 
 
 def record_answer(
-    db: Session, assessment: Assessment, selected_option: str
+    db: Session,
+    assessment: Assessment,
+    selected_option: str,
+    answer_id: int | None = None,
 ) -> AnswerRecorded:
     """Store a learner's answer to the next question of their attempt.
 
@@ -415,6 +418,15 @@ def record_answer(
     first of this attempt, in display order, that has no answer yet.
     So an answer cannot land on another attempt's question, and one
     already answered is not answered again this way.
+
+    A caller may say which question it means, by ``answer_id``, and
+    then the answer is only ever stored on that question. This is what
+    makes sending an answer twice safe. Where the first was stored and
+    only its reply was lost, the second names a question that now has
+    an answer: nothing is stored, and the reply is what the first would
+    have been, the next question without one. Without the name the
+    second would be stored on the question after. A name that is not
+    the next question, and not one already answered, is refused.
 
     The answer is scored as it is stored, by the scoring module, and
     the tags of the option chosen are copied onto it. What was chosen
@@ -433,6 +445,8 @@ def record_answer(
         db: Core database session.
         assessment: The learner's own attempt.
         selected_option: The id of the option they chose.
+        answer_id: The answer row of the question they mean, or None
+            to mean whichever is next.
 
     Returns:
         The next question without an answer, if any, and the bank.
@@ -441,7 +455,10 @@ def record_answer(
     Raises:
         AssessmentAlreadyCompleted: If the attempt is finished.
         TimeLimitExceeded: If the attempt's time has run out.
-        AllItemsAlreadyAnswered: If every question has an answer.
+        AnswerNotFound: If ``answer_id`` is given and is no question of
+            this attempt, or is one further on than the next.
+        AllItemsAlreadyAnswered: If every question has an answer, and
+            no question was named.
         AssessmentConfigNotFound: If the organisation the attempt was
             recorded against holds no synced copy of the version sat.
     """
@@ -452,6 +469,15 @@ def record_answer(
 
     # Find current unanswered item
     current = _first_unanswered(db, assessment.id)
+
+    if answer_id is not None and (current is None or current.id != answer_id):
+        _require_answered_already(db, assessment, answer_id)
+
+        # A repeat of an answer already stored: store nothing, and say
+        # what the first reply said.
+        return AnswerRecorded(
+            next_answer=current, config=_bank_sat(db, assessment)
+        )
 
     if not current:
         raise AllItemsAlreadyAnswered()
@@ -628,6 +654,34 @@ def finish_attempt(db: Session, assessment: Assessment) -> AttemptFinished:
         overall_passed=overall_passed,
         score_breakdown=score_breakdown,
     )
+
+
+def _require_answered_already(
+    db: Session, assessment: Assessment, answer_id: int
+) -> None:
+    """Refuse a named question that is not one already answered.
+
+    Asked only of a name that is not the next question. Looked for
+    among the rows of this attempt, so another attempt's is not found.
+
+    Raises:
+        AnswerNotFound: If this attempt has no answer row by that id,
+            or has one with nothing chosen yet, which is a question
+            further on than the next.
+    """
+    named = (
+        db.execute(
+            select(AssessmentAnswer).where(
+                AssessmentAnswer.id == answer_id,
+                AssessmentAnswer.assessment_id == assessment.id,
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+    if named is None or named.selected_option is None:
+        raise AnswerNotFound()
 
 
 def _now_within_time(assessment: Assessment) -> datetime:

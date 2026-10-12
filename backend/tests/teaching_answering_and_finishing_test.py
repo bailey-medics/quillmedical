@@ -523,6 +523,62 @@ def test_answering_sends_the_next_question_and_not_whether_it_was_right(
     assert (first.is_correct, second.is_correct) == (True, False)
 
 
+def test_an_answer_sent_twice_with_its_question_named_is_stored_once(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    """The reply to the first was lost, so the page sends it again.
+
+    Both are answered with question two, and question two is left with
+    no answer. Sent twice without the name, the second would have been
+    stored on question two.
+    """
+    learner = _learner(db_session, trust)
+    mine = _attempt(db_session, trust, learner, questions=3)
+    client, headers = _signed_in(test_client)
+    first_id = _rows(db_session, mine.id)[0].id
+    body = {"selected_option": RIGHT, "answer_id": first_id}
+
+    once = client.post(
+        f"{ASSESSMENTS}/{mine.id}/answer", headers=headers, json=body
+    )
+    twice = client.post(
+        f"{ASSESSMENTS}/{mine.id}/answer", headers=headers, json=body
+    )
+
+    assert once.status_code == 200
+    assert twice.status_code == 200
+    assert twice.json() == once.json()
+    assert once.json()["next_item"]["display_order"] == 2
+
+    db_session.expire_all()
+    first, second, third = _rows(db_session, mine.id)
+
+    assert first.selected_option == RIGHT
+    assert second.selected_option is None
+    assert third.selected_option is None
+
+
+def test_an_answer_naming_a_question_further_on_is_not_found(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    learner = _learner(db_session, trust)
+    mine = _attempt(db_session, trust, learner, questions=3)
+    client, headers = _signed_in(test_client)
+    second_id = _rows(db_session, mine.id)[1].id
+
+    resp = client.post(
+        f"{ASSESSMENTS}/{mine.id}/answer",
+        headers=headers,
+        json={"selected_option": RIGHT, "answer_id": second_id},
+    )
+
+    assert resp.status_code == 404
+    db_session.expire_all()
+    assert all(
+        row.selected_option is None for row in _rows(db_session, mine.id)
+    )
+
+
 def test_the_last_answer_is_told_there_is_nothing_left(
     test_client: TestClient, db_session: Session, trust: OrgUnit
 ) -> None:

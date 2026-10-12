@@ -243,11 +243,20 @@ class AssessmentQuestionResultsOut(BaseModel):
 
 
 class SubmitAnswerIn(BaseModel):
-    """Request body for submitting an answer."""
+    """Request body for submitting an answer.
+
+    Attributes:
+        selected_option: The id of the option chosen.
+        answer_id: Which question this answers, as the ``answer_id`` the
+            question was sent with. Left out, the answer goes to
+            whichever question is next. Given, it goes to that question
+            only, so the same request sent twice is stored once.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     selected_option: str
+    answer_id: int | None = None
 
 
 class AnswerResultOut(BaseModel):
