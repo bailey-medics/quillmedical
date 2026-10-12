@@ -659,6 +659,106 @@ class TestDeleteMediaObject:
             delete_media_object("src-bucket", org_id, module_id, asset_id)
 
 
+class TestDeleteProcessedMediaObject:
+    """Removing one file a job made from an asset: a rendition, the
+    poster or the captions, from the processed bucket."""
+
+    @pytest.mark.parametrize(
+        "suffix", ["-720p.mp4", "-1080p.mp4", "-poster.jpg", ".vtt"]
+    )
+    def test_deletes_the_object_named_for_the_asset_and_the_suffix(
+        self, suffix: str
+    ) -> None:
+        from app.features.teaching.storage import (
+            delete_processed_media_object,
+        )
+
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_blob = MagicMock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_bucket.blob.return_value = mock_blob
+
+        ms = _mock_gcs_client(mock_client)
+
+        with patch.object(_gc, "storage", ms, create=True):
+            delete_processed_media_object(
+                "videos", 7, "mod-1", "abc123", suffix
+            )
+
+        mock_client.bucket.assert_called_once_with("videos")
+        mock_bucket.blob.assert_called_once_with(f"7/mod-1/abc123{suffix}")
+        mock_blob.delete.assert_called_once()
+
+    def test_a_missing_object_is_not_an_error(self) -> None:
+        """Not every video has every file, and a second delete finds none."""
+        from google.api_core import exceptions as gcs_exceptions
+
+        from app.features.teaching.storage import (
+            delete_processed_media_object,
+        )
+
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_blob = MagicMock()
+        mock_blob.delete.side_effect = gcs_exceptions.NotFound("gone")
+        mock_client.bucket.return_value = mock_bucket
+        mock_bucket.blob.return_value = mock_blob
+
+        ms = _mock_gcs_client(mock_client)
+
+        with patch.object(_gc, "storage", ms, create=True):
+            delete_processed_media_object(
+                "videos", 7, "mod-1", "abc123", ".vtt"
+            )
+
+    def test_anything_else_the_bucket_raises_is_passed_on(self) -> None:
+        from google.api_core import exceptions as gcs_exceptions
+
+        from app.features.teaching.storage import (
+            delete_processed_media_object,
+        )
+
+        mock_client = MagicMock()
+        mock_bucket = MagicMock()
+        mock_blob = MagicMock()
+        mock_blob.delete.side_effect = gcs_exceptions.Forbidden("no")
+        mock_client.bucket.return_value = mock_bucket
+        mock_bucket.blob.return_value = mock_blob
+
+        ms = _mock_gcs_client(mock_client)
+
+        with (
+            patch.object(_gc, "storage", ms, create=True),
+            pytest.raises(gcs_exceptions.Forbidden),
+        ):
+            delete_processed_media_object(
+                "videos", 7, "mod-1", "abc123", ".vtt"
+            )
+
+    @pytest.mark.parametrize(
+        "org_id,module_id,asset_id",
+        [
+            (0, "mod-1", "abc123"),
+            (1, "../etc", "abc123"),
+            (1, "mod-1", "../secret"),
+            (1, "mod-1", "a/b"),
+        ],
+    )
+    def test_rejects_unsafe_components(
+        self, org_id: int, module_id: str, asset_id: str
+    ) -> None:
+        """Refused before any client is built, so nothing is reached."""
+        from app.features.teaching.storage import (
+            delete_processed_media_object,
+        )
+
+        with pytest.raises(ValueError):
+            delete_processed_media_object(
+                "videos", org_id, module_id, asset_id, ".vtt"
+            )
+
+
 class TestLocalMediaResponse:
     """Files served from a local teaching repo on the dev stack."""
 

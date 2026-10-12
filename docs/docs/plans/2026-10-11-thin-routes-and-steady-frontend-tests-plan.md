@@ -1609,10 +1609,14 @@ and the page follows.
         which the database now refuses, and had one of the two moved
         to another bank.
 
-- [ ] **Deleting a video deletes everything made from it, and a new
+- [x] **Deleting a video deletes everything made from it, and a new
       video starts clean.** Mark: "fix this. deleting the old video to
       add a new one must delete the captions on deleting the video."
       Two faults, one cause: what belongs to a video outlives it.
+      Built on 12 October 2026, backend only, as the notes beneath
+      the four rulings record. The admin page says a deleted video
+      "will be removed permanently", which was already its claim and
+      is now wholly true, so it was not changed.
 
       - **Deleting a video removes its captions, its renditions and its
         poster**, as well as the file that was uploaded. Today
@@ -1631,6 +1635,109 @@ and the page follows.
         video could not be deleted, as today. A row without its files
         is put right by deleting again; files without a row are found
         by nothing.
+      - **One function removes a video's files.**
+        `delete_video_files` in `media_uploads.py`, beside
+        `delete_upload`, which uses it, as does `link_upload` for the
+        video it replaces. It is handed a `StoredVideo`, read off the
+        row before the row is removed or re-pointed. The files of one
+        video are the upload at `{prefix}/{module}/{asset}` in the
+        source bucket, and in the processed bucket
+        `{asset}-720p.mp4`, `{asset}-1080p.mp4`, `{asset}-poster.jpg`
+        and `{asset}.vtt` under the same folder. All four are asked
+        for whatever `has_1080p`, `has_poster` and `has_captions`
+        say, and one already gone is not an error. The new store call
+        is `delete_processed_media_object` in `storage.py`. Where no
+        source bucket is set the upload is on disk and is removed
+        from the module's folder, as before.
+      - **Each file is looked for where it was written, and the
+        writers disagree.** The upload is under the organisation's
+        storage prefix, which the row records as `organisation_id`.
+        The transcode job is started by `link_upload` with the
+        organisation's own id. It reads the upload from, and writes
+        the renditions and the poster under, whatever number it was
+        started with, so where the two numbers differ a job started
+        by linking finds no upload and writes nothing; only a job
+        run with the prefix writes, and only its report is recorded.
+        The caption job writes under the number that report carried,
+        the prefix; `save_captions` writes under the organisation's
+        own id. So the upload is looked for under the prefix, and
+        every processed file under both numbers where they differ,
+        which misses nothing any of these writers can have written.
+        They differ only where `org_unit.media_prefix_id` is
+        recorded. The writers were not changed.
+      - **What an administrator is answered on deleting.** 204 as
+        before, with the renditions, poster and captions now gone
+        too. A store that refuses: was a bare 500, now 502 "The video
+        could not be deleted" (`MediaCannotBeDeleted`), with the row
+        still there and nothing of what the store said passed on.
+        502 and not 503, because 503 here means a store that is not
+        set up, and 502 is what the rest of the application answers
+        for a store that fails. Deleting stops at the first file the
+        store refuses, the upload first, so a second try finds what
+        went already gone and carries on.
+      - **An upload whose id could not be part of a path can now be
+        deleted.** `link_upload` records whatever id it is sent, and
+        the path builders refuse one of the wrong shape, so where
+        there is a bucket deleting such a row answered 500 every
+        time. Nothing can have been
+        written under such an id, since every writer builds its path
+        the same way, so the row is removed and the store is not
+        asked. `link_upload` still does not check the id: a separate
+        finding.
+      - **Linking over an old video.** Every column the old video's
+        jobs wrote is cleared, now with `captions_reviewed_at` among
+        them: `transcoded_at`, `has_1080p`, `has_poster`,
+        `has_captions`, `transcode_started_at`, `caption_started_at`.
+        So the module is hidden from learners until the new video has
+        its own renditions and somebody has read its own captions.
+        The old video's files are then removed, last, once the new
+        row is flushed and its transcode asked for.
+      - **Choices made where the step left one, the more cautious
+        each time.**
+        - **Old files that will not delete do not stop the new link.**
+          The failure is logged and the request answered 200. An old
+          file left behind is clutter; a new video blocked by it, or
+          shown with the old one's captions, is not.
+        - **Linking the upload a reference already has removes no
+          files**, since they are the ones being linked. The columns
+          are cleared all the same, the review among them: the
+          transcode is asked for again, and where it runs the
+          caption job writes over whatever a person corrected.
+        - **An old upload that another reference of the module still
+          names keeps its files**, or that reference would be left
+          with a player and nothing to play.
+        - **The old files go after the flush and before the commit**,
+          because a helper here flushes and never commits. Should
+          the commit itself then fail, the old row is left naming a
+          video whose files are gone, until the link is sent again.
+          Closing that needs the delete moved behind the commit,
+          which is a decision.
+      - **Unlinking was left as it is.** `unlink_module_media`
+        removes the row and keeps the files on purpose ("detaching
+        is not deleting"). The marks go with the row, so a later
+        link starts clean. Its files are then named by no row, and
+        do not come back as unattached as its docstring says. The
+        admin page never calls it. Found, not changed.
+      - **Not covered.** A job still running when its video is
+        deleted or replaced writes its files afterwards, and nothing
+        in the application removes them. Two rows of one module naming one upload make
+        deleting it answer 500, as before.
+      - **Tests turned round.** In `media_uploads_test.py`:
+        `test_linking_again_keeps_the_old_uploads_captions_marked_as_checked`
+        became
+        `test_linking_again_forgets_that_the_old_uploads_captions_were_checked`;
+        `test_deleting_removes_the_row_and_the_uploaded_file` became
+        `test_deleting_removes_the_row_the_upload_and_everything_made_from_it`;
+        `test_a_bucket_that_refuses_fails_the_delete_and_the_row_comes_back`
+        became
+        `test_a_bucket_that_refuses_is_reported_and_the_row_comes_back`;
+        `test_an_upload_whose_id_cannot_be_a_path_cannot_be_deleted_from_a_bucket`
+        became
+        `test_an_upload_whose_id_cannot_be_a_path_is_deleted_without_the_store`.
+        In `backend/tests/teaching_video_and_media_test.py`:
+        `test_a_bucket_that_refuses_leaves_the_row_where_it_was`
+        became
+        `test_a_bucket_that_refuses_is_answered_502_and_the_row_stays`.
 
 - [ ] **The manual content sync says when a bank did not load.** Mark:
       "fix this." Today `sync_banks_by_hand` in

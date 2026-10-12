@@ -309,6 +309,17 @@ class MediaAssetNotHeldHere(TeachingError):
     message = "No such media asset"
 
 
+class MediaCannotBeDeleted(TeachingError):
+    """The store would not remove a video's files, so the video stays.
+
+    Nothing of what the store said is passed on. The upload is still
+    recorded, and deleting it again is what puts it right.
+    """
+
+    status_code = 502
+    message = "The video could not be deleted"
+
+
 class CaptionsNotWebVTT(TeachingError):
     """The corrected captions do not begin with the line a track must."""
 

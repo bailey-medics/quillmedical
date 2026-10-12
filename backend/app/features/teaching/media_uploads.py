@@ -39,13 +39,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.features.teaching import media, storage, transcode
+from app.features.teaching import media, object_paths, storage, transcode
 from app.features.teaching.errors import (
     CaptionsCannotBeSaved,
     CaptionsNotWebVTT,
     InvalidAssetId,
     LocalUploadNotOffered,
     MediaAssetNotHeldHere,
+    MediaCannotBeDeleted,
     MediaUploadNotConfigured,
     NoModuleToUploadTo,
 )
@@ -63,6 +64,16 @@ logger = logging.getLogger(__name__)
 #: it. The same shape as ``storage._SAFE_BANK_ID``.
 _SAFE_ASSET_ID = re.compile(r"[a-zA-Z0-9_-]+")
 
+#: What the jobs make of one upload, as the end of each file's name
+#: after the asset id: the 720p rendition every video has, then the
+#: 1080p rendition, the poster and the captions. The last three are read
+#: from ``RENDITION_FLAGS`` so a file the transcode job learns to write
+#: is one that deleting learns to remove.
+_PROCESSED_SUFFIXES: tuple[str, ...] = (
+    "-720p.mp4",
+    *(suffix for _flag, suffix in transcode.RENDITION_FLAGS),
+)
+
 
 @dataclass(frozen=True)
 class UploadTarget:
@@ -76,6 +87,26 @@ class UploadTarget:
     #: The bucket uploads go to, or None where they come through this
     #: application and land on disk.
     bucket: str | None
+
+
+@dataclass(frozen=True)
+class StoredVideo:
+    """One video as its row described it, which is where its files are.
+
+    Taken from the row before the row is removed or pointed at another
+    upload, because after that nothing else says where the files went.
+    """
+
+    #: The number the upload was filed under: the row's
+    #: ``organisation_id``, which is the organisation's storage prefix.
+    storage_prefix_id: int
+    #: The organisation's own id. The same number as the prefix unless
+    #: an older prefix is recorded for the organisation.
+    org_unit_id: int
+    module_id: str
+    asset_id: str
+    #: Decides the suffix of an upload that landed on disk.
+    content_type: str
 
 
 def new_upload_target(db: Session, org_unit_id: int) -> UploadTarget:
@@ -143,8 +174,24 @@ def link_upload(
     than refusing it. One video per reference is the rule the unique
     constraint enforces, and pointing a slide at a different upload is a
     dropdown in the admin card, not a reason to make the admin detach
-    first. The previous asset stays in the bucket and reappears as
-    unattached, so nothing is lost by re-pointing.
+    first.
+
+    **A reference pointed at a different upload starts clean.** Every
+    column the old upload's jobs wrote is cleared, the record that a
+    person checked its captions among them, so the new video is hidden
+    from learners until its own renditions exist and its own captions
+    have been read. The old video's files are then removed by
+    :func:`delete_video_files`, the same way deleting removes them.
+
+    The old files go last, once the new link is flushed and its job
+    asked for. If the store refuses, that is logged and the link
+    stands: an old file that will not delete is clutter, and must not
+    stop a new video being linked. They are left alone where another
+    reference of the module still names the old upload. Linking the
+    upload a reference already has removes no files, since they are the
+    ones being linked; the columns are cleared all the same, because
+    the transcode is asked for again, and where it runs its captions
+    are written again over whatever a person corrected.
 
     What is recorded is what the caller said of the file: its id, name,
     type and size. None of it is checked against what is in the bucket,
@@ -180,6 +227,16 @@ def link_upload(
         )
     ).scalar_one_or_none()
 
+    # Noted before the row is pointed elsewhere: afterwards nothing says
+    # where the old video's files are. Not when the same upload is
+    # linked again, such as a request sent twice, because those files
+    # are the ones being linked.
+    replaced = (
+        _stored_video(existing)
+        if existing is not None and existing.asset_id != asset_id
+        else None
+    )
+
     if existing:
         existing.asset_id = asset_id
         existing.original_filename = original_filename
@@ -214,6 +271,11 @@ def link_upload(
     # card report progress for work that is not happening on this file.
     link.transcode_started_at = None
     link.caption_started_at = None
+    # And the record that a person read the captions. They read the old
+    # video's: left behind, the new video would count as checked and
+    # reach learners as soon as it was transcoded, with captions nobody
+    # had read.
+    link.captions_reviewed_at = None
 
     db.flush()
     db.refresh(link)
@@ -249,7 +311,158 @@ def link_upload(
 
     transcode.start_transcode(org_unit_id, module_id, asset_id)
 
+    # Last, when everything about the new link is written. Nothing
+    # below can lose it.
+    if replaced is not None:
+        _delete_replaced_video(db, replaced)
+
     return link
+
+
+def _stored_video(link: ModuleMediaLink) -> StoredVideo:
+    """Where one row's files are, read off the row."""
+    return StoredVideo(
+        storage_prefix_id=link.organisation_id,
+        org_unit_id=link.org_unit_id,
+        module_id=link.question_bank_id,
+        asset_id=link.asset_id,
+        content_type=link.content_type,
+    )
+
+
+def _delete_replaced_video(db: Session, replaced: StoredVideo) -> None:
+    """Remove the files of a video its reference no longer points at.
+
+    Never raises. The new link is already written, and failing the
+    request over an old file would lose it. Files left behind are
+    clutter that nothing shows to anybody; a new video shown with the
+    old one's captions would not be, which is why the columns were
+    cleared before this was reached and whatever happens here.
+    """
+    # One upload may be named by two references of a module. Its files
+    # stay while either does, or the other would be left with a player
+    # and nothing to play.
+    still_named = db.execute(
+        select(ModuleMediaLink.id)
+        .where(
+            ModuleMediaLink.org_unit_id == replaced.org_unit_id,
+            ModuleMediaLink.question_bank_id == replaced.module_id,
+            ModuleMediaLink.asset_id == replaced.asset_id,
+        )
+        .limit(1)
+    ).first()
+
+    if still_named is not None:
+        return
+
+    try:
+        delete_video_files(replaced)
+    except Exception:
+        # Whatever the store raised. Logged with the ids and no
+        # filename: this log is not PHI-safe.
+        logger.exception(
+            "replaced media not deleted org=%s module=%s asset=%s",
+            replaced.org_unit_id,
+            replaced.module_id,
+            replaced.asset_id,
+        )
+        return
+
+    logger.info(
+        "replaced media deleted org=%s module=%s asset=%s",
+        replaced.org_unit_id,
+        replaced.module_id,
+        replaced.asset_id,
+    )
+
+
+def delete_video_files(video: StoredVideo) -> None:
+    """Remove every stored file of one video. The one way they go.
+
+    The upload itself, each rendition, the poster and the captions. A
+    file already gone is not an error, so this can be asked again after
+    a failure, and not every video has every file.
+
+    **Each file is looked for where it was written**, and the writers
+    do not agree on the number a path begins with:
+
+    * the upload is in the source bucket under the organisation's
+      storage prefix, which the row records as ``organisation_id``;
+    * the renditions and the poster are in the processed bucket under
+      the number the transcode job was started with, which is also
+      where that job looks for the upload. ``link_upload`` starts it
+      with the organisation's own id, so where the two numbers differ
+      it finds no upload and writes nothing; a job run with the
+      storage prefix finds it, writes under the prefix, and is the
+      only one whose report is recorded;
+    * the captions are beside them: the caption job writes under the
+      number the transcode reported, the storage prefix, and
+      ``save_captions`` writes under the organisation's own id.
+
+    The two numbers are the same unless an older prefix is recorded
+    for the organisation. Where they differ, every processed file is
+    looked for under both, so none is missed whichever writer made it.
+
+    Where no source bucket is set the upload is on disk, in the
+    module's own folder, and is removed from there.
+
+    Stops at the first file the store refuses, and raises what the
+    store raised: the caller decides whether that fails the request.
+
+    Args:
+        video: Where the files are, from the row that described them.
+    """
+    source_bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
+    processed_bucket = settings.TEACHING_VIDEOS_BUCKET
+
+    if not source_bucket:
+        # Development, where the upload landed on disk rather than in a
+        # bucket. Refusing here would leave the admin unable to undo the
+        # one thing they can now do locally, and the row would outlive
+        # every attempt to clear it.
+        _delete_local_upload(
+            video.module_id, video.asset_id, video.content_type
+        )
+
+    # Linking records whatever asset id it is sent, and the path
+    # builders refuse one that could not be part of a path. Nothing can
+    # have been written to a bucket under such an id, because every
+    # writer builds its path the same way and is refused the same way.
+    # So there are no files to look for, and the store is not asked:
+    # asking would raise every time, and the row could never be removed.
+    try:
+        object_paths.media_object_path(
+            video.storage_prefix_id, video.module_id, video.asset_id
+        )
+    except ValueError:
+        return
+
+    if source_bucket:
+        # The row remembers which organisation's prefix its object was
+        # written under, which is the only thing that can say where the
+        # file is.
+        storage.delete_media_object(
+            source_bucket,
+            video.storage_prefix_id,
+            video.module_id,
+            video.asset_id,
+        )
+
+    if not processed_bucket:
+        return
+
+    # Both numbers, once each: see the docstring for who writes where.
+    written_under = dict.fromkeys((video.storage_prefix_id, video.org_unit_id))
+
+    for org_id in written_under:
+        for suffix in _PROCESSED_SUFFIXES:
+            storage.delete_processed_media_object(
+                processed_bucket,
+                org_id,
+                video.module_id,
+                video.asset_id,
+                suffix,
+            )
 
 
 def upload_held_by(
@@ -287,17 +500,18 @@ def delete_upload(
     module_id: str,
     asset_id: str,
 ) -> None:
-    """Remove an upload and its link. The destructive one.
+    """Remove an upload, its link and everything made from it.
 
-    The row goes first and the object second. If the store refuses,
-    what it raised is not caught: the request fails and the transaction
-    rolls back, so a link never survives without its file - the failure
-    mode that would show a learner a broken player. A file the store
-    says was already gone is not a refusal.
+    The row goes first and the files second, by
+    :func:`delete_video_files`: the upload, its renditions, its poster
+    and its captions. If the store refuses, the refusal raised here
+    rolls the transaction back, so the row stays and the caller is told
+    the video could not be deleted. A row without all of its files is
+    put right by deleting again; files without a row are found by
+    nothing. A file the store says was already gone is not a refusal.
 
-    Only the uploaded file is removed. The renditions, the poster and
-    the captions a job wrote from it are in another bucket, and are
-    left there.
+    An upload whose id could not be part of a path has no files in a
+    bucket, so its row is removed and the store is not asked.
 
     The row is flushed, not committed.
 
@@ -311,27 +525,28 @@ def delete_upload(
     Raises:
         MediaAssetNotHeldHere: The organisation holds no upload of that
             module by that id.
+        MediaCannotBeDeleted: The store refused to remove one of the
+            video's files.
     """
     link = upload_held_by(db, org_unit_id, module_id, asset_id)
+    video = _stored_video(link)
 
     db.delete(link)
     db.flush()
 
-    bucket = settings.TEACHING_VIDEOS_SOURCE_BUCKET
-
-    if bucket:
-        # The row remembers which organisation's prefix its object was
-        # written under, which is the only thing that can say where the
-        # file is.
-        storage.delete_media_object(
-            bucket, link.organisation_id, module_id, asset_id
+    try:
+        delete_video_files(video)
+    except Exception as exc:
+        # Whatever the store raised, which is logged here and never
+        # sent to the caller. Raising is what rolls the row back.
+        logger.exception(
+            "media asset not deleted user=%s org=%s module=%s asset=%s",
+            user_id,
+            org_unit_id,
+            module_id,
+            asset_id,
         )
-    else:
-        # Development, where the upload landed on disk rather than in a
-        # bucket. Refusing here would leave the admin unable to undo the
-        # one thing they can now do locally, and the row would outlive
-        # every attempt to clear it.
-        _delete_local_upload(module_id, asset_id, link.content_type)
+        raise MediaCannotBeDeleted() from exc
 
     # Destructive, so the actor and the module are recorded. No
     # filename: this line goes to a log that is not PHI-safe.

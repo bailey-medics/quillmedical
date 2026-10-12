@@ -1774,8 +1774,9 @@ def link_module_media(
     than refusing it. One video per reference is the rule the unique
     constraint enforces, and pointing a slide at a different upload is a
     dropdown in the admin card, not a reason to make the admin detach
-    first. The previous asset stays in the bucket and reappears as
-    unattached, so nothing is lost by re-pointing.
+    first. The reference then starts clean: what the old upload's jobs
+    recorded is cleared, the check of its captions included, and the
+    old video's files are removed.
     """
     from app.features.teaching.storage import ALLOWED_MEDIA_TYPES
 
@@ -2449,9 +2450,10 @@ def delete_media_asset(
     is what makes plain delete safe here, with no separate replace
     action.
 
-    The row goes first and the object second. If the bucket call fails
-    the transaction rolls back, so a link never survives without its
-    file - the failure mode that would show a learner a broken player.
+    The row goes first and the files second: the upload, and the
+    renditions, poster and captions made from it. If the store refuses
+    the transaction rolls back, so the row stays, and the answer is 502
+    "The video could not be deleted".
     """
     org_id = _get_user_org_id(user, db)
 
