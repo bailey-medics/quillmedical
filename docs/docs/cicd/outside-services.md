@@ -31,7 +31,8 @@ It was written from `.github/workflows/ci.yml`,
 ### Amazon's public registry, `public.ecr.aws`
 
 - **Used for** - the base images the Dockerfiles build on (Python, Node,
-  Caddy) and the Postgres and Caddy the end-to-end stack runs.
+  Caddy), the Postgres and Caddy the end-to-end stack runs, and the
+  Postgres of the migration drift check.
 - **How it failed** - `429 Too Many Requests`, "Data limit exceeded", when
   several jobs pulled at once on 12 October 2026. The allowance is
   Amazon's, for pulls with no account, and is not recorded here.
@@ -112,9 +113,6 @@ It was written from `.github/workflows/ci.yml`,
 - **`gate-breaking.yml` and `teaching-pipeline.yml`.** Neither has this
   repository at its workspace root, so neither uses the kept Python or
   `retry-once.sh` yet.
-- **The Postgres image of the migration drift check**, named directly in
-  `ci.yml`. It was refused on 12 October 2026. `check-mirrored-images.sh`
-  carries it as a named exception until it is moved to the mirror.
 
 ## Who moves the pins
 

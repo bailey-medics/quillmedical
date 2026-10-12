@@ -53,15 +53,17 @@ dependencies and not by slowing the queue down.
 - [x] Cover `deploy.yml` in the same change. A refused pull there is a
       failed production deploy, not a failed check.
 
-- [ ] Move the one image still named directly in a workflow: the Postgres
+- [x] Move the one image still named directly in a workflow: the Postgres
       service of the drift check, at `ci.yml` line 144. Pull request #1842,
       open from another worktree on 12 October, does this. Check whether
       it has merged before doing it again.
 
-      Still open when the check below was written, so it is left to that
-      pull request and not done twice. The check knows that one image as
-      a named exception, and fails once the exception matches nothing, so
-      it is removed when #1842 lands and cannot outlive its reason.
+      Left to that pull request and not done twice. The check knew that
+      one image as a named exception, which failed once it matched
+      nothing. #1842 merged that afternoon, after a refused pull of that
+      very image had taken #1876 out of the merge queue. The exception
+      then failed on `main` as meant, and was removed with the whole
+      list: a workflow may now name no public image at all.
 
 - [x] Add a check that fails when a workflow or a Dockerfile names a
       public registry with no mirror behind it, so the next image added
