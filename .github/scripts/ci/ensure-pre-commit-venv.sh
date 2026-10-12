@@ -17,5 +17,8 @@ log "Creating virtual environment..."
 rm -rf .venv
 python -m venv .venv
 
-.venv/bin/python -m pip install -U pip
-.venv/bin/python -m pip install "pre-commit>=3,<5"
+# The two calls that reach the package index, each tried twice.
+retry="$(dirname "$0")/../shared/retry-once.sh"
+
+bash "$retry" .venv/bin/python -m pip install -U pip
+bash "$retry" .venv/bin/python -m pip install "pre-commit>=3,<5"

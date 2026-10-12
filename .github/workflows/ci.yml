@@ -110,7 +110,7 @@ jobs:
         if: matrix.task == 'pre-commit'
         run: |
           . .venv/bin/activate
-          pre-commit install-hooks
+          bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" pre-commit install-hooks
 
       - name: Run pre-commit (pre-commit)
         if: matrix.task == 'pre-commit'
@@ -436,10 +436,10 @@ jobs:
       - name: Install the validator
         working-directory: backend/app/features/teaching/tooling
         run: |
-          python -m pip install -U pip
-          python -m pip install "poetry==$(cat "${GITHUB_WORKSPACE}/.poetry-version")"
+          bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" python -m pip install -U pip
+          bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" python -m pip install "poetry==$(cat "${GITHUB_WORKSPACE}/.poetry-version")"
           poetry config virtualenvs.create false
-          poetry install --no-interaction --no-ansi
+          bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" poetry install --no-interaction --no-ansi
 
       # The read-only account the Terraform plan uses, not the apply
       # account. This job runs on every branch and only reads the images
@@ -539,7 +539,7 @@ jobs:
 
       # A step of its own so the pull shows in the job's timings.
       - name: Pull Playwright image
-        run: docker pull "mcr.microsoft.com/playwright:v${{ steps.playwright_version.outputs.version }}-noble"
+        run: bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" docker pull "mcr.microsoft.com/playwright:v${{ steps.playwright_version.outputs.version }}-noble"
 
       # Storybook is built and served on the runner, and only the test
       # runner goes into the image, which keeps Yarn 4 out of it. A static
@@ -595,7 +595,7 @@ jobs:
             ${{ runner.os }}-semgrep-pip-
 
       - name: Install Semgrep
-        run: pipx install semgrep==1.172.0
+        run: bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" pipx install semgrep==1.172.0
 
       # The folder holding the semgrep command isn't searched by default, so we add it here.
       - name: Ensure pipx bin on PATH
@@ -729,8 +729,8 @@ jobs:
 
       - name: Pull prebuilt CI images
         run: |
-          docker pull "$CI_IMAGE_BACKEND"
-          docker pull "$CI_IMAGE_FRONTEND"
+          bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" docker pull "$CI_IMAGE_BACKEND"
+          bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" docker pull "$CI_IMAGE_FRONTEND"
           # compose.ci.yml Docker compose uses local tags, so apply local tags to pulled images.
           docker tag "$CI_IMAGE_BACKEND" quillmedical-ci_backend:latest
           docker tag "$CI_IMAGE_FRONTEND" quillmedical-ci_frontend:latest
@@ -784,7 +784,7 @@ jobs:
 
       # A step of its own so the pull shows in the job's timings.
       - name: Pull Playwright image
-        run: docker pull "mcr.microsoft.com/playwright:v${{ steps.playwright_version.outputs.version }}-noble"
+        run: bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" docker pull "mcr.microsoft.com/playwright:v${{ steps.playwright_version.outputs.version }}-noble"
 
       # --network host so localhost is the CI stack, exactly as it was on the
       # runner. The runner's own user, so the report it writes stays

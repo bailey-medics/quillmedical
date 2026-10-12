@@ -14,7 +14,7 @@ runs:
       shell: bash
       run: |
         corepack enable
-        corepack install
+        bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" corepack install
 
     - name: Cache Yarn
       id: cache_yarn
@@ -32,4 +32,4 @@ runs:
       if: steps.cache_yarn.outputs.cache-hit != 'true'
       working-directory: frontend
       shell: bash
-      run: yarn install --immutable
+      run: bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" yarn install --immutable

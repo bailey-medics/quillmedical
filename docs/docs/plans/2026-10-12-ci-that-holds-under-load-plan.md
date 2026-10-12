@@ -149,13 +149,37 @@ dependencies and not by slowing the queue down.
 
 ## Phase 3: Retry what is flaky, once
 
-- [ ] Wrap each remaining outside call in one retry: a registry pull, a
+- [x] Wrap each remaining outside call in one retry: a registry pull, a
       package install, a tool download. A 504 or a 429 that clears in
       thirty seconds should cost thirty seconds, not a pull request.
 
-- [ ] Retry inside the step, not by re-running the job, so a real failure
+      `.github/scripts/shared/retry-once.sh` runs a command and, if it
+      fails, waits thirty seconds and runs it once more. It is put in
+      front of each call that reaches out, in `ci.yml`, the two setup
+      actions, `dependency-audit.yml` and `guide-screenshots.yml`: the
+      `pip`, `pipx`, Poetry, Corepack and Yarn installs, the hooks
+      `pre-commit` fetches, and every `docker pull`. The three scripts
+      that download a tool with `curl` use `curl`'s own `--retry 1`,
+      which retries a timeout, a 429 and a 5xx and nothing else.
+
+      A second try writes a warning onto the run's summary, so a run
+      that needed one does not look like a run where nothing happened.
+      That warning is also the first measure Phase 7 can count.
+
+      Not wrapped, because a step cannot be: the base image pulls
+      inside `docker/build-push-action`, which Phase 1 moved to the
+      mirror, and `setup-python`'s download, which Phase 2 keeps
+      between runs. Not wrapped yet: `gate-breaking.yml` and
+      `teaching-pipeline.yml`, for the reason given in Phase 2.
+
+- [x] Retry inside the step, not by re-running the job, so a real failure
       is not run twice and reported late. Only for a failure to reach
       something. A test that fails is never retried.
+
+      The script's header says so, and no test, linter or build of our
+      own code is wrapped. An install that fails for a real reason, a
+      package that does not exist, is tried twice and costs thirty
+      seconds. That is the price of not reading each tool's error text.
 
 ## Phase 4: Do not let one flake empty the queue
 
