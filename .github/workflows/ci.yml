@@ -899,3 +899,64 @@ jobs:
       # ubuntu-24.04 ships python3.
       - name: Check no merged migration was rewritten, deleted or renamed
         run: bash .github/scripts/ci/check-migrations-unmodified.sh origin/main
+
+  # ---------- Say why a merge queue run failed ----------
+  # The queue removes a pull request when any check fails, and tells
+  # nobody. On 12 October 2026 seven went that way, none of them with a
+  # fault of its own: a registry refused a pull and a download returned
+  # 504. This reads the failed jobs' logs, decides whether the code failed
+  # or something outside it did, and says so in Slack with the pull
+  # request's number.
+  #
+  # It does not put the pull request back. One added to the queue with a
+  # workflow's own token gets no checks run on it and waits for ever.
+  #
+  # Every job is in `needs`, so this waits for the last of them and sees
+  # each result. A job added to this workflow is added here too.
+  queue_failure_report:
+    name: Read why the merge queue run failed
+    needs:
+      - python_checks
+      - alembic_drift_check
+      - typescript_checks
+      - frontend_unit_tests
+      - secret_scan
+      - audit_ledger
+      - shell_checks
+      - teaching_content_sweep
+      - version_consistency
+      - heavy_storybook_tests
+      - heavy_semgrep
+      - heavy_e2e
+      - fast_competency_catalogue_check
+      - heavy_db_migration_immutability_check
+    if: ${{ always() && github.event_name == 'merge_group' && contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      verdict: ${{ steps.report.outputs.verdict }}
+      text: ${{ steps.report.outputs.text }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          sparse-checkout: |
+            .github/scripts
+
+      - name: Read the failed jobs
+        id: report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ci/report-queue-failure.sh "${{ github.repository }}" "${{ github.run_id }}" "${{ github.ref }}"
+
+  queue_failure_notify:
+    name: Notify why the merge queue run failed
+    needs: queue_failure_report
+    if: ${{ always() && needs.queue_failure_report.result == 'success' }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: app
+      text: ${{ needs.queue_failure_report.outputs.text }}
+    secrets: inherit

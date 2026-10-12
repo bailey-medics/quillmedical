@@ -996,7 +996,10 @@
     "iatro",
     "incl",
     "passporting",
-    "unserved"
+    "unserved",
+    "toomanyrequests",
+    "ETIMEDOUT",
+    "ECONNRESET"
   ],
   "ignoreWords": [
     "Exampletown",
