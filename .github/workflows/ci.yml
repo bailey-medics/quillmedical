@@ -139,20 +139,10 @@ jobs:
     runs-on: ubuntu-24.04
     name: Alembic autogenerate drift check
     timeout-minutes: 10
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
-        env:
-          POSTGRES_DB: quill_core
-          POSTGRES_USER: core_user
-          POSTGRES_PASSWORD: ci_test_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U core_user -d quill_core"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
+    outputs:
+      # The public image the job had to use because the mirror did not
+      # hold it. Empty when Postgres came from the mirror.
+      mirror_fell_back: ${{ steps.mirror.outputs.fell_back }}
     env:
       JWT_SECRET: ci_test_jwt_secret_at_least_32_characters_long
       CORE_DB_HOST: localhost
@@ -163,6 +153,27 @@ jobs:
       CLINICAL_SERVICES_ENABLED: "false"
     steps:
       - uses: actions/checkout@v7.0.1
+
+      # Postgres is started by a step, and not as a `services:` container,
+      # so that it can come from this repository's own copy. A service
+      # container is pulled before the first step, from the public
+      # registry with no login, which refuses a runner that asks too
+      # often: on 12 October 2026 that failed this check on a pull request
+      # with nothing wrong in it. The image is the one compose.ci.yml
+      # names, so the end-to-end job and this one run the same Postgres.
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Use the mirrored Postgres where it exists
+        id: mirror
+        run: bash .github/scripts/ci/use-mirrored-images.sh "${{ github.repository_owner }}" compose.ci.yml CI_POSTGRES_IMAGE
+
+      - name: Start Postgres
+        run: bash .github/scripts/ci/start-postgres.sh compose.ci.yml postgres-core "$CORE_DB_NAME" "$CORE_DB_USER" "$CORE_DB_PASSWORD"
 
       - name: Set up Python + backend deps
         uses: ./.github/actions/setup-python
@@ -178,6 +189,25 @@ jobs:
       - name: Run migration tests
         working-directory: backend
         run: poetry run pytest -q -m migration
+
+  # As heavy_e2e_mirror_fell_back below, for the drift check's Postgres.
+  alembic_drift_check_mirror_fell_back:
+    name: Notify that the drift check used a public image
+    needs: [alembic_drift_check]
+    if: ${{ always() && github.event_name == 'merge_group' && needs.alembic_drift_check.outputs.mirror_fell_back != '' }}
+    uses: ./.github/workflows/slack-notify.yml
+    with:
+      channel: app
+      text: |
+        *⚠️ The Alembic drift check pulled from the public registry, not the mirror*
+
+        The mirror did not hold: ${{ needs.alembic_drift_check.outputs.mirror_fell_back }}
+
+        The run carried on with the public image, which can be refused when several jobs pull at once. Run the `Mirror images` workflow to fill the mirror, and if it is already full, check the packages under `mirror/` still give this repository access.
+
+        *Drift check result:* ${{ needs.alembic_drift_check.result }}
+        *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
+    secrets: inherit
 
 
 
