@@ -28,13 +28,14 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+import jwt
 import pytest
-from jose import jwt
 
 from app.config import settings
 from app.security import (
     PASSPORT_INVITE_TTL_DAYS,
     PASSPORT_INVITE_TYPE,
+    TokenNotAcceptable,
     _now,
     create_invite_token,
     create_passport_invite_token,
@@ -84,21 +85,21 @@ class TestItRefusesTheWrongThing:
             user_type="external_hcp",
         )
 
-        with pytest.raises(jwt.JWTError, match="Not a passport"):
+        with pytest.raises(TokenNotAcceptable, match="Not a passport"):
             decode_passport_invite_token(patient_token)
 
     def test_a_passport_invite_is_not_a_patient_invite(self) -> None:
         """And the reverse, so neither can stand in for the other."""
         token = create_passport_invite_token(INVITE_ID, EMAIL)
 
-        with pytest.raises(jwt.JWTError, match="Not an invite token"):
+        with pytest.raises(TokenNotAcceptable, match="Not an invite token"):
             decode_invite_token(token)
 
     def test_an_access_token_is_refused(self) -> None:
         """A session token carries no type at all and must not pass."""
         from app.security import create_access_token
 
-        with pytest.raises(jwt.JWTError, match="Not a passport"):
+        with pytest.raises(TokenNotAcceptable, match="Not a passport"):
             decode_passport_invite_token(
                 create_access_token("someone", ["Clinician"])
             )
@@ -107,7 +108,7 @@ class TestItRefusesTheWrongThing:
         token = create_passport_invite_token(INVITE_ID, EMAIL)
         head, payload, signature = token.split(".")
 
-        with pytest.raises(jwt.JWTError):
+        with pytest.raises(TokenNotAcceptable):
             decode_passport_invite_token(f"{head}.{payload}x.{signature}")
 
     def test_a_token_signed_with_another_key_is_refused(self) -> None:
@@ -123,7 +124,7 @@ class TestItRefusesTheWrongThing:
             algorithm=settings.JWT_ALG,
         )
 
-        with pytest.raises(jwt.JWTError):
+        with pytest.raises(TokenNotAcceptable):
             decode_passport_invite_token(forged)
 
 
@@ -155,7 +156,7 @@ class TestExpiry:
             algorithm=settings.JWT_ALG,
         )
 
-        with pytest.raises(jwt.ExpiredSignatureError):
+        with pytest.raises(TokenNotAcceptable):
             decode_passport_invite_token(expired)
 
     def test_a_shorter_lifetime_can_be_asked_for(self) -> None:

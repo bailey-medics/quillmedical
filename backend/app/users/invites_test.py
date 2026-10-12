@@ -3,8 +3,8 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import jwt
 import pytest
-from jose import jwt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

@@ -4,8 +4,8 @@ import hashlib
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import jwt
 import pytest
-from jose import jwt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

@@ -20,12 +20,15 @@ rules, in :mod:`app.features.passport`.
 
 from dataclasses import dataclass
 
-from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import ExternalPatientAccess, User, normalise_email
-from app.security import decode_invite_token, hash_password
+from app.security import (
+    TokenNotAcceptable,
+    decode_invite_token,
+    hash_password,
+)
 from app.users.errors import (
     InviteNeedsUsernameAndPassword,
     InviteTokenInvalid,
@@ -88,7 +91,7 @@ def accept_external_invite(
     """
     try:
         payload = decode_invite_token(token)
-    except JWTError as err:
+    except TokenNotAcceptable as err:
         raise InviteTokenInvalid() from err
 
     patient_id: str = payload["patient_id"]

@@ -499,7 +499,7 @@ backend/tests`: `r` without the dash is a target, not the recurse
       so the proof is the reasoning and the CI runs to come, not a test
       seen to go from red to green.
 
-- [ ] Replace `python-jose` with PyJWT. Added on 11 October 2026 at
+- [x] Replace `python-jose` with PyJWT. Added on 11 October 2026 at
       Mark's request, and set out in full the same day. **Waits for the
       thin routes plan to finish with `main.py`**, as one of the two
       places that name the library's error is in that file.
@@ -542,7 +542,7 @@ backend/tests`: `r` without the dash is a target, not the recurse
         way in; PyJWT can be told to require an expiry, and the swap is
         the moment to decide.
 
-  - [ ] Swap the library, with those tests unchanged. The calls are all
+  - [x] Swap the library, with those tests unchanged. The calls are all
         in `backend/app/security.py`: five `jwt.encode` and three
         `jwt.decode`. PyJWT's take the same arguments for HS256. The
         errors are named differently: `jwt.InvalidTokenError` where
@@ -560,11 +560,34 @@ backend/tests`: `r` without the dash is a target, not the recurse
         claim of the wrong type, stop and add the test before going on.
         Tokens signed by one are read by the other, so nobody is signed
         out by the deploy.
+        Done on 12 October 2026, to PyJWT 2.15.1. The lock file
+        loses `python-jose`, `ecdsa` and `rsa`, gains `pyjwt`, and
+        moves nothing else. `security.py` has one error,
+        `TokenNotAcceptable`, and one function that reads a token,
+        `_read`, which every decoder goes through: our secret, our
+        algorithm and no other, an expiry it must carry, then the kind
+        it says it is. No route names a library. There are now two
+        decoders where there was one: `decode_token` takes an access
+        token only and `decode_refresh_token` a refresh token only,
+        and the refresh route uses the second. An access token minted
+        before the deploy does not say what it is, so it is refused
+        once, and the page gets a new one with its refresh token, as
+        it does every fifteen minutes anyway. Nobody is signed out.
+        Seven test files that built tokens with the old library build
+        them with the new one; three older tests that read a refresh
+        token with the access decoder now use the refresh decoder.
 
-  - [ ] Take the two lines out of `backend/.pip-audit-ignore`, which
+  - [x] Take the two lines out of `backend/.pip-audit-ignore`, which
         the audit fails on until they go, and check the two Semgrep
         rules about `jwt.decode` still find their lines in the canary
-        file, since PyJWT's module is also called `jwt`.
+        file, since PyJWT's module is also called `jwt`. Done with the
+        swap and not after it: the audit runs on any pull request that
+        changes what is installed, and fails on an excuse that matches
+        nothing, so the two lines could not outlive the library by
+        even one pull request. With no excuse left the file holds
+        only its comments, which a test of the audit script had never
+        met: it failed on the empty list and now passes it. The
+        Semgrep job runs its canaries on the pull request.
 
     **Two decisions for the swap, made by Mark on 11 October 2026.** A
     token says what kind it is, and one of the wrong kind is refused:
@@ -643,8 +666,8 @@ before any feature.
 - [x] `compose.prod.fhir-openehr.yml`. Deleted on 12 October 2026, not
       audited: the clinical VM is built from
       `infra/modules/compute-fhir/startup.sh`, which never read it.
-- [ ] `compose.unit-tests.yml`.
-- [ ] `backend/Dockerfile`.
+- [x] `compose.unit-tests.yml`.
+- [x] `backend/Dockerfile`.
 - [ ] `frontend/Dockerfile`.
 - [ ] `backend/pyproject.toml`.
 - [ ] `frontend/package.json`.

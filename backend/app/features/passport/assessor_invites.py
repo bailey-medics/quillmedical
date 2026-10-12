@@ -29,7 +29,6 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Literal, cast
 
-from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -46,6 +45,7 @@ from app.organisations import add_org_unit_member, feature_holder_ids_of
 from app.registrations import canonical_authority
 from app.security import (
     PASSPORT_INVITE_TTL_DAYS,
+    TokenNotAcceptable,
     create_passport_invite_token,
     decode_passport_invite_token,
     hash_password,
@@ -330,7 +330,7 @@ def invite_named_by(
     """
     try:
         payload = decode_passport_invite_token(token)
-    except JWTError:
+    except TokenNotAcceptable:
         raise InviteNotValid() from None
 
     invite = db.get(PassportAssessorInvite, str(payload.get("invite_id", "")))

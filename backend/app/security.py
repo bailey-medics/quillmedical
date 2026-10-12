@@ -12,6 +12,7 @@ All functions use industry-standard algorithms and handle secrets securely.
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import jwt
 import pyotp
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
@@ -21,7 +22,6 @@ from itsdangerous import (
     URLSafeSerializer,
     URLSafeTimedSerializer,
 )
-from jose import jwt
 
 from app.config import settings
 
@@ -90,6 +90,57 @@ def verify_password(p: str, h: str) -> bool:
         return False
 
 
+class TokenNotAcceptable(Exception):
+    """A token that is not to be trusted, or is not the kind asked for.
+
+    Raised by every decoder here, whatever was wrong: a bad signature, a
+    token that has run out or carries no expiry at all, an algorithm
+    other than ours, something that is not a token, or a token of one
+    kind offered where another is wanted. One error, so that a caller
+    never needs the name of the library underneath.
+    """
+
+
+#: What each kind of token calls itself, in its ``type`` claim. A token
+#: is read only as the kind it says it is, so one minted for one purpose
+#: cannot be presented for another though all are signed with one key.
+ACCESS_TYPE = "access"
+REFRESH_TYPE = "refresh"
+INVITE_TYPE = "invite"
+
+
+def _read(tok: str, kind: str, not_that_kind: str) -> dict[str, Any]:
+    """Check a token and hand back its claims, or refuse it.
+
+    Its signature is checked against our secret, under our algorithm and
+    no other, so the token does not get to choose how it is checked. It
+    must carry an expiry and not have reached it. Then it must say it is
+    the kind asked for.
+
+    Args:
+        tok: The token.
+        kind: The ``type`` it must carry.
+        not_that_kind: What to say of a good token of another kind.
+
+    Raises:
+        TokenNotAcceptable: For any of the above.
+    """
+    try:
+        data: dict[str, Any] = jwt.decode(
+            tok,
+            settings.JWT_SECRET.get_secret_value(),
+            algorithms=[settings.JWT_ALG],
+            options={"require": ["exp"]},
+        )
+    except jwt.InvalidTokenError as err:
+        raise TokenNotAcceptable("Token is not valid") from err
+
+    if data.get("type") != kind:
+        raise TokenNotAcceptable(not_that_kind)
+
+    return data
+
+
 def create_access_token(
     sub: str, roles: list[str], token_version: int = 0
 ) -> str:
@@ -116,12 +167,13 @@ def create_access_token(
 
     payload: dict[str, Any] = {
         "sub": sub,
+        "type": ACCESS_TYPE,
         "roles": roles,
         "tv": token_version,
         "exp": _now() + timedelta(minutes=settings.ACCESS_TTL_MIN),
     }
 
-    return jwt.encode(  # type: ignore[no-any-return]
+    return jwt.encode(
         payload,
         settings.JWT_SECRET.get_secret_value(),
         algorithm=settings.JWT_ALG,
@@ -144,12 +196,12 @@ def create_refresh_token(sub: str, token_version: int = 0) -> str:
     """
     payload: dict[str, Any] = {
         "sub": sub,
-        "type": "refresh",
+        "type": REFRESH_TYPE,
         "tv": token_version,
         "exp": _now() + timedelta(days=settings.REFRESH_TTL_DAYS),
     }
 
-    return jwt.encode(  # type: ignore[no-any-return]
+    return jwt.encode(
         payload,
         settings.JWT_SECRET.get_secret_value(),
         algorithm=settings.JWT_ALG,
@@ -157,29 +209,42 @@ def create_refresh_token(sub: str, token_version: int = 0) -> str:
 
 
 def decode_token(tok: str) -> dict[str, Any]:
-    """Decode and Verify JWT Token.
+    """Check an access token and hand back its claims.
 
-    Decodes a JWT token and verifies its signature using the configured
-    JWT_SECRET. Also validates the token hasn't expired. Used by authentication
-    middleware to extract user identity from access and refresh tokens.
+    The token a request carries in its ``access_token`` cookie. A refresh
+    token is not one: it lives seven days where this lives fifteen
+    minutes, and is refused here though its signature is good.
 
     Args:
-        tok: JWT token string to decode.
+        tok: The token.
 
     Returns:
-        dict: Decoded token payload containing 'sub' (username), 'roles',
-            'exp' (expiration), and other claims.
+        The claims: ``sub`` (the username), ``roles``, ``tv`` and ``exp``.
 
     Raises:
-        jose.JWTError: If token signature is invalid.
-        jose.ExpiredSignatureError: If token has expired.
-        jose.JWTClaimsError: If token claims are invalid.
+        TokenNotAcceptable: If the token is not valid, or is not an
+            access token.
     """
-    return jwt.decode(  # type: ignore[no-any-return]
-        tok,
-        settings.JWT_SECRET.get_secret_value(),
-        algorithms=[settings.JWT_ALG],
-    )
+    return _read(tok, ACCESS_TYPE, "Not an access token")
+
+
+def decode_refresh_token(tok: str) -> dict[str, Any]:
+    """Check a refresh token and hand back its claims.
+
+    The token in the ``refresh_token`` cookie, exchanged for a new
+    access token. An access token is not one, and is refused here.
+
+    Args:
+        tok: The token.
+
+    Returns:
+        The claims: ``sub`` (the username), ``tv`` and ``exp``.
+
+    Raises:
+        TokenNotAcceptable: If the token is not valid, or is not a
+            refresh token.
+    """
+    return _read(tok, REFRESH_TYPE, "Not a refresh token")
 
 
 # CSRF (double-submit cookie)
@@ -348,13 +413,14 @@ def create_jwt_with_competencies(
 
     payload: dict[str, Any] = {
         "sub": sub,
+        "type": ACCESS_TYPE,
         "roles": roles,
         "competencies": competencies,
         "tv": token_version,
         "exp": _now() + timedelta(minutes=settings.ACCESS_TTL_MIN),
     }
 
-    return jwt.encode(  # type: ignore[no-any-return]
+    return jwt.encode(
         payload,
         settings.JWT_SECRET.get_secret_value(),
         algorithm=settings.JWT_ALG,
@@ -376,9 +442,8 @@ def decode_jwt_with_competencies(tok: str) -> dict[str, Any]:
             'competencies', 'exp' (expiration), and other claims.
 
     Raises:
-        jose.JWTError: If token signature is invalid.
-        jose.ExpiredSignatureError: If token has expired.
-        jose.JWTClaimsError: If token claims are invalid.
+        TokenNotAcceptable: If the token is not valid, or is not an
+            access token.
     """
     return decode_token(tok)
 
@@ -413,14 +478,14 @@ def create_invite_token(
         raise ValueError("ttl_days must be between 1 and 365")
 
     payload: dict[str, Any] = {
-        "type": "invite",
+        "type": INVITE_TYPE,
         "patient_id": patient_id,
         "email": email,
         "user_type": user_type,
         "exp": _now() + timedelta(days=ttl_days),
     }
 
-    return jwt.encode(  # type: ignore[no-any-return]
+    return jwt.encode(
         payload,
         settings.JWT_SECRET.get_secret_value(),
         algorithm=settings.JWT_ALG,
@@ -434,18 +499,10 @@ def decode_invite_token(tok: str) -> dict[str, Any]:
         dict: Payload with ``patient_id``, ``email``, ``user_type``.
 
     Raises:
-        jose.JWTError: Invalid or expired token.
+        TokenNotAcceptable: If the token is not valid, or is not an
+            invite.
     """
-    data: dict[str, Any] = jwt.decode(
-        tok,
-        settings.JWT_SECRET.get_secret_value(),
-        algorithms=[settings.JWT_ALG],
-    )
-
-    if data.get("type") != "invite":
-        raise jwt.JWTError("Not an invite token")
-
-    return data
+    return _read(tok, INVITE_TYPE, "Not an invite token")
 
 
 # --- Passport assessor invite tokens ---
@@ -517,7 +574,7 @@ def create_passport_invite_token(
         "exp": _now() + timedelta(days=ttl_days),
     }
 
-    return jwt.encode(  # type: ignore[no-any-return]
+    return jwt.encode(
         payload,
         settings.JWT_SECRET.get_secret_value(),
         algorithm=settings.JWT_ALG,
@@ -534,21 +591,15 @@ def decode_passport_invite_token(tok: str) -> dict[str, Any]:
         The payload, carrying ``invite_id`` and ``email``.
 
     Raises:
-        jose.JWTError: If the signature is wrong, the token has expired,
-            or it is not a passport invite. A patient-sharing invite is
-            signed with the same key and would otherwise decode cleanly
-            here, so the type is checked rather than assumed.
+        TokenNotAcceptable: If the signature is wrong, the token has
+            expired, or it is not a passport invite. A patient-sharing
+            invite is signed with the same key and would otherwise
+            decode cleanly here, so the type is checked rather than
+            assumed.
     """
-    data: dict[str, Any] = jwt.decode(
-        tok,
-        settings.JWT_SECRET.get_secret_value(),
-        algorithms=[settings.JWT_ALG],
+    return _read(
+        tok, PASSPORT_INVITE_TYPE, "Not a passport assessor invite token"
     )
-
-    if data.get("type") != PASSPORT_INVITE_TYPE:
-        raise jwt.JWTError("Not a passport assessor invite token")
-
-    return data
 
 
 # --- Password reset tokens ---

@@ -2,15 +2,17 @@
 
 from datetime import UTC, datetime, timedelta
 
+import jwt
 import pyotp
 import pytest
 from argon2 import PasswordHasher, Type
-from jose import JWTError, jwt
 
 from app.config import settings
 from app.security import (
+    TokenNotAcceptable,
     create_access_token,
     create_refresh_token,
+    decode_refresh_token,
     decode_token,
     generate_totp_secret,
     hash_password,
@@ -123,7 +125,7 @@ class TestJWTTokens:
         token = create_refresh_token(username)
 
         # Decode and verify payload
-        decoded = decode_token(token)
+        decoded = decode_refresh_token(token)
         assert decoded["sub"] == username
         assert decoded["type"] == "refresh"
         assert "exp" in decoded
@@ -137,6 +139,7 @@ class TestJWTTokens:
         # Create token that expired 1 day ago
         payload = {
             "sub": "testuser",
+            "type": "access",
             "roles": [],
             "exp": datetime.now(UTC) - timedelta(days=1),
         }
@@ -146,8 +149,8 @@ class TestJWTTokens:
             algorithm=settings.JWT_ALG,
         )
 
-        # Should raise JWTError
-        with pytest.raises(JWTError):
+        # Should be refused
+        with pytest.raises(TokenNotAcceptable):
             decode_token(token)
 
     def test_decode_token_invalid_signature(self):
@@ -155,6 +158,7 @@ class TestJWTTokens:
         # Create token with wrong secret
         payload = {
             "sub": "testuser",
+            "type": "access",
             "roles": [],
             "exp": datetime.now(UTC) + timedelta(minutes=15),
         }
@@ -164,8 +168,8 @@ class TestJWTTokens:
             algorithm=settings.JWT_ALG,
         )
 
-        # Should raise JWTError
-        with pytest.raises(JWTError):
+        # Should be refused
+        with pytest.raises(TokenNotAcceptable):
             decode_token(token)
 
     def test_token_expiration_times(self):
@@ -184,7 +188,7 @@ class TestJWTTokens:
 
         # Refresh token should expire in REFRESH_TTL_DAYS days
         refresh_token = create_refresh_token(username)
-        decoded_refresh = decode_token(refresh_token)
+        decoded_refresh = decode_refresh_token(refresh_token)
         refresh_exp = datetime.fromtimestamp(decoded_refresh["exp"], UTC)
         expected_refresh_exp = datetime.now(UTC) + timedelta(
             days=settings.REFRESH_TTL_DAYS
