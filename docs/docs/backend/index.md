@@ -311,7 +311,7 @@ For example, only users with the clinician role can create clinical letters, and
 To work on the application, developers need:
 
 - Docker for running all services together
-- Python 3.13+ for backend development
+- Python 3.14 for backend development
 - Node.js for frontend development
 
 ### Getting Started

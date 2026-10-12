@@ -15,7 +15,7 @@ authors = ["Cotswoldsmaker <mark@letsdodigital.org>"]
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.13.8"
+python = "^3.14"
 fastapi = "0.141.1"
 uvicorn = {extras = ["standard"], version = "0.54.0"}
 pydantic = "2.13.5"

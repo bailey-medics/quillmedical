@@ -155,12 +155,16 @@ the order below, and no step waits for a person.
 
 ## Phase 7: Python 3.14 and the hotfix wording
 
-- [ ] Change `python = "^3.13.8"` to `"^3.14"` in `backend/pyproject.toml`
+- [x] Change `python = "^3.13.8"` to `"^3.14"` in `backend/pyproject.toml`
       and regenerate `poetry.lock`. `.python-version` is 3.14.7,
       `backend/Dockerfile` builds from `python:3.14-slim`, and mypy is
       already set to 3.14 in the same file.
+      The teaching tooling's own package,
+      `backend/app/features/teaching/tooling/pyproject.toml`, carried the
+      same constraint and changes with it: a test keeps the two in step,
+      and the content pipeline installs it on the same pinned Python.
 
-- [ ] This is a dependency file, so run the full backend suite, `just ub`
+- [x] This is a dependency file, so run the full backend suite, `just ub`
       with no filter, after `just utr` has rebuilt the image.
 
 - [ ] In `renovate.json`, rewrite the lines of the description block that
