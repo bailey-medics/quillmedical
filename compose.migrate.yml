@@ -19,7 +19,6 @@
 
 services:
   migrate:
-    # The dev image, as compose.dev.yml and compose.unit-tests.yml build it.
     image: quill-backend-dev
     build:
       context: .
