@@ -2005,7 +2005,7 @@ stack-update message="":
 
 
 alias stw := stack-watch
-# Redraw the stack with PR and CI state every minute; keys ready, sync and move
+# Redraw the stack with PR and CI state every minute; keys ready, sync, move and rebase
 stack-watch:
     #!/usr/bin/env bash
     set +x
@@ -2024,7 +2024,7 @@ stack-watch:
     # A label, then a dot every two seconds, so a slow network call does
     # not look like a hang.
     start_dots() {
-        printf '  %s' "$1"
+        printf '%s' "$1"
         ( while sleep 2; do printf '.'; done ) &
         dots=$!
     }
@@ -2060,14 +2060,17 @@ stack-watch:
         # The colour codes split each word at its key letter, which the
         # spelling check reads as fragments.
         # cspell:disable
-        printf '  updated %s - %b\n' "$(date '+%H:%M:%S')" \
-            "${k}r${n}eady all - ${k}s${n}ync - ${k}number${n} branch - re${k}f${n}resh - ${k}ctrl-c${n} to stop"
+        printf '%b\n' \
+            "ready ${k}a${n}ll - ${k}s${n}ync - ${k}number${n} branch - re${k}b${n}ase - re${k}f${n}resh - ${k}ctrl-c${n} to stop"
 
         # cspell:enable
-        printf '%s\n' "${drawn}"
+        # Flush with the left edge, like the line above. stack-status.py
+        # indents its drawing by two spaces for the other recipes.
+        printf '%s\n' "${drawn}" | sed 's/^  //'
 
-        # The minute's wait doubles as the keyboard: r is `stack-ready`, s is
-        # `stack-sync`, a number is `stack-move`, f refreshes.
+        # The minute's wait doubles as the keyboard: a is `stack-ready`, s is
+        # `stack-sync`, a number is `stack-move`, b is `stack-rebase`, f
+        # refreshes.
         #
         # With no terminal on stdin `read` returns at once and the loop
         # would spin against GitHub, so that case just sleeps.
@@ -2100,7 +2103,7 @@ stack-watch:
             fi
 
             case "${key}" in
-                r|R|s|S|[1-9]|f|F)
+                a|A|s|S|[1-9]|b|B|f|F)
                     break
                     ;;
                 $'\e')
@@ -2117,9 +2120,13 @@ stack-watch:
         echo ""
 
         case "${key}" in
-            r|R)
+            a|A)
                 recipe=(stack-ready)
-                start_dots "r · taking every pull request out of draft"
+                start_dots "a · taking every pull request out of draft"
+                ;;
+            b|B)
+                recipe=(stack-rebase)
+                start_dots "b · rebasing the stack onto the trunk"
                 ;;
             s|S)
                 recipe=(stack-sync)
@@ -2132,7 +2139,7 @@ stack-watch:
                 # two-digit number starts with it.
                 number="${key}"
                 if python3 "{{stack_scripts}}"/stack-status.py --branch-at "$((key * 10))" >/dev/null 2>&1; then
-                    printf '  %s · a second digit within 5s for %s0 and up, or any other key for branch %s ' \
+                    printf '%s · a second digit within 5s for %s0 and up, or any other key for branch %s ' \
                         "${key}" "${key}" "${key}"
                     second=""
                     read -rsn1 -t 5 second || true
@@ -2165,25 +2172,23 @@ stack-watch:
                 ;;
         esac
 
-        # Show the recipe's output only if it failed: a non-zero exit, or a
-        # warning line other than the two expected ones.
+        # Show the recipe's output only if it went wrong: a non-zero exit, or
+        # a line saying work was not done. A warning about work that was
+        # done does not stop the watcher. stack-watch-outcome.sh decides,
+        # and says why.
         recipe_status=0
         recipe_output=$(just "${recipe[@]}" 2>&1) || recipe_status=$?
-        if [ "${recipe_status}" -eq 0 ] \
-            && printf '%s\n' "${recipe_output}" \
-                | grep -E '^[[:space:]]*(⚠|✗) ' \
-                | grep -vqE 'Could not update local main|has no PR$'; then
+        if ! printf '%s\n' "${recipe_output}" \
+            | bash "{{stack_scripts}}"/stack-watch-outcome.sh "${recipe_status}"; then
             recipe_status=1
-
-            if printf '%s\n' "${recipe_output}" | grep -q 'Stack fully merged - cleared';
-            then
-                recipe_status=0
-            fi
+        else
+            recipe_status=0
         fi
+
         if [ "${recipe_status}" -ne 0 ]; then
             stop_dots
             printf '\n%s\n\n' "${recipe_output}"
-            read -rsn1 -p "  ${recipe[*]} did not finish cleanly · any key to carry on" _ || true
+            read -rsn1 -p "${recipe[*]} did not finish cleanly · any key to carry on" _ || true
             echo ""
             start_dots "refreshing"
         fi
