@@ -216,6 +216,24 @@
     }
   },
   {
+    "id": "renewal-notice",
+    "label": "EoEETA assessment due to be repeated",
+    "quill": {
+      "file": "renewal-notice--quill.html",
+      "subject": "Your assessment is due to be repeated: Optical diagnosis of diminutive colorectal polyps",
+      "preheader": "You passed on 1 June 2027.",
+      "fromName": "EoEETA via Quill Medical",
+      "replyTo": "coordinator@eoeeta.example"
+    },
+    "ldd": {
+      "file": "renewal-notice--ldd.html",
+      "subject": "Your assessment is due to be repeated: Optical diagnosis of diminutive colorectal polyps",
+      "preheader": "You passed on 1 June 2027.",
+      "fromName": "EoEETA via Let's Do Digital",
+      "replyTo": "coordinator@eoeeta.example"
+    }
+  },
+  {
     "id": "certificate",
     "label": "EoEETA certificate",
     "quill": {

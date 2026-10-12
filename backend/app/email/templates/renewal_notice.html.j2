@@ -1,0 +1,31 @@
+{#-
+  Tells somebody that an assessment they passed is due to be repeated.
+  Sent once, when the pass reaches the age the module gives. Context:
+    name          who to greet: their full name, or their username where
+                  the account has none
+    module_title  the module they passed
+    passed_on     the date they passed, written out: "1 June 2027"
+    module_url    the link to the module in Quill
+-#}
+{% extends "base.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+{% block subject %}Your assessment is due to be repeated: {{ module_title }}{% endblock subject %}
+{% block preheader %}You passed on {{ passed_on }}.{% endblock preheader %}
+{% block body %}
+{{ c.heading("Time to *repeat* your assessment") }}
+{{ c.paragraph("Hi " ~ name ~ ",") }}
+{% call c.paragraph() %}You passed <strong>{{ module_title }}</strong> on {{ passed_on }}. That assessment is now due to be repeated.{% endcall %}
+{{ c.button("Open the module", module_url) }}
+{{ c.small("Your earlier result and certificate stay on your record.") }}
+{% endblock body %}
+{% block reason %}You are receiving this because you passed this module's assessment in Quill.{% endblock reason %}
+
+{% block text %}
+Hi {{ name }},
+
+You passed {{ module_title }} on {{ passed_on }}. That assessment is now due to be repeated.
+
+Open the module: {{ module_url }}
+
+Your earlier result and certificate stay on your record.
+{% endblock text %}
