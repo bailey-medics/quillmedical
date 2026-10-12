@@ -1,4 +1,4 @@
-# Say so when a pull request is merged into a branch other than main.
+# Say so when a pull request is merged and its work has not reached main.
 #
 # A stacked pull request's base is the branch below it, and a merge goes
 # into the base. Only the bottom of a stack points at main. On 2026-10-11
@@ -12,6 +12,14 @@
 # var.block_merges_into_feature_branches, but that is off until it has
 # been tried. This is the alarm for whatever gets through either way.
 #
+# The base branch alone does not say it happened. A stack merged through
+# the merge queue lands on main whole, and each pull request above the
+# bottom still records the branch beneath it as its base. Going by the
+# base, eight alarms fired on 2026-10-12 for pull requests that were all
+# on main. So the first job asks whether the merged commit is on main,
+# and the alarm is raised only when it is not, or when that could not be
+# found out.
+#
 # What to do when it fires: the work is safe in the branch it landed in.
 # Open one pull request from that branch into main.
 name: Merged outside main
@@ -24,17 +32,44 @@ permissions:
   contents: read
 
 jobs:
+  check:
+    name: Did the merge reach main
+    # Merged, not merely closed, and with a base other than main. One
+    # merged straight into main needs no looking up.
+    if: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref != 'main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      reached: ${{ steps.reached.outputs.reached }}
+    steps:
+      # main's copy of the script, not the pull request's: the default
+      # checkout here is the merge into a feature branch.
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: main
+          sparse-checkout: |
+            .github/scripts
+
+      - name: Look for the merged commit on main
+        id: reached
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/ci/reached-main.sh "${{ github.repository }}" "${{ github.event.pull_request.merge_commit_sha }}"
+
   notify:
     name: A pull request missed main
-    # Merged, not merely closed, and into something other than main.
-    if: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref != 'main' }}
+    needs: check
+    # Anything but a clear yes raises it, a failed look-up included, so a
+    # fault in the check cannot silence the alarm. A skipped check means
+    # the pull request was not merged outside main at all.
+    if: ${{ always() && needs.check.result != 'skipped' && needs.check.outputs.reached != 'true' }}
     uses: ./.github/workflows/slack-notify.yml
     with:
       channel: app
       text: |
-        *⚠️ Pull request #${{ github.event.pull_request.number }} was merged into `${{ github.event.pull_request.base.ref }}`, not `main`*
+        *⚠️ Pull request #${{ github.event.pull_request.number }} was merged into `${{ github.event.pull_request.base.ref }}`, and its work is not on `main`*
 
         ${{ github.event.pull_request.html_url }}
 
-        Its work has *not* reached `main`. It is safe in that branch: open one pull request from `${{ github.event.pull_request.base.ref }}` into `main` to carry it there. Only the bottom of a stack is merged; `just stack-sync` brings the next branch down.
+        It is safe in that branch: open one pull request from `${{ github.event.pull_request.base.ref }}` into `main` to carry it there. Only the bottom of a stack is merged; `just stack-sync` brings the next branch down.
     secrets: inherit

@@ -123,7 +123,10 @@ before merging anything in a stack: the pull request should say it merges
 
 Nothing stops it today. The merge queue and the required checks cover
 `main` alone. `.github/workflows/merged-outside-main.yml` posts to Slack
-when it happens, and `infra/github` can block it with
+when it happens. It goes by whether the merged commit is on `main`, not
+by the base branch: a stack that goes through the merge queue together
+lands on `main` whole, with each pull request above the bottom still
+naming the branch beneath it as its base. And `infra/github` can block it with
 `block_merges_into_feature_branches`, which is off until it has been
 tried.
 
