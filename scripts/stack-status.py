@@ -331,6 +331,42 @@ FAILING = frozenset({"FAILURE", "ERROR", "TIMED_OUT", "CANCELLED"})
 PENDING = frozenset({"QUEUED", "IN_PROGRESS", "PENDING", "WAITING"})
 
 
+def run_id_of(check: dict[str, object]) -> str | None:
+    """The id of the workflow run a check belongs to, or None.
+
+    Read from ``detailsUrl``, which for a check from GitHub Actions is
+    ``…/actions/runs/<run id>/job/<job id>``. A check from anywhere else,
+    or a roll-up with no URL in it, has no run to belong to.
+    """
+    url = str(check.get("detailsUrl") or "")
+    _, marker, rest = url.partition("/actions/runs/")
+
+    if not marker:
+        return None
+
+    run_id = rest.split("/", 1)[0]
+
+    return run_id if run_id.isdecimal() else None
+
+
+def cancelled_runs(rollup: list[object]) -> set[str]:
+    """The runs in which any check was cancelled.
+
+    A run CI's concurrency rule cancelled in favour of a newer one. Not
+    every check in such a run says CANCELLED. A job that only sums up
+    others, as "Storybook interaction tests" sums up its three legs, was
+    never cancelled itself: it ran, found its legs had not passed, and
+    reported FAILURE. That is a failure of a run GitHub no longer shows.
+    """
+    return {
+        run_id
+        for check in rollup
+        if isinstance(check, dict)
+        and str(check.get("conclusion") or "") == "CANCELLED"
+        and (run_id := run_id_of(check)) is not None
+    }
+
+
 def best_conclusion_per_check(
     rollup: list[object],
 ) -> dict[str, tuple[str, str]]:
@@ -362,7 +398,9 @@ def best_conclusion_per_check(
         "pending": 2,
         "failing": 3,
     }
-    seen: dict[str, list[tuple[str, str]]] = {}
+    dead_runs = cancelled_runs(rollup)
+    # (kind, conclusion, whether it came from a cancelled run)
+    seen: dict[str, list[tuple[str, str, bool]]] = {}
 
     for check in rollup:
         if not isinstance(check, dict):
@@ -384,7 +422,8 @@ def best_conclusion_per_check(
         else:
             kind = "pending"
 
-        seen.setdefault(name, []).append((kind, conclusion))
+        from_dead_run = run_id_of(check) in dead_runs
+        seen.setdefault(name, []).append((kind, conclusion, from_dead_run))
 
     best: dict[str, tuple[str, str]] = {}
 
@@ -396,8 +435,14 @@ def best_conclusion_per_check(
         # real run was still going. A cancellation with nothing to replace
         # it is still a failure, since GitHub reads a cancelled required
         # check as one.
-        replaced = [e for e in entries if e[1] != "CANCELLED"]
-        for kind, conclusion in replaced or entries:
+        #
+        # The same goes for anything else a cancelled run reported, when
+        # another run has reported the same check: see `cancelled_runs`.
+        # A FAILURE left behind by a dead run showed ✗ in the heavy column
+        # of ten pull requests that were green on GitHub. Where no other
+        # run has reported the check, what the dead run said still stands.
+        replaced = [e for e in entries if e[1] != "CANCELLED" and not e[2]]
+        for kind, conclusion, _ in replaced or entries:
             previous = best.get(name)
             if previous is None or rank[kind] > rank[previous[0]]:
                 best[name] = (kind, conclusion)

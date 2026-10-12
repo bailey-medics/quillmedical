@@ -55,6 +55,66 @@ PY
     [ "$output" = "failing" ]
 }
 
+@test "a failure left behind by a cancelled run does not outrank the pass" {
+    # The real entries on #1829, 12 October 2026. A stack is pushed twice
+    # when it lands and CI cancels the older run. In that run the three
+    # legs say CANCELLED, and the job that sums them up says FAILURE,
+    # because the legs it waited for did not pass. GitHub shows only the
+    # newest run, which passed; this showed a cross on ten pull requests.
+    run kind_of "Storybook interaction tests" '[
+        {"name": "Storybook interaction tests", "status": "COMPLETED", "conclusion": "SKIPPED",
+         "detailsUrl": "https://github.com/o/r/actions/runs/100/job/1"},
+        {"name": "Storybook interaction tests (1/3)", "status": "COMPLETED", "conclusion": "CANCELLED",
+         "detailsUrl": "https://github.com/o/r/actions/runs/200/job/2"},
+        {"name": "Storybook interaction tests", "status": "COMPLETED", "conclusion": "FAILURE",
+         "detailsUrl": "https://github.com/o/r/actions/runs/200/job/3"},
+        {"name": "Storybook interaction tests (1/3)", "status": "COMPLETED", "conclusion": "SUCCESS",
+         "detailsUrl": "https://github.com/o/r/actions/runs/300/job/4"},
+        {"name": "Storybook interaction tests", "status": "COMPLETED", "conclusion": "SUCCESS",
+         "detailsUrl": "https://github.com/o/r/actions/runs/300/job/5"}
+    ]'
+    [ "$status" -eq 0 ]
+    [ "$output" = "passing" ]
+}
+
+@test "a failure in a cancelled run stands when no other run has reported" {
+    # Nothing has replaced it, so it is all there is to go on.
+    run kind_of "Storybook interaction tests" '[
+        {"name": "Storybook interaction tests (1/3)", "status": "COMPLETED", "conclusion": "CANCELLED",
+         "detailsUrl": "https://github.com/o/r/actions/runs/200/job/2"},
+        {"name": "Storybook interaction tests", "status": "COMPLETED", "conclusion": "FAILURE",
+         "detailsUrl": "https://github.com/o/r/actions/runs/200/job/3"}
+    ]'
+    [ "$status" -eq 0 ]
+    [ "$output" = "failing" ]
+}
+
+@test "a failure in a run nothing cancelled still outranks a later pass" {
+    # A real failure, re-run or not: no check in its run was cancelled,
+    # so the run is not a dead one and what it said counts.
+    run kind_of "Python unit" '[
+        {"name": "Python unit", "status": "COMPLETED", "conclusion": "FAILURE",
+         "detailsUrl": "https://github.com/o/r/actions/runs/200/job/3"},
+        {"name": "Python unit", "status": "COMPLETED", "conclusion": "SUCCESS",
+         "detailsUrl": "https://github.com/o/r/actions/runs/300/job/5"}
+    ]'
+    [ "$status" -eq 0 ]
+    [ "$output" = "failing" ]
+}
+
+@test "a cancelled run still going elsewhere reads as pending, not failed" {
+    run kind_of "Storybook interaction tests" '[
+        {"name": "Storybook interaction tests (1/3)", "status": "COMPLETED", "conclusion": "CANCELLED",
+         "detailsUrl": "https://github.com/o/r/actions/runs/200/job/2"},
+        {"name": "Storybook interaction tests", "status": "COMPLETED", "conclusion": "FAILURE",
+         "detailsUrl": "https://github.com/o/r/actions/runs/200/job/3"},
+        {"name": "Storybook interaction tests", "status": "IN_PROGRESS", "conclusion": "",
+         "detailsUrl": "https://github.com/o/r/actions/runs/300/job/5"}
+    ]'
+    [ "$status" -eq 0 ]
+    [ "$output" = "pending" ]
+}
+
 @test "a real failure beside a pass still reads as failing" {
     run kind_of "Python unit" '[
         {"name": "Python unit", "status": "COMPLETED", "conclusion": "SUCCESS"},
