@@ -137,16 +137,18 @@ the order below, and no step waits for a person.
 
 ## Phase 6: One check for every Node pin
 
-- [ ] Make `.github/workflows/dependency-audit.yml` set Node up through
+- [x] Make `.github/workflows/dependency-audit.yml` set Node up through
       `.github/actions/setup-frontend`, as the other workflows do, if that
       action does nothing the audit job cannot afford. If it installs
       dependencies the audit must not have, keep the job's own
       `actions/setup-node` step and teach
       `.github/scripts/ci/check-version-consistency.sh` to read that file
       as well. Prefer the first: one home is better than a check across
-      three.
+      three. Done the second way: the action runs `yarn install`, and the
+      audit job is written to install nothing, so it keeps its own step and
+      the script now reads every `node-version` under `.github/`.
 
-- [ ] Update `check-version-consistency.bats` for whichever was done, and
+- [x] Update `check-version-consistency.bats` for whichever was done, and
       the "Known exception - Node" note in
       `docs/docs/conventions/index.md`, which #1771 changed to say three
       homes.
