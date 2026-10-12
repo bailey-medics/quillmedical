@@ -15,7 +15,7 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.db import get_core_db
-from app.deps import DEP_CURRENT_USER, get_current_user
+from app.deps import DEP_CURRENT_USER, DEP_REQUIRE_CSRF
 from app.email_send import mask_email
 from app.marketing.preferences import (
     MARKETING_WORDING_VERSION,
@@ -41,21 +41,10 @@ router = APIRouter(prefix="/marketing", tags=["marketing"])
 _DEP_SESSION = Depends(get_core_db)
 
 
-def _require_csrf(request: Request, db: Session = _DEP_SESSION) -> None:
-    """Check the CSRF token, borrowing ``main``'s implementation.
-
-    ``main`` imports this router, so importing ``require_csrf`` at module
-    level would be a cycle. The feedback and org_units routers do the same.
-    """
-    from app.deps import require_csrf
-
-    require_csrf(request, get_current_user(request, db))
-
-
 @router.put(
     "/preference",
     response_model=MarketingPreferenceOut,
-    dependencies=[Depends(_require_csrf)],
+    dependencies=[DEP_REQUIRE_CSRF],
 )
 @limiter.limit("20/minute")
 def set_my_marketing_preference(

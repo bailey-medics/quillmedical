@@ -22,6 +22,13 @@ APP = Path(__file__).resolve().parents[1] / "app"
 ONE_DEFINITION = frozenset({"get_current_user", "require_csrf"})
 
 
+# The names six routers once gave their own wrappers round the two
+# checks, from when importing them meant importing `main.py` back. A
+# wrapper is a second place for the check to go wrong, and it ran the
+# sign-in check twice on every request that also checked CSRF.
+WRAPPERS = frozenset({"_get_current_user", "_require_csrf"})
+
+
 def _defined_in(path: Path) -> set[str]:
     """The functions a file defines at its top level."""
     tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -53,6 +60,23 @@ def test_no_other_module_defines_a_check_of_the_same_name() -> None:
     }
 
     assert copies == {}
+
+
+def test_no_router_wraps_a_check_in_a_function_of_its_own() -> None:
+    sources = [
+        path
+        for path in sorted(APP.rglob("*.py"))
+        if not path.name.endswith("_test.py")
+    ]
+    assert len(sources) > 100
+
+    wrappers = {
+        str(path.relative_to(APP)): sorted(_defined_in(path) & WRAPPERS)
+        for path in sources
+        if _defined_in(path) & WRAPPERS
+    }
+
+    assert wrappers == {}
 
 
 def test_main_uses_the_dependencies_from_deps() -> None:

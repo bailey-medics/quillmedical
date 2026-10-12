@@ -40,8 +40,8 @@ from app.config import parse_address_list, settings
 from app.db import get_core_db
 from app.deps import (
     DEP_CURRENT_USER,
+    DEP_REQUIRE_CSRF,
     DEP_REQUIRE_OPERATOR,
-    get_current_user,
 )
 from app.email.render import render_email, send_args
 from app.email_send import send_email
@@ -65,20 +65,6 @@ from app.schemas.feedback import (
 logger = logging.getLogger(__name__)
 
 _DEP_SESSION = Depends(get_core_db)
-
-
-def _require_csrf(request: Request, db: Session = _DEP_SESSION) -> None:
-    """Check the CSRF token, borrowing ``main``'s implementation.
-
-    ``main`` imports this router, so importing ``require_csrf`` at module
-    level would be a cycle. The org_units and teaching routers do the same.
-    """
-    from app.deps import require_csrf
-
-    require_csrf(request, get_current_user(request, db))
-
-
-DEP_REQUIRE_CSRF = Depends(_require_csrf)
 
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])

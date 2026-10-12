@@ -58,7 +58,12 @@ from sqlalchemy.orm import Session
 from app.cbac.competencies import get_competency_details
 from app.config import settings
 from app.db import get_core_db
-from app.deps import has_competency
+from app.deps import (
+    DEP_CURRENT_USER,
+    DEP_REQUIRE_CSRF,
+    get_current_user,
+    has_competency,
+)
 from app.email_send import (
     EmailNotAllowedError,
     EmailRateLimitError,
@@ -196,7 +201,7 @@ def _feature_unless_reading_your_own(
         HTTPException: 403 as ``requires_feature`` raises it.
     """
     if request.method == "GET":
-        user = _get_current_user(request, db)
+        user = get_current_user(request, db)
         passport_id = request.path_params.get("passport_id")
         if passport_id is None:
             if request.url.path.endswith("/passport/me"):
@@ -254,22 +259,6 @@ _PASSPORT_ID = re.compile(r"^[0-9a-f]{32}$")
 _DEP_SESSION = Depends(get_core_db)
 
 
-def _get_current_user(request: Request, db: Session = _DEP_SESSION) -> User:
-    """Resolve the authenticated user (lazy import, as teaching does)."""
-    from app.deps import get_current_user
-
-    return get_current_user(request, db)
-
-
-def _require_csrf(request: Request, db: Session = _DEP_SESSION) -> None:
-    """Validate the CSRF token, lazily for the same reason."""
-    from app.deps import require_csrf
-
-    require_csrf(request, _get_current_user(request, db))
-
-
-_DEP_USER = Depends(_get_current_user)
-_DEP_REQUIRE_CSRF = Depends(_require_csrf)
 #: Reaching the passport feature at all.
 #:
 #: Free, granted by base profession, and never lapsing for payment, so
@@ -722,12 +711,12 @@ def _detail(
     dependencies=[
         _DEP_PASSPORT,
         Depends(has_competency("passport_write")),
-        _DEP_REQUIRE_CSRF,
+        DEP_REQUIRE_CSRF,
     ],
 )
 def create_passport(
     body: PassportCreateIn | None = None,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> PassportOut:
@@ -787,12 +776,12 @@ def _framework_refs(framework_ids: list[str]) -> list[FrameworkRef]:
 @passport_router.put(
     "/{passport_id}/frameworks",
     response_model=PassportOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def set_frameworks(
     passport_id: str,
     body: FrameworksIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> PassportOut:
@@ -830,7 +819,7 @@ def _appraisal_periods_out(profile: Profile) -> AppraisalPeriodsOut:
 )
 def get_appraisal_periods(
     passport_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> AppraisalPeriodsOut:
@@ -847,12 +836,12 @@ def get_appraisal_periods(
 @passport_router.put(
     "/{passport_id}/appraisal-periods",
     response_model=AppraisalPeriodsOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def set_appraisal_periods(
     passport_id: str,
     body: AppraisalPeriodsIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> AppraisalPeriodsOut:
@@ -894,7 +883,7 @@ def set_appraisal_periods(
     dependencies=[_DEP_PASSPORT],
 )
 def get_my_passport(
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> PassportDetailOut:
@@ -917,7 +906,7 @@ def get_my_passport(
 def list_frameworks(
     q: str | None = Query(default=None, max_length=100),
     specialty: str | None = Query(default=None, max_length=100),
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> list[FrameworkChoiceOut]:
     """The frameworks the caller may choose, in the order to offer them.
@@ -955,7 +944,7 @@ def list_frameworks(
     dependencies=[_DEP_PASSPORT],
 )
 def get_inbox(
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> list[InboxItemOut]:
@@ -1034,7 +1023,7 @@ def _confirmation_asked_of(
 )
 def get_logbook_confirmation(
     request_id: int,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> LogbookConfirmationOut:
@@ -1084,12 +1073,12 @@ def get_logbook_confirmation(
 @passport_router.post(
     "/requests/logbook-confirmations/{request_id}",
     response_model=LogbookConfirmAnswerOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def answer_logbook_confirmation(
     request_id: int,
     body: LogbookConfirmIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> LogbookConfirmAnswerOut:
@@ -1159,7 +1148,7 @@ def _sign_off_out(name: str, record: SignOff) -> SignOffOut:
 )
 def get_passport(
     passport_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> PassportDetailOut:
@@ -1353,7 +1342,7 @@ ASSESSOR_SEARCH_LIMIT = 1
 )
 def search_assessors(
     q: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> AssessorSearchOut:
     """Confirm whether an address already belongs to somebody on Quill.
@@ -1424,13 +1413,13 @@ def search_assessors(
     "/{passport_id}/competencies/{competency_id}/requests",
     response_model=SignOffResultOut,
     status_code=201,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def request_sign_off(
     passport_id: str,
     competency_id: str,
     body: SignOffRequestIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
     blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
@@ -1557,7 +1546,7 @@ def request_sign_off(
 )
 def list_sign_offs(
     passport_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> list[SignOffOut]:
@@ -1626,7 +1615,7 @@ def _assessor_emails(db: Session, passport_id: str) -> dict[str, str]:
 def get_sign_off(
     passport_id: str,
     signoff_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> SignOffOut:
@@ -1653,13 +1642,13 @@ def get_sign_off(
 @passport_router.post(
     "/{passport_id}/sign-offs/{signoff_id}/sign-off",
     response_model=SignOffResultOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def sign_off(
     passport_id: str,
     signoff_id: str,
     body: SignOffIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> SignOffResultOut:
@@ -1744,13 +1733,13 @@ def sign_off(
 @passport_router.post(
     "/{passport_id}/sign-offs/{signoff_id}/decline",
     response_model=SignOffResultOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def decline_sign_off(
     passport_id: str,
     signoff_id: str,
     body: SignOffDeclineIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> SignOffResultOut:
@@ -1806,12 +1795,12 @@ def decline_sign_off(
 @passport_router.post(
     "/{passport_id}/sign-offs/{signoff_id}/withdraw",
     response_model=SignOffResultOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def withdraw_sign_off(
     passport_id: str,
     signoff_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> SignOffResultOut:
@@ -1854,7 +1843,7 @@ def get_competency_state(
     passport_id: str,
     competency_id: str,
     scope_id: str | None = None,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> CompetencyStateOut:
@@ -2055,12 +2044,12 @@ def _attachments(
     "/{passport_id}/evidence",
     response_model=EvidenceUploadOut,
     status_code=201,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 async def upload_evidence(
     passport_id: str,
     file: UploadFile,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
 ) -> EvidenceUploadOut:
@@ -2167,12 +2156,12 @@ async def upload_evidence(
     "/{passport_id}/certificates",
     response_model=RecordResultOut,
     status_code=201,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def add_certificate(
     passport_id: str,
     body: CertificateIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
     blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
@@ -2215,7 +2204,7 @@ def add_certificate(
 )
 def list_certificates(
     passport_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> list[CertificateOut]:
@@ -2240,13 +2229,13 @@ def list_certificates(
 @passport_router.patch(
     "/{passport_id}/certificates/{name}",
     response_model=RecordResultOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def amend_certificate(
     passport_id: str,
     name: str,
     body: CertificateIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
     blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
@@ -2311,7 +2300,7 @@ def get_certificate_attachment(
     passport_id: str,
     name: str,
     blob_digest: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
     blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
@@ -2383,12 +2372,12 @@ def _existing_certificate(
 @passport_router.delete(
     "/{passport_id}/certificates/{name}",
     response_model=RecordResultOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def remove_certificate(
     passport_id: str,
     name: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> RecordResultOut:
@@ -2579,13 +2568,13 @@ def _logbook_scope(
     "/{passport_id}/logbook/{competency_id}",
     response_model=RecordResultOut,
     status_code=201,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def add_logbook_entry(
     passport_id: str,
     competency_id: str,
     body: LogbookEntryIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
     blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
@@ -2646,7 +2635,7 @@ def add_logbook_entry(
 )
 def get_whole_logbook(
     passport_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> WholeLogbookOut:
@@ -2708,7 +2697,7 @@ def get_whole_logbook(
 def get_logbook(
     passport_id: str,
     competency_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> LogbookOut:
@@ -2743,14 +2732,14 @@ def get_logbook(
 @passport_router.patch(
     "/{passport_id}/logbook/{competency_id}/{stem}",
     response_model=RecordResultOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def amend_logbook_entry(
     passport_id: str,
     competency_id: str,
     stem: str,
     body: LogbookEntryIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
     blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
@@ -2820,13 +2809,13 @@ def amend_logbook_entry(
 @passport_router.delete(
     "/{passport_id}/logbook/{competency_id}/{stem}",
     response_model=RecordResultOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def remove_logbook_entry(
     passport_id: str,
     competency_id: str,
     stem: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> RecordResultOut:
@@ -2858,12 +2847,12 @@ def remove_logbook_entry(
     "/{passport_id}/reflections",
     response_model=RecordResultOut,
     status_code=201,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def add_reflection(
     passport_id: str,
     body: ReflectionIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
     blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
@@ -2911,7 +2900,7 @@ def add_reflection(
 )
 def list_reflections(
     passport_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> list[ReflectionOut]:
@@ -2946,13 +2935,13 @@ def list_reflections(
 @passport_router.patch(
     "/{passport_id}/reflections/{name}",
     response_model=RecordResultOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def amend_reflection(
     passport_id: str,
     name: str,
     body: ReflectionIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
     blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
@@ -3007,12 +2996,12 @@ def amend_reflection(
 @passport_router.delete(
     "/{passport_id}/reflections/{name}",
     response_model=RecordResultOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def remove_reflection(
     passport_id: str,
     name: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> RecordResultOut:
@@ -3034,12 +3023,12 @@ def remove_reflection(
     "/{passport_id}/cpd",
     response_model=RecordResultOut,
     status_code=201,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def add_cpd_entry(
     passport_id: str,
     body: CpdEntryIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
     blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
@@ -3103,7 +3092,7 @@ def _cpd_year_out(
 )
 def list_cpd(
     passport_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> list[CpdEntryOut]:
@@ -3137,7 +3126,7 @@ def list_cpd(
 def get_cpd_year(
     passport_id: str,
     year: int,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> list[CpdEntryOut]:
@@ -3157,14 +3146,14 @@ def get_cpd_year(
 @passport_router.patch(
     "/{passport_id}/cpd/{year}/{stem}",
     response_model=RecordResultOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def amend_cpd_entry(
     passport_id: str,
     year: int,
     stem: str,
     body: CpdEntryIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
     blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,
@@ -3216,13 +3205,13 @@ def amend_cpd_entry(
 @passport_router.delete(
     "/{passport_id}/cpd/{year}/{stem}",
     response_model=RecordResultOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def remove_cpd_entry(
     passport_id: str,
     year: int,
     stem: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> RecordResultOut:
@@ -3329,11 +3318,11 @@ def _require_org_admin_over(
 @passport_router.delete(
     "/assessors/{assessor_user_id}/membership",
     response_model=AssessorRevokeOut,
-    dependencies=[_DEP_PASSPORT, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_PASSPORT, DEP_REQUIRE_CSRF],
 )
 def revoke_assessor_membership(
     assessor_user_id: int,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> AssessorRevokeOut:
     """Remove an assessor's membership at this admin's organisation.
@@ -3565,7 +3554,7 @@ def export_markdown(
             "one by accident."
         ),
     ),
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> Response:
@@ -3597,7 +3586,7 @@ def export_markdown(
 )
 def export_pdf(
     passport_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
 ) -> Response:
@@ -3634,7 +3623,7 @@ def export_pdf(
 )
 def export_bundle(
     passport_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
     store: PassportStore = _DEP_STORE,
     blobs: BlobStore | GcsBlobStore = _DEP_BLOBS,

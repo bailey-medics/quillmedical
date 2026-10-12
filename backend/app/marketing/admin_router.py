@@ -25,7 +25,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_core_db
-from app.deps import DEP_REQUIRE_OPERATOR, get_current_user
+from app.deps import DEP_REQUIRE_CSRF, DEP_REQUIRE_OPERATOR
 from app.marketing import mailing_list_import as importer
 from app.marketing.newsletter import recipients, subscribers
 from app.models import NewsletterSubscriber
@@ -46,20 +46,6 @@ _DEP_SESSION = Depends(get_core_db)
 
 #: How much of an upload is read at a time.
 _CHUNK = 64 * 1024
-
-
-def _require_csrf(request: Request, db: Session = _DEP_SESSION) -> None:
-    """Check the CSRF token, borrowing ``main``'s implementation.
-
-    ``main`` imports this router, so importing ``require_csrf`` at module
-    level would be a cycle. The feedback and org_units routers do the same.
-    """
-    from app.deps import require_csrf
-
-    require_csrf(request, get_current_user(request, db))
-
-
-_DEP_REQUIRE_CSRF = Depends(_require_csrf)
 
 
 async def _read(file: UploadFile) -> bytes:
@@ -141,7 +127,7 @@ def audience(db: Session = _DEP_SESSION) -> NewsletterAudienceOut:
 @router.post(
     "/mailing-list/check",
     response_model=MailingListCheckOut,
-    dependencies=[_DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CSRF],
 )
 @limiter.limit("30/minute")
 async def check_mailing_list(
@@ -172,7 +158,7 @@ async def check_mailing_list(
 @router.post(
     "/mailing-list/import",
     response_model=MailingListCheckOut,
-    dependencies=[_DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CSRF],
 )
 @limiter.limit("10/minute")
 async def import_mailing_list(

@@ -1295,7 +1295,7 @@ is now 4,654 lines and 69 routes.
       clinician, and `GET /auth/organisations`, which the
       registration page reads.
 
-- [ ] Take out the routers' own `_get_current_user` and `_require_csrf`.
+- [x] Take out the routers' own `_get_current_user` and `_require_csrf`.
       Six routers and `features/gating.py` each wrap the two checks in
       a function that imports them inside its body, because importing
       `main.py` at the top would have been a circle. They now import
@@ -1306,6 +1306,17 @@ is now 4,654 lines and 69 routes.
       its lists shrink in the same pull request. Left out of the
       first step to keep that one a move, and put here, after the
       moves, so that the splitting is not held up by it.
+      Done on 12 October 2026. Each router now takes
+      `DEP_CURRENT_USER` and `DEP_REQUIRE_CSRF` from `deps.py`, and the
+      names `_DEP_USER` and `_DEP_REQUIRE_CSRF` are gone from the
+      teaching and passport routers, about 130 places changed by
+      search and replace. One thing the wrappers had been doing
+      without anybody meaning it: a wrapper called the sign-in check
+      as a plain function, so FastAPI could not see it was the same
+      check the route had already asked for, and ran it twice on
+      every changing request, two reads of the same user. Taken from
+      `deps.py` it runs once. What is decided is the same. The route
+      guard test's two lists are down to one name each.
 
 - [ ] Move the sign-in routes last, **after the EoEETA release**: login,
       logout, refresh, register, password reset, change password, TOTP

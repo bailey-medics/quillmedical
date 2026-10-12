@@ -26,7 +26,7 @@ from app.db import get_core_db
 from app.deps import (
     DEP_CURRENT_USER,
     DEP_REQUIRE_CLINICAL,
-    get_current_user,
+    DEP_REQUIRE_CSRF,
     has_competency,
     requires_any_competency,
 )
@@ -102,19 +102,6 @@ from app.users.scope import check_account_in_scope
 _DEP_SESSION = Depends(get_core_db)
 
 
-def _require_csrf(request: Request, db: Session = _DEP_SESSION) -> None:
-    """Check the CSRF token, borrowing ``main``'s implementation.
-
-    ``main`` imports this router, so importing ``require_csrf`` at module
-    level would be a cycle. The teaching router does the same thing for
-    the same reason.
-    """
-    from app.deps import require_csrf
-
-    require_csrf(request, get_current_user(request, db))
-
-
-DEP_REQUIRE_CSRF = Depends(_require_csrf)
 DEP_REQUIRE_MANAGE_USERS = Depends(has_competency("manage_users"))
 DEP_REQUIRE_MANAGE_STAFF = Depends(has_competency("manage_staff_membership"))
 DEP_REQUIRE_MANAGE_PATIENTS = Depends(

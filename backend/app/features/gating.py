@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_core_db
+from app.deps import get_current_user
 from app.models import (
     OrgUnitFeature,
     User,
@@ -106,9 +107,6 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
         request: Request,
         db: Session = Depends(get_core_db),
     ) -> User:
-        # Lazy import to avoid circular dependency with app.main
-        from app.deps import get_current_user
-
         user = get_current_user(request, db)
 
         if not feature_holders_for(db, user.id):
