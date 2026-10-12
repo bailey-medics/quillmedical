@@ -12,7 +12,13 @@
 # ============================================================
 # Pin by digest for reproducible builds. To update, run:
 #   docker pull node:24.13.0-bookworm-slim && docker inspect --format='{{index .RepoDigests 0}}' node:24.13.0-bookworm-slim
-FROM public.ecr.aws/docker/library/node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS deps
+#
+# Both base images are named in ARGs, here before the first FROM so that
+# every stage can read them, and not in the FROM lines, so that CI can
+# build on its own copies. See the same lines in backend/Dockerfile.
+ARG NODE_IMAGE=public.ecr.aws/docker/library/node:24.21.0-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6
+ARG CADDY_IMAGE=public.ecr.aws/docker/library/caddy:2-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b
+FROM ${NODE_IMAGE} AS deps
 
 RUN corepack enable
 
@@ -68,7 +74,8 @@ RUN yarn build
 # ============================================================
 # Pin by digest for reproducible builds. To update, run:
 #   docker pull caddy:2-alpine && docker inspect --format='{{index .RepoDigests 0}}' caddy:2-alpine
-FROM public.ecr.aws/docker/library/caddy:2-alpine@sha256:6aeddd44c3078b0f9a35206472a11420648a79c184603ef95957d0a20044cb2b AS prod
+# The image itself is the CADDY_IMAGE ARG at the top of this file.
+FROM ${CADDY_IMAGE} AS prod
 
 # Copy production Caddyfile (created in Step 1.2)
 COPY caddy/prod/Caddyfile /etc/caddy/Caddyfile

@@ -14,7 +14,16 @@
 # and CI failed whenever GitHub's shared runners had used the allowance
 # up. The copy needs no login and holds the same image under the same
 # digest, so the pin above still proves what is being built on.
-FROM public.ecr.aws/docker/library/python:3.14-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d AS base
+#
+# Named in an ARG and not in the FROM line so that CI can build on its own
+# copy of the same image: `--build-arg PYTHON_IMAGE=ghcr.io/<owner>/mirror/...`.
+# Amazon's registry also limits how often it may be asked, and on 12 October
+# 2026 it refused this image to a merge queue run, which took seven pull
+# requests out of the queue. With no build argument, as on a developer's
+# machine, the build uses the public image below. Any ARG ending `_IMAGE`
+# before a FROM is copied to the mirror by mirror-images.yml.
+ARG PYTHON_IMAGE=public.ecr.aws/docker/library/python:3.14-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d
+FROM ${PYTHON_IMAGE} AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
