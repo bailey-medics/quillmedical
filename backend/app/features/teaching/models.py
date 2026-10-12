@@ -28,6 +28,7 @@ from sqlalchemy import (
     event,
     false,
     select,
+    text,
 )
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Mapped, Mapper, mapped_column, relationship
@@ -182,6 +183,25 @@ class Assessment(Base):
     """One candidate attempt at a question bank."""
 
     __tablename__ = "assessments"
+    __table_args__ = (
+        # One attempt in progress for each learner and bank, at whichever
+        # organisation it was started. The organisation is left out on
+        # purpose: a learner who can sit one bank through two
+        # organisations still holds one attempt, and sits it where they
+        # started it. Only unfinished attempts are held to it, so a
+        # learner may have any number of finished ones. The predicate is
+        # given for both
+        # databases: without ``sqlite_where`` the unit-test database would
+        # make this a full unique index and refuse a second finished row.
+        Index(
+            "uq_assessments_one_in_progress",
+            "user_id",
+            "question_bank_id",
+            unique=True,
+            postgresql_where=text("completed_at IS NULL"),
+            sqlite_where=text("completed_at IS NULL"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(

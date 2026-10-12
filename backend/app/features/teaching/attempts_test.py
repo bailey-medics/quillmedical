@@ -5,21 +5,25 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.features.teaching import attempts, media
 from app.features.teaching.attempts import (
     BankToSit,
+    attempt_in_progress,
     attempt_of,
     bank_to_sit,
     begin_attempt,
+    begin_or_pick_up_attempt,
     change_answer,
     deadline_of,
     finish_attempt,
     finish_if_out_of_time,
     item_at_position,
     next_unanswered_item,
+    pick_up_attempt,
     record_answer,
     unfinished_attempts,
 )
@@ -214,6 +218,7 @@ def _attempt(
     *,
     questions: int = 3,
     synced: bool = True,
+    bank_id: str = BANK,
 ) -> Assessment:
     """An attempt under way with *questions* questions, none answered."""
     if synced:
@@ -222,7 +227,7 @@ def _attempt(
     assessment = Assessment(
         user_id=user.id,
         org_unit_id=org.id,
-        question_bank_id=BANK,
+        question_bank_id=bank_id,
         bank_version=1,
         time_limit_minutes=30,
         total_items=questions,
@@ -230,7 +235,9 @@ def _attempt(
     db.add(assessment)
     db.flush()
 
-    for position, item in enumerate(_items(db, org, questions), start=1):
+    for position, item in enumerate(
+        _items(db, org, questions, bank_id=bank_id), start=1
+    ):
         db.add(
             AssessmentAnswer(
                 assessment_id=assessment.id,
@@ -616,27 +623,331 @@ def test_the_first_question_handed_back_is_the_one_at_position_one(
     assert begun.first_answer.selected_option is None
 
 
-def test_starting_again_writes_a_second_attempt_beside_the_first(
+def test_a_second_attempt_beside_one_in_progress_is_refused_by_the_database(
     db_session: Session,
 ) -> None:
-    """As the route stood: an attempt under way does not stop another.
+    """A learner has one attempt in progress on a bank at an organisation.
 
-    Nothing looks for an unfinished attempt on the same bank, nor
-    counts how many there have been. Both stay open. Pinned and not
-    changed.
+    ``begin_attempt`` itself looks for nothing: it is the unique index
+    over unfinished attempts that refuses the second. It was the other
+    way round before, and starting again wrote a second attempt beside
+    the first with both left open.
     """
     org = _organisation(db_session)
     learner = _person(db_session)
     bank = _bank(db_session, org, 4, {"items_per_attempt": 2})
-
     first = begin_attempt(db_session, learner.id, bank)
-    second = begin_attempt(db_session, learner.id, bank)
 
-    assert first.assessment.id != second.assessment.id
+    with pytest.raises(IntegrityError), db_session.begin_nested():
+        begin_attempt(db_session, learner.id, bank)
+
+    assert _attempts(db_session) == [first.assessment.id]
     assert first.assessment.completed_at is None
-    assert second.assessment.completed_at is None
     assert len(_stored(db_session, first.assessment)) == 2
-    assert len(_stored(db_session, second.assessment)) == 2
+
+
+# --- The index over unfinished attempts -------------------------------------
+
+
+def _attempts(db: Session) -> list[int]:
+    """The id of every attempt the database holds, oldest first."""
+    return list(db.scalars(select(Assessment.id).order_by(Assessment.id)))
+
+
+def test_the_database_refuses_a_second_unfinished_attempt(
+    db_session: Session,
+) -> None:
+    """Written straight to the table, with no rule of ours in the way."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    first = _attempt(db_session, org, learner)
+
+    with pytest.raises(IntegrityError), db_session.begin_nested():
+        _attempt(db_session, org, learner, synced=False)
+
+    assert _attempts(db_session) == [first.id]
+
+
+def test_the_database_allows_any_number_of_finished_attempts(
+    db_session: Session,
+) -> None:
+    """Only unfinished attempts are held to one, so the index is partial.
+
+    Were it over every attempt, the second finished row here would be
+    refused, and nobody could sit a bank twice.
+    """
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    first = _attempt(db_session, org, learner)
+    _finished(db_session, first)
+    second = _attempt(db_session, org, learner, synced=False)
+    _finished(db_session, second)
+    third = _attempt(db_session, org, learner, synced=False)
+
+    assert _attempts(db_session) == [first.id, second.id, third.id]
+    assert third.completed_at is None
+
+
+def test_the_database_holds_one_for_each_learner_and_bank(
+    db_session: Session,
+) -> None:
+    """Another learner and another bank are each a different attempt in
+    progress, and neither is refused."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    other = _person(db_session, "other")
+
+    _attempt(db_session, org, learner)
+    _attempt(db_session, org, other, synced=False)
+    _attempt(db_session, org, learner, synced=False, bank_id=OTHER_BANK)
+
+    assert len(_attempts(db_session)) == 3
+
+
+def test_the_database_refuses_a_second_at_another_organisation(
+    db_session: Session,
+) -> None:
+    """The organisation is not part of the rule: a learner who can sit
+    one bank through two organisations holds one attempt on it."""
+    org = _organisation(db_session)
+    elsewhere = _organisation(db_session, "Elsewhere")
+    learner = _person(db_session)
+    first = _attempt(db_session, org, learner)
+
+    with pytest.raises(IntegrityError), db_session.begin_nested():
+        _attempt(db_session, elsewhere, learner, synced=False)
+
+    assert _attempts(db_session) == [first.id]
+
+
+# --- attempt_in_progress ----------------------------------------------------
+
+
+def test_their_unfinished_attempt_on_the_bank_is_the_one_in_progress(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _attempt(db_session, org, learner)
+
+    found = attempt_in_progress(db_session, learner.id, bank_id=BANK)
+
+    assert found is assessment
+
+
+def test_a_finished_attempt_is_not_in_progress(db_session: Session) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    _finished(db_session, _attempt(db_session, org, learner))
+
+    found = attempt_in_progress(db_session, learner.id, bank_id=BANK)
+
+    assert found is None
+
+
+def test_an_attempt_in_progress_is_asked_of_exactly_what_the_index_is_over(
+    db_session: Session,
+) -> None:
+    """The learner and the bank, and nothing wider.
+
+    So an attempt this does not find is one the database will let
+    another be written beside: another learner's, and one on another
+    bank.
+    """
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    other = _person(db_session, "other")
+    _attempt(db_session, org, other)
+    _attempt(db_session, org, learner, synced=False, bank_id=OTHER_BANK)
+
+    found = attempt_in_progress(db_session, learner.id, bank_id=BANK)
+
+    assert found is None
+
+
+def test_an_attempt_in_progress_is_found_at_whichever_organisation(
+    db_session: Session,
+) -> None:
+    """The organisation is not asked. The attempt found says where it
+    was started, which is where it is sat."""
+    _organisation(db_session)
+    elsewhere = _organisation(db_session, "Elsewhere")
+    learner = _person(db_session)
+    assessment = _attempt(db_session, elsewhere, learner)
+
+    found = attempt_in_progress(db_session, learner.id, bank_id=BANK)
+
+    assert found is assessment
+    assert found.org_unit_id == elsewhere.id
+
+
+def test_time_is_not_asked_of_an_attempt_in_progress(
+    db_session: Session,
+) -> None:
+    """One past its time is still found: the caller finishes those first."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _attempt(db_session, org, learner)
+    _out_of_time(db_session, assessment)
+
+    found = attempt_in_progress(db_session, learner.id, bank_id=BANK)
+
+    assert found is assessment
+    assert assessment.completed_at is None
+
+
+# --- pick_up_attempt --------------------------------------------------------
+
+
+def test_an_attempt_picked_up_is_handed_back_at_its_next_question(
+    db_session: Session,
+) -> None:
+    """As it was left, and marked as handed back and not written."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _attempt(db_session, org, learner)
+    _answer(db_session, assessment, 1)
+    started = assessment.started_at
+    rows = _stored(db_session, assessment)
+
+    picked = pick_up_attempt(db_session, assessment)
+
+    assert picked.assessment is assessment
+    assert picked.resumed is True
+    assert picked.first is not None
+    assert picked.first.answer.display_order == 2
+    assert picked.first.config.version == 1
+    assert assessment.started_at == started
+    assert _stored(db_session, assessment) == rows
+    assert not db_session.dirty
+    assert not db_session.new
+
+
+def test_an_attempt_picked_up_with_every_question_answered_has_none_to_give(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _attempt(db_session, org, learner, questions=1)
+    _answer(db_session, assessment, 1)
+
+    picked = pick_up_attempt(db_session, assessment)
+
+    assert picked.assessment is assessment
+    assert picked.first is None
+    assert picked.resumed is True
+
+
+def test_an_attempt_is_picked_up_on_the_version_it_was_started_on(
+    db_session: Session,
+) -> None:
+    """A newer version synced since is not what the attempt is laid
+    out from."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _attempt(db_session, org, learner)
+    _sync(db_session, org, version=2)
+
+    picked = pick_up_attempt(db_session, assessment)
+
+    assert picked.first is not None
+    assert picked.first.config.version == 1
+    assert assessment.bank_version == 1
+
+
+def test_an_attempt_whose_bank_has_gone_cannot_be_picked_up(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _attempt(db_session, org, learner, synced=False)
+
+    with pytest.raises(AssessmentConfigNotFound):
+        pick_up_attempt(db_session, assessment)
+
+
+# --- begin_or_pick_up_attempt -----------------------------------------------
+
+
+def test_a_learner_with_none_in_progress_has_a_new_attempt_written(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    bank = _bank(db_session, org, 4, {"items_per_attempt": 2})
+
+    begun = begin_or_pick_up_attempt(db_session, learner.id, bank)
+
+    assert _attempts(db_session) == [begun.assessment.id]
+    assert begun.resumed is False
+    assert begun.first is not None
+    assert begun.first.answer.display_order == 1
+    assert begun.first.config is bank.config
+    assert len(_stored(db_session, begun.assessment)) == 2
+
+
+def test_a_new_attempt_that_draws_no_questions_has_no_first_question(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    bank = _bank(db_session, org, 4)
+
+    begun = begin_or_pick_up_attempt(db_session, learner.id, bank)
+
+    assert begun.first is None
+    assert begun.resumed is False
+    assert begun.assessment.total_items == 0
+
+
+def test_an_attempt_another_request_wrote_first_is_handed_back(
+    db_session: Session,
+) -> None:
+    """Two requests at the same instant both found none in progress.
+
+    The first wrote its attempt. This one, which did not look again,
+    is refused by the database, and hands back what the first wrote.
+    Nothing of its own is left behind, and what the request had written
+    before it is still there: the learner and the bank here are flushed
+    and not committed.
+    """
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    bank = _bank(db_session, org, 4, {"items_per_attempt": 2})
+    theirs = begin_or_pick_up_attempt(db_session, learner.id, bank)
+    rows = _stored(db_session, theirs.assessment)
+
+    mine = begin_or_pick_up_attempt(db_session, learner.id, bank)
+
+    assert mine.resumed is True
+    assert mine.assessment.id == theirs.assessment.id
+    assert mine.first is not None
+    assert theirs.first is not None
+    assert mine.first.answer.id == theirs.first.answer.id
+    assert _attempts(db_session) == [theirs.assessment.id]
+    assert _stored(db_session, mine.assessment) == rows
+    assert db_session.scalar(select(func.count(AssessmentAnswer.id))) == 2
+    assert db_session.get(User, learner.id) is learner
+    assert db_session.scalar(select(func.count(QuestionBankItem.id))) == 4
+
+
+def test_an_attempt_the_database_refuses_for_another_reason_is_not_hidden(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With none in progress to hand back, the refusal is the caller's."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    bank = _bank(db_session, org, 4, {"items_per_attempt": 2})
+
+    def refused(db: Session, user_id: int, bank: BankToSit) -> None:
+        raise IntegrityError("INSERT", {}, Exception("some other rule"))
+
+    monkeypatch.setattr(attempts, "begin_attempt", refused)
+
+    with pytest.raises(IntegrityError):
+        begin_or_pick_up_attempt(db_session, learner.id, bank)
+
+    assert _attempts(db_session) == []
 
 
 # --- attempt_of -------------------------------------------------------------
@@ -1938,10 +2249,12 @@ def test_a_learners_unfinished_attempts_are_found_oldest_first(
     org = _organisation(db_session)
     learner = _person(db_session)
     other = _person(db_session, "other")
-    first = _attempt(db_session, org, learner)
-    done = _attempt(db_session, org, learner, synced=False)
+    done = _attempt(db_session, org, learner)
     _finished(db_session, done)
-    second = _attempt(db_session, org, learner, synced=False)
+    first = _attempt(db_session, org, learner, synced=False)
+    second = _attempt(
+        db_session, org, learner, synced=False, bank_id=OTHER_BANK
+    )
     _attempt(db_session, org, other, synced=False)
 
     found = unfinished_attempts(db_session, learner.id)
@@ -1955,9 +2268,7 @@ def test_unfinished_attempts_can_be_asked_for_on_one_bank(
     org = _organisation(db_session)
     learner = _person(db_session)
     mine = _attempt(db_session, org, learner)
-    elsewhere = _attempt(db_session, org, learner, synced=False)
-    elsewhere.question_bank_id = OTHER_BANK
-    db_session.flush()
+    _attempt(db_session, org, learner, synced=False, bank_id=OTHER_BANK)
 
     found = unfinished_attempts(db_session, learner.id, bank_id=BANK)
 

@@ -2,7 +2,9 @@
  * AssessmentAttempt page tests
  *
  * The page a delegate sits an exam on. These begin with how an attempt
- * is started, since starting one twice costs the delegate their first.
+ * is started. The server hands back an attempt already in progress on
+ * the bank when one is started again, so what starting answers may be
+ * part answered.
  */
 import {
   afterEach,
@@ -305,6 +307,107 @@ describe("AssessmentAttempt, an exam with no intro page", () => {
     expect(api.post).toHaveBeenCalledTimes(1);
     expect(api.get).not.toHaveBeenCalledWith("/teaching/assessments/7");
     expect(api.get).not.toHaveBeenCalledWith("/teaching/assessments/7/current");
+  });
+});
+
+describe("AssessmentAttempt, starting hands back an attempt in progress", () => {
+  it("opens it at its next unanswered question, as the last when it is", async () => {
+    getsAnswer({ "/teaching/question-banks/colonoscopy": bankWithoutIntro });
+    (api.post as Mock).mockResolvedValue({
+      assessment: attempt(),
+      first_item: question(3),
+    });
+
+    const router = renderExamAt("/teaching/assessment/new?bank=colonoscopy");
+
+    expect(await screen.findByText("Question 3 text")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Submit & finish" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+    expect(router.state.location.pathname).toBe("/teaching/assessment/7");
+  });
+
+  it("opens it part answered after Begin, with more questions to come", async () => {
+    getsAnswer({ "/teaching/question-banks/colonoscopy": bankWithIntro });
+    (api.post as Mock).mockResolvedValue({
+      assessment: attempt(),
+      first_item: question(2),
+    });
+
+    renderExamAt("/teaching/assessment/new?bank=colonoscopy");
+    fireEvent.click(await screen.findByRole("button", { name: "Begin" }));
+
+    expect(await screen.findByText("Question 2 text")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Previous" })).toBeEnabled();
+  });
+
+  it("goes back through its answered questions one at a time", async () => {
+    // Coming forward again from question one must stop at question
+    // two, which has an answer, and not jump to the one being sat
+    getsAnswer({
+      "/teaching/question-banks/colonoscopy": bankWithoutIntro,
+      "/teaching/assessments/7/item/2": {
+        ...question(2),
+        selected_option: "a",
+      },
+      "/teaching/assessments/7/item/1": {
+        ...question(1),
+        selected_option: "a",
+      },
+    });
+    (api.post as Mock).mockResolvedValue({
+      assessment: attempt(),
+      first_item: question(3),
+    });
+    (api.put as Mock).mockResolvedValue(question(1));
+
+    renderExamAt("/teaching/assessment/new?bank=colonoscopy");
+    await screen.findByText("Question 3 text");
+    fireEvent.click(screen.getByRole("button", { name: "Previous" }));
+    await screen.findByText("Question 2 text");
+    fireEvent.click(screen.getByRole("button", { name: "Previous" }));
+    await screen.findByText("Question 1 text");
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    expect(await screen.findByText("Question 2 text")).toBeInTheDocument();
+  });
+
+  it("submits it when every question already has an answer", async () => {
+    getsAnswer({ "/teaching/question-banks/colonoscopy": bankWithoutIntro });
+    (api.post as Mock).mockImplementation((url: string) =>
+      Promise.resolve(
+        url === "/teaching/assessments"
+          ? { assessment: attempt(), first_item: null }
+          : {},
+      ),
+    );
+
+    renderExamAt("/teaching/assessment/new?bank=colonoscopy");
+
+    expect(
+      await screen.findByRole("button", { name: "View results" }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith("/teaching/assessments/7/complete");
+    });
+  });
+
+  it("shows a new attempt that drew no questions as it did before", async () => {
+    getsAnswer({ "/teaching/question-banks/colonoscopy": bankWithoutIntro });
+    (api.post as Mock).mockResolvedValue({
+      assessment: attempt({ total_items: 0 }),
+      first_item: null,
+    });
+
+    const router = renderExamAt("/teaching/assessment/new?bank=colonoscopy");
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/teaching/assessment/7");
+    });
+    expect(screen.queryByRole("button", { name: "View results" })).toBeNull();
+    expect(api.post).toHaveBeenCalledTimes(1);
   });
 });
 

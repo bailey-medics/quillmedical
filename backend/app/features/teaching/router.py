@@ -52,14 +52,16 @@ from app.features.teaching.attempt_results import (
 )
 from app.features.teaching.attempts import (
     AttemptFinished,
+    attempt_in_progress,
     attempt_of,
     bank_to_sit,
-    begin_attempt,
+    begin_or_pick_up_attempt,
     change_answer,
     finish_attempt,
     finish_if_out_of_time,
     item_at_position,
     next_unanswered_item,
+    pick_up_attempt,
     record_answer,
     unfinished_attempts,
 )
@@ -607,16 +609,31 @@ def start_assessment(
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
-    """Start a new assessment for the current user.
+    """Start an assessment for the current user, or hand back theirs.
 
     Which bank, and every refusal but one, is ``bank_to_sit``; the draw
-    and the writes are ``begin_attempt``. The refusal for too small a
-    pool stays here, between the two, because its words carry two
-    counts: how many items are published and how many the bank asks
-    for.
+    and the writes are ``begin_or_pick_up_attempt``. The refusal for
+    too small a pool stays here, between the two, because its words
+    carry two counts: how many items are published and how many the
+    bank asks for.
 
     Before any of that, each unfinished attempt of theirs on the bank
     whose time has run out is finished.
+
+    A learner has one attempt in progress on a bank, and sits it at
+    the organisation they started it at. Where they have one already it
+    is handed back as a new one would be, with its next unanswered
+    question, and nothing is written. That holds for a learner who can
+    sit the bank through two organisations: only the one the attempt
+    was started at is asked, so they are never given a second attempt
+    at the other.
+
+    ``bank_to_sit`` still has its say first, about that one
+    organisation: so a bank since closed to new attempts there, or a
+    place there since lost, is refused here as it always was, whether
+    or not an attempt on it is in progress, and that attempt is still
+    read and answered by its id. The size of the pool is not asked of
+    an attempt already drawn.
     """
     for unfinished in unfinished_attempts(
         db, user.id, bank_id=body.question_bank_id
@@ -624,6 +641,14 @@ def start_assessment(
         _finish_if_out_of_time(db, user, unfinished)
 
     org_ids = _get_user_org_ids(user, db)
+    under_way = attempt_in_progress(db, user.id, bank_id=body.question_bank_id)
+
+    # An attempt in progress is sat where it was started, and nowhere
+    # else: only that organisation is asked whether the bank is open
+    if under_way is not None:
+        org_ids = [
+            org_id for org_id in org_ids if org_id == under_way.org_unit_id
+        ]
 
     bank = bank_to_sit(
         db,
@@ -632,21 +657,26 @@ def start_assessment(
         bank_id=body.question_bank_id,
     )
 
-    if len(bank.published_items) < bank.min_pool_size:
-        raise HTTPException(
-            409,
-            f"Insufficient items: {len(bank.published_items)} published, "
-            f"need {bank.min_pool_size}",
-        )
+    if under_way is not None:
+        attempt = pick_up_attempt(db, under_way)
+    else:
+        if len(bank.published_items) < bank.min_pool_size:
+            raise HTTPException(
+                409,
+                f"Insufficient items: {len(bank.published_items)} "
+                f"published, need {bank.min_pool_size}",
+            )
 
-    attempt = begin_attempt(db, user.id, bank)
+        attempt = begin_or_pick_up_attempt(db, user.id, bank)
 
     # Build first item
     first_item = None
 
-    if attempt.first_answer:
+    if attempt.first:
         first_item = _build_candidate_item(
-            attempt.first_answer, bank.config.config_yaml, bank.config.type
+            attempt.first.answer,
+            attempt.first.config.config_yaml,
+            attempt.first.config.type,
         )
 
     return {

@@ -4,15 +4,17 @@
 ``GET /assessments/{id}/item/{position}``. The rules are tested on their
 own in ``app/features/teaching/attempts_test.py`` and
 ``access_test.py``; this says what a caller is told, in which words,
-exactly what of a question is sent before it is answered, and pins three
+exactly what of a question is sent before it is answered, and pins two
 things the routes do not ask, each as it stands:
 
-- **An attempt already under way.** Starting again gives a second
-  attempt on the same bank, and both stay open.
 - **Media.** A bank missing some of its media has its detail hidden,
   and an attempt on it can still be started.
 - **Whose copy of the bank.** Starting takes any organisation's synced
   copy; reading asks for the learner's organisation's own.
+
+A learner has one attempt in progress on a bank at an organisation.
+Starting while one is in progress hands that one back, exactly as a new
+attempt is answered, and writes nothing.
 
 Time is asked when reading. An attempt whose time has run out is
 finished before a question of it is read:
@@ -26,7 +28,7 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.features.teaching.access import MODULES_COMPETENCY
@@ -45,6 +47,7 @@ from tests.competencies import join_for_teaching
 
 ASSESSMENTS = "/api/teaching/assessments"
 BANK = "polyps"
+OTHER_BANK = "bleeding"
 DETAIL = f"/api/teaching/question-banks/{BANK}"
 START = {"question_bank_id": BANK}
 
@@ -553,40 +556,460 @@ def test_a_bank_that_draws_no_questions_starts_with_no_first_question(
     assert resp.json()["assessment"]["total_items"] == 0
 
 
-# --- POST /assessments: what is not asked -----------------------------------
+# --- POST /assessments: one attempt in progress -----------------------------
 
 
-def test_a_second_attempt_can_be_started_while_the_first_is_under_way(
+def _answer_rows(db: Session, assessment_id: int) -> list[tuple[int, int]]:
+    """Each question of an attempt as (position, item), by position."""
+    db.expire_all()
+    rows = db.scalars(
+        select(AssessmentAnswer)
+        .where(AssessmentAnswer.assessment_id == assessment_id)
+        .order_by(AssessmentAnswer.display_order)
+    ).all()
+
+    return [(row.display_order, row.item_id) for row in rows]
+
+
+def _serve_another_bank(db: Session, org: OrgUnit) -> None:
+    """Have *org* serve a second bank, with one version and a pool."""
+    db.add(
+        QuestionBankOrgStatus(
+            org_unit_id=org.id,
+            question_bank_id=OTHER_BANK,
+            is_live=True,
+            active_version=1,
+        )
+    )
+    db.add(
+        QuestionBankConfig(
+            org_unit_id=org.id,
+            question_bank_id=OTHER_BANK,
+            version=1,
+            title="Bleeding",
+            description="Another question bank.",
+            type="variable",
+            config_yaml={
+                "id": OTHER_BANK,
+                "assessment": {"items_per_attempt": 1},
+            },
+        )
+    )
+    db.add(
+        QuestionBankItem(
+            org_unit_id=org.id,
+            question_bank_id=OTHER_BANK,
+            bank_version=1,
+            status="published",
+            images=[],
+            text="Which is it?",
+            options=VARIABLE_OPTIONS,
+            correct_option_id="opt-1",
+            metadata_json={"question_type": "single"},
+        )
+    )
+    db.flush()
+
+
+def test_starting_while_an_attempt_is_in_progress_hands_back_that_attempt(
     test_client: TestClient, db_session: Session, trust: OrgUnit
 ) -> None:
-    """As the route stands: a learner may hold two attempts on one bank.
+    """A learner has one attempt in progress on a bank, and no more.
 
-    Nothing looks for an unfinished attempt before writing another, and
-    nothing counts attempts. Both are left open, and each can be read
-    and answered. Whether that is wanted is a question for the owner:
-    pinned here and not changed.
+    Somebody who shut the tab starts again and is put back where they
+    were: the same attempt, the same questions in the same order, and
+    its time running from when it was first started. It is answered
+    exactly as a new attempt is, and nothing is written.
+
+    It was the other way round before: starting again wrote a second
+    attempt beside the first, and both stayed open.
     """
-    _serve(db_session, trust)
+    _serve(db_session, trust, pool=5)
     learner = _learner(db_session, trust)
     client, headers = _signed_in(test_client)
 
     first = client.post(ASSESSMENTS, headers=headers, json=START)
+    drawn = _answer_rows(db_session, first.json()["assessment"]["id"])
     second = client.post(ASSESSMENTS, headers=headers, json=START)
 
     assert (first.status_code, second.status_code) == (200, 200)
-    assert (
-        first.json()["assessment"]["id"] != second.json()["assessment"]["id"]
-    )
-    assert [
-        attempt.completed_at for attempt in _attempts_of(db_session, learner)
-    ] == [None, None]
+    assert second.json() == first.json()
+    assert set(second.json()) == {"assessment", "first_item"}
+    assert set(second.json()["assessment"]) == ATTEMPT_FIELDS
+    assert set(second.json()["first_item"]) == ITEM_FIELDS
+    (attempt,) = _attempts_of(db_session, learner)
+    assert attempt.id == first.json()["assessment"]["id"]
+    assert attempt.completed_at is None
+    assert len(drawn) == 3
+    assert _answer_rows(db_session, attempt.id) == drawn
+    assert db_session.scalar(select(func.count(AssessmentAnswer.id))) == 3
 
-    for started in (first, second):
-        current = client.get(
-            f"{ASSESSMENTS}/{started.json()['assessment']['id']}/current"
+
+def test_an_attempt_is_sat_at_the_organisation_it_was_started_at(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    """A learner who can sit the bank through two organisations holds
+    one attempt on it, at the one they started it at.
+
+    So when the bank closes there, starting again is refused, though
+    the other organisation still has it open: they are not given a
+    second attempt at the other beside the first. The attempt is still
+    theirs to read and answer by its id.
+    """
+    elsewhere = OrgUnit(name="Elsewhere", type="organisation")
+    db_session.add(elsewhere)
+    db_session.flush()
+    db_session.add(
+        OrgUnitFeature(
+            org_unit_id=elsewhere.id, feature_key="teaching", enabled_by=1
         )
-        assert current.status_code == 200
-        assert current.json()["display_order"] == 1
+    )
+    _serve(db_session, trust)
+    _serve(db_session, elsewhere, synced=False, pool=0)
+    learner = _learner(db_session, trust)
+    join_for_teaching(db_session, elsewhere.id, learner.id, "trainee")
+    db_session.commit()
+    client, headers = _signed_in(test_client)
+
+    first = client.post(ASSESSMENTS, headers=headers, json=START)
+    again = client.post(ASSESSMENTS, headers=headers, json=START)
+    (attempt,) = _attempts_of(db_session, learner)
+    started_at = attempt.org_unit_id
+    db_session.execute(
+        update(QuestionBankOrgStatus)
+        .where(QuestionBankOrgStatus.org_unit_id == started_at)
+        .values(is_live=False)
+    )
+    db_session.commit()
+
+    closed = client.post(ASSESSMENTS, headers=headers, json=START)
+    current = client.get(f"{ASSESSMENTS}/{attempt.id}/current")
+
+    assert (first.status_code, again.status_code) == (200, 200)
+    assert again.json()["assessment"]["id"] == attempt.id
+    assert (closed.status_code, closed.json()) == (403, NOT_OPEN)
+    assert current.status_code == 200
+    assert [a.id for a in _attempts_of(db_session, learner)] == [attempt.id]
+
+
+def test_an_attempt_handed_back_is_at_its_next_unanswered_question(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    """With the answers already given kept, and none of them sent."""
+    _serve(db_session, trust)
+    _learner(db_session, trust)
+    client, headers = _signed_in(test_client)
+    first = client.post(ASSESSMENTS, headers=headers, json=START)
+    attempt_id = first.json()["assessment"]["id"]
+    client.post(
+        f"{ASSESSMENTS}/{attempt_id}/answer",
+        headers=headers,
+        json={"selected_option": "opt-1"},
+    )
+
+    again = client.post(ASSESSMENTS, headers=headers, json=START)
+
+    assert again.status_code == 200
+    assert again.json()["assessment"]["id"] == attempt_id
+    assert (
+        again.json()["assessment"]["started_at"]
+        == first.json()["assessment"]["started_at"]
+    )
+    assert again.json()["first_item"]["display_order"] == 2
+    assert again.json()["first_item"]["selected_option"] is None
+    assert "TAG-" not in again.text
+
+
+def test_an_attempt_handed_back_with_every_question_answered_has_none_to_send(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    """Answered in full and not handed in: it is still the one in
+    progress, so it is handed back, with no question, to be finished."""
+    _serve(db_session, trust, pool=1, assessment={"items_per_attempt": 1})
+    learner = _learner(db_session, trust)
+    client, headers = _signed_in(test_client)
+    first = client.post(ASSESSMENTS, headers=headers, json=START)
+    attempt_id = first.json()["assessment"]["id"]
+    client.post(
+        f"{ASSESSMENTS}/{attempt_id}/answer",
+        headers=headers,
+        json={"selected_option": "opt-1"},
+    )
+
+    again = client.post(ASSESSMENTS, headers=headers, json=START)
+
+    assert again.status_code == 200
+    assert again.json()["assessment"]["id"] == attempt_id
+    assert again.json()["first_item"] is None
+    assert len(_attempts_of(db_session, learner)) == 1
+
+
+def test_a_finished_attempt_does_not_stop_a_new_one(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    _serve(db_session, trust)
+    learner = _learner(db_session, trust)
+    client, headers = _signed_in(test_client)
+    first = client.post(ASSESSMENTS, headers=headers, json=START)
+    first_id = first.json()["assessment"]["id"]
+    handed_in = client.post(
+        f"{ASSESSMENTS}/{first_id}/complete", headers=headers
+    )
+
+    second = client.post(ASSESSMENTS, headers=headers, json=START)
+
+    assert handed_in.status_code == 200
+    assert second.status_code == 200
+    assert second.json()["assessment"]["id"] != first_id
+    assert second.json()["assessment"]["completed_at"] is None
+    assert second.json()["first_item"]["display_order"] == 1
+    db_session.expire_all()
+    assert [
+        attempt.completed_at is None
+        for attempt in _attempts_of(db_session, learner)
+    ] == [False, True]
+
+
+def test_an_attempt_past_its_time_is_finished_and_a_new_one_started(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    """In progress means not finished and still in time."""
+    _serve(db_session, trust)
+    learner = _learner(db_session, trust)
+    client, headers = _signed_in(test_client)
+    first = client.post(ASSESSMENTS, headers=headers, json=START)
+    first_id = first.json()["assessment"]["id"]
+    late = db_session.get(Assessment, first_id)
+    assert late is not None
+    late.started_at = datetime.now(UTC) - timedelta(days=2)
+    db_session.commit()
+
+    second = client.post(ASSESSMENTS, headers=headers, json=START)
+
+    assert second.status_code == 200
+    assert second.json()["assessment"]["id"] != first_id
+    db_session.expire_all()
+    old, new = _attempts_of(db_session, learner)
+    assert old.id == first_id
+    assert old.completed_at is not None
+    assert new.completed_at is None
+
+
+def test_another_learners_attempt_in_progress_is_not_handed_to_this_one(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    pool = _serve(db_session, trust)
+    learner = _learner(db_session, trust)
+    other = _learner(db_session, trust, "other")
+    theirs = _attempt(db_session, trust, other, pool)
+    client, headers = _signed_in(test_client)
+
+    resp = client.post(ASSESSMENTS, headers=headers, json=START)
+
+    assert resp.status_code == 200
+    assert resp.json()["assessment"]["id"] != theirs.id
+    (mine,) = _attempts_of(db_session, learner)
+    assert mine.id == resp.json()["assessment"]["id"]
+    assert [attempt.id for attempt in _attempts_of(db_session, other)] == [
+        theirs.id
+    ]
+
+
+def test_an_attempt_in_progress_on_one_bank_does_not_stop_one_on_another(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    _serve(db_session, trust)
+    _serve_another_bank(db_session, trust)
+    learner = _learner(db_session, trust)
+    client, headers = _signed_in(test_client)
+
+    polyps = client.post(ASSESSMENTS, headers=headers, json=START)
+    bleeding = client.post(
+        ASSESSMENTS, headers=headers, json={"question_bank_id": OTHER_BANK}
+    )
+    polyps_again = client.post(ASSESSMENTS, headers=headers, json=START)
+
+    assert (polyps.status_code, bleeding.status_code) == (200, 200)
+    assert (
+        bleeding.json()["assessment"]["id"]
+        != polyps.json()["assessment"]["id"]
+    )
+    assert bleeding.json()["assessment"]["question_bank_id"] == OTHER_BANK
+    assert polyps_again.json() == polyps.json()
+    assert [
+        (attempt.question_bank_id, attempt.completed_at)
+        for attempt in _attempts_of(db_session, learner)
+    ] == [(BANK, None), (OTHER_BANK, None)]
+
+
+def test_an_attempt_is_handed_back_on_the_version_it_was_started_on(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    """A new version promoted meanwhile does not move the attempt.
+
+    The learner is handed back what they started, laid out from the
+    version they started it on, and it is read and answered as before.
+    """
+    _serve(db_session, trust)
+    learner = _learner(db_session, trust)
+    client, headers = _signed_in(test_client)
+    first = client.post(ASSESSMENTS, headers=headers, json=START)
+    attempt_id = first.json()["assessment"]["id"]
+    drawn = _answer_rows(db_session, attempt_id)
+    db_session.add(
+        QuestionBankConfig(
+            org_unit_id=trust.id,
+            question_bank_id=BANK,
+            version=2,
+            title="Polyps, revised",
+            description="A question bank.",
+            type="variable",
+            config_yaml={"id": BANK, "assessment": {"items_per_attempt": 1}},
+        )
+    )
+    db_session.add(
+        QuestionBankItem(
+            org_unit_id=trust.id,
+            question_bank_id=BANK,
+            bank_version=2,
+            status="published",
+            images=[],
+            text="A NEW QUESTION",
+            options=VARIABLE_OPTIONS,
+            correct_option_id="opt-1",
+            metadata_json={"question_type": "single"},
+        )
+    )
+    status = db_session.scalars(select(QuestionBankOrgStatus)).one()
+    status.active_version = 2
+    db_session.commit()
+
+    again = client.post(ASSESSMENTS, headers=headers, json=START)
+    current = client.get(f"{ASSESSMENTS}/{attempt_id}/current")
+    answered = client.post(
+        f"{ASSESSMENTS}/{attempt_id}/answer",
+        headers=headers,
+        json={"selected_option": "opt-1"},
+    )
+
+    assert again.status_code == 200
+    assert again.json() == first.json()
+    assert again.json()["assessment"]["bank_version"] == 1
+    assert again.json()["assessment"]["total_items"] == 3
+    assert "A NEW QUESTION" not in again.text
+    assert current.status_code == 200
+    assert current.json() == first.json()["first_item"]
+    assert answered.status_code == 200
+    assert _answer_rows(db_session, attempt_id) == drawn
+    assert len(_attempts_of(db_session, learner)) == 1
+
+
+def test_a_bank_since_closed_is_refused_even_with_an_attempt_in_progress(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    """The more cautious of two readings, chosen on 12 October 2026.
+
+    Whether the bank is open is asked before whether an attempt is in
+    progress, since it is the open bank that names the organisation
+    the attempt is looked for at. So starting is refused as it always
+    was for a closed bank, and nothing is written. The attempt itself
+    is untouched: it is still read, answered and handed in by its id.
+    """
+    _serve(db_session, trust)
+    learner = _learner(db_session, trust)
+    client, headers = _signed_in(test_client)
+    first = client.post(ASSESSMENTS, headers=headers, json=START)
+    attempt_id = first.json()["assessment"]["id"]
+    status = db_session.scalars(select(QuestionBankOrgStatus)).one()
+    status.is_live = False
+    db_session.commit()
+
+    again = client.post(ASSESSMENTS, headers=headers, json=START)
+    current = client.get(f"{ASSESSMENTS}/{attempt_id}/current")
+    answered = client.post(
+        f"{ASSESSMENTS}/{attempt_id}/answer",
+        headers=headers,
+        json={"selected_option": "opt-1"},
+    )
+
+    assert again.status_code == 403
+    assert again.json() == NOT_OPEN
+    assert current.status_code == 200
+    assert current.json() == first.json()["first_item"]
+    assert answered.status_code == 200
+    db_session.expire_all()
+    (attempt,) = _attempts_of(db_session, learner)
+    assert (attempt.id, attempt.completed_at) == (attempt_id, None)
+
+
+def test_an_attempt_in_progress_is_handed_back_whatever_the_pool_is_now(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    """The size of the pool is asked of a new draw, not of one made."""
+    pool = _serve(
+        db_session,
+        trust,
+        pool=3,
+        assessment={"items_per_attempt": 2, "min_pool_size": 3},
+    )
+    learner = _learner(db_session, trust)
+    client, headers = _signed_in(test_client)
+    first = client.post(ASSESSMENTS, headers=headers, json=START)
+    drawn = {
+        item_id
+        for _, item_id in _answer_rows(
+            db_session, first.json()["assessment"]["id"]
+        )
+    }
+    spare = next(item for item in pool if item.id not in drawn)
+    db_session.delete(db_session.get(QuestionBankItem, spare.id))
+    db_session.commit()
+
+    again = client.post(ASSESSMENTS, headers=headers, json=START)
+
+    assert again.status_code == 200
+    assert again.json() == first.json()
+    assert len(_attempts_of(db_session, learner)) == 1
+
+
+def test_two_starts_at_the_same_instant_are_answered_with_one_attempt(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Both requests looked before either wrote, and both found none.
+
+    The second is made here to miss the first's attempt when it looks.
+    It goes on to write its own, the database refuses that for the
+    unique index over unfinished attempts, and it hands back the
+    attempt the first wrote. It is answered 200 like the first, and
+    the learner holds one attempt with one set of questions.
+    """
+    _serve(db_session, trust)
+    learner = _learner(db_session, trust)
+    client, headers = _signed_in(test_client)
+    first = client.post(ASSESSMENTS, headers=headers, json=START)
+    looked: list[str] = []
+
+    def found_none(db: Session, user_id: int, *, bank_id: str) -> None:
+        looked.append(bank_id)
+
+    monkeypatch.setattr(
+        "app.features.teaching.router.attempt_in_progress", found_none
+    )
+
+    second = client.post(ASSESSMENTS, headers=headers, json=START)
+
+    assert looked == [BANK]
+    assert (first.status_code, second.status_code) == (200, 200)
+    assert second.json() == first.json()
+    (attempt,) = _attempts_of(db_session, learner)
+    assert attempt.id == first.json()["assessment"]["id"]
+    assert db_session.scalar(select(func.count(AssessmentAnswer.id))) == 3
+
+
+# --- POST /assessments: what is not asked -----------------------------------
 
 
 def test_a_bank_missing_some_of_its_media_can_still_be_started(
