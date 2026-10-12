@@ -18,9 +18,17 @@
 # agreement says a delegate is told "automatically" when a pass is due to
 # be repeated.
 #
-# The two workflows remain, with only their run-by-hand trigger, as the
-# button for a report: .github/workflows/retention.yml and
-# teaching-reminders.yml.
+# The two workflows are gone altogether. Neither action is started from
+# GitHub in any way. To see what an action would do without doing it, run
+# the job by hand with its apply flag left out, which is a report:
+#
+#   gcloud run jobs execute quill-admin-<environment> \
+#     --project=<project> --region=<region> --wait \
+#     --update-env-vars=ADMIN_ACTION=apply-retention
+#
+# and read the three counts in the execution's log. The same with
+# ADMIN_ACTION=send-teaching-reminders. Cloud Scheduler's own "Force run"
+# starts the real thing.
 #
 # accessibility-review.yml stays in GitHub. It reads a date out of a file
 # in the repository to decide whether it is due, so its trigger lives

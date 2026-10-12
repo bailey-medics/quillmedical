@@ -374,9 +374,10 @@ resource "google_monitoring_alert_policy" "scheduled_action" {
       left: a reminder is recorded only once it has been sent, and
       retention deletes only what is already past its period.
 
-      Find out which and why in the job's logs, then run it by hand from
-      the Actions tab ("Retention" or "Teaching reminders"), unticked first
-      for a report.
+      Find out which and why in the job's logs. To run it again, use
+      "Force run" on its job in Cloud Scheduler. For a report first, run
+      the admin job by hand with the action's name and no apply flag: the
+      command is at the top of infra/scheduled-jobs.tf.
 
       Logs: https://console.cloud.google.com/logs/query?project=$${project}
     EOT

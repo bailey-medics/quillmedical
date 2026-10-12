@@ -576,6 +576,14 @@ Mark agreed on 12 October to move them.
       which is how the counts are checked before a first real run. Rewrite
       each file's header to say so.
 
+- [x] Delete both workflows outright. Mark's decision on 12 October, on
+      reading the step above: he does not want a run-by-hand button in
+      GitHub. Neither action is now started from GitHub in any way. A
+      report is the admin job run by hand with the action's name and no
+      apply flag, and the command is at the top of
+      `infra/scheduled-jobs.tf`. The alert's text points there, and at
+      "Force run" in Cloud Scheduler for running the real thing again.
+
 - [x] Do the two halves in one deploy order that never runs a job twice
       in a night or not at all: add the scheduler jobs and merge, check
       the first scheduled execution in the Cloud Run console, and only
