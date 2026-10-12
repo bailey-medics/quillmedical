@@ -657,6 +657,110 @@ One behaviour changes that somebody might notice. A signed-out visitor to
 an address nothing matches used to be sent to `/login`, because the 404
 page was not on the guest list. They now see the 404 page.
 
+## Phase 20: Check whether an attempt is closed when its time runs out
+
+- [ ] Check whether another plan has already fixed this before doing
+      anything here. Mark thought on 12 October that it may be in hand in
+      another worktree. Look for it in the newer plans and in
+      `backend/app/features/teaching/attempts.py` on `main`.
+
+      What was found while building the reminders: an attempt is finished
+      in one place only, the step the browser calls when somebody ends an
+      exam, including when they leave it. Nothing on the server closes an
+      attempt when its time runs out. The server only refuses further
+      answers. So an attempt whose tab was closed, or whose connection was
+      lost, before the browser could finish it stays open for ever, with
+      no result.
+
+- [ ] If it is not fixed elsewhere, decide whether the server should
+      close such an attempt once its time has passed, scoring what was
+      answered, and build it as its own unit. It is a change to how
+      attempts work, not to reminders.
+
+      Until then the reminders treat that person as not having done the
+      assessment, and keep reminding them up to the module's limit. That
+      is right as far as it goes: they have no result.
+
+## Phase 21: Start the nightly jobs from Cloud Scheduler, not GitHub
+
+Retention (Phase 12) and the teaching reminders (Phases 14 and 15) are
+each started by a scheduled GitHub workflow that runs an action on the
+admin Cloud Run job. That copied `accessibility-review.yml`, which reads a
+date from a file in the repository to decide whether it is due, so its
+trigger belongs in GitHub. These two read nothing from the repository.
+Mark agreed on 12 October to move them.
+
+- [ ] Add a Cloud Scheduler job for each, in Terraform beside the admin
+      job in `infra/main.tf`: one that runs the admin job with
+      `ADMIN_ACTION=apply-retention` and `RETENTION_APPLY=true` at 03:30
+      UTC, and one with `ADMIN_ACTION=send-teaching-reminders` and
+      `REMINDERS_APPLY=true` at 07:00 UTC. Each calls the Cloud Run Admin
+      API to run the job with those values as overrides for that one
+      execution. Enable the Cloud Scheduler API if the project does not
+      have it.
+
+      The reasons: GitHub's schedule is best-effort, and a run can start
+      late or be dropped, and scheduled workflows are switched off in a
+      repository with no activity for 60 days. The EoEETA agreement says a
+      delegate is told "automatically" when a pass is due to be repeated.
+
+- [ ] Give the scheduler a service account of its own in
+      `infra/runtime-identities.tf`, allowed to run the admin job with
+      overrides and nothing else. The workflows sign in as the deploy
+      service account, which can do far more than start one job.
+
+- [ ] Alert when a run fails, through `infra/modules/monitoring/`, on the
+      same channels as the other alerts. A failed scheduled workflow only
+      emails whoever last edited the file. The reminders action already
+      exits 1 when any email could not be sent, so a failed execution is
+      the signal.
+
+- [ ] Take the `schedule:` trigger out of `.github/workflows/retention.yml`
+      and `.github/workflows/teaching-reminders.yml`, and keep
+      `workflow_dispatch`. They stay as the button for a report by hand,
+      which is how the counts are checked before a first real run. Rewrite
+      each file's header to say so.
+
+- [ ] Do the two halves in one deploy order that never runs a job twice
+      in a night or not at all: add the scheduler jobs and merge, check
+      the first scheduled execution in the Cloud Run console, and only
+      then remove the GitHub schedules. Both actions are safe to run
+      twice: retention deletes what is already past its period, and each
+      reminder is recorded as it is sent.
+
+- [ ] The app does not change. The actions, their report-unless-told
+      default and their tests stay as they are.
+
+- [ ] Leave `accessibility-review.yml` where it is.
+
+## Phase 22: Stop the stack display showing a failure GitHub has replaced
+
+- [x] Fix `best_conclusion_per_check` in `scripts/stack-status.py`. Found
+      on 12 October: `just stack-watch` showed a red cross in the heavy
+      column for ten pull requests whose checks were all green on GitHub.
+
+      The cause is one check, "Storybook interaction tests", the job that
+      sums up the three Storybook legs. A stack is pushed twice in quick
+      succession when it is landed, CI's concurrency rule cancels the
+      older run, and in that cancelled run the legs report `CANCELLED`
+      while the summing-up job reports `FAILURE`, because the legs it
+      waited for did not pass. The script already drops a `CANCELLED`
+      entry that a later run replaced. It does not drop that `FAILURE`,
+      so one failing entry from a dead run outranks the `SUCCESS` from the
+      live one. GitHub shows only the newest run of each check, which is
+      why it is green there.
+
+- [x] Decide by run, not by entry: where a check has entries from more
+      than one run, an entry from a run that a later run replaced does not
+      count. `detailsUrl` carries the run id and `startedAt` orders them.
+      Keep what the existing comments protect: a draft's skipped heavy
+      tier must not hide a later real result, and a cancellation with
+      nothing to replace it is still a failure.
+
+- [x] Add the case to `scripts/tests/stack-status.bats`, from the real
+      entries on #1829: skipped, then failed in a cancelled run, then
+      passed.
+
 ## Decisions
 
 - **The code changes to keep the policy's promises, not the other way
