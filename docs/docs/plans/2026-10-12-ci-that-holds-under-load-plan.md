@@ -53,54 +53,12 @@ dependencies and not by slowing the queue down.
 - [x] Cover `deploy.yml` in the same change. A refused pull there is a
       failed production deploy, not a failed check.
 
-- [x] Move the one image still named directly in a workflow: the Postgres
-      service of the drift check, at `ci.yml` line 144. Pull request #1842,
-      open from another worktree on 12 October, does this. Check whether
-      it has merged before doing it again.
-
-      Left to that pull request and not done twice. The check knew that
-      one image as a named exception, which failed once it matched
-      nothing. #1842 merged that afternoon, after a refused pull of that
-      very image had taken #1876 out of the merge queue. The exception
-      then failed on `main` as meant, and was removed with the whole
-      list: a workflow may now name no public image at all.
-
 - [x] Add a check that fails when a workflow or a Dockerfile names a
       public registry with no mirror behind it, so the next image added
       cannot quietly bring the problem back. Beside
       `check-version-consistency.sh` in `.github/scripts/ci/`, with bats
       tests. `compose.dev.yml` and `compose.migrate.yml` are for a
       developer's machine and are left out.
-
-- [x] Pin the last image named by tag, and drop the mirror's weekly run.
-      Postgres in `compose.ci.yml` was `postgres:18-alpine` with no
-      digest, and a tag moves when a patch is released, so
-      `mirror-images.yml` copied everything again each Monday to keep
-      up. It is now pinned to the digest `compose.dev.yml` uses. With
-      every image pinned, none changes outside a pull request, that pull
-      request makes the copy, and the schedule is gone. Mark's decision,
-      12 October, after Phase 6.
-
-      `check-mirrored-images.sh` now refuses an image named by tag alone,
-      in the compose file or a Dockerfile's `_IMAGE` argument, so the
-      schedule cannot become needed again without a check failing.
-
-- [x] Check that Renovate can see every pin. Pinning hands the job of
-      keeping an image patched to Renovate, and a pin Renovate cannot
-      see never moves, with nothing failing. Renovate reads these
-      images through two forms it could lose: a compose image that is a
-      variable's default, and a base image named in an `ARG`.
-
-      `renovate-tracks-images.yml` runs Renovate over the checkout with
-      `--platform=local --dry-run=extract`, which writes a report and
-      changes nothing, and `check-renovate-tracks-images.sh` fails when
-      an image the mirror copies is not in it with its digest. Only on a
-      pull request that changes one of those files or `renovate.json`,
-      and never in the merge queue, because it pulls Renovate's image.
-
-      Run by hand on 12 October with Renovate 44.151.5: it found all six
-      images, in both forms. So the `ARG` form from the first step of
-      this phase is read, which had not been seen until then.
 
 ## Phase 2: Stop downloading tools on every job
 
@@ -165,13 +123,6 @@ dependencies and not by slowing the queue down.
       The teaching validation job in `ci.yml` now uses the shared
       action too, without the backend's dependencies.
 
-- [ ] Do the same for the two that cannot use the shared action:
-      `gate-breaking.yml`, which checks the pull request out into `pr/`
-      and has no workspace root to read an action from, and
-      `teaching-pipeline.yml`, which runs in the content repositories.
-      Wait for the log above to show the cache working before copying
-      the steps into either.
-
 - [x] Do the same for Node in `.github/actions/setup-frontend/action.yml`.
 
       Nothing to do. It asks for Node `24`, any release of it, and the
@@ -201,8 +152,8 @@ dependencies and not by slowing the queue down.
       Not wrapped, because a step cannot be: the base image pulls
       inside `docker/build-push-action`, which Phase 1 moved to the
       mirror, and `setup-python`'s download, which Phase 2 keeps
-      between runs. Not wrapped yet: `gate-breaking.yml` and
-      `teaching-pipeline.yml`, for the reason given in Phase 2.
+      between runs. Not wrapped then: `gate-breaking.yml` and
+      `teaching-pipeline.yml`, which Phase 8 did.
 
 - [x] Retry inside the step, not by re-running the job, so a real failure
       is not run twice and reported late. Only for a failure to reach
@@ -230,8 +181,8 @@ dependencies and not by slowing the queue down.
       do not mention the case. The fix those projects used is a GitHub
       App, or a personal token, for that one call.
 
-      So the fallback is what is built here, and the App is left as a
-      step of its own below. Nothing in this repository holds a token of
+      So the fallback is what is built here, and the App is left to
+      Phase 12. Nothing in this repository holds a token of
       that kind today.
 
 - [x] Tell an infrastructure failure from a code failure. A job that
@@ -259,21 +210,6 @@ dependencies and not by slowing the queue down.
       or some of each. This is Phase 5 as well, done here because it is
       the same message.
 
-- [ ] Put a pull request back in the queue when it was removed for an
-      infrastructure failure. A workflow on the queue's removal event,
-      which reads why, re-queues once, and says so on the pull request.
-      Once only: a second removal is left for a person.
-
-      The queue's rule that every entry must be green stays. It is what
-      stops broken code reaching `main`. This only stops a 504 being
-      counted as broken code.
-
-      Waits on two things. A GitHub App installed on this repository,
-      allowed to write pull requests and nothing else, for the reason
-      above: Mark has to create it. And a week or two of the Slack
-      messages, to see that "outside the code" is right every time
-      before anything acts on it unattended.
-
 ## Phase 5: Alert on infrastructure failures
 
 - [x] Post to Slack, through `slack-notify.yml`, when a job fails for a
@@ -293,18 +229,108 @@ dependencies and not by slowing the queue down.
       concurrent job limit. Written from the workflows once Phases 1 to 4
       are done, so it describes what is true.
 
-      `docs/docs/cicd/outside-services.md`. Written before the three phases after it, since it describes what
-      Phases 1 to 4 built and those add no new service. It gives how each service has failed and not a
-      number for its limit: Amazon's allowance for pulls with no account
-      and the account's job limit were not looked up, and a guessed
-      number is worse than none.
+      `docs/docs/cicd/outside-services.md`. Written before the phases
+      that change the heavy tier, since it describes what Phases 1 to 4
+      built and those add no new service. It gives how each service has
+      failed and not a number for its limit: Amazon's allowance for
+      pulls with no account and the account's job limit were not looked
+      up, and a guessed number is worse than none.
 
       The proof Phase 2 was waiting for came the same day. On 12 October
       the migration drift check, run a second time on #1875, logged
       "Cache hit" for the installed Python, set it up with no download,
       and passed.
 
-## Phase 7: Build each image once and reuse it
+## Phase 7: Pin every image and hand the pins to Renovate
+
+- [x] Pin the last image named by tag, and drop the mirror's weekly run.
+      Postgres in `compose.ci.yml` was `postgres:18-alpine` with no
+      digest, and a tag moves when a patch is released, so
+      `mirror-images.yml` copied everything again each Monday to keep
+      up. It is now pinned to the digest `compose.dev.yml` uses. With
+      every image pinned, none changes outside a pull request, that pull
+      request makes the copy, and the schedule is gone. Mark's decision,
+      12 October.
+
+      `check-mirrored-images.sh` now refuses an image named by tag alone,
+      in the compose file or a Dockerfile's `_IMAGE` argument, so the
+      schedule cannot become needed again without a check failing.
+
+- [x] Check that Renovate can see every pin. Pinning hands the job of
+      keeping an image patched to Renovate, and a pin Renovate cannot
+      see never moves, with nothing failing. Renovate reads these
+      images through two forms it could lose: a compose image that is a
+      variable's default, and a base image named in an `ARG`.
+
+      `renovate-tracks-images.yml` runs Renovate over the checkout with
+      `--platform=local --dry-run=extract`, which writes a report and
+      changes nothing, and `check-renovate-tracks-images.sh` fails when
+      an image the mirror copies is not in it with its digest. Only on a
+      pull request that changes one of those files or `renovate.json`,
+      and never in the merge queue, because it pulls Renovate's image.
+
+      Run by hand on 12 October with Renovate 44.151.5: it found all six
+      images, in both forms. So the `ARG` form from Phase 1 is read,
+      which had not been seen until then.
+
+- [x] Move the one image still named directly in a workflow: the Postgres
+      service of the drift check, at `ci.yml` line 144. First written
+      as a step of Phase 1. Pull request #1842, open from another
+      worktree on 12 October, does this. Check whether it has merged
+      before doing it again.
+
+      Left to that pull request and not done twice. The check knew that
+      one image as a named exception, which failed once it matched
+      nothing. #1842 merged that afternoon, after a refused pull of that
+      very image had taken #1876 out of the merge queue. The exception
+      then failed on `main` as meant, and was removed with the whole
+      list: a workflow may now name no public image at all.
+
+## Phase 8: Bring the last two workflows onto the shared fixes
+
+- [x] Keep the installed Python, and retry the installs, in
+      `gate-breaking.yml` and `teaching-pipeline.yml`. Phases 2 and 3
+      left both out, because neither can use
+      `.github/actions/setup-python`: that action reads `.python-version`
+      from the workspace root, and these have the repository at `pr/`
+      and at `tooling/`. `gate-breaking.yml` runs on every pull request
+      marked ready, so it was the last place a 504 from GitHub's releases
+      could turn one red.
+
+      The two cache steps are written out in each, with the action's own
+      key, so `gate-breaking.yml` shares the copy the rest of CI keeps.
+      `teaching-pipeline.yml` runs in the content repositories and keeps
+      its copy in each of theirs. The `pip` and Poetry installs go
+      through `retry-once.sh`, read from `pr/` and `tooling/`; the
+      teaching pipeline's checkout of Quill now brings
+      `.github/scripts/shared` for it.
+
+      Three copies of the same steps can drift, so
+      `.github/scripts/ci/kept-python.bats` fails when any file that
+      sets up the exact Python does not restore the kept copy first,
+      under the one key.
+
+      The teaching pipeline is first run for real by the next pull
+      request in a content repository.
+
+## Phase 9: Measure it
+
+Not to implement now. Mark's decision, 12 October 2026: the causes of
+the failures are gone, so these wait until there is a reason.
+
+- [ ] Record, for each queue run: how long it waited, how long it ran,
+      whether it passed, and when it failed whether the cause was the code
+      or something outside. Use the infrastructure marker from Phase 4.
+
+- [ ] Show it somewhere that gets looked at. The aim is to see the next
+      limit coming. GitHub also limits how many jobs an account runs at
+      once; reaching that makes jobs wait, not fail, and this is what
+      would show it.
+
+## Phase 10: Build each image once and reuse it
+
+Not to implement now. Mark's decision, 12 October 2026: the causes of
+the failures are gone, so these wait until there is a reason.
 
 - [ ] Share one built backend image and one frontend image across every
       job that needs them for a commit. The end-to-end job and the
@@ -316,7 +342,10 @@ dependencies and not by slowing the queue down.
       tested, look at whether it can promote that image and not build
       again. Only if what is deployed stays exactly what was tested.
 
-## Phase 8: Skip what a change cannot affect
+## Phase 11: Skip what a change cannot affect
+
+Not to implement now. Mark's decision, 12 October 2026: the causes of
+the failures are gone, so these wait until there is a reason.
 
 - [ ] Let a pull request that touches only documentation, or only
       `infra/`, skip the frontend and backend heavy tiers. The required
@@ -327,16 +356,26 @@ dependencies and not by slowing the queue down.
       up. `shared/` reaches both sides, and a workflow file reaches
       everything.
 
-## Phase 9: Measure it
+## Phase 12: Put a removed pull request back in the queue
 
-- [ ] Record, for each queue run: how long it waited, how long it ran,
-      whether it passed, and when it failed whether the cause was the code
-      or something outside. Use the infrastructure marker from Phase 4.
+Not to implement now. Mark's decision, 12 October 2026: the causes of
+the failures are gone, so these wait until there is a reason.
 
-- [ ] Show it somewhere that gets looked at. The aim is to see the next
-      limit coming. GitHub also limits how many jobs an account runs at
-      once; reaching that makes jobs wait, not fail, and this is what
-      would show it.
+- [ ] Put a pull request back in the queue when it was removed for an
+      infrastructure failure. A workflow on the queue's removal event,
+      which reads why, re-queues once, and says so on the pull request.
+      Once only: a second removal is left for a person.
+
+      The queue's rule that every entry must be green stays. It is what
+      stops broken code reaching `main`. This only stops a 504 being
+      counted as broken code.
+
+      First written as a step of Phase 4. Waits on two things. A
+      GitHub App installed on this repository, allowed to write pull
+      requests and nothing else, for the reason given there: Mark has
+      to create it. And a week or two of the Slack messages, to see
+      that "outside the code" is right every time before anything acts
+      on it unattended.
 
 ## Decisions
 
@@ -356,10 +395,16 @@ dependencies and not by slowing the queue down.
   Putting it under an open stack would rebuild every branch above, which
   is the load that tripped the limits.
 
-- **Phases 7 to 9 wait for the first six to merge** - decided on 12
-  October, during the build. Building each image once, skipping by path
-  and measuring all change the heavy tier, and the heavy tier has not
-  yet run on any pull request of this stack, because they are drafts.
-  Building more on top of changes nothing has tested would hide which
-  one broke. The phases were also reordered then: the alert and the page
-  of limits were built before these three, so they now come first.
+- **The order is the order built** - Phases 1 to 8 were built in that
+  order on 12 October. Three steps moved when the phases were reordered:
+  pinning Postgres, the Renovate check and the drift check's Postgres
+  were first steps of Phase 1 and are now Phase 7, and the two workflows
+  left out of Phase 2 are Phase 8.
+
+- **Phases 9 to 12 are not to implement now** - measuring, building each
+  image once, skipping by path, and putting a pull request back in the
+  queue. Mark's decision on 12 October, once Phases 1 to 8 had removed
+  the failures. Measuring is first of the four because it is what would
+  say whether the others are worth building. Re-queueing also needs a
+  GitHub App that only Mark can create, and is only worth it if
+  re-queueing by hand turns out to be common.

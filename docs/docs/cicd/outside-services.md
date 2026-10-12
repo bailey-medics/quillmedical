@@ -62,6 +62,9 @@ It was written from `.github/workflows/ci.yml`,
   2026, and once for `actionlint` the same day.
 - **Cover** - for Python, a copy: the shared action keeps the installed
   Python in GitHub's cache, and a run that finds it downloads nothing.
+  `gate-breaking.yml` and `teaching-pipeline.yml` cannot use that action
+  and carry the same steps written out; `kept-python.bats` holds the
+  three to one key.
   The first run on a new runner image or a new Python version still
   downloads. For the tools, `curl --retry 1`.
 
@@ -110,9 +113,6 @@ It was written from `.github/workflows/ci.yml`,
 - **Putting a pull request back in the queue.** The Slack message says to
   do it by hand. A workflow cannot do it usefully with its own token: the
   entry gets no checks run and waits for ever.
-- **`gate-breaking.yml` and `teaching-pipeline.yml`.** Neither has this
-  repository at its workspace root, so neither uses the kept Python or
-  `retry-once.sh` yet.
 
 ## Who moves the pins
 
