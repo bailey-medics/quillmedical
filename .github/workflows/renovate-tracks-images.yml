@@ -1,0 +1,79 @@
+# Check that Renovate can still see every pinned image the mirror copies.
+#
+# Every image CI pulls is pinned to a digest, so it changes only when
+# Renovate opens a pull request to move the pin. If Renovate loses sight
+# of one, nothing fails: the pin stays where it is and the image goes
+# without its patches. This asks Renovate what it can see, and fails when
+# an image is missing from the answer.
+#
+# Renovate is run over the checkout with `--platform=local` and
+# `--dry-run=extract`. It reads the files, writes a report of every
+# dependency it found, looks nothing up and changes nothing. No token is
+# given to it.
+#
+# Only on a pull request that could make Renovate lose an image: one that
+# changes how an image is written, or how Renovate is set up. Not in the
+# merge queue. It pulls Renovate's own image, which is an outside fetch,
+# and a fetch that fails here costs a re-run of one job and never a place
+# in the queue.
+name: Renovate tracks images
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "compose.ci.yml"
+      - "backend/Dockerfile"
+      - "backend/Dockerfile.caption"
+      - "frontend/Dockerfile"
+      - "renovate.json"
+      - ".github/workflows/renovate-tracks-images.yml"
+      - ".github/scripts/ci/check-renovate-tracks-images.sh"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate-tracks-images-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Renovate's own image, from GitHub's registry. Pinned like every other
+  # image, and bumped by hand: the report's layout belongs to this version.
+  RENOVATE_IMAGE: ghcr.io/renovatebot/renovate:44.151.5@sha256:ba29c7cb9875a20495e4ef098b865039a037f09a24f7e2b89cdc9eb906c9e76f
+
+jobs:
+  check:
+    name: Renovate tracks the pinned images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Pull Renovate
+        run: bash .github/scripts/shared/retry-once.sh docker pull "$RENOVATE_IMAGE"
+
+      # The report goes to a folder of its own, open to the user Renovate
+      # runs as in its container, and outside the checkout so Renovate does
+      # not read it back as one of the repository's files.
+      - name: Ask Renovate what it can see
+        env:
+          REPORT_DIR: ${{ runner.temp }}/renovate-report
+        run: |
+          mkdir -p "$REPORT_DIR"
+          chmod 777 "$REPORT_DIR"
+
+          docker run --rm \
+            --volume "${GITHUB_WORKSPACE}:/repo" \
+            --volume "${REPORT_DIR}:/report" \
+            --workdir /repo \
+            --env LOG_LEVEL=warn \
+            "$RENOVATE_IMAGE" \
+            renovate --platform=local --dry-run=extract \
+              --report-type=file --report-path=/report/report.json
+
+      - name: Check every mirrored image is tracked
+        run: |
+          bash .github/scripts/ci/check-renovate-tracks-images.sh \
+            "${{ runner.temp }}/renovate-report/report.json" compose.ci.yml \
+            backend/Dockerfile backend/Dockerfile.caption frontend/Dockerfile
