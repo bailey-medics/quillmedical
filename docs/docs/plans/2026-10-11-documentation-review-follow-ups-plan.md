@@ -300,7 +300,7 @@ ahead of Phases 1 to 11, which are untouched.
 
 ## Phase 14: Remind somebody who is enrolled and has not started
 
-- [ ] Add two optional keys to `module.yaml`, in `ModuleYaml` in
+- [x] Add two optional keys to `module.yaml`, in `ModuleYaml` in
       `backend/app/features/teaching/tooling/module_schema.py`:
       `enrolmentReminderEveryDays` and `enrolmentReminderCount`, both whole
       numbers above zero. Mark's decision on 11 October: how often and how
@@ -310,8 +310,16 @@ ahead of Phases 1 to 11, which are untouched.
       sends no reminders, so a module that has not asked for them is left
       alone; one key without the other is a validation error.
 
-- [ ] Carry both through sync to wherever `renewalMonths` already goes,
-      so the backend reads them from the database and not from a file.
+- [x] Copy both, and `renewalMonths`, onto the module's
+      `question_bank_configs` row at sync, as three nullable integer
+      columns. Found while building: `renewalMonths` goes nowhere today.
+      The route that shows it reads `module.yaml` from the content bucket
+      on each request. The reminders run in the admin job, which has no
+      access to that bucket and is not given the bucket's name, so the
+      database is the only place it can read them. The title and cover
+      image are already copied to the same row at sync, the same way. A
+      change to `module.yaml` alone, with no new version of the questions,
+      still reaches the row.
 
 - [ ] Send a reminder to anybody enrolled on a module who has no completed
       attempt at it, passed or failed: an `Assessment` row with

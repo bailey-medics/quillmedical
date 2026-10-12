@@ -16,7 +16,9 @@ from app.features.teaching.models import (
     QuestionBankSync,
 )
 from app.features.teaching.sync import (
+    ModuleSchedule,
     _load_module_metadata,
+    _load_module_schedule,
     _load_module_status,
     sync_question_bank,
 )
@@ -745,3 +747,190 @@ class TestSyncServesTheNewestVersion:
         assert (
             db_session.execute(select(QuestionBankOrgStatus)).first() is None
         )
+
+
+class TestModuleScheduleReachesTheConfig:
+    """The timings in module.yaml are copied onto the config row at sync.
+
+    The jobs that send reminders run where the content bucket cannot be
+    read, so the database is the only place they can find these.
+    """
+
+    @staticmethod
+    def _config(db_session: Session) -> QuestionBankConfig:
+        return db_session.execute(
+            select(QuestionBankConfig).where(
+                QuestionBankConfig.question_bank_id == "test-bank"
+            )
+        ).scalar_one()
+
+    @staticmethod
+    def _write_module(tmp_path: Path, extra: str) -> None:
+        (tmp_path / "module.yaml").write_text(
+            "moduleId: test-bank\ntitle: A module\norder: 1\nstatus: live\n"
+            + extra
+        )
+
+    def test_all_three_are_copied(
+        self, db_session, organisation, admin_user, tmp_path: Path
+    ) -> None:
+        bank = _make_bank(tmp_path)
+        self._write_module(
+            tmp_path,
+            "renewalMonths: 36\n"
+            "enrolmentReminderEveryDays: 7\n"
+            "enrolmentReminderCount: 6\n",
+        )
+
+        sync_question_bank(
+            bank,
+            org_unit_id=organisation.id,
+            user_id=admin_user.id,
+            db=db_session,
+        )
+
+        config = self._config(db_session)
+        assert config.renewal_months == 36
+        assert config.enrolment_reminder_every_days == 7
+        assert config.enrolment_reminder_count == 6
+
+    def test_a_module_that_sets_none_leaves_them_empty(
+        self, db_session, organisation, admin_user, tmp_path: Path
+    ) -> None:
+        bank = _make_bank(tmp_path)
+        self._write_module(tmp_path, "")
+
+        sync_question_bank(
+            bank,
+            org_unit_id=organisation.id,
+            user_id=admin_user.id,
+            db=db_session,
+        )
+
+        config = self._config(db_session)
+        assert config.renewal_months is None
+        assert config.enrolment_reminder_every_days is None
+        assert config.enrolment_reminder_count is None
+
+    def test_no_module_yaml_at_all_leaves_them_empty(
+        self, db_session, organisation, admin_user, tmp_path: Path
+    ) -> None:
+        bank = _make_bank(tmp_path)
+
+        sync_question_bank(
+            bank,
+            org_unit_id=organisation.id,
+            user_id=admin_user.id,
+            db=db_session,
+        )
+
+        assert self._config(db_session).enrolment_reminder_count is None
+
+    def test_a_change_with_no_new_version_still_reaches_the_row(
+        self, db_session, organisation, admin_user, tmp_path: Path
+    ) -> None:
+        """Turning reminders on is an edit to module.yaml alone. It must
+        not wait for the next change to the questions."""
+        bank = _make_bank(tmp_path)
+        self._write_module(tmp_path, "")
+        sync_question_bank(
+            bank,
+            org_unit_id=organisation.id,
+            user_id=admin_user.id,
+            db=db_session,
+        )
+
+        self._write_module(
+            tmp_path,
+            "enrolmentReminderEveryDays: 7\nenrolmentReminderCount: 6\n",
+        )
+        sync_question_bank(
+            bank,
+            org_unit_id=organisation.id,
+            user_id=admin_user.id,
+            db=db_session,
+        )
+
+        config = self._config(db_session)
+        assert config.enrolment_reminder_every_days == 7
+        assert config.enrolment_reminder_count == 6
+
+    def test_taking_the_settings_out_clears_the_row(
+        self, db_session, organisation, admin_user, tmp_path: Path
+    ) -> None:
+        bank = _make_bank(tmp_path)
+        self._write_module(
+            tmp_path,
+            "enrolmentReminderEveryDays: 7\nenrolmentReminderCount: 6\n",
+        )
+        sync_question_bank(
+            bank,
+            org_unit_id=organisation.id,
+            user_id=admin_user.id,
+            db=db_session,
+        )
+
+        self._write_module(tmp_path, "")
+        sync_question_bank(
+            bank,
+            org_unit_id=organisation.id,
+            user_id=admin_user.id,
+            db=db_session,
+        )
+
+        assert self._config(db_session).enrolment_reminder_every_days is None
+
+
+class TestLoadModuleSchedule:
+    """Reading the timings defensively: a sync never fails over one."""
+
+    BASE = "moduleId: test-bank\ntitle: A module\norder: 1\nstatus: live\n"
+
+    @staticmethod
+    def _schedule(tmp_path: Path, text: str) -> ModuleSchedule:
+        bank = tmp_path / "bank"
+        bank.mkdir()
+        (tmp_path / "module.yaml").write_text(text)
+
+        return _load_module_schedule(bank)
+
+    def test_reads_what_the_schema_accepts(self, tmp_path: Path) -> None:
+        schedule = self._schedule(
+            tmp_path,
+            self.BASE
+            + "renewalMonths: 36\n"
+            + "enrolmentReminderEveryDays: 7\n"
+            + "enrolmentReminderCount: 6\n",
+        )
+
+        assert schedule == ModuleSchedule(
+            renewal_months=36,
+            enrolment_reminder_every_days=7,
+            enrolment_reminder_count=6,
+        )
+
+    @pytest.mark.parametrize(
+        "extra",
+        [
+            "enrolmentReminderEveryDays: 7\n",
+            "renewalMonths: 0\n",
+            "renewalMonths: true\n",
+            "enrolmentReminderEveryDays: 1.5\nenrolmentReminderCount: 6\n",
+        ],
+    )
+    def test_a_file_the_schema_refuses_gives_nothing(
+        self, tmp_path: Path, extra: str
+    ) -> None:
+        """Half a pair of settings, a zero, a boolean, a fraction: the
+        validator refuses each, and so nothing is taken from the file."""
+        assert self._schedule(tmp_path, self.BASE + extra) == ModuleSchedule()
+
+    def test_a_file_that_is_not_yaml_gives_nothing(
+        self, tmp_path: Path
+    ) -> None:
+        assert self._schedule(tmp_path, "a: [unclosed") == ModuleSchedule()
+
+    def test_a_file_that_is_not_a_mapping_gives_nothing(
+        self, tmp_path: Path
+    ) -> None:
+        assert self._schedule(tmp_path, "- a\n- b\n") == ModuleSchedule()
