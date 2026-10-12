@@ -164,7 +164,7 @@ dependencies and not by slowing the queue down.
 
       A second try writes a warning onto the run's summary, so a run
       that needed one does not look like a run where nothing happened.
-      That warning is also the first measure Phase 7 can count.
+      That warning is also the first thing Phase 9 can count.
 
       Not wrapped, because a step cannot be: the base image pulls
       inside `docker/build-push-action`, which Phase 1 moved to the
@@ -224,7 +224,7 @@ dependencies and not by slowing the queue down.
       at the foot of `ci.yml` run in the merge queue when any job
       failed, and post one of three messages: removed by a fault outside
       the code, so add it to the queue again; removed by a failed check;
-      or some of each. This is Phase 8 as well, done here because it is
+      or some of each. This is Phase 5 as well, done here because it is
       the same message.
 
 - [ ] Put a pull request back in the queue when it was removed for an
@@ -242,7 +242,37 @@ dependencies and not by slowing the queue down.
       messages, to see that "outside the code" is right every time
       before anything acts on it unattended.
 
-## Phase 5: Build each image once and reuse it
+## Phase 5: Alert on infrastructure failures
+
+- [x] Post to Slack, through `slack-notify.yml`, when a job fails for a
+      reason outside the code, naming the service that refused and the
+      pull requests affected. Today a queue failure is found by noticing
+      that pull requests have gone.
+
+      Done in Phase 4, for the merge queue. It names the pull request
+      whose run failed. Those stacked on it are removed with it and get
+      no message of their own, since their runs are stopped, not failed.
+
+## Phase 6: Write the limits down
+
+- [x] Add a page to `docs/docs/cicd/` listing every outside service CI
+      depends on, the limit it has, and what covers it: the registries,
+      GitHub's tool downloads, the package indexes, the account's
+      concurrent job limit. Written from the workflows once Phases 1 to 4
+      are done, so it describes what is true.
+
+      `docs/docs/cicd/outside-services.md`. Written before the three phases after it, since it describes what
+      Phases 1 to 4 built and those add no new service. It gives how each service has failed and not a
+      number for its limit: Amazon's allowance for pulls with no account
+      and the account's job limit were not looked up, and a guessed
+      number is worse than none.
+
+      The proof Phase 2 was waiting for came the same day. On 12 October
+      the migration drift check, run a second time on #1875, logged
+      "Cache hit" for the installed Python, set it up with no download,
+      and passed.
+
+## Phase 7: Build each image once and reuse it
 
 - [ ] Share one built backend image and one frontend image across every
       job that needs them for a commit. The end-to-end job and the
@@ -254,7 +284,7 @@ dependencies and not by slowing the queue down.
       tested, look at whether it can promote that image and not build
       again. Only if what is deployed stays exactly what was tested.
 
-## Phase 6: Skip what a change cannot affect
+## Phase 8: Skip what a change cannot affect
 
 - [ ] Let a pull request that touches only documentation, or only
       `infra/`, skip the frontend and backend heavy tiers. The required
@@ -265,7 +295,7 @@ dependencies and not by slowing the queue down.
       up. `shared/` reaches both sides, and a workflow file reaches
       everything.
 
-## Phase 7: Measure it
+## Phase 9: Measure it
 
 - [ ] Record, for each queue run: how long it waited, how long it ran,
       whether it passed, and when it failed whether the cause was the code
@@ -276,25 +306,6 @@ dependencies and not by slowing the queue down.
       once; reaching that makes jobs wait, not fail, and this is what
       would show it.
 
-## Phase 8: Alert on infrastructure failures
-
-- [x] Post to Slack, through `slack-notify.yml`, when a job fails for a
-      reason outside the code, naming the service that refused and the
-      pull requests affected. Today a queue failure is found by noticing
-      that pull requests have gone.
-
-      Done in Phase 4, for the merge queue. It names the pull request
-      whose run failed. Those stacked on it are removed with it and get
-      no message of their own, since their runs are stopped, not failed.
-
-## Phase 9: Write the limits down
-
-- [ ] Add a page to `docs/docs/cicd/` listing every outside service CI
-      depends on, the limit it has, and what covers it: the registries,
-      GitHub's tool downloads, the package indexes, the account's
-      concurrent job limit. Written from the workflows once Phases 1 to 4
-      are done, so it describes what is true.
-
 ## Decisions
 
 - **No cap on how much the queue builds at once** - lowering it was
@@ -304,11 +315,19 @@ dependencies and not by slowing the queue down.
   a cap to protect.
 
 - **Phases 1 to 4 first** - they remove the failures of 10 and 12
-  October. Phases 5 to 9 are what keep it steady as more people join, and
-  can follow at leisure.
+  October. The rest keep it steady as more people join, and can follow
+  at leisure.
 
 - **A standalone pull request off `main`, not the bottom of a stack** -
   the queue tests each entry merged with current `main`, so once a fix is
   on `main` every later run has it, wherever that pull request sat.
   Putting it under an open stack would rebuild every branch above, which
   is the load that tripped the limits.
+
+- **Phases 7 to 9 wait for the first six to merge** - decided on 12
+  October, during the build. Building each image once, skipping by path
+  and measuring all change the heavy tier, and the heavy tier has not
+  yet run on any pull request of this stack, because they are drafts.
+  Building more on top of changes nothing has tested would hide which
+  one broke. The phases were also reordered then: the alert and the page
+  of limits were built before these three, so they now come first.

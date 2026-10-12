@@ -92,6 +92,7 @@ nav:
   - CI/CD:
       - Pipeline overview: cicd/index.md
       - Stacked branches: cicd/stacked-branches.md
+      - Outside services: cicd/outside-services.md
   - Cybersecurity:
       - Overview: cybersecurity/index.md
   - Dependencies:
