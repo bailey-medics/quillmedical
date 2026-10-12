@@ -656,6 +656,73 @@ def finish_attempt(db: Session, assessment: Assessment) -> AttemptFinished:
     )
 
 
+#: How long after its time an attempt is left for its own page to
+#: finish. The page finishes an attempt the moment its clock runs out,
+#: and that route is the one that writes to the learner about a pass.
+#: A sweep that got there first would mark the attempt and send
+#: nothing. Five minutes is far longer than the page takes.
+LEFT_FOR_ITS_OWN_PAGE = timedelta(minutes=5)
+
+
+def finish_attempts_out_of_time(db: Session) -> list[Assessment]:
+    """Mark every attempt whose time ran out and that nobody finished.
+
+    A closed tab, a flat battery or a lost connection cannot be made to
+    finish an attempt, so it is finished here, the next time anything
+    reads attempts. No timer and no background job: an attempt nobody
+    looks at is in nobody's way.
+
+    Marked as ``finish_attempt`` marks it, on the answers given while
+    there was time, with the questions left counting as unanswered. It
+    is recorded as finished when its time ran out, not when somebody
+    happened to look.
+
+    Left alone:
+
+    - an attempt with no time limit, which stays open until its learner
+      finishes it;
+    - an attempt less than ``LEFT_FOR_ITS_OWN_PAGE`` past its time;
+    - an attempt whose bank version is no longer held, which cannot be
+      marked. It is skipped, so that one such attempt does not fail the
+      page of whoever was reading.
+
+    Nobody is written to. A pass found this way has its certificate on
+    the result page, and the emails about a pass are the finishing
+    route's, where the learner is there to be told.
+
+    The rows are flushed, not committed.
+
+    Returns:
+        The attempts finished by this call.
+    """
+    now = datetime.now(UTC)
+    still_open = db.scalars(
+        select(Assessment).where(
+            Assessment.completed_at.is_(None),
+            Assessment.time_limit_minutes > 0,
+        )
+    ).all()
+    finished: list[Assessment] = []
+
+    for assessment in still_open:
+        deadline = _deadline(assessment)
+
+        if now <= deadline + LEFT_FOR_ITS_OWN_PAGE:
+            continue
+
+        try:
+            finish_attempt(db, assessment)
+        except AssessmentConfigNotFound:
+            continue
+        assessment.completed_at = deadline
+        finished.append(assessment)
+
+    if finished:
+        db.flush()
+
+    return finished
+
+
 def _require_answered_already(
     db: Session, assessment: Assessment, answer_id: int
 ) -> None:
@@ -704,14 +771,22 @@ def _now_within_time(assessment: Assessment) -> datetime:
     """
     # Time limit check
     now = datetime.now(UTC)
-    deadline = assessment.started_at.replace(tzinfo=UTC) + timedelta(
-        minutes=assessment.time_limit_minutes
-    )
 
-    if now > deadline:
+    if now > _deadline(assessment):
         raise TimeLimitExceeded()
 
     return now
+
+
+def _deadline(assessment: Assessment) -> datetime:
+    """The last moment an attempt takes an answer.
+
+    When it was started, read as UTC whatever zone it came back from
+    the database with, and as many minutes on as its bank allowed.
+    """
+    return assessment.started_at.replace(tzinfo=UTC) + timedelta(
+        minutes=assessment.time_limit_minutes
+    )
 
 
 def _store_answer(

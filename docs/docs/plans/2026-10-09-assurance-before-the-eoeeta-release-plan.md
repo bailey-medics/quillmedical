@@ -931,7 +931,7 @@ teaching router" to merge. The frontend halves do not wait.
       given while it is in flight; if it fails the delegate is told,
       and "View results" tries again.
 
-- [ ] Finish an exam nobody came back to. A closed tab, a flat battery
+- [x] Finish an exam nobody came back to. A closed tab, a flat battery
       or a lost connection cannot be made to call anything. Backend
       half, after the thin routes work: an attempt past its time limit
       counts as finished. The simplest form is to finish it the next
@@ -939,6 +939,31 @@ teaching router" to merge. The frontend halves do not wait.
       lead's view of results, so no timer or background job is needed.
       An attempt with no time limit stays open until its delegate
       finishes it.
+      Done on 12 October 2026: `finish_attempts_out_of_time` in
+      `backend/app/features/teaching/attempts.py`, called by the four
+      routes that list or show attempts: a delegate's own history and
+      result, and a lead's results and delegates pages. Decided on the
+      way:
+
+      - **It is dated when its time ran out**, not when somebody
+        happened to look, and marked on the answers given by then.
+      - **It waits five minutes past the time.** The page finishes an
+        attempt itself as the clock runs out, and that route is the
+        one that emails about a pass. A sweep that got there first
+        would mark it and send nothing.
+      - **Nobody is emailed by the sweep.** It runs while somebody
+        else's page loads, which is no place to send from. A pass
+        found this way still has its certificate on the result page.
+        If the lead and the delegate should be told, that wants a
+        step of its own.
+      - **An attempt whose bank version is gone is skipped**, so one
+        that cannot be marked does not fail the reader's page.
+      - **"No time limit" means a limit of 0**, and such an attempt
+        already takes no answer at all, from the moment it starts.
+        That is how the code stood, and a test pins it. So there is
+        no untimed exam to leave open in practice: the question of
+        whether one should close itself does not arise until a bank
+        can truly be untimed.
 
 - [ ] Stop a reload from starting a second attempt. Where a question
       bank has no intro page, the page starts the attempt as it opens

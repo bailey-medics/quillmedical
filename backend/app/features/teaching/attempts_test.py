@@ -16,6 +16,7 @@ from app.features.teaching.attempts import (
     begin_attempt,
     change_answer,
     finish_attempt,
+    finish_attempts_out_of_time,
     item_at_position,
     next_unanswered_item,
     record_answer,
@@ -1278,6 +1279,138 @@ def test_what_stops_an_answer_is_said_in_a_fixed_order(
 
     with pytest.raises(AssessmentAlreadyCompleted):
         record_answer(db_session, assessment, RIGHT)
+
+
+# --- finish_attempts_out_of_time --------------------------------------------
+
+
+def _long_past_its_time(db: Session, assessment: Assessment) -> datetime:
+    """Start an attempt two days ago, and say when its time ran out."""
+    assessment.started_at = datetime.now(UTC) - timedelta(days=2)
+    db.flush()
+
+    return assessment.started_at.replace(tzinfo=UTC) + timedelta(
+        minutes=assessment.time_limit_minutes
+    )
+
+
+def test_an_attempt_nobody_came_back_to_is_finished(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    record_answer(db_session, assessment, RIGHT)
+    ran_out = _long_past_its_time(db_session, assessment)
+
+    finished = finish_attempts_out_of_time(db_session)
+
+    assert finished == [assessment]
+    assert assessment.completed_at is not None
+    assert assessment.completed_at.replace(tzinfo=UTC) == ran_out
+    assert assessment.is_passed is not None
+    assert assessment.score_breakdown is not None
+
+
+def test_it_is_marked_on_the_answers_given_and_no_others(
+    db_session: Session,
+) -> None:
+    """The same mark the learner would have had by finishing it."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    swept = _sitting(db_session, org, learner)
+    record_answer(db_session, swept, RIGHT)
+    _long_past_its_time(db_session, swept)
+
+    finish_attempts_out_of_time(db_session)
+    first, second, third = _rows(db_session, swept)
+
+    assert first.selected_option == RIGHT
+    assert second.selected_option is None
+    assert third.selected_option is None
+
+
+def test_an_attempt_still_inside_its_time_is_left_open(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+
+    assert finish_attempts_out_of_time(db_session) == []
+    assert assessment.completed_at is None
+
+
+def test_an_attempt_just_out_of_time_is_left_for_its_own_page(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The page finishes it as the clock runs out, and that route is
+    the one that writes to the learner. So the sweep waits."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    ran_out = assessment.started_at.replace(tzinfo=UTC) + timedelta(
+        minutes=assessment.time_limit_minutes
+    )
+
+    _stop_the_clock(monkeypatch, ran_out + attempts.LEFT_FOR_ITS_OWN_PAGE)
+    at_the_last_moment = finish_attempts_out_of_time(db_session)
+    _stop_the_clock(
+        monkeypatch,
+        ran_out + attempts.LEFT_FOR_ITS_OWN_PAGE + timedelta(seconds=1),
+    )
+    a_second_later = finish_attempts_out_of_time(db_session)
+
+    assert at_the_last_moment == []
+    assert a_second_later == [assessment]
+
+
+def test_an_attempt_with_no_time_limit_is_left_open(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, minutes=0)
+    assessment.started_at = datetime.now(UTC) - timedelta(days=2)
+    db_session.flush()
+
+    assert finish_attempts_out_of_time(db_session) == []
+    assert assessment.completed_at is None
+
+
+def test_an_attempt_already_finished_is_not_marked_again(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    _long_past_its_time(db_session, assessment)
+    finish_attempts_out_of_time(db_session)
+    first_time = assessment.completed_at
+
+    assert finish_attempts_out_of_time(db_session) == []
+    assert assessment.completed_at == first_time
+
+
+def test_an_attempt_whose_bank_has_gone_is_skipped_and_the_rest_finished(
+    db_session: Session,
+) -> None:
+    """One attempt that cannot be marked must not fail the page of
+    whoever was reading, nor stop the others being finished."""
+    org = _organisation(db_session)
+    elsewhere = _organisation(db_session, "Elsewhere")
+    stranded = _attempt(
+        db_session, elsewhere, _person(db_session, "other"), synced=False
+    )
+    stranded.time_limit_minutes = 30
+    _long_past_its_time(db_session, stranded)
+    markable = _sitting(db_session, org, _person(db_session))
+    _long_past_its_time(db_session, markable)
+
+    finished = finish_attempts_out_of_time(db_session)
+
+    assert finished == [markable]
+    assert stranded.completed_at is None
 
 
 # --- record_answer, with the question named ---------------------------------

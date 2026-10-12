@@ -56,6 +56,7 @@ from app.features.teaching.attempts import (
     begin_attempt,
     change_answer,
     finish_attempt,
+    finish_attempts_out_of_time,
     item_at_position,
     next_unanswered_item,
     record_answer,
@@ -654,6 +655,8 @@ def assessment_history(
     db: Session = _DEP_SESSION,
 ) -> list[AssessmentHistoryOut]:
     """List the current user's past assessments."""
+    finish_attempts_out_of_time(db)
+
     rows = db.execute(
         select(Assessment, QuestionBankConfig.title)
         .outerjoin(
@@ -704,6 +707,8 @@ def get_assessment(
     competency: somebody keeping their results after losing their way
     into modules would see a result with no title and no certificate.
     """
+    finish_attempts_out_of_time(db)
+
     assessment = db.get(Assessment, assessment_id)
 
     if not assessment or assessment.user_id != user.id:
@@ -1422,6 +1427,8 @@ def list_results(
     db: Session = _DEP_SESSION,
 ) -> list[Assessment]:
     """List all assessment results for the educator's org."""
+    finish_attempts_out_of_time(db)
+
     org_id = _get_user_org_id(user, db)
     stmt = select(Assessment).where(
         Assessment.org_unit_id == org_id,
@@ -1783,6 +1790,8 @@ def list_delegates(
     Who is listed is ``delegates_in_view``; what is said of each is
     ``delegate_rows``.
     """
+    finish_attempts_out_of_time(db)
+
     view = delegates_in_view(db, user, one_module=bank_id is not None)
 
     return delegate_rows(db, view, bank_id=bank_id)

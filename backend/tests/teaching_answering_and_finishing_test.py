@@ -877,3 +877,91 @@ def test_a_bank_with_no_pass_criteria_passes_an_attempt_nobody_answered(
     assert stored.is_passed is True
     assert stored.exam_ref is None
     assert sent == []
+
+
+# --- An attempt nobody came back to -----------------------------------------
+
+
+def _abandon(db: Session, assessment_id: int) -> None:
+    """Start an attempt two days ago and leave it unfinished."""
+    late = _stored(db, assessment_id)
+    late.started_at = datetime.now(UTC) - timedelta(days=2)
+    db.commit()
+
+
+def test_an_abandoned_attempt_is_finished_when_its_learner_next_looks(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    sent: list[str],
+) -> None:
+    """The tab was closed, so nothing finished it. Reading it does.
+
+    Finished as the answers stood when the time ran out, and dated
+    then. Nobody is written to: that is the finishing route's.
+    """
+    learner = _learner(db_session, trust)
+    mine = _attempt(db_session, trust, learner)
+    client, headers = _signed_in(test_client)
+    _send(client, headers, "answer", mine.id)
+    _abandon(db_session, mine.id)
+
+    resp = client.get(f"{ASSESSMENTS}/{mine.id}")
+
+    assert resp.status_code == 200
+    assert resp.json()["completed_at"] is not None
+    stored = _stored(db_session, mine.id)
+    assert stored.completed_at is not None
+    assert stored.completed_at.replace(
+        tzinfo=UTC
+    ) == stored.started_at.replace(tzinfo=UTC) + timedelta(
+        minutes=stored.time_limit_minutes
+    )
+    assert stored.is_passed is not None
+    assert sent == []
+
+
+def test_an_abandoned_attempt_shows_as_finished_in_their_history(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    learner = _learner(db_session, trust)
+    mine = _attempt(db_session, trust, learner)
+    client, _ = _signed_in(test_client)
+    _abandon(db_session, mine.id)
+
+    resp = client.get(f"{ASSESSMENTS}/history")
+
+    assert resp.status_code == 200
+    assert [row["completed_at"] is not None for row in resp.json()] == [True]
+
+
+def test_an_attempt_under_way_is_not_finished_by_being_read(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    learner = _learner(db_session, trust)
+    mine = _attempt(db_session, trust, learner)
+    client, _ = _signed_in(test_client)
+
+    resp = client.get(f"{ASSESSMENTS}/{mine.id}")
+
+    assert resp.status_code == 200
+    assert resp.json()["completed_at"] is None
+    assert _stored(db_session, mine.id).completed_at is None
+
+
+def test_an_abandoned_attempt_once_finished_takes_nothing_more(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    """Whatever the page then sends is answered as for any finished
+    attempt, which the page takes to mean the exam is over."""
+    learner = _learner(db_session, trust)
+    mine = _attempt(db_session, trust, learner)
+    client, headers = _signed_in(test_client)
+    _abandon(db_session, mine.id)
+    client.get(f"{ASSESSMENTS}/{mine.id}")
+
+    answered = _send(client, headers, "answer", mine.id)
+    finished = _send(client, headers, "complete", mine.id)
+
+    assert answered.status_code == 409
+    assert finished.status_code == 409
