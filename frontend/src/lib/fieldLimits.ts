@@ -19,3 +19,9 @@ export const MAX_EMAIL = 255;
 
 /** A password. Far longer than any passphrase. */
 export const MAX_PASSWORD = 128;
+
+/**
+ * A one-time code. Six digits, with room for the spaces some
+ * authenticator apps show between them.
+ */
+export const MAX_TOTP_CODE = 16;

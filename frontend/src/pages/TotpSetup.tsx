@@ -10,6 +10,7 @@ import { Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
 import TextField from "@/components/form/TextField";
+import { MAX_TOTP_CODE } from "@/lib/fieldLimits";
 import { BodyText } from "@/components/typography";
 import {
   Form,
@@ -42,6 +43,7 @@ function TotpVerifyFields() {
       <TextField
         label="6-digit code"
         placeholder="123456"
+        maxLength={MAX_TOTP_CODE}
         {...methods.register("code", {
           required: "Please enter the 6-digit code",
         })}

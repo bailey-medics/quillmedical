@@ -1,0 +1,4 @@
+generation: 1
+forces_reload: false
+change: "request-property-max-length-set PATCH /api/users/{user_id} the `name/anyOf[subschema #1]/` request property's maxLength was set to `255`"
+reason: "Admin update user name is capped. A full name is capped at 255 characters, the width of its column. The frontend's own inputs stop at the same number, and no real value is this long, so an open tab on an older build sends nothing that is now refused. The silent background update is enough. No forced reload."

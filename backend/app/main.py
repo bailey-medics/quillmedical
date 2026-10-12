@@ -35,7 +35,7 @@ from fastapi import (
     Response,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import select
@@ -124,6 +124,7 @@ from app.schemas.auth import (
     UpdateProfileIn,
     VerifyEmailIn,
 )
+from app.schemas.limits import MAX_TOTP_CODE
 from app.schemas.messaging import (
     AcceptInviteIn,
 )
@@ -1084,7 +1085,7 @@ class TotpVerifyIn(BaseModel):
 
     model_config = {"extra": "forbid"}
 
-    code: str
+    code: str = Field(max_length=MAX_TOTP_CODE)
 
 
 @router.post("/auth/totp/verify", response_model=DetailResponse)

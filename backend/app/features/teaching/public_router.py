@@ -14,7 +14,7 @@ from fastapi import (
     APIRouter,
     Request,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -28,6 +28,7 @@ from app.schemas.auth import (
     TeachingModulesOut,
     ValidateClinicalLeadOut,
 )
+from app.schemas.limits import MAX_EMAIL
 from app.users.register import (
     clinical_lead_site,
 )
@@ -102,7 +103,7 @@ def list_teaching_modules_public(
 class ValidateClinicalLeadIn(BaseModel):
     """Request body for clinical lead validation."""
 
-    email: str
+    email: str = Field(max_length=MAX_EMAIL)
     bank_id: str
 
     model_config = {"extra": "forbid"}
