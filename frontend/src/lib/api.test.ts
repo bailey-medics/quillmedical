@@ -6,7 +6,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "./api";
+import { api, UNAUTHENTICATED_EVENT } from "./api";
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                           */
@@ -180,12 +180,13 @@ describe("api.request", () => {
     window.removeEventListener("app:api-success", handler);
   });
 
-  describe("the redirect to login on a 401", () => {
+  describe("a 401 that the silent refresh does not fix", () => {
     /**
      * Stubs the navigation and reports where it was sent.
      *
-     * `window.location.assign` is what the handler calls, and jsdom
-     * refuses to navigate for real, so it is replaced outright.
+     * The client used to call `window.location.assign` here. jsdom
+     * refuses to navigate for real, so it is replaced outright, and the
+     * tests below check it is never called.
      */
     function watchNavigation(path: string): { to: string | null } {
       const seen: { to: string | null } = { to: null };
@@ -201,12 +202,47 @@ describe("api.request", () => {
       return seen;
     }
 
-    it("leaves an invited assessor on the accept page", async () => {
-      // The page is opened by somebody with no account: the signed
-      // token in the URL is what authenticates them. AuthContext still
-      // asks /api/auth/me and still gets a 401, and sending them to
-      // /login on that basis stops them registering at all.
-      const seen = watchNavigation("/passport/assessors/accept");
+    /** Counts how often the client says the session has ended. */
+    function watchUnauthenticated(): { count: number; stop: () => void } {
+      const seen = { count: 0, stop: () => {} };
+      const handler = () => {
+        seen.count += 1;
+      };
+      window.addEventListener(UNAUTHENTICATED_EVENT, handler);
+      seen.stop = () =>
+        window.removeEventListener(UNAUTHENTICATED_EVENT, handler);
+      return seen;
+    }
+
+    it("says the session has ended", async () => {
+      const said = watchUnauthenticated();
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ detail: "Not authenticated" }, 401),
+      );
+
+      await expect(api.get("/auth/me")).rejects.toThrow();
+
+      expect(said.count).toBe(1);
+      said.stop();
+    });
+
+    it.each([
+      // A page behind RequireAuth: the guard sends them to /login, and
+      // remembers where they were. The client must not get there first.
+      "/passport",
+      // Opened by somebody with no account: the signed token in the URL
+      // is what authenticates them.
+      "/passport/assessors/accept",
+      // How to join is linked from the public site and read before there
+      // is an account.
+      "/guides/join-a-course",
+      // The link in a newsletter, opened signed out as often as not.
+      "/unsubscribe",
+      // An address nothing has been written for yet. This is the point:
+      // no list of pages decides anything here any more.
+      "/a-page-nobody-has-thought-of",
+    ])("never sends the browser anywhere, from %s", async (path) => {
+      const seen = watchNavigation(path);
       vi.mocked(fetch).mockResolvedValue(
         jsonResponse({ detail: "Not authenticated" }, 401),
       );
@@ -216,45 +252,42 @@ describe("api.request", () => {
       expect(seen.to).toBeNull();
     });
 
-    it("leaves a signed-out reader on a guide", async () => {
-      // How to join is linked from the public site and read before
-      // there is an account. `/guides/:slug` is routed outside
-      // RequireAuth, so this handler was the only thing sending the
-      // reader to /login.
-      const seen = watchNavigation("/guides/join-a-course");
+    it("still throws, with the status, so the caller can react", async () => {
       vi.mocked(fetch).mockResolvedValue(
         jsonResponse({ detail: "Not authenticated" }, 401),
       );
 
-      await expect(api.get("/auth/me")).rejects.toThrow();
-
-      expect(seen.to).toBeNull();
+      await expect(api.get("/auth/me")).rejects.toMatchObject({
+        status: 401,
+        message: "Not authenticated",
+      });
     });
 
-    it("leaves somebody on the unsubscribe page", async () => {
-      // The link in a newsletter is opened signed out as often as not.
-      // The page showed for a moment, AuthContext's /api/auth/me came
-      // back 401, and this handler replaced it with /login: found on
-      // the first real click, on 7 October 2026.
-      const seen = watchNavigation("/unsubscribe");
-      vi.mocked(fetch).mockResolvedValue(
-        jsonResponse({ detail: "Not authenticated" }, 401),
-      );
+    it("says nothing when the refresh works and the retry succeeds", async () => {
+      const said = watchUnauthenticated();
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(
+          jsonResponse({ detail: "Not authenticated" }, 401),
+        )
+        .mockResolvedValueOnce(jsonResponse({ detail: "ok" }))
+        .mockResolvedValueOnce(jsonResponse({ id: 1 }));
 
-      await expect(api.get("/auth/me")).rejects.toThrow();
+      await expect(api.get("/protected")).resolves.toEqual({ id: 1 });
 
-      expect(seen.to).toBeNull();
+      expect(said.count).toBe(0);
+      said.stop();
     });
 
-    it("still sends an ordinary page to login", async () => {
-      const seen = watchNavigation("/passport");
+    it("says nothing for a refusal that is not about being signed in", async () => {
+      const said = watchUnauthenticated();
       vi.mocked(fetch).mockResolvedValue(
-        jsonResponse({ detail: "Not authenticated" }, 401),
+        jsonResponse({ detail: "Forbidden" }, 403),
       );
 
-      await expect(api.get("/auth/me")).rejects.toThrow();
+      await expect(api.get("/protected")).rejects.toThrow();
 
-      expect(seen.to).toBe("/login");
+      expect(said.count).toBe(0);
+      said.stop();
     });
   });
 });
