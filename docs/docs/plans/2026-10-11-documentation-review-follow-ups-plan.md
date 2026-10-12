@@ -321,7 +321,7 @@ ahead of Phases 1 to 11, which are untouched.
       change to `module.yaml` alone, with no new version of the questions,
       still reaches the row.
 
-- [ ] Send a reminder to anybody enrolled on a module who has no completed
+- [x] Send a reminder to anybody enrolled on a module who has no completed
       attempt at it, passed or failed: an `Assessment` row with
       `completed_at` set, for the same person, organisation and
       `question_bank_id` as the `ModuleEnrolment` row. The first goes
@@ -329,11 +329,11 @@ ahead of Phases 1 to 11, which are untouched.
       interval, up to `enrolmentReminderCount`. Only a current enrolment
       counts (`is_current`), on an active account with a verified address.
 
-- [ ] Record each reminder, so the interval is counted from the last one
+- [x] Record each reminder, so the interval is counted from the last one
       sent and a repeated run does not send twice: `last_reminded_at` and
       `reminders_sent` on `module_enrolment`, added with `just migrate`.
 
-- [ ] Write the template, `enrolment_reminder.html.j2`, with a preview,
+- [x] Write the template, `enrolment_reminder.html.j2`, with a preview,
       following `docs/docs/backend/email.md`. Send it for the partner, as
       the certificate email is, from the organisation's
       `TeachingOrgSettings`.

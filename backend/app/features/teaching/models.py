@@ -461,6 +461,16 @@ class ModuleEnrolment(Base):
         nullable=False,
         default=lambda: datetime.now(UTC),
     )
+    #: When the last reminder to start the module was sent. Null before
+    #: the first. The next is counted from here, or from ``starts_on``.
+    last_reminded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    #: How many such reminders have gone. The module says how many to
+    #: send; see ``app.features.teaching.reminders``.
+    reminders_sent: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
 
     def is_current(self, now: datetime) -> bool:
         """Whether this enrolment counts at *now*.
