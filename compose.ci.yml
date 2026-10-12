@@ -85,7 +85,10 @@ services:
     # so it is not turned away by the public registry's limit on callers
     # with no login: see .github/scripts/ci/use-mirrored-images.sh. On a
     # developer's machine the variable is unset and nothing changes.
-    image: ${CI_POSTGRES_IMAGE:-public.ecr.aws/docker/library/postgres:18-alpine}
+    #
+    # Pinned to a digest, the one compose.dev.yml uses, so the image only
+    # changes when a pull request changes it and the mirror copies it then.
+    image: ${CI_POSTGRES_IMAGE:-public.ecr.aws/docker/library/postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873}
     environment:
       POSTGRES_DB: quill_core
       POSTGRES_USER: core_user

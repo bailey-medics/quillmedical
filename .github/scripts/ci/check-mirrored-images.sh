@@ -17,7 +17,7 @@
 # ghcr.io/<owner>/mirror/ by mirror-images.yml and pulled from there.
 #
 # That only holds while every image is named in a way the mirror can
-# stand in for. This refuses the three ways one can slip past it:
+# stand in for. This refuses the four ways one can slip past it:
 #
 #   - a Dockerfile whose FROM names an image outright. It has to read an
 #     ARG ending _IMAGE, as backend/Dockerfile does, so that
@@ -27,6 +27,11 @@
 #     use-mirrored-images.sh can point it at the copy.
 #   - a workflow or action that names an image from anywhere but GitHub's
 #     own registry or Google's mirror of Docker Hub.
+#   - an image the mirror copies that is named by tag alone, with no
+#     `@sha256:` digest. A tag moves when a patch is released and the copy
+#     does not follow it: mirror-images.yml runs when a name changes, on no
+#     timer. Pinned, the image changes only in a pull request, and that
+#     pull request makes the copy.
 #
 # Exits 1 and names each offender.
 set -euo pipefail
@@ -68,6 +73,13 @@ check_dockerfile() {
     return
   fi
 
+  # The default of each _IMAGE argument is what the mirror copies.
+  while IFS= read -r image; do
+    if [[ "$image" != *@sha256:* ]]; then
+      offender "${dockerfile}: base image ${image} is named by tag alone. Pin it, as ${image}@sha256:<digest>, so the mirror's copy cannot fall behind it"
+    fi
+  done < <(sed -n -E 's/^ARG[[:space:]]+[A-Z0-9_]+_IMAGE=([^[:space:]]+).*$/\1/p' "$dockerfile")
+
   while IFS= read -r line; do
     # FROM [--platform=...] <image> [AS <stage>]
     # shellcheck disable=SC2086
@@ -103,7 +115,15 @@ check_compose() {
   fi
 
   while IFS= read -r image; do
-    if [[ "$image" != */* ]] || [[ "$image" =~ ^\$\{[A-Z0-9_]+:-.+\}$ ]]; then
+    if [[ "$image" != */* ]]; then
+      continue
+    fi
+
+    if [[ "$image" =~ ^\$\{[A-Z0-9_]+:-(.+)\}$ ]]; then
+      if [[ "${BASH_REMATCH[1]}" != *@sha256:* ]]; then
+        offender "${compose_file}: image ${BASH_REMATCH[1]} is named by tag alone. Pin it, as ${BASH_REMATCH[1]}@sha256:<digest>, so the mirror's copy cannot fall behind it"
+      fi
+
       continue
     fi
 
