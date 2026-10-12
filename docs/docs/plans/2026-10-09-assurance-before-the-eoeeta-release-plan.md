@@ -1278,8 +1278,22 @@ is now 4,654 lines and 69 routes.
       must not change. The comments saying why each callback exists
       went with it.
 
-- [ ] Move what is left that is not sign-in (`/cbac`, `/prescriptions`
+- [x] Move what is left that is not sign-in (`/cbac`, `/prescriptions`
       and the odd single routes), each to the module it belongs with.
+      Done on 12 October 2026, as three small moves in one pull
+      request. The two `/cbac/my-competencies` routes and
+      `/prescriptions/controlled`, which exists to show a competency
+      guarding a route, went to `backend/app/cbac/router.py`. The
+      health check and its two probes went to `backend/app/health.py`;
+      start-up calls the same probes from there. The two open routes
+      the registration page calls, `/teaching/public/modules` and
+      `/teaching/public/validate-clinical-lead`, went to
+      `backend/app/features/teaching/public_router.py`. Two routes
+      that are not under `/auth` were left with the sign-in routes
+      all the same, because each decides who gets an account:
+      `POST /accept-invite`, which makes one for an invited outside
+      clinician, and `GET /auth/organisations`, which the
+      registration page reads.
 
 - [ ] Take out the routers' own `_get_current_user` and `_require_csrf`.
       Six routers and `features/gating.py` each wrap the two checks in
@@ -1300,6 +1314,9 @@ is now 4,654 lines and 69 routes.
 
 - [ ] When it is done, `main.py` builds the app, adds the middleware and
       includes the routers, and holds no route of its own.
+      On 12 October 2026, with everything but the sign-in routes
+      moved, it is 1,559 lines, down from 4,654, and holds the 16
+      routes that wait for the release.
 
 ## Decisions
 

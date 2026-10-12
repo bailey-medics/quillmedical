@@ -50,7 +50,7 @@ NOT_YET: dict[str, str] = {
     "app.schemas.users_admin.AdminUserUpdateIn.email": _WAITING,
     "app.schemas.users_admin.AdminUserUpdateIn.password": _WAITING,
     "app.main.TotpVerifyIn.code": _WAITING,
-    "app.main.ValidateClinicalLeadIn.email": _WAITING,
+    "app.features.teaching.public_router.ValidateClinicalLeadIn.email": _WAITING,
 }
 
 # The app has about thirty such fields. Far fewer means the walk has
