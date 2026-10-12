@@ -36,7 +36,7 @@ dependencies and not by slowing the queue down.
       the copy. A developer's build passes no argument and uses the
       public image as before.
 
-- [ ] Have the builds pull the copies. A `FROM` line cannot ask whether a
+- [x] Have the builds pull the copies. A `FROM` line cannot ask whether a
       mirror holds an image, so give each base image a build argument that
       defaults to the public one, and have the workflows pass the mirror's
       when it is there. Follow
@@ -45,12 +45,12 @@ dependencies and not by slowing the queue down.
       lacks it. The digests are pinned, and a copy is exact, so the pin
       holds for the copy.
 
-- [ ] Keep the fallback, and keep it loud. The mirror is only filled after
+- [x] Keep the fallback, and keep it loud. The mirror is only filled after
       this merges, so the first builds will fall back. `ci.yml` already
       posts to Slack when the end-to-end job uses a public image;
       extend that to the builds.
 
-- [ ] Cover `deploy.yml` in the same change. A refused pull there is a
+- [x] Cover `deploy.yml` in the same change. A refused pull there is a
       failed production deploy, not a failed check.
 
 - [ ] Move the one image still named directly in a workflow: the Postgres
