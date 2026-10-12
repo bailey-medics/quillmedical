@@ -715,13 +715,13 @@ Mark agreed on 12 October to move them.
       exits 1 when any email could not be sent, so a failed execution is
       the signal.
 
-- [ ] Take the `schedule:` trigger out of `.github/workflows/retention.yml`
+- [x] Take the `schedule:` trigger out of `.github/workflows/retention.yml`
       and `.github/workflows/teaching-reminders.yml`, and keep
       `workflow_dispatch`. They stay as the button for a report by hand,
       which is how the counts are checked before a first real run. Rewrite
       each file's header to say so.
 
-- [ ] Do the two halves in one deploy order that never runs a job twice
+- [x] Do the two halves in one deploy order that never runs a job twice
       in a night or not at all: add the scheduler jobs and merge, check
       the first scheduled execution in the Cloud Run console, and only
       then remove the GitHub schedules. Both actions are safe to run

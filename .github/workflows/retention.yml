@@ -1,19 +1,23 @@
-# Delete what the privacy policy says is no longer kept.
+# Run the retention action by hand: a report, or a real run when asked.
 #
-# Section 7 of the privacy policy gives a period for each kind of data.
-# backend/app/retention.py carries out the ones the database can, and this
-# runs it each night as the `apply-retention` action on the admin job.
+# Section 7 of the privacy policy gives a period for each kind of data, and
+# backend/app/retention.py carries out the ones the database can, as the
+# `apply-retention` action on the admin job.
+#
+# **This does not run on a timer.** Cloud Scheduler starts the nightly run,
+# from infra/scheduled-jobs.tf. It began here, as a scheduled workflow, and
+# was moved: GitHub's schedule is best effort, and nothing in the
+# repository decides what is due.
+#
+# What is left is the button. Start it from the Actions tab to see how
+# many rows are past their period. It deletes nothing unless `apply` is
+# ticked, which is for running the real thing again after a failed night.
 #
 # The app does the deleting, and not this workflow, so that GitHub holds
 # no database credential: it only starts the job.
-#
-# A run started by hand is a report unless `apply` is ticked. It prints
-# how many rows are past their period and deletes nothing.
 name: Retention
 
 on:
-  schedule:
-    - cron: "30 3 * * *"
   workflow_dispatch:
     inputs:
       apply:
@@ -51,8 +55,8 @@ jobs:
       - name: Run the retention action on the admin job
         env:
           GCP_PROJECT: ${{ secrets.GCP_APP_PROJECT_ID }}
-          # The nightly run deletes. A run by hand does only when asked.
-          APPLY: ${{ github.event_name == 'schedule' || inputs.apply }}
+          # A report unless `apply` was ticked.
+          APPLY: ${{ inputs.apply }}
         run: |
           gcloud run jobs execute quill-admin-app \
             --project="${GCP_PROJECT}" \

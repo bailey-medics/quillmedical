@@ -299,7 +299,7 @@ def accessibility_reminder() -> int:
 def apply_retention() -> int:
     """Delete what the privacy policy says is no longer kept.
 
-    Run each day by the retention workflow. A report unless
+    Run each night by Cloud Scheduler (infra/scheduled-jobs.tf). A report unless
     ``RETENTION_APPLY`` is ``true``. See ``app.retention``.
     """
     from app.retention import main as retention_main
@@ -312,8 +312,8 @@ def send_teaching_reminders() -> int:
 
     Two kinds: to somebody enrolled on a module who has not finished an
     attempt, on the schedule the module sets, and to somebody whose pass
-    is due to be repeated. Run each day by the teaching-reminders
-    workflow. A report unless ``REMINDERS_APPLY`` is ``true``. See
+    is due to be repeated. Run each morning by Cloud Scheduler
+    (infra/scheduled-jobs.tf). A report unless ``REMINDERS_APPLY`` is ``true``. See
     ``app.features.teaching.reminders``.
     """
     from app.features.teaching.reminders import main as reminders_main
