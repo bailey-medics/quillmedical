@@ -134,7 +134,6 @@ assessment:
   items_per_attempt: 3
   time_limit_minutes: 5
   min_pool_size: 4
-  randomise_selection: true
   randomise_order: true
   allow_immediate_retry: true
   intro_page:

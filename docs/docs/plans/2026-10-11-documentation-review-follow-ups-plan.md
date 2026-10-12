@@ -203,18 +203,23 @@ the order below, and no step waits for a person.
 
 ## Phase 9: Remove a setting that does nothing
 
-- [ ] Remove `randomise_selection` from the `assessment` type in
+- [x] Remove `randomise_selection` from the `assessment` type in
       `frontend/src/features/teaching/types.ts`, from the fixture in
       `backend/app/features/teaching/router_test.py`, and from the
       `assessment.yaml` example in `docs/docs/teaching/index.md`.
       `start_assessment` always picks questions with `random.sample` and
       reads only `randomise_order`, so the key has never had an effect.
 
-- [ ] Do not make the validator reject the key. The content repositories
+- [x] Do not make the validator reject the key. The content repositories
       may still carry it, and refusing it would block their next merge
       for no gain. Search `teaching-repos/` in the main checkout and list
       any bank that has it in the pull request, to be tidied in those
       repositories separately.
+      Found in three, each in its module's `assessment.yaml`:
+      `eoeeta-teaching` (colonoscopy-optical-diagnosis),
+      `eoeeta-teaching-testing` (colonoscopy-optical-diagnosis-test) and
+      `respiratory-teaching` (chest-xray-interpretation-test). Harmless
+      while they stay: the validator accepts the key and nothing reads it.
 
 ## Phase 10: Make the AWS account check say what it does
 
