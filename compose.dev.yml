@@ -15,7 +15,7 @@ services:
       TEACHING_STORAGE_BACKEND: local
       TEACHING_QUESTION_BANK_PATH: /teaching-repos
       TEACHING_IMAGES_BASE_URL: /api/teaching/images
-      CLINICAL_SERVICES_ENABLED: ${CLINICAL_SERVICES_ENABLED:-true}
+      CLINICAL_SERVICES_ENABLED: ${CLINICAL_SERVICES_ENABLED:-false}
       EMAIL_DRY_RUN: "false"
     expose:
       - "8000"
@@ -47,10 +47,7 @@ services:
     env_file: frontend/.env
     environment:
       - NODE_ENV=development
-      - VITE_CLINICAL_SERVICES_ENABLED=${CLINICAL_SERVICES_ENABLED:-true}
-    expose:
-      - "5173"
-      - "5174"
+      - VITE_CLINICAL_SERVICES_ENABLED=${CLINICAL_SERVICES_ENABLED:-false}
     ports:
       - "5173:5173"
       - "5174:5174"
@@ -71,7 +68,7 @@ services:
     environment:
       POSTGRES_DB: quill_core
       POSTGRES_USER: core_user
-      POSTGRES_PASSWORD: vspct8I2iLUkfC3JsXxefy
+      POSTGRES_PASSWORD: pretend-password
     volumes:
       - postgres_core_data:/var/lib/postgresql
     healthcheck:
@@ -88,6 +85,7 @@ services:
       - private
 
   postgres-fhir:
+    # If set, turns on the clinical services stack for local development.
     profiles: ["clinical"]
     image: public.ecr.aws/docker/library/postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
     container_name: quill_postgres_fhir
@@ -111,6 +109,7 @@ services:
       - private
 
   postgres-ehrbase:
+   # If set, turns on the clinical services stack for local development.
     profiles: ["clinical"]
     image: ehrbase/ehrbase-v2-postgres:16.2
     container_name: quill_postgres_ehrbase
@@ -165,7 +164,6 @@ services:
         condition: service_healthy
     networks:
       - private
-      - public
     healthcheck:
       test: ["CMD", "java", "--version"]
       interval: 30s
@@ -199,9 +197,17 @@ services:
         condition: service_healthy
     networks:
       - private
-      - public
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider --header='Authorization: Basic ZWhyYmFzZV9hZG1pbjpTdXBlclNlY3VyZUFkbWluUGFzc3dvcmQ0NTY=' http://localhost:8080/ehrbase/rest/openehr/v1/definition/template/adl1.4 || exit 1"]
+      # EHRbase answers nothing without a login. The admin name and password
+      # are read from the container's own environment, set above, so no
+      # second copy of them is kept here.
+      test:
+        - CMD-SHELL
+        - >-
+          wget --no-verbose --tries=1 --spider
+          --header="Authorization: Basic $$(printf '%s:%s' "$$SECURITY_AUTHADMINUSER" "$$SECURITY_AUTHADMINPASSWORD" | base64)"
+          http://localhost:8080/ehrbase/rest/openehr/v1/definition/template/adl1.4
+          || exit 1
       interval: 30s
       timeout: 10s
       retries: 5

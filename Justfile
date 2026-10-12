@@ -2258,7 +2258,8 @@ start-ehr build="":
     # Start detached and wait until healthy, so the migrations can run
     # before the logs are followed.
     # shellcheck disable=SC2086
-    COMPOSE_PROFILES=clinical docker compose -f compose.dev.yml up \
+    COMPOSE_PROFILES=clinical CLINICAL_SERVICES_ENABLED=true \
+        docker compose -f compose.dev.yml up \
         --detach --wait --wait-timeout 180 ${build_args}
 
     just _migrate-running-stack

@@ -44,13 +44,3 @@ description = "A made-up signature in the test of signed video links"
 regexes = [
   '''^Signature=abc-_123$''',
 ]
-
-[[allowlists]]
-description = "Password of the throwaway database the dev stack starts on this machine only"
-condition = "AND"
-paths = [
-  '''^compose\.dev\.yml$''',
-]
-regexes = [
-  '''^vspct8I2iLUkfC3JsXxefy$''',
-]

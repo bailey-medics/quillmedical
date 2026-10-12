@@ -156,4 +156,5 @@ backend/app/email/templates/previews/newsletter_personal_sample.html.j2	12e0c2e6
 backend/app/email/templates/previews/newsletter_sample.html.j2	03f175d4bd81a9be2b28ee5770a4118f3ee853f8	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/app/email/templates/teaching_certificate.html.j2	9055f66f56fbebf32c93824839da4c5fe2d38369	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 compose.ci.yml	561afb40ea241763e3eaba81cadd4a22652d9ea9	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
+compose.dev.yml	b9834fc728e8f5e89376a1f95b38e5a325eb1ae8	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
 scripts/check-python-version.sh	e9ba5acc38524cdd3b8c10fdd371c2e9771ce114	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
