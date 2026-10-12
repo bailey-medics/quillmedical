@@ -895,6 +895,30 @@ def unfinished_attempts(
     return list(db.execute(query.order_by(Assessment.id)).scalars().all())
 
 
+def attempts_out_of_time(db: Session) -> list[Assessment]:
+    """Every unfinished attempt whose time has run out, oldest first.
+
+    Whoever's they are: this is for the job that finishes the attempts
+    nobody came back to, where ``unfinished_attempts`` is for one
+    learner's own. An attempt with no time limit is never among them.
+    Nothing is written.
+    """
+    timed = (
+        db.execute(
+            select(Assessment)
+            .where(
+                Assessment.completed_at.is_(None),
+                Assessment.time_limit_minutes > 0,
+            )
+            .order_by(Assessment.id)
+        )
+        .scalars()
+        .all()
+    )
+
+    return [attempt for attempt in timed if _is_out_of_time(attempt)]
+
+
 def finish_if_out_of_time(
     db: Session, assessment: Assessment
 ) -> AttemptFinished | None:

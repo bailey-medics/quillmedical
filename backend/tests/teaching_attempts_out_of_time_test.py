@@ -11,6 +11,10 @@ exactly as one handed in is, so it can pass. It is recorded as finished
 when its time ended. The rule is tested on its own in
 ``app/features/teaching/attempts_test.py``; this says what a learner is
 answered by each route, and that a pass is written to them once.
+
+A learner who never comes back touches no route. The last part is the
+job that finishes theirs: ``finish_attempts_out_of_time``, run on a
+schedule as the ``finish-exams-out-of-time`` admin action.
 """
 
 from __future__ import annotations
@@ -33,6 +37,11 @@ from app.features.teaching.models import (
     QuestionBankConfig,
     QuestionBankItem,
     QuestionBankOrgStatus,
+)
+from app.features.teaching.out_of_time import (
+    AttemptsSwept,
+    finish_attempts_out_of_time,
+    main,
 )
 from app.models import OrgUnit, OrgUnitFeature, User
 from app.security import hash_password
@@ -772,3 +781,229 @@ def test_an_attempt_past_its_time_whose_bank_has_gone_is_answered_as_before(
     assert (answered.status_code, answered.json()) == (409, OUT_OF_TIME)
     assert (finished.status_code, finished.json()) == (500, NO_CONFIG)
     assert _stored(db_session, mine.id).completed_at is None
+
+
+# --- Attempts nobody came back to -------------------------------------------
+
+
+def test_the_job_finishes_an_attempt_nobody_came_back_to_and_writes_once(
+    db_session: Session, trust: OrgUnit, sent: list[str]
+) -> None:
+    """With no request from anybody. Dated when its time ended, marked
+    on the answers given by then, and a pass is written to as any other
+    is. A second run finds nothing to do."""
+    learner = _learner(db_session, trust)
+    mine = _attempt(db_session, trust, learner, right=1)
+    deadline = _late(db_session, mine)
+
+    first = finish_attempts_out_of_time(db_session)
+    second = finish_attempts_out_of_time(db_session)
+
+    stored = _stored(db_session, mine.id)
+
+    assert first == AttemptsSwept(finished=1, failed=0)
+    assert second == AttemptsSwept(finished=0, failed=0)
+    assert _finished_at(stored) == deadline
+    assert stored.is_passed is True
+    assert stored.exam_ref == f"POLYP-{mine.id}"
+    assert sent == ["learner@test.local"]
+
+
+def test_the_job_writes_to_nobody_about_an_attempt_that_failed(
+    db_session: Session, trust: OrgUnit, sent: list[str]
+) -> None:
+    learner = _learner(db_session, trust)
+    mine = _attempt(db_session, trust, learner)
+    deadline = _late(db_session, mine)
+
+    swept = finish_attempts_out_of_time(db_session)
+
+    stored = _stored(db_session, mine.id)
+
+    assert swept == AttemptsSwept(finished=1, failed=0)
+    assert _finished_at(stored) == deadline
+    assert stored.is_passed is False
+    assert sent == []
+
+
+def test_the_job_leaves_attempts_in_time_untimed_and_finished_as_they_are(
+    db_session: Session, trust: OrgUnit, sent: list[str]
+) -> None:
+    in_time = _attempt(db_session, trust, _learner(db_session, trust, "a"))
+    untimed = _attempt(
+        db_session, trust, _learner(db_session, trust, "b"), minutes=0
+    )
+    handed_in = _attempt(db_session, trust, _learner(db_session, trust, "c"))
+    _late(db_session, untimed)
+    _late(db_session, handed_in)
+    marked_at = datetime.now(UTC) - timedelta(days=1)
+    handed_in.completed_at = marked_at
+    db_session.commit()
+
+    swept = finish_attempts_out_of_time(db_session)
+
+    assert swept == AttemptsSwept(finished=0, failed=0)
+    assert _stored(db_session, in_time.id).completed_at is None
+    assert _stored(db_session, untimed.id).completed_at is None
+    assert _finished_at(_stored(db_session, handed_in.id)) == marked_at
+    assert sent == []
+
+
+def test_the_job_passes_over_an_attempt_whose_bank_has_gone(
+    db_session: Session, trust: OrgUnit, sent: list[str]
+) -> None:
+    """It cannot be marked. The next attempt is finished all the same."""
+    lost = _attempt(
+        db_session,
+        trust,
+        _learner(db_session, trust, "a"),
+        bank_id=OTHER_BANK,
+    )
+    mine = _attempt(db_session, trust, _learner(db_session, trust, "b"))
+    _late(db_session, lost)
+    _late(db_session, mine)
+    db_session.execute(
+        delete(QuestionBankConfig).where(
+            QuestionBankConfig.question_bank_id == OTHER_BANK
+        )
+    )
+    db_session.commit()
+
+    swept = finish_attempts_out_of_time(db_session)
+
+    assert swept == AttemptsSwept(finished=1, failed=0)
+    assert _stored(db_session, lost.id).completed_at is None
+    assert _stored(db_session, mine.id).completed_at is not None
+
+
+def test_an_email_the_provider_refuses_does_not_count_against_the_job(
+    db_session: Session, trust: OrgUnit, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Logged where it is sent, as on a route. The result stands."""
+
+    def send_email(**_: Any) -> None:
+        raise EmailSendError("the provider is down")
+
+    monkeypatch.setattr("app.email_send.send_email", send_email)
+    monkeypatch.setattr(
+        "app.config.settings.TEACHING_QUESTION_BANK_PATH", None
+    )
+    monkeypatch.setattr("app.config.settings.TEACHING_GCS_BUCKET", None)
+    mine = _attempt(db_session, trust, _learner(db_session, trust), right=1)
+    _late(db_session, mine)
+
+    swept = finish_attempts_out_of_time(db_session)
+
+    assert swept == AttemptsSwept(finished=1, failed=0)
+    assert _stored(db_session, mine.id).is_passed is True
+
+
+def test_an_attempt_that_raises_is_counted_and_the_next_still_has_its_turn(
+    db_session: Session,
+    trust: OrgUnit,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Whatever raises. Here it is the email, so the first attempt's
+    result is kept too: it was committed before anything was sent. The
+    log names the attempt by its id and the kind of error only."""
+    sent: list[str] = []
+
+    def send_email(*, to: str, **_: Any) -> None:
+        if to == "a@test.local":
+            raise RuntimeError("could not build it for a@test.local")
+
+        sent.append(to)
+
+    monkeypatch.setattr("app.email_send.send_email", send_email)
+    monkeypatch.setattr(
+        "app.config.settings.TEACHING_QUESTION_BANK_PATH", None
+    )
+    monkeypatch.setattr("app.config.settings.TEACHING_GCS_BUCKET", None)
+    first = _attempt(
+        db_session, trust, _learner(db_session, trust, "a"), right=1
+    )
+    second = _attempt(
+        db_session, trust, _learner(db_session, trust, "b"), right=1
+    )
+    _late(db_session, first)
+    _late(db_session, second)
+
+    swept = finish_attempts_out_of_time(db_session)
+
+    assert swept == AttemptsSwept(finished=1, failed=1)
+    assert _stored(db_session, first.id).is_passed is True
+    assert _stored(db_session, second.id).is_passed is True
+    assert sent == ["b@test.local"]
+    assert f"Attempt {first.id} out of time" in caplog.text
+    assert "RuntimeError" in caplog.text
+    assert "a@test.local" not in caplog.text
+
+
+@pytest.fixture
+def own_session(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> Session:
+    """``main`` handed the test session, and kept from closing it."""
+    import app.db.core_db as core_db
+
+    monkeypatch.setattr(core_db, "CoreSessionLocal", lambda: db_session)
+    monkeypatch.setattr(db_session, "close", lambda: None)
+
+    return db_session
+
+
+def test_the_action_says_how_many_it_finished(
+    own_session: Session,
+    trust: OrgUnit,
+    sent: list[str],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    mine = _attempt(own_session, trust, _learner(own_session, trust))
+    _late(own_session, mine)
+
+    assert main() == 0
+    assert "Finished 1 exams whose time had run out" in capsys.readouterr().out
+    assert main() == 0
+    assert "Finished 0 exams whose time had run out" in capsys.readouterr().out
+    assert _stored(own_session, mine.id).completed_at is not None
+
+
+def test_the_action_fails_when_an_attempt_raised(
+    own_session: Session,
+    trust: OrgUnit,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    def refuse(*_: Any, **__: Any) -> None:
+        raise RuntimeError("no")
+
+    monkeypatch.setattr(
+        "app.features.teaching.router.finish_and_tell_if_out_of_time", refuse
+    )
+    mine = _attempt(own_session, trust, _learner(own_session, trust))
+    _late(own_session, mine)
+
+    assert main() == 1
+    assert "✗ 1 could not be finished" in capsys.readouterr().err
+    assert _stored(own_session, mine.id).completed_at is None
+
+
+def test_the_action_fails_when_the_sweep_cannot_run(
+    own_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    def refuse(_: Session) -> None:
+        raise RuntimeError("the database is away")
+
+    monkeypatch.setattr(
+        "app.features.teaching.out_of_time.attempts_out_of_time", refuse
+    )
+
+    assert main() == 1
+
+    err = capsys.readouterr().err
+
+    assert "could not be finished: RuntimeError" in err
+    assert "the database is away" not in err

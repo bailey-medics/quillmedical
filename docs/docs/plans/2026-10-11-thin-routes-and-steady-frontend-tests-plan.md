@@ -1832,6 +1832,221 @@ the ordinary staff list, not to take them away.
   listed.
 - **An account that has been deactivated is given it all the same.**
 
+## Phase 8: The server ends an exam when its time ends
+
+Phase 7 finishes an attempt past its time when its learner next touches
+it. One nobody comes back to, after a closed tab or a flat battery,
+stays unfinished, and a pass in it is never emailed. Mark, on 12
+October 2026: "when the time has passed, the exam is submitted, that is
+final", with no page loading needed. So the server gets a job that
+looks for such attempts every five minutes and finishes them.
+
+The same rules were built twice, here and in another worktree, as
+pull requests #1857, #1859 and #1887 from the assurance plan's Phase
+4b. They conflict
+with Phase 7's pull requests in `attempts.py`, `router.py` and the exam
+page. Mark ruled on the differences the same day, and this phase is
+what those rulings come to. Phase 7's stack is still open, so the
+first three steps change its pull requests where they are; the rest is
+one new pull request on top.
+
+- [x] **Take `timed_out` out of #1845.** Mark: "no need to record how
+      the exam ended, only that it did." The column, its migration
+      (`c5dcc392f20a`), the field on the response in `schemas.py` and
+      every use go. The pull request is not merged, so the migration
+      is removed where it was added, with `just stack-update` on that
+      branch: adding the column and dropping it later would need a
+      destructive migration and its approval. An answer sent to an
+      attempt the clock finished is still told "Time limit exceeded",
+      as it was before any of this, and the exam page still acts on
+      it. Nothing is stored to say so: an attempt found past its time
+      is dated at its deadline exactly, and an attempt recorded as
+      finished at that very moment is the one refused in those words.
+      The first draft of this step had it refused as any finished
+      attempt is; that would have changed what the route tests pin
+      for no gain. One test went, "an attempt handed in while there
+      was time did not time out", which asserted only the flag.
+      `deadline_of`, `finish_if_out_of_time` and the row lock stay:
+      a limit of 0 still means no limit, and of two requests that find
+      the same attempt out of time the first finishes it and the
+      second finds it done.
+
+- [x] **Take the "time ran out" line out of #1847.** The result page
+      shows the result and says nothing of how the attempt came to
+      end. The page still submits at zero. `timed_out` goes from
+      `types.ts` and from the page's tests.
+
+- [x] **Point the one-attempt migration in #1851 at `main`'s last.**
+      `30b1773fb735` sat on the migration removed above, so its
+      `down_revision` becomes `57ed659606ec`, or whatever is the head
+      of `main` on the day. Run it on the throwaway database and check
+      there is no drift.
+
+- [x] **The sweep, in `backend/app/features/teaching/attempts.py`.**
+      One function that finds every unfinished attempt past its time,
+      whoever's it is, and finishes each through
+      `finish_if_out_of_time`, so the marking, the date and the lock
+      are the ones Phase 7 wrote. Marked on the answers given in time;
+      dated when its time ended, not when the job ran. No wait after
+      the time: Mark, "when time ends time ends", where #1857 waited
+      five minutes. Left alone: an attempt with no time limit, and one
+      whose bank version is gone, which cannot be marked. Built as
+      `attempts_out_of_time` in `attempts.py`, which only finds them,
+      and `finish_attempts_out_of_time` in a module of its own,
+      `out_of_time.py`. Each attempt goes through the router's
+      `finish_and_tell_if_out_of_time`, the function every route
+      already calls (renamed from `_finish_if_out_of_time`, so that it
+      can be called from outside the router), which commits each
+      attempt by itself. So the job and a route cannot differ in how
+      an attempt is finished.
+
+- [x] **A pass the sweep finds is emailed.** Mark: "send emails for a
+      pass, no matter how it was made." The delegate and the
+      coordinator each get what any other pass sends, through the same
+      function, where the module's settings say to. Each attempt is
+      committed before its email is sent, so a result is kept whatever
+      happens to the email. An email that cannot be built or sent is
+      logged by the attempt's number and nothing else, and the sweep
+      goes on to the next. An email the provider refuses is logged
+      where it is sent, as on a route. Anything else that raises is
+      caught by the sweep, logged by the attempt's number and the kind
+      of error, and counted, and the action then exits 1.
+
+- [x] **An admin job action, `finish-exams-out-of-time`, in
+      `backend/scripts/admin_cli.py`.** It runs the sweep with a
+      session of its own and prints how many attempts it finished.
+      Safe to run twice: the second run finds nothing left. It prints
+      a failure to standard error on a line starting with a cross,
+      as retention and the reminders do: "The exams out of time could
+      not be finished", or how many could not be. **Found, not
+      changed:** the alert in #1863 matches the words its two actions
+      print, so it will not see these until they are added to it. That
+      belongs with the scheduler entry in the last step.
+
+- [x] **Tests.** The sweep: an attempt past its time is finished and
+      dated at its deadline; one in time, one untimed and one already
+      finished are left; one whose bank is gone is passed over without
+      stopping the rest. Emails: a pass is emailed once however often
+      the sweep runs; a fail emails nobody; an email that fails leaves
+      the result kept and the next attempt still finished. The action:
+      it runs, commits and reports its count.
+
+- [x] **Each browser sits the exam as somebody of its own in the
+      end-to-end test.** `exam_chromium` and `exam_webkit` in
+      `backend/scripts/seed_ci.py`, and
+      `frontend/e2e/tests/teaching-journeys.spec.ts` to match, taken
+      from #1859. Both browsers sat as one user, and since Phase 7 the
+      second is handed the first's attempt.
+
+- [x] **Tick Phase 4b of
+      `2026-10-09-assurance-before-the-eoeeta-release-plan.md`**, with
+      a line saying it was built here and not in #1857 and #1859.
+
+- [x] **Close #1857, #1859 and #1887**, each with a comment naming the
+      pull request that replaces it. Mark, on 12 October 2026: "delete
+      the other PRs." Their branches are left as they are.
+
+- [ ] **A Cloud Scheduler entry that runs the action every five
+      minutes, in `infra/scheduled-jobs.tf`.** That file comes with
+      #1863, which was open in another worktree when this was written.
+      If #1863 is on `main` when this phase is built, the entry goes
+      in a pull request of its own at the top of the stack. If it is
+      not, this step is left unticked and the run's report says so:
+      until it lands an attempt is finished when its learner next
+      touches it, as Phase 7 left it.
+
+      - **A sweep, and not a timer for each exam.** Booking one
+        wake-up at each attempt's end (Cloud Tasks) runs nothing when
+        no exam is open, but it is a new service and a new way in, and
+        a wake-up that goes missing is never tried again. A sweep is
+        one action on the job already there. Moodle and Canvas both
+        end overdue attempts with a scheduled job beside a check on
+        every request.
+      - **Every five minutes, and not every minute.** Each run starts
+        a container to ask one question, and nearly every run finds
+        nothing. The recorded end is exact whenever the sweep runs,
+        and anybody touching an attempt is answered at once, so the
+        only thing that waits is the email about a pass in an
+        abandoned exam.
+
+## Phase 9: A countdown that tells the truth
+
+The clock a learner sees can drift from the real one. Found while
+building Phase 7, where the page began to submit at zero, and left out
+of it: that work was about what happens at zero, and this is about how
+the countdown counts. Mark chose the shape on 12 October 2026.
+
+The server keeps the real time and always has, so nobody gains time
+from this. The harm is the other way: a learner who thinks they have
+five minutes is cut off in the middle of a question. Two things cause
+it. The timer works out the time left once, when the page opens, and
+from then on takes one second off for each tick, and a browser slows
+the ticks of a tab nobody is looking at, so the countdown falls behind.
+And that first sum uses the learner's own clock, so a laptop three
+minutes fast starts three minutes short.
+
+Not built yet. One pull request: one optional field added to what the
+server already sends, no migration, and the timer.
+
+- [ ] **The server says how many seconds are left, on every answer it
+      already gives about an attempt.** An optional `seconds_left`:
+      on the attempt when it is opened or started, on the answer to
+      answering a question, on the answer to changing one, and on a
+      question fetched by going back. It is worked out from
+      `deadline_of` in `backend/app/features/teaching/attempts.py`,
+      the one place the limit is read, so it can never disagree with
+      what the server enforces.
+
+      - **Seconds left, and not the time of day.** With a number of
+        seconds the page only has to count, and never compares its
+        clock with the server's. So a wrong clock on the learner's
+        computer stops mattering at all, which sending the server's
+        time and working out a difference would only have reduced.
+      - **Carried on answers already given, with no request of its
+        own.** Every change of page talks to the server already. A
+        request made only to ask the time would be one more thing to
+        fail in the middle of an exam.
+      - **Nothing for an attempt with no time limit**: the field is
+        absent, or null, and the page shows no timer, as Phase 7 left
+        it.
+      - **Never less than nought.** An attempt past its time is
+        finished by Phase 7's rule before it is read, so the page
+        should not meet one; if it does, it is told nought.
+      - Adding an optional field to a response is allowed. Nothing is
+        taken away or renamed.
+
+- [ ] **The countdown is worked out from the clock on every tick.** In
+      `frontend/src/components/teaching/assessment-timer/`: when the
+      page is told the seconds left, it notes the moment on its own
+      stopwatch. On each tick it takes the time gone since then from
+      that figure, in place of taking one off a running count. A tab
+      that misses ticks then shows the right time the instant it ticks
+      again. The stopwatch is the browser's steady one
+      (`performance.now()`), which does not jump when the computer's
+      clock is corrected.
+
+- [ ] **Each time the server says the seconds left, the countdown is
+      set to it.** On opening the attempt, and on every answer, change
+      and step back. Between those the page counts by itself; at each
+      one it is put right. The only error left is the time the answer
+      took to arrive, a fraction of a second.
+
+- [ ] **Time running out is signalled once.** The timer calls its "time
+      is up" handler twice at nought today, once from inside a state
+      update, which makes React warn in development. It is called
+      once, from an effect. Phase 7's guards against submitting twice
+      stay as they are: they also cover a refused answer and "End
+      exam" arriving together.
+
+- [ ] **Tests.** With the clock faked: a tab whose ticks stop for five
+      minutes shows the right time when they start again; a computer
+      clock three minutes out, fast or slow, shows the right time; the
+      countdown is set afresh by each answer; nought signals once; an
+      untimed attempt has no timer. On the server: `seconds_left` is
+      on each of the four answers for a timed attempt, agrees with the
+      deadline, and is absent for an untimed one. The story for the
+      timer gains one that starts part way through.
+
 ## Decisions
 
 - **Routes first** - Mark's order, on 11 October 2026. It is the larger

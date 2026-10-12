@@ -72,20 +72,36 @@ test.describe("Teaching module journeys", () => {
   // page, and no code at all may be fetched between starting the attempt
   // and seeing its result.
   //
-  // One exam test, not two: a second sitting by the same seeded user at
-  // the same moment collided with this one.
+  // One exam test, not two, and somebody of its own to sit it in each
+  // browser project (`exam_chromium`, `exam_webkit`, seeded by
+  // `backend/scripts/seed_ci.py`). Starting an exam hands back the attempt
+  // somebody already has open, so two sittings as one person at the same
+  // moment would be handed each other's paper.
   test.describe("with the other features' code failing to load", () => {
     // Playwright cannot intercept a request once a service worker is
     // handling the page's fetches, and WebKit hands them over sooner than
     // Chromium does: without this the chunk loaded normally there and
     // nothing was made to fail. Quill's worker only caches logos and
     // favicons, so blocking it changes nothing this test is about.
-    test.use({ serviceWorkers: "block" });
+    test.use({
+      serviceWorkers: "block",
+      storageState: { cookies: [], origins: [] },
+    });
 
     test("the assessment can be sat to a result", async ({
       page,
       scanPage,
-    }) => {
+    }, testInfo) => {
+      const sitter = `exam_${testInfo.project.name}`;
+
+      await page.goto("/login");
+      await page.getByLabel("Username").fill(sitter);
+      await page
+        .getByRole("textbox", { name: "Password" })
+        .fill(`${sitter}123`);
+      await page.getByRole("button", { name: "Sign in" }).click();
+      await expect(page).not.toHaveURL(/\/login/, { timeout: 30_000 });
+
       const failed: string[] = [];
       await page.route(OTHER_FEATURE_CHUNK, (route) => {
         failed.push(route.request().url());
@@ -152,10 +168,23 @@ test.describe("Teaching module journeys", () => {
       ).toBeVisible({ timeout: 10_000 });
       await page.getByRole("button", { name: "Begin" }).click();
 
+      // A first run starts at question one. A retry is handed the attempt
+      // the failed run left open, at the question it had reached, or with
+      // nothing left but to see the results. So the loop starts from the
+      // question on the screen.
+      const anyQuestion = page.getByRole("heading", { name: /^Question \d+$/ });
+      const viewResults = page.getByRole("button", { name: "View results" });
+      await expect(anyQuestion.or(viewResults)).toBeVisible({
+        timeout: 10_000,
+      });
+      const shown = (await anyQuestion.isVisible())
+        ? Number((await anyQuestion.innerText()).replace("Question ", ""))
+        : 5;
+
       // Four questions per attempt, drawn at random from the pool, so the
       // answers are not known: pick the first option each time. That makes
       // the result pass or fail by chance, and either is a result.
-      for (let question = 1; question <= 4; question += 1) {
+      for (let question = shown; question <= 4; question += 1) {
         await expect(
           page.getByRole("heading", { name: `Question ${question}` }),
         ).toBeVisible({ timeout: 10_000 });

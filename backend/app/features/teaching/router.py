@@ -638,7 +638,7 @@ def start_assessment(
     for unfinished in unfinished_attempts(
         db, user.id, bank_id=body.question_bank_id
     ):
-        _finish_if_out_of_time(db, user, unfinished)
+        finish_and_tell_if_out_of_time(db, user, unfinished)
 
     org_ids = _get_user_org_ids(user, db)
     under_way = attempt_in_progress(db, user.id, bank_id=body.question_bank_id)
@@ -701,7 +701,7 @@ def assessment_history(
     result and not as still under way.
     """
     for unfinished in unfinished_attempts(db, user.id):
-        _finish_if_out_of_time(db, user, unfinished)
+        finish_and_tell_if_out_of_time(db, user, unfinished)
 
     rows = db.execute(
         select(Assessment, QuestionBankConfig.title)
@@ -760,7 +760,7 @@ def get_assessment(
     if not assessment or assessment.user_id != user.id:
         raise HTTPException(404, "Assessment not found")
 
-    _finish_if_out_of_time(db, user, assessment)
+    finish_and_tell_if_out_of_time(db, user, assessment)
 
     config_row = (
         db.execute(
@@ -838,7 +838,7 @@ def get_assessment_question_results(
     the rest. An attempt whose time has run out is finished first.
     """
     assessment = attempt_of(db, user.id, assessment_id)
-    _finish_if_out_of_time(db, user, assessment)
+    finish_and_tell_if_out_of_time(db, user, assessment)
 
     return question_results(db, assessment)
 
@@ -861,7 +861,7 @@ def get_current_item(
     is then refused as a finished one.
     """
     assessment = attempt_of(db, user.id, assessment_id)
-    _finish_if_out_of_time(db, user, assessment)
+    finish_and_tell_if_out_of_time(db, user, assessment)
     _require_place_for_attempt(db, user, assessment)
 
     item = next_unanswered_item(db, assessment)
@@ -893,7 +893,7 @@ def get_item_by_order(
     then refused as a finished one.
     """
     assessment = attempt_of(db, user.id, assessment_id)
-    _finish_if_out_of_time(db, user, assessment)
+    finish_and_tell_if_out_of_time(db, user, assessment)
     _require_place_for_attempt(db, user, assessment)
 
     item = item_at_position(db, assessment, display_order)
@@ -923,7 +923,7 @@ def submit_answer(
     then refused as out of time.
     """
     assessment = attempt_of(db, user.id, assessment_id)
-    _finish_if_out_of_time(db, user, assessment)
+    finish_and_tell_if_out_of_time(db, user, assessment)
     _require_place_for_attempt(db, user, assessment)
 
     recorded = record_answer(
@@ -967,7 +967,7 @@ def update_answer(
     is then refused as out of time.
     """
     assessment = attempt_of(db, user.id, assessment_id)
-    _finish_if_out_of_time(db, user, assessment)
+    finish_and_tell_if_out_of_time(db, user, assessment)
     _require_place_for_attempt(db, user, assessment)
 
     changed = change_answer(db, assessment, answer_id, body.selected_option)
@@ -1193,7 +1193,7 @@ def _maybe_enqueue_certificate_emails(
                     )
 
 
-def _finish_if_out_of_time(
+def finish_and_tell_if_out_of_time(
     db: Session, user: User, assessment: Assessment
 ) -> AttemptFinished | None:
     """Finish a learner's attempt if its time has run out, and say so.
@@ -1297,7 +1297,7 @@ def complete_assessment(
     sent back: the learner asked for it to be finished and it has been.
     """
     assessment = attempt_of(db, user.id, assessment_id)
-    finished = _finish_if_out_of_time(db, user, assessment)
+    finished = finish_and_tell_if_out_of_time(db, user, assessment)
     _require_place_for_attempt(db, user, assessment)
 
     if finished is None:
@@ -1357,7 +1357,7 @@ def download_certificate(
     finished first, so one that passes by the clock has its certificate.
     """
     assessment = attempt_of(db, user.id, assessment_id)
-    _finish_if_out_of_time(db, user, assessment)
+    finish_and_tell_if_out_of_time(db, user, assessment)
 
     due = certificate_due(db, assessment)
     background = certificate_background(assessment.question_bank_id)

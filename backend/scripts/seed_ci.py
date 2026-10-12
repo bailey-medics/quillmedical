@@ -170,6 +170,16 @@ def seed() -> None:
         give_place(db, two_factor, org.id)
         print("Gave educator and two-factor user a place for modules")
 
+        # 5a. Somebody to sit the exam in each browser project, for
+        # e2e/tests/teaching-journeys.spec.ts. Starting an exam hands
+        # back the attempt somebody already has open, so two browsers
+        # sitting as one person would be handed each other's paper.
+        for username in ("exam_chromium", "exam_webkit"):
+            sitter = _ensure_user(db, username, "teaching_admin")
+            add_org_unit_member(db, org.id, sitter.id, "staff")
+            give_place(db, sitter, org.id)
+        print("Seeded somebody to sit the exam in each browser")
+
         # 5b. A user manager and two people for them to manage, for the
         # member practice journey in e2e/tests/member-practice.spec.ts.
         # One person per browser project, so chromium and webkit never

@@ -11,7 +11,8 @@ Environment Variables:
                       verify-email, run-migrations,
                       check-competency-seeding, delete-passport,
                       send-newsletter, accessibility-reminder,
-                      apply-retention, send-teaching-reminders.
+                      apply-retention, send-teaching-reminders,
+                      finish-exams-out-of-time.
     ADMIN_USERNAME:   Required.  Target username.
     ADMIN_EMAIL:      Required for create-superadmin.
     ADMIN_PASSWORD:   Required for create-superadmin.
@@ -319,6 +320,19 @@ def send_teaching_reminders() -> int:
     from app.features.teaching.reminders import main as reminders_main
 
     return reminders_main()
+
+
+def finish_exams_out_of_time() -> int:
+    """Finish every teaching exam whose time has run out.
+
+    For the attempts nobody came back to: each is marked on the answers
+    given in time, recorded as finished when its time ended, and a pass
+    is written to as any other is. Run on a schedule, and safe to run
+    twice. See ``app.features.teaching.out_of_time``.
+    """
+    from app.features.teaching.out_of_time import main as out_of_time_main
+
+    return out_of_time_main()
 
 
 def send_newsletter() -> int:
@@ -648,6 +662,10 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
         send_teaching_reminders,
         "Send enrolment reminders and renewal notices (a report without "
         "REMINDERS_APPLY=true)",
+    ),
+    "finish-exams-out-of-time": (
+        finish_exams_out_of_time,
+        "Finish every teaching exam whose time has run out",
     ),
     "send-newsletter": (
         send_newsletter,
