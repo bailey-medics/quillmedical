@@ -603,6 +603,7 @@ def grant_video_access(
 )
 def start_assessment(
     body: StartAssessmentIn,
+    background_tasks: BackgroundTasks,
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
@@ -629,7 +630,7 @@ def start_assessment(
 
     # An attempt left open past its time is finished first, so that it
     # is not in the way of the new one this call then writes.
-    finish_attempts_out_of_time(db)
+    _finish_abandoned_attempts(db, background_tasks)
     attempt = attempt_under_way(db, user.id, bank)
 
     if attempt is None:
@@ -664,11 +665,12 @@ def start_assessment(
     response_model=list[AssessmentHistoryOut],
 )
 def assessment_history(
+    background_tasks: BackgroundTasks,
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> list[AssessmentHistoryOut]:
     """List the current user's past assessments."""
-    finish_attempts_out_of_time(db)
+    _finish_abandoned_attempts(db, background_tasks)
 
     rows = db.execute(
         select(Assessment, QuestionBankConfig.title)
@@ -709,6 +711,7 @@ def assessment_history(
 )
 def get_assessment(
     assessment_id: int,
+    background_tasks: BackgroundTasks,
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> AssessmentOut:
@@ -720,7 +723,7 @@ def get_assessment(
     competency: somebody keeping their results after losing their way
     into modules would see a result with no title and no certificate.
     """
-    finish_attempts_out_of_time(db)
+    _finish_abandoned_attempts(db, background_tasks)
 
     assessment = db.get(Assessment, assessment_id)
 
@@ -1145,6 +1148,56 @@ def _maybe_enqueue_certificate_emails(
                     )
 
 
+def _finish_abandoned_attempts(
+    db: Session, background_tasks: BackgroundTasks
+) -> None:
+    """Finish every attempt whose time ran out, and send what a pass is owed.
+
+    Called by the routes that list or show attempts, so an exam nobody
+    came back to is finished the next time anybody looks. A pass found
+    this way is written to as any other pass is: the learner and the
+    coordinator, with the certificate, where the bank says to. Mark, 12
+    October 2026: a pass is a pass, however the exam came to be closed.
+
+    The results are committed before anything is queued, as in
+    ``complete_assessment``, so a result is kept even if an email
+    cannot be built. One that cannot is logged and passed over: it must
+    not fail the page of whoever happened to be reading.
+    """
+    swept = finish_attempts_out_of_time(db)
+
+    if not swept:
+        return
+
+    # A checkpoint: the results are kept whatever happens below.
+    db.commit()
+
+    for each in swept:
+        if not each.finished.overall_passed:
+            continue
+
+        learner = db.get(User, each.assessment.user_id)
+        if learner is None:
+            continue
+
+        try:
+            _maybe_enqueue_certificate_emails(
+                background_tasks=background_tasks,
+                assessment=each.assessment,
+                config_row=each.finished.config,
+                user=learner,
+                db=db,
+                criteria_results=each.finished.criteria_results,
+                exam_ref=each.assessment.exam_ref,
+            )
+        except Exception:
+            logger.exception(
+                "Could not queue the pass emails for attempt %s, "
+                "finished after its time ran out",
+                each.assessment.id,
+            )
+
+
 @teaching_router.post(
     "/assessments/{assessment_id}/complete",
     dependencies=[_DEP_MODULES, DEP_REQUIRE_CSRF],
@@ -1435,12 +1488,13 @@ def sync_items(
     dependencies=[_DEP_MANAGE],
 )
 def list_results(
+    background_tasks: BackgroundTasks,
     question_bank_id: str | None = None,
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> list[Assessment]:
     """List all assessment results for the educator's org."""
-    finish_attempts_out_of_time(db)
+    _finish_abandoned_attempts(db, background_tasks)
 
     org_id = _get_user_org_id(user, db)
     stmt = select(Assessment).where(
@@ -1780,6 +1834,7 @@ def list_delegate_modules(
     dependencies=[_DEP_MANAGE],
 )
 def list_delegates(
+    background_tasks: BackgroundTasks,
     bank_id: str | None = Query(default=None, min_length=1, max_length=255),
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
@@ -1803,7 +1858,7 @@ def list_delegates(
     Who is listed is ``delegates_in_view``; what is said of each is
     ``delegate_rows``.
     """
-    finish_attempts_out_of_time(db)
+    _finish_abandoned_attempts(db, background_tasks)
 
     view = delegates_in_view(db, user, one_module=bank_id is not None)
 

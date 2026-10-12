@@ -723,13 +723,21 @@ def finish_attempt(db: Session, assessment: Assessment) -> AttemptFinished:
 
 #: How long after its time an attempt is left for its own page to
 #: finish. The page finishes an attempt the moment its clock runs out,
-#: and that route is the one that writes to the learner about a pass.
-#: A sweep that got there first would mark the attempt and send
-#: nothing. Five minutes is far longer than the page takes.
+#: and shows the learner the result of that. A sweep that got there
+#: first would have the page told the attempt was finished already.
+#: Five minutes is far longer than the page takes.
 LEFT_FOR_ITS_OWN_PAGE = timedelta(minutes=5)
 
 
-def finish_attempts_out_of_time(db: Session) -> list[Assessment]:
+@dataclass(frozen=True)
+class AttemptSwept:
+    """An attempt finished because its time ran out, and how it came out."""
+
+    assessment: Assessment
+    finished: AttemptFinished
+
+
+def finish_attempts_out_of_time(db: Session) -> list[AttemptSwept]:
     """Mark every attempt whose time ran out and that nobody finished.
 
     A closed tab, a flat battery or a lost connection cannot be made to
@@ -751,14 +759,14 @@ def finish_attempts_out_of_time(db: Session) -> list[Assessment]:
       marked. It is skipped, so that one such attempt does not fail the
       page of whoever was reading.
 
-    Nobody is written to. A pass found this way has its certificate on
-    the result page, and the emails about a pass are the finishing
-    route's, where the learner is there to be told.
+    Nobody is written to from here. Each attempt is handed back with
+    how it came out, for the caller to send what a pass is owed: a pass
+    is a pass however the attempt came to be finished.
 
     The rows are flushed, not committed.
 
     Returns:
-        The attempts finished by this call.
+        The attempts finished by this call, each with its result.
     """
     now = datetime.now(UTC)
     still_open = db.scalars(
@@ -767,7 +775,7 @@ def finish_attempts_out_of_time(db: Session) -> list[Assessment]:
             Assessment.time_limit_minutes > 0,
         )
     ).all()
-    finished: list[Assessment] = []
+    swept: list[AttemptSwept] = []
 
     for assessment in still_open:
         deadline = _deadline(assessment)
@@ -776,16 +784,16 @@ def finish_attempts_out_of_time(db: Session) -> list[Assessment]:
             continue
 
         try:
-            finish_attempt(db, assessment)
+            finished = finish_attempt(db, assessment)
         except AssessmentConfigNotFound:
             continue
         assessment.completed_at = deadline
-        finished.append(assessment)
+        swept.append(AttemptSwept(assessment=assessment, finished=finished))
 
-    if finished:
+    if swept:
         db.flush()
 
-    return finished
+    return swept
 
 
 def _require_answered_already(

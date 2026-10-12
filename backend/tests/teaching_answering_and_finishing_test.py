@@ -898,7 +898,8 @@ def test_an_abandoned_attempt_is_finished_when_its_learner_next_looks(
     """The tab was closed, so nothing finished it. Reading it does.
 
     Finished as the answers stood when the time ran out, and dated
-    then. Nobody is written to: that is the finishing route's.
+    then. One of two answered right meets the bank's half, so it is a
+    pass, and the learner is written to as for any other pass.
     """
     learner = _learner(db_session, trust)
     mine = _attempt(db_session, trust, learner)
@@ -917,8 +918,74 @@ def test_an_abandoned_attempt_is_finished_when_its_learner_next_looks(
     ) == stored.started_at.replace(tzinfo=UTC) + timedelta(
         minutes=stored.time_limit_minutes
     )
-    assert stored.is_passed is not None
+    assert stored.is_passed is True
+    assert stored.exam_ref == f"POLYP-{mine.id}"
+    assert sent == ["learner@test.local"]
+
+
+def test_a_pass_found_this_way_is_written_to_once_only(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    sent: list[str],
+) -> None:
+    """Reading it again finds nothing left to finish."""
+    learner = _learner(db_session, trust)
+    mine = _attempt(db_session, trust, learner)
+    client, headers = _signed_in(test_client)
+    _send(client, headers, "answer", mine.id)
+    _abandon(db_session, mine.id)
+
+    client.get(f"{ASSESSMENTS}/{mine.id}")
+    client.get(f"{ASSESSMENTS}/{mine.id}")
+    client.get(f"{ASSESSMENTS}/history")
+
+    assert sent == ["learner@test.local"]
+
+
+def test_an_abandoned_attempt_that_fails_is_marked_and_nobody_is_written_to(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    sent: list[str],
+) -> None:
+    learner = _learner(db_session, trust)
+    mine = _attempt(db_session, trust, learner)
+    client, _ = _signed_in(test_client)
+    _abandon(db_session, mine.id)
+
+    resp = client.get(f"{ASSESSMENTS}/{mine.id}")
+
+    assert resp.status_code == 200
+    assert _stored(db_session, mine.id).is_passed is False
     assert sent == []
+
+
+def test_a_pass_email_that_cannot_be_built_does_not_fail_the_readers_page(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The result is kept, and whoever was reading still gets their page."""
+    learner = _learner(db_session, trust)
+    mine = _attempt(db_session, trust, learner)
+    client, headers = _signed_in(test_client)
+    _send(client, headers, "answer", mine.id)
+    _abandon(db_session, mine.id)
+
+    def _broken(**_: Any) -> None:
+        raise RuntimeError("no certificate today")
+
+    monkeypatch.setattr(
+        "app.features.teaching.router._maybe_enqueue_certificate_emails",
+        _broken,
+    )
+
+    resp = client.get(f"{ASSESSMENTS}/{mine.id}")
+
+    assert resp.status_code == 200
+    assert _stored(db_session, mine.id).is_passed is True
 
 
 def test_an_abandoned_attempt_shows_as_finished_in_their_history(

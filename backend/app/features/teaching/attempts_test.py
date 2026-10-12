@@ -1433,7 +1433,8 @@ def test_an_attempt_nobody_came_back_to_is_finished(
 
     finished = finish_attempts_out_of_time(db_session)
 
-    assert finished == [assessment]
+    assert [each.assessment for each in finished] == [assessment]
+    assert finished[0].finished.overall_passed == assessment.is_passed
     assert assessment.completed_at is not None
     assert assessment.completed_at.replace(tzinfo=UTC) == ran_out
     assert assessment.is_passed is not None
@@ -1490,7 +1491,7 @@ def test_an_attempt_just_out_of_time_is_left_for_its_own_page(
     a_second_later = finish_attempts_out_of_time(db_session)
 
     assert at_the_last_moment == []
-    assert a_second_later == [assessment]
+    assert [each.assessment for each in a_second_later] == [assessment]
 
 
 def test_an_attempt_with_no_time_limit_is_left_open(
@@ -1537,7 +1538,7 @@ def test_an_attempt_whose_bank_has_gone_is_skipped_and_the_rest_finished(
 
     finished = finish_attempts_out_of_time(db_session)
 
-    assert finished == [markable]
+    assert [each.assessment for each in finished] == [markable]
     assert stranded.completed_at is None
 
 

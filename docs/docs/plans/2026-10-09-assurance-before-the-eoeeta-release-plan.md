@@ -100,7 +100,7 @@ carries on from there as a standing part of how Quill is built.
 
 - [x] Check the card in CI. Done on 11 October 2026: an `Audit ledger`
       job in the fast tier runs `python3 scripts/review-ledger.py
-    verify`. It fails on a line that is not a stamp: a file the card
+verify`. It fails on a line that is not a stamp: a file the card
       does not cover or the branch never held, no name, a date or a
       fingerprint that is not one. The first idea, to fail any stamp
       whose version was never committed, was dropped on meeting the
@@ -635,9 +635,9 @@ before any feature.
 - [x] `.husky/pre-commit`. Stamped on 10 October 2026.
 - [x] The `Justfile`. Stamped on 11 October 2026.
 - [x] `.pre-commit-config.yaml`.
-- [ ] `compose.ci.yml`.
-- [ ] `compose.dev.yml`.
-- [ ] `compose.migrate.yml`.
+- [x] `compose.ci.yml`.
+- [x] `compose.dev.yml`.
+- [x] `compose.migrate.yml`.
 - [x] `compose.prod.cloud-run.yml`. Deleted on 12 October 2026, not
       audited: nothing built or deployed from it.
 - [x] `compose.prod.fhir-openehr.yml`. Deleted on 12 October 2026, not
@@ -897,8 +897,7 @@ teaching router" to merge. The frontend halves do not wait.
 
 - [x] Backend half of the step above, after the thin routes work: the
       request names the question it answers, and the server ignores a
-      repeat for a question already answered. Done on 12 October
-      2026. `POST /assessments/{id}/answer` takes an optional
+      repeat for a question already answered. Done on 12 October 2026. `POST /assessments/{id}/answer` takes an optional
       `answer_id`, the one each question is already sent with. Named,
       an answer is stored on that question only: a repeat of one
       already answered stores nothing and is answered as the first
@@ -948,14 +947,20 @@ teaching router" to merge. The frontend halves do not wait.
       - **It is dated when its time ran out**, not when somebody
         happened to look, and marked on the answers given by then.
       - **It waits five minutes past the time.** The page finishes an
-        attempt itself as the clock runs out, and that route is the
-        one that emails about a pass. A sweep that got there first
-        would mark it and send nothing.
-      - **Nobody is emailed by the sweep.** It runs while somebody
-        else's page loads, which is no place to send from. A pass
-        found this way still has its certificate on the result page.
-        If the lead and the delegate should be told, that wants a
-        step of its own.
+        attempt itself as the clock runs out, and shows the delegate
+        the result of doing so. A sweep that got there first would
+        have the page told the attempt was already finished.
+      - **A pass found by the sweep is written to like any other.**
+        The first build sent nothing, on the grounds that the sweep
+        runs while somebody else's page loads. Mark, 12 October 2026:
+        somebody who passes should get the email with the certificate,
+        and so should the exam centre, however the exam came to be
+        closed. So the sweep hands each result back, and the routes
+        that call it queue the same emails the finishing route does:
+        the delegate and the coordinator, where the module says to.
+        The results are committed first. An email that cannot be
+        built is logged and passed over, so it cannot fail the page
+        of whoever was reading.
       - **An attempt whose bank version is gone is skipped**, so one
         that cannot be marked does not fail the reader's page.
       - **"No time limit" means a limit of 0**, and such an attempt
@@ -1157,7 +1162,6 @@ found as a bug to fix on its own branch before going on.
   **For Mark to sort: the frontend pass** (found on 11 October 2026.
   The four in the exam a delegate sits are now Phase 4b; these six are
   not yet agreed)
-
   - **Video: one failed renewal removes a playing video**, with five
     minutes of access left and no retry. `use-video-access.ts`.
   - **Slides: the arrow keys change slide while the video has focus**,
