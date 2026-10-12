@@ -628,6 +628,11 @@ jobs:
     runs-on: ubuntu-24.04
     name: E2E image build
     timeout-minutes: 20
+    outputs:
+      # The public base images a build had to use because the mirror did
+      # not hold them. Empty when every one came from the mirror.
+      base_fell_back_backend: ${{ steps.base_backend.outputs.fell_back }}
+      base_fell_back_frontend: ${{ steps.base_frontend.outputs.fell_back }}
     env:
       CI_IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_backend:${{ github.sha }}
       CI_IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/quillmedical-ci_frontend:${{ github.sha }}
@@ -649,6 +654,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Build on this repository's own copies of Python, Node and Caddy,
+      # which the login above can pull, and not on the public registry,
+      # which refuses a caller that asks too often: that failed this job in
+      # the merge queue on 12 October 2026 and took seven pull requests out
+      # of it. mirror-images.yml makes the copies. An image the mirror does
+      # not hold yet is built on from the public registry, as before.
+      - name: Use the mirrored base images for the backend
+        id: base_backend
+        run: bash .github/scripts/ci/use-mirrored-base-images.sh "${{ github.repository_owner }}" backend/Dockerfile
+
+      - name: Use the mirrored base images for the frontend
+        id: base_frontend
+        run: bash .github/scripts/ci/use-mirrored-base-images.sh "${{ github.repository_owner }}" frontend/Dockerfile
+
       - name: Build and push backend image
         uses: docker/build-push-action@v7.3.0
         with:
@@ -657,6 +676,7 @@ jobs:
           target: prod
           push: true
           tags: ${{ env.CI_IMAGE_BACKEND }}
+          build-args: ${{ steps.base_backend.outputs.build_args }}
           cache-from: type=gha,scope=ci-backend
 
       - name: Build and push frontend image
@@ -668,7 +688,9 @@ jobs:
           push: true
           tags: ${{ env.CI_IMAGE_FRONTEND }}
           # TODO(clinical): flip to true and add FHIR/EHRbase to compose.ci.yml when we deliver the patient-facing side. See docs/docs/plans/todo.md.
-          build-args: VITE_CLINICAL_SERVICES_ENABLED=false
+          build-args: |
+            VITE_CLINICAL_SERVICES_ENABLED=false
+            ${{ steps.base_frontend.outputs.build_args }}
           cache-from: type=gha,scope=ci-frontend
 
   # ---------- E2E (Playwright) ----------
@@ -779,9 +801,10 @@ jobs:
         if: failure()
         run: docker compose -f compose.ci.yml logs --tail=100
 
-  # The end-to-end job carries on with the public image when the mirror
-  # does not hold one, which is safe but is the very thing the mirror is
-  # there to stop, so it is said out loud and not left in a log.
+  # The end-to-end job, and the image builds before it, carry on with the
+  # public image when the mirror does not hold one, which is safe but is
+  # the very thing the mirror is there to stop, so it is said out loud and
+  # not left in a log.
   #
   # In the merge queue only. That is where a refused pull costs something,
   # and a pull request that changes an image's version starts its own
@@ -792,18 +815,21 @@ jobs:
   # the public registry then refused the pull and the job failed.
   heavy_e2e_mirror_fell_back:
     name: Notify that E2E used a public image
-    needs: [heavy_e2e]
-    if: ${{ always() && github.event_name == 'merge_group' && needs.heavy_e2e.outputs.mirror_fell_back != '' }}
+    needs: [heavy_e2e_images, heavy_e2e]
+    if: ${{ always() && github.event_name == 'merge_group' && (needs.heavy_e2e.outputs.mirror_fell_back != '' || needs.heavy_e2e_images.outputs.base_fell_back_backend != '' || needs.heavy_e2e_images.outputs.base_fell_back_frontend != '') }}
     uses: ./.github/workflows/slack-notify.yml
     with:
       channel: app
       text: |
         *⚠️ E2E pulled from the public registry, not the mirror*
 
-        The mirror did not hold: ${{ needs.heavy_e2e.outputs.mirror_fell_back }}
+        The mirror did not hold, for the stack: ${{ needs.heavy_e2e.outputs.mirror_fell_back || 'nothing missing' }}
+        For the backend build: ${{ needs.heavy_e2e_images.outputs.base_fell_back_backend || 'nothing missing' }}
+        For the frontend build: ${{ needs.heavy_e2e_images.outputs.base_fell_back_frontend || 'nothing missing' }}
 
         The run carried on with the public image, which can be refused when several jobs pull at once. Run the `Mirror images` workflow to fill the mirror, and if it is already full, check the packages under `mirror/` still give this repository access.
 
+        *Image build result:* ${{ needs.heavy_e2e_images.result }}
         *E2E result:* ${{ needs.heavy_e2e.result }}
         *Action:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>
     secrets: inherit

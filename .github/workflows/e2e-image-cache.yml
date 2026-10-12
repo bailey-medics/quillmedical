@@ -56,6 +56,8 @@ on:
 
 permissions:
   contents: read
+  # To pull the mirrored base images, as ci.yml's image build does.
+  packages: read
 
 concurrency:
   group: e2e-image-cache
@@ -77,6 +79,23 @@ jobs:
         with:
           driver-opts: image=mirror.gcr.io/moby/buildkit:buildx-stable-1
 
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The same base images ci.yml builds on, so the cache saved here is
+      # the one that job can read: see the note there.
+      - name: Use the mirrored base images for the backend
+        id: base_backend
+        run: bash .github/scripts/ci/use-mirrored-base-images.sh "${{ github.repository_owner }}" backend/Dockerfile
+
+      - name: Use the mirrored base images for the frontend
+        id: base_frontend
+        run: bash .github/scripts/ci/use-mirrored-base-images.sh "${{ github.repository_owner }}" frontend/Dockerfile
+
       - name: Build backend image
         uses: docker/build-push-action@v7.3.0
         with:
@@ -84,6 +103,7 @@ jobs:
           file: ./backend/Dockerfile
           target: prod
           push: false
+          build-args: ${{ steps.base_backend.outputs.build_args }}
           cache-from: type=gha,scope=ci-backend
           cache-to: type=gha,mode=max,scope=ci-backend
 
@@ -94,6 +114,8 @@ jobs:
           file: ./frontend/Dockerfile
           target: prod
           push: false
-          build-args: VITE_CLINICAL_SERVICES_ENABLED=false
+          build-args: |
+            VITE_CLINICAL_SERVICES_ENABLED=false
+            ${{ steps.base_frontend.outputs.build_args }}
           cache-from: type=gha,scope=ci-frontend
           cache-to: type=gha,mode=max,scope=ci-frontend

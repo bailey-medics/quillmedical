@@ -28,6 +28,7 @@ permissions:
   # promote-to-production job.
   contents: read
   id-token: write  # Workload Identity Federation for Google Cloud Platform
+  packages: read  # To pull the mirrored base images the builds start from
 
 concurrency:
   # Fixed group (not keyed on github.ref) so a workflow_dispatch from a tag/hotfix
@@ -123,6 +124,24 @@ jobs:
         with:
           driver-opts: image=mirror.gcr.io/moby/buildkit:buildx-stable-1
 
+      - name: Log in to GHCR, for the mirrored base images
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build on this repository's own copies of Python, Node and Caddy and
+      # not on the public registry, which refuses a caller that asks too
+      # often. In CI that costs a pull request its place in the queue; here
+      # it would cost a deploy. mirror-images.yml makes the copies. An image
+      # the mirror does not hold yet is built on from the public registry.
+      - name: Use the mirrored base images
+        id: base
+        run: |
+          bash .github/scripts/ci/use-mirrored-base-images.sh "${{ github.repository_owner }}" \
+            ${{ matrix.service == 'backend' && 'backend/Dockerfile backend/Dockerfile.caption' || 'frontend/Dockerfile' }}
+
       - name: Build and push
         uses: docker/build-push-action@v7.3.0
         with:
@@ -137,6 +156,7 @@ jobs:
             VITE_VAPID_PUBLIC=${{ env.VITE_VAPID_PUBLIC }}
             VITE_CLINICAL_SERVICES_ENABLED=false
             VITE_APP_VERSION=${{ needs.prepare.outputs.sha }}
+            ${{ steps.base.outputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -151,6 +171,7 @@ jobs:
           tags: |
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/admin:${{ needs.prepare.outputs.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/admin:latest
+          build-args: ${{ steps.base.outputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -165,6 +186,7 @@ jobs:
           tags: |
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/transcode:${{ needs.prepare.outputs.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/transcode:latest
+          build-args: ${{ steps.base.outputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -181,6 +203,7 @@ jobs:
           tags: |
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/caption:${{ needs.prepare.outputs.sha }}
             ${{ env.AR_REGISTRY }}/${{ secrets.GCP_APP_PROJECT_ID }}/quill/caption:latest
+          build-args: ${{ steps.base.outputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
