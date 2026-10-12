@@ -554,15 +554,15 @@ def test_a_bank_that_draws_no_questions_starts_with_no_first_question(
 # --- POST /assessments: what is not asked -----------------------------------
 
 
-def test_a_second_attempt_can_be_started_while_the_first_is_under_way(
+def test_starting_again_hands_back_the_attempt_already_under_way(
     test_client: TestClient, db_session: Session, trust: OrgUnit
 ) -> None:
-    """As the route stands: a learner may hold two attempts on one bank.
+    """A reload, a restored tab or a second tab picks the same paper up.
 
-    Nothing looks for an unfinished attempt before writing another, and
-    nothing counts attempts. Both are left open, and each can be read
-    and answered. Whether that is wanted is a question for the owner:
-    pinned here and not changed.
+    This route once wrote a second attempt beside the first, each with
+    its own questions and its own clock, and left the first unfinished.
+    Mark, 11 October 2026: an exam somebody has open is the one they
+    are handed.
     """
     _serve(db_session, trust)
     learner = _learner(db_session, trust)
@@ -572,19 +572,75 @@ def test_a_second_attempt_can_be_started_while_the_first_is_under_way(
     second = client.post(ASSESSMENTS, headers=headers, json=START)
 
     assert (first.status_code, second.status_code) == (200, 200)
-    assert (
-        first.json()["assessment"]["id"] != second.json()["assessment"]["id"]
-    )
-    assert [
-        attempt.completed_at for attempt in _attempts_of(db_session, learner)
-    ] == [None, None]
+    assert second.json() == first.json()
+    assert len(_attempts_of(db_session, learner)) == 1
 
-    for started in (first, second):
-        current = client.get(
-            f"{ASSESSMENTS}/{started.json()['assessment']['id']}/current"
-        )
-        assert current.status_code == 200
-        assert current.json()["display_order"] == 1
+
+def test_it_is_handed_back_at_the_question_they_had_reached(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    _serve(db_session, trust)
+    _learner(db_session, trust)
+    client, headers = _signed_in(test_client)
+    first = client.post(ASSESSMENTS, headers=headers, json=START).json()
+    answered = client.post(
+        f"{ASSESSMENTS}/{first['assessment']['id']}/answer",
+        headers=headers,
+        json={
+            "selected_option": first["first_item"]["options"][0]["id"],
+            "answer_id": first["first_item"]["answer_id"],
+        },
+    )
+    assert answered.status_code == 200
+
+    again = client.post(ASSESSMENTS, headers=headers, json=START).json()
+
+    assert again["assessment"]["id"] == first["assessment"]["id"]
+    assert (
+        again["assessment"]["started_at"] == first["assessment"]["started_at"]
+    )
+    assert again["first_item"]["display_order"] == 2
+    assert again["first_item"] == answered.json()["next_item"]
+
+
+def test_a_new_attempt_is_started_once_the_first_is_finished(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    _serve(db_session, trust)
+    learner = _learner(db_session, trust)
+    client, headers = _signed_in(test_client)
+    first = client.post(ASSESSMENTS, headers=headers, json=START).json()
+    done = client.post(
+        f"{ASSESSMENTS}/{first['assessment']['id']}/complete", headers=headers
+    )
+    assert done.status_code == 200
+
+    second = client.post(ASSESSMENTS, headers=headers, json=START).json()
+
+    assert second["assessment"]["id"] != first["assessment"]["id"]
+    assert len(_attempts_of(db_session, learner)) == 2
+
+
+def test_an_attempt_long_past_its_time_is_finished_and_a_new_one_started(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    """Nobody came back to the first. Starting again closes it and
+    writes a new paper, as asked."""
+    _serve(db_session, trust)
+    learner = _learner(db_session, trust)
+    client, headers = _signed_in(test_client)
+    first = client.post(ASSESSMENTS, headers=headers, json=START).json()
+    old = _attempts_of(db_session, learner)[0]
+    old.started_at = datetime.now(UTC) - timedelta(days=2)
+    db_session.commit()
+
+    second = client.post(ASSESSMENTS, headers=headers, json=START).json()
+
+    assert second["assessment"]["id"] != first["assessment"]["id"]
+    db_session.expire_all()
+    by_id = {a.id: a for a in _attempts_of(db_session, learner)}
+    assert by_id[first["assessment"]["id"]].completed_at is not None
+    assert by_id[second["assessment"]["id"]].completed_at is None
 
 
 def test_a_bank_missing_some_of_its_media_can_still_be_started(

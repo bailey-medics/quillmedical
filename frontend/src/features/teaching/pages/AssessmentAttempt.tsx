@@ -153,6 +153,30 @@ export default function AssessmentAttempt() {
     return finishing;
   }, []);
 
+  /**
+   * Show what starting an exam sent back. That is a new attempt at its
+   * first question, or, where the delegate already had one under way,
+   * that one at the question they had reached. One with no question
+   * left is answered in full and only wants finishing.
+   */
+  const showStarted = useCallback(
+    (started: AssessmentWithFirstItem) => {
+      setAssessment(started.assessment);
+      setCurrentItem(started.first_item);
+
+      if (started.first_item) {
+        setAnsweredCount(started.first_item.display_order - 1);
+        setPhase("questions");
+        return;
+      }
+
+      setAnsweredCount(started.assessment.total_items);
+      setPhase("closing");
+      void finish(started.assessment.id);
+    },
+    [finish],
+  );
+
   // Initialise assessment - either create new or resume existing
   useEffect(() => {
     async function init() {
@@ -186,10 +210,7 @@ export default function AssessmentAttempt() {
               { question_bank_id: bankId },
             );
             heldAttemptRef.current = result.assessment.id;
-            setAssessment(result.assessment);
-            setCurrentItem(result.first_item);
-            setAnsweredCount(0);
-            setPhase("questions");
+            showStarted(result);
             // The attempt's own address, so a reload resumes this
             // attempt where /new would start a second
             navigate(`/teaching/assessment/${result.assessment.id}`, {
@@ -238,7 +259,7 @@ export default function AssessmentAttempt() {
       }
     }
     init();
-  }, [id, searchParams, navigate, finish, loadAttempt]);
+  }, [id, searchParams, navigate, finish, showStarted, loadAttempt]);
 
   const handleTryLoadingAgain = useCallback(() => {
     setError(null);
@@ -263,14 +284,11 @@ export default function AssessmentAttempt() {
         { question_bank_id: bankId },
       );
       heldAttemptRef.current = result.assessment.id;
-      setAssessment(result.assessment);
-      setCurrentItem(result.first_item);
-      setAnsweredCount(0);
+      showStarted(result);
       // Update URL to real assessment ID
       navigate(`/teaching/assessment/${result.assessment.id}`, {
         replace: true,
       });
-      setPhase("questions");
       scrollToTop();
     } catch {
       setError(COULD_NOT_START);
@@ -278,7 +296,7 @@ export default function AssessmentAttempt() {
     } finally {
       setBeginning(false);
     }
-  }, [searchParams, navigate, scrollToTop]);
+  }, [searchParams, navigate, scrollToTop, showStarted]);
 
   /** Show the closing screen and finish the attempt behind it. */
   const closeExam = useCallback(

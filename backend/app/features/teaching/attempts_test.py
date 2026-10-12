@@ -12,6 +12,7 @@ from app.features.teaching import attempts, media
 from app.features.teaching.attempts import (
     BankToSit,
     attempt_of,
+    attempt_under_way,
     bank_to_sit,
     begin_attempt,
     change_answer,
@@ -617,11 +618,10 @@ def test_the_first_question_handed_back_is_the_one_at_position_one(
 def test_starting_again_writes_a_second_attempt_beside_the_first(
     db_session: Session,
 ) -> None:
-    """As the route stood: an attempt under way does not stop another.
+    """``begin_attempt`` itself asks nothing of earlier attempts.
 
-    Nothing looks for an unfinished attempt on the same bank, nor
-    counts how many there have been. Both stay open. Pinned and not
-    changed.
+    Called twice it writes two, and both stay open. What stops a second
+    attempt is its caller, which asks ``attempt_under_way`` first.
     """
     org = _organisation(db_session)
     learner = _person(db_session)
@@ -635,6 +635,134 @@ def test_starting_again_writes_a_second_attempt_beside_the_first(
     assert second.assessment.completed_at is None
     assert len(_stored(db_session, first.assessment)) == 2
     assert len(_stored(db_session, second.assessment)) == 2
+
+
+# --- attempt_under_way ------------------------------------------------------
+
+TIMED = {"items_per_attempt": 2, "time_limit_minutes": 30}
+
+
+def test_an_attempt_still_open_and_in_time_is_the_one_under_way(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    bank = _bank(db_session, org, 4, TIMED)
+    begun = begin_attempt(db_session, learner.id, bank)
+
+    found = attempt_under_way(db_session, learner.id, bank)
+
+    assert found is not None
+    assert found.assessment.id == begun.assessment.id
+    assert found.config.id == bank.config.id
+    assert found.first_answer is not None
+    assert found.first_answer.display_order == 1
+
+
+def test_it_is_picked_up_at_the_first_question_without_an_answer(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    bank = _bank(db_session, org, 4, TIMED)
+    begun = begin_attempt(db_session, learner.id, bank)
+    record_answer(db_session, begun.assessment, RIGHT)
+
+    found = attempt_under_way(db_session, learner.id, bank)
+
+    assert found is not None
+    assert found.first_answer is not None
+    assert found.first_answer.display_order == 2
+
+
+def test_one_answered_in_full_is_still_under_way_with_no_next_question(
+    db_session: Session,
+) -> None:
+    """Answered and never finished. It is handed back so that it can be
+    finished, not passed over for a new paper."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    bank = _bank(db_session, org, 4, TIMED)
+    begun = begin_attempt(db_session, learner.id, bank)
+    record_answer(db_session, begun.assessment, RIGHT)
+    record_answer(db_session, begun.assessment, RIGHT)
+
+    found = attempt_under_way(db_session, learner.id, bank)
+
+    assert found is not None
+    assert found.assessment.id == begun.assessment.id
+    assert found.first_answer is None
+
+
+def test_somebody_with_no_attempt_has_none_under_way(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    bank = _bank(db_session, org, 4, TIMED)
+
+    assert attempt_under_way(db_session, learner.id, bank) is None
+
+
+def test_a_finished_attempt_is_not_under_way(db_session: Session) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    bank = _bank(db_session, org, 4, TIMED)
+    begun = begin_attempt(db_session, learner.id, bank)
+    finish_attempt(db_session, begun.assessment)
+    db_session.flush()
+
+    assert attempt_under_way(db_session, learner.id, bank) is None
+
+
+def test_an_attempt_past_its_time_is_not_under_way(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """In time at the last moment, and not one second after."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    bank = _bank(db_session, org, 4, TIMED)
+    begun = begin_attempt(db_session, learner.id, bank)
+    ran_out = begun.assessment.started_at.replace(tzinfo=UTC) + timedelta(
+        minutes=30
+    )
+
+    _stop_the_clock(monkeypatch, ran_out)
+    at_the_last_moment = attempt_under_way(db_session, learner.id, bank)
+    _stop_the_clock(monkeypatch, ran_out + timedelta(seconds=1))
+    a_second_later = attempt_under_way(db_session, learner.id, bank)
+
+    assert at_the_last_moment is not None
+    assert a_second_later is None
+
+
+def test_another_persons_attempt_is_not_theirs_to_pick_up(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    other = _person(db_session, "other")
+    bank = _bank(db_session, org, 4, TIMED)
+    begin_attempt(db_session, other.id, bank)
+
+    assert attempt_under_way(db_session, learner.id, bank) is None
+
+
+def test_the_latest_started_is_taken_where_there_are_several(
+    db_session: Session,
+) -> None:
+    """Two can exist from before this rule, or from two requests at
+    the same instant."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    bank = _bank(db_session, org, 4, TIMED)
+    begin_attempt(db_session, learner.id, bank)
+    later = begin_attempt(db_session, learner.id, bank)
+
+    found = attempt_under_way(db_session, learner.id, bank)
+
+    assert found is not None
+    assert found.assessment.id == later.assessment.id
 
 
 # --- attempt_of -------------------------------------------------------------

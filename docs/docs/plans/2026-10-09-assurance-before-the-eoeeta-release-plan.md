@@ -965,7 +965,7 @@ teaching router" to merge. The frontend halves do not wait.
         whether one should close itself does not arise until a bank
         can truly be untimed.
 
-- [ ] Stop a reload from starting a second attempt. Where a question
+- [x] Stop a reload from starting a second attempt. Where a question
       bank has no intro page, the page starts the attempt as it opens
       and its address stays `/teaching/assessment/new?bank=...`. A
       reload, or the browser restoring the tab, runs that again: a
@@ -988,6 +988,21 @@ teaching router" to merge. The frontend halves do not wait.
       fresh paper and a fresh clock. An attempt past its time is
       finished first, by the step above, and a new one is then started
       as asked.
+      Done on 12 October 2026: `attempt_under_way` in
+      `backend/app/features/teaching/attempts.py`, asked by the start
+      route before it writes anything. Decided on the way:
+
+      - **It is handed back at the question they had reached**, with
+        the clock it already had. The page shows that question and
+        counts the answered ones from it.
+      - **One answered in full and never submitted is handed back
+        too**, with no next question, and the page finishes it. That
+        way it is finished by the route that emails about a pass.
+      - **The paper is the version they started on**, which may be
+        older than the one now served.
+      - **Two tests said a second attempt could be started beside the
+        first, "a question for the owner".** This is the answer, so
+        the route's test now says the first is handed back.
 
 - [x] Stop the page loading the exam a second time after Begin. This is
       not Begin being pressed twice, and not the back button. Pressing

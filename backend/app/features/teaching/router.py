@@ -52,6 +52,7 @@ from app.features.teaching.attempt_results import (
 )
 from app.features.teaching.attempts import (
     attempt_of,
+    attempt_under_way,
     bank_to_sit,
     begin_attempt,
     change_answer,
@@ -605,13 +606,17 @@ def start_assessment(
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
-    """Start a new assessment for the current user.
+    """Start an assessment for the current user, or hand back the one
+    they already have under way on that bank.
 
-    Which bank, and every refusal but one, is ``bank_to_sit``; the draw
-    and the writes are ``begin_attempt``. The refusal for too small a
-    pool stays here, between the two, because its words carry two
-    counts: how many items are published and how many the bank asks
-    for.
+    Which bank, and every refusal but one, is ``bank_to_sit``. An
+    attempt still open and inside its time is ``attempt_under_way``,
+    and is sent back as it stands, with its next question: a reload or
+    a second tab picks the same paper up and writes no other. Otherwise
+    the draw and the writes are ``begin_attempt``. The refusal for too
+    small a pool stays here, before the draw, because its words carry
+    two counts: how many items are published and how many the bank
+    asks for.
     """
     org_ids = _get_user_org_ids(user, db)
 
@@ -622,21 +627,29 @@ def start_assessment(
         bank_id=body.question_bank_id,
     )
 
-    if len(bank.published_items) < bank.min_pool_size:
-        raise HTTPException(
-            409,
-            f"Insufficient items: {len(bank.published_items)} published, "
-            f"need {bank.min_pool_size}",
-        )
+    # An attempt left open past its time is finished first, so that it
+    # is not in the way of the new one this call then writes.
+    finish_attempts_out_of_time(db)
+    attempt = attempt_under_way(db, user.id, bank)
 
-    attempt = begin_attempt(db, user.id, bank)
+    if attempt is None:
+        if len(bank.published_items) < bank.min_pool_size:
+            raise HTTPException(
+                409,
+                f"Insufficient items: {len(bank.published_items)} "
+                f"published, need {bank.min_pool_size}",
+            )
+
+        attempt = begin_attempt(db, user.id, bank)
 
     # Build first item
     first_item = None
 
     if attempt.first_answer:
         first_item = _build_candidate_item(
-            attempt.first_answer, bank.config.config_yaml, bank.config.type
+            attempt.first_answer,
+            attempt.config.config_yaml,
+            attempt.config.type,
         )
 
     return {

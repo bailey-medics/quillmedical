@@ -296,6 +296,41 @@ describe("AssessmentAttempt, an exam with no intro page", () => {
   });
 });
 
+describe("AssessmentAttempt, an attempt already under way", () => {
+  it("picks it up at the question the delegate had reached", async () => {
+    // Starting an exam with one still open hands that one back: a
+    // reload of /new, or a second tab, gets the same paper.
+    getsAnswer({ "/teaching/question-banks/colonoscopy": bankWithoutIntro });
+    (api.post as Mock).mockResolvedValue({
+      assessment: attempt(),
+      first_item: question(2),
+    });
+
+    renderExamAt("/teaching/assessment/new?bank=colonoscopy");
+
+    expect(await screen.findByText("Question 2 text")).toBeInTheDocument();
+    expect(screen.queryByText("Question 1 text")).not.toBeInTheDocument();
+  });
+
+  it("finishes one that was answered in full and never submitted", async () => {
+    getsAnswer({ "/teaching/question-banks/colonoscopy": bankWithoutIntro });
+    (api.post as Mock)
+      .mockResolvedValueOnce({ assessment: attempt(), first_item: null })
+      .mockResolvedValueOnce({});
+
+    renderExamAt("/teaching/assessment/new?bank=colonoscopy");
+
+    expect(
+      await screen.findByRole("button", { name: "View results" }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(api.post).toHaveBeenLastCalledWith(
+        "/teaching/assessments/7/complete",
+      );
+    });
+  });
+});
+
 describe("AssessmentAttempt, a call that fails during the exam", () => {
   it("keeps the question and the chosen answer when an answer is not saved", async () => {
     resumeAttempt();

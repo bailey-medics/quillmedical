@@ -100,8 +100,13 @@ class AttemptBegun:
     """An attempt just written, and the first question of it."""
 
     assessment: Assessment
-    #: None only when the attempt drew no questions at all.
+    #: None when the attempt drew no questions at all, or, for one
+    #: picked up again, when every question of it has an answer.
     first_answer: AssessmentAnswer | None
+    #: The bank version the attempt is on, to lay its questions out
+    #: from. For an attempt picked up again this is the version it was
+    #: started on, which may not be the one now served.
+    config: QuestionBankConfig
 
 
 @dataclass(frozen=True)
@@ -243,9 +248,9 @@ def begin_attempt(db: Session, user_id: int, bank: BankToSit) -> AttemptBegun:
     unless the config sets ``randomise_order`` to false, and stored in
     that order, numbered from 1.
 
-    Nothing is asked of the learner's earlier attempts: one already
-    under way on the same bank is left as it is, and this writes
-    another beside it.
+    Nothing is asked here of the learner's earlier attempts. The caller
+    asks ``attempt_under_way`` first, and comes here only when there is
+    none to pick up.
 
     The attempt and its answer rows are flushed, not committed.
 
@@ -300,7 +305,67 @@ def begin_attempt(db: Session, user_id: int, bank: BankToSit) -> AttemptBegun:
     return AttemptBegun(
         assessment=assessment,
         first_answer=_first_unanswered(db, assessment.id),
+        config=bank.config,
     )
+
+
+def attempt_under_way(
+    db: Session, user_id: int, bank: BankToSit
+) -> AttemptBegun | None:
+    """The attempt a learner already has open on a bank, if they have one.
+
+    Asked before a new attempt is written, so that starting an exam
+    with one already under way hands that one back. A reload, a browser
+    restoring its tabs or a second tab would otherwise each write a new
+    attempt: a fresh paper and a fresh clock, and the first left
+    unfinished with its answers out of reach.
+
+    An attempt counts as under way when it is this learner's, on this
+    bank, not finished, and still inside its time. The latest started
+    is taken where there are several. One past its time is not handed
+    back: it takes no more answers, and ``finish_attempts_out_of_time``
+    finishes it. One whose bank version is no longer held cannot be
+    laid out, so it is passed over.
+
+    The version may be older than the one now served. The attempt is
+    theirs to finish on the paper they were given.
+
+    Args:
+        db: Core database session.
+        user_id: The learner.
+        bank: What ``bank_to_sit`` found for them.
+
+    Returns:
+        The attempt, its first question without an answer and the bank
+        version it is on, or None when there is nothing to pick up.
+    """
+    now = datetime.now(UTC)
+    still_open = db.scalars(
+        select(Assessment)
+        .where(
+            Assessment.user_id == user_id,
+            Assessment.question_bank_id == bank.config.question_bank_id,
+            Assessment.completed_at.is_(None),
+        )
+        .order_by(Assessment.started_at.desc(), Assessment.id.desc())
+    ).all()
+
+    for assessment in still_open:
+        if now > _deadline(assessment):
+            continue
+
+        try:
+            config_row = _bank_sat(db, assessment)
+        except AssessmentConfigNotFound:
+            continue
+
+        return AttemptBegun(
+            assessment=assessment,
+            first_answer=_first_unanswered(db, assessment.id),
+            config=config_row,
+        )
+
+    return None
 
 
 def attempt_of(db: Session, user_id: int, assessment_id: int) -> Assessment:
