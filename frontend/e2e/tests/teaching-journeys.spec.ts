@@ -14,7 +14,7 @@ const MODULE_ID = "chest-xray-interpretation-test";
 
 /** The other features' chunks: everything but teaching's own. */
 const OTHER_FEATURE_CHUNK =
-  /\/assets\/(admin|passport|safety|clinical)Chunk-[^/]+\.js$/;
+  /\/assets\/(admin|passport|safety|clinical|guides)Chunk-[^/]+\.js$/;
 
 interface MarkedWindow {
   quillNotReloaded?: boolean;
@@ -123,6 +123,23 @@ test.describe("Teaching module journeys", () => {
         .toBeGreaterThan(0);
       expect(await notReloaded()).toBe(true);
 
+      // The background fetch takes one feature at a time, and a fetch
+      // already on its way when the exam starts is left to finish. So
+      // wait here until it has gone quiet: starting sooner let the tail
+      // of the last feature's files land after the mark below, and the
+      // check that nothing is fetched during the exam failed by chance.
+      await expect
+        .poll(
+          async () => {
+            const before = codeRequested.length + failed.length;
+            await page.waitForTimeout(1_500);
+
+            return codeRequested.length + failed.length - before;
+          },
+          { timeout: 30_000 },
+        )
+        .toBe(0);
+
       // From starting the attempt, no code may be fetched. `scanPage`
       // reloads the page itself, to scan in both colour schemes, so the
       // check is made up to each scan and the mark renewed after it.
@@ -156,9 +173,11 @@ test.describe("Teaching module journeys", () => {
 
         // On question two the answer is saved and its reply is lost, as
         // on a connection that drops at the wrong moment. The question
-        // must stay, with the answer still chosen, and pressing Next
-        // again must go on to question three without sending the answer
-        // a second time, which would put it on question three.
+        // must stay, with the answer still chosen. Pressing Next again
+        // sends the same answer, naming question two, and the server
+        // stores nothing more and sends question three. Had it stored
+        // the repeat on question three, the page would be shown
+        // question four, and the loop below would not find its heading.
         if (question === 2) {
           let answersSent = 0;
           await page.route(
@@ -188,7 +207,7 @@ test.describe("Teaching module journeys", () => {
           await expect(
             page.getByRole("heading", { name: "Question 3" }),
           ).toBeVisible({ timeout: 10_000 });
-          expect(answersSent).toBe(1);
+          expect(answersSent).toBe(2);
           continue;
         }
 

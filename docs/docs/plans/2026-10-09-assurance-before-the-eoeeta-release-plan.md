@@ -892,9 +892,20 @@ teaching router" to merge. The frontend halves do not wait.
       landed, and the page moves on with it. The page half was built
       on 11 October 2026 and is the ticked part of this step.
 
-- [ ] Backend half of the step above, after the thin routes work: the
+- [x] Backend half of the step above, after the thin routes work: the
       request names the question it answers, and the server ignores a
-      repeat for a question already answered.
+      repeat for a question already answered. Done on 12 October
+      2026. `POST /assessments/{id}/answer` takes an optional
+      `answer_id`, the one each question is already sent with. Named,
+      an answer is stored on that question only: a repeat of one
+      already answered stores nothing and is answered as the first
+      was, with the question after; a name that is a question further
+      on, or another attempt's, is refused as not found. Left out, the
+      route does what it did, so nothing that calls it breaks. The
+      page now sends the name with every answer, and its own check
+      before sending again, built the day before, is taken out: the
+      server's is the one that cannot be raced. Changing an answer is
+      still the other route; a repeat never changes what is stored.
 
 - [x] Finish the exam when the delegate leaves or the time runs out.
       Mark, 11 October 2026: these should submit the exam, however much

@@ -120,9 +120,6 @@ export default function AssessmentAttempt() {
   // Set while an exam with no intro page is being started, so that the
   // load running twice starts one attempt
   const startingRef = useRef(false);
-  // Set after a failed answer: the answer may have been saved and only
-  // the reply lost, so the server is asked before it is sent again
-  const unsureOfAnswerRef = useRef(false);
   const finishedRef = useRef(false);
   const finishingRef = useRef<Promise<boolean> | null>(null);
 
@@ -300,39 +297,19 @@ export default function AssessmentAttempt() {
     setSubmitting(true);
     setExamError(null);
     try {
-      // The request does not name its question: the server puts the
-      // answer on whichever is current. So after a failure, find out
-      // whether that answer landed before sending it a second time,
-      // or it would go on the question after.
-      if (unsureOfAnswerRef.current) {
-        const current = await api.get<CandidateItem | null>(
-          `/teaching/assessments/${assessment.id}/current`,
-        );
-
-        if (current === null) {
-          unsureOfAnswerRef.current = false;
-          setAnsweredCount(assessment.total_items);
-          closeExam(assessment.id);
-          return;
-        }
-
-        if (current.display_order > currentItem.display_order) {
-          unsureOfAnswerRef.current = false;
-          setSelectedOption(null);
-          setAnsweredCount(current.display_order - 1);
-          setCurrentItem(current);
-          scrollToTop();
-          return;
-        }
-      }
-
+      // The answer names its question, so sending it again after a
+      // failure is safe: if the first was saved and only its reply was
+      // lost, the server stores nothing more and replies as it would
+      // have, with the question after.
       const result = await api.post<AnswerResult>(
         `/teaching/assessments/${assessment.id}/answer`,
-        { selected_option: selectedOption },
+        {
+          selected_option: selectedOption,
+          answer_id: currentItem.answer_id,
+        },
       );
-      unsureOfAnswerRef.current = false;
       setSelectedOption(null);
-      setAnsweredCount((prev) => prev + 1);
+      setAnsweredCount(currentItem.display_order);
 
       if (result.all_answered) {
         closeExam(assessment.id);
@@ -347,7 +324,6 @@ export default function AssessmentAttempt() {
         return;
       }
 
-      unsureOfAnswerRef.current = true;
       setExamError(COULD_NOT_SAVE);
     } finally {
       setSubmitting(false);

@@ -1280,6 +1280,152 @@ def test_what_stops_an_answer_is_said_in_a_fixed_order(
         record_answer(db_session, assessment, RIGHT)
 
 
+# --- record_answer, with the question named ---------------------------------
+
+
+def test_an_answer_that_names_the_next_question_is_stored_on_it(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    first, second, _ = _rows(db_session, assessment)
+
+    recorded = record_answer(db_session, assessment, RIGHT, first.id)
+
+    assert first.selected_option == RIGHT
+    assert recorded.next_answer is not None
+    assert recorded.next_answer.id == second.id
+
+
+def test_the_same_answer_sent_twice_is_stored_once(
+    db_session: Session,
+) -> None:
+    """The first was stored and its reply lost, so it is sent again.
+
+    Without the name the second would be stored on the question after,
+    which the learner has not seen.
+    """
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    first, second, third = _rows(db_session, assessment)
+
+    once = record_answer(db_session, assessment, RIGHT, first.id)
+    twice = record_answer(db_session, assessment, RIGHT, first.id)
+
+    assert first.selected_option == RIGHT
+    assert second.selected_option is None
+    assert third.selected_option is None
+    assert once.next_answer is not None and twice.next_answer is not None
+    assert twice.next_answer.id == once.next_answer.id == second.id
+
+
+def test_a_repeat_does_not_change_the_answer_already_stored(
+    db_session: Session,
+) -> None:
+    """Changing an answer is ``change_answer``. A repeat stores nothing,
+    whatever it says was chosen."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    first = _rows(db_session, assessment)[0]
+    record_answer(db_session, assessment, RIGHT, first.id)
+    answered_at = first.answered_at
+
+    record_answer(db_session, assessment, WRONG, first.id)
+
+    assert first.selected_option == RIGHT
+    assert first.is_correct is True
+    assert first.answered_at == answered_at
+
+
+def test_a_repeat_of_the_last_answer_says_there_is_nothing_left(
+    db_session: Session,
+) -> None:
+    """Not refused as "all items already answered": the page is owed the
+    reply it never got."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, questions=1)
+    only = _rows(db_session, assessment)[0]
+    record_answer(db_session, assessment, RIGHT, only.id)
+
+    again = record_answer(db_session, assessment, RIGHT, only.id)
+
+    assert again.next_answer is None
+    assert only.selected_option == RIGHT
+
+
+def test_an_answer_naming_a_question_further_on_is_refused(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    first, second, _ = _rows(db_session, assessment)
+
+    with pytest.raises(AnswerNotFound):
+        record_answer(db_session, assessment, RIGHT, second.id)
+
+    assert first.selected_option is None
+    assert second.selected_option is None
+
+
+def test_an_answer_naming_another_attempts_question_is_refused(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    mine = _sitting(db_session, org, learner)
+    theirs = _attempt(
+        db_session, org, _person(db_session, "other"), synced=False
+    )
+    their_first = _rows(db_session, theirs)[0]
+    # Answered already, so only whose attempt it is can refuse it.
+    their_first.selected_option = WRONG
+    db_session.flush()
+
+    with pytest.raises(AnswerNotFound):
+        record_answer(db_session, mine, RIGHT, their_first.id)
+
+    assert _rows(db_session, mine)[0].selected_option is None
+    assert their_first.selected_option == WRONG
+
+
+def test_an_answer_naming_no_question_at_all_is_refused(
+    db_session: Session,
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+
+    with pytest.raises(AnswerNotFound):
+        record_answer(db_session, assessment, RIGHT, 999_999)
+
+    assert _rows(db_session, assessment)[0].selected_option is None
+
+
+def test_a_repeat_is_refused_once_the_attempt_is_out_of_time(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The order of the checks is unchanged: out of time comes before
+    which question is meant."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner)
+    first = _rows(db_session, assessment)[0]
+    record_answer(db_session, assessment, RIGHT, first.id)
+    _stop_the_clock(
+        monkeypatch,
+        assessment.started_at.replace(tzinfo=UTC)
+        + timedelta(minutes=assessment.time_limit_minutes, seconds=1),
+    )
+
+    with pytest.raises(TimeLimitExceeded):
+        record_answer(db_session, assessment, RIGHT, first.id)
+
+
 # --- change_answer ----------------------------------------------------------
 
 

@@ -863,7 +863,9 @@ def submit_answer(
     assessment = attempt_of(db, user.id, assessment_id)
     _require_place_for_attempt(db, user, assessment)
 
-    recorded = record_answer(db, assessment, body.selected_option)
+    recorded = record_answer(
+        db, assessment, body.selected_option, body.answer_id
+    )
 
     next_item = None
     all_answered = recorded.next_answer is None

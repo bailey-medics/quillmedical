@@ -343,39 +343,49 @@ describe("AssessmentAttempt, a call that fails during the exam", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not send the answer again when it had been saved", async () => {
-    // The answer landed and only the reply was lost. Sent again, it
-    // would be put on question two.
+  it("names the question in every answer, so one sent twice is stored once", async () => {
+    // The answer landed and only the reply was lost. The server keeps
+    // the first and answers the second as it would have the first, so
+    // the page only has to send the same thing again.
     resumeAttempt();
-    (api.post as Mock).mockRejectedValueOnce(new Error("Network down"));
+    (api.post as Mock)
+      .mockRejectedValueOnce(new Error("Network down"))
+      .mockResolvedValueOnce({ all_answered: false, next_item: question(2) });
 
     await chooseAndPressNext();
     await screen.findByText(/could not save your answer/i);
-    getsAnswer({ "/teaching/assessments/7/current": question(2) });
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
     expect(await screen.findByText("Question 2 text")).toBeInTheDocument();
-    expect(api.post).toHaveBeenCalledTimes(1);
+    expect((api.post as Mock).mock.calls).toEqual([
+      [
+        "/teaching/assessments/7/answer",
+        { selected_option: "a", answer_id: 101 },
+      ],
+      [
+        "/teaching/assessments/7/answer",
+        { selected_option: "a", answer_id: 101 },
+      ],
+    ]);
     expect(screen.getByRole("radio", { name: "Adenoma" })).not.toBeChecked();
   });
 
-  it("keeps the message when the server cannot be asked either", async () => {
+  it("keeps the message and the question when the answer fails again", async () => {
     resumeAttempt();
-    (api.post as Mock).mockRejectedValueOnce(new Error("Network down"));
+    (api.post as Mock).mockRejectedValue(new Error("Network down"));
 
     await chooseAndPressNext();
     await screen.findByText(/could not save your answer/i);
-    getsAnswer({ "/teaching/assessments/7/current": new Error("Still down") });
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
     await waitFor(() => {
-      expect(api.get).toHaveBeenCalledWith("/teaching/assessments/7/current");
+      expect(api.post).toHaveBeenCalledTimes(2);
     });
     expect(
       await screen.findByText(/could not save your answer/i),
     ).toBeInTheDocument();
-    expect(api.post).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Question 1 text")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Adenoma" })).toBeChecked();
   });
 
   it("closes the exam when an answer is refused because the time is up", async () => {
