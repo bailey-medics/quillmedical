@@ -103,3 +103,4 @@
 - [Assurance Before the EoEETA Release](2026-10-09-assurance-before-the-eoeeta-release-plan.md)
 - [Thin Routes and Steady Frontend Tests](2026-10-11-thin-routes-and-steady-frontend-tests-plan.md)
 - [Documentation Review Follow-ups](2026-10-11-documentation-review-follow-ups-plan.md)
+- [CI That Holds Under Load](2026-10-12-ci-that-holds-under-load-plan.md)
