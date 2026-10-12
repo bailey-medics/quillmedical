@@ -554,7 +554,7 @@ exists for `main` alone; the rest were merged directly, eight of them
 within seven seconds, into feature branches that no ruleset protects.
 Pull request #1808 carried the work to `main` afterwards.
 
-- [ ] Make it impossible, in `infra/github/`. Two settings together:
+- [x] Make it impossible, in `infra/github/`. Two settings together:
 
       - **Allow merge commits only.** Set `allow_squash_merge` and
         `allow_rebase_merge` to false on the repository, in
@@ -571,6 +571,14 @@ Pull request #1808 carried the work to `main` afterwards.
       unaffected, because a stack's branches hold one commit each and are
       rebased, never merged.
 
+      Built behind a variable, `block_merges_into_feature_branches`,
+      which is false: with it off nothing changes. One doubt could not be
+      settled by reading. Every feature branch inherits `main`'s merge
+      commits, and if GitHub counts those against linear history the
+      rule would refuse every push. So it is switched on by hand, tried,
+      and switched off again if a push is refused, as the next step sets
+      out.
+
       A required check was considered and will not do it: a check only
       blocks a merge where a ruleset requires it, and a ruleset strict
       enough to require one on a feature branch also refuses the pushes a
@@ -583,19 +591,22 @@ Pull request #1808 carried the work to `main` afterwards.
       does not block the merge, take it out again and keep the alarm
       below as the only guard.
 
-- [ ] Check nothing merges `main` into a feature branch. `just rebase`
+- [x] Check nothing merges `main` into a feature branch. `just rebase`
       and the stack recipes rebase; Renovate must be set to rebase too, or
       its branches will be refused. Read `renovate.json` for
       `rebaseWhen` and any `automergeType` before applying.
+      Checked: `renovate.json` sets `rebaseWhen` to `never` and
+      `automerge` to false throughout, so Renovate never merges `main`
+      into its branches.
 
-- [ ] Add an alarm for whatever slips through: a small workflow on
+- [x] Add an alarm for whatever slips through: a small workflow on
       `pull_request: closed` that posts to Slack, through
       `slack-notify.yml`, when a pull request was merged and its base was
       not `main`. Say in the message that the work has not reached `main`
       and name the pull request. Fourteen merges went unnoticed for about
       ten minutes, and only because somebody asked.
 
-- [ ] Update the "Traps" section of `docs/docs/cicd/stacked-branches.md`
+- [x] Update the "Traps" section of `docs/docs/cicd/stacked-branches.md`
       with this one, and the rule that follows from it: only the bottom of
       a stack is merged, and `just stack-sync` is what brings the next
       branch down to `main`.

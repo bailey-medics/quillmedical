@@ -78,6 +78,36 @@ variable "merge_queue_enabled" {
   default     = true
 }
 
+variable "block_merges_into_feature_branches" {
+  description = <<-EOT
+    Whether a pull request can be merged into a branch other than main.
+
+    A stacked pull request's base is the branch below it, and a merge goes
+    into the base. On 2026-10-11 fourteen pull requests of one stack were
+    merged that way, into feature branches no ruleset protects, and none
+    reached main.
+
+    True does two things together. It requires linear history on every
+    branch but main, so a merge commit is refused there, and it switches
+    off squash and rebase merging for the repository, so there is no other
+    way to merge. Pushing a stack is unaffected: its branches hold one
+    commit each and are rebased, never merged. Every merge into main is
+    already a merge commit, through the queue.
+
+    False, the default, because it has not been tried. Whether GitHub
+    takes the merge commits a feature branch inherits from main as a
+    breach of linear history is not something to find out on every push
+    at once. To try it: set this to true in terraform.tfvars WITHOUT
+    committing the change, apply, push a throwaway branch, open a pull
+    request from a second throwaway branch into it and confirm no merge
+    is offered, then confirm `just stack-submit` still pushes a stack. If
+    all three hold, commit the tfvars change. If a push is refused, `git
+    checkout infra/github/terraform.tfvars` and apply again.
+  EOT
+  type        = bool
+  default     = false
+}
+
 # ---------------------------------------------------------------------------
 # Ruleset 1 - Protected branches (main only)
 # ---------------------------------------------------------------------------
@@ -317,5 +347,10 @@ resource "github_repository_ruleset" "branch_naming" {
       name    = "Branch names must follow feature/*, hotfix/*, copilot/*, or renovate/* convention (gh-readonly-queue/* is reserved for the merge queue)"
       negate  = false
     }
+
+    # Refuses a merge commit on any branch but main, which with squash and
+    # rebase merging off (security.tf) leaves no way to merge a pull
+    # request into a feature branch. See the variable above.
+    required_linear_history = var.block_merges_into_feature_branches
   }
 }

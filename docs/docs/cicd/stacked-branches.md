@@ -108,6 +108,28 @@ an open pull request is left alone. `scripts/stack-branch-merged.sh` holds
 the rule, and its tests record the case that prompted it, an earlier pull
 request merged from a name that a later one reused.
 
+### Merging anything but the bottom of the stack
+
+A stacked pull request's base is the branch below it, and a merge goes
+into the base. Only the bottom of a stack points at `main`. Merge one
+higher up and it shows as "Merged", but its work has landed in a feature
+branch and `main` has not seen it. On 11 October 2026 fourteen pull
+requests of one stack went that way, eight of them within seven seconds.
+
+**Only ever merge the bottom.** After it lands, `just stack-sync` points
+the next branch at `main`, and that one is merged next. A quick check
+before merging anything in a stack: the pull request should say it merges
+"into `main`".
+
+Nothing stops it today. The merge queue and the required checks cover
+`main` alone. `.github/workflows/merged-outside-main.yml` posts to Slack
+when it happens, and `infra/github` can block it with
+`block_merges_into_feature_branches`, which is off until it has been
+tried.
+
+If it happens, nothing is lost. The work is in the branch it landed in:
+open one pull request from that branch into `main`.
+
 ### A queued pull request must not be pushed
 
 `stack-submit` rebases and pushes every branch. A pull request that is in
