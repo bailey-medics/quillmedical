@@ -67,6 +67,7 @@ ITEM_FIELDS = {
     "text",
     "options",
     "selected_option",
+    "seconds_left",
 }
 
 #: Every field of the attempt itself that starting one sends.
@@ -83,6 +84,7 @@ ATTEMPT_FIELDS = {
     "score_breakdown",
     "bank_title",
     "certificate_available",
+    "seconds_left",
 }
 
 #: A bank whose items each carry their own options and right answer.
@@ -122,6 +124,22 @@ def trust(db_session: Session) -> OrgUnit:
     db_session.flush()
 
     return org
+
+
+def _timeless(body: Any) -> Any:
+    """A response without its seconds left.
+
+    Two calls a moment apart are sent different counts, so a test that
+    compares one response with another leaves them out.
+    """
+    if isinstance(body, dict):
+        return {
+            key: _timeless(value)
+            for key, value in body.items()
+            if key != "seconds_left"
+        }
+
+    return body
 
 
 def _config(
@@ -633,7 +651,7 @@ def test_starting_while_an_attempt_is_in_progress_hands_back_that_attempt(
     second = client.post(ASSESSMENTS, headers=headers, json=START)
 
     assert (first.status_code, second.status_code) == (200, 200)
-    assert second.json() == first.json()
+    assert _timeless(second.json()) == _timeless(first.json())
     assert set(second.json()) == {"assessment", "first_item"}
     assert set(second.json()["assessment"]) == ATTEMPT_FIELDS
     assert set(second.json()["first_item"]) == ITEM_FIELDS
@@ -835,7 +853,7 @@ def test_an_attempt_in_progress_on_one_bank_does_not_stop_one_on_another(
         != polyps.json()["assessment"]["id"]
     )
     assert bleeding.json()["assessment"]["question_bank_id"] == OTHER_BANK
-    assert polyps_again.json() == polyps.json()
+    assert _timeless(polyps_again.json()) == _timeless(polyps.json())
     assert [
         (attempt.question_bank_id, attempt.completed_at)
         for attempt in _attempts_of(db_session, learner)
@@ -893,12 +911,12 @@ def test_an_attempt_is_handed_back_on_the_version_it_was_started_on(
     )
 
     assert again.status_code == 200
-    assert again.json() == first.json()
+    assert _timeless(again.json()) == _timeless(first.json())
     assert again.json()["assessment"]["bank_version"] == 1
     assert again.json()["assessment"]["total_items"] == 3
     assert "A NEW QUESTION" not in again.text
     assert current.status_code == 200
-    assert current.json() == first.json()["first_item"]
+    assert _timeless(current.json()) == _timeless(first.json()["first_item"])
     assert answered.status_code == 200
     assert _answer_rows(db_session, attempt_id) == drawn
     assert len(_attempts_of(db_session, learner)) == 1
@@ -935,7 +953,7 @@ def test_a_bank_since_closed_is_refused_even_with_an_attempt_in_progress(
     assert again.status_code == 403
     assert again.json() == NOT_OPEN
     assert current.status_code == 200
-    assert current.json() == first.json()["first_item"]
+    assert _timeless(current.json()) == _timeless(first.json()["first_item"])
     assert answered.status_code == 200
     db_session.expire_all()
     (attempt,) = _attempts_of(db_session, learner)
@@ -968,7 +986,7 @@ def test_an_attempt_in_progress_is_handed_back_whatever_the_pool_is_now(
     again = client.post(ASSESSMENTS, headers=headers, json=START)
 
     assert again.status_code == 200
-    assert again.json() == first.json()
+    assert _timeless(again.json()) == _timeless(first.json())
     assert len(_attempts_of(db_session, learner)) == 1
 
 
@@ -1003,7 +1021,7 @@ def test_two_starts_at_the_same_instant_are_answered_with_one_attempt(
 
     assert looked == [BANK]
     assert (first.status_code, second.status_code) == (200, 200)
-    assert second.json() == first.json()
+    assert _timeless(second.json()) == _timeless(first.json())
     (attempt,) = _attempts_of(db_session, learner)
     assert attempt.id == first.json()["assessment"]["id"]
     assert db_session.scalar(select(func.count(AssessmentAnswer.id))) == 3

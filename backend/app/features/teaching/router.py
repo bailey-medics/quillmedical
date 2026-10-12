@@ -63,6 +63,7 @@ from app.features.teaching.attempts import (
     next_unanswered_item,
     pick_up_attempt,
     record_answer,
+    seconds_left,
     unfinished_attempts,
 )
 from app.features.teaching.enrolment import enrolled_on_offer, is_enrolled
@@ -679,8 +680,11 @@ def start_assessment(
             attempt.first.config.type,
         )
 
+    started = AssessmentOut.model_validate(attempt.assessment)
+    started.seconds_left = seconds_left(attempt.assessment)
+
     return {
-        "assessment": attempt.assessment,
+        "assessment": started,
         "first_item": first_item,
     }
 
@@ -775,6 +779,7 @@ def get_assessment(
         .first()
     )
     out = AssessmentOut.model_validate(assessment)
+    out.seconds_left = seconds_left(assessment)
 
     if config_row is not None:
         results = (config_row.config_yaml or {}).get("results") or {}
@@ -869,9 +874,12 @@ def get_current_item(
     if item is None:
         return None
 
-    return _build_candidate_item(
+    current = _build_candidate_item(
         item.answer, item.config.config_yaml, item.config.type
     )
+    current.seconds_left = seconds_left(assessment)
+
+    return current
 
 
 @teaching_router.get(
@@ -898,9 +906,12 @@ def get_item_by_order(
 
     item = item_at_position(db, assessment, display_order)
 
-    return _build_candidate_item(
+    asked_for = _build_candidate_item(
         item.answer, item.config.config_yaml, item.config.type
     )
+    asked_for.seconds_left = seconds_left(assessment)
+
+    return asked_for
 
 
 @teaching_router.post(
@@ -944,6 +955,7 @@ def submit_answer(
         "answered": True,
         "next_item": next_item,
         "all_answered": all_answered,
+        "seconds_left": seconds_left(assessment),
     }
 
 
@@ -972,9 +984,12 @@ def update_answer(
 
     changed = change_answer(db, assessment, answer_id, body.selected_option)
 
-    return _build_candidate_item(
+    item = _build_candidate_item(
         changed.answer, changed.config.config_yaml, changed.config.type
     )
+    item.seconds_left = seconds_left(assessment)
+
+    return item
 
     # ------------------------------------------------------------------
     # Certificate email helper

@@ -18,44 +18,31 @@ const meta: Meta<typeof AssessmentTimer> = {
 export default meta;
 type Story = StoryObj<typeof AssessmentTimer>;
 
+/** A new attempt, with its whole time ahead of it. */
 export const PlentyOfTime: Story = {
+  render: () => <AssessmentTimer secondsLeft={75 * 60} onExpire={() => {}} />,
+};
+
+/**
+ * An attempt opened part way through: the countdown starts from the
+ * seconds the server says are left, not from the attempt's whole time.
+ */
+export const StartedPartWayThrough: Story = {
   render: () => (
-    <AssessmentTimer
-      timeLimitMinutes={75}
-      startedAt={new Date().toISOString()}
-      onExpire={() => {}}
-    />
+    <AssessmentTimer secondsLeft={42 * 60 + 17} onExpire={() => {}} />
   ),
 };
 
 export const FiveMinutesLeft: Story = {
-  render: () => (
-    <AssessmentTimer
-      timeLimitMinutes={75}
-      startedAt={new Date(Date.now() - 70 * 60 * 1000).toISOString()}
-      onExpire={() => {}}
-    />
-  ),
+  render: () => <AssessmentTimer secondsLeft={5 * 60} onExpire={() => {}} />,
 };
 
 export const OneMinuteLeft: Story = {
-  render: () => (
-    <AssessmentTimer
-      timeLimitMinutes={75}
-      startedAt={new Date(Date.now() - 74 * 60 * 1000).toISOString()}
-      onExpire={() => {}}
-    />
-  ),
+  render: () => <AssessmentTimer secondsLeft={60} onExpire={() => {}} />,
 };
 
 export const Expired: Story = {
-  render: () => (
-    <AssessmentTimer
-      timeLimitMinutes={75}
-      startedAt={new Date(Date.now() - 80 * 60 * 1000).toISOString()}
-      onExpire={() => {}}
-    />
-  ),
+  render: () => <AssessmentTimer secondsLeft={0} onExpire={() => {}} />,
 };
 
 export const DarkMode: Story = {

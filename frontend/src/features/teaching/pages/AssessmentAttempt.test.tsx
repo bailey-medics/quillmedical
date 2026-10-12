@@ -607,11 +607,14 @@ describe("AssessmentAttempt, finishing the exam", () => {
   });
 
   /**
-   * Hold the page's clock still and its ticks in hand. Only the ticking
-   * and the date are faked: the waits in these tests need real timeouts.
+   * Hold the page's clock still and its ticks in hand. Only the ticking,
+   * the date and the stopwatch the countdown reads are faked: the waits
+   * in these tests need real timeouts.
    */
   function holdTheClock() {
-    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+    vi.useFakeTimers({
+      toFake: ["setInterval", "clearInterval", "Date", "performance"],
+    });
   }
 
   /** Let one second of the page's clock pass. */
@@ -832,5 +835,122 @@ describe("AssessmentAttempt, finishing the exam", () => {
 
     expect(await screen.findByText("Teaching home")).toBeInTheDocument();
     expect(api.post).not.toHaveBeenCalled();
+  });
+});
+
+describe("AssessmentAttempt, the countdown", () => {
+  /** A start by this computer's clock that would leave half an hour. */
+  const halfAnHourAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
+  beforeEach(() => {
+    // The countdown held still, so the time shown is the time it was set
+    // to. Only its ticks and its stopwatch are faked: the waits in these
+    // tests need real timeouts.
+    vi.useFakeTimers({
+      toFake: ["setInterval", "clearInterval", "performance"],
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("is set by the seconds the server says are left, not by this computer's clock", async () => {
+    resumeAttempt({ started_at: halfAnHourAgo, seconds_left: 19 * 60 + 50 });
+
+    await screen.findByText("Question 1 text");
+
+    expect(screen.getByText("19:50")).toBeInTheDocument();
+  });
+
+  it("is set by the question the attempt is opened on", async () => {
+    getsAnswer({
+      "/teaching/assessments/7": attempt({ seconds_left: 405 }),
+      "/teaching/question-banks/colonoscopy": bankWithoutIntro,
+      "/teaching/assessments/7/current": { ...question(1), seconds_left: 400 },
+    });
+    renderExamAt("/teaching/assessment/7");
+
+    await screen.findByText("Question 1 text");
+
+    expect(screen.getByText("06:40")).toBeInTheDocument();
+  });
+
+  it("is set by an attempt as it is started", async () => {
+    getsAnswer({ "/teaching/question-banks/colonoscopy": bankWithoutIntro });
+    (api.post as Mock).mockResolvedValue({
+      assessment: attempt({ seconds_left: 3600 }),
+      first_item: question(1),
+    });
+    renderExamAt("/teaching/assessment/new?bank=colonoscopy");
+
+    await screen.findByText("Question 1 text");
+
+    expect(screen.getByText("60:00")).toBeInTheDocument();
+  });
+
+  it("is set afresh by the answer to each answer given", async () => {
+    resumeAttempt({ seconds_left: 600 });
+    (api.post as Mock).mockResolvedValue({
+      answered: true,
+      next_item: question(2),
+      all_answered: false,
+      seconds_left: 533,
+    });
+    await screen.findByText("Question 1 text");
+    expect(screen.getByText("10:00")).toBeInTheDocument();
+
+    await chooseAndPressNext();
+
+    await screen.findByText("Question 2 text");
+    expect(screen.getByText("08:53")).toBeInTheDocument();
+  });
+
+  it("is set afresh by a question gone back to", async () => {
+    resumeAttempt({ seconds_left: 600 });
+    (api.post as Mock).mockResolvedValue({
+      answered: true,
+      next_item: question(2),
+      all_answered: false,
+      seconds_left: 590,
+    });
+    await screen.findByText("Question 1 text");
+    await chooseAndPressNext();
+    await screen.findByText("Question 2 text");
+    getsAnswer({
+      "/teaching/assessments/7/item/1": {
+        ...question(1),
+        selected_option: "a",
+        seconds_left: 571,
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Previous" }));
+
+    await screen.findByText("Question 1 text");
+    expect(screen.getByText("09:31")).toBeInTheDocument();
+  });
+
+  it("is left as it is by an answer that says nothing of the time", async () => {
+    resumeAttempt({ seconds_left: 600 });
+    (api.post as Mock).mockResolvedValue({
+      answered: true,
+      next_item: question(2),
+      all_answered: false,
+    });
+    await screen.findByText("Question 1 text");
+
+    await chooseAndPressNext();
+
+    await screen.findByText("Question 2 text");
+    expect(screen.getByText("10:00")).toBeInTheDocument();
+  });
+
+  it("is worked out from the start for a server that sends no seconds left", async () => {
+    resumeAttempt({ started_at: halfAnHourAgo });
+
+    await screen.findByText("Question 1 text");
+
+    expect(screen.getByText(/^(30:00|29:5\d)$/)).toBeInTheDocument();
   });
 });

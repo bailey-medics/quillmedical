@@ -76,11 +76,7 @@ export const WithRightSection: Story = {
     showSearch: false,
     rightSection: (
       <Group gap="sm" wrap="nowrap">
-        <AssessmentTimer
-          timeLimitMinutes={75}
-          startedAt={new Date().toISOString()}
-          onExpire={() => {}}
-        />
+        <AssessmentTimer secondsLeft={75 * 60} onExpire={() => {}} />
         <ExamCloseButton onConfirm={() => {}} />
       </Group>
     ),

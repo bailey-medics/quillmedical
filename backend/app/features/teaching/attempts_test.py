@@ -26,6 +26,7 @@ from app.features.teaching.attempts import (
     next_unanswered_item,
     pick_up_attempt,
     record_answer,
+    seconds_left,
     unfinished_attempts,
 )
 from app.features.teaching.enrolment import enrol
@@ -2238,6 +2239,60 @@ def test_starting_on_a_bank_that_gives_no_limit_starts_an_untimed_attempt(
 
     assert assessment.time_limit_minutes == 0
     assert deadline_of(assessment) is None
+
+
+# --- seconds_left -----------------------------------------------------------
+
+
+def test_the_seconds_left_are_counted_to_the_deadline_and_rounded_down(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, minutes=30)
+    started = datetime(2026, 3, 1, 9, 0, tzinfo=UTC)
+    assessment.started_at = started
+    db_session.flush()
+
+    _stop_the_clock(monkeypatch, started)
+
+    assert seconds_left(assessment) == 1800
+
+    _stop_the_clock(monkeypatch, started + timedelta(minutes=10, seconds=0.4))
+
+    assert seconds_left(assessment) == 1199
+
+    _stop_the_clock(monkeypatch, started + timedelta(minutes=30))
+
+    assert seconds_left(assessment) == 0
+
+
+def test_the_seconds_left_are_never_less_than_nought(
+    db_session: Session,
+) -> None:
+    """A route finishes an attempt past its time before reading it, so
+    this is not met; were it, the page is told nought."""
+    org = _organisation(db_session)
+    learner = _person(db_session)
+    assessment = _sitting(db_session, org, learner, minutes=30)
+    _out_of_time(db_session, assessment)
+
+    assert seconds_left(assessment) == 0
+
+
+def test_an_untimed_attempt_has_no_seconds_left(db_session: Session) -> None:
+    org = _organisation(db_session)
+    untimed = _sitting(db_session, org, _person(db_session), minutes=0)
+
+    assert seconds_left(untimed) is None
+
+
+def test_a_finished_attempt_has_no_seconds_left(db_session: Session) -> None:
+    org = _organisation(db_session)
+    done = _sitting(db_session, org, _person(db_session), minutes=30)
+    _finished(db_session, done)
+
+    assert seconds_left(done) is None
 
 
 # --- unfinished_attempts ----------------------------------------------------

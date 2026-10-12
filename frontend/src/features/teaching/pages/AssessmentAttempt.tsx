@@ -78,6 +78,31 @@ function answeredBefore(started: AssessmentWithFirstItem): number {
 }
 
 /**
+ * How many seconds an attempt has left when it is opened. The server
+ * says, and the countdown is set by that. From a server that says
+ * nothing, it is worked out from when the attempt started, by this
+ * computer's clock. An untimed attempt, one with no limit or a limit of
+ * 0, has none.
+ */
+function secondsLeftAtOpening(attempt: Assessment): number | null {
+  if (typeof attempt.seconds_left === "number") return attempt.seconds_left;
+  if (!attempt.time_limit_minutes || !attempt.started_at) return null;
+
+  const gone = Math.floor(
+    (Date.now() - new Date(attempt.started_at).getTime()) / 1000,
+  );
+
+  return Math.max(0, attempt.time_limit_minutes * 60 - gone);
+}
+
+/** What the countdown is set by: a figure, and when it arrived. */
+interface ExamClock {
+  secondsLeft: number;
+  /** `performance.now()` read as the figure arrived */
+  receivedAt: number;
+}
+
+/**
  * Whether an attempt just started has questions, and an answer to each:
  * one handed back in progress that was never submitted. A new attempt
  * that drew no questions is not this.
@@ -156,6 +181,9 @@ export default function AssessmentAttempt() {
   const [furthestItem, setFurthestItem] = useState<CandidateItem | null>(null);
   // A failure during the exam, shown above the question
   const [examError, setExamError] = useState<string | null>(null);
+  // What the countdown is set by. Null until an attempt is open, and for
+  // an untimed one
+  const [clock, setClock] = useState<ExamClock | null>(null);
   // Counts the times loading has been tried, so "Try again" runs it again
   const [loadAttempt, setLoadAttempt] = useState(0);
 
@@ -174,6 +202,17 @@ export default function AssessmentAttempt() {
   // Set once the delegate has been sent to their result, so that the
   // clock and "End exam" together send them there once
   const shownResultRef = useRef(false);
+
+  /**
+   * Set the countdown by the seconds left the server has just sent. Every
+   * answer about an attempt carries them, so the countdown is put right
+   * at each change of question. An answer with none leaves it as it is.
+   */
+  const setClockBy = useCallback((secondsLeft: number | null | undefined) => {
+    if (typeof secondsLeft !== "number") return;
+
+    setClock({ secondsLeft, receivedAt: performance.now() });
+  }, []);
 
   /**
    * Finish the attempt at the server, once. Answers whether it is
@@ -239,6 +278,7 @@ export default function AssessmentAttempt() {
             );
             heldAttemptRef.current = result.assessment.id;
             setAssessment(result.assessment);
+            setClockBy(secondsLeftAtOpening(result.assessment));
             setCurrentItem(result.first_item);
             setAnsweredCount(answeredBefore(result));
 
@@ -262,6 +302,7 @@ export default function AssessmentAttempt() {
             `/teaching/assessments/${id}`,
           );
           setAssessment(existing);
+          setClockBy(secondsLeftAtOpening(existing));
 
           const detail = await api.get<QuestionBankDetail>(
             `/teaching/question-banks/${existing.question_bank_id}`,
@@ -281,6 +322,7 @@ export default function AssessmentAttempt() {
             `/teaching/assessments/${id}/current`,
           );
           if (item) {
+            setClockBy(item.seconds_left);
             setCurrentItem(item);
             setAnsweredCount(item.display_order - 1);
             setPhase("questions");
@@ -298,7 +340,7 @@ export default function AssessmentAttempt() {
       }
     }
     init();
-  }, [id, searchParams, navigate, finish, loadAttempt]);
+  }, [id, searchParams, navigate, finish, loadAttempt, setClockBy]);
 
   const handleTryLoadingAgain = useCallback(() => {
     setError(null);
@@ -324,6 +366,7 @@ export default function AssessmentAttempt() {
       );
       heldAttemptRef.current = result.assessment.id;
       setAssessment(result.assessment);
+      setClockBy(secondsLeftAtOpening(result.assessment));
       setCurrentItem(result.first_item);
       setAnsweredCount(answeredBefore(result));
       // Update URL to real assessment ID
@@ -346,7 +389,7 @@ export default function AssessmentAttempt() {
     } finally {
       setBeginning(false);
     }
-  }, [searchParams, navigate, scrollToTop, finish]);
+  }, [searchParams, navigate, scrollToTop, finish, setClockBy]);
 
   /** Show the closing screen and finish the attempt behind it. */
   const closeExam = useCallback(
@@ -415,6 +458,7 @@ export default function AssessmentAttempt() {
           answer_id: currentItem.answer_id,
         },
       );
+      setClockBy(result.seconds_left);
       setSelectedOption(null);
       setAnsweredCount(currentItem.display_order);
 
@@ -448,6 +492,7 @@ export default function AssessmentAttempt() {
     scrollToTop,
     closeExam,
     submitAndShowResult,
+    setClockBy,
   ]);
 
   const handlePrevious = useCallback(async () => {
@@ -462,6 +507,7 @@ export default function AssessmentAttempt() {
       const item = await api.get<CandidateItem>(
         `/teaching/assessments/${assessment.id}/item/${currentItem.display_order - 1}`,
       );
+      setClockBy(item.seconds_left);
       setCurrentItem(item);
       setSelectedOption(item.selected_option ?? null);
       setViewingPrevious(true);
@@ -473,7 +519,13 @@ export default function AssessmentAttempt() {
 
       setExamError(COULD_NOT_GO_BACK);
     }
-  }, [assessment, currentItem, viewingPrevious, submitAndShowResult]);
+  }, [
+    assessment,
+    currentItem,
+    viewingPrevious,
+    submitAndShowResult,
+    setClockBy,
+  ]);
 
   const handleNextPrevious = useCallback(async () => {
     if (!assessment || !currentItem || !selectedOption) return;
@@ -482,10 +534,11 @@ export default function AssessmentAttempt() {
     setExamError(null);
     try {
       // Save updated answer. Sending it twice is safe: it names its answer
-      await api.put<CandidateItem>(
+      const changed = await api.put<CandidateItem>(
         `/teaching/assessments/${assessment.id}/answer/${currentItem.answer_id}`,
         { selected_option: selectedOption },
       );
+      setClockBy(changed.seconds_left);
 
       const nextOrder = currentItem.display_order + 1;
 
@@ -501,6 +554,7 @@ export default function AssessmentAttempt() {
       const item = await api.get<CandidateItem>(
         `/teaching/assessments/${assessment.id}/item/${nextOrder}`,
       );
+      setClockBy(item.seconds_left);
       setCurrentItem(item);
       setSelectedOption(item.selected_option ?? null);
     } catch (err) {
@@ -526,6 +580,7 @@ export default function AssessmentAttempt() {
     furthestItem,
     closeExam,
     submitAndShowResult,
+    setClockBy,
   ]);
 
   const handleComplete = useCallback(async () => {
@@ -581,7 +636,7 @@ export default function AssessmentAttempt() {
   const isTimed =
     assessment?.time_limit_minutes != null &&
     assessment.time_limit_minutes > 0 &&
-    Boolean(assessment.started_at);
+    clock !== null;
 
   // The timer and "End exam" sit in the ribbon while questions are showing,
   // so they stay in view however far the question scrolls. An untimed
@@ -591,8 +646,8 @@ export default function AssessmentAttempt() {
       <Group gap="sm" wrap="nowrap">
         {isTimed && (
           <AssessmentTimer
-            timeLimitMinutes={assessment.time_limit_minutes}
-            startedAt={assessment.started_at}
+            secondsLeft={clock.secondsLeft}
+            receivedAt={clock.receivedAt}
             onExpire={handleExpire}
           />
         )}
