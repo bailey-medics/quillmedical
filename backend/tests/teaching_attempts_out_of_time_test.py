@@ -549,7 +549,7 @@ def test_listing_results_finishes_every_attempt_of_theirs_past_its_time(
     other = _learner(db_session, trust, "other")
     mine = _attempt(db_session, trust, learner)
     elsewhere = _attempt(db_session, trust, learner, bank_id=OTHER_BANK)
-    under_way = _attempt(db_session, trust, learner)
+    under_way = _attempt(db_session, trust, learner, bank_id="a-third-bank")
     theirs = _attempt(db_session, trust, other)
     _late(db_session, mine)
     _late(db_session, elsewhere)

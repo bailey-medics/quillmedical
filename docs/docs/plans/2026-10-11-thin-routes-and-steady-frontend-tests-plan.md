@@ -1479,11 +1479,13 @@ and the page follows.
         question: the page says the exam could not be loaded, and
         "Try again" goes to the result.
 
-- [ ] **Only one attempt in progress at a time.** Mark: "Only one can
-      be in progress at any one time." Today `begin_attempt` in
-      `backend/app/features/teaching/attempts.py` never looks for an
-      unfinished attempt, so starting twice gives a learner two, both
-      open and answerable.
+- [x] **Only one attempt in progress at a time.** Mark: "Only one can
+      be in progress at any one time." Before this step
+      `begin_attempt` in `backend/app/features/teaching/attempts.py`
+      never looked for an unfinished attempt, so starting twice gave a
+      learner two, both open and answerable. Built on 12 October 2026,
+      server and page together, as the notes beneath the four rulings
+      record.
 
       - **Starting while one is in progress hands back that one**, and
         does not refuse. A learner who shut the tab, or whose phone
@@ -1507,6 +1509,105 @@ and the page follows.
         them on what was answered, as the next step does for one out
         of time. Nobody uses App production yet, so there should be
         none; the migration must still be right if there are.
+      - **What a learner is answered.** `POST /assessments` while an
+        attempt of theirs on that bank is in progress: was 200 with a
+        second attempt and its first question, now 200 with the
+        attempt already in progress and its next unanswered question
+        (none, where every question has an answer). The same response
+        model and the same fields, so nothing tells the two apart and
+        no field was added: the page goes to whichever attempt it is
+        handed, so it had no use for one. Nothing is written. The
+        questions, their order, the answers given and `started_at`
+        are as they were, so the time goes on running from the first
+        start.
+      - **How it is built.** `start_assessment` finishes the learner's
+        late attempts on the bank first, as the step above made it,
+        then asks `bank_to_sit`, then `attempt_in_progress`, which
+        looks for an unfinished attempt of that learner on that bank
+        at the organisation `bank_to_sit` named: exactly what the
+        index is over. One found is laid out by `pick_up_attempt`,
+        from the version it was started on. None found, the pool is
+        checked and `begin_or_pick_up_attempt` writes a new one.
+      - **The index.** `uq_assessments_one_in_progress` on
+        `assessments` over `user_id`, `question_bank_id` and
+        `org_unit_id` where `completed_at IS NULL`, in the model with
+        both predicates and made by migration `30b1773fb735`.
+      - **Two requests at the same instant.** Both find none and both
+        write. The database refuses the second, inside a savepoint so
+        the rest of its request stands, and it looks again and hands
+        back the attempt the first wrote. Both are answered 200 with
+        the same attempt.
+      - **Spare attempts are closed unmarked, which is not what the
+        fourth ruling above first said.** A migration cannot mark an
+        attempt: marking is the application's code, which changes,
+        where a migration is frozen once merged. So for each learner,
+        bank and organisation with more than one unfinished attempt,
+        all but the newest (started last, and of two started at the
+        same moment the higher id) are given a completion time and
+        nothing else. Where the attempt had a time limit that has
+        passed, that time is the deadline and `timed_out` is set;
+        otherwise it is the moment the migration ran. `is_passed`,
+        `score_breakdown` and `exam_ref` stay null. Such an attempt
+        reads as finished with no result: the learner's result page
+        and the admin list of results both say "Incomplete", and it
+        earns no certificate. App production held no real learners
+        when this was written, so no such row is expected there. The
+        newest is left for the application to finish, and to mark,
+        even if it is past its time. Proved against Postgres in
+        `backend/tests/one_attempt_in_progress_migration_test.py`.
+      - **Choices made where the step left one, the more cautious
+        each time.**
+        - **A bank since closed to new attempts.** Starting is
+          refused 403 "This assessment is not currently open", as it
+          always was, whether or not an attempt is in progress, and
+          the same for a learner no longer enrolled or a bank with no
+          version promoted. The open bank is what names the
+          organisation, so it is asked first, and every refusal is
+          given in the order it was before. The attempt in progress
+          is untouched and is still read, answered and handed in by
+          its id.
+        - **A new version promoted meanwhile.** The learner is handed
+          back the attempt they started, on the version they started
+          it on. Reading and answering it work as before.
+        - **A pool that has since become too small.** The attempt in
+          progress is handed back: the size of the pool is asked of a
+          new draw, not of one already made.
+        - **An attempt in progress whose organisation holds no synced
+          copy of its version.** Starting is refused 404 "Config not
+          found for assessment", as reading that attempt already is.
+          Before, each start wrote another attempt that could not be
+          read either.
+      - **One bank through two organisations.** The rule is one for
+        each learner, bank and organisation, as the ruling's index
+        says. `bank_to_sit` takes whichever organisation the database
+        gives first, and its query sets no order. While it goes on
+        giving the same one, a second start hands back the first
+        attempt. Were it to give the other, the learner would be
+        started on a second attempt there, and the index would allow
+        it. Found, not changed: closing it means either an order on
+        that query or an index without the organisation, and both are
+        a decision.
+      - **The page.** `AssessmentAttempt.tsx` already goes to
+        whichever attempt starting hands it. It took every attempt
+        just started to have no answers, which is no longer so. It
+        now counts the answers from the question it is handed, so the
+        last question offers "Submit & finish" and going back through
+        answered questions takes them one at a time. An attempt
+        handed back with every question answered goes to the closing
+        screen and is submitted, as one opened by its own address
+        already was. No wording changed.
+      - **Tests turned round.**
+        `test_a_second_attempt_can_be_started_while_the_first_is_under_way`
+        became
+        `test_starting_while_an_attempt_is_in_progress_hands_back_that_attempt`
+        in `backend/tests/teaching_starting_an_attempt_test.py`, and
+        `test_starting_again_writes_a_second_attempt_beside_the_first`
+        became
+        `test_a_second_attempt_beside_one_in_progress_is_refused_by_the_database`
+        in `attempts_test.py`. Three other tests set a learner up
+        with two unfinished attempts on one bank only as furniture,
+        which the database now refuses, and had one of the two moved
+        to another bank.
 
 - [ ] **Deleting a video deletes everything made from it, and a new
       video starts clean.** Mark: "fix this. deleting the old video to

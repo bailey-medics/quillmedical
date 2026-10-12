@@ -17,6 +17,10 @@
  *   limit (none, or 0) has no clock and is never submitted by one.
  * - The address is the attempt's own from the moment it exists, so a
  *   reload comes back to the same attempt and never starts another.
+ * - Starting hands back an attempt already in progress on the bank,
+ *   where there is one, and not a new one. So what starting answers
+ *   may be part answered: it opens at its next unanswered question,
+ *   with its time running from when it was first started.
  */
 
 import { Group, Stack } from "@mantine/core";
@@ -61,6 +65,26 @@ const COULD_NOT_GO_BACK =
   "Could not load the previous question. Check your connection and try again.";
 const COULD_NOT_FINISH =
   "Could not submit your exam. Check your connection and try again.";
+
+/**
+ * How many questions of an attempt just started have an answer. None
+ * of a new attempt. An attempt handed back in progress comes at its
+ * next unanswered question, or with no question when all are answered.
+ */
+function answeredBefore(started: AssessmentWithFirstItem): number {
+  if (started.first_item) return started.first_item.display_order - 1;
+
+  return started.assessment.total_items;
+}
+
+/**
+ * Whether an attempt just started has questions, and an answer to each:
+ * one handed back in progress that was never submitted. A new attempt
+ * that drew no questions is not this.
+ */
+function isAnsweredInFull(started: AssessmentWithFirstItem): boolean {
+  return started.first_item === null && started.assessment.total_items > 0;
+}
 
 /**
  * Whether the server refused a call because the attempt is over: it is
@@ -216,10 +240,18 @@ export default function AssessmentAttempt() {
             heldAttemptRef.current = result.assessment.id;
             setAssessment(result.assessment);
             setCurrentItem(result.first_item);
-            setAnsweredCount(0);
-            setPhase("questions");
-            // The attempt's own address, so a reload resumes this
-            // attempt where /new would start a second
+            setAnsweredCount(answeredBefore(result));
+
+            // Handed back with every question answered: submit it
+            if (isAnsweredInFull(result)) {
+              setPhase("closing");
+              void finish(result.assessment.id);
+            } else {
+              setPhase("questions");
+            }
+
+            // The attempt's own address, so a reload opens this attempt
+            // itself and does not go through starting again
             navigate(`/teaching/assessment/${result.assessment.id}`, {
               replace: true,
             });
@@ -293,12 +325,20 @@ export default function AssessmentAttempt() {
       heldAttemptRef.current = result.assessment.id;
       setAssessment(result.assessment);
       setCurrentItem(result.first_item);
-      setAnsweredCount(0);
+      setAnsweredCount(answeredBefore(result));
       // Update URL to real assessment ID
       navigate(`/teaching/assessment/${result.assessment.id}`, {
         replace: true,
       });
-      setPhase("questions");
+
+      // Handed back with every question answered: submit it
+      if (isAnsweredInFull(result)) {
+        setPhase("closing");
+        void finish(result.assessment.id);
+      } else {
+        setPhase("questions");
+      }
+
       scrollToTop();
     } catch {
       setError(COULD_NOT_START);
@@ -306,7 +346,7 @@ export default function AssessmentAttempt() {
     } finally {
       setBeginning(false);
     }
-  }, [searchParams, navigate, scrollToTop]);
+  }, [searchParams, navigate, scrollToTop, finish]);
 
   /** Show the closing screen and finish the attempt behind it. */
   const closeExam = useCallback(

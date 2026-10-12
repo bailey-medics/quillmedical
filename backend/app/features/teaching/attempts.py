@@ -16,12 +16,19 @@ Whether an answer is right, and whether an attempt passes, is
 ``app.features.teaching.scoring``. These functions hand it the answer
 and the bank and store what it says.
 
+A learner has one attempt in progress on a bank at an organisation,
+and no more. Starting while one is in progress hands that one back,
+with the same questions and its time already running, and writes
+nothing: ``attempt_in_progress`` finds it and ``pick_up_attempt`` lays
+it out. The database holds the same rule, in a unique index over
+unfinished attempts, so of two requests at the same instant one
+writes and ``begin_or_pick_up_attempt`` hands the other what the first
+wrote. "In progress" means not finished: the route finishes any
+attempt whose time has run out before it asks.
+
 These things are deliberately not asked, because the routes never asked
 them, and each is pinned by a test as it stands:
 
-- **Whether the learner already has an attempt under way on the bank.**
-  Starting again writes a second attempt beside the first, and both
-  stay open.
 - **How many attempts they have made.** Nothing counts them.
 - **Whether what was chosen is one of the question's options.**
   Anything sent is stored, and scored as wrong with no tags.
@@ -51,6 +58,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.features.teaching.access import (
@@ -114,6 +122,19 @@ class ItemOfAttempt:
 
     answer: AssessmentAnswer
     config: QuestionBankConfig
+
+
+@dataclass(frozen=True)
+class AttemptToSit:
+    """The attempt a learner who asked to start is to sit, and where from."""
+
+    assessment: Assessment
+    #: The first question with no answer, and the bank it is laid out
+    #: from. None when the attempt has no question left to answer.
+    first: ItemOfAttempt | None
+    #: True when the attempt was already in progress and is handed
+    #: back. False when it was written by this call.
+    resumed: bool
 
 
 @dataclass(frozen=True)
@@ -247,9 +268,11 @@ def begin_attempt(db: Session, user_id: int, bank: BankToSit) -> AttemptBegun:
     unless the config sets ``randomise_order`` to false, and stored in
     that order, numbered from 1.
 
-    Nothing is asked of the learner's earlier attempts: one already
-    under way on the same bank is left as it is, and this writes
-    another beside it.
+    Nothing is asked here of the learner's earlier attempts. The
+    database refuses a second unfinished attempt for the same learner,
+    bank and organisation, so this raises ``IntegrityError`` when one
+    is in progress. ``begin_or_pick_up_attempt`` is the caller that
+    expects that.
 
     The attempt and its answer rows are flushed, not committed.
 
@@ -304,6 +327,123 @@ def begin_attempt(db: Session, user_id: int, bank: BankToSit) -> AttemptBegun:
     return AttemptBegun(
         assessment=assessment,
         first_answer=_first_unanswered(db, assessment.id),
+    )
+
+
+def attempt_in_progress(
+    db: Session, user_id: int, *, bank_id: str
+) -> Assessment | None:
+    """A learner's unfinished attempt on one bank, wherever it was started.
+
+    Asked of exactly what the unique index
+    ``uq_assessments_one_in_progress`` is over: the learner and the
+    bank, among attempts with no completion time. So there is at most
+    one, and wherever this finds none a new attempt can be written.
+
+    The organisation is not asked. A learner who can sit one bank
+    through two organisations has one attempt in progress on it, and
+    sits it at the organisation they started it at: the attempt found
+    says which that is.
+
+    Time is not asked. An attempt whose time has run out is the
+    caller's to have finished first, with ``finish_if_out_of_time``.
+    Nothing is written.
+
+    Args:
+        db: Core database session.
+        user_id: The learner.
+        bank_id: The question bank.
+    """
+    return (
+        db.execute(
+            select(Assessment)
+            .where(
+                Assessment.user_id == user_id,
+                Assessment.question_bank_id == bank_id,
+                Assessment.completed_at.is_(None),
+            )
+            .order_by(Assessment.id.desc())
+        )
+        .scalars()
+        .first()
+    )
+
+
+def pick_up_attempt(db: Session, assessment: Assessment) -> AttemptToSit:
+    """Hand back an attempt in progress to a learner who asked to start.
+
+    The attempt is as it was left: the same questions in the same
+    order, the answers already given, and the time running from when it
+    was first started. Its next question is found and laid out as
+    ``next_unanswered_item`` does for a learner coming back to it by
+    its id, from the version of the bank the attempt was started on,
+    which need not be the version served now. Nothing is written.
+
+    Args:
+        db: Core database session.
+        assessment: The learner's own unfinished attempt.
+
+    Raises:
+        AssessmentConfigNotFound: If the organisation the attempt was
+            recorded against holds no synced copy of the version sat.
+    """
+    return AttemptToSit(
+        assessment=assessment,
+        first=next_unanswered_item(db, assessment),
+        resumed=True,
+    )
+
+
+def begin_or_pick_up_attempt(
+    db: Session, user_id: int, bank: BankToSit
+) -> AttemptToSit:
+    """Write a new attempt, or hand back the one another request wrote.
+
+    For a learner the caller has found to have no attempt in progress.
+    The draw and the writes are ``begin_attempt``.
+
+    Two requests at the same instant can both have found none. The
+    database lets one of them write, and refuses the other for the
+    unique index over unfinished attempts. The one refused looks again
+    and hands back the attempt the first wrote, so both are answered
+    with the same attempt and the learner holds one.
+
+    The write is made inside a savepoint, so a refusal undoes the
+    attempt that could not be written and leaves the rest of the
+    request's transaction as it was.
+
+    Args:
+        db: Core database session.
+        user_id: The learner.
+        bank: What ``bank_to_sit`` found for them.
+
+    Raises:
+        IntegrityError: If the database refused the attempt and none
+            is in progress to hand back, so it was refused for some
+            other reason.
+        AssessmentConfigNotFound: If the attempt handed back is on a
+            version its organisation holds no synced copy of.
+    """
+    try:
+        with db.begin_nested():
+            begun = begin_attempt(db, user_id, bank)
+    except IntegrityError:
+        under_way = attempt_in_progress(
+            db, user_id, bank_id=bank.config.question_bank_id
+        )
+
+        if under_way is None:
+            raise
+
+        return pick_up_attempt(db, under_way)
+
+    first = None
+
+    if begun.first_answer is not None:
+        first = ItemOfAttempt(answer=begun.first_answer, config=bank.config)
+
+    return AttemptToSit(
+        assessment=begun.assessment, first=first, resumed=False
     )
 
 
