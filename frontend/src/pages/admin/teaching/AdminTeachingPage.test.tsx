@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it, vi, beforeEach, type Mock } from "vitest";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@test/test-utils";
 
@@ -25,6 +25,51 @@ import AdminTeachingPage from "./AdminTeachingPage";
 beforeEach(() => {
   vi.clearAllMocks();
 });
+
+function bank(bank_id: string, title: string) {
+  return {
+    bank_id,
+    title,
+    version: 1,
+    type: "uniform",
+    synced_at: null,
+    in_gcs: true,
+    in_db: true,
+    item_count: 10,
+  };
+}
+
+function syncedRecord(question_bank_id: string) {
+  return {
+    id: 1,
+    question_bank_id,
+    version: 1,
+    status: "success",
+    items_created: 10,
+    items_updated: 0,
+    errors: [],
+    warnings: [],
+    started_at: "2026-05-28T10:00:00Z",
+    completed_at: "2026-05-28T10:00:05Z",
+    unchanged: false,
+  };
+}
+
+async function syncAll() {
+  const user = userEvent.setup();
+
+  renderWithRouter(<AdminTeachingPage />);
+
+  await waitFor(() => {
+    expect(screen.getByText("Sync all")).toBeTruthy();
+  });
+
+  await user.click(screen.getByText("Sync all"));
+
+  await waitFor(() => {
+    expect(screen.getByText("Status")).toBeTruthy();
+  });
+}
 
 describe("AdminTeachingPage", () => {
   it("shows empty state when no banks", async () => {
@@ -215,5 +260,69 @@ describe("AdminTeachingPage", () => {
       expect(screen.getByText("Sync failed")).toBeTruthy();
       expect(screen.getByText("module directory not found")).toBeTruthy();
     });
+  });
+
+  it("shows a bank that did not load as failed, with the reason, and not as imported", async () => {
+    (api.get as Mock).mockResolvedValue([bank("mod-a", "Module A")]);
+    (api.post as Mock).mockResolvedValue({
+      synced: [],
+      errors: [{ bank_id: "mod-a", error: "uniform type requires 'options'" }],
+    });
+
+    await syncAll();
+
+    expect(screen.getByText("Sync fail")).toBeTruthy();
+    expect(screen.getByText("uniform type requires 'options'")).toBeTruthy();
+    expect(screen.queryByText("Sync pass")).toBeNull();
+    expect(screen.queryByText("Up to date")).toBeNull();
+    expect(screen.getByText("Sync failed")).toBeTruthy();
+  });
+
+  it("shows each bank's own fate when one synced and one did not load", async () => {
+    (api.get as Mock).mockResolvedValue([
+      bank("mod-a", "Module A"),
+      bank("mod-b", "Module B"),
+    ]);
+    (api.post as Mock).mockResolvedValue({
+      synced: [syncedRecord("mod-a")],
+      errors: [{ bank_id: "mod-b", error: "no questions found" }],
+    });
+
+    await syncAll();
+
+    const passed = screen.getByText("Module A").closest("tr");
+    const failed = screen.getByText("Module B").closest("tr");
+
+    expect(within(passed as HTMLElement).getByText("Sync pass")).toBeTruthy();
+    expect(within(failed as HTMLElement).getByText("Sync fail")).toBeTruthy();
+    expect(screen.getAllByText("Sync pass")).toHaveLength(1);
+    expect(screen.getAllByText("Sync fail")).toHaveLength(1);
+    expect(screen.getByText("no questions found")).toBeTruthy();
+    expect(screen.getByText("Sync complete with errors")).toBeTruthy();
+  });
+
+  it("shows a result with only synced banks as imported, with nothing failed", async () => {
+    (api.get as Mock).mockResolvedValue([bank("mod-a", "Module A")]);
+    (api.post as Mock).mockResolvedValue({
+      synced: [syncedRecord("mod-a")],
+      errors: [],
+    });
+
+    await syncAll();
+
+    expect(screen.getByText("Sync pass")).toBeTruthy();
+    expect(screen.queryByText("Sync fail")).toBeNull();
+    expect(screen.getByText("Sync complete")).toBeTruthy();
+  });
+
+  it("shows a bank with nothing to do as up to date, not as an error", async () => {
+    (api.get as Mock).mockResolvedValue([bank("mod-a", "Module A")]);
+    (api.post as Mock).mockResolvedValue({ synced: [], errors: [] });
+
+    await syncAll();
+
+    expect(screen.getByText("Up to date")).toBeTruthy();
+    expect(screen.queryByText("Sync fail")).toBeNull();
+    expect(screen.getByText("Sync complete")).toBeTruthy();
   });
 });

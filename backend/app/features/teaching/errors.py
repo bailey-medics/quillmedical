@@ -4,12 +4,17 @@ The same shape as ``UserAdminError`` in :mod:`app.users.errors`. Each
 refusal is a class that fixes its own words and status, so nothing can
 reach a caller that somebody did not write for them to read.
 
-Every refusal here takes no arguments. None repeats a value: no storage
-path, no object name, no file name, no id and nothing an exception
-said. Should one ever need to, the only values it may take are a
-catalogue id (a module id among them) or an integer id the caller
+Every refusal here but one takes no arguments. None repeats a value: no
+storage path, no object name, no file name, no id and nothing an
+exception said. Should one ever need to, the only values it may take
+are a catalogue id (a module id among them) or an integer id the caller
 themselves sent in the request, handed back and never looked up to
 build the words.
+
+The one is :class:`BankTurnedAway`, which carries what the content
+checks said of a bank. Those are findings written for whoever wrote the
+content, with no path beside them, and they are the same words the
+sync of every bank already lists.
 
 ``app.main`` registers one handler for :class:`TeachingError`, which
 answers with the class's status and ``{"detail": message}``. That is the
@@ -229,15 +234,34 @@ class BankIdRequired(TeachingError):
 
 
 class SyncRecordedNothing(TeachingError):
-    """The sync of one bank by hand came back with no record of it.
+    """The sync of one bank by hand has no record to answer with.
 
-    The same words whichever it is: a draft turned away for its
-    version, and a live bank whose version has not moved on, which has
-    nothing new to load and is not a failure at all.
+    The sync made none and the checks found no fault, which is a live
+    bank whose version has not moved on, and yet no sync is recorded as
+    ever having loaded the bank here. A bank turned away is
+    :class:`BankTurnedAway`, and one with nothing to do is answered
+    with the record of the sync that loaded it.
     """
 
     status_code = 500
     message = "Sync failed unexpectedly"
+
+
+class BankTurnedAway(TeachingError):
+    """The sync of one bank by hand was turned away by the checks.
+
+    The sync made no record and the checks found fault, as with a draft
+    whose version is not 1. Nothing of the bank was loaded.
+
+    Args:
+        reasons: What the checks said, the first few joined into one
+            line. Their messages only, never the path beside each.
+    """
+
+    status_code = 422
+
+    def __init__(self, reasons: str) -> None:
+        super().__init__(f"The bank was not synced: {reasons}")
 
 
 class BankNotHeldHere(TeachingError):

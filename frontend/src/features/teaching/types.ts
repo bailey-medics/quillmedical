@@ -209,6 +209,12 @@ export interface SyncResult {
   warnings: Array<Record<string, unknown>>;
   started_at: string;
   completed_at: string | null;
+  /**
+   * True where the sync of one bank had nothing to do: the bank is live
+   * and its version has not moved on. The rest is then the record of the
+   * sync that loaded the version being served.
+   */
+  unchanged?: boolean;
 }
 
 export interface SyncHistory {

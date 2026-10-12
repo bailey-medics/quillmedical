@@ -354,6 +354,10 @@ class SyncResultOut(BaseModel):
     warnings: list[dict[str, Any]]
     started_at: datetime
     completed_at: datetime | None
+    #: True where the sync of one bank had nothing to do: the bank is
+    #: live and its version has not moved on. The rest is then the
+    #: record of the sync that loaded the version being served.
+    unchanged: bool = False
 
 
 class SyncHistoryOut(BaseModel):
@@ -396,7 +400,16 @@ class AdminBankOut(BaseModel):
 
 
 class SyncAllResultOut(BaseModel):
-    """Aggregated result of syncing all banks."""
+    """Aggregated result of syncing all banks.
+
+    Sent with a 200 whether or not a bank failed, so the page can show
+    what became of each one.
+
+    Attributes:
+        synced: The record of each bank whose sync succeeded.
+        errors: Each bank that could not be synced: its ``bank_id`` and
+            the ``error``, which is the reason.
+    """
 
     synced: list[SyncResultOut]
     errors: list[dict[str, str]]

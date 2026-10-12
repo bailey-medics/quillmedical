@@ -20,10 +20,21 @@ already recorded. Nothing is committed here.
 
 Checking the pipeline's token is not here either. That is a question
 about the request, and the route answers it before calling this.
+
+**What became of one bank is decided here, for an administrator's own
+sync as well.** ``sync_one_bank`` checks a bank's module and syncs its
+assessment, and ``what_became_of`` reads what the sync handed back.
+``app.features.teaching.manual_sync`` calls both, so the two syncs
+cannot come to count a bank differently. Each says for itself who is
+syncing and into which organisation, how a bank's assessment is found,
+which logger a failure is written to, and what its own answer looks
+like.
 """
 
 import logging
 import shutil
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 from sqlalchemy import select
@@ -47,7 +58,10 @@ from app.features.teaching.storage import (
     resolve_module_dir,
 )
 from app.features.teaching.sync import sync_question_bank
-from app.features.teaching.tooling.validate import validate_module_metadata
+from app.features.teaching.tooling.validate import (
+    ValidationResult,
+    validate_module_metadata,
+)
 from app.models import OrgUnit
 from app.org_units import ROOT_TYPE_IDS
 
@@ -62,6 +76,36 @@ _SYNC_SUCCEEDED = "success"
 _FAULTS_GIVEN = 5
 
 _NO_REASON_RECORDED = "the sync did not succeed and recorded no reason"
+
+_MODULE_NOT_FOUND = (
+    "module directory not found - cannot validate module metadata"
+)
+
+#: What a bank's images are checked against: item folder to file names.
+#: None where the bank was read from disk, and its images are there.
+ImageInventory = dict[str, set[str]] | None
+
+#: Finds one bank's assessment. Gives its directory, and whether that
+#: directory was downloaded and is the caller's to remove.
+FindBank = Callable[[str], tuple[Path, bool]]
+
+#: Lists one bank's images, given whether the bank was downloaded.
+ListImages = Callable[[str, bool], ImageInventory]
+
+
+@dataclass(frozen=True)
+class BankLoaded:
+    """One bank whose sync succeeded, and the record of it."""
+
+    record: QuestionBankSync
+
+
+@dataclass(frozen=True)
+class BankNotLoaded:
+    """One bank that could not be synced, and why."""
+
+    bank_id: str
+    reason: str
 
 
 def sync_every_bank(db: Session) -> CiTeachingSyncOut:
@@ -162,11 +206,10 @@ def _sync_one_bank(
     bucket: str | None,
     base_path: str | None,
 ) -> CiSyncBankResult | CiSyncErrorItem | None:
-    """Check one bank's module and sync its assessment.
+    """Sync one bank as the deploy pipeline, and say what became of it.
 
-    Anything that goes wrong is caught, logged and handed back as the
-    reason, so the banks after this one are still tried. Whatever was
-    downloaded to check or to sync is removed again either way.
+    The work and the decision are ``sync_one_bank``. This says who is
+    syncing and puts the outcome into the pipeline's own answer.
 
     Returns:
         The bank and its version where its sync succeeded, the bank and
@@ -182,6 +225,75 @@ def _sync_one_bank(
         _resolve_bank_path_or_gcs,
     )
 
+    outcome = sync_one_bank(
+        db,
+        bank_id,
+        org_unit_id=org_unit_id,
+        # No user: the deploy pipeline did this. Recorded as
+        # synced_by_actor="deploy_bot" rather than a fabricated id -
+        # 0 was passed here and violated the users foreign key, so
+        # every CI sync failed while the endpoint still returned 200.
+        user_id=None,
+        bucket=bucket,
+        base_path=base_path,
+        find_bank=_resolve_bank_path_or_gcs,
+        list_images=_build_image_inventory,
+        log=logger,
+        logged_as="CI sync: failed to sync bank '%s'",
+    )
+
+    if isinstance(outcome, BankLoaded):
+        return CiSyncBankResult(
+            bank_id=bank_id, version=str(outcome.record.version)
+        )
+
+    if isinstance(outcome, BankNotLoaded):
+        return CiSyncErrorItem(bank_id=outcome.bank_id, error=outcome.reason)
+
+    return None
+
+
+def sync_one_bank(
+    db: Session,
+    bank_id: str,
+    *,
+    org_unit_id: int,
+    user_id: int | None,
+    bucket: str | None,
+    base_path: str | None,
+    find_bank: FindBank,
+    list_images: ListImages,
+    log: logging.Logger,
+    logged_as: str,
+) -> BankLoaded | BankNotLoaded | None:
+    """Check one bank's module, sync its assessment, say what became of it.
+
+    The one place a bank is synced as part of a sync of every bank,
+    whoever asked for it: the deploy pipeline or an administrator.
+
+    Anything that goes wrong is caught, logged and handed back as the
+    reason, in the exception's own words, so the banks after this one
+    are still tried. Whatever was downloaded to check or to sync is
+    removed again either way.
+
+    Args:
+        db: Core database session.
+        bank_id: The question bank.
+        org_unit_id: The organisation the bank is synced into.
+        user_id: Who is syncing, or None for the deploy pipeline.
+        bucket: The bucket the banks are read from, where one is set.
+        base_path: The local path they are read from otherwise.
+        find_bank: Finds the bank's assessment.
+        list_images: Lists the bank's images.
+        log: The caller's own logger, which a failure is written to.
+        logged_as: The words it is logged under, with one ``%s`` for
+            the bank.
+
+    Returns:
+        The record where the sync succeeded, the bank and the reason
+        where it could not be synced, and None where there was nothing
+        to load and nothing wrong.
+    """
     bank_path: Path | None = None
     is_temp = False
     tooling_module_dir: Path | None = None
@@ -199,22 +311,19 @@ def _sync_one_bank(
             tooling_is_temp = tooling_module_dir is not None
 
         if not tooling_module_dir:
-            return CiSyncErrorItem(
-                bank_id=bank_id,
-                error=(
-                    "module directory not found - "
-                    "cannot validate module metadata"
-                ),
-            )
+            # No module directory found - block sync for safety
+            return BankNotLoaded(bank_id=bank_id, reason=_MODULE_NOT_FOUND)
 
         metadata = validate_module_metadata(tooling_module_dir)
 
         if not metadata.is_valid:
-            msg = "; ".join(e.message for e in metadata.errors[:5])
-            return CiSyncErrorItem(bank_id=bank_id, error=msg)
+            return BankNotLoaded(
+                bank_id=bank_id,
+                reason=_first_few([e.message for e in metadata.errors]),
+            )
 
-        bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
-        inventory = _build_image_inventory(bank_id, is_temp)
+        bank_path, is_temp = find_bank(bank_id)
+        inventory = list_images(bank_id, is_temp)
 
         # Resolve module status for version guard
         status: str | None = None
@@ -224,55 +333,73 @@ def _sync_one_bank(
         validation, sync_record = sync_question_bank(
             bank_path,
             org_unit_id,
-            # No user: the deploy pipeline did this. Recorded as
-            # synced_by_actor="deploy_bot" rather than a fabricated id -
-            # 0 was passed here and violated the users foreign key, so
-            # every CI sync failed while the endpoint still returned 200.
-            None,
+            user_id,
             db,
             image_inventory=inventory,
             module_status=status,
         )
 
-        if not sync_record:
-            # No record is right for a live bank whose version has not
-            # moved on: there is nothing new to load. It is wrong where
-            # the checks found fault, as they do with a draft whose
-            # version is not 1. That is turned away, not skipped, and
-            # the pipeline has to hear of it.
-            if not validation.is_valid:
-                return CiSyncErrorItem(
-                    bank_id=bank_id,
-                    error=_first_few(
-                        [fault.message for fault in validation.errors]
-                    ),
-                )
-
-            return None
-
-        # Only a success loaded anything. A record is also kept of a
-        # sync whose assessment failed its checks, and it was once
-        # taken for a sync, so the pipeline went green on content that
-        # never went in.
-        if sync_record.status != _SYNC_SUCCEEDED:
-            return CiSyncErrorItem(
-                bank_id=bank_id,
-                error=_first_few(_faults_recorded(sync_record))
-                or _NO_REASON_RECORDED,
-            )
-
-        return CiSyncBankResult(
-            bank_id=bank_id, version=str(sync_record.version)
-        )
+        return what_became_of(bank_id, validation, sync_record)
     except Exception as exc:
-        logger.exception("CI sync: failed to sync bank '%s'", bank_id)
+        log.exception(logged_as, bank_id)
 
-        return CiSyncErrorItem(bank_id=bank_id, error=str(exc))
+        return BankNotLoaded(bank_id=bank_id, reason=str(exc))
     finally:
         if is_temp and bank_path:
             shutil.rmtree(bank_path.parent, ignore_errors=True)
         if tooling_is_temp and tooling_module_dir:
             shutil.rmtree(tooling_module_dir.parent, ignore_errors=True)
+
+
+def what_became_of(
+    bank_id: str,
+    validation: ValidationResult,
+    sync_record: QuestionBankSync | None,
+) -> BankLoaded | BankNotLoaded | None:
+    """Read what the sync of one bank handed back.
+
+    The rule for what counts as synced, and it is written once. A bank
+    is loaded only where its record says so.
+
+    Args:
+        bank_id: The question bank.
+        validation: What the checks found.
+        sync_record: The record the sync made, if it made one.
+
+    Returns:
+        The record where the sync succeeded, the bank and the reason
+        where it was turned away or failed, and None where there was
+        nothing to load and nothing wrong: a live bank whose version
+        has not moved on.
+    """
+    if not sync_record:
+        # No record is right for a live bank whose version has not
+        # moved on: there is nothing new to load. It is wrong where
+        # the checks found fault, as they do with a draft whose
+        # version is not 1. That is turned away, not skipped, and
+        # whoever asked has to hear of it.
+        if not validation.is_valid:
+            return BankNotLoaded(
+                bank_id=bank_id,
+                reason=_first_few(
+                    [fault.message for fault in validation.errors]
+                ),
+            )
+
+        return None
+
+    # Only a success loaded anything. A record is also kept of a
+    # sync whose assessment failed its checks, and it was once
+    # taken for a sync, so the pipeline went green on content that
+    # never went in.
+    if sync_record.status != _SYNC_SUCCEEDED:
+        return BankNotLoaded(
+            bank_id=bank_id,
+            reason=_first_few(_faults_recorded(sync_record))
+            or _NO_REASON_RECORDED,
+        )
+
+    return BankLoaded(record=sync_record)
 
 
 def _first_few(faults: list[str]) -> str:

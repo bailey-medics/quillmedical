@@ -4,17 +4,20 @@ Three things. A dry run of one bank, which checks it and loads nothing.
 A sync of one bank. And a sync of every bank found, into the
 administrator's own organisation and recorded as theirs.
 
-**The sync of every bank is not the deploy pipeline's.** That one is
-``sync_every_bank`` in ``app.features.teaching.ci_sync``. The two walk
-the same banks in the same steps and then part: the pipeline's counts a
-bank as synced only where its sync was recorded as a success, and this
-one counts any record at all. So a bank whose assessment failed its
-checks, of which nothing was loaded, is listed here under ``synced``.
-That is a known fault, written into
-``docs/docs/plans/2026-10-11-thin-routes-and-steady-frontend-tests-plan.md``
-for a decision, and it is kept here exactly as the route had it.
-Nothing is shared between the two modules, so neither can change what
-the other answers.
+**What became of a bank is decided by the deploy pipeline's code.**
+That sync is ``sync_every_bank`` in ``app.features.teaching.ci_sync``.
+The sync of every bank here hands each bank to that module's
+``sync_one_bank``, and the sync of one bank reads what it was handed
+back with that module's ``what_became_of``. So a bank counts as synced
+here exactly where it does there: only where its sync was recorded as
+a success. One whose assessment failed its checks, of which nothing
+was loaded, is listed as failed with what the checks said. This module
+once counted any record at all as a sync, and showed such a bank as
+imported.
+
+What stays this module's own: the banks go into the caller's
+organisation and are recorded as the caller's, a failure is logged
+under this module's logger, and the answer is this module's shape.
 
 Finding a bank's assessment, and listing its images, are still done by
 two helpers in the teaching router that other routes there use. This
@@ -26,52 +29,44 @@ Each bank is its own checkpoint. ``sync_question_bank`` commits as it
 finishes a bank, so a bank that fails later does not take back one
 already recorded. Nothing is committed here.
 
-The content store is reached through the ``storage``, ``sync`` and
-``tooling.validate`` modules by name, never by importing a function out
-of them, so a test that replaces one of their functions replaces it
-here.
+The content store is reached through the ``storage`` and ``sync``
+modules by name, never by importing a function out of them, so a test
+that replaces one of their functions replaces it here. The sync of
+every bank reaches it inside ``ci_sync``, through the names that module
+imports, so a test of that loop replaces them there.
 """
 
 from __future__ import annotations
 
 import logging
 import shutil
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.features.teaching import storage
+from app.features.teaching import ci_sync, storage
 from app.features.teaching import sync as bank_sync
-from app.features.teaching.errors import BankIdRequired, SyncRecordedNothing
+from app.features.teaching.ci_sync import FindBank as FindBank
+from app.features.teaching.ci_sync import ImageInventory as ImageInventory
+from app.features.teaching.ci_sync import ListImages as ListImages
+from app.features.teaching.errors import (
+    BankIdRequired,
+    BankTurnedAway,
+    SyncRecordedNothing,
+)
 from app.features.teaching.models import QuestionBankSync
 from app.features.teaching.schemas import (
     ValidationMessageOut,
     ValidationResultOut,
 )
-from app.features.teaching.tooling import validate as module_checks
 
 logger = logging.getLogger(__name__)
 
-#: What a bank's images are checked against: item folder to file names.
-#: None where the bank was read from disk, and its images are there.
-ImageInventory = dict[str, set[str]] | None
-
-#: Finds one bank's assessment. Gives its directory, and whether that
-#: directory was downloaded and is the caller's to remove.
-FindBank = Callable[[str], tuple[Path, bool]]
-
-#: Lists one bank's images, given whether the bank was downloaded.
-ListImages = Callable[[str, bool], ImageInventory]
-
-#: How many of a module's faults are given.
-_FAULTS_GIVEN = 5
-
-_MODULE_NOT_FOUND = (
-    "module directory not found - cannot validate module metadata"
-)
+#: The status of a sync record that says the bank was loaded.
+_SYNC_SUCCEEDED = "success"
 
 
 def bank_named_in(body: dict[str, str]) -> str:
@@ -144,6 +139,18 @@ def check_bank(
     )
 
 
+@dataclass(frozen=True)
+class BankSyncedByHand:
+    """What the sync of one bank answers."""
+
+    #: The record of the sync. Where there was nothing to do, the
+    #: record of the sync that loaded the version being served.
+    record: QuestionBankSync
+    #: Whether there was nothing to do: the bank is live and its
+    #: version has not moved on, so nothing new was loaded.
+    unchanged: bool
+
+
 def sync_bank(
     db: Session,
     bank_path: Path,
@@ -153,12 +160,20 @@ def sync_bank(
     org_unit_id: int,
     user_id: int,
     image_inventory: ImageInventory,
-) -> QuestionBankSync:
+) -> BankSyncedByHand:
     """Sync one bank into the caller's organisation, as the caller.
 
     A bank whose assessment fails its checks is not refused. Its sync
     is recorded as failed, with what the checks found, and that record
     is the answer.
+
+    A sync that made no record is one of two things, and
+    ``what_became_of`` tells them apart as it does for the deploy
+    pipeline. Where the checks found fault the bank was turned away,
+    which is refused with what they said. Where they found none the
+    bank is live and its version has not moved on: there was nothing
+    to do, and the answer is the record of the sync that loaded what
+    is being served, marked unchanged.
 
     Args:
         db: Core database session.
@@ -173,13 +188,15 @@ def sync_bank(
             bucket, or None.
 
     Returns:
-        The record of the sync, a success or a failure. It is already
-        committed.
+        The record of the sync, a success or a failure, already
+        committed. Or, marked unchanged, the record of the earlier
+        sync that loaded the version being served.
 
     Raises:
-        SyncRecordedNothing: The sync made no record. That is a draft
-            turned away for its version, and it is also a live bank
-            whose version has not moved on, which is no failure.
+        BankTurnedAway: The sync made no record and the checks found
+            fault, as with a draft whose version is not 1.
+        SyncRecordedNothing: There was nothing to do, and no record
+            either of the bank ever having been loaded here.
     """
     # Resolve module status for version guard
     status: str | None = None
@@ -189,7 +206,7 @@ def sync_bank(
         if bucket:
             status = storage.get_module_status_from_gcs(bucket, bank_id)
 
-    _validation, sync_record = bank_sync.sync_question_bank(
+    validation, sync_record = bank_sync.sync_question_bank(
         bank_path,
         org_unit_id,
         user_id,
@@ -198,10 +215,36 @@ def sync_bank(
         module_status=status,
     )
 
-    if sync_record is None:
+    if sync_record is not None:
+        return BankSyncedByHand(record=sync_record, unchanged=False)
+
+    outcome = ci_sync.what_became_of(bank_id, validation, None)
+
+    if isinstance(outcome, ci_sync.BankNotLoaded):
+        raise BankTurnedAway(outcome.reason)
+
+    serving = _sync_that_loaded(db, bank_id, org_unit_id)
+
+    if serving is None:
         raise SyncRecordedNothing()
 
-    return sync_record
+    return BankSyncedByHand(record=serving, unchanged=True)
+
+
+def _sync_that_loaded(
+    db: Session, bank_id: str, org_unit_id: int
+) -> QuestionBankSync | None:
+    """Find the newest sync that loaded a bank into an organisation."""
+    return db.scalar(
+        select(QuestionBankSync)
+        .where(
+            QuestionBankSync.org_unit_id == org_unit_id,
+            QuestionBankSync.question_bank_id == bank_id,
+            QuestionBankSync.status == _SYNC_SUCCEEDED,
+        )
+        .order_by(QuestionBankSync.id.desc())
+        .limit(1)
+    )
 
 
 def discard_download(bank_path: Path, downloaded: bool) -> None:
@@ -219,8 +262,7 @@ def discard_download(bank_path: Path, downloaded: bool) -> None:
 class BanksSyncedByHand:
     """What the sync of every bank answers."""
 
-    #: The record of each bank whose sync made one, a failed one
-    #: included.
+    #: The record of each bank whose sync succeeded, and of no other.
     synced: list[QuestionBankSync]
     #: Each bank that could not be synced: its ``bank_id`` and the
     #: ``error``.
@@ -253,11 +295,12 @@ def sync_banks_by_hand(
     Nothing here refuses. A bank that cannot be synced is listed with
     the reason and the next bank is tried.
 
-    **A bank whose sync made a record is listed as synced, whatever the
-    record says.** One whose assessment failed its checks is among
-    them, with nothing of it loaded: the known fault this module's
-    docstring describes. A bank whose sync made no record is on neither
-    list, a draft turned away for its version included.
+    **A bank is listed as synced only where its sync succeeded.** One
+    whose assessment failed its checks, and a draft turned away for its
+    version, are listed with what the checks said. A live bank whose
+    version has not moved on is on neither list: there was nothing to
+    load and nothing wrong. Which of these a bank is, is decided by
+    ``sync_one_bank`` in ``ci_sync``, as it is for the deploy pipeline.
 
     Args:
         db: Core database session.
@@ -269,7 +312,8 @@ def sync_banks_by_hand(
         list_images: Lists one bank's images.
 
     Returns:
-        The records made and the banks that could not be synced.
+        The records of the banks synced, and the banks that could not
+        be synced.
     """
     bucket = settings.TEACHING_GCS_BUCKET
     base_path = settings.TEACHING_QUESTION_BANK_PATH
@@ -325,71 +369,34 @@ def _sync_one_bank(
     find_bank: FindBank,
     list_images: ListImages,
 ) -> QuestionBankSync | _NotSynced | None:
-    """Check one bank's module and sync its assessment.
+    """Sync one bank as the caller, and say what became of it.
 
-    Anything that goes wrong is caught, logged and handed back as the
-    reason, in the exception's own words, so the banks after this one
-    are still tried. Whatever was downloaded to check or to sync is
-    removed again either way.
+    The work and the decision are ``sync_one_bank`` in ``ci_sync``, the
+    deploy pipeline's own. This says who is syncing and puts the
+    outcome into this module's answer.
 
     Returns:
-        The record where the sync made one, whatever its status. The
-        bank and the reason where it could not be synced. None where
-        the sync made no record.
+        The record where the sync succeeded. The bank and the reason
+        where it could not be synced. None where there was nothing to
+        load and nothing wrong.
     """
-    bank_path: Path | None = None
-    is_temp = False
-    tooling_module_dir: Path | None = None
-    tooling_is_temp = False
+    outcome = ci_sync.sync_one_bank(
+        db,
+        bank_id,
+        org_unit_id=org_unit_id,
+        user_id=user_id,
+        bucket=bucket,
+        base_path=base_path,
+        find_bank=find_bank,
+        list_images=list_images,
+        log=logger,
+        logged_as="Failed to sync bank '%s'",
+    )
 
-    try:
-        # Module metadata and learning content. The assessment is
-        # validated inside sync_question_bank against the GCS
-        # inventory, which a module directory cannot supply - together
-        # the two cover everything exactly once.
-        if base_path and not bucket:
-            tooling_module_dir = storage.resolve_module_dir(base_path, bank_id)
-        elif bucket:
-            tooling_module_dir = storage.download_module_from_gcs(
-                bucket, bank_id
-            )
-            tooling_is_temp = tooling_module_dir is not None
+    if isinstance(outcome, ci_sync.BankLoaded):
+        return outcome.record
 
-        if not tooling_module_dir:
-            # No module directory found - block sync for safety
-            return _NotSynced(bank_id=bank_id, error=_MODULE_NOT_FOUND)
+    if isinstance(outcome, ci_sync.BankNotLoaded):
+        return _NotSynced(bank_id=outcome.bank_id, error=outcome.reason)
 
-        metadata = module_checks.validate_module_metadata(tooling_module_dir)
-
-        if not metadata.is_valid:
-            msg = "; ".join(e.message for e in metadata.errors[:_FAULTS_GIVEN])
-
-            return _NotSynced(bank_id=bank_id, error=msg)
-
-        bank_path, is_temp = find_bank(bank_id)
-        inventory = list_images(bank_id, is_temp)
-
-        # Resolve module status for version guard
-        status: str | None = None
-        if is_temp and bucket:
-            status = storage.get_module_status_from_gcs(bucket, bank_id)
-
-        _validation, sync_record = bank_sync.sync_question_bank(
-            bank_path,
-            org_unit_id,
-            user_id,
-            db,
-            image_inventory=inventory,
-            module_status=status,
-        )
-
-        return sync_record
-    except Exception as exc:
-        logger.exception("Failed to sync bank '%s'", bank_id)
-
-        return _NotSynced(bank_id=bank_id, error=str(exc))
-    finally:
-        if is_temp and bank_path:
-            shutil.rmtree(bank_path.parent, ignore_errors=True)
-        if tooling_is_temp and tooling_module_dir:
-            shutil.rmtree(tooling_module_dir.parent, ignore_errors=True)
+    return None

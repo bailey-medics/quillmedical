@@ -1542,19 +1542,20 @@ def sync_items(
     body: dict[str, str],
     user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
-) -> QuestionBankSync:
+) -> SyncResultOut:
     """Trigger sync from filesystem/GCS to database.
 
     The bank is looked for before the caller's membership is asked, as
-    in ``validate_items``. The sync itself is ``sync_bank``.
+    in ``validate_items``. The sync itself is ``sync_bank``. Where
+    there was nothing to do, the answer is the record of the sync that
+    loaded what is being served, marked ``unchanged``.
     """
     bank_id = bank_named_in(body)
     bank_path, is_temp = _resolve_bank_path_or_gcs(bank_id)
 
     try:
         org_id = _get_user_org_id(user, db)
-
-        return sync_bank(
+        outcome = sync_bank(
             db,
             bank_path,
             bank_id=bank_id,
@@ -1565,6 +1566,11 @@ def sync_items(
         )
     finally:
         discard_download(bank_path, is_temp)
+
+    answer = SyncResultOut.model_validate(outcome.record)
+    answer.unchanged = outcome.unchanged
+
+    return answer
 
 
 @teaching_router.get(
@@ -1983,6 +1989,11 @@ def sync_all_banks(
     The loop is ``sync_banks_by_hand``. It is handed the two helpers
     that find a bank and list its images, which stay here because other
     routes use them.
+
+    Answers 200 even where a bank failed, unlike the deploy pipeline's
+    sync. The admin page reads the two lists to show what became of
+    each bank, and on any other status it can only show every bank as
+    failed.
     """
     org_id = _get_user_org_id(user, db)
     outcome = sync_banks_by_hand(

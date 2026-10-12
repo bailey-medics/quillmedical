@@ -2,9 +2,11 @@
 
 The banks are a tree on the filesystem where the real validator and the
 real sync can run over it. A bucket is faked by replacing the storage
-functions this module reaches, so nothing here goes to Google. The two
-router helpers the sync of every bank is handed are stood in for by
-plain functions.
+functions this module reaches, so nothing here goes to Google. The sync
+of every bank does its work in ``ci_sync``, the deploy pipeline's own
+code, so for that loop they are replaced there, under the names that
+module imports. The two router helpers the sync of every bank is handed
+are stood in for by plain functions.
 """
 
 import shutil
@@ -18,11 +20,16 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.features.teaching import manual_sync, storage
+from app.features.teaching import ci_sync, manual_sync, storage
 from app.features.teaching import sync as bank_sync
-from app.features.teaching.errors import BankIdRequired, SyncRecordedNothing
+from app.features.teaching.errors import (
+    BankIdRequired,
+    BankTurnedAway,
+    SyncRecordedNothing,
+)
 from app.features.teaching.manual_sync import (
     BanksSyncedByHand,
+    BankSyncedByHand,
     ImageInventory,
     _bank_ids,
     _NotSynced,
@@ -38,7 +45,6 @@ from app.features.teaching.models import (
     QuestionBankConfig,
     QuestionBankSync,
 )
-from app.features.teaching.tooling import validate as module_checks
 from app.features.teaching.tooling.validate import ValidationResult
 from app.models import OrgUnit, User
 
@@ -210,6 +216,9 @@ def _fake_the_sync(
 
     monkeypatch.setattr(bank_sync, "sync_question_bank", fake_sync)
     monkeypatch.setattr(storage, "get_module_status_from_gcs", fake_status)
+    # The sync of every bank reaches the same two through ``ci_sync``.
+    monkeypatch.setattr(ci_sync, "sync_question_bank", fake_sync)
+    monkeypatch.setattr(ci_sync, "get_module_status_from_gcs", fake_status)
 
     return calls
 
@@ -261,12 +270,12 @@ def _fake_the_bucket(
     bank_dir.mkdir(parents=True)
 
     monkeypatch.setattr(
-        storage,
+        ci_sync,
         "download_module_from_gcs",
         lambda bucket, bank_id: module_dir if module_found else None,
     )
     monkeypatch.setattr(
-        module_checks,
+        ci_sync,
         "validate_module_metadata",
         lambda module_dir: metadata or ValidationResult(),
     )
@@ -440,7 +449,7 @@ def test_a_good_bank_is_synced_as_the_caller_and_its_record_given(
 ) -> None:
     base = _base_with(tmp_path, good=True)
 
-    record = sync_bank(
+    synced = sync_bank(
         db_session,
         _assessment_of(base, GOOD),
         bank_id=GOOD,
@@ -449,7 +458,9 @@ def test_a_good_bank_is_synced_as_the_caller_and_its_record_given(
         user_id=administrator.id,
         image_inventory=None,
     )
+    record = synced.record
 
+    assert synced.unchanged is False
     assert record.status == "success"
     assert record.question_bank_id == GOOD
     assert record.triggered_by == administrator.id
@@ -470,7 +481,7 @@ def test_a_bank_whose_assessment_is_at_fault_gives_its_failed_record(
     """Not refused: the record of the failure is the answer."""
     base = _base_with(tmp_path, bad_assessment=True)
 
-    record = sync_bank(
+    synced = sync_bank(
         db_session,
         _assessment_of(base, BAD_ASSESSMENT),
         bank_id=BAD_ASSESSMENT,
@@ -479,7 +490,9 @@ def test_a_bank_whose_assessment_is_at_fault_gives_its_failed_record(
         user_id=administrator.id,
         image_inventory=None,
     )
+    record = synced.record
 
+    assert synced.unchanged is False
     assert record.status == "failed"
     assert [fault["message"] for fault in record.errors] == [
         BAD_ASSESSMENT_FAULT
@@ -558,6 +571,9 @@ def test_with_no_bucket_set_no_status_is_asked_for(
 def test_a_sync_that_made_no_record_is_refused(
     db_session: Session, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    """Nothing to do, and no record either of the bank ever having been
+    loaded here to answer with. Not expected to happen.
+    """
     _fake_the_sync(monkeypatch, returns=None)
 
     with pytest.raises(SyncRecordedNothing) as refused:
@@ -575,18 +591,20 @@ def test_a_sync_that_made_no_record_is_refused(
     assert refused.value.message == "Sync failed unexpectedly"
 
 
-def test_a_live_bank_synced_again_unchanged_is_refused_as_a_failure(
+def test_a_live_bank_synced_again_unchanged_had_nothing_to_do(
     db_session: Session,
     tmp_path: Path,
     organisation: OrgUnit,
     administrator: User,
 ) -> None:
-    """Pinned as it stands. There is nothing new to load, the sync makes
-    no record, and no record is taken here for a failure.
+    """There is nothing new to load and the sync makes no record. That
+    is no failure: the answer is the record of the sync that loaded the
+    version being served, marked unchanged. It was once refused with a
+    500.
     """
     base = _base_with(tmp_path, good=True)
 
-    def sync_it() -> QuestionBankSync:
+    def sync_it() -> BankSyncedByHand:
         return sync_bank(
             db_session,
             _assessment_of(base, GOOD),
@@ -597,10 +615,114 @@ def test_a_live_bank_synced_again_unchanged_is_refused_as_a_failure(
             image_inventory=None,
         )
 
-    assert sync_it().status == "success"
+    first = sync_it()
 
-    with pytest.raises(SyncRecordedNothing):
-        sync_it()
+    assert first.unchanged is False
+    assert first.record.status == "success"
+
+    again = sync_it()
+
+    assert again.unchanged is True
+    assert again.record.id == first.record.id
+    assert len(db_session.scalars(select(QuestionBankSync)).all()) == 1
+
+
+def test_nothing_to_do_answers_with_the_newest_sync_that_loaded_the_bank(
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    organisation: OrgUnit,
+) -> None:
+    """Not a failed sync of it, and not another organisation's."""
+    elsewhere = OrgUnit(name="Another Trust", type="hospital_team")
+    db_session.add(elsewhere)
+    db_session.flush()
+
+    def record_of(org_unit_id: int, status: str) -> QuestionBankSync:
+        record = QuestionBankSync(
+            org_unit_id=org_unit_id,
+            question_bank_id="a-bank",
+            version=3,
+            status=status,
+        )
+        db_session.add(record)
+        db_session.flush()
+
+        return record
+
+    record_of(organisation.id, "success")
+    newest = record_of(organisation.id, "success")
+    record_of(organisation.id, "failed")
+    record_of(elsewhere.id, "success")
+    _fake_the_sync(monkeypatch, returns=None)
+
+    synced = sync_bank(
+        db_session,
+        tmp_path,
+        bank_id="a-bank",
+        downloaded=False,
+        org_unit_id=organisation.id,
+        user_id=4,
+        image_inventory=None,
+    )
+
+    assert synced == BankSyncedByHand(record=newest, unchanged=True)
+
+
+def test_a_bank_turned_away_with_no_record_is_refused_with_the_reasons(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """No record and a fault from the checks is a bank turned away, as
+    it is for the deploy pipeline. It is not "nothing to do".
+    """
+    turned_away = ValidationResult()
+    turned_away.add_error(
+        "/tmp/a-bank", "Draft module version must be 1, got 2"
+    )
+    _fake_the_sync(monkeypatch, returns=None, found=turned_away)
+
+    with pytest.raises(BankTurnedAway) as refused:
+        sync_bank(
+            db_session,
+            tmp_path,
+            bank_id="a-bank",
+            downloaded=False,
+            org_unit_id=7,
+            user_id=4,
+            image_inventory=None,
+        )
+
+    assert refused.value.status_code == 422
+    assert refused.value.message == (
+        "The bank was not synced: Draft module version must be 1, got 2"
+    )
+
+
+def test_only_the_first_five_reasons_a_bank_was_turned_away_are_given(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    turned_away = ValidationResult()
+
+    for number in range(1, 8):
+        turned_away.add_error("/tmp/a-bank/assessment.yaml", f"fault {number}")
+
+    _fake_the_sync(monkeypatch, returns=None, found=turned_away)
+
+    with pytest.raises(BankTurnedAway) as refused:
+        sync_bank(
+            db_session,
+            tmp_path,
+            bank_id="a-bank",
+            downloaded=False,
+            org_unit_id=7,
+            user_id=4,
+            image_inventory=None,
+        )
+
+    assert refused.value.message == (
+        "The bank was not synced: "
+        "fault 1; fault 2; fault 3; fault 4; fault 5"
+    )
 
 
 # --- discard_download -------------------------------------------------------
@@ -688,7 +810,7 @@ class TestSyncBanksByHand:
         assert config.org_unit_id == organisation.id
         assert config.synced_by == administrator.id
 
-    def test_a_bank_that_did_not_load_is_listed_as_synced(
+    def test_a_bank_that_did_not_load_is_listed_as_failed(
         self,
         db_session: Session,
         monkeypatch: pytest.MonkeyPatch,
@@ -696,15 +818,11 @@ class TestSyncBanksByHand:
         organisation: OrgUnit,
         administrator: User,
     ) -> None:
-        """A known fault, recorded in the plan for a decision, and
-        pinned here as it stands.
-
-        The assessment failed its checks and nothing of the bank was
-        loaded. Its sync still made a record, and any record is listed
-        under ``synced``, so the administrator's page shows the bank as
-        imported. ``sync_every_bank``, the deploy pipeline's sync,
-        lists the same bank as failed. See
-        ``docs/docs/plans/2026-10-11-thin-routes-and-steady-frontend-tests-plan.md``.
+        """The assessment failed its checks and nothing of the bank was
+        loaded. Its sync still made a record, which was once enough to
+        list it under ``synced`` and show it as imported. It is listed
+        as failed, with what the checks said, as ``sync_every_bank``
+        lists it for the deploy pipeline.
         """
         base = _base_with(tmp_path, bad_assessment=True)
         _read_from(monkeypatch, base_path=base)
@@ -713,28 +831,47 @@ class TestSyncBanksByHand:
             db_session, base, organisation, administrator
         )
 
-        assert outcome.errors == []
-        assert len(outcome.synced) == 1
-
-        listed = outcome.synced[0]
-
-        assert listed.question_bank_id == BAD_ASSESSMENT
-        assert listed.status == "failed"
-        assert [fault["message"] for fault in listed.errors] == [
-            BAD_ASSESSMENT_FAULT
+        assert outcome.synced == []
+        assert outcome.errors == [
+            {"bank_id": BAD_ASSESSMENT, "error": BAD_ASSESSMENT_FAULT}
         ]
         assert db_session.scalar(select(QuestionBankConfig)) is None
 
-    def test_a_record_of_any_status_is_listed_as_synced(
+    def test_a_good_bank_and_one_that_did_not_load_are_each_listed(
+        self,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        organisation: OrgUnit,
+        administrator: User,
+    ) -> None:
+        base = _base_with(tmp_path, good=True, bad_assessment=True)
+        _read_from(monkeypatch, base_path=base)
+
+        outcome = _sync_all_from_disk(
+            db_session, base, organisation, administrator
+        )
+
+        assert [
+            (record.question_bank_id, record.status)
+            for record in outcome.synced
+        ] == [(GOOD, "success")]
+        assert outcome.errors == [
+            {"bank_id": BAD_ASSESSMENT, "error": BAD_ASSESSMENT_FAULT}
+        ]
+
+    def test_only_a_record_that_says_success_is_listed_as_synced(
         self,
         db_session: Session,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        """The same known fault, said of the rule: the status is not
-        read. A record left in progress is listed as synced too.
+        """The rule itself: the status is read. A record left in
+        progress loaded nothing, so it is listed as failed too.
         """
-        unfinished = SimpleNamespace(version=3, status="in_progress")
+        unfinished = SimpleNamespace(
+            version=3, status="in_progress", errors=[]
+        )
         _read_from(monkeypatch, bucket="a-bucket")
         monkeypatch.setattr(
             storage, "list_banks_in_gcs", lambda bucket: ["a-bank"]
@@ -751,8 +888,13 @@ class TestSyncBanksByHand:
             list_images=bucket.list_images,
         )
 
-        assert outcome.synced == [unfinished]
-        assert outcome.errors == []
+        assert outcome.synced == []
+        assert outcome.errors == [
+            {
+                "bank_id": "a-bank",
+                "error": "the sync did not succeed and recorded no reason",
+            }
+        ]
 
     def test_a_bad_module_is_listed_and_the_good_one_still_synced(
         self,
@@ -780,6 +922,9 @@ class TestSyncBanksByHand:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
+        """No record and no fault: a live bank whose version has not
+        moved on. There was nothing to load and nothing wrong.
+        """
         _read_from(monkeypatch, bucket="a-bucket")
         monkeypatch.setattr(
             storage, "list_banks_in_gcs", lambda bucket: ["a-bank"]
@@ -796,16 +941,16 @@ class TestSyncBanksByHand:
 
         assert outcome == BanksSyncedByHand(synced=[], errors=[])
 
-    def test_a_draft_turned_away_for_its_version_is_on_neither_list(
+    def test_a_draft_turned_away_for_its_version_is_listed_as_failed(
         self,
         db_session: Session,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        """Part of the same known fault, recorded in the plan, and
-        pinned here as it stands. The checks say why the draft was
-        turned away, and the administrator is told nothing of it.
-        ``sync_every_bank`` lists it as failed.
+        """The sync makes no record of a draft it turns away, and the
+        checks say why. That was once on neither list, so the
+        administrator was told nothing of it. It is listed as failed
+        with those words, as ``sync_every_bank`` lists it.
         """
         turned_away = ValidationResult()
         turned_away.add_error(
@@ -827,7 +972,15 @@ class TestSyncBanksByHand:
             list_images=bucket.list_images,
         )
 
-        assert outcome == BanksSyncedByHand(synced=[], errors=[])
+        assert outcome == BanksSyncedByHand(
+            synced=[],
+            errors=[
+                {
+                    "bank_id": "a-bank",
+                    "error": "Draft module version must be 1, got 2",
+                }
+            ],
+        )
 
 
 # --- _bank_ids --------------------------------------------------------------
@@ -916,7 +1069,7 @@ class TestSyncOneBankFromTheFilesystem:
             failed.add_error("module.yaml", f"fault {number}")
 
         monkeypatch.setattr(
-            module_checks,
+            ci_sync,
             "validate_module_metadata",
             lambda module_dir: failed,
         )
@@ -1044,13 +1197,15 @@ class TestSyncOneBankFromTheBucket:
 
         assert _one_from_the_bucket(db_session, bucket) is record
 
-    def test_a_record_that_says_failed_is_given_like_any_other(
+    def test_a_record_that_says_failed_is_given_as_a_bank_not_synced(
         self,
         db_session: Session,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        """The known fault, at its source: the status is not read."""
+        """The status is read. It was once not, and a failed record was
+        handed back like any other.
+        """
         failed = SimpleNamespace(
             version=3,
             status="failed",
@@ -1058,7 +1213,9 @@ class TestSyncOneBankFromTheBucket:
         )
         bucket = _fake_the_bucket(monkeypatch, tmp_path, sync_returns=failed)
 
-        assert _one_from_the_bucket(db_session, bucket) is failed
+        assert _one_from_the_bucket(db_session, bucket) == _NotSynced(
+            bank_id="a-bank", error="no questions found"
+        )
 
     def test_the_sync_is_given_the_caller_and_what_the_bucket_holds(
         self,
@@ -1147,10 +1304,73 @@ class TestSyncOneBankFromTheBucket:
         def refuse(bucket_name: str, bank_id: str) -> Path:
             raise RuntimeError("bucket unreachable")
 
-        monkeypatch.setattr(storage, "download_module_from_gcs", refuse)
+        monkeypatch.setattr(ci_sync, "download_module_from_gcs", refuse)
 
         outcome = _one_from_the_bucket(db_session, bucket)
 
         assert outcome == _NotSynced(
             bank_id="a-bank", error="bucket unreachable"
         )
+
+
+# --- what the two syncs share ----------------------------------------------
+
+
+class TestWhatBecameOf:
+    """The rule both syncs read a bank's sync by, in ``ci_sync``."""
+
+    def test_a_record_that_says_success_is_a_bank_loaded(self) -> None:
+        record: Any = SimpleNamespace(version=3, status="success")
+
+        assert ci_sync.what_became_of(
+            "a-bank", ValidationResult(), record
+        ) == ci_sync.BankLoaded(record=record)
+
+    def test_a_record_that_says_failed_is_not_loaded_and_says_why(
+        self,
+    ) -> None:
+        record: Any = SimpleNamespace(
+            version=3,
+            status="failed",
+            errors=[{"path": "/tmp/x", "message": "no questions found"}],
+        )
+
+        assert ci_sync.what_became_of(
+            "a-bank", ValidationResult(), record
+        ) == ci_sync.BankNotLoaded(
+            bank_id="a-bank", reason="no questions found"
+        )
+
+    def test_no_record_and_a_fault_is_a_bank_turned_away(self) -> None:
+        found = ValidationResult()
+        found.add_error("/tmp/a-bank", "Draft module version must be 1, got 2")
+
+        assert ci_sync.what_became_of(
+            "a-bank", found, None
+        ) == ci_sync.BankNotLoaded(
+            bank_id="a-bank", reason="Draft module version must be 1, got 2"
+        )
+
+    def test_no_record_and_no_fault_is_nothing_to_do(self) -> None:
+        assert (
+            ci_sync.what_became_of("a-bank", ValidationResult(), None) is None
+        )
+
+
+def test_a_sync_that_raises_is_logged_under_this_modules_own_name(
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The work is the deploy pipeline's code, and the log is not."""
+    bucket = _fake_the_bucket(
+        monkeypatch, tmp_path, sync_raises=RuntimeError("fell over")
+    )
+
+    with caplog.at_level("ERROR"):
+        _one_from_the_bucket(db_session, bucket)
+
+    assert [(r.name, r.getMessage()) for r in caplog.records] == [
+        (manual_sync.logger.name, "Failed to sync bank 'a-bank'")
+    ]

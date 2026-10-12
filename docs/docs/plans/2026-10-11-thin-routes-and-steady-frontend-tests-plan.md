@@ -1326,7 +1326,7 @@ they found. Mark ruled on five of those on 12 October 2026. Four are
 steps here. Each changes what somebody is answered, on purpose, so each
 is its own pull request and says what was answered before and what is
 answered now. Each has a test today that pins the old behaviour and
-says so: that test is turned round, as the proof. Not built yet.
+says so: that test is turned round, as the proof. Built on 12 October 2026, as five pull requests: the timer took two, one for the server and one for the page.
 
 The timer comes first and one attempt at a time second, the other way
 round from how Mark's rulings were listed. "In progress" in the second
@@ -1739,30 +1739,71 @@ and the page follows.
         became
         `test_a_bucket_that_refuses_is_answered_502_and_the_row_stays`.
 
-- [ ] **The manual content sync says when a bank did not load.** Mark:
-      "fix this." Today `sync_banks_by_hand` in
-      `backend/app/features/teaching/manual_sync.py` lists a bank
+- [x] **The manual content sync says when a bank did not load.** Mark:
+      "fix this." Before, `sync_banks_by_hand` in
+      `backend/app/features/teaching/manual_sync.py` listed a bank
       whose assessment failed its checks as synced, and the admin page
-      shows it as imported. The CI's sync had the same fault until
-      #1794.
+      showed it as imported. The CI's sync had the same fault until
+      #1794. Built on 12 October 2026, server and page together.
 
-      - **One loop, not two.** The manual sync calls the same code as
-        the CI's, `sync_every_bank` in `ci_sync.py`, so the two cannot
-        differ again. A bank is synced only when its record says
-        `success`; anything else is listed as failed with the
-        validator's messages.
-      - **The admin page shows a failed bank as failed**, with its
-        reasons, and not as imported.
-        `frontend/src/pages/admin/teaching/AdminTeachingPage.tsx` reads
-        only the list of synced banks today.
+      - **One loop, not two: done.** What became of one bank is now
+        decided in one place, `ci_sync.py`, by two public functions.
+        `sync_one_bank` checks a bank's module, syncs its assessment
+        and cleans up, and `what_became_of` reads what the sync handed
+        back: loaded only where the record says `success`, otherwise
+        failed with the validator's first five messages, or nothing to
+        do. The CI's `_sync_one_bank` and the manual one are each a
+        few lines that call `sync_one_bank` and put the outcome into
+        their own answer. What each keeps for itself: who is syncing
+        and into which organisation, the listing of bank ids, its own
+        logger and words for a failure, and its response model. The
+        two router helpers are handed in on both paths now; the CI's
+        still imports them from the router inside its function. The
+        CI's tests pass unchanged. *Before*, a bank that did not load
+        was under `synced`, and a draft turned away for its version
+        was on neither list. *Now* both are under `errors` with the
+        reason, and not under `synced`.
+      - **The manual sync still answers 200 when a bank failed**,
+        where the CI's answers 422. On any status but 2xx the admin
+        page marks every bank "Sync request failed" and cannot say
+        which ones went in, so the two lists on a 200 are what lets it
+        show each bank's own fate.
+      - **The admin page shows a failed bank as failed, with its
+        reasons: no change to the page was needed.**
+        `AdminTeachingPage.tsx` already read the `errors` list before
+        the `synced` one and drew such a bank as "Sync fail" with the
+        reason beneath. It showed a failed bank as imported only
+        because the server put it in the wrong list. Tests were added
+        to the page that pin a failed bank as failed and not imported,
+        one of each together, and a bank on neither list as "Up to
+        date".
       - **Syncing one bank whose version has not moved answers that
-        there was nothing to do**, and not 500 "Sync failed
-        unexpectedly", which is what it answers now though nothing is
-        wrong.
-      - **The response keeps its shape if it can.** If the admin page
-        needs a field it does not have, adding one is allowed; taking
-        one away is a breaking change and goes through the process in
-        `.claude/rules/backend.md`.
+        there was nothing to do: done.** *Before*, 500 "Sync failed
+        unexpectedly". *Now*, 200 with the record of the sync that
+        loaded the version being served, and a new optional field,
+        `unchanged`, set true. No second record is made. The record
+        was chosen because every field of the answer is required, so
+        there had to be one, and that one is true. Where no such
+        record can be found the 500 stays: that is not expected to
+        happen, since a bank is only ever served after a sync that
+        recorded it.
+      - **Syncing one bank that was turned away is told apart from
+        that, and says why.** No record and a fault from the checks,
+        as with a draft whose version is not 1. *Before*, the same 500.
+        *Now*, 422 "The bank was not synced: " and the validator's
+        first five messages, from a new `BankTurnedAway` in
+        `errors.py`. It is the one refusal there that carries text,
+        and the module's docstring says so: the checks' own findings,
+        with no path, which the sync of every bank already lists.
+      - **Left as it was** - syncing one bank whose assessment fails
+        its checks still answers 200 with a record whose status is
+        `failed` and all its faults. That record already says it
+        failed, a test pins it, and no page calls the single sync, so
+        it was not part of the fault. The sync of every bank lists the
+        same bank under `errors`.
+      - **The response keeps its shape.** Nothing removed or renamed.
+        One optional field added, `unchanged` on a sync record, which
+        is false everywhere but the case above.
 
 **Asked, and not a step: "what is wrong with this?"** Mark's question,
 of the finding that asking somebody to sign off a competency gives them
