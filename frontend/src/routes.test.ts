@@ -11,7 +11,7 @@ import { isValidElement } from "react";
 import { describe, expect, it } from "vitest";
 import type { RouteObject } from "react-router-dom";
 import RequireAuth from "@/auth/RequireAuth";
-import { isGuestPath } from "@lib/api";
+import GuestOnly from "@/auth/GuestOnly";
 import { routes } from "@/routes";
 
 /** A path with its parameter names taken out: `a/:id/edit` is `a/:/edit`. */
@@ -70,74 +70,75 @@ describe("routes", () => {
 });
 
 /**
- * A page somebody who is not signed in can open needs two things: no
- * `RequireAuth` round its route, and its path in `GUEST_PATHS` in
- * `lib/api.ts`. The second is the one that gets forgotten. The page then
- * loads, `AuthContext` asks `/api/auth/me`, the 401 arrives as it should,
- * and the visitor is sent to `/login` before they can do anything. That
- * happened to the invited assessor's page, the public guides and the
- * newsletter unsubscribe link.
+ * Whether a page is open to somebody who is not signed in is said in one
+ * place: its route has no `RequireAuth`. Nothing else has to agree with
+ * it, since `lib/api.ts` no longer sends anybody to `/login`.
+ *
+ * That makes leaving the guard off the only thing that can go wrong, and
+ * it fails open: the page is public. So every top-level route must be
+ * behind `RequireAuth`, behind `GuestOnly`, or named below with the reason
+ * it is open.
  */
 
-/** Whether a top-level route is wrapped in `RequireAuth`. */
-function requiresAuth(route: RouteObject): boolean {
-  return isValidElement(route.element) && route.element.type === RequireAuth;
+/** Whether a top-level route is wrapped in the given guard. */
+function wrappedIn(route: RouteObject, guard: unknown): boolean {
+  return isValidElement(route.element) && route.element.type === guard;
 }
 
 /**
- * Routes open to somebody not signed in that are deliberately not guest
- * paths, each with its reason. Adding one is a decision, so it is written
- * down here and not inferred.
+ * The routes anybody may open, signed in or not, each with its reason.
+ * Adding one is a decision, so it is written down here and not inferred.
  */
-const OPEN_BUT_NOT_GUEST: Record<string, string> = {
-  // Any address nothing else matches. A signed-out visitor to an unknown
-  // address under the app has no business there, and being sent to
-  // `/login` by the 401 is the right outcome.
+const OPEN_TO_ANYBODY: Record<string, string> = {
+  "/unsubscribe":
+    "the link in a newsletter, which must work signed in or signed out",
+  "/guides/:slug":
+    "some guides are read before there is an account to sign in to",
+  "/passport/assessors/accept":
+    "an invited assessor has no account yet; the signed token admits them",
   "*": "the 404 page",
 };
 
-/** Top-level routes with no `RequireAuth` whose path is not a guest path. */
-function openRoutesMissingFromGuestPaths(list: RouteObject[]): string[] {
+/** Top-level routes with no guard that are not named as open. */
+function unguardedRoutes(list: RouteObject[]): string[] {
   return list
-    .filter((route) => !requiresAuth(route))
+    .filter((route) => !wrappedIn(route, RequireAuth))
+    .filter((route) => !wrappedIn(route, GuestOnly))
     .map((route) => route.path ?? "(no path)")
-    .filter((path) => !(path in OPEN_BUT_NOT_GUEST))
-    .filter((path) => !isGuestPath(path));
+    .filter((path) => !(path in OPEN_TO_ANYBODY));
 }
 
 describe("routes open to somebody not signed in", () => {
-  it("finds both kinds of route, so the check is not passing on nothing", () => {
-    const guarded = routes.filter(requiresAuth);
-    const open = routes.filter((route) => !requiresAuth(route));
-
-    expect(guarded.length).toBeGreaterThan(1);
-    expect(open.length).toBeGreaterThan(5);
+  it("finds every kind of route, so the check is not passing on nothing", () => {
+    expect(
+      routes.filter((route) => wrappedIn(route, RequireAuth)).length,
+    ).toBeGreaterThan(1);
+    expect(
+      routes.filter((route) => wrappedIn(route, GuestOnly)).length,
+    ).toBeGreaterThan(3);
   });
 
-  it("has every one of them on the guest list in lib/api.ts", () => {
-    expect(openRoutesMissingFromGuestPaths(routes)).toEqual([]);
+  it("are only the ones named as open", () => {
+    expect(unguardedRoutes(routes)).toEqual([]);
   });
 
-  it("sees an open route that was left off the list", () => {
+  it("names no route that does not exist", () => {
+    // A name left behind after its route has gone would quietly allow a
+    // later route of the same path to be open.
+    const paths = routes.map((route) => route.path);
+
+    for (const path of Object.keys(OPEN_TO_ANYBODY)) {
+      expect(paths).toContain(path);
+    }
+  });
+
+  it("sees a route added with no guard", () => {
     const list: RouteObject[] = [
-      { path: "/login" },
-      { path: "/new-public-page" },
+      { path: "/unsubscribe" },
+      { path: "/new-page-with-no-guard" },
       { path: "*" },
     ];
 
-    expect(openRoutesMissingFromGuestPaths(list)).toEqual(["/new-public-page"]);
-  });
-
-  it("takes a page beneath a guest path as covered", () => {
-    const list: RouteObject[] = [{ path: "/guides/:slug" }];
-
-    expect(openRoutesMissingFromGuestPaths(list)).toEqual([]);
-  });
-
-  it("does not take a longer word for a page beneath a guest path", () => {
-    // `/guides-archive` is not under `/guides`.
-    expect(isGuestPath("/guides-archive")).toBe(false);
-    expect(isGuestPath("/guides")).toBe(true);
-    expect(isGuestPath("/guides/how-to-join")).toBe(true);
+    expect(unguardedRoutes(list)).toEqual(["/new-page-with-no-guard"]);
   });
 });
