@@ -43,12 +43,12 @@ _WAITING = (
 
 # Fields that should have a limit and do not yet, and why.
 NOT_YET: dict[str, str] = {
-    "app.main.AdminUserCreateIn.username": _WAITING,
-    "app.main.AdminUserCreateIn.email": _WAITING,
-    "app.main.AdminUserCreateIn.password": _WAITING,
-    "app.main.AdminUserUpdateIn.username": _WAITING,
-    "app.main.AdminUserUpdateIn.email": _WAITING,
-    "app.main.AdminUserUpdateIn.password": _WAITING,
+    "app.schemas.users_admin.AdminUserCreateIn.username": _WAITING,
+    "app.schemas.users_admin.AdminUserCreateIn.email": _WAITING,
+    "app.schemas.users_admin.AdminUserCreateIn.password": _WAITING,
+    "app.schemas.users_admin.AdminUserUpdateIn.username": _WAITING,
+    "app.schemas.users_admin.AdminUserUpdateIn.email": _WAITING,
+    "app.schemas.users_admin.AdminUserUpdateIn.password": _WAITING,
     "app.main.TotpVerifyIn.code": _WAITING,
     "app.main.ValidateClinicalLeadIn.email": _WAITING,
 }

@@ -25,7 +25,6 @@ import hmac
 import logging
 import time
 from collections.abc import Callable, Sequence
-from datetime import datetime
 from typing import Any, cast
 from uuid import uuid4
 
@@ -39,7 +38,7 @@ from fastapi import (
     Response,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import select
@@ -48,13 +47,8 @@ from sqlalchemy.orm import Session
 from app.analytics.router import router as analytics_router
 from app.api_compatibility import REQUIRED_CLIENT_GENERATION
 from app.body_limit import BodyLimitMiddleware
-from app.cbac.base_professions import PROFESSION_IDS
-from app.cbac.competencies import (
-    validate_competency_ids,
-)
 from app.cbac.grant_scope import scope_for
 from app.cbac.grants import sync_competency_rows
-from app.cbac.practising import competencies_at
 from app.compat_harness_endpoints import test_api_router
 from app.config import settings
 from app.db import get_core_db
@@ -62,12 +56,12 @@ from app.deps import (
     DEP_CURRENT_USER,
     DEP_GET_SESSION,
     DEP_REQUIRE_CSRF,
-    DEP_REQUIRE_MANAGE_PEOPLE,
     has_competency,
 )
 from app.ehrbase_client import (
     EhrbaseClientError,
 )
+from app.email.account import account_email_values
 from app.email.render import RenderedEmail, render_email, send_args
 from app.email_send import (
     EmailNotAllowedError,
@@ -78,7 +72,6 @@ from app.features.passport.errors import PassportError
 from app.features.passport.models import Passport
 from app.features.teaching.ci_media import record_captions, record_transcode
 from app.features.teaching.ci_sync import sync_every_bank
-from app.features.teaching.enrolment import current_enrolments
 from app.features.teaching.errors import TeachingError
 from app.features.teaching.models import QuestionBankOrgStatus
 from app.features.teaching.schemas import (
@@ -110,7 +103,6 @@ from app.models import (
     User,
     normalise_email,
     org_unit_member,
-    validate_platform_role,
 )
 from app.org_units.errors import OrgUnitError
 from app.org_units.router import router as org_units_router
@@ -119,8 +111,6 @@ from app.org_units.tree import (
 )
 from app.organisations import (
     feature_holder_ids_of,
-    org_units_whose_people_reached_by,
-    organisation_org_units_of,
 )
 from app.patients.router import router as patients_router
 from app.push import router as push_router
@@ -136,22 +126,15 @@ from app.schemas.auth import (
     MeOut,
     OrganisationListItem,
     OrganisationsOut,
-    PractisingAtOut,
     RefreshOut,
     RegisterIn,
     ResendVerificationIn,
     ResetPasswordIn,
     ServiceHealthStatus,
-    TeachingEnrolmentsAtOut,
     TeachingModuleItem,
-    TeachingModuleOut,
     TeachingModulesOut,
     TotpDisableIn,
     UpdateProfileIn,
-    UserActionOut,
-    UserIdActionOut,
-    UserOut,
-    UsersListOut,
     ValidateClinicalLeadOut,
     VerifyEmailIn,
 )
@@ -182,54 +165,20 @@ from app.security import (
     verify_password_reset_token,
     verify_totp_code,
 )
-from app.users.activation import deactivate_account, reactivate_account
-from app.users.create import NewAccount, create_account
 from app.users.errors import UserAdminError
 from app.users.invites import accept_external_invite
-from app.users.listing import (
-    admin_rows,
-    people_around_a_patient,
-    people_to_list,
-    people_within_reach,
-    picker_rows,
-)
-from app.users.reach import check_account_within_reach
 from app.users.register import (
     Registration,
     clinical_lead_site,
     register_account,
     undo_registration,
 )
-from app.users.scope import check_may_act_on_operator
-from app.users.setup_invite import setup_invite_for
-from app.users.update import AccountChanges, update_account
+from app.users.router import router as users_router
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
 DEV_MODE = settings.BACKEND_ENV.lower().startswith("dev")
-
-
-def _account_email_values(user: User) -> dict[str, str]:
-    """What every account email says about whose account it is.
-
-    The invite, the verification and the password reset all greet the
-    person, give their username and say which address the email went to.
-    People log in with the username and may have forgotten it, and many
-    read several addresses in one mailbox, so the address tells them
-    which account this is about.
-
-    Args:
-        user: The account the email is about.
-
-    Returns:
-        The ``name``, ``username`` and ``email`` those templates name.
-    """
-    return {
-        "name": user.full_name or user.username,
-        "username": user.username,
-        "email": user.email,
-    }
 
 
 def _verification_email(
@@ -252,7 +201,7 @@ def _verification_email(
         "email_verification.html.j2",
         "quill",
         {
-            **_account_email_values(user),
+            **account_email_values(user),
             "verify_url": verify_url,
             "ttl_minutes": settings.EMAIL_VERIFY_TTL_MIN,
             "welcome": welcome,
@@ -1187,7 +1136,7 @@ def forgot_password(
                     "password_reset.html.j2",
                     "quill",
                     {
-                        **_account_email_values(user),
+                        **account_email_values(user),
                         "reset_url": reset_url,
                         "ttl_minutes": settings.PASSWORD_RESET_TTL_MIN,
                     },
@@ -1267,626 +1216,7 @@ def reset_password(
     return DetailResponse(detail="Password reset successfully")
 
 
-class TeachingModuleIn(BaseModel):
-    """One teaching module somebody is to be enrolled on.
-
-    Attributes:
-        module_id: The module.
-        ends_on: When the enrolment stops counting, or None for no end.
-    """
-
-    model_config = {"extra": "forbid"}
-
-    module_id: str = Field(max_length=255, pattern=r"^[a-zA-Z0-9_-]+$")
-    ends_on: datetime | None = None
-
-
-class TeachingEnrolmentsAtIn(BaseModel):
-    """Somebody's teaching enrolments at one organisation, from the user form.
-
-    The whole answer for that organisation: the modules listed are
-    enrolled on, and one they are on and is not listed has its enrolment
-    ended. An organisation that is not sent is not touched.
-
-    Attributes:
-        org_unit_id: The organisation serving the modules.
-        modules: The modules they are to be enrolled on there.
-    """
-
-    model_config = {"extra": "forbid"}
-
-    org_unit_id: int
-    modules: list[TeachingModuleIn] = Field(
-        default_factory=list, max_length=100
-    )
-
-    @field_validator("modules")
-    @classmethod
-    def _each_module_once(
-        cls, value: list[TeachingModuleIn]
-    ) -> list[TeachingModuleIn]:
-        ids = [entry.module_id for entry in value]
-
-        if len(ids) != len(set(ids)):
-            raise ValueError("Each module may be named once.")
-
-        return value
-
-
-def _one_entry_per_organisation(
-    value: list[TeachingEnrolmentsAtIn] | None,
-) -> list[TeachingEnrolmentsAtIn] | None:
-    """Reject a list naming one organisation twice.
-
-    Each entry is the whole answer for its organisation, so two for the
-    same one would contradict each other.
-    """
-    if value is None:
-        return None
-
-    ids = [entry.org_unit_id for entry in value]
-
-    if len(ids) != len(set(ids)):
-        raise ValueError("Each organisation may be named once.")
-
-    return value
-
-
-def _enrolments_wanted(
-    enrolments: list[TeachingEnrolmentsAtIn],
-) -> dict[int, dict[str, datetime | None]]:
-    """Turn the form's enrolments into the plain values the rules take.
-
-    For each organisation, in the order sent, each module and when its
-    enrolment ends. Nothing is lost in a mapping: the models above
-    refuse an organisation named twice and a module named twice.
-    """
-    return {
-        entry.org_unit_id: {
-            module.module_id: module.ends_on for module in entry.modules
-        }
-        for entry in enrolments
-    }
-
-
-class PractisingAtIn(BaseModel):
-    """What somebody may practise at one org_unit, as the user form sends it.
-
-    The whole answer for that org_unit, for the competencies the person
-    holds: the ones listed are authorised there and the ones they hold
-    and are not listed are withdrawn. An org_unit that is not sent is
-    not touched.
-
-    Attributes:
-        org_unit_id: The org_unit.
-        competencies: What they may practise there.
-    """
-
-    model_config = {"extra": "forbid"}
-
-    org_unit_id: int
-    competencies: list[str] = []
-
-    @field_validator("competencies")
-    @classmethod
-    def _competencies_exist(cls, value: list[str]) -> list[str]:
-        """Reject a competency id that is not in the catalogue.
-
-        A misspelt one would otherwise be written as a row that
-        authorises nothing, and look like a decision somebody made.
-        """
-        return validate_competency_ids(value)
-
-
-def _one_entry_per_org_unit(
-    value: list[PractisingAtIn] | None,
-) -> list[PractisingAtIn] | None:
-    """Refuse a practice list naming the same org_unit twice.
-
-    Each entry is the whole answer for its org_unit, so two for one
-    org_unit are two answers, and the second would undo the first.
-    """
-    if value is None:
-        return None
-
-    seen: set[int] = set()
-
-    for entry in value:
-        if entry.org_unit_id in seen:
-            raise ValueError(
-                f"Place {entry.org_unit_id} is listed more than once."
-            )
-        seen.add(entry.org_unit_id)
-
-    return value
-
-
-def _practice_wanted(
-    practising: list[PractisingAtIn],
-) -> dict[int, list[str]]:
-    """Turn the form's practice list into the plain values the rules take.
-
-    For each org_unit, in the order sent, what they may practise there.
-    Nothing is lost in a mapping: the models refuse an org_unit named
-    twice.
-    """
-    return {entry.org_unit_id: entry.competencies for entry in practising}
-
-
-class AdminUserCreateIn(BaseModel):
-    """Admin User Creation Request.
-
-    Request model for administrators to create new users with full CBAC settings.
-    Requires the ``manage_users`` competency and a shared organisation
-    with the patient.
-
-    Attributes:
-        name: User's full name (stored as username if username not provided).
-        username: Unique username for login.
-        email: Unique email address.
-        password: Plain text password (will be hashed).
-        base_profession: Base profession template (e.g., "consultant", "patient").
-        additional_competencies: Extra competencies beyond base profession.
-        removed_competencies: Competencies to remove from base profession.
-        platform_role: Whether this person operates Quill itself.
-        org_unit_ids: Every org_unit the person belongs to,
-            organisations included, in the ids the org_units answer in.
-    """
-
-    model_config = {"extra": "forbid"}
-
-    name: str
-    username: str | None = None
-    email: str
-    password: str
-    base_profession: str = "patient"
-    additional_competencies: list[str] = []
-    removed_competencies: list[str] = []
-    # Defaults to a standard account: an operator is made deliberately,
-    # never by omitting a field.
-    platform_role: str = "standard"
-    # Nullable, as it was when it arrived beside place_ids. Tightening
-    # it to a bare list would refuse an explicit null a caller may still
-    # be sending, which is a second breaking change for no gain.
-    org_unit_ids: list[int] | None = None
-    # What they may practise at each org_unit. Absent means "say nothing
-    # about practice", which is what a client built before the field
-    # sends, and it leaves a new account authorised nowhere.
-    practising: list[PractisingAtIn] | None = None
-    # Their teaching enrolments at each organisation sent. Absent leaves
-    # every enrolment as it is, as does an organisation left out.
-    teaching_enrolments: list[TeachingEnrolmentsAtIn] | None = None
-
-    @field_validator("teaching_enrolments")
-    @classmethod
-    def _enrolments_once_each(
-        cls, value: list[TeachingEnrolmentsAtIn] | None
-    ) -> list[TeachingEnrolmentsAtIn] | None:
-        return _one_entry_per_organisation(value)
-
-    @field_validator("practising")
-    @classmethod
-    def _practising_once_each(
-        cls, value: list[PractisingAtIn] | None
-    ) -> list[PractisingAtIn] | None:
-        return _one_entry_per_org_unit(value)
-
-    @field_validator("platform_role")
-    @classmethod
-    def _platform_role_known(cls, value: str) -> str:
-        try:
-            return validate_platform_role(value)
-        except ValueError as exc:
-            raise ValueError(str(exc)) from exc
-
-    @field_validator("additional_competencies", "removed_competencies")
-    @classmethod
-    def _competencies_exist(cls, value: list[str] | None) -> list[str] | None:
-        """Reject a competency id that is not in the catalogue.
-
-        Nothing joins these strings to `shared/competency-definitions/`, so an
-        unrecognised one is otherwise stored happily and shows up much
-        later as a permission that never applies.
-        """
-        if value is None:
-            return None
-
-        return validate_competency_ids(value)
-
-    @field_validator("base_profession")
-    @classmethod
-    def _profession_exists(cls, value: str | None) -> str | None:
-        """Reject a base profession that is not in the catalogue.
-
-        The same silent failure: `get_profession_base_competencies`
-        returns an empty list for an unknown profession, so a typo gives
-        the user no competencies at all and says nothing.
-        """
-        if value is None:
-            return None
-        if value not in PROFESSION_IDS:
-            raise ValueError(
-                f"Unknown base profession: {value}. Professions are "
-                "defined in shared/base-professions.yaml."
-            )
-
-        return value
-
-
-class AdminUserUpdateIn(BaseModel):
-    """Admin User Update Input Schema.
-
-    Pydantic model for updating existing user accounts via admin endpoints.
-    All fields are optional - only provided fields will be updated.
-
-    Attributes:
-        name: Full name (optional).
-        username: Unique username (optional).
-        email: Email address (optional).
-        password: New password (optional, only if changing).
-        base_profession: Base profession ID (optional).
-        additional_competencies: Competencies to add (optional).
-        removed_competencies: Competencies to remove (optional).
-        platform_role: Whether this person operates Quill itself (optional).
-    """
-
-    model_config = {"extra": "forbid"}
-
-    name: str | None = None
-    username: str | None = None
-    email: str | None = None
-    password: str | None = None
-    base_profession: str | None = None
-    additional_competencies: list[str] | None = None
-    removed_competencies: list[str] | None = None
-    platform_role: str | None = None
-    org_unit_ids: list[int] | None = None
-    # What they may practise at each org_unit sent. Absent leaves every
-    # practice row as it is, as does an org_unit left out of the list.
-    practising: list[PractisingAtIn] | None = None
-    # Their teaching enrolments at each organisation sent. Absent leaves
-    # every enrolment as it is, as does an organisation left out.
-    teaching_enrolments: list[TeachingEnrolmentsAtIn] | None = None
-
-    @field_validator("teaching_enrolments")
-    @classmethod
-    def _enrolments_once_each(
-        cls, value: list[TeachingEnrolmentsAtIn] | None
-    ) -> list[TeachingEnrolmentsAtIn] | None:
-        return _one_entry_per_organisation(value)
-
-    @field_validator("practising")
-    @classmethod
-    def _practising_once_each(
-        cls, value: list[PractisingAtIn] | None
-    ) -> list[PractisingAtIn] | None:
-        return _one_entry_per_org_unit(value)
-
-    @field_validator("platform_role")
-    @classmethod
-    def _platform_role_known(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        try:
-            return validate_platform_role(value)
-        except ValueError as exc:
-            raise ValueError(str(exc)) from exc
-
-    @field_validator("additional_competencies", "removed_competencies")
-    @classmethod
-    def _competencies_exist(cls, value: list[str] | None) -> list[str] | None:
-        """Reject a competency id that is not in the catalogue.
-
-        Nothing joins these strings to `shared/competency-definitions/`, so an
-        unrecognised one is otherwise stored happily and shows up much
-        later as a permission that never applies.
-        """
-        if value is None:
-            return None
-
-        return validate_competency_ids(value)
-
-    @field_validator("base_profession")
-    @classmethod
-    def _profession_exists(cls, value: str | None) -> str | None:
-        """Reject a base profession that is not in the catalogue.
-
-        The same silent failure: `get_profession_base_competencies`
-        returns an empty list for an unknown profession, so a typo gives
-        the user no competencies at all and says nothing.
-        """
-        if value is None:
-            return None
-        if value not in PROFESSION_IDS:
-            raise ValueError(
-                f"Unknown base profession: {value}. Professions are "
-                "defined in shared/base-professions.yaml."
-            )
-
-        return value
-
-
-@router.post(
-    "/users",
-    response_model=UserActionOut,
-    dependencies=[DEP_REQUIRE_MANAGE_PEOPLE],
-)
-def create_user_with_cbac(
-    payload: AdminUserCreateIn,
-    current_user: User = DEP_REQUIRE_CSRF,
-    db: Session = DEP_GET_SESSION,
-) -> UserActionOut:
-    """Admin User Creation with CBAC.
-
-    Creates a new user account with full CBAC (Competency-Based Access Control)
-    settings including base profession, competencies, and system permissions.
-    Requires the ``manage_users`` competency.
-
-    Validation Rules:
-    - Email and password must not be empty
-    - Password must be at least 8 characters long
-    - Username must be unique across all users
-    - Email must be unique across all users
-    - Requesting user must hold ``manage_users``
-
-    Args:
-        payload: User creation data with CBAC settings.
-        current_user: Currently authenticated user (must be admin/superadmin).
-        db: Database session for user creation.
-
-    Returns:
-        dict: Success response with new user ID and username.
-
-    Raises:
-        HTTPException: 403 if the requesting user lacks ``manage_users``.
-        HTTPException: 400 if validation fails or constraints violated.
-    """
-    # The form's values as the rules take them. An entry for nowhere, in
-    # either list, is the same as no entry.
-    new = NewAccount(
-        name=payload.name,
-        username=payload.username,
-        email=payload.email,
-        password=payload.password,
-        base_profession=payload.base_profession,
-        additional_competencies=payload.additional_competencies,
-        removed_competencies=payload.removed_competencies,
-        platform_role=payload.platform_role,
-        org_unit_ids=payload.org_unit_ids or [],
-        practising=_practice_wanted(payload.practising or []),
-        teaching_enrolments=_enrolments_wanted(
-            payload.teaching_enrolments or []
-        ),
-    )
-
-    user = create_account(db, current_user, new)
-
-    return UserActionOut(
-        detail="created",
-        id=user.id,
-        username=user.username,
-        email=user.email,
-    )
-
-
-@router.patch(
-    "/users/{user_id}",
-    response_model=UserActionOut,
-    dependencies=[DEP_REQUIRE_MANAGE_PEOPLE],
-)
-def update_user(
-    user_id: int,
-    payload: AdminUserUpdateIn,
-    current_user: User = DEP_REQUIRE_CSRF,
-    db: Session = DEP_GET_SESSION,
-) -> UserActionOut:
-    """Update User Account.
-
-    Updates an existing user account with new CBAC settings and/or credentials.
-    Only provided fields will be updated - omitted fields remain unchanged.
-    Password is only updated if provided (optional for security).
-
-    Requires the ``manage_users`` competency and a shared organisation
-    with the patient.
-
-    Validation Rules:
-    - Only updates fields that are provided (not None)
-    - Email must be unique if being changed
-    - Username must be unique if being changed
-    - Password must be at least 8 characters if being changed
-    - Requesting user must hold ``manage_users``
-
-    Args:
-        user_id: ID of the user to update.
-        payload: User update data (all fields optional).
-        current_user: Authenticated user holding ``manage_users``.
-        db: Database session.
-
-    Returns:
-        dict: Success response with updated user details.
-
-    Raises:
-        HTTPException: 403 if the requesting user lacks ``manage_users``.
-        HTTPException: 404 if user not found.
-        HTTPException: 400 if validation fails or constraints violated.
-    """
-    # Check authorization
-    # Fetch user
-    user = db.scalar(select(User).where(User.id == user_id))
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # Only an operator may modify another operator
-    check_may_act_on_operator(current_user, user)
-    check_account_within_reach(db, current_user, user)
-
-    # The form's values as the rules take them. A field that was not
-    # sent stays None, so it is not touched.
-    changes = AccountChanges(
-        username=payload.username,
-        name=payload.name,
-        email=payload.email,
-        password=payload.password,
-        base_profession=payload.base_profession,
-        additional_competencies=payload.additional_competencies,
-        removed_competencies=payload.removed_competencies,
-        platform_role=payload.platform_role,
-        org_unit_ids=payload.org_unit_ids,
-        practising=(
-            _practice_wanted(payload.practising)
-            if payload.practising is not None
-            else None
-        ),
-        teaching_enrolments=(
-            _enrolments_wanted(payload.teaching_enrolments)
-            if payload.teaching_enrolments is not None
-            else None
-        ),
-    )
-
-    update_account(db, current_user, user, changes)
-
-    return UserActionOut(
-        detail="updated",
-        id=user.id,
-        username=user.username,
-        email=user.email,
-    )
-
-
-@router.post(
-    "/users/{user_id}/deactivate",
-    response_model=UserIdActionOut,
-    dependencies=[DEP_REQUIRE_MANAGE_PEOPLE],
-)
-def deactivate_user(
-    user_id: int,
-    current_user: User = DEP_REQUIRE_CSRF,
-    db: Session = DEP_GET_SESSION,
-) -> UserIdActionOut:
-    """Deactivate User Account.
-
-    Marks a user account as inactive. Deactivated users cannot log in
-    but their data is preserved for audit purposes.
-    Requires the ``manage_users`` competency and a shared organisation
-    with the patient.
-
-    Args:
-        user_id: ID of the user to deactivate.
-        current_user: Authenticated user holding ``manage_users``.
-        db: Database session.
-
-    Returns:
-        dict: Confirmation with deactivated user details.
-
-    Raises:
-        HTTPException: 403 if the requesting user lacks ``manage_users``.
-        UserAdminError: 404, 403 or 400 for whatever
-            ``deactivate_account`` refuses.
-    """
-    user = deactivate_account(db, current_user, user_id)
-
-    return UserIdActionOut(
-        detail="deactivated",
-        id=user.id,
-        username=user.username,
-    )
-
-
-@router.post(
-    "/users/{user_id}/reactivate",
-    response_model=UserIdActionOut,
-    dependencies=[DEP_REQUIRE_MANAGE_PEOPLE],
-)
-def reactivate_user(
-    user_id: int,
-    current_user: User = DEP_REQUIRE_CSRF,
-    db: Session = DEP_GET_SESSION,
-) -> UserIdActionOut:
-    """Reactivate User Account.
-
-    Marks a previously deactivated user account as active again.
-    Requires the ``manage_users`` competency and a shared organisation
-    with the patient.
-
-    Args:
-        user_id: ID of the user to reactivate.
-        current_user: Authenticated user holding ``manage_users``.
-        db: Database session.
-
-    Returns:
-        dict: Confirmation with reactivated user details.
-
-    Raises:
-        HTTPException: 403 if the requesting user lacks ``manage_users``.
-        UserAdminError: 404, 403 or 400 for whatever
-            ``reactivate_account`` refuses.
-    """
-    user = reactivate_account(db, current_user, user_id)
-
-    return UserIdActionOut(
-        detail="reactivated",
-        id=user.id,
-        username=user.username,
-    )
-
-
-@router.post(
-    "/users/{user_id}/send-invite",
-    response_model=DetailResponse,
-    dependencies=[DEP_REQUIRE_MANAGE_PEOPLE],
-)
-def send_invite_email(
-    user_id: int,
-    current_user: User = DEP_REQUIRE_CSRF,
-    db: Session = DEP_GET_SESSION,
-) -> DetailResponse:
-    """Send Invite Email.
-
-    Sends an email to the user inviting them to set up or update their
-    credentials via a password reset link.
-    Requires the ``manage_users`` competency and a shared organisation
-    with the patient.
-
-    Args:
-        user_id: ID of the user to invite.
-        current_user: Authenticated user holding ``manage_users``.
-        db: Database session.
-
-    Returns:
-        dict: Confirmation that the invite was sent.
-
-    Raises:
-        HTTPException: 403 if the requesting user lacks ``manage_users``.
-        UserAdminError: 404 or 403 for whatever ``setup_invite_for``
-            refuses.
-    """
-    invite = setup_invite_for(db, current_user, user_id)
-    user = invite.user
-
-    # `invite=1` is what makes the page ask the marketing question: the
-    # same page serves a forgotten password, where it is not asked.
-    reset_url = (
-        f"{settings.FRONTEND_URL}/reset-password"
-        f"?token={invite.token}&invite=1"
-    )
-    send_email(
-        to=user.email,
-        **send_args(
-            render_email(
-                "account_invite.html.j2",
-                "quill",
-                {
-                    **_account_email_values(user),
-                    "setup_url": reset_url,
-                    "ttl_minutes": settings.PASSWORD_RESET_TTL_MIN,
-                },
-            )
-        ),
-    )
-
-    return DetailResponse(detail="Invite email sent")
+router.include_router(users_router)
 
 
 class TotpSetupOut(BaseModel):
@@ -2287,188 +1617,6 @@ def update_profile(
     db.add(current_user)
 
     return DetailResponse(detail="Profile updated")
-
-
-@router.get(
-    "/users",
-    response_model=UsersListOut,
-    dependencies=[DEP_REQUIRE_MANAGE_PEOPLE],
-)
-def list_users(
-    patient_id: str | None = None,
-    exclude_org_unit: int | None = None,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
-) -> UsersListOut:
-    """List users, optionally filtered by shared org with a patient.
-
-    When ``patient_id`` is provided, returns staff who share an org with
-    that patient plus external users with active access grants. This is
-    used by the message participant picker.
-
-    Without ``patient_id``, returns all users the caller may administer.
-    Use ``exclude_org_unit`` to exclude people who are already members
-    of the org_unit being added to.
-
-    ``exclude_place`` was the older spelling and has now gone, a release
-    after ``exclude_org_unit`` arrived beside it. ``exclude_org`` went
-    before that and counted in organisation ids. A caller still sending
-    either now excludes nobody rather than being quietly misread, which
-    is the safer of the two failures: the list is longer than it should
-    be, not shorter.
-
-    Args:
-        patient_id: Optional FHIR patient ID to filter by shared org.
-        exclude_org_unit: Optional org_unit id to exclude members of.
-        current_user: Currently authenticated user.
-        db: Database session.
-
-    Returns:
-        dict: Response with users array.
-
-    Raises:
-        HTTPException: 403 if user lacks permissions.
-        UserAdminError: 403 if ``patient_id`` is sent by somebody whose
-            scope has a limit. See :mod:`app.users.listing`.
-        HTTPException: 500 if the list could not be read.
-    """
-    if patient_id:
-        return UsersListOut(
-            users=picker_rows(
-                people_around_a_patient(db, current_user, patient_id)
-            )
-        )
-
-    within = people_within_reach(db, current_user)
-
-    try:
-        people = people_to_list(db, within, exclude_org_unit=exclude_org_unit)
-
-        return UsersListOut(users=admin_rows(db, people))
-    except Exception as e:
-        logger.exception("Failed to list users")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "message": "Could not load the user list",
-                "error_code": "user_list_failed",
-            },
-        ) from e
-
-
-@router.get(
-    "/users/{user_id}",
-    response_model=UserOut,
-    dependencies=[DEP_REQUIRE_MANAGE_PEOPLE],
-)
-def get_user(
-    user_id: int,
-    current_user: User = DEP_CURRENT_USER,
-    db: Session = DEP_GET_SESSION,
-) -> UserOut:
-    """Get User Details.
-
-    Retrieves detailed information about a specific user including their
-    CBAC settings (base profession, competencies) and system permissions.
-    Used by the admin interface when editing user accounts.
-
-    Requires the ``manage_users`` competency and a shared organisation
-    with the patient.
-
-    Args:
-        user_id: ID of the user to retrieve.
-        current_user: Authenticated user holding ``manage_users``.
-        db: Database session.
-
-    Returns:
-        dict: User details with keys:
-            - id: User ID
-            - username: Username
-            - email: Email address
-            - name: Full name (currently same as username)
-            - base_profession: Base profession ID
-            - additional_competencies: Array of additional competency IDs
-            - removed_competencies: Array of removed competency IDs
-
-    Raises:
-        HTTPException: 403 if the user lacks ``manage_users``.
-        HTTPException: 404 if user not found.
-    """
-    # Check permissions
-    # Fetch user
-    user = db.scalar(select(User).where(User.id == user_id))
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # An operator may be viewed by an admin who reaches an org_unit
-    # they belong to, as anybody else there may: the list names them,
-    # so the row has to open. Changing them stays an operator's alone,
-    # refused on each route that writes.
-    check_account_within_reach(db, current_user, user)
-    reached = org_units_whose_people_reached_by(db, current_user)
-
-    user_org_unit_ids = [
-        row[0]
-        for row in db.execute(
-            select(org_unit_member.c.org_unit_id).where(
-                org_unit_member.c.user_id == user_id
-            )
-        ).all()
-    ]
-
-    return UserOut(
-        id=user.id,
-        username=user.username,
-        email=user.email,
-        name=user.full_name or user.username,
-        base_profession=user.base_profession,
-        additional_competencies=user.additional_competency_ids,
-        removed_competencies=user.removed_competency_ids,
-        platform_role=user.platform_role,
-        is_active=user.is_active,
-        # Every org_unit they belong to, organisations included, in
-        # the ids the org_units themselves answer in.
-        org_unit_ids=user_org_unit_ids,
-        practising=[
-            PractisingAtOut(
-                org_unit_id=unit_id,
-                competencies=sorted(
-                    competencies_at(db, user, org_unit_id=unit_id)
-                ),
-            )
-            for unit_id in sorted(user_org_unit_ids)
-            # Only where the caller reaches, so the answer never names
-            # practice at an org_unit they could not open.
-            if reached is None or unit_id in reached
-        ],
-        # For the form's Enrolment step, and only for somebody who runs
-        # teaching: what they are enrolled on at each organisation they
-        # belong to that the caller reaches.
-        teaching_enrolments=(
-            [
-                TeachingEnrolmentsAtOut(
-                    org_unit_id=organisation_id,
-                    modules=[
-                        TeachingModuleOut(
-                            module_id=row.question_bank_id,
-                            ends_on=row.ends_on,
-                        )
-                        for row in current_enrolments(
-                            db, user.id, org_unit_id=organisation_id
-                        )
-                    ],
-                )
-                for organisation_id in sorted(
-                    organisation_org_units_of(db, user_org_unit_ids)
-                )
-                if reached is None or organisation_id in reached
-            ]
-            if current_user.platform_role == "superadmin"
-            or "manage_teaching" in current_user.get_final_competencies()
-            else []
-        ),
-    )
 
 
 @router.post("/auth/refresh", response_model=RefreshOut)

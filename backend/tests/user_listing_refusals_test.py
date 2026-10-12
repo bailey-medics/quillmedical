@@ -18,7 +18,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-import app.main as main
+import app.users.router as users_routes
 from app.models import OrgUnit, User
 from app.organisations import add_org_unit_member
 from app.security import hash_password
@@ -108,7 +108,7 @@ def test_a_list_that_cannot_be_read_answers_with_a_message_and_a_code(
     authenticated_superadmin_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(main, "people_to_list", _unreadable)
+    monkeypatch.setattr(users_routes, "people_to_list", _unreadable)
 
     response = authenticated_superadmin_client.get("/api/users")
 
@@ -125,7 +125,7 @@ def test_rows_that_cannot_be_built_answer_the_same(
     authenticated_superadmin_client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(main, "admin_rows", _unreadable)
+    monkeypatch.setattr(users_routes, "admin_rows", _unreadable)
 
     response = authenticated_superadmin_client.get("/api/users")
 
