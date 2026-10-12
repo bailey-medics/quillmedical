@@ -690,7 +690,7 @@ date from a file in the repository to decide whether it is due, so its
 trigger belongs in GitHub. These two read nothing from the repository.
 Mark agreed on 12 October to move them.
 
-- [ ] Add a Cloud Scheduler job for each, in Terraform beside the admin
+- [x] Add a Cloud Scheduler job for each, in Terraform beside the admin
       job in `infra/main.tf`: one that runs the admin job with
       `ADMIN_ACTION=apply-retention` and `RETENTION_APPLY=true` at 03:30
       UTC, and one with `ADMIN_ACTION=send-teaching-reminders` and
@@ -704,12 +704,12 @@ Mark agreed on 12 October to move them.
       repository with no activity for 60 days. The EoEETA agreement says a
       delegate is told "automatically" when a pass is due to be repeated.
 
-- [ ] Give the scheduler a service account of its own in
+- [x] Give the scheduler a service account of its own in
       `infra/runtime-identities.tf`, allowed to run the admin job with
       overrides and nothing else. The workflows sign in as the deploy
       service account, which can do far more than start one job.
 
-- [ ] Alert when a run fails, through `infra/modules/monitoring/`, on the
+- [x] Alert when a run fails, through `infra/modules/monitoring/`, on the
       same channels as the other alerts. A failed scheduled workflow only
       emails whoever last edited the file. The reminders action already
       exits 1 when any email could not be sent, so a failed execution is
@@ -728,10 +728,10 @@ Mark agreed on 12 October to move them.
       twice: retention deletes what is already past its period, and each
       reminder is recorded as it is sent.
 
-- [ ] The app does not change. The actions, their report-unless-told
+- [x] The app does not change. The actions, their report-unless-told
       default and their tests stay as they are.
 
-- [ ] Leave `accessibility-review.yml` where it is.
+- [x] Leave `accessibility-review.yml` where it is.
 
 ## Phase 22: Stop the stack display showing a failure GitHub has replaced
 

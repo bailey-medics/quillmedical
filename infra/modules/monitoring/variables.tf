@@ -117,3 +117,9 @@ variable "video_not_found_threshold" {
   type        = number
   default     = 3
 }
+
+variable "scheduled_job_name" {
+  description = "Name of the Cloud Run job the scheduled actions run on: retention and the teaching reminders. Null where nothing is scheduled, in which case no alert for a failed scheduled run is created."
+  type        = string
+  default     = null
+}
