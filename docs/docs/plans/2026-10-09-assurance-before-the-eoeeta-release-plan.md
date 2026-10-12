@@ -1200,11 +1200,45 @@ rewritten, with the route addresses, guards and response models
 unchanged. A test that reads `main.py` as text is pointed at the new
 file in the same pull request.
 
-- [ ] Move the shared pieces first: `get_current_user`, the `DEP_*`
+**Started on 12 October 2026.** The thin routes plan has finished, with
+every step ticked and no open pull request touching `main.py`, which
+is now 4,654 lines and 69 routes.
+
+- [x] Move the shared pieces first: `get_current_user`, the `DEP_*`
       constants and the cookie helpers go to `backend/app/deps.py`,
       where copies of some already exist. This also settles the Phase 5
       question of why there are two definitions and which the routes
-      use. Everything after depends on it.
+      use. Everything after depends on it. Done on 12 October 2026,
+      and the answer to the question: `main.py` had its own copy of
+      `get_current_user` and `require_csrf`, used by its own routes,
+      and every router outside it used the copies in `deps.py`. The
+      two made the same decisions, line for line, with one
+      difference: the copy in `main.py` did not put the caller's id
+      in the log context, so a request to any route in `main.py` was
+      logged with no user id. `main.py`'s copies are deleted and it
+      takes the ones in `deps.py`, so those requests now log who
+      made them. Who is let in is unchanged. A new test,
+      `backend/tests/one_definition_of_the_sign_in_checks_test.py`,
+      fails if a second copy comes back. `require_roles` and the
+      `DEP_REQUIRE_*` constants moved as they were. Two of those,
+      `DEP_REQUIRE_MANAGE_STAFF_MEMBERSHIP` and
+      `DEP_REQUIRE_MANAGE_PATIENT_MEMBERSHIP`, are used by nothing:
+      the routes that took them moved to the org units router, which
+      has its own. They were moved and not deleted, to keep this a
+      move. The cookie helpers were left where they are: only the
+      sign-in routes use them, so they go with those routes in the
+      last step.
+
+- [ ] Take out the routers' own `_get_current_user` and `_require_csrf`.
+      Six routers and `features/gating.py` each wrap the two checks in
+      a function that imports them inside its body, because importing
+      `main.py` at the top would have been a circle. They now import
+      from `deps.py`, where there is no circle, so the wrappers do
+      nothing but add a name: the routes can take `DEP_CURRENT_USER`
+      and `DEP_REQUIRE_CSRF` directly. The route guard test lists the
+      wrappers by name and fails on one that is no longer used, so
+      its lists shrink in the same pull request. Left out of the
+      first step to keep that one a move.
 
 - [ ] Move the patient routes (18) to a router of their own. First of
       the groups because it is the biggest, and it is behind the

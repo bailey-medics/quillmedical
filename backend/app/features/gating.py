@@ -107,7 +107,7 @@ def requires_feature(feature_key: str) -> Callable[..., User]:
         db: Session = Depends(get_core_db),
     ) -> User:
         # Lazy import to avoid circular dependency with app.main
-        from app.main import get_current_user
+        from app.deps import get_current_user
 
         user = get_current_user(request, db)
 
