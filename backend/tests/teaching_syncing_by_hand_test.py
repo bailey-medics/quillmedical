@@ -9,11 +9,18 @@ three routes before their rules were moved out of the router.
 The banks are a tree on the filesystem, where the real validator and
 the real sync run over it, as in ``ci_sync_test.py``.
 
-Three things are pinned here as they stand, each saying so:
+Two faults were pinned here as they stood, and were then put right. The
+tests that pinned them now pin the rule:
 
-- **A bank that did not load is listed as synced** by the sync of every
-  bank. The deploy pipeline's sync lists it as failed.
-- **Syncing one live bank whose version has not moved on answers 500.**
+- **A bank that did not load is listed as failed** by the sync of every
+  bank, with what the checks said, as the deploy pipeline's sync lists
+  it. It was once listed as synced. A draft turned away for its version
+  is listed as failed too, where it was on neither list.
+- **Syncing one live bank whose version has not moved on answers that
+  there was nothing to do.** It once answered 500.
+
+One thing is still pinned as it stands, saying so:
+
 - **The bank is looked for before the caller's membership is asked.**
 """
 
@@ -57,6 +64,12 @@ BAD_ASSESSMENT = "bad-assessment"
 #: A directory that is not a module at all.
 BAD_MODULE = "bad-bank"
 
+#: A draft whose version is 2, which the sync turns away.
+DRAFT_AT_2 = "draft-at-two"
+
+BAD_ASSESSMENT_FAULT = "uniform type requires 'options'"
+DRAFT_AT_2_FAULT = "Draft module version must be 1, got 2"
+
 BANK_ID_REQUIRED = {"detail": "bank_id is required"}
 NOT_A_MEMBER = {"detail": "User is not a member of any organisation"}
 NOWHERE_TO_READ = {
@@ -74,6 +87,7 @@ def _banks_on_disk(
     good: bool = False,
     bad_assessment: bool = False,
     bad_module: bool = False,
+    draft_at_2: bool = False,
 ) -> None:
     """Build a modules-layout tree and have the deployment read it."""
     modules = tmp_path / "repo" / "modules"
@@ -106,6 +120,22 @@ def _banks_on_disk(
         (broken / "module.yaml").write_text(f"moduleId: {BAD_MODULE}\n")
         (broken / "assessment").mkdir()
         (broken / "assessment" / "config.yaml").write_text("{}\n")
+
+    if draft_at_2:
+        module = modules / DRAFT_AT_2
+        shutil.copytree(_VALID_MODULE, module)
+        metadata = module / "module.yaml"
+        metadata.write_text(
+            metadata.read_text()
+            .replace(GOOD, DRAFT_AT_2)
+            .replace("status: live", "status: draft")
+        )
+        # Nothing is wrong with the content. A draft is turned away for
+        # its version alone, and the sync makes no record of it.
+        assessment = module / "assessment" / "assessment.yaml"
+        assessment.write_text(
+            assessment.read_text().replace("version: 1", "version: 2")
+        )
 
     monkeypatch.setattr(settings, "TEACHING_GCS_BUCKET", None)
     monkeypatch.setattr(settings, "TEACHING_QUESTION_BANK_PATH", str(tmp_path))
@@ -206,23 +236,22 @@ def test_a_good_bank_is_synced_into_the_callers_organisation(
     assert config.synced_by == admin.id
 
 
-def test_a_bank_that_did_not_load_is_listed_as_synced(
+def test_a_bank_that_did_not_load_is_listed_as_failed(
     test_client: TestClient,
     db_session: Session,
     admin: User,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A known fault, recorded in the plan for a decision, and pinned
-    here as it stands.
+    """The assessment failed its checks, so nothing of the bank was
+    loaded. A record is kept of that, and the sync of every bank once
+    took any record for a sync: the bank was under ``synced`` and the
+    admin page showed it as imported. It is under ``errors`` with what
+    the checks said, and not under ``synced``, as the deploy pipeline's
+    ``sync_every_bank`` lists it.
 
-    The assessment failed its checks, so nothing of the bank was
-    loaded. A record is kept of that, and the sync of every bank takes
-    any record for a sync: the bank is under ``synced``, ``errors`` is
-    empty and the answer is 200. The record does say ``failed`` and
-    carry what the checks found, but the list it is in says synced, and
-    the admin page shows the bank as imported. The deploy pipeline's
-    sync, ``sync_every_bank``, lists the same bank as failed. See
+    The answer is still a 200, where the pipeline's is a 422: the page
+    reads the two lists to show what became of each bank. See
     ``docs/docs/plans/2026-10-11-thin-routes-and-steady-frontend-tests-plan.md``.
     """
     _banks_on_disk(tmp_path, monkeypatch, bad_assessment=True)
@@ -230,19 +259,58 @@ def test_a_bank_that_did_not_load_is_listed_as_synced(
     response = test_client.post(SYNC_ALL, headers=_login(test_client, admin))
 
     assert response.status_code == 200, response.text
+    assert response.json() == {
+        "synced": [],
+        "errors": [{"bank_id": BAD_ASSESSMENT, "error": BAD_ASSESSMENT_FAULT}],
+    }
+    # Nothing of it was loaded, and the record of the failure is kept.
+    assert db_session.scalar(select(QuestionBankConfig)) is None
+    assert db_session.execute(
+        select(QuestionBankSync)
+    ).scalar_one().status == ("failed")
+
+
+def test_a_good_bank_and_one_that_did_not_load_are_each_listed(
+    test_client: TestClient,
+    admin: User,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _banks_on_disk(tmp_path, monkeypatch, good=True, bad_assessment=True)
+
+    response = test_client.post(SYNC_ALL, headers=_login(test_client, admin))
+
+    assert response.status_code == 200, response.text
     body = response.json()
-    assert body["errors"] == []
-    assert len(body["synced"]) == 1
-
-    listed = body["synced"][0]
-
-    assert listed["question_bank_id"] == BAD_ASSESSMENT
-    assert listed["status"] == "failed"
-    assert listed["items_created"] == 0
-    assert [fault["message"] for fault in listed["errors"]] == [
-        "uniform type requires 'options'"
+    assert [
+        (row["question_bank_id"], row["status"], row["unchanged"])
+        for row in body["synced"]
+    ] == [(GOOD, "success", False)]
+    assert body["errors"] == [
+        {"bank_id": BAD_ASSESSMENT, "error": BAD_ASSESSMENT_FAULT}
     ]
-    # Nothing of it was loaded.
+
+
+def test_a_draft_turned_away_for_its_version_is_listed_as_failed(
+    test_client: TestClient,
+    db_session: Session,
+    admin: User,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The sync makes no record of it, which once left it off both
+    lists with nothing said.
+    """
+    _banks_on_disk(tmp_path, monkeypatch, draft_at_2=True)
+
+    response = test_client.post(SYNC_ALL, headers=_login(test_client, admin))
+
+    assert response.status_code == 200, response.text
+    assert response.json() == {
+        "synced": [],
+        "errors": [{"bank_id": DRAFT_AT_2, "error": DRAFT_AT_2_FAULT}],
+    }
+    assert db_session.scalar(select(QuestionBankSync)) is None
     assert db_session.scalar(select(QuestionBankConfig)) is None
 
 
@@ -500,30 +568,59 @@ def test_syncing_a_bank_whose_assessment_is_at_fault_answers_its_failed_record(
     assert db_session.scalar(select(QuestionBankConfig)) is None
 
 
-def test_syncing_a_live_bank_again_unchanged_answers_500(
+def test_syncing_a_live_bank_again_unchanged_answers_nothing_to_do(
     test_client: TestClient,
+    db_session: Session,
     admin: User,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Pinned as it stands, and not what anybody would choose.
-
-    A live bank whose version has not moved on has nothing new to load,
-    so the sync makes no record, and this route takes no record for a
-    failure. The sync of every bank leaves the same bank off both its
-    lists and answers 200.
+    """A live bank whose version has not moved on has nothing new to
+    load, so the sync makes no record. That once answered 500 "Sync
+    failed unexpectedly", though nothing was wrong. It answers 200 with
+    the record of the sync that loaded what is being served, marked
+    ``unchanged``, and makes no second record.
     """
     _banks_on_disk(tmp_path, monkeypatch, good=True)
     headers = _login(test_client, admin)
     first = test_client.post(SYNC_ONE, json={"bank_id": GOOD}, headers=headers)
     assert first.status_code == 200, first.text
+    assert first.json()["unchanged"] is False
 
     response = test_client.post(
         SYNC_ONE, json={"bank_id": GOOD}, headers=headers
     )
 
-    assert response.status_code == 500
-    assert response.json() == {"detail": "Sync failed unexpectedly"}
+    assert response.status_code == 200, response.text
+    assert response.json() == {**first.json(), "unchanged": True}
+    assert len(db_session.scalars(select(QuestionBankSync)).all()) == 1
+
+
+def test_syncing_a_draft_turned_away_for_its_version_is_refused_with_why(
+    test_client: TestClient,
+    db_session: Session,
+    admin: User,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No record is made of it either, but it is not "nothing to do":
+    the checks found fault, so it is a failure and says why. It once
+    answered 500 "Sync failed unexpectedly".
+    """
+    _banks_on_disk(tmp_path, monkeypatch, draft_at_2=True)
+
+    response = test_client.post(
+        SYNC_ONE,
+        json={"bank_id": DRAFT_AT_2},
+        headers=_login(test_client, admin),
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": f"The bank was not synced: {DRAFT_AT_2_FAULT}"
+    }
+    assert db_session.scalar(select(QuestionBankSync)) is None
+    assert db_session.scalar(select(QuestionBankConfig)) is None
 
 
 def test_syncing_a_bank_is_refused_to_a_member_of_no_organisation(
