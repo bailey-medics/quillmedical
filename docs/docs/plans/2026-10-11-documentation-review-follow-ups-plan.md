@@ -611,6 +611,52 @@ Pull request #1808 carried the work to `main` afterwards.
       a stack is merged, and `just stack-sync` is what brings the next
       branch down to `main`.
 
+## Phase 19: Say whether a page is public in one place
+
+Mark asked on 12 October why a public page needs two things: no
+`RequireAuth` on its route, and its path on the guest list in
+`frontend/src/lib/api.ts`. There was no good reason. Phase 8 added a test
+that the two agree; this phase removes the second, so there is nothing to
+agree.
+
+- [x] Stop the API client navigating. On a 401 that the silent refresh
+      does not fix, `request` in `frontend/src/lib/api.ts` fires
+      `UNAUTHENTICATED_EVENT` on `window` and throws. It used to call
+      `window.location.assign("/login")` unless the page was on the guest
+      list. The list, `GUEST_PATHS`, and `isGuestPath` are deleted.
+
+      Two designs were weighed. The other was to mark public routes and
+      have the client ask the router about them, which keeps one list but
+      leaves the client deciding where the browser goes and ties it to the
+      router. Making requests is the client's job and navigation is the
+      router's, and the list only existed because the client did both.
+
+- [x] Have `AuthProvider` listen for the event and put the state in
+      `unauthenticated`. `RequireAuth` already sends an unauthenticated
+      visitor to `/login`, passing the page they were on. A route with no
+      guard does nothing, which is right: somebody on a public page whose
+      session runs out carries on reading. A state that is already
+      unauthenticated is left as it is, so the `loggedOut` mark from an
+      explicit logout survives a late 401.
+
+- [x] Replace Phase 8's test in `frontend/src/routes.test.ts`. What can
+      still go wrong is leaving a guard off, which fails open. Every
+      top-level route must be behind `RequireAuth`, behind `GuestOnly`, or
+      named in the test as open to anybody, with its reason. A name with
+      no route behind it fails too.
+
+- [x] Test the three together in `frontend/src/auth/AuthContext.test.tsx`,
+      with the real provider and the real guard: a guarded page goes to
+      `/login` and remembers itself, a public page stays, and a logout is
+      not forgotten.
+
+- [x] Rewrite the section of `docs/docs/frontend/sessions-and-requests.md`
+      that described the two-place rule.
+
+One behaviour changes that somebody might notice. A signed-out visitor to
+an address nothing matches used to be sent to `/login`, because the 404
+page was not on the guest list. They now see the 404 page.
+
 ## Decisions
 
 - **The code changes to keep the policy's promises, not the other way

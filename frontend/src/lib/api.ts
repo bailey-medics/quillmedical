@@ -2,8 +2,8 @@
  * API Client Module
  *
  * Centralized HTTP client for making authenticated API requests to the FastAPI backend.
- * Handles automatic token refresh, CSRF protection, error parsing, and redirects on
- * authentication failure. All requests include credentials (cookies) and use JSON format.
+ * Handles automatic token refresh, CSRF protection and error parsing. It never
+ * navigates: a session that has ended is announced, and the route guards act on it. All requests include credentials (cookies) and use JSON format.
  */
 
 import {
@@ -49,53 +49,23 @@ function checkCompatHeader(res: Response): void {
 }
 
 /**
- * Guest paths
+ * Fired on `window` when a request comes back 401 and the silent refresh
+ * did not help: whoever was signed in no longer is.
  *
- * The pages somebody who is not signed in may be on. A 401 anywhere else
- * sends the browser to `/login`; on one of these it does not, because the
- * 401 is expected: `AuthContext` asks `/api/auth/me` on every page load,
- * and for a visitor with no session that is the answer.
+ * `AuthContext` listens and marks the session as ended. **This module
+ * never sends the browser anywhere.** Whether a signed-out visitor may
+ * stay on a page is the route's own guard's decision: `RequireAuth` sends
+ * them to `/login`, and a route with no guard is public and leaves them
+ * be.
  *
- * A page open to somebody not signed in needs two things, and this list
- * is the one that gets forgotten: no `RequireAuth` round its route in
- * `routes.tsx`, and its path here. `routes.test.ts` holds the two
- * together, so a route added without a guard fails until it is listed.
- *
- * A path covers everything beneath it.
+ * It used to redirect to `/login` itself, on any 401. But `AuthContext`
+ * asks `/api/auth/me` on every page load, and for a signed-out visitor a
+ * 401 is simply the answer. So the redirect needed a list of pages to
+ * spare, kept in step by hand with the routes that had no guard, and an
+ * invited assessor, a reader of a public guide and somebody unsubscribing
+ * from the newsletter were each sent to `/login` before it was right.
  */
-export const GUEST_PATHS: readonly string[] = [
-  "/login",
-  "/register",
-  "/forgot-password",
-  "/reset-password",
-  "/verify-email",
-  "/verify-email-pending",
-  // Opened by somebody with no account at all: the signed token in
-  // the URL is what authenticates them. Without this the page loads,
-  // AuthContext asks /api/auth/me, gets the 401 it should expect,
-  // and this handler sends an invited assessor to /login before
-  // they can register.
-  "/passport/assessors/accept",
-  // Some guides are read before there is an account to sign in to:
-  // how to join is linked from the public site. The same 401 from
-  // /api/auth/me would otherwise send that reader to /login. The
-  // list at `/guides` is still kept signed-in by RequireAuth, and
-  // GuidePage shows a 404 for a guide not marked `public`.
-  "/guides",
-  // Opened from the link in a newsletter, often by somebody who is
-  // not signed in on this device. The signed token in the URL is
-  // what says whose preference it is. Without this the page showed
-  // for a moment and was then replaced by /login, which is an
-  // unsubscribe refused.
-  "/unsubscribe",
-];
-
-/** Whether *pathname* is a guest path, or sits beneath one. */
-export function isGuestPath(pathname: string): boolean {
-  return GUEST_PATHS.some(
-    (path) => pathname === path || pathname.startsWith(path + "/"),
-  );
-}
+export const UNAUTHENTICATED_EVENT = "app:unauthenticated";
 
 /**
  * HTTP Methods
@@ -137,14 +107,15 @@ function serialiseBody(body: unknown): BodyInit | undefined {
  * Core API Request Handler
  *
  * Makes an authenticated HTTP request to the backend API with automatic token
- * refresh on 401 responses. Handles JSON serialization/deserialization, error
- * extraction from FastAPI responses, and login redirects.
+ * refresh on 401 responses. Handles JSON serialization/deserialization and
+ * error extraction from FastAPI responses.
  *
  * Authentication Flow:
  * 1. Send request with credentials (JWT cookies)
  * 2. On 401, attempt token refresh via POST /api/auth/refresh
  * 3. If refresh succeeds, retry original request
- * 4. If refresh fails, redirect to login page
+ * 4. If refresh fails, fire UNAUTHENTICATED_EVENT and throw. The route's
+ *    guard decides where the browser goes; this never navigates.
  *
  * Error Handling:
  * - Extracts error messages from FastAPI { detail: ... } responses
@@ -250,14 +221,8 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
   }
 
   if (res.status === 401) {
-    // Redirect to the login page relative to the configured base URL.
-    // Skip redirect for guest-accessible paths (password reset, register, etc.)
-    const base = (import.meta.env.BASE_URL as string) || "/";
-    const loginPath = `${base.replace(/\/$/, "")}/login`;
-    const currentPath = window.location.pathname;
-    if (!isGuestPath(currentPath) && currentPath !== loginPath) {
-      window.location.assign(loginPath);
-    }
+    // Say so, and nothing more. See UNAUTHENTICATED_EVENT above.
+    window.dispatchEvent(new CustomEvent(UNAUTHENTICATED_EVENT));
   }
 
   if (!res.ok) {

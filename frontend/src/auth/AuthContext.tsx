@@ -9,7 +9,7 @@
 
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { api, UNAUTHENTICATED_EVENT } from "../lib/api";
 import { recordAuth } from "@lib/error-reporting/breadcrumbs";
 
 /**
@@ -175,6 +175,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial auth check on mount
     void reload();
+  }, []);
+
+  // A request anywhere in the app came back 401 and the silent refresh did
+  // not help, so the session has ended. Marking it here is all that is
+  // needed: `RequireAuth` then sends somebody on a guarded page to
+  // `/login`, remembering where they were, and a page with no guard is
+  // left alone. Nothing else in the app navigates on a 401.
+  useEffect(() => {
+    function handleUnauthenticated() {
+      setState((current) =>
+        // Already signed out: keep the state as it is. After an explicit
+        // logout it carries `loggedOut`, which stops the next person on
+        // this tab being sent to the last person's page.
+        current.status === "unauthenticated"
+          ? current
+          : { status: "unauthenticated", user: null },
+      );
+    }
+
+    window.addEventListener(UNAUTHENTICATED_EVENT, handleUnauthenticated);
+
+    return () =>
+      window.removeEventListener(UNAUTHENTICATED_EVENT, handleUnauthenticated);
   }, []);
 
   return (

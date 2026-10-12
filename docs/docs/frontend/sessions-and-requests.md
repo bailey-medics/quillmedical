@@ -3,7 +3,7 @@
 This page follows two things through the frontend: how a page load becomes
 a signed-in screen, and what happens to every request on its way to the
 API and back. Each step is clear in its own file. What no file shows is the
-order, or the three rules near the end.
+order, or the rules near the end.
 
 It was written from `frontend/src/lib/api.ts`, `frontend/src/lib/csrf.ts`,
 `frontend/src/auth/AuthContext.tsx`, `frontend/src/auth/RequireAuth.tsx`,
@@ -54,9 +54,9 @@ which does these things in this order.
 8. **On a 401, tries one silent refresh.** It posts to
    `/api/auth/refresh` and, if that succeeds, sends the original request
    once more. It never tries twice.
-9. **On a 401 that survives, goes to `/login`**, with a full page
-   navigation. Unless the page being shown is on the guest list: see the
-   first rule below.
+9. **On a 401 that survives, says the session has ended**, by firing
+   `UNAUTHENTICATED_EVENT` on `window`. It does not navigate. See "A
+   session that ends" below.
 10. **Turns a failure into an `Error`**, as the next section describes.
 11. **Fires `app:api-success`**, which the connectivity banner listens
     for, and returns the parsed JSON. A reply that is not JSON is thrown
@@ -64,7 +64,7 @@ which does these things in this order.
     data.
 
 `api.blob`, for downloads such as a PDF, follows the same path but returns
-the bytes, leaves no breadcrumb, never redirects to `/login`, and throws
+the bytes, leaves no breadcrumb, fires no event on a 401, and throws
 only `HTTP <status>` on a failure.
 
 ### The error a caller catches
@@ -86,27 +86,35 @@ An upload that reports its progress is sent with `XMLHttpRequest`. It must
 add the CSRF header itself, with `csrfHeader()` from `lib/csrf.ts`, and it
 gets none of the steps above.
 
+## A session that ends
+
+**The API client never sends the browser anywhere.** It reports, and the
+route's guard decides.
+
+1. A request comes back 401 and the silent refresh does not help.
+2. `request` fires `UNAUTHENTICATED_EVENT` and throws.
+3. `AuthProvider` hears it and puts the state in `unauthenticated`.
+4. The guard on the route reacts. `RequireAuth` sends the person to
+   `/login`, passing the page they were on so that signing in returns them
+   to it. A route with no guard does nothing, so somebody reading a public
+   page stays where they are.
+
+So **whether a page is open to somebody not signed in is said in one
+place: its route has no `RequireAuth`.** Nothing else has to agree.
+
+It was not always so. The client used to redirect to `/login` itself on
+any 401, and `AuthProvider` asks `/api/auth/me` on every page load, where
+a 401 is simply the answer for a signed-out visitor. So the client carried
+a list of pages to spare, kept in step by hand with the routes that had no
+guard. That list was forgotten three times: for the invited assessor's
+page, the public guides and the newsletter unsubscribe link.
+
+What can still go wrong is leaving the guard off by mistake, and that
+fails open: the page is public. `frontend/src/routes.test.ts` covers it.
+Every top-level route must be behind `RequireAuth`, behind `GuestOnly`, or
+named in that test as open to anybody, with the reason.
+
 ## Rules kept by convention
-
-### A page for somebody not signed in needs two things
-
-A page a visitor can open with no account, such as an invitation link,
-needs both of these:
-
-- **no `RequireAuth` around its route** in `routes.tsx`, and
-- **its path in `GUEST_PATHS`** in `api.ts`.
-
-The second is the one that gets forgotten. The page loads, `AuthProvider`
-asks `/api/auth/me`, the 401 arrives as it should, and step 9 above sends
-the visitor to `/login` before they can do anything. The comments in
-`GUEST_PATHS` record this happening to the invited assessor's page, the
-public guides and the newsletter unsubscribe link.
-
-A path on the list also covers everything beneath it.
-
-`frontend/src/routes.test.ts` holds the two together: a top-level route
-with no `RequireAuth` fails the test until its path is on the list, or is
-named in the test as deliberately left off, with the reason.
 
 ### `login()` does not set the signed-in state
 
