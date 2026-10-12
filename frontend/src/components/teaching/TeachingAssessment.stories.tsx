@@ -117,15 +117,22 @@ const chestXrayItem: CandidateItem = {
   ],
 };
 
-/** The timer and "End exam", as the attempt page puts them in the ribbon */
-function examControls(timeLimitMinutes: number) {
+/**
+ * The timer and "End exam", as the attempt page puts them in the ribbon.
+ * An untimed attempt, one with no limit or a limit of 0, has no timer.
+ */
+function examControls(timeLimitMinutes: number | null) {
+  const isTimed = timeLimitMinutes !== null && timeLimitMinutes > 0;
+
   return (
     <Group gap="sm" wrap="nowrap">
-      <AssessmentTimer
-        timeLimitMinutes={timeLimitMinutes}
-        startedAt={new Date().toISOString()}
-        onExpire={() => {}}
-      />
+      {isTimed && (
+        <AssessmentTimer
+          timeLimitMinutes={timeLimitMinutes}
+          startedAt={new Date().toISOString()}
+          onExpire={() => {}}
+        />
+      )}
       <ExamCloseButton onConfirm={() => {}} />
     </Group>
   );
@@ -183,6 +190,30 @@ export const ChestXray: Story = {
       <TeachingLayout
         footerText="Logged in: dr.jones"
         ribbonRight={examControls(10)}
+      >
+        <QuestionView
+          item={chestXrayItem}
+          selectedOption={selected}
+          onSelectOption={setSelected}
+          currentQuestion={1}
+          totalQuestions={4}
+          onNext={() => {}}
+          isLastQuestion={false}
+        />
+      </TeachingLayout>
+    );
+  },
+};
+
+/** An untimed attempt: no timer in the ribbon, and "End exam" still there. */
+export const UntimedAttempt: Story = {
+  tags: ["!test"],
+  render: () => {
+    const [selected, setSelected] = useState<string | null>(null);
+    return (
+      <TeachingLayout
+        footerText="Logged in: dr.jones"
+        ribbonRight={examControls(0)}
       >
         <QuestionView
           item={chestXrayItem}

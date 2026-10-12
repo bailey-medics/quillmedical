@@ -1337,7 +1337,7 @@ Where a step changes both the server and the page, the server goes
 first in its own pull request, since it is what makes the rule true,
 and the page follows.
 
-- [ ] **When the time runs out, the attempt is finished.** Mark: "as
+- [x] **When the time runs out, the attempt is finished.** Mark: "as
       soon as the timer runs out, the exam MUST finish via submit."
       Today answering is refused after the deadline, but the attempt
       stays open, and `finish_attempt` never asks about time: one
@@ -1372,8 +1372,8 @@ and the page follows.
         wondering where their answer went. It needs one new field on
         the attempt that is sent back, saying whether it was finished
         by the clock. Adding a field is allowed; nothing is taken away.
-      - **The server half is built; the page half is not, so this step
-        stays open.** `finish_if_out_of_time` in
+      - **The server half, built first in its own pull request.**
+        `finish_if_out_of_time` in
         `backend/app/features/teaching/attempts.py` finishes a late
         attempt, and `finish_attempt` itself now records one found
         late as finished at its deadline, so there is one marking and
@@ -1412,7 +1412,8 @@ and the page follows.
         writer and leaves the lock out, so there the read again is
         the guard). An attempt whose bank has gone cannot be marked
         and is left unfinished, answered as it was before.
-      - **Left for the page.** Submit when the clock reaches zero,
+      - **Left for the page by the server half, and built in the note
+        after next.** Submit when the clock reaches zero,
         and take either 200 from `complete` or 409 "Assessment
         already completed" as "go to the result". Say that the time
         ran out, from `timed_out` on `GET /assessments/{id}`. Treat
@@ -1427,6 +1428,56 @@ and the page follows.
         nobody has come back to is missing from the first and shows
         as unfinished in the second until its learner next asks for
         anything.
+      - **The page half, which finishes this step.** In
+        `frontend/src/features/teaching/pages/AssessmentAttempt.tsx`,
+        the clock reaching zero takes the question away, shows
+        "Submitting your exam", calls `complete` and goes to the
+        result. Before, it showed the closing screen ("You have
+        completed all questions") and waited for "View results" to be
+        pressed. A 200 and a 409 from `complete` both count as
+        finished. An answer, a changed answer or an earlier question
+        refused with 409 "Time limit exceeded" or "Assessment already
+        completed" goes the same way, with no error shown; a 409 in
+        any other words ("All items already answered") still shows
+        the closing screen, as before. If `complete` fails for
+        another reason the closing screen is shown with "Could not
+        submit your exam" and "View results" tries again, as before.
+      - **Once only.** `complete` is called from one function,
+        `finish`, which hands back the request already under way or
+        the answer already had; `submitAndShowResult` runs once per
+        page, and `showResult` goes to the result once. So the clock
+        firing twice (the timer calls `onExpire` from its tick and
+        again from its effect), a refused answer at the same moment
+        and "End exam" confirmed at the same moment make one request
+        and one move to the result.
+      - **An untimed attempt has no clock.** A limit of 0 or none
+        shows no timer and submits nothing by itself. "End exam" was
+        shown only beside the timer and is now shown whenever
+        questions are, so an untimed attempt can still be ended.
+      - **The result says so.** `AssessmentResult` takes `timedOut`
+        and shows a `StateMessage`, "Time ran out", beneath the
+        result, pass or not: "Your time ran out, so the assessment
+        was submitted with the answers you had given."
+        `AssessmentResultPage` passes `timed_out` from
+        `GET /assessments/{id}`; the field is optional on the
+        frontend's `Assessment`, `CompletionResult` and
+        `AssessmentHistory`.
+      - **The timer was not changed.** It works out the time left
+        once, when it appears, from the server's `started_at`, the
+        limit and the browser's own clock, and then takes a second
+        off at each tick. It does not read the clock again, so a tab
+        the browser has put to sleep falls behind, and a computer
+        whose clock is wrong starts out wrong. Neither can give more
+        time: the server refuses the next answer and the page goes to
+        the result. Calling `onExpire` from inside the tick also
+        makes React warn, in development, that one component is
+        updating another while it draws; it did so before this step.
+        Reading the clock at every tick would put all three right,
+        and is not done here.
+      - **One case left.** An attempt opened in the instant its time
+        ends can be read as still open and then refused its current
+        question: the page says the exam could not be loaded, and
+        "Try again" goes to the result.
 
 - [ ] **Only one attempt in progress at a time.** Mark: "Only one can
       be in progress at any one time." Today `begin_attempt` in
