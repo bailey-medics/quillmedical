@@ -146,6 +146,9 @@ class CandidateItemOut(BaseModel):
     text: str | None = None
     options: list[dict[str, Any]]
     selected_option: str | None = None
+    #: Whole seconds the attempt has left, for the page's countdown.
+    #: Null for an attempt with no time limit, and for a finished one.
+    seconds_left: int | None = None
 
 
 # ------------------------------------------------------------------
@@ -182,6 +185,9 @@ class AssessmentOut(BaseModel):
     #: see their results and not enter modules is refused.
     bank_title: str | None = None
     certificate_available: bool = False
+    #: Whole seconds the attempt has left, for the page's countdown.
+    #: Null for an attempt with no time limit, and for a finished one.
+    seconds_left: int | None = None
 
 
 class AssessmentWithFirstItem(BaseModel):
@@ -268,6 +274,9 @@ class AnswerResultOut(BaseModel):
     answered: bool
     next_item: CandidateItemOut | None
     all_answered: bool
+    #: Whole seconds the attempt has left, for the page's countdown.
+    #: Null for an attempt with no time limit, and for a finished one.
+    seconds_left: int | None = None
 
 
 # ------------------------------------------------------------------

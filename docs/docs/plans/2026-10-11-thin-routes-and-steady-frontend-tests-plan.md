@@ -1985,10 +1985,31 @@ the ticks of a tab nobody is looking at, so the countdown falls behind.
 And that first sum uses the learner's own clock, so a laptop three
 minutes fast starts three minutes short.
 
-Not built yet. One pull request: one optional field added to what the
-server already sends, no migration, and the timer.
+Built on 12 October 2026 as one pull request: one optional field added
+to what the server already sends, no migration, and the timer.
 
-- [ ] **The server says how many seconds are left, on every answer it
+Four things settled while building:
+
+- **The field is on the attempt, the question and the answer.**
+  `seconds_left` sits on `AssessmentOut` (an attempt started, handed
+  back or opened again), on `CandidateItemOut` (a question fetched,
+  and the answer to changing one) and on `AnswerResultOut`. A question
+  nested inside another answer does not carry it: the answer around it
+  does.
+- **A finished attempt is sent none**, like an untimed one. It has no
+  countdown.
+- **A page that is sent none works the time out from the start**, by
+  the computer's clock, as it always did. That is the case of a page
+  newer than the server it talks to, for the moments of a deploy.
+- **The time shown is worked out four times a second.** A tick each
+  second, read from a stopwatch, can show a second late; a quarter of
+  a second cannot be seen.
+
+Tests changed on purpose: nine route tests that compare one response
+with another, or pin every field of one, now allow for the new field,
+since two calls a moment apart are sent different counts.
+
+- [x] **The server says how many seconds are left, on every answer it
       already gives about an attempt.** An optional `seconds_left`:
       on the attempt when it is opened or started, on the answer to
       answering a question, on the answer to changing one, and on a
@@ -2015,7 +2036,7 @@ server already sends, no migration, and the timer.
       - Adding an optional field to a response is allowed. Nothing is
         taken away or renamed.
 
-- [ ] **The countdown is worked out from the clock on every tick.** In
+- [x] **The countdown is worked out from the clock on every tick.** In
       `frontend/src/components/teaching/assessment-timer/`: when the
       page is told the seconds left, it notes the moment on its own
       stopwatch. On each tick it takes the time gone since then from
@@ -2025,20 +2046,20 @@ server already sends, no migration, and the timer.
       (`performance.now()`), which does not jump when the computer's
       clock is corrected.
 
-- [ ] **Each time the server says the seconds left, the countdown is
+- [x] **Each time the server says the seconds left, the countdown is
       set to it.** On opening the attempt, and on every answer, change
       and step back. Between those the page counts by itself; at each
       one it is put right. The only error left is the time the answer
       took to arrive, a fraction of a second.
 
-- [ ] **Time running out is signalled once.** The timer calls its "time
+- [x] **Time running out is signalled once.** The timer calls its "time
       is up" handler twice at nought today, once from inside a state
       update, which makes React warn in development. It is called
       once, from an effect. Phase 7's guards against submitting twice
       stay as they are: they also cover a refused answer and "End
       exam" arriving together.
 
-- [ ] **Tests.** With the clock faked: a tab whose ticks stop for five
+- [x] **Tests.** With the clock faked: a tab whose ticks stop for five
       minutes shows the right time when they start again; a computer
       clock three minutes out, fast or slow, shows the right time; the
       countdown is set afresh by each answer; nought signals once; an

@@ -83,6 +83,9 @@ export interface CandidateItem {
   text?: string;
   options: Array<{ id: string; label: string; tags?: string[] }>;
   selected_option?: string | null;
+  /** Whole seconds the attempt has left, by the server's clock. Null or
+   *  absent for an untimed attempt, and for a finished one */
+  seconds_left?: number | null;
 }
 
 // ------------------------------------------------------------------
@@ -103,6 +106,9 @@ export interface Assessment {
   bank_title?: string | null;
   /** Whether this pass earns a certificate. Detail route only */
   certificate_available?: boolean;
+  /** Whole seconds the attempt has left, by the server's clock. Null or
+   *  absent for an untimed attempt, and for a finished one */
+  seconds_left?: number | null;
 }
 
 /** One question of a finished attempt: right, wrong or unanswered. */
@@ -148,6 +154,9 @@ export interface AnswerResult {
   answered: boolean;
   next_item: CandidateItem | null;
   all_answered: boolean;
+  /** Whole seconds the attempt has left, by the server's clock. Null or
+   *  absent for an untimed attempt, and for a finished one */
+  seconds_left?: number | null;
 }
 
 // ------------------------------------------------------------------

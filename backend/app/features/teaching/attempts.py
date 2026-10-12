@@ -870,6 +870,30 @@ def deadline_of(assessment: Assessment) -> datetime | None:
     )
 
 
+def seconds_left(assessment: Assessment) -> int | None:
+    """How many whole seconds an attempt under way has left.
+
+    Worked out from ``deadline_of``, so it cannot disagree with what is
+    enforced. It is sent to the page with each answer about an attempt,
+    for its countdown: a number of seconds, and not a time of day, so
+    the page only has to count and never compares its own clock with
+    the server's.
+
+    Returns:
+        None for an attempt with no time limit, and for a finished one,
+        which has no countdown. Otherwise the seconds left, rounded
+        down, and never less than nought.
+    """
+    deadline = deadline_of(assessment)
+
+    if deadline is None or assessment.completed_at:
+        return None
+
+    left = (deadline - datetime.now(UTC)).total_seconds()
+
+    return max(0, int(left))
+
+
 def unfinished_attempts(
     db: Session, user_id: int, *, bank_id: str | None = None
 ) -> list[Assessment]:

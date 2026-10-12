@@ -69,6 +69,7 @@ ITEM_FIELDS = {
     "text",
     "options",
     "selected_option",
+    "seconds_left",
 }
 
 #: Everything a learner must not be sent is spelt in capitals.
@@ -150,6 +151,22 @@ def sent(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     monkeypatch.setattr("app.config.settings.TEACHING_GCS_BUCKET", None)
 
     return addresses
+
+
+def _timeless(body: Any) -> Any:
+    """A response without its seconds left.
+
+    Two calls a moment apart are sent different counts, so a test that
+    compares one response with another leaves them out.
+    """
+    if isinstance(body, dict):
+        return {
+            key: _timeless(value)
+            for key, value in body.items()
+            if key != "seconds_left"
+        }
+
+    return body
 
 
 def _learner(db: Session, org: OrgUnit, name: str = "learner") -> User:
@@ -514,7 +531,12 @@ def test_answering_sends_the_next_question_and_not_whether_it_was_right(
         assert resp.status_code == 200
         body = resp.json()
 
-        assert set(body) == {"answered", "next_item", "all_answered"}
+        assert set(body) == {
+            "answered",
+            "next_item",
+            "all_answered",
+            "seconds_left",
+        }
         assert body["answered"] is True
         assert body["all_answered"] is False
         assert set(body["next_item"]) == ITEM_FIELDS
@@ -554,7 +576,7 @@ def test_an_answer_sent_twice_with_its_question_named_is_stored_once(
 
     assert once.status_code == 200
     assert twice.status_code == 200
-    assert twice.json() == once.json()
+    assert _timeless(twice.json()) == _timeless(once.json())
     assert once.json()["next_item"]["display_order"] == 2
 
     db_session.expire_all()
@@ -597,7 +619,7 @@ def test_the_last_answer_is_told_there_is_nothing_left(
     resp = _send(client, headers, "answer", mine.id)
 
     assert resp.status_code == 200
-    assert resp.json() == {
+    assert _timeless(resp.json()) == {
         "answered": True,
         "next_item": None,
         "all_answered": True,
@@ -633,7 +655,10 @@ def test_changing_an_answer_sends_the_same_whether_right_or_wrong(
     assert set(to_right.json()) == ITEM_FIELDS
     assert to_right.json()["answer_id"] == first
     assert to_right.json()["options"] == SAFE_OPTIONS
-    assert to_right.json() == {**to_wrong.json(), "selected_option": RIGHT}
+    assert _timeless(to_right.json()) == {
+        **_timeless(to_wrong.json()),
+        "selected_option": RIGHT,
+    }
     assert to_wrong.json()["selected_option"] == WRONG
     assert (stored_right, stored_wrong) == (True, False)
 

@@ -1,100 +1,269 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import { AssessmentTimer } from "./AssessmentTimer";
 
+/** Let *ms* pass, with every tick in it firing as it should. */
+function pass(ms: number) {
+  act(() => {
+    vi.advanceTimersByTime(ms);
+  });
+}
+
 describe("AssessmentTimer", () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({
+      toFake: [
+        "setTimeout",
+        "clearTimeout",
+        "setInterval",
+        "clearInterval",
+        "Date",
+        "performance",
+      ],
+    });
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
-  it("displays the remaining time", () => {
+  it("displays the seconds it is told are left", () => {
     renderWithMantine(
-      <AssessmentTimer
-        timeLimitMinutes={75}
-        startedAt={new Date().toISOString()}
-        onExpire={() => {}}
-      />,
+      <AssessmentTimer secondsLeft={75 * 60} onExpire={() => {}} />,
     );
 
     expect(screen.getByText("75:00")).toBeInTheDocument();
   });
 
-  it("accounts for already elapsed time", () => {
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-
+  it("starts part way through when told fewer seconds than the whole time", () => {
     renderWithMantine(
-      <AssessmentTimer
-        timeLimitMinutes={75}
-        startedAt={tenMinutesAgo}
-        onExpire={() => {}}
-      />,
+      <AssessmentTimer secondsLeft={65 * 60} onExpire={() => {}} />,
     );
 
     expect(screen.getByText("65:00")).toBeInTheDocument();
   });
 
-  it("shows 'Time up' when expired", () => {
-    const pastStart = new Date(Date.now() - 80 * 60 * 1000).toISOString();
+  it("counts down as time passes", () => {
+    renderWithMantine(
+      <AssessmentTimer secondsLeft={3 * 60} onExpire={() => {}} />,
+    );
+
+    pass(1_000);
+    expect(screen.getByText("02:59")).toBeInTheDocument();
+
+    pass(59_000);
+    expect(screen.getByText("02:00")).toBeInTheDocument();
+  });
+
+  it("counts from when the figure arrived, not from when it was shown", () => {
+    const arrived = performance.now();
+    vi.advanceTimersByTime(20_000);
 
     renderWithMantine(
       <AssessmentTimer
-        timeLimitMinutes={75}
-        startedAt={pastStart}
+        secondsLeft={60}
+        receivedAt={arrived}
         onExpire={() => {}}
       />,
     );
+
+    expect(screen.getByText("00:40")).toBeInTheDocument();
+  });
+
+  it("shows 'Time up' when there is no time left", () => {
+    renderWithMantine(<AssessmentTimer secondsLeft={0} onExpire={() => {}} />);
 
     expect(screen.getByText("Time up")).toBeInTheDocument();
   });
 
-  it("calls onExpire when time runs out", () => {
-    const handleExpire = vi.fn();
-    const pastStart = new Date(Date.now() - 80 * 60 * 1000).toISOString();
-
-    renderWithMantine(
-      <AssessmentTimer
-        timeLimitMinutes={75}
-        startedAt={pastStart}
-        onExpire={handleExpire}
-      />,
-    );
-
-    expect(handleExpire).toHaveBeenCalled();
-  });
-
-  it("displays countdown when more than 1 minute remains", () => {
-    // 72 minutes ago → 3 minutes left
-    const start = new Date(Date.now() - 72 * 60 * 1000).toISOString();
-
-    renderWithMantine(
-      <AssessmentTimer
-        timeLimitMinutes={75}
-        startedAt={start}
-        onExpire={() => {}}
-      />,
-    );
-
-    expect(screen.getByText("03:00")).toBeInTheDocument();
-  });
-
   it("displays countdown when 1 minute or less remains", () => {
-    // 74.5 minutes ago → 30 seconds left
-    const start = new Date(Date.now() - 74.5 * 60 * 1000).toISOString();
-
-    renderWithMantine(
-      <AssessmentTimer
-        timeLimitMinutes={75}
-        startedAt={start}
-        onExpire={() => {}}
-      />,
-    );
+    renderWithMantine(<AssessmentTimer secondsLeft={30} onExpire={() => {}} />);
 
     expect(screen.getByText("00:30")).toBeInTheDocument();
+  });
+
+  describe("a tab whose ticks stop", () => {
+    it("shows the right time on the first tick after five minutes of none", () => {
+      // The stopwatch runs on while no tick fires, as in a tab nobody is
+      // looking at
+      const steady = performance.now.bind(performance);
+      let unseen = 0;
+      vi.spyOn(performance, "now").mockImplementation(() => steady() + unseen);
+
+      renderWithMantine(
+        <AssessmentTimer secondsLeft={30 * 60} onExpire={() => {}} />,
+      );
+      expect(screen.getByText("30:00")).toBeInTheDocument();
+
+      unseen = 5 * 60 * 1000;
+      pass(250);
+
+      expect(screen.getByText("25:00")).toBeInTheDocument();
+    });
+
+    it("says the time is up if it ran out while no tick fired", () => {
+      const handleExpire = vi.fn();
+      const steady = performance.now.bind(performance);
+      let unseen = 0;
+      vi.spyOn(performance, "now").mockImplementation(() => steady() + unseen);
+
+      renderWithMantine(
+        <AssessmentTimer secondsLeft={60} onExpire={handleExpire} />,
+      );
+
+      unseen = 5 * 60 * 1000;
+      pass(250);
+
+      expect(screen.getByText("Time up")).toBeInTheDocument();
+      expect(handleExpire).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("a computer whose clock is wrong", () => {
+    it.each([
+      ["three minutes fast", 3 * 60 * 1000],
+      ["three minutes slow", -3 * 60 * 1000],
+    ])("shows the right time on a clock %s", (_name, wrongBy) => {
+      vi.setSystemTime(Date.now() + wrongBy);
+
+      renderWithMantine(
+        <AssessmentTimer secondsLeft={10 * 60} onExpire={() => {}} />,
+      );
+
+      expect(screen.getByText("10:00")).toBeInTheDocument();
+    });
+
+    it("is not moved by the clock being corrected part way through", () => {
+      renderWithMantine(
+        <AssessmentTimer secondsLeft={10 * 60} onExpire={() => {}} />,
+      );
+      pass(60_000);
+      expect(screen.getByText("09:00")).toBeInTheDocument();
+
+      vi.setSystemTime(Date.now() + 3 * 60 * 1000);
+      pass(1_000);
+
+      expect(screen.getByText("08:59")).toBeInTheDocument();
+    });
+  });
+
+  describe("a fresh figure from the server", () => {
+    it("sets the countdown to it", () => {
+      const { rerender } = renderWithMantine(
+        <AssessmentTimer
+          secondsLeft={10 * 60}
+          receivedAt={performance.now()}
+          onExpire={() => {}}
+        />,
+      );
+      pass(60_000);
+      expect(screen.getByText("09:00")).toBeInTheDocument();
+
+      // The page had fallen seven seconds behind the server
+      rerender(
+        <AssessmentTimer
+          secondsLeft={8 * 60 + 53}
+          receivedAt={performance.now()}
+          onExpire={() => {}}
+        />,
+      );
+
+      expect(screen.getByText("08:53")).toBeInTheDocument();
+
+      pass(1_000);
+      expect(screen.getByText("08:52")).toBeInTheDocument();
+    });
+
+    it("starts again from the same figure when it arrives a second time", () => {
+      const { rerender } = renderWithMantine(
+        <AssessmentTimer
+          secondsLeft={60}
+          receivedAt={performance.now()}
+          onExpire={() => {}}
+        />,
+      );
+      pass(10_000);
+      expect(screen.getByText("00:50")).toBeInTheDocument();
+
+      rerender(
+        <AssessmentTimer
+          secondsLeft={60}
+          receivedAt={performance.now()}
+          onExpire={() => {}}
+        />,
+      );
+
+      expect(screen.getByText("01:00")).toBeInTheDocument();
+    });
+  });
+
+  describe("time running out", () => {
+    it("is signalled once when the countdown reaches nought", () => {
+      const handleExpire = vi.fn();
+      renderWithMantine(
+        <AssessmentTimer secondsLeft={2} onExpire={handleExpire} />,
+      );
+
+      pass(1_750);
+      expect(handleExpire).not.toHaveBeenCalled();
+
+      pass(250);
+      expect(screen.getByText("Time up")).toBeInTheDocument();
+      expect(handleExpire).toHaveBeenCalledTimes(1);
+
+      pass(10_000);
+      expect(handleExpire).toHaveBeenCalledTimes(1);
+    });
+
+    it("is signalled once for a timer that starts with no time left", () => {
+      const handleExpire = vi.fn();
+      renderWithMantine(
+        <AssessmentTimer secondsLeft={0} onExpire={handleExpire} />,
+      );
+
+      pass(5_000);
+
+      expect(handleExpire).toHaveBeenCalledTimes(1);
+    });
+
+    it("is not signalled again when the handler is a new function", () => {
+      const first = vi.fn();
+      const second = vi.fn();
+      const { rerender } = renderWithMantine(
+        <AssessmentTimer secondsLeft={0} onExpire={first} />,
+      );
+
+      rerender(<AssessmentTimer secondsLeft={0} onExpire={second} />);
+      pass(1_000);
+
+      expect(first).toHaveBeenCalledTimes(1);
+      expect(second).not.toHaveBeenCalled();
+    });
+
+    it("is signalled again for a fresh figure that then runs out", () => {
+      const handleExpire = vi.fn();
+      const { rerender } = renderWithMantine(
+        <AssessmentTimer
+          secondsLeft={0}
+          receivedAt={performance.now()}
+          onExpire={handleExpire}
+        />,
+      );
+      expect(handleExpire).toHaveBeenCalledTimes(1);
+
+      rerender(
+        <AssessmentTimer
+          secondsLeft={1}
+          receivedAt={performance.now()}
+          onExpire={handleExpire}
+        />,
+      );
+      pass(1_000);
+
+      expect(handleExpire).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("text colour on the badge fill", () => {
@@ -109,24 +278,15 @@ describe("AssessmentTimer", () => {
 
     it("uses dark text on the yellow warning fill", () => {
       // Four minutes left: inside the five-minute warning window.
-      const started = new Date(Date.now() - 71 * 60 * 1000).toISOString();
       renderWithMantine(
-        <AssessmentTimer
-          timeLimitMinutes={75}
-          startedAt={started}
-          onExpire={() => {}}
-        />,
+        <AssessmentTimer secondsLeft={4 * 60} onExpire={() => {}} />,
       );
       expect(badgeRoot("04:00").style.color).toBe("var(--status-text-dark)");
     });
 
     it("uses white text on the blue fill with time to spare", () => {
       renderWithMantine(
-        <AssessmentTimer
-          timeLimitMinutes={75}
-          startedAt={new Date().toISOString()}
-          onExpire={() => {}}
-        />,
+        <AssessmentTimer secondsLeft={75 * 60} onExpire={() => {}} />,
       );
       expect(badgeRoot("75:00").style.color).toBe("var(--mantine-color-white)");
     });

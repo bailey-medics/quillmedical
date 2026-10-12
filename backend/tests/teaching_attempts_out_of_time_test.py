@@ -783,6 +783,71 @@ def test_an_attempt_past_its_time_whose_bank_has_gone_is_answered_as_before(
     assert _stored(db_session, mine.id).completed_at is None
 
 
+# --- The seconds left, on each answer about an attempt ----------------------
+
+
+def _seconds_left_from(route: str, resp: Any) -> Any:
+    """Where each route's answer carries the seconds left."""
+    assert resp.status_code == 200, resp.text
+
+    if route == "start":
+        return resp.json()["assessment"]["seconds_left"]
+
+    return resp.json()["seconds_left"]
+
+
+#: The answers the exam page sets its countdown by: an attempt started
+#: or handed back, opened again, a question fetched, an answer given
+#: and an answer changed.
+COUNTED = ["start", "detail", "current", "item", "answer", "change"]
+
+
+@pytest.mark.parametrize("route", COUNTED)
+def test_each_answer_about_an_attempt_says_how_many_seconds_are_left(
+    test_client: TestClient, db_session: Session, trust: OrgUnit, route: str
+) -> None:
+    """Counted to the deadline the server enforces: ten minutes into
+    thirty leaves twenty, less the moment the test took."""
+    learner = _learner(db_session, trust)
+    mine = _attempt(db_session, trust, learner, right=1)
+    first = _first_row(db_session, mine.id).id
+    mine.started_at = datetime.now(UTC) - timedelta(minutes=10)
+    db_session.commit()
+    client, headers = _signed_in(test_client)
+
+    resp = _call(client, headers, route, mine.id, first)
+
+    assert 1190 <= _seconds_left_from(route, resp) <= 1200
+
+
+@pytest.mark.parametrize("route", COUNTED)
+def test_an_untimed_attempt_is_sent_no_seconds_left(
+    test_client: TestClient, db_session: Session, trust: OrgUnit, route: str
+) -> None:
+    learner = _learner(db_session, trust)
+    mine = _attempt(db_session, trust, learner, right=1, minutes=0)
+    first = _first_row(db_session, mine.id).id
+    client, headers = _signed_in(test_client)
+
+    resp = _call(client, headers, route, mine.id, first)
+
+    assert _seconds_left_from(route, resp) is None
+
+
+def test_a_finished_attempt_is_sent_no_seconds_left(
+    test_client: TestClient, db_session: Session, trust: OrgUnit
+) -> None:
+    learner = _learner(db_session, trust)
+    mine = _attempt(db_session, trust, learner, right=1)
+    client, headers = _signed_in(test_client)
+    _call(client, headers, "complete", mine.id)
+
+    detail = _call(client, headers, "detail", mine.id)
+
+    assert detail.status_code == 200
+    assert detail.json()["seconds_left"] is None
+
+
 # --- Attempts nobody came back to -------------------------------------------
 
 

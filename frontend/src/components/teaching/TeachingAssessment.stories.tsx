@@ -128,8 +128,7 @@ function examControls(timeLimitMinutes: number | null) {
     <Group gap="sm" wrap="nowrap">
       {isTimed && (
         <AssessmentTimer
-          timeLimitMinutes={timeLimitMinutes}
-          startedAt={new Date().toISOString()}
+          secondsLeft={timeLimitMinutes * 60}
           onExpire={() => {}}
         />
       )}
