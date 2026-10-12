@@ -11,7 +11,64 @@ Nothing here is urgent and nothing depends on a user: production has no
 real users yet. Each phase is one small unit on its own stacked branch, in
 the order below, and no step waits for a person.
 
-## Phase 1: Record what is deliberately left
+The phases below are in the order the work was done, with what is still
+to do at the end. They were renumbered into that order on 12 October 2026.
+A pull request opened before then names a phase by its old number:
+
+- **Old 12 and 13** - now 1 and 2
+- **Old 1 to 11** - now 3 to 13
+- **Old 14 and 15** - unchanged
+- **Old 16** - its first step is 16; the rest is now 22
+- **Old 17** - now 23
+- **Old 18 and 19** - now 17 and 18
+- **Old 20** - now 21
+- **Old 21** - now 20
+- **Old 22** - now 19
+
+## Phase 1: Carry out the retention periods the database can
+
+Mark asked for this on 11 October, after the review found that section 7
+of the privacy policy gives periods that no code carried out. It was built
+ahead of Phases 3 to 13, which are untouched.
+
+- [x] Add `backend/app/retention.py`, with `apply_retention`. It deletes
+      three things, each with the period the policy gives: an assessor
+      invitation nobody accepted, 90 days after it expires; feedback, two
+      years after it was sent; and the record of somebody's answers about
+      news and updates, six years after the last one. An accepted
+      invitation is never deleted, because the policy says it becomes part
+      of the sign-off record. The marketing period runs from the last
+      answer, so one recent answer keeps every earlier one, and the
+      current answer on the account itself is left.
+
+- [x] Add the `apply-retention` action to `backend/scripts/admin_cli.py`.
+      It only counts unless `RETENTION_APPLY=true`, so a run by hand
+      deletes nothing. It prints counts and never a row's contents, and a
+      failure prints the error's type alone.
+
+- [x] Add `.github/workflows/retention.yml`, which runs the action on the
+      admin job each night at 03:30 UTC with `RETENTION_APPLY=true`, as
+      `accessibility-review.yml` runs its own. GitHub starts the job and
+      holds no database credential. A run started by hand is a report
+      unless `apply` is ticked.
+
+- [x] Test it in `backend/app/retention_test.py`: each period at one day
+      inside and one day past, the accepted invitation, two people's
+      marketing records kept apart, the report that deletes nothing, and
+      the action's three outcomes. Run with `just ub
+      app/retention_test.py`, 13 passing.
+
+- [ ] After the first nightly run, read its log and check the counts are
+      what a report by hand gave the day before.
+
+## Phase 2: Take attempt limits out of the terms
+
+- [x] In clause 7.2 of `docs/docs/legal/terms-of-service.md`, remove "the
+      number of attempts allowed and the gap between them". Quill has no
+      limit on attempts and none is planned, so the clause promised
+      something the modules cannot set. Pass marks and time limits stay.
+
+## Phase 3: Record what is deliberately left
 
 - [x] Add an item to `docs/docs/plans/todo.md`, under "Security and
       compliance": **update the privacy policy when push notifications
@@ -36,7 +93,7 @@ the order below, and no step waits for a person.
       that its consumers were never traced. Left alone now because Quill
       holds no patients.
 
-## Phase 2: Stop sending a username to Slack
+## Phase 4: Stop sending a username to Slack
 
 - [x] In `backend/app/feedback/router.py` and `backend/app/feedback/slack.py`,
       take the sender's username out of the notice posted to Slack. The
@@ -56,7 +113,7 @@ the order below, and no step waits for a person.
 - [x] Correct the docstring in `router.py` that says "the same is posted
       to Slack", since the two notices now differ.
 
-## Phase 3: Say the opt-out is remembered on the device
+## Phase 5: Say the opt-out is remembered on the device
 
 - [x] In section 3.9 of `docs/docs/legal/privacy-policy.md`, replace "We
       do not use an analytics service, tracking cookies or anything stored
@@ -72,7 +129,7 @@ the order below, and no step waits for a person.
       in place, as `docs/docs/legal/index.md` records for the earlier
       revision. Add one sentence there dating this one.
 
-## Phase 4: Keep the public site's log archive in London
+## Phase 6: Keep the public site's log archive in London
 
 - [x] First, in a pull request of its own, set `delete_contents_on_destroy
       = true` on `google_bigquery_dataset.analytics` in
@@ -110,7 +167,7 @@ the order below, and no step waits for a person.
       and no personal data, and moving a bucket means recreating it under
       live traffic.
 
-## Phase 5: Let `stack-add` tell two pull requests apart
+## Phase 7: Let `stack-add` tell two pull requests apart
 
 - [x] Change the guard at the top of `stack-add` in the `Justfile`. It
       asks `gh pr list --head <branch> --state merged`, so it refuses any
@@ -135,7 +192,7 @@ the order below, and no step waits for a person.
       `docs/docs/cicd/stacked-branches.md`, which currently tells the
       reader to avoid reusing a name.
 
-## Phase 6: One check for every Node pin
+## Phase 8: One check for every Node pin
 
 - [x] Make `.github/workflows/dependency-audit.yml` set Node up through
       `.github/actions/setup-frontend`, as the other workflows do, if that
@@ -153,7 +210,7 @@ the order below, and no step waits for a person.
       `docs/docs/conventions/index.md`, which #1771 changed to say three
       homes.
 
-## Phase 7: Python 3.14 and the hotfix wording
+## Phase 9: Python 3.14 and the hotfix wording
 
 - [x] Change `python = "^3.13.8"` to `"^3.14"` in `backend/pyproject.toml`
       and regenerate `poetry.lock`. `.python-version` is 3.14.7,
@@ -181,7 +238,7 @@ the order below, and no step waits for a person.
       `hotfix` and `back-merge`, which nothing uses, for
       `lock-file-maintenance`, which `renovate.json` adds.
 
-## Phase 8: Test that a public page is on the guest list
+## Phase 10: Test that a public page is on the guest list
 
 - [x] Move `guestPaths` out of `request` in `frontend/src/lib/api.ts` to
       an exported constant in the same file. It is the list of paths where
@@ -201,7 +258,7 @@ the order below, and no step waits for a person.
       section of `docs/docs/frontend/sessions-and-requests.md`, which says
       no test checks this.
 
-## Phase 9: Remove a setting that does nothing
+## Phase 11: Remove a setting that does nothing
 
 - [x] Remove `randomise_selection` from the `assessment` type in
       `frontend/src/features/teaching/types.ts`, from the fixture in
@@ -221,7 +278,7 @@ the order below, and no step waits for a person.
       `respiratory-teaching` (chest-xray-interpretation-test). Harmless
       while they stay: the validator accepts the key and nothing reads it.
 
-## Phase 10: Make the AWS account check say what it does
+## Phase 12: Make the AWS account check say what it does
 
 - [x] In `infra/aws/organisation.tf`, change the comment above
       `check "every_account_is_listed"` from "This fails a plan" to say
@@ -235,7 +292,7 @@ the order below, and no step waits for a person.
       person, who reads the plan, and the opposite mistake already fails
       loudly: an account listed but not held breaks the lookup.
 
-## Phase 11: Bring CLAUDE.md up to date
+## Phase 13: Bring CLAUDE.md up to date
 
 - [x] Rewrite the paragraph in the hand-written "Claude-specific" section
       beginning "Recipes that still need the live stack", which said they
@@ -253,50 +310,7 @@ the order below, and no step waits for a person.
       while checking the two above. Changed in
       `.github/copilot-instructions.md`, which is the source, and the same
       line in `CLAUDE.md`, which is what `/sync-copilot-config` would
-      write. Phase 7 moved the backend's package file to 3.14.
-
-## Phase 12: Carry out the retention periods the database can
-
-Mark asked for this on 11 October, after the review found that section 7
-of the privacy policy gives periods that no code carried out. It was built
-ahead of Phases 1 to 11, which are untouched.
-
-- [x] Add `backend/app/retention.py`, with `apply_retention`. It deletes
-      three things, each with the period the policy gives: an assessor
-      invitation nobody accepted, 90 days after it expires; feedback, two
-      years after it was sent; and the record of somebody's answers about
-      news and updates, six years after the last one. An accepted
-      invitation is never deleted, because the policy says it becomes part
-      of the sign-off record. The marketing period runs from the last
-      answer, so one recent answer keeps every earlier one, and the
-      current answer on the account itself is left.
-
-- [x] Add the `apply-retention` action to `backend/scripts/admin_cli.py`.
-      It only counts unless `RETENTION_APPLY=true`, so a run by hand
-      deletes nothing. It prints counts and never a row's contents, and a
-      failure prints the error's type alone.
-
-- [x] Add `.github/workflows/retention.yml`, which runs the action on the
-      admin job each night at 03:30 UTC with `RETENTION_APPLY=true`, as
-      `accessibility-review.yml` runs its own. GitHub starts the job and
-      holds no database credential. A run started by hand is a report
-      unless `apply` is ticked.
-
-- [x] Test it in `backend/app/retention_test.py`: each period at one day
-      inside and one day past, the accepted invitation, two people's
-      marketing records kept apart, the report that deletes nothing, and
-      the action's three outcomes. Run with `just ub
-      app/retention_test.py`, 13 passing.
-
-- [ ] After the first nightly run, read its log and check the counts are
-      what a report by hand gave the day before.
-
-## Phase 13: Take attempt limits out of the terms
-
-- [x] In clause 7.2 of `docs/docs/legal/terms-of-service.md`, remove "the
-      number of attempts allowed and the gap between them". Quill has no
-      limit on attempts and none is planned, so the clause promised
-      something the modules cannot set. Pass marks and time limits stay.
+      write. Phase 9 moved the backend's package file to 3.14.
 
 ## Phase 14: Remind somebody who is enrolled and has not started
 
@@ -338,7 +352,7 @@ ahead of Phases 1 to 11, which are untouched.
       the certificate email is, from the organisation's
       `TeachingOrgSettings`.
 
-- [x] Run it as an admin action from a scheduled workflow, as Phase 12
+- [x] Run it as an admin action from a scheduled workflow, as Phase 1
       does, with the same report-unless-told default.
 
 - [ ] In the `eoeeta-teaching` repository, a separate pull request there:
@@ -372,7 +386,7 @@ ahead of Phases 1 to 11, which are untouched.
 - [x] Template, preview, admin action and schedule as in Phase 14. One
       action can send both kinds of email in one nightly run.
 
-## Phase 16: Keep a closed account's records for the sponsor's period
+## Phase 16: Record when an account is closed
 
 - [x] Add `deactivated_at` to `User`, set wherever `is_active` becomes
       false and cleared when it becomes true again. The policy's two years
@@ -381,6 +395,227 @@ ahead of Phases 1 to 11, which are untouched.
       written later cannot close an account without a date. An account
       closed before the column existed has none, and so is never deleted
       by a period counted from it: say so when the deleting is built.
+
+## Phase 17: Stop a stacked pull request merging into the branch below
+
+On 11 October fourteen pull requests of one stack were merged and none
+reached `main`. Each was based on the branch below it, and a merge goes
+into the base. Only the bottom four went through the merge queue, which
+exists for `main` alone; the rest were merged directly, eight of them
+within seven seconds, into feature branches that no ruleset protects.
+Pull request #1808 carried the work to `main` afterwards.
+
+- [x] Make it impossible, in `infra/github/`. Two settings together:
+
+      - **Allow merge commits only.** Set `allow_squash_merge` and
+        `allow_rebase_merge` to false on the repository, in
+        `security.tf`. Every merge into `main` is already a merge commit:
+        the queue's `merge_method` is `MERGE`.
+      - **Require linear history on every branch but `main`.** Add
+        `required_linear_history` to the `branch_naming` ruleset in
+        `branch_rules.tf`, which already targets all branches except
+        `main` and the merge queue's own.
+
+      A branch that must stay linear refuses a merge commit, and with the
+      other two methods switched off there is no way left to merge a pull
+      request into a feature branch. Pushing and force-pushing a stack is
+      unaffected, because a stack's branches hold one commit each and are
+      rebased, never merged.
+
+      Built behind a variable, `block_merges_into_feature_branches`,
+      which is false: with it off nothing changes. One doubt could not be
+      settled by reading. Every feature branch inherits `main`'s merge
+      commits, and if GitHub counts those against linear history the
+      rule would refuse every push. So it is switched on by hand, tried,
+      and switched off again if a push is refused, as the next step sets
+      out.
+
+      A required check was considered and will not do it: a check only
+      blocks a merge where a ruleset requires it, and a ruleset strict
+      enough to require one on a feature branch also refuses the pushes a
+      stack is made of.
+
+- [ ] Prove it before relying on it. This has not been tried here. After
+      `just terraform-github`, make two throwaway branches, open a pull
+      request from one into the other, and confirm GitHub offers no merge.
+      Then confirm `just stack-submit` still pushes a stack. If the rule
+      does not block the merge, take it out again and keep the alarm
+      below as the only guard.
+
+- [x] Check nothing merges `main` into a feature branch. `just rebase`
+      and the stack recipes rebase; Renovate must be set to rebase too, or
+      its branches will be refused. Read `renovate.json` for
+      `rebaseWhen` and any `automergeType` before applying.
+      Checked: `renovate.json` sets `rebaseWhen` to `never` and
+      `automerge` to false throughout, so Renovate never merges `main`
+      into its branches.
+
+- [x] Add an alarm for whatever slips through: a small workflow on
+      `pull_request: closed` that posts to Slack, through
+      `slack-notify.yml`, when a pull request was merged and its base was
+      not `main`. Say in the message that the work has not reached `main`
+      and name the pull request. Fourteen merges went unnoticed for about
+      ten minutes, and only because somebody asked.
+
+- [x] Update the "Traps" section of `docs/docs/cicd/stacked-branches.md`
+      with this one, and the rule that follows from it: only the bottom of
+      a stack is merged, and `just stack-sync` is what brings the next
+      branch down to `main`.
+
+## Phase 18: Say whether a page is public in one place
+
+Mark asked on 12 October why a public page needs two things: no
+`RequireAuth` on its route, and its path on the guest list in
+`frontend/src/lib/api.ts`. There was no good reason. Phase 10 added a test
+that the two agree; this phase removes the second, so there is nothing to
+agree.
+
+- [x] Stop the API client navigating. On a 401 that the silent refresh
+      does not fix, `request` in `frontend/src/lib/api.ts` fires
+      `UNAUTHENTICATED_EVENT` on `window` and throws. It used to call
+      `window.location.assign("/login")` unless the page was on the guest
+      list. The list, `GUEST_PATHS`, and `isGuestPath` are deleted.
+
+      Two designs were weighed. The other was to mark public routes and
+      have the client ask the router about them, which keeps one list but
+      leaves the client deciding where the browser goes and ties it to the
+      router. Making requests is the client's job and navigation is the
+      router's, and the list only existed because the client did both.
+
+- [x] Have `AuthProvider` listen for the event and put the state in
+      `unauthenticated`. `RequireAuth` already sends an unauthenticated
+      visitor to `/login`, passing the page they were on. A route with no
+      guard does nothing, which is right: somebody on a public page whose
+      session runs out carries on reading. A state that is already
+      unauthenticated is left as it is, so the `loggedOut` mark from an
+      explicit logout survives a late 401.
+
+- [x] Replace Phase 10's test in `frontend/src/routes.test.ts`. What can
+      still go wrong is leaving a guard off, which fails open. Every
+      top-level route must be behind `RequireAuth`, behind `GuestOnly`, or
+      named in the test as open to anybody, with its reason. A name with
+      no route behind it fails too.
+
+- [x] Test the three together in `frontend/src/auth/AuthContext.test.tsx`,
+      with the real provider and the real guard: a guarded page goes to
+      `/login` and remembers itself, a public page stays, and a logout is
+      not forgotten.
+
+- [x] Rewrite the section of `docs/docs/frontend/sessions-and-requests.md`
+      that described the two-place rule.
+
+One behaviour changes that somebody might notice. A signed-out visitor to
+an address nothing matches used to be sent to `/login`, because the 404
+page was not on the guest list. They now see the 404 page.
+
+## Phase 19: Stop the stack display showing a failure GitHub has replaced
+
+- [x] Fix `best_conclusion_per_check` in `scripts/stack-status.py`. Found
+      on 12 October: `just stack-watch` showed a red cross in the heavy
+      column for ten pull requests whose checks were all green on GitHub.
+
+      The cause is one check, "Storybook interaction tests", the job that
+      sums up the three Storybook legs. A stack is pushed twice in quick
+      succession when it is landed, CI's concurrency rule cancels the
+      older run, and in that cancelled run the legs report `CANCELLED`
+      while the summing-up job reports `FAILURE`, because the legs it
+      waited for did not pass. The script already drops a `CANCELLED`
+      entry that a later run replaced. It does not drop that `FAILURE`,
+      so one failing entry from a dead run outranks the `SUCCESS` from the
+      live one. GitHub shows only the newest run of each check, which is
+      why it is green there.
+
+- [x] Decide by run, not by entry: where a check has entries from more
+      than one run, an entry from a run that a later run replaced does not
+      count. `detailsUrl` carries the run id and `startedAt` orders them.
+      Keep what the existing comments protect: a draft's skipped heavy
+      tier must not hide a later real result, and a cancellation with
+      nothing to replace it is still a failure.
+
+- [x] Add the case to `scripts/tests/stack-status.bats`, from the real
+      entries on #1829: skipped, then failed in a cancelled run, then
+      passed.
+
+## Phase 20: Start the nightly jobs from Cloud Scheduler, not GitHub
+
+Retention (Phase 1) and the teaching reminders (Phases 14 and 15) are
+each started by a scheduled GitHub workflow that runs an action on the
+admin Cloud Run job. That copied `accessibility-review.yml`, which reads a
+date from a file in the repository to decide whether it is due, so its
+trigger belongs in GitHub. These two read nothing from the repository.
+Mark agreed on 12 October to move them.
+
+- [x] Add a Cloud Scheduler job for each, in Terraform beside the admin
+      job in `infra/main.tf`: one that runs the admin job with
+      `ADMIN_ACTION=apply-retention` and `RETENTION_APPLY=true` at 03:30
+      UTC, and one with `ADMIN_ACTION=send-teaching-reminders` and
+      `REMINDERS_APPLY=true` at 07:00 UTC. Each calls the Cloud Run Admin
+      API to run the job with those values as overrides for that one
+      execution. Enable the Cloud Scheduler API if the project does not
+      have it.
+
+      The reasons: GitHub's schedule is best-effort, and a run can start
+      late or be dropped, and scheduled workflows are switched off in a
+      repository with no activity for 60 days. The EoEETA agreement says a
+      delegate is told "automatically" when a pass is due to be repeated.
+
+- [x] Give the scheduler a service account of its own in
+      `infra/runtime-identities.tf`, allowed to run the admin job with
+      overrides and nothing else. The workflows sign in as the deploy
+      service account, which can do far more than start one job.
+
+- [x] Alert when a run fails, through `infra/modules/monitoring/`, on the
+      same channels as the other alerts. A failed scheduled workflow only
+      emails whoever last edited the file. The reminders action already
+      exits 1 when any email could not be sent, so a failed execution is
+      the signal.
+
+- [x] Take the `schedule:` trigger out of `.github/workflows/retention.yml`
+      and `.github/workflows/teaching-reminders.yml`, and keep
+      `workflow_dispatch`. They stay as the button for a report by hand,
+      which is how the counts are checked before a first real run. Rewrite
+      each file's header to say so.
+
+- [x] Do the two halves in one deploy order that never runs a job twice
+      in a night or not at all: add the scheduler jobs and merge, check
+      the first scheduled execution in the Cloud Run console, and only
+      then remove the GitHub schedules. Both actions are safe to run
+      twice: retention deletes what is already past its period, and each
+      reminder is recorded as it is sent.
+
+- [x] The app does not change. The actions, their report-unless-told
+      default and their tests stay as they are.
+
+- [x] Leave `accessibility-review.yml` where it is.
+
+## Phase 21: Check whether an attempt is closed when its time runs out
+
+- [x] Check whether another plan has already fixed this before doing
+      anything here. Mark thought on 12 October that it may be in hand in
+      another worktree, and it is. Three pull requests were open that day,
+      from other worktrees: #1845 "Attempts: finish an attempt when its
+      time runs out", #1847 "Attempts: submit the assessment when the
+      clock reaches zero", and #1857 "Exam: finish an attempt whose time
+      ran out and nobody came back to".
+
+      What was found while building the reminders, for the record: on
+      `main` an attempt was finished in one place only, the step the
+      browser calls when somebody ends an exam, including when they leave
+      it. Nothing on the server closed an attempt when its time ran out;
+      it only refused further answers. So an attempt whose tab was closed
+      before the browser could finish it stayed open for ever, with no
+      result.
+
+- [x] Nothing to build here. Once those merge, an attempt that runs out
+      of time is finished and scored, so it counts as completed and the
+      enrolment reminders in Phase 14 stop for that person without any
+      change to them: they stop on a finished attempt, pass or fail.
+
+## Phase 22: Keep a closed account's records for the sponsor's period
+
+The first step, recording when an account closes, is Phase 16 above and
+is done. This is the rest: the period, the deleting and what the privacy
+policy says about both.
 
 - [ ] Keep an EoEETA delegate's records for three and a half years after
       their account closes, then delete them. Mark's decision on 11
@@ -482,7 +717,7 @@ ahead of Phases 1 to 11, which are untouched.
 
 - [ ] The policy is still version 1.0 and unpublished, so it is corrected
       in place; add a dated sentence to `docs/docs/legal/index.md`, as
-      Phase 3 does, and say there that sponsors have subsections.
+      Phase 5 does, and say there that sponsors have subsections.
 
 - [ ] The EoEETA agreement does not contradict this, and does not ask for
       it. It gives no period for one delegate's records. Clause 5 has
@@ -497,11 +732,11 @@ ahead of Phases 1 to 11, which are untouched.
       request, and decide what deleting a closed account means once there
       are accounts with no sponsor.
 
-## Phase 17: Give EoEETA its own part of the privacy policy and terms
+## Phase 23: Give EoEETA its own part of the privacy policy and terms
 
 Mark's decision on 11 October: somebody who reaches Quill through a
 sponsor, and not directly, needs that sponsor's details set out. EoEETA is
-the first. Phase 16 adds the retention period; this phase gathers the rest
+the first. Phase 22 adds the retention period; this phase gathers the rest
 so the subsection is written once, whole.
 
 - [ ] Write the EoEETA subsection of `docs/docs/legal/privacy-policy.md`,
@@ -513,7 +748,7 @@ so the subsection is written once, whole.
         at Norfolk and Norwich University Hospitals NHS Foundation Trust,
         the controller of a delegate's training records.
       - **How long records are kept** - three and a half years after the
-        account is closed or deactivated (Phase 16).
+        account is closed or deactivated (Phase 22).
       - **How long a pass lasts** - three years, and the delegate is told
         when it is due to be repeated (Phase 15, and the agreement's
         schedule).
@@ -528,14 +763,14 @@ so the subsection is written once, whole.
       through a sponsor". It carries what a delegate is told to expect:
       the three-year pass and its notice (beside clause 11.1), that a
       failed attempt can be repeated at once, which the agreement says
-      and which is why clause 7.2 lost its attempt limits in Phase 13,
+      and which is why clause 7.2 lost its attempt limits in Phase 2,
       and the retention period (beside clause 22).
 
 - [ ] Do not put the agreement's commercial terms in either document:
       fees, user numbers and the subscription term are between EoEETA and
       Bailey Medics.
 
-- [ ] Do this phase after Phases 14 to 16 are built, not before. The
+- [ ] Do this phase after Phases 14, 15 and 22 are built, not before. The
       review that started this plan found a policy promising things no
       code did; a subsection written ahead of the code would repeat that.
       If the documents must be published first, leave out any line whose
@@ -545,231 +780,15 @@ so the subsection is written once, whole.
       They describe its instructions as controller, so it should have
       seen them.
 
-## Phase 18: Stop a stacked pull request merging into the branch below
-
-On 11 October fourteen pull requests of one stack were merged and none
-reached `main`. Each was based on the branch below it, and a merge goes
-into the base. Only the bottom four went through the merge queue, which
-exists for `main` alone; the rest were merged directly, eight of them
-within seven seconds, into feature branches that no ruleset protects.
-Pull request #1808 carried the work to `main` afterwards.
-
-- [x] Make it impossible, in `infra/github/`. Two settings together:
-
-      - **Allow merge commits only.** Set `allow_squash_merge` and
-        `allow_rebase_merge` to false on the repository, in
-        `security.tf`. Every merge into `main` is already a merge commit:
-        the queue's `merge_method` is `MERGE`.
-      - **Require linear history on every branch but `main`.** Add
-        `required_linear_history` to the `branch_naming` ruleset in
-        `branch_rules.tf`, which already targets all branches except
-        `main` and the merge queue's own.
-
-      A branch that must stay linear refuses a merge commit, and with the
-      other two methods switched off there is no way left to merge a pull
-      request into a feature branch. Pushing and force-pushing a stack is
-      unaffected, because a stack's branches hold one commit each and are
-      rebased, never merged.
-
-      Built behind a variable, `block_merges_into_feature_branches`,
-      which is false: with it off nothing changes. One doubt could not be
-      settled by reading. Every feature branch inherits `main`'s merge
-      commits, and if GitHub counts those against linear history the
-      rule would refuse every push. So it is switched on by hand, tried,
-      and switched off again if a push is refused, as the next step sets
-      out.
-
-      A required check was considered and will not do it: a check only
-      blocks a merge where a ruleset requires it, and a ruleset strict
-      enough to require one on a feature branch also refuses the pushes a
-      stack is made of.
-
-- [ ] Prove it before relying on it. This has not been tried here. After
-      `just terraform-github`, make two throwaway branches, open a pull
-      request from one into the other, and confirm GitHub offers no merge.
-      Then confirm `just stack-submit` still pushes a stack. If the rule
-      does not block the merge, take it out again and keep the alarm
-      below as the only guard.
-
-- [x] Check nothing merges `main` into a feature branch. `just rebase`
-      and the stack recipes rebase; Renovate must be set to rebase too, or
-      its branches will be refused. Read `renovate.json` for
-      `rebaseWhen` and any `automergeType` before applying.
-      Checked: `renovate.json` sets `rebaseWhen` to `never` and
-      `automerge` to false throughout, so Renovate never merges `main`
-      into its branches.
-
-- [x] Add an alarm for whatever slips through: a small workflow on
-      `pull_request: closed` that posts to Slack, through
-      `slack-notify.yml`, when a pull request was merged and its base was
-      not `main`. Say in the message that the work has not reached `main`
-      and name the pull request. Fourteen merges went unnoticed for about
-      ten minutes, and only because somebody asked.
-
-- [x] Update the "Traps" section of `docs/docs/cicd/stacked-branches.md`
-      with this one, and the rule that follows from it: only the bottom of
-      a stack is merged, and `just stack-sync` is what brings the next
-      branch down to `main`.
-
-## Phase 19: Say whether a page is public in one place
-
-Mark asked on 12 October why a public page needs two things: no
-`RequireAuth` on its route, and its path on the guest list in
-`frontend/src/lib/api.ts`. There was no good reason. Phase 8 added a test
-that the two agree; this phase removes the second, so there is nothing to
-agree.
-
-- [x] Stop the API client navigating. On a 401 that the silent refresh
-      does not fix, `request` in `frontend/src/lib/api.ts` fires
-      `UNAUTHENTICATED_EVENT` on `window` and throws. It used to call
-      `window.location.assign("/login")` unless the page was on the guest
-      list. The list, `GUEST_PATHS`, and `isGuestPath` are deleted.
-
-      Two designs were weighed. The other was to mark public routes and
-      have the client ask the router about them, which keeps one list but
-      leaves the client deciding where the browser goes and ties it to the
-      router. Making requests is the client's job and navigation is the
-      router's, and the list only existed because the client did both.
-
-- [x] Have `AuthProvider` listen for the event and put the state in
-      `unauthenticated`. `RequireAuth` already sends an unauthenticated
-      visitor to `/login`, passing the page they were on. A route with no
-      guard does nothing, which is right: somebody on a public page whose
-      session runs out carries on reading. A state that is already
-      unauthenticated is left as it is, so the `loggedOut` mark from an
-      explicit logout survives a late 401.
-
-- [x] Replace Phase 8's test in `frontend/src/routes.test.ts`. What can
-      still go wrong is leaving a guard off, which fails open. Every
-      top-level route must be behind `RequireAuth`, behind `GuestOnly`, or
-      named in the test as open to anybody, with its reason. A name with
-      no route behind it fails too.
-
-- [x] Test the three together in `frontend/src/auth/AuthContext.test.tsx`,
-      with the real provider and the real guard: a guarded page goes to
-      `/login` and remembers itself, a public page stays, and a logout is
-      not forgotten.
-
-- [x] Rewrite the section of `docs/docs/frontend/sessions-and-requests.md`
-      that described the two-place rule.
-
-One behaviour changes that somebody might notice. A signed-out visitor to
-an address nothing matches used to be sent to `/login`, because the 404
-page was not on the guest list. They now see the 404 page.
-
-## Phase 20: Check whether an attempt is closed when its time runs out
-
-- [ ] Check whether another plan has already fixed this before doing
-      anything here. Mark thought on 12 October that it may be in hand in
-      another worktree. Look for it in the newer plans and in
-      `backend/app/features/teaching/attempts.py` on `main`.
-
-      What was found while building the reminders: an attempt is finished
-      in one place only, the step the browser calls when somebody ends an
-      exam, including when they leave it. Nothing on the server closes an
-      attempt when its time runs out. The server only refuses further
-      answers. So an attempt whose tab was closed, or whose connection was
-      lost, before the browser could finish it stays open for ever, with
-      no result.
-
-- [ ] If it is not fixed elsewhere, decide whether the server should
-      close such an attempt once its time has passed, scoring what was
-      answered, and build it as its own unit. It is a change to how
-      attempts work, not to reminders.
-
-      Until then the reminders treat that person as not having done the
-      assessment, and keep reminding them up to the module's limit. That
-      is right as far as it goes: they have no result.
-
-## Phase 21: Start the nightly jobs from Cloud Scheduler, not GitHub
-
-Retention (Phase 12) and the teaching reminders (Phases 14 and 15) are
-each started by a scheduled GitHub workflow that runs an action on the
-admin Cloud Run job. That copied `accessibility-review.yml`, which reads a
-date from a file in the repository to decide whether it is due, so its
-trigger belongs in GitHub. These two read nothing from the repository.
-Mark agreed on 12 October to move them.
-
-- [x] Add a Cloud Scheduler job for each, in Terraform beside the admin
-      job in `infra/main.tf`: one that runs the admin job with
-      `ADMIN_ACTION=apply-retention` and `RETENTION_APPLY=true` at 03:30
-      UTC, and one with `ADMIN_ACTION=send-teaching-reminders` and
-      `REMINDERS_APPLY=true` at 07:00 UTC. Each calls the Cloud Run Admin
-      API to run the job with those values as overrides for that one
-      execution. Enable the Cloud Scheduler API if the project does not
-      have it.
-
-      The reasons: GitHub's schedule is best-effort, and a run can start
-      late or be dropped, and scheduled workflows are switched off in a
-      repository with no activity for 60 days. The EoEETA agreement says a
-      delegate is told "automatically" when a pass is due to be repeated.
-
-- [x] Give the scheduler a service account of its own in
-      `infra/runtime-identities.tf`, allowed to run the admin job with
-      overrides and nothing else. The workflows sign in as the deploy
-      service account, which can do far more than start one job.
-
-- [x] Alert when a run fails, through `infra/modules/monitoring/`, on the
-      same channels as the other alerts. A failed scheduled workflow only
-      emails whoever last edited the file. The reminders action already
-      exits 1 when any email could not be sent, so a failed execution is
-      the signal.
-
-- [x] Take the `schedule:` trigger out of `.github/workflows/retention.yml`
-      and `.github/workflows/teaching-reminders.yml`, and keep
-      `workflow_dispatch`. They stay as the button for a report by hand,
-      which is how the counts are checked before a first real run. Rewrite
-      each file's header to say so.
-
-- [x] Do the two halves in one deploy order that never runs a job twice
-      in a night or not at all: add the scheduler jobs and merge, check
-      the first scheduled execution in the Cloud Run console, and only
-      then remove the GitHub schedules. Both actions are safe to run
-      twice: retention deletes what is already past its period, and each
-      reminder is recorded as it is sent.
-
-- [x] The app does not change. The actions, their report-unless-told
-      default and their tests stay as they are.
-
-- [x] Leave `accessibility-review.yml` where it is.
-
-## Phase 22: Stop the stack display showing a failure GitHub has replaced
-
-- [x] Fix `best_conclusion_per_check` in `scripts/stack-status.py`. Found
-      on 12 October: `just stack-watch` showed a red cross in the heavy
-      column for ten pull requests whose checks were all green on GitHub.
-
-      The cause is one check, "Storybook interaction tests", the job that
-      sums up the three Storybook legs. A stack is pushed twice in quick
-      succession when it is landed, CI's concurrency rule cancels the
-      older run, and in that cancelled run the legs report `CANCELLED`
-      while the summing-up job reports `FAILURE`, because the legs it
-      waited for did not pass. The script already drops a `CANCELLED`
-      entry that a later run replaced. It does not drop that `FAILURE`,
-      so one failing entry from a dead run outranks the `SUCCESS` from the
-      live one. GitHub shows only the newest run of each check, which is
-      why it is green there.
-
-- [x] Decide by run, not by entry: where a check has entries from more
-      than one run, an entry from a run that a later run replaced does not
-      count. `detailsUrl` carries the run id and `startedAt` orders them.
-      Keep what the existing comments protect: a draft's skipped heavy
-      tier must not hide a later real result, and a cancellation with
-      nothing to replace it is still a failure.
-
-- [x] Add the case to `scripts/tests/stack-status.bats`, from the real
-      entries on #1829: skipped, then failed in a cancelled run, then
-      passed.
-
 ## Decisions
 
 - **The code changes to keep the policy's promises, not the other way
-  round** - in Phases 2 and 4 the choice was between describing what the
+  round** - in Phases 4 and 6 the choice was between describing what the
   code does and changing the code to match what the policy says. A privacy
   policy is a promise, and where a small code change keeps it, that is
   better than an exception the policy then has to carry.
 
-- **Server logs are not in Phase 12** - the policy gives them 30 days,
+- **Server logs are not in Phase 1** - the policy gives them 30 days,
   which is Cloud Logging's own default for a project. No Terraform pins
   it, so it holds only as long as nobody changes the default.
 
@@ -777,4 +796,4 @@ Mark agreed on 12 October to move them.
   messaging both need reasons that are recorded nowhere: why the role
   gate survives, and why a message body is kept in both FHIR and SQL.
   They wait for Mark's account, and the first also waits on the `todo.md`
-  item in Phase 1.
+  item in Phase 3.
