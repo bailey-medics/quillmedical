@@ -123,7 +123,7 @@
 .husky/pre-commit	6488e6c35b03de1f0a9629bd1d80093016a0dddf	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .pre-commit-config.yaml	b01db3d064c4a1545ef60edc741faeff8a1316a3	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .zap/rules.tsv	0eda966020905b57d3d630384620c1c23b58898c	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
-Justfile	e1d8bb68ab695a829da610be1c80f7894ced7a87	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
+Justfile	d29b34929ad2c3ef91f006fbbdefd59cf222d4f7	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/alembic/env.py	c0fcceae82c039152024664139d465a74232f695	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/app/analytics/__init__.py	8815c4b87633c427bb041944b1ad9b666eb4dc8c	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/app/analytics/router.py	829ac20be72dd74f5578f6e14d5e0032feb3ad5b	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
@@ -158,4 +158,5 @@ backend/app/email/templates/teaching_certificate.html.j2	9055f66f56fbebf32c93824
 compose.ci.yml	561afb40ea241763e3eaba81cadd4a22652d9ea9	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
 compose.dev.yml	b9834fc728e8f5e89376a1f95b38e5a325eb1ae8	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
 compose.migrate.yml	d891e933f381712e478ebc4b1651b7effd9b6a57	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
+compose.unit-tests.yml	0e81074a645f55daa3228e957e90d0a13cc34896	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
 scripts/check-python-version.sh	e9ba5acc38524cdd3b8c10fdd371c2e9771ce114	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
