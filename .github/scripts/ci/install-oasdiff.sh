@@ -22,8 +22,8 @@ work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
 
 log "Downloading oasdiff v${OASDIFF_VERSION} for ${OS}/${ARCH}..."
-curl -fsSL -o "$work_dir/$archive" "$base_url/$archive"
-curl -fsSL -o "$work_dir/checksums.txt" "$base_url/checksums.txt"
+curl -fsSL --retry 1 --retry-delay 30 -o "$work_dir/$archive" "$base_url/$archive"
+curl -fsSL --retry 1 --retry-delay 30 -o "$work_dir/checksums.txt" "$base_url/checksums.txt"
 
 log "Verifying checksum against oasdiff's published checksums.txt..."
 if ! (cd "$work_dir" && grep " ${archive}\$" checksums.txt | sha256sum -c -); then

@@ -98,7 +98,7 @@ jobs:
         run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Pull Playwright image
-        run: docker pull "mcr.microsoft.com/playwright:v${{ steps.playwright_version.outputs.version }}-noble"
+        run: bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" docker pull "mcr.microsoft.com/playwright:v${{ steps.playwright_version.outputs.version }}-noble"
 
       # --network host so localhost is the CI stack. The runner's own user,
       # so what it writes stays readable by the upload step.

@@ -66,12 +66,12 @@ runs:
       if: inputs.install-backend-deps == 'true'
       shell: bash
       run: |
-        python -m pip install -U pip
-        python -m pip install "poetry==$(cat .poetry-version)"
+        bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" python -m pip install -U pip
+        bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" python -m pip install "poetry==$(cat .poetry-version)"
         poetry config virtualenvs.in-project true
 
     - name: Install backend deps
       if: inputs.install-backend-deps == 'true'
       shell: bash
       working-directory: backend
-      run: poetry install --with dev --no-interaction --no-ansi
+      run: bash "${GITHUB_WORKSPACE}/.github/scripts/shared/retry-once.sh" poetry install --with dev --no-interaction --no-ansi

@@ -30,8 +30,8 @@ work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
 
 log "Downloading actionlint v${ACTIONLINT_VERSION} for ${OS}/${ARCH}..."
-curl -fsSL -o "$work_dir/$archive" "$base_url/$archive"
-curl -fsSL -o "$work_dir/$checksums" "$base_url/$checksums"
+curl -fsSL --retry 1 --retry-delay 30 -o "$work_dir/$archive" "$base_url/$archive"
+curl -fsSL --retry 1 --retry-delay 30 -o "$work_dir/$checksums" "$base_url/$checksums"
 
 log "Verifying checksum against actionlint's published checksums..."
 if ! (cd "$work_dir" && grep " ${archive}\$" "$checksums" | sha256sum -c -); then
