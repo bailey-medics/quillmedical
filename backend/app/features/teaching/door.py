@@ -27,6 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.deps import DEP_CURRENT_USER, DEP_REQUIRE_CSRF, get_current_user
 from app.features.gating import user_has_feature
 from app.features.teaching import access
 from app.features.teaching import enrolment as enrolments
@@ -36,10 +37,7 @@ from app.features.teaching.models import (
     QuestionBankOrgStatus,
 )
 from app.features.teaching.router import (
-    _DEP_REQUIRE_CSRF,
     _DEP_SESSION,
-    _DEP_USER,
-    _get_current_user,
 )
 from app.features.teaching.schemas import (
     AdmitIn,
@@ -66,7 +64,7 @@ def require_runs_teaching(
     Anybody else needs the teaching feature at one of their
     organisations and the competency. 403 for the rest.
     """
-    user = _get_current_user(request, db)
+    user = get_current_user(request, db)
 
     if user.platform_role == "superadmin":
         return user
@@ -140,13 +138,13 @@ def _require_may_change(caller: User, person: User) -> None:
 @door_router.post(
     "/{unit_id}/members/{user_id}/admit",
     response_model=AdmitOut,
-    dependencies=[_DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CSRF],
 )
 def admit_member(
     unit_id: int,
     user_id: int,
     body: AdmitIn,
-    current_user: User = _DEP_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> AdmitOut:
     """Give a member everything needed to take modules at this org_unit.
@@ -204,7 +202,7 @@ def admit_member(
 def member_access(
     unit_id: int,
     user_id: int,
-    current_user: User = _DEP_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> MemberAccessOut:
     """Say, for each module served here, whether a member may enter it.
@@ -274,13 +272,13 @@ def member_access(
 @door_router.post(
     "/{unit_id}/members/{user_id}/unenrol",
     response_model=WithdrawOut,
-    dependencies=[_DEP_REQUIRE_CSRF],
+    dependencies=[DEP_REQUIRE_CSRF],
 )
 def unenrol_member(
     unit_id: int,
     user_id: int,
     body: UnenrolIn,
-    current_user: User = _DEP_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> WithdrawOut:
     """End a member's enrolment on one module.
@@ -318,7 +316,7 @@ def unenrol_member(
 )
 def modules_served_at(
     unit_id: int,
-    current_user: User = _DEP_USER,
+    current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> ServedModulesOut:
     """List the modules the organisation above an org_unit serves.

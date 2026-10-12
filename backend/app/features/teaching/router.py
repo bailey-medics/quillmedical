@@ -25,7 +25,11 @@ from sqlalchemy.orm import Session
 
 from app.cbac.positions import clinical_leads_of
 from app.db import get_core_db
-from app.deps import has_competency
+from app.deps import (
+    DEP_CURRENT_USER,
+    DEP_REQUIRE_CSRF,
+    has_competency,
+)
 from app.features.gating import requires_feature
 from app.features.teaching.access import (
     MODULES_COMPETENCY,
@@ -168,27 +172,6 @@ teaching_router = APIRouter(
 _DEP_SESSION = Depends(get_core_db)
 
 
-def _get_current_user(request: Request, db: Session = _DEP_SESSION) -> User:
-    """Resolve authenticated user (lazy import to avoid circular dep)."""
-    from app.deps import get_current_user
-
-    return get_current_user(request, db)
-
-
-def _require_csrf(request: Request, db: Session = _DEP_SESSION) -> None:
-    """Validate the CSRF token, lazily as above.
-
-    ``main`` imports this router, so importing ``require_csrf`` at module
-    scope would be circular - the same reason ``_get_current_user``
-    exists in this shape.
-    """
-    from app.deps import require_csrf
-
-    require_csrf(request, _get_current_user(request, db))
-
-
-_DEP_USER = Depends(_get_current_user)
-_DEP_REQUIRE_CSRF = Depends(_require_csrf)
 # The two doors a learner goes through. Every learner route carries one
 # of them at its decorator, and `tests/teaching_learner_gates_test.py`
 # fails if a route is added with neither.
@@ -383,7 +366,7 @@ def _build_candidate_item(
     response_model=list[QuestionBankOut],
 )
 def list_question_banks(
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> list[dict[str, Any]]:
     """List question bank configs visible to the user.
@@ -408,7 +391,7 @@ def list_question_banks(
 )
 def get_question_bank(
     bank_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
     """Get full detail for a question bank config.
@@ -437,7 +420,7 @@ def get_question_bank(
 )
 def get_learning_content(
     module_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
     """Get parsed learning slides for a module.
@@ -468,7 +451,7 @@ def get_learning_content(
     response_model=list[LearningModuleOut],
 )
 def list_learning_modules(
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> list[dict[str, Any]]:
     """List the modules with learning content that the user may see.
@@ -495,9 +478,9 @@ def grant_video_access(
     request: Request,
     module_id: str,
     response: Response,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
-    __: None = _DEP_REQUIRE_CSRF,
+    __: User = DEP_REQUIRE_CSRF,
 ) -> VideoAccessOut:
     """Mint a Cloud CDN cookie for one module's video.
 
@@ -613,12 +596,12 @@ def grant_video_access(
 
 @teaching_router.post(
     "/assessments",
-    dependencies=[_DEP_MODULES, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MODULES, DEP_REQUIRE_CSRF],
     response_model=AssessmentWithFirstItem,
 )
 def start_assessment(
     body: StartAssessmentIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
     """Start a new assessment for the current user.
@@ -667,7 +650,7 @@ def start_assessment(
     response_model=list[AssessmentHistoryOut],
 )
 def assessment_history(
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> list[AssessmentHistoryOut]:
     """List the current user's past assessments."""
@@ -710,7 +693,7 @@ def assessment_history(
 )
 def get_assessment(
     assessment_id: int,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> AssessmentOut:
     """Get assessment state.
@@ -792,7 +775,7 @@ def image_label(
 )
 def get_assessment_question_results(
     assessment_id: int,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> AssessmentQuestionResultsOut:
     """A finished attempt's answers, right and wrong, by question number.
@@ -813,7 +796,7 @@ def get_assessment_question_results(
 )
 def get_current_item(
     assessment_id: int,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> CandidateItemOut | None:
     """Get the next unanswered item (for resuming after disconnect).
@@ -842,7 +825,7 @@ def get_current_item(
 def get_item_by_order(
     assessment_id: int,
     display_order: int,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> CandidateItemOut:
     """Get a specific item by display order (for navigating back).
@@ -862,13 +845,13 @@ def get_item_by_order(
 
 @teaching_router.post(
     "/assessments/{assessment_id}/answer",
-    dependencies=[_DEP_MODULES, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MODULES, DEP_REQUIRE_CSRF],
     response_model=AnswerResultOut,
 )
 def submit_answer(
     assessment_id: int,
     body: SubmitAnswerIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
     """Submit an answer, score it, and return the next item.
@@ -901,14 +884,14 @@ def submit_answer(
 
 @teaching_router.put(
     "/assessments/{assessment_id}/answer/{answer_id}",
-    dependencies=[_DEP_MODULES, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MODULES, DEP_REQUIRE_CSRF],
     response_model=CandidateItemOut,
 )
 def update_answer(
     assessment_id: int,
     answer_id: int,
     body: SubmitAnswerIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> CandidateItemOut:
     """Update an already-answered item (before assessment completion).
@@ -1144,13 +1127,13 @@ def _maybe_enqueue_certificate_emails(
 
 @teaching_router.post(
     "/assessments/{assessment_id}/complete",
-    dependencies=[_DEP_MODULES, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MODULES, DEP_REQUIRE_CSRF],
     response_model=CompletionResultOut,
 )
 def complete_assessment(
     assessment_id: int,
     background_tasks: BackgroundTasks,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
     """Finalise the assessment and compute aggregate scores.
@@ -1206,7 +1189,7 @@ def complete_assessment(
 )
 def download_certificate(
     assessment_id: int,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> Response:
     """Generate and return a PDF certificate for a passed assessment.
@@ -1253,7 +1236,7 @@ _DEP_MANAGE = Depends(has_competency("manage_teaching"))
 )
 def list_items(
     question_bank_id: str | None = None,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> list[QuestionBankItem]:
     """List items in the org's question bank (educator only)."""
@@ -1362,11 +1345,11 @@ def _build_image_inventory(
 @teaching_router.post(
     "/items/validate",
     response_model=ValidationResultOut,
-    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MANAGE, DEP_REQUIRE_CSRF],
 )
 def validate_items(
     body: dict[str, str],
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> ValidationResultOut:
     """Dry-run validation of a question bank (no import).
@@ -1395,11 +1378,11 @@ def validate_items(
 @teaching_router.post(
     "/items/sync",
     response_model=SyncResultOut,
-    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MANAGE, DEP_REQUIRE_CSRF],
 )
 def sync_items(
     body: dict[str, str],
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> QuestionBankSync:
     """Trigger sync from filesystem/GCS to database.
@@ -1433,7 +1416,7 @@ def sync_items(
 )
 def list_results(
     question_bank_id: str | None = None,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> list[Assessment]:
     """List all assessment results for the educator's org."""
@@ -1454,12 +1437,12 @@ def list_results(
 @teaching_router.post(
     "/admin/modules/{module_id}/media/upload-url",
     response_model=MediaUploadUrlOut,
-    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MANAGE, DEP_REQUIRE_CSRF],
 )
 def create_media_upload_url(
     module_id: str,
     body: MediaUploadUrlIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> MediaUploadUrlOut:
     """Mint a resumable upload URL for one media file.
@@ -1555,7 +1538,7 @@ def create_media_upload_url(
 )
 def get_module_media(
     module_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> ModuleMediaOut:
     """What media this module references, and which of it is present.
@@ -1615,13 +1598,13 @@ def get_module_media(
 @teaching_router.post(
     "/admin/modules/{module_id}/media/{media_key}/link",
     response_model=MediaAssetOut,
-    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MANAGE, DEP_REQUIRE_CSRF],
 )
 def link_module_media(
     module_id: str,
     media_key: str,
     body: MediaLinkIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> MediaAssetOut:
     """Attach an uploaded asset to an MDX reference.
@@ -1668,12 +1651,12 @@ def link_module_media(
 @teaching_router.delete(
     "/admin/modules/{module_id}/media/{media_key}/link",
     status_code=204,
-    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MANAGE, DEP_REQUIRE_CSRF],
 )
 def unlink_module_media(
     module_id: str,
     media_key: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> Response:
     """Detach a reference from its asset, keeping the file.
@@ -1719,7 +1702,7 @@ def unlink_module_media(
     dependencies=[_DEP_MANAGE],
 )
 def list_syncs(
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> list[QuestionBankSync]:
     """List sync history for the educator's org."""
@@ -1748,7 +1731,7 @@ def list_syncs(
     dependencies=[_DEP_MANAGE],
 )
 def list_delegate_modules(
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> list[DelegateModuleOut]:
     """The modules with an assessment that the caller's organisations serve.
@@ -1776,7 +1759,7 @@ def list_delegate_modules(
 )
 def list_delegates(
     bank_id: str | None = Query(default=None, min_length=1, max_length=255),
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> list[DelegateOut]:
     """List all delegates with access to the caller's org(s).
@@ -1813,7 +1796,7 @@ def list_delegates(
     dependencies=[_DEP_MANAGE],
 )
 def list_admin_banks(
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> list[AdminBankOut]:
     """List all teaching modules (from DB + GCS).
@@ -1830,10 +1813,10 @@ def list_admin_banks(
 @teaching_router.post(
     "/admin/sync-all",
     response_model=SyncAllResultOut,
-    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MANAGE, DEP_REQUIRE_CSRF],
 )
 def sync_all_banks(
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> dict[str, Any]:
     """Sync all question banks from GCS (or local filesystem).
@@ -1857,11 +1840,11 @@ def sync_all_banks(
 @teaching_router.put(
     "/settings",
     response_model=TeachingOrgSettingsOut,
-    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MANAGE, DEP_REQUIRE_CSRF],
 )
 def update_settings(
     body: TeachingOrgSettingsIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> TeachingOrgSettings:
     """Update teaching settings for the educator's org."""
@@ -1903,7 +1886,7 @@ def update_settings(
     dependencies=[_DEP_MANAGE],
 )
 def get_settings(
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> TeachingOrgSettings:
     """Return teaching settings for the educator's organisation."""
@@ -1931,7 +1914,7 @@ def get_settings(
 )
 def get_admin_bank_detail(
     bank_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> AdminBankDetailOut:
     """Return detailed admin view of a single question bank.
@@ -1950,7 +1933,7 @@ def get_admin_bank_detail(
 )
 def list_bank_organisations(
     bank_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> list[BankOrgRow]:
     """List all organisations with teaching enabled and their status for this bank.
@@ -2062,13 +2045,13 @@ def _promote_bank_version(
 @teaching_router.put(
     "/admin/banks/{bank_id}/org-units/{org_unit_id}/settings",
     response_model=QuestionBankOrgSettingsOut,
-    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MANAGE, DEP_REQUIRE_CSRF],
 )
 def update_bank_org_unit_settings(
     bank_id: str,
     org_unit_id: int,
     body: QuestionBankOrgSettingsIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> QuestionBankOrgSettingsOut:
     """Set a bank live or closed for an org_unit.
@@ -2082,13 +2065,13 @@ def update_bank_org_unit_settings(
 @teaching_router.put(
     "/admin/banks/{bank_id}/org-units/{org_unit_id}/active-version",
     response_model=PromoteBankVersionOut,
-    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MANAGE, DEP_REQUIRE_CSRF],
 )
 def promote_bank_version_at_org_unit(
     bank_id: str,
     org_unit_id: int,
     body: PromoteBankVersionIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> PromoteBankVersionOut:
     """Move which version an org_unit's candidates receive.
@@ -2203,13 +2186,13 @@ def _update_bank_org_settings(
 @teaching_router.put(
     "/admin/modules/{module_id}/media/{asset_id}/content",
     status_code=204,
-    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MANAGE, DEP_REQUIRE_CSRF],
 )
 async def upload_media_content_locally(
     module_id: str,
     asset_id: str,
     request: Request,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> Response:
     """Receive an uploaded video and write it to disk. Development only.
@@ -2292,12 +2275,12 @@ async def upload_media_content_locally(
 @teaching_router.delete(
     "/admin/modules/{module_id}/media/{asset_id}",
     status_code=204,
-    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MANAGE, DEP_REQUIRE_CSRF],
 )
 def delete_media_asset(
     module_id: str,
     asset_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> Response:
     """Remove an uploaded asset and its link. The destructive one.
@@ -2333,7 +2316,7 @@ def delete_media_asset(
 def get_media_captions(
     module_id: str,
     asset_id: str,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> CaptionsOut:
     """The current WebVTT for one asset, for the admin editor.
@@ -2374,13 +2357,13 @@ def get_media_captions(
 @teaching_router.put(
     "/admin/modules/{module_id}/media/{asset_id}/captions",
     response_model=CaptionsOut,
-    dependencies=[_DEP_MANAGE, _DEP_REQUIRE_CSRF],
+    dependencies=[_DEP_MANAGE, DEP_REQUIRE_CSRF],
 )
 def put_media_captions(
     module_id: str,
     asset_id: str,
     body: CaptionsIn,
-    user: User = _DEP_USER,
+    user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> CaptionsOut:
     """Replace one asset's WebVTT with corrected text.
