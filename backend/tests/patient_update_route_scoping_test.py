@@ -32,8 +32,8 @@ OWN_PATIENT = "made-up-own"
 OTHER_PATIENT = "made-up-other"
 NOWHERE_PATIENT = "made-up-nowhere"
 
-READ = "app.main.read_fhir_patient"
-UPDATE = "app.main.update_fhir_patient"
+READ = "app.patients.router.read_fhir_patient"
+UPDATE = "app.patients.router.update_fhir_patient"
 
 CHANGES = {
     "given_name": "Given",

@@ -101,7 +101,7 @@ class TestFhirClientErrorHandler:
         from app.fhir_client import FhirClientError
 
         with patch(
-            "app.main.list_fhir_patients",
+            "app.patients.router.list_fhir_patients",
             side_effect=FhirClientError("Failed to retrieve patient list"),
         ):
             response = authenticated_clinician_client.get("/api/patients")
@@ -113,7 +113,7 @@ class TestFhirClientErrorHandler:
 class TestPatientEndpoints:
     """Test patient-related endpoints with mocked FHIR client."""
 
-    @patch("app.main.list_fhir_patients")
+    @patch("app.patients.router.list_fhir_patients")
     def test_list_patients(
         self, mock_list, authenticated_clinician_client: TestClient
     ):
@@ -127,7 +127,7 @@ class TestPatientEndpoints:
         assert response.status_code == 200
         assert "patients" in response.json()
 
-    @patch("app.main.read_fhir_patient")
+    @patch("app.patients.router.read_fhir_patient")
     def test_get_patient_demographics(
         self, mock_read, authenticated_clinician_client: TestClient
     ):
@@ -140,7 +140,7 @@ class TestPatientEndpoints:
         assert response.status_code == 200
         assert "patient_id" in response.json()
 
-    @patch("app.main.update_fhir_patient")
+    @patch("app.patients.router.update_fhir_patient")
     def test_update_patient_demographics(
         self, mock_update, authenticated_clinician_client: TestClient
     ):
@@ -158,7 +158,7 @@ class TestPatientEndpoints:
         )
         assert response.status_code == 200
 
-    @patch("app.main.update_fhir_patient")
+    @patch("app.patients.router.update_fhir_patient")
     def test_update_patient_demographics_rejects_unknown_field(
         self, mock_update, authenticated_clinician_client: TestClient
     ):
@@ -179,7 +179,7 @@ class TestPatientEndpoints:
 class TestLetterEndpoints:
     """Test letter-related endpoints with mocked EHRbase client."""
 
-    @patch("app.main.list_letters_for_patient")
+    @patch("app.patients.router.list_letters_for_patient")
     def test_list_letters(
         self, mock_list, authenticated_clinician_client: TestClient
     ):
@@ -196,7 +196,7 @@ class TestLetterEndpoints:
         data = response.json()
         assert "letters" in data
 
-    @patch("app.main.list_letters_for_patient")
+    @patch("app.patients.router.list_letters_for_patient")
     def test_list_letters_error(
         self, mock_list, authenticated_clinician_client: TestClient
     ):
@@ -208,7 +208,7 @@ class TestLetterEndpoints:
         )
         assert response.status_code == 500
 
-    @patch("app.main.get_letter_composition")
+    @patch("app.patients.router.get_letter_composition")
     def test_get_letter(
         self, mock_get, authenticated_clinician_client: TestClient
     ):
@@ -226,7 +226,7 @@ class TestLetterEndpoints:
         data = response.json()
         assert data["composition_uid"] == "uid123"
 
-    @patch("app.main.get_letter_composition")
+    @patch("app.patients.router.get_letter_composition")
     def test_get_letter_not_found(
         self, mock_get, authenticated_clinician_client: TestClient
     ):
@@ -238,7 +238,7 @@ class TestLetterEndpoints:
         )
         assert response.status_code == 404
 
-    @patch("app.main.get_letter_composition")
+    @patch("app.patients.router.get_letter_composition")
     def test_get_letter_error(
         self, mock_get, authenticated_clinician_client: TestClient
     ):
@@ -275,7 +275,7 @@ class TestFailuresDoNotLeakExceptionText:
         def explode(*args: object, **kwargs: object) -> None:
             raise RuntimeError(self.LEAK)
 
-        monkeypatch.setattr("app.main.read_fhir_patient", explode)
+        monkeypatch.setattr("app.patients.router.read_fhir_patient", explode)
 
         resp = authenticated_client.get("/api/patients/abc123/demographics")
 
@@ -294,7 +294,7 @@ class TestFailuresDoNotLeakExceptionText:
         def explode(*args: object, **kwargs: object) -> None:
             raise RuntimeError(self.LEAK)
 
-        monkeypatch.setattr("app.main.read_fhir_patient", explode)
+        monkeypatch.setattr("app.patients.router.read_fhir_patient", explode)
 
         resp = authenticated_client.get("/api/patients/abc123/demographics")
 
