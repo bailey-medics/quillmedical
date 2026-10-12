@@ -346,13 +346,14 @@ resource "google_monitoring_alert_policy" "cloud_run_startup" {
 
 # ---------- Alert policy - a scheduled action failed ----------
 #
-# Retention and the teaching reminders run each day on a timer, with nobody
+# Retention and the teaching reminders run each day on a timer, and
+# finishing exams whose time has ended runs every five minutes, with nobody
 # watching (infra/scheduled-jobs.tf). A run that fails, or never starts,
 # would otherwise go unseen until somebody asked why no reminder had
 # arrived. Two ways to fail, both in the one condition below:
 #
 # - The action ran and said it could not finish. Matched on the words the
-#   two actions print when they fail, so a failed migration or smoke test
+#   three actions print when they fail, so a failed migration or smoke test
 #   on the same job, which the deploy already reports, does not raise this.
 # - Cloud Scheduler could not start the job at all: a permission taken
 #   away, the job renamed.
@@ -367,17 +368,21 @@ resource "google_monitoring_alert_policy" "scheduled_action" {
     mime_type = "text/markdown"
     subject   = "A scheduled action failed"
     content   = <<-EOT
-      One of the daily scheduled actions did not finish: deleting data past
-      its retention period, or sending the teaching reminders.
+      One of the scheduled actions did not finish: deleting data past its
+      retention period, sending the teaching reminders, or finishing the
+      teaching exams whose time has ended.
 
       **Nothing is lost.** Each is safe to run again and picks up what was
-      left: a reminder is recorded only once it has been sent, and
-      retention deletes only what is already past its period.
+      left: a reminder is recorded only once it has been sent, retention
+      deletes only what is already past its period, and an exam finished
+      late is still recorded as finished when its time ended. The exams
+      action runs again by itself within five minutes.
 
       Find out which and why in the job's logs. To run it again, use
       "Force run" on its job in Cloud Scheduler. For a report first, run
       the admin job by hand with the action's name and no apply flag: the
-      command is at the top of infra/scheduled-jobs.tf.
+      command is at the top of infra/scheduled-jobs.tf. The exams action
+      has no report.
 
       Logs: https://console.cloud.google.com/logs/query?project=$${project}
     EOT
@@ -397,7 +402,8 @@ resource "google_monitoring_alert_policy" "scheduled_action" {
           resource.labels.job_name = "${var.scheduled_job_name}"
           (textPayload =~ "Nothing was deleted"
             OR textPayload =~ "The reminders could not run"
-            OR textPayload =~ "could not be sent")
+            OR textPayload =~ "could not be sent"
+            OR textPayload =~ "could not be finished")
         )
         OR
         (

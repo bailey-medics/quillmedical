@@ -1946,14 +1946,21 @@ one new pull request on top.
       pull request that replaces it. Mark, on 12 October 2026: "delete
       the other PRs." Their branches are left as they are.
 
-- [ ] **A Cloud Scheduler entry that runs the action every five
+- [x] **A Cloud Scheduler entry that runs the action every five
       minutes, in `infra/scheduled-jobs.tf`.** That file comes with
       #1863, which was open in another worktree when this was written.
       If #1863 is on `main` when this phase is built, the entry goes
       in a pull request of its own at the top of the stack. If it is
       not, this step is left unticked and the run's report says so:
       until it lands an attempt is finished when its learner next
-      touches it, as Phase 7 left it.
+      touches it, as Phase 7 left it. Built on 12 October 2026, once
+      #1863 had merged, as a pull request of its own after the stack
+      above it had merged: the entry runs an action that has to be on
+      `main` first, or it would fail every five minutes. The alert
+      gained the words the action prints when it fails, "could not be
+      finished". Not validated on the machine it was written on, whose
+      Terraform is older than the repository requires: `terraform fmt`
+      is clean, and the plan on the pull request is the check.
 
       - **A sweep, and not a timer for each exam.** Booking one
         wake-up at each attempt's end (Cloud Tasks) runs nothing when
