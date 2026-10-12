@@ -14,6 +14,29 @@ inputs:
 runs:
   using: composite
   steps:
+    # .python-version names an exact version, and the runner's own Python
+    # is rarely that one. setup-python looks on the runner first and then
+    # downloads the version from GitHub's releases, on every job. That
+    # download returning 504 failed a merge queue run on 12 October 2026.
+    #
+    # So the installed Python is kept between runs. setup-python finds it
+    # where it would have unpacked it and downloads nothing. The runner
+    # image is in the key because the build is made for that image. A
+    # miss, or a cache that cannot be reached, falls through to the
+    # download as before.
+    - name: Read the Python version
+      id: python_version
+      shell: bash
+      run: |
+        echo "version=$(tr -d '[:space:]' < .python-version)" >> "$GITHUB_OUTPUT"
+        echo "image=${ImageOS:-unknown}" >> "$GITHUB_OUTPUT"
+
+    - name: Cache the installed Python
+      uses: actions/cache@v6.1.0
+      with:
+        path: ${{ runner.tool_cache }}/Python/${{ steps.python_version.outputs.version }}
+        key: python-install-${{ runner.os }}-${{ runner.arch }}-${{ steps.python_version.outputs.image }}-${{ steps.python_version.outputs.version }}
+
     - name: Set up Python
       uses: actions/setup-python@v7.0.0
       with:

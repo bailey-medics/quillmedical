@@ -424,10 +424,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
+      # The shared action, for the Python it keeps between runs. Without
+      # the backend's dependencies: see the next step.
       - name: Set up Python
-        uses: actions/setup-python@v7.0.0
+        uses: ./.github/actions/setup-python
         with:
-          python-version-file: .python-version
+          install-backend-deps: "false"
 
       # The validator needs pydantic and pyyaml and nothing else, so it
       # installs from the tooling package rather than the backend's lock.
@@ -575,24 +577,25 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
-      - uses: actions/setup-python@v7.0.0
-        id: setup_python
-        with:
-          python-version-file: .python-version
-
-      # The pipx venv is intentionally NOT cached: it symlinks into the ephemeral
-      # Python toolcache, and a restored copy segfaults when that interpreter is
-      # rebuilt. Cache pip's download cache so the reinstall stays fast.
+      # No setup-python here. Semgrep needs a Python to run on, not the
+      # project's, and the runner already has one. Asking for the exact
+      # version in .python-version made every run download it from
+      # GitHub's releases, and that download returning 504 failed this job
+      # in the merge queue on 12 October 2026.
+      #
+      # The pipx venv is intentionally NOT cached: it links to the runner's
+      # Python, which changes when the runner image does. Cache pip's
+      # download cache so the reinstall stays fast.
       - name: Cache pip (Semgrep)
         uses: actions/cache@v6.1.0
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-semgrep-pip-1.172.0-py${{ steps.setup_python.outputs.python-version }}
+          key: ${{ runner.os }}-semgrep-pip-1.172.0-runner-python
           restore-keys: |
             ${{ runner.os }}-semgrep-pip-
 
       - name: Install Semgrep
-        run: pipx install semgrep==1.172.0 --python '${{ steps.setup_python.outputs.python-path }}'
+        run: pipx install semgrep==1.172.0
 
       # The folder holding the semgrep command isn't searched by default, so we add it here.
       - name: Ensure pipx bin on PATH

@@ -72,26 +72,80 @@ dependencies and not by slowing the queue down.
 
 ## Phase 2: Stop downloading tools on every job
 
-- [ ] Find every job that installs Python or Node afresh. Ten workflow
+- [x] Find every job that installs Python or Node afresh. Ten workflow
       and action files use `setup-python` or `setup-node`. With the exact
       version from `.python-version`, 3.14.7, the runner's own copy does
       not match and `setup-python` downloads it from GitHub's releases on
       every run. That download is what returned 504 and failed Semgrep on
       #1830 and #1831.
 
-- [ ] Run Semgrep without installing Python at all. It only needs a
+      Found, from the log of a green run on 12 October. Python is
+      downloaded by every job that sets it up: the log reads "Version
+      3.14.7 was not found in the local cache", then a download from
+      `actions/python-versions`. Those jobs are the Semgrep job, the
+      teaching validation job and the three uses of the shared action in
+      `ci.yml`, plus `docs.yml`, `dependency-audit.yml`,
+      `security-pentest.yml`, `gate-breaking.yml` and
+      `teaching-pipeline.yml`. Node is not downloaded at all: see the
+      last step.
+
+- [x] Run Semgrep without installing Python at all. It only needs a
       Python to run Semgrep on, not the project's. Use Semgrep's published
       container image, mirrored under Phase 1, or the Python already on
       the runner.
 
-- [ ] For the jobs that do need the project's exact Python, stop each one
+      The runner's Python. `pipx` is on the runner and builds Semgrep's
+      environment from the Python beside it, so the `setup-python` step
+      is simply gone. The container image was the other choice and was
+      not taken: the job runs `run-semgrep.sh`, which needs `bash` and
+      `jq` beside Semgrep, and a second image to mirror and keep in step
+      with the pinned version buys nothing the runner does not give.
+
+- [x] For the jobs that do need the project's exact Python, stop each one
       fetching it. Decide between caching the installed Python across runs
       and running those jobs inside the backend dev image, which CI
       already builds and which holds the right Python and every
       dependency. Research which GitHub supports reliably before choosing,
       and record what was found here.
 
-- [ ] Do the same for Node in `.github/actions/setup-frontend/action.yml`.
+      Caching. `setup-python`'s own documentation says it looks in the
+      runner's tool folder first and downloads only when the version is
+      not there, and that its builds are made to live in the runner's
+      tool folder and cannot be moved. So
+      `.github/actions/setup-python` now keeps that folder's
+      `Python/<version>` between runs with
+      `actions/cache`, restored to the same place, and `setup-python`
+      finds it. The key holds the version and the runner image. No
+      published recipe for this on GitHub's own runners was found, so
+      the proof is the log of the first run after the cache is saved:
+      it should read "Found in cache".
+
+      It fails soft. A missing or unreachable cache leaves the download
+      as it was. The cache is a different GitHub service from the
+      releases download, so this does not remove an outside call, it
+      swaps a large download that has failed for a smaller one with a
+      fallback behind it.
+
+      Running the jobs in the dev image was rejected. It would mean
+      every fast job waits for an image build, or pulls an image that
+      must exist for the commit, and the fast tier runs on every push.
+
+      The teaching validation job in `ci.yml` now uses the shared
+      action too, without the backend's dependencies.
+
+- [ ] Do the same for the two that cannot use the shared action:
+      `gate-breaking.yml`, which checks the pull request out into `pr/`
+      and has no workspace root to read an action from, and
+      `teaching-pipeline.yml`, which runs in the content repositories.
+      Wait for the log above to show the cache working before copying
+      the steps into either.
+
+- [x] Do the same for Node in `.github/actions/setup-frontend/action.yml`.
+
+      Nothing to do. It asks for Node `24`, any release of it, and the
+      runner carries one: every job's log reads "Found in cache" with
+      Node 24.21.0. An exact Node version
+      would bring the download back, so leave it as a major version.
 
 ## Phase 3: Retry what is flaky, once
 
