@@ -1269,8 +1269,14 @@ is now 4,654 lines and 69 routes.
       lists as waiting can now be given their limits; that is the
       Phase 4a step, not this one.
 
-- [ ] Move the three job callbacks under `/ci/teaching/` to the
-      teaching feature, beside the routes they report to.
+- [x] Move the three job callbacks under `/ci/teaching/` to the
+      teaching feature, beside the routes they report to. Done on 12
+      October 2026: `backend/app/features/teaching/ci_router.py`. A
+      router of its own and not the teaching router, which puts every
+      route behind the teaching feature gate and under `/teaching`: a
+      job has no account for that gate to look up, and the addresses
+      must not change. The comments saying why each callback exists
+      went with it.
 
 - [ ] Move what is left that is not sign-in (`/cbac`, `/prescriptions`
       and the odd single routes), each to the module it belongs with.
