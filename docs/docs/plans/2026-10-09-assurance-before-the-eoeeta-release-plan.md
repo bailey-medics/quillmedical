@@ -1256,7 +1256,7 @@ found as a bug to fix on its own branch before going on.
       none of those has ever been seen. That is a fault of its own,
       listed below.
 
-- [ ] Sign-in: only "you are not signed in" means signed out. When
+- [x] Sign-in: only "you are not signed in" means signed out. When
       the app opens it asks the server who is signed in, and any
       failure of that call sends the person to the login page. Being
       offline, or a 502 for the few seconds of a deploy, is not being
@@ -1265,6 +1265,17 @@ found as a bug to fix on its own branch before going on.
       Check your connection", with a Try again button, and the page
       tries again by itself. In `frontend/src/auth/AuthContext.tsx`,
       with tests of a 401, a 502 and no network.
+      Done on 13 October 2026. The sign-in state has a fourth value,
+      `unreachable`, beside loading, signed in and signed out. Each
+      of the six route guards shows "Could not reach Quill" for it,
+      from one small component, `CannotReach`, and no guard sends
+      anybody to the login page for it. While it lasts the app asks
+      again every five seconds, and at once when the browser says
+      the connection is back. A failed check changes nothing already
+      known: somebody signed in stays signed in. A public page is
+      left showing. One existing test faked a 401 with an error that
+      carried no status, which the real client always sets; the fake
+      now carries it.
 
 - [ ] Sign-in: take the spaces out of a one-time code. Authenticator
       apps show the six digits with a space in the middle, and a code
