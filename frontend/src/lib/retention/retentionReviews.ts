@@ -30,6 +30,41 @@ export interface RetentionReview {
 }
 
 /**
+ * One closed account, awaiting a decision to empty it. It comes up once
+ * no training records are left on it, so it is at no organisation and
+ * has nothing to count.
+ */
+export interface RetentionAccount {
+  id: number;
+  user_id: number;
+  full_name: string;
+  email: string;
+  /** When the account was closed */
+  closed_at: string;
+  /** When it had been kept as long as an account is */
+  due_on: string;
+  /** When the nightly run first listed it */
+  listed_at: string;
+}
+
+/** Everything awaiting a decision */
+export interface RetentionWaiting {
+  reviews: RetentionReview[];
+  accounts: RetentionAccount[];
+}
+
+/**
+ * Whether a card is about records somewhere, not the account itself.
+ * Asked this way round because records have every field an account
+ * has, so only "is it records?" tells the two apart for the compiler.
+ */
+export function isRecords(
+  item: RetentionReview | RetentionAccount,
+): item is RetentionReview {
+  return "organisation" in item;
+}
+
+/**
  * What the person deciding has chosen for one row. `undecided` is where
  * every row starts, and a row left there is not sent.
  */
@@ -83,15 +118,19 @@ export interface RetentionRefusal {
 export interface RetentionOutcome {
   deleted: number;
   kept: number;
+  /** Accounts marked to be emptied by the nightly run */
+  to_empty: number;
   refused: RetentionRefusal[];
 }
 
-export async function listRetentionReviews(): Promise<RetentionReview[]> {
-  const res = await api.get<{ reviews: RetentionReview[] }>(
-    "/retention/reviews",
-  );
+export async function listRetentionReviews(): Promise<RetentionWaiting> {
+  const res = await api.get<{
+    reviews: RetentionReview[];
+    accounts?: RetentionAccount[];
+  }>("/retention/reviews");
 
-  return res.reviews;
+  // A server from before accounts were listed sends none.
+  return { reviews: res.reviews, accounts: res.accounts ?? [] };
 }
 
 export function sendRetentionDecisions(

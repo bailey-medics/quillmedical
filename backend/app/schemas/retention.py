@@ -49,20 +49,53 @@ class RetentionReviewOut(BaseModel):
     listed_at: datetime
 
 
+class RetentionAccountOut(BaseModel):
+    """One closed account, awaiting a decision to empty it.
+
+    A list of its own, beside the records: an account is at no
+    organisation and has nothing to count.
+
+    Attributes:
+        id: The row to decide.
+        user_id: Whose account.
+        full_name: Their name. Shown here and nowhere outside the app.
+        email: Their email address.
+        closed_at: When the account was closed.
+        due_on: When it had been kept as long as an account is.
+        listed_at: When the nightly run first listed it.
+    """
+
+    id: int
+    user_id: int
+    full_name: str
+    email: str
+    closed_at: datetime
+    due_on: datetime
+    listed_at: datetime
+
+
 class RetentionReviewListOut(BaseModel):
-    """Everything awaiting a decision, longest waiting first."""
+    """Everything awaiting a decision, longest waiting first.
+
+    Attributes:
+        reviews: Training records, one entry for each person at each
+            organisation.
+        accounts: Closed accounts with no records left.
+    """
 
     reviews: list[RetentionReviewOut]
+    accounts: list[RetentionAccountOut] = Field(default_factory=list)
 
 
 class RetentionDecisionIn(BaseModel):
-    """What to do with one set of records.
+    """What to do with one set of records, or one account.
 
     A row that is to stay undecided is simply left out of the request.
 
     Attributes:
         review_id: The row.
-        decision: ``delete`` or ``keep``.
+        decision: ``delete`` or ``keep``. For an account, ``delete``
+            marks it to be emptied by the nightly run.
         note: Why. Needed to keep, optional to delete.
         ask_again_on: For ``keep``, when to ask again. Six months on
             when left out.
@@ -98,10 +131,12 @@ class RetentionDecisionsOut(BaseModel):
 
     Attributes:
         deleted: Sets of records deleted.
-        kept: Sets of records kept.
+        kept: Sets of records, and accounts, kept.
+        to_empty: Accounts marked to be emptied by the nightly run.
         refused: Decisions not carried out. The others still were.
     """
 
     deleted: int
     kept: int
+    to_empty: int = 0
     refused: list[RetentionRefusalOut]

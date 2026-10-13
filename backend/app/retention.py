@@ -26,7 +26,11 @@ with none has nothing deleted. One organisation's period ending takes
 that organisation's records only: somebody enrolled at two keeps the
 other's.
 
-**Nothing here closes or deletes an account.**
+A fifth is found the same way: the closed account itself, once two
+years have passed and no training records are left on it. It too is
+written as a row for a person to decide.
+
+**Nothing here closes, empties or deletes an account.**
 
 **Counts only are printed.** A line saying whose feedback went would put
 into the logs what was just taken out of the database.
@@ -73,6 +77,10 @@ MARKETING_RECORD_KEPT = timedelta(days=6 * 365)
 #: number typed as days.
 MOST_MONTHS_KEPT = 600
 
+#: How long a closed account is kept before it is listed to be emptied,
+#: in months. Two years, as section 7 of the privacy policy says.
+ACCOUNT_KEPT_MONTHS = 24
+
 #: How often somebody is told again that records are awaiting a decision.
 #: They are told at once when a new one is due, whatever this says.
 TOLD_AGAIN_AFTER = timedelta(days=7)
@@ -94,7 +102,9 @@ class RetentionResult:
         marketing_records: Rows recording an answer about news and updates.
         newly_awaiting: Closed accounts whose records at an organisation
             came due a decision on this run.
-        awaiting: Every such set of records still undecided.
+        newly_awaiting_accounts: Closed accounts that themselves came due
+            a decision on this run.
+        awaiting: Everything still undecided, of both kinds.
         tell_somebody: Whether this run should say that a decision is
             needed: something is newly due, or a week has passed.
     """
@@ -103,6 +113,7 @@ class RetentionResult:
     feedback: int
     marketing_records: int
     newly_awaiting: int = 0
+    newly_awaiting_accounts: int = 0
     awaiting: int = 0
     tell_somebody: bool = False
 
@@ -113,6 +124,15 @@ class PastItsPeriod:
 
     user_id: int
     org_unit_id: int
+    closed_at: datetime
+    due_on: datetime
+
+
+@dataclass(frozen=True)
+class AccountToEmpty:
+    """One closed account, kept as long as an account is."""
+
+    user_id: int
     closed_at: datetime
     due_on: datetime
 
@@ -231,6 +251,60 @@ def closed_accounts_past_their_period(
     return [found[key] for key in sorted(found)]
 
 
+def closed_accounts_to_empty(
+    db: Session, now: datetime
+) -> list[AccountToEmpty]:
+    """Whose closed account has been kept as long as an account is.
+
+    Closed two years or more, with no training records left anywhere.
+    The records go first, each organisation's by its own decision, so an
+    account is never listed while any sponsor's period is still running,
+    or while records somebody chose to keep are still there. An
+    organisation that has given no period never has its records listed,
+    so an account with records there is never listed either.
+
+    The period counts from ``User.deactivated_at``, as it does for
+    records, so an account closed with no date or opened again is never
+    listed.
+    """
+    with_records = select(Assessment.user_id).union(
+        select(ModuleEnrolment.user_id)
+    )
+    awaiting_records = select(RetentionReview.user_id).where(
+        RetentionReview.subject == "records",
+        RetentionReview.decision == "undecided",
+    )
+    closed = db.execute(
+        select(User.id, User.deactivated_at)
+        .where(
+            User.is_active.is_(False),
+            User.deactivated_at.is_not(None),
+            User.id.not_in(with_records),
+            User.id.not_in(awaiting_records),
+        )
+        .order_by(User.id)
+    )
+    found: list[AccountToEmpty] = []
+
+    for user_id, closed_at in closed:
+        # The query leaves these out. Said again for the type checker.
+        if closed_at is None:
+            continue
+
+        due_on = add_months(_aware(closed_at), ACCOUNT_KEPT_MONTHS)
+
+        if due_on <= now:
+            found.append(
+                AccountToEmpty(
+                    user_id=user_id,
+                    closed_at=_aware(closed_at),
+                    due_on=due_on,
+                )
+            )
+
+    return found
+
+
 def delete_training_records(
     db: Session, user_id: int, org_unit_id: int, *, apply: bool
 ) -> tuple[int, int]:
@@ -293,25 +367,45 @@ def delete_training_records(
 
 
 def _is_awaiting_or_kept(
-    db: Session, due: PastItsPeriod, now: datetime
+    db: Session, due: PastItsPeriod | AccountToEmpty, now: datetime
 ) -> bool:
-    """Whether these records already have a row that settles them for now.
+    """Whether this already has a row that settles it for now.
 
     One still undecided, or one kept whose date to ask again has not
-    come. A row that says deleted does not: records found after a
-    deletion are new ones, made when the account was open again.
+    come.
+
+    For records, a row that says deleted does not: records found after a
+    deletion are new ones, made when the account was open again. For an
+    account it does, while it is about this closure: the decision is
+    made and the account is waiting to be emptied. An account opened and
+    closed again since has a later date, and is asked about afresh.
     """
+    about_this = (
+        (
+            RetentionReview.subject == "records",
+            RetentionReview.org_unit_id == due.org_unit_id,
+        )
+        if isinstance(due, PastItsPeriod)
+        else (RetentionReview.subject == "account",)
+    )
     rows = db.scalars(
         select(RetentionReview).where(
-            RetentionReview.user_id == due.user_id,
-            RetentionReview.org_unit_id == due.org_unit_id,
-            RetentionReview.decision.in_(("undecided", "kept")),
+            RetentionReview.user_id == due.user_id, *about_this
         )
     )
 
     for row in rows:
         if row.decision == "undecided":
             return True
+
+        if row.decision == "deleted":
+            if (
+                isinstance(due, AccountToEmpty)
+                and _aware(row.closed_at) == due.closed_at
+            ):
+                return True
+
+            continue
 
         if row.ask_again_on is None or _aware(row.ask_again_on) > now:
             return True
@@ -321,17 +415,19 @@ def _is_awaiting_or_kept(
 
 def _list_for_decision(
     db: Session, now: datetime, *, apply: bool
-) -> tuple[int, int, bool]:
-    """Write a row for each set of records newly past its period.
+) -> tuple[int, int, int, bool]:
+    """Write a row for each set of records, and each account, newly due.
 
     Nothing is deleted. Without ``apply`` nothing is written either, and
     the counts are what a real run would give.
 
     Returns:
-        How many are newly awaiting a decision, how many are awaiting one
-        in all, and whether somebody should be told.
+        How many sets of records are newly awaiting a decision, how many
+        accounts are, how many of both are awaiting one in all, and
+        whether somebody should be told.
     """
     newly = 0
+    newly_accounts = 0
 
     for due in closed_accounts_past_their_period(db, now):
         if _is_awaiting_or_kept(db, due, now):
@@ -356,6 +452,32 @@ def _list_for_decision(
             )
         )
 
+    # After the records, so that an account whose records were listed a
+    # moment ago is not listed beside them.
+    if apply:
+        db.flush()
+
+    for account in closed_accounts_to_empty(db, now):
+        if _is_awaiting_or_kept(db, account, now):
+            continue
+
+        newly_accounts += 1
+
+        if not apply:
+            continue
+
+        db.add(
+            RetentionReview(
+                subject="account",
+                user_id=account.user_id,
+                org_unit_id=None,
+                closed_at=account.closed_at,
+                due_on=account.due_on,
+                attempts=0,
+                enrolments=0,
+            )
+        )
+
     if apply:
         db.flush()
 
@@ -366,7 +488,8 @@ def _list_for_decision(
             )
         )
     )
-    awaiting = len(undecided) if apply else len(undecided) + newly
+    listed_now = newly + newly_accounts
+    awaiting = len(undecided) if apply else len(undecided) + listed_now
 
     # Told when something is new, and again once a week has gone by
     # since anybody was last told. Not every night: a message that
@@ -376,7 +499,7 @@ def _list_for_decision(
         or _aware(row.announced_at) <= now - TOLD_AGAIN_AFTER
         for row in undecided
     )
-    tell = awaiting > 0 and (newly > 0 or told_long_ago)
+    tell = awaiting > 0 and (listed_now > 0 or told_long_ago)
 
     if apply and tell:
         for row in undecided:
@@ -384,7 +507,7 @@ def _list_for_decision(
 
         db.flush()
 
-    return newly, awaiting, tell
+    return newly, newly_accounts, awaiting, tell
 
 
 #: How long records that were kept wait before somebody is asked again,
@@ -402,18 +525,23 @@ def carry_out_decision(
     decided_by: int,
     now: datetime,
 ) -> str | None:
-    """Do what a person decided about one set of records.
+    """Do what a person decided about one set of records, or one account.
 
     Checked again here, at the moment of deciding, and not trusted from
     the list the person was looking at: an account may have been opened
     again since, which clears the date its period was counted from.
+
+    Records are deleted here. An account is not emptied here: the row is
+    marked, and the nightly run that follows empties it, because only
+    that run can move a passport's files to the archive.
 
     The rows are flushed, not committed: the caller commits.
 
     Args:
         db: The database session.
         review: The row being decided.
-        delete_them: True to delete the records, false to keep them.
+        delete_them: True to delete the records or empty the account,
+            false to keep them.
         note: Why. Needed to keep.
         ask_again_on: For keeping, when to ask again.
         decided_by: The user id of who decided.
@@ -438,7 +566,26 @@ def carry_out_decision(
 
         review.decision = "kept"
         review.ask_again_on = _aware(again)
+    elif review.subject == "account":
+        still_due = any(
+            due.user_id == review.user_id
+            for due in closed_accounts_to_empty(db, now)
+        )
+
+        if not still_due:
+            return (
+                "This account is no longer due to be emptied: it has "
+                "been opened again, or it has training records. Nothing "
+                "was changed."
+            )
+
+        review.decision = "deleted"
     else:
+        # A row about records has a place: a constraint holds it to
+        # that. Said again for the type checker.
+        if review.org_unit_id is None:
+            return "These records are at no organisation."
+
         still_due = any(
             (due.user_id, due.org_unit_id)
             == (review.user_id, review.org_unit_id)
@@ -500,8 +647,8 @@ def apply_retention(
             or 0
         )
 
-    newly_awaiting, awaiting, tell_somebody = _list_for_decision(
-        db, now, apply=apply
+    newly_awaiting, newly_accounts, awaiting, tell_somebody = (
+        _list_for_decision(db, now, apply=apply)
     )
 
     if apply:
@@ -526,6 +673,7 @@ def apply_retention(
         feedback=len(feedback_ids),
         marketing_records=marketing_records,
         newly_awaiting=newly_awaiting,
+        newly_awaiting_accounts=newly_accounts,
         awaiting=awaiting,
         tell_somebody=tell_somebody,
     )
@@ -564,14 +712,18 @@ def main() -> int:
         f"{listed} {result.newly_awaiting} closed accounts whose records "
         "are newly past their period"
     )
+    print(
+        f"{listed} {result.newly_awaiting_accounts} closed accounts "
+        "newly due to be emptied"
+    )
 
     # Its own line, and only when somebody should act: an alert matches
     # it. A count and no names. Who they are is on the screen, behind a
     # sign-in.
     if apply and result.tell_somebody:
         print(
-            f"{DECISION_NEEDED} {result.awaiting} closed accounts have "
-            "training records past their period, awaiting a decision"
+            f"{DECISION_NEEDED} {result.awaiting} decisions are waiting "
+            "about closed accounts past their period"
         )
 
     # Last, and worded exactly so: the "has not run" alert counts this

@@ -13,6 +13,7 @@ import { renderWithRouter } from "@/test/test-utils";
 import * as apiLib from "@/lib/api";
 import {
   oneYearOn,
+  type RetentionAccount,
   type RetentionOutcome,
   type RetentionReview,
 } from "@/lib/retention/retentionReviews";
@@ -42,6 +43,16 @@ const bob = review({
   full_name: "Bob Example",
   email: "bob@example.nhs.uk",
 });
+
+const cat: RetentionAccount = {
+  id: 9,
+  user_id: 44,
+  full_name: "Cat Example",
+  email: "cat@example.nhs.uk",
+  closed_at: "2028-01-14T09:00:00Z",
+  due_on: "2030-01-14T09:00:00Z",
+  listed_at: "2030-01-15T03:30:00Z",
+};
 
 function mockList(...lists: RetentionReview[][]) {
   const get = vi.spyOn(apiLib.api, "get");
@@ -147,7 +158,7 @@ describe("AdminRetentionPage", () => {
 
   it("sends only the rows that were marked", async () => {
     mockList([ann, bob], [bob]);
-    const post = mockOutcome({ deleted: 1, kept: 0, refused: [] });
+    const post = mockOutcome({ deleted: 1, kept: 0, to_empty: 0, refused: [] });
 
     renderWithRouter(<AdminRetentionPage />);
     await choose("Ann Example", "Delete these records");
@@ -162,7 +173,7 @@ describe("AdminRetentionPage", () => {
 
   it("says what will happen before it happens", async () => {
     mockList([ann, bob]);
-    mockOutcome({ deleted: 1, kept: 1, refused: [] });
+    mockOutcome({ deleted: 1, kept: 1, to_empty: 0, refused: [] });
 
     renderWithRouter(<AdminRetentionPage />);
     await choose("Ann Example", "Delete these records");
@@ -179,15 +190,13 @@ describe("AdminRetentionPage", () => {
     expect(
       within(dialog).getByText(/Delete the training records of 1 account/),
     ).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(/keep those of 1 account/),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText(/keep 1 as marked/)).toBeInTheDocument();
     expect(within(dialog).getByText(/cannot be undone/)).toBeInTheDocument();
   });
 
   it("sends nothing if the confirmation is cancelled", async () => {
     mockList([ann]);
-    const post = mockOutcome({ deleted: 1, kept: 0, refused: [] });
+    const post = mockOutcome({ deleted: 1, kept: 0, to_empty: 0, refused: [] });
 
     renderWithRouter(<AdminRetentionPage />);
     await choose("Ann Example", "Delete these records");
@@ -216,7 +225,7 @@ describe("AdminRetentionPage", () => {
 
   it("sends the reason with a keep", async () => {
     mockList([ann], []);
-    const post = mockOutcome({ deleted: 0, kept: 1, refused: [] });
+    const post = mockOutcome({ deleted: 0, kept: 1, to_empty: 0, refused: [] });
 
     renderWithRouter(<AdminRetentionPage />);
     await choose("Ann Example", "Keep these records");
@@ -242,7 +251,7 @@ describe("AdminRetentionPage", () => {
 
   it("says what was done, and lists again", async () => {
     const get = mockList([ann], []);
-    mockOutcome({ deleted: 1, kept: 0, refused: [] });
+    mockOutcome({ deleted: 1, kept: 0, to_empty: 0, refused: [] });
 
     renderWithRouter(<AdminRetentionPage />);
     await choose("Ann Example", "Delete these records");
@@ -262,6 +271,7 @@ describe("AdminRetentionPage", () => {
     mockOutcome({
       deleted: 0,
       kept: 0,
+      to_empty: 0,
       refused: [{ review_id: 1, reason: "Nothing was deleted." }],
     });
 
@@ -306,5 +316,45 @@ describe("AdminRetentionPage", () => {
         name: "Leave for later",
       }),
     ).toBeChecked();
+  });
+
+  it("lists a closed account that is due to be emptied", async () => {
+    vi.spyOn(apiLib.api, "get").mockResolvedValue({
+      reviews: [],
+      accounts: [cat],
+    });
+
+    renderWithRouter(<AdminRetentionPage />);
+
+    expect(
+      within(await cardOf("Cat Example")).getByRole("radio", {
+        name: "Empty this account",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("sends an account marked to be emptied, and says how many", async () => {
+    vi.spyOn(apiLib.api, "get")
+      .mockResolvedValueOnce({ reviews: [], accounts: [cat] })
+      .mockResolvedValue({ reviews: [], accounts: [] });
+    const post = mockOutcome({
+      deleted: 0,
+      kept: 0,
+      to_empty: 1,
+      refused: [],
+    });
+
+    renderWithRouter(<AdminRetentionPage />);
+    await choose("Cat Example", "Empty this account");
+    await carryOut();
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/retention/decisions", {
+        decisions: [{ review_id: 9, decision: "delete" }],
+      }),
+    );
+    expect(
+      await screen.findByText(/marked 1 account to be emptied/),
+    ).toBeInTheDocument();
   });
 });

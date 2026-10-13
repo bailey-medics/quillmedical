@@ -25,11 +25,11 @@ setup() {
 }
 
 @test "the alert matches the line the run prints" {
-  grep -Eq "$PATTERN" <<<"${SAID} 3 closed accounts have training records past their period, awaiting a decision"
+  grep -Eq "$PATTERN" <<<"${SAID} 3 decisions are waiting about closed accounts past their period"
 }
 
 @test "the alert does not match a count of nought" {
-  run grep -Eq "$PATTERN" <<<"${SAID} 0 closed accounts have training records past their period, awaiting a decision"
+  run grep -Eq "$PATTERN" <<<"${SAID} 0 decisions are waiting about closed accounts past their period"
 
   [ "$status" -ne 0 ]
 }

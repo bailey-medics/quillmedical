@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import retention
@@ -600,6 +601,353 @@ class TestAskingAgain:
         assert result.newly_awaiting == 1
 
 
+def _two_years_ago() -> datetime:
+    """A closing date that an account's own period ended on yesterday."""
+    return add_months(NOW, -retention.ACCOUNT_KEPT_MONTHS) - A_DAY
+
+
+def _about_accounts(db: Session) -> list[RetentionReview]:
+    return [row for row in _reviews(db) if row.subject == "account"]
+
+
+class TestClosedAccountItself:
+    """An account closed two years, with no records left, is listed for
+    a decision. The nightly run empties nothing."""
+
+    def test_an_account_closed_two_years_with_no_records_is_listed(
+        self, db_session: Session
+    ) -> None:
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_two_years_ago()
+        )
+
+        result = apply_retention(db_session, NOW, apply=True)
+
+        assert result.newly_awaiting_accounts == 1
+        assert result.newly_awaiting == 0
+        assert result.awaiting == 1
+        assert result.tell_somebody
+        [row] = _reviews(db_session)
+        assert row.subject == "account"
+        assert row.user_id == user.id
+        assert row.org_unit_id is None
+        assert row.decision == "undecided"
+        # The test database hands a stored time back with no zone.
+        assert retention._aware(row.due_on) == add_months(
+            _two_years_ago(), retention.ACCOUNT_KEPT_MONTHS
+        )
+
+    def test_the_run_leaves_the_account_as_it_was(
+        self, db_session: Session
+    ) -> None:
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_two_years_ago()
+        )
+
+        apply_retention(db_session, NOW, apply=True)
+
+        db_session.refresh(user)
+        assert user.email == "gone@example.nhs.uk"
+        assert user.full_name == "A Clinician"
+
+    def test_a_second_run_does_not_list_it_twice(
+        self, db_session: Session
+    ) -> None:
+        _closed(db_session, "gone@example.nhs.uk", closed_at=_two_years_ago())
+        apply_retention(db_session, NOW, apply=True)
+
+        result = apply_retention(db_session, NOW + A_DAY, apply=True)
+
+        assert result.newly_awaiting_accounts == 0
+        assert len(_reviews(db_session)) == 1
+
+    def test_the_period_ends_on_the_day_itself(
+        self, db_session: Session
+    ) -> None:
+        _closed(
+            db_session,
+            "today@example.nhs.uk",
+            closed_at=add_months(NOW, -retention.ACCOUNT_KEPT_MONTHS),
+        )
+        _closed(
+            db_session,
+            "tomorrow@example.nhs.uk",
+            closed_at=add_months(NOW, -retention.ACCOUNT_KEPT_MONTHS) + A_DAY,
+        )
+
+        result = apply_retention(db_session, NOW, apply=True)
+
+        assert result.newly_awaiting_accounts == 1
+
+    def test_an_open_account_is_never_listed(
+        self, db_session: Session
+    ) -> None:
+        _user(db_session, "here@example.nhs.uk")
+
+        result = apply_retention(db_session, NOW, apply=True)
+
+        assert result.newly_awaiting_accounts == 0
+
+    def test_an_account_closed_with_no_date_is_not_listed(
+        self, db_session: Session
+    ) -> None:
+        _closed(db_session, "undated@example.nhs.uk", closed_at=None)
+
+        result = apply_retention(db_session, NOW, apply=True)
+
+        assert result.newly_awaiting_accounts == 0
+
+    def test_an_account_with_records_left_is_not_listed(
+        self, db_session: Session
+    ) -> None:
+        """Even at an organisation that has given no period at all."""
+        org = _org(db_session, "Academy", months=None)
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_past_the_period()
+        )
+        _records(db_session, org, user)
+
+        result = apply_retention(db_session, NOW, apply=True)
+
+        assert result.newly_awaiting_accounts == 0
+        assert _reviews(db_session) == []
+
+    def test_somebody_only_enrolled_is_not_listed(
+        self, db_session: Session
+    ) -> None:
+        org = _org(db_session, "Academy", months=None)
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_past_the_period()
+        )
+        db_session.add(
+            ModuleEnrolment(
+                user_id=user.id,
+                org_unit_id=org.id,
+                question_bank_id=BANK,
+                starts_on=NOW - timedelta(days=2000),
+                source="admin",
+            )
+        )
+        db_session.flush()
+
+        result = apply_retention(db_session, NOW, apply=True)
+
+        assert result.newly_awaiting_accounts == 0
+
+    def test_records_and_the_account_are_not_listed_on_the_same_run(
+        self, db_session: Session
+    ) -> None:
+        org = _org(db_session, "Academy", months=MONTHS_KEPT)
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_past_the_period()
+        )
+        _records(db_session, org, user)
+
+        result = apply_retention(db_session, NOW, apply=True)
+
+        assert result.newly_awaiting == 1
+        assert result.newly_awaiting_accounts == 0
+
+    def test_the_account_is_listed_once_its_records_are_deleted(
+        self, db_session: Session
+    ) -> None:
+        org = _org(db_session, "Academy", months=MONTHS_KEPT)
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_past_the_period()
+        )
+        _records(db_session, org, user)
+        apply_retention(db_session, NOW, apply=True)
+        [records] = _reviews(db_session)
+        retention.carry_out_decision(
+            db_session,
+            records,
+            delete_them=True,
+            note=None,
+            ask_again_on=None,
+            decided_by=user.id,
+            now=NOW,
+        )
+
+        result = apply_retention(db_session, NOW + A_DAY, apply=True)
+
+        assert result.newly_awaiting_accounts == 1
+        [account] = _about_accounts(db_session)
+        assert account.user_id == user.id
+
+    def test_a_report_counts_and_writes_no_row(
+        self, db_session: Session
+    ) -> None:
+        _closed(db_session, "gone@example.nhs.uk", closed_at=_two_years_ago())
+
+        result = apply_retention(db_session, NOW, apply=False)
+
+        assert result.newly_awaiting_accounts == 1
+        assert result.awaiting == 1
+        assert _reviews(db_session) == []
+
+
+class TestDecidingAboutAnAccount:
+    """Marked to be emptied, or kept. Nothing here empties one."""
+
+    @pytest.fixture
+    def listed(self, db_session: Session) -> RetentionReview:
+        _closed(db_session, "gone@example.nhs.uk", closed_at=_two_years_ago())
+        apply_retention(db_session, NOW, apply=True)
+        [row] = _reviews(db_session)
+
+        return row
+
+    def _decide(
+        self,
+        db: Session,
+        row: RetentionReview,
+        *,
+        delete_them: bool,
+        note: str | None = None,
+    ) -> str | None:
+        return retention.carry_out_decision(
+            db,
+            row,
+            delete_them=delete_them,
+            note=note,
+            ask_again_on=None,
+            decided_by=row.user_id,
+            now=NOW,
+        )
+
+    def test_delete_marks_it_and_leaves_the_account_as_it_was(
+        self, listed: RetentionReview, db_session: Session
+    ) -> None:
+        assert self._decide(db_session, listed, delete_them=True) is None
+
+        assert listed.decision == "deleted"
+        assert listed.decided_at == NOW
+        user = db_session.get(User, listed.user_id)
+        assert user is not None
+        assert user.email == "gone@example.nhs.uk"
+
+    def test_one_marked_is_not_listed_again(
+        self, listed: RetentionReview, db_session: Session
+    ) -> None:
+        self._decide(db_session, listed, delete_them=True)
+
+        result = apply_retention(db_session, NOW + A_DAY, apply=True)
+
+        assert result.newly_awaiting_accounts == 0
+        assert len(_reviews(db_session)) == 1
+
+    def test_one_opened_and_closed_again_is_asked_about_afresh(
+        self, listed: RetentionReview, db_session: Session
+    ) -> None:
+        """The decision was about the first closure, not this one."""
+        self._decide(db_session, listed, delete_them=True)
+        user = db_session.get(User, listed.user_id)
+        assert user is not None
+        user.deactivated_at = _two_years_ago() + A_DAY
+
+        later = NOW + timedelta(days=30)
+        result = apply_retention(db_session, later, apply=True)
+
+        assert result.newly_awaiting_accounts == 1
+
+    def test_one_opened_again_since_is_refused(
+        self, listed: RetentionReview, db_session: Session
+    ) -> None:
+        user = db_session.get(User, listed.user_id)
+        assert user is not None
+        user.is_active = True
+        user.deactivated_at = None
+        db_session.flush()
+
+        refused = self._decide(db_session, listed, delete_them=True)
+
+        assert refused is not None
+        assert "no longer due" in refused
+        assert listed.decision == "undecided"
+
+    def test_one_that_has_gained_records_is_refused(
+        self, listed: RetentionReview, db_session: Session
+    ) -> None:
+        org = _org(db_session, "Academy", months=None)
+        user = db_session.get(User, listed.user_id)
+        assert user is not None
+        _records(db_session, org, user)
+
+        refused = self._decide(db_session, listed, delete_them=True)
+
+        assert refused is not None
+        assert listed.decision == "undecided"
+
+    def test_keep_needs_a_note(
+        self, listed: RetentionReview, db_session: Session
+    ) -> None:
+        assert self._decide(db_session, listed, delete_them=False) is not None
+        assert listed.decision == "undecided"
+
+    def test_one_kept_is_not_listed_before_its_date_and_is_after(
+        self, listed: RetentionReview, db_session: Session
+    ) -> None:
+        self._decide(db_session, listed, delete_them=False, note="Dispute")
+
+        before = apply_retention(db_session, NOW + A_DAY, apply=True)
+        after = apply_retention(
+            db_session,
+            add_months(NOW, retention.ASK_AGAIN_AFTER_MONTHS) + A_DAY,
+            apply=True,
+        )
+
+        assert before.newly_awaiting_accounts == 0
+        assert after.newly_awaiting_accounts == 1
+
+
+class TestTheShapeOfARow:
+    """Records are somewhere; an account is not."""
+
+    def test_a_second_undecided_row_about_one_account_is_refused(
+        self, db_session: Session
+    ) -> None:
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_two_years_ago()
+        )
+
+        def row() -> RetentionReview:
+            return RetentionReview(
+                subject="account",
+                user_id=user.id,
+                closed_at=NOW,
+                due_on=NOW,
+                attempts=0,
+                enrolments=0,
+            )
+
+        db_session.add(row())
+        db_session.flush()
+        db_session.add(row())
+
+        with pytest.raises(IntegrityError):
+            db_session.flush()
+
+    def test_a_row_about_records_must_name_an_organisation(
+        self, db_session: Session
+    ) -> None:
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_two_years_ago()
+        )
+        db_session.add(
+            RetentionReview(
+                subject="records",
+                user_id=user.id,
+                closed_at=NOW,
+                due_on=NOW,
+                attempts=0,
+                enrolments=0,
+            )
+        )
+
+        with pytest.raises(IntegrityError):
+            db_session.flush()
+
+
 class TestDeletingTrainingRecords:
     """What a decision to delete calls. The nightly run never does."""
 
@@ -989,7 +1337,7 @@ class TestMain:
 
         out = capsys.readouterr().out
         assert "Listed 1 closed accounts" in out
-        assert f"{retention.DECISION_NEEDED} 1 closed accounts" in out
+        assert f"{retention.DECISION_NEEDED} 1 decisions are waiting" in out
         assert "gone@example.nhs.uk" not in out
         assert "A Clinician" not in out
         assert "Academy" not in out

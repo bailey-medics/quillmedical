@@ -1264,12 +1264,48 @@ first met. Placed here because each one is decided on the screen Phase
 27 makes, and after Phase 28, which moves the newsletter details off
 the account before they are wiped.
 
-- [ ] Find the accounts that are due, in the nightly run. Closed for
+- [x] Find the accounts that are due, in the nightly run. Closed for
       the longest period any organisation holding its training records
       has set, with those records already deleted; or, with no sponsor,
       closed for two years. An account with records still inside any
       organisation's period is not due. Each is written as a row
       awaiting a decision and never acted on by the run.
+
+      Built on 13 October, ahead of Phase 28 at Mark's request. That is
+      safe because this step wipes nothing; the step that does must
+      still wait for Phase 28. How it was built:
+
+      - **The rule is simpler than the sentence above.** An account is
+        due when it has been closed two years and no training records
+        are left on it anywhere (`closed_accounts_to_empty` in
+        `backend/app/retention.py`). Records only go by a sponsor's
+        decision once that sponsor's period has ended, so "no records
+        left" already means every period has run out. An organisation
+        with no period never has its records listed, so an account with
+        records there is never due.
+
+      - **Somebody with no sponsor** is covered by giving Quill's own
+        organisation a period of 24 months, through Phase 30's screen.
+        Their records then come up for a decision like anybody's, and
+        the account after them. No second rule in the code.
+
+      - **One table for both questions.** `retention_review` gained a
+        `subject`, `records` or `account`, and its organisation may now
+        be empty. A check constraint holds the two together: records
+        name an organisation, an account does not. An account has an
+        index of its own allowing one undecided row.
+
+      - **Deciding to empty marks the row and does nothing else.** The
+        nightly run that follows will empty the account, because only
+        the admin job can move a passport's files to the archive. Until
+        the next step is built, a marked account simply waits. A marked
+        account is not listed again, unless it is opened and closed
+        again, which makes it a new question.
+
+      - **On the screen** an account has a card of its own below the
+        records, offering "Empty this account" or "Keep this account".
+        The API sends accounts as a second list, `accounts`, and counts
+        them as `to_empty`: both additions, so no open tab breaks.
 
 - [ ] Delete what the person owns. Their own passport and all that
       hangs from it, their training records where Quill is the

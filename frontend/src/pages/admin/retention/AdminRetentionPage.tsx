@@ -2,9 +2,10 @@
  * Admin Retention Page
  *
  * Closed accounts whose training records are past the period their
- * sponsor asked for them to be kept. The nightly run lists them here and
- * deletes none: somebody decides, for each, to delete, keep or leave for
- * later, and one button carries out whatever has been marked.
+ * sponsor asked for them to be kept, and closed accounts with no
+ * records left that are due to be emptied. The nightly run lists them
+ * here and deletes none: somebody decides, for each, to delete, keep or
+ * leave for later, and one button carries out whatever has been marked.
  *
  * Operator-only: the records belong to every sponsor, not to one place.
  * The route guard hides the page; the API refuses the data.
@@ -22,7 +23,9 @@ import { BodyText } from "@/components/typography";
 import {
   listRetentionReviews,
   sendRetentionDecisions,
+  type RetentionAccount,
   type RetentionDecision,
+  type RetentionOutcome,
   type RetentionReview,
 } from "@/lib/retention/retentionReviews";
 
@@ -30,16 +33,25 @@ function accounts(count: number): string {
   return `${count} ${count === 1 ? "account" : "accounts"}`;
 }
 
+/** What was done, in a sentence. */
+function done(outcome: RetentionOutcome): string {
+  return `Deleted the records of ${accounts(outcome.deleted)}, marked ${accounts(outcome.to_empty)} to be emptied and kept ${outcome.kept}.`;
+}
+
 export default function AdminRetentionPage() {
   const { showMessage } = usePageMessage();
   const [reviews, setReviews] = useState<RetentionReview[]>([]);
+  const [waiting, setWaiting] = useState<RetentionAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refusals, setRefusals] = useState<Record<number, string>>({});
 
   const fetchReviews = useCallback(async () => {
     try {
-      setReviews(await listRetentionReviews());
+      const listed = await listRetentionReviews();
+
+      setReviews(listed.reviews);
+      setWaiting(listed.accounts);
       setError(null);
     } catch {
       setError("The records awaiting a decision could not be loaded");
@@ -74,13 +86,13 @@ export default function AdminRetentionPage() {
         showMessage({
           variant: "error",
           title: `${accounts(outcome.refused.length)} could not be dealt with`,
-          description: `Deleted the records of ${accounts(outcome.deleted)} and kept ${accounts(outcome.kept)}. The reason is shown beside each one left.`,
+          description: `${done(outcome)} The reason is shown beside each one left.`,
         });
       } else {
         showMessage({
           variant: "success",
           title: "Decisions carried out",
-          description: `Deleted the records of ${accounts(outcome.deleted)} and kept ${accounts(outcome.kept)}.`,
+          description: done(outcome),
         });
       }
     } catch {
@@ -112,11 +124,13 @@ export default function AdminRetentionPage() {
 
       <BodyText>
         These accounts are closed, and their training records are past the
-        period their sponsor asked for them to be kept. Nothing is deleted until
-        you decide. Deleting cannot be undone.
+        period their sponsor asked for them to be kept. Once an account has no
+        records left, and has been closed for two years, the account itself is
+        listed to be emptied. Nothing is deleted until you decide, and neither
+        can be undone.
       </BodyText>
 
-      {reviews.length === 0 ? (
+      {reviews.length === 0 && waiting.length === 0 ? (
         <StateMessage
           icon={<IconCircleCheck />}
           title="Nothing is awaiting a decision"
@@ -126,6 +140,7 @@ export default function AdminRetentionPage() {
       ) : (
         <RetentionDecisionList
           reviews={reviews}
+          accounts={waiting}
           refusals={refusals}
           onCarryOut={carryOut}
           onClear={() => setRefusals({})}

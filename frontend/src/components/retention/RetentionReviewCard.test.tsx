@@ -6,7 +6,10 @@ import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
-import type { RetentionReview } from "@/lib/retention/retentionReviews";
+import type {
+  RetentionAccount,
+  RetentionReview,
+} from "@/lib/retention/retentionReviews";
 import RetentionReviewCard from "./RetentionReviewCard";
 
 const review: RetentionReview = {
@@ -21,6 +24,16 @@ const review: RetentionReview = {
   attempts: 3,
   enrolments: 1,
   listed_at: "2030-07-15T03:30:00Z",
+};
+
+const account: RetentionAccount = {
+  id: 9,
+  user_id: 44,
+  full_name: "Cat Example",
+  email: "cat@example.nhs.uk",
+  closed_at: "2028-01-14T09:00:00Z",
+  due_on: "2030-01-14T09:00:00Z",
+  listed_at: "2030-01-15T03:30:00Z",
 };
 
 function renderCard(
@@ -166,5 +179,55 @@ describe("RetentionReviewCard", () => {
       screen.getByRole("textbox", { name: /Why they are being kept/ }),
     ).toBeDisabled();
     expect(screen.getByLabelText(/Ask again on/)).toBeDisabled();
+  });
+
+  describe("for the account itself", () => {
+    it("offers to empty or keep the account, not its records", () => {
+      renderCard({ review: account });
+
+      expect(
+        screen.getByRole("radio", { name: "Empty this account" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("radio", { name: "Keep this account" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("radio", { name: "Delete these records" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("names no organisation and counts no records", () => {
+      renderCard({ review: account });
+
+      expect(screen.queryByText("Organisation:")).not.toBeInTheDocument();
+      expect(screen.queryByText("Would be deleted:")).not.toBeInTheDocument();
+      expect(screen.getByText("Would be emptied:")).toBeInTheDocument();
+    });
+
+    it("says the nightly run empties it, not this screen", () => {
+      renderCard({ review: account });
+
+      expect(
+        screen.getByText("the account itself, by the next nightly run"),
+      ).toBeInTheDocument();
+    });
+
+    it("sends the same choice as deleting records does", async () => {
+      const { onChoiceChange } = renderCard({ review: account });
+
+      await userEvent.click(
+        screen.getByRole("radio", { name: "Empty this account" }),
+      );
+
+      expect(onChoiceChange).toHaveBeenCalledWith("delete");
+    });
+
+    it("asks why an account is kept", () => {
+      renderCard({ review: account, choice: "keep" });
+
+      expect(
+        screen.getByRole("textbox", { name: /Why it is being kept/ }),
+      ).toBeInTheDocument();
+    });
   });
 });

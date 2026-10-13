@@ -13,6 +13,7 @@ import { Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import { BodyText } from "@/components/typography";
 import type {
+  RetentionAccount,
   RetentionDecision,
   RetentionReview,
 } from "@/lib/retention/retentionReviews";
@@ -74,6 +75,19 @@ const PEOPLE: RetentionReview[] = [
   },
 ];
 
+/** Closed two years, with no records left: the account itself is due. */
+const ACCOUNTS: RetentionAccount[] = [
+  {
+    id: 11,
+    user_id: 111,
+    full_name: "Ms Helen Marsh",
+    email: "helen.marsh@example.nhs.uk",
+    closed_at: "2028-02-09T10:15:00Z",
+    due_on: "2030-02-09T10:15:00Z",
+    listed_at: "2030-02-10T03:30:00Z",
+  },
+];
+
 const meta: Meta<typeof RetentionDecisionList> = {
   title: "Retention/Record retention page",
   component: RetentionDecisionList,
@@ -92,8 +106,10 @@ function Page({ children }: { children: React.ReactNode }) {
       <PageHeader title="Record retention" />
       <BodyText>
         These accounts are closed, and their training records are past the
-        period their sponsor asked for them to be kept. Nothing is deleted until
-        you decide. Deleting cannot be undone.
+        period their sponsor asked for them to be kept. Once an account has no
+        records left, and has been closed for two years, the account itself is
+        listed to be emptied. Nothing is deleted until you decide, and neither
+        can be undone.
       </BodyText>
       {children}
     </Stack>
@@ -159,6 +175,22 @@ export const OneAccount: Story = {
     <Page>
       <RetentionDecisionList
         reviews={PEOPLE.slice(0, 1)}
+        onCarryOut={async () => undefined}
+      />
+    </Page>
+  ),
+};
+
+/**
+ * Records, and below them an account with none left: it is due to be
+ * emptied, and choosing that marks it for the next nightly run.
+ */
+export const WithAnAccountToEmpty: Story = {
+  render: () => (
+    <Page>
+      <RetentionDecisionList
+        reviews={PEOPLE.slice(0, 2)}
+        accounts={ACCOUNTS}
         onCarryOut={async () => undefined}
       />
     </Page>
