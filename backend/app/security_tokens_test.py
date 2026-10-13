@@ -11,6 +11,11 @@ from base64 and an HMAC, so no test leans on a library to make the thing
 it then asks a library to refuse. And a refusal is "it raised", or "the
 request was answered 401": never the name of an error class, which is
 exactly what a change of library changes.
+
+They were written against python-jose and judged the move to PyJWT on
+12 October 2026. Two things changed with that move, on purpose, and
+are marked where they are: a token must say what kind it is, and a
+token with no expiry is refused.
 """
 
 from __future__ import annotations
@@ -37,6 +42,7 @@ from app.security import (
     decode_invite_token,
     decode_jwt_with_competencies,
     decode_passport_invite_token,
+    decode_refresh_token,
     decode_token,
 )
 
@@ -100,7 +106,8 @@ def _in(seconds: int) -> int:
     return int(time.time()) + seconds
 
 
-ACCESS = {"sub": "ada", "roles": [], "tv": 0}
+ACCESS = {"sub": "ada", "type": "access", "roles": [], "tv": 0}
+REFRESH = {"sub": "ada", "type": "refresh", "tv": 0}
 INVITE = {
     "type": "invite",
     "patient_id": "p-1",
@@ -117,6 +124,7 @@ PASSPORT_INVITE = {
 DECODERS: list[tuple[str, Decoder, dict[str, Any]]] = [
     ("decode_token", decode_token, ACCESS),
     ("decode_jwt_with_competencies", decode_jwt_with_competencies, ACCESS),
+    ("decode_refresh_token", decode_refresh_token, REFRESH),
     ("decode_invite_token", decode_invite_token, INVITE),
     (
         "decode_passport_invite_token",
@@ -149,8 +157,10 @@ class TestWhatEachDecoderTakes:
         assert access["sub"] == "ada"
         assert access["roles"] == ["Clinician"]
         assert access["tv"] == 3
+        assert access["type"] == "access"
         assert (
-            decode_token(create_refresh_token("ada", 3))["type"] == "refresh"
+            decode_refresh_token(create_refresh_token("ada", 3))["type"]
+            == "refresh"
         )
         assert (
             decode_invite_token(
@@ -246,6 +256,33 @@ class TestOneKindOfTokenIsNotAnother:
         assert refused(decode_invite_token, token)
         assert refused(decode_passport_invite_token, token)
 
+    def test_a_refresh_token_is_not_an_access_token(self) -> None:
+        """Changed with the move to PyJWT, on purpose. It was read: a
+        request's token was checked for everything but its kind."""
+        token = forge({**REFRESH, "exp": _in(60)})
+
+        assert refused(decode_token, token)
+        assert refused(decode_jwt_with_competencies, token)
+
+    def test_an_access_token_is_not_a_refresh_token(self) -> None:
+        assert refused(decode_refresh_token, forge({**ACCESS, "exp": _in(60)}))
+
+    def test_an_access_token_that_does_not_say_so_is_not_one(self) -> None:
+        """What every access token looked like before 12 October 2026.
+        One still in a browser is refused once, and the page then gets a
+        new one with its refresh token, as it does every fifteen
+        minutes anyway."""
+        untyped = {k: v for k, v in ACCESS.items() if k != "type"}
+
+        assert refused(decode_token, forge({**untyped, "exp": _in(60)}))
+
+    def test_an_invite_is_neither(self) -> None:
+        for payload in (INVITE, PASSPORT_INVITE):
+            token = forge({**payload, "exp": _in(60)})
+
+            assert refused(decode_token, token)
+            assert refused(decode_refresh_token, token)
+
     def test_one_invite_is_not_the_other(self) -> None:
         assert refused(
             decode_passport_invite_token, forge({**INVITE, "exp": _in(60)})
@@ -261,17 +298,19 @@ class TestOneKindOfTokenIsNotAnother:
 
 
 class TestATokenWithNoExpiry:
-    """Pinned as it is today, not as it ought to be.
+    """Refused. Changed with the move to PyJWT, on purpose.
 
     Every token this app makes carries an expiry, so one without could
-    only be made by somebody who already holds the secret. The decoders
-    read it. A library that refuses it instead would be a change of
-    behaviour, and this is where that would show.
+    only be made by somebody who already holds the secret. It used to
+    be read all the same. A token that never runs out is not one this
+    app issues, so it is not one it takes.
     """
 
     @EVERY_DECODER
-    def test_is_read(self, decode: Decoder, payload: dict[str, Any]) -> None:
-        assert not refused(decode, forge(dict(payload)))
+    def test_is_refused(
+        self, decode: Decoder, payload: dict[str, Any]
+    ) -> None:
+        assert refused(decode, forge(dict(payload)))
 
 
 def _me(client: TestClient, token: str) -> int:
@@ -325,6 +364,7 @@ class TestWhatARequestIsAnswered:
     ) -> None:
         payload = {
             "sub": test_user.username,
+            "type": "access",
             "roles": [],
             "tv": test_user.token_version,
         }
@@ -335,7 +375,13 @@ class TestWhatARequestIsAnswered:
         self, test_client: TestClient, test_user: User
     ) -> None:
         token = forge(
-            {"sub": "nobody-at-all", "roles": [], "tv": 0, "exp": _in(60)}
+            {
+                "sub": "nobody-at-all",
+                "type": "access",
+                "roles": [],
+                "tv": 0,
+                "exp": _in(60),
+            }
         )
 
         assert _me(test_client, token) == 401
@@ -349,6 +395,7 @@ class TestWhatARequestIsAnswered:
         token = forge(
             {
                 "sub": test_user.username,
+                "type": "access",
                 "roles": [],
                 "tv": test_user.token_version + 1,
                 "exp": _in(60),
@@ -364,22 +411,13 @@ class TestWhatARequestIsAnswered:
 
         assert _me(test_client, token) == 401
 
-    def test_a_refresh_token_in_the_access_cookie(
+    def test_a_refresh_token_in_the_access_cookie_is_answered_401(
         self, test_client: TestClient, test_user: User
     ) -> None:
-        """Pinned as it is today: it signs the caller in.
-
-        A request's token is checked for its signature, its expiry, its
-        user and its version, and not for its type. A refresh token has
-        all four, so offered as the access cookie it is taken as one,
-        for its seven days and not fifteen minutes. It gives nobody a
-        power they did not hold: whoever has the refresh token could
-        exchange it for an access token anyway. It is written down here
-        so that a change either way is seen, and the plan carries the
-        question of whether the type should be checked.
-        """
+        """Changed with the move to PyJWT, on purpose. It signed the
+        caller in, for its seven days and not fifteen minutes."""
         token = create_refresh_token(
             test_user.username, test_user.token_version
         )
 
-        assert _me(test_client, token) == 200
+        assert _me(test_client, token) == 401

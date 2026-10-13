@@ -587,6 +587,7 @@
     "pyenv",
     "pyflow",
     "pygit",
+    "pyjwt",
     "pylint",
     "pymdownx",
     "pyotp",

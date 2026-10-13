@@ -216,9 +216,18 @@ STUB
 
 @test "every excuse in the real ignore file has a reason" {
   real="${BATS_TEST_DIRNAME}/../../../backend/.pip-audit-ignore"
+  entries="$(ignore_entries "$real")"
+
+  # No excuses at all is the state to hope for, and there is then
+  # nothing to check. It was first reached on 12 October 2026, when
+  # python-jose went, and this test failed on the one empty line a
+  # here-string gives a loop.
+  if [ -z "$entries" ]; then
+    return 0
+  fi
 
   while IFS=$'\t' read -r id reason; do
     [ -n "$id" ]
     [ -n "$reason" ]
-  done <<<"$(ignore_entries "$real")"
+  done <<<"$entries"
 }

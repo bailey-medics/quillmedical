@@ -320,7 +320,7 @@ Code reaches `main` through its author and the automated checks above. An audit 
 
 | Priority | Item                                 | Status                                    |
 | -------- | ------------------------------------ | ----------------------------------------- |
-| Medium   | Migrate `python-jose` → `PyJWT`      | Planned (eliminates ecdsa CVE-2024-23342 and CVE-2026-85394; today's behaviour is pinned by tests first) |
+| Medium   | Migrate `python-jose` → `PyJWT`      | Done, 12 October 2026 (removes ecdsa CVE-2024-23342 and CVE-2026-85394; a token now says what kind it is and must carry an expiry) |
 | Low      | Encrypt TOTP secrets at rest         | Under consideration                       |
 | Low      | `__Host-` / `__Secure-` cookie names | Pending (see cookie configuration)        |
 

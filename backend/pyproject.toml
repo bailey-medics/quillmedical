@@ -23,7 +23,7 @@ sqlalchemy = "2.1.1"
 psycopg = {extras = ["binary"], version = ">=3.2,<4.0"}
 python-dotenv = "1.2.3"
 httpx = "0.28.1"
-python-jose = {extras = ["cryptography"], version = ">=3.5.0,<4.0.0"}
+pyjwt = ">=2.10.1,<3.0.0"
 # Parsing multipart form bodies, which is how FastAPI receives an
 # uploaded file. Needed by the passport evidence route: a blob is
 # addressed by the hash of its own bytes, so the bytes come through this
@@ -115,7 +115,7 @@ exclude = ['_test\.py$']
 # exist and not as a library without types. Each such import carries
 # `# type: ignore[attr-defined]` instead.
 [[tool.mypy.overrides]]
-module = ["fhirclient.*", "jose.*"]
+module = ["fhirclient.*"]
 ignore_missing_imports = true
 
 # What `just test-coverage py` measures: the application, and not the

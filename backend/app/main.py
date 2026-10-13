@@ -136,7 +136,7 @@ from app.security import (
     create_jwt_with_competencies,
     create_password_reset_token,
     create_refresh_token,
-    decode_token,
+    decode_refresh_token,
     generate_totp_secret,
     hash_password,
     make_csrf,
@@ -1451,9 +1451,7 @@ def refresh(
     if not tok:
         raise HTTPException(401, "No refresh token")
     try:
-        payload = decode_token(tok)
-        if payload.get("type") != "refresh":
-            raise ValueError("not refresh")
+        payload = decode_refresh_token(tok)
     except Exception as e:
         raise HTTPException(401, "Bad refresh token") from e
 

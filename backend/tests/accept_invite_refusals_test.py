@@ -8,9 +8,9 @@ the status of a wrong token was pinned before the rules moved.
 
 from datetime import UTC, datetime, timedelta
 
+import jwt
 import pytest
 from fastapi.testclient import TestClient
-from jose import jwt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

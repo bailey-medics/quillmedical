@@ -36,10 +36,10 @@ from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import jwt
 import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
-from jose import jwt
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
