@@ -2,7 +2,8 @@
  * Retention Review Card Storybook Stories
  *
  * One closed account's training records awaiting a decision, in each of
- * the three choices and when a decision was refused.
+ * the three choices and when a decision was refused. And the account
+ * itself, once no records are left on it.
  */
 
 import { useState } from "react";
@@ -10,6 +11,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { VariantRow, VariantStack } from "@/stories/variants";
 import {
   oneYearOn,
+  type RetentionAccount,
   type RetentionChoice,
   type RetentionReview,
 } from "@/lib/retention/retentionReviews";
@@ -29,6 +31,16 @@ const review: RetentionReview = {
   listed_at: "2030-07-15T03:30:00Z",
 };
 
+const account: RetentionAccount = {
+  id: 9,
+  user_id: 44,
+  full_name: "Cat Example",
+  email: "cat.example@example.nhs.uk",
+  closed_at: "2028-01-14T09:00:00Z",
+  due_on: "2030-01-14T09:00:00Z",
+  listed_at: "2030-01-15T03:30:00Z",
+};
+
 const meta: Meta<typeof RetentionReviewCard> = {
   title: "Retention/Retention review card",
   component: RetentionReviewCard,
@@ -40,14 +52,20 @@ const meta: Meta<typeof RetentionReviewCard> = {
 export default meta;
 type Story = StoryObj<typeof RetentionReviewCard>;
 
-function Interactive({ start }: { start: RetentionChoice }) {
+function Interactive({
+  start,
+  about = review,
+}: {
+  start: RetentionChoice;
+  about?: RetentionReview | RetentionAccount;
+}) {
   const [choice, setChoice] = useState<RetentionChoice>(start);
   const [note, setNote] = useState("");
   const [askAgainOn, setAskAgainOn] = useState<string | null>(oneYearOn());
 
   return (
     <RetentionReviewCard
-      review={review}
+      review={about}
       choice={choice}
       note={note}
       askAgainOn={askAgainOn}
@@ -99,6 +117,26 @@ export const AllStates: Story = {
           onAskAgainOnChange={() => undefined}
           disabled
         />
+      </VariantRow>
+    </VariantStack>
+  ),
+};
+
+/**
+ * The account itself, closed two years with no records left. Choosing
+ * to empty it marks it for the next nightly run.
+ */
+export const AnAccount: Story = {
+  render: () => (
+    <VariantStack>
+      <VariantRow label="leave for later (default)" horizontal={false}>
+        <Interactive start="undecided" about={account} />
+      </VariantRow>
+      <VariantRow label="empty" horizontal={false}>
+        <Interactive start="delete" about={account} />
+      </VariantRow>
+      <VariantRow label="keep, with no reason yet" horizontal={false}>
+        <Interactive start="keep" about={account} />
       </VariantRow>
     </VariantStack>
   ),

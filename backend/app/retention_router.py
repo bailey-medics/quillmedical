@@ -1,8 +1,9 @@
 """Deciding what happens to records past the period they are kept for.
 
 The nightly retention run lists a closed account's training records once
-their sponsor's period has passed, and deletes none of them
-(``app.retention``). These are the routes a person decides with.
+their sponsor's period has passed, and then the account itself, and
+deletes neither (``app.retention``). These are the routes a person
+decides with.
 
 Everything here is for an operator of Quill itself. The records belong
 to every organisation's sponsor, not to one place, which is the test for
@@ -25,6 +26,7 @@ from app.deps import DEP_REQUIRE_CSRF, DEP_REQUIRE_OPERATOR
 from app.models import OrgUnit, RetentionReview, User
 from app.retention import carry_out_decision, delete_training_records
 from app.schemas.retention import (
+    RetentionAccountOut,
     RetentionDecisionsIn,
     RetentionDecisionsOut,
     RetentionRefusalOut,
@@ -48,7 +50,9 @@ _DEP_SESSION = Depends(get_core_db)
 
 @router.get("/reviews", response_model=RetentionReviewListOut)
 def list_reviews(db: Session = _DEP_SESSION) -> RetentionReviewListOut:
-    """Every set of records awaiting a decision, longest waiting first.
+    """Everything awaiting a decision, longest waiting first.
+
+    Records and accounts come back as two lists.
 
     The counts are taken now, not read from the row: an account closed
     for years gains nothing, but the number shown should be the number
@@ -64,7 +68,10 @@ def list_reviews(db: Session = _DEP_SESSION) -> RetentionReviewListOut:
             select(RetentionReview, User, OrgUnit)
             .join(User, User.id == RetentionReview.user_id)
             .join(OrgUnit, OrgUnit.id == RetentionReview.org_unit_id)
-            .where(RetentionReview.decision == "undecided")
+            .where(
+                RetentionReview.decision == "undecided",
+                RetentionReview.subject == "records",
+            )
             .order_by(RetentionReview.created_at, RetentionReview.id)
         )
         .unique()
@@ -75,7 +82,7 @@ def list_reviews(db: Session = _DEP_SESSION) -> RetentionReviewListOut:
 
     for review, user, org_unit in rows:
         attempts, enrolments = delete_training_records(
-            db, review.user_id, review.org_unit_id, apply=False
+            db, review.user_id, org_unit.id, apply=False
         )
         reviews.append(
             RetentionReviewOut(
@@ -93,7 +100,33 @@ def list_reviews(db: Session = _DEP_SESSION) -> RetentionReviewListOut:
             )
         )
 
-    return RetentionReviewListOut(reviews=reviews)
+    account_rows = (
+        db.execute(
+            select(RetentionReview, User)
+            .join(User, User.id == RetentionReview.user_id)
+            .where(
+                RetentionReview.decision == "undecided",
+                RetentionReview.subject == "account",
+            )
+            .order_by(RetentionReview.created_at, RetentionReview.id)
+        )
+        .unique()
+        .all()
+    )
+    accounts = [
+        RetentionAccountOut(
+            id=review.id,
+            user_id=user.id,
+            full_name=user.full_name or "",
+            email=user.email,
+            closed_at=review.closed_at,
+            due_on=review.due_on,
+            listed_at=review.created_at,
+        )
+        for review, user in account_rows
+    ]
+
+    return RetentionReviewListOut(reviews=reviews, accounts=accounts)
 
 
 @router.post(
@@ -114,10 +147,14 @@ def decide(
 
     A deletion is permanent. It is checked again here that the account
     is still past its period, whatever the list said when it was drawn.
+
+    An account is not emptied here. It is marked, and the nightly run
+    that follows empties it.
     """
     now = datetime.now(UTC)
     deleted = 0
     kept = 0
+    to_empty = 0
     refused: list[RetentionRefusalOut] = []
     seen: set[int] = set()
 
@@ -160,6 +197,8 @@ def decide(
                     review_id=decision.review_id, reason=reason
                 )
             )
+        elif delete_them and review.subject == "account":
+            to_empty += 1
         elif delete_them:
             deleted += 1
         else:
@@ -167,11 +206,15 @@ def decide(
 
     # Who did it and how many, and never whose records they were.
     logger.info(
-        "Retention decisions by user %s: %s deleted, %s kept, %s refused",
+        "Retention decisions by user %s: %s deleted, %s kept, "
+        "%s to empty, %s refused",
         operator.id,
         deleted,
         kept,
+        to_empty,
         len(refused),
     )
 
-    return RetentionDecisionsOut(deleted=deleted, kept=kept, refused=refused)
+    return RetentionDecisionsOut(
+        deleted=deleted, kept=kept, to_empty=to_empty, refused=refused
+    )

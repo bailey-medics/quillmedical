@@ -1875,27 +1875,39 @@ class PositionHolding(Base):
 #: ``undecided`` is where every row starts and may stay.
 RETENTION_DECISIONS: tuple[str, ...] = ("undecided", "deleted", "kept")
 
+#: What a ``RetentionReview`` row asks about: somebody's training records
+#: at one organisation, or the closed account itself.
+RETENTION_SUBJECTS: tuple[str, ...] = ("records", "account")
+
 
 class RetentionReview(Base):
-    """One person's records at one organisation, past the period kept.
+    """Something of a closed account's, past the period it is kept for.
 
-    The nightly retention run does not delete a closed account's training
-    records. It writes a row here and a person decides: delete, keep, or
-    leave undecided. Deleting somebody's records cannot be undone once the
-    backups have turned over, so a timer does not do it.
+    Either one person's training records at one organisation, or the
+    account itself once no records are left: ``subject`` says which.
+
+    The nightly retention run deletes neither. It writes a row here and a
+    person decides: delete, keep, or leave undecided. Neither can be
+    undone once the backups have turned over, so a timer does not do it.
 
     **A row is never removed.** Once decided it is the record of what was
     done, by whom and why, and outlives the records it was about.
 
-    **At most one undecided row for a person at an organisation**, held
-    by a partial unique index, so a run every night does not write the
-    same question every night.
+    **At most one undecided row for a person at an organisation, and
+    one about their account**, each held by a partial unique index, so a
+    run every night does not write the same question every night.
+
+    **A row about an account that says deleted is a decision, not a
+    deed.** The account is emptied by the nightly run that follows, which
+    alone can move a passport's files to the archive.
 
     Attributes:
-        user_id: Whose records.
-        org_unit_id: The organisation holding them.
+        subject: One of ``RETENTION_SUBJECTS``.
+        user_id: Whose records, or whose account.
+        org_unit_id: The organisation holding the records. Null for a
+            row about an account, which belongs to no one place.
         closed_at: When their account was closed.
-        due_on: When that organisation's period for them ended.
+        due_on: When the period ended.
         attempts: How many attempts were found when the row was written.
         enrolments: How many enrolments were found then.
         decision: One of ``RETENTION_DECISIONS``.
@@ -1914,6 +1926,17 @@ class RetentionReview(Base):
             + ")",
             name="ck_retention_review_decision",
         ),
+        CheckConstraint(
+            "subject IN ("
+            + ", ".join(f"'{s}'" for s in RETENTION_SUBJECTS)
+            + ")",
+            name="ck_retention_review_subject",
+        ),
+        # Records are somewhere; an account is not.
+        CheckConstraint(
+            "(subject = 'records') = (org_unit_id IS NOT NULL)",
+            name="ck_retention_review_records_have_a_place",
+        ),
         # The predicate is given for both databases: without
         # ``sqlite_where`` the unit-test database would make this a full
         # unique index and refuse a second row once the first is decided.
@@ -1925,19 +1948,38 @@ class RetentionReview(Base):
             postgresql_where=text("decision = 'undecided'"),
             sqlite_where=text("decision = 'undecided'"),
         ),
+        # Its own index: the one above compares the organisation, and no
+        # two nulls are equal, so it would let any number of these in.
+        Index(
+            "uq_retention_review_one_undecided_account",
+            "user_id",
+            unique=True,
+            postgresql_where=text(
+                "decision = 'undecided' AND subject = 'account'"
+            ),
+            sqlite_where=text(
+                "decision = 'undecided' AND subject = 'account'"
+            ),
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    subject: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="records",
+        server_default="records",
+    )
     user_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
     )
-    org_unit_id: Mapped[int] = mapped_column(
+    org_unit_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("org_unit.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     closed_at: Mapped[datetime] = mapped_column(

@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
 import {
   oneYearOn,
+  type RetentionAccount,
   type RetentionReview,
 } from "@/lib/retention/retentionReviews";
 import RetentionDecisionList from "./RetentionDecisionList";
@@ -30,6 +31,16 @@ function review(id: number, full_name: string): RetentionReview {
     listed_at: "2030-07-15T03:30:00Z",
   };
 }
+
+const cat: RetentionAccount = {
+  id: 9,
+  user_id: 109,
+  full_name: "Cat Example",
+  email: "cat@example.nhs.uk",
+  closed_at: "2028-01-14T09:00:00Z",
+  due_on: "2030-01-14T09:00:00Z",
+  listed_at: "2030-01-15T03:30:00Z",
+};
 
 const ann = review(1, "Ann Example");
 const bob = review(2, "Bob Example");
@@ -137,9 +148,7 @@ describe("RetentionDecisionList", () => {
     expect(
       within(dialog).getByText(/Delete the training records of 1 account/),
     ).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(/keep those of 1 account/),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByText(/keep 1 as marked/)).toBeInTheDocument();
   });
 
   it("will not carry out a keep that has no reason", async () => {
@@ -263,6 +272,53 @@ describe("RetentionDecisionList", () => {
 
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("shows an account to be emptied after the records", () => {
+    renderList({ accounts: [cat] });
+
+    const names = screen
+      .getAllByRole("heading")
+      .map((heading) => heading.textContent);
+
+    expect(names).toEqual(["Ann Example", "Bob Example", "Cat Example"]);
+  });
+
+  it("counts an account marked to be emptied apart from records", async () => {
+    const { onCarryOut } = renderList({ accounts: [cat] });
+
+    await userEvent.click(
+      within(cardOf("Ann Example")).getByRole("radio", {
+        name: "Delete these records",
+      }),
+    );
+    await userEvent.click(
+      within(cardOf("Cat Example")).getByRole("radio", {
+        name: "Empty this account",
+      }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Carry out decisions" }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(/training records of 1 account/),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/mark 1 account to be emptied/),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Carry out decisions" }),
+    );
+
+    await waitFor(() =>
+      expect(onCarryOut).toHaveBeenCalledWith([
+        { review_id: 1, decision: "delete" },
+        { review_id: 9, decision: "delete" },
+      ]),
     );
   });
 });

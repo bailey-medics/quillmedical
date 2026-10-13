@@ -2,8 +2,8 @@
  * Retention Decision List
  *
  * Every closed account whose training records are awaiting a decision,
- * one card each, with the single button that carries out whatever has
- * been marked.
+ * and every closed account that is itself, one card each, with the
+ * single button that carries out whatever has been marked.
  *
  * It holds what has been marked and asks before anything is done. It
  * does not fetch or send: the page gives it the accounts and a function
@@ -17,6 +17,7 @@ import { ConfirmModal } from "@/components/confirm-modal";
 import { BodyText } from "@/components/typography";
 import {
   oneYearOn,
+  type RetentionAccount,
   type RetentionChoice,
   type RetentionDecision,
   type RetentionReview,
@@ -41,8 +42,10 @@ function accounts(count: number): string {
 }
 
 interface RetentionDecisionListProps {
-  /** The accounts awaiting a decision */
+  /** The training records awaiting a decision */
   reviews: RetentionReview[];
+  /** The closed accounts awaiting a decision to empty them */
+  accounts?: RetentionAccount[];
   /** Why the last attempt was refused, by review id */
   refusals?: Record<number, string>;
   /**
@@ -56,6 +59,7 @@ interface RetentionDecisionListProps {
 
 export default function RetentionDecisionList({
   reviews,
+  accounts: accountsWaiting = [],
   refusals = {},
   onCarryOut,
   onClear,
@@ -71,15 +75,22 @@ export default function RetentionDecisionList({
     }));
   }
 
+  // Records first, then the accounts with none left. One table holds
+  // both, so an id is never shared between the two.
+  const cards = [...reviews, ...accountsWaiting];
+
   // An account that has left the list keeps no mark: only what is on
   // screen can be sent.
-  const decided = reviews.filter(
+  const decided = cards.filter(
     (review) => (marked[review.id] ?? unmarked()).choice !== "undecided",
   );
-  const toDelete = decided.filter(
+  const toDelete = reviews.filter(
     (review) => marked[review.id]?.choice === "delete",
   ).length;
-  const toKeep = decided.length - toDelete;
+  const toEmpty = accountsWaiting.filter(
+    (account) => marked[account.id]?.choice === "delete",
+  ).length;
+  const toKeep = decided.length - toDelete - toEmpty;
   const keepUnfinished = decided.some((review) => {
     const row = marked[review.id] ?? unmarked();
 
@@ -124,7 +135,7 @@ export default function RetentionDecisionList({
 
   return (
     <Stack gap="lg">
-      {reviews.map((review) => {
+      {cards.map((review) => {
         const row = marked[review.id] ?? unmarked();
 
         return (
@@ -164,8 +175,9 @@ export default function RetentionDecisionList({
         destructive
       >
         <BodyText>
-          Delete the training records of {accounts(toDelete)}, and keep those of{" "}
-          {accounts(toKeep)}. Deleting cannot be undone. Anything left on
+          Delete the training records of {accounts(toDelete)}, mark{" "}
+          {accounts(toEmpty)} to be emptied by the next nightly run, and keep{" "}
+          {toKeep} as marked. This cannot be undone. Anything left on
           &quot;Leave for later&quot; is not touched.
         </BodyText>
       </ConfirmModal>

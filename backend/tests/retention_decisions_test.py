@@ -175,7 +175,12 @@ class TestDeciding:
         )
 
         assert resp.status_code == 200
-        assert resp.json() == {"deleted": 1, "kept": 0, "refused": []}
+        assert resp.json() == {
+            "deleted": 1,
+            "kept": 0,
+            "to_empty": 0,
+            "refused": [],
+        }
         db_session.expire_all()
         assert _count(db_session, Assessment) == 0
         assert _count(db_session, AssessmentAnswer) == 0
@@ -253,7 +258,12 @@ class TestDeciding:
             },
         )
 
-        assert resp.json() == {"deleted": 0, "kept": 1, "refused": []}
+        assert resp.json() == {
+            "deleted": 0,
+            "kept": 1,
+            "to_empty": 0,
+            "refused": [],
+        }
         db_session.expire_all()
         row = db_session.get(RetentionReview, rows["ann"].id)
         assert row is not None
@@ -462,3 +472,125 @@ class TestDeciding:
         assert resp.status_code == 403
         db_session.expire_all()
         assert _count(db_session, Assessment) == 1
+
+
+def _closed_account(db: Session, name: str) -> RetentionReview:
+    """Somebody closed long ago with no records, listed by the run."""
+    user = User(
+        username=name,
+        email=f"{name}@example.nhs.uk",
+        password_hash="x",
+        full_name=f"{name.title()} Example",
+    )
+    db.add(user)
+    db.flush()
+    user.is_active = False
+    user.deactivated_at = datetime.now(UTC) - LONG_AGO
+    apply_retention(db, datetime.now(UTC), apply=True)
+    db.commit()
+
+    return db.scalars(
+        select(RetentionReview).where(RetentionReview.user_id == user.id)
+    ).one()
+
+
+class TestAccounts:
+    """A closed account with no records left, awaiting a decision."""
+
+    def test_it_is_listed_apart_from_the_records(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        _listed(db_session, "ann")
+        row = _closed_account(db_session, "cat")
+
+        body = authenticated_superadmin_client.get(REVIEWS).json()
+
+        assert [r["full_name"] for r in body["reviews"]] == ["Ann Example"]
+        [account] = body["accounts"]
+        assert account["id"] == row.id
+        assert account["full_name"] == "Cat Example"
+        assert account["email"] == "cat@example.nhs.uk"
+        assert "organisation" not in account
+
+    def test_delete_marks_it_and_empties_nothing(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        row = _closed_account(db_session, "cat")
+
+        resp = authenticated_superadmin_client.post(
+            DECISIONS,
+            json={"decisions": [{"review_id": row.id, "decision": "delete"}]},
+        )
+
+        assert resp.json() == {
+            "deleted": 0,
+            "kept": 0,
+            "to_empty": 1,
+            "refused": [],
+        }
+        db_session.expire_all()
+        assert row.decision == "deleted"
+        user = db_session.get(User, row.user_id)
+        assert user is not None
+        assert user.email == "cat@example.nhs.uk"
+        assert user.full_name == "Cat Example"
+
+    def test_once_marked_it_leaves_the_list(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        row = _closed_account(db_session, "cat")
+        authenticated_superadmin_client.post(
+            DECISIONS,
+            json={"decisions": [{"review_id": row.id, "decision": "delete"}]},
+        )
+
+        body = authenticated_superadmin_client.get(REVIEWS).json()
+
+        assert body["accounts"] == []
+
+    def test_one_opened_again_since_is_refused(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        row = _closed_account(db_session, "cat")
+        user = db_session.get(User, row.user_id)
+        assert user is not None
+        user.is_active = True
+        user.deactivated_at = None
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.post(
+            DECISIONS,
+            json={"decisions": [{"review_id": row.id, "decision": "delete"}]},
+        )
+
+        body = resp.json()
+        assert body["to_empty"] == 0
+        [refusal] = body["refused"]
+        assert "no longer due" in refusal["reason"]
+
+    def test_keep_needs_a_note_as_records_do(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        row = _closed_account(db_session, "cat")
+
+        resp = authenticated_superadmin_client.post(
+            DECISIONS,
+            json={"decisions": [{"review_id": row.id, "decision": "keep"}]},
+        )
+
+        assert resp.json()["kept"] == 0
+        assert len(resp.json()["refused"]) == 1
+
+    def test_an_admin_of_a_place_cannot_mark_one(
+        self, authenticated_admin_client: TestClient, db_session: Session
+    ) -> None:
+        row = _closed_account(db_session, "cat")
+
+        resp = authenticated_admin_client.post(
+            DECISIONS,
+            json={"decisions": [{"review_id": row.id, "decision": "delete"}]},
+        )
+
+        assert resp.status_code == 403
+        db_session.expire_all()
+        assert row.decision == "undecided"

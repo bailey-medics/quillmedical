@@ -5,6 +5,10 @@
  * their sponsor asked for them to be kept, with the choice to make about
  * them: leave for later, delete, or keep.
  *
+ * Or the closed account itself, once no records are left on it. The
+ * choice is then to empty it or keep it, and choosing to empty marks it
+ * for the nightly run: nothing happens to the account from this screen.
+ *
  * Every card starts on "Leave for later", so the accounts that are clear
  * can be dealt with while one that is not is left alone. Keeping needs a
  * reason, because it holds records past what the privacy policy says,
@@ -26,19 +30,29 @@ import {
 } from "@/components/typography";
 import {
   MAX_RETENTION_NOTE,
+  isRecords,
   tomorrow,
+  type RetentionAccount,
   type RetentionChoice,
   type RetentionReview,
 } from "@/lib/retention/retentionReviews";
 
-const CHOICES: { value: RetentionChoice; label: string }[] = [
+type Choices = { value: RetentionChoice; label: string }[];
+
+const RECORD_CHOICES: Choices = [
   { value: "undecided", label: "Leave for later" },
   { value: "delete", label: "Delete these records" },
   { value: "keep", label: "Keep these records" },
 ];
 
+const ACCOUNT_CHOICES: Choices = [
+  { value: "undecided", label: "Leave for later" },
+  { value: "delete", label: "Empty this account" },
+  { value: "keep", label: "Keep this account" },
+];
+
 function isChoice(value: string): value is RetentionChoice {
-  return CHOICES.some((choice) => choice.value === value);
+  return RECORD_CHOICES.some((choice) => choice.value === value);
 }
 
 function plural(count: number, one: string, many: string): string {
@@ -46,8 +60,8 @@ function plural(count: number, one: string, many: string): string {
 }
 
 interface RetentionReviewCardProps {
-  /** The records to decide about */
-  review: RetentionReview;
+  /** The records, or the account, to decide about */
+  review: RetentionReview | RetentionAccount;
   /** What has been chosen for them so far */
   choice: RetentionChoice;
   /** The note written so far */
@@ -77,8 +91,16 @@ export default function RetentionReviewCard({
   refusal,
   disabled = false,
 }: RetentionReviewCardProps) {
+  const records = isRecords(review) ? review : null;
+  const account = records === null;
   const keeping = choice === "keep";
   const noteMissing = keeping && note.trim() === "";
+  const whyKept = account
+    ? "A kept account is held past the period promised, so the reason is recorded."
+    : "Kept records are held past the period promised, so the reason is recorded.";
+  const askedAgain = account
+    ? "This account comes back for a decision on this date. A year from today unless you choose another."
+    : "These records come back for a decision on this date. A year from today unless you choose another.";
 
   return (
     <BaseCard>
@@ -89,10 +111,12 @@ export default function RetentionReviewCard({
         </Stack>
 
         <Stack gap={4}>
-          <Group gap="xs">
-            <BodyTextBold>Organisation:</BodyTextBold>
-            <BodyTextInline>{review.organisation}</BodyTextInline>
-          </Group>
+          {records && (
+            <Group gap="xs">
+              <BodyTextBold>Organisation:</BodyTextBold>
+              <BodyTextInline>{records.organisation}</BodyTextInline>
+            </Group>
+          )}
           <Group gap="xs">
             <BodyTextBold>Account closed:</BodyTextBold>
             <FormattedDate date={review.closed_at} />
@@ -101,18 +125,27 @@ export default function RetentionReviewCard({
             <BodyTextBold>Period ended:</BodyTextBold>
             <FormattedDate date={review.due_on} />
           </Group>
-          <Group gap="xs">
-            <BodyTextBold>Would be deleted:</BodyTextBold>
-            <BodyTextInline>
-              {plural(review.attempts, "attempt", "attempts")} and{" "}
-              {plural(review.enrolments, "enrolment", "enrolments")}
-            </BodyTextInline>
-          </Group>
+          {records === null ? (
+            <Group gap="xs">
+              <BodyTextBold>Would be emptied:</BodyTextBold>
+              <BodyTextInline>
+                the account itself, by the next nightly run
+              </BodyTextInline>
+            </Group>
+          ) : (
+            <Group gap="xs">
+              <BodyTextBold>Would be deleted:</BodyTextBold>
+              <BodyTextInline>
+                {plural(records.attempts, "attempt", "attempts")} and{" "}
+                {plural(records.enrolments, "enrolment", "enrolments")}
+              </BodyTextInline>
+            </Group>
+          )}
         </Stack>
 
         <RadioField
           label="Decision"
-          options={CHOICES}
+          options={account ? ACCOUNT_CHOICES : RECORD_CHOICES}
           value={choice}
           onChange={(value) => {
             if (isChoice(value)) onChoiceChange(value);
@@ -123,12 +156,14 @@ export default function RetentionReviewCard({
 
         {choice !== "undecided" && (
           <TextAreaField
-            label={keeping ? "Why they are being kept" : "Note (optional)"}
-            description={
-              keeping
-                ? "Kept records are held past the period promised, so the reason is recorded."
-                : "Recorded with the decision."
+            label={
+              !keeping
+                ? "Note (optional)"
+                : account
+                  ? "Why it is being kept"
+                  : "Why they are being kept"
             }
+            description={keeping ? whyKept : "Recorded with the decision."}
             value={note}
             onChange={(event) => onNoteChange(event.currentTarget.value)}
             required={keeping}
@@ -143,7 +178,7 @@ export default function RetentionReviewCard({
         {keeping && (
           <DateField
             label="Ask again on"
-            description="These records come back for a decision on this date. A year from today unless you choose another."
+            description={askedAgain}
             value={askAgainOn}
             onChange={onAskAgainOnChange}
             minDate={tomorrow()}
