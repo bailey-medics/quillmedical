@@ -12,17 +12,24 @@ Environment Variables:
                       check-competency-seeding, delete-passport,
                       send-newsletter, accessibility-reminder,
                       apply-retention, send-teaching-reminders,
-                      finish-exams-out-of-time, set-records-kept.
+                      finish-exams-out-of-time, set-records-kept,
+                      decide-retention.
     ADMIN_USERNAME:   Required.  Target username.
     ADMIN_EMAIL:      Required for create-superadmin.
     ADMIN_PASSWORD:   Required for create-superadmin.
     ADMIN_ROLE:       Required for add-role (e.g. "System Administrator").
-    CONFIRM:          delete-passport and send-newsletter. What a dry
-                      run printed, pasted back. Without it the action
-                      only reports.
+    CONFIRM:          delete-passport, send-newsletter and
+                      decide-retention. What a dry run printed, pasted
+                      back. Without it the action only reports.
     RECORDS_ORG_UNIT_ID, RECORDS_KEPT_MONTHS, RECORDS_APPLY:
                       set-records-kept. The organisation's org unit id,
                       the months (or "none"), and "true" to change it.
+    RETENTION_REVIEW_ID, RETENTION_DECISION, RETENTION_NOTE,
+    RETENTION_ASK_AGAIN_ON, RETENTION_DECIDED_BY:
+                      decide-retention. The row, "delete" or "keep",
+                      why, the date to ask again (YYYY-MM-DD), and the
+                      username of the superadmin deciding. With no
+                      review id it lists what is awaiting a decision.
     NEWSLETTER_CAMPAIGN:  Required for send-newsletter. The campaign's
                       name, a template under app/email/templates/campaigns/.
     NEWSLETTER_ONLY_TO:   send-newsletter only. One address, for a trial.
@@ -321,6 +328,20 @@ def set_records_kept() -> int:
     from app.retention import set_records_kept as set_records_kept_main
 
     return set_records_kept_main()
+
+
+def decide_retention() -> int:
+    """Decide about records past their period, without the screen.
+
+    The same decision the record retention screen makes, for when it
+    cannot be reached. With no ``RETENTION_REVIEW_ID`` it lists what is
+    awaiting a decision. With one, it prints a code, and carries the
+    decision out only when that code is passed back as ``CONFIRM``. See
+    ``app.retention_command``.
+    """
+    from app.retention_command import main as decide_main
+
+    return decide_main()
 
 
 def send_teaching_reminders() -> int:
@@ -677,6 +698,11 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
         set_records_kept,
         "Set how long an organisation keeps a closed account's training "
         "records (a report without RECORDS_APPLY=true)",
+    ),
+    "decide-retention": (
+        decide_retention,
+        "Decide about records past their period, when the screen cannot "
+        "be reached (a dry run without CONFIRM)",
     ),
     "send-teaching-reminders": (
         send_teaching_reminders,

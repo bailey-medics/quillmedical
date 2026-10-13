@@ -1200,13 +1200,27 @@ been since 12 October.
       deleted by the button, and a second run does not write a second
       row for the same person and organisation.
 
-- [ ] Then the same decision from the admin job, for when the screen
+- [x] Then the same decision from the admin job, for when the screen
       cannot be reached: a dry run that prints what is awaiting a
       decision and a code, and the code pasted back to carry it out, as
       `delete-passport` does. After the screen, on Mark's instruction.
 
-- [ ] Deleting an account, Phase 29, goes through this same screen and
-      is never automatic either.
+      Built on 13 October as the `decide-retention` admin action, in
+      `backend/app/retention_command.py`. With no review id it lists
+      what is awaiting a decision. With one and a decision it prints a
+      code and changes nothing, and it carries the decision out only
+      when that code comes back as `CONFIRM`. The code holds the counts
+      of what is there, so it stops being right if the records change
+      in between. It ends in the same `carry_out_decision` as the
+      screen, so a keep still needs its reason and its date. It takes
+      the username of the superadmin deciding and records them on the
+      row. A row is printed as ids, dates and counts: the job's output
+      is kept in the logs, and who somebody is stays on the screen.
+
+- [x] Deleting an account, Phase 29, goes through this same screen and
+      is never automatic either. So it does: Phase 29 lists the
+      account on the screen, and the nightly run empties only what a
+      superadmin has marked there or with `decide-retention`.
 
 ## Phase 28: Closing an account does not take somebody off the newsletter
 
