@@ -1,14 +1,16 @@
 /**
  * QuillSpinner Component
  *
- * The Quill feather, turning. For the wait while the app itself starts or
- * reloads, where the brand mark says "Quill is coming" better than a
- * plain ring does. Spinners inside a page or a panel stay
- * `LoadingSpinner`.
+ * The Quill feather, turning: the one spinner Quill shows for a wait.
+ * Use it as it is for part of a page that is already on screen, and
+ * `PageSpinner` where the wait stands in for the whole page. The small
+ * ring inside a button is the only other spinner, and stays a plain
+ * Mantine `Loader` with `aria-hidden`, because the button already says
+ * what is happening and a quill cannot be read at that size.
  *
- * Like `LoadingSpinner`, the graphic is hidden from assistive technology
- * and paired with a visually hidden `role="status"` saying "Loading"
- * (WCAG 4.1.3 Status messages).
+ * A picture with no text says nothing to a screen reader, so the graphic
+ * is hidden from assistive technology and paired with a visually hidden
+ * `role="status"` saying "Loading" (WCAG 4.1.3 Status messages).
  *
  * The animation is all in the CSS module, which also says why the quill is
  * drawn three times over. It stills itself for somebody who has asked

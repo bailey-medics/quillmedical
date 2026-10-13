@@ -184,3 +184,14 @@ evidence the NHS DTAC's accessibility section (D1) asks for, and the
   the button says what it will do, that the change of state after
   pressing it is announced, and that nothing sends the reader to the
   login page.
+- **Journeys 1 to 4 again, for the quill spinner at start-up** - added
+  on 13 October 2026 by the
+  [quill spinner everywhere plan](../../plans/2026-10-13-quill-spinner-everywhere-plan.md).
+  Every journey begins by opening Quill and signing in, which now shows
+  a turning quill from the first paint, handed from the page itself to
+  the app and then to the sign-in check. Each of those carries a
+  "Loading" status. Check that it is announced once for the wait and
+  not once for each hand-over, that nothing is announced once the
+  sign-in screen is showing, and, with reduced motion switched on, that
+  the quill is still. Journey 3 also passes "Loading assessment" and
+  "Submitting your exam", which are now in the middle of the page.
