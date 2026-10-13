@@ -322,6 +322,15 @@ resource "google_bigquery_dataset_iam_member" "sink_writer" {
   dataset_id = google_bigquery_dataset.analytics.dataset_id
   role       = "roles/bigquery.dataEditor"
   member     = google_logging_project_sink.analytics.writer_identity
+
+  # Made again whenever the dataset is. A replaced dataset keeps its name,
+  # so nothing above changes and Terraform would leave this alone, while
+  # the new dataset arrives with no permissions on it at all. The sink
+  # would then be refused on every write until some later apply noticed
+  # the permission had gone.
+  lifecycle {
+    replace_triggered_by = [google_bigquery_dataset.analytics]
+  }
 }
 
 # ---------- The dashboard ----------
