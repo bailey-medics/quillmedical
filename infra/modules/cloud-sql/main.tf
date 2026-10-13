@@ -6,12 +6,33 @@ resource "google_sql_database_instance" "instance" {
   database_version = var.database_version
   region           = var.region
 
-  # Prevent accidental deletion of clinical databases
-  deletion_protection = var.environment == "prod"
+  # Three guards against losing a production database, each against a
+  # different mistake.
+  #
+  # This one is Terraform's own: it refuses to plan the instance's
+  # destruction while it is true.
+  deletion_protection = var.is_production
 
   depends_on = [var.private_vpc_connection]
 
+  # And this refuses a pull request that would remove or replace the
+  # instance, whatever the line above says at the time. It cannot be made
+  # to depend on the environment, so it holds for staging too: taking a
+  # database away for good means taking this out first, on purpose.
+  lifecycle {
+    prevent_destroy = true
+  }
+
   settings {
+    # Google's own guard: the instance cannot be deleted from the console,
+    # `gcloud` or the API while this is on. The one above only stops
+    # Terraform.
+    deletion_protection_enabled = var.is_production
+
+    # Backups outlive the instance. Without this they are deleted with
+    # it, so the one mistake backups exist for would take them too.
+    retain_backups_on_delete = true
+
     tier              = var.tier
     availability_type = var.enable_ha ? "REGIONAL" : "ZONAL"
     disk_autoresize   = true

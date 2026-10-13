@@ -20,6 +20,18 @@ provider "google-beta" {
 }
 
 locals {
+  # Which environments are production: real people's data, to be kept
+  # through a mistake. `app` is App production and `prod` is EHR
+  # production.
+  #
+  # Asked here, once. The database's protections used to ask
+  # `var.environment == "prod"` in each place they were needed, and the
+  # environment that is live is called `app`, so for as long as it ran the
+  # answer was no: deletion protection off, seven backups kept where
+  # thirty were meant, point-in-time recovery off. Found on 13 October
+  # 2026. A new environment is added to this list or it is not production.
+  is_production = contains(["prod", "app"], var.environment)
+
   # Which environments run the teaching product: the teaching buckets, the
   # video pipeline, the sync token secret, and clinical services switched
   # off.
@@ -183,9 +195,10 @@ module "cloud_sql_core" {
   secret_depends_on      = module.secrets.secret_ids
 
   # Production gets longer backup retention
-  backup_retained_count = var.environment == "prod" ? 30 : 7
-  pitr_enabled          = var.environment == "prod"
-  pitr_days             = var.environment == "prod" ? 7 : 3
+  is_production         = local.is_production
+  backup_retained_count = local.is_production ? 30 : 7
+  pitr_enabled          = local.is_production
+  pitr_days             = local.is_production ? 7 : 3
 }
 
 # ---------- Cloud SQL: FHIR database (prod + staging only) ----------
@@ -206,9 +219,10 @@ module "cloud_sql_fhir" {
   private_vpc_connection = module.networking.private_vpc_connection
   secret_depends_on      = module.secrets.secret_ids
 
-  backup_retained_count = var.environment == "prod" ? 30 : 7
-  pitr_enabled          = var.environment == "prod"
-  pitr_days             = var.environment == "prod" ? 7 : 3
+  is_production         = local.is_production
+  backup_retained_count = local.is_production ? 30 : 7
+  pitr_enabled          = local.is_production
+  pitr_days             = local.is_production ? 7 : 3
 }
 
 # ---------- Cloud SQL: EHRbase database (prod + staging only) ----------
@@ -229,9 +243,10 @@ module "cloud_sql_ehrbase" {
   private_vpc_connection = module.networking.private_vpc_connection
   secret_depends_on      = module.secrets.secret_ids
 
-  backup_retained_count = var.environment == "prod" ? 30 : 7
-  pitr_enabled          = var.environment == "prod"
-  pitr_days             = var.environment == "prod" ? 7 : 3
+  is_production         = local.is_production
+  backup_retained_count = local.is_production ? 30 : 7
+  pitr_enabled          = local.is_production
+  pitr_days             = local.is_production ? 7 : 3
 }
 
 # ---------- Compute Engine: FHIR + EHRbase VM (prod + staging) ----------
@@ -678,11 +693,12 @@ module "guide_assets" {
 
 # ---------- Cloud Storage: teaching images (teaching only) ----------
 module "cloud_storage" {
-  count       = local.is_teaching_product ? 1 : 0
-  source      = "./modules/cloud-storage"
-  project_id  = var.project_id
-  region      = var.region
-  environment = var.environment
+  count         = local.is_teaching_product ? 1 : 0
+  source        = "./modules/cloud-storage"
+  project_id    = var.project_id
+  region        = var.region
+  environment   = var.environment
+  is_production = local.is_production
 
   # Who uploads content here. While the environment is moving between
   # projects this is the old project's CI account, because the teaching

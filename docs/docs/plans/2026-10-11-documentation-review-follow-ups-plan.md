@@ -1010,7 +1010,7 @@ Found on 13 October while checking whether a wrong deletion could be put
 right from a backup. Three protections written for production were
 never switched on.
 
-- [ ] Make `app` count as production in `infra/main.tf` and
+- [x] Make `app` count as production in `infra/main.tf` and
       `infra/modules/cloud-sql/main.tf`. Both ask
       `var.environment == "prod"`, and the environment is called `app`,
       so the answer has always been no. On the live instance,
@@ -1021,13 +1021,31 @@ never switched on.
       local, named for what it means, so the next rename cannot undo it
       silently, and look for the same test anywhere else under `infra/`.
 
-- [ ] Keep the backups if the instance is ever deleted. Today they go
+      It is `local.is_production` in `infra/main.tf`, true for `app`
+      and for `prod`. The database and bucket modules each take it as a
+      variable with no default, so no caller can leave it out. One
+      other place asked the old question: the teaching images bucket
+      could be destroyed with its contents in App production, and now
+      cannot. `.github/scripts/terraform/production-is-named-once.bats`
+      fails if anything compares the environment's name with `prod`
+      again.
+
+      Two settings were both called deletion protection, and only one
+      was ever written. `deletion_protection` stops Terraform planning
+      a destroy. `deletion_protection_enabled`, inside `settings`, is
+      Google refusing a delete from the console, `gcloud` or the API,
+      and is the one that read "off" on the live instance. Both are set
+      now.
+
+- [x] Keep the backups if the instance is ever deleted. Today they go
       with it (`retainBackupsOnDelete` is false), so the one mistake
       backups are for would take them too.
 
-- [ ] Add `prevent_destroy` to the database instance, as `infra/dns.tf`
+- [x] Add `prevent_destroy` to the database instance, as `infra/dns.tf`
       has for the DNS zone. Deletion protection is Google refusing a
       wrong command; this is Terraform refusing a wrong pull request.
+      It cannot depend on the environment, so it holds for a staging
+      database too.
 
 - [ ] Read the plan on the pull request before it merges. Switching on
       point-in-time recovery can restart the database for a moment. It

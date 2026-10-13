@@ -15,6 +15,11 @@ variable "environment" {
   type        = string
 }
 
+variable "is_production" {
+  description = "Whether this is a production database: real people's data. Decides deletion protection. Has no default, so every caller has to say; the root module works it out once, as local.is_production."
+  type        = bool
+}
+
 variable "instance_name" {
   description = "Cloud SQL instance name suffix (e.g. auth, fhir, ehrbase)"
   type        = string
