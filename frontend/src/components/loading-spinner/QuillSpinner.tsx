@@ -13,10 +13,17 @@
  * The animation is all in the CSS module, which also says why the quill is
  * drawn three times over. It stills itself for somebody who has asked
  * their device for less motion.
+ *
+ * Every quill on a page turns in step, by starting as far into the turn
+ * as `quillSpinnerClock` says the first has reached. One spinner taking
+ * over from another therefore carries on, and does not snap back to face
+ * on.
  */
 
+import { useState } from "react";
 import { Box, VisuallyHidden, type BoxProps } from "@mantine/core";
 import classes from "./QuillSpinner.module.css";
+import { quillSpinnerElapsedMs } from "./quillSpinnerClock";
 
 /** The feather's outline, drawn from the tip of its shaft. */
 const QUILL_PATH =
@@ -46,8 +53,17 @@ export default function QuillSpinner({
   label = "Loading",
   size = "4rem",
 }: QuillSpinnerProps) {
+  // Read once, as the spinner appears: the animation starts then, and a
+  // later render must not move it.
+  const [elapsedMs] = useState(quillSpinnerElapsedMs);
+
   return (
-    <Box className={classes.spinner} w={size} h={size}>
+    <Box
+      className={classes.spinner}
+      w={size}
+      h={size}
+      __vars={{ "--quill-spinner-delay": `${-elapsedMs}ms` }}
+    >
       <div className={classes.tilt} aria-hidden="true">
         <div className={classes.spin}>
           <QuillLayer className={classes.face} />

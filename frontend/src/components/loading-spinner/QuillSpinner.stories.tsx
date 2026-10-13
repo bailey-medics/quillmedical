@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Center } from "@mantine/core";
 import { LoginForm } from "@components/registration";
 import { StoryNote, VariantRow, VariantStack } from "@/stories/variants";
+import PageSpinner from "./PageSpinner";
 import QuillSpinner from "./QuillSpinner";
 
 const SPINNER_SHOWS_FOR_MS = 3_000;
@@ -10,8 +10,7 @@ const LOGIN_SHOWS_FOR_MS = 10_000;
 
 /**
  * The wait before the sign-in screen, on a loop: the spinner, then the
- * screen it gives way to, then round again. Centred as the app centres a
- * spinner that stands in for a whole page.
+ * screen it gives way to, then round again.
  */
 function StartUpLoop() {
   const [starting, setStarting] = useState(true);
@@ -26,11 +25,7 @@ function StartUpLoop() {
   }, [starting]);
 
   if (starting) {
-    return (
-      <Center mih="60dvh">
-        <QuillSpinner size="8rem" />
-      </Center>
-    );
+    return <PageSpinner />;
   }
 
   return (
