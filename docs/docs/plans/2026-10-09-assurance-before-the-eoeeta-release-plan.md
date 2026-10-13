@@ -1277,7 +1277,7 @@ found as a bug to fix on its own branch before going on.
       carried no status, which the real client always sets; the fake
       now carries it.
 
-- [ ] Sign-in: take the spaces out of a one-time code. Authenticator
+- [x] Sign-in: take the spaces out of a one-time code. Authenticator
       apps show the six digits with a space in the middle, and a code
       pasted that way is refused: its length is checked with the
       spaces trimmed off the ends and then sent as it was typed.
@@ -1286,6 +1286,13 @@ found as a bug to fix on its own branch before going on.
       sent, on the login form and on the two-factor setup page, which
       has the same box. In `frontend/src/auth/AuthContext.tsx` and
       `frontend/src/pages/TotpSetup.tsx`.
+      Done on 13 October 2026, with one more fault found in doing
+      it. The box on the login form stopped at six characters, so a
+      code pasted as "123 456" was cut to "123 45" by the browser
+      before anything could take the space out. It now stops at 16,
+      the limit the server sets, as the setup page's box already
+      did. One small function, `withoutSpaces` in
+      `frontend/src/lib/oneTimeCode.ts`, is what both places use.
 
 - [ ] Errors: say which field was refused, and why. When a request is
       refused for a wrong field the server answers with a list: the
