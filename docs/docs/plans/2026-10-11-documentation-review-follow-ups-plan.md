@@ -1227,9 +1227,18 @@ this one has to move first.
       the list marked unsubscribed, so that they are never added again
       from an older list, and is sent nothing.
 
-- [ ] Email them once when the account is closed, to say that it is
+- [x] Email them once when the account is closed, to say that it is
       closed and that the newsletter carries on, with the link that
       stops it. Not to somebody who had already said no.
+
+      Built on 13 October. `backend/app/users/closure_notice.py` works
+      out whether one is due, from the list entry the closure has just
+      made, and the deactivate route sends it after it has answered, so
+      a mail provider that is down neither holds up the closure nor
+      undoes it. A failure is logged with the user id and nothing else.
+      Nobody is sent it whose newsletter does not carry on: somebody
+      who said no, and somebody never asked. The link is the list entry's, since that is
+      where their newsletters now come from.
 
 - [x] Send newsletters to the list entry of a closed account. Today
       none is sent to a closed account; find where that is decided.

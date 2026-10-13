@@ -150,6 +150,19 @@ def previews() -> list[Preview]:
             },
         ),
         Preview(
+            id="account-closed",
+            label="Account closed",
+            template="account_closed.html.j2",
+            context={
+                "name": "John Smith",
+                "username": "john.smith",
+                "email": "john.smith@example.org",
+                "unsubscribe_url": (
+                    "https://quill-medical.com/unsubscribe?token=example"
+                ),
+            },
+        ),
+        Preview(
             id="account-invite",
             label="Account invitation",
             template="account_invite.html.j2",
