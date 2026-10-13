@@ -1,0 +1,437 @@
+"""Deciding what happens to a closed account's records, through the API.
+
+The rule under test crosses a route, the platform role and the retention
+module: only an operator may decide, a deletion is checked again at the
+moment it is made, and a row nobody decided is never touched.
+"""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+
+from fastapi.testclient import TestClient
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.features.teaching.models import (
+    Assessment,
+    AssessmentAnswer,
+    ModuleEnrolment,
+    TeachingOrgSettings,
+)
+from app.models import OrgUnit, RetentionReview, User
+from app.retention import apply_retention
+
+REVIEWS = "/api/retention/reviews"
+DECISIONS = "/api/retention/decisions"
+BANK = "colonoscopy-optical-diagnosis"
+LONG_AGO = timedelta(days=2000)
+
+
+def _org(db: Session, name: str = "Academy") -> OrgUnit:
+    """An organisation that keeps records a month after an account closes."""
+    org = OrgUnit(name=name, type="hospital_team")
+    db.add(org)
+    db.flush()
+    db.add(
+        TeachingOrgSettings(
+            org_unit_id=org.id,
+            coordinator_email="lead@example.nhs.uk",
+            institution_name=name,
+            records_kept_months_after_closure=1,
+        )
+    )
+    db.flush()
+
+    return org
+
+
+def _closed_with_records(db: Session, org: OrgUnit, name: str) -> User:
+    """Somebody closed long ago, with one attempt and one enrolment."""
+    user = User(
+        username=name,
+        email=f"{name}@example.nhs.uk",
+        password_hash="x",
+        full_name=f"{name.title()} Example",
+    )
+    db.add(user)
+    db.flush()
+    user.is_active = False
+    user.deactivated_at = datetime.now(UTC) - LONG_AGO
+    assessment = Assessment(
+        user_id=user.id,
+        org_unit_id=org.id,
+        question_bank_id=BANK,
+        bank_version=1,
+        completed_at=datetime.now(UTC) - LONG_AGO,
+        time_limit_minutes=60,
+        total_items=1,
+        is_passed=True,
+    )
+    db.add(assessment)
+    db.flush()
+    db.add(
+        AssessmentAnswer(
+            assessment_id=assessment.id, item_id=1, display_order=0
+        )
+    )
+    db.add(
+        ModuleEnrolment(
+            user_id=user.id,
+            org_unit_id=org.id,
+            question_bank_id=BANK,
+            starts_on=datetime.now(UTC) - LONG_AGO,
+            source="admin",
+        )
+    )
+    db.flush()
+
+    return user
+
+
+def _listed(db: Session, *names: str) -> dict[str, RetentionReview]:
+    """Those people, closed, with records, listed by the nightly run."""
+    org = _org(db)
+    users = {name: _closed_with_records(db, org, name) for name in names}
+    apply_retention(db, datetime.now(UTC), apply=True)
+    db.commit()
+
+    return {
+        name: db.scalars(
+            select(RetentionReview).where(RetentionReview.user_id == user.id)
+        ).one()
+        for name, user in users.items()
+    }
+
+
+def _count(db: Session, model: type) -> int:
+    return db.scalar(select(func.count()).select_from(model)) or 0
+
+
+class TestListing:
+    def test_an_operator_sees_what_is_awaiting_a_decision(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        rows = _listed(db_session, "ann")
+
+        resp = authenticated_superadmin_client.get(REVIEWS)
+
+        assert resp.status_code == 200
+        [review] = resp.json()["reviews"]
+        assert review["id"] == rows["ann"].id
+        assert review["full_name"] == "Ann Example"
+        assert review["email"] == "ann@example.nhs.uk"
+        assert review["organisation"] == "Academy"
+        assert (review["attempts"], review["enrolments"]) == (1, 1)
+
+    def test_what_has_been_decided_is_not_listed(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        rows = _listed(db_session, "ann", "bob")
+        rows["ann"].decision = "kept"
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.get(REVIEWS)
+
+        assert [r["full_name"] for r in resp.json()["reviews"]] == [
+            "Bob Example"
+        ]
+
+    def test_an_admin_of_a_place_is_refused(
+        self, authenticated_admin_client: TestClient, db_session: Session
+    ) -> None:
+        """``manage_users`` is not enough: these are every sponsor's."""
+        _listed(db_session, "ann")
+
+        resp = authenticated_admin_client.get(REVIEWS)
+
+        assert resp.status_code == 403
+        assert "ann" not in resp.text.lower()
+
+    def test_a_signed_out_caller_is_refused(
+        self, test_client: TestClient, db_session: Session
+    ) -> None:
+        _listed(db_session, "ann")
+
+        assert test_client.get(REVIEWS).status_code == 401
+
+
+class TestDeciding:
+    def test_delete_removes_the_records_and_records_who_decided(
+        self,
+        authenticated_superadmin_client: TestClient,
+        test_superadmin: User,
+        db_session: Session,
+    ) -> None:
+        rows = _listed(db_session, "ann")
+
+        resp = authenticated_superadmin_client.post(
+            DECISIONS,
+            json={
+                "decisions": [
+                    {"review_id": rows["ann"].id, "decision": "delete"}
+                ]
+            },
+        )
+
+        assert resp.status_code == 200
+        assert resp.json() == {"deleted": 1, "kept": 0, "refused": []}
+        db_session.expire_all()
+        assert _count(db_session, Assessment) == 0
+        assert _count(db_session, AssessmentAnswer) == 0
+        assert _count(db_session, ModuleEnrolment) == 0
+        row = db_session.get(RetentionReview, rows["ann"].id)
+        assert row is not None
+        assert row.decision == "deleted"
+        assert row.decided_by == test_superadmin.id
+        assert row.decided_at is not None
+
+    def test_a_row_left_out_stays_undecided_and_keeps_its_records(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        """The clear ones are dealt with and the unsure one is left."""
+        rows = _listed(db_session, "ann", "bob")
+
+        authenticated_superadmin_client.post(
+            DECISIONS,
+            json={
+                "decisions": [
+                    {"review_id": rows["ann"].id, "decision": "delete"}
+                ]
+            },
+        )
+
+        db_session.expire_all()
+        bob = db_session.get(RetentionReview, rows["bob"].id)
+        assert bob is not None
+        assert bob.decision == "undecided"
+        assert list(db_session.scalars(select(Assessment.user_id))) == [
+            bob.user_id
+        ]
+
+    def test_keep_needs_a_note(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        rows = _listed(db_session, "ann")
+
+        resp = authenticated_superadmin_client.post(
+            DECISIONS,
+            json={
+                "decisions": [
+                    {
+                        "review_id": rows["ann"].id,
+                        "decision": "keep",
+                        "note": "   ",
+                    }
+                ]
+            },
+        )
+
+        body = resp.json()
+        assert body["kept"] == 0
+        assert "why" in body["refused"][0]["reason"]
+        db_session.expire_all()
+        row = db_session.get(RetentionReview, rows["ann"].id)
+        assert row is not None
+        assert row.decision == "undecided"
+
+    def test_keep_records_the_note_and_asks_again_in_six_months(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        rows = _listed(db_session, "ann")
+
+        resp = authenticated_superadmin_client.post(
+            DECISIONS,
+            json={
+                "decisions": [
+                    {
+                        "review_id": rows["ann"].id,
+                        "decision": "keep",
+                        "note": "The sponsor asked us to hold these.",
+                    }
+                ]
+            },
+        )
+
+        assert resp.json() == {"deleted": 0, "kept": 1, "refused": []}
+        db_session.expire_all()
+        row = db_session.get(RetentionReview, rows["ann"].id)
+        assert row is not None
+        assert row.decision == "kept"
+        assert row.note == "The sponsor asked us to hold these."
+        assert row.ask_again_on is not None
+        wait = row.ask_again_on.replace(tzinfo=UTC) - datetime.now(UTC)
+        assert timedelta(days=175) < wait < timedelta(days=190)
+        assert _count(db_session, Assessment) == 1
+
+    def test_a_date_to_ask_again_in_the_past_is_refused(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        rows = _listed(db_session, "ann")
+
+        resp = authenticated_superadmin_client.post(
+            DECISIONS,
+            json={
+                "decisions": [
+                    {
+                        "review_id": rows["ann"].id,
+                        "decision": "keep",
+                        "note": "Held.",
+                        "ask_again_on": "2020-01-01T00:00:00Z",
+                    }
+                ]
+            },
+        )
+
+        assert "future" in resp.json()["refused"][0]["reason"]
+
+    def test_an_account_opened_again_since_is_not_deleted_from(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        """The list was drawn, then the account was reopened."""
+        rows = _listed(db_session, "ann")
+        user = db_session.get(User, rows["ann"].user_id)
+        assert user is not None
+        user.is_active = True
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.post(
+            DECISIONS,
+            json={
+                "decisions": [
+                    {"review_id": rows["ann"].id, "decision": "delete"}
+                ]
+            },
+        )
+
+        body = resp.json()
+        assert body["deleted"] == 0
+        assert "no longer past its period" in body["refused"][0]["reason"]
+        db_session.expire_all()
+        assert _count(db_session, Assessment) == 1
+
+    def test_one_refusal_does_not_hold_back_the_rest(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        rows = _listed(db_session, "ann", "bob")
+
+        resp = authenticated_superadmin_client.post(
+            DECISIONS,
+            json={
+                "decisions": [
+                    {"review_id": rows["ann"].id, "decision": "keep"},
+                    {"review_id": rows["bob"].id, "decision": "delete"},
+                ]
+            },
+        )
+
+        body = resp.json()
+        assert (body["deleted"], body["kept"]) == (1, 0)
+        assert [r["review_id"] for r in body["refused"]] == [rows["ann"].id]
+
+    def test_what_is_already_decided_cannot_be_decided_again(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        rows = _listed(db_session, "ann")
+        rows["ann"].decision = "kept"
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.post(
+            DECISIONS,
+            json={
+                "decisions": [
+                    {"review_id": rows["ann"].id, "decision": "delete"}
+                ]
+            },
+        )
+
+        assert "already been decided" in resp.json()["refused"][0]["reason"]
+        db_session.expire_all()
+        assert _count(db_session, Assessment) == 1
+
+    def test_a_row_that_does_not_exist_is_refused(
+        self, authenticated_superadmin_client: TestClient
+    ) -> None:
+        resp = authenticated_superadmin_client.post(
+            DECISIONS,
+            json={"decisions": [{"review_id": 99999, "decision": "delete"}]},
+        )
+
+        assert resp.status_code == 200
+        assert "no such" in resp.json()["refused"][0]["reason"]
+
+    def test_the_same_row_twice_is_carried_out_once(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        rows = _listed(db_session, "ann")
+        one = {"review_id": rows["ann"].id, "decision": "delete"}
+
+        resp = authenticated_superadmin_client.post(
+            DECISIONS, json={"decisions": [one, one]}
+        )
+
+        body = resp.json()
+        assert body["deleted"] == 1
+        assert "twice" in body["refused"][0]["reason"]
+
+    def test_an_unknown_decision_is_a_422(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        rows = _listed(db_session, "ann")
+
+        resp = authenticated_superadmin_client.post(
+            DECISIONS,
+            json={
+                "decisions": [
+                    {"review_id": rows["ann"].id, "decision": "undecided"}
+                ]
+            },
+        )
+
+        assert resp.status_code == 422
+
+    def test_no_decisions_at_all_is_a_422(
+        self, authenticated_superadmin_client: TestClient
+    ) -> None:
+        resp = authenticated_superadmin_client.post(
+            DECISIONS, json={"decisions": []}
+        )
+
+        assert resp.status_code == 422
+
+    def test_an_admin_of_a_place_cannot_delete(
+        self, authenticated_admin_client: TestClient, db_session: Session
+    ) -> None:
+        rows = _listed(db_session, "ann")
+
+        resp = authenticated_admin_client.post(
+            DECISIONS,
+            json={
+                "decisions": [
+                    {"review_id": rows["ann"].id, "decision": "delete"}
+                ]
+            },
+        )
+
+        assert resp.status_code == 403
+        db_session.expire_all()
+        assert _count(db_session, Assessment) == 1
+
+    def test_a_request_with_no_csrf_token_is_refused(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        rows = _listed(db_session, "ann")
+        del authenticated_superadmin_client.headers["X-CSRF-Token"]
+
+        resp = authenticated_superadmin_client.post(
+            DECISIONS,
+            json={
+                "decisions": [
+                    {"review_id": rows["ann"].id, "decision": "delete"}
+                ]
+            },
+        )
+
+        assert resp.status_code == 403
+        db_session.expire_all()
+        assert _count(db_session, Assessment) == 1
