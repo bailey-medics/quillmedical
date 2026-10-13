@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -26,6 +26,8 @@ from app.deps import DEP_REQUIRE_CSRF, DEP_REQUIRE_OPERATOR
 from app.models import OrgUnit, RetentionReview, User
 from app.retention import carry_out_decision, delete_training_records
 from app.schemas.retention import (
+    RecordsKeptIn,
+    RecordsKeptOut,
     RetentionAccountOut,
     RetentionDecisionsIn,
     RetentionDecisionsOut,
@@ -217,4 +219,67 @@ def decide(
 
     return RetentionDecisionsOut(
         deleted=deleted, kept=kept, to_empty=to_empty, refused=refused
+    )
+
+
+def _org_unit_or_404(db: Session, org_unit_id: int) -> OrgUnit:
+    org_unit = db.get(OrgUnit, org_unit_id)
+
+    if org_unit is None:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    return org_unit
+
+
+@router.get("/periods/{org_unit_id}", response_model=RecordsKeptOut)
+def read_period(
+    org_unit_id: int, db: Session = _DEP_SESSION
+) -> RecordsKeptOut:
+    """How long this organisation's records outlast a closed account."""
+    org_unit = _org_unit_or_404(db, org_unit_id)
+
+    return RecordsKeptOut(
+        org_unit_id=org_unit.id,
+        organisation=org_unit.name,
+        months=org_unit.records_kept_months_after_closure,
+    )
+
+
+@router.put(
+    "/periods/{org_unit_id}",
+    response_model=RecordsKeptOut,
+    dependencies=[DEP_REQUIRE_CSRF],
+)
+def set_period(
+    org_unit_id: int,
+    body: RecordsKeptIn,
+    operator: User = MAY_DECIDE,
+    db: Session = _DEP_SESSION,
+) -> RecordsKeptOut:
+    """Set, or clear, how long this organisation's records are kept.
+
+    Changing it deletes nothing. A shorter period only brings records up
+    for a decision sooner, and each of those still needs a person.
+
+    For an operator, not for the organisation's own admin: the period is
+    the sponsor's instruction to Quill, and shortening it is not one of
+    the organisation's own settings.
+    """
+    org_unit = _org_unit_or_404(db, org_unit_id)
+    was = org_unit.records_kept_months_after_closure
+    org_unit.records_kept_months_after_closure = body.months
+    db.flush()
+
+    logger.info(
+        "Records kept at org unit %s changed by user %s: %s to %s months",
+        org_unit.id,
+        operator.id,
+        was,
+        body.months,
+    )
+
+    return RecordsKeptOut(
+        org_unit_id=org_unit.id,
+        organisation=org_unit.name,
+        months=org_unit.records_kept_months_after_closure,
     )

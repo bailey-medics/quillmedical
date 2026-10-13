@@ -1189,6 +1189,14 @@ class OrgUnit(Base):
         index=True,
     )
     location: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    #: How many months this organisation's training records are kept
+    #: after an account closes, before the nightly retention run lists
+    #: them for a decision. None means they are never listed. On the
+    #: org_unit and not on its teaching settings, so that it can be set
+    #: for any organisation, whether or not it teaches.
+    records_kept_months_after_closure: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     #: The number this org_unit's media objects are filed under in the
     #: bucket, when it is not the org_unit's own id.
     #:

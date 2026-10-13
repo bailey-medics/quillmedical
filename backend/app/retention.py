@@ -20,9 +20,10 @@ unless ``RETENTION_APPLY`` is ``true``, so a run by hand counts what
 would go and deletes nothing.
 
 **A sponsor's period is theirs, and held for each organisation.**
-``TeachingOrgSettings.records_kept_months_after_closure`` is the number
-of months, set by the ``set-records-kept`` admin action. An organisation
-with none has nothing deleted. One organisation's period ending takes
+``OrgUnit.records_kept_months_after_closure`` is the number of months,
+set by an operator on the organisation's admin page or by the
+``set-records-kept`` admin action. An organisation with none has
+nothing listed. One organisation's period ending takes
 that organisation's records only: somebody enrolled at two keeps the
 other's.
 
@@ -52,12 +53,12 @@ from app.features.teaching.models import (
     AssessmentAnswer,
     AssessmentAnswerTag,
     ModuleEnrolment,
-    TeachingOrgSettings,
 )
 from app.features.teaching.reminders import add_months
 from app.models import (
     Feedback,
     MarketingPreferenceChange,
+    OrgUnit,
     RetentionReview,
     User,
 )
@@ -205,20 +206,18 @@ def closed_accounts_past_their_period(
     date.
     """
     found: dict[tuple[int, int], PastItsPeriod] = {}
-    with_a_period = select(TeachingOrgSettings).where(
-        TeachingOrgSettings.records_kept_months_after_closure.is_not(None)
-    )
+    with_a_period = select(
+        OrgUnit.id, OrgUnit.records_kept_months_after_closure
+    ).where(OrgUnit.records_kept_months_after_closure.is_not(None))
 
-    for settings in db.scalars(with_a_period):
-        months = settings.records_kept_months_after_closure
+    for org_unit_id, months in db.execute(with_a_period):
 
-        # Nought or less would delete on the day an account closed.
-        # ``set-records-kept`` refuses it; this is for a row written some
-        # other way.
+        # Nought or less would list them on the day an account closed.
+        # Both ways of setting it refuse that; this is for a row written
+        # some other way.
         if months is None or months < 1:
             continue
 
-        org_unit_id = settings.org_unit_id
         attempted = select(Assessment.user_id).where(
             Assessment.org_unit_id == org_unit_id
         )
@@ -744,9 +743,8 @@ def set_records_kept() -> int:
     - ``RECORDS_APPLY``: ``true`` to change it. Anything else reports
       what it is now and what it would become.
 
-    The organisation must already have its teaching settings. This makes
-    no row, so a mistyped id cannot give a period to the wrong place
-    unnoticed.
+    The org unit must exist. The name is printed before anything is
+    changed, so a mistyped id is seen in the report.
 
     Returns:
         The exit status: 0 when it ran, 1 when it could not.
@@ -779,24 +777,17 @@ def set_records_kept() -> int:
     db = CoreSessionLocal()
 
     try:
-        settings = db.scalar(
-            select(TeachingOrgSettings).where(
-                TeachingOrgSettings.org_unit_id == int(org_text)
-            )
-        )
+        org_unit = db.get(OrgUnit, int(org_text))
 
-        if settings is None:
-            print(
-                f"✗ Org unit {org_text} has no teaching settings",
-                file=sys.stderr,
-            )
+        if org_unit is None:
+            print(f"✗ There is no org unit {org_text}", file=sys.stderr)
             return 1
 
-        was = settings.records_kept_months_after_closure
-        name = settings.institution_name
+        was = org_unit.records_kept_months_after_closure
+        name = org_unit.name
 
         if apply:
-            settings.records_kept_months_after_closure = months
+            org_unit.records_kept_months_after_closure = months
             # This makes its own session, so nothing commits for it.
             db.commit()
     except Exception as exc:

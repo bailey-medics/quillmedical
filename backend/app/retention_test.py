@@ -265,18 +265,14 @@ class TestMarketingRecords:
 
 
 def _org(db: Session, name: str, *, months: int | None) -> OrgUnit:
-    """An organisation with its teaching settings, and its period."""
-    org = OrgUnit(name=name, type="hospital_team")
-    db.add(org)
-    db.flush()
-    db.add(
-        TeachingOrgSettings(
-            org_unit_id=org.id,
-            coordinator_email="lead@example.nhs.uk",
-            institution_name=name,
-            records_kept_months_after_closure=months,
-        )
+    """An organisation and its period. It has no teaching settings: the
+    period is the organisation's own, whether or not it teaches."""
+    org = OrgUnit(
+        name=name,
+        type="hospital_team",
+        records_kept_months_after_closure=months,
     )
+    db.add(org)
     db.flush()
 
     return org
@@ -1118,9 +1114,9 @@ class TestSetRecordsKept:
         db.expire_all()
 
         return db.scalar(
-            select(
-                TeachingOrgSettings.records_kept_months_after_closure
-            ).where(TeachingOrgSettings.org_unit_id == org.id)
+            select(OrgUnit.records_kept_months_after_closure).where(
+                OrgUnit.id == org.id
+            )
         )
 
     def test_it_only_reports_by_default(
@@ -1182,21 +1178,41 @@ class TestSetRecordsKept:
         assert "RECORDS_KEPT_MONTHS" in capsys.readouterr().err
         assert self._months(db_session, org) is None
 
-    def test_an_organisation_with_no_settings_is_refused(
+    def test_an_org_unit_that_does_not_exist_is_refused(
         self,
         org: OrgUnit,
         db_session: Session,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """No row is made, so a mistyped id cannot land on a stranger."""
         monkeypatch.setenv("RECORDS_APPLY", "true")
         monkeypatch.setenv("RECORDS_ORG_UNIT_ID", str(org.id + 500))
 
         assert retention.set_records_kept() == 1
 
-        assert "no teaching settings" in capsys.readouterr().err
-        assert _count(db_session, TeachingOrgSettings) == 1
+        assert "There is no org unit" in capsys.readouterr().err
+        assert self._months(db_session, org) is None
+
+    def test_the_period_on_the_teaching_settings_row_is_not_read(
+        self, org: OrgUnit, db_session: Session
+    ) -> None:
+        """The retired column: a number left there lists nobody."""
+        db_session.add(
+            TeachingOrgSettings(
+                org_unit_id=org.id,
+                coordinator_email="lead@example.nhs.uk",
+                institution_name="Academy",
+                records_kept_months_after_closure=1,
+            )
+        )
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_past_the_period()
+        )
+        _records(db_session, org, user)
+
+        result = apply_retention(db_session, NOW, apply=True)
+
+        assert result.newly_awaiting == 0
 
     def test_an_id_that_is_not_a_number_is_refused(
         self,

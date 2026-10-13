@@ -709,6 +709,13 @@ export const routes: RouteObject[] = [
                 path: "retention",
                 lazy: lazyFrom(loadAdmin, "AdminRetentionPage"),
               },
+              // How long one organisation's records outlast a closed
+              // account. The organisation's own admins reach the page
+              // above it and not this: the period is not theirs to set.
+              {
+                path: "organisations/:id/retention",
+                lazy: lazyFrom(loadAdmin, "OrgRecordsKeptPage"),
+              },
             ],
           },
           // The Newsletter section. Who may use it is decided in one
