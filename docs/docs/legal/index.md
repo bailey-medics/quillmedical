@@ -31,6 +31,17 @@ documentation against the code: section 3.9 now says that switching the
 usage count off in Settings is remembered on the device. Still version
 1.0, for the same reason.
 
+Corrected again on 13 October 2026, for the same reason and with the
+same version number. Both documents now have a part for each sponsor,
+holding only what is particular to that sponsor: section 4.7 of the
+privacy policy and clause 22.3 of the terms. The East of England
+Endoscopy Training Academy is the first. The privacy policy also says,
+where it gives the two years an account is kept after closing, that a
+sponsored account is kept for as long as that sponsor's training
+records are; and it no longer says that training bodies commonly keep
+records for six years or more, which sat badly beside a named sponsor
+keeping them for three and a half.
+
 ## Versioning
 
 Every version carries a version number and the date it took effect,

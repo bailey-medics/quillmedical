@@ -114,6 +114,11 @@ clinical/NHS go-live.
 - [ ] Create `.github/instructions/backend.instructions.md` scoped to `backend/**` with Alembic expand-contract rules
 - [ ] [https://bailey-medics.com/quillmedical/](https://bailey-medics.com/quillmedical/) needs a favicon.
 
+## Sponsors' records
+
+- [ ] Build an export and delete of one sponsor's records for when its agreement ends. The EoEETA agreement promises it on request: clause 5 has Bailey Medics delete or return shared personal data at the sponsor's written direction, and clause 12 lets it destroy the customer's data unless a copy is asked for within ten days. Nothing does this today; it would be done by hand
+- [ ] Decide what deleting a closed account means, and build it. The privacy policy keeps an account two years after it closes, or as long as a sponsor's records if longer, and nothing deletes one. Thirty columns point at a user and six refuse the delete: a passport, the three passport requests and invitations, and a message somebody sent. The decision is what happens to those, and what happens to an account with no sponsor. See Phase 23 of `2026-10-11-documentation-review-follow-ups-plan.md`
+
 ## Public site
 
 - [ ] Submit `quill-medical.com` to <https://hstspreload.org/> _(deferred — not until the HSTS ramp finishes)_ — preloading bakes the domain into a list shipped inside browsers, so every visitor is held to HTTPS before they have ever been to the site. It is the last and least reversible step of the ramp recorded in `2026-08-31-analytics-plan.md`: five minutes, then a day, then two years with `includeSubDomains`, and only then this. Do not submit before step three has been live and uneventful — submission requires `max-age` of at least a year plus `includeSubDomains` and `preload` in the header, and removal takes months because it moves at the speed of browser releases. Checked 8 September: the domain's preload status is `unknown`, so nothing has ever been submitted, and the inert `preload` token that had been sitting in `caddy/prod/Caddyfile` was removed the same day — add it back only as part of an actual submission
