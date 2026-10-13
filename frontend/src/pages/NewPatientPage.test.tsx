@@ -525,6 +525,7 @@ describe("NewPatientPage", () => {
 
       expect(screen.getByText("Edit patient")).toBeInTheDocument();
       expect(screen.getByText("Loading patient data...")).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("Loading patient");
       expect(screen.queryByLabelText(/first name/i)).not.toBeInTheDocument();
     });
 

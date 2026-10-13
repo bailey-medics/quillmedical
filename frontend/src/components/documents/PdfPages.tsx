@@ -27,7 +27,7 @@ import type {
 } from "pdfjs-dist";
 import IconTextButton from "@/components/button/IconTextButton";
 import ErrorState from "@/components/error-state/ErrorState";
-import LoadingSpinner from "@/components/loading-spinner";
+import { QuillSpinner } from "@/components/loading-spinner";
 import BodyText from "@/components/typography/BodyText";
 import { openPdf } from "@lib/pdf/openPdf";
 import classes from "./PdfPages.module.css";
@@ -235,7 +235,7 @@ export default function PdfPages({ name, url }: PdfPagesProps) {
         </Box>
       ) : (
         <Center>
-          <LoadingSpinner label={`Loading ${name}`} />
+          <QuillSpinner label={`Loading ${name}`} />
         </Center>
       )}
     </Stack>

@@ -871,6 +871,18 @@ describe("UserInfoUpdatePage", () => {
       ).toBeInTheDocument();
     });
 
+    // The spinner here was a bare ring with no text, so a screen reader
+    // user heard only the line beneath it.
+    it("says it is loading until the user arrives", () => {
+      renderWithRouter(<UserInfoUpdatePage />, {
+        routePath: "/admin/users/:id/edit",
+        initialRoute: "/admin/users/7/edit",
+      });
+
+      expect(screen.getByRole("status")).toHaveTextContent("Loading user");
+      expect(screen.getByText("Loading user data...")).toBeInTheDocument();
+    });
+
     it("names the user being edited", async () => {
       serveUser({ name: "Dr Jane Smith", username: "janesmith" });
 

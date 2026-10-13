@@ -16,7 +16,8 @@
 // the width. This page used to wrap itself in a padded, 900px box, which
 // sat its title lower and its content narrower than every other page.
 
-import { Box, Group, Stack, Alert, Loader, Center } from "@mantine/core";
+import { Box, Group, Stack, Alert, Center } from "@mantine/core";
+import { QuillSpinner } from "@/components/loading-spinner";
 import { useState, useEffect, useRef } from "react";
 import {
   useNavigate,
@@ -1614,7 +1615,7 @@ export default function UserInfoUpdatePage() {
         {loading ? (
           <Center>
             <Stack align="center" gap="md">
-              <Loader size="lg" />
+              <QuillSpinner label="Loading user" />
               <BodyText>Loading user data...</BodyText>
             </Stack>
           </Center>
