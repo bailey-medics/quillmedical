@@ -8,9 +8,10 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { VariantRow, VariantStack } from "@/stories/variants";
-import type {
-  RetentionChoice,
-  RetentionReview,
+import {
+  oneYearOn,
+  type RetentionChoice,
+  type RetentionReview,
 } from "@/lib/retention/retentionReviews";
 import RetentionReviewCard from "./RetentionReviewCard";
 
@@ -42,14 +43,17 @@ type Story = StoryObj<typeof RetentionReviewCard>;
 function Interactive({ start }: { start: RetentionChoice }) {
   const [choice, setChoice] = useState<RetentionChoice>(start);
   const [note, setNote] = useState("");
+  const [askAgainOn, setAskAgainOn] = useState<string | null>(oneYearOn());
 
   return (
     <RetentionReviewCard
       review={review}
       choice={choice}
       note={note}
+      askAgainOn={askAgainOn}
       onChoiceChange={setChoice}
       onNoteChange={setNote}
+      onAskAgainOnChange={setAskAgainOn}
     />
   );
 }
@@ -77,8 +81,10 @@ export const AllStates: Story = {
           review={review}
           choice="delete"
           note=""
+          askAgainOn={oneYearOn()}
           onChoiceChange={() => undefined}
           onNoteChange={() => undefined}
+          onAskAgainOnChange={() => undefined}
           refusal="This account is no longer past its period: it has been opened again, or the period has changed. Nothing was deleted."
         />
       </VariantRow>
@@ -87,8 +93,10 @@ export const AllStates: Story = {
           review={review}
           choice="keep"
           note="The sponsor asked us to hold these."
+          askAgainOn={oneYearOn()}
           onChoiceChange={() => undefined}
           onNoteChange={() => undefined}
+          onAskAgainOnChange={() => undefined}
           disabled
         />
       </VariantRow>

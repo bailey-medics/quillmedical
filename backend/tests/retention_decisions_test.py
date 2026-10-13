@@ -235,7 +235,7 @@ class TestDeciding:
         assert row is not None
         assert row.decision == "undecided"
 
-    def test_keep_records_the_note_and_asks_again_in_six_months(
+    def test_keep_with_no_date_given_asks_again_in_a_year(
         self, authenticated_superadmin_client: TestClient, db_session: Session
     ) -> None:
         rows = _listed(db_session, "ann")
@@ -261,8 +261,35 @@ class TestDeciding:
         assert row.note == "The sponsor asked us to hold these."
         assert row.ask_again_on is not None
         wait = row.ask_again_on.replace(tzinfo=UTC) - datetime.now(UTC)
-        assert timedelta(days=175) < wait < timedelta(days=190)
+        assert timedelta(days=360) < wait < timedelta(days=370)
         assert _count(db_session, Assessment) == 1
+
+    def test_keep_asks_again_on_the_date_that_was_chosen(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        rows = _listed(db_session, "ann")
+        chosen = datetime.now(UTC) + timedelta(days=1000)
+
+        authenticated_superadmin_client.post(
+            DECISIONS,
+            json={
+                "decisions": [
+                    {
+                        "review_id": rows["ann"].id,
+                        "decision": "keep",
+                        "note": "A dispute that will run for years.",
+                        "ask_again_on": chosen.isoformat(),
+                    }
+                ]
+            },
+        )
+
+        db_session.expire_all()
+        row = db_session.get(RetentionReview, rows["ann"].id)
+        assert row is not None
+        assert row.ask_again_on is not None
+        asked = row.ask_again_on.replace(tzinfo=UTC)
+        assert abs(asked - chosen) < timedelta(seconds=1)
 
     def test_a_date_to_ask_again_in_the_past_is_refused(
         self, authenticated_superadmin_client: TestClient, db_session: Session

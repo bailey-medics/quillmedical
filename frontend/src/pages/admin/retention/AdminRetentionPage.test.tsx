@@ -11,9 +11,10 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import * as apiLib from "@/lib/api";
-import type {
-  RetentionOutcome,
-  RetentionReview,
+import {
+  oneYearOn,
+  type RetentionOutcome,
+  type RetentionReview,
 } from "@/lib/retention/retentionReviews";
 import AdminRetentionPage from "./AdminRetentionPage";
 
@@ -167,7 +168,7 @@ describe("AdminRetentionPage", () => {
     await choose("Ann Example", "Delete these records");
     await choose("Bob Example", "Keep these records");
     await userEvent.type(
-      within(await cardOf("Bob Example")).getByRole("textbox"),
+      within(await cardOf("Bob Example")).getByRole("textbox", { name: /Why/ }),
       "Held for the sponsor.",
     );
     await userEvent.click(
@@ -220,7 +221,7 @@ describe("AdminRetentionPage", () => {
     renderWithRouter(<AdminRetentionPage />);
     await choose("Ann Example", "Keep these records");
     await userEvent.type(
-      within(await cardOf("Ann Example")).getByRole("textbox"),
+      within(await cardOf("Ann Example")).getByRole("textbox", { name: /Why/ }),
       "Held for the sponsor.",
     );
     await carryOut();
@@ -228,7 +229,12 @@ describe("AdminRetentionPage", () => {
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/retention/decisions", {
         decisions: [
-          { review_id: 1, decision: "keep", note: "Held for the sponsor." },
+          {
+            review_id: 1,
+            decision: "keep",
+            note: "Held for the sponsor.",
+            ask_again_on: `${oneYearOn()}T00:00:00Z`,
+          },
         ],
       }),
     );

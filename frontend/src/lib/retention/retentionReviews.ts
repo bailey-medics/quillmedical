@@ -43,6 +43,34 @@ export interface RetentionDecision {
   review_id: number;
   decision: "delete" | "keep";
   note?: string;
+  /** For a keep: when to ask again, as an ISO date and time */
+  ask_again_on?: string;
+}
+
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+/**
+ * The date a keep asks again by default: a year from today, as
+ * YYYY-MM-DD. Whoever is deciding can pick another.
+ */
+export function oneYearOn(today: Date = new Date()): string {
+  const year = today.getFullYear() + 1;
+
+  // 29 February has no anniversary three years in four.
+  const lastDay = new Date(year, today.getMonth() + 1, 0).getDate();
+  const day = Math.min(today.getDate(), lastDay);
+
+  return `${year}-${pad(today.getMonth() + 1)}-${pad(day)}`;
+}
+
+/** Tomorrow, as YYYY-MM-DD: the earliest a keep may ask again. */
+export function tomorrow(today: Date = new Date()): string {
+  const next = new Date(today);
+  next.setDate(next.getDate() + 1);
+
+  return `${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}`;
 }
 
 /** A decision that was not carried out, and why */

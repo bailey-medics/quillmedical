@@ -9,7 +9,10 @@ import { describe, it, expect, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
-import type { RetentionReview } from "@/lib/retention/retentionReviews";
+import {
+  oneYearOn,
+  type RetentionReview,
+} from "@/lib/retention/retentionReviews";
 import RetentionDecisionList from "./RetentionDecisionList";
 
 function review(id: number, full_name: string): RetentionReview {
@@ -123,7 +126,7 @@ describe("RetentionDecisionList", () => {
     await choose("Ann Example", "Delete these records");
     await choose("Bob Example", "Keep these records");
     await userEvent.type(
-      within(cardOf("Bob Example")).getByRole("textbox"),
+      within(cardOf("Bob Example")).getByRole("textbox", { name: /Why/ }),
       "Held.",
     );
     await userEvent.click(
@@ -150,21 +153,62 @@ describe("RetentionDecisionList", () => {
     expect(onCarryOut).not.toHaveBeenCalled();
   });
 
-  it("hands over the reason with a keep, trimmed", async () => {
+  it("hands over the reason and the date with a keep", async () => {
     const { onCarryOut } = renderList();
 
     await choose("Bob Example", "Keep these records");
     await userEvent.type(
-      within(cardOf("Bob Example")).getByRole("textbox"),
+      within(cardOf("Bob Example")).getByRole("textbox", { name: /Why/ }),
       "  Held for the sponsor.  ",
     );
     await confirm();
 
     await waitFor(() =>
       expect(onCarryOut).toHaveBeenCalledWith([
-        { review_id: 2, decision: "keep", note: "Held for the sponsor." },
+        {
+          review_id: 2,
+          decision: "keep",
+          note: "Held for the sponsor.",
+          ask_again_on: `${oneYearOn()}T00:00:00Z`,
+        },
       ]),
     );
+  });
+
+  it("hands over the date that was chosen, not the default", async () => {
+    const { onCarryOut } = renderList();
+
+    await choose("Bob Example", "Keep these records");
+    await userEvent.type(
+      within(cardOf("Bob Example")).getByRole("textbox", { name: /Why/ }),
+      "A long dispute.",
+    );
+    const date = within(cardOf("Bob Example")).getByLabelText(/Ask again on/);
+    await userEvent.clear(date);
+    await userEvent.type(date, "1 March 2099");
+    await userEvent.tab();
+    await confirm();
+
+    await waitFor(() =>
+      expect(onCarryOut).toHaveBeenCalledWith([
+        {
+          review_id: 2,
+          decision: "keep",
+          note: "A long dispute.",
+          ask_again_on: "2099-03-01T00:00:00Z",
+        },
+      ]),
+    );
+  });
+
+  it("sends no date with a delete", async () => {
+    const { onCarryOut } = renderList();
+
+    await choose("Ann Example", "Delete these records");
+    await confirm();
+
+    await waitFor(() => expect(onCarryOut).toHaveBeenCalled());
+    expect(onCarryOut.mock.calls[0][0][0]).not.toHaveProperty("ask_again_on");
   });
 
   it("leaves out a note that is only spaces on a delete", async () => {
