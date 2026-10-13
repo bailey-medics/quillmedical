@@ -229,3 +229,42 @@ exit 0
 
     [ "$status" -eq 0 ]
 }
+
+# Gives the throwaway project the real Python check and a pin, and puts a
+# python3 on the PATH that says it is the version given.
+project_pinned_with_python3() {
+    local host_python="$1"
+
+    mkdir -p "${PROJECT}/scripts"
+    cp "${BATS_TEST_DIRNAME}/../../scripts/check-python-version.sh" "${PROJECT}/scripts/"
+    echo "3.14.7" >"${PROJECT}/.python-version"
+    stub python3 "echo ${host_python}"
+}
+
+@test "says nothing about Python when python3 is the pinned one" {
+    project_pinned_with_python3 3.14.8
+
+    run bash "$HOOK"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"python3 on this machine"* ]]
+}
+
+@test "tells the session when python3 is older than the pinned one" {
+    project_pinned_with_python3 3.12.3
+
+    run bash "$HOOK"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"python3 on this machine is Python 3.12.3"* ]]
+    [[ "$output" == *"pinned to 3.14.7"* ]]
+    [[ "$output" == *"the stack recipes"* ]]
+}
+
+@test "carries on when the project has no Python check to run" {
+    # The project the other tests use: no scripts/ folder at all.
+    run bash "$HOOK"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"python3 on this machine"* ]]
+}

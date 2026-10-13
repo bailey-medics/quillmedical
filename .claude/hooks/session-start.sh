@@ -80,6 +80,34 @@ RENAMED
 
 rename_session_branch
 
+# The scripts in scripts/ run on this container's own python3: the stack
+# recipes, the audit ledger. They are formatted for the Python the
+# repository is pinned to, and nothing in the repository chooses the
+# Python a web session comes with. An older one cannot read them, and the
+# recipes refuse to run on it. Say so now, on stdout where the session
+# reads it, so the first sign is this and not a recipe that will not start.
+report_host_python() {
+    local message
+
+    if [ ! -f scripts/check-python-version.sh ]; then
+        return 0
+    fi
+
+    if message=$(bash scripts/check-python-version.sh host 2>&1); then
+        return 0
+    fi
+
+    cat <<WRONG_PYTHON
+$message
+Until that is put right, the recipes that run a script from scripts/ will
+refuse to run in this session: the stack recipes (just stack-log, just
+stack-new and the rest) and the audit ledger ones (just reviewed, just
+review-status). The unit tests are not affected: they run in containers.
+WRONG_PYTHON
+}
+
+report_host_python
+
 # .env files are git-ignored; materialise the dev defaults from the
 # committed samples if they aren't already present (e.g. from a cached
 # environment snapshot).
