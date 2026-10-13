@@ -424,6 +424,159 @@ resource "google_monitoring_alert_policy" "scheduled_action" {
   }
 }
 
+# ---------- Alert policy - a scheduled action has not run ----------
+#
+# The policy above is raised by something written to the log: the action
+# saying it failed, or Cloud Scheduler saying it could not start the job.
+# Silence raises nothing. A scheduler job paused or deleted, the scheduler
+# API switched off, an execution killed for memory or time before it
+# prints a word, an outage in which nothing runs: in each the reminders
+# simply stop, and nobody is told.
+#
+# So this one watches for the absence of a finished run. Each action ends
+# a real run on one line, and a metric counts that line. A report, the
+# action run by hand with no apply flag, prints "Would delete" and "Would
+# send" and is not counted, so checking the numbers by hand during an
+# outage does not hide it.
+#
+# How long an action may be quiet depends on how often it runs, so each
+# has its own two numbers: `sum_over`, the window its finished runs are
+# added up over, and `quiet_for`, how long that sum must stay under one.
+# Together they are the silence that raises the alert. See the policy
+# below for why it is a sum and not Monitoring's own "no data".
+#
+# The line each action ends on. The same text is in the action's own test
+# as RUN_FINISHED, which proves a real run prints it once and a report
+# never does. .github/scripts/terraform/scheduled-action-heartbeat.bats
+# fails if the two drift apart.
+locals {
+  scheduled_action_finished = var.scheduled_job_name == null ? {} : {
+    # Once a day. 25 hours and 11 more: 36 hours with no finished run,
+    # so one late or missed night raises nothing.
+    retention = {
+      line      = "^Deleted [0-9]+ marketing answer records$"
+      what      = "deleting data past its retention period"
+      sum_over  = "90000s"
+      quiet_for = "39600s"
+      said      = "36 hours"
+    }
+    teaching-reminders = {
+      line      = "^Sent [0-9]+ of [0-9]+ renewal notices$"
+      what      = "sending the teaching reminders"
+      sum_over  = "90000s"
+      quiet_for = "39600s"
+      said      = "36 hours"
+    }
+    # Every five minutes. An hour and an hour more: two hours with no
+    # finished run, which is two dozen missed in a row.
+    exams-out-of-time = {
+      line      = "^Finished [0-9]+ exams whose time had run out$"
+      what      = "finishing teaching exams whose time has ended"
+      sum_over  = "3600s"
+      quiet_for = "3600s"
+      said      = "two hours"
+    }
+  }
+}
+
+resource "google_logging_metric" "scheduled_action_finished" {
+  for_each = local.scheduled_action_finished
+
+  project = var.project_id
+  name    = "quill/scheduled_${replace(each.key, "-", "_")}_finished_${var.environment}"
+
+  description = "Real runs of the scheduled action that reached their last line: ${each.value.what}"
+
+  filter = <<-EOT
+    resource.type = "cloud_run_job"
+    resource.labels.job_name = "${var.scheduled_job_name}"
+    textPayload =~ "${each.value.line}"
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
+  }
+}
+
+# How "has not run" is said. Cloud Monitoring's own condition for missing
+# data reaches 23.5 hours at most, and the daily actions run 24 hours
+# apart: it would be raised half an hour before every run. So this adds up
+# the finished runs over a window, 25 hours for a daily action, which is
+# the longest an alert may use, and is raised when that sum has been under
+# one for a while longer. The two numbers are each action's own, above.
+#
+# A sum over a window with no line in it is no data, not nought, so
+# missing data is counted as breaching. Without that the condition is
+# never met by the very thing it is for.
+#
+# Not raised until an action has finished once. Monitoring cannot miss a
+# count that was never written, so the first run after this is applied is
+# what arms it.
+resource "google_monitoring_alert_policy" "scheduled_action_silent" {
+  for_each = local.scheduled_action_finished
+
+  project      = var.project_id
+  display_name = "Scheduled action has not run: ${each.key} (${var.environment})"
+  combiner     = "OR"
+
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "A scheduled action has not run for ${each.value.said}"
+    content   = <<-EOT
+      The scheduled action "${each.key}" has not finished a run in
+      ${each.value.said}: ${each.value.what}.
+
+      No failure was logged, or the other alert would have said so. It
+      has most likely not been started at all.
+
+      **Nothing is lost.** The action works out what is due each time it
+      runs, so the next run picks up everything that was missed.
+
+      Look first at its job in Cloud Scheduler: whether it is paused, and
+      when it last ran. Then at the executions of the admin Cloud Run
+      job, for one that was killed before it finished. "Force run" on the
+      scheduler job runs it now.
+
+      Scheduler: https://console.cloud.google.com/cloudscheduler?project=$${project}
+    EOT
+  }
+
+  conditions {
+    display_name = "No finished run in ${each.value.said}"
+
+    condition_threshold {
+      filter = <<-EOT
+        resource.type = "cloud_run_job"
+        metric.type = "logging.googleapis.com/user/${google_logging_metric.scheduled_action_finished[each.key].name}"
+      EOT
+
+      comparison      = "COMPARISON_LT"
+      threshold_value = 1
+      duration        = each.value.quiet_for
+
+      aggregations {
+        alignment_period     = each.value.sum_over
+        per_series_aligner   = "ALIGN_SUM"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+
+      evaluation_missing_data = "EVALUATION_MISSING_DATA_ACTIVE"
+
+      trigger {
+        count = 1
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+
+  alert_strategy {
+    auto_close = "86400s" # A day after runs are seen again
+  }
+}
+
 # ---------- Alert policy - backend 5xx responses ----------
 #
 # The uptime check above only proves that /api/health answers. A service

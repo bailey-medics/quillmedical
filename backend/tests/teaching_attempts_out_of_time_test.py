@@ -19,6 +19,7 @@ schedule as the ``finish-exams-out-of-time`` admin action.
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -58,6 +59,13 @@ WRONG = "opt-wrong"
 LIMIT = timedelta(minutes=30)
 
 ATTEMPT_NOT_FOUND = {"detail": "Assessment not found"}
+
+#: The line a run ends on, as the "has not run" alert counts it in
+#: infra/modules/monitoring/main.tf. The two must be the same text:
+#: .github/scripts/terraform/scheduled-action-heartbeat.bats holds them to
+#: it. Change the line the action prints and this, and that test says the
+#: alert has to change too.
+RUN_FINISHED = r"^Finished [0-9]+ exams whose time had run out$"
 COMPLETED = {"detail": "Assessment already completed"}
 OUT_OF_TIME = {"detail": "Time limit exceeded"}
 NO_CONFIG = {"detail": "Config not found for assessment"}
@@ -1032,6 +1040,17 @@ def test_the_action_says_how_many_it_finished(
     assert main() == 0
     assert "Finished 0 exams whose time had run out" in capsys.readouterr().out
     assert _stored(own_session, mine.id).completed_at is not None
+
+
+def test_a_run_ends_on_the_line_the_alert_counts(
+    own_session: Session,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Once, and with nothing to finish too: most runs find nothing."""
+    assert main() == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert len([ln for ln in lines if re.search(RUN_FINISHED, ln)]) == 1
 
 
 def test_the_action_fails_when_an_attempt_raised(

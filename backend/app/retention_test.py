@@ -1,5 +1,6 @@
 """Retention: what goes when its period ends, and what must stay."""
 
+import re
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -17,6 +18,13 @@ from app.retention import (
 )
 
 NOW = datetime(2030, 6, 1, 12, 0, tzinfo=UTC)
+
+#: The line a real run ends on, as the "has not run" alert counts it in
+#: infra/modules/monitoring/main.tf. The two must be the same text:
+#: .github/scripts/terraform/scheduled-action-heartbeat.bats holds them to
+#: it. Change the line the action prints and this, and that test says the
+#: alert has to change too.
+RUN_FINISHED = r"^Deleted [0-9]+ marketing answer records$"
 PASSPORT_ID = "3f2a8c1e4b7d49f0a6c2e8b1d5a7f309"
 A_DAY = timedelta(days=1)
 
@@ -319,6 +327,51 @@ class TestMain:
 
         assert "Deleted 1 feedback messages" in capsys.readouterr().out
         assert _count(session, Feedback) == 0
+
+    def test_a_real_run_ends_on_the_line_the_alert_counts(
+        self,
+        session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Once, so that one run is one count."""
+        monkeypatch.setenv("RETENTION_APPLY", "true")
+
+        assert retention.main() == 0
+
+        lines = capsys.readouterr().out.splitlines()
+        assert len([ln for ln in lines if re.search(RUN_FINISHED, ln)]) == 1
+
+    def test_a_report_does_not_print_the_line_the_alert_counts(
+        self,
+        session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """A report run by hand must not look like the nightly run."""
+        monkeypatch.delenv("RETENTION_APPLY", raising=False)
+
+        assert retention.main() == 0
+
+        lines = capsys.readouterr().out.splitlines()
+        assert not [ln for ln in lines if re.search(RUN_FINISHED, ln)]
+
+    def test_a_failed_run_does_not_print_the_line_the_alert_counts(
+        self,
+        session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        def explode(*args: object, **kwargs: object) -> None:
+            raise RuntimeError("no database")
+
+        monkeypatch.setenv("RETENTION_APPLY", "true")
+        monkeypatch.setattr(retention, "apply_retention", explode)
+
+        assert retention.main() == 1
+
+        lines = capsys.readouterr().out.splitlines()
+        assert not [ln for ln in lines if re.search(RUN_FINISHED, ln)]
 
     def test_a_failure_prints_no_detail_and_exits_1(
         self,
