@@ -21,20 +21,121 @@ POETRY_CONSUMERS=(
   "backend/app/features/teaching/tooling/pyproject.toml"
 )
 
+# Prints the Python a formatter in backend/pyproject.toml targets, as
+# two parts: 3.14 from `target-version = "py314"` under the table given.
+# Ruff writes the target as a string and Black as a list, and this reads
+# either. Nothing when the table has no target.
+#
+# Ruff and Black format every Python file here for this version, and at
+# py314 that means syntax nothing older can read. Left a release behind,
+# as both were for a while after the backend moved, they simply hold the
+# code back; set ahead of the Python the code runs on, they break it.
+formatter_target() {
+  local table="$1"
+  local target
+
+  target="$(awk -v table="[${table}]" '
+    $0 == table { inside = 1; next }
+    /^\[/ { inside = 0 }
+    inside && /^target-version[[:space:]]*=/ { print; exit }
+  ' backend/pyproject.toml | grep -oE 'py[0-9]+' | head -1 || true)"
+
+  if [ -z "$target" ]; then
+    return 0
+  fi
+
+  # py314 is 3.14: the first digit is the major version, the rest the minor.
+  echo "${target:2:1}.${target:3}"
+}
+
+# Prints the image the backend is built on, from the default of
+# `ARG PYTHON_IMAGE=` in backend/Dockerfile: registry, tag and digest.
+# Nothing when the line is not there.
+backend_base_image() {
+  grep -m1 -oE '^ARG PYTHON_IMAGE=[^[:space:]]+' backend/Dockerfile | cut -d= -f2- || true
+}
+
+# Prints the image the shell test image is built on, from the `FROM` line
+# of .github/Dockerfile. Nothing when the file or the line is not there.
+#
+# `just ts` runs the shell tests in that image, and the tests run the
+# scripts in scripts/ for real, so it has to be on the pinned Python. It
+# gets one by building on the image the backend builds on.
+shell_test_base_image() {
+  if [ ! -f .github/Dockerfile ]; then
+    return 0
+  fi
+
+  grep -m1 -E '^FROM[[:space:]]' .github/Dockerfile | awk '{print $2}' || true
+}
+
+# Prints the Python an image reference names, as two parts: 3.14 from
+# `.../python:3.14-slim@sha256:...`. Nothing when it names none.
+python_of_image() {
+  local image="$1"
+
+  grep -oE 'python:[0-9]+\.[0-9]+' <<<"$image" | head -1 | cut -d: -f2 || true
+}
+
+# Fails when the shell test image is not built on the very image the
+# backend is: same registry, tag and digest. The two are pinned in two
+# files and meant to be one image, so that there is one Python to keep up
+# to date and not two. Renovate moves both in one pull request; this is
+# what notices if one is ever moved alone.
+check_shell_test_image_is_the_backends() {
+  local backend
+  local shell_tests
+
+  backend="$(backend_base_image)"
+  shell_tests="$(shell_test_base_image)"
+
+  # A missing line is reported by check_python, which reads the same two.
+  if [ -z "$backend" ] || [ -z "$shell_tests" ]; then
+    return 0
+  fi
+
+  if [ "$backend" != "$shell_tests" ]; then
+    error "Base image mismatch: .github/Dockerfile builds on '$shell_tests' but backend/Dockerfile builds on '$backend'. The shell tests are meant to run on the backend's own Python image: make the two lines name the same image and digest"
+    return 1
+  fi
+}
+
 check_python() {
-  local source docker mypy entry name value fail=0
+  local source
+  local docker
+  local mypy
+  local ruff
+  local black
+  local shell_tests
+  local entry
+  local name
+  local value
+  local fail=0
 
   source="$(cut -d. -f1,2 < .python-version)"
   docker="$(grep -oE 'python:[0-9]+\.[0-9]+' backend/Dockerfile | head -1 | cut -d: -f2)"
   mypy="$(grep -m1 -oE 'python_version = "[0-9]+\.[0-9]+"' backend/pyproject.toml | grep -oE '[0-9]+\.[0-9]+')"
+  ruff="$(formatter_target "tool.ruff")"
+  black="$(formatter_target "tool.black")"
+  shell_tests="$(python_of_image "$(shell_test_base_image)")"
 
-  log "Python minor - .python-version: ${source:-<none>}, backend/Dockerfile: ${docker:-<none>}, mypy: ${mypy:-<none>}"
+  log "Python minor - .python-version: ${source:-<none>}, backend/Dockerfile: ${docker:-<none>}, mypy: ${mypy:-<none>}, Ruff: ${ruff:-<none>}, Black: ${black:-<none>}, .github/Dockerfile: ${shell_tests:-<none>}"
 
-  for entry in "backend/Dockerfile=$docker" "backend/pyproject.toml (mypy)=$mypy"; do
+  for entry in \
+    "backend/Dockerfile=$docker" \
+    "backend/pyproject.toml (mypy)=$mypy" \
+    "backend/pyproject.toml (Ruff target-version)=$ruff" \
+    "backend/pyproject.toml (Black target-version)=$black" \
+    ".github/Dockerfile (base image)=$shell_tests"; do
     name="${entry%%=*}"
     value="${entry#*=}"
 
-    if [ "$value" != "$source" ]; then
+    # A line that is not there reads as nothing, and nothing must not be
+    # allowed to pass for a match.
+    if [ -z "$value" ]; then
+      error "Python minor not found: $name names no version, so it cannot be held to .python-version ('$source')"
+      fail=1
+    elif [ "$value" != "$source" ]; then
       error "Python minor mismatch: $name is '$value' but .python-version is '$source'"
       fail=1
     fi
@@ -163,6 +264,7 @@ main() {
   local fail=0
 
   check_python || fail=1
+  check_shell_test_image_is_the_backends || fail=1
   check_node || fail=1
   check_poetry || fail=1
 

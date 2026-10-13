@@ -47,6 +47,23 @@ The rule: never hard-code one of these values in a second place. If a workflow, 
 module needs the Python version, the Yarn version, or a competency definition, it reads
 the canonical file above.
 
+!!! note "Known exception - Python is written in five more places"
+`.python-version` is the canonical file, but a tool that cannot read it
+has to be told the version itself, so moving to a new Python is not a
+one-line edit. The version is written again in the `python:` tag of
+`backend/Dockerfile`, in mypy's `python_version`, in the Ruff and the Black
+`target-version` lines of `backend/pyproject.toml`, and in the `FROM` line
+of `.github/Dockerfile`, the image `just ts` runs the shell tests in, which
+is built on the backend's own Python image. Change all five in the same
+pull request: `check-version-consistency.sh` fails the build while any
+disagrees with `.python-version`, or is missing, and while those two
+Dockerfiles name different images. The Ruff and Black targets matter most:
+they decide which syntax both tools write into every Python file here, and
+a target ahead of the Python the code runs on produces files that Python
+cannot read. The pre-commit hooks that name a Python
+(`language_version: python3.14`) are held to the pin by
+`scripts/check-python-version.sh`.
+
 !!! note "Known exception - Node"
 The Node version is pinned as `node-version: '24'` for CI in
 `.github/actions/setup-frontend/action.yml`, repeated in
