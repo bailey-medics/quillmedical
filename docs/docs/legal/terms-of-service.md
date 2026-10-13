@@ -494,7 +494,9 @@ any time.
 22.1 If you leave your sponsor's programme, your sponsor keeps its copy of
 your training records for the period its agreement and its own retention
 rules set, and you keep access to your own account and to what you can
-download. Records your sponsor owns, such as its assessment and sign-off
+download for as long as the account is open. Where a sponsor has given
+us a period after which its records about you are deleted, it is set
+out under that sponsor's name in clause 22.3. Records your sponsor owns, such as its assessment and sign-off
 records, remain its records, and you may keep a copy of them.
 
 22.2 If your sponsor's agreement with us ends, we return or delete the
@@ -502,6 +504,29 @@ sponsor's records as it instructs, within the time its agreement sets.
 Before that happens we will give you the chance to download your passport
 and your certificates, and, where the sponsor agreement allows, to keep
 your account as a direct customer.
+
+22.3 Some things differ from one sponsor to the next. Each sponsor below
+has a part of its own, holding only what is particular to it. The rest
+of these terms apply to every sponsor alike.
+
+#### East of England Endoscopy Training Academy
+
+If the East of England Endoscopy Training Academy (EoEETA), at Norfolk
+and Norwich University Hospitals NHS Foundation Trust, gave you access:
+
+- **A pass lasts three years.** The notice in clause 11.1 that an
+  assessment you passed is due to be repeated is sent when that time is
+  coming up.
+- **You can try again at once.** If you do not pass an assessment, you
+  may take it again straight away. There is no limit on attempts and no
+  wait between them.
+- **Reminders.** If you are enrolled on a module and have not finished
+  an attempt, the reminders in clause 11.1 come each week, up to six
+  times.
+- **Your certificate** is sent to you and to EoEETA's clinical lead.
+- **Your training records are kept for three and a half years after
+  your account is closed or deactivated**, and are then deleted. Your
+  account is kept for at least as long as those records.
 
 ## Part C: If you deal with us directly
 

@@ -819,7 +819,7 @@ policy says about both.
       about people's records and not a detail of the code. Until it is
       made the records go and the closed account stays.
 
-- [ ] Say so in `docs/docs/legal/privacy-policy.md`, in the two places
+- [x] Say so in `docs/docs/legal/privacy-policy.md`, in the two places
       that give the account's period. Both now say two years with no
       exception:
 
@@ -832,7 +832,7 @@ policy says about both.
         for as long as a sponsor's training records about you are kept,
         if that is longer."
 
-- [ ] Name EoEETA's period in the privacy policy, in a subsection of its
+- [x] Name EoEETA's period in the privacy policy, in a subsection of its
       own. Mark's decision on 11 October: the privacy policy and the terms
       are being built with a subsection for each sponsor, and a sponsor's
       period belongs there, stated outright. An earlier draft of this step
@@ -888,7 +888,7 @@ policy says about both.
       without the other is the fault this plan started from, so say in
       the column's comment that the privacy policy names the same period.
 
-- [ ] The policy is still version 1.0 and unpublished, so it is corrected
+- [x] The policy is still version 1.0 and unpublished, so it is corrected
       in place; add a dated sentence to `docs/docs/legal/index.md`, as
       Phase 5 does, and say there that sponsors have subsections.
 
@@ -900,7 +900,7 @@ policy says about both.
       ten days. So tell EoEETA the period, since the policy calls it their
       instruction.
 
-- [ ] Add a `todo.md` item: build an end-of-agreement export and delete
+- [x] Add a `todo.md` item: build an end-of-agreement export and delete
       for a sponsor's records, which clause 12 already promises on
       request, and decide what deleting a closed account means once there
       are accounts with no sponsor.
@@ -912,7 +912,7 @@ sponsor, and not directly, needs that sponsor's details set out. EoEETA is
 the first. Phase 23 adds the retention period; this phase gathers the rest
 so the subsection is written once, whole.
 
-- [ ] Write the EoEETA subsection of `docs/docs/legal/privacy-policy.md`,
+- [x] Write the EoEETA subsection of `docs/docs/legal/privacy-policy.md`,
       under section 4, from what is settled. Each line below is either
       Mark's decision or the EoEETA agreement, and is built or planned in
       the phase named:
@@ -931,7 +931,7 @@ so the subsection is written once, whole.
         lead, as the agreement's schedule says. The policy's 4.3 already
         says this in general; name the role here.
 
-- [ ] Write the matching subsection of
+- [x] Write the matching subsection of
       `docs/docs/legal/terms-of-service.md`, in Part B, "If you use Quill
       through a sponsor". It carries what a delegate is told to expect:
       the three-year pass and its notice (beside clause 11.1), that a
@@ -939,11 +939,29 @@ so the subsection is written once, whole.
       and which is why clause 7.2 lost its attempt limits in Phase 2,
       and the retention period (beside clause 22).
 
-- [ ] Do not put the agreement's commercial terms in either document:
+- [x] How it was written, on 13 October. The subsections are section
+      4.7 of the privacy policy and clause 22.3 of the terms: one
+      heading for each sponsor, at the end of the part about sponsors,
+      so no clause after it is renumbered. Three things were kept true
+      to what is built and not to what was first planned:
+
+      - **The account is not promised to be deleted.** Nothing deletes
+        one yet. Both documents say the account is kept "for at least as
+        long as" the records, which is true today and stays true once
+        deleting is built.
+      - **Reminders are stated as weekly, up to six.** The code is
+        merged, and the schedule itself is two lines in the
+        `eoeeta-teaching` repository that are not there yet. Do not
+        publish either document until they are.
+      - **Clause 22.1 of the terms promised access to the account after
+        leaving a sponsor.** It now says "for as long as the account is
+        open", since a closed account's records are deleted.
+
+- [x] Do not put the agreement's commercial terms in either document:
       fees, user numbers and the subscription term are between EoEETA and
       Bailey Medics.
 
-- [ ] Do this phase after Phases 14, 15 and 23 are built, not before. The
+- [x] Do this phase after Phases 14, 15 and 23 are built, not before. The
       review that started this plan found a policy promising things no
       code did; a subsection written ahead of the code would repeat that.
       If the documents must be published first, leave out any line whose
