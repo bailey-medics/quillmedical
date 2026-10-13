@@ -109,6 +109,28 @@ describe("LoginForm", () => {
     expect(screen.queryByText("Authenticator code")).not.toBeInTheDocument();
   });
 
+  it("takes a code pasted with a space whole, and does not cut it short", async () => {
+    // The box once stopped at six characters, so "123 456" was cut to
+    // "123 45" before anything could take the space out.
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(successResult);
+    renderWithRouter(<LoginForm onSubmit={onSubmit} requireTotp />);
+
+    await user.type(screen.getByLabelText("Username *"), "testuser");
+    await user.type(screen.getByLabelText("Password *"), "pass123");
+    await user.click(screen.getByLabelText("Authenticator code *"));
+    await user.paste("123 456");
+    await user.click(screen.getByTestId("submit-button"));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({
+        username: "testuser",
+        password: "pass123",
+        totp: "123 456",
+      });
+    });
+  });
+
   it("includes totp in onSubmit when requireTotp is true", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(successResult);

@@ -10,6 +10,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { api, UNAUTHENTICATED_EVENT } from "../lib/api";
+import { withoutSpaces } from "@/lib/oneTimeCode";
 import { recordAuth } from "@lib/error-reporting/breadcrumbs";
 
 /**
@@ -174,11 +175,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!password) {
       throw new Error("Password cannot be empty");
     }
-    if (
-      totp !== undefined &&
-      totp.trim().length > 0 &&
-      totp.trim().length !== 6
-    ) {
+    // As it is sent: an authenticator shows "123 456", and a code pasted
+    // that way was once checked with its ends trimmed and then sent
+    // with the space still in it, which the server refused.
+    const code = totp === undefined ? "" : withoutSpaces(totp);
+
+    if (code.length > 0 && code.length !== 6) {
       throw new Error("TOTP code must be 6 digits");
     }
 
@@ -186,7 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       username: username.trim(),
       password,
     };
-    if (totp) body["totp_code"] = totp;
+    if (code) body["totp_code"] = code;
     // Let errors bubble to the caller (LoginPage) so it can inspect
     // any structured `error_code` attached by the API helper.
     await api.post("/auth/login", body);

@@ -11,6 +11,7 @@ import PageHeader from "@/components/page-header";
 import BaseCard from "@/components/base-card/BaseCard";
 import TextField from "@/components/form/TextField";
 import { MAX_TOTP_CODE } from "@/lib/fieldLimits";
+import { withoutSpaces } from "@/lib/oneTimeCode";
 import { BodyText } from "@/components/typography";
 import {
   Form,
@@ -93,7 +94,9 @@ export default function TotpSetup() {
     data: TotpVerifyFormValues,
   ): Promise<FormSubmitResult> {
     try {
-      await api.post("/auth/totp/verify", { code: data.code });
+      await api.post("/auth/totp/verify", {
+        code: withoutSpaces(data.code),
+      });
       return {
         state: "success",
         message: { title: "Two-factor enabled" },

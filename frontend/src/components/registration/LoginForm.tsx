@@ -22,7 +22,7 @@ import {
   useFormContext,
 } from "@/components/form/Form";
 import type { FormSubmitResult } from "@/components/form/Form";
-import { MAX_USERNAME } from "@/lib/fieldLimits";
+import { MAX_TOTP_CODE, MAX_USERNAME } from "@/lib/fieldLimits";
 
 export interface LoginFormData {
   username: string;
@@ -125,7 +125,7 @@ function LoginFields({
           }}
           required
           autoComplete="one-time-code"
-          maxLength={6}
+          maxLength={MAX_TOTP_CODE}
           inputMode="numeric"
         />
       )}

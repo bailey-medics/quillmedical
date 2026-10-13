@@ -101,6 +101,29 @@ describe("TotpSetup", () => {
     expect(code).toHaveAttribute("maxlength", "16");
   });
 
+  it("sends a code pasted with a space as the digits alone", async () => {
+    // An authenticator shows "123 456", and that is what gets pasted.
+    (apiModule.api.post as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({
+        provision_uri:
+          "otpauth://totp/Quill:testuser?secret=ABC123&issuer=Quill",
+      })
+      .mockResolvedValueOnce({});
+    const user = userEvent.setup();
+    renderWithRouter(<TotpSetup />);
+    const code = await screen.findByLabelText(/6-digit code/i);
+
+    await user.click(code);
+    await user.paste(" 123 456 ");
+    await user.click(screen.getByTestId("submit-button"));
+
+    await waitFor(() => {
+      expect(apiModule.api.post).toHaveBeenLastCalledWith("/auth/totp/verify", {
+        code: "123456",
+      });
+    });
+  });
+
   it("submits verification code and shows success", async () => {
     (apiModule.api.post as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce({

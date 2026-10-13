@@ -383,3 +383,88 @@ describe("AuthProvider, when the server cannot be asked who is signed in", () =>
     expect(screen.queryByText(/^Login page/)).not.toBeInTheDocument();
   });
 });
+
+describe("AuthProvider, signing in with a one-time code", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Signs in with whatever was typed, and shows what came of it. */
+  function SignIn({ typed }: { typed: string }) {
+    const { login } = useAuth();
+    const [outcome, setOutcome] = useState("waiting");
+
+    return (
+      <div>
+        <span>outcome: {outcome}</span>
+        <button
+          type="button"
+          onClick={() =>
+            void login("sam", "a-password", typed).then(
+              () => setOutcome("signed in"),
+              (err: Error) => setOutcome(err.message),
+            )
+          }
+        >
+          Sign in
+        </button>
+      </div>
+    );
+  }
+
+  function renderSignIn(typed: string) {
+    render(
+      <AuthProvider>
+        <SignIn typed={typed} />
+      </AuthProvider>,
+    );
+  }
+
+  it.each(["123456", "123 456", " 123456 ", "1 2 3 4 5 6"])(
+    "sends %j as the six digits alone",
+    async (typed) => {
+      vi.spyOn(api, "get").mockResolvedValue(USER);
+      const post = vi.spyOn(api, "post").mockResolvedValue({});
+      renderSignIn(typed);
+
+      fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+      expect(await screen.findByText("outcome: signed in")).toBeVisible();
+      expect(post).toHaveBeenCalledWith("/auth/login", {
+        username: "sam",
+        password: "a-password",
+        totp_code: "123456",
+      });
+    },
+  );
+
+  it.each(["12345", "123 45", "1234567"])(
+    "refuses %j, which is not six digits, before asking the server",
+    async (typed) => {
+      vi.spyOn(api, "get").mockResolvedValue(USER);
+      const post = vi.spyOn(api, "post").mockResolvedValue({});
+      renderSignIn(typed);
+
+      fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+      expect(
+        await screen.findByText("outcome: TOTP code must be 6 digits"),
+      ).toBeVisible();
+      expect(post).not.toHaveBeenCalled();
+    },
+  );
+
+  it("sends no code when none was typed", async () => {
+    vi.spyOn(api, "get").mockResolvedValue(USER);
+    const post = vi.spyOn(api, "post").mockResolvedValue({});
+    renderSignIn("   ");
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByText("outcome: signed in")).toBeVisible();
+    expect(post).toHaveBeenCalledWith("/auth/login", {
+      username: "sam",
+      password: "a-password",
+    });
+  });
+});
