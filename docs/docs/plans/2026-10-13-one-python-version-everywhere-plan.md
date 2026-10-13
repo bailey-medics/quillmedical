@@ -17,9 +17,9 @@ error on a machine whose `python3` was 3.13. The change was undone. The
 aim here is one Python version in every place the repository's Python
 runs, and a check on each place that could drift from it again.
 
-## Phase 1: Set Python up in the two CI jobs that run it bare
+## Phase 1: Set Python up in the CI jobs that run it bare
 
-- [ ] Add the `.github/actions/setup-python` step to the `audit_ledger`
+- [x] Add the `.github/actions/setup-python` step to the `audit_ledger`
       job in `.github/workflows/ci.yml`. The job runs
       `python3 scripts/review-ledger.py verify` with no Python set up, so
       it gets the `ubuntu-24.04` runner's own, which is 3.12. That figure
@@ -37,16 +37,41 @@ runs, and a check on each place that could drift from it again.
       download. Pass whatever input stops the action installing Poetry:
       neither job needs it.
 
-- [ ] Add the same step to the `shell_checks` job. It runs
+      Done with `install-backend-deps: "false"`. The job has a step
+      before the setup, "Say which Python the runner ships", that prints
+      `python3 --version`. It is there to be read once and is removed in
+      Phase 3, where the answer is recorded.
+
+- [x] Add the same step to the `shell_checks` job. It runs
       `run-shell-tests.sh scripts/tests`, and the bats suites there call
       `stack-status.py`, `stack-relink.py`, `stack-forget-merged.py`,
       `review-ledger.py`, `shell-test-coverage.py` and
       `trim-question-image-frames.py`. The Python is one step removed from
       the workflow file, which is why reading the workflow did not show it.
 
+- [x] Add it to two more jobs, found while writing Phase 2's check by
+      reading which scripts under `.github/scripts` run a Python file.
+      Both reach Python through a shell script, as `shell_checks` does:
+
+      - **`heavy_db_migration_immutability_check`** in `ci.yml` - calls
+        `check-migrations-unmodified.sh`, which runs
+        `backend/scripts/compare_migration_code.py`.
+      - **`db_destructive_migration_check`** in `gate-breaking.yml` -
+        calls `detect-destructive-migrations.sh`, which runs
+        `backend/scripts/check_migrations.py`.
+
+      The first carried a comment saying it had no setup step on purpose:
+      the comparer needs nothing installed, and the runner ships a
+      `python3`. That was true and is not the point any more. Both files
+      are in `backend/`, so Phase 4 formats them for 3.14, and the first
+      of these jobs runs in the merge queue. The day either file gains an
+      `except` naming two exceptions, every pull request would fail a
+      required check with a syntax error. The comment is rewritten to say
+      so.
+
 ## Phase 2: Fail a CI job that runs Python without setting it up
 
-- [ ] Write `.github/scripts/ci/check-python-is-set-up.sh`. It reads
+- [x] Write `.github/scripts/ci/check-python-is-set-up.sh`. It reads
       every file in `.github/workflows/` and fails, naming the file and
       the job, when a job runs Python on the runner and has no step using
       `.github/actions/setup-python`.
@@ -67,23 +92,57 @@ runs, and a check on each place that could drift from it again.
       becomes something nobody trusts. The list is where the next
       indirect runner is added, and its comment says so.
 
-- [ ] Give the script a floor, as every "check all" here has: it fails if
+      Built as described, with four things settled along the way:
+
+      - **The list has three entries** - `run-shell-tests.sh`,
+        `check-migrations-unmodified.sh` and
+        `detect-destructive-migrations.sh`, the last two from the jobs
+        added to Phase 1.
+      - **`actions/setup-python@` counts as setting Python up** - two
+        jobs call the upstream action directly, with
+        `python-version-file: .python-version`, and are correct.
+      - **Two uses of Python are left out on purpose** -
+        `python3 -m http.server` in `run-storybook-tests-in-image.sh` and
+        the inline script in `statement-review.sh`. Neither runs a file
+        from this repository, so neither is formatted by Black, and
+        neither is on the list.
+      - **The workflows are read as text, by indentation** - a job is a
+        key two spaces in under `jobs:`. There is no YAML reader on the
+        runner without installing one, every workflow here is written
+        that way, and actionlint already fails one that is not valid.
+
+      Run over the workflows as they were before Phase 1, it names all
+      four jobs. Run over them now, it reads 23 files and passes.
+
+- [x] Give the script a floor, as every "check all" here has: it fails if
       it found no workflow files, or found no job that sets Python up. A
       check that reads nothing passes, and `audit_ledger` passing on the
       runner's Python for weeks is the same fault in another place.
 
-- [ ] Add `check-python-is-set-up.bats` beside it, with fixture workflows
+- [x] Add `check-python-is-set-up.bats` beside it, with fixture workflows
       for: a job running `python3` with no setup (fails), the same job
       with the setup step (passes), Python inside `docker compose exec`
       (passes), a job calling `run-shell-tests.sh` with no setup (fails),
       and an empty workflows folder (fails on the floor).
 
-- [ ] Run it in the `version_consistency` job in `ci.yml`, after
+      Seventeen cases. The ones that assert the script stays quiet were
+      each proved able to fail, by breaking the script three ways in a
+      copy: with container detection removed, with step names read as
+      commands, and with lines no longer joined across a backslash.
+
+- [x] Run it in the `version_consistency` job in `ci.yml`, after
       `check-version-consistency.sh`. It belongs with the other check
-      that compares versions across files, and that job is already in the
-      fast tier, so the merge queue runs it.
+      that compares versions across files. That job runs on every push
+      and not in the merge queue, which is enough: the check reads the
+      workflow files, and a pull request cannot change those without
+      pushing.
 
 ## Phase 3: Say so when the machine's own Python is the wrong one
+
+- [ ] Read which Python the runner ships from the "Say which Python the
+      runner ships" step in an `audit_ledger` run, record it here, and
+      take the step out of `ci.yml`. It was added in Phase 1 to be read
+      once.
 
 - [ ] Extend `scripts/check-python-version.sh` to compare the `python3`
       on the `PATH` with `.python-version`, at the same two-part
