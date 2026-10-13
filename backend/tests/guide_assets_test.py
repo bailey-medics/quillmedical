@@ -8,6 +8,9 @@ through ``GET /api/guides/assets/{guide}/{name}.png``.
 import pytest
 from fastapi.testclient import TestClient
 from google.api_core.exceptions import ServiceUnavailable
+from google.auth.exceptions import RefreshError
+from requests.exceptions import ConnectionError as RequestsConnectionError
+from requests.exceptions import Timeout
 
 from app.config import settings
 from app.guides import router as guides
@@ -126,3 +129,73 @@ class TestWhenThereIsNothingToServe:
 
         assert response.status_code == 502
         assert "storage" not in response.text
+
+
+class TestABucketThatCannotBeReached:
+    """A fault under the store is answered as a fault of the store is."""
+
+    @pytest.mark.parametrize(
+        "fault",
+        [
+            RequestsConnectionError("connection reset"),
+            Timeout("took too long"),
+            RefreshError("could not sign in to the store"),
+        ],
+        ids=["a dropped connection", "a timeout", "a failed sign-in"],
+    )
+    def test_is_a_502_and_not_a_500(
+        self,
+        authenticated_client: TestClient,
+        monkeypatch: pytest.MonkeyPatch,
+        fault: Exception,
+    ) -> None:
+        def _explode(_bucket: str, _key: str) -> bytes | None:
+            raise fault
+
+        monkeypatch.setattr(settings, "GUIDE_ASSETS_GCS_BUCKET", "the-bucket")
+        monkeypatch.setattr(guides, "read_guide_asset", _explode)
+
+        response = authenticated_client.get(URL)
+
+        assert response.status_code == 502
+        assert response.json() == {
+            "detail": "That picture could not be loaded"
+        }
+        assert "connection reset" not in response.text
+
+
+class TestTheConnectionToTheStore:
+    def test_is_made_once_for_any_number_of_pictures(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Making one signs in to the store. A guide with twenty
+        pictures once did that twenty times."""
+        made: list[object] = []
+
+        class _Blob:
+            def download_as_bytes(self) -> bytes:
+                return b"png"
+
+        class _Bucket:
+            def blob(self, _key: str) -> _Blob:
+                return _Blob()
+
+        class _Client:
+            def __init__(self) -> None:
+                made.append(self)
+
+            def bucket(self, _name: str) -> _Bucket:
+                return _Bucket()
+
+        from google.cloud import storage  # type: ignore[attr-defined]
+
+        monkeypatch.setattr(storage, "Client", _Client)
+        guides._storage_client.cache_clear()
+
+        try:
+            for name in ("one", "two", "three"):
+                assert guides.read_guide_asset("b", f"g/{name}.png") == b"png"
+        finally:
+            guides._storage_client.cache_clear()
+
+        assert len(made) == 1

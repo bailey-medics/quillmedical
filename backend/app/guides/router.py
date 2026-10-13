@@ -15,9 +15,13 @@ from another.
 
 import logging
 import re
+from functools import lru_cache
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Response
 from google.api_core.exceptions import GoogleAPIError, NotFound
+from google.auth.exceptions import GoogleAuthError
+from requests.exceptions import RequestException
 
 from app.config import settings
 from app.deps import DEP_CURRENT_USER
@@ -34,6 +38,26 @@ _PART = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 _NOT_FOUND = "That picture is not here"
 
+#: Everything that means the bucket could not be read, as against the
+#: bucket answering that it holds no such picture. The store raises its
+#: own errors for a fault it was told of, but a connection that drops,
+#: or a sign-in to the store that fails, comes from the libraries under
+#: it and is none of those. Left uncaught, each was a bare 500.
+BUCKET_UNREADABLE = (GoogleAPIError, GoogleAuthError, RequestException)
+
+
+@lru_cache(maxsize=1)
+def _storage_client() -> Any:
+    """The one connection to the store, made the first time it is needed.
+
+    Kept, because making one signs in to the store, and a guide with
+    twenty pictures once did that twenty times over. It holds nothing
+    about any request.
+    """
+    from google.cloud import storage  # type: ignore[attr-defined]
+
+    return storage.Client()
+
 
 def read_guide_asset(bucket_name: str, key: str) -> bytes | None:
     """Read one picture from the private bucket.
@@ -47,11 +71,11 @@ def read_guide_asset(bucket_name: str, key: str) -> bytes | None:
         object.
 
     Raises:
-        GoogleAPIError: If the bucket could not be read at all.
+        GoogleAPIError: If the store answered with a fault.
+        GoogleAuthError: If signing in to the store failed.
+        RequestException: If the store could not be reached.
     """
-    from google.cloud import storage  # type: ignore[attr-defined]
-
-    blob = storage.Client().bucket(bucket_name).blob(key)
+    blob = _storage_client().bucket(bucket_name).blob(key)
 
     try:
         data: bytes = blob.download_as_bytes()
@@ -96,7 +120,7 @@ def guide_asset(
 
     try:
         data = read_guide_asset(bucket_name, f"{guide}/{name}.png")
-    except GoogleAPIError as error:
+    except BUCKET_UNREADABLE as error:
         logger.error(
             "Guide picture %s/%s could not be read: %s",
             guide,
