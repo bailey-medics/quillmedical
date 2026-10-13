@@ -21,7 +21,7 @@ from app.marketing.preferences import (
     MARKETING_WORDING_VERSION,
     set_marketing_preference,
 )
-from app.marketing.subscribers import set_subscribed
+from app.marketing.subscribers import move_to_list, set_subscribed
 from app.models import NewsletterSubscriber, User
 from app.rate_limit import limiter
 from app.schemas.marketing import (
@@ -242,6 +242,12 @@ def use_unsubscribe_link(
         set_marketing_preference(
             db, target, wants=wants, source="unsubscribe_link"
         )
+
+        # A link from a newsletter sent before the account was closed.
+        # Their newsletters come from the list now, so the answer has to
+        # reach it, or pressing "unsubscribe" would change nothing.
+        if not target.is_active:
+            move_to_list(db, target, their_newest_word=True)
     else:
         set_subscribed(target, wants=wants)
 

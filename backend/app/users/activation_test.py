@@ -1,9 +1,11 @@
 """Closing somebody's account, and opening it again."""
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import OrgUnit, User
+from app.marketing.preferences import set_marketing_preference
+from app.models import NewsletterSubscriber, OrgUnit, User
 from app.organisations import add_org_unit_member, get_member_org_unit_ids
 from app.security import hash_password
 from app.users.activation import deactivate_account, reactivate_account
@@ -235,3 +237,123 @@ def test_each_refusal_says_what_the_route_always_said(
     assert raised.status_code == 400
     assert raised.message == message
     assert str(raised) == message
+
+
+# --- the newsletter list ----------------------------------------------------
+
+
+def _on_the_list(db: Session, user: User) -> NewsletterSubscriber | None:
+    db.expire_all()
+
+    return db.scalar(
+        select(NewsletterSubscriber).where(
+            NewsletterSubscriber.email == user.email
+        )
+    )
+
+
+def test_closing_an_account_moves_their_own_yes_to_the_newsletter_list(
+    db_session: Session, manager: User, colleague: User
+) -> None:
+    set_marketing_preference(
+        db_session, colleague, wants=True, source="settings"
+    )
+    db_session.commit()
+
+    deactivate_account(db_session, manager, colleague.id)
+    db_session.commit()
+
+    entry = _on_the_list(db_session, colleague)
+    assert entry is not None
+    assert entry.subscribed is True
+
+
+def test_closing_an_account_carries_a_refusal_as_a_refusal(
+    db_session: Session, manager: User, colleague: User
+) -> None:
+    set_marketing_preference(
+        db_session, colleague, wants=True, source="settings"
+    )
+    set_marketing_preference(
+        db_session, colleague, wants=False, source="settings"
+    )
+    db_session.commit()
+
+    deactivate_account(db_session, manager, colleague.id)
+    db_session.commit()
+
+    entry = _on_the_list(db_session, colleague)
+    assert entry is not None
+    assert entry.subscribed is False
+
+
+def test_closing_an_account_carries_a_yes_left_by_an_unticked_box(
+    db_session: Session, manager: User, colleague: User
+) -> None:
+    """The colleague belongs to the trust and said yes by leaving "I would
+    rather not" unticked. Their stored answer is yes, so it stands."""
+    set_marketing_preference(
+        db_session,
+        colleague,
+        wants=True,
+        source="invite",
+        first_answer=True,
+    )
+    db_session.commit()
+
+    deactivate_account(db_session, manager, colleague.id)
+    db_session.commit()
+
+    entry = _on_the_list(db_session, colleague)
+    assert entry is not None
+    assert entry.subscribed is True
+
+
+def test_a_refused_closure_moves_nobody(
+    db_session: Session, manager: User
+) -> None:
+    set_marketing_preference(
+        db_session, manager, wants=True, source="settings"
+    )
+    db_session.commit()
+
+    with pytest.raises(DeactivatingYourself):
+        deactivate_account(db_session, manager, manager.id)
+
+    assert _on_the_list(db_session, manager) is None
+
+
+def test_reactivating_takes_them_back_off_the_list_with_their_answer(
+    db_session: Session, manager: User, colleague: User
+) -> None:
+    set_marketing_preference(
+        db_session, colleague, wants=True, source="settings"
+    )
+    deactivate_account(db_session, manager, colleague.id)
+    db_session.commit()
+
+    reactivate_account(db_session, manager, colleague.id)
+    db_session.commit()
+
+    assert _on_the_list(db_session, colleague) is None
+    assert colleague.marketing_emails is True
+
+
+def test_reactivating_brings_back_a_no_given_while_the_account_was_closed(
+    db_session: Session, manager: User, colleague: User
+) -> None:
+    set_marketing_preference(
+        db_session, colleague, wants=True, source="settings"
+    )
+    deactivate_account(db_session, manager, colleague.id)
+    db_session.commit()
+    entry = _on_the_list(db_session, colleague)
+    assert entry is not None
+    entry.subscribed = False
+    db_session.commit()
+
+    reactivate_account(db_session, manager, colleague.id)
+    db_session.commit()
+
+    assert _on_the_list(db_session, colleague) is None
+    assert colleague.marketing_emails is False

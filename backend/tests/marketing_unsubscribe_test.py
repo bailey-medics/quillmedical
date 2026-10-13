@@ -422,3 +422,53 @@ class TestASubscribersLink:
 
         assert response.status_code == 404
         assert response.json() == {"detail": "Not found."}
+
+
+class TestALinkSentBeforeTheAccountWasClosed:
+    """Their newsletters come from the list now, so the answer must
+    reach it."""
+
+    @pytest.fixture
+    def closed(self, db_session, subscriber):
+        """Closed, and on the list as subscribed."""
+        subscriber.is_active = False
+        db_session.add(NewsletterSubscriber(email=subscriber.email))
+        db_session.commit()
+
+        return subscriber
+
+    def _entry(self, db_session, user):
+        db_session.expire_all()
+
+        return db_session.scalar(
+            select(NewsletterSubscriber).where(
+                NewsletterSubscriber.email == user.email
+            )
+        )
+
+    def test_unsubscribing_takes_them_off_the_list_too(
+        self, test_client, db_session, closed
+    ):
+        response = test_client.post(URL, params=_link(closed), **ONE_CLICK)
+
+        assert response.status_code == 200
+        assert self._entry(db_session, closed).subscribed is False
+
+    def test_saying_yes_again_puts_them_back(
+        self, test_client, db_session, closed
+    ):
+        test_client.post(URL, params=_link(closed), **ONE_CLICK)
+
+        response = test_client.post(
+            URL, params=_link(closed), json={"wants_marketing": True}
+        )
+
+        assert response.status_code == 200
+        assert self._entry(db_session, closed).subscribed is True
+
+    def test_an_open_accounts_link_makes_no_list_entry(
+        self, test_client, db_session, subscriber
+    ):
+        test_client.post(URL, params=_link(subscriber), **ONE_CLICK)
+
+        assert self._entry(db_session, subscriber) is None

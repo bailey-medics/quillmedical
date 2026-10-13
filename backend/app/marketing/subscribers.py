@@ -1,8 +1,15 @@
-"""People on the mailing list who have no Quill account.
+"""People on the mailing list who have no open Quill account.
 
 They are held in ``newsletter_subscriber``, apart from ``users``. This
 module is the one place a subscriber's answer is changed, as
 ``app.marketing.preferences`` is for an account holder's.
+
+**Somebody is on the list or has an open account, never both.** An
+address that is verified on an open account is folded into it
+(``fold_into_account``). When an account is closed its owner's answer
+goes the other way (``move_to_list``), because closing an account is not
+the person saying "stop emailing me", and the list is what outlives the
+account. Opening it again folds them back.
 """
 
 from __future__ import annotations
@@ -112,6 +119,11 @@ def fold_into_account(db: Session, user: User) -> bool:
     if not user.email_verified:
         return False
 
+    # A closed account's answer is on the list, where ``move_to_list``
+    # put it. Folding it back would take them off the newsletter.
+    if not user.is_active:
+        return False
+
     subscriber = db.scalar(
         select(NewsletterSubscriber).where(
             NewsletterSubscriber.email == user.email
@@ -133,6 +145,140 @@ def fold_into_account(db: Session, user: User) -> bool:
     return True
 
 
+def _latest_answer(
+    db: Session, user: User
+) -> MarketingPreferenceChange | None:
+    """The most recent answer an account holder gave, if they ever did."""
+    return db.scalar(
+        select(MarketingPreferenceChange)
+        .where(MarketingPreferenceChange.user_id == user.id)
+        .order_by(
+            MarketingPreferenceChange.created_at.desc(),
+            MarketingPreferenceChange.id.desc(),
+        )
+        .limit(1)
+    )
+
+
+def answer_to_carry(db: Session, user: User) -> bool | None:
+    """What a closed account's owner goes onto the list as, if at all.
+
+    **Their stored answer stands.** Mark, 14 October: however it was
+    given, at registration, on the invitation page or with the switch in
+    Settings, and whoever brought them to Quill, a sponsor or nobody.
+
+    - **A yes** goes on as subscribed.
+    - **A no** goes on as unsubscribed. Holding it is what stops a later
+      import of an older list putting them back.
+    - **Somebody never asked** has no answer stored, so there is nothing
+      to carry and they are not moved.
+    - **An address nobody verified** is never moved. It may be somebody
+      else's, and an open account with one is not sent newsletters
+      either.
+
+    Args:
+        db: Database session.
+        user: The account holder.
+
+    Returns:
+        True for subscribed, False for a refusal to carry, None when
+        they are not moved.
+    """
+    if not user.email_verified:
+        return None
+
+    latest = _latest_answer(db, user)
+
+    if not user.marketing_emails:
+        # Never asked is not a refusal: there is nothing to carry.
+        return None if latest is None else False
+
+    return True
+
+
+def _hand_sends_to_list(
+    db: Session, user: User, subscriber: NewsletterSubscriber
+) -> None:
+    """Hand an account's record of what it was sent to its list entry.
+
+    ``_move_sends`` the other way, for the same reason: a campaign
+    stopped half way and run again would otherwise reach them twice,
+    once as an account and once from the list.
+    """
+    had = set(
+        db.scalars(
+            select(NewsletterSend.campaign).where(
+                NewsletterSend.subscriber_id == subscriber.id
+            )
+        )
+    )
+
+    for send in db.scalars(
+        select(NewsletterSend).where(NewsletterSend.user_id == user.id)
+    ):
+        if send.campaign in had:
+            db.delete(send)
+        else:
+            send.subscriber_id = subscriber.id
+            send.user_id = None
+
+    db.flush()
+
+
+def move_to_list(
+    db: Session, user: User, *, their_newest_word: bool = False
+) -> NewsletterSubscriber | None:
+    """Put a closed account's owner on the newsletter list.
+
+    Called when an account is closed. Their name, address and answer go
+    onto the list, which is kept apart from accounts and outlives this
+    one. See ``answer_to_carry`` for who goes on, and as what.
+
+    **A "no" already on the list survives**, as it does when a list
+    entry is folded into an account. The one exception is
+    ``their_newest_word``: the person has just used an unsubscribe link
+    themselves, and what they said a moment ago stands over anything
+    older.
+
+    Args:
+        db: Database session. Changes are flushed, not committed.
+        user: The account holder, whose account is closed.
+        their_newest_word: True when the account's answer was given by
+            the person just now.
+
+    Returns:
+        Their list entry, or None when they are not on the list.
+    """
+    wants = answer_to_carry(db, user)
+    subscriber = db.scalar(
+        select(NewsletterSubscriber).where(
+            NewsletterSubscriber.email == user.email
+        )
+    )
+
+    if wants is None:
+        return subscriber
+
+    if subscriber is None:
+        subscriber = NewsletterSubscriber(
+            email=user.email, name=user.full_name
+        )
+        db.add(subscriber)
+        set_subscribed(subscriber, wants=wants)
+        db.flush()
+    else:
+        if their_newest_word or not wants:
+            set_subscribed(subscriber, wants=wants)
+
+        if subscriber.name is None and user.full_name:
+            subscriber.name = user.full_name
+
+    _hand_sends_to_list(db, user, subscriber)
+    db.flush()
+
+    return subscriber
+
+
 def fold_all(db: Session) -> int:
     """Fold in every subscriber whose address is a verified account's.
 
@@ -149,6 +295,7 @@ def fold_all(db: Session) -> int:
         db.scalars(
             select(User).where(
                 User.email_verified.is_(True),
+                User.is_active.is_(True),
                 User.email.in_(select(NewsletterSubscriber.email)),
             )
         )

@@ -207,17 +207,15 @@ applies instead.
 - **If your account is closed** - closing an account does not take you
   off the newsletter, and does not change your recorded answer, because
   it is often an administrator who closes it and not you. When your
-  account is closed we email you to say so, with a link to stop the
-  newsletter, and we move your name, your email address and your answer
-  to the newsletter list in section 3.11, where it is kept apart from
-  your account. If you had said no, we keep your address on that list
-  marked as unsubscribed, so that you are not added again. If a sponsor
-  gave you your account, we move you to that list only if you have told
-  us yourself that you want news and updates; not having ticked the box
-  to refuse is not enough, because your address came to us from your
-  sponsor for your training. Otherwise the newsletter stops when your
-  account is closed. If you ask us to delete your data, we take you off
-  that list as well unless you tell us you want to stay on it.
+  account is closed we move your name, your email address and your
+  answer to the newsletter list in section 3.11, where it is kept apart
+  from your account, and your answer stands, whether or not a sponsor
+  gave you your account. If you want news and updates, they carry on,
+  and we email you once to say that your account is closed and how to
+  stop them. If you had said no, we keep your address on that list
+  marked as unsubscribed, so that you are not added again, and send
+  you nothing. If you ask us to delete your data, we take you off that
+  list as well unless you tell us you want to stay on it.
 
 ### 3.7 Notifications to your browser or device
 
