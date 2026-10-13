@@ -348,8 +348,17 @@ describe("AuthProvider, when the server cannot be asked who is signed in", () =>
       .spyOn(api, "get")
       .mockRejectedValueOnce(new TypeError("Failed to fetch"))
       .mockResolvedValue(USER);
+    const listening = vi.spyOn(window, "addEventListener");
     renderApp("/patients/7");
     await screen.findByText(/could not reach quill/i);
+
+    // The message is on the page a moment before the provider starts
+    // listening: React shows it, then runs the effect that listens. An
+    // event sent in between reaches nobody, and the page only recovers
+    // on the next timed retry, five seconds on.
+    await waitFor(() =>
+      expect(listening).toHaveBeenCalledWith("online", expect.any(Function)),
+    );
 
     act(() => {
       window.dispatchEvent(new Event("online"));
