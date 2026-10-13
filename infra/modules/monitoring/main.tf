@@ -624,6 +624,8 @@ resource "google_monitoring_alert_policy" "retention_decision_needed" {
       decides.** Sign in to Quill as a superadmin and choose, for each:
       delete, keep, or leave for later.
 
+      Where: https://${var.app_domain}/admin/retention
+
       A record left undecided is being kept longer than the privacy
       policy says, so this is sent again each week while any is waiting.
 

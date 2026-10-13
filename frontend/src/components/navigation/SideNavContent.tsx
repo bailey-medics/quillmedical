@@ -510,6 +510,13 @@ export default function SideNavContent({
                 ? [{ label: "Submission", href: location.pathname }]
                 : undefined,
             } satisfies NavItem,
+            // Operator-only too: closed accounts whose records are
+            // awaiting a decision, from every sponsor.
+            {
+              label: "Record retention",
+              href: "/admin/retention",
+              icon: showIcons ? "database" : undefined,
+            } satisfies NavItem,
           ]
         : []),
       // Shown to whoever `RequireNewsletter` lets through: both read
