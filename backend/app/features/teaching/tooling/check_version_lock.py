@@ -143,7 +143,7 @@ def _read_yaml_file(path: Path) -> dict[str, object] | None:
     try:
         with open(path, encoding="utf-8") as f:
             return _as_mapping(yaml.safe_load(f))
-    except (OSError, yaml.YAMLError):
+    except OSError, yaml.YAMLError:
         return None
 
 
@@ -350,7 +350,7 @@ def _repo_relative_path(modules_dir: Path) -> str | None:
             text=True,
             check=True,
         )
-    except (subprocess.CalledProcessError, OSError):
+    except subprocess.CalledProcessError, OSError:
         return None
 
     repo_root = Path(completed.stdout.strip())

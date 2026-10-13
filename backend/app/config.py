@@ -435,7 +435,7 @@ class Settings(BaseSettings):
 
     # --- Startup validation ---
     @model_validator(mode="after")
-    def _validate_clinical_services(self) -> "Settings":
+    def _validate_clinical_services(self) -> Settings:
         """Verify FHIR/EHRbase config is present when clinical services are enabled."""
         if not self.CLINICAL_SERVICES_ENABLED:
             return self
@@ -453,7 +453,7 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
-    def _validate_cors_origins(self) -> "Settings":
+    def _validate_cors_origins(self) -> Settings:
         """Refuse to start in production with CORS open to every origin.
 
         The middleware in ``app.main`` allows credentials, and with
@@ -476,7 +476,7 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
-    def _validate_feedback_notify_email(self) -> "Settings":
+    def _validate_feedback_notify_email(self) -> Settings:
         """Refuse to start in production with nobody to tell of feedback.
 
         Feedback is how a problem somebody meets in Quill reaches a
@@ -507,7 +507,7 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
-    def _validate_feedback_slack_webhook_url(self) -> "Settings":
+    def _validate_feedback_slack_webhook_url(self) -> Settings:
         """Refuse a Slack webhook that does not point at Slack.
 
         The backend posts who sent feedback, and from which page, to

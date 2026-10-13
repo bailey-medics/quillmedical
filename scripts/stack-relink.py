@@ -51,7 +51,7 @@ def record_path() -> Path | None:
             text=True,
             check=True,
         ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
+    except OSError, subprocess.CalledProcessError:
         return None
 
     path = Path(out)

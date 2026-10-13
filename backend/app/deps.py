@@ -307,7 +307,7 @@ def has_competency_at(
 
         try:
             place_id = int(raw)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             raise HTTPException(
                 status_code=404, detail="Place not found"
             ) from None

@@ -71,7 +71,7 @@ def stack_file() -> Path | None:
             text=True,
             check=True,
         ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
+    except OSError, subprocess.CalledProcessError:
         return None
 
     path = Path(out)
@@ -154,7 +154,7 @@ def pull_request_state(number: object) -> str | None:
             text=True,
             timeout=30,
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError, subprocess.TimeoutExpired:
         return None
 
     state = result.stdout.strip()

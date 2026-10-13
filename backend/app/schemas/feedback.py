@@ -183,7 +183,7 @@ class FeedbackUpdateIn(BaseModel):
         return value.strip() or None
 
     @model_validator(mode="after")
-    def _changes_something(self) -> "FeedbackUpdateIn":
+    def _changes_something(self) -> FeedbackUpdateIn:
         """Refuse a body that names neither field, or a null status.
 
         ``status`` is optional so the comment can be saved alone, but

@@ -646,7 +646,7 @@ def verify_password_reset_token(token: str) -> str | None:
             token, max_age=settings.PASSWORD_RESET_TTL_MIN * 60
         )
         return data.get("email")
-    except (SignatureExpired, BadSignature):
+    except SignatureExpired, BadSignature:
         return None
 
 
@@ -688,7 +688,7 @@ def verify_email_verify_token(token: str) -> str | None:
             token, max_age=settings.EMAIL_VERIFY_TTL_MIN * 60
         )
         return data.get("email")
-    except (SignatureExpired, BadSignature):
+    except SignatureExpired, BadSignature:
         return None
 
 

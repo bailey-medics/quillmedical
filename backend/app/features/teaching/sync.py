@@ -116,7 +116,7 @@ def _load_module_status(bank_dir: Path) -> str | None:
             status = data.get("status")
             if isinstance(status, str):
                 return status
-    except (yaml.YAMLError, OSError):
+    except yaml.YAMLError, OSError:
         pass
 
     return None
@@ -150,7 +150,7 @@ def _load_module_metadata(
                 "cover_image": data.get("coverImage"),
                 "cover_image_focus": data.get("coverImageFocus"),
             }
-    except (yaml.YAMLError, OSError):
+    except yaml.YAMLError, OSError:
         pass
 
     return {
@@ -198,7 +198,7 @@ def _load_module_schedule(bank_dir: Path) -> ModuleSchedule:
     try:
         with open(module_yaml) as f:
             module = ModuleYaml.model_validate(yaml.safe_load(f))
-    except (yaml.YAMLError, OSError, ValidationError):
+    except yaml.YAMLError, OSError, ValidationError:
         return ModuleSchedule()
 
     return ModuleSchedule(

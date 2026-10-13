@@ -1119,7 +1119,7 @@ def answer_logbook_confirmation(
                     }
                 ),
             )
-        except (records.RecordNotFoundError, paths.PassportPathError):
+        except records.RecordNotFoundError, paths.PassportPathError:
             raise HTTPException(404, "Nothing to confirm") from None
         except records.AlreadyConfirmedError as error:
             raise HTTPException(409, str(error)) from None
@@ -1624,7 +1624,7 @@ def get_sign_off(
 
     try:
         record = service.read_sign_off(store, row.id, signoff_id)
-    except (PassportNotFoundError, paths.PassportPathError):
+    except PassportNotFoundError, paths.PassportPathError:
         raise HTTPException(404, "Sign-off not found") from None
 
     out = _sign_off_out(signoff_id, record)
@@ -2363,7 +2363,7 @@ def _existing_certificate(
     """
     try:
         raw = store.read(passport_id, paths.certificate_file(name))
-    except (PassportNotFoundError, paths.PassportPathError):
+    except PassportNotFoundError, paths.PassportPathError:
         raise HTTPException(404, "Certificate not found") from None
 
     return from_yaml(Certificate, raw)
@@ -2758,7 +2758,7 @@ def amend_logbook_entry(
             LogbookEntry,
             store.read(row.id, paths.logbook_entry(competency_id, stem)),
         )
-    except (PassportNotFoundError, paths.PassportPathError):
+    except PassportNotFoundError, paths.PassportPathError:
         raise HTTPException(404, "Logbook entry not found") from None
 
     scope = _logbook_scope(competency_id, body.scope_id)
@@ -2792,7 +2792,7 @@ def amend_logbook_entry(
         commit = records.amend_logbook_entry(
             store, row.id, _actor(user), competency_id, stem, entry
         )
-    except (records.RecordNotFoundError, paths.PassportPathError):
+    except records.RecordNotFoundError, paths.PassportPathError:
         raise HTTPException(404, "Logbook entry not found") from None
 
     row.head_commit = commit
@@ -2826,7 +2826,7 @@ def remove_logbook_entry(
         commit = records.remove_logbook_entry(
             store, row.id, _actor(user), competency_id, stem
         )
-    except (records.RecordNotFoundError, paths.PassportPathError):
+    except records.RecordNotFoundError, paths.PassportPathError:
         raise HTTPException(404, "Logbook entry not found") from None
 
     row.head_commit = commit
@@ -2966,7 +2966,7 @@ def amend_reflection(
         existing, _ = reflection_from_markdown(
             store.read(row.id, paths.reflection_file(name))
         )
-    except (PassportNotFoundError, paths.PassportPathError):
+    except PassportNotFoundError, paths.PassportPathError:
         raise HTTPException(404, "Reflection not found") from None
 
     reflection = Reflection(
@@ -2984,7 +2984,7 @@ def amend_reflection(
         commit = records.amend_reflection(
             store, row.id, _actor(user), name, reflection, body.body
         )
-    except (records.RecordNotFoundError, paths.PassportPathError):
+    except records.RecordNotFoundError, paths.PassportPathError:
         raise HTTPException(404, "Reflection not found") from None
 
     row.head_commit = commit
@@ -3010,7 +3010,7 @@ def remove_reflection(
 
     try:
         commit = records.remove_reflection(store, row.id, _actor(user), name)
-    except (records.RecordNotFoundError, paths.PassportPathError):
+    except records.RecordNotFoundError, paths.PassportPathError:
         raise HTTPException(404, "Reflection not found") from None
 
     row.head_commit = commit
@@ -3171,7 +3171,7 @@ def amend_cpd_entry(
         existing = from_yaml(
             CpdEntry, store.read(row.id, paths.cpd_entry(year, stem))
         )
-    except (PassportNotFoundError, paths.PassportPathError):
+    except PassportNotFoundError, paths.PassportPathError:
         raise HTTPException(404, "CPD entry not found") from None
 
     entry = CpdEntry(
@@ -3193,7 +3193,7 @@ def amend_cpd_entry(
         commit = records.amend_cpd_entry(
             store, row.id, _actor(user), year, stem, entry
         )
-    except (records.RecordNotFoundError, paths.PassportPathError):
+    except records.RecordNotFoundError, paths.PassportPathError:
         raise HTTPException(404, "CPD entry not found") from None
 
     row.head_commit = commit
@@ -3222,7 +3222,7 @@ def remove_cpd_entry(
         commit = records.remove_cpd_entry(
             store, row.id, _actor(user), year, stem
         )
-    except (records.RecordNotFoundError, paths.PassportPathError):
+    except records.RecordNotFoundError, paths.PassportPathError:
         raise HTTPException(404, "CPD entry not found") from None
 
     row.head_commit = commit

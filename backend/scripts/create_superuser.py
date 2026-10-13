@@ -35,7 +35,7 @@ def main() -> int:
     try:
         username = input("Username: ").strip()
         email = input("Email: ").strip()
-    except (KeyboardInterrupt, EOFError):
+    except KeyboardInterrupt, EOFError:
         print("Aborted.")
         return 4
 
@@ -45,7 +45,7 @@ def main() -> int:
         if password != confirm:
             print("ERROR: passwords do not match", file=sys.stderr)
             return 3
-    except (KeyboardInterrupt, EOFError):
+    except KeyboardInterrupt, EOFError:
         print("Aborted.")
         return 4
 

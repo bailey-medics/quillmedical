@@ -44,6 +44,18 @@ lines_scanned() {
   sed -n 's/^[[:space:]]*Total lines of code: \([0-9][0-9]*\)$/\1/p' | head -n 1
 }
 
+# Reads a Bandit report on stdin and says how many files it could not
+# read, or nothing when the report does not say.
+files_skipped() {
+  sed -n 's/^Files skipped (\([0-9][0-9]*\)):$/\1/p' | head -n 1
+}
+
+# Reads a Bandit report on stdin and prints the files it could not read,
+# each with Bandit's reason.
+skipped_files() {
+  sed -n '/^Files skipped ([0-9][0-9]*):$/,$p' | sed '1d'
+}
+
 # Decides from Bandit's exit code and its report. Prints the report when
 # there is something to act on.
 check_report() {
@@ -62,6 +74,20 @@ check_report() {
 
   if [ "$lines" -lt "$MIN_LINES" ]; then
     error "Bandit scanned ${lines} lines, and the backend is far more than ${MIN_LINES}: it looked in the wrong place"
+    return 1
+  fi
+
+  # Bandit reads a file with the Python it is running on. One written
+  # for a newer Python than that is a syntax error to it, and Bandit
+  # leaves the file out, counts the rest and passes. A dozen files were
+  # not scanned that way, deps.py and security.py among them, while the
+  # line count stayed far above the floor.
+  local skipped=""
+  skipped="$(files_skipped <<<"$report")"
+
+  if [ -n "$skipped" ] && [ "$skipped" -gt 0 ]; then
+    skipped_files <<<"$report" >&2
+    error "Bandit could not read ${skipped} files, so they were not scanned. A syntax error here usually means Bandit is running on an older Python than the code is written for: the hook must run on the pinned one"
     return 1
   fi
 

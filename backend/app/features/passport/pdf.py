@@ -232,7 +232,7 @@ def _day(value: date | datetime | None) -> str:
         if isinstance(value, datetime):
             return value.date().isoformat()
         return value.isoformat()
-    except (AttributeError, ValueError):  # pragma: no cover - defensive
+    except AttributeError, ValueError:  # pragma: no cover - defensive
         logger.warning("Unformattable date in a passport; printing a dash")
         return _MISSING
 
@@ -497,7 +497,7 @@ def _counts_by_year(
 
     try:
         listing = store.list_dir(passport_id, paths.logbook_dir(competency_id))
-    except (PassportNotFoundError, paths.PassportPathError):
+    except PassportNotFoundError, paths.PassportPathError:
         return per_year
 
     for path in listing:
@@ -838,7 +838,7 @@ def _list(store: PassportStore, passport_id: str, path: Any) -> list[str]:
     """Directory entry names under *path*, or nothing if it is absent."""
     try:
         return [entry.name for entry in store.list_dir(passport_id, path)]
-    except (PassportNotFoundError, paths.PassportPathError):
+    except PassportNotFoundError, paths.PassportPathError:
         return []
 
 
@@ -848,5 +848,5 @@ def _list_paths(
     """Full paths under *path*, or nothing if it is absent."""
     try:
         return list(store.list_dir(passport_id, path))
-    except (PassportNotFoundError, paths.PassportPathError):
+    except PassportNotFoundError, paths.PassportPathError:
         return []

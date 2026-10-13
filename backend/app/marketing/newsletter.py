@@ -442,7 +442,7 @@ def send_campaign(
             continue
         try:
             _send_one(campaign, brand, person)
-        except (EmailNotAllowedError, EmailRateLimitError):
+        except EmailNotAllowedError, EmailRateLimitError:
             result.refused += 1
             continue
         except EmailSendError as exc:

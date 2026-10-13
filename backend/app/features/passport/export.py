@@ -259,7 +259,7 @@ def _write_evidence(
     for digest in named:
         try:
             data = blobs.get(passport_id, digest)
-        except (BlobError, paths.PassportPathError):
+        except BlobError, paths.PassportPathError:
             logger.warning(
                 "Evidence named by a record could not be exported: "
                 "passport=%s digest=%s",
@@ -284,7 +284,7 @@ def _walk(
 
     try:
         entries = store.list_dir(passport_id, root)
-    except (PassportNotFoundError, paths.PassportPathError):
+    except PassportNotFoundError, paths.PassportPathError:
         return found
 
     for entry in entries:
@@ -310,7 +310,7 @@ def _children(
     """
     try:
         entries = store.list_dir(passport_id, path)
-    except (PassportNotFoundError, paths.PassportPathError):
+    except PassportNotFoundError, paths.PassportPathError:
         return None
 
     if not entries:
