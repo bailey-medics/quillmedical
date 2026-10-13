@@ -68,7 +68,7 @@ The four places somebody passes through before the first screen. They
 land together because the wait is only one spinner once all four show
 it.
 
-- [ ] **1. `frontend/index.html`, before any JavaScript.** Put the
+- [x] **1. `frontend/index.html`, before any JavaScript.** Put the
       spinner inside `<div id="root">`, as plain markup with an inline
       `<style>`. The browser paints it as soon as the HTML arrives and
       React replaces it on its first render. No script is involved, so
@@ -77,8 +77,8 @@ it.
       `infra/modules/load-balancer/main.tf`) already allow inline
       styles. Details that are easy to get wrong:
 
-  - Draw the feather's outline once, in a `<path>` inside `<defs>`,
-    and show it three times with `<use>`. Three copies of the path
+  - Draw the feather's outline once, as the `<path>` of the first
+    layer, and show it in the other two with `<use>`. Three copies of the path
     would add about 6KB to every first load.
   - Write the colours out as plain values. The theme's CSS
     variables are set by `MantineProvider`, which has not run yet.
@@ -87,42 +87,45 @@ it.
     the navy body colour comes from the theme. Without it the
     splash is a navy-palette quill on whatever Mantine's stylesheet
     defaults to. Measure what a production build paints first, in
-    both schemes, before choosing the rule.
+    both schemes, before choosing the rule. Found: Mantine's
+    stylesheet sets `--mantine-color-body` to its own dark grey until
+    the theme loads, so the splash's stylesheet sets that variable to
+    navy for a dark page.
   - Place and size it as `PageSpinner` does, so nothing moves when
     React takes over.
   - Include the visually hidden `role="status"` saying "Loading",
     and the reduced motion rule.
 
-- [ ] Test that the splash and the component cannot drift. The splash
+- [x] Test that the splash and the component cannot drift. The splash
       is a hand-written copy, because nothing of the app is loaded when
       it shows. A unit test reads `index.html` and
       `QuillSpinner.module.css` as text and compares the feather's
       outline, the turn's length, every `cubic-bezier` and the colours
       (the splash's plain values against `shared/brand.yaml`).
 
-- [ ] Start the clock from the splash. Before `createRoot` in
+- [x] Start the clock from the splash. Before `createRoot` in
       `frontend/src/main.tsx`, read when the splash's turn began
       (`getAnimations()` on the splash element) and give that to
       `quillSpinnerClock`. React's first spinner then carries on from
       the angle the splash had reached.
 
-- [ ] **2. `frontend/src/main.tsx`, the router's
+- [x] **2. `frontend/src/main.tsx`, the router's
       `hydrateFallbackElement`.** Replace the `Center` and
       `LoadingSpinner` with `PageSpinner`, and update the comment above
       it, which describes handing over to `RequireAuth`'s spinner.
 
-- [ ] **3. `frontend/src/auth/GuestOnly.tsx`.** Return `PageSpinner`
+- [x] **3. `frontend/src/auth/GuestOnly.tsx`.** Return `PageSpinner`
       while `state.status === "loading"`, where it returns `null`
       today. This is the blank moment straight before the sign-in
       screen. Leave the `null` for `"authenticated"`: that is a
       redirect already under way. Add the test `GuestOnly` lacks for
       the loading state.
 
-- [ ] **4. `frontend/src/auth/RequireAuth.tsx`.** Replace with
+- [x] **4. `frontend/src/auth/RequireAuth.tsx`.** Replace with
       `PageSpinner`. `RequireAuth.test.tsx` names the old spinner;
       bring it into line.
 
-- [ ] Add an end-to-end test that the splash shows with no JavaScript
+- [x] Add an end-to-end test that the splash shows with no JavaScript
       at all: load `/login` with every script request blocked and
       expect the "Loading" status and the feather. This is the only
       test that can prove the first paint, and it runs against the

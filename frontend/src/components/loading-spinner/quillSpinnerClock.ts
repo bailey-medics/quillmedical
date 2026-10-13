@@ -26,6 +26,19 @@ export function startQuillSpinnerClockAt(timelineMs: number): void {
 }
 
 /**
+ * Start the clock from a spinner that is already turning: the one in
+ * `index.html`, which was drawn before any of this code loaded. Does
+ * nothing if it is not there, or is not turning, which is the case for
+ * somebody who has asked for less motion.
+ */
+export function startQuillSpinnerClockFrom(turning: Element | null): void {
+  const startTime = turning?.getAnimations?.()[0]?.startTime;
+  if (typeof startTime !== "number") return;
+
+  startQuillSpinnerClockAt(startTime);
+}
+
+/**
  * How long the quill has been turning, in whole milliseconds. Zero where
  * there is no timeline to read, which is jsdom, and never negative.
  */
