@@ -104,7 +104,11 @@ retention periods in one place.
 - **How long** - while your account exists, and for two years after it
   is closed or deactivated, so that a closed account cannot be re-created
   by somebody else and so that we can answer questions about it. Then we
-  delete it or remove everything that identifies you.
+  delete it or remove everything that identifies you. If a sponsor gave
+  you access, we keep the account for as long as that sponsor's training
+  records about you are kept, which may be longer: a result is no use to
+  your sponsor without the name it belongs to. Section 4.7 gives each
+  sponsor's period.
 
 ### 3.2 Keeping the service and your account secure
 
@@ -309,19 +313,48 @@ notice.
 your sponsor, to assessors or to anyone else. Section 6 explains their
 legal position.
 
-4.5 Your sponsor decides how long your records are kept. Training bodies
-commonly keep them for six years or more after training ends. Your
-sponsor's privacy notice should say. When you leave your sponsor's
+4.5 Your sponsor decides how long your records are kept. Where a sponsor
+has given us a period, it is set out under that sponsor's name in
+section 4.7, and we delete the records when it ends. Where it has not,
+we keep them until the sponsor tells us otherwise, and its own privacy
+notice should say how long that is. When you leave your sponsor's
 programme, your sponsor keeps its copy for its own period, and you keep
-access to your account and to what you can download. When the sponsor's
-agreement with us ends, we return or delete its records as it instructs,
-within the period its agreement sets, and we give you the chance to
-download your passport and certificates first.
+access to your account and to what you can download for as long as the
+account is open. When the sponsor's agreement with us ends, we return or
+delete its records as it instructs, within the period its agreement
+sets, and we give you the chance to download your passport and
+certificates first.
 
 4.6 Requests about these records, for a copy, a correction or a deletion,
 go to your sponsor. If you send one to us we will pass it to your sponsor
 without delay and help it answer. If your sponsor does not respond, tell
 us and we will help you.
+
+### 4.7 What each sponsor has instructed
+
+Some things differ from one sponsor to the next. Each sponsor below has
+a part of its own, holding only what is particular to it. Everything
+else in this policy applies to every sponsor alike. If your sponsor is
+not listed, it has given us no instructions beyond those in this
+section, and its own privacy notice is the place to look.
+
+#### East of England Endoscopy Training Academy
+
+- **Who it is** - the East of England Endoscopy Training Academy
+  (EoEETA), at Norfolk and Norwich University Hospitals NHS Foundation
+  Trust. It is the controller of the training records you make within
+  its programme.
+- **How long your records are kept** - for three and a half years after
+  your account is closed or deactivated. Then we delete your
+  enrolments, your attempts and your answers. A pass lasts three years,
+  so the records are needed for that long, and the further six months
+  covers the time around a repeat, when your last result may be asked
+  for. Your account is kept for at least as long as these records.
+- **How long a pass lasts** - three years. We email you when a pass is
+  due to be repeated.
+- **Reminders** - if you are enrolled on a module and have not finished
+  an attempt, we email you a reminder each week, up to six times.
+- **Who is sent your certificate** - you, and EoEETA's clinical lead.
 
 ## 5. Who we share your data with
 
@@ -402,10 +435,14 @@ and we will remove it while we check.
 ## 7. How long we keep your data
 
 - **Your account** - while it exists, and two years after it is closed
-  or deactivated.
+  or deactivated, or for as long as a sponsor's training records about
+  you are kept, if that is longer.
 - **Training records, where we are the controller** - while your account
   exists, and two years after it is closed, or sooner if you ask.
-- **Training records held for a sponsor** - as your sponsor instructs.
+- **Training records held for a sponsor** - as your sponsor instructs:
+  see section 4.5, and your sponsor's own part of section 4.7. For the
+  East of England Endoscopy Training Academy, three and a half years
+  after your account is closed or deactivated.
 - **Server logs** - 30 days.
 - **Your answer about news and updates** - while your account exists.
   **The record of each answer** - six years after the last one.
