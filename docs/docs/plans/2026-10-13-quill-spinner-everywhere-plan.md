@@ -193,22 +193,22 @@ These sit inside a page that is already showing, so they use
 
 ## Phase 7: retire the ring
 
-- [ ] Delete `LoadingSpinner`, its story and its tests, and take it out
+- [x] Delete `LoadingSpinner`, its story and its tests, and take it out
       of the folder's `index.ts`. After Phase 6 nothing imports it.
       Leaving it would give the next page two spinners to choose from,
       and the ring would come back one page at a time. The small
       `Loader` inside a button (`SubmitButton`, `ButtonPairRed`) stays:
       a quill cannot be read at that size, and the button already says
       what is happening.
-- [ ] Move `QuillSpinner` and `PageSpinner` to be the folder's default
+- [x] Move `QuillSpinner` and `PageSpinner` to be the folder's default
       and named exports, and search the docs and `.claude/rules/` for
       `LoadingSpinner` by name. Merged plans are history and are left
       alone.
-- [ ] Add a lint rule, or extend the one that already warns on
+- [x] Add a lint rule, or extend the one that already warns on
       `ActionIcon`, so importing Mantine's `Loader` outside the two
       button components is a warning. Two of the nineteen places were
       bare `Loader`s with no label, which is how they went unheard.
-- [ ] Name the accessibility journeys this touches. All four journeys
+- [x] Name the accessibility journeys this touches. All four journeys
       in `docs/docs/frontend/accessibility/journeys.md` begin by
       opening Quill and signing in, so all four pass through the new
       start-up wait; Journey 1 passes through `GuestOnly` twice and
@@ -217,6 +217,13 @@ These sit inside a page that is already showing, so they use
       run" list in `testing-log.md`. What a screen reader should hear
       is one "Loading", not one for each spinner the wait passes
       through, and only a person listening can tell.
+
+Two things came out differently. The folder has no default export: every
+place already imported `QuillSpinner` and `PageSpinner` by name, so a
+default would only have been a second way to say the same thing. And the
+only mention of `LoadingSpinner` outside the code and the merged plans
+was in `QuillSpinner`'s own comment; the component rules had never named
+a spinner, so they gain a line saying which to use.
 
 ## Decisions
 

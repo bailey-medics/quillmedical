@@ -67,6 +67,12 @@ export default tseslint.config(
                 message:
                   "Use IconButton from @/components/button: it requires an aria-label, which an icon-only button needs to be announced as more than 'button'.",
               },
+              {
+                name: "@mantine/core",
+                importNames: ["Loader"],
+                message:
+                  "Use QuillSpinner or PageSpinner from @/components/loading-spinner: a bare Loader has no text, so a screen reader user hears nothing while they wait.",
+              },
             ],
             patterns: [
               {
@@ -104,6 +110,18 @@ export default tseslint.config(
         "src/components/form/FilterSelect.tsx",
         "src/components/inbox/InboxButton.tsx",
         "src/components/search/SearchFields.tsx",
+      ],
+      rules: {
+        "no-restricted-imports": "off",
+      },
+    },
+    // The two buttons that show a small ring while they work. The button
+    // itself says what is happening, so the ring is hidden from
+    // assistive technology; every other wait is a QuillSpinner
+    {
+      files: [
+        "src/components/button/ButtonPairRed.tsx",
+        "src/components/form/Form/SubmitButton.tsx",
       ],
       rules: {
         "no-restricted-imports": "off",
