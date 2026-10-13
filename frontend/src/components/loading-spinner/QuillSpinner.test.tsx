@@ -1,8 +1,30 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import QuillSpinner from "./QuillSpinner";
 import stylesheet from "./QuillSpinner.module.css?raw";
+import {
+  resetQuillSpinnerClock,
+  startQuillSpinnerClockAt,
+} from "./quillSpinnerClock";
+
+function setTimelineTime(currentTime: number) {
+  Object.defineProperty(document, "timeline", {
+    value: { currentTime },
+    configurable: true,
+  });
+}
+
+function startsThisFarIn(label: string): string | undefined {
+  return screen
+    .getByText(label)
+    .parentElement?.style.getPropertyValue("--quill-spinner-delay");
+}
+
+afterEach(() => {
+  resetQuillSpinnerClock();
+  Reflect.deleteProperty(document, "timeline");
+});
 
 describe("QuillSpinner", () => {
   it("tells screen readers it is loading", () => {
@@ -48,6 +70,51 @@ describe("QuillSpinner", () => {
 
     expect(box?.style.width).toContain("8rem");
     expect(box?.style.height).toContain("8rem");
+  });
+});
+
+// One spinner taking over from another must carry on turning, not snap
+// back to face on. Each starts as far into the turn as the page's clock
+// says, given to the stylesheet as a negative delay.
+describe("QuillSpinner turning in step", () => {
+  it("starts at the beginning where there is no clock to read", () => {
+    renderWithMantine(<QuillSpinner label="First" />);
+    expect(startsThisFarIn("First")).toBe("0ms");
+  });
+
+  it("starts two spinners a second apart, a second apart in the turn", () => {
+    setTimelineTime(1000);
+    renderWithMantine(<QuillSpinner label="First" />);
+    setTimelineTime(2000);
+    renderWithMantine(<QuillSpinner label="Second" />);
+
+    expect(startsThisFarIn("First")).toBe("-1000ms");
+    expect(startsThisFarIn("Second")).toBe("-2000ms");
+  });
+
+  it("counts from the moment the clock was started at", () => {
+    setTimelineTime(2000);
+    startQuillSpinnerClockAt(500);
+    renderWithMantine(<QuillSpinner label="First" />);
+
+    expect(startsThisFarIn("First")).toBe("-1500ms");
+  });
+
+  it("keeps its place in the turn when it renders again", () => {
+    setTimelineTime(1000);
+    const { rerender } = renderWithMantine(<QuillSpinner label="First" />);
+    setTimelineTime(5000);
+    rerender(<QuillSpinner label="First" />);
+
+    expect(startsThisFarIn("First")).toBe("-1000ms");
+  });
+
+  it("gives the delay to all three animations", () => {
+    const delayed = stylesheet.match(
+      /animation-delay: var\(--quill-spinner-delay, 0ms\);/g,
+    );
+
+    expect(delayed).toHaveLength(3);
   });
 });
 

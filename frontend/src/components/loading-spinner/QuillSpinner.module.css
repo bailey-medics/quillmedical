@@ -26,6 +26,13 @@
   --quill-spinner-lit: var(--mantine-color-primary-2);
   --quill-spinner-shadow: #000a17;
 
+  /*
+   * How far into the turn to start, as a negative delay. The component
+   * sets it, so that a spinner taking over from another carries on from
+   * the same angle. See quillSpinnerClock.ts.
+   */
+  --quill-spinner-delay: 0ms;
+
   /* One full turn. Each face shows for half of it. */
   --quill-spinner-turn: 2.4s;
   --quill-spinner-half-turn: calc(var(--quill-spinner-turn) / 2);
@@ -75,6 +82,7 @@
 .spin {
   position: relative;
   animation: turn var(--quill-spinner-turn) infinite;
+  animation-delay: var(--quill-spinner-delay, 0ms);
   will-change: transform;
 }
 
@@ -96,6 +104,7 @@
   fill: var(--quill-spinner-lit);
   opacity: 0;
   animation: lit var(--quill-spinner-half-turn) infinite;
+  animation-delay: var(--quill-spinner-delay, 0ms);
   will-change: opacity;
 }
 
@@ -103,6 +112,7 @@
   fill: var(--quill-spinner-shadow);
   opacity: 0;
   animation: shadow var(--quill-spinner-half-turn) infinite;
+  animation-delay: var(--quill-spinner-delay, 0ms);
   will-change: opacity;
 }
 
