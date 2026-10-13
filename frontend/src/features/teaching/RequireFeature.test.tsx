@@ -137,8 +137,7 @@ describe("RequireFeature", () => {
       </RequireFeature>,
     );
     expect(screen.queryByText("Protected content")).toBeNull();
-    // Mantine Loader renders a div with role
-    expect(document.querySelector(".mantine-Loader-root")).toBeDefined();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
   });
 
   it("shows 404 when unauthenticated", () => {

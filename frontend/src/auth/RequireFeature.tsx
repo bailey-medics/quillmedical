@@ -8,8 +8,7 @@
  * Works in conjunction with RequireAuth - assumes user is already authenticated.
  */
 
-import { Center } from "@mantine/core";
-import LoadingSpinner from "@/components/loading-spinner";
+import { PageSpinner } from "@/components/loading-spinner";
 import type { ReactNode } from "react";
 import { useAuth } from "./AuthContext";
 import CannotReach from "./CannotReach";
@@ -43,11 +42,7 @@ export function RequireFeature({
   if (state.status === "unreachable") return <CannotReach />;
 
   if (state.status === "loading") {
-    return (
-      <Center h="100vh">
-        <LoadingSpinner />
-      </Center>
-    );
+    return <PageSpinner />;
   }
 
   if (state.status === "unauthenticated" || !hasFeature) {

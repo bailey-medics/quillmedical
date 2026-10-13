@@ -11,9 +11,8 @@
  * them, as every guard here does.
  */
 
-import { Center } from "@mantine/core";
 import type { ReactNode } from "react";
-import LoadingSpinner from "@/components/loading-spinner";
+import { PageSpinner } from "@/components/loading-spinner";
 import { NotFoundLayout } from "@/components/layouts";
 import { useCanReachPassport } from "@lib/features";
 import { useAuth } from "./AuthContext";
@@ -33,11 +32,7 @@ export function RequirePassport({ children, fallback }: RequirePassportProps) {
   if (state.status === "unreachable") return <CannotReach />;
 
   if (state.status === "loading") {
-    return (
-      <Center h="100vh">
-        <LoadingSpinner />
-      </Center>
-    );
+    return <PageSpinner />;
   }
 
   if (state.status === "unauthenticated" || !canReach) {

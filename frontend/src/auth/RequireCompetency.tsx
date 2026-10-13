@@ -17,8 +17,7 @@
  * Works in conjunction with RequireAuth - assumes the user is authenticated.
  */
 
-import { Center } from "@mantine/core";
-import LoadingSpinner from "@/components/loading-spinner";
+import { PageSpinner } from "@/components/loading-spinner";
 import { Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useAuth } from "./AuthContext";
@@ -74,11 +73,7 @@ export default function RequireCompetency({
   if (state.status === "unreachable") return <CannotReach />;
 
   if (state.status === "loading") {
-    return (
-      <Center mih="60dvh">
-        <LoadingSpinner />
-      </Center>
-    );
+    return <PageSpinner />;
   }
 
   // Defensive: RequireAuth should have caught this already.

@@ -138,13 +138,17 @@ spinner here would flick from quill to ring and back. Each is the same
 change: the hand-written `Center` and `LoadingSpinner` become
 `PageSpinner`.
 
-- [ ] **5. `frontend/src/auth/RequireCompetency.tsx`**, and
+- [x] **5. `frontend/src/auth/RequireCompetency.tsx`**, and
       `RequireCompetency.test.tsx`, which names the old spinner.
-- [ ] **6. `frontend/src/auth/RequireFeature.tsx`**, and
+- [x] **6. `frontend/src/auth/RequireFeature.tsx`**, and
       `frontend/src/features/teaching/RequireFeature.test.tsx`.
-- [ ] **7. `frontend/src/auth/RequireOperator.tsx`.**
-- [ ] **8. `frontend/src/auth/RequirePassport.tsx`.**
-- [ ] **9. `frontend/src/auth/RequireNewsletter.tsx`.**
+- [x] **7. `frontend/src/auth/RequireOperator.tsx`.**
+- [x] **8. `frontend/src/auth/RequirePassport.tsx`.**
+- [x] **9. `frontend/src/auth/RequireNewsletter.tsx`.**
+
+`RequireFeature` and `RequirePassport` turned out to centre their ring in
+`h="100vh"`, not `mih="60dvh"`, so they already drew it lower on the page
+than the guard before them. `PageSpinner` puts all five in one place.
 
 ## Phase 5: a whole page of content loading
 

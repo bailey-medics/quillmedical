@@ -118,6 +118,7 @@ describe("RequireOperator", () => {
         </RequireOperator>,
       );
 
+      expect(screen.getByRole("status")).toHaveTextContent("Loading");
       expect(screen.queryByText("Operator content")).not.toBeInTheDocument();
     });
 
