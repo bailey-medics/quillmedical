@@ -89,6 +89,11 @@ class Role(Base):
     )
 
 
+#: What the app shows in place of a name for an emptied account. See
+#: ``User.display_name``.
+DELETED_ACCOUNT_NAME = "Deleted account"
+
+
 class User(Base):
     """User account with authentication credentials and settings.
 
@@ -119,6 +124,21 @@ class User(Base):
     email: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=False
     )
+
+    @property
+    def display_name(self) -> str:
+        """Who to say this is, wherever the app shows who did something.
+
+        Their full name, or their username where the account has none.
+        An emptied account has neither: it is a blank row kept so that
+        other people's records have something to point at, and it is
+        shown as ``DELETED_ACCOUNT_NAME``, never as its placeholder
+        username.
+        """
+        if self.emptied_at is not None:
+            return DELETED_ACCOUNT_NAME
+
+        return self.full_name or self.username
 
     @validates("is_active")
     def _record_when_closed(self, _key: str, value: bool) -> bool:

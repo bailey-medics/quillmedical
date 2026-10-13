@@ -246,7 +246,21 @@ def _user_has_conversation_access(
 
 
 def _user_display_name(user: User) -> str:
-    return user.full_name or user.username
+    """A message stays when its sender's account is emptied, shown as
+    from a deleted account: see ``User.display_name``."""
+    return user.display_name
+
+
+def participant_name(user: User) -> str:
+    """What a conversation's own summary calls one of its participants.
+
+    Their username, as these summaries always have. An emptied account
+    has only a placeholder for one, so it is shown as a deleted account.
+    """
+    if user.emptied_at is not None:
+        return user.display_name
+
+    return user.username
 
 
 def _participant_out(cp: ConversationParticipant) -> ParticipantOut:
@@ -266,6 +280,7 @@ def _message_out(msg: Message) -> MessageOut:
         sender_id=msg.sender_id,
         sender_username=msg.sender.username,
         sender_display_name=_user_display_name(msg.sender),
+        sender_deleted=msg.sender.emptied_at is not None,
         body=msg.body,
         amends_id=msg.amends_id,
         is_amendment=msg.amends_id is not None,

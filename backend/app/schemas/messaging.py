@@ -132,6 +132,9 @@ class MessageOut(BaseModel):
     sender_id: int
     sender_username: str
     sender_display_name: str
+    #: True when the sender's account has been emptied. The name is
+    #: then "Deleted account", and there is nobody to draw initials for.
+    sender_deleted: bool = False
     body: str
     amends_id: int | None = None
     is_amendment: bool = False

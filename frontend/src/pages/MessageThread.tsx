@@ -17,6 +17,7 @@ import { extractAvatarGradientIndex } from "@lib/fhir-patient";
 import {
   fetchConversation,
   sendMessage,
+  senderNames,
   type ConversationDetailResponse,
   type MessageResponse,
 } from "@lib/messaging";
@@ -26,13 +27,10 @@ import { useOutletContext, useParams } from "react-router-dom";
 
 /** Map a backend MessageResponse to the UI Message shape. */
 function toUiMessage(m: MessageResponse): Message {
-  const parts = m.sender_display_name.split(" ");
   return {
     id: String(m.id),
     senderId: String(m.sender_id),
-    senderName: m.sender_display_name,
-    givenName: parts[0] ?? "",
-    familyName: parts.slice(1).join(" "),
+    ...senderNames(m),
     gradientIndex: 0,
     text: m.body,
     timestamp: m.created_at,

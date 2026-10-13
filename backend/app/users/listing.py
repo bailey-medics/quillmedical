@@ -176,7 +176,8 @@ def people_to_list(
     if within is not None and not within:
         return []
 
-    stmt = select(User)
+    # An emptied account is nobody: it is never listed or picked.
+    stmt = select(User).where(User.emptied_at.is_(None))
 
     # Exclude people who are already members of the org_unit being
     # added to. A caller sending nothing excludes nobody.

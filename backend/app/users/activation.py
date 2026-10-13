@@ -19,7 +19,6 @@ from sqlalchemy.orm import Session
 from app.marketing.subscribers import fold_into_account, move_to_list
 from app.models import User
 from app.users.errors import (
-    AccountEmptied,
     AlreadyActive,
     AlreadyDeactivated,
     DeactivatingYourself,
@@ -87,20 +86,14 @@ def reactivate_account(db: Session, actor: User, user_id: int) -> User:
 
     Raises:
         UserAdminError: Whatever ``account_the_caller_may_act_on``
-            refuses, first.
+            refuses, first. An emptied account is one of them: it
+            answers as an account that is not there.
         AlreadyActive: If it is already active.
-        AccountEmptied: If it has been emptied.
     """
     user = account_the_caller_may_act_on(db, actor, user_id)
 
     if user.is_active:
         raise AlreadyActive()
-
-    # An emptied account is a blank row kept so that other people's
-    # records have something to point at. There is nobody to open it
-    # for: no name, no address and no way to sign in.
-    if user.emptied_at is not None:
-        raise AccountEmptied()
 
     user.is_active = True
     db.flush()

@@ -104,7 +104,13 @@ retention periods in one place.
 - **How long** - while your account exists, and for two years after it
   is closed or deactivated, so that a closed account cannot be re-created
   by somebody else and so that we can answer questions about it. Then we
-  delete it or remove everything that identifies you. If a sponsor gave
+  delete it or remove everything that identifies you: your name, your
+  email address, your username and your way of signing in are wiped,
+  and what you held in Quill is deleted. Two things you did for other
+  people stay, because they are part of somebody else's record. A
+  sign-off you gave on another clinician's passport stays there under
+  the name you gave it with. A message you sent stays, shown as from a
+  deleted account, with no name. If a sponsor gave
   you access, we keep the account for as long as that sponsor's training
   records about you are kept, which may be longer: a result is no use to
   your sponsor without the name it belongs to. Section 4.7 gives each

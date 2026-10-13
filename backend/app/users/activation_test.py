@@ -10,7 +10,6 @@ from app.organisations import add_org_unit_member, get_member_org_unit_ids
 from app.security import hash_password
 from app.users.activation import deactivate_account, reactivate_account
 from app.users.errors import (
-    AccountEmptied,
     AccountOutOfScope,
     AlreadyActive,
     AlreadyDeactivated,
@@ -243,11 +242,12 @@ def test_each_refusal_says_what_the_route_always_said(
 def test_an_emptied_account_cannot_be_opened_again(
     db_session: Session, manager: User, leaver: User
 ) -> None:
-    """It is a blank row kept for other people's records to point at."""
+    """It is a blank row kept for other people's records to point at,
+    and answers as an account that is not there."""
     leaver.emptied_at = leaver.deactivated_at
     db_session.commit()
 
-    with pytest.raises(AccountEmptied):
+    with pytest.raises(UserNotFound):
         reactivate_account(db_session, manager, leaver.id)
 
     assert _is_active(db_session, leaver) is False

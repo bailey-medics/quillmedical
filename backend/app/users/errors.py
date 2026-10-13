@@ -131,12 +131,6 @@ class AlreadyActive(UserAdminError):
     message = "User is already active"
 
 
-class AccountEmptied(UserAdminError):
-    """An account that has been emptied, which nothing opens again."""
-
-    message = "This account has been deleted and cannot be opened again."
-
-
 class ProfessionOutOfScope(UserAdminError):
     """A base profession the caller may not give, named by its id."""
 
