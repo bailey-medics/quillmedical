@@ -754,14 +754,14 @@ The first step, recording when an account closes, is Phase 16 above and
 is done. This is the rest: the period, the deleting and what the privacy
 policy says about both.
 
-- [ ] Keep an EoEETA delegate's records for three and a half years after
+- [x] Keep an EoEETA delegate's records for three and a half years after
       their account closes, then delete them. Mark's decision on 11
       October. The reasoning: a pass lasts three years, so the records are
       needed that long anyway, and the extra six months covers the time
       around a renewal, when a delegate who has lapsed comes back and
       their last result is asked for.
 
-- [ ] Hold the period for each sponsor, not in code: a
+- [x] Hold the period for each sponsor, not in code: a
       `records_kept_months_after_closure` column on `TeachingOrgSettings`,
       added with `just migrate`, set to 42 for EoEETA. It is the sponsor's
       instruction, which is what the privacy policy says decides how long
@@ -769,7 +769,19 @@ policy says about both.
       another. Empty means nothing is deleted automatically for that
       organisation.
 
-- [ ] Extend `apply_retention` in `backend/app/retention.py`: for a user
+      Set by a new admin job action, `set-records-kept`, and not through
+      the settings API. The API is open to the organisation's own
+      teaching admin, and shortening the period deletes records, so it
+      is for Quill's operator to do on the sponsor's written word. It
+      takes 1 to 600 months or `none`, reports unless told to change
+      it, and refuses an organisation with no teaching settings so a
+      mistyped id cannot land on a stranger.
+
+- [ ] Run `set-records-kept` for EoEETA in App production, with 42
+      months, once this has deployed. Until then nothing is deleted for
+      anybody, which is the safe side to be on.
+
+- [x] Extend `apply_retention` in `backend/app/retention.py`: for a user
       whose `deactivated_at` is older than their organisation's period,
       delete their assessments, answers and enrolments at that
       organisation. Work out first what else points at those rows and at
@@ -777,11 +789,35 @@ policy says about both.
       person can be enrolled at more than one organisation, so one
       organisation's period ending must not take another's records.
 
+      What points at them, found by reading every model: an attempt is
+      pointed at by its answers only, and an answer by its tags only.
+      Nothing points at an enrolment. A certificate is drawn when asked
+      for and an email is sent and not kept, so neither has rows. Each
+      table is deleted by name, tags first: Postgres would cascade from
+      the attempt, but the test database enforces no foreign keys, and
+      a delete that leaned on the cascade would be untested.
+
+      An account closed with no date, as one closed before Phase 16 is,
+      is never deleted from: the period cannot be counted. Nor is one
+      opened again, which clears the date. A period under one month is
+      ignored.
+
 - [ ] Keep the account itself for as long as the records. A result is no
       use to a sponsor without the name on it, so a delegate's account
       cannot go at two years while their results stay to three and a half.
       The same run that deletes the records deletes the account, if no
       other organisation still holds records for that person.
+
+      The first half holds today, because nothing deletes an account at
+      all: the policy's two years is promised and not built. The second
+      half is not built, and is the one step of this plan left for Mark.
+      Thirty columns in the database point at a user. Six of them refuse
+      the delete outright: a passport, the three passport requests and
+      invitations, and a message somebody sent. So "delete the account"
+      has to say what happens to a delegate who also holds a passport,
+      or who wrote a message in a patient's record. That is a decision
+      about people's records and not a detail of the code. Until it is
+      made the records go and the closed account stays.
 
 - [ ] Say so in `docs/docs/legal/privacy-policy.md`, in the two places
       that give the account's period. Both now say two years with no
@@ -846,7 +882,7 @@ policy says about both.
         years, that sentence misleads. Drop it or move it clear of the
         subsection.
 
-- [ ] Keep the number in one place the code reads and one the reader
+- [x] Keep the number in one place the code reads and one the reader
       reads. `records_kept_months_after_closure` on `TeachingOrgSettings`
       is what deletes; the subsection is what promises. A change to one
       without the other is the fault this plan started from, so say in
