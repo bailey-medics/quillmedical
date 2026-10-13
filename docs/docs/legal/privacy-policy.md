@@ -195,16 +195,29 @@ applies instead.
   which we meet by offering you the chance to refuse when we collect your
   address and in every message. The record of your answers is kept so
   that we can show you were offered the choice.
-- **How long** - your current answer for as long as your account exists.
-  The record of your answers for six years after the last one, as
-  evidence of the choice you made. The newsletter list is Quill's own,
+- **How long** - your current answer for as long as your account exists,
+  and after that on our newsletter list, as described below. The record
+  of your answers for six years after the last one, as evidence of the
+  choice you made. The newsletter list is Quill's own,
   held in our database, and no copy of it is kept by the company that
   delivers our email. Each newsletter is sent by Amazon Web Services
   from its London region; section 5 says more. If a newsletter to you
   cannot be delivered, or you report one as spam, we switch newsletters
-  off for you and record that as the reason. We do not send newsletters
-  to a closed account. Closing your account does not change your
-  recorded answer, because it is often an administrator who closes it.
+  off for you and record that as the reason.
+- **If your account is closed** - closing an account does not take you
+  off the newsletter, and does not change your recorded answer, because
+  it is often an administrator who closes it and not you. When your
+  account is closed we email you to say so, with a link to stop the
+  newsletter, and we move your name, your email address and your answer
+  to the newsletter list in section 3.11, where it is kept apart from
+  your account. If you had said no, we keep your address on that list
+  marked as unsubscribed, so that you are not added again. If a sponsor
+  gave you your account, we move you to that list only if you have told
+  us yourself that you want news and updates; not having ticked the box
+  to refuse is not enough, because your address came to us from your
+  sponsor for your training. Otherwise the newsletter stops when your
+  account is closed. If you ask us to delete your data, we take you off
+  that list as well unless you tell us you want to stay on it.
 
 ### 3.7 Notifications to your browser or device
 
@@ -259,7 +272,8 @@ applies instead.
 
 ### 3.11 Our newsletter, if you have no Quill account
 
-- **Who** - people who registered for a Let's Do Digital conference,
+- **Who** - people whose Quill account has been closed, as section 3.6
+  explains, and people who registered for a Let's Do Digital conference,
   course or webinar. Let's Do Digital is the name Bailey Medics Ltd ran
   those events under, so the company that holds your details has not
   changed.
@@ -444,7 +458,9 @@ and we will remove it while we check.
   East of England Endoscopy Training Academy, three and a half years
   after your account is closed or deactivated.
 - **Server logs** - 30 days.
-- **Your answer about news and updates** - while your account exists.
+- **Your answer about news and updates** - while your account exists,
+  and then on our newsletter list until you unsubscribe or ask us to
+  delete it.
   **The record of each answer** - six years after the last one.
 - **Notification addresses** - until you turn notifications off.
 - **The newsletter list for people with no account** - while you are
