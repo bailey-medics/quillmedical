@@ -10,7 +10,6 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
 import {
-  oneYearOn,
   type RetentionAccount,
   type RetentionReview,
 } from "@/lib/retention/retentionReviews";
@@ -61,6 +60,14 @@ function renderList(
   );
 
   return { onCarryOut, onClear };
+}
+
+/** Pick the date to ask again on: none is offered. */
+async function pickDate(card: HTMLElement) {
+  const date = within(card).getByLabelText(/Ask again on/);
+
+  await userEvent.type(date, "1 March 2099");
+  await userEvent.tab();
 }
 
 function cardOf(name: string): HTMLElement {
@@ -140,6 +147,7 @@ describe("RetentionDecisionList", () => {
       within(cardOf("Bob Example")).getByRole("textbox", { name: /Why/ }),
       "Held.",
     );
+    await pickDate(cardOf("Bob Example"));
     await userEvent.click(
       screen.getByRole("button", { name: "Carry out decisions" }),
     );
@@ -170,6 +178,7 @@ describe("RetentionDecisionList", () => {
       within(cardOf("Bob Example")).getByRole("textbox", { name: /Why/ }),
       "  Held for the sponsor.  ",
     );
+    await pickDate(cardOf("Bob Example"));
     await confirm();
 
     await waitFor(() =>
@@ -178,36 +187,28 @@ describe("RetentionDecisionList", () => {
           review_id: 2,
           decision: "keep",
           note: "Held for the sponsor.",
-          ask_again_on: `${oneYearOn()}T00:00:00Z`,
+          ask_again_on: "2099-03-01T00:00:00Z",
         },
       ]),
     );
   });
 
-  it("hands over the date that was chosen, not the default", async () => {
+  it("offers no date, and will not carry out a keep until one is picked", async () => {
     const { onCarryOut } = renderList();
 
     await choose("Bob Example", "Keep these records");
     await userEvent.type(
       within(cardOf("Bob Example")).getByRole("textbox", { name: /Why/ }),
-      "A long dispute.",
+      "Held for the sponsor.",
     );
-    const date = within(cardOf("Bob Example")).getByLabelText(/Ask again on/);
-    await userEvent.clear(date);
-    await userEvent.type(date, "1 March 2099");
-    await userEvent.tab();
-    await confirm();
+    const button = screen.getByRole("button", { name: "Carry out decisions" });
+    await userEvent.click(button);
 
-    await waitFor(() =>
-      expect(onCarryOut).toHaveBeenCalledWith([
-        {
-          review_id: 2,
-          decision: "keep",
-          note: "A long dispute.",
-          ask_again_on: "2099-03-01T00:00:00Z",
-        },
-      ]),
-    );
+    expect(
+      within(cardOf("Bob Example")).getByLabelText(/Ask again on/),
+    ).toHaveValue("");
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(onCarryOut).not.toHaveBeenCalled();
   });
 
   it("sends no date with a delete", async () => {

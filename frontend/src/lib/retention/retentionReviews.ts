@@ -73,31 +73,31 @@ export type RetentionChoice = "undecided" | "delete" | "keep";
 /** The most characters a note may hold, as the API enforces */
 export const MAX_RETENTION_NOTE = 2000;
 
-/** One decision to carry out */
-export interface RetentionDecision {
+/** Delete the records, or mark the account to be emptied */
+export interface RetentionDeleteDecision {
   review_id: number;
-  decision: "delete" | "keep";
+  decision: "delete";
   note?: string;
-  /** For a keep: when to ask again, as an ISO date and time */
-  ask_again_on?: string;
-}
-
-function pad(value: number): string {
-  return String(value).padStart(2, "0");
 }
 
 /**
- * The date a keep asks again by default: a year from today, as
- * YYYY-MM-DD. Whoever is deciding can pick another.
+ * Keep them. Always with why, and always with the date to ask again:
+ * the API refuses a keep with no date, so that "keep" cannot come to
+ * mean "keep for ever".
  */
-export function oneYearOn(today: Date = new Date()): string {
-  const year = today.getFullYear() + 1;
+export interface RetentionKeepDecision {
+  review_id: number;
+  decision: "keep";
+  note: string;
+  /** When to ask again, as an ISO date and time */
+  ask_again_on: string;
+}
 
-  // 29 February has no anniversary three years in four.
-  const lastDay = new Date(year, today.getMonth() + 1, 0).getDate();
-  const day = Math.min(today.getDate(), lastDay);
+/** One decision to carry out */
+export type RetentionDecision = RetentionDeleteDecision | RetentionKeepDecision;
 
-  return `${year}-${pad(today.getMonth() + 1)}-${pad(day)}`;
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
 }
 
 /** Tomorrow, as YYYY-MM-DD: the earliest a keep may ask again. */

@@ -16,7 +16,6 @@ import ButtonPairRed from "@/components/button/ButtonPairRed";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { BodyText } from "@/components/typography";
 import {
-  oneYearOn,
   type RetentionAccount,
   type RetentionChoice,
   type RetentionDecision,
@@ -32,9 +31,12 @@ interface Marked {
   askAgainOn: string | null;
 }
 
-/** Where every account starts: nothing chosen, and a year to ask again. */
+/**
+ * Where every account starts: nothing chosen, and no date. Whoever
+ * keeps something picks the date themselves; none is offered.
+ */
 function unmarked(): Marked {
-  return { choice: "undecided", note: "", askAgainOn: oneYearOn() };
+  return { choice: "undecided", note: "", askAgainOn: null };
 }
 
 function accounts(count: number): string {
@@ -101,28 +103,33 @@ export default function RetentionDecisionList({
   });
 
   async function carryOut() {
-    const decisions: RetentionDecision[] = decided.map((review) => {
+    const decisions: RetentionDecision[] = [];
+
+    for (const review of decided) {
       const row = marked[review.id] ?? unmarked();
       const note = row.note.trim();
 
       if (row.choice === "delete") {
-        return {
+        decisions.push({
           review_id: review.id,
           decision: "delete",
           ...(note ? { note } : {}),
-        };
+        });
+        continue;
       }
 
-      return {
+      // The button is off until every keep has both, so this is never
+      // reached. A keep with no date is not sent, whatever happens.
+      if (note === "" || row.askAgainOn === null) return;
+
+      decisions.push({
         review_id: review.id,
         decision: "keep",
-        ...(note ? { note } : {}),
+        note,
         // The start of that day, in UTC.
-        ...(row.askAgainOn
-          ? { ask_again_on: `${row.askAgainOn}T00:00:00Z` }
-          : {}),
-      };
-    });
+        ask_again_on: `${row.askAgainOn}T00:00:00Z`,
+      });
+    }
 
     setSending(true);
     try {
