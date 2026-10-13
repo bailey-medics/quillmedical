@@ -9,7 +9,7 @@
 
 import fs from "fs";
 import path from "path";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 
 /**
  * required_client_generation = max(generation for forces_reload: true files)
