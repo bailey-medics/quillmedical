@@ -7,7 +7,7 @@
  */
 
 import { MessagesList, type MessageThread } from "@/components/messaging";
-import LoadingSpinner from "@/components/loading-spinner";
+import { PageSpinner } from "@/components/loading-spinner";
 import PageHeader from "@/components/page-header";
 import NewMessageModal, {
   type NewConversationData,
@@ -105,7 +105,7 @@ export default function PatientMessages() {
   }, [id]);
 
   if (isLoading) {
-    return <LoadingSpinner label="Loading messages" />;
+    return <PageSpinner label="Loading messages" />;
   }
 
   return (
