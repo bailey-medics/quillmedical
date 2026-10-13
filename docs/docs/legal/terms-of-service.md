@@ -487,7 +487,10 @@ sponsor.
 21.2 We do not use your details to market to you on our own account
 because you are a sponsored user. If you have chosen to receive news and
 updates from Quill Medical, that is a separate choice you can change at
-any time.
+any time. If you have told us yourself that you want them, that stays so
+when you leave your sponsor or your account is closed, and every
+newsletter carries a link to stop it. If you have not, the newsletter
+stops when your account is closed.
 
 ### 22. When you leave your sponsor or its agreement ends
 

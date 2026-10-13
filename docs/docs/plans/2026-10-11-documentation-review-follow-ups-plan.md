@@ -704,9 +704,8 @@ so the next run picks it up. What is missing is anybody being told.
       a daily action and a five-minute one use the same alert. The test
       that every scheduled action is watched is what caught it.
 
-- [ ] After it is applied and each action has run once, prove it: pause
-      one scheduler job in App production for two days and see the
-      alert arrive, then resume it. Nothing is lost by the pause.
+- [ ] After it is applied and each action has run once, prove it. Moved
+      to Phase 31, the last, with how to do it.
 
 ### What happened when Phase 20 was applied
 
@@ -779,7 +778,12 @@ policy says about both.
 
 - [ ] Run `set-records-kept` for EoEETA in App production, with 42
       months, once this has deployed. Until then nothing is deleted for
-      anybody, which is the safe side to be on.
+      anybody, which is the safe side to be on. It is run once for the
+      organisation and never for one account: the period for each
+      account then counts by itself from the day it is closed. Do it
+      after Phase 27, so that a period is never set while the nightly
+      run can still delete without anybody approving. Better still,
+      after Phase 30, which records who set it and why.
 
 - [x] Extend `apply_retention` in `backend/app/retention.py`: for a user
       whose `deactivated_at` is older than their organisation's period,
@@ -825,19 +829,28 @@ policy says about both.
       half years or more. So the six columns that refuse the delete are
       not a reason to keep the account: their rows go first.
 
-      Three things that decision does not settle, to be answered before
-      it is built:
+      Three things that decision did not settle, and Mark's answers
+      of 13 October:
 
-      - **Where the person is on somebody else's record.** An assessor
-        who signed off another clinician's passport is named on that
-        clinician's record. Removing the assessor's account must not
-        remove the sign-off. The likely answer is to keep the sign-off
-        and the name as written on it, and cut its link to the account.
-      - **A message in a conversation with other people.** Removing it
-        changes what the others see. The likely answer is the same:
-        keep the message, and show its sender as a deleted account.
-      - **An account with no sponsor.** The policy gives it two years,
-        not three and a half.
+      - **Where the person is on somebody else's record: keep the
+        name.** An assessor who signed off another clinician's passport
+        stays named on that sign-off, and in the passport's own Markdown
+        and YAML. It is the other clinician's evidence that a named,
+        qualified person assessed them.
+      - **A message in a conversation with other people: keep it, with
+        no name.** It is shown as from a deleted account.
+      - **An account with no sponsor: build it now.** That is somebody
+        who pays for Quill themselves, and they are expected within a
+        few months. The policy gives such an account two years after
+        it is closed.
+
+      And one decision that changed how it is built. The account's row
+      is not removed. It is emptied: every field that identifies the
+      person is wiped, and the row stays as a shell that says only
+      "deleted account" and when. This is how most systems do it, and
+      it means nothing that points at the account has to be changed.
+
+      Built as Phase 29, after the screen it is decided on.
 
 - [x] Say so in `docs/docs/legal/privacy-policy.md`, in the two places
       that give the account's period. Both now say two years with no
@@ -991,6 +1004,351 @@ so the subsection is written once, whole.
       They describe its instructions as controller, so it should have
       seen them.
 
+## Phase 25: Protect the App production database
+
+Found on 13 October while checking whether a wrong deletion could be put
+right from a backup. Three protections written for production were
+never switched on.
+
+- [ ] Make `app` count as production in `infra/main.tf` and
+      `infra/modules/cloud-sql/main.tf`. Both ask
+      `var.environment == "prod"`, and the environment is called `app`,
+      so the answer has always been no. On the live instance,
+      `quill-core-app`, deletion protection is off where it was meant to
+      be on, seven backups are kept where thirty were meant, and
+      point-in-time recovery is off. The same test is written three
+      times in `infra/main.tf`, once for each database. Hold it in one
+      local, named for what it means, so the next rename cannot undo it
+      silently, and look for the same test anywhere else under `infra/`.
+
+- [ ] Keep the backups if the instance is ever deleted. Today they go
+      with it (`retainBackupsOnDelete` is false), so the one mistake
+      backups are for would take them too.
+
+- [ ] Add `prevent_destroy` to the database instance, as `infra/dns.tf`
+      has for the DNS zone. Deletion protection is Google refusing a
+      wrong command; this is Terraform refusing a wrong pull request.
+
+- [ ] Read the plan on the pull request before it merges. Switching on
+      point-in-time recovery can restart the database for a moment. It
+      must show the instance changed in place and never replaced.
+
+- [ ] After the apply, check the live instance with
+      `gcloud sql instances describe quill-core-app`: deletion
+      protection on, thirty backups kept, point-in-time recovery on.
+
+## Phase 26: Say in the privacy policy that backups hold deleted data
+
+- [ ] Add one line to section 7 of `docs/docs/legal/privacy-policy.md`:
+      when something is deleted, a copy may remain in backups until
+      they are overwritten, and backups are used only to restore the
+      service after a fault. The policy says "deleted" with no such
+      line, and a copy does live on for a while.
+
+- [ ] Give the number that is true once Phase 25 has applied: thirty
+      days, the thirty nightly backups. Not seven, which is today's
+      setting and is the fault Phase 25 puts right. So this phase comes
+      after that one, and is checked against the live instance and not
+      against the Terraform.
+
+- [ ] Add a dated sentence to `docs/docs/legal/index.md`, as the other
+      corrections have.
+
+## Phase 27: Put a person between the nightly run and a deleted record
+
+Mark's decision on 13 October. Deleting somebody's training records
+cannot be undone once the backups have turned over, and "a timer did
+it" is no answer if it is ever wrong. So the nightly run stops deleting
+a closed account's records and starts asking.
+
+It covers the records of closed accounts only. Unaccepted invitations,
+old feedback and old marketing answers stay automatic, as they have
+been since 12 October.
+
+- [ ] Stop `apply_retention` deleting a closed account's records. It
+      still works out who is past their sponsor's period, as Phase 23
+      built, and writes each as a row awaiting a decision: the person,
+      the organisation, when the account closed, when the period ended,
+      and how many attempts and enrolments would go. A table of its own,
+      with foreign keys, added with `just migrate`. One row for each
+      person at each organisation, never a second for the same pair
+      while one is undecided.
+
+- [ ] Tell somebody, without naming anybody. The run prints one line
+      with the count that are newly due and the count still waiting.
+      An alert on that line posts to Slack through the notification
+      channels the monitoring module already has, so the app is given
+      no Slack secret. The app also emails the address in a new
+      setting, Mark's to begin with (<mark@quill-medical.com>), through
+      the email sender it has. Both give a count for each organisation
+      and a link to the screen. No names, no email addresses: a list of
+      people and their training does not belong in a channel or an
+      inbox.
+
+- [ ] Tell them once when a record becomes due, and again each week
+      while any is undecided, saying how long the oldest has waited.
+      Not every night. A record left undecided is kept past what the
+      policy promises, so the screen and the nudge both show the wait.
+
+- [ ] The routes: list what is awaiting a decision, and record a
+      decision. Behind `DEP_REQUIRE_OPERATOR`, so a superadmin only.
+      The sponsor is the controller and its own teaching admin could
+      one day approve its own; that is a later change. A typed response
+      model for each, and the CSRF check on the one that writes.
+
+- [ ] The screen, under the admin pages and inside `<RequireOperator>`.
+      Each account awaiting a decision is a row with three states:
+      undecided, delete, keep. Undecided is where every row starts and
+      where it may stay, so that the accounts that are clear can be
+      dealt with while one that is not is left for later. Each row has
+      a text area for a note. One button carries out everything marked,
+      after a confirmation that gives the counts.
+
+      Reuse what Storybook has before building anything: the table, the
+      text area, the button pair. A component that does not exist yet
+      is planned and shown to Mark first, as the frontend rules say.
+
+- [ ] What each decision does. **Delete** removes that person's
+      attempts, answers and enrolments at that organisation, with the
+      code Phase 23 wrote. **Keep** leaves them, needs the note, and
+      takes a date to be asked again, six months on unless another is
+      given. A note is optional on a delete. Both record who decided
+      and when, and the row stays afterwards as the record of what was
+      done and why.
+
+- [ ] Check again at the moment of deleting. Between the list being
+      drawn and the button being pressed an account may have been
+      opened again, which clears its closing date. A row whose account
+      is no longer past its period is refused and says why.
+
+- [ ] Change the privacy policy and the terms to match: records are
+      deleted after the period "once a member of our staff has checked
+      them", in section 4.7 and clause 22.3.
+
+- [ ] Tests for each of the above, and for the three that matter most:
+      nothing is deleted by the nightly run, an undecided row is never
+      deleted by the button, and a second run does not write a second
+      row for the same person and organisation.
+
+- [ ] Then the same decision from the admin job, for when the screen
+      cannot be reached: a dry run that prints what is awaiting a
+      decision and a code, and the code pasted back to carry it out, as
+      `delete-passport` does. After the screen, on Mark's instruction.
+
+- [ ] Deleting an account, Phase 29, goes through this same screen and
+      is never automatic either.
+
+## Phase 28: Closing an account does not take somebody off the newsletter
+
+Mark's decision on 13 October. The newsletter is a choice of its own,
+and it is often an administrator who closes an account, not its owner.
+It comes before Phase 29 because that phase wipes the name and address
+this one has to move first.
+
+- [x] Say so in the documents. Section 3.6 of the privacy policy said
+      "We do not send newsletters to a closed account"; it, section
+      3.11, section 7 and clause 21.2 of the terms now say the name,
+      address and answer move to the newsletter list when an account is
+      closed. Changed on 13 October, on Mark's instruction, ahead of
+      the code. Neither document is published until the rest of this
+      phase is built: `docs/docs/legal/index.md` says so.
+
+- [ ] When an account is closed, copy the person's name, email address
+      and current answer to the newsletter list, the one section 3.11
+      of the policy describes, which is kept apart from accounts. Find
+      how that list is held and how an account's address is matched to
+      it today: the policy says an entry is deleted when somebody later
+      makes an account with the same address, and this is that journey
+      run the other way.
+
+- [ ] Carry a refusal across as a refusal. Somebody who said no goes on
+      the list marked unsubscribed, so that they are never added again
+      from an older list, and is sent nothing.
+
+- [ ] Email them once when the account is closed, to say that it is
+      closed and that the newsletter carries on, with the link that
+      stops it. Not to somebody who had already said no.
+
+- [ ] Send newsletters to the list entry of a closed account. Today
+      none is sent to a closed account; find where that is decided.
+
+- [ ] Reopening an account takes the entry back off the list and
+      restores the answer to the account, so that nobody is on both.
+
+- [ ] A request to delete somebody's data removes them from the list
+      too, unless they say they want to stay.
+
+- [ ] A sponsored user is carried across only on their own yes. Mark's
+      decision, 13 October. Their address reached Quill from their
+      sponsor, for training, and clause 21.2 says we do not market to
+      them because they are sponsored. The question they were asked is
+      "tick if you would rather not", and not ticking it is not a yes.
+      So for an account a sponsor gave, the move happens only when the
+      record of their answers shows they turned news on themselves.
+      Anybody else sponsored is not moved, and the newsletter stops
+      when the account closes, as it does today. Section 3.6 and clause
+      21.2 say so.
+
+      Work out from `marketing_preference_change` what counts as their
+      own yes: the row records what was chosen, where, and the wording
+      shown. An answer set for them, or left as it was offered, does
+      not count.
+
+- [ ] Say what makes an account "one a sponsor gave", in one place the
+      code reads. It is the same question Phase 29 asks to choose
+      between two years and a sponsor's period.
+
+- [ ] Consider, after this is built, asking sponsored users the
+      question as a plain yes. Today only the switch in Settings can
+      give one, so few will have. Not built here.
+
+## Phase 29: Empty a closed account
+
+Mark's decisions of 13 October are in Phase 23, where the question was
+first met. Placed here because each one is decided on the screen Phase
+27 makes, and after Phase 28, which moves the newsletter details off
+the account before they are wiped.
+
+- [ ] Find the accounts that are due, in the nightly run. Closed for
+      the longest period any organisation holding its training records
+      has set, with those records already deleted; or, with no sponsor,
+      closed for two years. An account with records still inside any
+      organisation's period is not due. Each is written as a row
+      awaiting a decision and never acted on by the run.
+
+- [ ] Delete what the person owns. Their own passport and all that
+      hangs from it, their training records where Quill is the
+      controller, their memberships, competencies, registrations,
+      roles, push subscriptions and marketing answers. Each table by
+      name, the furthest from the account first, as Phase 23 does,
+      because the test database enforces no foreign keys. A shell that
+      still said "member of ward four, passed colonoscopy on 3 March"
+      would identify somebody in a small team.
+
+- [ ] Wipe the row and keep it. Name, email address, username, password
+      hash, two-factor secret and anything else that says who it was.
+      The email address and username are unique and may not be empty,
+      so each becomes a placeholder made from the row's id that can
+      never be a real address, which also frees the real one to be
+      used again. Add a column for when it was emptied. The row is
+      then an id, that date, and nothing else.
+
+      Go through every column of `users` when building this, and have a
+      test that fails when a column is added without saying whether it
+      is wiped. A new personal field is otherwise kept by default.
+
+- [ ] An emptied account can never sign in, be reopened or be found by
+      a search for a person. Wherever the app shows who did something,
+      it shows "Deleted account".
+
+- [ ] Keep the name where it is part of somebody else's record. A
+      sign-off this person gave on another clinician's passport keeps
+      their name, on the sign-off and in the passport's Markdown and
+      YAML. Check where each of these takes the name from today: the
+      sign-off request, the logbook confirmation and the assessor
+      invitation all point at the account, and if any of them shows the
+      name by looking the account up, it must first be written onto the
+      record itself as text, or emptying the account would blank it.
+
+- [ ] A message stays, shown as from a deleted account, with no name
+      or initials. Nothing about the message changes; the name simply
+      is not on the account any more.
+
+- [ ] The record that it was done. The decision row from Phase 27
+      outlives the wipe, and must not be the place the name survives:
+      once the account is emptied it holds the id, the organisation,
+      who decided and when, and the note.
+
+- [ ] Say so in the privacy policy. Section 3.1 already says "delete it
+      or remove everything that identifies you", which is this. Add
+      that a sign-off given on somebody else's record stays there under
+      the name it was given with, and that a message stays without one.
+
+- [ ] Before the EHR product is live, decide this again for it. A
+      message about a patient is part of a clinical record, and its
+      author has to stay known for far longer than a teaching account.
+
+## Phase 30: Hold a sponsor's period where its history can be read
+
+Mark, 13 October: the period a sponsor has given should be stored
+somewhere it can be audited, and a command run by hand is not that.
+
+- [ ] Keep the period where it is, on the organisation's row in the
+      database, and record every change to it. Two other homes were
+      considered and turned down:
+
+      - **Terraform** builds the infrastructure and never writes a row
+        of the app's data.
+      - **The sponsor's content repository** was the first answer, and
+        Mark pointed out why it is wrong. A content repository is a
+        module, not an organisation. One sponsor may have several
+        modules, and one module may be used by several organisations,
+        so a period written there belongs to neither.
+
+      The period is a fact about one organisation, and organisations
+      live in the database. What was missing is not a better place for
+      the number but a history of it.
+
+- [ ] A table of its own for that history, added with `just migrate`.
+      One row for each change: the organisation, the old value, the new
+      value, who changed it, when, and why. Rows are only ever added.
+      Nothing edits or deletes one, and there is no route that could.
+
+- [ ] The reason is required, and is where the sponsor's instruction is
+      named: the agreement and clause, or the date of the email that
+      gave it. A number with nobody's word behind it is what an audit
+      is looking for.
+
+- [ ] Change it from the organisation's own admin page,
+      `/admin/organisations/<id>`, where a superadmin already looks an
+      organisation up. Mark's suggestion, 13 October. An action card
+      there, shown to a superadmin only, opens a page with the period
+      now, the field to change it, the reason, and every change before
+      it. The page sits inside `<RequireOperator>` and its routes
+      behind `DEP_REQUIRE_OPERATOR`: the card being hidden is not the
+      protection, the route refusing is.
+
+      The organisation's other admins use that page too, to manage its
+      staff and sites, and must not see the card or reach the page.
+      Making the period shorter brings records up for deletion sooner,
+      so it is not one of the organisation's own settings.
+
+      Reuse the action card component in `components/action-card/`.
+      That page does not use one today, so look first at how it lays
+      out its other actions and fit in with them. Show the card only
+      for an organisation that has teaching settings, since the period
+      is held on that row.
+
+- [ ] A shorter period deletes nothing by itself. It only changes who
+      the nightly run lists for a decision, and each of those still
+      needs a person.
+
+- [ ] `set-records-kept` in the admin job writes the same history, with
+      the reason required and the admin job named as who did it, so
+      there is one record however the number was changed. It stays as
+      the way in when the screen cannot be reached.
+
+- [ ] Set EoEETA's 42 months through this, with the agreement as the
+      reason, and not before Phase 27.
+
+## Phase 31: Prove what could only be tried live
+
+- [ ] Prove the alert for a scheduled action that has gone quiet, from
+      Phase 22, once #1905 has merged and applied and each action has
+      finished a run since. In the Google Cloud console, project
+      `quill-medical-app`, open Cloud Scheduler, pause
+      `quill-exams-out-of-time-app`, and wait about two hours for the
+      Slack message and the email. Then resume it. That job runs every
+      five minutes, so it is the quick one to try; the daily two need
+      thirty-six hours of silence. Nothing is lost by the pause. If no
+      alert comes, the sum and the missing-data setting in
+      `scheduled_action_silent` are the first place to look.
+
+- [ ] After Phase 25 has applied, check the live database:
+      `gcloud sql instances describe quill-core-app` shows deletion
+      protection on, thirty backups kept and point-in-time recovery
+      on.
+
 ## Decisions
 
 - **The code changes to keep the policy's promises, not the other way
@@ -1008,3 +1366,29 @@ so the subsection is written once, whole.
   gate survives, and why a message body is kept in both FHIR and SQL.
   They wait for Mark's account, and the first also waits on the `todo.md`
   item in Phase 3.
+
+- **A person approves each deletion of a closed account's records** -
+  Mark, 13 October. The nightly run finds and reports, and a superadmin
+  decides on a screen: delete, keep, or leave undecided. Pull request
+  #1908, which deletes them automatically, was left as built, because
+  no organisation has a period set and there is no real user data yet;
+  Phase 27 replaces that behaviour before EoEETA's period is set.
+
+- **Screen first, then the command** - Mark, 13 October. The command
+  route would have been quicker to build, and the screen was chosen
+  because a decision about a person should be made looking at the row.
+
+- **A deleted account is emptied, not removed** - Mark, 13 October.
+  The row stays as a shell with nothing that identifies anybody. An
+  earlier draft of Phase 29 removed the row, which meant changing how
+  five foreign keys behave and copying names onto other tables first.
+  Emptying needs none of that, and is what most systems do.
+
+- **A name survives only on somebody else's record** - Mark, 13
+  October. A sign-off keeps the assessor's name, because it is the
+  evidence of the clinician who was assessed. A message does not.
+
+- **The newsletter move happens when an account is closed, not when it
+  is emptied** - Mark, 13 October. Emptying comes years later, and a
+  newsletter that stopped at closure and began again then would be the
+  opposite of what anybody expects.

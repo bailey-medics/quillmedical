@@ -42,7 +42,14 @@ records are; and it no longer says that training bodies commonly keep
 records for six years or more, which sat badly beside a named sponsor
 keeping them for three and a half.
 
-## Versioning
+Changed on 13 October 2026, by Mark's decision: closing an account no
+longer takes somebody off the newsletter. Section 3.6 of the privacy
+policy used to say that no newsletter is sent to a closed account; it,
+section 3.11, section 7 and clause 21.2 of the terms now say that the
+name, address and answer move to the newsletter list when an account is
+closed. **This wording is ahead of the code**: the move is Phase 28 of
+the documentation review follow-ups plan, and neither document may be
+published until it is built.
 
 Every version carries a version number and the date it took effect,
 because until acceptance is recorded per person that date is the only
