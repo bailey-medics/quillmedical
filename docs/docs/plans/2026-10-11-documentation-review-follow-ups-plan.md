@@ -619,7 +619,136 @@ Mark agreed on 12 October to move them.
       enrolment reminders in Phase 14 stop for that person without any
       change to them: they stop on a finished attempt, pass or fail.
 
-## Phase 22: Keep a closed account's records for the sponsor's period
+## Phase 22: Say so when a scheduled action has not run
+
+Mark asked on 12 October what happens if Google has an outage. A missed
+run loses nothing: each action works out what is due from the database,
+so the next run picks it up. What is missing is anybody being told.
+
+- [x] Research first how Cloud Monitoring can say "nothing for 36
+      hours", and record what was found here. Done first, because the
+      answer shaped the rest.
+
+      Its condition for missing data cannot do it. Google's page on
+      metric absence gives 23.5 hours as the longest it will wait, and
+      these actions run once a day, 24 hours apart, so it would be
+      raised half an hour before every run. The same page says a count
+      that was never written is not missed at all.
+
+      What works is a sum. An alert may add a metric up over 25 hours at
+      most. Add up the finished runs over 25 hours, and raise the alert
+      when that sum has been under one for 11 hours more: 36 hours with
+      no finished run. A window with no line in it gives no data and not
+      nought, so missing data is set to count as breaching. Without that
+      the condition is never met by the very thing it is for.
+
+      Two things this could not prove here. That the 25 hour limit and
+      the missing-data setting behave together as the reference says:
+      the first real test is a paused scheduler job. And the alert is
+      not armed until an action has finished once after it is applied.
+
+- [x] Alert when an action has not finished in a day and a half. The
+      alert from Phase 20, `scheduled_action` in
+      `infra/modules/monitoring/main.tf`, fires on two things: the action
+      printed that it failed, or Cloud Scheduler logged an error starting
+      it. Both need something to be written to the log. Silence raises
+      nothing: a scheduler job paused or deleted, the scheduler API
+      switched off, an execution killed for memory or time before it
+      prints anything, or an outage in which nothing runs at all. In
+      each of those the reminders simply stop.
+
+      So the alert is on the absence of success. Each action ends a real
+      run on one line: retention "Deleted" and a count of marketing
+      answer records, the reminders "Sent" and a count of renewal
+      notices. A `google_logging_metric` for each action counts that
+      line, and an alert for each, `scheduled_action_silent`, is raised
+      as worked out above. Both are in the monitoring module, beside the
+      alert they back up, and not in `infra/modules/analytics`: they
+      exist only for this alert.
+
+- [x] Count the line for a real run only. A report, the action run by
+      hand with no apply flag, prints "Would delete" and "Would send",
+      and must not reset the clock. Somebody checking the counts by hand
+      during an outage would otherwise silence the alert.
+
+      The wording is now a contract between the Python and the
+      Terraform, which nothing runs together. Each action's test holds
+      the line as `RUN_FINISHED` and proves a real run prints it once,
+      and that a report and a failed run never do.
+      `.github/scripts/terraform/scheduled-action-heartbeat.bats` fails
+      if the alert's text differs from the test's, or if the scheduler
+      starts an action the alert does not watch.
+
+- [x] Give it text of its own, on the same notification channels. It
+      says which action has gone quiet, that nothing is lost, and where
+      to look first: the job's page in Cloud Scheduler, for whether it
+      is paused and when it last ran.
+
+- [x] Leave the first alert as it is. A failure is known within minutes
+      from that one; this one is the backstop for when nothing is said
+      at all.
+
+- [x] Terraform cannot be validated on this machine, which holds an
+      older version than the lock file asks for. Say so in the pull
+      request, and read the plan step of the `terraform.yml` run on it.
+
+      `terraform fmt` passes, which needs no providers. `validate` could
+      not be run.
+
+- [x] Watch the third scheduled action as well. `exams-out-of-time`
+      was added by another plan on 12 October, between this being built
+      and landed, and runs every five minutes. It counts its own last
+      line, "Finished" and a number of exams, and is raised after two
+      hours of silence: its finished runs summed over an hour, under one
+      for an hour more. Each action now carries its own two numbers, so
+      a daily action and a five-minute one use the same alert. The test
+      that every scheduled action is watched is what caught it.
+
+- [ ] After it is applied and each action has run once, prove it: pause
+      one scheduler job in App production for two days and see the
+      alert arrive, then resume it. Nothing is lost by the pause.
+
+### What happened when Phase 20 was applied
+
+Recorded here because it is what this phase is for: a scheduled action
+that silently was not running.
+
+- [x] Phase 20 merged on 12 October with the pull requests that removed
+      the GitHub timers, and its Terraform apply failed. Retention and
+      the reminders ran from nowhere for about eight hours. Nothing was
+      lost, because each works out what is due when it runs. Three
+      errors, and none could have been found on a laptop, where
+      Terraform cannot be validated:
+
+      - **The account Terraform applies with could not create a
+        scheduler job.** Its roles are granted by hand in Google Cloud
+        and are not in this repository. `roles/cloudscheduler.admin`
+        was granted to `github-actions@quill-medical-app` that evening.
+      - **The Phase 20 alert had two conditions.** Monitoring allows a
+        policy that matches log lines only one. They became one, joined
+        by OR in the filter (#1896).
+      - **The request log archive could not be moved to London**, and
+        had been failing every apply since 11 October. Moving a dataset
+        replaces it, and the destroy needs `delete_contents_on_destroy`
+        in the state already; the flag and the move had reached `main`
+        in one apply. It went back to `EU` for one apply (#1896), then
+        to London (#1900). The plan on #1900 also showed the sink's
+        permission on the dataset would not be remade with it, which
+        would have stopped the archive for good; it now is.
+
+- [x] Lesson, for any plan that moves a job from one starter to another:
+      the pull request that removes the old starter is not merged until
+      the new one has been seen to run. This plan said so in Phase 20
+      and it was merged together all the same, so the order has to be
+      held by the pull requests and not by a note: put the removal in a
+      later stack, opened only after the first run.
+
+- [ ] Put the roles of the account Terraform applies with into
+      Terraform, or at least into a checked list, so a missing one is
+      found in review and not at apply. Not designed yet: Terraform
+      would be managing its own permissions, which needs care.
+
+## Phase 23: Keep a closed account's records for the sponsor's period
 
 The first step, recording when an account closes, is Phase 16 above and
 is done. This is the rest: the period, the deleting and what the privacy
@@ -740,11 +869,11 @@ policy says about both.
       request, and decide what deleting a closed account means once there
       are accounts with no sponsor.
 
-## Phase 23: Give EoEETA its own part of the privacy policy and terms
+## Phase 24: Give EoEETA its own part of the privacy policy and terms
 
 Mark's decision on 11 October: somebody who reaches Quill through a
 sponsor, and not directly, needs that sponsor's details set out. EoEETA is
-the first. Phase 22 adds the retention period; this phase gathers the rest
+the first. Phase 23 adds the retention period; this phase gathers the rest
 so the subsection is written once, whole.
 
 - [ ] Write the EoEETA subsection of `docs/docs/legal/privacy-policy.md`,
@@ -756,7 +885,7 @@ so the subsection is written once, whole.
         at Norfolk and Norwich University Hospitals NHS Foundation Trust,
         the controller of a delegate's training records.
       - **How long records are kept** - three and a half years after the
-        account is closed or deactivated (Phase 22).
+        account is closed or deactivated (Phase 23).
       - **How long a pass lasts** - three years, and the delegate is told
         when it is due to be repeated (Phase 15, and the agreement's
         schedule).
@@ -778,7 +907,7 @@ so the subsection is written once, whole.
       fees, user numbers and the subscription term are between EoEETA and
       Bailey Medics.
 
-- [ ] Do this phase after Phases 14, 15 and 22 are built, not before. The
+- [ ] Do this phase after Phases 14, 15 and 23 are built, not before. The
       review that started this plan found a policy promising things no
       code did; a subsection written ahead of the code would repeat that.
       If the documents must be published first, leave out any line whose
