@@ -751,6 +751,7 @@ module "monitoring" {
   monitored_hostnames        = var.monitored_hostnames
   app_domain                 = var.app_domain
   alert_email                = var.alert_email
+  retention_decision_email   = var.retention_decision_email
   alert_sms_number           = data.google_secret_manager_secret_version.alert_sms_number.secret_data
   pagerduty_service_key      = data.google_secret_manager_secret_version.pagerduty_service_key.secret_data
   enable_sms_channel         = var.enable_sms_channel

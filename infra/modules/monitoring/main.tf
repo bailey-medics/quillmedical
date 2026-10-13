@@ -577,6 +577,86 @@ resource "google_monitoring_alert_policy" "scheduled_action_silent" {
   }
 }
 
+# ---------- Alert policy - records are awaiting a decision ----------
+#
+# The nightly retention run does not delete a closed account's training
+# records once their sponsor's period has passed. It lists them and a
+# superadmin decides: see RetentionReview in backend/app/models.py. This
+# is how that person finds out there is something to decide.
+#
+# The run prints one line, starting "Decision needed:", when records are
+# newly due and again each week while any are undecided. That line has a
+# count in it and no names: who they are is in the app, behind a sign-in,
+# and a list of people and their training does not belong in a channel or
+# an inbox. The words are DECISION_NEEDED in backend/app/retention.py, and
+# .github/scripts/terraform/retention-decision-alert.bats holds the two to
+# the same text.
+#
+# Not a fault, so not paged: the ordinary channels, and one more address
+# for whoever makes these decisions.
+resource "google_monitoring_notification_channel" "retention_decisions" {
+  count = var.scheduled_job_name != null && var.retention_decision_email != "" ? 1 : 0
+
+  project      = var.project_id
+  display_name = "Quill retention decisions (${var.environment})"
+  type         = "email"
+
+  labels = {
+    email_address = var.retention_decision_email
+  }
+}
+
+resource "google_monitoring_alert_policy" "retention_decision_needed" {
+  count = var.scheduled_job_name != null ? 1 : 0
+
+  project      = var.project_id
+  display_name = "Records awaiting a deletion decision (${var.environment})"
+  combiner     = "OR"
+
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "Training records are awaiting a decision"
+    content   = <<-EOT
+      One or more closed accounts have training records past the period
+      their sponsor asked for them to be kept.
+
+      **Nothing has been deleted, and nothing will be until somebody
+      decides.** Sign in to Quill as a superadmin and choose, for each:
+      delete, keep, or leave for later.
+
+      A record left undecided is being kept longer than the privacy
+      policy says, so this is sent again each week while any is waiting.
+
+      The count is in the log line that raised this. No names are sent
+      here on purpose.
+    EOT
+  }
+
+  conditions {
+    display_name = "The retention run asked for a decision"
+
+    condition_matched_log {
+      filter = <<-EOT
+        resource.type = "cloud_run_job"
+        resource.labels.job_name = "${var.scheduled_job_name}"
+        textPayload =~ "^Decision needed: [1-9]"
+      EOT
+    }
+  }
+
+  notification_channels = concat(
+    local.notification_channels,
+    [for ch in google_monitoring_notification_channel.retention_decisions : ch.id],
+  )
+
+  alert_strategy {
+    auto_close = "86400s" # A day: the run says so again in a week
+    notification_rate_limit {
+      period = "3600s" # At most one notification an hour
+    }
+  }
+}
+
 # ---------- Alert policy - backend 5xx responses ----------
 #
 # The uptime check above only proves that /api/health answers. A service

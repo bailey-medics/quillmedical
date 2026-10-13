@@ -118,6 +118,12 @@ variable "video_not_found_threshold" {
   default     = 3
 }
 
+variable "retention_decision_email" {
+  description = "Who is emailed when training records are awaiting a deletion decision, as well as the ordinary alert channels. Empty for nobody extra."
+  type        = string
+  default     = ""
+}
+
 variable "scheduled_job_name" {
   description = "Name of the Cloud Run job the scheduled actions run on: retention and the teaching reminders. Null where nothing is scheduled, in which case no alert for a failed scheduled run is created."
   type        = string

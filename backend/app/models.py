@@ -34,6 +34,7 @@ from sqlalchemy import (
     UniqueConstraint,
     delete,
     event,
+    text,
     update,
 )
 from sqlalchemy.engine import Connection
@@ -1870,6 +1871,108 @@ class PositionHolding(Base):
 #: Where a piece of feedback has got to. A closed set, because each state
 #: is a step in reading and closing a report rather than a label that grows:
 #: a fifth one means rethinking the admin page, not extending a list.
+#: What has been decided about one set of records past their period.
+#: ``undecided`` is where every row starts and may stay.
+RETENTION_DECISIONS: tuple[str, ...] = ("undecided", "deleted", "kept")
+
+
+class RetentionReview(Base):
+    """One person's records at one organisation, past the period kept.
+
+    The nightly retention run does not delete a closed account's training
+    records. It writes a row here and a person decides: delete, keep, or
+    leave undecided. Deleting somebody's records cannot be undone once the
+    backups have turned over, so a timer does not do it.
+
+    **A row is never removed.** Once decided it is the record of what was
+    done, by whom and why, and outlives the records it was about.
+
+    **At most one undecided row for a person at an organisation**, held
+    by a partial unique index, so a run every night does not write the
+    same question every night.
+
+    Attributes:
+        user_id: Whose records.
+        org_unit_id: The organisation holding them.
+        closed_at: When their account was closed.
+        due_on: When that organisation's period for them ended.
+        attempts: How many attempts were found when the row was written.
+        enrolments: How many enrolments were found then.
+        decision: One of ``RETENTION_DECISIONS``.
+        note: Why. Needed to keep, optional to delete.
+        decided_by: Who decided. Null while undecided.
+        decided_at: When. Null while undecided.
+        ask_again_on: For a row that was kept, when to ask again.
+        announced_at: When somebody was last told this row is waiting.
+    """
+
+    __tablename__ = "retention_review"
+    __table_args__ = (
+        CheckConstraint(
+            "decision IN ("
+            + ", ".join(f"'{d}'" for d in RETENTION_DECISIONS)
+            + ")",
+            name="ck_retention_review_decision",
+        ),
+        # The predicate is given for both databases: without
+        # ``sqlite_where`` the unit-test database would make this a full
+        # unique index and refuse a second row once the first is decided.
+        Index(
+            "uq_retention_review_one_undecided",
+            "user_id",
+            "org_unit_id",
+            unique=True,
+            postgresql_where=text("decision = 'undecided'"),
+            sqlite_where=text("decision = 'undecided'"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    org_unit_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("org_unit.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    closed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    due_on: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False)
+    enrolments: Mapped[int] = mapped_column(Integer, nullable=False)
+    decision: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="undecided", index=True
+    )
+    note: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    decided_by: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    decided_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    ask_again_on: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    announced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+
 FEEDBACK_STATUSES: tuple[str, ...] = (
     "new",
     "acknowledged",

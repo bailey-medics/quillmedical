@@ -17,7 +17,13 @@ from app.features.teaching.models import (
     TeachingOrgSettings,
 )
 from app.features.teaching.reminders import add_months
-from app.models import Feedback, MarketingPreferenceChange, OrgUnit, User
+from app.models import (
+    Feedback,
+    MarketingPreferenceChange,
+    OrgUnit,
+    RetentionReview,
+    User,
+)
 from app.retention import (
     FEEDBACK_KEPT,
     MARKETING_RECORD_KEPT,
@@ -325,10 +331,39 @@ def _past_the_period() -> datetime:
     return add_months(NOW, -MONTHS_KEPT) - A_DAY
 
 
-class TestClosedAccountRecords:
-    """A sponsor's records go when its period after closure has passed."""
+def _reviews(db: Session) -> list[RetentionReview]:
+    return list(db.scalars(select(RetentionReview).order_by("id")))
 
-    def test_records_past_the_period_are_deleted_with_their_answers(
+
+class TestClosedAccountRecords:
+    """Records past a sponsor's period are listed for a decision, and
+    the nightly run deletes none of them."""
+
+    def test_records_past_the_period_are_listed_and_not_deleted(
+        self, db_session: Session
+    ) -> None:
+        org = _org(db_session, "Academy", months=MONTHS_KEPT)
+        closed_at = _past_the_period()
+        user = _closed(db_session, "gone@example.nhs.uk", closed_at=closed_at)
+        _records(db_session, org, user)
+
+        result = apply_retention(db_session, NOW, apply=True)
+
+        assert result.newly_awaiting == 1
+        assert result.awaiting == 1
+        assert _count(db_session, Assessment) == 1
+        assert _count(db_session, AssessmentAnswer) == 1
+        assert _count(db_session, AssessmentAnswerTag) == 1
+        assert _count(db_session, ModuleEnrolment) == 1
+        [row] = _reviews(db_session)
+        assert (row.user_id, row.org_unit_id) == (user.id, org.id)
+        assert row.decision == "undecided"
+        assert (row.attempts, row.enrolments) == (1, 1)
+        assert retention._aware(row.due_on) == add_months(
+            closed_at, MONTHS_KEPT
+        )
+
+    def test_a_second_run_does_not_list_them_twice(
         self, db_session: Session
     ) -> None:
         org = _org(db_session, "Academy", months=MONTHS_KEPT)
@@ -336,17 +371,17 @@ class TestClosedAccountRecords:
             db_session, "gone@example.nhs.uk", closed_at=_past_the_period()
         )
         _records(db_session, org, user)
+        apply_retention(db_session, NOW, apply=True)
 
-        result = apply_retention(db_session, NOW, apply=True)
+        result = apply_retention(db_session, NOW + A_DAY, apply=True)
 
-        assert result.closed_account_assessments == 1
-        assert result.closed_account_enrolments == 1
-        assert _count(db_session, Assessment) == 0
-        assert _count(db_session, AssessmentAnswer) == 0
-        assert _count(db_session, AssessmentAnswerTag) == 0
-        assert _count(db_session, ModuleEnrolment) == 0
+        assert result.newly_awaiting == 0
+        assert result.awaiting == 1
+        assert len(_reviews(db_session)) == 1
 
-    def test_records_inside_the_period_stay(self, db_session: Session) -> None:
+    def test_records_inside_the_period_are_not_listed(
+        self, db_session: Session
+    ) -> None:
         org = _org(db_session, "Academy", months=MONTHS_KEPT)
         user = _closed(
             db_session,
@@ -357,10 +392,8 @@ class TestClosedAccountRecords:
 
         result = apply_retention(db_session, NOW, apply=True)
 
-        assert result.closed_account_assessments == 0
-        assert _count(db_session, Assessment) == 1
-        assert _count(db_session, AssessmentAnswer) == 1
-        assert _count(db_session, ModuleEnrolment) == 1
+        assert result.newly_awaiting == 0
+        assert _reviews(db_session) == []
 
     def test_the_period_ends_on_the_day_itself(
         self, db_session: Session
@@ -374,40 +407,29 @@ class TestClosedAccountRecords:
         )
         _records(db_session, org, user)
 
-        assert (
-            apply_retention(
-                db_session, NOW, apply=True
-            ).closed_account_assessments
-            == 1
-        )
+        assert apply_retention(db_session, NOW, apply=True).newly_awaiting == 1
 
-    def test_an_open_account_keeps_its_records_however_old(
+    def test_an_open_account_is_not_listed_however_old(
         self, db_session: Session
     ) -> None:
         org = _org(db_session, "Academy", months=MONTHS_KEPT)
         user = _user(db_session, "here@example.nhs.uk")
         _records(db_session, org, user)
 
-        result = apply_retention(db_session, NOW, apply=True)
+        assert apply_retention(db_session, NOW, apply=True).newly_awaiting == 0
 
-        assert result.closed_account_assessments == 0
-        assert _count(db_session, Assessment) == 1
-
-    def test_an_account_closed_with_no_date_keeps_its_records(
+    def test_an_account_closed_with_no_date_is_not_listed(
         self, db_session: Session
     ) -> None:
         """One closed before the date was recorded. The period cannot be
-        counted, so nothing is deleted on a guess."""
+        counted, so nothing is asked on a guess."""
         org = _org(db_session, "Academy", months=MONTHS_KEPT)
         user = _closed(db_session, "old@example.nhs.uk", closed_at=None)
         _records(db_session, org, user)
 
-        result = apply_retention(db_session, NOW, apply=True)
+        assert apply_retention(db_session, NOW, apply=True).newly_awaiting == 0
 
-        assert result.closed_account_assessments == 0
-        assert _count(db_session, Assessment) == 1
-
-    def test_an_account_opened_again_keeps_its_records(
+    def test_an_account_opened_again_is_not_listed(
         self, db_session: Session
     ) -> None:
         """Reopening clears the date, so the period starts again."""
@@ -419,12 +441,9 @@ class TestClosedAccountRecords:
         user.is_active = True
         db_session.flush()
 
-        result = apply_retention(db_session, NOW, apply=True)
+        assert apply_retention(db_session, NOW, apply=True).newly_awaiting == 0
 
-        assert result.closed_account_assessments == 0
-        assert _count(db_session, Assessment) == 1
-
-    def test_an_organisation_with_no_period_has_nothing_deleted(
+    def test_an_organisation_with_no_period_lists_nobody(
         self, db_session: Session
     ) -> None:
         org = _org(db_session, "No instruction", months=None)
@@ -435,16 +454,12 @@ class TestClosedAccountRecords:
         )
         _records(db_session, org, user)
 
-        result = apply_retention(db_session, NOW, apply=True)
+        assert apply_retention(db_session, NOW, apply=True).newly_awaiting == 0
 
-        assert result.closed_account_assessments == 0
-        assert _count(db_session, Assessment) == 1
-        assert _count(db_session, ModuleEnrolment) == 1
-
-    def test_a_period_of_nought_deletes_nothing(
+    def test_a_period_of_nought_lists_nobody(
         self, db_session: Session
     ) -> None:
-        """It would delete on the day an account closed."""
+        """It would ask on the day an account closed."""
         org = _org(db_session, "Mistyped", months=0)
         user = _closed(
             db_session,
@@ -453,15 +468,12 @@ class TestClosedAccountRecords:
         )
         _records(db_session, org, user)
 
-        result = apply_retention(db_session, NOW, apply=True)
+        assert apply_retention(db_session, NOW, apply=True).newly_awaiting == 0
 
-        assert result.closed_account_assessments == 0
-        assert _count(db_session, Assessment) == 1
-
-    def test_one_organisations_period_leaves_another_organisations_records(
+    def test_only_the_organisation_whose_period_ended_is_listed(
         self, db_session: Session
     ) -> None:
-        """Somebody with records at two keeps the ones still in period."""
+        """Somebody with records at two is asked about one."""
         short = _org(db_session, "Short", months=12)
         long = _org(db_session, "Long", months=120)
         user = _closed(
@@ -474,16 +486,167 @@ class TestClosedAccountRecords:
 
         apply_retention(db_session, NOW, apply=True)
 
-        kept = list(db_session.scalars(select(Assessment.org_unit_id)))
-        assert kept == [long.id]
-        enrolled = list(
-            db_session.scalars(select(ModuleEnrolment.org_unit_id))
+        assert [row.org_unit_id for row in _reviews(db_session)] == [short.id]
+
+    def test_a_report_counts_and_writes_no_row(
+        self, db_session: Session
+    ) -> None:
+        org = _org(db_session, "Academy", months=MONTHS_KEPT)
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_past_the_period()
         )
-        assert enrolled == [long.id]
+        _records(db_session, org, user)
+
+        result = apply_retention(db_session, NOW, apply=False)
+
+        assert result.newly_awaiting == 1
+        assert result.awaiting == 1
+        assert _reviews(db_session) == []
+
+
+class TestAskingAgain:
+    """What has been decided, and when somebody is told."""
+
+    @pytest.fixture
+    def listed(self, db_session: Session) -> RetentionReview:
+        """One set of records, listed by a first run."""
+        org = _org(db_session, "Academy", months=MONTHS_KEPT)
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_past_the_period()
+        )
+        _records(db_session, org, user)
+        apply_retention(db_session, NOW, apply=True)
+        [row] = _reviews(db_session)
+
+        return row
+
+    def test_somebody_is_told_when_records_are_newly_due(
+        self, db_session: Session
+    ) -> None:
+        org = _org(db_session, "Academy", months=MONTHS_KEPT)
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_past_the_period()
+        )
+        _records(db_session, org, user)
+
+        assert apply_retention(db_session, NOW, apply=True).tell_somebody
+
+    def test_they_are_not_told_again_the_next_night(
+        self, listed: RetentionReview, db_session: Session
+    ) -> None:
+        result = apply_retention(db_session, NOW + A_DAY, apply=True)
+
+        assert result.awaiting == 1
+        assert not result.tell_somebody
+
+    def test_they_are_told_again_after_a_week(
+        self, listed: RetentionReview, db_session: Session
+    ) -> None:
+        week = retention.TOLD_AGAIN_AFTER
+
+        assert not apply_retention(
+            db_session, NOW + week - A_DAY, apply=True
+        ).tell_somebody
+        assert apply_retention(
+            db_session, NOW + week, apply=True
+        ).tell_somebody
+        assert not apply_retention(
+            db_session, NOW + week + A_DAY, apply=True
+        ).tell_somebody
+
+    def test_nobody_is_told_when_nothing_is_waiting(
+        self, db_session: Session
+    ) -> None:
+        assert not apply_retention(db_session, NOW, apply=True).tell_somebody
+
+    def test_records_kept_are_not_listed_again_before_their_date(
+        self, listed: RetentionReview, db_session: Session
+    ) -> None:
+        listed.decision = "kept"
+        listed.ask_again_on = NOW + timedelta(days=180)
+        db_session.flush()
+
+        result = apply_retention(db_session, NOW + A_DAY, apply=True)
+
+        assert result.newly_awaiting == 0
+        assert result.awaiting == 0
+
+    def test_records_kept_are_listed_again_once_their_date_comes(
+        self, listed: RetentionReview, db_session: Session
+    ) -> None:
+        listed.decision = "kept"
+        listed.ask_again_on = NOW + timedelta(days=180)
+        db_session.flush()
+
+        result = apply_retention(
+            db_session, NOW + timedelta(days=180), apply=True
+        )
+
+        assert result.newly_awaiting == 1
+        assert [row.decision for row in _reviews(db_session)] == [
+            "kept",
+            "undecided",
+        ]
+
+    def test_new_records_after_a_deletion_are_listed_afresh(
+        self, listed: RetentionReview, db_session: Session
+    ) -> None:
+        """The account was opened, used and closed again."""
+        listed.decision = "deleted"
+        db_session.flush()
+
+        result = apply_retention(db_session, NOW + A_DAY, apply=True)
+
+        assert result.newly_awaiting == 1
+
+
+class TestDeletingTrainingRecords:
+    """What a decision to delete calls. The nightly run never does."""
+
+    def test_it_deletes_attempts_answers_tags_and_enrolments(
+        self, db_session: Session
+    ) -> None:
+        org = _org(db_session, "Academy", months=MONTHS_KEPT)
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_past_the_period()
+        )
+        _records(db_session, org, user)
+
+        counts = retention.delete_training_records(
+            db_session, user.id, org.id, apply=True
+        )
+
+        assert counts == (1, 1)
+        assert _count(db_session, Assessment) == 0
+        assert _count(db_session, AssessmentAnswer) == 0
+        assert _count(db_session, AssessmentAnswerTag) == 0
+        assert _count(db_session, ModuleEnrolment) == 0
+
+    def test_it_leaves_another_organisations_records(
+        self, db_session: Session
+    ) -> None:
+        one = _org(db_session, "One", months=12)
+        other = _org(db_session, "Other", months=12)
+        user = _closed(
+            db_session, "both@example.nhs.uk", closed_at=_past_the_period()
+        )
+        _records(db_session, one, user)
+        _records(db_session, other, user)
+
+        retention.delete_training_records(
+            db_session, user.id, one.id, apply=True
+        )
+
+        assert list(db_session.scalars(select(Assessment.org_unit_id))) == [
+            other.id
+        ]
+        assert list(
+            db_session.scalars(select(ModuleEnrolment.org_unit_id))
+        ) == [other.id]
         assert _count(db_session, AssessmentAnswer) == 1
         assert _count(db_session, AssessmentAnswerTag) == 1
 
-    def test_one_persons_period_leaves_the_next_persons_records(
+    def test_it_leaves_the_next_persons_records(
         self, db_session: Session
     ) -> None:
         org = _org(db_session, "Academy", months=MONTHS_KEPT)
@@ -494,7 +657,9 @@ class TestClosedAccountRecords:
         _records(db_session, org, gone)
         _records(db_session, org, here)
 
-        apply_retention(db_session, NOW, apply=True)
+        retention.delete_training_records(
+            db_session, gone.id, org.id, apply=True
+        )
 
         assert list(db_session.scalars(select(Assessment.user_id))) == [
             here.id
@@ -519,24 +684,14 @@ class TestClosedAccountRecords:
         )
         db_session.flush()
 
-        result = apply_retention(db_session, NOW, apply=True)
+        counts = retention.delete_training_records(
+            db_session, user.id, org.id, apply=True
+        )
 
-        assert result.closed_account_assessments == 0
-        assert result.closed_account_enrolments == 1
+        assert counts == (0, 1)
         assert _count(db_session, ModuleEnrolment) == 0
 
-    def test_the_account_itself_is_left(self, db_session: Session) -> None:
-        org = _org(db_session, "Academy", months=MONTHS_KEPT)
-        user = _closed(
-            db_session, "gone@example.nhs.uk", closed_at=_past_the_period()
-        )
-        _records(db_session, org, user)
-
-        apply_retention(db_session, NOW, apply=True)
-
-        assert db_session.get(User, user.id) is not None
-
-    def test_a_report_counts_and_leaves_every_row(
+    def test_without_apply_it_counts_and_leaves_every_row(
         self, db_session: Session
     ) -> None:
         org = _org(db_session, "Academy", months=MONTHS_KEPT)
@@ -545,14 +700,26 @@ class TestClosedAccountRecords:
         )
         _records(db_session, org, user)
 
-        result = apply_retention(db_session, NOW, apply=False)
+        counts = retention.delete_training_records(
+            db_session, user.id, org.id, apply=False
+        )
 
-        assert result.closed_account_assessments == 1
-        assert result.closed_account_enrolments == 1
+        assert counts == (1, 1)
         assert _count(db_session, Assessment) == 1
-        assert _count(db_session, AssessmentAnswer) == 1
-        assert _count(db_session, AssessmentAnswerTag) == 1
         assert _count(db_session, ModuleEnrolment) == 1
+
+    def test_the_account_itself_is_left(self, db_session: Session) -> None:
+        org = _org(db_session, "Academy", months=MONTHS_KEPT)
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_past_the_period()
+        )
+        _records(db_session, org, user)
+
+        retention.delete_training_records(
+            db_session, user.id, org.id, apply=True
+        )
+
+        assert db_session.get(User, user.id) is not None
 
 
 class TestSetRecordsKept:
@@ -801,6 +968,67 @@ class TestMain:
 
         lines = capsys.readouterr().out.splitlines()
         assert not [ln for ln in lines if re.search(RUN_FINISHED, ln)]
+
+    def test_a_real_run_asks_for_a_decision_and_names_nobody(
+        self,
+        session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        org = _org(session, "Academy", months=1)
+        user = _closed(
+            session,
+            "gone@example.nhs.uk",
+            closed_at=datetime.now(UTC) - timedelta(days=400),
+        )
+        _records(session, org, user)
+        session.commit()
+        monkeypatch.setenv("RETENTION_APPLY", "true")
+
+        assert retention.main() == 0
+
+        out = capsys.readouterr().out
+        assert "Listed 1 closed accounts" in out
+        assert f"{retention.DECISION_NEEDED} 1 closed accounts" in out
+        assert "gone@example.nhs.uk" not in out
+        assert "A Clinician" not in out
+        assert "Academy" not in out
+        assert _count(session, Assessment) == 1
+
+    def test_a_report_does_not_ask_for_a_decision(
+        self,
+        session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """The alert matches that line, and a report is not an event."""
+        org = _org(session, "Academy", months=1)
+        user = _closed(
+            session,
+            "gone@example.nhs.uk",
+            closed_at=datetime.now(UTC) - timedelta(days=400),
+        )
+        _records(session, org, user)
+        session.commit()
+        monkeypatch.delenv("RETENTION_APPLY", raising=False)
+
+        assert retention.main() == 0
+
+        out = capsys.readouterr().out
+        assert "Would list 1 closed accounts" in out
+        assert retention.DECISION_NEEDED not in out
+
+    def test_a_run_with_nothing_waiting_does_not_ask(
+        self,
+        session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        monkeypatch.setenv("RETENTION_APPLY", "true")
+
+        assert retention.main() == 0
+
+        assert retention.DECISION_NEEDED not in capsys.readouterr().out
 
     def test_a_failure_prints_no_detail_and_exits_1(
         self,
