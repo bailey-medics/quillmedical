@@ -17,7 +17,8 @@ setup() {
   echo "2.4.2" > "${REPO}/.poetry-version"
 
   cat > "${REPO}/backend/Dockerfile" <<'EOF'
-FROM python:3.13-slim
+ARG PYTHON_IMAGE=registry.example/library/python:3.13-slim@sha256:aaa111
+FROM ${PYTHON_IMAGE} AS base
 COPY .poetry-version ./
 RUN pip install "poetry==$(cat .poetry-version)"
 EOF
@@ -25,6 +26,11 @@ EOF
   cat > "${REPO}/backend/pyproject.toml" <<'EOF'
 [tool.poetry]
 requires-poetry = ">=2.4,<3"
+[tool.ruff]
+target-version = "py313"
+line-length = 79
+[tool.black]
+target-version = ["py313"]
 [tool.mypy]
 python_version = "3.13"
 EOF
@@ -37,6 +43,10 @@ EOF
   cat > "${REPO}/renovate.json" <<'EOF'
 { "constraints": { "poetry": "2.4.2" } }
 EOF
+
+  # The shell test image, built on the image the backend is built on.
+  printf 'FROM registry.example/library/python:3.13-slim@sha256:aaa111\nARG BATS_VERSION=1.14.0\n' \
+    > "${REPO}/.github/Dockerfile"
 
   echo "FROM node:24-slim" > "${REPO}/frontend/Dockerfile"
   printf "runs:\n  steps:\n    - with:\n        node-version: '24'\n" \
@@ -210,4 +220,128 @@ EOF
   [ "$status" -eq 1 ]
   [[ "$output" == *"Python minor mismatch"* ]]
   [[ "$output" == *"Poetry minor mismatch"* ]]
+}
+
+@test "names every place that agrees on Python" {
+  run run_check
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Ruff: 3.13, Black: 3.13, .github/Dockerfile: 3.13"* ]]
+}
+
+@test "fails when Ruff targets an older Python than the pin" {
+  # Where both formatters sat for a while after the backend moved on.
+  sed -i.bak 's/^target-version = "py313"/target-version = "py312"/' \
+    "${REPO}/backend/pyproject.toml"
+
+  run run_check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"(Ruff target-version) is '3.12' but .python-version is '3.13'"* ]]
+  [[ "$output" != *"(Black target-version) is"* ]]
+}
+
+@test "fails when Black targets a newer Python than the pin" {
+  # The dangerous way round: Black then writes syntax the pinned Python
+  # cannot read.
+  sed -i.bak 's/^target-version = \["py313"\]/target-version = ["py314"]/' \
+    "${REPO}/backend/pyproject.toml"
+
+  run run_check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"(Black target-version) is '3.14' but .python-version is '3.13'"* ]]
+  [[ "$output" != *"(Ruff target-version) is"* ]]
+}
+
+@test "fails when Ruff's target line is gone, and says so" {
+  sed -i.bak '/^target-version = "py313"/d' "${REPO}/backend/pyproject.toml"
+
+  run run_check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Python minor not found: backend/pyproject.toml (Ruff target-version) names no version"* ]]
+}
+
+@test "fails when Black's target line is gone, and says so" {
+  sed -i.bak '/^target-version = \["py313"\]/d' "${REPO}/backend/pyproject.toml"
+
+  run run_check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Python minor not found: backend/pyproject.toml (Black target-version) names no version"* ]]
+}
+
+@test "does not take one formatter's target for the other's" {
+  # Only Ruff has a target, under its own heading and further down the
+  # file than Black's. Black must not be credited with it.
+  cat > "${REPO}/backend/pyproject.toml" <<'EOF'
+[tool.poetry]
+requires-poetry = ">=2.4,<3"
+[tool.black]
+line-length = 79
+[tool.ruff]
+target-version = "py313"
+[tool.mypy]
+python_version = "3.13"
+EOF
+
+  run run_check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"(Black target-version) names no version"* ]]
+  [[ "$output" != *"(Ruff target-version)"*"names no version"* ]]
+}
+
+@test "reads a target for a Python with a two-digit minor version" {
+  echo "3.14.7" > "${REPO}/.python-version"
+  sed -i.bak -e 's/py313/py314/' -e 's/python_version = "3.13"/python_version = "3.14"/' \
+    "${REPO}/backend/pyproject.toml"
+  sed -i.bak 's/python:3.13/python:3.14/' "${REPO}/backend/Dockerfile"
+  sed -i.bak 's/python:3.13/python:3.14/' "${REPO}/.github/Dockerfile"
+
+  run run_check
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Ruff: 3.14, Black: 3.14"* ]]
+}
+
+@test "fails when the shell test image is built on another Python" {
+  sed -i.bak 's/python:3.13/python:3.12/' "${REPO}/.github/Dockerfile"
+
+  run run_check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *".github/Dockerfile (base image) is '3.12' but .python-version is '3.13'"* ]]
+}
+
+@test "fails when the shell test image is built on no Python image at all" {
+  printf 'FROM ubuntu\nARG BATS_VERSION=1.14.0\n' > "${REPO}/.github/Dockerfile"
+
+  run run_check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *".github/Dockerfile (base image) names no version"* ]]
+}
+
+@test "fails when the shell test image is the right Python but not the backend's image" {
+  # The same tag at another digest: a different build of that Python,
+  # and a second image for somebody to keep up to date.
+  sed -i.bak 's/sha256:aaa111/sha256:bbb222/' "${REPO}/.github/Dockerfile"
+
+  run run_check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Base image mismatch"* ]]
+  [[ "$output" == *"sha256:bbb222"* ]]
+  [[ "$output" != *"Python minor mismatch"* ]]
+}
+
+@test "fails when the backend moves to a new image and the shell test image stays" {
+  sed -i.bak 's/sha256:aaa111/sha256:ccc333/' "${REPO}/backend/Dockerfile"
+
+  run run_check
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Base image mismatch"* ]]
 }

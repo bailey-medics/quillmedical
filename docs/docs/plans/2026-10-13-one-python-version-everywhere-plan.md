@@ -341,7 +341,7 @@ runs, and a check on each place that could drift from it again.
 
 ## Phase 5: Hold the Ruff and Black targets to `.python-version`
 
-- [ ] Add both targets to `check_python` in
+- [x] Add both targets to `check_python` in
       `.github/scripts/ci/check-version-consistency.sh`. Read
       `target-version = "py314"` under `[tool.ruff]` and
       `target-version = ["py314"]` under `[tool.black]`, turn `py314`
@@ -352,15 +352,44 @@ runs, and a check on each place that could drift from it again.
 
       Last, because it fails until Phase 4 has landed.
 
-- [ ] Fail when a target line is missing, and say which. An absent line
+      Each target is read from under its own heading, so a file with one
+      target cannot have it counted for both tools.
+
+- [x] Hold the shell test image to `.python-version` in the same
+      function. `.github/Dockerfile` builds on the backend's Python
+      image since Phase 3, so the version is read from its `FROM` line,
+      as it is from the `python:` tag in `backend/Dockerfile`.
+
+- [x] Fail when the two Dockerfiles name different images. The shell
+      test image was moved onto the backend's so that there would be one
+      Python to keep up to date and not two, and that only holds while
+      `FROM` in `.github/Dockerfile` and `ARG PYTHON_IMAGE` in
+      `backend/Dockerfile` are the same registry, tag and digest. The
+      same tag at another digest passes the version check, so this
+      compares the whole line. Renovate changes both in one pull
+      request; this is what notices if one is ever changed alone.
+
+- [x] Fail when a target line is missing, and say which. An absent line
       reads as an empty string, and an empty string must not be allowed
       to match.
 
-- [ ] Add cases to `check-version-consistency.bats`: both targets
+      The message is "Python minor not found", naming the place, and it
+      now covers the Docker tag and mypy's version as well as the three
+      new places. Before, a missing one of those two was reported as a
+      mismatch with an empty value.
+
+- [x] Add cases to `check-version-consistency.bats`: both targets
       matching (passes), Ruff behind (fails, naming Ruff), Black behind
       (fails, naming Black), and a target line removed (fails).
 
-- [ ] Say in the "Python version" row of the single-source section of
+      Eleven cases, with the shell test image's four among them. The case
+      for one tool's target being taken for the other's was first
+      written so that it could not fail: Ruff's heading came before
+      Black's, and a reader with no sense of headings gave the same
+      answer. Breaking the script showed that, and the fixture now puts
+      Black's heading first.
+
+- [x] Say in the "Python version" row of the single-source section of
       `docs/docs/conventions/index.md` that the Docker tag, mypy's
       `python_version` and the Ruff and Black targets each repeat the
       version, and that `check-version-consistency.sh` is what holds them
@@ -368,6 +397,10 @@ runs, and a check on each place that could drift from it again.
       in one place", which has not been true of Python: moving to a new
       one means changing each of those lines in the same pull request,
       and the check failing is how a missed one is found.
+
+      Written as a note beside the one for Node, which the page already
+      calls a known exception, and not into the table: the row has room
+      for one sentence and this needs a list.
 
 ## Decisions
 
