@@ -225,7 +225,7 @@ runs, and a check on each place that could drift from it again.
       which recipes check it, and that an editor's activated environment
       is the usual cause.
 
-- [ ] Give the two shell test images the pinned Python. Found while
+- [x] Give the two shell test images the pinned Python. Found while
       writing the tests above: `.github/Dockerfile`, which `just ts`
       runs the bats suites in, and `.github/Dockerfile.coverage`, which
       `just test-coverage` uses, both install `python3` from Ubuntu
@@ -238,9 +238,48 @@ runs, and a check on each place that could drift from it again.
       Ubuntu 24.04 has no package for 3.14, so it has to come from
       somewhere else, and the image has no build context to read
       `.python-version` from: the Dockerfile goes in on standard input.
-      So the version is an `ARG` in each Dockerfile, and
-      `check-version-consistency.sh` holds both to `.python-version` in
+      So the version is an `ARG` in the Dockerfile, and
+      `check-version-consistency.sh` holds it to `.python-version` in
       Phase 5.
+
+      One file to change, not two: `Dockerfile.coverage` builds on the
+      image the other makes. `.github/Dockerfile` now builds on
+      `python:3.14-slim`, the image `backend/Dockerfile` builds on, by
+      the same digest. The image reports Python 3.14.7, the same as CI,
+      and `just ts` passes on it: all three targets, 999 tests.
+
+      That makes the image Debian and not Ubuntu 24.04, so it is no
+      longer a copy of the runner. It was built that way to catch what a
+      Mac gets wrong: another bash, another coreutils, another
+      `sha256sum`. Debian has GNU's versions of all three as Ubuntu
+      does, and CI runs the suite on the runner itself.
+
+      The base ships a real `python` beside `python3`. The tests put a
+      stand-in for `python` on the `PATH`, and with no real one a test
+      that forgot its stand-in fails at once. So the Dockerfile removes
+      it, and the build fails if it is still there.
+
+      Four ways to get the Python were weighed. The first was built and
+      then replaced, on 13 October, because it added something to keep
+      up to date:
+
+      - **The Python image the backend already builds on, which was
+        chosen** - nothing new to watch: the same image, digest and
+        Renovate rule, and the backend's own patch release.
+      - **uv, built first** - two lines, but a second image to pin and
+        update, a download from a new place, and 3.14.3 where CI had
+        3.14.7, because it installs the newest release it knew of when
+        it was published.
+      - **The deadsnakes package archive** - the usual way on Ubuntu,
+        but adding an archive and its signing key by hand is longer than
+        the rest of the Dockerfile, and its releases trail.
+      - **The build CI's `setup-python` downloads** - the closest to the
+        runner, but its address holds a run number that has to be looked
+        up in a manifest, and its installer fetches `pip` as it goes.
+
+      Poetry and pip were asked about too. pip installs packages into a
+      Python and cannot install one. Poetry can, but needs a Python to
+      run on first and fetches the same builds uv does.
 
 ## Phase 4: Move Ruff and Black to the backend's Python
 
