@@ -1,6 +1,7 @@
-# scheduled-jobs.tf - the work that runs each day with nobody asking
+# scheduled-jobs.tf - the work that runs on a timer with nobody asking
 #
-# Two actions on the admin Cloud Run job are run on a timer:
+# Three actions on the admin Cloud Run job are run on a timer. Two run
+# each day:
 #
 #   apply-retention           deletes what the privacy policy says is no
 #                             longer kept (backend/app/retention.py)
@@ -8,6 +9,13 @@
 #                             and tells somebody whose pass is due to be
 #                             repeated (backend/app/features/teaching/
 #                             reminders.py)
+#
+# and one runs every five minutes:
+#
+#   finish-exams-out-of-time  finishes every teaching exam whose time has
+#                             ended and that nobody came back to, and
+#                             writes to a pass (backend/app/features/
+#                             teaching/out_of_time.py)
 #
 # Cloud Scheduler starts them, and not a scheduled GitHub workflow, which is
 # how both began. Nothing in the repository decides who is due a reminder:
@@ -18,7 +26,7 @@
 # agreement says a delegate is told "automatically" when a pass is due to
 # be repeated.
 #
-# The two workflows are gone altogether. Neither action is started from
+# The two workflows are gone altogether. No action here is started from
 # GitHub in any way. To see what an action would do without doing it, run
 # the job by hand with its apply flag left out, which is a report:
 #
@@ -28,7 +36,8 @@
 #
 # and read the three counts in the execution's log. The same with
 # ADMIN_ACTION=send-teaching-reminders. Cloud Scheduler's own "Force run"
-# starts the real thing.
+# starts the real thing. finish-exams-out-of-time has no apply flag and no
+# report: it is always the real thing, and safe to run at any moment.
 #
 # accessibility-review.yml stays in GitHub. It reads a date out of a file
 # in the repository to decide whether it is due, so its trigger lives
@@ -57,6 +66,20 @@ locals {
       env = {
         ADMIN_ACTION    = "send-teaching-reminders"
         REMINDERS_APPLY = "true"
+      }
+    }
+    exams-out-of-time = {
+      description = "Finish every teaching exam whose time has ended"
+      # Every five minutes. An exam is recorded as finished at the moment
+      # its time ended whenever this runs, and anybody who touches one
+      # past its time is answered at once by the app itself, so the only
+      # thing that waits for this is the email about a pass in an exam
+      # nobody came back to. Each run starts a container to ask one
+      # question and nearly every run finds nothing, which is why it is
+      # not every minute.
+      schedule = "*/5 * * * *"
+      env = {
+        ADMIN_ACTION = "finish-exams-out-of-time"
       }
     }
   }
@@ -110,9 +133,9 @@ resource "google_cloud_scheduler_job" "admin_action" {
   # returns once the execution is created, not when it finishes.
   attempt_deadline = "180s"
 
-  # Never tried again the same day. Both actions are safe to run twice,
-  # but a start that failed is better seen than papered over, and the
-  # next day's run picks up whatever this one left.
+  # Never tried again. Every action here is safe to run twice, but a
+  # start that failed is better seen than papered over, and the next
+  # run on the timer picks up whatever this one left.
   retry_config {
     retry_count = 0
   }
