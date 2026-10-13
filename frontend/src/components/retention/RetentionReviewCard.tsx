@@ -13,7 +13,8 @@
  * can be dealt with while one that is not is left alone. Keeping needs a
  * reason, because it holds records past what the privacy policy says,
  * and a date to be asked again, so that "keep" cannot quietly come to
- * mean "keep for ever". Whoever is deciding picks the date.
+ * mean "keep for ever". Whoever is deciding picks the date: none is
+ * offered.
  */
 
 import { Group, Stack } from "@mantine/core";
@@ -99,8 +100,8 @@ export default function RetentionReviewCard({
     ? "A kept account is held past the period promised, so the reason is recorded."
     : "Kept records are held past the period promised, so the reason is recorded.";
   const askedAgain = account
-    ? "This account comes back for a decision on this date. A year from today unless you choose another."
-    : "These records come back for a decision on this date. A year from today unless you choose another.";
+    ? "This account comes back for a decision on this date."
+    : "These records come back for a decision on this date.";
 
   return (
     <BaseCard>

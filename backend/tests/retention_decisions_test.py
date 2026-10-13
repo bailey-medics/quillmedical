@@ -25,6 +25,9 @@ from app.retention import apply_retention
 REVIEWS = "/api/retention/reviews"
 DECISIONS = "/api/retention/decisions"
 BANK = "colonoscopy-optical-diagnosis"
+
+#: A date to ask again on, well in the future.
+LATER = "2099-03-01T00:00:00Z"
 LONG_AGO = timedelta(days=2000)
 
 
@@ -227,6 +230,7 @@ class TestDeciding:
                         "review_id": rows["ann"].id,
                         "decision": "keep",
                         "note": "   ",
+                        "ask_again_on": LATER,
                     }
                 ]
             },
@@ -240,9 +244,10 @@ class TestDeciding:
         assert row is not None
         assert row.decision == "undecided"
 
-    def test_keep_with_no_date_given_asks_again_in_a_year(
+    def test_keep_with_no_date_is_a_422_and_keeps_nothing(
         self, authenticated_superadmin_client: TestClient, db_session: Session
     ) -> None:
+        """A keep with no date to come back to would be a keep for ever."""
         rows = _listed(db_session, "ann")
 
         resp = authenticated_superadmin_client.post(
@@ -258,21 +263,29 @@ class TestDeciding:
             },
         )
 
-        assert resp.json() == {
-            "deleted": 0,
-            "kept": 1,
-            "to_empty": 0,
-            "refused": [],
-        }
+        assert resp.status_code == 422
         db_session.expire_all()
         row = db_session.get(RetentionReview, rows["ann"].id)
         assert row is not None
-        assert row.decision == "kept"
-        assert row.note == "The sponsor asked us to hold these."
-        assert row.ask_again_on is not None
-        wait = row.ask_again_on.replace(tzinfo=UTC) - datetime.now(UTC)
-        assert timedelta(days=360) < wait < timedelta(days=370)
-        assert _count(db_session, Assessment) == 1
+        assert row.decision == "undecided"
+        assert row.ask_again_on is None
+
+    def test_delete_needs_no_date(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        rows = _listed(db_session, "ann")
+
+        resp = authenticated_superadmin_client.post(
+            DECISIONS,
+            json={
+                "decisions": [
+                    {"review_id": rows["ann"].id, "decision": "delete"}
+                ]
+            },
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["deleted"] == 1
 
     def test_keep_asks_again_on_the_date_that_was_chosen(
         self, authenticated_superadmin_client: TestClient, db_session: Session
@@ -356,7 +369,11 @@ class TestDeciding:
             DECISIONS,
             json={
                 "decisions": [
-                    {"review_id": rows["ann"].id, "decision": "keep"},
+                    {
+                        "review_id": rows["ann"].id,
+                        "decision": "keep",
+                        "ask_again_on": LATER,
+                    },
                     {"review_id": rows["bob"].id, "decision": "delete"},
                 ]
             },
@@ -575,7 +592,15 @@ class TestAccounts:
 
         resp = authenticated_superadmin_client.post(
             DECISIONS,
-            json={"decisions": [{"review_id": row.id, "decision": "keep"}]},
+            json={
+                "decisions": [
+                    {
+                        "review_id": row.id,
+                        "decision": "keep",
+                        "ask_again_on": LATER,
+                    }
+                ]
+            },
         )
 
         assert resp.json()["kept"] == 0

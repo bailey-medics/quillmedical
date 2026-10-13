@@ -12,7 +12,6 @@ import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import * as apiLib from "@/lib/api";
 import {
-  oneYearOn,
   type RetentionAccount,
   type RetentionOutcome,
   type RetentionReview,
@@ -77,6 +76,14 @@ async function cardOf(name: string): Promise<HTMLElement> {
   if (!(card instanceof HTMLElement)) throw new Error(`no card for ${name}`);
 
   return card;
+}
+
+/** Pick the date to ask again on: none is offered. */
+async function pickDate(card: HTMLElement) {
+  const date = within(card).getByLabelText(/Ask again on/);
+
+  await userEvent.type(date, "1 March 2099");
+  await userEvent.tab();
 }
 
 async function choose(name: string, choice: string) {
@@ -182,6 +189,7 @@ describe("AdminRetentionPage", () => {
       within(await cardOf("Bob Example")).getByRole("textbox", { name: /Why/ }),
       "Held for the sponsor.",
     );
+    await pickDate(await cardOf("Bob Example"));
     await userEvent.click(
       screen.getByRole("button", { name: "Carry out decisions" }),
     );
@@ -233,6 +241,7 @@ describe("AdminRetentionPage", () => {
       within(await cardOf("Ann Example")).getByRole("textbox", { name: /Why/ }),
       "Held for the sponsor.",
     );
+    await pickDate(await cardOf("Ann Example"));
     await carryOut();
 
     await waitFor(() =>
@@ -242,7 +251,7 @@ describe("AdminRetentionPage", () => {
             review_id: 1,
             decision: "keep",
             note: "Held for the sponsor.",
-            ask_again_on: `${oneYearOn()}T00:00:00Z`,
+            ask_again_on: "2099-03-01T00:00:00Z",
           },
         ],
       }),

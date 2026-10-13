@@ -1166,10 +1166,16 @@ been since 12 October.
 - [x] What each decision does. **Delete** removes that person's
       attempts, answers and enrolments at that organisation, with the
       code Phase 23 wrote. **Keep** leaves them, needs the note, and
-      takes a date to be asked again, six months on unless another is
-      given. A note is optional on a delete. Both record who decided
-      and when, and the row stays afterwards as the record of what was
-      done and why.
+      takes a date to be asked again. A note is optional on a delete.
+      Both record who decided and when, and the row stays afterwards as
+      the record of what was done and why.
+
+      The date is required, not defaulted. Mark, 13 October: "we
+      should not be allowing optional dates", then "do not offer a
+      year. you must pick manually." So the date field starts empty
+      and the button stays off until one is picked, a keep sent to the
+      API with no date is refused with a 422, and nothing fills one in
+      anywhere. It began as six months when left out, then a year.
 
 - [x] Check again at the moment of deleting. Between the list being
       drawn and the button being pressed an account may have been

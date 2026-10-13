@@ -510,11 +510,6 @@ def _list_for_decision(
     return newly, newly_accounts, awaiting, tell
 
 
-#: How long records that were kept wait before somebody is asked again,
-#: when the person deciding gives no date of their own.
-ASK_AGAIN_AFTER_MONTHS = 12
-
-
 def carry_out_decision(
     db: Session,
     review: RetentionReview,
@@ -543,7 +538,8 @@ def carry_out_decision(
         delete_them: True to delete the records or empty the account,
             false to keep them.
         note: Why. Needed to keep.
-        ask_again_on: For keeping, when to ask again.
+        ask_again_on: For keeping, when to ask again. Needed to keep:
+            nothing is kept with no date to come back to it.
         decided_by: The user id of who decided.
         now: The moment of the decision.
 
@@ -559,13 +555,14 @@ def carry_out_decision(
         if note is None:
             return "Say why these records are being kept."
 
-        again = ask_again_on or add_months(now, ASK_AGAIN_AFTER_MONTHS)
+        if ask_again_on is None:
+            return "Give the date to ask again on."
 
-        if _aware(again) <= now:
+        if _aware(ask_again_on) <= now:
             return "The date to ask again must be in the future."
 
         review.decision = "kept"
-        review.ask_again_on = _aware(again)
+        review.ask_again_on = _aware(ask_again_on)
     elif review.subject == "account":
         still_due = any(
             due.user_id == review.user_id

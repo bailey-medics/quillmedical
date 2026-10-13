@@ -804,13 +804,14 @@ class TestDecidingAboutAnAccount:
         *,
         delete_them: bool,
         note: str | None = None,
+        ask_again_on: datetime | None = None,
     ) -> str | None:
         return retention.carry_out_decision(
             db,
             row,
             delete_them=delete_them,
             note=note,
-            ask_again_on=None,
+            ask_again_on=ask_again_on,
             decided_by=row.user_id,
             now=NOW,
         )
@@ -881,20 +882,42 @@ class TestDecidingAboutAnAccount:
     def test_keep_needs_a_note(
         self, listed: RetentionReview, db_session: Session
     ) -> None:
-        assert self._decide(db_session, listed, delete_them=False) is not None
+        refused = self._decide(
+            db_session,
+            listed,
+            delete_them=False,
+            ask_again_on=NOW + timedelta(days=90),
+        )
+
+        assert refused is not None
+        assert "why" in refused
         assert listed.decision == "undecided"
+
+    def test_keep_needs_a_date_to_ask_again_on(
+        self, listed: RetentionReview, db_session: Session
+    ) -> None:
+        refused = self._decide(
+            db_session, listed, delete_them=False, note="Dispute"
+        )
+
+        assert refused == "Give the date to ask again on."
+        assert listed.decision == "undecided"
+        assert listed.ask_again_on is None
 
     def test_one_kept_is_not_listed_before_its_date_and_is_after(
         self, listed: RetentionReview, db_session: Session
     ) -> None:
-        self._decide(db_session, listed, delete_them=False, note="Dispute")
+        again = NOW + timedelta(days=90)
+        self._decide(
+            db_session,
+            listed,
+            delete_them=False,
+            note="Dispute",
+            ask_again_on=again,
+        )
 
         before = apply_retention(db_session, NOW + A_DAY, apply=True)
-        after = apply_retention(
-            db_session,
-            add_months(NOW, retention.ASK_AGAIN_AFTER_MONTHS) + A_DAY,
-            apply=True,
-        )
+        after = apply_retention(db_session, again + A_DAY, apply=True)
 
         assert before.newly_awaiting_accounts == 0
         assert after.newly_awaiting_accounts == 1

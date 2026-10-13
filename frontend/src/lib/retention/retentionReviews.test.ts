@@ -8,7 +8,6 @@ import * as apiLib from "@/lib/api";
 import {
   isRecords,
   listRetentionReviews,
-  oneYearOn,
   tomorrow,
   type RetentionAccount,
   type RetentionReview,
@@ -60,20 +59,6 @@ describe("listRetentionReviews", () => {
       reviews: [records],
       accounts: [],
     });
-  });
-});
-
-describe("oneYearOn", () => {
-  it("is the same day a year later", () => {
-    expect(oneYearOn(new Date(2030, 6, 15))).toBe("2031-07-15");
-  });
-
-  it("pads a single-digit month and day", () => {
-    expect(oneYearOn(new Date(2030, 0, 5))).toBe("2031-01-05");
-  });
-
-  it("gives 28 February for a year on from 29 February", () => {
-    expect(oneYearOn(new Date(2028, 1, 29))).toBe("2029-02-28");
   });
 });
 

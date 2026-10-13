@@ -10,7 +10,6 @@ import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { VariantRow, VariantStack } from "@/stories/variants";
 import {
-  oneYearOn,
   type RetentionAccount,
   type RetentionChoice,
   type RetentionReview,
@@ -61,7 +60,7 @@ function Interactive({
 }) {
   const [choice, setChoice] = useState<RetentionChoice>(start);
   const [note, setNote] = useState("");
-  const [askAgainOn, setAskAgainOn] = useState<string | null>(oneYearOn());
+  const [askAgainOn, setAskAgainOn] = useState<string | null>(null);
 
   return (
     <RetentionReviewCard
@@ -99,7 +98,7 @@ export const AllStates: Story = {
           review={review}
           choice="delete"
           note=""
-          askAgainOn={oneYearOn()}
+          askAgainOn="2031-07-15"
           onChoiceChange={() => undefined}
           onNoteChange={() => undefined}
           onAskAgainOnChange={() => undefined}
@@ -111,7 +110,7 @@ export const AllStates: Story = {
           review={review}
           choice="keep"
           note="The sponsor asked us to hold these."
-          askAgainOn={oneYearOn()}
+          askAgainOn="2031-07-15"
           onChoiceChange={() => undefined}
           onNoteChange={() => undefined}
           onAskAgainOnChange={() => undefined}

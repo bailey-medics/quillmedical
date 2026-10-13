@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 #: The most characters a note may hold. The column is this wide.
 MAX_NOTE = 2000
@@ -97,8 +97,9 @@ class RetentionDecisionIn(BaseModel):
         decision: ``delete`` or ``keep``. For an account, ``delete``
             marks it to be emptied by the nightly run.
         note: Why. Needed to keep, optional to delete.
-        ask_again_on: For ``keep``, when to ask again. Six months on
-            when left out.
+        ask_again_on: For ``keep``, when to ask again. Required: a keep
+            with no date would be a keep for ever. Not used by
+            ``delete``.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -107,6 +108,13 @@ class RetentionDecisionIn(BaseModel):
     decision: Literal["delete", "keep"]
     note: str | None = Field(default=None, max_length=MAX_NOTE)
     ask_again_on: datetime | None = None
+
+    @model_validator(mode="after")
+    def _a_keep_names_its_date(self) -> RetentionDecisionIn:
+        if self.decision == "keep" and self.ask_again_on is None:
+            raise ValueError("A keep needs the date to ask again on.")
+
+        return self
 
 
 class RetentionDecisionsIn(BaseModel):
