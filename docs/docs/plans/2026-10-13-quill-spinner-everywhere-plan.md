@@ -152,19 +152,19 @@ than the guard before them. `PageSpinner` puts all five in one place.
 
 ## Phase 5: a whole page of content loading
 
-- [ ] **10. `frontend/src/pages/guides/GuideShell.tsx`.** Already a
+- [x] **10. `frontend/src/pages/guides/GuideShell.tsx`.** Already a
       `Center mih="60dvh"`: becomes `PageSpinner`.
-- [ ] **11 and 12. `frontend/src/features/teaching/pages/AssessmentAttempt.tsx`.**
+- [x] **11 and 12. `frontend/src/features/teaching/pages/AssessmentAttempt.tsx`.**
       "Loading assessment" and "Submitting your exam" become
       `PageSpinner` with the same labels. Neither is centred today, so
       this also moves them to the middle of the page. An exam is the
       one place a learner is anxious about a wait, so check the
       submitting state by eye in its story.
-- [ ] **13. `frontend/src/pages/MessageThread.tsx`** and
+- [x] **13. `frontend/src/pages/MessageThread.tsx`** and
       **14. `frontend/src/pages/PatientMessages.tsx`.** "Loading
       messages", each returned bare from the page: `PageSpinner` with
       the same label.
-- [ ] **15. `frontend/src/pages/PatientMessageThread.tsx`.** A bare
+- [x] **15. `frontend/src/pages/PatientMessageThread.tsx`.** A bare
       Mantine `Loader`, which a screen reader cannot hear at all.
       `PageSpinner` with the label "Loading messages" fixes that as it
       changes the look.

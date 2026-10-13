@@ -71,6 +71,7 @@ describe("GuideShell", () => {
   it("shows neither while the session is being checked", () => {
     renderShell("loading");
 
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
     expect(screen.queryByText("The guide")).not.toBeInTheDocument();
     expect(screen.queryByText("The whole app")).not.toBeInTheDocument();
   });

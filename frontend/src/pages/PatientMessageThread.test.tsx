@@ -124,6 +124,19 @@ describe("PatientMessageThread", () => {
     });
   });
 
+  // This was a bare ring with no text at all, so a screen reader user
+  // waiting for a thread heard nothing.
+  it("says it is loading messages while the thread is fetched", () => {
+    vi.mocked(fetchConversation).mockReturnValue(new Promise(() => {}));
+
+    renderWithRouter(<PatientMessageThread />, {
+      routePath: "/patients/:id/messages/:conversationId",
+      initialRoute: "/patients/test-patient/messages/1",
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading messages");
+  });
+
   it("renders messages from conversation", async () => {
     renderWithRouter(<PatientMessageThread />, {
       routePath: "/patients/:id/messages/:conversationId",

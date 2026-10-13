@@ -24,7 +24,7 @@
  */
 
 import { Group, Stack } from "@mantine/core";
-import LoadingSpinner from "@/components/loading-spinner";
+import { PageSpinner } from "@/components/loading-spinner";
 import PageHeader from "@/components/page-header";
 import TeachingLayout from "@/components/layouts/TeachingLayout";
 import ErrorState from "@/components/error-state/ErrorState";
@@ -672,11 +672,9 @@ export default function AssessmentAttempt() {
         will be submitted.
       </ConfirmModal>
 
-      {phase === "loading" && <LoadingSpinner label="Loading assessment" />}
+      {phase === "loading" && <PageSpinner label="Loading assessment" />}
 
-      {phase === "submitting" && (
-        <LoadingSpinner label="Submitting your exam" />
-      )}
+      {phase === "submitting" && <PageSpinner label="Submitting your exam" />}
 
       {phase === "error" && (
         <ErrorState

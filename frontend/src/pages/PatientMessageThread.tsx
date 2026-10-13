@@ -6,6 +6,7 @@
  */
 
 import { useAuth } from "@/auth/AuthContext";
+import { PageSpinner } from "@/components/loading-spinner";
 import PageHeader from "@/components/page-header";
 import Messaging, { type Message } from "@/components/messaging/Messaging";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
@@ -15,7 +16,7 @@ import {
   type ConversationDetailResponse,
   type MessageResponse,
 } from "@lib/messaging";
-import { Loader, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import classes from "./PatientMessageThread.module.css";
@@ -118,7 +119,7 @@ export default function PatientMessageThread() {
   );
 
   if (isLoading) {
-    return <Loader />;
+    return <PageSpinner label="Loading messages" />;
   }
 
   return (

@@ -7,7 +7,7 @@
  */
 
 import { useAuth } from "@/auth/AuthContext";
-import LoadingSpinner from "@/components/loading-spinner";
+import { PageSpinner } from "@/components/loading-spinner";
 import Messaging, { type Message } from "@/components/messaging/Messaging";
 import PageHeader from "@/components/page-header";
 import type { Patient } from "@/domains/patient";
@@ -218,7 +218,7 @@ export default function MessageThread() {
   );
 
   if (isLoading) {
-    return <LoadingSpinner label="Loading messages" />;
+    return <PageSpinner label="Loading messages" />;
   }
 
   if (error || !conversation) {

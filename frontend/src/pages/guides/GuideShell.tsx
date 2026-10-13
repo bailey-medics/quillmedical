@@ -12,21 +12,17 @@
  * as it does `RootLayout`, since it is needed before any page is.
  */
 
-import { Center, Container } from "@mantine/core";
+import { Container } from "@mantine/core";
 import { Outlet } from "react-router-dom";
 import { useAuth } from "@/auth/AuthContext";
-import LoadingSpinner from "@/components/loading-spinner";
+import { PageSpinner } from "@/components/loading-spinner";
 import RootLayout from "@/RootLayout";
 
 export default function GuideShell() {
   const { state } = useAuth();
 
   if (state.status === "loading") {
-    return (
-      <Center mih="60dvh">
-        <LoadingSpinner />
-      </Center>
-    );
+    return <PageSpinner />;
   }
 
   if (state.status === "authenticated") {
