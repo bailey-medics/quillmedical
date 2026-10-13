@@ -1347,7 +1347,7 @@ found as a bug to fix on its own branch before going on.
       and a slider such as a player's seek bar. The key is left for
       whichever of those has it, so the video still skips.
 
-- [ ] Guides: open the picture store once, and answer a network
+- [x] Guides: open the picture store once, and answer a network
       failure properly. The route that serves pictures to the
       signed-in guides opens a new connection to the bucket for each
       picture, setting up its sign-in afresh every time, and catches
@@ -1357,6 +1357,11 @@ found as a bug to fix on its own branch before going on.
       already answers a store error. In
       `backend/app/guides/router.py`. The least pressing of the
       seven: it is slowness and one ugly error, and comes last.
+      Done on 13 October 2026. The client is made the first time a
+      picture is asked for and kept. Three kinds of failure are now
+      answered 502 where two of them were a bare 500: the store's
+      own fault, a connection that drops or times out, and a failed
+      sign-in to the store.
 
 ## Phase 7: Describe the controls and release
 
