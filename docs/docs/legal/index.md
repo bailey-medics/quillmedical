@@ -53,6 +53,12 @@ somebody from the newsletter list when they ask for their data to be
 deleted, for which there is no journey in the app yet. Until there is,
 such a request is carried out by hand.
 
+Added on 13 October 2026: section 7 of the privacy policy now says
+that a copy of something deleted may remain in backups for up to 30
+days, and that backups are used only to restore the service. Thirty is
+what the App production database keeps, checked against the database
+itself that day.
+
 Added on 13 October 2026: section 3.1 of the privacy policy now says
 what "remove everything that identifies you" means, and names the two
 things that stay because they are part of somebody else's record: a

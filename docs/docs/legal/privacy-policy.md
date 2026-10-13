@@ -482,6 +482,11 @@ and we will remove it while we check.
 When a period ends we delete the data or remove everything in it that
 identifies you.
 
+Deleting something removes it from the live service at once. A copy may
+remain in our backups for up to 30 days, until they are overwritten. We
+use backups only to restore the service after a fault, never to look
+anything up.
+
 ## 8. Where your data is kept and international transfers
 
 8.1 The service, its database and everything you upload are held in
