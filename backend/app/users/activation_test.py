@@ -10,6 +10,7 @@ from app.organisations import add_org_unit_member, get_member_org_unit_ids
 from app.security import hash_password
 from app.users.activation import deactivate_account, reactivate_account
 from app.users.errors import (
+    AccountEmptied,
     AccountOutOfScope,
     AlreadyActive,
     AlreadyDeactivated,
@@ -237,6 +238,19 @@ def test_each_refusal_says_what_the_route_always_said(
     assert raised.status_code == 400
     assert raised.message == message
     assert str(raised) == message
+
+
+def test_an_emptied_account_cannot_be_opened_again(
+    db_session: Session, manager: User, leaver: User
+) -> None:
+    """It is a blank row kept for other people's records to point at."""
+    leaver.emptied_at = leaver.deactivated_at
+    db_session.commit()
+
+    with pytest.raises(AccountEmptied):
+        reactivate_account(db_session, manager, leaver.id)
+
+    assert _is_active(db_session, leaver) is False
 
 
 # --- the newsletter list ----------------------------------------------------

@@ -918,6 +918,201 @@ class TestDecidingAboutAnAccount:
         assert after.newly_awaiting_accounts == 1
 
 
+def _marked(db: Session, email: str = "gone@example.nhs.uk") -> User:
+    """Somebody closed two years, listed, and marked to be emptied."""
+    user = _closed(db, email, closed_at=_two_years_ago())
+    apply_retention(db, NOW, apply=True)
+    [row] = [r for r in _about_accounts(db) if r.user_id == user.id]
+    refused = retention.carry_out_decision(
+        db,
+        row,
+        delete_them=True,
+        note=None,
+        ask_again_on=None,
+        decided_by=user.id,
+        now=NOW,
+    )
+    assert refused is None
+    db.commit()
+
+    return user
+
+
+def _no_archive(passport_id: str) -> list[str]:
+    raise AssertionError(f"asked to archive {passport_id}")
+
+
+class TestEmptyingMarkedAccounts:
+    """The run empties what a person marked, and nothing else."""
+
+    def test_an_account_marked_to_be_emptied_is_emptied(
+        self, db_session: Session
+    ) -> None:
+        user = _marked(db_session)
+
+        result = retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=True, archive=_no_archive
+        )
+
+        assert result == retention.EmptiedResult(emptied=1)
+        db_session.expire_all()
+        assert user.emptied_at is not None
+        assert user.full_name is None
+        assert user.email.endswith("@deleted.invalid")
+
+    def test_an_account_only_listed_is_never_emptied(
+        self, db_session: Session
+    ) -> None:
+        """Undecided is not a decision."""
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_two_years_ago()
+        )
+        apply_retention(db_session, NOW, apply=True)
+        db_session.commit()
+
+        result = retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=True, archive=_no_archive
+        )
+
+        assert result == retention.EmptiedResult()
+        assert user.full_name == "A Clinician"
+
+    def test_an_account_kept_is_never_emptied(
+        self, db_session: Session
+    ) -> None:
+        user = _closed(
+            db_session, "gone@example.nhs.uk", closed_at=_two_years_ago()
+        )
+        apply_retention(db_session, NOW, apply=True)
+        [row] = _about_accounts(db_session)
+        retention.carry_out_decision(
+            db_session,
+            row,
+            delete_them=False,
+            note="A dispute",
+            ask_again_on=NOW + timedelta(days=90),
+            decided_by=user.id,
+            now=NOW,
+        )
+        db_session.commit()
+
+        result = retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=True, archive=_no_archive
+        )
+
+        assert result == retention.EmptiedResult()
+        assert user.full_name == "A Clinician"
+
+    def test_a_report_counts_and_empties_nobody(
+        self, db_session: Session
+    ) -> None:
+        user = _marked(db_session)
+
+        result = retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=False, archive=_no_archive
+        )
+
+        assert result == retention.EmptiedResult(emptied=1)
+        db_session.expire_all()
+        assert user.emptied_at is None
+        assert user.full_name == "A Clinician"
+
+    def test_one_opened_again_since_is_left_alone(
+        self, db_session: Session
+    ) -> None:
+        user = _marked(db_session)
+        user.is_active = True
+        db_session.commit()
+
+        result = retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=True, archive=_no_archive
+        )
+
+        assert result == retention.EmptiedResult(no_longer_due=1)
+        assert user.full_name == "A Clinician"
+
+    def test_one_opened_and_closed_again_since_is_left_alone(
+        self, db_session: Session
+    ) -> None:
+        """The decision was about the first closure, not this one."""
+        user = _marked(db_session)
+        user.is_active = True
+        user.is_active = False
+        db_session.commit()
+
+        result = retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=True, archive=_no_archive
+        )
+
+        assert result == retention.EmptiedResult(no_longer_due=1)
+        assert user.full_name == "A Clinician"
+
+    def test_one_with_training_records_again_is_left_alone(
+        self, db_session: Session
+    ) -> None:
+        user = _marked(db_session)
+        org = _org(db_session, "Academy", months=None)
+        _records(db_session, org, user)
+        db_session.commit()
+
+        result = retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=True, archive=_no_archive
+        )
+
+        assert result == retention.EmptiedResult(no_longer_due=1)
+        assert _count(db_session, Assessment) == 1
+
+    def test_it_is_emptied_once_and_not_again(
+        self, db_session: Session
+    ) -> None:
+        _marked(db_session)
+        retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=True, archive=_no_archive
+        )
+
+        again = retention.empty_marked_accounts(
+            db_session, NOW + 2 * A_DAY, apply=True, archive=_no_archive
+        )
+
+        assert again == retention.EmptiedResult()
+
+    def test_an_emptied_account_is_not_listed_to_be_emptied_again(
+        self, db_session: Session
+    ) -> None:
+        _marked(db_session)
+        retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=True, archive=_no_archive
+        )
+
+        result = apply_retention(db_session, NOW + 2 * A_DAY, apply=True)
+
+        assert result.newly_awaiting_accounts == 0
+        assert len(_about_accounts(db_session)) == 1
+
+    def test_one_that_fails_leaves_the_next_to_be_emptied(
+        self, db_session: Session
+    ) -> None:
+        """A passport that cannot be archived fails that account only."""
+        first = _marked(db_session, "first@example.nhs.uk")
+        second = _marked(db_session, "second@example.nhs.uk")
+        db_session.add(Passport(id=PASSPORT_ID, user_id=first.id))
+        db_session.commit()
+
+        def archive(_passport_id: str) -> list[str]:
+            raise OSError("the archive is down")
+
+        result = retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=True, archive=archive
+        )
+
+        assert result == retention.EmptiedResult(emptied=1, failed=1)
+        db_session.expire_all()
+        assert first.emptied_at is None
+        assert first.full_name == "A Clinician"
+        assert _count(db_session, Passport) == 1
+        assert second.emptied_at is not None
+
+
 class TestTheShapeOfARow:
     """Records are somewhere; an account is not."""
 
@@ -1394,6 +1589,100 @@ class TestMain:
         assert retention.main() == 0
 
         assert retention.DECISION_NEEDED not in capsys.readouterr().out
+
+    def test_a_real_run_empties_what_was_marked_and_names_nobody(
+        self,
+        session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        user = _closed(
+            session,
+            "gone@example.nhs.uk",
+            closed_at=datetime.now(UTC) - timedelta(days=800),
+        )
+        apply_retention(session, datetime.now(UTC), apply=True)
+        [row] = _about_accounts(session)
+        retention.carry_out_decision(
+            session,
+            row,
+            delete_them=True,
+            note=None,
+            ask_again_on=None,
+            decided_by=user.id,
+            now=datetime.now(UTC),
+        )
+        session.commit()
+        monkeypatch.setenv("RETENTION_APPLY", "true")
+
+        assert retention.main() == 0
+
+        out = capsys.readouterr().out
+        assert "Emptied 1 closed accounts marked to be emptied" in out
+        assert "gone@example.nhs.uk" not in out
+        assert "A Clinician" not in out
+        assert re.search(RUN_FINISHED, out.splitlines()[-1])
+        session.expire_all()
+        assert user.emptied_at is not None
+
+    def test_a_report_empties_nobody(
+        self,
+        session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        user = _marked(session)
+        monkeypatch.delenv("RETENTION_APPLY", raising=False)
+
+        assert retention.main() == 0
+
+        assert "Would empty" in capsys.readouterr().out
+        session.expire_all()
+        assert user.emptied_at is None
+
+    def test_an_account_that_cannot_be_emptied_fails_the_run_after_it_ends(
+        self,
+        session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """It prints the line that says it ran, and then says what failed."""
+        user = _closed(
+            session,
+            "gone@example.nhs.uk",
+            closed_at=datetime.now(UTC) - timedelta(days=800),
+        )
+        apply_retention(session, datetime.now(UTC), apply=True)
+        [row] = _about_accounts(session)
+        retention.carry_out_decision(
+            session,
+            row,
+            delete_them=True,
+            note=None,
+            ask_again_on=None,
+            decided_by=user.id,
+            now=datetime.now(UTC),
+        )
+        session.add(Passport(id=PASSPORT_ID, user_id=user.id))
+        session.commit()
+
+        def archive_passport(*_args: object, **_kwargs: object) -> list[str]:
+            raise OSError("the archive is down")
+
+        monkeypatch.setattr(retention, "archive_passport", archive_passport)
+        monkeypatch.setenv("RETENTION_APPLY", "true")
+
+        assert retention.main() == 1
+
+        captured = capsys.readouterr()
+        assert [
+            ln
+            for ln in captured.out.splitlines()
+            if re.search(RUN_FINISHED, ln)
+        ]
+        assert "could not be" in captured.err
+        assert "gone@example.nhs.uk" not in captured.err
+        assert "archive is down" not in captured.err
 
     def test_a_failure_prints_no_detail_and_exits_1(
         self,

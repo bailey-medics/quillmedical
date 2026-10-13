@@ -1429,6 +1429,22 @@ the account before they are wiped.
         an empty string, so that signing in as the placeholder name is
         refused the ordinary way and cannot raise an error.
 
+- [x] Empty what a superadmin has marked, in the nightly run. Added
+      on 13 October: the steps above built the function and the
+      screen marks an account, and this joins them.
+      `empty_marked_accounts` in `backend/app/retention.py` takes each
+      account whose row says deleted and checks it again: still closed,
+      the same closure the decision was about, no training records.
+      One that fails those is left alone and counted, which is not a
+      fault. Each account is committed by itself, because its
+      passport's files have moved by then. One that cannot be emptied,
+      a passport the archive refuses for example, is rolled back, the
+      rest go on, and the run exits 1 after printing the line that
+      says it ran, so the alert for a failed scheduled action tells
+      somebody. It is tried again the next night. A report run counts
+      and empties nobody. `reactivate_account` refuses an emptied
+      account.
+
 - [ ] An emptied account can never sign in, be reopened or be found by
       a search for a person. Wherever the app shows who did something,
       it shows "Deleted account".
