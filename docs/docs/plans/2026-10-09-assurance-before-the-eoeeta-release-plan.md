@@ -1313,7 +1313,7 @@ found as a bug to fix on its own branch before going on.
       several faults is shown; the next appears when the form is
       sent again.
 
-- [ ] Video: keep a playing video when one renewal fails. A video is
+- [x] Video: keep a playing video when one renewal fails. A video is
       served through a pass that runs out, and the page renews it
       five minutes early. If that one call fails the page throws the
       pass away at once and the video goes, with five minutes of the
@@ -1324,6 +1324,12 @@ found as a bug to fix on its own branch before going on.
       This is video, not the exam, so it is built from this plan; the
       open pull requests are checked first for one in the same file,
       as "The exam is built from one plan" under Decisions asks.
+      Done on 13 October 2026; no open pull request touched the file.
+      One thing decided on the way: a renewal the server refuses
+      (a 401, 403 or 404) still ends the pass at once. That refusal
+      is how somebody whose access was taken away stops being served
+      video, so only a call that got no answer, or a server error, is
+      tried again. The hook had no tests; it has twelve now.
 
 - [ ] Slides: leave the arrow keys to the video while it has focus.
       The left and right arrows move between slides, and the lesson

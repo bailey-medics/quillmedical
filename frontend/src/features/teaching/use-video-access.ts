@@ -19,6 +19,23 @@ import { api } from "@/lib/api";
 /** Renew this long before expiry, so a slow network never strands the player. */
 const RENEW_MARGIN_MS = 5 * 60 * 1000;
 
+/** How long to wait before asking again after a renewal that failed. */
+export const RETRY_RENEWAL_MS = 30 * 1000;
+
+/**
+ * Whether a failed call was the server saying no, and not a call that
+ * never got an answer. A refusal ends the grant at once: it is how
+ * somebody whose access was taken away stops being served video. A
+ * dropped connection or a server error says nothing about access.
+ */
+function wasRefused(err: unknown): boolean {
+  if (typeof err !== "object" || err === null || !("status" in err)) {
+    return false;
+  }
+
+  return typeof err.status === "number" && err.status < 500;
+}
+
 interface VideoAccessResponse {
   base_url: string;
   expires_at: string;
@@ -48,6 +65,10 @@ export function useVideoAccess(moduleId: string | null): VideoAccess {
   // input, and storing it in state would restart the effect each time
   // it was set.
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // When the grant in hand runs out. A failed renewal is tried again
+  // until then, and not after.
+  const expiresAtRef = useRef(0);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -80,18 +101,36 @@ export function useVideoAccess(moduleId: string | null): VideoAccess {
 
         // Schedule the renewal from what the server said, not from a
         // local assumption about how long a grant lasts.
-        const expiresIn =
-          new Date(data.expires_at).getTime() - Date.now() - RENEW_MARGIN_MS;
+        expiresAtRef.current = new Date(data.expires_at).getTime();
+        const expiresIn = expiresAtRef.current - Date.now() - RENEW_MARGIN_MS;
         clearTimer();
         if (expiresIn > 0) {
           timerRef.current = setTimeout(() => {
             void requestAccess(false);
           }, expiresIn);
         }
-      } catch {
+      } catch (err) {
         if (!active) return;
-        // A refusal and a network failure look the same to the learner,
-        // and the remedy - reload - is the same for both.
+
+        // A renewal that got no answer leaves the grant in hand good
+        // for the minutes it has left, so the video plays on and the
+        // renewal is tried again. This once dropped the grant at the
+        // first failure, five minutes early, and the video with it.
+        const remaining = expiresAtRef.current - Date.now();
+
+        if (!isFirstCall && !wasRefused(err) && remaining > 0) {
+          clearTimer();
+          timerRef.current = setTimeout(
+            () => {
+              void requestAccess(false);
+            },
+            Math.min(RETRY_RENEWAL_MS, remaining),
+          );
+          return;
+        }
+
+        // Refused, never granted, or run out: there is no grant. The
+        // remedy for the learner, a reload, is the same for each.
         setError(true);
         setBaseUrl(null);
       } finally {
