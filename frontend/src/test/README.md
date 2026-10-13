@@ -7,14 +7,11 @@ Quill Medical frontend uses **Vitest** with **React Testing Library** for unit a
 ## Running Tests
 
 ```bash
-# Run tests in watch mode (interactive)
-yarn unit-test
+# Every test, once, in a throwaway container
+just unit-tests-frontend
 
-# Run tests once (CI mode)
-yarn unit-test:run
-
-# Or use Justfile commands
-just unit-tests-frontend    # Runs in Docker container
+# One file
+just unit-tests-frontend src/path/to/file.test.tsx
 ```
 
 ## Test Infrastructure
@@ -290,7 +287,7 @@ frontend/src/
 Run tests with coverage:
 
 ```bash
-yarn unit-test --coverage
+just test-coverage ts
 ```
 
 Coverage configuration in `vitest.config.ts`:
