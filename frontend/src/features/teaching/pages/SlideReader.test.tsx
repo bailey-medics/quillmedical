@@ -6,7 +6,15 @@
  * desktop learner the side list and the arrow keys and no Finish.
  */
 
-import { describe, expect, it, vi, beforeEach, type Mock } from "vitest";
+import {
+  describe,
+  expect,
+  it,
+  vi,
+  beforeEach,
+  type Mock,
+  afterEach,
+} from "vitest";
 import { fireEvent, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { renderWithRouter } from "@test/test-utils";
@@ -110,4 +118,70 @@ describe("SlideReader with no slide to show", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("404 - Page not found")).toBeNull();
   });
+});
+
+describe("SlideReader arrow keys", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (getModuleSlides as Mock).mockResolvedValue(slides);
+  });
+
+  afterEach(() => {
+    document.querySelectorAll("[data-added-by-test]").forEach((el) => {
+      el.remove();
+    });
+  });
+
+  /** Something on the page that a key can be pressed in. */
+  function onThePage(tag: string): HTMLElement {
+    const element = document.createElement(tag);
+    element.setAttribute("data-added-by-test", "");
+    document.body.appendChild(element);
+
+    return element;
+  }
+
+  it("moves to the next slide on the right arrow", async () => {
+    renderAt(0);
+    await screen.findByRole("heading", { name: "Introduction" });
+
+    fireEvent.keyDown(document.body, { key: "ArrowRight" });
+
+    expect(
+      await screen.findByRole("heading", { name: "Systematic approach" }),
+    ).toBeInTheDocument();
+  });
+
+  it("moves back on the left arrow", async () => {
+    renderAt(1);
+    await screen.findByRole("heading", { name: "Systematic approach" });
+
+    fireEvent.keyDown(document.body, { key: "ArrowLeft" });
+
+    expect(
+      await screen.findByRole("heading", { name: "Introduction" }),
+    ).toBeInTheDocument();
+  });
+
+  it.each(["video", "input", "textarea"])(
+    "leaves the slide alone when the arrow is pressed in a %s",
+    async (tag) => {
+      // In a video the right arrow skips forward. It once changed the
+      // slide as well, and took the delegate away from the video.
+      renderAt(0);
+      await screen.findByRole("heading", { name: "Introduction" });
+      const within = onThePage(tag);
+
+      const notPrevented = fireEvent.keyDown(within, { key: "ArrowRight" });
+
+      expect(
+        screen.getByRole("heading", { name: "Introduction" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "Systematic approach" }),
+      ).toBeNull();
+      // And the key is left for the video to act on.
+      expect(notPrevented).toBe(true);
+    },
+  );
 });

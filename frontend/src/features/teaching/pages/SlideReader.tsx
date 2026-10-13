@@ -24,6 +24,7 @@ import { IconAlertCircle } from "@/components/icons/appIcons";
 import { StateMessage } from "@/components/message-cards";
 import { getModuleSlides } from "@/features/teaching/learning-data";
 import type { CompiledSlide } from "@/features/teaching/types";
+import { arrowKeysAreSpokenFor } from "@/features/teaching/arrowKeys";
 
 export default function SlideReader() {
   const { moduleId, slideIndex: slideIndexParam } = useParams<{
@@ -91,6 +92,10 @@ export default function SlideReader() {
   // Keyboard navigation
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // In a video the arrows skip back and forward, and in a text box
+      // they move the cursor. Pressed there they are not for the slides.
+      if (arrowKeysAreSpokenFor(e.target)) return;
+
       if (e.key === "ArrowRight") {
         e.preventDefault();
         goNext();

@@ -1331,7 +1331,7 @@ found as a bug to fix on its own branch before going on.
       video, so only a call that got no answer, or a server error, is
       tried again. The hook had no tests; it has twelve now.
 
-- [ ] Slides: leave the arrow keys to the video while it has focus.
+- [x] Slides: leave the arrow keys to the video while it has focus.
       The left and right arrows move between slides, and the lesson
       page listens for them everywhere. A video player uses the same
       keys to skip back and forward, so a delegate who clicks the
@@ -1339,6 +1339,13 @@ found as a bug to fix on its own branch before going on.
       the page ignores the arrow keys when what has focus is a video,
       or somewhere text is typed. In `SlideReader.tsx`, checked
       against the open pull requests first, as for the step above.
+      Done on 13 October 2026; no open pull request touched the file.
+      The rule is in a small function of its own,
+      `arrowKeysAreSpokenFor` in
+      `frontend/src/features/teaching/arrowKeys.ts`: a video, an
+      audio player, a text box, a drop-down, text that can be edited,
+      and a slider such as a player's seek bar. The key is left for
+      whichever of those has it, so the video still skips.
 
 - [ ] Guides: open the picture store once, and answer a network
       failure properly. The route that serves pictures to the
