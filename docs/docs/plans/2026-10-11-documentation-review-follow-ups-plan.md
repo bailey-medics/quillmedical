@@ -355,9 +355,10 @@ ahead of Phases 3 to 13, which are untouched.
 - [x] Run it as an admin action from a scheduled workflow, as Phase 1
       does, with the same report-unless-told default.
 
-- [ ] In the `eoeeta-teaching` repository, a separate pull request there:
+- [x] In the `eoeeta-teaching` repository, a separate pull request there:
       set `enrolmentReminderEveryDays: 7` and `enrolmentReminderCount: 6`
       on the module. Six weekly reminders is what Mark gave for EoEETA.
+      Merged on 13 October as bailey-medics/eoeeta-teaching#14.
 
 ## Phase 15: Tell somebody when a pass is due to be repeated
 
@@ -783,7 +784,7 @@ policy says about both.
       account then counts by itself from the day it is closed. Do it
       after Phase 27, so that a period is never set while the nightly
       run can still delete without anybody approving. Better still,
-      after Phase 30, which records who set it and why.
+      after Phase 30, which gives it a card to be set from.
 
 - [x] Extend `apply_retention` in `backend/app/retention.py`: for a user
       whose `deactivated_at` is older than their organisation's period,
@@ -1365,68 +1366,74 @@ the account before they are wiped.
       message about a patient is part of a clinical record, and its
       author has to stay known for far longer than a teaching account.
 
-## Phase 30: Hold a sponsor's period where its history can be read
+## Phase 30: Set a sponsor's period from its organisation's page
 
-Mark, 13 October: the period a sponsor has given should be stored
-somewhere it can be audited, and a command run by hand is not that.
+Mark, 13 October: the period a sponsor has given should be somewhere it
+can be set and checked, and a command run by hand is not that.
 
-- [ ] Keep the period where it is, on the organisation's row in the
-      database, and record every change to it. Two other homes were
-      considered and turned down:
+This phase first planned a history table as well: one row for every
+change, with who made it and a required reason. Mark turned that down
+the same day: "we do not need actually in app auditing. just a place to
+set and check it." So there is no history table and no reason field.
 
-      - **Terraform** builds the infrastructure and never writes a row
-        of the app's data.
-      - **The sponsor's content repository** was the first answer, and
-        Mark pointed out why it is wrong. A content repository is a
-        module, not an organisation. One sponsor may have several
-        modules, and one module may be used by several organisations,
-        so a period written there belongs to neither.
+Mark again, the same day: the card "shows for any org, not just
+teaching ones". The number is on the teaching settings row today, which
+only an organisation that teaches has, and that row cannot be made for
+the card's sake: it needs a coordinator's email address and an
+institution name. So the number moves to the organisation itself.
 
-      The period is a fact about one organisation, and organisations
-      live in the database. What was missing is not a better place for
-      the number but a history of it.
+- [x] Move the period onto `org_unit`. Add a nullable column there with
+      `just migrate`, copy each value across from
+      `TeachingOrgSettings.records_kept_months_after_closure` in the
+      same migration, and have `closed_accounts_past_their_period` and
+      `set-records-kept` read and write the new one. Nothing else reads
+      it. `set-records-kept` then works for any organisation, and no
+      longer refuses one with no teaching settings.
 
-- [ ] A table of its own for that history, added with `just migrate`.
-      One row for each change: the organisation, the old value, the new
-      value, who changed it, when, and why. Rows are only ever added.
-      Nothing edits or deletes one, and there is no route that could.
+      The old column is left in place by this step and dropped by a
+      migration of its own afterwards, which needs Mark's approval on
+      the destructive-migration gate. Nobody has set a period yet, so
+      there is nothing to lose between the two.
 
-- [ ] The reason is required, and is where the sponsor's instruction is
-      named: the agreement and clause, or the date of the email that
-      gave it. A number with nobody's word behind it is what an audit
-      is looking for.
-
-- [ ] Change it from the organisation's own admin page,
+- [x] A card on the organisation's own admin page,
       `/admin/organisations/<id>`, where a superadmin already looks an
-      organisation up. Mark's suggestion, 13 October. An action card
-      there, shown to a superadmin only, opens a page with the period
-      now, the field to change it, the reason, and every change before
-      it. The page sits inside `<RequireOperator>` and its routes
-      behind `DEP_REQUIRE_OPERATOR`: the card being hidden is not the
-      protection, the route refusing is.
+      organisation up. It shows the period now, or that none is set,
+      and lets it be changed or cleared. Months, 1 to 600, as
+      `set-records-kept` already allows.
 
-      The organisation's other admins use that page too, to manage its
-      staff and sites, and must not see the card or reach the page.
-      Making the period shorter brings records up for deletion sooner,
-      so it is not one of the organisation's own settings.
+      Shown to a superadmin only, and its routes sit behind
+      `DEP_REQUIRE_OPERATOR`: the card being hidden is not the
+      protection, the route refusing is. The organisation's other
+      admins use that page too, to manage its staff and sites, and
+      must not see the card or change the number. Making the period
+      shorter brings records up for a decision sooner, so it is not
+      one of the organisation's own settings.
 
-      Reuse the action card component in `components/action-card/`.
-      That page does not use one today, so look first at how it lays
-      out its other actions and fit in with them. Show the card only
-      for an organisation that has teaching settings, since the period
-      is held on that row.
+      Look first at how that page lays out its other actions and fit
+      in with them. It shows for every organisation, whether or not it
+      teaches.
 
-- [ ] A shorter period deletes nothing by itself. It only changes who
+      Built on 13 October. The card is `RecordsKeptCard`, laid out as
+      the enabled features card beside it, with a pencil that opens
+      `/admin/organisations/<id>/retention`. The routes are
+      `GET` and `PUT /api/retention/periods/<org_unit_id>`. An empty
+      field clears the period.
+
+- [x] A shorter period deletes nothing by itself. It only changes who
       the nightly run lists for a decision, and each of those still
-      needs a person.
+      needs a person. Say so on the card.
 
-- [ ] `set-records-kept` in the admin job writes the same history, with
-      the reason required and the admin job named as who did it, so
-      there is one record however the number was changed. It stays as
-      the way in when the screen cannot be reached.
+- [x] `set-records-kept` in the admin job stays as it is, as the way in
+      when the screen cannot be reached.
 
-- [ ] Set EoEETA's 42 months through this, with the agreement as the
-      reason, and not before Phase 27.
+- [ ] Drop `teaching_org_settings.records_kept_months_after_closure`
+      in a migration of its own, with the model attribute, once the
+      step above has merged and deployed. It needs Mark's approval on
+      the destructive-migration gate.
+
+- [ ] Set EoEETA's 42 months through the card, and give Quill's own
+      organisation 24 months, which is what brings a self-payer's
+      records up for a decision (Phase 29).
 
 ## Phase 31: Prove what could only be tried live
 

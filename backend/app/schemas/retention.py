@@ -12,6 +12,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.retention import MOST_MONTHS_KEPT
+
 #: The most characters a note may hold. The column is this wide.
 MAX_NOTE = 2000
 
@@ -125,6 +127,34 @@ class RetentionDecisionsIn(BaseModel):
     decisions: list[RetentionDecisionIn] = Field(
         min_length=1, max_length=MAX_DECISIONS
     )
+
+
+class RecordsKeptOut(BaseModel):
+    """How long one organisation's records outlast a closed account.
+
+    Attributes:
+        org_unit_id: The organisation.
+        organisation: Its name.
+        months: The months, or None when its records are never listed
+            for a decision.
+    """
+
+    org_unit_id: int
+    organisation: str
+    months: int | None
+
+
+class RecordsKeptIn(BaseModel):
+    """The period to set. ``months`` must be sent, and may be null.
+
+    Attributes:
+        months: 1 to 600, or null to stop listing this organisation's
+            records.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    months: int | None = Field(ge=1, le=MOST_MONTHS_KEPT)
 
 
 class RetentionRefusalOut(BaseModel):

@@ -242,6 +242,7 @@ export default function SideNavContent({
         "add-staff": "Add staff",
         "add-patient": "Add patient",
         "add-site": "Add site",
+        retention: "Record retention",
       };
 
       // Both branches read the same address, because an organisation and

@@ -40,6 +40,7 @@ export { default as FeedbackDetailPage } from "./feedback/FeedbackDetailPage";
 export { default as MemberPracticePage } from "./members/MemberPracticePage";
 export { default as NewPatientPage } from "../NewPatientPage";
 export { default as OrgFeaturesPage } from "./organisations/OrgFeaturesPage";
+export { default as OrgRecordsKeptPage } from "./organisations/OrgRecordsKeptPage";
 export { default as OrganisationAdminPage } from "./organisations/OrganisationAdminPage";
 export { default as PatientAdminPage } from "./patients/PatientAdminPage";
 export { default as SiteAdminPage } from "./sites/SiteAdminPage";

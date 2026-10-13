@@ -29,6 +29,7 @@ import type { Column } from "@/components/tables/DataTable";
 import DataTableControlled from "@/components/tables/DataTableControlled";
 import ExtraButton from "@/components/button/ExtraButton";
 import EnabledFeaturesCard from "@/components/enabled-features-card";
+import RecordsKeptCard from "@/components/records-kept-card";
 import ActiveStatusBadge from "@/components/badge/ActiveStatusBadge";
 import NotFoundLayout from "@/components/layouts/NotFoundLayout";
 import { useAuth } from "@/auth/AuthContext";
@@ -39,6 +40,7 @@ import {
   type OrgUnitDetail,
   type OrgUnitMember,
 } from "@/domains/orgUnit";
+import { getRecordsKept } from "@/lib/retention/recordsKept";
 import { SCOPED_MANAGER_IDS } from "@/types/cbac";
 
 /** A patient this organisation is responsible for, as a table row. */
@@ -93,6 +95,15 @@ export default function OrganisationAdminPage() {
   );
   const [org, setOrg] = useState<OrgUnitDetail | null>(null);
   const [enabledFeatures, setEnabledFeatures] = useState<string[]>([]);
+  // How long records here outlast a closed account. An operator's to
+  // see and set, for any organisation; `undefined` until it is known,
+  // and for everybody else, so the card is not drawn.
+  const isOperator =
+    state.status === "authenticated" &&
+    state.user.platform_role === "superadmin";
+  const [monthsKept, setMonthsKept] = useState<number | null | undefined>(
+    undefined,
+  );
   // Without an id there is nothing to fetch, so the page does not begin in
   // a loading state and the effect below has nothing to do.
   const [loading, setLoading] = useState(Boolean(id));
@@ -129,6 +140,20 @@ export default function OrganisationAdminPage() {
       await fetchOrganisationData();
     })();
   }, [fetchOrganisationData]);
+
+  useEffect(() => {
+    if (!id || !isOperator) return;
+
+    // Its own request, so that a failure here leaves the rest of the
+    // page as it was: the card is simply not drawn.
+    void (async () => {
+      try {
+        setMonthsKept((await getRecordsKept(Number(id))).months);
+      } catch {
+        setMonthsKept(undefined);
+      }
+    })();
+  }, [id, isOperator]);
 
   async function confirmRemoveStaff() {
     if (!id || !removingMember) return;
@@ -435,6 +460,13 @@ export default function OrganisationAdminPage() {
         <EnabledFeaturesCard
           features={enabledFeatures}
           onEdit={() => navigate(`/admin/organisations/${id}/features`)}
+        />
+      )}
+      {/* Record retention */}
+      {isOperator && monthsKept !== undefined && (
+        <RecordsKeptCard
+          months={monthsKept}
+          onEdit={() => navigate(`/admin/organisations/${id}/retention`)}
         />
       )}
       {/* Sites */}

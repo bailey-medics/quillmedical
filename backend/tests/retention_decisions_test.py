@@ -17,7 +17,6 @@ from app.features.teaching.models import (
     Assessment,
     AssessmentAnswer,
     ModuleEnrolment,
-    TeachingOrgSettings,
 )
 from app.models import OrgUnit, RetentionReview, User
 from app.retention import apply_retention
@@ -33,17 +32,12 @@ LONG_AGO = timedelta(days=2000)
 
 def _org(db: Session, name: str = "Academy") -> OrgUnit:
     """An organisation that keeps records a month after an account closes."""
-    org = OrgUnit(name=name, type="hospital_team")
-    db.add(org)
-    db.flush()
-    db.add(
-        TeachingOrgSettings(
-            org_unit_id=org.id,
-            coordinator_email="lead@example.nhs.uk",
-            institution_name=name,
-            records_kept_months_after_closure=1,
-        )
+    org = OrgUnit(
+        name=name,
+        type="hospital_team",
+        records_kept_months_after_closure=1,
     )
+    db.add(org)
     db.flush()
 
     return org
@@ -619,3 +613,149 @@ class TestAccounts:
         assert resp.status_code == 403
         db_session.expire_all()
         assert row.decision == "undecided"
+
+
+def _period(org_unit_id: int) -> str:
+    return f"/api/retention/periods/{org_unit_id}"
+
+
+class TestThePeriod:
+    """Reading and setting how long an organisation's records are kept."""
+
+    def test_an_operator_reads_it_for_any_organisation(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        """One with no teaching settings, as most have none."""
+        org = OrgUnit(name="No Teaching Here", type="hospital_team")
+        db_session.add(org)
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.get(_period(org.id))
+
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "org_unit_id": org.id,
+            "organisation": "No Teaching Here",
+            "months": None,
+        }
+
+    def test_an_operator_sets_it(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        org = OrgUnit(name="Academy", type="hospital_team")
+        db_session.add(org)
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.put(
+            _period(org.id), json={"months": 42}
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["months"] == 42
+        db_session.expire_all()
+        assert org.records_kept_months_after_closure == 42
+
+    def test_null_clears_it(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        org = _org(db_session)
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.put(
+            _period(org.id), json={"months": None}
+        )
+
+        assert resp.json()["months"] is None
+        db_session.expire_all()
+        assert org.records_kept_months_after_closure is None
+
+    def test_setting_it_deletes_nothing(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        org = _org(db_session)
+        _closed_with_records(db_session, org, "ann")
+        db_session.commit()
+
+        authenticated_superadmin_client.put(
+            _period(org.id), json={"months": 1}
+        )
+
+        db_session.expire_all()
+        assert _count(db_session, Assessment) == 1
+        assert _count(db_session, RetentionReview) == 0
+
+    def test_a_period_out_of_range_is_a_422(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        org = _org(db_session)
+        db_session.commit()
+
+        for months in (0, -1, 601, "soon", 3.5):
+            resp = authenticated_superadmin_client.put(
+                _period(org.id), json={"months": months}
+            )
+
+            assert resp.status_code == 422, months
+
+        db_session.expire_all()
+        assert org.records_kept_months_after_closure == 1
+
+    def test_a_body_with_no_months_is_a_422(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        """Leaving it out must not clear the period by accident."""
+        org = _org(db_session)
+        db_session.commit()
+
+        resp = authenticated_superadmin_client.put(_period(org.id), json={})
+
+        assert resp.status_code == 422
+        db_session.expire_all()
+        assert org.records_kept_months_after_closure == 1
+
+    def test_an_org_unit_that_does_not_exist_is_a_404(
+        self, authenticated_superadmin_client: TestClient
+    ) -> None:
+        assert (
+            authenticated_superadmin_client.get(_period(99999)).status_code
+            == 404
+        )
+        assert (
+            authenticated_superadmin_client.put(
+                _period(99999), json={"months": 12}
+            ).status_code
+            == 404
+        )
+
+    def test_an_admin_of_the_organisation_can_neither_read_nor_set_it(
+        self, authenticated_admin_client: TestClient, db_session: Session
+    ) -> None:
+        """``manage_users`` is not enough: the period is not theirs."""
+        org = _org(db_session)
+        db_session.commit()
+
+        assert (
+            authenticated_admin_client.get(_period(org.id)).status_code == 403
+        )
+        resp = authenticated_admin_client.put(
+            _period(org.id), json={"months": 600}
+        )
+
+        assert resp.status_code == 403
+        db_session.expire_all()
+        assert org.records_kept_months_after_closure == 1
+
+    def test_a_request_with_no_csrf_token_is_refused(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        org = _org(db_session)
+        db_session.commit()
+        del authenticated_superadmin_client.headers["X-CSRF-Token"]
+
+        resp = authenticated_superadmin_client.put(
+            _period(org.id), json={"months": 600}
+        )
+
+        assert resp.status_code == 403
+        db_session.expire_all()
+        assert org.records_kept_months_after_closure == 1

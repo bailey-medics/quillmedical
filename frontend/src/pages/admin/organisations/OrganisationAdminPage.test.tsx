@@ -1083,4 +1083,126 @@ describe("OrganisationAdminPage", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  describe("Record retention", () => {
+    const org = { id: 1, name: "Test Hospital", location: "London" };
+
+    /** Answer the organisation, and its period for whoever asks. */
+    function mockApis(months: number | null) {
+      const base = {
+        type: "hospital_team",
+        type_display_name: "Organisation",
+        is_root: true,
+        parent_id: null,
+        is_active: true,
+        members: [],
+        children: [],
+        patient_ids: [],
+        clinical_lead_id: null,
+        features: [],
+        ...org,
+      };
+
+      return vi
+        .spyOn(apiLib.api, "get")
+        .mockImplementation(async (path) =>
+          String(path).startsWith("/retention/periods/")
+            ? { org_unit_id: 1, organisation: org.name, months }
+            : base,
+        );
+    }
+
+    function asOperator() {
+      vi.spyOn(authContext, "useAuth").mockReturnValue({
+        state: {
+          status: "authenticated",
+          user: { ...mockAdminUser, platform_role: "superadmin" },
+        },
+        login: vi.fn(),
+        logout: vi.fn(),
+        reload: vi.fn(),
+      });
+    }
+
+    function renderPage() {
+      renderWithRouter(<OrganisationAdminPage />, {
+        routePath: "/admin/organisations/:id",
+        initialRoute: "/admin/organisations/1",
+      });
+    }
+
+    it("shows an operator the period, on an organisation with no teaching", async () => {
+      asOperator();
+      mockApis(42);
+
+      renderPage();
+
+      expect(await screen.findByText("Record retention")).toBeInTheDocument();
+      expect(screen.getByText("42 months")).toBeInTheDocument();
+    });
+
+    it("shows an operator that none is set", async () => {
+      asOperator();
+      mockApis(null);
+
+      renderPage();
+
+      expect(await screen.findByText("Not set")).toBeInTheDocument();
+    });
+
+    it("opens the page that sets it", async () => {
+      asOperator();
+      mockApis(42);
+
+      renderPage();
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Edit record retention" }),
+      );
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/admin/organisations/1/retention",
+      );
+    });
+
+    it("neither shows nor asks for it as the organisation's own admin", async () => {
+      const get = mockApis(42);
+
+      renderPage();
+      await screen.findByText("Organisation information");
+
+      expect(screen.queryByText("Record retention")).not.toBeInTheDocument();
+      expect(get).not.toHaveBeenCalledWith("/retention/periods/1");
+    });
+
+    it("leaves the rest of the page standing when the period cannot be read", async () => {
+      asOperator();
+      const base = {
+        type: "hospital_team",
+        type_display_name: "Organisation",
+        is_root: true,
+        parent_id: null,
+        is_active: true,
+        members: [],
+        children: [],
+        patient_ids: [],
+        clinical_lead_id: null,
+        features: [],
+        ...org,
+      };
+      vi.spyOn(apiLib.api, "get").mockImplementation(async (path) => {
+        if (String(path).startsWith("/retention/periods/")) {
+          throw new Error("boom");
+        }
+
+        return base;
+      });
+
+      renderPage();
+
+      expect(
+        await screen.findByText("Organisation information"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Record retention")).not.toBeInTheDocument();
+    });
+  });
 });
