@@ -28,19 +28,22 @@ function renderCard(
 ) {
   const onChoiceChange = vi.fn();
   const onNoteChange = vi.fn();
+  const onAskAgainOnChange = vi.fn();
 
   renderWithMantine(
     <RetentionReviewCard
       review={review}
       choice="undecided"
       note=""
+      askAgainOn="2031-07-15"
       onChoiceChange={onChoiceChange}
       onNoteChange={onNoteChange}
+      onAskAgainOnChange={onAskAgainOnChange}
       {...props}
     />,
   );
 
-  return { onChoiceChange, onNoteChange };
+  return { onChoiceChange, onNoteChange, onAskAgainOnChange };
 }
 
 describe("RetentionReviewCard", () => {
@@ -121,9 +124,30 @@ describe("RetentionReviewCard", () => {
   it("reports the note as it is typed", async () => {
     const { onNoteChange } = renderCard({ choice: "keep" });
 
-    await userEvent.type(screen.getByRole("textbox"), "H");
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /Why they are being kept/ }),
+      "H",
+    );
 
     expect(onNoteChange).toHaveBeenCalledWith("H");
+  });
+
+  it("shows when a keep will be asked about again", () => {
+    renderCard({ choice: "keep", note: "Held." });
+
+    expect(screen.getByLabelText(/Ask again on/)).toHaveValue("15 July 2031");
+  });
+
+  it("asks for no date when deleting or leaving for later", () => {
+    renderCard({ choice: "delete" });
+
+    expect(screen.queryByLabelText(/Ask again on/)).not.toBeInTheDocument();
+  });
+
+  it("says a date is needed when it has been cleared", () => {
+    renderCard({ choice: "keep", note: "Held.", askAgainOn: null });
+
+    expect(screen.getByText("A date is needed to keep")).toBeInTheDocument();
   });
 
   it("shows why a decision was refused", () => {
@@ -138,6 +162,9 @@ describe("RetentionReviewCard", () => {
     expect(
       screen.getByRole("radio", { name: "Delete these records" }),
     ).toBeDisabled();
-    expect(screen.getByRole("textbox")).toBeDisabled();
+    expect(
+      screen.getByRole("textbox", { name: /Why they are being kept/ }),
+    ).toBeDisabled();
+    expect(screen.getByLabelText(/Ask again on/)).toBeDisabled();
   });
 });

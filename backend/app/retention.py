@@ -389,7 +389,7 @@ def _list_for_decision(
 
 #: How long records that were kept wait before somebody is asked again,
 #: when the person deciding gives no date of their own.
-ASK_AGAIN_AFTER_MONTHS = 6
+ASK_AGAIN_AFTER_MONTHS = 12
 
 
 def carry_out_decision(

@@ -15,10 +15,11 @@ import { Stack } from "@mantine/core";
 import ButtonPairRed from "@/components/button/ButtonPairRed";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { BodyText } from "@/components/typography";
-import type {
-  RetentionChoice,
-  RetentionDecision,
-  RetentionReview,
+import {
+  oneYearOn,
+  type RetentionChoice,
+  type RetentionDecision,
+  type RetentionReview,
 } from "@/lib/retention/retentionReviews";
 import RetentionReviewCard from "./RetentionReviewCard";
 
@@ -26,9 +27,14 @@ import RetentionReviewCard from "./RetentionReviewCard";
 interface Marked {
   choice: RetentionChoice;
   note: string;
+  /** For a keep: when to ask again, as YYYY-MM-DD, or null if cleared */
+  askAgainOn: string | null;
 }
 
-const UNMARKED: Marked = { choice: "undecided", note: "" };
+/** Where every account starts: nothing chosen, and a year to ask again. */
+function unmarked(): Marked {
+  return { choice: "undecided", note: "", askAgainOn: oneYearOn() };
+}
 
 function accounts(count: number): string {
   return `${count} ${count === 1 ? "account" : "accounts"}`;
@@ -61,34 +67,49 @@ export default function RetentionDecisionList({
   function mark(id: number, change: Partial<Marked>) {
     setMarked((current) => ({
       ...current,
-      [id]: { ...(current[id] ?? UNMARKED), ...change },
+      [id]: { ...(current[id] ?? unmarked()), ...change },
     }));
   }
 
   // An account that has left the list keeps no mark: only what is on
   // screen can be sent.
   const decided = reviews.filter(
-    (review) => (marked[review.id] ?? UNMARKED).choice !== "undecided",
+    (review) => (marked[review.id] ?? unmarked()).choice !== "undecided",
   );
   const toDelete = decided.filter(
     (review) => marked[review.id]?.choice === "delete",
   ).length;
   const toKeep = decided.length - toDelete;
-  const reasonMissing = decided.some((review) => {
-    const row = marked[review.id] ?? UNMARKED;
+  const keepUnfinished = decided.some((review) => {
+    const row = marked[review.id] ?? unmarked();
 
-    return row.choice === "keep" && row.note.trim() === "";
+    return (
+      row.choice === "keep" &&
+      (row.note.trim() === "" || row.askAgainOn === null)
+    );
   });
 
   async function carryOut() {
     const decisions: RetentionDecision[] = decided.map((review) => {
-      const row = marked[review.id] ?? UNMARKED;
+      const row = marked[review.id] ?? unmarked();
       const note = row.note.trim();
+
+      if (row.choice === "delete") {
+        return {
+          review_id: review.id,
+          decision: "delete",
+          ...(note ? { note } : {}),
+        };
+      }
 
       return {
         review_id: review.id,
-        decision: row.choice === "delete" ? "delete" : "keep",
+        decision: "keep",
         ...(note ? { note } : {}),
+        // The start of that day, in UTC.
+        ...(row.askAgainOn
+          ? { ask_again_on: `${row.askAgainOn}T00:00:00Z` }
+          : {}),
       };
     });
 
@@ -104,7 +125,7 @@ export default function RetentionDecisionList({
   return (
     <Stack gap="lg">
       {reviews.map((review) => {
-        const row = marked[review.id] ?? UNMARKED;
+        const row = marked[review.id] ?? unmarked();
 
         return (
           <RetentionReviewCard
@@ -112,8 +133,10 @@ export default function RetentionDecisionList({
             review={review}
             choice={row.choice}
             note={row.note}
+            askAgainOn={row.askAgainOn}
             onChoiceChange={(choice) => mark(review.id, { choice })}
             onNoteChange={(note) => mark(review.id, { note })}
+            onAskAgainOnChange={(askAgainOn) => mark(review.id, { askAgainOn })}
             refusal={refusals[review.id]}
             disabled={sending}
           />
@@ -128,7 +151,7 @@ export default function RetentionDecisionList({
           setMarked({});
           onClear?.();
         }}
-        acceptDisabled={decided.length === 0 || reasonMissing || sending}
+        acceptDisabled={decided.length === 0 || keepUnfinished || sending}
       />
 
       <ConfirmModal
