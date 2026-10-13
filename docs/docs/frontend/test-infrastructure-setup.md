@@ -40,8 +40,8 @@ Comprehensive test infrastructure has been set up for the Quill Medical frontend
    - Best practices and troubleshooting
    - Coverage configuration
 
-6. **`frontend/package.json`** - Added coverage script
-   - `yarn unit-test:coverage` command for coverage reports
+6. **`Justfile`** - Coverage recipe
+   - `just test-coverage ts` prints the coverage summary
 
 ## Test Results
 
@@ -115,17 +115,14 @@ No additional packages needed to be installed.
 ### Run Tests
 
 ```bash
-# Interactive watch mode
-yarn unit-test
-
-# CI mode (run once)
-yarn unit-test:run
-
-# With coverage
-yarn unit-test:coverage
-
-# Via Justfile (in Docker)
+# Every test, once, in a throwaway container
 just unit-tests-frontend
+
+# One file
+just unit-tests-frontend src/path/to/file.test.tsx
+
+# Coverage summary
+just test-coverage ts
 ```
 
 ### Write a Test
@@ -155,9 +152,8 @@ Now that the test infrastructure is complete, you can:
    - Patient management components
 
 2. **Run tests regularly:**
-   - During development: `yarn unit-test` (watch mode)
-   - Before commits: `just unit-tests-frontend`
-   - Check coverage: `yarn unit-test:coverage`
+   - During development: `just unit-tests-frontend src/path/to/file.test.tsx`
+   - Check coverage: `just test-coverage ts`
 
 3. **Follow the testing guide:**
    - See `frontend/src/test/README.md` for examples

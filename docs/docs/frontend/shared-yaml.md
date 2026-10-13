@@ -69,8 +69,7 @@ until the script has run, and an import of it fails until then.
 
 It is called explicitly wherever the JSON is needed:
 
-- `yarn typecheck:all`, `yarn unit-test`, `yarn unit-test:run` and
-  `yarn unit-test:coverage` each run it first
+- `yarn typecheck:all` and `yarn unit-test:run` each run it first
 - `yarn storybook` and `yarn storybook:build` each run it first
 - `yarn dev` and `yarn build` each run it first, so the `build` stage of
   `frontend/Dockerfile` gets it through `yarn build`

@@ -3,11 +3,9 @@
 ## Commands
 
 ```bash
-# Development
-yarn unit-test              # Watch mode
-yarn unit-test:run          # CI mode (run once)
-yarn unit-test:coverage     # With coverage report
-just unit-tests-frontend    # In Docker container
+just unit-tests-frontend                             # Every test, in a throwaway container
+just unit-tests-frontend src/path/to/file.test.tsx   # One file
+just test-coverage ts                                # Coverage summary
 ```
 
 ## Common Imports
