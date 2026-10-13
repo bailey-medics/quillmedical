@@ -1426,10 +1426,16 @@ institution name. So the number moves to the organisation itself.
 - [x] `set-records-kept` in the admin job stays as it is, as the way in
       when the screen cannot be reached.
 
-- [ ] Drop `teaching_org_settings.records_kept_months_after_closure`
-      in a migration of its own, with the model attribute, once the
-      step above has merged and deployed. It needs Mark's approval on
-      the destructive-migration gate.
+- [x] Drop `teaching_org_settings.records_kept_months_after_closure`
+      in a migration of its own, with the model attribute. It needs
+      Mark's approval on the destructive-migration gate.
+
+      Built on 13 October, straight after the step above, at Mark's
+      request. Merge it after that one has deployed: for the minutes
+      between this migration running and the new backend serving, the
+      old backend still names the column whenever it reads a teaching
+      settings row. Nobody uses App production yet, so that is
+      accepted and not staged across a third deploy.
 
 - [ ] Set EoEETA's 42 months through the card, and give Quill's own
       organisation 24 months, which is what brings a self-payer's
