@@ -3,6 +3,7 @@ import {
   quillSpinnerElapsedMs,
   resetQuillSpinnerClock,
   startQuillSpinnerClockAt,
+  startQuillSpinnerClockFrom,
 } from "./quillSpinnerClock";
 
 function setTimelineTime(currentTime: unknown) {
@@ -55,4 +56,42 @@ describe("quillSpinnerClock", () => {
       expect(quillSpinnerElapsedMs()).toBe(1500);
     },
   );
+
+  describe("started from a spinner that is already turning", () => {
+    function turningSince(startTime: unknown): Element {
+      const element = document.createElement("div");
+      element.getAnimations = () => [{ startTime } as Animation];
+
+      return element;
+    }
+
+    it("counts from when that spinner began", () => {
+      setTimelineTime(1500);
+      startQuillSpinnerClockFrom(turningSince(300));
+
+      expect(quillSpinnerElapsedMs()).toBe(1200);
+    });
+
+    it("changes nothing when the spinner is not there", () => {
+      setTimelineTime(1500);
+      startQuillSpinnerClockFrom(null);
+
+      expect(quillSpinnerElapsedMs()).toBe(1500);
+    });
+
+    it("changes nothing when its animation has not started yet", () => {
+      setTimelineTime(1500);
+      startQuillSpinnerClockFrom(turningSince(null));
+
+      expect(quillSpinnerElapsedMs()).toBe(1500);
+    });
+
+    // Reduced motion stills the spinner, and jsdom has no animations.
+    it("changes nothing when it is not turning", () => {
+      setTimelineTime(1500);
+      startQuillSpinnerClockFrom(document.createElement("div"));
+
+      expect(quillSpinnerElapsedMs()).toBe(1500);
+    });
+  });
 });

@@ -18,7 +18,7 @@ import "./styles/dark-overrides.css";
 import "./styles/touch-targets.css";
 import "./styles/disabled-controls.css";
 import ReactDOM from "react-dom/client";
-import { Center, MantineProvider } from "@mantine/core";
+import { MantineProvider } from "@mantine/core";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { theme, cssVariablesResolver } from "./theme";
 import {
@@ -32,7 +32,8 @@ import RouteTracking from "@lib/error-reporting/RouteTracking";
 import FeaturePrefetch from "@lib/FeaturePrefetch";
 import { installPromptCapture } from "@lib/pwa/installPromptEvent";
 import { markInstallFinished } from "@lib/pwa/installPromptSchedule";
-import LoadingSpinner from "@/components/loading-spinner";
+import { PageSpinner } from "@/components/loading-spinner";
+import { startQuillSpinnerClockFrom } from "@/components/loading-spinner/quillSpinnerClock";
 import RouteErrorFallback from "@/components/error-boundary/RouteErrorFallback";
 import { AuthProvider } from "./auth/AuthContext";
 import ForcedReloadGate from "@lib/compat-generation/ForcedReloadGate";
@@ -63,13 +64,10 @@ const router = createBrowserRouter([
     errorElement: <RouteErrorFallback />,
     // Shown on a cold load of a lazy route while its chunk is in flight.
     // Without it the router renders nothing at all until the chunk
-    // arrives. The same spinner RequireAuth shows next, so the two read
-    // as one wait.
-    hydrateFallbackElement: (
-      <Center mih="60dvh">
-        <LoadingSpinner />
-      </Center>
-    ),
+    // arrives. The same spinner index.html shows before this and
+    // RequireAuth or GuestOnly shows after, in the same place and turning
+    // in step, so the three read as one wait.
+    hydrateFallbackElement: <PageSpinner />,
     children: routes,
   },
 ]);
@@ -78,6 +76,11 @@ const router = createBrowserRouter([
 // rather than lost. The error boundary covers what React sees; this covers
 // rejected promises and anything thrown outside a render.
 installGlobalErrorReporting();
+
+// index.html has had a quill turning since the page first painted, and
+// the render below replaces it. Read when it began before it goes, so the
+// first spinner React draws carries on from the same angle.
+startQuillSpinnerClockFrom(document.getElementById("quill-splash-spin"));
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <MantineProvider

@@ -6,8 +6,7 @@
  * while authentication is being checked.
  */
 
-import { Center } from "@mantine/core";
-import LoadingSpinner from "@/components/loading-spinner";
+import { PageSpinner } from "@/components/loading-spinner";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import CannotReach from "./CannotReach";
@@ -39,11 +38,7 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
   if (state.status === "unreachable") return <CannotReach />;
 
   if (state.status === "loading") {
-    return (
-      <Center mih="60dvh">
-        <LoadingSpinner />
-      </Center>
-    );
+    return <PageSpinner />;
   }
 
   if (state.status === "unauthenticated") {

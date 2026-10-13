@@ -99,7 +99,7 @@ describe("RequireAuth", () => {
     );
 
     expect(screen.queryByText("Protected Content")).not.toBeInTheDocument();
-    expect(document.querySelector(".mantine-Loader-root")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
   });
 
   it("renders children when authenticated", () => {

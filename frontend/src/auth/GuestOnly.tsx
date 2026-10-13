@@ -7,6 +7,7 @@
  */
 
 import { useEffect, type ReactNode } from "react";
+import { PageSpinner } from "@/components/loading-spinner";
 import { useAuth } from "./AuthContext";
 
 /**
@@ -42,7 +43,10 @@ export default function GuestOnly({ children }: { children: ReactNode }) {
     }
   }, [state.status]);
 
-  if (state.status === "loading") return null;
+  // The same spinner the page showed while it loaded, in the same place,
+  // so asking who is signed in reads as the end of one wait. It used to
+  // be a blank page, straight before the sign-in screen.
+  if (state.status === "loading") return <PageSpinner />;
   if (state.status === "authenticated") return null; // effect will redirect
   return children;
 }
