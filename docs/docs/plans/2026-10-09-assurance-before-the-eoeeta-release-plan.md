@@ -1294,7 +1294,7 @@ found as a bug to fix on its own branch before going on.
       did. One small function, `withoutSpaces` in
       `frontend/src/lib/oneTimeCode.ts`, is what both places use.
 
-- [ ] Errors: say which field was refused, and why. When a request is
+- [x] Errors: say which field was refused, and why. When a request is
       refused for a wrong field the server answers with a list: the
       field, and what is wrong with it. The reader in
       `frontend/src/lib/api.ts` expects one message, finds none in a
@@ -1303,6 +1303,15 @@ found as a bug to fix on its own branch before going on.
       show its first entry as the field's name and the server's
       words, such as "Email: should have at most 255 characters". One
       function, used by every form, so one fix covers all of them.
+      Done on 13 October 2026, in `frontend/src/lib/fieldErrors.ts`,
+      which `api.ts` asks first. The server's words are shown as they
+      come, so the example reads "Email: String should have at most
+      255 characters": rewording them would mean keeping a list in
+      step with a library. The field's name is written as words,
+      `new_password` as "New password". What was typed is never
+      shown, though the server sends it back. Only the first of
+      several faults is shown; the next appears when the form is
+      sent again.
 
 - [ ] Video: keep a playing video when one renewal fails. A video is
       served through a pass that runs out, and the page renews it

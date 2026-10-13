@@ -16,6 +16,7 @@ import {
 } from "@lib/compat-generation/compatGeneration";
 import { clearRetryRecord } from "@lib/compat-generation/retryState";
 import { recordApi, recordAuth } from "@lib/error-reporting/breadcrumbs";
+import { fieldErrorMessage } from "./fieldErrors";
 
 /**
  * Compat-Generation response interceptor
@@ -235,7 +236,13 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
       // Handle both cases where `detail` is a string or an object.
       if (data && typeof data === "object") {
         const detail = (data as Record<string, unknown>)["detail"];
-        if (detail && typeof detail === "object") {
+        const refusedField = fieldErrorMessage(detail);
+
+        if (refusedField !== null) {
+          // A list of field errors, as a 422 carries: say which field
+          // and why, where this once fell through to "HTTP 422".
+          message = refusedField;
+        } else if (detail && typeof detail === "object") {
           // detail is an object with nested message / error_code
           const d = detail as Record<string, unknown>;
           if (typeof d["message"] === "string")

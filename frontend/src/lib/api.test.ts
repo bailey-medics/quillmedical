@@ -167,6 +167,61 @@ describe("api.request", () => {
     window.removeEventListener("app:api-success", handler);
   });
 
+  it("names the field when the server refuses one, where it once said HTTP 422", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse(
+        {
+          detail: [
+            {
+              type: "string_too_long",
+              loc: ["body", "email"],
+              msg: "String should have at most 255 characters",
+              input: "somebody@example.com",
+            },
+          ],
+        },
+        422,
+      ),
+    );
+
+    const refused = await api.post("/users", {}).catch((err: unknown) => err);
+
+    expect(refused).toBeInstanceOf(Error);
+    expect((refused as Error).message).toBe(
+      "Email: String should have at most 255 characters",
+    );
+    expect((refused as Error & { status?: number }).status).toBe(422);
+    expect((refused as Error).message).not.toContain("somebody@example.com");
+  });
+
+  it("still gives a refusal's own message when it is not a list", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ detail: "That username is already taken." }, 409),
+    );
+
+    await expect(api.post("/users", {})).rejects.toThrow(
+      "That username is already taken.",
+    );
+  });
+
+  it("still reads a message and a code from a refusal that is an object", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse(
+        { detail: { message: "Verify your email", error_code: "unverified" } },
+        403,
+      ),
+    );
+
+    const refused = await api
+      .post("/auth/login", {})
+      .catch((err: unknown) => err);
+
+    expect((refused as Error).message).toBe("Verify your email");
+    expect((refused as Error & { error_code?: string }).error_code).toBe(
+      "unverified",
+    );
+  });
+
   it("does not dispatch app:api-success on error response", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       jsonResponse({ detail: "Forbidden" }, 403),
