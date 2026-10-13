@@ -1366,7 +1366,7 @@ the account before they are wiped.
         The API sends accounts as a second list, `accounts`, and counts
         them as `to_empty`: both additions, so no open tab breaks.
 
-- [ ] Delete what the person owns. Their own passport and all that
+- [x] Delete what the person owns. Their own passport and all that
       hangs from it, their training records where Quill is the
       controller, their memberships, competencies, registrations,
       roles, push subscriptions and marketing answers. Each table by
@@ -1375,7 +1375,7 @@ the account before they are wiped.
       still said "member of ward four, passed colonoscopy on 3 March"
       would identify somebody in a small team.
 
-- [ ] Wipe the row and keep it. Name, email address, username, password
+- [x] Wipe the row and keep it. Name, email address, username, password
       hash, two-factor secret and anything else that says who it was.
       The email address and username are unique and may not be empty,
       so each becomes a placeholder made from the row's id that can
@@ -1386,6 +1386,48 @@ the account before they are wiped.
       Go through every column of `users` when building this, and have a
       test that fails when a column is added without saying whether it
       is wiped. A new personal field is otherwise kept by default.
+
+      Built on 13 October as `empty_account` in
+      `backend/app/users/emptying.py`, with the step above. Nothing
+      calls it yet: the nightly run does, in the next step. What was
+      decided while building:
+
+      - **`COLUMN_RULES` names every column of `users`** and says
+        whether emptying wipes it. A test compares it with the table,
+        so a new column fails until somebody has said.
+
+      - **`base_profession` is wiped**, to empty. Mark, 14 October: a
+        profession left on the row says what kind of person the account
+        belonged to, which can identify them. The column became
+        nullable; every live account still has a profession, and only
+        an emptied row has none. The three places that hand it to the
+        signed-in user give an empty string for none, which they can
+        never meet, because an emptied account cannot sign in. Not
+        making it nullable was the first version, kept because no value
+        means "nobody".
+
+      - **Positions held are deleted**, with memberships. "Clinical
+        lead from March" identifies somebody in a small team as surely
+        as "member of ward four" does.
+
+      - **Conversations they were in still list them**, as a deleted
+        account. Taking them out would change somebody else's record.
+
+      - **Feedback they sent stays**, for its own two years, with
+        nobody's name on it.
+
+      - **Their entry on the newsletter list stays.** Phase 28 put it
+        there to outlive the account.
+
+      - **The passport's files move last.** Everything in the database
+        is done and flushed first, so anything it refuses is found
+        before a file has moved. The archive is handed in by the
+        caller, because only the admin job has one. With none, an
+        account that has a passport is refused and nothing is changed.
+
+      - **The password becomes the hash of a secret nobody keeps**, not
+        an empty string, so that signing in as the placeholder name is
+        refused the ordinary way and cannot raise an error.
 
 - [ ] An emptied account can never sign in, be reopened or be found by
       a search for a person. Wherever the app shows who did something,
@@ -1404,7 +1446,7 @@ the account before they are wiped.
       or initials. Nothing about the message changes; the name simply
       is not on the account any more.
 
-- [ ] The record that it was done. The decision row from Phase 27
+- [x] The record that it was done. The decision row from Phase 27
       outlives the wipe, and must not be the place the name survives:
       once the account is emptied it holds the id, the organisation,
       who decided and when, and the note.

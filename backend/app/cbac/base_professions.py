@@ -55,8 +55,14 @@ def get_profession_details(profession_id: str) -> BaseProfessionEntry | None:
     return None
 
 
-def get_profession_base_competencies(profession_id: str) -> list[str]:
-    """Get the base competencies for a profession."""
+def get_profession_base_competencies(profession_id: str | None) -> list[str]:
+    """Get the base competencies for a profession.
+
+    None, for an emptied account that keeps no profession, has none.
+    """
+    if profession_id is None:
+        return []
+
     details = get_profession_details(profession_id)
 
     return details.base_competencies if details else []
@@ -65,7 +71,7 @@ def get_profession_base_competencies(profession_id: str) -> list[str]:
 def competencies_kept_across_profession_change(
     additional_competencies: Iterable[str],
     *,
-    old_profession: str,
+    old_profession: str | None,
     new_profession: str,
 ) -> list[str]:
     """What somebody keeps outside their profession when it changes.
@@ -111,14 +117,15 @@ def competencies_kept_across_profession_change(
 
 
 def resolve_user_competencies(
-    base_profession: str,
+    base_profession: str | None,
     additional_competencies: list[str] | None = None,
     removed_competencies: list[str] | None = None,
 ) -> list[str]:
     """Resolve final competencies for a user.
 
     Args:
-        base_profession: The user's base profession ID
+        base_profession: The user's base profession ID, or None for an
+            emptied account, which has none
         additional_competencies: Extra competencies added to this user
         removed_competencies: Competencies removed from this user
 
