@@ -82,10 +82,19 @@ else
     fi
 fi
 
+# macOS keeps one banner per group, a new one replacing the last. The
+# worktree is part of the group so that each worktree keeps its own: two
+# finishing while nobody is looking leave two banners, not just the later
+# one. A question has a group apart from a finished turn, so its banner is
+# not replaced by the finished banner that follows the reply, or the other
+# way round.
+group="quill-claude-stop-$worktree"
+[ "$MODE" = "needs-input" ] && group="quill-claude-input-$worktree"
+
 # Set QUILL_NOTIFY_DEBUG=1 to print what would be shown and stop; used by
 # the tests, and handy when a banner is not saying what you expected.
 if [ "${QUILL_NOTIFY_DEBUG:-0}" = "1" ]; then
-    printf 'title=%s\nbody=%s\n' "$title" "$body"
+    printf 'title=%s\nbody=%s\ngroup=%s\n' "$title" "$body" "$group"
     exit 0
 fi
 
@@ -159,11 +168,6 @@ case "$(uname -s 2>/dev/null || echo unknown)" in
                 # Notification Centre carries its stored command, so a
                 # click on a stale one fires that, which is easy to misread
                 # as a new banner firing on delivery rather than on click.
-                # Its own group, so a question's banner is not replaced by
-                # the finished banner that follows the reply, or the other
-                # way round.
-                group="quill-claude-stop"
-                [ "$MODE" = "needs-input" ] && group="quill-claude-input"
                 set -- -title "$title" -message "$body" -group "$group"
                 if [ "${QUILL_NOTIFY_ACTIVATE-1}" != "" ] \
                     && [ -x "$SCRIPT_DIR/notification-focus.sh" ]; then

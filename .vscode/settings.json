@@ -46,5 +46,7 @@
       "fileMatch": ["renovate.json"],
       "url": "https://docs.renovatebot.com/renovate-schema.json"
     }
-  ]
+  ],
+  "python-envs.defaultEnvManager": "ms-python.python:poetry",
+  "python-envs.defaultPackageManager": "ms-python.python:poetry"
 }
