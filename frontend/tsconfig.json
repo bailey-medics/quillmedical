@@ -4,7 +4,6 @@
       "@/*": ["./src/*"],
       "@lib/*": ["./src/lib/*"],
       "@components/*": ["./src/components/*"],
-      "@utils/*": ["./.storybook/utils/*"],
       "@design/*": ["./src/design/*"],
       "@domains/*": ["./src/domains/*"],
       "@test/*": ["./src/test/*"]
@@ -13,7 +12,7 @@
   "files": [],
   "references": [
     { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" },
-    { "path": "./tsconfig.check.json" }
+    { "path": "./tsconfig.check.json" },
+    { "path": "./tsconfig.node.json" }
   ]
 }

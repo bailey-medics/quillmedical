@@ -163,4 +163,6 @@ compose.migrate.yml	d891e933f381712e478ebc4b1651b7effd9b6a57	2026-10-12	Cotswold
 compose.unit-tests.yml	0e81074a645f55daa3228e957e90d0a13cc34896	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/Dockerfile	35d6047104dffb5548162050eeed41e6b2b52338	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/package.json	c2b0327ea357fc1a9d2ccd5b830e1cee64a3e2a6	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
+frontend/tsconfig.app.json	277f90ea2c4c58ccb62abe6a4ca4d25ed56bca78	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
+frontend/tsconfig.json	71dbefa5d37eed8a30703d5a4077d1aa7d5f38c3	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
 scripts/check-python-version.sh	e9ba5acc38524cdd3b8c10fdd371c2e9771ce114	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com

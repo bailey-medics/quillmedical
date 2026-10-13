@@ -46,11 +46,10 @@ Comprehensive test infrastructure has been set up for the Quill Medical frontend
 ## Test Results
 
 ```
-✓ .storybook/utils/useBreakPoint.test.tsx (5 tests)
 ✓ src/test/infrastructure.test.tsx (9 tests)
 
-Test Files: 2 passed (2)
-Tests: 14 passed (14)
+Test Files: 1 passed (1)
+Tests: 9 passed (9)
 Duration: ~2s
 ```
 
@@ -173,8 +172,6 @@ Now that the test infrastructure is complete, you can:
 
 All tests passing:
 
-- ✅ 5 existing tests (useBreakPoint)
-- ✅ 9 new infrastructure tests
-- ✅ **Total: 14 tests passing**
+- ✅ 9 infrastructure tests
 
 The test infrastructure is now ready for comprehensive test coverage development.
