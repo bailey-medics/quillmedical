@@ -86,3 +86,19 @@ EOF
   run bash "$SCRIPT" "$TARGET"
   [ "$status" -eq 1 ]
 }
+
+@test "every script under .github/scripts has a bats file beside it" {
+  # A script added with no tests is found here, on the pull request that
+  # adds it. On 13 October 2026 seven had none.
+  root="${BATS_TEST_DIRNAME}/.."
+  missing=""
+
+  while IFS= read -r script; do
+    [ -f "${script%.sh}.bats" ] || missing="${missing}${script#"${root}/"} "
+  done < <(find "$root" -name '*.sh' | sort)
+
+  # At least the scripts known today, so a search that found nothing does
+  # not pass.
+  [ "$(find "$root" -name '*.sh' | wc -l)" -ge 60 ]
+  [ -z "$missing" ] || { echo "no bats file for: ${missing}"; false; }
+}
