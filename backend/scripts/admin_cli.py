@@ -12,7 +12,7 @@ Environment Variables:
                       check-competency-seeding, delete-passport,
                       send-newsletter, accessibility-reminder,
                       apply-retention, send-teaching-reminders,
-                      finish-exams-out-of-time.
+                      finish-exams-out-of-time, set-records-kept.
     ADMIN_USERNAME:   Required.  Target username.
     ADMIN_EMAIL:      Required for create-superadmin.
     ADMIN_PASSWORD:   Required for create-superadmin.
@@ -20,6 +20,9 @@ Environment Variables:
     CONFIRM:          delete-passport and send-newsletter. What a dry
                       run printed, pasted back. Without it the action
                       only reports.
+    RECORDS_ORG_UNIT_ID, RECORDS_KEPT_MONTHS, RECORDS_APPLY:
+                      set-records-kept. The organisation's org unit id,
+                      the months (or "none"), and "true" to change it.
     NEWSLETTER_CAMPAIGN:  Required for send-newsletter. The campaign's
                       name, a template under app/email/templates/campaigns/.
     NEWSLETTER_ONLY_TO:   send-newsletter only. One address, for a trial.
@@ -306,6 +309,18 @@ def apply_retention() -> int:
     from app.retention import main as retention_main
 
     return retention_main()
+
+
+def set_records_kept() -> int:
+    """Set how long an organisation keeps a closed account's records.
+
+    The sponsor's instruction, in months, which ``apply-retention`` then
+    carries out. Reads ``RECORDS_ORG_UNIT_ID`` and ``RECORDS_KEPT_MONTHS``.
+    A report unless ``RECORDS_APPLY`` is ``true``. See ``app.retention``.
+    """
+    from app.retention import set_records_kept as set_records_kept_main
+
+    return set_records_kept_main()
 
 
 def send_teaching_reminders() -> int:
@@ -657,6 +672,11 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
         apply_retention,
         "Delete data past its retention period (a report without "
         "RETENTION_APPLY=true)",
+    ),
+    "set-records-kept": (
+        set_records_kept,
+        "Set how long an organisation keeps a closed account's training "
+        "records (a report without RECORDS_APPLY=true)",
     ),
     "send-teaching-reminders": (
         send_teaching_reminders,

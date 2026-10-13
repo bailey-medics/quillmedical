@@ -397,6 +397,16 @@ class TeachingOrgSettings(Base):
     email_logo_width: Mapped[int | None] = mapped_column(
         Integer, nullable=True
     )
+    #: How many months this organisation's training records about somebody
+    #: are kept after their account is closed, before ``app.retention``
+    #: deletes them. The sponsor's instruction, so it is theirs to give and
+    #: is set for them by the ``set-records-kept`` admin action, never
+    #: through the API. Null means nothing is deleted for this
+    #: organisation. The privacy policy names the same period in the
+    #: sponsor's own subsection: change one and change the other.
+    records_kept_months_after_closure: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
 
 
 # ------------------------------------------------------------------
