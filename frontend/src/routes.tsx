@@ -702,6 +702,13 @@ export const routes: RouteObject[] = [
                 lazy: lazyFrom(loadAdmin, "FeedbackDetailPage"),
                 handle: { safeForReload: true },
               },
+              // Operator-only for the same reason: the records awaiting
+              // a decision belong to every sponsor. Not safe to reload
+              // under somebody: choices marked and not yet sent would go.
+              {
+                path: "retention",
+                lazy: lazyFrom(loadAdmin, "AdminRetentionPage"),
+              },
             ],
           },
           // The Newsletter section. Who may use it is decided in one

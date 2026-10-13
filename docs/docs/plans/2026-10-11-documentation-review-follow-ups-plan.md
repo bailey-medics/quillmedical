@@ -1143,7 +1143,7 @@ been since 12 October.
       own, so one that cannot be done does not hold back the rest. A
       row left out of the request stays undecided.
 
-- [ ] The screen, under the admin pages and inside `<RequireOperator>`.
+- [x] The screen, under the admin pages and inside `<RequireOperator>`.
       Each account awaiting a decision is a row with three states:
       undecided, delete, keep. Undecided is where every row starts and
       where it may stay, so that the accounts that are clear can be
@@ -1154,6 +1154,14 @@ been since 12 October.
       Reuse what Storybook has before building anything: the table, the
       text area, the button pair. A component that does not exist yet
       is planned and shown to Mark first, as the frontend rules say.
+
+      It is `/admin/retention`, "Record retention" in the admin menu,
+      shown to a superadmin. Nothing new had to be designed: one
+      component, `RetentionReviewCard`, puts together the card, the
+      radio field and the text area that already existed, and has its
+      own story and tests. Each account is a card and not a table row,
+      because a row has no room for a note. The alert's text now links
+      to the page.
 
 - [x] What each decision does. **Delete** removes that person's
       attempts, answers and enrolments at that organisation, with the
@@ -1168,11 +1176,11 @@ been since 12 October.
       opened again, which clears its closing date. A row whose account
       is no longer past its period is refused and says why.
 
-- [ ] Change the privacy policy and the terms to match: records are
+- [x] Change the privacy policy and the terms to match: records are
       deleted after the period "once a member of our staff has checked
       them", in section 4.7 and clause 22.3.
 
-- [ ] Tests for each of the above, and for the three that matter most:
+- [x] Tests for each of the above, and for the three that matter most:
       nothing is deleted by the nightly run, an undecided row is never
       deleted by the button, and a second run does not write a second
       row for the same person and organisation.

@@ -528,7 +528,8 @@ and Norwich University Hospitals NHS Foundation Trust, gave you access:
   times.
 - **Your certificate** is sent to you and to EoEETA's clinical lead.
 - **Your training records are kept for three and a half years after
-  your account is closed or deactivated**, and are then deleted. Your
+  your account is closed or deactivated**, and are then deleted, once a
+  member of our staff has checked them. Your
   account is kept for at least as long as those records.
 
 ## Part C: If you deal with us directly

@@ -359,8 +359,9 @@ section, and its own privacy notice is the place to look.
   Trust. It is the controller of the training records you make within
   its programme.
 - **How long your records are kept** - for three and a half years after
-  your account is closed or deactivated. Then we delete your
-  enrolments, your attempts and your answers. A pass lasts three years,
+  your account is closed or deactivated. Then, once a member of our
+  staff has checked them, we delete your enrolments, your attempts and
+  your answers. A pass lasts three years,
   so the records are needed for that long, and the further six months
   covers the time around a repeat, when your last result may be asked
   for. Your account is kept for at least as long as these records.
