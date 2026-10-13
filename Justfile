@@ -114,6 +114,25 @@ _e2e-up:
     echo "http://localhost:${port}"
 
 
+# Installs the frontend packages on the host when they have fallen behind
+# package.json or yarn.lock, as they do after a pull that bumps a version.
+# Yarn then refuses to run a script at all ("command not found: storybook"),
+# which says nothing about the cause. `yarn-install` leaves a stamp file
+# behind; yarn's own state file is no use for this, because an install that
+# changes nothing does not rewrite it.
+_frontend-packages-current:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    stamp="frontend/node_modules/.install-stamp"
+
+    if [[ -f "$stamp" && ! frontend/package.json -nt "$stamp" && ! frontend/yarn.lock -nt "$stamp" ]]; then
+        exit 0
+    fi
+
+    echo "Frontend packages are out of date: running yarn install."
+    just yarn-install
+
+
 _gcp_env_project env:
     #!/usr/bin/env bash
 
@@ -2316,6 +2335,7 @@ alias sb := storybook
 storybook:
     #!/usr/bin/env bash
     {{initialise}} "storybook"
+    just _frontend-packages-current || exit 1
 
     # Render the emails first: the email stories show saved HTML files and
     # never render them. A failed render does not stop Storybook.
@@ -2335,6 +2355,7 @@ alias sbt := storybook-test
 storybook-test:
     #!/usr/bin/env bash
     {{initialise}} "storybook-test"
+    just _frontend-packages-current || exit 1
     cd frontend
 
     # A Storybook already up is used as it is and left running. Otherwise
@@ -2832,9 +2853,13 @@ worktree-create branch="":
 
 
 alias yi := yarn-install
-# Run yarn install in the frontend container
+# Run yarn install for the frontend on the host
 yarn-install:
     #!/usr/bin/env bash
     {{initialise}} "yarn-install"
+    set -euo pipefail
     cd frontend
     yarn install
+
+    # Read by `_frontend-packages-current` to tell when an install is due
+    touch node_modules/.install-stamp
