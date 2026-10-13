@@ -139,12 +139,17 @@ runs, and a check on each place that could drift from it again.
 
 ## Phase 3: Say so when the machine's own Python is the wrong one
 
-- [ ] Read which Python the runner ships from the "Say which Python the
+- [x] Read which Python the runner ships from the "Say which Python the
       runner ships" step in an `audit_ledger` run, record it here, and
       take the step out of `ci.yml`. It was added in Phase 1 to be read
       once.
 
-- [ ] Extend `scripts/check-python-version.sh` to compare the `python3`
+      Python 3.12.3, on `ubuntu-24.04`. The same run restored the pinned
+      one from the cache ("Cache hit for:
+      python-install-Linux-X64-ubuntu24-3.14.7"), so setting Python up
+      in these jobs downloaded nothing.
+
+- [x] Extend `scripts/check-python-version.sh` to compare the `python3`
       on the `PATH` with `.python-version`, at the same two-part
       granularity it uses now. Today it checks the backend's Poetry
       environment and the hooks' `language_version`, and not the bare
@@ -163,22 +168,79 @@ runs, and a check on each place that could drift from it again.
       environment can be the cause, since `python3 --version` on a fresh
       shell looked correct throughout.
 
-- [ ] Call the check from the stack recipes that run a Python script
+      Done, with one addition: `check-python-version.sh host` checks
+      `python3` and nothing else. The full check asks Poetry which Python
+      the backend's environment is on, which takes a second or more and
+      fails where there is no environment. A stack recipe needs neither,
+      and `just stack-log` is meant to be instant. The host check takes
+      about a tenth of a second.
+
+      The message blames a virtual environment only when `python3` is
+      inside the one that is active. On 13 October `VIRTUAL_ENV` still
+      named a deleted environment while `python3` came from elsewhere,
+      and saying "deactivate" there would have been wrong.
+
+- [x] Call the check from the stack recipes that run a Python script
       (`stack-log`, `stack-log-long`, `stack-fresh`, `stack-sync`), by
       the same `@bash scripts/check-python-version.sh` line the Justfile
       uses already. A failed check must stop the recipe: a stack command
       that half runs is worse than one that refuses.
 
-- [ ] Check what `python3` is in a Claude Code on the web session, and
+      Wider than the four named: every recipe that runs a script from
+      `scripts/` on the host calls a new private recipe,
+      `_host-python-guard`. That is the fifteen stack recipes,
+      `_stack-guard`, and `review-diff`, `review-status`, `reviewed` and
+      `unreviewed`. Any of them fails the same way on an older Python, so
+      guarding four would have left the rest to the bare error.
+
+      The call sits before `stack_repo` changes directory. With
+      `STACK_REPO` set the recipe moves into a teaching repository,
+      which has no Justfile to find the guard in and no
+      `.python-version` to read.
+
+- [x] Check what `python3` is in a Claude Code on the web session, and
       record the answer here. The stack scripts and the audit ledger hook
       run there too, and nothing in this repository chooses that
       container's Python. If it is older than 3.14, have
       `.claude/hooks/session-start.sh` report it at session start, so the
       first sign is a sentence and not a syntax error.
 
-- [ ] Update `scripts/tests/check-python-version.bats` for the new
+      Not checked: this was built in a local session, and there was no
+      web session to ask. So the hook does not depend on the answer. It
+      runs `check-python-version.sh host` at session start and prints
+      the message when the check fails, with a line naming the recipes
+      that will refuse to run. When `python3` is right it says nothing.
+      The first web session after this lands is where the answer shows.
+
+- [x] Update `scripts/tests/check-python-version.bats` for the new
       comparison: a matching `python3` passes, an older one fails with
       the fix named, and a missing one fails.
+
+      `python3` is stubbed onto the `PATH` as Poetry already was, so the
+      tests do not depend on the Python of the machine running them.
+      Three tests in `.claude/hooks/session-start.bats` cover the hook.
+
+- [x] Say in `docs/docs/worktrees/index.md`, under "Which Python the
+      environment is built on", that the bare `python3` is checked too,
+      which recipes check it, and that an editor's activated environment
+      is the usual cause.
+
+- [ ] Give the two shell test images the pinned Python. Found while
+      writing the tests above: `.github/Dockerfile`, which `just ts`
+      runs the bats suites in, and `.github/Dockerfile.coverage`, which
+      `just test-coverage` uses, both install `python3` from Ubuntu
+      24.04's own packages, which is 3.12. The suites under
+      `scripts/tests` run `stack-status.py` and the other root scripts
+      for real. So after Phase 4 `just ts` would fail on a developer's
+      machine with the syntax error this plan is about, while CI, fixed
+      in Phase 1, passed.
+
+      Ubuntu 24.04 has no package for 3.14, so it has to come from
+      somewhere else, and the image has no build context to read
+      `.python-version` from: the Dockerfile goes in on standard input.
+      So the version is an `ARG` in each Dockerfile, and
+      `check-version-consistency.sh` holds both to `.python-version` in
+      Phase 5.
 
 ## Phase 4: Move Ruff and Black to the backend's Python
 

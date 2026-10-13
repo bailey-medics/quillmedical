@@ -124,6 +124,26 @@ So a mismatch is refused, not warned about:
 It compares the first two parts of the version, 3.14 with 3.14. CI
 installs the newest patch release of the pinned version, and so may you.
 
+### The bare `python3` is checked too
+
+A second Python can drift: the `python3` first on your `PATH`. The
+scripts in `scripts/` run on it, and those are what the stack recipes
+(`just stack-log`, `just stack-new` and the rest) and the audit ledger
+recipes (`just reviewed`, `just review-status`) call.
+
+Every Python file here is formatted for the pinned version, those
+scripts included. A `python3` older than that cannot read them, and
+stops with a bare `SyntaxError` before a line of the script has run. So
+each of those recipes checks first, and the same pre-commit hook checks
+it on a commit. The message names the Python found and where it is.
+
+The usual cause is not a missing install. An editor that activates a
+virtual environment in its terminals puts that environment's `python3`
+ahead of the machine's own, so a new shell says 3.14 and the editor's
+terminal says something older. The message says so when that is what
+happened: leave the environment with `deactivate`, and choose
+`backend/.venv` as the editor's interpreter.
+
 ## Removing one
 
 ```bash

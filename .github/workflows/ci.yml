@@ -349,11 +349,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Printed once, to learn what this job ran on before it set Python
-      # up. Removed again once the answer is in the plan.
-      - name: Say which Python the runner ships
-        run: python3 --version
-
       # The repository's own Python, and not whichever the runner ships:
       # see .github/scripts/ci/check-python-is-set-up.sh.
       - name: Set up Python

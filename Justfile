@@ -128,6 +128,20 @@ _gcp_env_project env:
     esac
 
 
+# Refuse to run when the `python3` on this machine is not CI's.
+#
+# For the recipes that run a script from scripts/ on the host: the stack
+# recipes and the audit ledger ones. Those scripts are formatted for the
+# pinned Python, and an older one stops at the first line it cannot read
+# with a bare SyntaxError, before a guard inside the script could run.
+# This runs first and says which Python is wrong and where it came from.
+#
+# Called before `stack_repo` changes directory: a teaching repository
+# has no Justfile to find this in, and no `.python-version` to read.
+_host-python-guard:
+    @bash scripts/check-python-version.sh host
+
+
 # Compose project name for this worktree's throwaway migration database
 # (compose.migrate.yml). Per worktree for the same reason as `_test-project`.
 _migrate-project:
@@ -206,6 +220,7 @@ _stack-branch-name name:
 _stack-guard:
     #!/usr/bin/env bash
     set -uo pipefail
+    just _host-python-guard || exit 1
     {{stack_repo}}
     python3 "{{stack_scripts}}"/stack-status.py --check
     status=$?
@@ -1149,7 +1164,7 @@ public-pages:
 
 alias rd := review-diff
 # Show what changed in a file since it was audited
-review-diff path:
+review-diff path: _host-python-guard
     @python3 scripts/review-ledger.py diff {{path}}
 
 
@@ -1161,13 +1176,13 @@ review-marks-install:
 
 alias rs := review-status
 # Say how much has been audited. Pass 'f' for the full list by folder, or a folder to list it file by file.
-review-status path="":
+review-status path="": _host-python-guard
     @python3 scripts/review-ledger.py status {{path}}
 
 
 alias r := reviewed
 # Stamp files, or every file in a folder, as audited. Space separates multiple paths.
-reviewed *paths:
+reviewed *paths: _host-python-guard
     @python3 scripts/review-ledger.py mark {{paths}}
 
 
@@ -1184,6 +1199,7 @@ alias sta := stack-add
 stack-add name message:
     #!/usr/bin/env bash
     {{initialise}} "stack-add"
+    just _host-python-guard
     {{stack_repo}}
     set -euo pipefail
     just _stack-guard
@@ -1233,6 +1249,7 @@ alias stc := stack-checkout
 stack-checkout target="":
     #!/usr/bin/env bash
     {{initialise}} "stack-checkout"
+    just _host-python-guard
     {{stack_repo}}
     set -euo pipefail
 
@@ -1251,6 +1268,7 @@ stack-files patch="":
     set +x
     {{initialise}} "stack-files"
     set +x
+    just _host-python-guard
     {{stack_repo}}
 
     # Against its own parent, not the trunk: a branch three layers up
@@ -1269,6 +1287,7 @@ alias stfr := stack-fresh
 stack-fresh:
     #!/usr/bin/env bash
     {{initialise}} "stack-fresh"
+    just _host-python-guard
     {{stack_repo}}
     set -euo pipefail
 
@@ -1427,6 +1446,7 @@ stack-log:
     set +x
     {{initialise}} "stack-log"
     set +x
+    just _host-python-guard
     {{stack_repo}}
 
     # Local flags only: branch order, merged/queued, needs-rebase, and which
@@ -1446,6 +1466,7 @@ stack-log-long:
     set +x
     {{initialise}} "stack-log-long"
     set +x
+    just _host-python-guard
     {{stack_repo}}
 
     # One `gh pr list` for the whole stack rather than one call per branch,
@@ -1466,6 +1487,7 @@ alias stm := stack-move
 stack-move direction="":
     #!/usr/bin/env bash
     {{initialise}} "stack-move"
+    just _host-python-guard
     {{stack_repo}}
     set -euo pipefail
 
@@ -1506,6 +1528,7 @@ alias stn := stack-new
 stack-new name message:
     #!/usr/bin/env bash
     {{initialise}} "stack-new"
+    just _host-python-guard
     {{stack_repo}}
     set -euo pipefail
     branch="$(just _stack-branch-name '{{name}}')"
@@ -1554,6 +1577,7 @@ alias strd := stack-ready
 stack-ready:
     #!/usr/bin/env bash
     {{initialise}} "stack-ready"
+    just _host-python-guard
     {{stack_repo}}
     set -euo pipefail
     just _stack-guard
@@ -1593,6 +1617,7 @@ alias str := stack-rebase
 stack-rebase:
     #!/usr/bin/env bash
     {{initialise}} "stack-rebase"
+    just _host-python-guard
     {{stack_repo}}
     set -euo pipefail
     just _stack-guard
@@ -1621,6 +1646,7 @@ alias stre := stack-refresh
 stack-refresh:
     #!/usr/bin/env bash
     {{initialise}} "stack-refresh"
+    just _host-python-guard
     {{stack_repo}}
     set -euo pipefail
 
@@ -1711,6 +1737,7 @@ alias stsu := stack-submit
 stack-submit:
     #!/usr/bin/env bash
     {{initialise}} "stack-submit"
+    just _host-python-guard
     {{stack_repo}}
     set -euo pipefail
 
@@ -1740,6 +1767,7 @@ alias stsy := stack-sync
 stack-sync scope="":
     #!/usr/bin/env bash
     {{initialise}} "stack-sync"
+    just _host-python-guard
     {{stack_repo}}
     set -uo pipefail
 
@@ -1945,6 +1973,7 @@ alias stu := stack-update
 stack-update message="":
     #!/usr/bin/env bash
     {{initialise}} "stack-update"
+    just _host-python-guard
     {{stack_repo}}
     set -euo pipefail
 
@@ -2011,6 +2040,7 @@ stack-watch:
     set +x
     {{initialise}} "stack-watch"
     set +x
+    just _host-python-guard
     {{stack_repo}}
 
     # `stack-log-long` in a loop, once a minute. Not `watch(1)`: macOS does
@@ -2635,7 +2665,7 @@ unit-tests-reset:
 
 alias ur := unreviewed
 # Take the read stamp off files, or off every file in a folder
-unreviewed *paths:
+unreviewed *paths: _host-python-guard
     @python3 scripts/review-ledger.py unmark {{paths}}
 
 

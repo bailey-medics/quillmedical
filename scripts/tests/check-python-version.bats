@@ -4,6 +4,8 @@
 #
 # Poetry is stubbed onto PATH and answers with whatever version the test
 # says the backend's environment is on, so nothing here builds one.
+# `python3` is stubbed the same way, so a test does not pass or fail on
+# the Python of the machine it happens to run on.
 
 setup() {
     SCRIPT="${BATS_TEST_DIRNAME}/../check-python-version.sh"
@@ -24,6 +26,18 @@ fi
 echo "$LOCAL_PYTHON"
 EOF
     chmod +x "${STUBS}/poetry"
+
+    # HOST_PYTHON is the version `python3` on the PATH is. It starts on
+    # the pinned one, so a test about something else need not mention it.
+    # Set to `none`, there is no python3 to ask.
+    cat > "${STUBS}/python3" <<'EOF'
+#!/usr/bin/env bash
+if [ "${HOST_PYTHON:-}" = "none" ]; then
+    exit 127
+fi
+echo "${HOST_PYTHON:-3.14.7}"
+EOF
+    chmod +x "${STUBS}/python3"
     PATH="${STUBS}:${PATH}"
 
     cd "$REPO" || return
@@ -99,10 +113,10 @@ EOF
     echo "3.15.2" > .python-version
     hooks_on "python3.15"
 
-    LOCAL_PYTHON=3.14.7 run bash "$SCRIPT"
+    HOST_PYTHON=3.15.0 LOCAL_PYTHON=3.14.7 run bash "$SCRIPT"
     [ "$status" -eq 1 ]
 
-    LOCAL_PYTHON=3.15.0 run bash "$SCRIPT"
+    HOST_PYTHON=3.15.0 LOCAL_PYTHON=3.15.0 run bash "$SCRIPT"
     [ "$status" -eq 0 ]
 }
 
@@ -137,7 +151,7 @@ EOF
 @test "refuses a hook left behind when the pin moves" {
     echo "3.15.2" > .python-version
 
-    LOCAL_PYTHON=3.15.0 run bash "$SCRIPT"
+    HOST_PYTHON=3.15.0 LOCAL_PYTHON=3.15.0 run bash "$SCRIPT"
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"language_version: python3.15"* ]]
@@ -204,4 +218,76 @@ EOF
 
     [ "$status" -eq 1 ]
     [[ "$output" == *".pre-commit-config.yaml is not here"* ]]
+}
+
+@test "refuses an older python3 on the PATH, and says which and where" {
+    HOST_PYTHON=3.13.15 LOCAL_PYTHON=3.14.7 run bash "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"python3 on this machine is Python 3.13.15 (${STUBS}/python3)"* ]]
+    [[ "$output" == *"pinned to 3.14.7"* ]]
+    [[ "$output" == *"Install Python 3.14"* ]]
+}
+
+@test "refuses a newer python3 on the PATH too" {
+    HOST_PYTHON=3.15.0 LOCAL_PYTHON=3.14.7 run bash "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"is Python 3.15.0"* ]]
+}
+
+@test "passes on a different patch release of python3" {
+    HOST_PYTHON=3.14.8 LOCAL_PYTHON=3.14.7 run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+}
+
+@test "refuses when there is no python3 on the PATH" {
+    HOST_PYTHON=none LOCAL_PYTHON=3.14.7 run bash "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"There is no python3 on the PATH"* ]]
+}
+
+@test "says so when the wrong python3 comes from an active virtual environment" {
+    # An editor that activates an environment in its terminals puts that
+    # environment's python3 first, which is how this was met.
+    HOST_PYTHON=3.13.15 VIRTUAL_ENV="${BATS_TEST_TMPDIR}" run bash "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"A virtual environment is active (${BATS_TEST_TMPDIR})"* ]]
+    [[ "$output" == *"deactivate"* ]]
+    [[ "$output" != *"put it first on the PATH"* ]]
+}
+
+@test "does not blame a virtual environment the wrong python3 is not in" {
+    HOST_PYTHON=3.13.15 VIRTUAL_ENV="/somewhere/else" run bash "$SCRIPT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" != *"A virtual environment is active"* ]]
+    [[ "$output" == *"put it first on the PATH"* ]]
+}
+
+@test "host checks python3 and nothing else" {
+    # No environment and no hooks file: neither is looked at.
+    rm .pre-commit-config.yaml
+
+    run bash "$SCRIPT" host
+
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "host refuses an older python3" {
+    HOST_PYTHON=3.12.3 run bash "$SCRIPT" host
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"python3 on this machine is Python 3.12.3"* ]]
+}
+
+@test "refuses an argument it does not know" {
+    run bash "$SCRIPT" everything
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Unknown argument: everything"* ]]
 }
