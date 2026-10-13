@@ -1131,11 +1131,17 @@ been since 12 October.
       Not every night. A record left undecided is kept past what the
       policy promises, so the screen and the nudge both show the wait.
 
-- [ ] The routes: list what is awaiting a decision, and record a
+- [x] The routes: list what is awaiting a decision, and record a
       decision. Behind `DEP_REQUIRE_OPERATOR`, so a superadmin only.
       The sponsor is the controller and its own teaching admin could
       one day approve its own; that is a later change. A typed response
       model for each, and the CSRF check on the one that writes.
+
+      `GET /api/retention/reviews` and `POST /api/retention/decisions`,
+      in `backend/app/retention_router.py`. One request carries any
+      number of decisions and each is carried out or refused on its
+      own, so one that cannot be done does not hold back the rest. A
+      row left out of the request stays undecided.
 
 - [ ] The screen, under the admin pages and inside `<RequireOperator>`.
       Each account awaiting a decision is a row with three states:
@@ -1149,7 +1155,7 @@ been since 12 October.
       text area, the button pair. A component that does not exist yet
       is planned and shown to Mark first, as the frontend rules say.
 
-- [ ] What each decision does. **Delete** removes that person's
+- [x] What each decision does. **Delete** removes that person's
       attempts, answers and enrolments at that organisation, with the
       code Phase 23 wrote. **Keep** leaves them, needs the note, and
       takes a date to be asked again, six months on unless another is
@@ -1157,7 +1163,7 @@ been since 12 October.
       and when, and the row stays afterwards as the record of what was
       done and why.
 
-- [ ] Check again at the moment of deleting. Between the list being
+- [x] Check again at the moment of deleting. Between the list being
       drawn and the button being pressed an account may have been
       opened again, which clears its closing date. A row whose account
       is no longer past its period is refused and says why.

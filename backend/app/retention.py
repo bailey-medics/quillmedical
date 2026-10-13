@@ -387,6 +387,88 @@ def _list_for_decision(
     return newly, awaiting, tell
 
 
+#: How long records that were kept wait before somebody is asked again,
+#: when the person deciding gives no date of their own.
+ASK_AGAIN_AFTER_MONTHS = 6
+
+
+def carry_out_decision(
+    db: Session,
+    review: RetentionReview,
+    *,
+    delete_them: bool,
+    note: str | None,
+    ask_again_on: datetime | None,
+    decided_by: int,
+    now: datetime,
+) -> str | None:
+    """Do what a person decided about one set of records.
+
+    Checked again here, at the moment of deciding, and not trusted from
+    the list the person was looking at: an account may have been opened
+    again since, which clears the date its period was counted from.
+
+    The rows are flushed, not committed: the caller commits.
+
+    Args:
+        db: The database session.
+        review: The row being decided.
+        delete_them: True to delete the records, false to keep them.
+        note: Why. Needed to keep.
+        ask_again_on: For keeping, when to ask again.
+        decided_by: The user id of who decided.
+        now: The moment of the decision.
+
+    Returns:
+        Why it was refused, or None when it was carried out.
+    """
+    if review.decision != "undecided":
+        return "This has already been decided."
+
+    note = (note or "").strip() or None
+
+    if not delete_them:
+        if note is None:
+            return "Say why these records are being kept."
+
+        again = ask_again_on or add_months(now, ASK_AGAIN_AFTER_MONTHS)
+
+        if _aware(again) <= now:
+            return "The date to ask again must be in the future."
+
+        review.decision = "kept"
+        review.ask_again_on = _aware(again)
+    else:
+        still_due = any(
+            (due.user_id, due.org_unit_id)
+            == (review.user_id, review.org_unit_id)
+            for due in closed_accounts_past_their_period(db, now)
+        )
+
+        if not still_due:
+            return (
+                "This account is no longer past its period: it has been "
+                "opened again, or the period has changed. Nothing was "
+                "deleted."
+            )
+
+        attempts, enrolments = delete_training_records(
+            db, review.user_id, review.org_unit_id, apply=True
+        )
+        # What was deleted, which may be more than was there when the
+        # row was first listed.
+        review.attempts = attempts
+        review.enrolments = enrolments
+        review.decision = "deleted"
+
+    review.note = note
+    review.decided_by = decided_by
+    review.decided_at = now
+    db.flush()
+
+    return None
+
+
 def apply_retention(
     db: Session, now: datetime, *, apply: bool
 ) -> RetentionResult:

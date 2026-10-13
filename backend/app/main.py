@@ -107,6 +107,7 @@ from app.patients.router import router as patients_router
 from app.push import router as push_router
 from app.push_send import router as push_send_router
 from app.rate_limit import limiter
+from app.retention_router import router as retention_router
 from app.schemas.auth import (
     ChangePasswordIn,
     DetailResponse,
@@ -197,6 +198,7 @@ router.include_router(guides_router)
 router.include_router(inbox_router)
 router.include_router(marketing_router)
 router.include_router(newsletter_admin_router)
+router.include_router(retention_router)
 router.include_router(push_router)
 
 # Permanent API-compatibility test harness (item 19) - always false in real
