@@ -8,7 +8,14 @@
  * the real `RequireAuth`.
  */
 
-import { act, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { useState } from "react";
 import {
   createMemoryRouter,
   RouterProvider,
@@ -28,12 +35,17 @@ const USER = { id: 1, username: "sam", email: "sam@example.nhs.uk" };
 /** Shows the auth state, and a button that logs out. */
 function Status() {
   const { state, logout } = useAuth();
+  const [signOutFailed, setSignOutFailed] = useState(false);
 
   return (
     <div>
       <span>status: {state.status}</span>
       <span>logged out: {String(state.loggedOut ?? false)}</span>
-      <button type="button" onClick={() => void logout()}>
+      <span>sign out failed: {String(signOutFailed)}</span>
+      <button
+        type="button"
+        onClick={() => void logout().catch(() => setSignOutFailed(true))}
+      >
         Log out
       </button>
     </div>
@@ -187,5 +199,64 @@ describe("AuthProvider, when a session ends", () => {
       UNAUTHENTICATED_EVENT,
       expect.any(Function),
     );
+  });
+});
+
+describe("AuthProvider, signing out", () => {
+  beforeEach(() => {
+    vi.spyOn(api, "get").mockResolvedValue(USER);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function refusal(status: number) {
+    return Object.assign(new Error(`HTTP ${status}`), { status });
+  }
+
+  it("shows the login page once the server has ended the session", async () => {
+    vi.spyOn(api, "post").mockResolvedValue({ detail: "logged out" });
+    renderApp("/patients/7");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Log out" }));
+
+    expect(await screen.findByText(/^Login page/)).toBeInTheDocument();
+    expect(api.post).toHaveBeenCalledWith("/auth/logout");
+  });
+
+  it("keeps somebody signed in, and says so, when the call fails", async () => {
+    // The cookies are the server's to clear. If it was never reached
+    // they are still in the browser, and a login page here would hide
+    // that the next person to reload is signed in.
+    vi.spyOn(api, "post").mockRejectedValue(new Error("Failed to fetch"));
+    renderApp("/patients/7");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Log out" }));
+
+    expect(await screen.findByText("sign out failed: true")).toBeVisible();
+    expect(screen.getByText("status: authenticated")).toBeVisible();
+    expect(screen.getByText("A guarded page")).toBeVisible();
+    expect(screen.queryByText(/^Login page/)).not.toBeInTheDocument();
+  });
+
+  it("keeps somebody signed in when the server answers with an error", async () => {
+    vi.spyOn(api, "post").mockRejectedValue(refusal(502));
+    renderApp("/patients/7");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Log out" }));
+
+    expect(await screen.findByText("sign out failed: true")).toBeVisible();
+    expect(screen.getByText("status: authenticated")).toBeVisible();
+  });
+
+  it("counts a session that was already over as signed out", async () => {
+    vi.spyOn(api, "post").mockRejectedValue(refusal(401));
+    renderApp("/patients/7");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Log out" }));
+
+    expect(await screen.findByText(/^Login page/)).toBeInTheDocument();
+    expect(screen.queryByText("sign out failed: true")).not.toBeInTheDocument();
   });
 });

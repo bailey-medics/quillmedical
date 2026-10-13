@@ -100,7 +100,7 @@ carries on from there as a standing part of how Quill is built.
 
 - [x] Check the card in CI. Done on 11 October 2026: an `Audit ledger`
       job in the fast tier runs `python3 scripts/review-ledger.py
-    verify`. It fails on a line that is not a stamp: a file the card
+verify`. It fails on a line that is not a stamp: a file the card
       does not cover or the branch never held, no name, a date or a
       fingerprint that is not one. The first idea, to fail any stamp
       whose version was never committed, was dropped on meeting the
@@ -614,6 +614,19 @@ backend/tests`: `r` without the dash is a target, not the recurse
       merge the workflow change with the queue switched off or with
       both names required for one merge, then apply the rules. See
       "Breaking the deadlock" in `.claude/rules/ci.md`.
+      **On hold since 13 October 2026**, to look at again when the
+      other worktree has finished. All three files are ones its two
+      plans work in. The
+      [CI that holds under load plan](2026-10-12-ci-that-holds-under-load-plan.md)
+      rewrote this very job in `ci.yml`, and its open phases work in
+      that file. The
+      [documentation review follow-ups plan](2026-10-11-documentation-review-follow-ups-plan.md)
+      changed `scripts/stack-status.py` in its Phase 19 and the
+      rules under `infra/github/` in its Phase 17, where one step,
+      proving the new rule holds, is still open. A renamed required
+      check on top of an unproven rule change would make a failure
+      hard to place. When it is picked up, check first whether the
+      rename has been done there.
 
 - [x] Update the three build tools with advisories against them. Found
       by the audit on 11 October 2026; none is shipped, so none is
@@ -658,9 +671,9 @@ before any feature.
 - [x] `.husky/pre-commit`. Stamped on 10 October 2026.
 - [x] The `Justfile`. Stamped on 11 October 2026.
 - [x] `.pre-commit-config.yaml`.
-- [ ] `compose.ci.yml`.
-- [ ] `compose.dev.yml`.
-- [ ] `compose.migrate.yml`.
+- [x] `compose.ci.yml`.
+- [x] `compose.dev.yml`.
+- [x] `compose.migrate.yml`.
 - [x] `compose.prod.cloud-run.yml`. Deleted on 12 October 2026, not
       audited: nothing built or deployed from it.
 - [x] `compose.prod.fhir-openehr.yml`. Deleted on 12 October 2026, not
@@ -668,8 +681,8 @@ before any feature.
       `infra/modules/compute-fhir/startup.sh`, which never read it.
 - [x] `compose.unit-tests.yml`.
 - [x] `backend/Dockerfile`.
-- [ ] `frontend/Dockerfile`.
-- [ ] `backend/pyproject.toml`.
+- [x] `frontend/Dockerfile`.
+- [x] `backend/pyproject.toml`.
 - [ ] `frontend/package.json`.
 - [ ] `frontend/tsconfig.json`.
 - [ ] `frontend/tsconfig.app.json`.
@@ -677,6 +690,7 @@ before any feature.
 - [ ] `frontend/tsconfig.node.json`.
 - [ ] `frontend/vite.config.ts`.
 - [ ] `frontend/eslint.config.js`.
+- [ ] `security.py`
 
 - [ ] Audit `infra/`, the Terraform, for what is exposed: ingress and
       the load balancer, IAM bindings, public buckets, where each secret
@@ -891,6 +905,17 @@ moving the exam routes out of that file now, so those halves wait for
 its pull request "move answering and finishing an assessment out of the
 teaching router" to merge. The frontend halves do not wait.
 
+**Two steps here were built twice, and are crossed out below.** On 12
+October 2026 "finish an exam nobody came back to" and "stop a reload
+from starting a second attempt" were built from this plan (pull
+requests #1857, #1859 and #1887) while the
+[thin routes plan](2026-10-11-thin-routes-and-steady-frontend-tests-plan.md)
+built the same two rules in its Phases 7 and 8, from rulings Mark gave
+there. The two conflicted in the same files and disagreed in what they
+did. Mark closed this plan's three pull requests and kept the other
+plan's. **Nothing more is built on the exam from this plan**: see
+"The exam is built from one plan" under Decisions.
+
 - [x] Keep the exam on screen when a call fails. Every call the page
       makes during an exam, saving an answer, going back a question and
       finishing, ends the same way on a failure: the page switches to
@@ -920,8 +945,7 @@ teaching router" to merge. The frontend halves do not wait.
 
 - [x] Backend half of the step above, after the thin routes work: the
       request names the question it answers, and the server ignores a
-      repeat for a question already answered. Done on 12 October
-      2026. `POST /assessments/{id}/answer` takes an optional
+      repeat for a question already answered. Done on 12 October 2026. `POST /assessments/{id}/answer` takes an optional
       `answer_id`, the one each question is already sent with. Named,
       an answer is stored on that question only: a repeat of one
       already answered stores nothing and is answered as the first
@@ -954,14 +978,15 @@ teaching router" to merge. The frontend halves do not wait.
       given while it is in flight; if it fails the delegate is told,
       and "View results" tries again.
 
-- [x] Finish an exam nobody came back to. A closed tab, a flat battery
+- [x] ~~Finish an exam nobody came back to. A closed tab, a flat battery
       or a lost connection cannot be made to call anything. Backend
       half, after the thin routes work: an attempt past its time limit
       counts as finished. The simplest form is to finish it the next
       time anything reads it, the delegate's own list or a clinical
       lead's view of results, so no timer or background job is needed.
       An attempt with no time limit stays open until its delegate
-      finishes it. Built on 12 October 2026, in Phases 7 and 8 of the
+      finishes it.~~ **Not done from this plan.** Built on 12 October
+      2026, in Phases 7 and 8 of the
       [thin routes plan](2026-10-11-thin-routes-and-steady-frontend-tests-plan.md)
       and not in pull request #1857, which was closed for it. It went
       further than this step asked: an attempt past its time is
@@ -970,7 +995,7 @@ teaching router" to merge. The frontend halves do not wait.
       touches, with no page loaded by anybody. Mark, the same day:
       "when the time has passed, the exam is submitted, that is final."
 
-- [x] Stop a reload from starting a second attempt. Where a question
+- [x] ~~Stop a reload from starting a second attempt. Where a question
       bank has no intro page, the page starts the attempt as it opens
       and its address stays `/teaching/assessment/new?bank=...`. A
       reload, or the browser restoring the tab, runs that again: a
@@ -992,10 +1017,13 @@ teaching router" to merge. The frontend halves do not wait.
       cases this is for. Without it a reload is also a way to get a
       fresh paper and a fresh clock. An attempt past its time is
       finished first, by the step above, and a new one is then started
-      as asked. Built on 12 October 2026, in Phase 7 of the thin routes
+      as asked.~~ **Not done from this plan.** The page half, moving to
+      the attempt's own address, was built here and stands. The server
+      half was built on 12 October 2026 in Phase 7 of the thin routes
       plan and not in pull request #1859, which was closed for it. A
-      unique index holds it as well, so two starts in the same instant
-      cannot write two attempts.
+      unique index holds it as well, over the learner and the bank, so
+      two starts in the same instant cannot write two attempts, and
+      an attempt is sat at the organisation it was started at.
 
 - [x] Stop the page loading the exam a second time after Begin. This is
       not Begin being pressed twice, and not the back button. Pressing
@@ -1066,6 +1094,9 @@ found as a bug to fix on its own branch before going on.
       results, certificates, the door and the video access gates. The
       read paths ride on `test_teaching_learner_gates.py`,
       `test_teaching_door.py` and `test_teaching_video_access.py`.
+      **This is reading, not building.** A fault found in the exam is
+      written down here and built from the thin routes plan: see "The
+      exam is built from one plan" under Decisions.
 
 - [ ] `backend/app/schemas/`: that every request model forbids extra
       fields and bounds its strings. A grep for `extra=` and
@@ -1087,14 +1118,19 @@ found as a bug to fix on its own branch before going on.
 
 ## Phase 6: Automated review, folder by folder
 
-- [ ] Run `/code-review high` over each backend directory in turn
+- [x] ~~Run `/code-review high` over each backend directory in turn
       (`backend/app/features/passport`, `backend/app/inbox`,
       `backend/app/guides`, `backend/app/push.py`, `main.py`) and over
       `frontend/src` by feature folder, and `/security-review` over the
       same. Per directory, not one run over the whole tree, so the
       findings stay readable. This is a further pass beside the audit,
       not in place of it: a machine reads differently from a person and
-      finds different things.
+      finds different things.~~ **Not finished from this plan.** Mark,
+      13 October 2026: the folder-by-folder review goes on in a plan
+      of its own. Two passes were run from here, set out next, and
+      what they found stays in the step below. Nothing more is run
+      from this plan: not `main.py`, not the teaching router, not the
+      rest of the frontend, and not `/security-review`.
       **First pass on 11 October 2026**: `/code-review high` over
       passport, inbox, guides and push, the folders the thin routes
       plan is not working in. Twenty findings, listed in the next step.
@@ -1102,13 +1138,11 @@ found as a bug to fix on its own branch before going on.
       leans on: `frontend/src/features/teaching`, `frontend/src/auth`
       and the API client. Ten more findings, listed below under "For
       Mark to sort". None was run to confirm it; each is from reading.
-      Still to run: `main.py` and the teaching router once the thin
-      routes plan has finished with them, the rest of the frontend by
-      feature folder, and `/security-review` over all of them.
 
-- [ ] Triage every finding as fix now, fix after go-live, or not a bug,
-      and record the list in this step. The sorting below is a
-      suggestion; the decision on each is Mark's.
+- [x] Triage every finding as fix now, fix after go-live, or not a bug,
+      and record the list in this step. Sorted by Mark on 13 October
+      2026: seven to fix before go-live, which are the steps after
+      this one, and eleven postponed.
 
   **Fixed already**
   - **Push: the address check could be got past with a backslash.**
@@ -1147,27 +1181,29 @@ found as a bug to fix on its own branch before going on.
   All seven that were marked to fix before go-live are fixed, as Mark
   agreed on 11 October 2026.
 
-  **For Mark to sort: the frontend pass** (found on 11 October 2026.
-  The four in the exam a delegate sits are now Phase 4b; these six are
-  not yet agreed)
+  **Sorted by Mark on 13 October 2026**
 
-  - **Video: one failed renewal removes a playing video**, with five
-    minutes of access left and no retry. `use-video-access.ts`.
-  - **Slides: the arrow keys change slide while the video has focus**,
-    so skipping forward in a video leaves it. `SlideReader.tsx`.
+  **To fix before go-live** (each is a step of its own below, with the
+  fix Mark agreed, in the order they are to be built: the one with a
+  security edge first, then what a delegate meets when signing in,
+  then forms, then lessons, and the tidying last)
+  - **Sign-out: a failed sign-out still shows the login page.**
   - **Sign-in: any failure to ask "who am I" reads as signed out.**
-    Offline, or a 502 during a deploy, sends a signed-in user to the
-    login page. `AuthContext.tsx`.
-  - **Sign-out: a failed sign-out still shows the login page**, with
-    the session cookies not cleared. On a shared computer the next
-    person to reload is in. `AuthContext.tsx`.
-  - **Errors: a refused field shows as "HTTP 422"** with no message,
-    because the list of field errors is not read. `api.ts`.
-  - **Sign-in: a one-time code pasted with a space is refused.** The
-    length is checked trimmed and the value sent untrimmed.
-    `AuthContext.tsx`.
+  - **Sign-in: a one-time code pasted with a space is refused.**
+  - **Errors: a refused field shows as "HTTP 422".**
+  - **Video: one failed renewal removes a playing video.**
+  - **Slides: the arrow keys change slide while the video has focus.**
+  - **Guides: a new storage client for every picture.**
 
-  **Suggested: fix after go-live**
+  **Found while fixing the above, not yet sorted**
+  - **Notifications: none is ever shown.** Pages call
+    `notifications.show`, for instance on activating a patient, but
+    `<Notifications />` from `@mantine/notifications` is mounted
+    nowhere, so nothing draws them. Found on 13 October 2026.
+    `frontend/src/main.tsx`.
+
+  **Postponed: passport and inbox** (Mark: the passport is still under
+  construction and is not part of the EoEETA work)
   - **Passport: withdrawing a sign-off request answers "declined".**
     There is no `withdrawn` status to answer with. `router.py`.
   - **Passport: a CPD entry stays filed under its old year** when its
@@ -1182,11 +1218,10 @@ found as a bug to fix on its own branch before going on.
   - **Inbox: the "lately dealt with" lists are ordered by the wrong
     date**, so a recent one can fall outside the fifty shown.
     `inbox/sources.py`.
-  - **Guides: a new storage client for every picture**, and only one
-    kind of failure is caught. `guides/router.py`.
 
-  **Suggested: fix when push is built out** (the send route is for an
-  operator only, and nothing sends a real notification yet)
+  **Postponed: push** (Mark: not needed for the EoEETA delivery. The
+  send route is for an operator only, and nothing sends a real
+  notification yet)
   - **Push: any error from a push service deletes the subscription**,
     where only "gone" should. One click with a wrong key would delete
     them all. `push_send.py`.
@@ -1198,6 +1233,90 @@ found as a bug to fix on its own branch before going on.
     shared computer. `push.py`.
   - **Push: the signing key is read from the environment** at import
     and not through the settings class. `push_send.py`.
+
+- [x] Sign-out: tell somebody when signing out did not work. Today a
+      failed call to sign out still shows the login page, as though it
+      had worked, with the session cookies not cleared. On a shared
+      computer the next person to reload is signed in as the last.
+      The fix: the login page is shown only when the server has
+      answered that the session is ended. If the call fails, the
+      person stays where they are and is told "Could not sign you
+      out. Check your connection and try again". In
+      `frontend/src/auth/AuthContext.tsx`, with a test of the failed
+      call.
+      Done on 13 October 2026. `logout` now throws when the session
+      could not be ended and leaves the person signed in; a 401 is
+      not a failure, as the session was already over. Both sidebars
+      had their own copy of the Logout link, so the handling went
+      into one component they share, `LogoutNavLink`, which says the
+      failure beneath the link and keeps the drawer open on it. The
+      message is there and not in a pop-up for a reason found on the
+      way: several pages call `notifications.show`, and nothing in
+      the app mounts the component that draws a notification, so
+      none of those has ever been seen. That is a fault of its own,
+      listed below.
+
+- [ ] Sign-in: only "you are not signed in" means signed out. When
+      the app opens it asks the server who is signed in, and any
+      failure of that call sends the person to the login page. Being
+      offline, or a 502 for the few seconds of a deploy, is not being
+      signed out: the session is still good. The fix: only a 401
+      means signed out. Anything else shows "Could not reach Quill.
+      Check your connection", with a Try again button, and the page
+      tries again by itself. In `frontend/src/auth/AuthContext.tsx`,
+      with tests of a 401, a 502 and no network.
+
+- [ ] Sign-in: take the spaces out of a one-time code. Authenticator
+      apps show the six digits with a space in the middle, and a code
+      pasted that way is refused: its length is checked with the
+      spaces trimmed off the ends and then sent as it was typed.
+      Mark, 13 October 2026: spaces are removed from a pasted code.
+      The fix: every space is taken out before the code is checked or
+      sent, on the login form and on the two-factor setup page, which
+      has the same box. In `frontend/src/auth/AuthContext.tsx` and
+      `frontend/src/pages/TotpSetup.tsx`.
+
+- [ ] Errors: say which field was refused, and why. When a request is
+      refused for a wrong field the server answers with a list: the
+      field, and what is wrong with it. The reader in
+      `frontend/src/lib/api.ts` expects one message, finds none in a
+      list, and shows "HTTP 422". The length limits added in Phase 4a
+      make this easier to meet. The fix: where the answer is a list,
+      show its first entry as the field's name and the server's
+      words, such as "Email: should have at most 255 characters". One
+      function, used by every form, so one fix covers all of them.
+
+- [ ] Video: keep a playing video when one renewal fails. A video is
+      served through a pass that runs out, and the page renews it
+      five minutes early. If that one call fails the page throws the
+      pass away at once and the video goes, with five minutes of the
+      old pass unused, and nothing tries again. The fix: on a failed
+      renewal the page keeps the pass it has and tries again every
+      thirty seconds, and gives up only when the old pass has truly
+      run out. In `frontend/src/features/teaching/use-video-access.ts`.
+      This is video, not the exam, so it is built from this plan; the
+      open pull requests are checked first for one in the same file,
+      as "The exam is built from one plan" under Decisions asks.
+
+- [ ] Slides: leave the arrow keys to the video while it has focus.
+      The left and right arrows move between slides, and the lesson
+      page listens for them everywhere. A video player uses the same
+      keys to skip back and forward, so a delegate who clicks the
+      video and presses right is taken to the next slide. The fix:
+      the page ignores the arrow keys when what has focus is a video,
+      or somewhere text is typed. In `SlideReader.tsx`, checked
+      against the open pull requests first, as for the step above.
+
+- [ ] Guides: open the picture store once, and answer a network
+      failure properly. The route that serves pictures to the
+      signed-in guides opens a new connection to the bucket for each
+      picture, setting up its sign-in afresh every time, and catches
+      the store's own errors but not a plain network error, which
+      comes out as a bare 500. The fix: make the client once and use
+      it for every picture, and answer a network error as the route
+      already answers a store error. In
+      `backend/app/guides/router.py`. The least pressing of the
+      seven: it is slowness and one ugly error, and comes last.
 
 ## Phase 7: Describe the controls and release
 
@@ -1389,6 +1508,26 @@ is now 4,654 lines and 69 routes.
       routes that wait for the release.
 
 ## Decisions
+
+- **The exam is built from one plan, and it is not this one** - Mark,
+  on 13 October 2026, after the same two rules were built twice in two
+  worktrees: "I do not want overlap between these plans again." Work
+  on the exam a delegate sits belongs to the
+  [thin routes plan](2026-10-11-thin-routes-and-steady-frontend-tests-plan.md),
+  as new phases there. That means starting, answering, finishing and
+  timing an attempt, on the server and on the page:
+  `backend/app/features/teaching/attempts.py`, `out_of_time.py`, the
+  attempt routes in the teaching router, the migrations on
+  `assessments`, `frontend/src/features/teaching/pages/AssessmentAttempt.tsx`
+  and `frontend/src/components/teaching/assessment-timer/`. This plan
+  still audits and reviews that code, since reading it changes
+  nothing. What it finds is recorded here, in the step that found it,
+  and built there. Before any step of this plan changes a file under
+  `backend/app/features/teaching/` or
+  `frontend/src/features/teaching/`, the open pull requests are
+  checked for one that already changes it. The rest of teaching, such
+  as video, slides, enrolment and certificates, is not covered by
+  this and stays where it is found.
 
 - **Tooling before features** - the fault that started this was a typo
   that switched off a scanner for the whole codebase. A fault in the

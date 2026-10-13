@@ -20,6 +20,7 @@ import { api } from "@/lib/api";
 import { orgUnits } from "@/domains/orgUnit";
 import NavIcon from "../icons/NavIcon";
 import SendFeedbackNavLink from "@/components/feedback/SendFeedbackNavLink";
+import LogoutNavLink from "./LogoutNavLink";
 import NestedNavLink, { type NavItem } from "./NestedNavLink";
 import { useFeatureNavItems } from "./featureNavItems";
 import { navLinkStyles } from "./navStyles";
@@ -681,14 +682,10 @@ export default function SideNavContent({
         />
       ))}
       <SendFeedbackNavLink showIcons={showIcons} onNavigate={onNavigate} />
-      <NavLink
-        label="Logout"
-        styles={navLinkStyles}
-        onClick={() => {
-          void logout();
-          if (onNavigate) onNavigate();
-        }}
-        leftSection={showIcons ? <NavIcon name="logout" /> : undefined}
+      <LogoutNavLink
+        onLogout={logout}
+        showIcons={showIcons}
+        onNavigate={onNavigate}
       />
     </Stack>
   );
