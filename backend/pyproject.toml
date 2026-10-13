@@ -11,18 +11,21 @@ requires-poetry = ">=2.5,<3"
 name = "backend"
 version = "0.1.0"
 description = "Backend fastAPI and git services"
-authors = ["Cotswoldsmaker <mark@letsdodigital.org>"]
+authors = ["Cotswoldsmaker <mark@bailey-medics.com>"]
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.14"
+python = "~3.14"
 fastapi = "0.141.1"
-uvicorn = {extras = ["standard"], version = "0.54.0"}
+uvicorn = { extras = ["standard"], version = "0.54.0" }
 pydantic = "2.13.5"
 sqlalchemy = "2.1.1"
-psycopg = {extras = ["binary"], version = ">=3.2,<4.0"}
+psycopg = { extras = ["binary"], version = ">=3.2,<4.0" }
 python-dotenv = "1.2.3"
 httpx = "0.28.1"
+# Calls to EHRbase, in backend/app/ehrbase_client.py. Other packages here
+# need it too, but the application imports it itself, so it is named.
+requests = ">=2.32.0,<3.0.0"
 pyjwt = ">=2.10.1,<3.0.0"
 # Parsing multipart form bodies, which is how FastAPI receives an
 # uploaded file. Needed by the passport evidence route: a blob is
@@ -67,7 +70,7 @@ mypy = "^2.0.0"
 pytest = "^9.0.0"
 pytest-cov = "^7.0.0"
 pytest-xdist = "^3.8.0"
-mkdocstrings = {extras = ["python"], version = "^1.0.0"}
+mkdocstrings = { extras = ["python"], version = "^1.0.0" }
 mkdocs-material = "^9.6.20"
 griffe = "^2.0.0"
 mkdocs-gen-files = "^0.6.0"
@@ -77,15 +80,23 @@ types-Markdown = "^3.7"
 mike = "^2.1.3"
 mkdocs-swagger-ui-tag = "^0.8.0"
 types-requests = "^2.32.4.20260107"
-boto3-stubs = {extras = ["sesv2"], version = ">=1.40.0,<2.0.0"}
+boto3-stubs = { extras = ["sesv2"], version = ">=1.40.0,<2.0.0" }
 schemathesis = "^4.14.3"
 hypothesis = "^6.151.10"
 
+# Ruff and Black target 3.13, one behind the backend, on purpose. The
+# Black hook gives this file to every Python file in the repository, and
+# the scripts in the root scripts/ folder run on the host's own Python.
+# At py314 both tools rewrite `except (A, B):` without its brackets,
+# which no Python before 3.14 can read.
 [tool.ruff]
 target-version = "py313"
 line-length = 79
 lint.select = ["E", "F", "W", "I", "UP", "B"]
-lint.ignore = ["E501", "B008"]  # B008: FastAPI Depends() in defaults is idiomatic
+lint.ignore = [
+    "E501",
+    "B008",
+] # B008: FastAPI Depends() in defaults is idiomatic
 
 [tool.black]
 target-version = ["py313"]
@@ -93,8 +104,7 @@ line-length = 79
 
 # Read by the "mypy (backend, strict)" pre-commit hook, which runs mypy
 # from this folder through Poetry so that it sees these settings and the
-# real libraries. For a long time nothing did: the hook ran from the
-# repository root, where there is no config, so `strict` was never applied.
+# real libraries.
 #
 # No SQLAlchemy plugin. SQLAlchemy 2 is typed without one, and 2.1 no
 # longer ships `sqlalchemy.ext.mypy`: naming it here stopped mypy loading
