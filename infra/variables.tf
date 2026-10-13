@@ -109,6 +109,12 @@ variable "monitored_hostnames" {
   default     = []
 }
 
+variable "retention_decision_email" {
+  description = "Who is emailed when training records are awaiting a deletion decision"
+  type        = string
+  default     = ""
+}
+
 variable "alert_email" {
   description = "Email address to receive uptime failure alerts"
   type        = string

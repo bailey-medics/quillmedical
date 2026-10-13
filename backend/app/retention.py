@@ -1,14 +1,19 @@
 """Deleting what the privacy policy says is no longer kept.
 
 Section 7 of the privacy policy gives a period for each kind of data.
-Four of them can be carried out from the database alone, and are here:
+Three of them are carried out here, from the database alone:
 
 - an assessor invitation nobody accepted, 90 days after it expires
 - feedback, two years after it was sent
 - the record of somebody's answers about news and updates, six years
   after the last one
-- a sponsor's training records about somebody whose account is closed,
-  once the period that sponsor has given has passed
+
+A fourth is found here and **not** carried out: a sponsor's training
+records about somebody whose account is closed, once the period that
+sponsor has given has passed. Deleting those cannot be undone once the
+backups have turned over, so the run writes each as a
+``RetentionReview`` row and a person decides. ``delete_training_records``
+is what that decision calls.
 
 Run as the ``apply-retention`` admin action, on a schedule. It reports
 unless ``RETENTION_APPLY`` is ``true``, so a run by hand counts what
@@ -21,8 +26,7 @@ with none has nothing deleted. One organisation's period ending takes
 that organisation's records only: somebody enrolled at two keeps the
 other's.
 
-**Nothing here closes or deletes an account.** The records go and the
-account stays, closed as it was.
+**Nothing here closes or deletes an account.**
 
 **Counts only are printed.** A line saying whose feedback went would put
 into the logs what was just taken out of the database.
@@ -47,7 +51,12 @@ from app.features.teaching.models import (
     TeachingOrgSettings,
 )
 from app.features.teaching.reminders import add_months
-from app.models import Feedback, MarketingPreferenceChange, User
+from app.models import (
+    Feedback,
+    MarketingPreferenceChange,
+    RetentionReview,
+    User,
+)
 
 #: How long an invitation nobody accepted is kept after it expires.
 UNACCEPTED_INVITE_KEPT = timedelta(days=90)
@@ -64,6 +73,16 @@ MARKETING_RECORD_KEPT = timedelta(days=6 * 365)
 #: number typed as days.
 MOST_MONTHS_KEPT = 600
 
+#: How often somebody is told again that records are awaiting a decision.
+#: They are told at once when a new one is due, whatever this says.
+TOLD_AGAIN_AFTER = timedelta(days=7)
+
+#: How the line that asks for a decision starts. An alert in
+#: infra/modules/monitoring/main.tf matches it, and
+#: .github/scripts/terraform/retention-decision-alert.bats holds the two
+#: to the same words.
+DECISION_NEEDED = "Decision needed:"
+
 
 @dataclass(frozen=True)
 class RetentionResult:
@@ -73,17 +92,29 @@ class RetentionResult:
         unaccepted_invites: Assessor invitations nobody accepted.
         feedback: Feedback messages.
         marketing_records: Rows recording an answer about news and updates.
-        closed_account_assessments: Attempts, with their answers, held
-            for a sponsor about somebody whose account is closed.
-        closed_account_enrolments: Enrolments held for a sponsor about
-            somebody whose account is closed.
+        newly_awaiting: Closed accounts whose records at an organisation
+            came due a decision on this run.
+        awaiting: Every such set of records still undecided.
+        tell_somebody: Whether this run should say that a decision is
+            needed: something is newly due, or a week has passed.
     """
 
     unaccepted_invites: int
     feedback: int
     marketing_records: int
-    closed_account_assessments: int = 0
-    closed_account_enrolments: int = 0
+    newly_awaiting: int = 0
+    awaiting: int = 0
+    tell_somebody: bool = False
+
+
+@dataclass(frozen=True)
+class PastItsPeriod:
+    """One person's records at one organisation, past the period kept."""
+
+    user_id: int
+    org_unit_id: int
+    closed_at: datetime
+    due_on: datetime
 
 
 def _unaccepted_invite_ids(db: Session, now: datetime) -> list[str]:
@@ -139,21 +170,21 @@ def _aware(moment: datetime) -> datetime:
     return moment if moment.tzinfo else moment.replace(tzinfo=UTC)
 
 
-def _closed_accounts_past_their_period(
+def closed_accounts_past_their_period(
     db: Session, now: datetime
-) -> list[tuple[int, int]]:
+) -> list[PastItsPeriod]:
     """Who has records at an organisation whose period for them has ended.
 
-    Returns ``(user id, org unit id)`` pairs: one for each organisation,
-    so that a person with records at two is listed for the one whose
-    period has ended and not for the other.
+    One entry for each organisation, so that a person with records at
+    two is listed for the one whose period has ended and not for the
+    other.
 
     The period counts from ``User.deactivated_at``. An account closed
     with no date, as one closed before the column existed is, is never
     listed, and nor is one that has been opened again, which clears the
     date.
     """
-    found: set[tuple[int, int]] = set()
+    found: dict[tuple[int, int], PastItsPeriod] = {}
     with_a_period = select(TeachingOrgSettings).where(
         TeachingOrgSettings.records_kept_months_after_closure.is_not(None)
     )
@@ -187,16 +218,26 @@ def _closed_accounts_past_their_period(
             if closed_at is None:
                 continue
 
-            if add_months(_aware(closed_at), months) <= now:
-                found.add((user_id, org_unit_id))
+            due_on = add_months(_aware(closed_at), months)
 
-    return sorted(found)
+            if due_on <= now:
+                found[(user_id, org_unit_id)] = PastItsPeriod(
+                    user_id=user_id,
+                    org_unit_id=org_unit_id,
+                    closed_at=_aware(closed_at),
+                    due_on=due_on,
+                )
+
+    return [found[key] for key in sorted(found)]
 
 
-def _delete_training_records(
+def delete_training_records(
     db: Session, user_id: int, org_unit_id: int, *, apply: bool
 ) -> tuple[int, int]:
     """Count, and when asked delete, one person's records at one place.
+
+    Never called by the nightly run. A person decides, and the decision
+    calls this.
 
     Their attempts with every answer and its tags, and their enrolments.
     Each table is deleted by name, the furthest from the attempt first:
@@ -251,6 +292,101 @@ def _delete_training_records(
     return len(assessment_ids), enrolments
 
 
+def _is_awaiting_or_kept(
+    db: Session, due: PastItsPeriod, now: datetime
+) -> bool:
+    """Whether these records already have a row that settles them for now.
+
+    One still undecided, or one kept whose date to ask again has not
+    come. A row that says deleted does not: records found after a
+    deletion are new ones, made when the account was open again.
+    """
+    rows = db.scalars(
+        select(RetentionReview).where(
+            RetentionReview.user_id == due.user_id,
+            RetentionReview.org_unit_id == due.org_unit_id,
+            RetentionReview.decision.in_(("undecided", "kept")),
+        )
+    )
+
+    for row in rows:
+        if row.decision == "undecided":
+            return True
+
+        if row.ask_again_on is None or _aware(row.ask_again_on) > now:
+            return True
+
+    return False
+
+
+def _list_for_decision(
+    db: Session, now: datetime, *, apply: bool
+) -> tuple[int, int, bool]:
+    """Write a row for each set of records newly past its period.
+
+    Nothing is deleted. Without ``apply`` nothing is written either, and
+    the counts are what a real run would give.
+
+    Returns:
+        How many are newly awaiting a decision, how many are awaiting one
+        in all, and whether somebody should be told.
+    """
+    newly = 0
+
+    for due in closed_accounts_past_their_period(db, now):
+        if _is_awaiting_or_kept(db, due, now):
+            continue
+
+        newly += 1
+
+        if not apply:
+            continue
+
+        attempts, enrolments = delete_training_records(
+            db, due.user_id, due.org_unit_id, apply=False
+        )
+        db.add(
+            RetentionReview(
+                user_id=due.user_id,
+                org_unit_id=due.org_unit_id,
+                closed_at=due.closed_at,
+                due_on=due.due_on,
+                attempts=attempts,
+                enrolments=enrolments,
+            )
+        )
+
+    if apply:
+        db.flush()
+
+    undecided = list(
+        db.scalars(
+            select(RetentionReview).where(
+                RetentionReview.decision == "undecided"
+            )
+        )
+    )
+    awaiting = len(undecided) if apply else len(undecided) + newly
+
+    # Told when something is new, and again once a week has gone by
+    # since anybody was last told. Not every night: a message that
+    # comes every night stops being read.
+    told_long_ago = any(
+        row.announced_at is None
+        or _aware(row.announced_at) <= now - TOLD_AGAIN_AFTER
+        for row in undecided
+    )
+    tell = awaiting > 0 and (newly > 0 or told_long_ago)
+
+    if apply and tell:
+        for row in undecided:
+            row.announced_at = now
+
+        db.flush()
+
+    return newly, awaiting, tell
+
+
 def apply_retention(
     db: Session, now: datetime, *, apply: bool
 ) -> RetentionResult:
@@ -282,15 +418,9 @@ def apply_retention(
             or 0
         )
 
-    closed_account_assessments = 0
-    closed_account_enrolments = 0
-
-    for user_id, org_unit_id in _closed_accounts_past_their_period(db, now):
-        assessments, enrolments = _delete_training_records(
-            db, user_id, org_unit_id, apply=apply
-        )
-        closed_account_assessments += assessments
-        closed_account_enrolments += enrolments
+    newly_awaiting, awaiting, tell_somebody = _list_for_decision(
+        db, now, apply=apply
+    )
 
     if apply:
         if invite_ids:
@@ -313,8 +443,9 @@ def apply_retention(
         unaccepted_invites=len(invite_ids),
         feedback=len(feedback_ids),
         marketing_records=marketing_records,
-        closed_account_assessments=closed_account_assessments,
-        closed_account_enrolments=closed_account_enrolments,
+        newly_awaiting=newly_awaiting,
+        awaiting=awaiting,
+        tell_somebody=tell_somebody,
     )
 
 
@@ -346,10 +477,21 @@ def main() -> int:
 
     print(f"{verb} {result.unaccepted_invites} unaccepted invitations")
     print(f"{verb} {result.feedback} feedback messages")
+    listed = "Listed" if apply else "Would list"
     print(
-        f"{verb} {result.closed_account_assessments} attempts and "
-        f"{result.closed_account_enrolments} enrolments of closed accounts"
+        f"{listed} {result.newly_awaiting} closed accounts whose records "
+        "are newly past their period"
     )
+
+    # Its own line, and only when somebody should act: an alert matches
+    # it. A count and no names. Who they are is on the screen, behind a
+    # sign-in.
+    if apply and result.tell_somebody:
+        print(
+            f"{DECISION_NEEDED} {result.awaiting} closed accounts have "
+            "training records past their period, awaiting a decision"
+        )
+
     # Last, and worded exactly so: the "has not run" alert counts this
     # line. See RUN_FINISHED in retention_test.py.
     print(f"{verb} {result.marketing_records} marketing answer records")
