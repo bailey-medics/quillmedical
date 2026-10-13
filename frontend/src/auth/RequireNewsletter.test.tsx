@@ -67,6 +67,7 @@ describe("RequireNewsletter", () => {
     mockAuth(null, "loading");
     show();
 
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
     expect(screen.queryByText("Newsletter content")).not.toBeInTheDocument();
     expect(screen.queryByText(/not found/i)).not.toBeInTheDocument();
   });

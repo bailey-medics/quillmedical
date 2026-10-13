@@ -10,11 +10,10 @@
  * role of their own changes that one function and no route.
  */
 
-import { Center } from "@mantine/core";
 import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { NotFoundLayout } from "@/components/layouts";
-import LoadingSpinner from "@/components/loading-spinner";
+import { PageSpinner } from "@/components/loading-spinner";
 import { mayUseNewsletter } from "@/lib/newsletter/access";
 import { useAuth } from "./AuthContext";
 import CannotReach from "./CannotReach";
@@ -32,11 +31,7 @@ export default function RequireNewsletter({
   if (state.status === "unreachable") return <CannotReach />;
 
   if (state.status === "loading") {
-    return (
-      <Center mih="60dvh">
-        <LoadingSpinner />
-      </Center>
-    );
+    return <PageSpinner />;
   }
 
   // Defensive: RequireAuth should have caught this already.

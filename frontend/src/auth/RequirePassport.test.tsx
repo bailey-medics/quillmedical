@@ -81,6 +81,7 @@ describe("RequirePassport", () => {
 
     renderGuard();
 
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
     expect(screen.queryByText("Passport pages")).not.toBeInTheDocument();
     expect(screen.queryByText("Hidden")).not.toBeInTheDocument();
   });

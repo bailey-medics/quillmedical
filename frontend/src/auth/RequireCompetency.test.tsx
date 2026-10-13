@@ -117,7 +117,7 @@ describe("RequireCompetency", () => {
       </RequireCompetency>,
     );
 
-    expect(document.querySelector(".mantine-Loader-root")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
     expect(screen.queryByText("Admin content")).not.toBeInTheDocument();
   });
 
