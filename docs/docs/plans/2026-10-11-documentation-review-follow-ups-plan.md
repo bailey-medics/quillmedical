@@ -1047,9 +1047,16 @@ never switched on.
       It cannot depend on the environment, so it holds for a staging
       database too.
 
-- [ ] Read the plan on the pull request before it merges. Switching on
+- [x] Read the plan on the pull request before it merges. Switching on
       point-in-time recovery can restart the database for a moment. It
       must show the instance changed in place and never replaced.
+
+      Read on #1924, 13 October. The instance is updated in place, with
+      nothing replaced or destroyed: both deletion protections and
+      `retain_backups_on_delete` go from false to true, backups kept
+      from 7 to 30, point-in-time recovery on, and its log kept 7 days
+      where it was 3. The teaching images bucket's `force_destroy` goes
+      from true to false.
 
 - [ ] After the apply, check the live instance with
       `gcloud sql instances describe quill-core-app`: deletion
@@ -1083,7 +1090,7 @@ It covers the records of closed accounts only. Unaccepted invitations,
 old feedback and old marketing answers stay automatic, as they have
 been since 12 October.
 
-- [ ] Stop `apply_retention` deleting a closed account's records. It
+- [x] Stop `apply_retention` deleting a closed account's records. It
       still works out who is past their sponsor's period, as Phase 23
       built, and writes each as a row awaiting a decision: the person,
       the organisation, when the account closed, when the period ended,
@@ -1092,7 +1099,13 @@ been since 12 October.
       person at each organisation, never a second for the same pair
       while one is undecided.
 
-- [ ] Tell somebody, without naming anybody. The run prints one line
+      The table is `retention_review` and the model `RetentionReview`.
+      A partial unique index holds it to one undecided row for a person
+      at an organisation. Records that were kept are listed again when
+      their date to ask comes; records found after a deletion are new
+      ones and are listed afresh. A report writes no row.
+
+- [x] Tell somebody, without naming anybody. The run prints one line
       with the count that are newly due and the count still waiting.
       An alert on that line posts to Slack through the notification
       channels the monitoring module already has, so the app is given
@@ -1103,7 +1116,17 @@ been since 12 October.
       people and their training does not belong in a channel or an
       inbox.
 
-- [ ] Tell them once when a record becomes due, and again each week
+      Built a little differently, and more simply. The line starts
+      "Decision needed:" and carries one count for all organisations.
+      The alert that matches it goes to Slack and to the ordinary alert
+      address through the channels already there, and to one more
+      address, `retention_decision_email`, set to Mark's. So the email
+      comes from the alert and not from the app, which needed no new
+      setting, template or sender. The count for each organisation is
+      on the screen, and the link is added to the alert's text when the
+      screen has an address to link to.
+
+- [x] Tell them once when a record becomes due, and again each week
       while any is undecided, saying how long the oldest has waited.
       Not every night. A record left undecided is kept past what the
       policy promises, so the screen and the nudge both show the wait.

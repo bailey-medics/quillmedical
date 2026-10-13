@@ -64,7 +64,11 @@ caption_image   = "gcr.io/cloudrun/hello:latest"
 monitored_hostnames = ["app.quill-medical.com", "quill-medical.com"]
 app_domain          = "app.quill-medical.com"
 alert_email         = "info@quill-medical.com"
-cloud_run_services  = ["quill-backend-app", "quill-frontend-app"]
+
+# Who decides whether a closed account's training records are deleted
+# once their sponsor's period has passed. Told when any are waiting.
+retention_decision_email = "mark@quill-medical.com"
+cloud_run_services       = ["quill-backend-app", "quill-frontend-app"]
 
 # The content pipeline in eoeeta-teaching and respiratory-teaching
 # authenticates as this account and publishes question banks into
