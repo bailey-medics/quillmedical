@@ -15,7 +15,6 @@ from app.features.teaching.models import (
     AssessmentAnswer,
     AssessmentAnswerTag,
     ModuleEnrolment,
-    TeachingOrgSettings,
 )
 from app.features.teaching.reminders import add_months
 from app.models import (
@@ -1192,27 +1191,6 @@ class TestSetRecordsKept:
 
         assert "There is no org unit" in capsys.readouterr().err
         assert self._months(db_session, org) is None
-
-    def test_the_period_on_the_teaching_settings_row_is_not_read(
-        self, org: OrgUnit, db_session: Session
-    ) -> None:
-        """The retired column: a number left there lists nobody."""
-        db_session.add(
-            TeachingOrgSettings(
-                org_unit_id=org.id,
-                coordinator_email="lead@example.nhs.uk",
-                institution_name="Academy",
-                records_kept_months_after_closure=1,
-            )
-        )
-        user = _closed(
-            db_session, "gone@example.nhs.uk", closed_at=_past_the_period()
-        )
-        _records(db_session, org, user)
-
-        result = apply_retention(db_session, NOW, apply=True)
-
-        assert result.newly_awaiting == 0
 
     def test_an_id_that_is_not_a_number_is_refused(
         self,

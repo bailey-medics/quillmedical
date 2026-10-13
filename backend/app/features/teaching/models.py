@@ -397,14 +397,6 @@ class TeachingOrgSettings(Base):
     email_logo_width: Mapped[int | None] = mapped_column(
         Integer, nullable=True
     )
-    #: Retired. The period moved to
-    #: ``OrgUnit.records_kept_months_after_closure`` so that it can be
-    #: set for an organisation with no teaching settings. Nothing reads
-    #: or writes this one. It stays until a migration of its own drops
-    #: the column: removing it here first would fail the drift check.
-    records_kept_months_after_closure: Mapped[int | None] = mapped_column(
-        Integer, nullable=True
-    )
 
 
 # ------------------------------------------------------------------
