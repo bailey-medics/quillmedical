@@ -10,6 +10,7 @@ import { Center } from "@mantine/core";
 import LoadingSpinner from "@/components/loading-spinner";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import CannotReach from "./CannotReach";
 import type { ReactNode } from "react";
 
 /**
@@ -34,6 +35,8 @@ import type { ReactNode } from "react";
 export default function RequireAuth({ children }: { children: ReactNode }) {
   const { state } = useAuth();
   const location = useLocation();
+
+  if (state.status === "unreachable") return <CannotReach />;
 
   if (state.status === "loading") {
     return (

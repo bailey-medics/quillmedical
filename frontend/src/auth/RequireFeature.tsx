@@ -12,6 +12,7 @@ import { Center } from "@mantine/core";
 import LoadingSpinner from "@/components/loading-spinner";
 import type { ReactNode } from "react";
 import { useAuth } from "./AuthContext";
+import CannotReach from "./CannotReach";
 import { useHasFeature } from "@lib/features";
 import { NotFoundLayout } from "@/components/layouts";
 
@@ -38,6 +39,8 @@ export function RequireFeature({
 }: RequireFeatureProps) {
   const { state } = useAuth();
   const hasFeature = useHasFeature(feature);
+
+  if (state.status === "unreachable") return <CannotReach />;
 
   if (state.status === "loading") {
     return (

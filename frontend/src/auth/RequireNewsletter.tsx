@@ -17,6 +17,7 @@ import { NotFoundLayout } from "@/components/layouts";
 import LoadingSpinner from "@/components/loading-spinner";
 import { mayUseNewsletter } from "@/lib/newsletter/access";
 import { useAuth } from "./AuthContext";
+import CannotReach from "./CannotReach";
 
 interface RequireNewsletterProps {
   /** What to show somebody who may use the Newsletter section */
@@ -27,6 +28,8 @@ export default function RequireNewsletter({
   children,
 }: RequireNewsletterProps) {
   const { state } = useAuth();
+
+  if (state.status === "unreachable") return <CannotReach />;
 
   if (state.status === "loading") {
     return (

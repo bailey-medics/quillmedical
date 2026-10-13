@@ -22,6 +22,7 @@ import LoadingSpinner from "@/components/loading-spinner";
 import { Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useAuth } from "./AuthContext";
+import CannotReach from "./CannotReach";
 import { useHasAnyCompetency } from "@/lib/cbac/hooks";
 import type { CompetencyId } from "@/types/cbac";
 import { NotFoundLayout } from "@/components/layouts";
@@ -69,6 +70,8 @@ export default function RequireCompetency({
   const holdsIt = useHasAnyCompetency(
     ...(Array.isArray(competency) ? competency : [competency]),
   );
+
+  if (state.status === "unreachable") return <CannotReach />;
 
   if (state.status === "loading") {
     return (

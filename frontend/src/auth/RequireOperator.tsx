@@ -24,6 +24,7 @@ import LoadingSpinner from "@/components/loading-spinner";
 import { Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useAuth } from "./AuthContext";
+import CannotReach from "./CannotReach";
 import { NotFoundLayout } from "@/components/layouts";
 
 /**
@@ -58,6 +59,8 @@ export default function RequireOperator({
   fallback = "404",
 }: RequireOperatorProps) {
   const { state } = useAuth();
+
+  if (state.status === "unreachable") return <CannotReach />;
 
   if (state.status === "loading") {
     return (

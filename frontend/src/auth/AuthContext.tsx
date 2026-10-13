@@ -77,11 +77,19 @@ export type User = {
  * - loading: Initial state while checking authentication
  * - unauthenticated: No valid session, user needs to log in
  * - authenticated: Valid session with user profile
+ * - unreachable: The server could not be asked, so it is not known
+ *   whether there is a session. Not the same as unauthenticated: being
+ *   offline, or a 502 for the seconds of a deploy, ends nobody's
+ *   session, and sending them to the login page would say it had.
  */
 type State =
   | { status: "loading"; user: null; loggedOut?: false }
   | { status: "unauthenticated"; user: null; loggedOut?: boolean }
-  | { status: "authenticated"; user: User; loggedOut?: false };
+  | { status: "authenticated"; user: User; loggedOut?: false }
+  | { status: "unreachable"; user: null; loggedOut?: false };
+
+/** How long to wait before asking again while the server is out of reach. */
+export const RETRY_UNREACHABLE_MS = 5_000;
 
 /**
  * Auth Context Value
@@ -125,12 +133,32 @@ function isUnauthenticated(err: unknown): boolean {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<State>({ status: "loading", user: null });
 
+  /**
+   * Ask the server who is signed in.
+   *
+   * Only a 401 means nobody is. Any other failure says nothing about
+   * the session, so it changes nothing already known: somebody signed
+   * in stays so. Somebody not yet known is `unreachable`, which the
+   * guards show as "could not reach Quill" and which is tried again
+   * until the server answers.
+   */
   async function reload(): Promise<void> {
     try {
       const me = await api.get<User>("/auth/me");
       setState({ status: "authenticated", user: me });
-    } catch {
-      setState({ status: "unauthenticated", user: null });
+    } catch (err) {
+      if (isUnauthenticated(err)) {
+        setState({ status: "unauthenticated", user: null });
+        return;
+      }
+
+      // What is already known is kept, signed in or signed out. Only
+      // somebody whose session was never established is left unknown.
+      setState((current) =>
+        current.status === "loading" || current.status === "unreachable"
+          ? { status: "unreachable", user: null }
+          : current,
+      );
     }
   }
 
@@ -204,6 +232,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial auth check on mount
     void reload();
   }, []);
+
+  // While the server is out of reach, keep asking: every few seconds,
+  // and at once when the browser says the connection is back.
+  const unreachable = state.status === "unreachable";
+
+  useEffect(() => {
+    if (!unreachable) return;
+
+    const timer = window.setInterval(() => void reload(), RETRY_UNREACHABLE_MS);
+    const whenOnline = () => void reload();
+    window.addEventListener("online", whenOnline);
+
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("online", whenOnline);
+    };
+  }, [unreachable]);
 
   // A request anywhere in the app came back 401 and the silent refresh did
   // not help, so the session has ended. Marking it here is all that is

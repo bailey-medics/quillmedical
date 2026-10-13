@@ -17,6 +17,7 @@ import LoadingSpinner from "@/components/loading-spinner";
 import { NotFoundLayout } from "@/components/layouts";
 import { useCanReachPassport } from "@lib/features";
 import { useAuth } from "./AuthContext";
+import CannotReach from "./CannotReach";
 
 interface RequirePassportProps {
   /** The passport pages to show when they are within reach */
@@ -28,6 +29,8 @@ interface RequirePassportProps {
 export function RequirePassport({ children, fallback }: RequirePassportProps) {
   const { state } = useAuth();
   const canReach = useCanReachPassport();
+
+  if (state.status === "unreachable") return <CannotReach />;
 
   if (state.status === "loading") {
     return (
