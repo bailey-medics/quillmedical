@@ -5,8 +5,8 @@ resource "google_storage_bucket" "bucket" {
   name     = "quill-${var.bucket_suffix}-${var.environment}"
   location = var.region
 
-  # Prevent accidental deletion
-  force_destroy = var.environment != "prod"
+  # A production bucket cannot be destroyed while it holds anything.
+  force_destroy = !var.is_production
 
   uniform_bucket_level_access = true
 

@@ -15,6 +15,11 @@ variable "environment" {
   type        = string
 }
 
+variable "is_production" {
+  description = "Whether this is a production bucket. A production bucket cannot be destroyed while it holds anything. Has no default, so every caller has to say; the root module works it out once, as local.is_production."
+  type        = bool
+}
+
 variable "bucket_suffix" {
   description = "Bucket name suffix (e.g. images)"
   type        = string
