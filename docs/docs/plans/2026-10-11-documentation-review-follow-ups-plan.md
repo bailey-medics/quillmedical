@@ -819,6 +819,26 @@ policy says about both.
       about people's records and not a detail of the code. Until it is
       made the records go and the closed account stays.
 
+      Mark's decision, 13 October: deleting an account means removing
+      all of its data, the passport and the messages included, and it
+      may be done once the account has been deactivated for three and a
+      half years or more. So the six columns that refuse the delete are
+      not a reason to keep the account: their rows go first.
+
+      Three things that decision does not settle, to be answered before
+      it is built:
+
+      - **Where the person is on somebody else's record.** An assessor
+        who signed off another clinician's passport is named on that
+        clinician's record. Removing the assessor's account must not
+        remove the sign-off. The likely answer is to keep the sign-off
+        and the name as written on it, and cut its link to the account.
+      - **A message in a conversation with other people.** Removing it
+        changes what the others see. The likely answer is the same:
+        keep the message, and show its sender as a deleted account.
+      - **An account with no sponsor.** The policy gives it two years,
+        not three and a half.
+
 - [x] Say so in `docs/docs/legal/privacy-policy.md`, in the two places
       that give the account's period. Both now say two years with no
       exception:
