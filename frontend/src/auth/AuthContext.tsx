@@ -112,6 +112,16 @@ export const AuthContext = createContext<Ctx | undefined>(undefined);
  *
  * @param children - Child components that will have access to auth context
  */
+/** Whether a failed request was refused for want of a session. */
+function isUnauthenticated(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "status" in err &&
+    err.status === 401
+  );
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<State>({ status: "loading", user: null });
 
@@ -162,13 +172,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return user;
   }
 
-  async function logout() {
+  /**
+   * End the session, and only then say it has ended.
+   *
+   * The server is what ends it: it clears the session cookies, which
+   * this page cannot read or remove. So if the call fails, the cookies
+   * are still there and the person is still signed in, whatever the
+   * screen says. Showing the login page then, as this once did, left
+   * the next person to reload on a shared computer signed in as the
+   * last. A failure is thrown for the caller to show, and the state is
+   * left as it was.
+   *
+   * A 401 is not a failure: the session was already over.
+   *
+   * @throws Error when the session could not be ended.
+   */
+  async function logout(): Promise<void> {
     try {
       await api.post("/auth/logout");
-      recordAuth("logout");
-    } catch {
-      // Ignore errors, proceed to clear local state
+    } catch (err) {
+      if (!isUnauthenticated(err)) {
+        throw new Error("Could not sign out", { cause: err });
+      }
     }
+
+    recordAuth("logout");
     setState({ status: "unauthenticated", user: null, loggedOut: true });
   }
 

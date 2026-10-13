@@ -7,13 +7,12 @@
  * Feedback and Logout as standalone actions.
  */
 
-import { NavLink, Stack } from "@mantine/core";
+import { Stack } from "@mantine/core";
 import { useAuth } from "@/auth/AuthContext";
 import SendFeedbackNavLink from "@/components/feedback/SendFeedbackNavLink";
-import NavIcon from "@/components/icons/NavIcon";
+import LogoutNavLink from "../LogoutNavLink";
 import NestedNavLink, { type NavItem } from "../NestedNavLink";
 import { useFeatureNavItems } from "../featureNavItems";
-import { navLinkStyles } from "../navStyles";
 
 export interface TeachingMainNavProps {
   /** Module name shown as child link under Teaching (truncated to 15 chars) */
@@ -98,15 +97,7 @@ export default function TeachingMainNav({
         />
       ))}
       <SendFeedbackNavLink onNavigate={onNavigate} />
-      <NavLink
-        label="Logout"
-        leftSection={<NavIcon name="logout" />}
-        styles={navLinkStyles}
-        onClick={() => {
-          void logout();
-          onNavigate?.();
-        }}
-      />
+      <LogoutNavLink onLogout={logout} onNavigate={onNavigate} />
     </Stack>
   );
 }
