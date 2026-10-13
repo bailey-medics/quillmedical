@@ -248,7 +248,7 @@ def read_pull_requests(branches: list[str]) -> dict[str, dict[str, object]]:
 
     try:
         limit = max(len(json.loads(counted)), 30)
-    except (json.JSONDecodeError, TypeError):
+    except json.JSONDecodeError, TypeError:
         limit = 200
 
     raw = run(

@@ -220,7 +220,7 @@ class EmailTheme(_Strict):
     newsletter_reason: str
     dark: EmailDarkTheme
 
-    def resolved(self, palette: Palette) -> "EmailTheme":
+    def resolved(self, palette: Palette) -> EmailTheme:
         """This theme with every colour reference turned into hex.
 
         Args:
@@ -255,7 +255,7 @@ class BrandFile(_Strict):
     email_themes: dict[EmailThemeName, EmailTheme]
 
     @model_validator(mode="after")
-    def _resolve_colours(self) -> "BrandFile":
+    def _resolve_colours(self) -> BrandFile:
         """Resolve every theme's colours, so a bad reference fails here.
 
         Returns:

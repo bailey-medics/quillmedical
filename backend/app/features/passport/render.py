@@ -255,7 +255,7 @@ def _logbook_entries(
 
     try:
         listing = store.list_dir(passport_id, paths.logbook_dir(competency_id))
-    except (PassportNotFoundError, paths.PassportPathError):
+    except PassportNotFoundError, paths.PassportPathError:
         return found
 
     for path in listing:
@@ -367,7 +367,7 @@ def _cpd_entries(
 
     try:
         listing = store.list_dir(passport_id, paths.CPD / year)
-    except (PassportNotFoundError, paths.PassportPathError):
+    except PassportNotFoundError, paths.PassportPathError:
         return found
 
     for path in listing:
@@ -508,5 +508,5 @@ def _list(
     """
     try:
         return [entry.name for entry in store.list_dir(passport_id, path)]
-    except (PassportNotFoundError, paths.PassportPathError):
+    except PassportNotFoundError, paths.PassportPathError:
         return []

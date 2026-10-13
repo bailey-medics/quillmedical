@@ -1347,7 +1347,7 @@ def _stop_the_clock(monkeypatch: pytest.MonkeyPatch, at: datetime) -> None:
 
     class Stopped(datetime):
         @classmethod
-        def now(cls, tz: Any = None) -> "Stopped":
+        def now(cls, tz: Any = None) -> Stopped:
             return cls.fromtimestamp(at.timestamp(), tz)
 
     monkeypatch.setattr(attempts, "datetime", Stopped)

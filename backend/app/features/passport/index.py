@@ -77,7 +77,7 @@ def _sign_offs(
 
         try:
             content = store.read(passport_id, paths.sign_off_file(name))
-        except (PassportNotFoundError, paths.PassportPathError):
+        except PassportNotFoundError, paths.PassportPathError:
             # A directory with no sign-off.yaml is not a sign-off, and
             # neither is anything whose name is not a date and a slug.
             # Neither can arise through the application, so it means
@@ -193,7 +193,7 @@ def _certificates(
 
         try:
             content = store.read(passport_id, paths.certificate_file(name))
-        except (PassportNotFoundError, paths.PassportPathError):
+        except PassportNotFoundError, paths.PassportPathError:
             # Made by hand, as in _sign_offs: not a certificate.
             continue
 

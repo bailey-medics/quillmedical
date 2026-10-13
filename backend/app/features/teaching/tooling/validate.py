@@ -1101,7 +1101,7 @@ def _is_retired(module_dir: Path) -> bool:
     try:
         with open(yaml_path, encoding="utf-8") as f:
             data = _as_mapping(yaml.safe_load(f))
-    except (yaml.YAMLError, OSError):
+    except yaml.YAMLError, OSError:
         return False
 
     if data is None:

@@ -73,3 +73,41 @@ $(clean_report 45782)"
   [[ "$EXCLUDE" == *"*_test.py"* ]]
   [[ "$EXCLUDE" == *"backend/alembic/versions"* ]]
 }
+
+# A report of a scan that covered the backend and left files out.
+report_with_skipped_files() {
+  cat <<REPORT
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+	Total lines of code: 52483
+	Total lines skipped (#nosec): 0
+Files skipped (2):
+	backend/app/deps.py (syntax error while parsing AST from file)
+	backend/app/security.py (syntax error while parsing AST from file)
+REPORT
+}
+
+@test "fails a scan that could not read some files, though Bandit passed it" {
+  # What an older Python does with code written for a newer one: Bandit
+  # leaves the file out and passes, well above the line floor.
+  run check_report 0 <<<"$(report_with_skipped_files)"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Bandit could not read 2 files"* ]]
+  [[ "$output" == *"backend/app/security.py (syntax error while parsing AST from file)"* ]]
+}
+
+@test "passes a scan that says it skipped no files" {
+  run check_report 0 <<<"$(clean_report 45782)
+Files skipped (0):"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"found nothing"* ]]
+}
+
+@test "reads the number of skipped files out of a report" {
+  run files_skipped <<<"$(report_with_skipped_files)"
+
+  [ "$output" = "2" ]
+}

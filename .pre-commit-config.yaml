@@ -42,6 +42,10 @@ repos:
     hooks:
       - id: mypy
         name: mypy (tests and tooling)
+        # mypy reads a file with the Python it is running on, so this has
+        # to be the pinned one: the files it checks are formatted for it,
+        # and an older Python reports `except A, B:` as a syntax error.
+        language_version: python3.14
         # A basic check, not a strict one: its environment has no FastAPI
         # or Pydantic and it reads no config. Left out are the backend's
         # own code, which the strict hook below checks, and merged
@@ -76,6 +80,10 @@ repos:
       # scanned, and what is left out, is in the script.
       - id: bandit
         name: bandit (backend)
+        # Bandit reads a file with the Python it runs on, and leaves out
+        # one it cannot parse. So this has to be the pinned Python, which
+        # the backend is written for.
+        language_version: python3.14
         entry: .github/scripts/ci/run-bandit.sh
         args: []
         pass_filenames: false

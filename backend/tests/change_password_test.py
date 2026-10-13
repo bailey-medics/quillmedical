@@ -43,7 +43,7 @@ class TestChangePassword:
         self,
         test_client: TestClient,
         test_user: User,
-        db_session: "Session",  # type: ignore[name-defined]  # noqa: F821
+        db_session: Session,  # type: ignore[name-defined]  # noqa: F821
     ) -> None:
         """After changing, the new password hash is stored correctly."""
         csrf = self._login_and_get_csrf(

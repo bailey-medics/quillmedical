@@ -283,12 +283,15 @@ runs, and a check on each place that could drift from it again.
 
 ## Phase 4: Move Ruff and Black to the backend's Python
 
-- [ ] Change both `target-version` lines in `backend/pyproject.toml` from
+- [x] Change both `target-version` lines in `backend/pyproject.toml` from
       `py313` to `py314`, and remove the comment above `[tool.ruff]` that
       explains why they were held back. Phases 1 and 3 are what make that
       comment untrue.
 
-- [ ] Run the Ruff and Black hooks over every file and commit what they
+      The comment is rewritten, not removed: it now says what moving the
+      targets requires of every place the files run, and points here.
+
+- [x] Run the Ruff and Black hooks over every file and commit what they
       change, in a pull request holding nothing else. On 13 October that
       was 22 files: `except` clauses losing their brackets, and return
       types losing their quotes. Three of them are in the root `scripts/`
@@ -296,10 +299,45 @@ runs, and a check on each place that could drift from it again.
       `--config=backend/pyproject.toml` for every Python file in the
       repository. A reformat mixed with a real change hides the change.
 
-- [ ] Run the full backend unit suite, `just ub`, and the script tests,
+      Twenty files this time, and the pull request does hold something
+      else, because the reformat could not pass its own hooks without
+      it. Two more tools read a file with the Python they run on, and
+      neither was on the pinned one:
+
+      - **The "mypy (tests and tooling)" hook** - named no Python, so
+        pre-commit built its environment on its own, 3.11 on the machine
+        this was built on. It reported each reformatted `except` in the
+        root scripts as a syntax error. It now has
+        `language_version: python3.14`, as the Black hook has.
+      - **The "bandit (backend)" hook** - the same, and worse, because
+        it did not fail. Bandit leaves out a file it cannot parse, counts
+        the rest and passes. Twelve backend files were not scanned,
+        `deps.py` and `security.py` among them, with the line count still
+        five times the floor `run-bandit.sh` checks. The hook now names
+        Python 3.14, and `run-bandit.sh` fails when Bandit's report says
+        it skipped any file, printing which and why.
+
+      `check-python-version.sh` already fails a hook whose
+      `language_version` is not the pinned one, so both are held to
+      `.python-version` from here on. It does not fail a hook that names
+      none, which is how these two were missed: see Decisions.
+
+- [x] Run the full backend unit suite, `just ub`, and the script tests,
       `bash .github/scripts/ci/run-shell-tests.sh scripts/tests`, before
       pushing. A change of syntax across this many modules is the wide
       blast radius the test tiers make an exception for.
+
+      Both pass: `just ub` with no filter, and `just ts`, which runs the
+      script tests in the image Phase 3 moved to the pinned Python.
+
+- [ ] Confirm the Semgrep job reads the reformatted files, on the first
+      pull request from this plan to leave draft. Semgrep runs in the
+      heavy tier, on the runner's own Python, with its own parser for
+      Python, and was not run locally. If that parser does not know an
+      `except` without brackets, it may skip those files as Bandit did.
+      `ci.yml` already fails a scan that opened too few files; check the
+      count it prints has not dropped, and that no file is reported as
+      not parsed.
 
 ## Phase 5: Hold the Ruff and Black targets to `.python-version`
 
@@ -332,6 +370,16 @@ runs, and a check on each place that could drift from it again.
       and the check failing is how a missed one is found.
 
 ## Decisions
+
+- **A hook that names no Python is not yet refused** - the two hooks
+  fixed in Phase 4 were wrong by saying nothing, which
+  `check-python-version.sh` cannot see: it compares the
+  `language_version` lines that exist. Failing every Python hook without
+  one would close that, but it needs to know which hooks are Python at
+  all, and the config does not say: a hook's language comes from the
+  repository it is fetched from. Left for now. The bandit script failing
+  on a skipped file, and mypy failing loudly by nature, cover the two
+  hooks known to read Python source.
 
 - **One target for every Python file, not one for the backend and one
   for the root scripts** - a split would have let the backend move to
