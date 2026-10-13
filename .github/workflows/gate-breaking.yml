@@ -496,6 +496,13 @@ jobs:
         id: base
         run: bash .github/scripts/ci/resolve-pr-base-sha.sh .
 
+      # The detector is backend/scripts/check_migrations.py, written and
+      # formatted for the repository's Python and not the runner's own.
+      - name: Set up Python
+        uses: ./.github/actions/setup-python
+        with:
+          install-backend-deps: "false"
+
       - name: Detect destructive operations in added migrations
         id: detect
         run: bash .github/scripts/ci/detect-destructive-migrations.sh "${{ steps.base.outputs.base_sha }}"

@@ -349,6 +349,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Printed once, to learn what this job ran on before it set Python
+      # up. Removed again once the answer is in the plan.
+      - name: Say which Python the runner ships
+        run: python3 --version
+
+      # The repository's own Python, and not whichever the runner ships:
+      # see .github/scripts/ci/check-python-is-set-up.sh.
+      - name: Set up Python
+        uses: ./.github/actions/setup-python
+        with:
+          install-backend-deps: "false"
+
       - name: Check every stamp holds up
         run: python3 scripts/review-ledger.py verify
 
@@ -385,6 +397,12 @@ jobs:
           # 4.0.0 no longer authenticates the download automatically; pass the
           # token to avoid GitHub API rate limits.
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      # The suites under scripts/tests run the Python scripts beside them.
+      - name: Set up Python
+        uses: ./.github/actions/setup-python
+        with:
+          install-backend-deps: "false"
+
       - name: Run shell script tests
         run: |
           bash .github/scripts/ci/run-shell-tests.sh .github/scripts
@@ -510,6 +528,12 @@ jobs:
       - uses: actions/checkout@v7.0.1
       - name: Check pinned versions are consistent
         run: bash .github/scripts/ci/check-version-consistency.sh
+
+      # A job that runs the repository's Python without setting it up gets
+      # the runner's own, which names no version and so was checked by
+      # nothing. See the script.
+      - name: Check every job that runs Python sets it up
+        run: bash .github/scripts/ci/check-python-is-set-up.sh .github/workflows
 
       # A public registry refuses a caller that asks too often, and one
       # refused pull takes a pull request, and everything stacked on it,
@@ -925,8 +949,13 @@ jobs:
       - name: Fetch main branch ref (for the changed-migrations diff)
         run: git fetch origin main:refs/remotes/origin/main
 
-      # No setup-python step: the comparer this calls is stdlib-only, and
-      # ubuntu-24.04 ships python3.
+      # The comparer this calls needs nothing installed, but it is a file
+      # in backend/, written and formatted for the repository's Python.
+      - name: Set up Python
+        uses: ./.github/actions/setup-python
+        with:
+          install-backend-deps: "false"
+
       - name: Check no merged migration was rewritten, deleted or renamed
         run: bash .github/scripts/ci/check-migrations-unmodified.sh origin/main
 
