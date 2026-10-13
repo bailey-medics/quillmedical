@@ -23,7 +23,7 @@ import {
 } from "@mantine/core";
 import Heading from "@/components/typography/Heading";
 import BodyText from "@/components/typography/BodyText";
-import LoadingSpinner from "@/components/loading-spinner";
+import { QuillSpinner } from "@/components/loading-spinner";
 import { useMediaQuery } from "@mantine/hooks";
 import { useNativePdfViewer } from "./useNativePdfViewer";
 import classes from "./Document.module.css";
@@ -74,7 +74,7 @@ export const Document: React.FC<DocumentProps> = ({ name, type, url }) => {
           <Suspense
             fallback={
               <Center>
-                <LoadingSpinner label={`Loading ${name}`} />
+                <QuillSpinner label={`Loading ${name}`} />
               </Center>
             }
           >

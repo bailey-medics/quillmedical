@@ -13,7 +13,7 @@
 // the width. This page used to wrap itself in a padded, 900px box, which
 // sat its title lower and its content narrower than every other page.
 
-import LoadingSpinner from "@/components/loading-spinner";
+import { QuillSpinner } from "@/components/loading-spinner";
 import {
   Box,
   Button,
@@ -632,7 +632,7 @@ export default function NewPatientPage() {
         {loading ? (
           <Center>
             <Stack align="center" gap="md">
-              <LoadingSpinner size="lg" label="Loading patient" />
+              <QuillSpinner label="Loading patient" />
               <BodyText>Loading patient data...</BodyText>
             </Stack>
           </Center>

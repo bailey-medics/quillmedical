@@ -159,7 +159,9 @@ than the guard before them. `PageSpinner` puts all five in one place.
       `PageSpinner` with the same labels. Neither is centred today, so
       this also moves them to the middle of the page. An exam is the
       one place a learner is anxious about a wait, so check the
-      submitting state by eye in its story.
+      submitting state by eye in its story. Found: the page has no
+      story, so this was not looked at by eye. It is one for whoever
+      reviews the pull request.
 - [x] **13. `frontend/src/pages/MessageThread.tsx`** and
       **14. `frontend/src/pages/PatientMessages.tsx`.** "Loading
       messages", each returned bare from the page: `PageSpinner` with
@@ -175,15 +177,19 @@ These sit inside a page that is already showing, so they use
 `QuillSpinner` itself at its default 4rem, not `PageSpinner`: a quill
 8rem tall in the middle of a form would push everything else away.
 
-- [ ] **16. `frontend/src/pages/NewPatientPage.tsx`.** "Loading
+- [x] **16. `frontend/src/pages/NewPatientPage.tsx`.** "Loading
       patient". It passes `size="lg"`, which is a Mantine `Loader`
       size and means nothing to `QuillSpinner`; drop it.
-- [ ] **17. `frontend/src/pages/UserInfoUpdatePage.tsx`.** Another
+- [x] **17. `frontend/src/pages/UserInfoUpdatePage.tsx`.** Another
       bare `Loader` with no label. Give it "Loading user".
-- [ ] **18. `frontend/src/components/documents/Document.tsx`** and
+- [x] **18. `frontend/src/components/documents/Document.tsx`** and
       **19. `frontend/src/components/documents/PdfPages.tsx`.**
       "Loading" and the document's name. Check both stories at a
-      narrow width, where the document frame is short.
+      narrow width, where the document frame is short. Looked at on 13
+      October 2026, 360px wide, with the PDF held back: the `Document`
+      story shows the quill 4rem square under the title with nothing
+      pushed off the page. `PdfPages` shows its wait only inside
+      `Document`'s, so that one view covers both.
 
 ## Phase 7: retire the ring
 
