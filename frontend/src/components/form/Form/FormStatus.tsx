@@ -184,7 +184,7 @@ function FormStatusFromContext() {
 
   return (
     <FormStatusCard
-      variant={ctx.formState as FormStatusVariant}
+      variant={ctx.formState}
       title={ctx.statusMessage.title}
       description={ctx.statusMessage.description}
       onDismiss={ctx.dismissStatus}

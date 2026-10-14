@@ -30,9 +30,9 @@ function failPatientsWith(error: Error): void {
       return Promise.resolve({
         status: "ok",
         services: { fhir: { available: true } },
-      }) as never;
+      });
     }
-    return Promise.reject(error) as never;
+    return Promise.reject(error);
   });
 }
 

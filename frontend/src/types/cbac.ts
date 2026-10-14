@@ -77,8 +77,7 @@ export function getCompetencyDetails(id: CompetencyId): Competency | undefined {
  * unreadable when a competency is retired. Mirrors `COMPETENCY_IDS` in
  * `backend/app/cbac/competencies.py`.
  */
-export const ALL_COMPETENCIES: Competency[] =
-  competenciesData.competencies as Competency[];
+export const ALL_COMPETENCIES: Competency[] = competenciesData.competencies;
 
 /**
  * One published document a clinician works to, as a set of competencies:
@@ -97,8 +96,7 @@ export interface Framework {
 }
 
 /** Every framework, in the order the definition files sort. */
-export const ALL_FRAMEWORKS: Framework[] =
-  frameworksData.frameworks as Framework[];
+export const ALL_FRAMEWORKS: Framework[] = frameworksData.frameworks;
 
 /**
  * The frameworks whose entries exist only to be recorded in a passport:

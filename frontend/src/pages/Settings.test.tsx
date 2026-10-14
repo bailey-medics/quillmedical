@@ -37,7 +37,7 @@ vi.mock("@/auth/AuthContext", () => ({
 
 // Mutable, so a test can put the page on any install route.
 const installRouteState = vi.hoisted(() => ({
-  route: "chromium-manual" as string,
+  route: "chromium-manual",
   install: vi.fn(),
 }));
 

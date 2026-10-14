@@ -37,7 +37,7 @@ export default function GuestOnly({ children }: { children: ReactNode }) {
       // Perform a full navigation to BASE_URL so we land on the exact
       // path including trailing slash. This avoids the router producing
       // URLs without the trailing slash.
-      const rawBase = (import.meta.env.BASE_URL as string) || "/";
+      const rawBase = import.meta.env.BASE_URL || "/";
       const base = rawBase.endsWith("/") ? rawBase : rawBase + "/";
       window.location.assign(base);
     }

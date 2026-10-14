@@ -98,7 +98,7 @@ const scope = vi.hoisted(() => ({
   // tests walk every step the form has: the Platform role step is shown
   // to an operator only. A test of what anybody else sees sets
   // `standard` first.
-  platform_role: "superadmin" as "superadmin" | "standard",
+  platform_role: "superadmin",
 }));
 
 vi.mock("@/auth/AuthContext", () => ({

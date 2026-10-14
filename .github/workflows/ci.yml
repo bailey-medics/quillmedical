@@ -236,15 +236,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-storybook-
 
-      - name: Cache ESLint
-        if: matrix.task == 'eslint'
-        uses: actions/cache@v6.1.0
-        with:
-          path: frontend/.eslintcache
-          key: ${{ runner.os }}-eslint-${{ hashFiles('frontend/**/*.{ts,tsx,js,jsx}', 'frontend/eslint.config.js') }}
-          restore-keys: |
-            ${{ runner.os }}-eslint-
-
       - name: Run ${{ matrix.task }}
         working-directory: frontend
         run: |

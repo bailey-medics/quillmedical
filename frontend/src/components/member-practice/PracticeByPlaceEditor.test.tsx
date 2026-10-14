@@ -33,9 +33,9 @@ function renderEditor(overrides: Partial<PracticeByPlaceEditorProps> = {}) {
 }
 
 function switchFor(competency: string, place: string): HTMLInputElement {
-  return screen.getByRole("switch", {
+  return screen.getByRole<HTMLInputElement>("switch", {
     name: `${competency} at ${place}: may practise here`,
-  }) as HTMLInputElement;
+  });
 }
 
 describe("PracticeByPlaceEditor", () => {

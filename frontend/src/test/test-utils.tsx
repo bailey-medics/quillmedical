@@ -170,7 +170,7 @@ export function createMockResponse(
     text: async () => JSON.stringify(data),
     headers: new Headers(),
     redirected: false,
-    type: "basic" as ResponseType,
+    type: "basic",
     url: "",
     clone: () => createMockResponse(data, options),
     body: null,

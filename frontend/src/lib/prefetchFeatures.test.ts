@@ -71,7 +71,7 @@ function makeIo(
     fetch,
     files: () =>
       fetch.mock.calls
-        .map(([address]) => address as string)
+        .map(([address]) => address)
         .filter((address) => address !== MANIFEST_ADDRESS),
   };
 }
@@ -349,7 +349,7 @@ describe("prefetchNextFeature", () => {
   it("counts a feature the manifest does not know as failed, and moves on", async () => {
     const io = makeIo();
     const both = [chunk("teaching"), chunk("passport")];
-    const unknownFirst = [{ ...both[0]!, source: "src/gone.ts" }, both[1]!];
+    const unknownFirst = [{ ...both[0], source: "src/gone.ts" }, both[1]];
 
     expect(await prefetchNextFeature(unknownFirst, user, () => true, io)).toBe(
       "failed",

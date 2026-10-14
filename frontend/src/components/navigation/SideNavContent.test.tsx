@@ -185,7 +185,7 @@ function renderWithAuth(
       statusText: "Not Found",
       json: () => Promise.resolve({}),
     } as Response);
-  }) as typeof global.fetch;
+  });
 
   return renderWithRouter(<AuthProvider>{ui}</AuthProvider>, {
     initialRoute: options?.initialRoute,
@@ -678,7 +678,7 @@ describe("SideNavContent Component", () => {
           headers: new Headers({ "Content-Type": "application/json" }),
           json: () => Promise.resolve(answer),
         } as Response);
-      }) as typeof global.fetch;
+      });
 
       renderWithRouter(
         <AuthProvider>

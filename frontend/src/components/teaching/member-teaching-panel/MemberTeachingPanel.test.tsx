@@ -44,9 +44,9 @@ function renderPanel(overrides: Partial<MemberTeachingPanelProps> = {}) {
 }
 
 function box(name: string): HTMLInputElement {
-  return screen.getByRole("checkbox", {
+  return screen.getByRole<HTMLInputElement>("checkbox", {
     name: `${name} at Academy`,
-  }) as HTMLInputElement;
+  });
 }
 
 describe("MemberTeachingPanel", () => {

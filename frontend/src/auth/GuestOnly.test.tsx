@@ -39,7 +39,7 @@ afterEach(() => {
 describe("GuestOnly", () => {
   // This was a blank page, and the longest blank in opening Quill.
   it("shows the spinner while it finds out who is signed in", () => {
-    mockAuth({ status: "loading", user: null } as AuthState);
+    mockAuth({ status: "loading", user: null });
     renderGuestOnly();
 
     expect(screen.getByRole("status")).toHaveTextContent("Loading");
@@ -47,7 +47,7 @@ describe("GuestOnly", () => {
   });
 
   it("shows the page to a guest", () => {
-    mockAuth({ status: "unauthenticated", user: null } as AuthState);
+    mockAuth({ status: "unauthenticated", user: null });
     renderGuestOnly();
 
     expect(screen.getByText("Sign in form")).toBeInTheDocument();

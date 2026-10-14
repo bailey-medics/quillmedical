@@ -38,7 +38,7 @@ describe("SafetyDocumentEditPage", () => {
         name: "Edit clinical risk management plan",
       }),
     ).toBeInTheDocument();
-    const field = screen.getByLabelText(/Document/) as HTMLTextAreaElement;
+    const field = screen.getByLabelText<HTMLTextAreaElement>(/Document/);
     expect(field.value).toContain("{{ product_name }}");
   });
 

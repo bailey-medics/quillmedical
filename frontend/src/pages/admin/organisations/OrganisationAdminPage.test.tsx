@@ -833,7 +833,7 @@ describe("OrganisationAdminPage", () => {
       vi.spyOn(authContext, "useAuth").mockReturnValue({
         state: {
           status: "authenticated",
-          user: { ...mockAdminUser, competencies } as User,
+          user: { ...mockAdminUser, competencies },
         },
         login: vi.fn(),
         logout: vi.fn(),

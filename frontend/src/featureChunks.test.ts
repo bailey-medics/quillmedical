@@ -109,7 +109,7 @@ describe("who may open each feature", () => {
   function canOpen(name: string, user: Partial<User>): boolean {
     const chunk = FEATURE_CHUNKS.find((candidate) => candidate.name === name);
     if (chunk === undefined) throw new Error(`no chunk called ${name}`);
-    return chunk.canOpen({ ...nobody, ...user } as User);
+    return chunk.canOpen({ ...nobody, ...user });
   }
 
   // The background fetch finds a feature's files by its chunk module's

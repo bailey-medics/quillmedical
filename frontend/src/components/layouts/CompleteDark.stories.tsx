@@ -121,9 +121,7 @@ export const WithMessaging: Story = {
   },
   render: (args) => {
     function MessagingContent() {
-      const [messages, setMessages] = useState<Message[]>(
-        demoMessages as Message[],
-      );
+      const [messages, setMessages] = useState<Message[]>(demoMessages);
 
       return (
         <Messaging

@@ -27,7 +27,7 @@ export default function LoginPage() {
   const location = useLocation() as {
     state?: { from?: Location; notice?: string };
   };
-  const rawBase = (import.meta.env.BASE_URL as string) || "/";
+  const rawBase = import.meta.env.BASE_URL || "/";
   const base = rawBase.endsWith("/") ? rawBase : rawBase + "/";
   const redirectFrom = location.state?.from?.pathname;
 
@@ -74,17 +74,16 @@ export default function LoginPage() {
         }
         if (typeof e === "object" && e !== null) {
           const obj = e as Record<string, unknown>;
-          if (typeof obj["message"] === "string")
-            return obj["message"] as string;
-          if (typeof obj["detail"] === "string") return obj["detail"] as string;
+          if (typeof obj["message"] === "string") return obj["message"];
+          if (typeof obj["detail"] === "string") return obj["detail"];
           const detail = obj["detail"];
           if (detail && typeof detail === "object") {
             const d = detail as Record<string, unknown>;
-            if (typeof d["message"] === "string") return d["message"] as string;
-            if (typeof d["detail"] === "string") return d["detail"] as string;
+            if (typeof d["message"] === "string") return d["message"];
+            if (typeof d["detail"] === "string") return d["detail"];
           }
           if (typeof obj["error_code"] === "string")
-            return (obj["error_code"] as string).replace(/_/g, " ");
+            return obj["error_code"].replace(/_/g, " ");
           try {
             return JSON.stringify(obj);
           } catch {

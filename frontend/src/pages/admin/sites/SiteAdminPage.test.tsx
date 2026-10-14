@@ -123,7 +123,7 @@ describe("SiteAdminPage staff members", () => {
     vi.spyOn(authContext, "useAuth").mockReturnValue({
       state: {
         status: "authenticated",
-        user: { ...mockAdminUser, competencies } as User,
+        user: { ...mockAdminUser, competencies },
       },
       login: vi.fn(),
       logout: vi.fn(),
@@ -232,12 +232,12 @@ describe("SiteAdminPage features", () => {
     vi.spyOn(authContext, "useAuth").mockReturnValue({
       state: {
         status: "authenticated",
-        user: { ...mockAdminUser, competencies } as User,
+        user: { ...mockAdminUser, competencies },
       },
       login: vi.fn(),
       logout: vi.fn(),
       reload: vi.fn(),
-    } as ReturnType<typeof authContext.useAuth>);
+    });
   }
 
   beforeEach(() => {
