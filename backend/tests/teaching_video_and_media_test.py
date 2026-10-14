@@ -1333,3 +1333,131 @@ def test_captions_are_not_saved_where_there_is_no_bucket_for_them(
     }
     assert written == []
     assert _links(db_session)[0].captions_reviewed_at is None
+
+
+# --- /admin/modules/{module_id}/media/{asset_id}/poster-frame ---------------
+
+
+def _transcoded(db: Session) -> ModuleMediaLink:
+    """Mark the one upload as processed, with a poster, and return it."""
+    row = _links(db)[0]
+    row.transcoded_at = datetime.now(UTC)
+    row.has_poster = True
+    db.commit()
+
+    return row
+
+
+def _poster_jobs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> list[tuple[tuple[object, ...], dict[str, object]]]:
+    started: list[tuple[tuple[object, ...], dict[str, object]]] = []
+
+    def start(*args: object, **kwargs: object) -> str:
+        started.append((args, kwargs))
+
+        return "operations/poster"
+
+    monkeypatch.setattr(
+        "app.features.teaching.transcode.start_transcode", start
+    )
+
+    return started
+
+
+def test_choosing_a_poster_second_keeps_it_and_retakes_the_poster(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    admin: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _upload(db_session, trust)
+    row = _transcoded(db_session)
+    started = _poster_jobs(monkeypatch)
+
+    resp = test_client.put(
+        f"{MEDIA}/asset1/poster-frame",
+        json={"seconds": 42},
+        headers=_login(test_client, admin),
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["poster_at_seconds"] == 42
+    assert _links(db_session)[0].poster_at_seconds == 42
+    # Under the storage prefix, which the job reads the bucket by, and
+    # in the poster-only mode: the source has gone and nothing is
+    # re-encoded.
+    assert started == [
+        (
+            (row.organisation_id, MODULE, "asset1"),
+            {"poster_at_seconds": 42, "poster_only": True},
+        )
+    ]
+
+
+def test_a_poster_cannot_be_chosen_before_the_video_is_ready(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    admin: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The transcode still running would write its own poster over it."""
+    _upload(db_session, trust)
+    started = _poster_jobs(monkeypatch)
+
+    resp = test_client.put(
+        f"{MEDIA}/asset1/poster-frame",
+        json={"seconds": 42},
+        headers=_login(test_client, admin),
+    )
+
+    assert resp.status_code == 409
+    assert _links(db_session)[0].poster_at_seconds is None
+    assert started == []
+
+
+def test_a_poster_for_an_upload_of_another_trust_is_not_found(
+    test_client: TestClient,
+    db_session: Session,
+    other_trust: OrgUnit,
+    admin: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _upload(db_session, other_trust)
+    _transcoded(db_session)
+    started = _poster_jobs(monkeypatch)
+
+    resp = test_client.put(
+        f"{MEDIA}/asset1/poster-frame",
+        json={"seconds": 42},
+        headers=_login(test_client, admin),
+    )
+
+    assert (resp.status_code, resp.json()) == (404, NO_SUCH_ASSET)
+    assert _links(db_session)[0].poster_at_seconds is None
+    assert started == []
+
+
+@pytest.mark.parametrize("seconds", [-1, 86_401, 4.5, "soon"])
+def test_a_poster_second_out_of_range_is_refused(
+    test_client: TestClient,
+    db_session: Session,
+    trust: OrgUnit,
+    admin: User,
+    monkeypatch: pytest.MonkeyPatch,
+    seconds: object,
+) -> None:
+    _upload(db_session, trust)
+    _transcoded(db_session)
+    started = _poster_jobs(monkeypatch)
+
+    resp = test_client.put(
+        f"{MEDIA}/asset1/poster-frame",
+        json={"seconds": seconds},
+        headers=_login(test_client, admin),
+    )
+
+    assert resp.status_code == 422
+    assert started == []

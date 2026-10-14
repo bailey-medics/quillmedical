@@ -88,12 +88,18 @@ Per uploaded asset, the jobs produce:
 - `{asset_id}-720p.mp4` - the default. Chosen because hospital wifi is the
   common case.
 - `{asset_id}-1080p.mp4` - offered through the player's quality switch.
-- `{asset_id}-poster.jpg` - a frame shown before playback starts.
+- `{asset_id}-poster.jpg` - a frame shown before playback starts. Taken five
+  seconds in, or at the time an admin chooses with "Choose poster frame" on
+  the module's video card. Choosing one runs the transcode job in its poster
+  mode (`TRANSCODE_MODE=poster`), which retakes the frame from the 1080p or
+  720p rendition, because the source is deleted once the renditions verify.
 - `{asset_id}.vtt` - WebVTT captions, a WCAG 2.1 AA requirement.
 
 All four are uploaded with `Cache-Control: public, max-age=86400`. "Public"
 here describes cacheability at the edge, not reachability: the CDN still
-refuses a request without a valid cookie.
+refuses a request without a valid cookie. A retaken poster keeps its name, so
+the learner is sent it with a `?v=` version, the time it was written, and the
+day's caching cannot hold the old one.
 
 Assets are named for a generated id, never for the uploader's filename or the
 MDX reference key. Which renditions exist is recorded on the `ModuleMediaLink`

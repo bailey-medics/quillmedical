@@ -656,7 +656,7 @@ export default function AssessmentAttempt() {
     ) : undefined;
 
   return (
-    <TeachingLayout ribbonRight={examControls}>
+    <TeachingLayout fluid ribbonRight={examControls}>
       <PageHeader title="Assessment" visuallyHidden />
       {/* Blocker modal - warns when navigating away during active exam */}
       <ConfirmModal

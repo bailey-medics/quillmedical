@@ -24,6 +24,7 @@ TOKEN = "callback-token-for-tests"
 
 TRANSCODE = "/api/ci/teaching/transcode-complete"
 CAPTION = "/api/ci/teaching/caption-complete"
+POSTER = "/api/ci/teaching/poster-complete"
 
 _IDS: dict[str, object] = {
     "org_id": 1,
@@ -37,6 +38,9 @@ CALLBACKS = [
         TRANSCODE, {**_IDS, "outputs": ["asset-1-720p.mp4"]}, id="transcode"
     ),
     pytest.param(CAPTION, dict(_IDS), id="caption"),
+    pytest.param(
+        POSTER, {**_IDS, "outputs": ["asset-1-poster.jpg"]}, id="poster"
+    ),
 ]
 
 each_callback = pytest.mark.parametrize(("endpoint", "body"), CALLBACKS)

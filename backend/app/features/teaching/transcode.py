@@ -18,6 +18,7 @@ path can be tested without a bucket and without the media inventory.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -119,8 +120,18 @@ def start_transcode(
     org_id: int,
     module_id: str,
     asset_id: str,
+    *,
+    poster_at_seconds: int | None = None,
+    poster_only: bool = False,
 ) -> str | None:
     """Fire the transcode job for one uploaded asset.
+
+    ``poster_at_seconds`` is the second the poster frame is taken from,
+    where an admin has chosen one; the job takes its own default when it
+    is None. ``poster_only`` runs the job's poster mode instead: the
+    renditions already exist and the source is gone, so only the poster
+    is taken again, from a rendition, and reported to a callback of its
+    own.
 
     Returns the execution name, or None where no job is configured -
     which is the normal development case, not an error. A developer
@@ -166,6 +177,7 @@ def start_transcode(
                             run_v2.EnvVar(
                                 name="TRANSCODE_ASSET_ID", value=asset_id
                             ),
+                            *_poster_env(poster_at_seconds, poster_only),
                         ]
                     )
                 ]
@@ -187,11 +199,36 @@ def start_transcode(
         return None
 
     logger.info(
-        "transcode started org=%s module=%s asset=%s execution=%s",
+        "transcode started org=%s module=%s asset=%s poster_only=%s "
+        "execution=%s",
         org_id,
         module_id,
         asset_id,
+        poster_only,
         name,
     )
 
     return name
+
+
+def _poster_env(poster_at_seconds: int | None, poster_only: bool) -> list[Any]:
+    """The job's poster settings, as environment variables.
+
+    Only what differs from the job's defaults is sent, so an ordinary
+    transcode with no chosen second is invoked exactly as before.
+    """
+    from google.cloud import run_v2
+
+    env: list[Any] = []
+
+    if poster_at_seconds is not None:
+        env.append(
+            run_v2.EnvVar(
+                name="TRANSCODE_POSTER_AT", value=str(poster_at_seconds)
+            )
+        )
+
+    if poster_only:
+        env.append(run_v2.EnvVar(name="TRANSCODE_MODE", value="poster"))
+
+    return env

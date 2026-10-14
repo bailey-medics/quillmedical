@@ -155,7 +155,10 @@ export const RowActions: Story = {
     media: {
       module_id: "echocardiography-interpretation",
       references: [
-        { key: "lecture-01", asset: { ...lecture, has_captions: true } },
+        {
+          key: "lecture-01",
+          asset: { ...lecture, has_captions: true, has_poster: true },
+        },
       ],
       unattached: [],
       is_complete: true,
@@ -167,7 +170,8 @@ export const RowActions: Story = {
       <StoryNote>
         Open the menu at the end of the row for edit and delete, as the site and
         organisation tables do. Editing captions only appears where there are
-        captions, so the menu never offers an action that does nothing.
+        captions, and choosing a poster frame only where there is a poster, so
+        the menu never offers an action that does nothing.
       </StoryNote>
     </Stack>
   ),

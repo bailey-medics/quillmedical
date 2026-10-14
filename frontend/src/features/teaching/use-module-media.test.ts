@@ -520,6 +520,44 @@ describe("useModuleMedia", () => {
     // Two gets: the initial load and the refresh after deleting.
     expect((api.get as Mock).mock.calls.length).toBe(2);
   });
+
+  it("saves a poster second and reloads, so the card shows it", async () => {
+    (api.get as Mock).mockResolvedValue(media);
+    (api.put as Mock).mockResolvedValue({});
+
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let saved = false;
+    await act(async () => {
+      saved = await result.current.savePosterFrame("asset-1", 42);
+    });
+
+    expect(saved).toBe(true);
+    expect(api.put).toHaveBeenCalledWith(
+      "/teaching/admin/modules/mod-1/media/asset-1/poster-frame",
+      { seconds: 42 },
+    );
+    expect((api.get as Mock).mock.calls.length).toBe(2);
+  });
+
+  it("says why a poster second did not save", async () => {
+    (api.get as Mock).mockResolvedValue(media);
+    (api.put as Mock).mockRejectedValue(
+      new Error("This video is still being prepared."),
+    );
+
+    const { result } = renderHook(() => useModuleMedia("mod-1", 20));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    let saved = true;
+    await act(async () => {
+      saved = await result.current.savePosterFrame("asset-1", 42);
+    });
+
+    expect(saved).toBe(false);
+    expect(result.current.error).toBe("This video is still being prepared.");
+  });
 });
 
 describe("polling while a job is running", () => {

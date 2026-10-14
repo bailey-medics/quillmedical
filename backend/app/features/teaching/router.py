@@ -88,6 +88,7 @@ from app.features.teaching.media_uploads import (
     local_upload_root,
     new_upload_target,
     save_captions,
+    set_poster_frame,
     upload_held_by,
 )
 from app.features.teaching.models import (
@@ -134,6 +135,7 @@ from app.features.teaching.schemas import (
     MediaUploadUrlIn,
     MediaUploadUrlOut,
     ModuleMediaOut,
+    PosterFrameIn,
     PromoteBankVersionIn,
     PromoteBankVersionOut,
     QuestionBankDetailOut,
@@ -2576,3 +2578,36 @@ def put_media_captions(
         asset_id=asset_id,
         webvtt=body.webvtt,
     )
+
+
+@teaching_router.put(
+    "/admin/modules/{module_id}/media/{asset_id}/poster-frame",
+    response_model=MediaAssetOut,
+    dependencies=[_DEP_MANAGE, DEP_REQUIRE_CSRF],
+)
+def put_media_poster_frame(
+    module_id: str,
+    asset_id: str,
+    body: PosterFrameIn,
+    user: User = DEP_CURRENT_USER,
+    db: Session = _DEP_SESSION,
+) -> MediaAssetOut:
+    """Choose the second a video's poster is taken from.
+
+    A number rather than a frame picked in a player: the admin watches
+    the video in the slides, where learners see it, and types the second
+    they want. The poster is retaken in the background, and learners
+    keep the one they had until the new one is written.
+    """
+    org_id = _get_user_org_id(user, db)
+
+    link = set_poster_frame(
+        db,
+        user_id=user.id,
+        org_unit_id=org_id,
+        module_id=module_id,
+        asset_id=asset_id,
+        seconds=body.seconds,
+    )
+
+    return MediaAssetOut.model_validate(link)

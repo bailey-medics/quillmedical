@@ -100,6 +100,17 @@ describe("TeachingDashboard", () => {
     expect(await screen.findByText("Teaching modules")).toBeTruthy();
   });
 
+  it("keeps the module cards to the width of every other page", async () => {
+    // TeachingLayout sets no width, so without the lg container the two
+    // card columns grew past the 50rem the cards stop at, leaving a gap
+    // between them on a wide screen.
+    (api.get as Mock).mockResolvedValue([]);
+    renderWithRouter(<TeachingDashboard />);
+
+    const title = await screen.findByText("Teaching modules");
+    expect(title.closest(".mantine-Container-root")).toBeTruthy();
+  });
+
   it("shows empty state when no banks", async () => {
     (api.get as Mock).mockResolvedValue([]);
     renderWithRouter(<TeachingDashboard />);

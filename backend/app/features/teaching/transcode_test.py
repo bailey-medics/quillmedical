@@ -56,6 +56,56 @@ class TestStartTranscode:
             "TRANSCODE_ASSET_ID": "a1b2c3d4",
         }
 
+    def test_passes_a_chosen_poster_second(self, monkeypatch) -> None:
+        """A transcode run again takes the frame the admin chose."""
+        from app.features.teaching.transcode import start_transcode
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_TRANSCODE_JOB",
+            "projects/p/locations/l/jobs/j",
+        )
+        client = MagicMock()
+        client.run_job.return_value.operation.name = "operations/x"
+
+        with patch("google.cloud.run_v2.JobsClient", return_value=client):
+            start_transcode(7, "mod", "asset", poster_at_seconds=42)
+
+        env = (
+            client.run_job.call_args.kwargs["request"]
+            .overrides.container_overrides[0]
+            .env
+        )
+        passed = {var.name: var.value for var in env}
+        assert passed["TRANSCODE_POSTER_AT"] == "42"
+        assert "TRANSCODE_MODE" not in passed
+
+    def test_asks_for_the_poster_only_mode(self, monkeypatch) -> None:
+        """Retaking a poster must not re-encode, and cannot: the source
+        has been deleted once the renditions verified."""
+        from app.features.teaching.transcode import start_transcode
+
+        monkeypatch.setattr(
+            "app.config.settings.TEACHING_TRANSCODE_JOB",
+            "projects/p/locations/l/jobs/j",
+        )
+        client = MagicMock()
+        client.run_job.return_value.operation.name = "operations/x"
+
+        with patch("google.cloud.run_v2.JobsClient", return_value=client):
+            start_transcode(
+                7, "mod", "asset", poster_at_seconds=0, poster_only=True
+            )
+
+        env = (
+            client.run_job.call_args.kwargs["request"]
+            .overrides.container_overrides[0]
+            .env
+        )
+        passed = {var.name: var.value for var in env}
+        assert passed["TRANSCODE_MODE"] == "poster"
+        # Zero is a real choice, the very first frame, not "unset".
+        assert passed["TRANSCODE_POSTER_AT"] == "0"
+
     def test_a_failure_is_swallowed_not_raised(self, monkeypatch) -> None:
         """The property the whole design rests on.
 

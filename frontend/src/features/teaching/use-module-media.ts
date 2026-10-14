@@ -71,6 +71,11 @@ export interface ModuleMediaState {
   loadCaptions: (assetId: string) => Promise<Captions | null>;
   /** Replace one asset's WebVTT. True when it saved. */
   saveCaptions: (assetId: string, webvtt: string) => Promise<boolean>;
+  /**
+   * Choose the second one asset's poster is taken from. True when the
+   * choice saved; the poster itself is retaken in the background.
+   */
+  savePosterFrame: (assetId: string, seconds: number) => Promise<boolean>;
 }
 
 /** Round a byte count to something a person reads at a glance. */
@@ -444,6 +449,32 @@ export function useModuleMedia(
     [moduleId, refresh],
   );
 
+  const savePosterFrame = useCallback(
+    async (assetId: string, seconds: number): Promise<boolean> => {
+      if (!moduleId) return false;
+
+      try {
+        setError(null);
+        await api.put(
+          `/teaching/admin/modules/${moduleId}/media/${assetId}/poster-frame`,
+          { seconds },
+        );
+        // The card shows which second is in use, so it is stale until
+        // the media list is fetched again.
+        await refresh();
+
+        return true;
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to save the poster",
+        );
+
+        return false;
+      }
+    },
+    [moduleId, refresh],
+  );
+
   // Derived rather than stored, so a null module reports "nothing to
   // load" immediately without an extra render.
   if (!moduleId) {
@@ -459,6 +490,7 @@ export function useModuleMedia(
       remove,
       loadCaptions,
       saveCaptions,
+      savePosterFrame,
     };
   }
 
@@ -474,5 +506,6 @@ export function useModuleMedia(
     remove,
     loadCaptions,
     saveCaptions,
+    savePosterFrame,
   };
 }

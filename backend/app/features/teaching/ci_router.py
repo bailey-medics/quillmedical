@@ -23,12 +23,18 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_core_db
-from app.features.teaching.ci_media import record_captions, record_transcode
+from app.features.teaching.ci_media import (
+    record_captions,
+    record_poster,
+    record_transcode,
+)
 from app.features.teaching.ci_sync import sync_every_bank
 from app.features.teaching.schemas import (
     CaptionCompleteIn,
     CaptionCompleteOut,
     CiTeachingSyncOut,
+    PosterCompleteIn,
+    PosterCompleteOut,
     TranscodeCompleteIn,
     TranscodeCompleteOut,
 )
@@ -186,3 +192,42 @@ def ci_caption_complete(
     record_captions(db, body.org_id, body.module_id, body.asset_id)
 
     return CaptionCompleteOut(recorded=True)
+
+
+# --- Poster completion callback (service token auth) ---
+#
+# Its own endpoint for the reason the caption one is: the transcode
+# report rewrites every rendition flag from the names it is given. The
+# job works this address out from the transcode one, by its last part.
+@router.post(
+    "/ci/teaching/poster-complete",
+    response_model=PosterCompleteOut,
+)
+def ci_poster_complete(
+    request: Request,
+    body: PosterCompleteIn,
+    db: Session = Depends(get_core_db),
+) -> PosterCompleteOut:
+    """Record that a retaken poster is in the bucket.
+
+    Shares the transcode callback's token, as the caption callback does:
+    the same job reporting on work the backend asked it to do.
+    """
+    token = settings.TEACHING_TRANSCODE_CALLBACK_TOKEN
+
+    if not token:
+        raise HTTPException(503, "Transcode callback token not configured")
+
+    auth_header = request.headers.get("Authorization", "")
+
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(401, "Missing Bearer token")
+
+    provided = auth_header.removeprefix("Bearer ").strip()
+
+    if not hmac.compare_digest(provided, token.get_secret_value()):
+        raise HTTPException(401, "Invalid token")
+
+    record_poster(db, body.org_id, body.module_id, body.asset_id, body.outputs)
+
+    return PosterCompleteOut(recorded=True)

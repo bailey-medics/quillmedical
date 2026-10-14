@@ -47,7 +47,7 @@ import sys
 import tempfile
 import urllib.request
 from pathlib import Path
-from typing import NoReturn
+from typing import Any, NoReturn
 
 proj_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if proj_root not in sys.path:
@@ -70,6 +70,10 @@ RENDITIONS: tuple[tuple[str, int, str], ...] = (
     ("720p", 720, "2500k"),
     ("1080p", 1080, "5000k"),
 )
+
+#: The second the poster frame is taken from when no admin has chosen
+#: one. See :func:`build_poster`.
+DEFAULT_POSTER_AT = 5
 
 
 def _require_env(*names: str) -> dict[str, str]:
@@ -94,11 +98,33 @@ def _require_env(*names: str) -> dict[str, str]:
     return values
 
 
+def _poster_at() -> int | None:
+    """The chosen poster second from ``TRANSCODE_POSTER_AT``.
+
+    Unset means the default. Anything that is not a whole number of
+    seconds, zero or more, is None too, and the caller refuses it: the
+    backend only ever sends one it has already checked, so anything
+    else is a job invoked by hand with a typo, and taking the default
+    instead would hide it.
+    """
+    raw = os.environ.get("TRANSCODE_POSTER_AT", "").strip()
+
+    if not raw:
+        return DEFAULT_POSTER_AT
+
+    if not raw.isdigit():
+        return None
+
+    return int(raw)
+
+
 def _report_complete(
     org_id: int,
     module_id: str,
     asset_id: str,
     written: list[str],
+    *,
+    poster_only: bool = False,
 ) -> None:
     """Tell the backend the renditions are up, so the module can serve.
 
@@ -121,6 +147,14 @@ def _report_complete(
     """
     url = os.environ.get("TRANSCODE_CALLBACK_URL", "").strip()
     token = os.environ.get("TRANSCODE_CALLBACK_TOKEN", "").strip()
+
+    # A retaken poster has a report of its own. The transcode report
+    # rewrites every rendition flag from the names it is given, so one
+    # naming only the poster would clear `has_1080p` and `has_captions`.
+    # It sits beside the transcode callback, so it is worked out from
+    # that address rather than configured as a second one.
+    if poster_only and url:
+        url = f"{url.rsplit('/', 1)[0]}/poster-complete"
 
     if not url or not token:
         print(
@@ -230,14 +264,38 @@ def build_rendition(
     )
 
 
-def build_poster(source: Path, dest: Path) -> None:
+def build_poster(
+    source: Path, dest: Path, at_seconds: int = DEFAULT_POSTER_AT
+) -> None:
     """Grab a single frame for the player's poster image.
 
-    Five seconds in rather than at zero: the first frame of a lecture is
-    very often a black or blank title card, which makes a poster that
-    tells the learner nothing about the video behind it.
+    ``at_seconds`` is the second an admin chose after watching the video,
+    or the default. The default is five seconds in rather than zero: the
+    first frame of a lecture is very often a black or blank title card,
+    which makes a poster that tells the learner nothing about the video
+    behind it.
+
+    Raises:
+        RuntimeError: FFmpeg failed, or wrote no frame. A second past the
+            end of the video is the usual cause of the second, and FFmpeg
+            reports it only as a warning and a zero exit.
     """
-    _run_ffmpeg(["-ss", "5", "-i", str(source), "-vframes", "1", str(dest)])
+    _run_ffmpeg(
+        [
+            "-ss",
+            str(at_seconds),
+            "-i",
+            str(source),
+            "-vframes",
+            "1",
+            str(dest),
+        ]
+    )
+
+    if not dest.is_file() or dest.stat().st_size == 0:
+        raise RuntimeError(
+            f"no frame at {at_seconds} seconds; is the video that long?"
+        )
 
 
 def transcode() -> int:
@@ -270,6 +328,14 @@ def transcode() -> int:
 
     module_id = env["TRANSCODE_MODULE_ID"]
     asset_id = env["TRANSCODE_ASSET_ID"]
+    poster_at = _poster_at()
+
+    if poster_at is None:
+        print(
+            "ERROR: TRANSCODE_POSTER_AT must be a whole number of " "seconds",
+            file=sys.stderr,
+        )
+        return 1
 
     # Validated by the same helper that guards the upload and delete
     # paths, so a traversal cannot reach another organisation's prefix
@@ -283,6 +349,11 @@ def transcode() -> int:
     client = storage.Client()
     source_bucket = client.bucket(env["TEACHING_VIDEOS_SOURCE_BUCKET"])
     processed_bucket = client.bucket(env["TEACHING_VIDEOS_BUCKET"])
+
+    if os.environ.get("TRANSCODE_MODE", "").strip() == "poster":
+        return _retake_poster(
+            processed_bucket, org_id, module_id, asset_id, poster_at
+        )
 
     source_blob = source_bucket.blob(source_path)
 
@@ -317,7 +388,7 @@ def transcode() -> int:
         poster = tmpdir / f"{asset_id}-poster.jpg"
         print("Extracting poster frame...")
         try:
-            build_poster(local_source, poster)
+            build_poster(local_source, poster, poster_at)
         except RuntimeError as exc:
             print(f"✗ {exc}", file=sys.stderr)
             return 1
@@ -374,6 +445,77 @@ def transcode() -> int:
     _report_complete(org_id, module_id, asset_id, written)
 
     print(f"✓ Transcoded {asset_id} to {len(outputs)} outputs")
+
+    return 0
+
+
+def _retake_poster(
+    processed_bucket: Any,
+    org_id: int,
+    module_id: str,
+    asset_id: str,
+    at_seconds: int,
+) -> int:
+    """Take the poster again, from a rendition, at a chosen second.
+
+    From a rendition because the source is gone: the transcode deletes
+    it once the renditions verify. The 1080p file where there is one,
+    so the poster is as sharp as the best the learner can play; the
+    720p always exists once a transcode has finished.
+
+    Nothing else is touched. The old poster stays until the new one has
+    been written over it, so a second past the end of the video leaves
+    the learner with the poster they had rather than with none.
+    """
+    prefix = f"{org_id}/{module_id}"
+    candidates = [
+        f"{prefix}/{asset_id}-1080p.mp4",
+        f"{prefix}/{asset_id}-720p.mp4",
+    ]
+    rendition = None
+
+    for path in candidates:
+        blob = processed_bucket.blob(path)
+        if blob.exists():
+            rendition = blob
+            break
+
+    if rendition is None:
+        print(
+            f"ERROR: No rendition of {asset_id} to take a poster from",
+            file=sys.stderr,
+        )
+        return 1
+
+    dest = f"{prefix}/{asset_id}-poster.jpg"
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmpdir = Path(tmp)
+        local_source = tmpdir / "rendition.mp4"
+        poster = tmpdir / f"{asset_id}-poster.jpg"
+
+        print(f"Downloading {rendition.name}...")
+        rendition.download_to_filename(str(local_source))
+
+        print(f"Extracting poster frame at {at_seconds} seconds...")
+        try:
+            build_poster(local_source, poster, at_seconds)
+        except RuntimeError as exc:
+            print(f"✗ {exc}", file=sys.stderr)
+            return 1
+
+        print(f"Uploading {dest}...")
+        blob = processed_bucket.blob(dest)
+        blob.cache_control = CACHE_CONTROL
+        blob.upload_from_filename(str(poster), content_type="image/jpeg")
+
+    if not processed_bucket.blob(dest).exists():
+        print(f"ERROR: {dest} is not readable after upload", file=sys.stderr)
+        return 1
+
+    _report_complete(org_id, module_id, asset_id, [dest], poster_only=True)
+
+    print(f"✓ Retook the poster for {asset_id} at {at_seconds} seconds")
 
     return 0
 

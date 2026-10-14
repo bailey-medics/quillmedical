@@ -49,6 +49,7 @@ from app.features.teaching.errors import (
     MediaCannotBeDeleted,
     MediaUploadNotConfigured,
     NoModuleToUploadTo,
+    PosterNotReady,
 )
 from app.features.teaching.models import ModuleMediaLink
 from app.features.teaching.schemas import CaptionsOut
@@ -642,6 +643,74 @@ def save_captions(
         webvtt=text,
         reviewed_at=link.captions_reviewed_at,
     )
+
+
+def set_poster_frame(
+    db: Session,
+    *,
+    user_id: int,
+    org_unit_id: int,
+    module_id: str,
+    asset_id: str,
+    seconds: int,
+) -> ModuleMediaLink:
+    """Choose the second a video's poster is taken from, and retake it.
+
+    The admin watches the video in the slides and types the second they
+    want, so there is no player in the admin page to keep in step.
+
+    The choice is kept on the link, so a transcode run again takes the
+    same frame. The poster itself is retaken by the transcode job in its
+    poster-only mode, which reads a rendition because the source has
+    gone; until it reports, learners keep the poster they had.
+
+    The row is flushed, not committed.
+
+    Args:
+        db: Core database session.
+        user_id: Who is choosing, for the log.
+        org_unit_id: The organisation the caller administers.
+        module_id: The module the upload belongs to.
+        asset_id: The upload's own id.
+        seconds: Whole seconds from the start of the video.
+
+    Returns:
+        The link, with the choice recorded.
+
+    Raises:
+        MediaAssetNotHeldHere: The organisation holds no upload of that
+            module by that id.
+        PosterNotReady: The video has not finished processing.
+    """
+    link = upload_held_by(db, org_unit_id, module_id, asset_id)
+
+    if link.transcoded_at is None:
+        raise PosterNotReady()
+
+    link.poster_at_seconds = seconds
+    db.flush()
+
+    logger.info(
+        "poster frame chosen user=%s org=%s module=%s asset=%s seconds=%s",
+        user_id,
+        org_unit_id,
+        module_id,
+        asset_id,
+        seconds,
+    )
+
+    # Under the storage prefix, as the job reads and writes the bucket
+    # by it and reports back with it. Never raises: the choice is saved,
+    # and a job that could not be reached leaves the old poster showing.
+    transcode.start_transcode(
+        link.organisation_id,
+        module_id,
+        asset_id,
+        poster_at_seconds=seconds,
+        poster_only=True,
+    )
+
+    return link
 
 
 def local_upload_root() -> str:

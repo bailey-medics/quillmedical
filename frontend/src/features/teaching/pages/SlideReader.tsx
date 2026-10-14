@@ -143,7 +143,7 @@ export default function SlideReader() {
 
   if (loading) {
     return (
-      <TeachingLayout>
+      <TeachingLayout fluid>
         <Stack gap="lg">
           <Skeleton height={400} />
         </Stack>
@@ -163,7 +163,7 @@ export default function SlideReader() {
         />
       );
       return (
-        <TeachingLayout sidebar={mainNav} drawerContent={mainNav}>
+        <TeachingLayout fluid sidebar={mainNav} drawerContent={mainNav}>
           <StateMessage
             icon={<IconAlertCircle />}
             title="This lesson could not be loaded"
@@ -188,7 +188,7 @@ export default function SlideReader() {
   );
 
   return (
-    <TeachingLayout sidebar={sidebarNav} drawerContent={sidebarNav}>
+    <TeachingLayout fluid sidebar={sidebarNav} drawerContent={sidebarNav}>
       <Stack
         gap="lg"
         onTouchStart={handleTouchStart}

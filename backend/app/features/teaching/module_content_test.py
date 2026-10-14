@@ -718,6 +718,26 @@ def test_each_other_file_is_named_only_where_the_link_records_it(
     }
 
 
+def test_a_retaken_poster_is_named_with_a_version(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The file keeps its name and is cached for a day, so without a
+    version a learner would see the old poster until the cache let go."""
+    org = _organisation(db_session)
+    _link(db_session, org, has_poster=True)
+    row = db_session.query(ModuleMediaLink).one()
+    row.poster_taken_at = datetime(2026, 10, 14, 12, 0, tzinfo=UTC)
+    db_session.flush()
+    _bucket(monkeypatch, VIDEO)
+    _media(monkeypatch)
+
+    version = int(row.poster_taken_at.timestamp())
+
+    assert _video(db_session, org)["video_poster"] == (
+        f"asset1-poster.jpg?v={version}"
+    )
+
+
 @pytest.mark.parametrize(
     ("content_type", "suffix"),
     [

@@ -407,7 +407,7 @@ def _video_files(
         return {
             "src": f"{asset}-720p.mp4",
             "src_1080p": (f"{asset}-1080p.mp4" if link.has_1080p else None),
-            "poster": (f"{asset}-poster.jpg" if link.has_poster else None),
+            "poster": _poster_name(asset, link) if link.has_poster else None,
             "captions": f"{asset}.vtt" if link.has_captions else None,
         }
 
@@ -463,3 +463,19 @@ def _slide_row(
         "video_poster": video["poster"],
         "video_captions": video["captions"],
     }
+
+
+def _poster_name(asset: str, link: ModuleMediaLink) -> str:
+    """The poster's filename, versioned once a poster has been retaken.
+
+    The name never changes and the file is cached for a day, so a poster
+    retaken at a new second would otherwise go unseen until the cache
+    let go. The version is when the new one was written, so a learner is
+    sent the new address only once there is a new file behind it.
+    """
+    name = f"{asset}-poster.jpg"
+
+    if link.poster_taken_at is None:
+        return name
+
+    return f"{name}?v={int(link.poster_taken_at.timestamp())}"
