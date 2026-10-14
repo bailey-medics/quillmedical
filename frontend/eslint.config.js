@@ -175,6 +175,21 @@ export default defineConfig(
         "no-restricted-imports": "off",
       },
     },
+    // In a test or a story, `async () => value` is the shortest way to
+    // stub something that returns a promise, and an `async` test body
+    // with nothing to wait for does no harm. The rule is for app code,
+    // where an async function with no await is usually a missing one.
+    {
+      files: [
+        "**/*.test.{ts,tsx}",
+        "**/*.stories.{ts,tsx}",
+        "src/test/**/*.{ts,tsx}",
+        "e2e/**/*.ts",
+      ],
+      rules: {
+        "@typescript-eslint/require-await": "off",
+      },
+    },
     // Storybook preview uses console.log for mock debugging
     {
       files: [".storybook/preview.tsx"],
@@ -199,8 +214,6 @@ export default defineConfig(
     {
       files: ["**/*.{ts,tsx}"],
       rules: {
-        // Phase 3
-        "@typescript-eslint/require-await": "off",
         // Phases 4 and 5
         "@typescript-eslint/no-unsafe-argument": "off",
         "@typescript-eslint/no-unsafe-assignment": "off",

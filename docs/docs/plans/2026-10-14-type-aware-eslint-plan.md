@@ -204,13 +204,24 @@ auto-fixed. The three answers are:
 
 ## Phase 3: Functions marked async that never wait
 
-- [ ] Turn `require-await` back on and fix its 80 findings: 65 in tests,
-      11 in stories, 3 in app code and 1 in `e2e/`. Nearly all are
-      `it("...", async () => {...})` with no `await` inside, where
-      removing `async` is the whole fix. Where a test body does need to
-      wait for something and was passing by luck, add the `await` rather
-      than removing the keyword, and say so in the pull request. One
-      branch.
+- [x] Turn `require-await` back on and fix its 80 findings: 65 in tests,
+      11 in stories, 3 in app code and 1 in `e2e/`. Done on 14 October
+      2026, and not as expected. Only 22 were a test body marked `async`
+      with nothing to wait for. The other 57 were `async () => value`,
+      a stub for something that returns a promise: a form's `onSubmit`
+      in a test or a story, a mocked `fetch` response's `json()`, a
+      `vi.fn(async () => true)`. The rule's fix for those is
+      `() => Promise.resolve(value)`, which says the same thing less
+      clearly, and the rule's purpose, an `async` function that forgot
+      its `await`, does not apply to a stub. So the rule is off for
+      tests, stories, `src/test/` and `e2e/`, with the reason in
+      `eslint.config.js`, and on for app code, where the three findings
+      were real: `chooseSite` in `RegisterPage` and `handleToggleActive`
+      in `EditSitePage` were `async` for no reason and are now plain
+      functions, which meant letting `Form`'s `onSubmit` return a
+      `FormSubmitResult` as well as a promise of one (its `Promise.race`
+      takes either); and `viteFinal` in `.storybook/main.ts` returned
+      its config through an `async` it did not need.
 
 ## Phase 4: Mocks that lose their types
 

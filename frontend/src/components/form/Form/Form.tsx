@@ -77,8 +77,8 @@ export interface FormConfirmConfig {
 export interface FormProps<T extends FieldValues> {
   /** Default form values */
   defaultValues?: DefaultValues<T>;
-  /** Async submit handler - receives validated data, returns result */
-  onSubmit: (data: T) => Promise<FormSubmitResult>;
+  /** Submit handler, sync or async: receives validated data, returns result */
+  onSubmit: (data: T) => FormSubmitResult | Promise<FormSubmitResult>;
   /** Label for the submit button (defaults to "Save") */
   submitLabel?: string;
   /** Label shown during submission (defaults to "Saving…") */
