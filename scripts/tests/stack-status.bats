@@ -260,3 +260,31 @@ PY
     run spent_of '{"branches": []}'
     [ "$output" = "not spent" ]
 }
+
+# Whether stack-status counts one check name in the heavy tier.
+heavy() {
+    python3 - "$SCRIPT" "$1" <<'PY'
+import importlib.util, sys
+
+spec = importlib.util.spec_from_file_location("stack_status", sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+sys.modules["stack_status"] = module
+spec.loader.exec_module(module)
+
+print(module.is_heavy(sys.argv[2]))
+PY
+}
+
+@test "the SAST job is in the heavy tier under its new name" {
+    # Renamed from "Semgrep (frontend SAST)" on 14 October 2026. A name
+    # left out of the list is drawn in the fast column instead.
+    run heavy "SAST"
+    [ "$status" -eq 0 ]
+    [ "$output" = "True" ]
+}
+
+@test "the SAST job's old name stays heavy while a job still reports it" {
+    run heavy "Semgrep (frontend SAST)"
+    [ "$status" -eq 0 ]
+    [ "$output" = "True" ]
+}

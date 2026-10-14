@@ -184,8 +184,11 @@ resource "github_repository_ruleset" "protected_branches" {
       }
 
       # Security
+      # Named "Semgrep (frontend SAST)" until 14 October 2026. Apply this
+      # only after the workflow that names the job "SAST" has merged, or
+      # every pull request waits on a check nothing reports.
       required_check {
-        context = "Semgrep (frontend SAST)"
+        context = "SAST"
       }
 
       # E2E

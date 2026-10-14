@@ -121,7 +121,7 @@ All 18 checks must pass before a PR can merge to `main`. The strict policy also 
 | Check name                             | What it does                                                 |
 | -------------------------------------- | ------------------------------------------------------------ |
 | `Storybook interaction tests`          | Storybook interaction tests (Playwright/Chromium), in 3 legs |
-| `Semgrep (frontend SAST)`              | Static application security testing                          |
+| `SAST`                                 | Static application security testing                          |
 | `E2E (Playwright)`                     | Full-stack end-to-end tests                                  |
 | `API breaking-change check`            | Finds a breaking API change (oasdiff)                        |
 | `API breaking-change review gate`      | Waits for a human to approve a breaking API change           |
