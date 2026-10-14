@@ -308,9 +308,6 @@ HEAVY_CHECKS = frozenset(
     {
         "Storybook interaction tests",
         "SAST",
-        # SAST's old name, reported by a job of its own until the branch
-        # rules asking for "SAST" are applied. Goes with that job.
-        "Semgrep (frontend SAST)",
         "E2E image build",
         "E2E (Playwright)",
         "Competency catalogue check",

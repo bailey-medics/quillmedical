@@ -283,8 +283,10 @@ PY
     [ "$output" = "True" ]
 }
 
-@test "the SAST job's old name stays heavy while a job still reports it" {
+@test "the SAST job's old name is no longer a check" {
+    # Reported by a job of its own until the rules asking for "SAST" were
+    # applied on 14 October 2026, and gone with it.
     run heavy "Semgrep (frontend SAST)"
     [ "$status" -eq 0 ]
-    [ "$output" = "True" ]
+    [ "$output" = "False" ]
 }

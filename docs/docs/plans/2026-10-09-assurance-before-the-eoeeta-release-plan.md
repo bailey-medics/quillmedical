@@ -642,14 +642,19 @@ backend/tests`: `r` without the dash is a target, not the recurse
       rule changes in one `just terraform-github` was accepted, as
       neither changes anything a pull request on `main` reports.
 
-- [ ] Take out `heavy_semgrep_old_name`, once `just terraform-github`
+- [x] Take out `heavy_semgrep_old_name`, once `just terraform-github`
       has applied the rules that ask for "SAST". Check first, in the
       branch rules on GitHub, that "SAST" is required and "Semgrep
       (frontend SAST)" is not. Then remove the job from
       `.github/workflows/ci.yml` and from the `needs` of
       `queue_failure_report`, and the old name from `HEAVY_CHECKS` in
       `scripts/stack-status.py` with its test in
-      `scripts/tests/stack-status.bats`.
+      `scripts/tests/stack-status.bats`. Done on 14 October 2026, after
+      #1975 merged and the rules were applied. The rules on GitHub were
+      read first: they require "SAST", and the old name is not among
+      them. The comment above the rule that warned about the order
+      went too, as the order no longer matters. The test that the old
+      name was heavy now checks that it is not.
 
 - [x] Update the three build tools with advisories against them. Found
       by the audit on 11 October 2026; none is shipped, so none is
