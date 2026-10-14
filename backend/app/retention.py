@@ -31,7 +31,11 @@ A fifth is found the same way: the closed account itself, once two
 years have passed and no training records are left on it. It too is
 written as a row for a person to decide.
 
-**Nothing here closes, empties or deletes an account.**
+**An account is emptied here, and only one a person has marked.** A
+superadmin marks it on the record retention screen, and the run that
+follows empties it (``empty_marked_accounts``), because only the admin
+job can move a passport's files to the archive. Nothing here closes an
+account, and nothing empties one on a timer.
 
 **Counts only are printed.** A line saying whose feedback went would put
 into the logs what was just taken out of the database.
@@ -61,6 +65,12 @@ from app.models import (
     OrgUnit,
     RetentionReview,
     User,
+)
+from app.passport_storage import archive_passport
+from app.users.emptying import (
+    ArchivePassport,
+    empty_account,
+    why_it_cannot_be_emptied,
 )
 
 #: How long an invitation nobody accepted is kept after it expires.
@@ -278,6 +288,7 @@ def closed_accounts_to_empty(
         .where(
             User.is_active.is_(False),
             User.deactivated_at.is_not(None),
+            User.emptied_at.is_(None),
             User.id.not_in(with_records),
             User.id.not_in(awaiting_records),
         )
@@ -612,6 +623,105 @@ def carry_out_decision(
     return None
 
 
+@dataclass(frozen=True)
+class EmptiedResult:
+    """What the run did about accounts marked to be emptied.
+
+    Attributes:
+        emptied: Accounts emptied, or that a real run would empty.
+        no_longer_due: Marked, and left alone: opened again since, or
+            with training records again. Not a fault.
+        failed: Marked and due, and could not be emptied. A fault.
+    """
+
+    emptied: int = 0
+    no_longer_due: int = 0
+    failed: int = 0
+
+
+def empty_marked_accounts(
+    db: Session,
+    now: datetime,
+    *,
+    apply: bool,
+    archive: ArchivePassport | None,
+) -> EmptiedResult:
+    """Empty each closed account a person has marked to be emptied.
+
+    A row about an account that says deleted is the decision; this is
+    the deed. Each account is checked again here, whatever the screen
+    showed when it was marked: one opened again since, or closed a
+    second time, or with training records again, is left alone.
+
+    **Each account is committed by itself**, as soon as it is emptied,
+    because its passport's files have moved by then and a later failure
+    must not roll its rows back to point at files that are gone. One
+    that fails is rolled back and counted, and the rest go on.
+
+    Args:
+        db: The database session. Committed here, account by account.
+        now: The moment, recorded as when each was emptied.
+        apply: True to empty. False counts and changes nothing.
+        archive: Moves a passport's files to the archive.
+
+    Returns:
+        How many were emptied, left alone, and failed.
+    """
+    marked = db.execute(
+        select(RetentionReview.user_id, RetentionReview.closed_at)
+        .join(User, User.id == RetentionReview.user_id)
+        .where(
+            RetentionReview.subject == "account",
+            RetentionReview.decision == "deleted",
+            User.emptied_at.is_(None),
+        )
+        .order_by(RetentionReview.id)
+    ).all()
+    emptied = no_longer_due = failed = 0
+    seen: set[int] = set()
+
+    for user_id, marked_closed_at in marked:
+        if user_id in seen:
+            continue
+
+        seen.add(user_id)
+        user = db.get(User, user_id)
+
+        # The decision was about one closure. An account opened and
+        # closed again since has a later date, and is a new question.
+        same_closure = (
+            user is not None
+            and user.deactivated_at is not None
+            and _aware(user.deactivated_at) == _aware(marked_closed_at)
+        )
+
+        if (
+            user is None
+            or not same_closure
+            or why_it_cannot_be_emptied(db, user) is not None
+        ):
+            no_longer_due += 1
+            continue
+
+        if not apply:
+            emptied += 1
+            continue
+
+        try:
+            empty_account(db, user, now=now, archive=archive)
+            # A deliberate checkpoint: the passport's files have moved,
+            # and these rows must not be rolled back by a later account.
+            db.commit()
+            emptied += 1
+        except Exception:
+            db.rollback()
+            failed += 1
+
+    return EmptiedResult(
+        emptied=emptied, no_longer_due=no_longer_due, failed=failed
+    )
+
+
 def apply_retention(
     db: Session, now: datetime, *, apply: bool
 ) -> RetentionResult:
@@ -687,11 +797,23 @@ def main() -> int:
 
     apply = os.environ.get("RETENTION_APPLY", "").strip().lower() == "true"
     db = CoreSessionLocal()
+    now = datetime.now(UTC)
+
+    def archive(passport_id: str) -> list[str]:
+        """Move one passport's files to where this job archives them."""
+        return archive_passport(
+            passport_id,
+            now.date(),
+            archive_bucket=os.environ.get("PASSPORT_ARCHIVE_GCS_BUCKET"),
+            archive_root=os.environ.get("PASSPORT_ARCHIVE_LOCAL_ROOT"),
+        )
 
     try:
-        result = apply_retention(db, datetime.now(UTC), apply=apply)
+        result = apply_retention(db, now, apply=apply)
         # This makes its own session, so nothing commits for it.
         db.commit()
+        # After the commit, and committing as it goes: see its docstring.
+        accounts = empty_marked_accounts(db, now, apply=apply, archive=archive)
     except Exception as exc:
         db.rollback()
         print(f"✗ Nothing was deleted: {type(exc).__name__}", file=sys.stderr)
@@ -713,6 +835,15 @@ def main() -> int:
         "newly due to be emptied"
     )
 
+    emptied = "Emptied" if apply else "Would empty"
+    print(f"{emptied} {accounts.emptied} closed accounts marked to be emptied")
+
+    if accounts.no_longer_due:
+        print(
+            f"Left {accounts.no_longer_due} marked accounts alone: opened "
+            "again, or with training records again"
+        )
+
     # Its own line, and only when somebody should act: an alert matches
     # it. A count and no names. Who they are is on the screen, behind a
     # sign-in.
@@ -728,6 +859,18 @@ def main() -> int:
 
     if not apply:
         print("A report only. Set RETENTION_APPLY=true to delete.")
+
+    # After the line the "has not run" alert counts: the run did
+    # finish. Failing it is what tells somebody, through the alert on a
+    # scheduled action that failed.
+    if accounts.failed:
+        print(
+            f"✗ {accounts.failed} closed accounts marked to be emptied "
+            "could not be. They are left as they were, and tried again "
+            "on the next run.",
+            file=sys.stderr,
+        )
+        return 1
 
     return 0
 
