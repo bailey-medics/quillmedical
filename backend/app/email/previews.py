@@ -157,6 +157,23 @@ def previews() -> list[Preview]:
                 "name": "John Smith",
                 "username": "john.smith",
                 "email": "john.smith@example.org",
+                "privacy_policy_url": (
+                    "https://quill-medical.com/privacy-policy"
+                ),
+                "unsubscribe_url": None,
+            },
+        ),
+        Preview(
+            id="account-closed-newsletter",
+            label="Account closed, newsletter carries on",
+            template="account_closed.html.j2",
+            context={
+                "name": "John Smith",
+                "username": "john.smith",
+                "email": "john.smith@example.org",
+                "privacy_policy_url": (
+                    "https://quill-medical.com/privacy-policy"
+                ),
                 "unsubscribe_url": (
                     "https://quill-medical.com/unsubscribe?token=example"
                 ),

@@ -1599,6 +1599,75 @@ institution name. So the number moves to the organisation itself.
       organisation 24 months, which is what brings a self-payer's
       records up for a decision (Phase 29).
 
+## Phase 32: Tell everybody whose account is closed
+
+Mark's decision, 14 October. Today the email that goes out when an
+account is closed (`backend/app/users/closure_notice.py`, built in
+Phase 28) goes only to somebody whose stored answer about news and
+updates is yes, and is about the newsletter. Everybody else whose
+account is closed hears nothing, and it is usually an administrator who
+closes it, so most people find out when they can no longer log in.
+
+- [x] Send one email on every deactivation, and fold the newsletter
+      email into it, so that nobody is sent two. Same template,
+      `account_closed.html.j2`, same moment: after the deactivate route
+      has answered, as a background task, so a mail provider that is
+      down neither holds up the closure nor undoes it. A failure is
+      logged with the user id and nothing else.
+
+- [x] What it says, in this order, in neutral words that give no
+      reason for the closure:
+
+      - **The account is closed.** Their username, and that they can no
+        longer log in.
+      - **What happens to their data**, kept general: a sponsor keeps
+        its training records for its own period, and the account is
+        deleted after two years. A link to the privacy policy for the
+        detail. No sponsor's period is named, so the email does not go
+        out of date when a period changes. Mark's decision.
+      - **Only when their stored answer is yes:** news and updates
+        carry on at this address, with a link to stop them inside the
+        sentence. A link and not a button, Mark's decision on 14
+        October: a large button is too tempting to press. Left out
+        altogether for somebody whose answer is no or who was never
+        asked.
+      - **If they think it is a mistake**, to speak to whoever looks
+        after Quill where they work or train.
+
+- [x] Who is sent it. Mark's decisions:
+
+      - **Not to an address nobody verified.** It may be somebody
+        else's, who would be told a stranger's account was closed.
+      - **To an account an administrator made whose owner never set a
+        password.** Its address counts as verified, because the
+        administrator vouched for it. The email is short, and explains
+        why their invitation link no longer works.
+      - **Not again on deletion.** Emptying an account, two years or
+        more later, sends nothing: the address is wiped by then, and
+        they were told at closure.
+      - **Again if the account is reopened and closed a second time.**
+
+- [x] Update `closure_notice_for` so it returns a notice for every
+      verified address, carrying whether the newsletter paragraph is
+      shown, and rename what needs renaming so the module no longer
+      reads as newsletter-only. Tests: sent to somebody who said no,
+      without the newsletter paragraph; sent with it to somebody who
+      said yes; not sent to an unverified address; sent to an
+      admin-made account never used; nothing printed or logged names
+      anybody.
+
+- [x] Rebuild the email previews with `just email-preview`, with a
+      preview for each of the two shapes, and say in section 3.6 or
+      3.1 of the privacy policy that we email you when your account is
+      closed. Add a dated sentence to `docs/docs/legal/index.md`.
+
+      Built on 14 October as one unit. The previews are "Account
+      closed" and "Account closed, newsletter carries on". The policy
+      line went into section 3.1, beside how long the account is kept,
+      and section 3.6 now points to it. The link to the privacy policy
+      is the published address, the same in every environment, as the
+      registration form's is.
+
 ## Phase 31: Prove what could only be tried live
 
 - [ ] Prove the alert for a scheduled action that has gone quiet, from

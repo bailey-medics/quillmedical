@@ -270,8 +270,9 @@ def deactivate_user(
 
     Marks a user account as inactive. Deactivated users cannot log in
     but their data is preserved for audit purposes. Their answer about
-    news and updates moves to the newsletter list, and somebody whose
-    newsletter carries on is emailed to say so.
+    news and updates moves to the newsletter list, and they are emailed
+    to say the account is closed, with their newsletter in the same
+    email.
     Requires the ``manage_users`` competency and a shared organisation
     with the patient.
 
@@ -290,9 +291,9 @@ def deactivate_user(
     """
     user = deactivate_account(db, current_user, user_id)
 
-    # Somebody whose newsletter carries on is told so, once. Worked out
-    # here and sent after the answer, so that a mail provider that is
-    # down neither holds up the closure nor undoes it.
+    # Their owner is told, once, with their newsletter in the same
+    # email. Worked out here and sent after the answer, so that a mail
+    # provider that is down neither holds up the closure nor undoes it.
     notice = closure_notice_for(db, user)
 
     if notice is not None:
