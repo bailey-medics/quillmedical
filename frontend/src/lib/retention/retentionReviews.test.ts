@@ -49,6 +49,7 @@ describe("listRetentionReviews", () => {
     expect(await listRetentionReviews()).toEqual({
       reviews: [records],
       accounts: [account],
+      exceptions: [],
     });
   });
 
@@ -58,6 +59,7 @@ describe("listRetentionReviews", () => {
     expect(await listRetentionReviews()).toEqual({
       reviews: [records],
       accounts: [],
+      exceptions: [],
     });
   });
 });

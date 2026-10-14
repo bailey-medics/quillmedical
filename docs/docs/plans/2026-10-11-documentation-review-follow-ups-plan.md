@@ -1230,13 +1230,24 @@ been since 12 October.
       deleted by the button, and a second run does not write a second
       row for the same person and organisation.
 
-- [ ] Then the same decision from the admin job, for when the screen
+- [x] Then the same decision from the admin job, for when the screen
       cannot be reached: a dry run that prints what is awaiting a
       decision and a code, and the code pasted back to carry it out, as
       `delete-passport` does. After the screen, on Mark's instruction.
 
-- [ ] Deleting an account, Phase 29, goes through this same screen and
+      Withdrawn on 14 October, by Mark: "I think it is dangerous." It
+      was built as the `decide-retention` admin action (#1969) and taken
+      out of the stack before merging, so it never reached `main`. A
+      second way in to deleting somebody's records, run from a job with
+      no signed-in user and naming the superadmin on trust, is more risk
+      than a fallback for a screen that works is worth. The screen is
+      the only way to decide.
+
+- [x] Deleting an account, Phase 29, goes through this same screen and
       is never automatic either.
+
+      So it does: Phase 29 lists the account on the screen, and the
+      nightly run empties only what a superadmin has marked there.
 
 ## Phase 28: Closing an account does not take somebody off the newsletter
 
@@ -1733,6 +1744,62 @@ check on a reopening the owner did not expect.
       Previews "Account opened again" and "Account opened again, no
       newsletter". Section 3.1 of the privacy policy says we email
       again on reopening, and the legal index records it.
+
+## Phase 34: Show what was marked to be emptied and was not
+
+Mark, 14 October. When a superadmin marks an account "Empty this
+account", the nightly run (`empty_marked_accounts` in
+`backend/app/retention.py`) may not empty it, for one of two reasons,
+and today neither reaches the retention screen:
+
+- **It failed**: an error while emptying, such as the passport archive
+  refusing. The run exits with an error, so the alert for a failed
+  scheduled action tells somebody, and it is tried again every night.
+  But the screen does not say which account.
+- **It was left alone**: the account was opened again, or has training
+  records again, after it was marked. Skipping it is right, but nobody
+  is told; the account just drops off the screen.
+
+- [x] Record each one on its `retention_review` row, with `just
+      migrate`: when it was last not emptied, and why, as one of a
+      fixed set of reasons written for a reader and naming nobody:
+      "could not be emptied" with a plain cause, "opened again", or
+      "has training records again". Cleared when the account is
+      emptied. Never the text of an exception: it may hold data.
+
+- [x] A new section on `/admin/retention`, headed **"Exceptions"**,
+      Mark's choice of name. Under it, one line: "Accounts marked to be
+      emptied that were not. Each says why. Nothing here needs doing:
+      failures are tried again each night."
+
+- [x] One card for each, showing the person's details as the waiting
+      cards do (name, email, when closed, when due), and the reason:
+
+      - "Could not be emptied: [cause]. Tried again each night."
+      - "Left alone: the account was opened again."
+      - "Left alone: it has training records again."
+
+      No buttons, Mark's decision: these are not decisions to make.
+
+- [x] When a card goes. A failed one goes when a retry succeeds. A
+      left-alone one stays while its reason holds, and goes when the
+      account is closed again; it then comes up as a fresh question
+      when it is next due. Decided here, as recommended to Mark and
+      not overruled: nothing is lost, and the section shows a real,
+      current state rather than one that expires by date.
+
+- [x] Tests: each reason is recorded and shown, a success clears it,
+      reopening and closing again clears a left-alone card, nothing
+      printed or logged names anybody, and an admin of a place cannot
+      see the section. A story for the card in each state.
+
+      Built on 14 October as one unit. The reason is a short code on
+      the row (`failed`, `opened_again`, `has_records`), with the words
+      for a failure in `not_emptied_detail`: a refusal's own fixed
+      words, or "Something went wrong while emptying it." for any other
+      error, whose text may hold data. Each note is committed as it is
+      made, as each emptied account is. The API sends the section as a
+      third list, `exceptions`, so no open tab breaks.
 
 ## Phase 31: Prove what could only be tried live
 

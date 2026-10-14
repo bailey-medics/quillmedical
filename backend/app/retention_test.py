@@ -1113,6 +1113,115 @@ class TestEmptyingMarkedAccounts:
         assert second.emptied_at is not None
 
 
+def _review_of(db: Session, user: User) -> RetentionReview:
+    db.expire_all()
+
+    return db.scalars(
+        select(RetentionReview).where(
+            RetentionReview.user_id == user.id,
+            RetentionReview.subject == "account",
+        )
+    ).one()
+
+
+class TestRecordingWhyItWasNotEmptied:
+    """What the "Exceptions" section on the screen is drawn from."""
+
+    def test_one_opened_again_is_noted_as_opened_again(
+        self, db_session: Session
+    ) -> None:
+        user = _marked(db_session)
+        user.is_active = True
+        db_session.commit()
+
+        retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=True, archive=_no_archive
+        )
+
+        review = _review_of(db_session, user)
+        assert review.not_emptied_reason == "opened_again"
+        assert review.not_emptied_detail is None
+        assert review.not_emptied_at is not None
+
+    def test_one_with_records_again_is_noted_as_has_records(
+        self, db_session: Session
+    ) -> None:
+        user = _marked(db_session)
+        _records(db_session, _org(db_session, "Academy", months=None), user)
+        db_session.commit()
+
+        retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=True, archive=_no_archive
+        )
+
+        assert _review_of(db_session, user).not_emptied_reason == (
+            "has_records"
+        )
+
+    def test_a_failure_is_noted_with_a_reason_that_names_nobody(
+        self, db_session: Session
+    ) -> None:
+        user = _marked(db_session)
+        db_session.add(Passport(id=PASSPORT_ID, user_id=user.id))
+        db_session.commit()
+
+        def archive(_passport_id: str) -> list[str]:
+            raise OSError("cannot reach gone@example.nhs.uk's archive")
+
+        retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=True, archive=archive
+        )
+
+        review = _review_of(db_session, user)
+        assert review.not_emptied_reason == "failed"
+        assert review.not_emptied_detail == (
+            "Something went wrong while emptying it."
+        )
+
+    def test_a_refusal_keeps_its_own_words(self, db_session: Session) -> None:
+        user = _marked(db_session)
+        db_session.add(Passport(id=PASSPORT_ID, user_id=user.id))
+        db_session.commit()
+
+        retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=True, archive=None
+        )
+
+        detail = _review_of(db_session, user).not_emptied_detail
+        assert detail is not None
+        assert "no archive" in detail
+
+    def test_a_later_success_clears_it(self, db_session: Session) -> None:
+        user = _marked(db_session)
+        user.is_active = True
+        db_session.commit()
+        retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=True, archive=_no_archive
+        )
+        user.is_active = False
+        user.deactivated_at = _two_years_ago()
+        db_session.commit()
+
+        retention.empty_marked_accounts(
+            db_session, NOW + 2 * A_DAY, apply=True, archive=_no_archive
+        )
+
+        review = _review_of(db_session, user)
+        assert review.not_emptied_reason is None
+        assert review.not_emptied_at is None
+
+    def test_a_report_notes_nothing(self, db_session: Session) -> None:
+        user = _marked(db_session)
+        user.is_active = True
+        db_session.commit()
+
+        retention.empty_marked_accounts(
+            db_session, NOW + A_DAY, apply=False, archive=_no_archive
+        )
+
+        assert _review_of(db_session, user).not_emptied_reason is None
+
+
 class TestTheShapeOfARow:
     """Records are somewhere; an account is not."""
 

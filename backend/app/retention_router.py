@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -31,6 +32,7 @@ from app.schemas.retention import (
     RetentionAccountOut,
     RetentionDecisionsIn,
     RetentionDecisionsOut,
+    RetentionExceptionOut,
     RetentionRefusalOut,
     RetentionReviewListOut,
     RetentionReviewOut,
@@ -128,7 +130,70 @@ def list_reviews(db: Session = _DEP_SESSION) -> RetentionReviewListOut:
         for review, user in account_rows
     ]
 
-    return RetentionReviewListOut(reviews=reviews, accounts=accounts)
+    return RetentionReviewListOut(
+        reviews=reviews, accounts=accounts, exceptions=_exceptions(db)
+    )
+
+
+#: The reasons a row may carry, as the schema names them.
+_REASONS: dict[str, Literal["failed", "opened_again", "has_records"]] = {
+    "failed": "failed",
+    "opened_again": "opened_again",
+    "has_records": "has_records",
+}
+
+
+def _exceptions(db: Session) -> list[RetentionExceptionOut]:
+    """Accounts marked to be emptied that the nightly run did not empty.
+
+    A failure stays until a run succeeds. An account left alone stays
+    while its reason holds, and goes once the account is closed again:
+    it is then a fresh question, asked when it is next due.
+    """
+    rows = (
+        db.execute(
+            select(RetentionReview, User)
+            .join(User, User.id == RetentionReview.user_id)
+            .where(
+                RetentionReview.subject == "account",
+                RetentionReview.decision == "deleted",
+                RetentionReview.not_emptied_reason.is_not(None),
+                User.emptied_at.is_(None),
+            )
+            .order_by(RetentionReview.id)
+        )
+        .unique()
+        .all()
+    )
+    found: list[RetentionExceptionOut] = []
+
+    for review, user in rows:
+        closed_again = (
+            not user.is_active
+            and user.deactivated_at is not None
+            and user.deactivated_at.replace(tzinfo=None)
+            != review.closed_at.replace(tzinfo=None)
+        )
+        reason = _REASONS.get(review.not_emptied_reason or "")
+
+        if closed_again or review.not_emptied_at is None or reason is None:
+            continue
+
+        found.append(
+            RetentionExceptionOut(
+                id=review.id,
+                user_id=user.id,
+                full_name=user.full_name or "",
+                email=user.email,
+                closed_at=review.closed_at,
+                due_on=review.due_on,
+                reason=reason,
+                detail=review.not_emptied_detail,
+                noted_at=review.not_emptied_at,
+            )
+        )
+
+    return found
 
 
 @router.post(

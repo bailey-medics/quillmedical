@@ -76,6 +76,35 @@ class RetentionAccountOut(BaseModel):
     listed_at: datetime
 
 
+class RetentionExceptionOut(BaseModel):
+    """An account marked to be emptied that the nightly run did not empty.
+
+    Shown under "Exceptions", with no choice to make: a failure is tried
+    again each night, and an account left alone is in use.
+
+    Attributes:
+        id: The decision row.
+        user_id: Whose account.
+        full_name: Their name.
+        email: Their email address.
+        closed_at: When the account was closed.
+        due_on: When it had been kept as long as an account is.
+        reason: ``failed``, ``opened_again`` or ``has_records``.
+        detail: For ``failed``, what went wrong, naming nobody.
+        noted_at: When the run last did not empty it.
+    """
+
+    id: int
+    user_id: int
+    full_name: str
+    email: str
+    closed_at: datetime
+    due_on: datetime
+    reason: Literal["failed", "opened_again", "has_records"]
+    detail: str | None
+    noted_at: datetime
+
+
 class RetentionReviewListOut(BaseModel):
     """Everything awaiting a decision, longest waiting first.
 
@@ -83,10 +112,12 @@ class RetentionReviewListOut(BaseModel):
         reviews: Training records, one entry for each person at each
             organisation.
         accounts: Closed accounts with no records left.
+        exceptions: Accounts marked to be emptied that were not.
     """
 
     reviews: list[RetentionReviewOut]
     accounts: list[RetentionAccountOut] = Field(default_factory=list)
+    exceptions: list[RetentionExceptionOut] = Field(default_factory=list)
 
 
 class RetentionDecisionIn(BaseModel):

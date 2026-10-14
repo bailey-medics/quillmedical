@@ -18,12 +18,14 @@ import ErrorState from "@/components/error-state/ErrorState";
 import PageHeader from "@/components/page-header";
 import { usePageMessage } from "@/components/page-message";
 import RetentionDecisionList from "@/components/retention/RetentionDecisionList";
+import RetentionExceptionCard from "@/components/retention/RetentionExceptionCard";
 import StateMessage from "@/components/state-message";
-import { BodyText } from "@/components/typography";
+import { BodyText, Heading } from "@/components/typography";
 import {
   listRetentionReviews,
   sendRetentionDecisions,
   type RetentionAccount,
+  type RetentionException,
   type RetentionDecision,
   type RetentionOutcome,
   type RetentionReview,
@@ -42,6 +44,7 @@ export default function AdminRetentionPage() {
   const { showMessage } = usePageMessage();
   const [reviews, setReviews] = useState<RetentionReview[]>([]);
   const [waiting, setWaiting] = useState<RetentionAccount[]>([]);
+  const [exceptions, setExceptions] = useState<RetentionException[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refusals, setRefusals] = useState<Record<number, string>>({});
@@ -52,6 +55,7 @@ export default function AdminRetentionPage() {
 
       setReviews(listed.reviews);
       setWaiting(listed.accounts);
+      setExceptions(listed.exceptions);
       setError(null);
     } catch {
       setError("The records awaiting a decision could not be loaded");
@@ -145,6 +149,19 @@ export default function AdminRetentionPage() {
           onCarryOut={carryOut}
           onClear={() => setRefusals({})}
         />
+      )}
+
+      {exceptions.length > 0 && (
+        <Stack gap="lg">
+          <Heading>Exceptions</Heading>
+          <BodyText>
+            Accounts marked to be emptied that were not. Each says why. Nothing
+            here needs doing: failures are tried again each night.
+          </BodyText>
+          {exceptions.map((exception) => (
+            <RetentionExceptionCard key={exception.id} exception={exception} />
+          ))}
+        </Stack>
       )}
     </Stack>
   );

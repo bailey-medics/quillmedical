@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -759,3 +760,98 @@ class TestThePeriod:
         assert resp.status_code == 403
         db_session.expire_all()
         assert org.records_kept_months_after_closure == 1
+
+
+def _marked_and_not_emptied(
+    db: Session, client: TestClient, name: str, *, reason: str
+) -> User:
+    """Somebody marked to be emptied, and left alone or failed."""
+    row = _closed_account(db, name)
+    client.post(
+        DECISIONS,
+        json={"decisions": [{"review_id": row.id, "decision": "delete"}]},
+    )
+    db.expire_all()
+    row.not_emptied_at = datetime.now(UTC)
+    row.not_emptied_reason = reason
+    row.not_emptied_detail = (
+        "Something went wrong while emptying it."
+        if reason == "failed"
+        else None
+    )
+    db.commit()
+    user = db.get(User, row.user_id)
+    assert user is not None
+
+    return user
+
+
+class TestExceptions:
+    """Accounts marked to be emptied that the nightly run did not empty."""
+
+    @pytest.mark.parametrize(
+        "reason", ["failed", "opened_again", "has_records"]
+    )
+    def test_each_is_listed_with_who_and_why(
+        self,
+        authenticated_superadmin_client: TestClient,
+        db_session: Session,
+        reason: str,
+    ) -> None:
+        _marked_and_not_emptied(
+            db_session, authenticated_superadmin_client, "cat", reason=reason
+        )
+
+        body = authenticated_superadmin_client.get(REVIEWS).json()
+
+        [card] = body["exceptions"]
+        assert card["full_name"] == "Cat Example"
+        assert card["email"] == "cat@example.nhs.uk"
+        assert card["reason"] == reason
+        assert body["accounts"] == []
+
+    def test_one_closed_again_drops_off(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        """It is a fresh question now, asked when it is next due."""
+        user = _marked_and_not_emptied(
+            db_session,
+            authenticated_superadmin_client,
+            "cat",
+            reason="opened_again",
+        )
+        user.is_active = True
+        user.is_active = False
+        db_session.commit()
+
+        body = authenticated_superadmin_client.get(REVIEWS).json()
+
+        assert body["exceptions"] == []
+
+    def test_nothing_is_listed_when_nothing_went_wrong(
+        self, authenticated_superadmin_client: TestClient, db_session: Session
+    ) -> None:
+        row = _closed_account(db_session, "cat")
+        authenticated_superadmin_client.post(
+            DECISIONS,
+            json={"decisions": [{"review_id": row.id, "decision": "delete"}]},
+        )
+
+        body = authenticated_superadmin_client.get(REVIEWS).json()
+
+        assert body["exceptions"] == []
+
+    def test_an_admin_of_a_place_sees_none_of_it(
+        self,
+        authenticated_superadmin_client: TestClient,
+        authenticated_admin_client: TestClient,
+        db_session: Session,
+    ) -> None:
+        _marked_and_not_emptied(
+            db_session, authenticated_superadmin_client, "cat", reason="failed"
+        )
+
+        resp = authenticated_admin_client.get(REVIEWS)
+
+        assert resp.status_code == 403
+        assert "cat" not in resp.text.lower()
