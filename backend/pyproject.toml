@@ -16,12 +16,12 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = "~3.14"
-fastapi = "0.141.1"
+fastapi = "0.143.0"
 uvicorn = { extras = ["standard"], version = "0.54.0" }
-pydantic = "2.13.5"
-sqlalchemy = "2.1.1"
+pydantic = "2.14.0"
+sqlalchemy = "2.1.4"
 psycopg = { extras = ["binary"], version = ">=3.2,<4.0" }
-python-dotenv = "1.2.3"
+python-dotenv = "1.2.4"
 httpx = "0.28.1"
 # Calls to EHRbase, in backend/app/ehrbase_client.py. Other packages here
 # need it too, but the application imports it itself, so it is named.
@@ -46,7 +46,7 @@ pyyaml = ">=6.0,<7.0"
 jinja2 = ">=3.1.6,<4.0.0"
 slowapi = "^0.1.9"
 python-json-logger = "^4.0.0"
-google-cloud-storage = ">=3.15.0,<3.16.0"
+google-cloud-storage = ">=3.17.0,<3.18.0"
 # Invoking the transcode Cloud Run Job when an upload is linked. The
 # backend is the trigger rather than Eventarc, so this is what fires the
 # job - see the trigger decision in the video auth gate plan.

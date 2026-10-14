@@ -14,11 +14,13 @@ import {
   hostedVideoSlide,
 } from "./stubSlides";
 
-// Mock react-player to avoid actual YouTube embedding in tests
-vi.mock("react-player", () => ({
-  default: vi.fn(({ url, src }: { url: string; src?: string }) => (
-    <div data-testid="react-player" data-url={url} data-src={src} />
-  )),
+// The player is stubbed: these tests are about what a slide hands it,
+// and each player is pinned in its own suite. Mocking the switch and not
+// one library keeps them true whichever player is in use.
+vi.mock("@/components/teaching/video-player/activeVideoPlayer", () => ({
+  ActiveVideoPlayer: ({ src }: { src?: string }) => (
+    <div data-testid="video-player" data-src={src} />
+  ),
 }));
 
 // The hosted-video path asks the backend for an access grant before it
@@ -59,7 +61,7 @@ describe("SlideLayoutVideo", () => {
 
   it("renders the video player", () => {
     renderWithMantine(<SlideLayoutVideo slide={videoSlide} />);
-    expect(screen.getByTestId("react-player")).toBeInTheDocument();
+    expect(screen.getByTestId("video-player")).toBeInTheDocument();
   });
 
   it("asks for no grant on a YouTube slide", () => {
@@ -81,7 +83,7 @@ describe("SlideLayoutVideo", () => {
       <SlideLayoutVideo slide={hostedVideoSlide} moduleId="mod-1" />,
     );
 
-    const player = await screen.findByTestId("react-player");
+    const player = await screen.findByTestId("video-player");
     // The base comes from the grant, the filename from the slide.
     expect(player).toHaveAttribute(
       "data-src",
@@ -102,7 +104,7 @@ describe("SlideLayoutVideo", () => {
       />,
     );
 
-    const player = await screen.findByTestId("react-player");
+    const player = await screen.findByTestId("video-player");
     expect(player).toHaveAttribute(
       "data-src",
       "/teaching/sample/ltd-transition.mp4",
@@ -127,7 +129,7 @@ describe("SlideLayoutVideo", () => {
       />,
     );
 
-    const player = await screen.findByTestId("react-player");
+    const player = await screen.findByTestId("video-player");
     expect(player).toHaveAttribute(
       "data-src",
       "/teaching/sample/ltd-transition.mp4",
@@ -145,7 +147,7 @@ describe("SlideLayoutVideo", () => {
       <SlideLayoutVideo slide={hostedVideoSlide} forceLoading />,
     );
 
-    expect(screen.queryByTestId("react-player")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("video-player")).not.toBeInTheDocument();
     expect(screen.queryByText("Video unavailable")).not.toBeInTheDocument();
     expect(mockPost).not.toHaveBeenCalled();
   });
@@ -160,7 +162,7 @@ describe("SlideLayoutVideo", () => {
 
     // An empty frame would leave the learner with nothing to act on.
     expect(await screen.findByText("Video unavailable")).toBeInTheDocument();
-    expect(screen.queryByTestId("react-player")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("video-player")).not.toBeInTheDocument();
   });
 });
 
