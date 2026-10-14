@@ -45,7 +45,7 @@ export default function AdminSitesPage() {
       }
     }
 
-    fetchPlaces();
+    void fetchPlaces();
   }, []);
 
   // The organisations are here to name owners, not to be listed

@@ -47,7 +47,7 @@ export default function EditUserPage() {
       }
     }
 
-    fetchUsers();
+    void fetchUsers();
   }, []);
 
   const handleEditUser = (userId: string) => {

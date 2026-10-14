@@ -216,7 +216,7 @@ export default function CreateSitePage() {
       }
     }
 
-    fetchPlaces();
+    void fetchPlaces();
   }, [mayNameLead]);
 
   async function handleSubmit(

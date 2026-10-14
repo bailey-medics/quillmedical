@@ -182,7 +182,7 @@ export default function EditSitePage() {
       }
     }
 
-    fetchData();
+    void fetchData();
   }, [id]);
 
   async function handleToggleActive(active: boolean) {

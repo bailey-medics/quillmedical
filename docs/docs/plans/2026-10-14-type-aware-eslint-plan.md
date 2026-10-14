@@ -145,10 +145,25 @@ auto-fixed. The three answers are:
   [])` is the established shape for a load on mount, where `load` itself
   handles its errors.
 
-- [ ] `src/pages/**`. Remove the `src/pages` block from the Phase 1
+- [x] `src/pages/**`. Remove the `src/pages` block from the Phase 1
       scaffolding, fix the 74 findings, and run the unit tests of each
       page touched with `just uf`. A page whose test does not cover the
       failure path gets a test for it where the fix added a `.catch`.
+      Done on 14 October 2026. The 74 were of four kinds. Thirty-six were
+      `navigate(...)` from React Router, whose promise settles when the
+      navigation does and whose errors go to the route's `errorElement`;
+      rather than `void` on every call, the rule's
+      `allowForKnownSafeCalls` names `NavigateFunction` from
+      `react-router` in `eslint.config.js`, with the reason, and that
+      covers the whole tree. Thirty-five were a fetch-on-mount in a
+      `useEffect`, each calling a local `async` function with its own
+      `try`/`catch`, now `void fetchX()`. Three had no handler at all and
+      gained a `.catch` and a test: the first load of the question banks
+      in `AdminTeachingPage`, which left a blank page on failure and now
+      says "Could not load the question banks"; and sending in
+      `MessageThread` and `PatientMessageThread`, which showed the
+      message as sent whatever happened and now take it back and say
+      "Message not sent", through `usePageMessage`.
 
 - [ ] `src/features/**`. The same for the 19 findings.
 

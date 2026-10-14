@@ -110,10 +110,18 @@ export default function AdminTeachingPage() {
       .then((data) => {
         setModules(banksToModules(data));
       })
+      .catch((err: unknown) => {
+        showMessage({
+          variant: "error",
+          title: "Could not load the question banks",
+          description:
+            err instanceof Error ? err.message : "The request failed",
+        });
+      })
       .finally(() => {
         setLoading(false);
       });
-  }, [fetchBanks]);
+  }, [fetchBanks, showMessage]);
 
   const handleSyncAll = async () => {
     setSyncing(true);

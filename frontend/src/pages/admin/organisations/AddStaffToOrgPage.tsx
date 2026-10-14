@@ -271,7 +271,7 @@ export default function AddStaffToOrgPage() {
       }
     }
 
-    fetchUsers();
+    void fetchUsers();
   }, [id, viewerIsOperator]);
 
   const selectedUser = users.find((u) => String(u.id) === selectedUserId);

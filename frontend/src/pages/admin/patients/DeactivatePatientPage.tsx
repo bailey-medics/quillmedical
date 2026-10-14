@@ -96,7 +96,7 @@ export default function DeactivatePatientPage() {
       }
     }
 
-    fetchData();
+    void fetchData();
   }, [patientId, specificPatient]);
 
   const formatName = (

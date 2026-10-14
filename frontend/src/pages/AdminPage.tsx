@@ -105,7 +105,7 @@ export default function AdminPage() {
       }
     }
 
-    fetchUsers();
+    void fetchUsers();
 
     return () => {
       cancelled = true;
@@ -159,7 +159,7 @@ export default function AdminPage() {
             // FHIR not ready yet, keep loading and retry
             setTimeout(() => {
               if (!cancelled) {
-                fetchPatients();
+                void fetchPatients();
               }
             }, FHIR_POLLING_TIME);
           }
@@ -169,13 +169,13 @@ export default function AdminPage() {
         // On error, stop loading after a delay and retry
         setTimeout(() => {
           if (!cancelled) {
-            fetchPatients();
+            void fetchPatients();
           }
         }, FHIR_POLLING_TIME);
       }
     }
 
-    fetchPatients();
+    void fetchPatients();
 
     return () => {
       cancelled = true;
@@ -211,7 +211,7 @@ export default function AdminPage() {
       }
     }
 
-    fetchOrganisations();
+    void fetchOrganisations();
 
     return () => {
       cancelled = true;

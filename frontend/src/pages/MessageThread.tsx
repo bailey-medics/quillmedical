@@ -10,6 +10,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { PageSpinner } from "@/components/loading-spinner";
 import Messaging, { type Message } from "@/components/messaging/Messaging";
 import PageHeader from "@/components/page-header";
+import { usePageMessage } from "@/components/page-message";
 import type { Patient } from "@/domains/patient";
 import type { LayoutCtx } from "@/RootLayout";
 import { api } from "@lib/api";
@@ -75,6 +76,7 @@ export default function MessageThread() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { showMessage } = usePageMessage();
 
   // Fetch conversation detail
   useEffect(() => {
@@ -205,14 +207,25 @@ export default function MessageThread() {
       };
       setMessages((prev) => [...prev, optimistic]);
 
-      sendMessage(Number(conversationId), { body: text }).then((msg) => {
-        // Replace optimistic message with real one
-        setMessages((prev) =>
-          prev.map((m) => (m.id === optimistic.id ? toUiMessage(msg) : m)),
-        );
-      });
+      sendMessage(Number(conversationId), { body: text })
+        .then((msg) => {
+          // Replace optimistic message with real one
+          setMessages((prev) =>
+            prev.map((m) => (m.id === optimistic.id ? toUiMessage(msg) : m)),
+          );
+        })
+        .catch((err: unknown) => {
+          // The message was shown as sent; take it back and say why
+          setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+          showMessage({
+            variant: "error",
+            title: "Message not sent",
+            description:
+              err instanceof Error ? err.message : "The request failed",
+          });
+        });
     },
-    [conversationId, currentUserId, state],
+    [conversationId, currentUserId, showMessage, state],
   );
 
   if (isLoading) {

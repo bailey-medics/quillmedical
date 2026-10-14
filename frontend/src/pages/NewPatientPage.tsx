@@ -405,7 +405,7 @@ export default function NewPatientPage() {
       }
     }
 
-    fetchPatient();
+    void fetchPatient();
   }, [isEditMode, patientId]);
 
   // Block navigation when form is dirty and not yet submitted
@@ -616,7 +616,7 @@ export default function NewPatientPage() {
     const confirmationStep = isEditMode ? 1 : 2;
 
     if (activeStep === lastFormStep && newStep === confirmationStep) {
-      handleSubmit();
+      void handleSubmit();
     } else {
       setActiveStep(newStep);
     }

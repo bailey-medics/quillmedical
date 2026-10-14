@@ -390,7 +390,7 @@ export default function OrgFeaturesPage({
       }
     }
 
-    fetchData();
+    void fetchData();
   }, [id]);
 
   const defaultValues = useMemo(() => {

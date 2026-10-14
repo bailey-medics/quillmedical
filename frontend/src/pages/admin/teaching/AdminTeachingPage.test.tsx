@@ -72,6 +72,19 @@ async function syncAll() {
 }
 
 describe("AdminTeachingPage", () => {
+  it("says so when the banks cannot be loaded", async () => {
+    (api.get as Mock).mockRejectedValue(new Error("Service unavailable"));
+
+    renderWithRouter(<AdminTeachingPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Could not load the question banks"),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByText("Service unavailable")).toBeInTheDocument();
+  });
+
   it("shows empty state when no banks", async () => {
     (api.get as Mock).mockResolvedValue([]);
     renderWithRouter(<AdminTeachingPage />);

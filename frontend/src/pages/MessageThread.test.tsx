@@ -218,6 +218,33 @@ describe("MessageThread", () => {
 
       expect(screen.getByText("Test reply message")).toBeInTheDocument();
     }, 15000);
+
+    it("takes the message back and says so when sending fails", async () => {
+      vi.mocked(sendMessage).mockRejectedValue(
+        new Error("Service unavailable"),
+      );
+      const user = userEvent.setup();
+      renderWithRouter(<MessageThread />, {
+        routePath: "/messages/:conversationId",
+        initialRoute: "/messages/1",
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByPlaceholderText("Type a message..."),
+        ).toBeInTheDocument();
+      });
+
+      const input = screen.getByPlaceholderText("Type a message...");
+      await user.type(input, "Test reply message");
+      await user.click(screen.getByRole("button", { name: /send/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Message not sent")).toBeInTheDocument();
+      });
+      expect(screen.getByText("Service unavailable")).toBeInTheDocument();
+      expect(screen.queryByText("Test reply message")).not.toBeInTheDocument();
+    }, 15000);
   });
 
   describe("Unknown conversation", () => {

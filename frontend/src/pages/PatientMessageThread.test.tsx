@@ -185,4 +185,29 @@ describe("PatientMessageThread", () => {
 
     expect(screen.getByText("Test message")).toBeInTheDocument();
   });
+
+  it("takes the message back and says so when sending fails", async () => {
+    vi.mocked(sendMessage).mockRejectedValue(new Error("Service unavailable"));
+    const user = userEvent.setup();
+    renderWithRouter(<PatientMessageThread />, {
+      routePath: "/patients/:id/messages/:conversationId",
+      initialRoute: "/patients/test-patient/messages/1",
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText("Type a message..."),
+      ).toBeInTheDocument();
+    });
+
+    const input = screen.getByPlaceholderText("Type a message...");
+    await user.type(input, "Test message");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Message not sent")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Service unavailable")).toBeInTheDocument();
+    expect(screen.queryByText("Test message")).not.toBeInTheDocument();
+  });
 });

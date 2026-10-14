@@ -69,7 +69,7 @@ export default function AddPatientToOrgPage() {
       }
     }
 
-    fetchPatients();
+    void fetchPatients();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {

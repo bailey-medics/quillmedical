@@ -314,7 +314,7 @@ export default function AddStaffToSitePage() {
       }
     }
 
-    fetchData();
+    void fetchData();
   }, [id, viewerIsOperator]);
 
   const selectedUser = users.find((u) => String(u.id) === selectedUserId);

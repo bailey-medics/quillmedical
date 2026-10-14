@@ -199,7 +199,7 @@ export default function PatientAdminPage() {
       }
     }
 
-    fetchPatientData();
+    void fetchPatientData();
 
     // Clean up: remove patient from ribbon when unmounting
     return () => {
