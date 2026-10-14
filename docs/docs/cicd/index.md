@@ -55,7 +55,7 @@ Runs when a PR is marked ready for review or updated. Takes ~5-10 minutes.
 | Job                         | Check name                    | What it does                                   |
 | --------------------------- | ----------------------------- | ---------------------------------------------- |
 | Storybook interaction tests | `Storybook interaction tests` | Playwright interaction tests against Storybook |
-| Semgrep                     | `Semgrep (frontend SAST)`     | Static application security testing            |
+| Semgrep                     | `SAST`                        | Static application security testing            |
 | E2E                         | `E2E (Playwright)`            | Full-stack end-to-end tests via Docker Compose |
 
 The Storybook tests run as three legs, `Storybook interaction tests (1/3)` to

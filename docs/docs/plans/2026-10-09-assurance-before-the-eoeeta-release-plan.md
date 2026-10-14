@@ -603,7 +603,7 @@ backend/tests`: `r` without the dash is a target, not the recurse
     the one step in the plan that waits for him, because it changes
     how sign-in is decided.
 
-- [ ] Rename the Semgrep job to "SAST". Added on 11 October 2026 at
+- [x] Rename the Semgrep job to "SAST". Added on 11 October 2026 at
       Mark's request. It is `Semgrep (frontend SAST)` and now scans the
       backend too. The name is in three places that must change
       together: the job in `.github/workflows/ci.yml`, the required
@@ -627,6 +627,29 @@ backend/tests`: `r` without the dash is a target, not the recurse
       check on top of an unproven rule change would make a failure
       hard to place. When it is picked up, check first whether the
       rename has been done there.
+      **Done on 14 October 2026**, when no open pull request touched
+      the three files and the other worktree's plans were nearly done.
+      The name was in five places, not three: two pages under
+      `docs/docs/cicd/` and `docs/docs/github/` list it too. To avoid
+      the deadlock, the rename is done in two steps and needs nobody
+      to switch the queue off. A short-lived job,
+      `heavy_semgrep_old_name`, keeps reporting the old name with SAST's
+      result, so a pull request still passes the rules GitHub has now,
+      and the branch rules ask for "SAST". The order is: merge this,
+      then run `just terraform-github`, then take the old-name job out
+      in the step below. Phase 17 of the documentation review
+      follow-ups plan was still unproven at the time; applying both
+      rule changes in one `just terraform-github` was accepted, as
+      neither changes anything a pull request on `main` reports.
+
+- [ ] Take out `heavy_semgrep_old_name`, once `just terraform-github`
+      has applied the rules that ask for "SAST". Check first, in the
+      branch rules on GitHub, that "SAST" is required and "Semgrep
+      (frontend SAST)" is not. Then remove the job from
+      `.github/workflows/ci.yml` and from the `needs` of
+      `queue_failure_report`, and the old name from `HEAVY_CHECKS` in
+      `scripts/stack-status.py` with its test in
+      `scripts/tests/stack-status.bats`.
 
 - [x] Update the three build tools with advisories against them. Found
       by the audit on 11 October 2026; none is shipped, so none is
@@ -683,11 +706,11 @@ before any feature.
 - [x] `backend/Dockerfile`.
 - [x] `frontend/Dockerfile`.
 - [x] `backend/pyproject.toml`.
-- [ ] `frontend/package.json`.
-- [ ] `frontend/tsconfig.json`.
-- [ ] `frontend/tsconfig.app.json`.
-- [ ] `frontend/tsconfig.check.json`.
-- [ ] `frontend/tsconfig.node.json`.
+- [x] `frontend/package.json`.
+- [x] `frontend/tsconfig.json`.
+- [x] `frontend/tsconfig.app.json`.
+- [x] `frontend/tsconfig.check.json`.
+- [x] `frontend/tsconfig.node.json`.
 - [ ] `frontend/vite.config.ts`.
 - [ ] `frontend/eslint.config.js`.
 - [ ] `security.py`
@@ -1195,12 +1218,14 @@ found as a bug to fix on its own branch before going on.
   - **Slides: the arrow keys change slide while the video has focus.**
   - **Guides: a new storage client for every picture.**
 
-  **Found while fixing the above, not yet sorted**
+  **Found while fixing the above, and not to be done**
   - **Notifications: none is ever shown.** Pages call
     `notifications.show`, for instance on activating a patient, but
     `<Notifications />` from `@mantine/notifications` is mounted
     nowhere, so nothing draws them. Found on 13 October 2026.
-    `frontend/src/main.tsx`.
+    `frontend/src/main.tsx`. Mark, 14 October 2026: notifications
+    are not being done, so this is left as it is and is no part of
+    this plan.
 
   **Postponed: passport and inbox** (Mark: the passport is still under
   construction and is not part of the EoEETA work)
