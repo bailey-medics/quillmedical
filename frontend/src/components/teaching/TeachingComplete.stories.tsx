@@ -43,7 +43,11 @@ function learningNav(currentIndex: number, onNavigate?: () => void) {
 export const WithVideoPlayer: Story = {
   tags: ["!test"],
   render: () => (
-    <TeachingLayout sidebar={learningNav(1)} footerText="Logged in: dr.jones">
+    <TeachingLayout
+      fluid
+      sidebar={learningNav(1)}
+      footerText="Logged in: dr.jones"
+    >
       <PageHeader title="Recorded lecture" />
       <VideoPlayer youtubeId="2OTbDQh3MxM" />
       <Box hiddenFrom="sm">
@@ -60,7 +64,11 @@ export const WithVideoPlayer: Story = {
 export const SlideWithTextAndFigure: Story = {
   tags: ["!test"],
   render: () => (
-    <TeachingLayout sidebar={learningNav(3)} footerText="Logged in: dr.jones">
+    <TeachingLayout
+      fluid
+      sidebar={learningNav(3)}
+      footerText="Logged in: dr.jones"
+    >
       <SlideViewer slide={textWithFigureSlide} />
       <Box hiddenFrom="sm">
         <PreviousNextButton
@@ -76,7 +84,11 @@ export const SlideWithTextAndFigure: Story = {
 export const SlideWithCallout: Story = {
   tags: ["!test"],
   render: () => (
-    <TeachingLayout sidebar={learningNav(5)} footerText="Logged in: dr.jones">
+    <TeachingLayout
+      fluid
+      sidebar={learningNav(5)}
+      footerText="Logged in: dr.jones"
+    >
       <SlideViewer slide={calloutSlide} />
       <Box hiddenFrom="sm">
         <PreviousNextButton
@@ -93,7 +105,11 @@ export const DarkModeVideo: Story = {
   tags: ["!test"],
   globals: { colorScheme: "dark" },
   render: () => (
-    <TeachingLayout sidebar={learningNav(1)} footerText="Logged in: dr.jones">
+    <TeachingLayout
+      fluid
+      sidebar={learningNav(1)}
+      footerText="Logged in: dr.jones"
+    >
       <SlideViewer slide={videoSlide} />
       <Box hiddenFrom="sm">
         <PreviousNextButton

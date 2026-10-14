@@ -25,6 +25,7 @@ import { StateMessage } from "@/components/message-cards";
 import {
   IconAlertTriangle,
   IconPencil,
+  IconPhoto,
   IconTrash,
 } from "@/components/icons/appIcons";
 import { BodyText, BodyTextInline, Heading } from "@/components/typography";
@@ -74,6 +75,13 @@ export interface ModuleMediaCardProps {
    * presentational and can be driven from Storybook with no network.
    */
   onEditCaptions?: (asset: MediaAsset) => void;
+  /**
+   * Called to choose the second one asset's poster is taken from.
+   *
+   * Offered only where the transcode has produced a poster, because a
+   * retaken poster is read from a rendition and there is none before.
+   */
+  onChoosePoster?: (asset: MediaAsset) => void;
   /** Shows skeleton rows while the media list is in flight. */
   loading?: boolean;
   /**
@@ -103,6 +111,7 @@ export default function ModuleMediaCard({
   onUpload,
   onDelete,
   onEditCaptions,
+  onChoosePoster,
   loading = false,
   error = null,
 }: ModuleMediaCardProps) {
@@ -310,13 +319,23 @@ export default function ModuleMediaCard({
                 // One ellipsis rather than buttons in two columns,
                 // matching the site and organisation tables. Editing
                 // captions only appears where there are captions to
-                // edit, so the menu never offers a dead action.
+                // edit, and choosing a poster only where there is one,
+                // so the menu never offers a dead action.
                 if (!row.asset) return null;
                 const asset = row.asset;
                 return (
                   <EllipsisMenu
                     aria-label={`Actions for ${asset.original_filename}`}
                     items={[
+                      ...(asset.has_poster
+                        ? [
+                            {
+                              label: "Choose poster frame",
+                              icon: <IconPhoto />,
+                              onClick: () => onChoosePoster?.(asset),
+                            },
+                          ]
+                        : []),
                       ...(asset.has_captions
                         ? [
                             {

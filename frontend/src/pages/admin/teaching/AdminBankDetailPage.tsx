@@ -25,6 +25,7 @@ import MarkdownView from "@/components/typography/MarkdownView";
 import {
   CaptionEditorModal,
   ModuleMediaCard,
+  PosterFrameModal,
 } from "@/components/teaching/module-media-card";
 import { useModuleMedia } from "@/features/teaching/use-module-media";
 import { api } from "@/lib/api";
@@ -57,6 +58,7 @@ export default function AdminBankDetailPage() {
     remove,
     loadCaptions,
     saveCaptions,
+    savePosterFrame,
   } = useModuleMedia(bankId ?? null);
 
   // Leaving mid-upload loses the file, so both ways out are guarded.
@@ -92,6 +94,7 @@ export default function AdminBankDetailPage() {
   // here rather than in the card so the card stays presentational and
   // drivable from Storybook with no network.
   const [captionAsset, setCaptionAsset] = useState<MediaAsset | null>(null);
+  const [posterAsset, setPosterAsset] = useState<MediaAsset | null>(null);
   const [captionText, setCaptionText] = useState<string | null>(null);
   const [captionsLoading, setCaptionsLoading] = useState(false);
 
@@ -336,6 +339,7 @@ export default function AdminBankDetailPage() {
           onUpload={upload}
           onDelete={remove}
           onEditCaptions={openCaptions}
+          onChoosePoster={setPosterAsset}
           loading={mediaLoading}
           error={mediaError}
         />
@@ -356,6 +360,19 @@ export default function AdminBankDetailPage() {
         onSave={(webvtt) =>
           captionAsset
             ? saveCaptions(captionAsset.asset_id, webvtt)
+            : Promise.resolve(false)
+        }
+        error={mediaError}
+      />
+
+      <PosterFrameModal
+        opened={posterAsset !== null}
+        onClose={() => setPosterAsset(null)}
+        filename={posterAsset?.original_filename}
+        currentSeconds={posterAsset?.poster_at_seconds ?? null}
+        onSave={(seconds) =>
+          posterAsset
+            ? savePosterFrame(posterAsset.asset_id, seconds)
             : Promise.resolve(false)
         }
         error={mediaError}

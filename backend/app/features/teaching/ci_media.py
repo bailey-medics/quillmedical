@@ -28,7 +28,10 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.features.teaching.errors import MediaAssetNotFound
+from app.features.teaching.errors import (
+    MediaAssetNotFound,
+    PosterNotReported,
+)
 from app.features.teaching.models import ModuleMediaLink
 from app.features.teaching.transcode import RENDITION_FLAGS, start_caption
 
@@ -145,6 +148,54 @@ def record_captions(
     # of a lecture and this log is not PHI-safe.
     logger.info(
         "captions recorded org=%s module=%s asset=%s",
+        org_id,
+        module_id,
+        asset_id,
+    )
+
+
+def record_poster(
+    db: Session,
+    org_id: int,
+    module_id: str,
+    asset_id: str,
+    outputs: list[str],
+) -> None:
+    """Record that a retaken poster is in the bucket.
+
+    Its own recorder, not :func:`record_transcode` with a shorter list:
+    that one sets every rendition flag from the names it is given, so a
+    report naming only the poster would clear the 1080p and caption
+    flags of a video that still has both.
+
+    The row is flushed, not committed.
+
+    Args:
+        db: Core database session.
+        org_id: The number the upload is stored under in the bucket.
+        module_id: The module the upload belongs to.
+        asset_id: The upload's own id.
+        outputs: The names of the files the job wrote.
+
+    Raises:
+        MediaAssetNotFound: no upload is recorded under those ids.
+        PosterNotReported: the report does not name this upload's poster.
+    """
+    if f"{asset_id}-poster.jpg" not in outputs:
+        raise PosterNotReported
+
+    link = _media_link(db, org_id, module_id, asset_id)
+
+    # The version the learner's poster address carries. Set only now,
+    # once the file is there: set when the admin saved, a learner in
+    # between would fetch the old poster under the new address, and the
+    # CDN would keep it there for a day.
+    link.has_poster = True
+    link.poster_taken_at = datetime.now(UTC)
+    db.flush()
+
+    logger.info(
+        "poster recorded org=%s module=%s asset=%s",
         org_id,
         module_id,
         asset_id,

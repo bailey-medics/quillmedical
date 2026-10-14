@@ -771,6 +771,13 @@ class MediaAssetOut(BaseModel):
     #: machine output is a draft until a human has been over it - and a
     #: learner relying on captions cannot tell the difference.
     captions_reviewed_at: datetime | None = None
+    #: Whether the transcode produced a poster. Exposed so the admin card
+    #: offers to retake one only where there is a rendition to take it
+    #: from. Optional, so the change is additive.
+    has_poster: bool = False
+    #: The second the poster is taken from, where an admin chose one.
+    #: None means the job's default. Optional, so the change is additive.
+    poster_at_seconds: int | None = None
     #: How far through processing this upload is, and what is happening
     #: now. Derived server-side rather than in the card, so one org_unit
     #: decides what the states mean and the two cannot drift.
@@ -865,6 +872,38 @@ class CaptionCompleteOut(BaseModel):
     """Confirmation that the caption track was recorded."""
 
     recorded: bool
+
+
+class PosterCompleteIn(BaseModel):
+    """What the transcode job reports once a retaken poster verifies.
+
+    The same shape as the transcode report, so the job sends one kind of
+    body; ``outputs`` names the one poster it wrote.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    org_id: int
+    module_id: str
+    asset_id: str
+    outputs: list[str]
+
+
+class PosterCompleteOut(BaseModel):
+    """Confirmation that the retaken poster was recorded."""
+
+    recorded: bool
+
+
+class PosterFrameIn(BaseModel):
+    """The second of a video its poster is to be taken from."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    #: Whole seconds from the start, as the admin read them off the
+    #: player in the slides. Capped at a day, far past any lecture, so a
+    #: slip of the keyboard is refused here rather than by the job.
+    seconds: int = Field(ge=0, le=86_400)
 
 
 class MediaLinkIn(BaseModel):

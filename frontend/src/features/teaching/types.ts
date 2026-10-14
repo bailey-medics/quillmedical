@@ -437,6 +437,14 @@ export interface MediaAsset {
    * learner relying on captions cannot tell the difference.
    */
   captions_reviewed_at?: string | null;
+  /** Whether the transcode produced a poster, so one can be retaken. */
+  has_poster?: boolean;
+  /**
+   * The second the poster is taken from, where an admin chose one.
+   *
+   * Null means the job's default of five seconds in.
+   */
+  poster_at_seconds?: number | null;
   /**
    * How far processing has got, and what is happening now.
    *

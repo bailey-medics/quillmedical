@@ -183,6 +183,46 @@ describe("ModuleMediaCard", () => {
     ).toBeNull();
   });
 
+  it("offers choosing a poster frame where there is a poster", async () => {
+    const user = userEvent.setup();
+    const onChoosePoster = vi.fn();
+    renderWithMantine(
+      <ModuleMediaCard
+        media={{
+          module_id: "mod-1",
+          references: [
+            { key: "lecture-01", asset: { ...lecture, has_poster: true } },
+          ],
+          unattached: [],
+          is_complete: true,
+        }}
+        onChoosePoster={onChoosePoster}
+      />,
+    );
+
+    await openActions(user);
+    await user.click(
+      screen.getByRole("menuitem", { name: /choose poster frame/i }),
+    );
+
+    expect(onChoosePoster).toHaveBeenCalledWith(
+      expect.objectContaining({ asset_id: "a1b2c3" }),
+    );
+  });
+
+  it("hides choosing a poster before the video has one", async () => {
+    // A retaken poster is read from a rendition, and there is none
+    // until the transcode has finished.
+    const user = userEvent.setup();
+    renderWithMantine(<ModuleMediaCard media={complete} />);
+
+    await openActions(user);
+
+    expect(
+      screen.queryByRole("menuitem", { name: /choose poster frame/i }),
+    ).toBeNull();
+  });
+
   it("drops the bar once the captions are signed off", () => {
     // A full bar on a finished row reads as something still running,
     // and this is the row an admin sees for the rest of the video's

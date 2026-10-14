@@ -481,3 +481,163 @@ class TestCompletionReport:
                 _report_complete(7, "mod", "asset-1", ["7/mod/a.mp4"])
 
         assert "callback failed" in capsys.readouterr().err
+
+
+PREFIX = "processed-bucket/7/colonoscopy-basics/a1b2c3d4"
+
+
+class TestPosterSecond:
+    """The second the poster is taken from, on an ordinary transcode."""
+
+    def test_takes_the_default_when_none_is_chosen(
+        self, fake_gcs, stub_ffmpeg
+    ) -> None:
+        _, build_poster = stub_ffmpeg
+
+        with patch.dict(os.environ, BASE_ENV, clear=False):
+            os.environ.pop("TRANSCODE_POSTER_AT", None)
+            from scripts.transcode_cli import transcode
+
+            assert transcode() == 0
+
+        assert build_poster.call_args.args[2] == 5
+
+    def test_takes_the_chosen_second(self, fake_gcs, stub_ffmpeg) -> None:
+        _, build_poster = stub_ffmpeg
+        env = {**BASE_ENV, "TRANSCODE_POSTER_AT": "42"}
+
+        with patch.dict(os.environ, env, clear=False):
+            from scripts.transcode_cli import transcode
+
+            assert transcode() == 0
+
+        assert build_poster.call_args.args[2] == 42
+
+    @pytest.mark.parametrize("value", ["-3", "4.5", "soon"])
+    def test_refuses_a_second_that_is_not_a_whole_number(
+        self, fake_gcs, value: str
+    ) -> None:
+        # Taking the default instead would hide a typo in a job run by
+        # hand, and the poster would quietly be the wrong frame.
+        env = {**BASE_ENV, "TRANSCODE_POSTER_AT": value}
+
+        with patch.dict(os.environ, env, clear=False):
+            from scripts.transcode_cli import transcode
+
+            assert transcode() == 1
+
+
+class TestRetakePoster:
+    """`TRANSCODE_MODE=poster`: a new poster, and nothing else."""
+
+    ENV = {**BASE_ENV, "TRANSCODE_MODE": "poster", "TRANSCODE_POSTER_AT": "42"}
+
+    def test_takes_the_poster_from_the_1080p_rendition(
+        self, fake_gcs, stub_ffmpeg
+    ) -> None:
+        build_rendition, build_poster = stub_ffmpeg
+
+        with patch.dict(os.environ, self.ENV, clear=False):
+            from scripts.transcode_cli import transcode
+
+            assert transcode() == 0
+
+        fake_gcs[f"{PREFIX}-1080p.mp4"].download_to_filename.assert_called()
+        assert build_poster.call_args.args[2] == 42
+        # The source is gone by now, so nothing is encoded and nothing
+        # is read from the source bucket.
+        build_rendition.assert_not_called()
+        assert not any(key.startswith("source-bucket/") for key in fake_gcs)
+
+    def test_falls_back_to_720p_without_a_1080p_rendition(
+        self, fake_gcs, stub_ffmpeg
+    ) -> None:
+        missing = MagicMock()
+        missing.exists.return_value = False
+        fake_gcs[f"{PREFIX}-1080p.mp4"] = missing
+
+        with patch.dict(os.environ, self.ENV, clear=False):
+            from scripts.transcode_cli import transcode
+
+            assert transcode() == 0
+
+        fake_gcs[f"{PREFIX}-720p.mp4"].download_to_filename.assert_called()
+
+    def test_writes_the_poster_over_the_old_one(
+        self, fake_gcs, stub_ffmpeg
+    ) -> None:
+        with patch.dict(os.environ, self.ENV, clear=False):
+            from scripts.transcode_cli import transcode
+
+            assert transcode() == 0
+
+        poster = fake_gcs[f"{PREFIX}-poster.jpg"]
+        poster.upload_from_filename.assert_called_once()
+        assert poster.cache_control == "public, max-age=86400"
+
+    def test_fails_and_keeps_the_old_poster_when_there_is_no_frame(
+        self, fake_gcs
+    ) -> None:
+        with (
+            patch.dict(os.environ, self.ENV, clear=False),
+            patch(
+                "scripts.transcode_cli.build_poster",
+                side_effect=RuntimeError("no frame at 42 seconds"),
+            ),
+        ):
+            from scripts.transcode_cli import transcode
+
+            assert transcode() == 1
+
+        assert f"{PREFIX}-poster.jpg" not in fake_gcs
+
+    def test_reports_to_the_poster_callback(
+        self, fake_gcs, stub_ffmpeg
+    ) -> None:
+        # The transcode report rewrites every rendition flag from what it
+        # is told, so a poster sent there would clear the 1080p flag.
+        env = {
+            **self.ENV,
+            "TRANSCODE_CALLBACK_URL": (
+                "https://api.test/api/ci/teaching/transcode-complete"
+            ),
+            "TRANSCODE_CALLBACK_TOKEN": "tok",
+        }
+
+        with patch.dict(os.environ, env, clear=False):
+            stub, captured = _stub_urlopen()
+            with stub:
+                from scripts.transcode_cli import transcode
+
+                assert transcode() == 0
+
+        assert captured["url"] == (
+            "https://api.test/api/ci/teaching/poster-complete"
+        )
+        assert captured["json"]["outputs"] == ["a1b2c3d4-poster.jpg"]
+
+
+class TestBuildPoster:
+    """FFmpeg says nothing useful about a second past the end."""
+
+    def test_refuses_when_no_frame_was_written(self, tmp_path: Path) -> None:
+        from scripts.transcode_cli import build_poster
+
+        with patch("scripts.transcode_cli._run_ffmpeg"):
+            with pytest.raises(RuntimeError, match="no frame at 900"):
+                build_poster(tmp_path / "in.mp4", tmp_path / "out.jpg", 900)
+
+    def test_passes_the_second_to_ffmpeg(self, tmp_path: Path) -> None:
+        from scripts.transcode_cli import build_poster
+
+        dest = tmp_path / "out.jpg"
+
+        def _write(args: list[str]) -> None:
+            dest.write_bytes(b"jpeg")
+
+        with patch(
+            "scripts.transcode_cli._run_ffmpeg", side_effect=_write
+        ) as run:
+            build_poster(tmp_path / "in.mp4", dest, 42)
+
+        assert run.call_args.args[0][:2] == ["-ss", "42"]

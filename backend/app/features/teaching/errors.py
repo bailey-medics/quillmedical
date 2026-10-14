@@ -344,6 +344,28 @@ class MediaCannotBeDeleted(TeachingError):
     message = "The video could not be deleted"
 
 
+class PosterNotReported(TeachingError):
+    """A poster report that does not name the upload's poster file."""
+
+    status_code = 422
+    message = "The report does not name this upload's poster"
+
+
+class PosterNotReady(TeachingError):
+    """The video has not finished processing, so has no poster to retake.
+
+    Refused rather than stored for later: the transcode already running
+    was started without the chosen second, and would write its own
+    poster over the choice without a word.
+    """
+
+    status_code = 409
+    message = (
+        "This video is still being prepared. Choose its poster once it "
+        "is ready."
+    )
+
+
 class CaptionsNotWebVTT(TeachingError):
     """The corrected captions do not begin with the line a track must."""
 

@@ -254,6 +254,34 @@ describe("TeachingLayout", () => {
     expect(screen.getByText("Page content")).toBeInTheDocument();
   });
 
+  it("caps the page at the lg container width, as MainLayout does", () => {
+    // Without it the two columns of module cards on the teaching home
+    // grew with the window and drifted apart on a wide screen.
+    renderWithMantine(
+      <TeachingLayout>
+        <div>Page content</div>
+      </TeachingLayout>,
+    );
+
+    const box = screen
+      .getByText("Page content")
+      .closest(".mantine-Container-root");
+    expect(box).toBeTruthy();
+    expect(box).not.toHaveAttribute("data-fluid");
+  });
+
+  it("lets a page that asks for it use the full width", () => {
+    renderWithMantine(
+      <TeachingLayout fluid>
+        <div>Page content</div>
+      </TeachingLayout>,
+    );
+
+    expect(
+      screen.getByText("Page content").closest(".mantine-Container-root"),
+    ).toHaveAttribute("data-fluid");
+  });
+
   it("renders TopRibbon with no patient and no search", () => {
     renderWithMantine(
       <TeachingLayout>

@@ -778,6 +778,25 @@ class ModuleMediaLink(Base):
     has_captions: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=false()
     )
+    #: How many seconds into the video the poster frame is taken, as an
+    #: admin chose it after watching the video in the slides. None means
+    #: nobody has chosen, and the job takes its default of five seconds.
+    #:
+    #: Kept rather than only acted on, so a transcode run again takes the
+    #: same frame and the admin card can say which second is in use.
+    poster_at_seconds: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    #: When the poster now in the bucket was written by a poster-only
+    #: job, or None where it is still the one the transcode made.
+    #:
+    #: The poster's filename never changes and it is served with a day's
+    #: caching, so a replaced poster would go unseen for a day. This is
+    #: added to its address as a version, which makes a new poster a new
+    #: address the moment it exists, and not before.
+    poster_taken_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     #: When someone last saved the captions after reading them, or None
     #: where nobody has.
     #:

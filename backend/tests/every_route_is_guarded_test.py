@@ -86,6 +86,9 @@ PUBLIC: dict[RouteKey, str] = {
     ("POST", "/api/ci/teaching/caption-complete"): (
         "called by the caption job with the same callback token"
     ),
+    ("POST", "/api/ci/teaching/poster-complete"): (
+        "called by the transcode job's poster mode with the same token"
+    ),
     ("GET", "/api/marketing/unsubscribe"): (
         "the link in a newsletter, carrying its own signed token"
     ),

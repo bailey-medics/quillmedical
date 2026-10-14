@@ -278,3 +278,63 @@ class TestCaptionCallback:
         self, test_client: TestClient, configured
     ) -> None:
         assert _post_caption(test_client, asset_id="nope").status_code == 404
+
+
+POSTER_ENDPOINT = "/api/ci/teaching/poster-complete"
+
+
+def _post_poster(
+    client: TestClient, token: str | None = TOKEN, **overrides: object
+):
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    body = _body(outputs=["asset-1-poster.jpg"])
+    body.update(overrides)
+
+    return client.post(POSTER_ENDPOINT, json=body, headers=headers)
+
+
+class TestPosterComplete:
+    """The report of a poster retaken at a chosen second."""
+
+    def test_records_the_poster_and_leaves_the_renditions_alone(
+        self,
+        test_client: TestClient,
+        db_session: Session,
+        link: ModuleMediaLink,
+        configured,
+    ) -> None:
+        # Sent to the transcode report, a list naming only the poster
+        # would clear these two. This report must not.
+        link.has_1080p = True
+        link.has_captions = True
+        db_session.commit()
+
+        resp = _post_poster(test_client)
+
+        assert resp.status_code == 200, resp.text
+        db_session.refresh(link)
+        assert link.has_poster is True
+        assert link.poster_taken_at is not None
+        assert link.has_1080p is True
+        assert link.has_captions is True
+
+    def test_refuses_a_report_that_names_no_poster(
+        self, test_client: TestClient, link: ModuleMediaLink, configured
+    ) -> None:
+        resp = _post_poster(test_client, outputs=["asset-1-720p.mp4"])
+
+        assert resp.status_code == 422
+
+    def test_refuses_a_wrong_token(
+        self, test_client: TestClient, link: ModuleMediaLink, configured
+    ) -> None:
+        assert _post_poster(test_client, token="wrong").status_code == 401
+
+    def test_refuses_when_unconfigured(
+        self, test_client: TestClient, monkeypatch
+    ) -> None:
+        monkeypatch.setattr(
+            settings, "TEACHING_TRANSCODE_CALLBACK_TOKEN", None
+        )
+
+        assert _post_poster(test_client).status_code == 503

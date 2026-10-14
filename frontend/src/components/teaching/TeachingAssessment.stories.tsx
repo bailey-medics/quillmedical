@@ -145,7 +145,7 @@ function examControls(timeLimitMinutes: number | null) {
 export const Intro: Story = {
   tags: ["!test"],
   render: () => (
-    <TeachingLayout footerText="Logged in: dr.jones">
+    <TeachingLayout fluid footerText="Logged in: dr.jones">
       <AssessmentIntro
         title="Before you begin"
         body={introBody}
@@ -162,6 +162,7 @@ export const ColonoscopyPolyps: Story = {
     const [selected, setSelected] = useState<string | null>(null);
     return (
       <TeachingLayout
+        fluid
         footerText="Logged in: dr.jones"
         ribbonRight={examControls(75)}
       >
@@ -187,6 +188,7 @@ export const ChestXray: Story = {
     const [selected, setSelected] = useState<string | null>(null);
     return (
       <TeachingLayout
+        fluid
         footerText="Logged in: dr.jones"
         ribbonRight={examControls(10)}
       >
@@ -211,6 +213,7 @@ export const UntimedAttempt: Story = {
     const [selected, setSelected] = useState<string | null>(null);
     return (
       <TeachingLayout
+        fluid
         footerText="Logged in: dr.jones"
         ribbonRight={examControls(0)}
       >

@@ -9,9 +9,12 @@
  * - Learning slides: LearningNav (slide list)
  * - Module hub: ModuleNav (dashboard / learn / assess)
  * - Assessments: no sidebar (full-width content)
+ *
+ * Content is capped at the `lg` container width, as in MainLayout,
+ * unless the page passes `fluid`.
  */
 
-import { Box, Flex, useMantineTheme } from "@mantine/core";
+import { Box, Container, Flex, useMantineTheme } from "@mantine/core";
 import { SkipLink, SkipLinkTarget } from "@/components/navigation/skip-link";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import type { ReactNode } from "react";
@@ -45,6 +48,16 @@ export interface TeachingLayoutProps {
   footerText?: string;
   /** Content for the right-hand end of the ribbon, such as an exam's timer */
   ribbonRight?: ReactNode;
+  /**
+   * Let the page use the whole width of the screen.
+   *
+   * Off by default: page content sits in `<Container size="lg">`, the
+   * 1140px every MainLayout page gets, so teaching pages read alike and
+   * a two-column grid of cards cannot grow apart on a wide screen. Only
+   * a page that genuinely needs the room, such as a slide or the exam
+   * screen, turns it on.
+   */
+  fluid?: boolean;
 }
 
 export default function TeachingLayout({
@@ -53,6 +66,7 @@ export default function TeachingLayout({
   children,
   footerText,
   ribbonRight,
+  fluid = false,
 }: TeachingLayoutProps) {
   const theme = useMantineTheme();
   const isSm = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
@@ -177,7 +191,12 @@ export default function TeachingLayout({
             pt={LAYOUT_PADDING_TOP}
             pb={LAYOUT_PADDING_BOTTOM}
           >
-            <SkipLinkTarget>{children}</SkipLinkTarget>
+            <SkipLinkTarget>
+              {/* `px={0}`: this box already pads the page. */}
+              <Container size="lg" px={0} fluid={fluid}>
+                {children}
+              </Container>
+            </SkipLinkTarget>
           </Box>
           <Footer text={resolvedFooterText} loading={footerLoading} />
         </Flex>
