@@ -14,6 +14,7 @@ import VideoPlayer from "@/components/teaching/video-player/VideoPlayer";
 import { Heading } from "@/components/typography";
 import { StoryNote } from "@/stories/variants";
 import publicAsset from "@lib/publicAsset";
+import { VIDEOJS_STORY_A11Y } from "./storyA11y";
 
 /** The sample clip in `public/teaching/`, served by Storybook's staticDirs. */
 const SAMPLE = "/teaching/sample/ltd-transition.mp4";
@@ -26,20 +27,7 @@ const meta: Meta<typeof VideoPlayerV10> = {
   component: VideoPlayerV10,
   parameters: {
     layout: "padded",
-    a11y: {
-      config: {
-        rules: [
-          {
-            // Video.js draws the time toggle itself: it shows "0:21" and
-            // names it "21 seconds remaining", which axe 4.14 refuses.
-            // That markup is not ours to change, so only this element is
-            // let off this one rule.
-            id: "label-content-name-mismatch",
-            selector: "*:not(.media-time-toggle)",
-          },
-        ],
-      },
-    },
+    a11y: VIDEOJS_STORY_A11Y,
   },
 };
 
