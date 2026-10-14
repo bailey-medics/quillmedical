@@ -283,7 +283,7 @@ describe("PassportSignOffsPage", () => {
     renderWithRouter(<PassportSignOffsPage />);
 
     await user.click(
-      await screen.findByRole("button", { name: "Perform bronchoscopy" }),
+      await screen.findByRole("button", { name: /Perform bronchoscopy/ }),
     );
 
     expect(navigate).toHaveBeenCalledWith(

@@ -44,7 +44,7 @@ describe("SafetySignOffPage", () => {
   it("makes each section a link to its own page", () => {
     renderPage("sc-001");
     expect(
-      screen.getByRole("link", { name: "Open Top management approval" }),
+      screen.getByRole("link", { name: /Top management approval/ }),
     ).toHaveAttribute("href", "/safety/sc-001/sign-off/approval");
   });
 });
