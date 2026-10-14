@@ -68,6 +68,10 @@ from app.users.listing import (
     picker_rows,
 )
 from app.users.reach import check_account_within_reach
+from app.users.reopening_notice import (
+    reopening_notice_for,
+    send_reopening_notice,
+)
 from app.users.scope import check_may_act_on_operator
 from app.users.setup_invite import setup_invite_for
 from app.users.update import AccountChanges, update_account
@@ -313,12 +317,14 @@ def deactivate_user(
 )
 def reactivate_user(
     user_id: int,
+    background_tasks: BackgroundTasks,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> UserIdActionOut:
     """Reactivate User Account.
 
-    Marks a previously deactivated user account as active again.
+    Marks a previously deactivated user account as active again, and
+    emails its owner to say so.
     Requires the ``manage_users`` competency and a shared organisation
     with the patient.
 
@@ -336,6 +342,13 @@ def reactivate_user(
             ``reactivate_account`` refuses.
     """
     user = reactivate_account(db, current_user, user_id)
+
+    # Told once, after the answer, as the closure is: a mail provider
+    # that is down neither holds up the reopening nor undoes it.
+    notice = reopening_notice_for(user)
+
+    if notice is not None:
+        background_tasks.add_task(send_reopening_notice, notice)
 
     return UserIdActionOut(
         detail="reactivated",

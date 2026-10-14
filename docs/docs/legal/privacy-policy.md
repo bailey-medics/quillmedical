@@ -104,7 +104,9 @@ retention periods in one place.
 - **When it is closed** - we email you once to say so, what happens to
   your data next, and who to speak to if you think it was a mistake. We
   do not if your email address was never confirmed, because it may not
-  be yours. We send nothing more when the account is later deleted.
+  be yours. If it is opened again, we email you once more to say so
+  and where your answer about news and updates stands. We send nothing
+  when the account is later deleted.
 - **How long** - while your account exists, and for two years after it
   is closed or deactivated, so that a closed account cannot be re-created
   by somebody else and so that we can answer questions about it. Then we

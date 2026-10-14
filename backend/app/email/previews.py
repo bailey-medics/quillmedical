@@ -180,6 +180,36 @@ def previews() -> list[Preview]:
             },
         ),
         Preview(
+            id="account-reopened",
+            label="Account opened again",
+            template="account_reopened.html.j2",
+            context={
+                "name": "John Smith",
+                "username": "john.smith",
+                "email": "john.smith@example.org",
+                "login_url": "https://app.quill-medical.com/login",
+                "forgot_password_url": (  # nosec B105 - a page address
+                    "https://app.quill-medical.com/forgot-password"
+                ),
+                "wants_news": True,
+            },
+        ),
+        Preview(
+            id="account-reopened-no-news",
+            label="Account opened again, no newsletter",
+            template="account_reopened.html.j2",
+            context={
+                "name": "John Smith",
+                "username": "john.smith",
+                "email": "john.smith@example.org",
+                "login_url": "https://app.quill-medical.com/login",
+                "forgot_password_url": (  # nosec B105 - a page address
+                    "https://app.quill-medical.com/forgot-password"
+                ),
+                "wants_news": False,
+            },
+        ),
+        Preview(
             id="account-invite",
             label="Account invitation",
             template="account_invite.html.j2",
