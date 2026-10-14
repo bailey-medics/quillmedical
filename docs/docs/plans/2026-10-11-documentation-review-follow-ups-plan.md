@@ -446,6 +446,8 @@ Pull request #1808 carried the work to `main` afterwards.
       does not block the merge, take it out again and keep the alarm
       below as the only guard.
 
+      Postponed by Mark on 14 October.
+
 - [x] Check nothing merges `main` into a feature branch. `just rebase`
       and the stack recipes rebase; Renovate must be set to rebase too, or
       its branches will be refused. Read `renovate.json` for
@@ -708,8 +710,10 @@ so the next run picks it up. What is missing is anybody being told.
       a daily action and a five-minute one use the same alert. The test
       that every scheduled action is watched is what caught it.
 
-- [ ] After it is applied and each action has run once, prove it. Moved
+- [x] After it is applied and each action has run once, prove it. Moved
       to Phase 31, the last, with how to do it.
+
+      Proved on 14 October, without pausing anything: see Phase 31.
 
 ### What happened when Phase 20 was applied
 
@@ -751,6 +755,24 @@ that silently was not running.
       found in review and not at apply. Not designed yet: Terraform
       would be managing its own permissions, which needs care.
 
+      Mark's decision, 14 October: leave the roles as they are, granted
+      by hand in Google Cloud, and fix a missing one by hand when an
+      apply fails, as on 12 October. Look at it again before EoEETA
+      goes live. Three ways were weighed:
+
+      - **Terraform manages the account's own roles.** Everything would
+        be in the repository and seen in review, but the account would
+        be granting permissions to itself, and a mistake could lock it
+        out or give it too much.
+      - **A list of the roles in the repository, with a check** that
+        compares it with Google Cloud. Safer, but the check needs
+        something able to read Google Cloud's settings, and CI holds no
+        runtime credentials.
+      - **Leave it, chosen.** Nothing to build. The cost is a few hours
+        of a scheduled job not running when a new kind of resource
+        first needs a role, which hurts nobody while there are no real
+        users.
+
 ## Phase 23: Keep a closed account's records for the sponsor's period
 
 The first step, recording when an account closes, is Phase 16 above and
@@ -780,7 +802,7 @@ policy says about both.
       it, and refuses an organisation with no teaching settings so a
       mistyped id cannot land on a stranger.
 
-- [ ] Run `set-records-kept` for EoEETA in App production, with 42
+- [x] Run `set-records-kept` for EoEETA in App production, with 42
       months, once this has deployed. Until then nothing is deleted for
       anybody, which is the safe side to be on. It is run once for the
       organisation and never for one account: the period for each
@@ -788,6 +810,10 @@ policy says about both.
       after Phase 27, so that a period is never set while the nightly
       run can still delete without anybody approving. Better still,
       after Phase 30, which gives it a card to be set from.
+
+      Replaced by the card on the organisation's page, Phase 30, which
+      sets the same column. EoEETA's 42 months is the last step of
+      Phase 30, and is done there.
 
 - [x] Extend `apply_retention` in `backend/app/retention.py`: for a user
       whose `deactivated_at` is older than their organisation's period,
@@ -810,11 +836,15 @@ policy says about both.
       opened again, which clears the date. A period under one month is
       ignored.
 
-- [ ] Keep the account itself for as long as the records. A result is no
+- [x] Keep the account itself for as long as the records. A result is no
       use to a sponsor without the name on it, so a delegate's account
       cannot go at two years while their results stay to three and a half.
       The same run that deletes the records deletes the account, if no
       other organisation still holds records for that person.
+
+      Done by Phase 29, differently: an account is listed to be emptied
+      only once no training records are left on it anywhere, so it
+      always outlives every sponsor's records, and a superadmin decides.
 
       The first half holds today, because nothing deletes an account at
       all: the policy's two years is promised and not built. The second
@@ -1332,9 +1362,13 @@ this one has to move first.
       - **An address nobody verified is never moved.** It may be
         somebody else's.
 
-- [ ] Consider, after this is built, asking sponsored users the
+- [x] Consider, after this is built, asking sponsored users the
       question as a plain yes. Today only the switch in Settings can
       give one, so few will have. Not built here.
+
+      No longer needed. On 14 October Mark decided the stored answer
+      stands for everybody, so an unticked box already counts as a yes
+      for a sponsored user too.
 
 ## Phase 29: Empty a closed account
 
@@ -1702,7 +1736,7 @@ check on a reopening the owner did not expect.
 
 ## Phase 31: Prove what could only be tried live
 
-- [ ] Prove the alert for a scheduled action that has gone quiet, from
+- [x] Prove the alert for a scheduled action that has gone quiet, from
       Phase 22, once #1905 has merged and applied and each action has
       finished a run since. In the Google Cloud console, project
       `quill-medical-app`, open Cloud Scheduler, pause
@@ -1712,6 +1746,16 @@ check on a reopening the owner did not expect.
       thirty-six hours of silence. Nothing is lost by the pause. If no
       alert comes, the sum and the missing-data setting in
       `scheduled_action_silent` are the first place to look.
+
+      Proved on 14 October, by accident. The metric that counts a
+      finished run began counting only when #1905 was applied, on the
+      afternoon of 13 October, after that day's 03:30 UTC retention run.
+      So it saw no finished run, and at 03:33 UTC on 14 October the
+      alert "Scheduled action has not run: retention (app)" fired, to
+      Slack and email, and closed again once that night's run was
+      counted. The sum and the missing-data setting work as meant. The
+      teaching reminders alert may fire once that morning for the same
+      reason. No job needed pausing.
 
 - [x] After Phase 25 has applied, check the live database:
       `gcloud sql instances describe quill-core-app` shows deletion
