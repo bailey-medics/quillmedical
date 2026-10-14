@@ -52,7 +52,8 @@ async def get_my_competencies(
     return UserCompetenciesResponse(
         user_id=user.id,
         username=user.username,
-        base_profession=user.base_profession,
+        # Only an emptied account has none, and it cannot sign in.
+        base_profession=user.base_profession or "",
         additional_competencies=user.additional_competency_ids,
         removed_competencies=user.removed_competency_ids,
         final_competencies=user.get_final_competencies(),
@@ -183,7 +184,8 @@ async def update_my_competencies(
     return UserCompetenciesResponse(
         user_id=user.id,
         username=user.username,
-        base_profession=user.base_profession,
+        # Only an emptied account has none, and it cannot sign in.
+        base_profession=user.base_profession or "",
         additional_competencies=user.additional_competency_ids,
         removed_competencies=user.removed_competency_ids,
         final_competencies=user.get_final_competencies(),

@@ -352,7 +352,8 @@ def _actor(user: User) -> Actor:
 
     return Actor(
         name=user.full_name or user.username,
-        role=user.base_profession,
+        # Only an emptied account has none, and it cannot sign in.
+        role=user.base_profession or "",
         email=user.email,
         registrations=tuple(registrations),
     )

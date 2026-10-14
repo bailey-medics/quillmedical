@@ -165,6 +165,14 @@ class User(Base):
     deactivated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    #: When the account was emptied: everything its owner held deleted,
+    #: and everything on this row that said who they were wiped. The row
+    #: stays, as an id other people's records can go on pointing at. Set
+    #: by ``app.users.emptying.empty_account`` and never cleared: an
+    #: emptied account cannot sign in, be opened again or be found.
+    emptied_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     email_verified: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false"
     )
@@ -207,8 +215,12 @@ class User(Base):
     )
 
     # CBAC: Competency-Based Access Control fields
-    base_profession: Mapped[str] = mapped_column(
-        String(100), nullable=False, default="patient"
+    #: The profession the account was given, as a seed of competencies.
+    #: Empty only on an emptied account, where what kind of work its owner
+    #: did could help identify them: every live account has one, and the
+    #: constructor gives a new one "patient" when none is passed.
+    base_profession: Mapped[str | None] = mapped_column(
+        String(100), nullable=True, default="patient"
     )
 
     roles: Mapped[list[Role]] = relationship(

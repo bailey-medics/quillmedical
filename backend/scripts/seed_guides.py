@@ -323,7 +323,7 @@ def _actor(user: User) -> Actor:
     """Who a passport's commit is made by, as the passport's routes say."""
     return Actor(
         name=user.full_name or user.username,
-        role=user.base_profession,
+        role=user.base_profession or "",
         email=user.email,
         registrations=tuple(
             f"{r.authority} {r.number}" for r in user.current_registrations

@@ -533,7 +533,9 @@ def get_user(
         username=user.username,
         email=user.email,
         name=user.full_name or user.username,
-        base_profession=user.base_profession,
+        # Only an emptied account has none, and this route answers 404
+        # for one before it gets here.
+        base_profession=user.base_profession or "",
         additional_competencies=user.additional_competency_ids,
         removed_competencies=user.removed_competency_ids,
         platform_role=user.platform_role,
