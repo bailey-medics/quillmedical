@@ -1668,6 +1668,38 @@ closes it, so most people find out when they can no longer log in.
       is the published address, the same in every environment, as the
       registration form's is.
 
+## Phase 33: Tell somebody whose account is opened again
+
+Mark, 14 October: somebody told their account was closed should be told
+when it is opened again, or they may never try to log in. It is also a
+check on a reopening the owner did not expect.
+
+- [x] One email, once, when an account is reopened, from
+      `backend/app/users/reopening_notice.py`, sent after the reactivate
+      route has answered, as the closure email is. It says the account
+      is open, that what is still kept is as they left it, a "Log in to
+      Quill" button and a link to set a new password, where their
+      newsletter stands, and who to speak to if they did not expect it.
+
+      - **"The training records that are still kept"**, not "all your
+        records": a sponsor's period may have run out while the account
+        was closed, and those records do not come back.
+      - **The newsletter line** reads the answer after the list entry
+        is folded back, so a "no" given while the account was closed is
+        what it reports. Mark's choice to include it.
+      - **Not to an address nobody verified**, as for the closure.
+      - **Departed from the recommendation** to send an account an
+        administrator made, and nobody used, the invitation email
+        instead. Nothing in the account says whether its owner ever set
+        a password: an administrator types one when making it. So it
+        gets the same email, whose "set a new password" link, worded
+        "if you have forgotten your password, or never set one", is
+        their way in.
+
+      Previews "Account opened again" and "Account opened again, no
+      newsletter". Section 3.1 of the privacy policy says we email
+      again on reopening, and the legal index records it.
+
 ## Phase 31: Prove what could only be tried live
 
 - [ ] Prove the alert for a scheduled action that has gone quiet, from

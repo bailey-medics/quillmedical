@@ -74,7 +74,8 @@ do not market to sponsored users.
 Added on 14 October 2026, by Mark's decision: section 3.1 now says we
 email somebody once when their account is closed, unless their address
 was never confirmed, and section 3.6 points to that email for how to
-stop the newsletter.
+stop the newsletter. The same section says we email them again if the
+account is opened again.
 
 Every version carries a version number and the date it took effect,
 because until acceptance is recorded per person that date is the only

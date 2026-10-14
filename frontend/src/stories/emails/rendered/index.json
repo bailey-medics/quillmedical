@@ -72,6 +72,42 @@
     }
   },
   {
+    "id": "account-reopened",
+    "label": "Account opened again",
+    "quill": {
+      "file": "account-reopened--quill.html",
+      "subject": "Your Quill account has been opened again",
+      "preheader": "You can log in to it again.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "account-reopened--ldd.html",
+      "subject": "Your Quill account has been opened again",
+      "preheader": "You can log in to it again.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
+    "id": "account-reopened-no-news",
+    "label": "Account opened again, no newsletter",
+    "quill": {
+      "file": "account-reopened-no-news--quill.html",
+      "subject": "Your Quill account has been opened again",
+      "preheader": "You can log in to it again.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "account-reopened-no-news--ldd.html",
+      "subject": "Your Quill account has been opened again",
+      "preheader": "You can log in to it again.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
     "id": "account-invite",
     "label": "Account invitation",
     "quill": {

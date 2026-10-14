@@ -1,0 +1,60 @@
+{#-
+  Tells somebody their Quill account has been opened again. Sent once,
+  when it is reopened, to everybody whose address was verified: they were
+  told when it was closed, and otherwise may never try to log in again.
+  It is also a check on a reopening nobody expected.
+
+  It does not promise that everything came back: training records a
+  sponsor's period ran out on while the account was closed are gone.
+
+  It says where their newsletter stands, because a "no" given while the
+  account was closed comes back with them. Context:
+    name                 who to greet: their full name, or their
+                         username where the account has none
+    username             the account's username
+    email                the address this is sent to, said back to them
+    login_url            the log in page
+    forgot_password_url  the page that sends a link to set a password
+    wants_news           whether they are set to receive news and updates
+-#}
+{% extends "base.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+
+{% block subject %}Your Quill account has been opened again{% endblock subject %}
+{% block preheader %}You can log in to it again.{% endblock preheader %}
+
+{% block body %}
+{{ c.heading("Your account is *open* again") }}
+{{ c.paragraph("Hi " ~ name ~ ",") }}
+{% call c.paragraph() %}Your Quill account, with the username <strong>{{ username }}</strong>, has been opened again. You can log in to it as before.{% endcall %}
+{{ c.paragraph("Everything is as you left it: the places you belong to, what you can do in Quill, and the training records that are still kept.") }}
+{{ c.button("Log in to Quill", login_url) }}
+{% call c.paragraph() %}If you have forgotten your password, or never set one, you can <a href="{{ forgot_password_url }}">set a new one</a>.{% endcall %}
+{% if wants_news %}
+{{ c.paragraph("You are set to receive news and updates from Quill Medical. You can change that at any time in Settings.") }}
+{% else %}
+{{ c.paragraph("You are not set to receive news and updates from Quill Medical. You can change that at any time in Settings.") }}
+{% endif %}
+{{ c.small("This email was sent to " ~ email ~ ".") }}
+{{ c.small("If you did not expect this, speak to whoever looks after Quill where you work or train.") }}
+{% endblock body %}
+
+{% block reason %}You are receiving this because your Quill account was opened again.{% endblock reason %}
+
+{% block text %}
+Hi {{ name }},
+
+Your Quill account, with the username {{ username }}, has been opened again. You can log in to it as before.
+
+Everything is as you left it: the places you belong to, what you can do in Quill, and the training records that are still kept.
+
+Log in to Quill: {{ login_url }}
+
+If you have forgotten your password, or never set one, you can set a new one: {{ forgot_password_url }}
+
+{% if wants_news %}You are set to receive news and updates from Quill Medical.{% else %}You are not set to receive news and updates from Quill Medical.{% endif %} You can change that at any time in Settings.
+
+This email was sent to {{ email }}.
+
+If you did not expect this, speak to whoever looks after Quill where you work or train.
+{% endblock text %}
