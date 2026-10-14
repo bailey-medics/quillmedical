@@ -78,7 +78,7 @@ describe("CompetencySummary", () => {
       );
 
       await userEvent.click(
-        screen.getByRole("button", { name: "Perform bronchoscopy" }),
+        screen.getByRole("button", { name: /Perform bronchoscopy/ }),
       );
 
       expect(onSelect).toHaveBeenCalledWith("perform_bronchoscopy");

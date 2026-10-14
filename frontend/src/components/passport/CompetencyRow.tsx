@@ -176,7 +176,6 @@ export default function CompetencyRow({
       className={classes.row}
       data-testid="competency-row"
       onClick={() => onSelect(competency.id)}
-      aria-label={nameWithScope(competency.name, competency.scope)}
     >
       {content}
     </UnstyledButton>

@@ -67,7 +67,6 @@ export default function SignOffChecklist({
             component={Link}
             to={hrefFor(item)}
             className={classes.link}
-            aria-label={`Open ${item.section}`}
           >
             {card}
           </UnstyledButton>

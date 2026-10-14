@@ -175,7 +175,7 @@ export default function CertificateForm({
               <IconTextButton
                 icon="trash"
                 label="Remove file"
-                aria-label={`Remove ${attachment.filename}`}
+                aria-label={`Remove file ${attachment.filename}`}
                 onClick={() => onRemoveAttachment(attachment.hash)}
               />
             )}

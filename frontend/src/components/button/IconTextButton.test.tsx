@@ -121,11 +121,11 @@ describe("IconTextButton", () => {
         <IconTextButton
           icon="trash"
           label="Remove file"
-          aria-label="Remove als.pdf"
+          aria-label="Remove file als.pdf"
         />,
       );
       expect(
-        screen.getByRole("button", { name: "Remove als.pdf" }),
+        screen.getByRole("button", { name: "Remove file als.pdf" }),
       ).toBeInTheDocument();
       expect(screen.getByText("Remove file")).toBeInTheDocument();
     });

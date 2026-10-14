@@ -204,7 +204,7 @@ describe("CertificateForm", () => {
       );
 
       await user.click(
-        screen.getByRole("button", { name: "Remove als-certificate.pdf" }),
+        screen.getByRole("button", { name: "Remove file als-certificate.pdf" }),
       );
 
       expect(onRemoveAttachment).toHaveBeenCalledWith(uploaded.hash);
@@ -230,7 +230,7 @@ describe("CertificateForm", () => {
       expect(screen.getByText("als-transcript.pdf")).toBeInTheDocument();
 
       await user.click(
-        screen.getByRole("button", { name: "Remove als-transcript.pdf" }),
+        screen.getByRole("button", { name: "Remove file als-transcript.pdf" }),
       );
 
       expect(onRemoveAttachment).toHaveBeenCalledWith(second.hash);
