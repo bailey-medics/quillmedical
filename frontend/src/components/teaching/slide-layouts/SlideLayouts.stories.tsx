@@ -13,6 +13,7 @@ import {
   calloutSlide,
   hostedVideoSlide,
 } from "./stubSlides";
+import { VIDEOJS_STORY_A11Y } from "@/components/teaching/video-player-v10/storyA11y";
 
 /**
  * A short clip in `public/teaching/`, served by Storybook's staticDirs.
@@ -39,10 +40,12 @@ export const PlainTextSlide: Story = {
 };
 
 export const YoutubeVideo: Story = {
+  parameters: { a11y: VIDEOJS_STORY_A11Y },
   render: () => <SlideLayoutVideo slide={videoSlide} />,
 };
 
 export const HostedVideo: Story = {
+  parameters: { a11y: VIDEOJS_STORY_A11Y },
   render: () => (
     <Stack gap="sm">
       <SlideLayoutVideo

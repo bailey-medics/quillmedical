@@ -31,7 +31,7 @@ describe("CompetencyRow", () => {
       ).toBeInTheDocument();
       expect(
         screen.getByRole("button", {
-          name: "Review and prescribe systemic anti-cancer therapy: Lung",
+          name: /Review and prescribe systemic anti-cancer therapy: Lung/,
         }),
       ).toBeInTheDocument();
     });

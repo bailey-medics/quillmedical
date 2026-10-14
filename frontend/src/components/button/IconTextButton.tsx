@@ -39,7 +39,8 @@ interface IconTextButtonProps {
   /**
    * A fuller name for screen readers, where several buttons share one
    * label: three "Remove file" buttons need to say which file each one
-   * removes. The visible label is unchanged.
+   * removes. It must start with the visible label, so speech input users
+   * can say what they see: "Remove file als.pdf", never "Remove als.pdf".
    */
   "aria-label"?: string;
 }

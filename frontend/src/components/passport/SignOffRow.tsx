@@ -144,7 +144,6 @@ export default function SignOffRow({ signOff, onSelect }: SignOffRowProps) {
       className={classes.row}
       data-testid="sign-off-row"
       onClick={() => onSelect(signOff.name)}
-      aria-label={nameWithScope(signOff.competency.name, signOff.scope)}
     >
       {content}
     </UnstyledButton>

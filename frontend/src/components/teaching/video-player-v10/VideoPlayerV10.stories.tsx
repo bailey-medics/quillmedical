@@ -13,6 +13,7 @@ import VideoPlayerV10 from "./VideoPlayerV10";
 import VideoPlayer from "@/components/teaching/video-player/VideoPlayer";
 import { Heading } from "@/components/typography";
 import { StoryNote } from "@/stories/variants";
+import { VIDEOJS_STORY_A11Y } from "./storyA11y";
 
 /** The sample clip in `public/teaching/`, served by Storybook's staticDirs. */
 const SAMPLE = "/teaching/sample/ltd-transition.mp4";
@@ -25,6 +26,7 @@ const meta: Meta<typeof VideoPlayerV10> = {
   component: VideoPlayerV10,
   parameters: {
     layout: "padded",
+    a11y: VIDEOJS_STORY_A11Y,
   },
 };
 

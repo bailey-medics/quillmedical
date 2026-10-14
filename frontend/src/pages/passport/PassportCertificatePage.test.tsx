@@ -215,7 +215,9 @@ describe("PassportCertificatePage", () => {
     await user.click(
       await screen.findByRole("button", { name: "Edit certificate" }),
     );
-    await user.click(screen.getByRole("button", { name: "Remove als.pdf" }));
+    await user.click(
+      screen.getByRole("button", { name: "Remove file als.pdf" }),
+    );
     expect(screen.queryByText("als.pdf")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 

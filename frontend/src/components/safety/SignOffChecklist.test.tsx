@@ -39,7 +39,7 @@ describe("SignOffChecklist", () => {
       />,
     );
     expect(
-      screen.getByRole("link", { name: "Open Hazard log reviewed" }),
+      screen.getByRole("link", { name: /Hazard log reviewed/ }),
     ).toHaveAttribute("href", "/safety/sc-001/sign-off/hazard-log");
     expect(screen.getAllByRole("link")).toHaveLength(4);
   });
