@@ -47,10 +47,47 @@ export interface RetentionAccount {
   listed_at: string;
 }
 
-/** Everything awaiting a decision */
+/**
+ * Why the nightly run did not empty an account marked to be emptied.
+ * `failed` is tried again each night; the other two are accounts in use,
+ * left alone.
+ */
+export type NotEmptiedReason = "failed" | "opened_again" | "has_records";
+
+/** An account marked to be emptied that the nightly run did not empty */
+export interface RetentionException {
+  id: number;
+  user_id: number;
+  full_name: string;
+  email: string;
+  /** When the account was closed */
+  closed_at: string;
+  /** When it had been kept as long as an account is */
+  due_on: string;
+  reason: NotEmptiedReason;
+  /** For a failure, what went wrong, naming nobody */
+  detail: string | null;
+  /** When the run last did not empty it */
+  noted_at: string;
+}
+
+/** What happened, in words for the person reading the screen. */
+export function whatHappened(exception: RetentionException): string {
+  switch (exception.reason) {
+    case "failed":
+      return `Could not be emptied: ${exception.detail ?? "something went wrong while emptying it."} Tried again each night.`;
+    case "opened_again":
+      return "Left alone: the account was opened again.";
+    case "has_records":
+      return "Left alone: it has training records again.";
+  }
+}
+
+/** Everything awaiting a decision, and what did not go as decided */
 export interface RetentionWaiting {
   reviews: RetentionReview[];
   accounts: RetentionAccount[];
+  exceptions: RetentionException[];
 }
 
 /**
@@ -127,10 +164,15 @@ export async function listRetentionReviews(): Promise<RetentionWaiting> {
   const res = await api.get<{
     reviews: RetentionReview[];
     accounts?: RetentionAccount[];
+    exceptions?: RetentionException[];
   }>("/retention/reviews");
 
-  // A server from before accounts were listed sends none.
-  return { reviews: res.reviews, accounts: res.accounts ?? [] };
+  // A server from before these lists were added sends neither.
+  return {
+    reviews: res.reviews,
+    accounts: res.accounts ?? [],
+    exceptions: res.exceptions ?? [],
+  };
 }
 
 export function sendRetentionDecisions(

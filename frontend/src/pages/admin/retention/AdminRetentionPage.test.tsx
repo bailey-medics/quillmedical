@@ -366,4 +366,63 @@ describe("AdminRetentionPage", () => {
       await screen.findByText(/marked 1 account to be emptied/),
     ).toBeInTheDocument();
   });
+
+  describe("Exceptions", () => {
+    const failed = {
+      id: 12,
+      user_id: 45,
+      full_name: "Dan Example",
+      email: "dan@example.nhs.uk",
+      closed_at: "2028-01-14T09:00:00Z",
+      due_on: "2030-01-14T09:00:00Z",
+      reason: "failed",
+      detail: "Something went wrong while emptying it.",
+      noted_at: "2030-02-03T03:30:00Z",
+    };
+
+    it("lists accounts marked to be emptied that were not", async () => {
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({
+        reviews: [],
+        accounts: [],
+        exceptions: [failed],
+      });
+
+      renderWithRouter(<AdminRetentionPage />);
+
+      expect(
+        await screen.findByRole("heading", { name: "Exceptions" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Dan Example")).toBeInTheDocument();
+      expect(screen.getByText(/Tried again each night/)).toBeInTheDocument();
+    });
+
+    it("still says nothing is awaiting a decision beside them", async () => {
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({
+        reviews: [],
+        accounts: [],
+        exceptions: [failed],
+      });
+
+      renderWithRouter(<AdminRetentionPage />);
+
+      expect(
+        await screen.findByText("Nothing is awaiting a decision"),
+      ).toBeInTheDocument();
+    });
+
+    it("has no section when there are none", async () => {
+      vi.spyOn(apiLib.api, "get").mockResolvedValue({
+        reviews: [],
+        accounts: [],
+        exceptions: [],
+      });
+
+      renderWithRouter(<AdminRetentionPage />);
+      await screen.findByText("Nothing is awaiting a decision");
+
+      expect(
+        screen.queryByRole("heading", { name: "Exceptions" }),
+      ).not.toBeInTheDocument();
+    });
+  });
 });

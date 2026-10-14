@@ -68,7 +68,9 @@ from app.models import (
 )
 from app.passport_storage import archive_passport
 from app.users.emptying import (
+    TRAINING_RECORDS_LEFT,
     ArchivePassport,
+    CannotEmpty,
     empty_account,
     why_it_cannot_be_emptied,
 )
@@ -639,6 +641,24 @@ class EmptiedResult:
     failed: int = 0
 
 
+def _note_not_emptied(
+    db: Session,
+    review: RetentionReview,
+    reason: str,
+    detail: str | None,
+    now: datetime,
+) -> None:
+    """Record on its row why a marked account was not emptied, and save.
+
+    Committed at once, as each emptied account is, so that one account's
+    note is not lost to a later one's rollback.
+    """
+    review.not_emptied_at = now
+    review.not_emptied_reason = reason
+    review.not_emptied_detail = detail
+    db.commit()
+
+
 def empty_marked_accounts(
     db: Session,
     now: datetime,
@@ -667,55 +687,85 @@ def empty_marked_accounts(
     Returns:
         How many were emptied, left alone, and failed.
     """
-    marked = db.execute(
-        select(RetentionReview.user_id, RetentionReview.closed_at)
-        .join(User, User.id == RetentionReview.user_id)
-        .where(
-            RetentionReview.subject == "account",
-            RetentionReview.decision == "deleted",
-            User.emptied_at.is_(None),
+    marked = list(
+        db.scalars(
+            select(RetentionReview)
+            .join(User, User.id == RetentionReview.user_id)
+            .where(
+                RetentionReview.subject == "account",
+                RetentionReview.decision == "deleted",
+                User.emptied_at.is_(None),
+            )
+            .order_by(RetentionReview.id)
         )
-        .order_by(RetentionReview.id)
-    ).all()
+    )
     emptied = no_longer_due = failed = 0
     seen: set[int] = set()
 
-    for user_id, marked_closed_at in marked:
-        if user_id in seen:
+    for review in marked:
+        if review.user_id in seen:
             continue
 
-        seen.add(user_id)
-        user = db.get(User, user_id)
+        seen.add(review.user_id)
+        user = db.get(User, review.user_id)
 
         # The decision was about one closure. An account opened and
         # closed again since has a later date, and is a new question.
         same_closure = (
             user is not None
             and user.deactivated_at is not None
-            and _aware(user.deactivated_at) == _aware(marked_closed_at)
+            and _aware(user.deactivated_at) == _aware(review.closed_at)
+        )
+        refusal = (
+            None
+            if user is None or not same_closure
+            else why_it_cannot_be_emptied(db, user)
         )
 
-        if (
-            user is None
-            or not same_closure
-            or why_it_cannot_be_emptied(db, user) is not None
-        ):
+        if user is None or not same_closure or refusal is not None:
             no_longer_due += 1
+
+            if apply:
+                # Only training records can stop a closed account of the
+                # same closure; anything else is an account in use.
+                reason = (
+                    "has_records"
+                    if same_closure and refusal == TRAINING_RECORDS_LEFT
+                    else "opened_again"
+                )
+                _note_not_emptied(db, review, reason, None, now)
+
             continue
 
         if not apply:
             emptied += 1
             continue
 
+        review_id = review.id
+
         try:
             empty_account(db, user, now=now, archive=archive)
+            review.not_emptied_at = None
+            review.not_emptied_reason = None
+            review.not_emptied_detail = None
             # A deliberate checkpoint: the passport's files have moved,
             # and these rows must not be rolled back by a later account.
             db.commit()
             emptied += 1
-        except Exception:
+        except Exception as exc:
             db.rollback()
             failed += 1
+            # Only a refusal's own fixed words reach the screen. Any other
+            # error's text may hold data, so it gets a general sentence.
+            detail = (
+                str(exc)
+                if isinstance(exc, CannotEmpty)
+                else "Something went wrong while emptying it."
+            )
+            again = db.get(RetentionReview, review_id)
+
+            if again is not None:
+                _note_not_emptied(db, again, "failed", detail, now)
 
     return EmptiedResult(
         emptied=emptied, no_longer_due=no_longer_due, failed=failed

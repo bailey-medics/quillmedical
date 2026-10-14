@@ -1919,6 +1919,17 @@ RETENTION_DECISIONS: tuple[str, ...] = ("undecided", "deleted", "kept")
 #: at one organisation, or the closed account itself.
 RETENTION_SUBJECTS: tuple[str, ...] = ("records", "account")
 
+#: Why an account marked to be emptied was not emptied by the nightly
+#: run. ``failed``: an error while emptying, tried again each night.
+#: ``opened_again`` and ``has_records``: left alone, because emptying it
+#: would wipe somebody in use. Shown under "Exceptions" on the record
+#: retention screen.
+NOT_EMPTIED_REASONS: tuple[str, ...] = (
+    "failed",
+    "opened_again",
+    "has_records",
+)
+
 
 class RetentionReview(Base):
     """Something of a closed account's, past the period it is kept for.
@@ -2047,6 +2058,21 @@ class RetentionReview(Base):
     )
     announced_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    #: When the nightly run last did not empty an account marked to be
+    #: emptied, and why: one of ``NOT_EMPTIED_REASONS``. Null when it has
+    #: not happened, and cleared when the account is emptied.
+    not_emptied_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    not_emptied_reason: Mapped[str | None] = mapped_column(
+        String(20), nullable=True
+    )
+    #: For ``failed``, what went wrong, in words written for a reader
+    #: and naming nobody. Never the text of an exception, which may hold
+    #: data: only a refusal's own fixed words, or a general sentence.
+    not_emptied_detail: Mapped[str | None] = mapped_column(
+        String(200), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

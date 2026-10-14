@@ -111,6 +111,11 @@ PLACEHOLDER_DOMAIN = "deleted.invalid"
 ArchivePassport = Callable[[str], list[str]]
 
 
+#: Why an account may not be emptied while training records are left on
+#: it. Named, because the nightly run tells this reason from the others.
+TRAINING_RECORDS_LEFT = "The account still has training records."
+
+
 class CannotEmpty(Exception):
     """An account that may not be emptied, and why."""
 
@@ -159,7 +164,7 @@ def why_it_cannot_be_emptied(db: Session, user: User) -> str | None:
     enrolled = exists().where(ModuleEnrolment.user_id == user.id)
 
     if db.scalar(select(attempted | enrolled)):
-        return "The account still has training records."
+        return TRAINING_RECORDS_LEFT
 
     return None
 
