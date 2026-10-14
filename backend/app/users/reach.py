@@ -99,7 +99,9 @@ def account_the_caller_may_act_on(
     """
     user = db.scalar(select(User).where(User.id == user_id))
 
-    if user is None:
+    # An emptied account is a blank row kept for other people's records
+    # to point at. To anybody administering accounts it is not there.
+    if user is None or user.emptied_at is not None:
         raise UserNotFound()
 
     check_may_act_on_operator(actor, user)

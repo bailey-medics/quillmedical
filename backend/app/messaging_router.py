@@ -32,6 +32,7 @@ from app.messaging import (
     list_conversations,
     list_patient_conversations,
     mark_conversation_read,
+    participant_name,
     send_message,
     set_conversation_status,
 )
@@ -279,7 +280,7 @@ def update_conversation_status_endpoint(
             ParticipantOut(
                 user_id=p.user_id,
                 username=p.user.username,
-                display_name=p.user.username,
+                display_name=participant_name(p.user),
                 role=p.role,
                 joined_at=p.joined_at,
             )
@@ -435,7 +436,7 @@ def list_participants_endpoint(
         ParticipantOut(
             user_id=p.user_id,
             username=p.user.username,
-            display_name=p.user.username,
+            display_name=participant_name(p.user),
             role=p.role,
             joined_at=p.joined_at,
         )

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.cbac.positions import clinical_leads_of
 from app.models import (
+    DELETED_ACCOUNT_NAME,
     OrgUnit,
     OrgUnitFeature,
     User,
@@ -62,11 +63,15 @@ def names_of(db: Session, user_ids: set[int]) -> dict[int, str]:
         return {}
 
     return {
-        row.id: row.full_name or row.username
+        row.id: (
+            DELETED_ACCOUNT_NAME
+            if row.emptied_at is not None
+            else row.full_name or row.username
+        )
         for row in db.execute(
-            select(User.id, User.full_name, User.username).where(
-                User.id.in_(user_ids)
-            )
+            select(
+                User.id, User.full_name, User.username, User.emptied_at
+            ).where(User.id.in_(user_ids))
         ).all()
     }
 

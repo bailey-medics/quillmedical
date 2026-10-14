@@ -509,7 +509,9 @@ def get_user(
     # Fetch user
     user = db.scalar(select(User).where(User.id == user_id))
 
-    if not user:
+    # An emptied account answers as one that was never there: see
+    # ``account_the_caller_may_act_on``, which the writing routes use.
+    if not user or user.emptied_at is not None:
         raise HTTPException(status_code=404, detail="User not found")
 
     # An operator may be viewed by an admin who reaches an org_unit

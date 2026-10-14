@@ -16,7 +16,10 @@ import {
 // Mock scrollIntoView (not available in jsdom)
 Element.prototype.scrollIntoView = vi.fn();
 
-vi.mock("@lib/messaging", () => ({
+// The two calls are replaced. `senderNames` is kept as it is: it only
+// works out a name from a message, and the page is tested with it.
+vi.mock("@lib/messaging", async () => ({
+  ...(await vi.importActual<typeof import("@lib/messaging")>("@lib/messaging")),
   fetchConversation: vi.fn(),
   sendMessage: vi.fn(),
 }));

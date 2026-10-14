@@ -25,6 +25,8 @@ export interface MessageResponse {
   sender_id: number;
   sender_username: string;
   sender_display_name: string;
+  /** True when the sender's account has been emptied */
+  sender_deleted?: boolean;
   body: string;
   amends_id: number | null;
   is_amendment: boolean;
@@ -147,4 +149,39 @@ export function joinConversation(
   conversationId: number,
 ): Promise<ParticipantResponse> {
   return api.post<ParticipantResponse>(`/conversations/${conversationId}/join`);
+}
+
+/** Who a message is shown as from */
+export interface SenderNames {
+  senderName: string;
+  givenName: string;
+  familyName: string;
+}
+
+/**
+ * The name to show beside a message, and the two parts its picture
+ * draws initials from.
+ *
+ * A message stays when its sender's account is emptied. It is then from
+ * "Deleted account", and there is nobody to draw initials for, so both
+ * parts are empty.
+ */
+export function senderNames(
+  message: Pick<MessageResponse, "sender_display_name" | "sender_deleted">,
+): SenderNames {
+  if (message.sender_deleted) {
+    return {
+      senderName: message.sender_display_name,
+      givenName: "",
+      familyName: "",
+    };
+  }
+
+  const parts = message.sender_display_name.split(" ");
+
+  return {
+    senderName: message.sender_display_name,
+    givenName: parts[0] ?? "",
+    familyName: parts.slice(1).join(" "),
+  };
 }

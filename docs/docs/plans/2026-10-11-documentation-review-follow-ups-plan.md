@@ -1249,6 +1249,18 @@ this one has to move first.
 - [ ] A request to delete somebody's data removes them from the list
       too, unless they say they want to stay.
 
+      Not built, and left for Mark to decide. There is nothing to hang
+      it on: the app has no journey for a request to delete somebody's
+      data. An account is emptied because its period ran out and a
+      superadmin said so, and that deliberately leaves the list entry,
+      which Phase 28 put there to outlive the account. A request made
+      by the person is a different thing with a different answer, and
+      today it is carried out by hand. What it needs is small: one
+      function that deletes a list entry and what it was sent, and
+      somewhere for a superadmin to call it from. The open question is
+      where: a button on the newsletter admin page, or a tick box on
+      the retention screen's "Empty this account" card.
+
 - [x] A sponsored user is carried across only on their own yes. Mark's
       decision, 13 October. Their address reached Quill from their
       sponsor, for training, and clause 21.2 says we do not market to
@@ -1445,11 +1457,11 @@ the account before they are wiped.
       and empties nobody. `reactivate_account` refuses an emptied
       account.
 
-- [ ] An emptied account can never sign in, be reopened or be found by
+- [x] An emptied account can never sign in, be reopened or be found by
       a search for a person. Wherever the app shows who did something,
       it shows "Deleted account".
 
-- [ ] Keep the name where it is part of somebody else's record. A
+- [x] Keep the name where it is part of somebody else's record. A
       sign-off this person gave on another clinician's passport keeps
       their name, on the sign-off and in the passport's Markdown and
       YAML. Check where each of these takes the name from today: the
@@ -1458,7 +1470,7 @@ the account before they are wiped.
       name by looking the account up, it must first be written onto the
       record itself as text, or emptying the account would blank it.
 
-- [ ] A message stays, shown as from a deleted account, with no name
+- [x] A message stays, shown as from a deleted account, with no name
       or initials. Nothing about the message changes; the name simply
       is not on the account any more.
 
@@ -1467,10 +1479,38 @@ the account before they are wiped.
       once the account is emptied it holds the id, the organisation,
       who decided and when, and the note.
 
-- [ ] Say so in the privacy policy. Section 3.1 already says "delete it
+- [x] Say so in the privacy policy. Section 3.1 already says "delete it
       or remove everything that identifies you", which is this. Add
       that a sign-off given on somebody else's record stays there under
       the name it was given with, and that a message stays without one.
+
+      The four steps above were built on 13 October as one unit.
+      What was found:
+
+      - **A sign-off's name needed no change.** The passport holds its
+        own copy of the assessor, written into its files at the moment
+        of signing (`Assessor` in
+        `backend/app/features/passport/schemas.py`, "deliberately a
+        snapshot rather than a reference to a user row"). The API, the
+        Markdown, the YAML and the PDF all read that copy. The request
+        row holds the assessor's email address as text, and keeps it.
+        Nothing shows a name by looking the account up.
+
+      - **`User.display_name`** is the one place that says "Deleted
+        account" for an emptied row. Messaging and the list of names
+        behind "who leads this place" use it.
+
+      - **A message carries `sender_deleted`**, so the screen draws no
+        initials. Without it "Deleted account" would have become "DA".
+
+      - **To anybody administering accounts, an emptied one is not
+        there.** It is left out of the list of users, and its page and
+        every route that changes an account answer 404. That is also
+        what stops it being opened again.
+
+      - **Signing in was already refused**, because an emptied account
+        is a closed one, and a password reset finds nobody at the old
+        address.
 
 - [ ] Before the EHR product is live, decide this again for it. A
       message about a patient is part of a clinical record, and its

@@ -47,9 +47,17 @@ longer takes somebody off the newsletter. Section 3.6 of the privacy
 policy used to say that no newsletter is sent to a closed account; it,
 section 3.11, section 7 and clause 21.2 of the terms now say that the
 name, address and answer move to the newsletter list when an account is
-closed. **This wording is ahead of the code**: the move is Phase 28 of
-the documentation review follow-ups plan, and neither document may be
-published until it is built.
+closed. The move, and the one email that tells somebody of it, were
+built on 13 October 2026. One step of that phase is not: removing
+somebody from the newsletter list when they ask for their data to be
+deleted, for which there is no journey in the app yet. Until there is,
+such a request is carried out by hand.
+
+Added on 13 October 2026: section 3.1 of the privacy policy now says
+what "remove everything that identifies you" means, and names the two
+things that stay because they are part of somebody else's record: a
+sign-off given on another clinician's passport, under the name it was
+given with, and a message, with no name.
 
 Changed again on 14 October 2026, by Mark's decision: the answer
 somebody has given about news and updates stands for everybody, through
