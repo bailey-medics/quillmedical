@@ -692,35 +692,35 @@ Audit each file below in full, and stamp it in the ledger. This is the
 layer that decides whether every other safety net runs, so it comes
 before any feature.
 
-- [x] Every workflow in `.github/workflows/`. Stamped on 10 October 2026.
-- [x] Everything else under `.github`. Stamped on 10 October 2026. The
+- [x] Every workflow in [`.github/workflows/`](../../../.github/workflows/). Stamped on 10 October 2026.
+- [x] Everything else under [`.github`](../../../.github). Stamped on 10 October 2026. The
       LLM prompts and instructions were last audited in July 2026 and
       are due again.
-- [x] `.husky/pre-commit`. Stamped on 10 October 2026.
-- [x] The `Justfile`. Stamped on 11 October 2026.
-- [x] `.pre-commit-config.yaml`.
-- [x] `compose.ci.yml`.
-- [x] `compose.dev.yml`.
-- [x] `compose.migrate.yml`.
+- [x] [`.husky/pre-commit`](../../../.husky/pre-commit). Stamped on 10 October 2026.
+- [x] The [`Justfile`](../../../Justfile). Stamped on 11 October 2026.
+- [x] [`.pre-commit-config.yaml`](../../../.pre-commit-config.yaml).
+- [x] [`compose.ci.yml`](../../../compose.ci.yml).
+- [x] [`compose.dev.yml`](../../../compose.dev.yml).
+- [x] [`compose.migrate.yml`](../../../compose.migrate.yml).
 - [x] `compose.prod.cloud-run.yml`. Deleted on 12 October 2026, not
       audited: nothing built or deployed from it.
 - [x] `compose.prod.fhir-openehr.yml`. Deleted on 12 October 2026, not
       audited: the clinical VM is built from
-      `infra/modules/compute-fhir/startup.sh`, which never read it.
-- [x] `compose.unit-tests.yml`.
-- [x] `backend/Dockerfile`.
-- [x] `frontend/Dockerfile`.
-- [x] `backend/pyproject.toml`.
-- [x] `frontend/package.json`.
-- [x] `frontend/tsconfig.json`.
-- [x] `frontend/tsconfig.app.json`.
-- [x] `frontend/tsconfig.check.json`.
-- [x] `frontend/tsconfig.node.json`.
-- [ ] `frontend/vite.config.ts`.
-- [ ] `frontend/eslint.config.js`.
-- [ ] `security.py`
+      [`infra/modules/compute-fhir/startup.sh`](../../../infra/modules/compute-fhir/startup.sh), which never read it.
+- [x] [`compose.unit-tests.yml`](../../../compose.unit-tests.yml).
+- [x] [`backend/Dockerfile`](../../../backend/Dockerfile).
+- [x] [`frontend/Dockerfile`](../../../frontend/Dockerfile).
+- [x] [`backend/pyproject.toml`](../../../backend/pyproject.toml).
+- [x] [`frontend/package.json`](../../../frontend/package.json).
+- [x] [`frontend/tsconfig.json`](../../../frontend/tsconfig.json).
+- [x] [`frontend/tsconfig.app.json`](../../../frontend/tsconfig.app.json).
+- [x] [`frontend/tsconfig.check.json`](../../../frontend/tsconfig.check.json).
+- [x] [`frontend/tsconfig.node.json`](../../../frontend/tsconfig.node.json).
+- [x] [`frontend/vite.config.ts`](../../../frontend/vite.config.ts).
+- [ ] [`frontend/eslint.config.js`](../../../frontend/eslint.config.js).
+- [ ] [`security.py`](../../../backend/app/security.py)
 
-- [ ] Audit `infra/`, the Terraform, for what is exposed: ingress and
+- [ ] Audit [`infra/`](../../../infra/), the Terraform, for what is exposed: ingress and
       the load balancer, IAM bindings, public buckets, where each secret
       is read from, what the Cloud Run service may reach, and the AWS
       SES part, since it sends mail on Quill's behalf.
@@ -1082,55 +1082,55 @@ plan's. **Nothing more is built on the exam from this plan**: see
 Audit in this order, stamping each in the ledger, and treating anything
 found as a bug to fix on its own branch before going on.
 
-- [ ] `backend/app/security.py`: JWT signing and verification, cookie
+- [ ] [`backend/app/security.py`](../../../backend/app/security.py): JWT signing and verification, cookie
       flags, CSRF token minting, TOTP, Argon2.
 
-- [ ] `backend/app/deps.py` and the dependency constants and
-      `get_current_user` in `backend/app/main.py`, including why there
+- [ ] [`backend/app/deps.py`](../../../backend/app/deps.py) and the dependency constants and
+      `get_current_user` in [`backend/app/main.py`](../../../backend/app/main.py), including why there
       are two definitions and which the routes use.
 
-- [ ] The auth routes in `backend/app/main.py`: login, logout, refresh,
+- [ ] The auth routes in [`backend/app/main.py`](../../../backend/app/main.py): login, logout, refresh,
       register, password reset, change password, TOTP enrol and verify,
       and `/api/auth/me`. The questions are: can a token be replayed
       after logout, can refresh outlive its seven days, does a reset
       token work twice, is a failed login rate limited
-      (`backend/app/rate_limit.py` is 26 lines, so check what it covers).
+      ([`backend/app/rate_limit.py`](../../../backend/app/rate_limit.py) is 26 lines, so check what it covers).
 
-- [ ] `backend/app/cbac/grants.py` and `backend/app/cbac/grant_scope.py`
+- [ ] [`backend/app/cbac/grants.py`](../../../backend/app/cbac/grants.py) and [`backend/app/cbac/grant_scope.py`](../../../backend/app/cbac/grant_scope.py)
       again, this time asking only one question: can a scoped manager
       reach `manage_users` or `passport_write` by any route through
       `update_user`. The folder is already on the card; this is a
       second read with one question.
 
-- [ ] `backend/app/organisations.py` and `backend/app/org_units/`: every
+- [ ] [`backend/app/organisations.py`](../../../backend/app/organisations.py) and [`backend/app/org_units/`](../../../backend/app/org_units/): every
       place a route limits a caller to their own org units, and whether
       any read of a user, a member list or a patient list skips it.
-      `test_admin_user_route_scoping.py` and
-      `test_admin_routes_ask_membership.py` say what is covered; read
+      [`admin_user_route_scoping_test.py`](../../../backend/tests/admin_user_route_scoping_test.py) and
+      [`admin_routes_ask_membership_test.py`](../../../backend/tests/admin_routes_ask_membership_test.py) say what is covered; read
       the routes they do not name.
 
-- [ ] `backend/app/registrations.py`, `backend/app/email_send.py` and
-      the rest of `backend/app/email/`: who an email can be sent to, and
+- [ ] [`backend/app/registrations.py`](../../../backend/app/registrations.py), [`backend/app/email_send.py`](../../../backend/app/email_send.py) and
+      the rest of [`backend/app/email/`](../../../backend/app/email/): who an email can be sent to, and
       whether any route lets a caller choose the recipient.
 
-- [ ] `backend/app/marketing/` and `backend/app/feedback/`: both take
+- [ ] [`backend/app/marketing/`](../../../backend/app/marketing/) and [`backend/app/feedback/`](../../../backend/app/feedback/): both take
       input from outside the account system (unsubscribe tokens, the
       Resend webhook, feedback forms), so check signature verification,
       token single use and length limits.
 
-- [ ] `backend/app/features/teaching/`: the write paths only. Enrolment,
+- [ ] [`backend/app/features/teaching/`](../../../backend/app/features/teaching/): the write paths only. Enrolment,
       results, certificates, the door and the video access gates. The
-      read paths ride on `test_teaching_learner_gates.py`,
-      `test_teaching_door.py` and `test_teaching_video_access.py`.
+      read paths ride on [`teaching_learner_gates_test.py`](../../../backend/tests/teaching_learner_gates_test.py),
+      [`door_test.py`](../../../backend/app/features/teaching/door_test.py) and [`video_access_test.py`](../../../backend/app/features/teaching/video_access_test.py).
       **This is reading, not building.** A fault found in the exam is
       written down here and built from the thin routes plan: see "The
       exam is built from one plan" under Decisions.
 
-- [ ] `backend/app/schemas/`: that every request model forbids extra
+- [ ] [`backend/app/schemas/`](../../../backend/app/schemas/): that every request model forbids extra
       fields and bounds its strings. A grep for `extra=` and
       `max_length` first, then read the models that lack them.
       **The first half is now a test, 11 October 2026.**
-      `backend/tests/every_request_model_forbids_extra_test.py` walks
+      [`backend/tests/every_request_model_forbids_extra_test.py`](../../../backend/tests/every_request_model_forbids_extra_test.py) walks
       every route, collects the 78 models a request body is read into,
       and fails on one that does not forbid extra fields. Twelve did
       not. Ten were teaching models and now do; the frontend and the two
@@ -1140,7 +1140,7 @@ found as a bug to fix on its own branch before going on.
       **The second half is Phase 4a**: a cap on the size of a request
       body, and limits on the fields where length matters.
 
-- [ ] Frontend: `frontend/src/auth/` in full and `frontend/src/lib/api.ts`.
+- [ ] Frontend: [`frontend/src/auth/`](../../../frontend/src/auth/) in full and [`frontend/src/lib/api.ts`](../../../frontend/src/lib/api.ts).
       The guards default to a 404, so check nothing renders before the
       guard resolves.
 
