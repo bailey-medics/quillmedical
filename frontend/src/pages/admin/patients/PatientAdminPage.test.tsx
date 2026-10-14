@@ -362,13 +362,13 @@ describe("PatientAdminPage", () => {
 
       fireEvent.click(editButton);
 
+      // `expect.objectContaining` comes back typed as `any`
+      const withPatient: unknown = expect.objectContaining({
+        patient: mockPatient,
+      });
       expect(mockNavigate).toHaveBeenCalledWith(
         "/admin/patients/patient-123/edit",
-        expect.objectContaining({
-          state: expect.objectContaining({
-            patient: mockPatient,
-          }),
-        }),
+        expect.objectContaining({ state: withPatient }),
       );
     });
 
@@ -401,13 +401,13 @@ describe("PatientAdminPage", () => {
 
       fireEvent.click(deactivateButton);
 
+      // `expect.objectContaining` comes back typed as `any`
+      const withPatient: unknown = expect.objectContaining({
+        patient: mockPatient,
+      });
       expect(mockNavigate).toHaveBeenCalledWith(
         "/admin/patients/patient-123/deactivate",
-        expect.objectContaining({
-          state: expect.objectContaining({
-            patient: mockPatient,
-          }),
-        }),
+        expect.objectContaining({ state: withPatient }),
       );
     });
   });

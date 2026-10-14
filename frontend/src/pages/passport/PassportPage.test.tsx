@@ -19,22 +19,38 @@ import {
   reflections,
   signOffs,
 } from "@/components/passport/fixtures";
+import type * as passportLib from "@lib/passport";
 
-const fetchMyPassport = vi.fn();
-const createPassport = vi.fn();
-const fetchInbox = vi.fn();
-const fetchSignOffs = vi.fn();
-const fetchWholeLogbook = vi.fn();
-const fetchAllCpd = vi.fn();
-const fetchCertificates = vi.fn();
-const fetchReflections = vi.fn();
+import type { PassportDetail } from "@lib/passport";
+import type * as frameworkChoicesLib from "@lib/passport/useFrameworkChoices";
+const {
+  fetchMyPassport,
+  createPassport,
+  fetchInbox,
+  fetchSignOffs,
+  fetchWholeLogbook,
+  fetchAllCpd,
+  fetchCertificates,
+  fetchReflections,
+} = vi.hoisted(() => ({
+  fetchMyPassport: vi.fn<typeof passportLib.fetchMyPassport>(),
+  createPassport: vi.fn<typeof passportLib.createPassport>(),
+  fetchInbox: vi.fn<typeof passportLib.fetchInbox>(),
+  fetchSignOffs: vi.fn<typeof passportLib.fetchSignOffs>(),
+  fetchWholeLogbook: vi.fn<typeof passportLib.fetchWholeLogbook>(),
+  fetchAllCpd: vi.fn<typeof passportLib.fetchAllCpd>(),
+  fetchCertificates: vi.fn<typeof passportLib.fetchCertificates>(),
+  fetchReflections: vi.fn<typeof passportLib.fetchReflections>(),
+}));
 
 // The framework order comes from the API through this hook; each test
 // sets what it returns.
-const frameworkChoices = vi.fn();
+const { frameworkChoices } = vi.hoisted(() => ({
+  frameworkChoices: vi.fn<typeof frameworkChoicesLib.useFrameworkChoices>(),
+}));
 
 vi.mock("@lib/passport/useFrameworkChoices", () => ({
-  useFrameworkChoices: (enabled: boolean) => frameworkChoices(enabled),
+  useFrameworkChoices: frameworkChoices,
 }));
 
 vi.mock("@lib/passport", async () => {
@@ -42,14 +58,14 @@ vi.mock("@lib/passport", async () => {
     await vi.importActual<typeof import("@lib/passport")>("@lib/passport");
   return {
     ...actual,
-    fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
-    createPassport: (...args: unknown[]) => createPassport(...args),
-    fetchInbox: (...args: unknown[]) => fetchInbox(...args),
-    fetchSignOffs: (...args: unknown[]) => fetchSignOffs(...args),
-    fetchWholeLogbook: (...args: unknown[]) => fetchWholeLogbook(...args),
-    fetchAllCpd: (...args: unknown[]) => fetchAllCpd(...args),
-    fetchCertificates: (...args: unknown[]) => fetchCertificates(...args),
-    fetchReflections: (...args: unknown[]) => fetchReflections(...args),
+    fetchMyPassport,
+    createPassport,
+    fetchInbox,
+    fetchSignOffs,
+    fetchWholeLogbook,
+    fetchAllCpd,
+    fetchCertificates,
+    fetchReflections,
   };
 });
 
@@ -268,9 +284,9 @@ describe("PassportPage", () => {
     // for "you do not have a passport yet" once the 404 arrived. A
     // holder saw somebody else's page flash past on the way to their
     // own.
-    let resolve: (value: unknown) => void = () => {};
+    let resolve: (value: PassportDetail) => void = () => {};
     fetchMyPassport.mockReturnValue(
-      new Promise((r) => {
+      new Promise<PassportDetail>((r) => {
         resolve = r;
       }),
     );

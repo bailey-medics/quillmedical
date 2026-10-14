@@ -12,17 +12,21 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportCertificatesPage } from "./PassportCertificatesPage";
+import type * as passportLib from "@lib/passport";
 
-const fetchMyPassport = vi.fn();
-const fetchCertificates = vi.fn();
-const addCertificate = vi.fn();
-const uploadEvidence = vi.fn();
+const { fetchMyPassport, fetchCertificates, addCertificate, uploadEvidence } =
+  vi.hoisted(() => ({
+    fetchMyPassport: vi.fn<typeof passportLib.fetchMyPassport>(),
+    fetchCertificates: vi.fn<typeof passportLib.fetchCertificates>(),
+    addCertificate: vi.fn<typeof passportLib.addCertificate>(),
+    uploadEvidence: vi.fn<typeof passportLib.uploadEvidence>(),
+  }));
 
 vi.mock("@lib/passport", () => ({
-  fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
-  fetchCertificates: (...args: unknown[]) => fetchCertificates(...args),
-  addCertificate: (...args: unknown[]) => addCertificate(...args),
-  uploadEvidence: (...args: unknown[]) => uploadEvidence(...args),
+  fetchMyPassport,
+  fetchCertificates,
+  addCertificate,
+  uploadEvidence,
 }));
 
 const navigate = vi.fn();

@@ -10,11 +10,14 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportDownloadPage } from "./PassportDownloadPage";
+import type * as passportLib from "@lib/passport";
 
-const fetchMyPassport = vi.fn();
+const { fetchMyPassport } = vi.hoisted(() => ({
+  fetchMyPassport: vi.fn<typeof passportLib.fetchMyPassport>(),
+}));
 
 vi.mock("@lib/passport", () => ({
-  fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
+  fetchMyPassport,
   exportMarkdown: vi.fn(),
   exportPdf: vi.fn(),
   exportBundle: vi.fn(),

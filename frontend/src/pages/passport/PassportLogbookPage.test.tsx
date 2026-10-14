@@ -12,15 +12,21 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportLogbookPage } from "./PassportLogbookPage";
+import type * as passportLib from "@lib/passport";
 
-const fetchMyPassport = vi.fn();
-const fetchWholeLogbook = vi.fn();
-const addLogbookEntry = vi.fn();
+import type { LogbookEntry } from "@lib/passport";
+const { fetchMyPassport, fetchWholeLogbook, addLogbookEntry } = vi.hoisted(
+  () => ({
+    fetchMyPassport: vi.fn<typeof passportLib.fetchMyPassport>(),
+    fetchWholeLogbook: vi.fn<typeof passportLib.fetchWholeLogbook>(),
+    addLogbookEntry: vi.fn<typeof passportLib.addLogbookEntry>(),
+  }),
+);
 
 vi.mock("@lib/passport", () => ({
-  fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
-  fetchWholeLogbook: (...args: unknown[]) => fetchWholeLogbook(...args),
-  addLogbookEntry: (...args: unknown[]) => addLogbookEntry(...args),
+  fetchMyPassport,
+  fetchWholeLogbook,
+  addLogbookEntry,
 }));
 
 const navigate = vi.fn();
@@ -49,6 +55,27 @@ const detail = {
   competencies: [],
 };
 
+/** One logged procedure, with nothing said beyond what names it. */
+function entry(
+  filename: string,
+  competency: string,
+  performed_on: string,
+): LogbookEntry {
+  return {
+    filename,
+    competency,
+    performed_on,
+    setting: null,
+    supervision: null,
+    supervisor: null,
+    indication: null,
+    outcome: null,
+    notes: null,
+    also_counts_towards: [],
+    attachments: [],
+  };
+}
+
 describe("PassportLogbookPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -67,24 +94,12 @@ describe("PassportLogbookPage", () => {
         {
           competency: "perform_venepuncture",
           count: 1,
-          entries: [
-            {
-              filename: "a",
-              competency: "perform_venepuncture",
-              performed_on: "2026-03-01",
-            },
-          ],
+          entries: [entry("a", "perform_venepuncture", "2026-03-01")],
         },
         {
           competency: "certify_death",
           count: 1,
-          entries: [
-            {
-              filename: "b",
-              competency: "certify_death",
-              performed_on: "2026-03-02",
-            },
-          ],
+          entries: [entry("b", "certify_death", "2026-03-02")],
         },
       ],
     });
@@ -108,13 +123,7 @@ describe("PassportLogbookPage", () => {
         {
           competency: "certify_death",
           count: 1,
-          entries: [
-            {
-              filename: "20260302T0900",
-              competency: "certify_death",
-              performed_on: "2026-03-02",
-            },
-          ],
+          entries: [entry("20260302T0900", "certify_death", "2026-03-02")],
         },
       ],
     });
@@ -223,24 +232,12 @@ describe("PassportLogbookPage", () => {
         {
           competency: "perform_venepuncture",
           count: 1,
-          entries: [
-            {
-              filename: "a",
-              competency: "perform_venepuncture",
-              performed_on: "2026-03-01",
-            },
-          ],
+          entries: [entry("a", "perform_venepuncture", "2026-03-01")],
         },
         {
           competency: "certify_death",
           count: 1,
-          entries: [
-            {
-              filename: "b",
-              competency: "certify_death",
-              performed_on: "2026-03-02",
-            },
-          ],
+          entries: [entry("b", "certify_death", "2026-03-02")],
         },
       ],
     });
