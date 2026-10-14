@@ -58,8 +58,11 @@ ahead of Phases 3 to 13, which are untouched.
       the action's three outcomes. Run with `just ub
       app/retention_test.py`, 13 passing.
 
-- [ ] After the first nightly run, read its log and check the counts are
-      what a report by hand gave the day before.
+- [x] After the first nightly run, read its log and check the counts are
+      what a report by hand gave the day before. Read on 13 October:
+      the 03:30 UTC run that day and the run of the day before both
+      end "Deleted 0 marketing answer records", which is right for a
+      database with nothing yet old enough to delete.
 
 ## Phase 2: Take attempt limits out of the terms
 
@@ -158,9 +161,9 @@ ahead of Phases 3 to 13, which are untouched.
       relied on. Read the plan on the pull request to confirm it replaces
       the dataset and the sink and nothing else.
 
-- [ ] After the merge, check the `Terraform` run applied, and that the new
+- [x] After the merge, check the `Terraform` run applied, and that the new
       dataset reports `europe-west2`. No deploy is needed: nothing on a
-      Cloud Run service changes.
+      Cloud Run service changes. Checked on 13 October.
 
 - [x] Leave the public site's static bucket, `location = "EU"` in
       `infra/modules/load-balancer/main.tf`. It holds the site's own pages
@@ -1059,26 +1062,31 @@ never switched on.
       where it was 3. The teaching images bucket's `force_destroy` goes
       from true to false.
 
-- [ ] After the apply, check the live instance with
+- [x] After the apply, check the live instance with
       `gcloud sql instances describe quill-core-app`: deletion
       protection on, thirty backups kept, point-in-time recovery on.
+      Checked on 13 October: all three, with seven days of
+      transaction logs.
 
 ## Phase 26: Say in the privacy policy that backups hold deleted data
 
-- [ ] Add one line to section 7 of `docs/docs/legal/privacy-policy.md`:
+- [x] Add one line to section 7 of `docs/docs/legal/privacy-policy.md`:
       when something is deleted, a copy may remain in backups until
       they are overwritten, and backups are used only to restore the
       service after a fault. The policy says "deleted" with no such
       line, and a copy does live on for a while.
 
-- [ ] Give the number that is true once Phase 25 has applied: thirty
+- [x] Give the number that is true once Phase 25 has applied: thirty
       days, the thirty nightly backups. Not seven, which is today's
       setting and is the fault Phase 25 puts right. So this phase comes
       after that one, and is checked against the live instance and not
       against the Terraform.
 
-- [ ] Add a dated sentence to `docs/docs/legal/index.md`, as the other
+- [x] Add a dated sentence to `docs/docs/legal/index.md`, as the other
       corrections have.
+
+      Done on 13 October, after the check in Phase 25 found thirty
+      backups on the live database.
 
 ## Phase 27: Put a person between the nightly run and a deleted record
 
@@ -1604,7 +1612,7 @@ institution name. So the number moves to the organisation itself.
       alert comes, the sum and the missing-data setting in
       `scheduled_action_silent` are the first place to look.
 
-- [ ] After Phase 25 has applied, check the live database:
+- [x] After Phase 25 has applied, check the live database:
       `gcloud sql instances describe quill-core-app` shows deletion
       protection on, thirty backups kept and point-in-time recovery
       on.
