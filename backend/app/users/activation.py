@@ -4,14 +4,19 @@ An account is deactivated, never deleted: its owner can no longer sign
 in, and everything they did stays for the record. Reactivating it is the
 same switch thrown back.
 
-The switch is the whole of it. Nothing else about the account is
-written: what they hold, where they belong and where they practise all
-stay as they were, so reactivating puts them back exactly where they
-left off.
+The switch is nearly the whole of it. What they hold, where they belong
+and where they practise all stay as they were, so reactivating puts
+them back exactly where they left off.
+
+One thing moves: their answer about news and updates. Closing an account
+is not the person saying "stop emailing me", so their name, address and
+answer go onto the newsletter list, which is kept apart from accounts.
+Opening the account again brings them back off it.
 """
 
 from sqlalchemy.orm import Session
 
+from app.marketing.subscribers import fold_into_account, move_to_list
 from app.models import User
 from app.users.errors import (
     AlreadyActive,
@@ -53,16 +58,14 @@ def deactivate_account(db: Session, actor: User, user_id: int) -> User:
         raise AlreadyDeactivated()
 
     user.is_active = False
-
-    # The mailing list is deliberately left alone. Closing an account is
-    # not the person saying "stop emailing me": it is usually an admin
-    # who does it, and somebody who has left may still want to hear what
-    # would bring them back. They keep the unsubscribe link in every
-    # newsletter. Taking somebody off the list altogether is for a
-    # request to erase their data, which is `remove_contact`'s job and
-    # has no route yet.
-
     db.flush()
+
+    # Closing an account is not the person saying "stop emailing me": it
+    # is usually an admin who does it, and somebody who has left may
+    # still want to hear what would bring them back. Their answer goes
+    # onto the newsletter list as it stands, a yes as a yes and a no as
+    # a no. Every newsletter carries the link that stops it.
+    move_to_list(db, user)
 
     return user
 
@@ -93,5 +96,10 @@ def reactivate_account(db: Session, actor: User, user_id: int) -> User:
 
     user.is_active = True
     db.flush()
+
+    # Nobody is on the list and an open account both: the list entry is
+    # folded back in, and a "no" given while the account was closed
+    # comes with it.
+    fold_into_account(db, user)
 
     return user

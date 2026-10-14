@@ -606,6 +606,37 @@ class TestAnAddressOnTheListAndOnAnAccount:
         assert "unverified@example.com" in _sent_to(outbox)
 
 
+class TestAClosedAccountOnTheList:
+    """A closed account's newsletters come from its list entry."""
+
+    def test_is_sent_it_from_the_list(self, db_session, people, outbox):
+        db_session.add(NewsletterSubscriber(email="closed@example.com"))
+        db_session.commit()
+
+        _go(db_session)
+
+        assert _sent_to(outbox).count("closed@example.com") == 1
+
+    def test_is_not_sent_it_with_no_list_entry(
+        self, db_session, people, outbox
+    ):
+        _go(db_session)
+
+        assert "closed@example.com" not in _sent_to(outbox)
+
+    def test_is_not_sent_it_once_unsubscribed_on_the_list(
+        self, db_session, people, outbox
+    ):
+        db_session.add(
+            NewsletterSubscriber(email="closed@example.com", subscribed=False)
+        )
+        db_session.commit()
+
+        _go(db_session)
+
+        assert "closed@example.com" not in _sent_to(outbox)
+
+
 class TestSendingInBatches:
     def test_a_limit_reaches_only_that_many_and_says_who_waits(
         self, db_session, people, members, outbox

@@ -1215,7 +1215,7 @@ this one has to move first.
       the code. Neither document is published until the rest of this
       phase is built: `docs/docs/legal/index.md` says so.
 
-- [ ] When an account is closed, copy the person's name, email address
+- [x] When an account is closed, copy the person's name, email address
       and current answer to the newsletter list, the one section 3.11
       of the policy describes, which is kept apart from accounts. Find
       how that list is held and how an account's address is matched to
@@ -1223,7 +1223,7 @@ this one has to move first.
       makes an account with the same address, and this is that journey
       run the other way.
 
-- [ ] Carry a refusal across as a refusal. Somebody who said no goes on
+- [x] Carry a refusal across as a refusal. Somebody who said no goes on
       the list marked unsubscribed, so that they are never added again
       from an older list, and is sent nothing.
 
@@ -1231,16 +1231,16 @@ this one has to move first.
       closed and that the newsletter carries on, with the link that
       stops it. Not to somebody who had already said no.
 
-- [ ] Send newsletters to the list entry of a closed account. Today
+- [x] Send newsletters to the list entry of a closed account. Today
       none is sent to a closed account; find where that is decided.
 
-- [ ] Reopening an account takes the entry back off the list and
+- [x] Reopening an account takes the entry back off the list and
       restores the answer to the account, so that nobody is on both.
 
 - [ ] A request to delete somebody's data removes them from the list
       too, unless they say they want to stay.
 
-- [ ] A sponsored user is carried across only on their own yes. Mark's
+- [x] A sponsored user is carried across only on their own yes. Mark's
       decision, 13 October. Their address reached Quill from their
       sponsor, for training, and clause 21.2 says we do not market to
       them because they are sponsored. The question they were asked is
@@ -1256,9 +1256,52 @@ this one has to move first.
       shown. An answer set for them, or left as it was offered, does
       not count.
 
-- [ ] Say what makes an account "one a sponsor gave", in one place the
+      **Reversed on 14 October, by Mark.** "If the stored state is they
+      are happy to get a newsletter, they get a newsletter. If the
+      stored state is that they do not want to get a newsletter, then
+      they should not", however the answer was given and whether or not
+      they are in a sponsor's organisation, through closure and through
+      emptying. It was built as above first, then taken out before
+      merging: `answer_to_carry` now carries the stored answer, and
+      `is_sponsored` is gone. Two guards stay, both the same rule
+      applied, and Mark agreed them: an address nobody verified is
+      never moved, and somebody never asked has no answer to carry.
+      Clause 21.2 and section 3.6 were reworded to match.
+
+- [x] Say what makes an account "one a sponsor gave", in one place the
       code reads. It is the same question Phase 29 asks to choose
-      between two years and a sponsor's period.
+      between two years and a sponsor's period. No longer needed once
+      the step above was reversed: nothing asks it, so it is not in the
+      code. Phase 29 lists every closed account after two years.
+
+      Built on 13 October, with the five steps ticked above, as one
+      unit. What was found and decided:
+
+      - **How the list is held.** `newsletter_subscriber`, apart from
+        `users`. Somebody is on it or has an open account, never both:
+        `fold_into_account` in `backend/app/marketing/subscribers.py`
+        deletes a list entry once its address is verified on an
+        account. `move_to_list` there is the same journey the other
+        way, and `deactivate_account` calls it. Reopening calls
+        `fold_into_account` again, which already carries a "no" back.
+
+      - **Where sending is decided.** `subscribers()` in
+        `backend/app/marketing/newsletter.py` left out every list entry
+        whose address was a verified account's. It now leaves out only
+        an open one, so a closed account's entry is sent to. An account
+        is never folded back while it is closed.
+
+      - **The stored answer is carried for everybody**, a yes as a yes
+        and a no as a no. Holding a no is what stops a later import
+        putting them back. Somebody who was never asked is not moved at
+        all.
+
+      - **An unsubscribe link sent before the account closed** still
+        names the account. Pressing it now reaches the list entry too,
+        or it would change nothing.
+
+      - **An address nobody verified is never moved.** It may be
+        somebody else's.
 
 - [ ] Consider, after this is built, asking sponsored users the
       question as a plain yes. Today only the switch in Settings can

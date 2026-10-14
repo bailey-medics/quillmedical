@@ -51,6 +51,12 @@ closed. **This wording is ahead of the code**: the move is Phase 28 of
 the documentation review follow-ups plan, and neither document may be
 published until it is built.
 
+Changed again on 14 October 2026, by Mark's decision: the answer
+somebody has given about news and updates stands for everybody, through
+closure and deletion. Section 3.6 and clause 21.2 no longer treat a
+sponsored user's unticked box differently, and 21.2 no longer says we
+do not market to sponsored users.
+
 Every version carries a version number and the date it took effect,
 because until acceptance is recorded per person that date is the only
 record of which version somebody was shown. When a version is replaced,

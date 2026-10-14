@@ -484,13 +484,13 @@ and updates, come to us. Our privacy policy explains the split.
 sponsor may have its own charges, and those are between you and your
 sponsor.
 
-21.2 We do not use your details to market to you on our own account
-because you are a sponsored user. If you have chosen to receive news and
-updates from Quill Medical, that is a separate choice you can change at
-any time. If you have told us yourself that you want them, that stays so
-when you leave your sponsor or your account is closed, and every
-newsletter carries a link to stop it. If you have not, the newsletter
-stops when your account is closed.
+21.2 Whether you receive news and updates from Quill Medical is your
+own choice, separate from your sponsor's programme. We ask you when you
+register, or when you set your first password if your account was made
+for you, and you can change your answer at any time in Settings or with
+the link in any newsletter. Your answer stands when you leave your
+sponsor and when your account is closed: if you want news and updates,
+they carry on, and if you do not, none are sent.
 
 ### 22. When you leave your sponsor or its agreement ends
 

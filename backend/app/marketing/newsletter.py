@@ -171,11 +171,15 @@ def recipients(db: Session) -> list[User]:
 def subscribers(db: Session) -> list[NewsletterSubscriber]:
     """Every mailing-list subscriber who may be sent a newsletter.
 
-    Somebody whose address is also a verified account's is left out,
-    whatever the mailing list says: the account's answer is the one that
-    counts. So a person who registered and said no is not emailed
+    Somebody whose address is also an open, verified account's is left
+    out, whatever the mailing list says: the account's answer is the one
+    that counts. So a person who registered and said no is not emailed
     because an old list still has them on it, and a person who said yes
     gets one newsletter and not two.
+
+    A closed account does not hide its owner's list entry. Closing an
+    account moves their answer here (``move_to_list``), and this is
+    where their newsletters now come from.
 
     Args:
         db: Database session.
@@ -183,7 +187,9 @@ def subscribers(db: Session) -> list[NewsletterSubscriber]:
     Returns:
         The subscribers, oldest first.
     """
-    with_an_account = select(User.email).where(User.email_verified.is_(True))
+    with_an_account = select(User.email).where(
+        User.email_verified.is_(True), User.is_active.is_(True)
+    )
 
     return list(
         db.execute(
