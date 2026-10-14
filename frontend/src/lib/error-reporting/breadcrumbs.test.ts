@@ -51,8 +51,10 @@ describe("recording events", () => {
   it("records a route change as its pattern", () => {
     recordRoute("/patients/:id");
 
+    // `expect.any` comes back typed as `any`, so it is named first
+    const anyMs: unknown = expect.any(Number);
     expect(getBreadcrumbs()).toEqual([
-      { type: "route", ms: expect.any(Number), pattern: "/patients/:id" },
+      { type: "route", ms: anyMs, pattern: "/patients/:id" },
     ]);
   });
 

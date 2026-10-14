@@ -7,12 +7,13 @@ import { describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
 
+// Read as the three fields these tests look at.
 const manifest = JSON.parse(
   fs.readFileSync(
     path.resolve(__dirname, "../../public/manifest.webmanifest"),
     "utf-8",
   ),
-);
+) as { start_url: string; scope: string; display: string };
 const indexHtml = fs.readFileSync(
   path.resolve(__dirname, "../../index.html"),
   "utf-8",

@@ -8,11 +8,14 @@ import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import SignOffRequestForm from "./SignOffRequestForm";
 import { requestedCompetency } from "./fixtures";
+import type * as passportLib from "@lib/passport";
 
-const searchAssessors = vi.fn();
+const { searchAssessors } = vi.hoisted(() => ({
+  searchAssessors: vi.fn<typeof passportLib.searchAssessors>(),
+}));
 
 vi.mock("@lib/passport", () => ({
-  searchAssessors: (...args: unknown[]) => searchAssessors(...args),
+  searchAssessors,
 }));
 
 const levels = [

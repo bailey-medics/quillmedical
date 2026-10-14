@@ -14,15 +14,18 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@/test/test-utils";
 import PassportExportButtons from "./PassportExportButtons";
+import type * as passportLib from "@lib/passport";
 
-const exportMarkdown = vi.fn();
-const exportPdf = vi.fn();
-const exportBundle = vi.fn();
+const { exportMarkdown, exportPdf, exportBundle } = vi.hoisted(() => ({
+  exportMarkdown: vi.fn<typeof passportLib.exportMarkdown>(),
+  exportPdf: vi.fn<typeof passportLib.exportPdf>(),
+  exportBundle: vi.fn<typeof passportLib.exportBundle>(),
+}));
 
 vi.mock("@lib/passport", () => ({
-  exportMarkdown: (...args: unknown[]) => exportMarkdown(...args),
-  exportPdf: (...args: unknown[]) => exportPdf(...args),
-  exportBundle: (...args: unknown[]) => exportBundle(...args),
+  exportMarkdown,
+  exportPdf,
+  exportBundle,
 }));
 
 const PASSPORT_ID = "3f2a8c1e";

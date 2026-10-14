@@ -7,7 +7,16 @@ import { renderWithMantine } from "@test/test-utils";
 import { screen } from "@testing-library/react";
 
 // Mock AuthContext
-const mockUseAuth = vi.fn();
+import type { User } from "@/auth/AuthContext";
+
+/** What `useAuth` returns, as far as these tests look at it. */
+type AuthStub = {
+  state: {
+    status: "loading" | "unauthenticated" | "authenticated";
+    user: Partial<User> | null;
+  };
+};
+const mockUseAuth = vi.fn<() => AuthStub>();
 vi.mock("@/auth/AuthContext", () => ({
   useAuth: () => mockUseAuth(),
 }));

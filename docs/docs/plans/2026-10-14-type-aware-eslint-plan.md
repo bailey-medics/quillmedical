@@ -268,14 +268,25 @@ suite stops meaning anything.
       `expect.objectContaining(...)` assigned into a literal, which come
       back as `any`, are named once as `unknown` first.
 
-- [ ] The same for the rest of `src`: `src/components`, `src/auth`,
+- [x] The same for the rest of `src`: `src/components`, `src/auth`,
       `src/lib`, `src/__tests__` and `src/test`, and for `e2e/`, which
       the type-aware rules reach since Phase 1 covered it: six findings
       in `e2e/tests/pdf-pages.spec.ts`, where a fixture read from JSON
-      is `any`, and one `restrict-template-expressions` in
-      `e2e/tests/keyboard.spec.ts`, a `string[]` put straight into a
-      template string. At the end of this branch the test-only block is
-      removed, since the rules are on for tests through the main config.
+      is `any`. Done on 15 October 2026: 29 findings in 15 files, the
+      same kinds as the step above and a few more. The two tests that
+      set `BASE_URL` through `(import.meta.env as any)` use
+      `vi.stubEnv` and `vi.unstubAllEnvs`, which is what they are for.
+      A `JSON.parse` of the web manifest, and the signed-in user read
+      back from `/api/auth/me` in the Playwright test, are each read
+      `as` the few fields the test looks at. The `onCarryOut` mock in
+      `RetentionDecisionList.test.tsx` is typed as the prop it stands in
+      for, and `getDocument`'s first argument in `PdfPages.test.tsx` is
+      read as pdf.js's `DocumentInitParameters`, which the package
+      exports only from `pdfjs-dist/types/src/display/api`. The
+      `restrict-template-expressions` finding in `keyboard.spec.ts` is
+      a different rule and stays for Phase 5. The Phase 4 block in
+      `eslint.config.js` now covers every test file; Phase 6 folds it
+      away with the scaffolding.
 
 ## Phase 5: The remaining findings in app code
 

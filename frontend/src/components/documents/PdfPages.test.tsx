@@ -2,6 +2,7 @@ import { renderWithMantine } from "@test/test-utils";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { DocumentInitParameters } from "pdfjs-dist/types/src/display/api";
 import PdfPages from "./PdfPages";
 
 // jsdom cannot draw a canvas, and pdf.js will not load in it, so pdf.js
@@ -192,8 +193,8 @@ describe("PdfPages", () => {
 
     await screen.findByRole("img", { name: "Page 1 of 1" });
     expect(blob).toHaveBeenCalledWith("/passport/p1/attachments/abc");
-    const options = getDocument.mock.calls[0][0];
-    expect(Array.from(options.data)).toEqual([1, 2, 3]);
+    const options = getDocument.mock.calls[0][0] as DocumentInitParameters;
+    expect(options.data).toEqual(new Uint8Array([1, 2, 3]));
     expect(options.url).toBeUndefined();
   });
 
