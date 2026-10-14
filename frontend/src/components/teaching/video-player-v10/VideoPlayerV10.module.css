@@ -126,3 +126,34 @@
 .wrapper :global(.media-airplay-button) {
   display: none;
 }
+
+/*
+ * Caption cues, as in VideoPlayer.module.css, which says why each
+ * property is here. v10 leaves the browser to draw the cues, so the
+ * same `::cue` hook applies and the two players caption alike.
+ */
+.wrapper :global(video)::cue {
+  background-color: rgb(0 0 0 / 75%);
+  color: var(--mantine-color-white);
+  font-family: var(--mantine-font-family);
+  font-size: var(--typo-md);
+  line-height: 1.4;
+}
+
+/* The quality control sits below the frame, where VideoPlayer puts it,
+   so switching players moves nothing on the page. */
+.qualityBar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--mantine-spacing-xs);
+}
+
+/* At least 44px tall on a phone, as in VideoPlayer.module.css. */
+@media (width <= 40em) {
+  .qualityLabel {
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

@@ -9,5 +9,5 @@
 # behind this and no Renovate coverage, so an unpinned range here would
 # make the image non-reproducible.
 openai-whisper==20250625
-torch==2.14.0
+torch==2.14.1
 google-cloud-storage==3.17.0

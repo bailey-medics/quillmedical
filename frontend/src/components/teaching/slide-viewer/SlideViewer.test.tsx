@@ -11,10 +11,10 @@ import {
   calloutSlide,
 } from "@/components/teaching/slide-layouts/stubSlides";
 
-vi.mock("react-player", () => ({
-  default: vi.fn(({ url }: { url: string }) => (
-    <div data-testid="react-player" data-url={url} />
-  )),
+// The player is stubbed through the switch that chooses it, so this
+// suite is true whichever player is in use.
+vi.mock("@/components/teaching/video-player/activeVideoPlayer", () => ({
+  ActiveVideoPlayer: () => <div data-testid="video-player" />,
 }));
 
 describe("SlideViewer", () => {
@@ -26,7 +26,7 @@ describe("SlideViewer", () => {
   it("renders video-slide layout", async () => {
     renderWithMantine(<SlideViewer slide={videoSlide} />);
     expect(screen.getByText("Recorded lecture")).toBeInTheDocument();
-    expect(await screen.findByTestId("react-player")).toBeInTheDocument();
+    expect(await screen.findByTestId("video-player")).toBeInTheDocument();
   });
 
   it("renders image-slide layout", () => {
