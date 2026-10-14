@@ -1,0 +1,48 @@
+{#-
+  Tells somebody their account has been closed, and that the news and
+  updates they asked for carry on. Sent once, when the account is
+  closed, and only to somebody whose newsletter does carry on: a person
+  who said no, or who was never asked, is sent nothing.
+
+  It is usually an administrator who closes an account, so this may be
+  the first its owner hears of it. Context:
+    name             who to greet: their full name, or their username
+                     where the account has none
+    username         the account's username
+    email            the address this is sent to, said back to them
+    unsubscribe_url  the page that stops the newsletter
+-#}
+{% extends "base.html.j2" %}
+{% import "_components.html.j2" as c with context %}
+
+{% block subject %}Your Quill account has been closed{% endblock subject %}
+{% block preheader %}News and updates from Quill Medical carry on unless you stop them.{% endblock preheader %}
+
+{% block body %}
+{{ c.heading("Your account has been *closed*") }}
+{{ c.paragraph("Hi " ~ name ~ ",") }}
+{% call c.paragraph() %}Your Quill account, with the username <strong>{{ username }}</strong>, has been closed. You can no longer log in to it.{% endcall %}
+{{ c.paragraph("You are set to receive news and updates from Quill Medical. Closing your account does not change that, so they will carry on arriving at this address.") }}
+{{ c.paragraph("If you would rather they stopped, you can stop them now. Every newsletter also carries a link that does the same.") }}
+{{ c.button("Stop news and updates", unsubscribe_url) }}
+{{ c.small("This email was sent to " ~ email ~ ".") }}
+{{ c.small("If you think your account was closed by mistake, speak to whoever looks after Quill where you work or train.") }}
+{% endblock body %}
+
+{% block reason %}You are receiving this because your Quill account was closed.{% endblock reason %}
+
+{% block text %}
+Hi {{ name }},
+
+Your Quill account, with the username {{ username }}, has been closed. You can no longer log in to it.
+
+You are set to receive news and updates from Quill Medical. Closing your account does not change that, so they will carry on arriving at this address.
+
+If you would rather they stopped, you can stop them now. Every newsletter also carries a link that does the same.
+
+Stop news and updates: {{ unsubscribe_url }}
+
+This email was sent to {{ email }}.
+
+If you think your account was closed by mistake, speak to whoever looks after Quill where you work or train.
+{% endblock text %}

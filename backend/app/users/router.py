@@ -13,6 +13,7 @@ from datetime import datetime
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     HTTPException,
 )
 from sqlalchemy import select
@@ -57,6 +58,7 @@ from app.schemas.users_admin import (
     TeachingEnrolmentsAtIn,
 )
 from app.users.activation import deactivate_account, reactivate_account
+from app.users.closure_notice import closure_notice_for, send_closure_notice
 from app.users.create import NewAccount, create_account
 from app.users.listing import (
     admin_rows,
@@ -260,13 +262,16 @@ def update_user(
 )
 def deactivate_user(
     user_id: int,
+    background_tasks: BackgroundTasks,
     current_user: User = DEP_REQUIRE_CSRF,
     db: Session = DEP_GET_SESSION,
 ) -> UserIdActionOut:
     """Deactivate User Account.
 
     Marks a user account as inactive. Deactivated users cannot log in
-    but their data is preserved for audit purposes.
+    but their data is preserved for audit purposes. Their answer about
+    news and updates moves to the newsletter list, and somebody whose
+    newsletter carries on is emailed to say so.
     Requires the ``manage_users`` competency and a shared organisation
     with the patient.
 
@@ -284,6 +289,14 @@ def deactivate_user(
             ``deactivate_account`` refuses.
     """
     user = deactivate_account(db, current_user, user_id)
+
+    # Somebody whose newsletter carries on is told so, once. Worked out
+    # here and sent after the answer, so that a mail provider that is
+    # down neither holds up the closure nor undoes it.
+    notice = closure_notice_for(db, user)
+
+    if notice is not None:
+        background_tasks.add_task(send_closure_notice, notice)
 
     return UserIdActionOut(
         detail="deactivated",
