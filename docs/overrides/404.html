@@ -1,0 +1,28 @@
+{#- Replaces Material's bare 404. Keeps the site's header, navigation and
+    search, and points to the pages people most often meant. Links are built
+    from site_url, because GitHub Pages serves this page at whatever address
+    was asked for. -#}
+{% extends "main.html" %}
+
+{% block content %}
+  <h1>Page not found</h1>
+
+  <p>
+    There is no page at this address. Use the search bar at the top, or try
+    one of these:
+  </p>
+
+  <ul>
+    <li><a href="{{ config.site_url }}">Home</a></li>
+    <li><a href="{{ config.site_url }}getting-started/">Getting started</a></li>
+    <li><a href="{{ config.site_url }}code/swagger/">Backend API (Swagger)</a></li>
+    <li><a href="{{ config.site_url }}code/storybook/">Storybook</a></li>
+    <li><a href="{{ config.site_url }}code/frontend/">Frontend TypeDoc</a></li>
+  </ul>
+
+  <p>
+    Looking for <code>/api/docs</code>? That is the backend's live Swagger,
+    served only by a dev stack. The published copy is
+    <a href="{{ config.site_url }}code/swagger/">Backend API (Swagger)</a>.
+  </p>
+{% endblock %}
