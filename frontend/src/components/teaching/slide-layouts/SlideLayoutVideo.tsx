@@ -12,7 +12,7 @@
 import { Skeleton, Stack } from "@mantine/core";
 import PageHeader from "@/components/page-header";
 import ErrorState from "@/components/error-state/ErrorState";
-import VideoPlayer from "@/components/teaching/video-player/VideoPlayer";
+import { ActiveVideoPlayer } from "@/components/teaching/video-player/activeVideoPlayer";
 import type { CompiledSlide } from "@/features/teaching/types";
 import { useVideoAccess } from "@/features/teaching/use-video-access";
 
@@ -96,7 +96,7 @@ export default function SlideLayoutVideo({
         />
       )}
       {!forceLoading && (!needsAccess || (!loading && !error)) && (
-        <VideoPlayer
+        <ActiveVideoPlayer
           youtubeId={slide.youtubeId}
           src={hostedSrc}
           src1080p={withBase(slide.videoSrc1080p)}
