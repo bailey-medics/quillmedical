@@ -200,7 +200,7 @@ export default function SideNavContent({
       }
     }
 
-    fetchPatientName();
+    void fetchPatientName();
   }, [patientId]);
 
   // Fetch username when on user admin page
@@ -226,7 +226,7 @@ export default function SideNavContent({
       }
     }
 
-    fetchUsername();
+    void fetchUsername();
   }, [userId]);
 
   // Fetch org/site breadcrumb - single effect to avoid flicker during transitions
@@ -312,7 +312,7 @@ export default function SideNavContent({
       }
     }
 
-    fetchOrgNav();
+    void fetchOrgNav();
     return () => {
       cancelled = true;
     };
@@ -364,7 +364,7 @@ export default function SideNavContent({
       }
     }
 
-    fetchBankTitle();
+    void fetchBankTitle();
   }, [bankId]);
 
   // Pages under Users and Patients that are not one record: the forms

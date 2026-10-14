@@ -26,6 +26,9 @@ export default defineConfig({
     {
       name: "vite:mpa-clean-urls",
       configureServer(server) {
+        // connect ignores what a handler returns, and everything in this
+        // one is inside its try, so the promise has nothing to carry
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
         server.middlewares.use(async (req, res, next) => {
           try {
             if (!req || req.method !== "GET") return next();

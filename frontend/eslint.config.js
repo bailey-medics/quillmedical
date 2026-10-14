@@ -199,8 +199,6 @@ export default defineConfig(
     {
       files: ["**/*.{ts,tsx}"],
       rules: {
-        // Phase 2
-        "@typescript-eslint/no-misused-promises": "off",
         // Phase 3
         "@typescript-eslint/require-await": "off",
         // Phases 4 and 5
@@ -216,17 +214,6 @@ export default defineConfig(
         "@typescript-eslint/restrict-template-expressions": "off",
         "@typescript-eslint/unbound-method": "off",
       },
-    },
-    // Phase 2 scaffolding, one folder per branch: no-floating-promises is
-    // on everywhere but these, so a promise left without await anywhere
-    // else is caught from now on
-    {
-      files: ["src/features/**/*.{ts,tsx}"],
-      rules: { "@typescript-eslint/no-floating-promises": "off" },
-    },
-    {
-      files: ["src/components/**/*.{ts,tsx}", "src/sw.ts"],
-      rules: { "@typescript-eslint/no-floating-promises": "off" },
     },
   ],
   // Storybook’s flat config can stay as a sibling layer

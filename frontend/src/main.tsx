@@ -117,6 +117,9 @@ wirePreloadErrorRecovery({
 installPromptCapture.wire(window, () => markInstallFinished());
 
 if ("serviceWorker" in navigator) {
+  // The listener's whole body is inside its try, so the promise an async
+  // listener returns, which the browser ignores, has nothing to carry
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
   window.addEventListener("load", async () => {
     try {
       const swUrl = "/sw.js";

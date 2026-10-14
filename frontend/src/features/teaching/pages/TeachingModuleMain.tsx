@@ -47,7 +47,7 @@ export default function TeachingModuleMain() {
         setLoading(false);
       }
     }
-    load();
+    void load();
   }, [bankId]);
 
   // The module's own name is the one part that waits for the fetch;

@@ -643,7 +643,9 @@ export default function NewPatientPage() {
             action={{
               label: "Return to admin",
               icon: "arrowLeft",
-              onClick: () => navigate("/admin"),
+              onClick: () => {
+                navigate("/admin");
+              },
             }}
           />
         ) : (

@@ -57,16 +57,14 @@ export function Component() {
   useEffect(() => {
     if (!accepted) return;
 
-    const timer = setTimeout(
-      () =>
-        navigate("/login", {
-          state: {
-            notice:
-              "Your account is ready. Sign in to see the sign-off requests waiting for you.",
-          },
-        }),
-      2000,
-    );
+    const timer = setTimeout(() => {
+      navigate("/login", {
+        state: {
+          notice:
+            "Your account is ready. Sign in to see the sign-off requests waiting for you.",
+        },
+      });
+    }, 2000);
     return () => clearTimeout(timer);
   }, [accepted, navigate]);
 

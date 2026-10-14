@@ -105,7 +105,7 @@ function PdfPage({ pdf, number, total, size, width }: PdfPageProps) {
     let cancelled = false;
     const drawing: { task: RenderTask | null } = { task: null };
 
-    (async () => {
+    void (async () => {
       try {
         const page = await pdf.getPage(number);
         if (cancelled) return;
@@ -161,7 +161,7 @@ export default function PdfPages({ name, url }: PdfPagesProps) {
     let cancelled = false;
     const loading: { task: PDFDocumentLoadingTask | null } = { task: null };
 
-    (async () => {
+    void (async () => {
       try {
         const task = await openPdf(url);
         loading.task = task;

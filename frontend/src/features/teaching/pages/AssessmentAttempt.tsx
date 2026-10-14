@@ -339,7 +339,7 @@ export default function AssessmentAttempt() {
         setPhase("error");
       }
     }
-    init();
+    void init();
   }, [id, searchParams, navigate, finish, loadAttempt, setClockBy]);
 
   const handleTryLoadingAgain = useCallback(() => {

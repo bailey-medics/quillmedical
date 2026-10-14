@@ -248,7 +248,7 @@ export default function Form<T extends FieldValues>({
         pendingDataRef.current = data;
         setConfirmOpen(true);
       } else {
-        handleSubmit(data);
+        void handleSubmit(data);
       }
     },
     [confirm, handleSubmit],

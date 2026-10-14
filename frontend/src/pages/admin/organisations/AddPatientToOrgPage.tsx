@@ -87,7 +87,9 @@ export default function AddPatientToOrgPage() {
     try {
       await orgUnits.addPatient(Number(id), selectedPatientId);
       setSuccess(true);
-      setTimeout(() => navigate(`/admin/organisations/${id}`), 1500);
+      setTimeout(() => {
+        navigate(`/admin/organisations/${id}`);
+      }, 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add patient");
     } finally {

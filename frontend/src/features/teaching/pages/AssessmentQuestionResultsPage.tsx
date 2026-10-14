@@ -64,7 +64,7 @@ export default function AssessmentQuestionResultsPage() {
         setLoading(false);
       }
     }
-    load();
+    void load();
   }, [id]);
 
   // Where this page sits in the menu: under the result it breaks down,

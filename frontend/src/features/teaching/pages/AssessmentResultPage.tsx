@@ -61,7 +61,7 @@ export default function AssessmentResultPage() {
         setLoading(false);
       }
     }
-    load();
+    void load();
   }, [id]);
 
   // Where this page sits in the menu: under its module, as "Result".

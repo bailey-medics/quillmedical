@@ -70,7 +70,7 @@ export default function LearningDashboard() {
         setLoading(false);
       }
     }
-    load();
+    void load();
   }, []);
 
   // The teaching menu, with this page named under Teaching while it is

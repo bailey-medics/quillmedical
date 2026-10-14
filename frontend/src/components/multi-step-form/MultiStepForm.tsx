@@ -48,7 +48,7 @@ export interface StepConfig {
  */
 export interface StepContentProps {
   /** Move to next step */
-  nextStep: () => void;
+  nextStep: () => Promise<void>;
   /** Move to previous step */
   prevStep: () => void;
   /** Cancel form and return */
