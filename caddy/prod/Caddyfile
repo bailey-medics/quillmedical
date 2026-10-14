@@ -45,7 +45,14 @@
 		#
 		# Playback needs nothing here: video is served from /videos/* on
 		# this same domain, through the load balancer's backend bucket.
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://storage.googleapis.com; font-src 'self'; connect-src 'self' https://storage.googleapis.com; frame-src 'self' https://www.youtube.com; frame-ancestors 'none'"
+		#
+		# `script-src` carries https://www.youtube.com for YouTube slides.
+		# The Video.js player drives the YouTube frame through YouTube's
+		# IFrame API, a script loaded from /iframe_api on that origin, which
+		# then loads its widget script from the same origin. With `'self'`
+		# alone the browser blocks it and the slide shows "Failed to load
+		# the YouTube iframe API". `frame-src` already allows the frame.
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://www.youtube.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://storage.googleapis.com; font-src 'self'; connect-src 'self' https://storage.googleapis.com; frame-src 'self' https://www.youtube.com; frame-ancestors 'none'"
 		# Prevent clickjacking
 		X-Frame-Options "DENY"
 		# Prevent MIME-type sniffing
