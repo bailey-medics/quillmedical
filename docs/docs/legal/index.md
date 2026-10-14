@@ -71,6 +71,11 @@ closure and deletion. Section 3.6 and clause 21.2 no longer treat a
 sponsored user's unticked box differently, and 21.2 no longer says we
 do not market to sponsored users.
 
+Added on 14 October 2026, by Mark's decision: section 3.1 now says we
+email somebody once when their account is closed, unless their address
+was never confirmed, and section 3.6 points to that email for how to
+stop the newsletter.
+
 Every version carries a version number and the date it took effect,
 because until acceptance is recorded per person that date is the only
 record of which version somebody was shown. When a version is replaced,

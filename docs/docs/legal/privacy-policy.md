@@ -101,6 +101,10 @@ retention periods in one place.
   If a sponsor gave you the account, we hold these details as its
   processor as well as for our own purpose of running the service, which
   is a legitimate interest (Article 6(1)(f)).
+- **When it is closed** - we email you once to say so, what happens to
+  your data next, and who to speak to if you think it was a mistake. We
+  do not if your email address was never confirmed, because it may not
+  be yours. We send nothing more when the account is later deleted.
 - **How long** - while your account exists, and for two years after it
   is closed or deactivated, so that a closed account cannot be re-created
   by somebody else and so that we can answer questions about it. Then we
@@ -217,10 +221,10 @@ applies instead.
   answer to the newsletter list in section 3.11, where it is kept apart
   from your account, and your answer stands, whether or not a sponsor
   gave you your account. If you want news and updates, they carry on,
-  and we email you once to say that your account is closed and how to
-  stop them. If you had said no, we keep your address on that list
-  marked as unsubscribed, so that you are not added again, and send
-  you nothing. If you ask us to delete your data, we take you off that
+  and the email telling you your account is closed (section 3.1) says
+  how to stop them. If you had said no, we keep your address on that
+  list marked as unsubscribed, so that you are not added again, and
+  send you none. If you ask us to delete your data, we take you off that
   list as well unless you tell us you want to stay on it.
 
 ### 3.7 Notifications to your browser or device

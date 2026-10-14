@@ -41,14 +41,32 @@
     "quill": {
       "file": "account-closed--quill.html",
       "subject": "Your Quill account has been closed",
-      "preheader": "News and updates from Quill Medical carry on unless you stop them.",
+      "preheader": "You can no longer log in to it.",
       "fromName": "Quill Medical",
       "replyTo": null
     },
     "ldd": {
       "file": "account-closed--ldd.html",
       "subject": "Your Quill account has been closed",
-      "preheader": "News and updates from Quill Medical carry on unless you stop them.",
+      "preheader": "You can no longer log in to it.",
+      "fromName": "Let's Do Digital",
+      "replyTo": null
+    }
+  },
+  {
+    "id": "account-closed-newsletter",
+    "label": "Account closed, newsletter carries on",
+    "quill": {
+      "file": "account-closed-newsletter--quill.html",
+      "subject": "Your Quill account has been closed",
+      "preheader": "You can no longer log in to it.",
+      "fromName": "Quill Medical",
+      "replyTo": null
+    },
+    "ldd": {
+      "file": "account-closed-newsletter--ldd.html",
+      "subject": "Your Quill account has been closed",
+      "preheader": "You can no longer log in to it.",
       "fromName": "Let's Do Digital",
       "replyTo": null
     }

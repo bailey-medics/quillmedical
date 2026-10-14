@@ -1,14 +1,26 @@
-"""Telling somebody their account is closed and their newsletter is not.
+"""Telling somebody their account has been closed.
 
-Closing an account moves its owner's answer about news and updates to
-the newsletter list (``app.marketing.subscribers.move_to_list``). Where
-that leaves them still subscribed, they are told once, by email: that
-the account is closed, that the newsletter carries on, and how to stop
-it. It is usually an administrator who closes an account, so otherwise
-the first they would know is a newsletter from somewhere they had left.
+One email, once, when an account is closed. It is usually an
+administrator who closes it, so otherwise the first its owner would know
+is a login that no longer works. It says the account is closed, what
+happens to their data next, and who to speak to about a mistake.
 
-**Nobody else is sent it.** Somebody who said no, or who was never
-asked, has no newsletter to be told about, and is sent nothing.
+**Their newsletter is part of the same email.** Closing an account moves
+its owner's stored answer about news and updates to the newsletter list
+(``app.marketing.subscribers.move_to_list``). Where that leaves them
+subscribed, the email says the newsletter carries on and gives the link
+that stops it. Nobody is sent two emails.
+
+**Who is sent it.** Mark's decisions of 14 October:
+
+- **Not an address nobody verified.** It may be somebody else's, who
+  would be told a stranger's account was closed.
+- **An account an administrator made whose owner never set a
+  password** is sent it. Its address counts as verified, because the
+  administrator vouched for it, and the email explains why their
+  invitation no longer works.
+- **Nothing on deletion.** Emptying an account years later sends
+  nothing: the address is wiped by then, and they were told here.
 
 Working out the notice and sending it are apart, as in
 ``app.users.setup_invite``: the first reads the database inside the
@@ -32,6 +44,12 @@ from app.models import NewsletterSubscriber, User
 
 logger = logging.getLogger(__name__)
 
+#: The published privacy policy. On the public site and the same in every
+#: environment, as ``PRIVACY_POLICY_URL`` in
+#: ``frontend/src/lib/legal/links.ts`` is: the policy somebody reads should
+#: be the published one.
+PRIVACY_POLICY_URL = "https://quill-medical.com/privacy-policy"
+
 
 @dataclass(frozen=True)
 class ClosureNotice:
@@ -42,14 +60,16 @@ class ClosureNotice:
         to: The address to write to.
         name: Who to greet.
         username: The account's username.
-        unsubscribe_url: The page that stops their newsletter.
+        unsubscribe_url: The page that stops their newsletter, or None
+            for somebody who is not sent one. The email's paragraph about
+            news and updates is shown only with it.
     """
 
     user_id: int
     to: str
     name: str
     username: str
-    unsubscribe_url: str
+    unsubscribe_url: str | None
 
 
 def closure_notice_for(db: Session, user: User) -> ClosureNotice | None:
@@ -60,9 +80,10 @@ def closure_notice_for(db: Session, user: User) -> ClosureNotice | None:
         user: The account, already closed and already moved to the list.
 
     Returns:
-        The notice, or None when their newsletter does not carry on.
+        The notice, or None for an open account or an address nobody
+        verified.
     """
-    if user.is_active:
+    if user.is_active or not user.email_verified:
         return None
 
     entry = db.scalar(
@@ -70,12 +91,12 @@ def closure_notice_for(db: Session, user: User) -> ClosureNotice | None:
             NewsletterSubscriber.email == user.email
         )
     )
+    page: str | None = None
 
-    if entry is None or not entry.subscribed:
-        return None
+    if entry is not None and entry.subscribed:
+        page, _api = unsubscribe_links(entry)
 
     values = account_email_values(user)
-    page, _api = unsubscribe_links(entry)
 
     return ClosureNotice(
         user_id=user.id,
@@ -91,7 +112,7 @@ def send_closure_notice(notice: ClosureNotice) -> None:
 
     A failure is logged and swallowed: the account is closed whether or
     not the email leaves, and every newsletter they are sent carries the
-    same link.
+    link that stops it.
     """
     try:
         rendered = render_email(
@@ -101,6 +122,7 @@ def send_closure_notice(notice: ClosureNotice) -> None:
                 "name": notice.name,
                 "username": notice.username,
                 "email": notice.to,
+                "privacy_policy_url": PRIVACY_POLICY_URL,
                 "unsubscribe_url": notice.unsubscribe_url,
             },
         )

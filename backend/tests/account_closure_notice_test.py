@@ -1,8 +1,9 @@
 """Who is told, by email, that their account has been closed.
 
-The rule crosses the route, the newsletter list and the sender: only
-somebody whose newsletter carries on is told, the email names the link
-that stops it, and a mail provider that is down does not undo the
+The rule crosses the route, the newsletter list and the sender: everybody
+with a verified address is told, the paragraph about news and updates
+and the link that stops them appear only for somebody whose newsletter
+carries on, and a mail provider that is down does not undo the
 closure.
 """
 
@@ -103,7 +104,7 @@ def test_the_email_carries_the_link_that_stops_their_newsletter(
     assert verify_subscriber_unsubscribe_token(token) == entry.id
 
 
-def test_somebody_who_said_no_is_sent_nothing(
+def test_somebody_who_said_no_is_told_with_no_newsletter_in_it(
     authenticated_superadmin_client: TestClient,
     db_session: Session,
     outbox: list[dict[str, Any]],
@@ -112,19 +113,70 @@ def test_somebody_who_said_no_is_sent_nothing(
 
     assert _close(authenticated_superadmin_client, user).status_code == 200
 
-    assert outbox == []
+    [email] = outbox
+    assert "has been closed" in email["text_body"]
+    assert "news and updates" not in email["text_body"]
+    assert "unsubscribe" not in email["text_body"]
 
 
-def test_somebody_never_asked_is_sent_nothing(
+def test_an_account_an_administrator_made_and_nobody_used_is_told(
     authenticated_superadmin_client: TestClient,
     db_session: Session,
     outbox: list[dict[str, Any]],
 ) -> None:
+    """Never asked about news, and its address vouched for, so it is
+    sent the email without the newsletter in it. Mark, 14 October."""
     user = _person(db_session, "ada", answer=None)
 
     assert _close(authenticated_superadmin_client, user).status_code == 200
 
+    [email] = outbox
+    assert email["to"] == "ada@example.test"
+    assert "news and updates" not in email["text_body"]
+
+
+def test_an_address_nobody_verified_is_sent_nothing(
+    authenticated_superadmin_client: TestClient,
+    db_session: Session,
+    outbox: list[dict[str, Any]],
+) -> None:
+    """It may be somebody else's, who would be told a stranger's account
+    was closed."""
+    user = _person(db_session, "ada", answer=True)
+    user.email_verified = False
+    db_session.commit()
+
+    assert _close(authenticated_superadmin_client, user).status_code == 200
+
     assert outbox == []
+
+
+def test_it_says_what_happens_to_their_data(
+    authenticated_superadmin_client: TestClient,
+    db_session: Session,
+    outbox: list[dict[str, Any]],
+) -> None:
+    user = _person(db_session, "ada", answer=False)
+
+    _close(authenticated_superadmin_client, user)
+
+    [email] = outbox
+    assert "deleted two years after it was closed" in email["text_body"]
+    assert closure_notice.PRIVACY_POLICY_URL in email["text_body"]
+    assert closure_notice.PRIVACY_POLICY_URL in email["html_body"]
+
+
+def test_it_never_says_why(
+    authenticated_superadmin_client: TestClient,
+    db_session: Session,
+    outbox: list[dict[str, Any]],
+) -> None:
+    user = _person(db_session, "ada", answer=False)
+
+    _close(authenticated_superadmin_client, user)
+
+    [email] = outbox
+    assert "because" not in email["text_body"].split("This email was")[0]
 
 
 def test_a_closure_that_is_refused_sends_nothing(
