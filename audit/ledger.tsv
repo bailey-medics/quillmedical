@@ -121,9 +121,9 @@
 .github/workflows/typescript-hold-check.yml	7877d4b34f8afd26d16a6f5bff3a6405a7639be7	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .github/workflows/zap-scan.yml	b0b1cd50362a853c4e09d34314aa5de873b19ad6	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .husky/pre-commit	6488e6c35b03de1f0a9629bd1d80093016a0dddf	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
-.pre-commit-config.yaml	b01db3d064c4a1545ef60edc741faeff8a1316a3	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
+.pre-commit-config.yaml	36567ef8dd78ecc7eb5645413dc3a137d909ef15	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .zap/rules.tsv	0eda966020905b57d3d630384620c1c23b58898c	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
-Justfile	d29b34929ad2c3ef91f006fbbdefd59cf222d4f7	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
+Justfile	13a6c255f5a867be59a7e51977dfbfbd35ae3083	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/Dockerfile	737a172c37db9341e89060c5dd8b123850303700	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/alembic/env.py	c0fcceae82c039152024664139d465a74232f695	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/app/analytics/__init__.py	8815c4b87633c427bb041944b1ad9b666eb4dc8c	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
@@ -164,5 +164,7 @@ compose.unit-tests.yml	0e81074a645f55daa3228e957e90d0a13cc34896	2026-10-12	Cotsw
 frontend/Dockerfile	35d6047104dffb5548162050eeed41e6b2b52338	2026-10-12	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/package.json	c2b0327ea357fc1a9d2ccd5b830e1cee64a3e2a6	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/tsconfig.app.json	277f90ea2c4c58ccb62abe6a4ca4d25ed56bca78	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
-frontend/tsconfig.json	71dbefa5d37eed8a30703d5a4077d1aa7d5f38c3	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
+frontend/tsconfig.check.json	da7e9fb639de5e2d0decbc46208c9858a2a998e8	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
+frontend/tsconfig.json	511e9d2a878cf30ced49f3ce48ecf88039b92fa9	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
+frontend/tsconfig.node.json	d246dac12754796e851f13656844b0360cce892f	2026-10-14	Cotswoldsmaker	mark.allan.bailey@gmail.com
 scripts/check-python-version.sh	e9ba5acc38524cdd3b8c10fdd371c2e9771ce114	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
