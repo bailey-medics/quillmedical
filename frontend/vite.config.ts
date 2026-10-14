@@ -99,29 +99,14 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Keep function names through minification, so an error report names
-        // `ErrorFallback` rather than `bj`. Without it a production stack is
-        // entirely mangled identifiers and says nothing about this
-        // application - see the reports from the /boom verification.
+        // `ErrorFallback` rather than `bj`. Costs 37 KB gzipped (4.3%) on a
+        // fresh load only.
         //
-        // Measured on this app: 892,697 bytes gzipped without, 930,826 with.
-        // That is 37 KB, or 4.3%, paid on every fresh load and nothing on a
-        // repeat visit, since the service worker holds the bundle.
+        // Source maps would be better but are deferred: see the analytics
+        // plan, docs/docs/plans/2026-08-31-analytics-plan.md.
         //
-        // This is the permanent answer, not a stopgap. Source maps would be
-        // better - the original file and line as well as the name, and no
-        // download cost, since the browser never receives them - but they
-        // have been deliberately deferred: the cost is the private bucket,
-        // the retention policy, the upload step, the resolver and the rule
-        // that a map is never served, all against a fault rate in single
-        // figures. See "Not building, and what would change that" in
-        // docs/docs/plans/2026-08-31-analytics-plan.md. If that decision is
-        // revisited, this can go and the 37 KB comes back.
-        //
-        // Note the option is `build.rollupOptions.output.keepNames`, not
-        // `esbuild.keepNames`. Vite 8 minifies with Oxc, so the esbuild
-        // option is silently ignored: setting it produces a byte-identical
-        // bundle, which looks exactly like "no measurable cost" if you do not
-        // check whether the names actually survived.
+        // Not `esbuild.keepNames`: Vite 8 minifies with Oxc, which silently
+        // ignores it.
         keepNames: true,
       },
     },

@@ -138,8 +138,8 @@ backend/app/cbac/practising.py	31253908bb4c716ad5db845f824d8f3e4f82abbb	2026-10-
 backend/app/db/__init__.py	d16c024feef9604a173a33eed5830c2fc6d52669	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/app/db/core_db.py	23aadf5ef3bec7dab915c9ee8a2c1122c265bd89	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/app/email/accessibility_reminder.py	3b33a738d92b33d3b8d3be06181f01db74431ab3	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
-backend/app/email/brand.py	ed1d6e34d9babd03b226cbe0683f09098c4b0791	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
-backend/app/email/previews.py	baa1fd92c684bbad2880bf6a9c5633d073ee9e6a	2026-10-10	Cotswoldsmaker	mark.allan.bailey@gmail.com
+backend/app/email/brand.py	193d357261b65a644b2dbc1fd1517403da10a8c5	2026-10-14	Cotswoldsmaker	mark.allan.bailey@gmail.com
+backend/app/email/previews.py	d0efab564479a1015284d5ae4cd449da077b241c	2026-10-14	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/app/email/templates/_company.html.j2	7dad2076ed54a3c1d758ddb4535d590917bddd98	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/app/email/templates/_components.html.j2	49d9147e511ae166ccc408fe0aa9c68fb86c2e8f	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 backend/app/email/templates/accessibility_review.html.j2	8634184f872e7e82642956ada667da7c3e85256f	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
@@ -167,4 +167,5 @@ frontend/tsconfig.app.json	277f90ea2c4c58ccb62abe6a4ca4d25ed56bca78	2026-10-13	C
 frontend/tsconfig.check.json	da7e9fb639de5e2d0decbc46208c9858a2a998e8	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/tsconfig.json	511e9d2a878cf30ced49f3ce48ecf88039b92fa9	2026-10-13	Cotswoldsmaker	mark.allan.bailey@gmail.com
 frontend/tsconfig.node.json	d246dac12754796e851f13656844b0360cce892f	2026-10-14	Cotswoldsmaker	mark.allan.bailey@gmail.com
+frontend/vite.config.ts	a3eb0a7cf8bc48c6feafde35f268aa4015f38a7c	2026-10-14	Cotswoldsmaker	mark.allan.bailey@gmail.com
 scripts/check-python-version.sh	e9ba5acc38524cdd3b8c10fdd371c2e9771ce114	2026-10-11	Cotswoldsmaker	mark.allan.bailey@gmail.com
