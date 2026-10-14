@@ -13,7 +13,6 @@ import VideoPlayerV10 from "./VideoPlayerV10";
 import VideoPlayer from "@/components/teaching/video-player/VideoPlayer";
 import { Heading } from "@/components/typography";
 import { StoryNote } from "@/stories/variants";
-import publicAsset from "@lib/publicAsset";
 
 /** The sample clip in `public/teaching/`, served by Storybook's staticDirs. */
 const SAMPLE = "/teaching/sample/ltd-transition.mp4";
@@ -94,12 +93,15 @@ export const HostedSingleRendition: Story = {
 export const WithPoster: Story = {
   args: {
     src: SAMPLE,
-    posterUrl: publicAsset("/teaching/colonoscopy-optical-diagnosis-test.png"),
+    posterUrl: "/teaching/sample/ltd-transition-poster.jpg",
   },
   render: (args) => (
     <Stack gap="sm">
       <VideoPlayerV10 {...args} />
-      <StoryNote>The still shown before playback begins.</StoryNote>
+      <StoryNote>
+        The still shown before playback begins: a frame from halfway through the
+        clip.
+      </StoryNote>
     </Stack>
   ),
 };
