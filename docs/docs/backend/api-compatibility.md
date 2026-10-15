@@ -107,28 +107,23 @@ who could each be equally lazy.
   asked again. On a stack that meant approving the same change after each
   rebase, and the gate did not run on stacked pull requests at all. See
   [Stacked gate approvals](../plans/2026-09-25-stacked-gate-approvals-plan.md)._
-- **Notification**: a breaking-change finding posts to Slack (via the
-  reusable `.github/workflows/slack-notify.yml`, `channel: app`) with
+- **Notification**: a breaking-change finding is commented on the PR with
   the `oasdiff` change lines under **Breaking changes:**, so the approval
   prompt shows _what_ is being confirmed rather than a bare "approve?". Each
   line is the string `backend/scripts/new_compat_decision.py` asks to be
-  pasted in, so the message doubles as the source for writing a decision file.
-- **One Slack message per gate**: sent when a break needs approval, and only
-  then. All-clears and static-check failures show on the PR and nowhere else.
-  The destructive-migration gate follows exactly the same rule, so knowing one
-  tells you how the other behaves. A validation failure with no decision file
-  therefore produces a red check plus the ordinary gate message - not a
-  second, separate alert.
-- **One message per distinct set of breaks**:
+  pasted in, so the comment doubles as the source for writing a decision file.
+  There is no Slack message: the comment and the waiting gate job are where
+  the finding shows. The destructive-migration gate behaves the same way.
+- **One comment per distinct set of breaks**:
   the gate asks for approval whenever the pull request's code changes, see
-  above, but re-sending an identical Slack ping on every one of those
-  commits is just noise, not a safety property.
+  above, but repeating an identical comment on every one of those commits
+  is just noise, not a safety property.
   `api_schema_diff` hashes the set of breaking
   changes (`compute-breaking-change-hash.sh`, sorted so ordering doesn't
-  affect the hash) and `api_breaking_change_gate_notify` asks whether the
+  affect the hash) and `api_breaking_change_comment` asks whether the
   gate's newest comment on the PR already carries that hash (`gate-notify.sh` with marker key `breaking-api-change-hash`,
   matched on a hidden `<!-- breaking-api-change-hash: <hash> -->` first
-  line). Slack only fires when the answer is no - the first breaking change
+  line). A comment is added only when the answer is no - the first breaking change
   on a PR, or a later commit that alters which changes are breaking - never
   on a re-push that leaves the same break(s) in place. State lives in a PR
   comment rather than `actions/cache` because cache entries are
@@ -144,9 +139,8 @@ who could each be equally lazy.
   transition, not a standing claim.
 - **A return to clean is recorded too**: when the last breaking change is
   removed the gate posts an all-clear comment (✅, "have been reverted"), so the
-  timeline shows the break arriving *and* going. Slack is not told - the notify
-  job is gated on `oasdiff` having found something as well as on
-  `should_notify` - and a PR that never had a break stays silent. The gate's
+  timeline shows the break arriving *and* going. A PR that never had a break
+  stays silent. The gate's
   approval requirement is unaffected throughout: it asks again whenever the
   pull request's code changes, for as long as a break is present.
 - **Outside `ci.yml`, deliberately**: all of the above lives in

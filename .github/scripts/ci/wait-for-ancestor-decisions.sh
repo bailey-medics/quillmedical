@@ -6,7 +6,7 @@
 #
 # Arguments:
 #   job-name   The `name:` of the decide job to wait on, e.g. "Destructive-migration
-#              Slack notification decision". Each gate waits only on its own.
+#              PR comment". Each gate waits only on its own.
 #   head-sha   The commit this run is for (github.event.pull_request.head.sha).
 #   run-id     This run's id, so it does not wait on itself.
 #
@@ -14,7 +14,7 @@
 # also holds the approval gate, and a job awaiting environment approval has
 # not started, so its `timeout-minutes` is not counting - GitHub parks the run
 # in `waiting` for up to 30 days. Waiting on run status would therefore stall
-# every later commit's notification behind an unapproved one for that long.
+# every later commit's comment behind an unapproved one for that long.
 #
 # Environment:
 #   GH_TOKEN            Token used by `gh` (needs `actions: read`).

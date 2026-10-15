@@ -59,8 +59,6 @@
 .github/scripts/ci/run-storybook-tests-in-image.sh	076c276c65e31ede958e679720aae65dd8dfd5ca	2026-10-10	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .github/scripts/ci/sweep-live-banks.bats	ecdffb223ceba3117d8da3908c6d9bcdefa9cf77	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .github/scripts/ci/sweep-live-banks.sh	2e95db36d2f6e31abd9eaecd804ec68e498620f5	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
-.github/scripts/ci/to-slack-mrkdwn.bats	f0ec7fcdeeb70fdb5a06627567de260d920a27e1	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
-.github/scripts/ci/to-slack-mrkdwn.sh	e90d918fd94cdc38bdcab5f3a6e5370c93c9b221	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .github/scripts/ci/validate-compat-files.bats	1e2392ecdd9b29373daca7c8c4e2e5f01e95a34a	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .github/scripts/ci/validate-compat-files.sh	711dc04c31b5b91c150bb5a747e955a2185b01bf	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com
 .github/scripts/ci/wait-for-ancestor-decisions.bats	c8cb9145f10c28078422f75860a38fcd01a3c2ce	2026-10-09	Cotswoldsmaker	mark.allan.bailey@gmail.com

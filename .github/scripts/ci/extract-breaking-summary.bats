@@ -4,7 +4,7 @@
 # Ordered to follow main(): the argument and environment guards first, then the
 # extraction. The line format matters beyond looking tidy - it is what
 # new_compat_decision.py asks to be pasted in, so a change to it silently
-# breaks the copy-paste path from Slack message to decision file.
+# breaks the copy-paste path from the PR comment to decision file.
 
 # shellcheck disable=SC2329,SC2030,SC2031
 
