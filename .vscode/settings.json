@@ -13,6 +13,7 @@
     }
   },
   "black-formatter.args": ["--line-length", "79"],
+  "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/bin/python",
   "python.analysis.extraPaths": ["./backend/app", "./backend"],
   "mypy-type-checker.importStrategy": "fromEnvironment",
 

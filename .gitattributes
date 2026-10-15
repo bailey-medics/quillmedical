@@ -2,6 +2,6 @@
 # to on different branches. Keeping both sides' lines means nobody has a
 # conflict to settle by hand. A file keeps one stamp, so where two
 # branches stamped the same file the merge leaves two lines for it, and
-# `scripts/review-ledger.py check` fails in the pre-commit hooks and in CI
+# `scripts/audit-stamp.py check` fails in the pre-commit hooks and in CI
 # until the file is stamped again.
 audit/ledger.tsv merge=union

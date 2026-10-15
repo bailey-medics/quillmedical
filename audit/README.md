@@ -37,7 +37,7 @@ an audited file, a mark on a changed one, and a click to stamp.
 
 Never edit `ledger.tsv` by hand. The scripts write it.
 
-CI runs `python3 scripts/review-ledger.py verify` on every push, as the
+CI runs `python3 scripts/audit-stamp.py verify` on every push, as the
 `Audit ledger` job. It fails on a line that is not a stamp: a file the
 card does not cover or the branch never held, a missing name, a date or
 a fingerprint that is not one. It cannot tell a real audit from a line
@@ -61,7 +61,7 @@ Where two branches both stamped the same file, that merge leaves two
 lines for it. Nothing stops the merge. The check that follows does:
 
 ```bash
-python3 scripts/review-ledger.py check
+python3 scripts/audit-stamp.py check
 ```
 
 It runs in the pre-commit hooks, and so in CI and in the merge queue,
@@ -73,4 +73,4 @@ the stamp off with `just ur`.
 
 Code and tests. Prose, pictures, lock files, generated files, merged
 migrations and the frozen `api-compatibility/` decisions are left off:
-`scripts/review-ledger.py` holds the list and the reasons.
+`scripts/audit-stamp.py` holds the list and the reasons.

@@ -9,7 +9,7 @@ it stands, and stamps it. The stamp records the file, the exact version,
 the date and who audited it, so an edit made afterwards shows up as a
 change still to be looked at, and never hides behind an old tick.
 
-This is the picture that goes with `scripts/review-ledger.py`. The script
+This is the picture that goes with `scripts/audit-stamp.py`. The script
 keeps the audit card and answers in the terminal (`just r`, `just rs`,
 `just rd`). This draws the same answers where the code is.
 
@@ -51,7 +51,7 @@ after changing `extension.ts` or `package.json`.
 ## How it works
 
 It keeps no record of its own. Every answer comes from
-`python3 scripts/review-ledger.py states`, run in the folder that is
+`python3 scripts/audit-stamp.py states`, run in the folder that is
 open, so the editor and the recipes cannot disagree. A window on a branch
 without that script shows no marks.
 

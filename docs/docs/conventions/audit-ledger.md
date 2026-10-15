@@ -127,11 +127,11 @@ to audit as code:
 - **`api-compatibility/`** - decision files that are frozen once merged.
 - **`.vscode/`** and the `audit/` folder itself.
 
-`scripts/review-ledger.py` holds the list.
+`scripts/audit-stamp.py` holds the list.
 
 ## What CI checks, and what it cannot
 
-The `Audit ledger` job runs `python3 scripts/review-ledger.py verify`
+The `Audit ledger` job runs `python3 scripts/audit-stamp.py verify`
 on every push. It fails on a line that is not a stamp:
 
 - a file the ledger does not cover, or that the branch has never held
@@ -170,7 +170,7 @@ uncommitted edits.
   and reload again.
 - **A tick I made is missing in another worktree.** It has not merged
   yet. Stamps travel with their branch.
-- **"Line N is not one this version of review-ledger.py can read."**
+- **"Line N is not one this version of audit-stamp.py can read."**
   Your worktree is behind `main`. Nothing was changed. Update it and
   try again.
 - **"Git no longer holds this file as it was."** The file was stamped
@@ -184,7 +184,7 @@ uncommitted edits.
 
 - **`audit/ledger.tsv`** - the ledger.
 - **`audit/README.md`** - a short account beside it.
-- **`scripts/review-ledger.py`** - the script that reads and writes it.
-- **`scripts/tests/review-ledger.bats`** - its tests.
+- **`scripts/audit-stamp.py`** - the script that reads and writes it.
+- **`scripts/tests/audit-stamp.bats`** - its tests.
 - **`tools/review-marks/`** - the VS Code extension.
 - **The `r`, `rs`, `rd` and `ur` recipes** in the `Justfile`.

@@ -20,7 +20,7 @@ carries on from there as a standing part of how Quill is built.
 
 ## Phase 1: An audit ledger
 
-- [x] Add `scripts/review-ledger.py` holding a ledger at
+- [x] Add `scripts/audit-stamp.py` holding a ledger at
       `review-ledger.tsv` in the shared `local/` folder, which it finds
       through `scripts/local-path.sh`, one line per file: path, the git
       blob hash of the file when it was audited, and the date. The hash
@@ -37,7 +37,7 @@ carries on from there as a standing part of how Quill is built.
       order; with a folder it lists that folder file by file.
       `diff <path>` shows what changed since the stamp. Prose, pictures,
       lock files and generated files are left off the card. Tests in
-      `scripts/tests/review-ledger.bats`. The card began as a working
+      `scripts/tests/audit-stamp.bats`. The card began as a working
       record on the auditor's machine and moved into the repository on
       11 October 2026: see the step below.
 
@@ -58,7 +58,7 @@ carries on from there as a standing part of how Quill is built.
       for the open file, and a click stamps it or shows the change side
       by side. It keeps no
       record of its own: every answer comes from
-      `scripts/review-ledger.py states`, so the editor and the recipes
+      `scripts/audit-stamp.py states`, so the editor and the recipes
       cannot disagree.
 
 - [x] Record who made each stamp. Done on 10 October 2026. A line on
@@ -99,7 +99,7 @@ carries on from there as a standing part of how Quill is built.
       auditor, also Mark's call.
 
 - [x] Check the card in CI. Done on 11 October 2026: an `Audit ledger`
-      job in the fast tier runs `python3 scripts/review-ledger.py
+      job in the fast tier runs `python3 scripts/audit-stamp.py
 verify`. It fails on a line that is not a stamp: a file the card
       does not cover or the branch never held, no name, a date or a
       fingerprint that is not one. The first idea, to fail any stamp
@@ -122,7 +122,7 @@ verify`. It fails on a line that is not a stamp: a file the card
       keeps both lines, and that leaves the file with two. Mark chose
       to let the merge through and fail afterwards, over a plain git
       conflict, which would also fire for two files that sit next to
-      each other on the card. `scripts/review-ledger.py check` fails
+      each other on the card. `scripts/audit-stamp.py check` fails
       and names each such file, from a hook in
       `.pre-commit-config.yaml`, so it runs at commit, in the required
       `Python pre-commit` check and in the merge queue. Stamping the

@@ -1243,7 +1243,7 @@ public-pages:
 alias rd := review-diff
 # Show what changed in a file since it was audited
 review-diff path: _host-python-guard
-    @python3 scripts/review-ledger.py diff {{path}}
+    @python3 scripts/audit-stamp.py diff {{path}}
 
 
 alias rmi := review-marks-install
@@ -1255,13 +1255,13 @@ review-marks-install:
 alias rs := review-status
 # Say how much has been audited. Pass 'f' for the full list by folder, or a folder to list it file by file.
 review-status path="": _host-python-guard
-    @python3 scripts/review-ledger.py status {{path}}
+    @python3 scripts/audit-stamp.py status {{path}}
 
 
 alias r := reviewed
 # Stamp files, or every file in a folder, as audited. Space separates multiple paths.
 reviewed *paths: _host-python-guard
-    @python3 scripts/review-ledger.py mark {{paths}}
+    @python3 scripts/audit-stamp.py mark {{paths}}
 
 
 alias sdc := show-dev-containers
@@ -2746,7 +2746,7 @@ unit-tests-reset:
 alias ur := unreviewed
 # Take the read stamp off files, or off every file in a folder
 unreviewed *paths: _host-python-guard
-    @python3 scripts/review-ledger.py unmark {{paths}}
+    @python3 scripts/audit-stamp.py unmark {{paths}}
 
 
 alias vt := validate-teaching
