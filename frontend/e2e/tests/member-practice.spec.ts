@@ -13,6 +13,7 @@
 
 import type { Page } from "@playwright/test";
 import { test, expect } from "../fixtures/axe";
+import { cardTitled, searchRow } from "../fixtures/tables";
 
 const COMPETENCY = "Certify Death";
 
@@ -47,7 +48,11 @@ test.describe("Member practice", () => {
     ).toBeVisible();
     // Seeded without a full name, so the name column falls back to the
     // username and the member appears in two cells of the same row.
-    await page.getByRole("row", { name: new RegExp(member) }).click();
+    // Searched for, as the staff table pages at ten rows and other
+    // journeys add staff to this organisation.
+    await (
+      await searchRow(cardTitled(page, "Organisation staff members"), member)
+    ).click();
     await expect(page).toHaveURL(/\/admin\/organisations\/\d+\/members\/\d+$/);
 
     await expect(
