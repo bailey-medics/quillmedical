@@ -192,6 +192,13 @@ the baseline included - is held to the full standard below.
 - Renames and deletions are refused outright rather than compared: the
   filename carries the revision id and the chain's ordering, so renaming
   rewrites the record as surely as editing the body does.
+- The one deletion allowed is a squash: every merged migration (two or
+  more) deleted and exactly one added in their place, a baseline whose
+  `revision` is the id the old head had and whose `down_revision` is
+  `None`. A database at the old head then already records the
+  baseline's id, so `alembic upgrade head` finds nothing to do and no
+  data is touched. Deleting part of the chain, or replacing it under a
+  new id, is still refused.
 - Every migration needs a real docstring summary and a meaningful slug.
   Bare `<rev>_.py` files (no description) are rejected.
 - Keep the chain linear: exactly one base and one head, with no branches

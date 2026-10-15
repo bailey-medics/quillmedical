@@ -277,6 +277,16 @@ you see why:
 - **Renames and deletions fail.** The filename carries the revision id and the
   chain's ordering, so renaming rewrites the record as surely as editing does.
   Neither is compared - both are refused outright.
+- **A squash is the one deletion allowed.** A pull request may delete every
+  merged migration (two or more) if it adds exactly one in their place: a
+  baseline whose `revision` is the id the old head had and whose
+  `down_revision` is `None`. A database at the old head already records
+  that id, so the next `alembic upgrade head` finds nothing to do and the
+  data stays where it is. That shape describes a squash and nothing else:
+  deleting part of the chain, replacing it under a new id, or moving a lone
+  baseline to a new filename are all still refused. Renames are switched
+  off for this test, because git pairs a new baseline with whichever old
+  migration it happens to resemble.
 - **There is no approval path.** Unlike the destructive gate, this fails the
   build directly. There is no legitimate case to approve, so an approval step
   would add a rubber stamp and nothing else. This matches the decision files,
