@@ -9,8 +9,10 @@
 # The extension is two files, so the package is built here by hand: a
 # .vsix is a zip holding the files and two small manifests. It is built
 # in a scratch folder and removed afterwards, so nothing is left in the
-# repository. Needs `node` to read the version, `zip`, and VS Code's
-# `code` command.
+# repository. The source is TypeScript, and the JavaScript VS Code loads
+# is made in that scratch folder by Node's own `stripTypeScriptTypes`,
+# so no compiler is needed. Needs Node 22.13 or later, `zip`, and VS
+# Code's `code` command.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,6 +26,22 @@ find_code() {
   elif [ -x "$mac_app" ]; then
     echo "$mac_app"
   fi
+}
+
+# Writes `extension.js` into the given folder: `extension.ts` less its
+# types. Fails, saying so, on a Node too old to strip them.
+compile_extension() {
+  local out="$1"
+
+  node --no-warnings -e '
+const fs = require("node:fs");
+const { stripTypeScriptTypes } = require("node:module");
+if (typeof stripTypeScriptTypes !== "function") {
+  console.error("Node " + process.version + " cannot strip TypeScript types: Node 22.13 or later is needed");
+  process.exit(1);
+}
+fs.writeFileSync(process.argv[2], stripTypeScriptTypes(fs.readFileSync(process.argv[1], "utf8")));
+' "${here}/extension.ts" "${out}/extension.js"
 }
 
 # Writes the two manifests a .vsix needs beside the extension's files.
@@ -73,7 +91,8 @@ main() {
   trap "rm -rf '${build}'" EXIT
 
   mkdir "${build}/extension"
-  cp "${here}/package.json" "${here}/extension.js" "${build}/extension/"
+  cp "${here}/package.json" "${build}/extension/"
+  compile_extension "${build}/extension"
   write_manifests "$build" "$version"
 
   (cd "$build" && zip -q -r review-marks.vsix "[Content_Types].xml" extension.vsixmanifest extension)

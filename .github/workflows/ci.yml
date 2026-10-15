@@ -391,6 +391,14 @@ jobs:
         with:
           install-backend-deps: "false"
 
+      # Node 24 for scripts/tests/review-marks.bats, which strips the types
+      # from the review-marks extension as install.sh does: the Node the
+      # runner ships is too old to, and the tests would fail rather than
+      # skip.
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: '24'
+
       - name: Run shell script tests
         run: |
           bash .github/scripts/ci/run-shell-tests.sh .github/scripts

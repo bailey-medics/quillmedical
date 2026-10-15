@@ -2,18 +2,18 @@
   "name": "review-marks",
   "displayName": "Review marks",
   "description": "Shows which files have been audited, and what has changed since, from the card that scripts/review-ledger.py keeps.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "publisher": "local",
   "engines": { "vscode": "^1.80.0" },
   "main": "./extension.js",
   "activationEvents": ["onStartupFinished"],
   "contributes": {
     "commands": [
-      { "command": "reviewMarks.stamp", "title": "Review: stamp as audited" },
-      { "command": "reviewMarks.removeStamp", "title": "Review: take the stamp off" },
-      { "command": "reviewMarks.showChange", "title": "Review: show what changed since the audit" },
-      { "command": "reviewMarks.statusClick", "title": "Review: act on this file" },
-      { "command": "reviewMarks.refresh", "title": "Review: refresh the marks" }
+      { "command": "reviewMarks.stamp", "title": "Stamp: audited" },
+      { "command": "reviewMarks.removeStamp", "title": "Stamp: remove" },
+      { "command": "reviewMarks.showChange", "title": "Stamp: changes" },
+      { "command": "reviewMarks.statusClick", "title": "Stamp: act on this file" },
+      { "command": "reviewMarks.refresh", "title": "Stamp: refresh" }
     ],
     "menus": {
       "explorer/context": [

@@ -696,6 +696,101 @@ back, because the tool that runs each reads TypeScript itself; only
       went too, and so did the `globals` package, which only that block
       used.
 
+## Phase 13: No JavaScript anywhere in the repository
+
+Phase 12's guard looks only inside `frontend/`. Asked on 15 October 2026
+whether a JavaScript file could still get past CI, a count of the whole
+repository found one outside it: `tools/review-marks/extension.js`, the
+653-line VS Code extension that shows audit marks in the editor. Nothing
+type-checks it, and nothing would stop another JavaScript file being
+added anywhere outside `frontend/`. Agreed the same day: widen the rule to
+the whole repository, to keep it neat and simple to state.
+
+There is no other TypeScript outside `frontend/` today, so the extension
+is the only file that needs a project of its own.
+
+- [x] Convert `tools/review-marks/extension.js` to `extension.ts`. VS Code
+      loads an extension as JavaScript, through its own copy of Node, so
+      unlike the configs in Phase 12 this one needs compiling before use.
+      Do it in `install.sh`, which already builds the `.vsix` by hand in a
+      scratch folder and already needs `node`: Node's own
+      `module.stripTypeScriptTypes`, in Node 22.13 and later, turns the
+      source into `extension.js` in that folder, with no compiler to add.
+      The source must therefore use only erasable TypeScript, which
+      `erasableSyntaxOnly` enforces. Swap its `require` calls for
+      `import`s only if VS Code's loader accepts the output; otherwise
+      keep CommonJS `require`, typed through `import type`. Record which
+      here. Check `just review-marks-install` still installs a working
+      extension, by reloading a window and seeing the marks.
+      Done on 15 October 2026, CommonJS kept: VS Code 1.80, the oldest
+      the extension declares, loads only CommonJS, so the modules are
+      reached with `require` and typed through `import type`, all of
+      which stripping erases. `compile_extension` in `install.sh` makes
+      the JavaScript, and fails saying so on a Node too old to strip
+      types. `scripts/tests/review-marks.bats` now sources it and tests
+      the JavaScript it makes, which is what VS Code loads, plus a case
+      that it is plain and loadable; CI's shell job sets up Node 24 for
+      it, since the runner's own Node cannot strip types and the tests
+      would fail rather than skip. The package was built and its
+      contents read here, but not installed: installing is a change to
+      Mark's editor, so `just review-marks-install` and a window reload
+      are left for him.
+
+- [x] Rename the extension's menu items in `tools/review-marks/package.json`,
+      in the same branch, since the extension is rebuilt anyway. Asked for
+      on 15 October 2026: the right-click menu items open with "Review:",
+      and should open with "Stamp:" and name the action in one word.
+      - **`reviewMarks.stamp`**: "Review: stamp as audited" becomes
+        "Stamp: audited".
+      - **`reviewMarks.removeStamp`**: "Review: take the stamp off"
+        becomes "Stamp: remove".
+      - **`reviewMarks.showChange`**: "Review: show what changed since the
+        audit" becomes "Stamp: changes".
+      - **The two that are not in the file menus** take the same prefix,
+        so the command palette lists all five together:
+        `reviewMarks.refresh` becomes "Stamp: refresh", and
+        `reviewMarks.statusClick`, hidden from the palette and run from
+        the status bar, becomes "Stamp: act on this file".
+
+      Only the titles change, not the command ids, so nothing bound to
+      them breaks. Read `README.md` in that folder and the extension's
+      own messages for any that quote the old titles, bump the version
+      in `package.json` so VS Code takes the new package, and check the
+      menus after `just review-marks-install`.
+      Done on 15 October 2026, with the version at 0.6.0. Neither the
+      README nor the extension's own messages quoted the old titles; the
+      README's note on reinstalling now names `extension.ts`.
+
+- [x] Type-check the extension in CI. Add `tools/review-marks/tsconfig.json`,
+      strict, with `noEmit` and `erasableSyntaxOnly`, and the types for
+      `vscode` and Node. `@types/vscode` is a new dev dependency; the
+      frontend workspace already holds the toolchain, so add it there and
+      point the extension's tsconfig at the frontend's `node_modules`
+      types, rather than giving `tools/review-marks` an install of its
+      own. If that fights, a minimal `package.json` in
+      `tools/review-marks` holding the two type packages is the fallback;
+      record which. Add the project to `typecheck:all` as
+      `--project ../tools/review-marks/tsconfig.json`, so the guard reads
+      it like the others.
+      Done on 15 October 2026, in the frontend: `@types/vscode` is pinned
+      at 1.80.0, the oldest VS Code `package.json` says it runs on, so
+      the type check refuses anything newer than that; a newer version
+      is a choice to raise `engines.vscode` with it. The extension's
+      tsconfig reads its types from `frontend/node_modules/@types`.
+
+- [ ] Widen the guard to the whole repository. Run
+      `check-typescript-coverage.sh` from the repository root rather than
+      `frontend/`. The JavaScript check lists every tracked `.js`, `.jsx`,
+      `.cjs` and `.mjs` file in the repository, with the allow-list still
+      empty. The coverage check lists every tracked `.ts` and `.tsx` file
+      in the repository, less generated files and declarations, and
+      compares them with the projects `typecheck:all` runs, whose paths
+      are relative to `frontend/` and are made relative to the root
+      first. Raise the floor to match the new count, and add bats cases
+      for a JavaScript file and an uncovered TypeScript file outside
+      `frontend/`. Update the comment in the `typecheck:all` leg of
+      `ci.yml` and record the counts the guard reports here.
+
 ## Decisions
 
 - **Type-aware rules stay on in tests** - the question was whether to
