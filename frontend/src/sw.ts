@@ -42,5 +42,5 @@ self.addEventListener("notificationclick", (event) => {
 
 // Allow the page to tell this SW to skip waiting (for updates)
 self.addEventListener("message", (event) => {
-  if (event.data === "SKIP_WAITING") self.skipWaiting();
+  if (event.data === "SKIP_WAITING") void self.skipWaiting();
 });

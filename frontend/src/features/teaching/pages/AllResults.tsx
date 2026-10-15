@@ -62,7 +62,7 @@ export default function AllResults() {
         setLoading(false);
       }
     }
-    loadBanks();
+    void loadBanks();
   }, []);
 
   // Load results when bank selection changes
@@ -80,7 +80,7 @@ export default function AllResults() {
         setError(err instanceof Error ? err.message : "Failed to load results");
       }
     }
-    loadResults();
+    void loadResults();
   }, [selectedBank]);
 
   if (loading) {

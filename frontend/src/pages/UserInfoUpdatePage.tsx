@@ -1626,7 +1626,9 @@ export default function UserInfoUpdatePage() {
             action={{
               label: "Return to admin",
               icon: "arrowLeft",
-              onClick: () => navigate("/admin/users"),
+              onClick: () => {
+                navigate("/admin/users");
+              },
             }}
           />
         ) : (

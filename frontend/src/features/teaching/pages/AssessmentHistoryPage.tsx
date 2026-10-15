@@ -34,7 +34,7 @@ export default function AssessmentHistoryPage() {
         setLoading(false);
       }
     }
-    load();
+    void load();
   }, []);
 
   if (loading) {

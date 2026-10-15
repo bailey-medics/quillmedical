@@ -44,7 +44,7 @@ export default function SyncStatus() {
         setLoading(false);
       }
     }
-    load();
+    void load();
   }, []);
 
   // The teaching menu, with this page named under Teaching while it is

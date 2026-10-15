@@ -165,17 +165,42 @@ auto-fixed. The three answers are:
       message as sent whatever happened and now take it back and say
       "Message not sent", through `usePageMessage`.
 
-- [ ] `src/features/**`. The same for the 19 findings.
+- [x] `src/features/**`. The same for the 19 findings. Done on 14
+      October 2026, in one branch with the two steps below: once
+      `navigate` was excused by the step above, ten findings were left
+      here, every one a load on mount with its own `catch`, now `void`.
+      Ten one-word changes are not a pull request on their own.
 
-- [ ] `src/components/**` and `src/sw.ts`. The same for the last 12. At
+- [x] `src/components/**` and `src/sw.ts`. The same for the last 12. At
       the end of this branch the rule is on across the tree and the
-      scaffolding holds no `no-floating-promises` line.
+      scaffolding holds no `no-floating-promises` line. Done on 14
+      October 2026, in the same branch. Eight were left: four loads in
+      `SideNavContent` and the confirm path in `Form`, each with a
+      `catch`, now `void`; the two `async` immediately-invoked functions
+      in `PdfPages` that draw a page and open a document, each with a
+      `catch`, now `void (async () => ...)()`; and
+      `self.skipWaiting()` in `sw.ts`, whose promise the service worker
+      has no use for, now `void`.
 
-- [ ] Turn `no-misused-promises` back on, by deleting its scaffolding
+- [x] Turn `no-misused-promises` back on, by deleting its scaffolding
       line, and fix the seven findings Phase 1 left: an `async` function
       passed where a plain callback is expected, six in app code and one
       in `public_pages/vite.config.ts`, where a dev-server middleware is
       `async`. The answers are the same three as above, chosen per call.
+      Done on 14 October 2026, in the same branch. Four were an arrow
+      returning `navigate(...)` where a `() => void` was wanted, from an
+      object property or a `setTimeout`, which the attribute exemption
+      does not reach; each is now a block body, so the excused call
+      stands on its own. `MultiStepForm` passed its `async nextStep` as
+      `() => void`; `StepContentProps.nextStep` now says
+      `() => Promise<void>`, which is what it is, and no consumer calls
+      it outside a JSX attribute. Two `async` listeners whose whole body
+      is inside a `try`, the dev-server middleware in
+      `public_pages/vite.config.ts` and the service-worker registration
+      in `src/main.tsx`, keep the rule off for that one line with the
+      reason beside it: connect and the browser ignore what a listener
+      returns, and re-indenting thirty lines into a `void` wrapper would
+      say the same thing less clearly.
 
 ## Phase 3: Functions marked async that never wait
 

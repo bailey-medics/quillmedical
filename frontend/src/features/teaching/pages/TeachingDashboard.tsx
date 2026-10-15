@@ -47,7 +47,7 @@ export default function TeachingDashboard() {
         setLoading(false);
       }
     }
-    load();
+    void load();
   }, []);
 
   // Built before the loading check, and passed to every branch below.
