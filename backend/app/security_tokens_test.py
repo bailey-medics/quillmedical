@@ -40,7 +40,6 @@ from app.security import (
     create_passport_invite_token,
     create_refresh_token,
     decode_invite_token,
-    decode_jwt_with_competencies,
     decode_passport_invite_token,
     decode_refresh_token,
     decode_token,
@@ -106,7 +105,7 @@ def _in(seconds: int) -> int:
     return int(time.time()) + seconds
 
 
-ACCESS = {"sub": "ada", "type": "access", "roles": [], "tv": 0}
+ACCESS = {"sub": "ada", "type": "access", "tv": 0}
 REFRESH = {"sub": "ada", "type": "refresh", "tv": 0}
 INVITE = {
     "type": "invite",
@@ -123,7 +122,6 @@ PASSPORT_INVITE = {
 # Each decoder with a payload it reads.
 DECODERS: list[tuple[str, Decoder, dict[str, Any]]] = [
     ("decode_token", decode_token, ACCESS),
-    ("decode_jwt_with_competencies", decode_jwt_with_competencies, ACCESS),
     ("decode_refresh_token", decode_refresh_token, REFRESH),
     ("decode_invite_token", decode_invite_token, INVITE),
     (
@@ -152,10 +150,9 @@ class TestWhatEachDecoderTakes:
             assert read[key] == value
 
     def test_the_tokens_this_app_makes_are_read(self) -> None:
-        access = decode_token(create_access_token("ada", ["Clinician"], 3))
+        access = decode_token(create_access_token("ada", 3))
 
         assert access["sub"] == "ada"
-        assert access["roles"] == ["Clinician"]
         assert access["tv"] == 3
         assert access["type"] == "access"
         assert (
@@ -262,7 +259,6 @@ class TestOneKindOfTokenIsNotAnother:
         token = forge({**REFRESH, "exp": _in(60)})
 
         assert refused(decode_token, token)
-        assert refused(decode_jwt_with_competencies, token)
 
     def test_an_access_token_is_not_a_refresh_token(self) -> None:
         assert refused(decode_refresh_token, forge({**ACCESS, "exp": _in(60)}))
@@ -327,7 +323,7 @@ class TestWhatARequestIsAnswered:
         self, test_client: TestClient, test_user: User
     ) -> None:
         token = create_access_token(
-            test_user.username, [], test_user.token_version
+            test_user.username, test_user.token_version
         )
 
         assert _me(test_client, token) == 200
@@ -365,7 +361,6 @@ class TestWhatARequestIsAnswered:
         payload = {
             "sub": test_user.username,
             "type": "access",
-            "roles": [],
             "tv": test_user.token_version,
         }
 
@@ -378,7 +373,6 @@ class TestWhatARequestIsAnswered:
             {
                 "sub": "nobody-at-all",
                 "type": "access",
-                "roles": [],
                 "tv": 0,
                 "exp": _in(60),
             }
@@ -396,7 +390,6 @@ class TestWhatARequestIsAnswered:
             {
                 "sub": test_user.username,
                 "type": "access",
-                "roles": [],
                 "tv": test_user.token_version + 1,
                 "exp": _in(60),
             }

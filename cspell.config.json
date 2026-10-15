@@ -96,6 +96,7 @@
     "beforeunload",
     "bindparam",
     "bindparams",
+    "binascii",
     "binutils",
     "Bitwarden",
     "BOPA",
