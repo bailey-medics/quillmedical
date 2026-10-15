@@ -648,7 +648,7 @@ back, because the tool that runs each reads TypeScript itself; only
       `jest-config`, it reads back with the dark-mode accessibility setup
       file in place. Typed with `satisfies Config.InitialOptions`.
 
-- [ ] `public/colour-scheme.js` becomes `src/colour-scheme.ts`. It must
+- [x] `public/colour-scheme.js` becomes `src/colour-scheme.ts`. It must
       stay a plain blocking `<script>` in the `<head>`, because a module
       script may run after the first paint and bring back the white
       flash it exists to prevent, so Vite's own handling of `index.html`
@@ -660,6 +660,17 @@ back, because the tool that runs each reads TypeScript itself; only
       add a test that the built file exists and `index.html` loads it as
       a classic script. `e2e/tests/colour-scheme.spec.ts` covers what it
       does.
+      Done on 15 October 2026. The plugin, `colourSchemeScript` in
+      `scripts/colourSchemeScript.ts`, compiles with Vite's own
+      `transformWithOxc` rather than esbuild: Vite 8 is built on Oxc, so
+      no other compiler is needed. Departed from the plan in that one
+      word. It serves `/colour-scheme.js` in dev and writes it to the
+      build under the same name; the built file is the source less its
+      types, and `index.html` is unchanged. `colourSchemeScript.test.ts`
+      checks the output is a plain script with no module syntax and that
+      `index.html` loads it without `type="module"`, `defer` or `async`.
+      The content security policy is untouched: the file is still served
+      from the site's own origin.
 
 - [ ] Add the guard. A script beside `run-frontend-lint.sh` lists every
       tracked `.ts`, `.tsx`, `.js`, `.cjs` and `.mjs` file in `frontend/`
