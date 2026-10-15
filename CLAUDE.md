@@ -96,6 +96,7 @@ See the `Justfile` if you want to know more.
 - **Styling**: Mantine 8.3 + CSS modules, no inline styles
 - **Button alignment**: Right-justify buttons on desktop (`<Group justify="flex-end">`). Action pairs (submit/cancel) go full-width stacked on mobile - use `ButtonPair`/`ButtonPairRed` which handle this via CSS. Page-header actions (`AddButton`) stay fixed-width at all sizes.
 - **Testing**: Use `renderWithMantine` or `renderWithRouter` from `@test/test-utils`
+- **Lint reads types**: ESLint runs `recommendedTypeChecked`, so a promise is awaited, given a `.catch`, or marked `void` with a reason, and a mock in a test is typed from the function it stands in for (`vi.fn<typeof lib.fn>()`). `navigate(...)` is the one call excused, in `eslint.config.js`
 - **Storybook**: all components must have associated `.stories.tsx` and `.test.tsx` files
 - **Page Layout**: MainLayout provides `<Container size="lg">` around all page content - pages should NOT add their own Container wrapper
   - Standard page pattern: `<Stack gap="lg">...</Stack>` (no Container needed)

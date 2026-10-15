@@ -47,7 +47,7 @@ export default defineConfig(
         "regexp/no-super-linear-backtracking": "warn",
         "regexp/no-useless-quantifier": "warn",
 
-        // New: React XSS guard
+        // React XSS guard
         "react/no-danger": "warn",
 
         // navigate() from React Router returns a promise that settles when
@@ -202,29 +202,6 @@ export default defineConfig(
       files: ["scripts/**/*.ts"],
       rules: {
         "no-console": "off",
-      },
-    },
-
-    // Phase 1 scaffolding: removed as each phase of the type-aware ESLint
-    // plan lands (docs/docs/plans/2026-10-14-type-aware-eslint-plan.md).
-    // Each line is a type-aware rule whose findings are not yet fixed,
-    // turned off so lint passes meanwhile. What is still here is what is
-    // still to do. Delete a line when its phase lands, and this block when
-    // the last one does.
-    {
-      files: ["**/*.{ts,tsx}"],
-      rules: {},
-    },
-    // Phase 4 scaffolding, widened a folder at a time: the no-unsafe rules
-    // are back on for these tests, which have been brought into line
-    {
-      files: ["**/*.test.{ts,tsx}", "src/test/**/*.{ts,tsx}", "e2e/**/*.ts"],
-      rules: {
-        "@typescript-eslint/no-unsafe-argument": "error",
-        "@typescript-eslint/no-unsafe-assignment": "error",
-        "@typescript-eslint/no-unsafe-call": "error",
-        "@typescript-eslint/no-unsafe-member-access": "error",
-        "@typescript-eslint/no-unsafe-return": "error",
       },
     },
   ],
