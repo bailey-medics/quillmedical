@@ -449,7 +449,7 @@ export const theme = createTheme({
    * mobile/desktop split), md 992px, lg 1200px, xl 1408px.
    *
    * One file, read here and by the three PostCSS configurations
-   * (postcss.config.cjs, .storybook/main.ts, public_pages/vite.config.ts),
+   * (postcss.config.ts, .storybook/main.ts, public_pages/vite.config.ts),
    * so `theme.breakpoints.sm` in a component and `$mantine-breakpoint-sm`
    * in a CSS module cannot name different widths.
    */

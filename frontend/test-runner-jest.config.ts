@@ -2,6 +2,7 @@
 // accessibility pass can be added as a setup file. The reason it is not a
 // .storybook/test-runner.ts hook is in .storybook/a11y-dark-mode.ts.
 import { fileURLToPath } from "node:url";
+import type { Config } from "@jest/types";
 import { getJestConfig } from "@storybook/test-runner";
 import { storybookMaxWorkers } from "./scripts/storybookWorkers.ts";
 
@@ -15,7 +16,6 @@ const maxWorkers = storybookMaxWorkers(
   fileURLToPath(new URL("../.env", import.meta.url)),
 );
 
-/** @type {import('@jest/types').Config.InitialOptions} */
 export default {
   ...testRunnerConfig,
   ...(maxWorkers === undefined ? {} : { maxWorkers }),
@@ -24,4 +24,4 @@ export default {
     // Absolute: the runner sets rootDir to the repository root, not here.
     fileURLToPath(new URL("./.storybook/a11y-dark-mode.ts", import.meta.url)),
   ],
-};
+} satisfies Config.InitialOptions;

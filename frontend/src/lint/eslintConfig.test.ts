@@ -1,7 +1,7 @@
 /**
  * The restricted imports, and who is excused from which.
  *
- * Each exemption in eslint.config.js lifts one restriction for the files
+ * Each exemption in eslint.config.ts lifts one restriction for the files
  * that need it and keeps the rest. This pins that, because the config
  * once set the whole rule to "off" for each list, and the comment beside
  * each promised something narrower than the config delivered.
@@ -48,12 +48,17 @@ async function reportedAt(filePath: string): Promise<Restriction[]> {
   );
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   // The real config, type-aware rules and all, so it costs the project
   // service's load once. The probe's path must be a file the project
   // knows, which is why each case names a real one.
   eslint = new ESLint({ cwd: FRONTEND });
-});
+
+  // That load is paid here, by one lint up front, rather than by
+  // whichever case runs first: on a machine busy with the whole suite it
+  // can take longer than a single test is allowed.
+  await eslint.lintText("export {};\n", { filePath: "src/pages/Home.tsx" });
+}, 120_000);
 
 describe("plain JavaScript", () => {
   it("is checked with the core rules and the browser's globals", async () => {

@@ -17,6 +17,12 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["vite.config.ts", "scripts/**/*.ts"],
+  "include": [
+    "vite.config.ts",
+    "eslint.config.ts",
+    "postcss.config.ts",
+    "test-runner-jest.config.ts",
+    "scripts/**/*.ts"
+  ],
   "exclude": ["scripts/list-public-guides.ts"]
 }

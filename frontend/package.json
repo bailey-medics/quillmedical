@@ -21,7 +21,7 @@
     "prettier": "prettier --check \"{src,e2e,scripts,.storybook,public,public_pages}/**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}\" \"*.{js,ts,json,md,html}\" --ignore-unknown",
     "prettier:fix": "prettier --write \"{src,e2e,scripts,.storybook,public,public_pages}/**/*.{js,jsx,ts,tsx,css,scss,md,json,mdx,html}\" \"*.{js,ts,json,md,html}\" --ignore-unknown",
     "stylelint": "stylelint \"{src,public,public_pages,.storybook}/**/*.{scss,css}\"",
-    "typecheck:all": "yarn generate:types && tsc --project tsconfig.check.json --noEmit && tsc --project public_pages/tsconfig.json --noEmit",
+    "typecheck:all": "yarn generate:types && tsc --project tsconfig.check.json --noEmit && tsc --project tsconfig.node.json --noEmit && tsc --project public_pages/tsconfig.json --noEmit",
     "unit-test:run": "yarn generate:types && vitest --environment jsdom --run --watch=false"
   },
   "dependencies": {
@@ -85,6 +85,7 @@
     "eslint-plugin-storybook": "10.6.1",
     "globals": "^17.13.0",
     "husky": "9.1.7",
+    "jiti": "^2",
     "js-yaml": "^5.4.3",
     "jsdom": "^30.1.2",
     "lint-staged": "^17.6.0",

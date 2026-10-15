@@ -10,42 +10,18 @@
  */
 
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import postcssConfig from "../postcss.config";
 import breakpoints from "./breakpoints.json";
 import { theme } from "./theme";
 
 const frontendRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** The `variables` handed to postcss-simple-vars in postcss.config.cjs. */
-function postcssVariables(): Record<string, unknown> {
-  const config: unknown = createRequire(import.meta.url)(
-    resolve(frontendRoot, "postcss.config.cjs"),
-  );
-  if (typeof config !== "object" || config === null || !("plugins" in config)) {
-    throw new Error("postcss.config.cjs exports no plugins");
-  }
-  const plugins = config.plugins;
-  if (
-    typeof plugins !== "object" ||
-    plugins === null ||
-    !("postcss-simple-vars" in plugins)
-  ) {
-    throw new Error("postcss.config.cjs has no postcss-simple-vars plugin");
-  }
-  const simpleVars = plugins["postcss-simple-vars"];
-  if (
-    typeof simpleVars !== "object" ||
-    simpleVars === null ||
-    !("variables" in simpleVars) ||
-    typeof simpleVars.variables !== "object" ||
-    simpleVars.variables === null
-  ) {
-    throw new Error("postcss-simple-vars is given no variables");
-  }
-  return { ...simpleVars.variables };
+/** The `variables` handed to postcss-simple-vars in postcss.config.ts. */
+function postcssVariables(): Record<string, string> {
+  return postcssConfig.plugins["postcss-simple-vars"].variables;
 }
 
 describe("breakpoints", () => {
