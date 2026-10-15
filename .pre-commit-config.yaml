@@ -128,9 +128,9 @@ repos:
       # this is what stops them: here, in CI and in the merge queue.
       - id: check-audit-ledger
         name: check the audit ledger
-        entry: python3 scripts/review-ledger.py check
+        entry: python3 scripts/audit-stamp.py check
         language: system
-        files: ^(audit/ledger\.tsv|scripts/review-ledger\.py)$
+        files: ^(audit/ledger\.tsv|scripts/audit-stamp\.py)$
         pass_filenames: false
 
       - id: check-api-schema-coverage

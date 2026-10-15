@@ -209,7 +209,7 @@ def lock_path() -> Path:
     """A file to hold while the card is rewritten, inside git's own
     folder so it is never something to commit."""
     done = subprocess.run(
-        ["git", "rev-parse", "--git-path", "review-ledger.lock"],
+        ["git", "rev-parse", "--git-path", "audit-stamp.lock"],
         cwd=repo_root(),
         capture_output=True,
         text=True,
@@ -283,7 +283,7 @@ def read_ledger(path: Path) -> Card:
         if len(parts) not in (3, 5):
             raise SystemExit(
                 f"Line {number} of {path} is not one this version of "
-                "review-ledger.py can read, so the card was written by a "
+                "audit-stamp.py can read, so the card was written by a "
                 "newer one. Nothing has been changed. Bring this "
                 "worktree up to date with main and try again."
             )

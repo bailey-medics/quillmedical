@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for review-ledger.py, the audit card of the code.
+# Tests for audit-stamp.py, the audit card of the code.
 #
 # Each test builds a throwaway repository with one extra worktree and a
 # copy of the script, so the card it writes is the throwaway's own and
@@ -15,7 +15,7 @@ setup() {
     # a CI runner has no name of its own, and a stamp needs one.
     as_reader "Ada Reader" "ada@example.org"
     mkdir -p "${MAIN}/scripts" "${MAIN}/backend/app" "${MAIN}/docs"
-    cp "${BATS_TEST_DIRNAME}/../review-ledger.py" "${MAIN}/scripts/"
+    cp "${BATS_TEST_DIRNAME}/../audit-stamp.py" "${MAIN}/scripts/"
 
     printf 'one\ntwo\nthree\n' > "${MAIN}/backend/app/deps.py"
     printf 'a\nb\n' > "${MAIN}/backend/app/security.py"
@@ -66,7 +66,7 @@ stamp_and_commit() {
 ledger() {
     local where="$1"
     shift
-    (cd "$where" && python3 scripts/review-ledger.py "$@")
+    (cd "$where" && python3 scripts/audit-stamp.py "$@")
 }
 
 @test "a file starts unaudited" {

@@ -3,7 +3,7 @@
 // changed since.
 //
 // It keeps no record of its own. Every answer comes from
-// `scripts/review-ledger.py states` in the folder that is open, which reads
+// `scripts/audit-stamp.py states` in the folder that is open, which reads
 // the one card in the shared local/ folder. So the editor and the `just r`
 // recipes cannot disagree, and a window on a branch without the script
 // simply shows no marks.
@@ -61,7 +61,10 @@ interface LinesToMark {
   removedBefore: number[];
 }
 
-const SCRIPT = path.join("scripts", "review-ledger.py");
+const SCRIPT = path.join("scripts", "audit-stamp.py");
+// Where the card the script keeps is, in each folder open.
+const CARD_FOLDER = "audit";
+const CARD_FILE = "ledger.tsv";
 const AUDITED: State = "audited";
 const CHANGED: State = "changed";
 const UNAUDITED: State = "unaudited";
@@ -477,7 +480,7 @@ async function ledger(command: string, file: string | undefined): Promise<boolea
 
   if (!root) {
     vscode.window.showWarningMessage(
-      "Review marks: this folder has no scripts/review-ledger.py."
+      "Review marks: this folder has no scripts/audit-stamp.py."
     );
     return false;
   }
@@ -601,9 +604,11 @@ async function statusClick(): Promise<void> {
   }
 }
 
-// The card is replaced, not edited, each time it is written, so watch the
-// folder it sits in and not the file.
-async function watchCards(context: VsCode.ExtensionContext): Promise<void> {
+// The card is `audit/ledger.tsv` in each folder open. It is replaced, not
+// edited, each time it is written, so watch the folder it sits in and not
+// the file. It lived in the shared local/ folder until October 2026, and
+// this watched that folder for a file that was no longer there.
+function watchCards(context: VsCode.ExtensionContext): void {
   for (const watcher of watchers) {
     watcher.close();
   }
@@ -612,12 +617,9 @@ async function watchCards(context: VsCode.ExtensionContext): Promise<void> {
 
   for (const root of roots()) {
     try {
-      const helper = path.join("scripts", "local-path.sh");
-      const shared = (await run("bash", [helper], root)).trim();
-
       watchers.push(
-        fs.watch(shared, (_event, name) => {
-          if (name === "review-ledger.tsv") {
+        fs.watch(path.join(root, CARD_FOLDER), (_event, name) => {
+          if (name === CARD_FILE) {
             refreshSoon();
           }
         })
@@ -688,7 +690,7 @@ function activate(context: VsCode.ExtensionContext): void {
     vscode.workspace.onDidDeleteFiles(refreshSoon),
     vscode.workspace.onDidRenameFiles(refreshSoon),
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
-      void watchCards(context);
+      watchCards(context);
       void refresh();
     }),
     vscode.window.onDidChangeWindowState((state) => {
@@ -699,7 +701,7 @@ function activate(context: VsCode.ExtensionContext): void {
     })
   );
 
-  void watchCards(context);
+  watchCards(context);
   void refresh();
 }
 

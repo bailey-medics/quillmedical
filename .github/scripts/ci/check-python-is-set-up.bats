@@ -57,7 +57,7 @@ EOF
 
 @test "fails when a job runs python3 with no setup step" {
   write_job "      - name: Check the ledger
-        run: python3 scripts/review-ledger.py verify"
+        run: python3 scripts/audit-stamp.py verify"
 
   run bash "$SCRIPT" "$WORKFLOWS"
 
@@ -71,7 +71,7 @@ EOF
         with:
           install-backend-deps: \"false\"
       - name: Check the ledger
-        run: python3 scripts/review-ledger.py verify"
+        run: python3 scripts/audit-stamp.py verify"
 
   run bash "$SCRIPT" "$WORKFLOWS"
 
@@ -173,7 +173,7 @@ jobs:
   second:
     runs-on: ubuntu-24.04
     steps:
-      - run: python3 scripts/review-ledger.py verify
+      - run: python3 scripts/audit-stamp.py verify
 EOF
 
   run bash "$SCRIPT" "$WORKFLOWS"
