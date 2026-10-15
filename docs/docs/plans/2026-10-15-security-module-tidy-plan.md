@@ -138,7 +138,7 @@ scan at the end to see whether the rot found here is wider than this file.
 
 ## Phase 6: One dead-code scan, by hand
 
-- [ ] Run Vulture once over the backend, from the repository root, with
+- [x] Run Vulture once over the backend, from the repository root, with
       the tests excluded so a function kept alive only by its own test
       is reported:
 
@@ -153,6 +153,65 @@ scan at the end to see whether the rot found here is wider than this file.
       kept for a reason worth writing down. If the list is long, that is
       the evidence for a follow-up plan that wires the tool in with a
       whitelist; if it is a handful, deleting them here is the whole job.
+
+      Run on 15 October 2026. At 80% confidence Vulture reports only
+      unused variables, every one of them a Pydantic validator's `cls`
+      or a parameter a library signature demands (reportlab, the GCS
+      client). The unused functions sit at 60%, so the run that counts
+      was at 60% with `--ignore-names cls` and `--ignore-decorators`
+      for routes, exception handlers, middleware, validators and
+      SQLAlchemy listeners: 550 lines. A script then grepped each name
+      across `backend/` outside the tests, and kept only names with no
+      reference at all beyond their definition. That left 21 functions,
+      28 classes and 25 other names. Nothing was deleted: the list is
+      long, each name needs reading in its own file, and that is the
+      follow-up plan this step said such a list would call for.
+
+      - **Functions with tests and no caller** (16) - `cbac/audit.py`:
+        `retired_ids_in_practising_competencies`, `retired_ids_on_users`,
+        `unknown_ids_in_base_professions`, `unknown_ids_on_users`,
+        `unknown_ids_in_practising_competencies`;
+        `cbac/competencies.py`: `_load_competencies`;
+        `cbac/positions.py`: `holders_of`, `is_vacant`;
+        `cbac/practising.py`: `who_can_practise_at`;
+        `ehrbase_client.py`: `list_compositions_for_ehr`;
+        `features/passport/commits.py`: `parse_trailers`;
+        `features/passport/ids.py`: `is_timestamp_id`;
+        `features/passport/service.py`: `status_for`;
+        `features/teaching/email_templates.py`: `load_email_template`;
+        `features/teaching/router.py`: `_resolve_bank_path`;
+        `org_units/tree.py`: `root_id_of`;
+        `organisations.py`: `remove_org_unit_memberships`;
+        `passport_storage.py`: `using_bucket`, `reset_caches`. Some are
+        an API kept on purpose (`who_can_practise_at` is documented in
+        `CLAUDE.md`; the audit functions are the "report, not a rule"
+        that `backend.md` describes), so each is a decision, not a
+        deletion.
+      - **Functions with no reference at all** (2) -
+        `fhir_client.py`: `delete_fhir_patient`; `models.py`:
+        `validate_site_capacity`. Likeliest true dead code.
+      - **Pydantic schemas nothing imports** (28) - all of
+        `schemas/organisations.py` except what `org_units/router.py`
+        imports (22 classes, from `CreateOrganisationIn` to
+        `AddSiteStaffResponse`: the pre-unification organisation and
+        site API), `schemas/features.py` (`FeatureOut`,
+        `FeatureToggleIn`), `schemas/cbac.py` (`CompetencyCheck`,
+        `CompetencyCheckResponse`), `schemas/passport.py`
+        (`CompetencyCatalogueOut`), `features/teaching/schemas.py`
+        (`SyncTriggerIn`, `CoordinatorEmailIn`,
+        `QuestionBankOrgStatusIn`, `QuestionBankOrgStatusOut`), and
+        `messaging.py` (`SingleUserCannotSelfJoin`, raised by nothing).
+        A schema no route names is not in the OpenAPI spec, so deleting
+        it is not an API change.
+      - **Reported but alive** (ignore in a follow-up whitelist) -
+        `email/brand.py` attributes, read from the Jinja templates as
+        `t.h1_size` and so on; `config.py` settings, read from the
+        environment by pydantic-settings; `models.py` relationships
+        `enabled_by_user` and `amended_message`, which SQLAlchemy
+        resolves by name; `org_units/router.py`
+        `DEP_REQUIRE_MANAGE_STAFF`, which is dead but its two siblings
+        are not; and the constants in the "other" list, most of which a
+        test imports to pin a vocabulary.
 
 ## Decisions
 
