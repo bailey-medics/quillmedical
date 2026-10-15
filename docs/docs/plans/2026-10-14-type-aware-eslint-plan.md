@@ -360,6 +360,98 @@ suite stops meaning anything.
       were scaffolded off, so the branch that turned them on for tests
       was the first to show it.
 
+## Phase 7: Exemptions that lift one restriction, not the rule
+
+A review of `eslint.config.js` from another worktree on 15 October 2026
+found that every exemption block sets `no-restricted-imports` to `off`,
+which lifts all four restrictions at once. Verified here by linting a
+probe through `--stdin`: `src/main.tsx` importing `ActionIcon`, `Loader`
+and a `@/stories/` helper produced no finding, and so did
+`IconButton.tsx` importing `Loader`. Each block's comment promises one
+exception; the config gives all of them, to every file in the three lists
+and to every story.
+
+- [x] In `frontend/eslint.config.js`, name each restriction once, as a
+      constant above the config: the `MantineProvider` entry, the
+      `ActionIcon` entry, the `Loader` entry and the `@/stories/*`
+      pattern. Build the main rule from all four. Rewrite each override
+      to restate `"no-restricted-imports": ["error", {...}]` with only
+      the entries that still apply there: the `MantineProvider` entry
+      points keep the other three; the icon-button wrappers keep every
+      entry but `ActionIcon`; the two buttons with a ring keep every
+      entry but `Loader`; stories keep the three Mantine entries and lose
+      only the `@/stories/*` pattern. Fold the two blocks that name
+      `src/main.tsx` into one, and the two that name
+      `.storybook/preview.tsx`, since a reader looking for what a file is
+      excused from should find it in one place. Done on 15 October 2026,
+      through a `restrictImports({ paths, patterns })` helper that each
+      exemption calls with what it keeps; the level stays `warn` until
+      Phase 9. Restating the rule found three stories that had been
+      living on the blanket `off`: `ButtonPair.stories.tsx` shows the
+      ring a button carries while it works, so it joins the ring list;
+      `RouteErrorFallback.stories.tsx` and `PageMessage.stories.tsx`
+      supply their own router and so must mount `MantineProvider`, as
+      `.claude/rules/components.md` says, and have a block of their own.
+      The generic stories block sits before those, since a later block
+      wins and each of them excuses one story from one more thing.
+
+- [x] Pin it with a test, since the fault was a comment promising what
+      the config did not do. `frontend/src/lint/eslintConfig.test.ts`
+      builds an `ESLint` instance from the real config with
+      `lintText(code, { filePath })` and checks, for each exempt file and
+      one that is not, which of the four imports is reported. The
+      type-aware rules make the instance slow to build, about the six
+      seconds the pre-commit hook pays, so build it once in `beforeAll`
+      and keep the probes few. If it cannot be kept under ten seconds,
+      pass `overrideConfig` to turn the type-aware rules off for the
+      probes and say so in the test, since what is under test is the
+      restriction rule alone. Done on 15 October 2026: six probes, 7.5
+      seconds in the container, the first six of them the project
+      service loading. The test runs under jsdom like every other, since
+      `src/test/setup.ts` needs `window`; ESLint does not mind. Two
+      things it taught: the probe's path must be a file the project
+      knows, or the project service refuses it; and the rule's own
+      prefix comes before the custom message, so a result is matched
+      with `includes`, not `startsWith`.
+
+## Phase 8: Plain JavaScript is checked, or not listed
+
+The same review found that the `eslint` script names `js` and `jsx`
+files, but the main config block matches only `**/*.{ts,tsx}`, so
+`public/colour-scheme.js` is checked with no rules at all: verified with
+`--print-config`, which lists none. `public_pages/scripts/generate-pages.cjs`
+is not matched by the script's glob either. Both run in production, one in
+every browser before the app loads. The `languageOptions` on the TypeScript
+block, `ecmaVersion: 2020` and `globals.browser`, does nothing there:
+`tseslint.configs.recommended` turns `no-undef` off because TypeScript
+makes that check, and the parser ignores `ecmaVersion`. It is what a
+JavaScript block would need.
+
+- [ ] Add a block for `**/*.{js,cjs,mjs}` extending
+      `js.configs.recommended` and `eslintConfigPrettier`, with
+      `globals.browser` for `public/**` and `globals.node` for
+      `public_pages/scripts/**` and the config files at the root. Move
+      `globals.browser` off the TypeScript block and drop
+      `ecmaVersion: 2020` from it. Add `cjs` and `mjs` to the script's
+      glob in `package.json`. Then read what the two files report and
+      fix it; `colour-scheme.js` is a few lines and
+      `generate-pages.cjs` has a test beside it.
+
+## Phase 9: Say error where it means error
+
+- [ ] The `eslint` script runs with `--max-warnings=0`, so every `warn`
+      in the config already fails the hook and CI. Change
+      `no-restricted-imports`, `no-secrets/no-secrets`, `react/no-danger`
+      and the two `regexp` rules to `error`, so a reader does not take
+      `warn` for soft. One branch with the step below.
+
+- [ ] Remove `eslint-plugin-prettier` from `devDependencies`. It is
+      installed and referenced nowhere: the config uses
+      `eslint-config-prettier`, which turns rules off, not the plugin,
+      which would run Prettier as a rule. `yarn remove` changes the
+      lockfile, so run `just utr` before the unit tests, as `CLAUDE.md`
+      says for a `package.json` change.
+
 ## Decisions
 
 - **Type-aware rules stay on in tests** - the question was whether to
@@ -395,3 +487,11 @@ suite stops meaning anything.
 - **One branch per step** - 256 files cannot be reviewed on one pull
   request, and the fixes in Phase 2 are each a judgement about what
   should happen when a call fails, which is what review is for.
+
+- **Two of the review's findings were already done** - the move from
+  `tseslint.config()` to `defineConfig` landed as pull request #1989 the
+  day before, and the React hooks rule set moved from `recommended-latest`
+  to `recommended` in Phase 1. Three it checked and found fine are left
+  as they are: the repeated `@mantine/core` entries all fire, `react/no-danger`
+  runs without the "React version not specified" warning, and Storybook's
+  config sitting after Prettier is harmless since it has no stylistic rules.
