@@ -245,12 +245,10 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
         } else if (detail && typeof detail === "object") {
           // detail is an object with nested message / error_code
           const d = detail as Record<string, unknown>;
-          if (typeof d["message"] === "string")
-            message = d["message"] as string;
-          else if (typeof d["detail"] === "string")
-            message = d["detail"] as string;
+          if (typeof d["message"] === "string") message = d["message"];
+          else if (typeof d["detail"] === "string") message = d["detail"];
           errorCode = (d["error_code"] as string) ?? undefined;
-          if (typeof d["email"] === "string") extraEmail = d["email"] as string;
+          if (typeof d["email"] === "string") extraEmail = d["email"];
         } else {
           // detail is likely a string
           message = (data?.detail ?? data?.message ?? message) as string;

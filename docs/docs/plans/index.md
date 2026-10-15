@@ -106,3 +106,4 @@
 - [CI That Holds Under Load](2026-10-12-ci-that-holds-under-load-plan.md)
 - [Quill Spinner Everywhere](2026-10-13-quill-spinner-everywhere-plan.md)
 - [One Python Version Everywhere](2026-10-13-one-python-version-everywhere-plan.md)
+- [Type-aware ESLint](2026-10-14-type-aware-eslint-plan.md)

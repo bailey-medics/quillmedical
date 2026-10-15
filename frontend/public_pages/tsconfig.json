@@ -2,9 +2,9 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "jsx": "react-jsx",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "types": ["node"],
-    "baseUrl": ".",
+    "resolveJsonModule": true,
     "paths": {
       "@/*": ["../src/*"],
       "@components/*": ["../src/components/*"],
@@ -12,6 +12,6 @@
       "@domains/*": ["../src/domains/*"]
     }
   },
-  "include": ["src", "../src"],
+  "include": ["src", "../src", "scripts", "vite.config.ts"],
   "exclude": ["../src/**/*.stories.*"]
 }

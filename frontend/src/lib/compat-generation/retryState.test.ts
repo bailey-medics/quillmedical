@@ -21,7 +21,7 @@ function makeMemoryStorage(): Storage {
     get length() {
       return store.size;
     },
-  } as Storage;
+  };
 }
 
 describe("decideRetryAction", () => {

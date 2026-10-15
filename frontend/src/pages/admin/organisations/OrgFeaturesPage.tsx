@@ -146,8 +146,8 @@ function ConfirmContent({
   /** How many people hold writing through this place's cover */
   coveredCount: number;
 }) {
-  const { methods } = useFormContext();
-  const values = methods.getValues() as FeatureFormValues;
+  const { methods } = useFormContext<FeatureFormValues>();
+  const values = methods.getValues();
   const changes = trackedFeatures(parentPath, savedKeys, canSetCover).filter(
     (f) => savedKeys.has(f.key) !== values[f.key],
   );

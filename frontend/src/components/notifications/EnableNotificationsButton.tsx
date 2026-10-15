@@ -40,7 +40,7 @@ export default function EnableNotificationsButton() {
       const reg = await navigator.serviceWorker.ready;
 
       // 3) Subscribe with your public VAPID key
-      const vapid = import.meta.env.VITE_VAPID_PUBLIC as string;
+      const vapid = import.meta.env.VITE_VAPID_PUBLIC;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: b64ToUint8Array(vapid),

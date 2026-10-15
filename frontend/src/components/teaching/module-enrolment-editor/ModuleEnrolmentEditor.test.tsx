@@ -29,9 +29,9 @@ function renderEditor(overrides: Partial<ModuleEnrolmentEditorProps> = {}) {
 }
 
 function boxFor(module: string, organisation = "Academy"): HTMLInputElement {
-  return screen.getByRole("checkbox", {
+  return screen.getByRole<HTMLInputElement>("checkbox", {
     name: `${module} at ${organisation}`,
-  }) as HTMLInputElement;
+  });
 }
 
 describe("ModuleEnrolmentEditor", () => {

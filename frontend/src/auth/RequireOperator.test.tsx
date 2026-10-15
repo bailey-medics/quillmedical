@@ -30,7 +30,7 @@ function mockAuth(user: Partial<User> | null, status = "authenticated") {
               username: "someone",
               email: "someone@example.com",
               ...user,
-            } as User,
+            },
           }
         : ({ status } as never),
     login: vi.fn(),

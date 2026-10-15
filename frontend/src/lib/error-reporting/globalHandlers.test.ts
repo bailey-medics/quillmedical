@@ -31,7 +31,7 @@ function rejectionEvent(reason: unknown): PromiseRejectionEvent {
   return new PromiseRejectionEvent("unhandledrejection", {
     promise: Promise.resolve(),
     reason,
-  } as PromiseRejectionEventInit);
+  });
 }
 
 let beacon: ReturnType<typeof vi.fn>;

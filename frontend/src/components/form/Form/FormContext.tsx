@@ -60,14 +60,19 @@ const FormContext = createContext<FormContextValue | null>(null);
 
 /**
  * Hook to access form context. Throws if used outside a Form wrapper.
+ *
+ * Takes the form's values type, so `methods.getValues()` comes back typed
+ * rather than as a bag of unknowns the caller has to assert.
  */
 // eslint-disable-next-line react-refresh/only-export-components
-export function useFormContext(): FormContextValue {
+export function useFormContext<
+  T extends FieldValues = FieldValues,
+>(): FormContextValue<T> {
   const ctx = useContext(FormContext);
   if (!ctx) {
     throw new Error("useFormContext must be used within a <Form> component");
   }
-  return ctx;
+  return ctx as FormContextValue<T>;
 }
 
 export default FormContext;

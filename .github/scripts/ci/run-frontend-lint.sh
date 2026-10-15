@@ -46,8 +46,11 @@ run_eslint() {
   local report=""
   report="$(mktemp)"
 
+  # Without ESLint's cache: the lint is type-aware, so a finding in one
+  # file can change when only a file it imports changes, and the cache
+  # keys on each file's own content and would serve the stale answer.
   local exit_code=0
-  yarn eslint --format json -o "$report" >/dev/null || exit_code=$?
+  yarn eslint --no-cache --format json -o "$report" >/dev/null || exit_code=$?
 
   local files=""
   files="$(jq -r 'length' "$report" 2>/dev/null || true)"

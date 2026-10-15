@@ -123,7 +123,7 @@ describe("NewPatientPage", () => {
       // Wait for the select value to be set
       await waitFor(() => {
         expect(
-          (screen.getByRole("combobox", { name: /sex/i }) as HTMLInputElement)
+          screen.getByRole<HTMLInputElement>("combobox", { name: /sex/i })
             .value,
         ).toBe("Female");
       });

@@ -36,9 +36,7 @@ type Story = StoryObj<typeof Messaging>;
  * Simulates real message sending by appending to the message list.
  */
 function Wrapper() {
-  const [messages, setMessages] = useState<Message[]>(
-    demoMessages as Message[],
-  );
+  const [messages, setMessages] = useState<Message[]>(demoMessages);
 
   return (
     <Messaging

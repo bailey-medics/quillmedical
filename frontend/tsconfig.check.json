@@ -19,7 +19,11 @@
     "**/*.test.tsx",
     "**/*.stories.ts",
     "**/*.stories.tsx",
-    "scripts/list-public-guides.ts"
+    "scripts/list-public-guides.ts",
+    "e2e",
+    "playwright.config.ts",
+    "playwright.guides.config.ts",
+    "vitest.config.ts"
   ],
   "exclude": ["node_modules", "dist", "public_pages"]
 }

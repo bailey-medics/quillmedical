@@ -15,7 +15,7 @@ const ReactPlayer = forwardRef<HTMLDivElement, Record<string, unknown>>(
   function ReactPlayer(props, ref) {
     return (
       <div
-        ref={ref as React.Ref<HTMLDivElement>}
+        ref={ref}
         style={{
           width: props.width as string,
           height: props.height as string,

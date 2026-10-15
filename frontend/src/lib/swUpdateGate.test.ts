@@ -511,7 +511,7 @@ describe("wirePreloadErrorRecovery", () => {
     listeners = new Map();
     addEventListener = vi.fn((type: string, listener: unknown) => {
       listeners.set(type, listener as (event: Event) => void);
-    }) as unknown as typeof window.addEventListener;
+    });
   });
 
   it("listens for vite:preloadError", () => {
@@ -657,7 +657,7 @@ describe("wirePreloadErrorRecovery, during an exam", () => {
     listeners = new Map();
     addEventListener = vi.fn((type: string, listener: unknown) => {
       listeners.set(type, listener as (event: Event) => void);
-    }) as unknown as typeof window.addEventListener;
+    });
   });
 
   afterEach(() => {
@@ -733,7 +733,7 @@ describe("wirePreloadErrorRecovery, when the chunk was for a page being opened",
     listeners = new Map();
     addEventListener = vi.fn((type: string, listener: unknown) => {
       listeners.set(type, listener as (event: Event) => void);
-    }) as unknown as typeof window.addEventListener;
+    });
   });
 
   afterEach(() => {

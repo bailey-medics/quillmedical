@@ -1,11 +1,9 @@
-import { test as setup, expect } from "@playwright/test";
+import { test as setup, expect, type Page } from "@playwright/test";
 
 const authFile = "e2e/.auth/user.json";
 setup.setTimeout(120_000);
 
-async function loginWithRateLimitRetry(
-  page: Parameters<typeof setup>[0]["page"],
-): Promise<void> {
+async function loginWithRateLimitRetry(page: Page): Promise<void> {
   const submitLoginFromUi = async (): Promise<number | null> => {
     const usernameInput = page.getByLabel("Username");
     const passwordInput = page.getByRole("textbox", { name: "Password" });

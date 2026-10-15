@@ -48,9 +48,9 @@ function renderPanel(overrides: Partial<MemberPractice> = {}) {
 }
 
 function switchFor(name: string): HTMLInputElement {
-  return screen.getByRole("switch", {
+  return screen.getByRole<HTMLInputElement>("switch", {
     name: `${name}: may practise here`,
-  }) as HTMLInputElement;
+  });
 }
 
 describe("MemberPracticePanel", () => {

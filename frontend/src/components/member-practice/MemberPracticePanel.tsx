@@ -120,11 +120,8 @@ function ConfirmContent({
   username: string;
   orgUnitName: string;
 }) {
-  const { methods } = useFormContext();
-  const { authorise, withdraw } = changesFrom(
-    methods.getValues() as PracticeValues,
-    saved,
-  );
+  const { methods } = useFormContext<PracticeValues>();
+  const { authorise, withdraw } = changesFrom(methods.getValues(), saved);
 
   return (
     <>

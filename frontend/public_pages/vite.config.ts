@@ -63,8 +63,7 @@ export default defineConfig({
             }
 
             // serve 404 page for unknown HTML requests
-            const accept = (req.headers &&
-              (req.headers.accept || "")) as string;
+            const accept = req.headers && (req.headers.accept || "");
             const hasExt = path.extname(pathname) !== "";
             const isHtmlRequest =
               accept.includes("text/html") || accept.includes("*/*") || !hasExt;

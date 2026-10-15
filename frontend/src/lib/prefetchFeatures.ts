@@ -76,7 +76,7 @@ const SLOW_CONNECTIONS = ["slow-2g", "2g"];
 
 /** What the browser says about the network, defaulting to "fine". */
 export function readConnection(
-  nav: NavigatorLike = navigator as NavigatorLike,
+  nav: NavigatorLike = navigator,
 ): Pick<PrefetchConditions, "online" | "constrained"> {
   const connection = nav.connection;
   return {
@@ -253,7 +253,7 @@ interface IdleWindow {
 /** Runs `callback` when the browser is idle. Returns a function to cancel. */
 export function whenIdle(
   callback: () => void,
-  win: IdleWindow = window as unknown as IdleWindow,
+  win: IdleWindow = window,
 ): () => void {
   if (win.requestIdleCallback && win.cancelIdleCallback) {
     const handle = win.requestIdleCallback(callback, {

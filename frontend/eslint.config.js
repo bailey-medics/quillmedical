@@ -21,8 +21,8 @@ export default defineConfig(
       files: ["**/*.{ts,tsx}"],
       extends: [
         js.configs.recommended,
-        ...tseslint.configs.recommended,
-        reactHooks.configs.flat["recommended-latest"],
+        ...tseslint.configs.recommendedTypeChecked,
+        reactHooks.configs.flat.recommended,
         reactRefresh.configs.vite,
         // The static half of accessibility: labels, alt text, roles and
         // keyboard handlers, caught before a story renders.
@@ -33,6 +33,12 @@ export default defineConfig(
       languageOptions: {
         ecmaVersion: 2020,
         globals: globals.browser,
+        // Type-aware rules read each file's own tsconfig, found by the
+        // project service, so a missed `await` on an API call is caught
+        parserOptions: {
+          projectService: true,
+          tsconfigRootDir: import.meta.dirname,
+        },
       },
       plugins: { regexp, react, "no-secrets": noSecrets },
       // Lint `<Image>` (ours and Mantine's) as an img, so alt-text sees it
@@ -43,6 +49,16 @@ export default defineConfig(
 
         // New: React XSS guard
         "react/no-danger": "warn",
+
+        // An async event handler is the ordinary way to write one in
+        // React, which discards the promise it returns, so the attribute
+        // check is off. The rest of the rule stays: an async function
+        // passed where a plain callback is expected, such as to forEach,
+        // is still reported.
+        "@typescript-eslint/no-misused-promises": [
+          "error",
+          { checksVoidReturn: { attributes: false } },
+        ],
 
         // Core JS “don’t shoot your foot” (no extra deps)
         "no-eval": "error",
@@ -156,6 +172,49 @@ export default defineConfig(
       rules: {
         "no-console": "off",
       },
+    },
+
+    // Phase 1 scaffolding: removed as each phase of the type-aware ESLint
+    // plan lands (docs/docs/plans/2026-10-14-type-aware-eslint-plan.md).
+    // Each line is a type-aware rule whose findings are not yet fixed,
+    // turned off so lint passes meanwhile. What is still here is what is
+    // still to do. Delete a line when its phase lands, and this block when
+    // the last one does.
+    {
+      files: ["**/*.{ts,tsx}"],
+      rules: {
+        // Phase 2
+        "@typescript-eslint/no-misused-promises": "off",
+        // Phase 3
+        "@typescript-eslint/require-await": "off",
+        // Phases 4 and 5
+        "@typescript-eslint/no-unsafe-argument": "off",
+        "@typescript-eslint/no-unsafe-assignment": "off",
+        "@typescript-eslint/no-unsafe-call": "off",
+        "@typescript-eslint/no-unsafe-member-access": "off",
+        "@typescript-eslint/no-unsafe-return": "off",
+        // Phase 5
+        "@typescript-eslint/no-base-to-string": "off",
+        "@typescript-eslint/no-redundant-type-constituents": "off",
+        "@typescript-eslint/prefer-promise-reject-errors": "off",
+        "@typescript-eslint/restrict-template-expressions": "off",
+        "@typescript-eslint/unbound-method": "off",
+      },
+    },
+    // Phase 2 scaffolding, one folder per branch: no-floating-promises is
+    // on everywhere but these, so a promise left without await anywhere
+    // else is caught from now on
+    {
+      files: ["src/pages/**/*.{ts,tsx}"],
+      rules: { "@typescript-eslint/no-floating-promises": "off" },
+    },
+    {
+      files: ["src/features/**/*.{ts,tsx}"],
+      rules: { "@typescript-eslint/no-floating-promises": "off" },
+    },
+    {
+      files: ["src/components/**/*.{ts,tsx}", "src/sw.ts"],
+      rules: { "@typescript-eslint/no-floating-promises": "off" },
     },
   ],
   // Storybook’s flat config can stay as a sibling layer

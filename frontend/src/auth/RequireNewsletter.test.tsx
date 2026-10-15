@@ -23,7 +23,7 @@ function mockAuth(user: Partial<User> | null, status = "authenticated") {
               username: "someone",
               email: "someone@example.com",
               ...user,
-            } as User,
+            },
           }
         : ({ status } as never),
     login: vi.fn(),
@@ -57,7 +57,7 @@ describe("RequireNewsletter", () => {
   });
 
   it("refuses an administrator of a place who is not an operator", () => {
-    mockAuth({ competencies: ["manage_users"] } as Partial<User>);
+    mockAuth({ competencies: ["manage_users"] });
     show();
 
     expect(screen.queryByText("Newsletter content")).not.toBeInTheDocument();

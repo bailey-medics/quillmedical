@@ -514,13 +514,13 @@ function Step2Competencies({
         placeholder="Select additional competencies"
         data={competencyOptions.filter(
           (c: { value: string; label: string }) =>
-            !baseCompetencyIds.includes(c.value as CompetencyId),
+            !baseCompetencyIds.includes(c.value),
         )}
         value={formData.additionalCompetencies}
         onChange={(value) =>
           setFormData({
             ...formData,
-            additionalCompetencies: value as CompetencyId[],
+            additionalCompetencies: value,
           })
         }
         searchable
@@ -531,13 +531,13 @@ function Step2Competencies({
         description="Competencies the profession gives that this user does not hold. One the profession gains later appears here until somebody grants it."
         placeholder="Select competencies not held"
         data={competencyOptions.filter((c: { value: string; label: string }) =>
-          baseCompetencyIds.includes(c.value as CompetencyId),
+          baseCompetencyIds.includes(c.value),
         )}
         value={formData.removedCompetencies}
         onChange={(value) =>
           setFormData({
             ...formData,
-            removedCompetencies: value as CompetencyId[],
+            removedCompetencies: value,
           })
         }
         searchable
