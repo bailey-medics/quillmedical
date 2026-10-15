@@ -1,8 +1,8 @@
 {
   "name": "review-marks",
   "displayName": "Review marks",
-  "description": "Shows which files have been audited, and what has changed since, from the card that scripts/review-ledger.py keeps.",
-  "version": "0.6.0",
+  "description": "Shows which files have been audited, and what has changed since, from the card that scripts/audit-stamp.py keeps.",
+  "version": "0.6.1",
   "publisher": "local",
   "engines": { "vscode": "^1.80.0" },
   "main": "./extension.js",

@@ -21,7 +21,7 @@ runs, and a check on each place that could drift from it again.
 
 - [x] Add the `.github/actions/setup-python` step to the `audit_ledger`
       job in `.github/workflows/ci.yml`. The job runs
-      `python3 scripts/review-ledger.py verify` with no Python set up, so
+      `python3 scripts/audit-stamp.py verify` with no Python set up, so
       it gets the `ubuntu-24.04` runner's own, which is 3.12. That figure
       is from the runner image and not from a log: neither job prints a
       version, so the first run after this step should print
@@ -45,7 +45,7 @@ runs, and a check on each place that could drift from it again.
 - [x] Add the same step to the `shell_checks` job. It runs
       `run-shell-tests.sh scripts/tests`, and the bats suites there call
       `stack-status.py`, `stack-relink.py`, `stack-forget-merged.py`,
-      `review-ledger.py`, `shell-test-coverage.py` and
+      `audit-stamp.py`, `shell-test-coverage.py` and
       `trim-question-image-frames.py`. The Python is one step removed from
       the workflow file, which is why reading the workflow did not show it.
 

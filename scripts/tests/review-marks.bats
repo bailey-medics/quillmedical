@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # Tests for tools/review-marks/extension.ts, the VS Code extension that
-# shows the review ledger in the editor.
+# shows the audit stamps in the editor.
 #
 # Only the two parts with no editor in them: reading the ledger's output
 # into marks for files and folders, and reading a diff into the lines to
