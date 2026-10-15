@@ -66,10 +66,11 @@ safe to run in a pre-commit hook. It parses every
    marker, forcing expand-contract to be a deliberate choice, not an
    accident.
 
-The pre-launch migration history was squashed into a single baseline
-(`878bc9300d4f`) before go-live, so there is no allow-list of grandfathered
-revisions - every migration, including the baseline, meets the full
-standard. Run it directly with:
+The pre-launch migration history has been squashed into a single baseline
+twice (`878bc9300d4f` on 2026-08-12, then `ea2ae2e4854b` on 2026-10-15; see
+[squashing the chain](#squashing-the-chain)), so there is no allow-list of
+grandfathered revisions - every migration, including the baseline, meets the
+full standard. Run it directly with:
 
 ```bash
 python backend/scripts/check_migrations.py --all
@@ -303,6 +304,44 @@ the git plumbing and delegates the frozen/editable judgement to
 per-call marker vector so a marker cannot be stripped under cover of a comment
 edit). Run by the `DB migration immutability check` job and required by branch
 protection.
+
+## Squashing the chain
+
+A long chain of migrations can be replaced by one baseline without
+touching any database, because Alembic knows a database's position only
+through the one revision id in its `alembic_version` table. The method,
+first used on 2026-10-15 and the one to use again:
+
+1. **Freeze migrations** until the squash merges, and note the head
+   revision id, the one no other migration names as its `down_revision`.
+2. **Dump the schema the chain builds**, with `just migrate-dump <file>`
+   (`just md`): a throwaway Postgres upgraded to head, then
+   `pg_dump --schema-only` with owners, privileges and the per-run
+   `\restrict` keys stripped.
+3. **Delete every file in `backend/alembic/versions/`** and run
+   `just migrate "initial baseline schema"`, which autogenerates the
+   baseline against the empty throwaway database.
+4. **Give the baseline the old head's revision id**: set `revision` in the
+   file and rename the file to match. `down_revision` stays `None`. A
+   database already at that head now records the baseline as applied, so
+   the next `alembic upgrade head` does nothing.
+5. **Dump the baseline's schema and compare it with the first dump**,
+   with `python backend/scripts/compare_schema_dumps.py before.sql
+   after.sql`. A plain `diff` is noise: column order, the names of NOT NULL
+   constraints and the names of sequences all record history, not schema,
+   and the script reads past them. Everything it does report is the
+   baseline being wrong. On 2026-10-15 that was eighteen foreign keys whose
+   names Postgres had kept through table renames (`sites_parent_id_fkey`
+   on `org_unit`, say): the baseline names them as the deployed database
+   does, so a later migration can address a constraint by one name
+   everywhere. Edit the baseline by hand until the script reports nothing.
+6. **Delete the tests whose only subject was a deleted migration**, and
+   point any docs that quote an old revision id at the new one.
+
+The `DB migration immutability check` accepts exactly this shape (see
+Layer 4) and nothing narrower. The one way to see what a deployed database
+is at is `just migrate-current <env>` (`just mc`), which runs the admin
+job's `show-migration` action and prints its log.
 
 ## `compare_server_default` is deliberately off
 
