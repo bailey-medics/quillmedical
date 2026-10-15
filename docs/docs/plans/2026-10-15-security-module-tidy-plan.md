@@ -48,7 +48,7 @@ scan at the end to see whether the rot found here is wider than this file.
 
 ## Phase 2: Delete the dead duplicates
 
-- [ ] Delete `create_csrf_token` and move its empty-username guard into
+- [x] Delete `create_csrf_token` and move its empty-username guard into
       `make_csrf`, which is the function every caller uses despite its
       docstring calling it the legacy alias. Rewrite that docstring to
       describe the function rather than its history. Delete
@@ -57,12 +57,12 @@ scan at the end to see whether the rot found here is wider than this file.
       Both were confirmed unused by grep over `backend/app`,
       `backend/scripts` and `backend/tests`, excluding `_test.py` files.
 
-- [ ] Add the same guard to `create_refresh_token`, which is the one
+- [x] Add the same guard to `create_refresh_token`, which is the one
       minter with no check on an empty subject. Every caller passes
       `user.username`, so this is consistency with the fail-fast rule in
       `CLAUDE.md` rather than a live bug.
 
-- [ ] Remove the tests of the two deleted functions from
+- [x] Remove the tests of the two deleted functions from
       `security_test.py` and add one for each new guard. Run `just ub
       app/security_test.py`.
 

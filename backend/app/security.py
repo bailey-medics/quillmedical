@@ -196,7 +196,13 @@ def create_refresh_token(sub: str, token_version: int = 0) -> str:
 
     Returns:
         str: Encoded JWT refresh token valid for REFRESH_TTL_DAYS days.
+
+    Raises:
+        ValueError: If subject is empty.
     """
+    if not sub or not sub.strip():
+        raise ValueError("Subject (username) cannot be empty")
+
     payload: dict[str, Any] = {
         "sub": sub,
         "type": REFRESH_TYPE,
@@ -254,7 +260,7 @@ def decode_refresh_token(tok: str) -> dict[str, Any]:
 _csrf = URLSafeSerializer(settings.JWT_SECRET.get_secret_value(), salt="csrf")
 
 
-def create_csrf_token(username: str) -> str:
+def make_csrf(sub: str) -> str:
     """Create CSRF Protection Token.
 
     Generates a CSRF token for protecting state-changing operations against
@@ -263,34 +269,17 @@ def create_csrf_token(username: str) -> str:
     for POST/PUT/PATCH/DELETE requests.
 
     Args:
-        username: Username to tie the token to.
+        sub: Subject (username) to tie the token to.
 
     Returns:
         str: URL-safe CSRF token signed with JWT_SECRET.
 
     Raises:
-        ValueError: If username is empty.
+        ValueError: If the subject is empty.
     """
-    # Defensive programming: validate input
-    if not username or not username.strip():
-        raise ValueError("Username cannot be empty")
+    if not sub or not sub.strip():
+        raise ValueError("Subject (username) cannot be empty")
 
-    return _csrf.dumps({"sub": username})
-
-
-def make_csrf(sub: str) -> str:
-    """Create CSRF Token (Legacy).
-
-    Legacy alias for create_csrf_token. Generates a CSRF token signed with
-    the user's identity. Maintained for backward compatibility with existing
-    code that uses this function name.
-
-    Args:
-        sub: Subject (username) to sign the token with.
-
-    Returns:
-        str: URL-safe CSRF token.
-    """
     return _csrf.dumps({"sub": sub})
 
 
@@ -326,28 +315,6 @@ def generate_totp_secret() -> str:
         str: Base32-encoded secret (32 characters).
     """
     return pyotp.random_base32()
-
-
-def generate_totp_provision_uri(
-    username: str, secret: str, issuer: str = "Quill"
-) -> str:
-    """Generate TOTP Provisioning URI.
-
-    Creates an otpauth:// URI for QR code generation, compatible with
-    authenticator apps. The URI contains the secret, username, and issuer
-    information. Users scan this QR code to add the account to their app.
-
-    Args:
-        username: User's username for labeling the TOTP entry.
-        secret: Base32-encoded TOTP secret from generate_totp_secret().
-        issuer: Application name displayed in authenticator app (default: "Quill").
-
-    Returns:
-        str: otpauth://totp/... URI for QR code generation.
-    """
-    totp = pyotp.TOTP(secret)
-
-    return totp.provisioning_uri(name=username, issuer_name=issuer)
 
 
 def verify_totp_code(secret: str, code: str) -> bool:
