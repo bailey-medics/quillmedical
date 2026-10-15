@@ -161,9 +161,9 @@ export default function Messages() {
       }
     };
 
-    checkHealth();
+    void checkHealth();
     const interval = setInterval(() => {
-      if (!isFhirReady) checkHealth();
+      if (!isFhirReady) void checkHealth();
     }, FHIR_POLLING_TIME);
 
     return () => {

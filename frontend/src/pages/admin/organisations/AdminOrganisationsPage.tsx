@@ -51,7 +51,7 @@ export default function AdminOrganisationsPage() {
       }
     }
 
-    fetchOrganisations();
+    void fetchOrganisations();
   }, []);
 
   // The backend names the type for a person, so the screen no longer

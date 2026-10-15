@@ -58,7 +58,7 @@ export default function AdminUsersPage() {
       }
     }
 
-    fetchUsers();
+    void fetchUsers();
   }, []);
 
   const searchFields = useCallback(

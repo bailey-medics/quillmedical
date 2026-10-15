@@ -295,12 +295,12 @@ export default function Home() {
     };
 
     // Check immediately on mount
-    checkHealth();
+    void checkHealth();
 
     // Poll every 5 seconds until FHIR is ready
     const interval = setInterval(() => {
       if (!isFhirReady) {
-        checkHealth();
+        void checkHealth();
       }
     }, FHIR_POLLING_TIME);
 

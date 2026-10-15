@@ -8,6 +8,7 @@
 import { useAuth } from "@/auth/AuthContext";
 import { PageSpinner } from "@/components/loading-spinner";
 import PageHeader from "@/components/page-header";
+import { usePageMessage } from "@/components/page-message";
 import Messaging, { type Message } from "@/components/messaging/Messaging";
 import { usePatientLoader } from "@/hooks/usePatientLoader";
 import {
@@ -36,6 +37,7 @@ function toUiMessage(m: MessageResponse): Message {
 
 export default function PatientMessageThread() {
   const { patient, setPatientNav } = usePatientLoader();
+  const { showMessage } = usePageMessage();
   const { state } = useAuth();
   const { conversationId } = useParams<{ conversationId: string }>();
 
@@ -107,13 +109,24 @@ export default function PatientMessageThread() {
       };
       setMessages((prev) => [...prev, optimistic]);
 
-      sendMessage(Number(conversationId), { body: text }).then((msg) => {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === optimistic.id ? toUiMessage(msg) : m)),
-        );
-      });
+      sendMessage(Number(conversationId), { body: text })
+        .then((msg) => {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === optimistic.id ? toUiMessage(msg) : m)),
+          );
+        })
+        .catch((err: unknown) => {
+          // The message was shown as sent; take it back and say why
+          setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+          showMessage({
+            variant: "error",
+            title: "Message not sent",
+            description:
+              err instanceof Error ? err.message : "The request failed",
+          });
+        });
     },
-    [conversationId, currentUserId, state],
+    [conversationId, currentUserId, showMessage, state],
   );
 
   if (isLoading) {

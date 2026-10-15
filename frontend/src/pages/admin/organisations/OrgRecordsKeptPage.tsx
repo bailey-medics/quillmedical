@@ -116,7 +116,7 @@ export default function OrgRecordsKeptPage() {
       }
     }
 
-    fetchPeriod();
+    void fetchPeriod();
   }, [id]);
 
   async function handleSubmit(

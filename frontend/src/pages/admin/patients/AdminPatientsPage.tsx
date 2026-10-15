@@ -74,7 +74,7 @@ export default function AdminPatientsPage() {
           setFhirReady(false);
           setTimeout(() => {
             if (!cancelled) {
-              fetchPatients();
+              void fetchPatients();
             }
           }, FHIR_POLLING_TIME);
         }
@@ -85,7 +85,7 @@ export default function AdminPatientsPage() {
       }
     }
 
-    fetchPatients();
+    void fetchPatients();
 
     return () => {
       cancelled = true;

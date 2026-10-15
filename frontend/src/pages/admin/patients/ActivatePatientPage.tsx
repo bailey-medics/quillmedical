@@ -102,7 +102,7 @@ export default function ActivatePatientPage() {
       }
     }
 
-    fetchData();
+    void fetchData();
   }, [patientId, specificPatient]);
 
   const formatName = (

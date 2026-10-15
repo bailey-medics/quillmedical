@@ -111,7 +111,7 @@ export default function EditOrganisationPage() {
       }
     }
 
-    fetchOrganisation();
+    void fetchOrganisation();
   }, [id]);
 
   async function handleSubmit(data: EditFormValues): Promise<FormSubmitResult> {

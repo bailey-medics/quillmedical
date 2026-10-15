@@ -43,6 +43,7 @@ import { renderWithMantine } from "@test/test-utils";
 import type { LayoutCtx } from "@/RootLayout";
 import type { Patient } from "@/domains/patient";
 import ErrorBoundary from "@/components/error-boundary/ErrorBoundary";
+import { PageMessageProvider } from "@/components/page-message";
 import type { NavItem } from "./NestedNavLink";
 
 // Somebody who may open every page, so no link is missing for want of a
@@ -346,7 +347,8 @@ function pagesAbove(pattern: string): string[] {
 /**
  * Stands in for `RootLayout`: holds what a page hands to the sidebar and
  * passes it on. The real one adds the ribbon, search and page-view
- * counting, none of which changes a link.
+ * counting, none of which changes a link. It also provides the page
+ * messages, which a page that reports a failed send or load asks for.
  */
 function MainMenuAndPage() {
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -365,7 +367,9 @@ function MainMenuAndPage() {
     <>
       <SideNavContent patientNav={patientNav} />
       <ErrorBoundary>
-        <Outlet context={context} />
+        <PageMessageProvider>
+          <Outlet context={context} />
+        </PageMessageProvider>
       </ErrorBoundary>
     </>
   );

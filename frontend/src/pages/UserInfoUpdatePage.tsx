@@ -1166,7 +1166,7 @@ export default function UserInfoUpdatePage() {
       }
     }
 
-    fetchUser();
+    void fetchUser();
   }, [isEditMode, userId]);
 
   // Fetch every org_unit the person may be put in, in one request
@@ -1230,7 +1230,7 @@ export default function UserInfoUpdatePage() {
       }
     }
 
-    fetchPlaces();
+    void fetchPlaces();
   }, []);
 
   // Block navigation when form is dirty and not yet submitted

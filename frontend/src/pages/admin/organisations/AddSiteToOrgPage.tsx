@@ -172,7 +172,7 @@ export default function AddSiteToOrgPage() {
       }
     }
 
-    fetchUsers();
+    void fetchUsers();
   }, [mayNameLead]);
 
   async function handleSubmit(

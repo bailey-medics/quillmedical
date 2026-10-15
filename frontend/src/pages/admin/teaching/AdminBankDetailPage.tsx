@@ -146,7 +146,7 @@ export default function AdminBankDetailPage() {
     // occurs. The rule cannot follow state updates across an async
     // boundary, so it flags the call itself.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchData();
+    void fetchData();
   }, [fetchData]);
 
   // Rendered in every branch below, not just the happy one. An upload

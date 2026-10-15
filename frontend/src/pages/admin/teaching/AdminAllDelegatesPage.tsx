@@ -141,7 +141,7 @@ export default function AdminAllDelegatesPage() {
         if (!cancelled) setLoading(false);
       }
     }
-    fetchPage();
+    void fetchPage();
     return () => {
       cancelled = true;
     };

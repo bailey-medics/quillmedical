@@ -50,6 +50,22 @@ export default defineConfig(
         // New: React XSS guard
         "react/no-danger": "warn",
 
+        // navigate() from React Router returns a promise that settles when
+        // the navigation does; nothing waits for that, and any error goes
+        // to the route's errorElement, so a call needs no await or void.
+        "@typescript-eslint/no-floating-promises": [
+          "error",
+          {
+            allowForKnownSafeCalls: [
+              {
+                from: "package",
+                name: "NavigateFunction",
+                package: "react-router",
+              },
+            ],
+          },
+        ],
+
         // An async event handler is the ordinary way to write one in
         // React, which discards the promise it returns, so the attribute
         // check is off. The rest of the rule stays: an async function
@@ -204,10 +220,6 @@ export default defineConfig(
     // Phase 2 scaffolding, one folder per branch: no-floating-promises is
     // on everywhere but these, so a promise left without await anywhere
     // else is caught from now on
-    {
-      files: ["src/pages/**/*.{ts,tsx}"],
-      rules: { "@typescript-eslint/no-floating-promises": "off" },
-    },
     {
       files: ["src/features/**/*.{ts,tsx}"],
       rules: { "@typescript-eslint/no-floating-promises": "off" },

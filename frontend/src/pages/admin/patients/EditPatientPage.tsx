@@ -49,7 +49,7 @@ export default function EditPatientPage() {
       }
     }
 
-    fetchPatients();
+    void fetchPatients();
   }, []);
 
   const formatName = (
