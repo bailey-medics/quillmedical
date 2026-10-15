@@ -108,3 +108,4 @@
 - [Migrations Squash](2026-10-15-migrations-squash-plan.md)
 - [Stacked Pull Requests Land on Main](2026-10-15-stacked-pull-requests-land-on-main-plan.md)
 - [Security Module Tidy](2026-10-15-security-module-tidy-plan.md)
+- [Teaching E2E Coverage](2026-10-15-teaching-e2e-coverage-plan.md)

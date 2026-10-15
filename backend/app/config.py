@@ -422,6 +422,16 @@ class Settings(BaseSettings):
             "Defaults to True for development safety."
         ),
     )
+    EMAIL_CAPTURE_DIR: str | None = Field(
+        None,
+        description=(
+            "A folder each dry-run email is written to as a JSON file, "
+            "so the end-to-end tests can open the links Quill sends. "
+            "Unset, the default, writes nothing. Allowed only when "
+            "BACKEND_ENV is testing and EMAIL_DRY_RUN is on: an email "
+            "holds a person's address and links that sign them in."
+        ),
+    )
     EMAIL_ALLOWED_RECIPIENTS: str = Field(
         "",
         description=(
@@ -529,6 +539,34 @@ class Settings(BaseSettings):
             raise ValueError(
                 "FEEDBACK_SLACK_WEBHOOK_URL must be a Slack incoming "
                 "webhook, starting https://hooks.slack.com/"
+            )
+
+        return self
+
+    @model_validator(mode="after")
+    def _validate_email_capture_dir(self) -> Settings:
+        """Refuse to write emails to disk anywhere but the test stack.
+
+        The end-to-end stack sets ``EMAIL_CAPTURE_DIR`` so a test can
+        follow the link in an invite. A captured email holds somebody's
+        address and a link that lets its holder set their password, so
+        it is written only where every account is a throwaway one. Set
+        anywhere else, by a slip in a deploy, the backend fails at
+        startup, where the old revision keeps serving, rather than
+        quietly keeping copies of what it sends.
+        """
+        if self.EMAIL_CAPTURE_DIR is None:
+            return self
+
+        if self.BACKEND_ENV.lower() != "testing":
+            raise ValueError(
+                "EMAIL_CAPTURE_DIR may be set only when BACKEND_ENV is "
+                "testing"
+            )
+
+        if not self.EMAIL_DRY_RUN:
+            raise ValueError(
+                "EMAIL_CAPTURE_DIR may be set only when EMAIL_DRY_RUN is on"
             )
 
         return self

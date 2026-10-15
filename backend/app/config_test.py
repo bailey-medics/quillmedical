@@ -232,6 +232,53 @@ class TestFeedbackNotifyEmailStartupCheck:
             )
 
 
+class TestEmailCaptureDirStartupCheck:
+    """Emails are written to disk on the end-to-end stack and nowhere else."""
+
+    @staticmethod
+    def _settings(**overrides: object) -> Settings:
+        return Settings(
+            JWT_SECRET="test_secret_long_enough_32_chars_min",
+            CORE_DB_PASSWORD="auth_pass",
+            VAPID_PRIVATE="vapid_key",
+            CORS_ORIGINS=["https://app.quill-medical.com"],
+            FEEDBACK_NOTIFY_EMAIL="ops@example.test",
+            **overrides,
+        )
+
+    def test_testing_with_dry_run_is_accepted(self):
+        settings = self._settings(
+            BACKEND_ENV="testing",
+            EMAIL_DRY_RUN=True,
+            EMAIL_CAPTURE_DIR="/e2e-mail",
+        )
+
+        assert settings.EMAIL_CAPTURE_DIR == "/e2e-mail"
+
+    @pytest.mark.parametrize("env", ["development", "production", "staging"])
+    def test_any_other_environment_is_refused(self, env):
+        with pytest.raises(ValidationError, match="BACKEND_ENV is testing"):
+            self._settings(
+                BACKEND_ENV=env,
+                EMAIL_DRY_RUN=True,
+                EMAIL_CAPTURE_DIR="/e2e-mail",
+            )
+
+    def test_testing_that_really_sends_is_refused(self):
+        with pytest.raises(ValidationError, match="EMAIL_DRY_RUN is on"):
+            self._settings(
+                BACKEND_ENV="testing",
+                EMAIL_DRY_RUN=False,
+                EMAIL_CAPTURE_DIR="/e2e-mail",
+            )
+
+    @pytest.mark.parametrize("env", ["development", "testing", "production"])
+    def test_unset_is_accepted_everywhere(self, env):
+        settings = self._settings(BACKEND_ENV=env)
+
+        assert settings.EMAIL_CAPTURE_DIR is None
+
+
 class TestFeedbackSlackWebhookStartupCheck:
     """A Slack webhook must point at Slack, or be left out."""
 

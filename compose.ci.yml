@@ -32,6 +32,10 @@ services:
       TEACHING_QUESTION_BANK_PATH: /teaching-repos
       TEACHING_IMAGES_BASE_URL: /api/teaching/images
       EMAIL_DRY_RUN: "true"
+      # Every dry-run email is also written here, so a test can follow
+      # the link in an invite. Made writable by
+      # .github/scripts/ci/prepare-e2e-mail.sh before the stack starts.
+      EMAIL_CAPTURE_DIR: /e2e-mail
       # Where a passport's repository is kept. The default, /data/passports,
       # does not exist in the prod image this stack runs, so the first
       # passport made here failed with "Permission denied".
@@ -46,6 +50,8 @@ services:
       # Teaching content for seed_ci.py to sync, fetched by
       # .github/scripts/ci/fetch-e2e-teaching.sh before the stack starts
       - ./.e2e-teaching:/teaching-repos:ro
+      # The emails the tests read, through e2e/fixtures/mail.ts
+      - ./frontend/e2e/.mail:/e2e-mail
     expose:
       - "8000"
     depends_on:

@@ -55,6 +55,11 @@ jobs:
       - name: Fetch E2E teaching content
         run: .github/scripts/ci/fetch-e2e-teaching.sh
 
+      # compose.ci.yml mounts the folder its emails are written to. The
+      # guides read none, but the backend still writes them.
+      - name: Prepare the E2E mail folder
+        run: .github/scripts/ci/prepare-e2e-mail.sh
+
       # Postgres and Caddy come from this repository's own copies where it
       # has them, pulled with this login, and not from the public
       # registry, which refuses a runner that asks too often. That

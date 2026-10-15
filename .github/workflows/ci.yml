@@ -800,6 +800,10 @@ jobs:
       - name: Fetch E2E teaching content
         run: .github/scripts/ci/fetch-e2e-teaching.sh
 
+      # The folder the stack writes its emails to, for the tests to read.
+      - name: Prepare the E2E mail folder
+        run: .github/scripts/ci/prepare-e2e-mail.sh
+
       # Before the stack starts: Postgres and Caddy come from this
       # repository's own copies where it has them, pulled with the login
       # above, and not from the public registry, which refuses a runner
