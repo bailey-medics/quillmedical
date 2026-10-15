@@ -87,7 +87,50 @@ after go-live.
       `local/migrations-squash/before-ea2ae2e4854b.sql` under `just lp`,
       not in the repository: 41 tables, 3122 lines.
 
-## Phase 3: Squash the migrations
+## Phase 3: Let CI accept a migrations squash
+
+Lands before the squash, as its own pull request, because the
+`DB migration immutability check` runs on the squash pull request and
+would refuse it otherwise.
+
+- [x] Give `check-migrations-unmodified.sh` a narrow, explicit exception
+      rather than bypassing the check at merge. It refuses deletions by
+      design, and is right to almost always. The exception: a pull
+      request may delete merged migrations only when it deletes every
+      one of them and adds exactly one replacement, whose
+      `down_revision` is `None` and whose `revision` is the deleted
+      head's id. That describes a squash and nothing else, so it cannot
+      be used to quietly drop one migration. Done as `is_squash` in the
+      script, with `head_revision_at` working the old head out from the
+      merge base. Two things found while writing it: the chain at the
+      merge base must hold two or more migrations, because a lone
+      baseline moved to a new filename would otherwise pass as a squash
+      of itself; and the diff is taken with `--no-renames`, because git
+      pairs the new baseline with whichever deleted migration it
+      resembles (a baseline looks a lot like the old one) and would
+      report a rename instead of a delete and an add. Bats tests cover
+      the accepted squash, a new id, a `down_revision`, a partial
+      deletion, two added files and the chain of one. The rule is
+      written into `.github/instructions/backend.instructions.md`,
+      `.claude/rules/backend.md` and the migration safety page.
+
+- [x] Make the exception temporary. Decided by Mark on 2026-10-15: it
+      is closed again once the squash has landed, in the plan's last
+      phase, so the immutability check goes back to refusing every
+      deletion. A future squash opens its own exception, in its own
+      pull request, and closes it the same way. That keeps the check
+      as strict as it was for everything except the one pull request
+      that needs otherwise.
+
+- [x] Confirm the destructive-migration gate does not trip. It only
+      inspects migrations added on a pull request, and
+      `check_migrations.py` reads `upgrade()` alone, so the baseline's
+      `downgrade()`, which drops every table, is not looked at. A
+      baseline's `upgrade()` contains only `create_table` calls, so it
+      passes without a marker. Confirmed on the squash pull request
+      once it opens.
+
+## Phase 4: Squash the migrations
 
 - [ ] Delete every file in `backend/alembic/versions/`, including the
       first baseline `878bc9300d4f`.
@@ -160,30 +203,6 @@ after go-live.
       `alembic-migration-safety.md` describing this squash method, so
       the next one follows it.
 
-## Phase 4: Let CI accept a migrations squash
-
-- [ ] Give `check-migrations-unmodified.sh` a narrow, explicit exception
-      rather than bypassing the check at merge. It refuses deletions by
-      design, and is right to almost always. The exception: a pull
-      request may delete merged migrations only when it deletes every
-      one of them and adds exactly one replacement, whose
-      `down_revision` is `None` and whose `revision` is the deleted
-      head's id. That describes a squash and nothing else, so it cannot
-      be used to quietly drop one migration. Add bats tests for both the
-      accepted squash and a partial deletion that must still fail.
-
-- [ ] Keep the exception after this lands. Decided on 2026-10-15: a
-      squash that reuses the head's revision id is safe after go-live
-      too, because it never touches the live data, so the next squash
-      should need no CI change. The exception's own conditions (every
-      file deleted, the head's id reused) are what stop it passing by
-      accident.
-
-- [ ] Confirm the destructive-migration gate does not trip. It only
-      inspects migrations added on a pull request, so it will read the
-      new baseline; a baseline contains only `create_table` calls, so
-      it should pass without a marker.
-
 ## Phase 5: Verify locally
 
 - [ ] Run `just ub`, the full backend suite. This is one of the cases
@@ -224,9 +243,9 @@ is marked ready, and again immediately before it merges.
       them; anything else that merged is checked the same way.
 
 - [ ] If a migration landed, stop: the head has moved, so redo Phase 2
-      and the baseline steps of Phase 3 against the new head before
+      and the baseline steps of Phase 4 against the new head before
       going on. If `models.py` or `shared/` changed without a migration,
-      re-run the schema dump and diff from Phase 3, since the models
+      re-run the schema dump and diff from Phase 4, since the models
       the baseline was generated from are no longer the ones on `main`.
 
 - [ ] Rebase onto `origin/main` and check the rebase touched nothing
@@ -273,7 +292,7 @@ decision files, so anything merged meanwhile may have added more.
       clients.
 
 - [ ] Give rule 5 of `validate-compat-files.sh`, which refuses deleted
-      decision files outright, the same narrow exception as Phase 4: a
+      decision files outright, the same narrow exception as Phase 3: a
       pull request may delete merged decision files only when it deletes
       every one of them and adds exactly one `init` file at the current
       generation. Add bats tests for the accepted reset and for a
@@ -301,7 +320,7 @@ decision files, so anything merged meanwhile may have added more.
   takes seconds.
 
 - **Prove the schema from the chain, not from production** - the two
-  dumps compared in Phase 3 both come from throwaway databases, so the
+  dumps compared in Phase 4 both come from throwaway databases, so the
   check needs no access to App production. That holds because
   migrations are the only thing that has ever changed its schema;
   Phase 2's `just mc app` is the one look at production itself.
