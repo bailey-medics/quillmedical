@@ -103,7 +103,6 @@ function setNativeValue(
     field instanceof HTMLTextAreaElement
       ? HTMLTextAreaElement.prototype
       : HTMLInputElement.prototype;
-  const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
-  setter?.call(field, value);
+  Object.getOwnPropertyDescriptor(prototype, "value")?.set?.call(field, value);
   field.dispatchEvent(new Event("input", { bubbles: true }));
 }

@@ -35,7 +35,7 @@ interface AccountFormValues {
 function AccountFields() {
   const navigate = useNavigate();
   const { state } = useAuth();
-  const { methods, formState } = useFormContext();
+  const { methods, formState } = useFormContext<AccountFormValues>();
   const newPasswordValue = methods.watch("newPassword");
 
   useEffect(() => {

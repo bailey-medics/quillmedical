@@ -184,7 +184,7 @@ vi.mock("@/lib/api", async (importOriginal) => {
       try {
         resolve(sampleAnswer(path.split("?")[0]));
       } catch (error) {
-        reject(error);
+        reject(error instanceof Error ? error : new Error(String(error)));
       }
     });
   return {

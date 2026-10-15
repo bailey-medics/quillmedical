@@ -117,7 +117,7 @@ interface UserFormData {
   email: string;
   username: string;
   password: string;
-  baseProfession: BaseProfessionId | "";
+  baseProfession: BaseProfessionId;
   additionalCompetencies: CompetencyId[];
   removedCompetencies: CompetencyId[];
   platformRole: PlatformRole;
@@ -1365,7 +1365,7 @@ export default function UserInfoUpdatePage() {
         name: string;
         email: string;
         username: string;
-        base_profession: BaseProfessionId | "";
+        base_profession: BaseProfessionId;
         additional_competencies: CompetencyId[];
         removed_competencies: CompetencyId[];
         platform_role: PlatformRole;

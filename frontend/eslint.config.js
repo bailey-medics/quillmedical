@@ -213,20 +213,7 @@ export default defineConfig(
     // the last one does.
     {
       files: ["**/*.{ts,tsx}"],
-      rules: {
-        // Phases 4 and 5
-        "@typescript-eslint/no-unsafe-argument": "off",
-        "@typescript-eslint/no-unsafe-assignment": "off",
-        "@typescript-eslint/no-unsafe-call": "off",
-        "@typescript-eslint/no-unsafe-member-access": "off",
-        "@typescript-eslint/no-unsafe-return": "off",
-        // Phase 5
-        "@typescript-eslint/no-base-to-string": "off",
-        "@typescript-eslint/no-redundant-type-constituents": "off",
-        "@typescript-eslint/prefer-promise-reject-errors": "off",
-        "@typescript-eslint/restrict-template-expressions": "off",
-        "@typescript-eslint/unbound-method": "off",
-      },
+      rules: {},
     },
     // Phase 4 scaffolding, widened a folder at a time: the no-unsafe rules
     // are back on for these tests, which have been brought into line

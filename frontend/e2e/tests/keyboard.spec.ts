@@ -40,7 +40,9 @@ async function tabTo(page: Page, target: Locator, key: string, limit = 15) {
       ),
     );
   }
-  throw new Error(`Not reached in ${limit} Tab presses; passed ${passed}`);
+  throw new Error(
+    `Not reached in ${limit} Tab presses; passed ${passed.join(", ")}`,
+  );
 }
 
 test.describe("Keyboard only", () => {

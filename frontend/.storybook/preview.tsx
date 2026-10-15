@@ -9,7 +9,7 @@ import "../src/styles/typography.css";
 import "../src/styles/dark-overrides.css";
 import "../src/styles/touch-targets.css";
 import "../src/styles/disabled-controls.css";
-import type { Preview } from "@storybook/react";
+import type { Decorator, Preview } from "@storybook/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import React, { useEffect } from "react";
 import { theme, cssVariablesResolver } from "../src/theme";
@@ -23,11 +23,7 @@ let storyUser: Record<string, unknown> = {};
 
 // Mock the API to prevent real backend calls in Storybook
 const realFetch = globalThis.fetch.bind(globalThis);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(globalThis as any).fetch = async (
-  input: RequestInfo | URL,
-  init?: RequestInit,
-) => {
+globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   // A caller may pass a string, a URL or a Request. pdf.js passes a URL.
   const url =
     typeof input === "string"
@@ -130,28 +126,34 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-const decorators = [
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (Story: any, context: any) => {
+const decorators: Decorator[] = [
+  (Story, context) => {
+    // Globals and parameters are untyped bags, so each is read as
+    // unknown and narrowed to what a story may set.
+    const globals: Record<string, unknown> = context.globals;
+    const parameters: Record<string, unknown> = context.parameters;
+
     // Read colour scheme from Storybook toolbar
     const colorScheme: "light" | "dark" =
-      context.globals.colorScheme ?? "light";
+      globals["colorScheme"] === "dark" ? "dark" : "light";
 
     // Before the router below mounts AuthProvider, which asks who is
     // signed in.
-    storyUser = context.parameters.mockUser ?? {};
+    storyUser = (parameters["mockUser"] as Record<string, unknown>) ?? {};
 
     // Allow stories to opt out of the default router wrapper
     // by setting parameters.disableDefaultRouter = true
-    if (context.parameters.disableDefaultRouter) {
+    if (parameters["disableDefaultRouter"]) {
       return <Story />;
     }
 
     // Create a memory router with a catch-all route for the story.
     // Stories can set parameters.routerPath to simulate a specific URL
     // (e.g. "/patients/p1/messages" to trigger patient nav items).
-    const initialPath: string =
-      (context.parameters.routerPath as string) ?? "/";
+    const initialPath =
+      typeof parameters["routerPath"] === "string"
+        ? parameters["routerPath"]
+        : "/";
     const router = createMemoryRouter(
       [
         {

@@ -42,7 +42,7 @@ interface SettingsFieldsProps {
 function SettingsFields({ savedIsLive }: SettingsFieldsProps) {
   const navigate = useNavigate();
   const { bankId } = useParams<{ bankId: string }>();
-  const { methods } = useFormContext();
+  const { methods } = useFormContext<BankOrgSettingsFormValues>();
 
   return (
     <BaseCard>

@@ -43,18 +43,18 @@ export function isBeforeInstallPromptEvent(
 
 export interface InstallPromptCapture {
   /** Start listening. Returns a function that stops listening. */
-  wire(target: EventTarget, onInstalled?: () => void): () => void;
+  wire: (target: EventTarget, onInstalled?: () => void) => () => void;
   /** The held event, or `null` when the browser has not offered one. */
-  getDeferredPrompt(): BeforeInstallPromptEvent | null;
+  getDeferredPrompt: () => BeforeInstallPromptEvent | null;
   /**
    * Forget the held event. A prompt can be shown only once, so it is
    * dropped as soon as it is used; Chrome may offer a fresh one later.
    */
-  clearDeferredPrompt(): void;
+  clearDeferredPrompt: () => void;
   /** Called whenever the held event or the installed state changes. */
-  subscribe(listener: () => void): () => void;
+  subscribe: (listener: () => void) => () => void;
   /** True once `appinstalled` has fired in this page's lifetime. */
-  wasInstalled(): boolean;
+  wasInstalled: () => boolean;
 }
 
 /** A separate store per call, so tests do not share state. */
