@@ -448,7 +448,10 @@ depends on the current response/request shape for as long as it stays open.
   `change` fields are immutable - never edit them retroactively, and
   never delete a file. If a decision is superseded, add a new file
   instead. Only `reason` may be edited later, via the same
-  `api-breaking-change-review` gate.
+  `api-breaking-change-review` gate. The one deletion CI accepts is a
+  reset: every file deleted and one `init` file added at the generation
+  they required, with `forces_reload: false` and `change: "none"`, so the
+  required client generation does not move.
 - Full detail: `docs/docs/backend/api-compatibility.md` (why this exists,
   the client-side forced-reload mechanism, the `Compat-Generation`
   header).

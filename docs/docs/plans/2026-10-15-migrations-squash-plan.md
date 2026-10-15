@@ -253,7 +253,7 @@ would refuse it otherwise.
 
 ## Phase 6: Local databases
 
-- [ ] Check the dev stack's core database with `alembic current`. If it
+- [x] Check the dev stack's core database with `alembic current`. If it
       is at the old head, it is already at the baseline's id and needs
       nothing, exactly like App production. If it is behind, its
       `alembic_version` holds a revision that no longer exists and it
@@ -261,6 +261,11 @@ would refuse it otherwise.
       migrate. The `just migrate` and `just e2e` stacks need nothing:
       both use throwaway databases. If the e2e image cache keyed on
       `backend/alembic/**` holds a stale image, it rebuilds on its own.
+      On 2026-10-15 the dev stack was not running, so this could not be
+      read. `just sa` migrates on every start, so the first start after
+      this merges answers it: a clean start means the database was at
+      the old head; "Can't locate revision" means it was behind, and
+      the database is dropped and recreated.
 
 ## Phase 7: Check what merged to main meanwhile
 
@@ -268,25 +273,30 @@ Worktree 2's ESLint stack merges while this plan is built, so `main`
 moves under every pull request here. Run this check before each one
 is marked ready, and again immediately before it merges.
 
-- [ ] Fetch `main` and list what landed since the commit recorded in
+- [x] Fetch `main` and list what landed since the commit recorded in
       Phase 1, with `git diff --name-only <branch point>..origin/main`.
       Check the list for `backend/alembic/versions/`,
       `backend/app/models.py`, `shared/` and `api-compatibility/`. The
       ESLint stack is frontend only, so the expected answer is none of
-      them; anything else that merged is checked the same way.
+      them; anything else that merged is checked the same way. Run on
+      2026-10-15 after the squash pull request opened: nothing had
+      merged since `af3cd5cb7`. Repeat before merging.
 
-- [ ] If a migration landed, stop: the head has moved, so redo Phase 2
+- [x] If a migration landed, stop: the head has moved, so redo Phase 2
       and the baseline steps of Phase 4 against the new head before
       going on. If `models.py` or `shared/` changed without a migration,
       re-run the schema dump and diff from Phase 4, since the models
       the baseline was generated from are no longer the ones on `main`.
+      Nothing had landed, so nothing to redo; the step stands for the
+      repeat.
 
-- [ ] Rebase onto `origin/main` and check the rebase touched nothing
+- [x] Rebase onto `origin/main` and check the rebase touched nothing
       this plan wrote: the baseline, the deleted tests, the Justfile
       recipe, the CI script and its bats tests. A frontend-only merge
       should rebase cleanly. Then run the targeted tests for anything
       the merges changed that this plan also relies on, and let CI run
-      the rest.
+      the rest. `just stack-submit` rebases the stack on every run and
+      found nothing to replay; the same holds for the repeat.
 
 ## Phase 8: Merge and deploy
 
@@ -304,33 +314,42 @@ is marked ready, and again immediately before it merges.
 
 ## Phase 9: Reset the API compatibility record
 
-Done as its own pull request once the squash has deployed, so each
-merge changes one thing and a problem in either is easy to place. Run
-the Phase 7 check against it too: backend pull requests routinely add
+Done as its own pull request on top of the squash, so each merge
+changes one thing and a problem in either is easy to place. Run the
+Phase 7 check against it too: backend pull requests routinely add
 decision files, so anything merged meanwhile may have added more.
 
-- [ ] Delete every file in `api-compatibility/` (173 on 2026-10-15) and
-      add one fresh `init` file (`generation: 1`, `forces_reload: false`,
-      `change: "none"`). Check first that no existing file sets
-      `forces_reload: true`; none did on 2026-10-03, in which case
+- [x] Delete every file in `api-compatibility/` (173 on 2026-10-15) and
+      add one fresh `init` file, `20261015000000-init.yaml`
+      (`generation: 1`, `forces_reload: false`, `change: "none"`). Not
+      one of the 173 set `forces_reload: true`, so
       `compute_required_client_generation()` in
       `backend/app/api_compatibility.py` returns 1 before and after,
-      and no client is told to reload. If one does, the fresh `init`
-      carries the current generation instead of 1, so the required
-      generation does not change. The files are a record
-      of decisions made while nothing was live, and git keeps that record
-      anyway. `new_compat_decision.py`, `validate-compat-files.sh` and
-      the breaking-change gate in `.github/workflows/gate-breaking.yml`
-      all stay: they are what will matter once the API has real
-      clients.
+      and no client is told to reload. Had one, the fresh `init` would
+      carry that generation instead of 1, so the required generation
+      did not move. The files are a record of decisions made while
+      nothing was live, and git keeps that record anyway.
+      `new_compat_decision.py`, `validate-compat-files.sh` and the
+      breaking-change gate in `.github/workflows/gate-breaking.yml` all
+      stay: they are what will matter once the API has real clients.
+      The backend and frontend read the directory afresh at build time,
+      and their tests use their own temporary directories, so nothing
+      else changes.
 
-- [ ] Give rule 5 of `validate-compat-files.sh`, which refuses deleted
+- [x] Give rule 5 of `validate-compat-files.sh`, which refuses deleted
       decision files outright, the same narrow exception as Phase 3: a
-      pull request may delete merged decision files only when it deletes
-      every one of them and adds exactly one `init` file at the current
-      generation. Add bats tests for the accepted reset and for a
-      partial deletion that must still fail, and keep the exception
-      afterwards, for the same reason as the migration one.
+      pull request may delete merged decision files only when it
+      deletes every one of them and adds exactly one `init` file at the
+      generation they required, with `forces_reload: false` and
+      `change: "none"`. Done as `is_compat_reset`, with
+      `required_generation_at_base` reading the deleted files as they
+      stand at the base. Bats tests cover the accepted reset, a reset
+      at the generation a `forces_reload: true` file required, the
+      wrong generation, a partial deletion, two added files, an `init`
+      that forces a reload or records a change, and the message. The
+      exception stays afterwards, for the same reason as the migration
+      one. The rule is written into the backend instructions, the
+      Claude rules and `docs/docs/backend/api-compatibility.md`.
 
 - [ ] Merge (a human does this), then confirm the app loads in an open
       browser without being told to reload.

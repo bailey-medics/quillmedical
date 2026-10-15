@@ -1,4 +1,0 @@
-generation: 1
-forces_reload: false
-change: "request-property-max-length-set POST /api/push/subscribe the `endpoint` request property's maxLength was set to `2000`"
-reason: "Push endpoint is capped at 2000 characters. A push service's address is a few hundred at most. The frontend builds this request itself, in subscriptionBody, from the browser's own push subscription, and a real subscription is always inside this limit. An open tab on an older build sends the same value, taken from the same browser object. Nothing a real browser sends is refused, so the silent background update is enough. No forced reload."

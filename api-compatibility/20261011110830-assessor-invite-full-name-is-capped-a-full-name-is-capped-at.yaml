@@ -1,4 +1,0 @@
-generation: 1
-forces_reload: false
-change: "request-property-max-length-set POST /api/passport/assessor-invites/accept the `full_name/anyOf[subschema #1]/` request property's maxLength was set to `255`"
-reason: "Assessor invite full name is capped. A full name is capped at 255 characters, the width of the users.full_name column, so a longer one could never have been stored. The frontend's own inputs stop at the same number, and no real value is this long, so an open tab on an older build sends nothing that is now refused. The silent background update is enough. No forced reload."
