@@ -1,51 +1,53 @@
 #!/usr/bin/env bash
-# Fails when a frontend source file is plain JavaScript, or is in no
-# TypeScript project that `yarn typecheck:all` runs.
+# Fails when any source file in the repository is plain JavaScript, or is
+# TypeScript in no project that the frontend's `yarn typecheck:all` runs.
 #
 # Usage: check-typescript-coverage.sh
 #
-# Run from frontend/. A file outside every project is type-checked by
-# nothing, and nothing says so: 30 were, until October 2026, among them
-# the whole public site. A JavaScript file is checked by nothing either.
-# So this lists every tracked source file and fails on any that is
-# JavaScript or that no project includes.
+# Run from anywhere in the repository. A file outside every project is
+# type-checked by nothing, and nothing says so: 30 were, until October
+# 2026, among them the whole public site. A JavaScript file is checked by
+# nothing either. So this lists every tracked source file and fails on any
+# that is JavaScript or that no project includes.
 set -euo pipefail
 
 # shellcheck source=../shared/logging.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "check-typescript-coverage"
 
 #: Fewer source files than this means the listing missed the folders,
-#: not that the frontend shrank. Well under the real number.
+#: not that the repository shrank. Well under the real number.
 readonly MIN_SOURCE_FILES=500
 
 #: JavaScript files allowed to stay JavaScript, each with its reason.
 #: Empty: every one was converted in October 2026.
 readonly ALLOWED_JS=()
 
-# Every tracked source file, less what is generated or only declares.
+# Every tracked source file, from the repository root, less what is
+# generated or only declares.
 source_files() {
   git ls-files '*.ts' '*.tsx' '*.js' '*.jsx' '*.cjs' '*.mjs' \
-    | grep -v '^src/generated/' \
+    | grep -v '^frontend/src/generated/' \
     | grep -v '\.d\.ts$' \
     || true
 }
 
-# The projects `typecheck:all` runs, read from package.json so the two
-# cannot drift apart.
+# The projects `typecheck:all` runs, read from the frontend's package.json
+# so the two cannot drift apart. Their paths are relative to frontend/.
 typecheck_projects() {
-  jq -r '.scripts["typecheck:all"]' package.json \
+  jq -r '.scripts["typecheck:all"]' frontend/package.json \
     | grep -o -- '--project [^ ]*' \
     | cut -d' ' -f2
 }
 
-# Every file the given projects include, relative to this folder.
+# Every file the given projects include, relative to the repository root.
 covered_files() {
+  local root="$1"
   local project=""
 
   while read -r project; do
-    yarn exec tsc --project "$project" --listFilesOnly
+    (cd frontend && yarn exec tsc --project "$project" --listFilesOnly)
   done \
-    | sed "s|^${PWD}/||" \
+    | sed "s|^${root}/||" \
     | grep -v '^/' \
     | grep -v 'node_modules/' \
     | sort -u
@@ -63,6 +65,10 @@ is_allowed_js() {
 }
 
 main() {
+  local root=""
+  root="$(git rev-parse --show-toplevel)"
+  cd "$root"
+
   local sources=""
   sources="$(source_files)"
 
@@ -70,7 +76,7 @@ main() {
   count="$(grep -c . <<<"$sources" || true)"
 
   if [ "$count" -lt "$MIN_SOURCE_FILES" ]; then
-    error "found ${count} source files, and there are far more than ${MIN_SOURCE_FILES}: run this from frontend/"
+    error "found ${count} source files, and there are far more than ${MIN_SOURCE_FILES}: is this the repository?"
     exit 1
   fi
 
@@ -85,7 +91,7 @@ main() {
   done <<<"$sources"
 
   local covered=""
-  covered="$(typecheck_projects | covered_files)"
+  covered="$(typecheck_projects | covered_files "$root")"
 
   local uncovered=""
   uncovered="$(comm -23 <(sort -u <<<"$sources") <(echo "$covered"))"
