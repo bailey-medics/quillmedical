@@ -12,6 +12,44 @@ import react from "eslint-plugin-react";
 import noSecrets from "eslint-plugin-no-secrets";
 import jsxA11y from "eslint-plugin-jsx-a11y";
 
+// The imports app code may not make, each named once so an exemption can
+// restate the rule with the entries that still apply there, rather than
+// turning the whole rule off.
+const MANTINE_PROVIDER = {
+  name: "@mantine/core",
+  importNames: ["MantineProvider"],
+  message:
+    "Don't use MantineProvider directly. Tests: use renderWithMantine/renderWithRouter. Stories: use the preview decorator.",
+};
+const ACTION_ICON = {
+  name: "@mantine/core",
+  importNames: ["ActionIcon"],
+  message:
+    "Use IconButton from @/components/button: it requires an aria-label, which an icon-only button needs to be announced as more than 'button'.",
+};
+const LOADER = {
+  name: "@mantine/core",
+  importNames: ["Loader"],
+  message:
+    "Use QuillSpinner or PageSpinner from @/components/loading-spinner: a bare Loader has no text, so a screen reader user hears nothing while they wait.",
+};
+const STORIES_HELPERS = {
+  group: ["@/stories/*"],
+  message:
+    "Storybook helpers (StoryNote, VariantRow, etc.) are for stories only - never import in app code.",
+};
+
+/**
+ * The `no-restricted-imports` rule with the given entries. Every file gets
+ * all four; an exemption passes the ones it keeps.
+ */
+function restrictImports({
+  paths = [MANTINE_PROVIDER, ACTION_ICON, LOADER],
+  patterns = [STORIES_HELPERS],
+} = {}) {
+  return ["warn", { paths, patterns }];
+}
+
 export default defineConfig(
   [
     // Ignore built artefacts
@@ -83,52 +121,54 @@ export default defineConfig(
 
         "no-console": ["error", { allow: ["warn", "error"] }],
         "no-secrets/no-secrets": ["warn", { tolerance: 4.5 }],
-        // Prevent raw MantineProvider usage outside approved entry points
-        "no-restricted-imports": [
-          "warn",
-          {
-            paths: [
-              {
-                name: "@mantine/core",
-                importNames: ["MantineProvider"],
-                message:
-                  "Don't use MantineProvider directly. Tests: use renderWithMantine/renderWithRouter. Stories: use the preview decorator.",
-              },
-              {
-                name: "@mantine/core",
-                importNames: ["ActionIcon"],
-                message:
-                  "Use IconButton from @/components/button: it requires an aria-label, which an icon-only button needs to be announced as more than 'button'.",
-              },
-              {
-                name: "@mantine/core",
-                importNames: ["Loader"],
-                message:
-                  "Use QuillSpinner or PageSpinner from @/components/loading-spinner: a bare Loader has no text, so a screen reader user hears nothing while they wait.",
-              },
-            ],
-            patterns: [
-              {
-                group: ["@/stories/*"],
-                message:
-                  "Storybook helpers (StoryNote, VariantRow, etc.) are for stories only - never import in app code.",
-              },
-            ],
-          },
-        ],
+        "no-restricted-imports": restrictImports(),
       },
     },
-    // Allow MantineProvider in the approved entry points
+    // The places that mount MantineProvider: the app's two entry points,
+    // the test wrappers, and the Storybook preview. Each may mount it and
+    // nothing else that is restricted.
     {
       files: [
-        "src/main.tsx",
         "public_pages/src/main.tsx",
         "src/test/test-utils.tsx",
         "src/RootLayout.test.tsx",
-        ".storybook/preview.tsx",
       ],
       rules: {
-        "no-restricted-imports": "off",
+        "no-restricted-imports": restrictImports({
+          paths: [ACTION_ICON, LOADER],
+        }),
+      },
+    },
+    // The app's entry point mounts MantineProvider, and its service worker
+    // registration uses console.log intentionally
+    {
+      files: ["src/main.tsx"],
+      rules: {
+        "no-restricted-imports": restrictImports({
+          paths: [ACTION_ICON, LOADER],
+        }),
+        "no-console": "off",
+      },
+    },
+    // The Storybook preview mounts MantineProvider for every story, and
+    // uses console.log for mock debugging
+    {
+      files: [".storybook/preview.tsx"],
+      rules: {
+        "no-restricted-imports": restrictImports({
+          paths: [ACTION_ICON, LOADER],
+        }),
+        "no-console": "off",
+      },
+    },
+    // Storybook stories use console.log for action callbacks, and are what
+    // the stories helpers are for. Before the blocks below, which excuse
+    // one story from one more thing
+    {
+      files: ["**/*.stories.tsx"],
+      rules: {
+        "no-console": "off",
+        "no-restricted-imports": restrictImports({ patterns: [] }),
       },
     },
     // The icon-button wrappers themselves, each of which takes or sets
@@ -145,34 +185,40 @@ export default defineConfig(
         "src/components/search/SearchFields.tsx",
       ],
       rules: {
-        "no-restricted-imports": "off",
+        "no-restricted-imports": restrictImports({
+          paths: [MANTINE_PROVIDER, LOADER],
+        }),
       },
     },
-    // The two buttons that show a small ring while they work. The button
-    // itself says what is happening, so the ring is hidden from
-    // assistive technology; every other wait is a QuillSpinner
+    // The two buttons that show a small ring while they work, and the
+    // story that shows one. The button itself says what is happening, so
+    // the ring is hidden from assistive technology; every other wait is a
+    // QuillSpinner
     {
       files: [
         "src/components/button/ButtonPairRed.tsx",
         "src/components/form/Form/SubmitButton.tsx",
+        "src/components/button/ButtonPair.stories.tsx",
       ],
       rules: {
-        "no-restricted-imports": "off",
+        "no-restricted-imports": restrictImports({
+          paths: [MANTINE_PROVIDER, ACTION_ICON],
+        }),
       },
     },
-    // Service worker registration uses console.log intentionally
+    // A story that supplies its own router, with initial state, bypasses
+    // the preview decorator and so must mount MantineProvider itself (see
+    // .claude/rules/components.md)
     {
-      files: ["src/main.tsx"],
+      files: [
+        "src/components/error-boundary/RouteErrorFallback.stories.tsx",
+        "src/components/page-message/PageMessage.stories.tsx",
+      ],
       rules: {
-        "no-console": "off",
-      },
-    },
-    // Storybook stories use console.log for action callbacks
-    {
-      files: ["**/*.stories.tsx"],
-      rules: {
-        "no-console": "off",
-        "no-restricted-imports": "off",
+        "no-restricted-imports": restrictImports({
+          paths: [ACTION_ICON, LOADER],
+          patterns: [],
+        }),
       },
     },
     // In a test or a story, `async () => value` is the shortest way to
@@ -188,13 +234,6 @@ export default defineConfig(
       ],
       rules: {
         "@typescript-eslint/require-await": "off",
-      },
-    },
-    // Storybook preview uses console.log for mock debugging
-    {
-      files: [".storybook/preview.tsx"],
-      rules: {
-        "no-console": "off",
       },
     },
     // Build scripts use console.log for progress output
