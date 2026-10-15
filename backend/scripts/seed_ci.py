@@ -186,6 +186,11 @@ def seed() -> None:
         # change the same member's competencies.
         seed_member_practice(db, org.id)
 
+        # 5c. A site inside the teaching organisation, and an organisation
+        # the teaching admin does not belong to, for the journeys in
+        # e2e/tests/teaching-admin/.
+        seed_teaching_admin_places(db, org.id, educator)
+
         db.commit()
 
         # 6. Open every teaching module mounted at /teaching-repos
@@ -273,6 +278,49 @@ def seed_member_practice(db: Session, org_unit_id: int) -> None:
         add_org_unit_member(db, org_unit_id, member.id, "staff")
     db.flush()
     print("Seeded the member practice journey")
+
+
+def _ensure_org_unit(
+    db: Session, name: str, unit_type: str, parent_id: int | None
+) -> OrgUnit:
+    """Return the org_unit called *name*, creating it if missing."""
+    unit = db.query(OrgUnit).filter(OrgUnit.name == name).first()
+
+    if unit is not None:
+        return unit
+
+    unit = OrgUnit(
+        name=name, type=unit_type, parent_id=parent_id, location="CI"
+    )
+    db.add(unit)
+    db.flush()
+    print(f"Created {name}")
+
+    return unit
+
+
+def seed_teaching_admin_places(
+    db: Session, org_unit_id: int, teaching_admin: User
+) -> None:
+    """Seed the places the teaching admin journeys act on and are refused.
+
+    ``CI Teaching Centre`` is a site inside the teaching organisation,
+    with the teaching admin (``educator``) a member there too. It is the
+    site whose page the journeys edit and add staff to.
+
+    ``CI Other Hospital`` and its ``CI Other Centre`` are a second tree
+    the teaching admin belongs nowhere in. A teaching admin must not be
+    able to move anybody into it, and the journeys check they cannot.
+    """
+    centre = _ensure_org_unit(db, "CI Teaching Centre", "site", org_unit_id)
+    add_org_unit_member(db, centre.id, teaching_admin.id, "staff")
+
+    other = _ensure_org_unit(
+        db, "CI Other Hospital", "teaching_establishment", None
+    )
+    _ensure_org_unit(db, "CI Other Centre", "site", other.id)
+    db.flush()
+    print("Seeded the teaching admin's places")
 
 
 def seed_teaching(db: Session, org_unit_id: int, admin_id: int) -> None:

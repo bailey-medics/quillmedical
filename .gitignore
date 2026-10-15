@@ -32,6 +32,8 @@ site/
 teaching-repos/
 # Teaching content for the end-to-end tests (.github/scripts/ci/fetch-e2e-teaching.sh)
 .e2e-teaching/
+# Emails the end-to-end stack wrote (.github/scripts/ci/prepare-e2e-mail.sh)
+frontend/e2e/.mail/
 
 .venv
 __pycache__/

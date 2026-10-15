@@ -3,15 +3,21 @@
 Delivers email through Amazon SES in London, so that email data stays in
 the UK; see docs/docs/plans/2026-10-06-amazon-ses-email-plan.md.
 When ``EMAIL_DRY_RUN`` is True (the default in development), emails
-are logged to stdout instead of being sent.
+are logged to stdout instead of being sent. On the end-to-end stack,
+``EMAIL_CAPTURE_DIR`` also has each one written to a folder, so a test can
+follow a link Quill sends.
 """
 
+import json
 import logging
 import mimetypes
+import os
 import threading
 import time
+import uuid
 from collections.abc import Mapping
 from email.message import EmailMessage
+from pathlib import Path
 from typing import TypedDict
 
 import boto3
@@ -414,6 +420,49 @@ def _send_with_ses(*, sender: str, to: str, raw_message: bytes) -> bool:
     return True
 
 
+def _capture(
+    folder: Path,
+    *,
+    to: str,
+    subject: str,
+    html_body: str,
+    text_body: str | None,
+) -> None:
+    """Write one dry-run email to *folder*, for the end-to-end tests.
+
+    One JSON file per email, named so that they sort in the order they
+    were sent. Written under a temporary name and renamed, so a test
+    reading the folder never opens half a file.
+
+    Only ever set on the end-to-end stack: the settings refuse
+    ``EMAIL_CAPTURE_DIR`` unless ``BACKEND_ENV`` is ``testing``. A folder
+    that cannot be written to is logged and skipped rather than failing
+    the request, so the test waiting for the email is what fails, saying
+    no email came.
+
+    Args:
+        folder: Where to write it.
+        to: Recipient email address.
+        subject: Email subject line.
+        html_body: HTML content of the email body.
+        text_body: The plain-text version, when there is one.
+    """
+    name = f"{time.time_ns()}-{uuid.uuid4().hex}"
+    message = {
+        "to": to,
+        "subject": subject,
+        "html": html_body,
+        "text": text_body,
+    }
+
+    try:
+        partial = folder / f".{name}.tmp"
+        partial.write_text(json.dumps(message), encoding="utf-8")
+        os.replace(partial, folder / f"{name}.json")
+    except OSError as exc:
+        logger.warning("Could not capture a dry-run email: %s", exc)
+
+
 def send_email(
     *,
     to: str,
@@ -473,6 +522,16 @@ def send_email(
             mask_email(to),
             len(attachment_names),
         )
+
+        if settings.EMAIL_CAPTURE_DIR:
+            _capture(
+                Path(settings.EMAIL_CAPTURE_DIR),
+                to=to,
+                subject=subject,
+                html_body=html_body,
+                text_body=text_body,
+            )
+
         _record_send(to)
         return
 
