@@ -87,7 +87,10 @@ def test_the_token_resets_the_password_of_that_accounts_address(
 ) -> None:
     invite = setup_invite_for(db_session, manager, colleague.id)
 
-    assert verify_password_reset_token(invite.token) == colleague.email
+    claims = verify_password_reset_token(invite.token)
+
+    assert claims is not None
+    assert claims.email == colleague.email
 
 
 def test_somebody_whose_account_is_closed_may_still_be_sent_one(
@@ -99,7 +102,10 @@ def test_somebody_whose_account_is_closed_may_still_be_sent_one(
 
     invite = setup_invite_for(db_session, manager, leaver.id)
 
-    assert verify_password_reset_token(invite.token) == leaver.email
+    claims = verify_password_reset_token(invite.token)
+
+    assert claims is not None
+    assert claims.email == leaver.email
 
 
 def test_a_caller_may_send_themselves_one(

@@ -12,7 +12,7 @@ All functions use industry-standard algorithms and handle secrets securely.
 import binascii
 import hmac
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, NamedTuple
 
 import jwt
 import pyotp
@@ -527,14 +527,29 @@ _password_reset = URLSafeTimedSerializer(
 )
 
 
-def create_password_reset_token(email: str) -> str:
+class ResetClaims(NamedTuple):
+    """What a password reset token says, once its signature is good."""
+
+    email: str
+    token_version: int
+
+
+def create_password_reset_token(email: str, token_version: int) -> str:
     """Create a time-limited password reset token.
 
     Generates a signed, time-limited token tied to the user's email.
     The token expires after PASSWORD_RESET_TTL_MIN minutes (default 30).
 
+    It also carries the user's ``token_version``. A signed token has no
+    record of having been used, so on its own a reset link would work
+    as often as it was opened inside its lifetime. Resetting the
+    password moves ``token_version`` on, so a link that names the old
+    one is spent: the reset route compares the two.
+
     Args:
         email: User's email address.
+        token_version: The user's ``token_version`` when the link is
+            made.
 
     Returns:
         str: URL-safe signed token.
@@ -545,28 +560,40 @@ def create_password_reset_token(email: str) -> str:
     if not email or not email.strip():
         raise ValueError("Email cannot be empty")
 
-    return _password_reset.dumps({"email": email.strip().lower()})
+    return _password_reset.dumps(
+        {"email": email.strip().lower(), "tv": token_version}
+    )
 
 
-def verify_password_reset_token(token: str) -> str | None:
-    """Verify a password reset token and return the email.
+def verify_password_reset_token(token: str) -> ResetClaims | None:
+    """Verify a password reset token and return what it says.
 
-    Checks the token signature and expiry. Returns the email if valid,
-    None if the token is invalid or expired.
+    Checks the token signature and expiry. Whether the link has been
+    spent is the caller's to decide, by comparing ``token_version``
+    with the user's.
 
     Args:
         token: Password reset token from email link.
 
     Returns:
-        The email address if valid, None otherwise.
+        The email address and token version if valid, None if the
+        token is tampered with, expired, or does not carry both.
     """
     try:
-        data: dict[str, str] = _password_reset.loads(
+        data = _password_reset.loads(
             token, max_age=settings.PASSWORD_RESET_TTL_MIN * 60
         )
-        return data.get("email")
     except BadSignature:
         return None
+    if not isinstance(data, dict):
+        return None
+
+    email = data.get("email")
+    token_version = data.get("tv")
+    if not isinstance(email, str) or not isinstance(token_version, int):
+        return None
+
+    return ResetClaims(email, token_version)
 
 
 # --- Email verification tokens ---

@@ -913,7 +913,7 @@ def forgot_password(
     # A deactivated account is treated as an unknown address: no email,
     # and the same reply.
     if user and user.is_active:
-        token = create_password_reset_token(email)
+        token = create_password_reset_token(email, user.token_version)
         reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
         send_email(
             to=email,
@@ -957,9 +957,9 @@ def reset_password(
         HTTPException: 400 if the token is invalid/expired or
             the new password does not meet requirements.
     """
-    email = verify_password_reset_token(data.token)
+    claims = verify_password_reset_token(data.token)
 
-    if not email:
+    if not claims:
         raise HTTPException(
             status_code=400,
             detail="Invalid or expired reset link",
@@ -970,11 +970,17 @@ def reset_password(
             detail="New password must be at least 8 characters",
         )
 
-    user = db.scalar(select(User).where(User.email == email))
+    user = db.scalar(select(User).where(User.email == claims.email))
 
     # A link sent before the account was deactivated is refused as an
-    # expired one would be.
+    # expired one would be. So is one already used: the reset below
+    # moves token_version on, and the link names the old one.
     if not user or not user.is_active:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired reset link",
+        )
+    if claims.token_version != user.token_version:
         raise HTTPException(
             status_code=400,
             detail="Invalid or expired reset link",

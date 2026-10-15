@@ -281,13 +281,13 @@ class TestTimedTokens:
     """Password reset and email verification tokens."""
 
     def test_reset_token_tampered_is_refused(self):
-        token = create_password_reset_token("ada@example.com")
+        token = create_password_reset_token("ada@example.com", 0)
         assert verify_password_reset_token(token + "x") is None
 
     def test_reset_token_expired_is_refused(self):
         """A lifetime below zero makes any token too old, which is the
         same ``SignatureExpired`` an old one raises."""
-        token = create_password_reset_token("ada@example.com")
+        token = create_password_reset_token("ada@example.com", 0)
         with patch.object(settings, "PASSWORD_RESET_TTL_MIN", -1):
             assert verify_password_reset_token(token) is None
 

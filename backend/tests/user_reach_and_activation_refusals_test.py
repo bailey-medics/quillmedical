@@ -309,7 +309,9 @@ def test_the_invite_carries_a_link_that_resets_that_accounts_password(
     assert response.json() == {"detail": "Invite email sent"}
     assert sent["to"] == colleague.email
     assert marker == "invite=1"
-    assert verify_password_reset_token(token) == colleague.email
+    claims = verify_password_reset_token(token)
+    assert claims is not None
+    assert claims.email == colleague.email
 
 
 def test_no_invite_is_sent_when_the_account_is_refused(

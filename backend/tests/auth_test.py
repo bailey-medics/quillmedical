@@ -650,7 +650,9 @@ class TestResetPassword:
         """A link sent before deactivation is refused as an expired one."""
         from app.security import create_password_reset_token
 
-        token = create_password_reset_token(test_user.email)
+        token = create_password_reset_token(
+            test_user.email, test_user.token_version
+        )
         test_user.is_active = False
         db_session.commit()
         old_hash = test_user.password_hash
@@ -671,7 +673,9 @@ class TestResetPassword:
         """Test successful password reset with valid token."""
         from app.security import create_password_reset_token
 
-        token = create_password_reset_token(test_user.email)
+        token = create_password_reset_token(
+            test_user.email, test_user.token_version
+        )
         response = test_client.post(
             "/api/auth/reset-password",
             json={"token": token, "new_password": "NewSecurePass123!"},
@@ -689,6 +693,36 @@ class TestResetPassword:
         )
         assert response.status_code == 200
 
+    def test_reset_link_is_spent_once_used(
+        self, test_client: TestClient, test_user: User, db_session: Session
+    ):
+        """A link names the token_version it was made under. The reset
+        moves that on, so opening the same link again is refused as an
+        expired one would be, and the password set the first time
+        stays."""
+        from app.security import create_password_reset_token
+
+        token = create_password_reset_token(
+            test_user.email, test_user.token_version
+        )
+        first = test_client.post(
+            "/api/auth/reset-password",
+            json={"token": token, "new_password": "FirstPass123!"},
+        )
+        assert first.status_code == 200
+        db_session.refresh(test_user)
+        hash_after_first = test_user.password_hash
+
+        second = test_client.post(
+            "/api/auth/reset-password",
+            json={"token": token, "new_password": "SecondPass123!"},
+        )
+
+        assert second.status_code == 400
+        assert "invalid or expired" in second.json()["detail"].lower()
+        db_session.refresh(test_user)
+        assert test_user.password_hash == hash_after_first
+
     def test_reset_password_invalid_token(self, test_client: TestClient):
         """Test reset-password with invalid token."""
         response = test_client.post(
@@ -704,7 +738,9 @@ class TestResetPassword:
         """Test reset-password rejects passwords shorter than 8 chars."""
         from app.security import create_password_reset_token
 
-        token = create_password_reset_token(test_user.email)
+        token = create_password_reset_token(
+            test_user.email, test_user.token_version
+        )
         response = test_client.post(
             "/api/auth/reset-password",
             json={"token": token, "new_password": "short"},
@@ -720,7 +756,9 @@ class TestResetPassword:
 
         from app.security import create_password_reset_token
 
-        token = create_password_reset_token(test_user.email)
+        token = create_password_reset_token(
+            test_user.email, test_user.token_version
+        )
 
         # Patch verify to simulate expired token (max_age=0 seconds)
         with patch("app.main.verify_password_reset_token", return_value=None):
