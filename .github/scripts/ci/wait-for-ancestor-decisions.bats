@@ -14,7 +14,7 @@ setup() {
   export GITHUB_WORKFLOW_REF="owner/repo/.github/workflows/gate-breaking.yml@refs/pull/1/merge"
 }
 
-VALID_JOB="Destructive-migration Slack notification decision"
+VALID_JOB="Destructive-migration PR comment"
 VALID_SHA="aaaa111"
 VALID_RUN_ID="500"
 
@@ -176,7 +176,7 @@ RUNS_JSON='{"workflow_runs":[
 @test "decide_job_finished is true for a completed decide job" {
   local jobs='{"jobs":[
     {"name":"DB destructive migration check","status":"completed"},
-    {"name":"Destructive-migration Slack notification decision","status":"completed"}
+    {"name":"Destructive-migration PR comment","status":"completed"}
   ]}'
 
   run decide_job_finished "$jobs" "$VALID_JOB"
@@ -186,7 +186,7 @@ RUNS_JSON='{"workflow_runs":[
 
 @test "decide_job_finished is false while the decide job is still running" {
   local jobs='{"jobs":[
-    {"name":"Destructive-migration Slack notification decision","status":"in_progress"}
+    {"name":"Destructive-migration PR comment","status":"in_progress"}
   ]}'
 
   run decide_job_finished "$jobs" "$VALID_JOB"
@@ -196,7 +196,7 @@ RUNS_JSON='{"workflow_runs":[
 
 @test "decide_job_finished is false while the decide job is queued" {
   local jobs='{"jobs":[
-    {"name":"Destructive-migration Slack notification decision","status":"queued"}
+    {"name":"Destructive-migration PR comment","status":"queued"}
   ]}'
 
   run decide_job_finished "$jobs" "$VALID_JOB"
@@ -229,7 +229,7 @@ RUNS_JSON='{"workflow_runs":[
   # conclusion. It will never post, so waiting on it would burn the deadline
   # for nothing.
   local jobs='{"jobs":[
-    {"name":"Destructive-migration Slack notification decision","status":"completed","conclusion":"cancelled"}
+    {"name":"Destructive-migration PR comment","status":"completed","conclusion":"cancelled"}
   ]}'
 
   run decide_job_finished "$jobs" "$VALID_JOB"
@@ -239,7 +239,7 @@ RUNS_JSON='{"workflow_runs":[
 
 @test "decide_job_finished treats a failed decide job as finished" {
   local jobs='{"jobs":[
-    {"name":"Destructive-migration Slack notification decision","status":"completed","conclusion":"failure"}
+    {"name":"Destructive-migration PR comment","status":"completed","conclusion":"failure"}
   ]}'
 
   run decide_job_finished "$jobs" "$VALID_JOB"
@@ -252,15 +252,15 @@ RUNS_JSON='{"workflow_runs":[
   # decide jobs. Waiting on the wrong one would couple gates that have no
   # reason to block each other.
   local jobs='{"jobs":[
-    {"name":"Breaking-change Slack notification decision","status":"in_progress"},
-    {"name":"Destructive-migration Slack notification decision","status":"completed"}
+    {"name":"Breaking-change PR comment","status":"in_progress"},
+    {"name":"Destructive-migration PR comment","status":"completed"}
   ]}'
 
   run decide_job_finished "$jobs" "$VALID_JOB"
 
   [ "$status" -eq 0 ]
 
-  run decide_job_finished "$jobs" "Breaking-change Slack notification decision"
+  run decide_job_finished "$jobs" "Breaking-change PR comment"
 
   [ "$status" -ne 0 ]
 }

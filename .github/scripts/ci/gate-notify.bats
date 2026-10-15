@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for gate-notify.sh - the "does this PR still need messages?" step.
+# Tests for gate-notify.sh - the "does this PR still need a comment?" step.
 #
 # Covers both the API breaking-change and destructive-migration marker keys,
 # proving each gate reads only its own record on a PR that trips both.
@@ -22,9 +22,7 @@ setup() {
   # A complete, valid environment. Each guard test below removes exactly one
   # piece of it, so no test ever gets past the guards to the `gh` calls.
   export GH_TOKEN="fake-token-never-used"
-  export GITHUB_OUTPUT="${BATS_TEST_TMPDIR}/github_output"
   export GITHUB_REPOSITORY="owner/repo"
-  : >"$GITHUB_OUTPUT"
 }
 
 # A valid argument set, so each guard test can supply everything up to the
@@ -77,15 +75,6 @@ VALID_ALL_CLEAR="**✅ All destructive migrations have been reverted**"
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"GH_TOKEN is not set"* ]]
-}
-
-@test "errors when GITHUB_OUTPUT is not set" {
-  unset GITHUB_OUTPUT
-
-  run main "$VALID_KEY" "$VALID_PR" "$VALID_HASH" "$VALID_MESSAGE" "$VALID_ALL_CLEAR"
-
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"GITHUB_OUTPUT not set"* ]]
 }
 
 @test "errors when GITHUB_REPOSITORY is not set" {
@@ -274,7 +263,7 @@ VALID_ALL_CLEAR="**✅ All destructive migrations have been reverted**"
 
 @test "build_body passes the caller's message through unchanged" {
   # The message carries the finding itself, so the script must not reword it:
-  # it is kept in step with the gate's Slack message.
+  # it is the gate's own wording.
   local message='**🚨 Destructive database migration pending review**
 
 **Migrations:**

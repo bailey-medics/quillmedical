@@ -76,10 +76,6 @@ The CI workflow will:
 
 ![Github api-compatibility failed](images/github-api-check-failed.png)
 
-### You will get a slack message similar to the one below when the check fails
-
-![Slack message showing api-compatibility validation failed](images/slack-message-api-compatibility-validation-failed.png)
-
 **Check the CI logs:**
 
 In the **Checks** tab of your PR, find the `API breaking-change check` job (`api_schema_diff`) and click **View workflow run**:
@@ -100,10 +96,6 @@ In the **Checks** tab of your PR, find the `API breaking-change check` job (`api
 Once CI detects `breaking=true`, GitHub Actions will pause and require approval from the **api-breaking-change-review** environment.
 
 **What you'll see:**
-
-### Slack shows this message
-
-![Slack message stating api breakage needs an approval](./images/slack-message-api-breaking-approval.png)
 
 ### Github PR looks like this
 
@@ -129,7 +121,7 @@ Click the environment link or go to **Settings** → **Environments** → **api-
 2. (Optional) add a comment explaining the business case for the breaking change
 3. Confirm approval
 
-Approving lets the gate job finish. Validation and the Slack notification do not wait for it: both have already run.
+Approving lets the gate job finish. Validation and the PR comment do not wait for it: both have already run.
 
 ## Step 4: Run the validation script and observe it fail
 
@@ -267,17 +259,14 @@ git push origin feature/test-api-compat
 CI runs and validation fails. You'll see:
 
 - `api_schema_diff` job **fails** (the validation step exits non-zero)
-- the gate **still** comments, still posts to Slack and still asks for
-  approval - the break is recorded when it appears, not when its paperwork
-  catches up
-- that Slack message carries the `oasdiff` change string under **Breaking
+- the gate **still** comments and still asks for approval - the break is
+  recorded when it appears, not when its paperwork catches up
+- that comment carries the `oasdiff` change string under **Breaking
   changes:**, which is exactly what you paste back into
   `new_compat_decision.py` to fix it
 - the failing check keeps the PR blocked regardless of the approval
 
-There is **one** Slack message per gate, sent when a break needs approval -
-the same rule as the destructive-migration gate. A validation failure on its
-own shows as a red check and nothing more.
+A validation failure on its own shows as a red check and nothing more.
 
 Restore your decision file and push again to verify the check clears.
 

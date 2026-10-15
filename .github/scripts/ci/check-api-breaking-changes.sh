@@ -42,7 +42,7 @@ main() {
 
   # --fail-on WARN is required: without it, `oasdiff breaking` always exits 0
   # regardless of how many ERR/WARN findings it prints, so the exit-code
-  # check below would be dead code and the downstream review-gate/Slack
+  # check below would be dead code and the downstream review-gate/comment
   # jobs would never fire. WARN (not ERR) matches "oasdiff breaking detects
   # changes with level ERR and WARN only" - any finding that command can
   # report at all should route through the human gate.

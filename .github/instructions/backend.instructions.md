@@ -259,11 +259,12 @@ the baseline included - is held to the full standard below.
   `db-destructive-migration-review` environment - a required-reviewer GitHub
   Actions environment with `can_admins_bypass: false`. The environment's
   sole reviewer is accountable for approving destructive database changes.
-- A Slack notification lands in `#cicd`, summarising the migration(s) and
-  the operations detected, and linking to "Review pending deployments" for the
-  environment approval. It is raised once per distinct set of destructive
-  migrations, not once per push - a later commit that leaves the same
-  migration(s) in place stays silent, while the approval gate still re-blocks.
+- The gate comments on the PR, summarising the migration(s) and the
+  operations detected, and pointing to "Review pending deployments" for the
+  environment approval. There is no Slack message. It comments once per
+  distinct set of destructive migrations, not once per push - a later commit
+  that leaves the same migration(s) in place stays silent, while the approval
+  gate still re-blocks.
 - **This approval is the only way a destructive migration proceeds.** The
   `allow-destructive` marker does not gate the PR; it is only a static-checker
   nod. Human approval is mandatory and not substitutable by code comments or
@@ -405,10 +406,9 @@ depends on the current response/request shape for as long as it stays open.
   trailer, or PR label. Those are just text/metadata an AI coding agent
   produces as routinely as the code itself, so none of them prove a human
   actually decided the change was intentional.
-- A breaking-change finding posts to Slack (`channel: app`, via the
-  reusable `.github/workflows/slack-notify.yml`) with `oasdiff`'s changelog
-  summary, so the approval prompt shows *what* is being confirmed rather
-  than a bare "approve?".
+- A breaking-change finding is commented on the PR with `oasdiff`'s
+  changelog summary, so the approval prompt shows *what* is being confirmed
+  rather than a bare "approve?". There is no Slack message.
 
 ### Decision files: `api-compatibility/` folder
 

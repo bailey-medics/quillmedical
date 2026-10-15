@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Decides whether a PR still needs a Slack message about its current
-# change-set: one message per pull request per distinct set of findings.
+# Records a gate's findings on a PR as a comment: one comment per pull
+# request per distinct set of findings.
 #
 # Usage: GH_TOKEN=<token> gate-notify.sh <marker-key> <pr-number> <hash> <message> <all-clear-message>
 #
@@ -15,19 +15,17 @@
 #                and no longer does records that too.
 #   message      The comment body when there is a finding, supplied by the
 #                caller so this script stays gate-agnostic. Written in GitHub
-#                markdown; see to-slack-mrkdwn.sh for how the same text reaches
-#                Slack.
+#                markdown.
 #   all-clear-message
 #                The comment body when the findings have gone. A separate
 #                string rather than something derived from the first, so each
 #                gate can name what went away in its own words.
 #
-# Every change-set announced to Slack leaves a comment on the PR, marked
+# Every change-set leaves a comment on the PR, marked
 # "<!-- <marker-key>: <hash> -->" on its own first line. If this gate's
 # *newest* comment already carries this exact marker, nothing has changed
-# since it was written: should_notify=false and nothing is mutated. Otherwise
-# a new comment is added and should_notify=true, so the caller sends the
-# message.
+# since it was written and nothing is mutated. Otherwise a new comment is
+# added.
 #
 # Comments are added, never edited, and only the newest is consulted, so the
 # conversation reads as a timeline: each comment sits among the commits that
@@ -40,11 +38,8 @@
 # never spoken - a clean PR should not collect an all-clear for a finding it
 # never had.
 #
-# Whether Slack is also told is the caller's decision, not this script's. The
-# workflow gates its notify job on "the caller found something" as well as
-# should_notify, so a return to clean records itself on the PR without paging
-# anyone. The approval gate is unaffected throughout; it re-blocks on every
-# push for as long as a finding is present.
+# The approval gate is unaffected throughout; it re-blocks on every push for
+# as long as a finding is present.
 #
 # The record is a PR comment rather than actions/cache because cache entries are
 # branch/key-scoped and evict after inactivity, whereas a comment persists
@@ -59,7 +54,6 @@
 #
 # Environment:
 #   GH_TOKEN             Token used by `gh` to authenticate. Set by the workflow.
-#   GITHUB_OUTPUT        Destination file for `should_notify=<bool>` (set by the runner).
 #   GITHUB_REPOSITORY    "owner/repo" (set by the runner).
 #   GITHUB_SERVER_URL    Base URL, e.g. "https://github.com" (set by the runner).
 #   GITHUB_RUN_ID        Current run id, used to link back to the workflow.
@@ -172,11 +166,6 @@ main() {
     exit 1
   fi
 
-  if [ -z "${GITHUB_OUTPUT:-}" ]; then
-    error "GITHUB_OUTPUT not set (not running in GitHub Actions?)"
-    exit 1
-  fi
-
   if [ -z "${GITHUB_REPOSITORY:-}" ]; then
     error "GITHUB_REPOSITORY not set (not running in GitHub Actions?)"
     exit 1
@@ -189,7 +178,6 @@ main() {
   # disappearance of, so it stays clean.
   if [ "$hash" = "$NO_FINDINGS" ] && [ "$(gate_has_commented "$comments_jsonl" "$marker_key")" = "false" ]; then
     log "Nothing found and '$marker_key' has never commented on PR #$pr_number - nothing to record."
-    echo "should_notify=false" >>"$GITHUB_OUTPUT"
     return 0
   fi
 
@@ -198,7 +186,6 @@ main() {
 
   if [ "$unchanged" = "true" ]; then
     log "State $hash is already the latest announcement on PR #$pr_number - nothing to record."
-    echo "should_notify=false" >>"$GITHUB_OUTPUT"
     return 0
   fi
 
@@ -213,10 +200,6 @@ main() {
   fi
 
   printf '%s' "$body" | gh pr comment "$pr_number" --body-file -
-
-  # Whether this also reaches Slack is the caller's call: the notify job is
-  # gated on the caller having found something, so an all-clear stays on the PR.
-  echo "should_notify=true" >>"$GITHUB_OUTPUT"
 }
 
 # Only run when executed directly, so bats can source the pure functions.

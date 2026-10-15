@@ -163,26 +163,23 @@ satisfies the static check cannot also satisfy the gate - proving a separate,
 human decision happened outside the code itself, mirroring the API gate's
 rejection of code comments as proof of a human approval.
 
-### Slack notification
+### PR comment
 
-When destructive migrations are detected, a Slack notification lands in
-`#cicd` (the same channel used for API breaking-change warnings) with:
-
-- The migration's filename and revision ID
-- The destructive operations found (`drop_column`, `drop_table`, or
-  `drop_constraint`)
-- The PR link
-- A link to "Review pending deployments" for the `db-destructive-migration-review`
-  environment
+When destructive migrations are detected, the gate comments on the pull
+request with the migration's filename and revision ID and the destructive
+operations found (`drop_column`, `drop_table`, or `drop_constraint`), and
+points to "Review pending deployments" for the
+`db-destructive-migration-review` environment. There is no Slack message: the
+comment and the waiting gate job are where the finding shows.
 
 A pull request is told **once per distinct set of destructive migrations**,
 not once per push. `db_destructive_migration_check` hashes the
-detected migrations and operations, and `db_destructive_migration_gate_notify`
+detected migrations and operations, and `db_destructive_migration_comment`
 then asks whether the gate's newest comment on the PR already carries that
 hash (`gate-notify.sh`, marker key `db-destructive-migration-hash`). A later commit that leaves the same
 migration(s) in place stays silent - a formatting fix or a rebase onto new
 main shouldn't re-announce a finding nobody has acted on. Add a second
-destructive migration and the hash moves, so a fresh message lands.
+destructive migration and the hash moves, so a fresh comment lands.
 
 Each distinct change-set gets its **own** comment, added where it appeared in
 the PR timeline and never edited afterwards, so the conversation reads as a
@@ -193,23 +190,19 @@ announced again - each comment records a transition, not a standing claim.
 
 A return to clean is recorded too. When the last destructive migration is
 removed the gate posts an all-clear comment (✅, "have been reverted"), so the
-timeline shows the risk arriving *and* going. Slack is not told - nobody needs
-paging to say a risk went away - and a PR that never had a destructive
-migration stays silent, since there is nothing to report the disappearance of.
+timeline shows the risk arriving *and* going. A PR that never had a
+destructive migration stays silent, since there is nothing to report the
+disappearance of.
 
 The approval is unaffected by any of this: it covers the pull request's own
 change, and is asked for again whenever that change differs, though not for a
-rebase. How often Slack is told is a notification concern, never a
-safety control.
-
-**One Slack message per gate**, sent when a break needs approval and only then.
-All-clears and static-check failures - a missing `allow-destructive` marker,
-say - show on the PR and nowhere else. The API breaking-change gate follows the
-same rule, so knowing one gate tells you how the other behaves.
+rebase. How often the PR is commented on is a record-keeping concern, never a
+safety control. The API breaking-change gate behaves the same way, so knowing
+one gate tells you how the other behaves.
 
 ### Why this lives outside `ci.yml`
 
-Detection, the PR record, the Slack message and the approval all sit in
+Detection, the PR record and the approval all sit in
 `.github/workflows/gate-breaking.yml` rather than `ci.yml`, because `ci.yml`
 cancels its runs when a newer commit arrives. That is right for expensive
 tests and wrong here: two commits pushed in quick succession, one adding a
