@@ -8744,7 +8744,6 @@ __metadata:
     eslint-plugin-react-refresh: "npm:^0.5.0"
     eslint-plugin-regexp: "npm:^3.0.0"
     eslint-plugin-storybook: "npm:10.6.1"
-    globals: "npm:^17.13.0"
     husky: "npm:9.1.7"
     jiti: "npm:^2"
     js-cookie: "npm:^3.0.5"
@@ -9097,13 +9096,6 @@ __metadata:
   version: 14.0.0
   resolution: "globals@npm:14.0.0"
   checksum: 10c0/b96ff42620c9231ad468d4c58ff42afee7777ee1c963013ff8aabe095a451d0ceeb8dcd8ef4cbd64d2538cef45f787a78ba3a9574f4a634438963e334471302d
-  languageName: node
-  linkType: hard
-
-"globals@npm:^17.13.0":
-  version: 17.13.0
-  resolution: "globals@npm:17.13.0"
-  checksum: 10c0/8371d9e4e5581640141b5cce70a098edd765d2e3ab063b14998e590698071e0afb4a4a6739ccfbdcbdeb2565c5553697ba07d95703c51039912cf341a7dba7a7
   languageName: node
   linkType: hard
 
