@@ -60,17 +60,6 @@ beforeAll(async () => {
   await eslint.lintText("export {};\n", { filePath: "src/pages/Home.tsx" });
 }, 120_000);
 
-describe("plain JavaScript", () => {
-  it("is checked with the core rules and the browser's globals", async () => {
-    const [result] = await eslint.lintText(
-      "document.title = notDefinedAnywhere;\n",
-      { filePath: "public/colour-scheme.js" },
-    );
-
-    expect(result.messages.map((m) => m.ruleId)).toEqual(["no-undef"]);
-  });
-});
-
 describe("type assertions", () => {
   /** The rules reported when `filePath` holds `code`. */
   async function rulesFor(code: string, filePath: string): Promise<string[]> {

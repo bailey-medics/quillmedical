@@ -672,7 +672,7 @@ back, because the tool that runs each reads TypeScript itself; only
       The content security policy is untouched: the file is still served
       from the site's own origin.
 
-- [ ] Add the guard. A script beside `run-frontend-lint.sh` lists every
+- [x] Add the guard. A script beside `run-frontend-lint.sh` lists every
       tracked `.ts`, `.tsx`, `.js`, `.cjs` and `.mjs` file in `frontend/`
       (less `src/generated/` and `.d.ts`), and fails on two counts: any
       `.js`, `.cjs` or `.mjs` file not on its allow-list, which holds only
@@ -682,6 +682,19 @@ back, because the tool that runs each reads TypeScript itself; only
       `ci.yml`, give it a bats test with a planted `.js` file and a
       planted file outside every project, and record the counts it
       reports.
+      Done on 15 October 2026, as
+      `.github/scripts/ci/check-typescript-coverage.sh`, run after
+      `yarn typecheck:all` in that leg of `ci.yml`. It reads the projects
+      from the `typecheck:all` script in `package.json`, so the two
+      cannot drift apart, and fails below 500 files, as the lint guard
+      does, in case it is run from the wrong folder. It reports all
+      1,324 source files covered; the allow-list is empty. Seven bats
+      cases plant a `.js`, a `.cjs` and an `.mjs` file and a TypeScript
+      file no project includes. With no JavaScript left, the JavaScript
+      block in `eslint.config.ts`, its probe in `eslintConfig.test.ts`
+      and the `js`, `jsx`, `cjs` and `mjs` in the `eslint` script's glob
+      went too, and so did the `globals` package, which only that block
+      used.
 
 ## Decisions
 

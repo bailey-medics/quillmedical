@@ -246,7 +246,9 @@ jobs:
             eslint)   bash ../.github/scripts/ci/run-frontend-lint.sh eslint ;;
             prettier) bash ../.github/scripts/ci/run-frontend-lint.sh prettier ;;
             stylelint) bash ../.github/scripts/ci/run-frontend-lint.sh stylelint ;;
-            "typecheck:all") yarn typecheck:all ;;
+            # Then that no source file is JavaScript, or in no project
+            # typecheck:all ran, which would pass it unchecked.
+            "typecheck:all") yarn typecheck:all && bash ../.github/scripts/ci/check-typescript-coverage.sh ;;
             "storybook:build") yarn storybook:build ;;
           esac
 

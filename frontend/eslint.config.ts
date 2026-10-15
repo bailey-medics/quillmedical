@@ -6,7 +6,6 @@ import eslintConfigPrettier from "eslint-config-prettier";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import storybook from "eslint-plugin-storybook";
-import globals from "globals";
 import tseslint from "typescript-eslint";
 import regexp from "eslint-plugin-regexp";
 import react from "eslint-plugin-react";
@@ -268,27 +267,6 @@ export default defineConfig(
       rules: {
         "no-console": "off",
       },
-    },
-
-    // Plain JavaScript, which TypeScript's own checks never reach, so the
-    // core rules do: one script that runs in the browser before the app
-    // loads, the public site's page generator, and this config
-    {
-      files: ["**/*.{js,cjs,mjs}"],
-      extends: [js.configs.recommended, eslintConfigPrettier],
-      rules: {
-        "no-eval": "error",
-        "no-implied-eval": "error",
-        "no-new-func": "error",
-      },
-    },
-    {
-      files: ["public/**/*.js"],
-      languageOptions: { globals: globals.browser },
-    },
-    {
-      files: ["public_pages/scripts/**/*.{js,cjs,mjs}", "*.{js,cjs,mjs}"],
-      languageOptions: { globals: globals.node },
     },
   ],
   // Storybook’s flat config can stay as a sibling layer. Its published
