@@ -1,4 +1,0 @@
-generation: 1
-forces_reload: false
-change: "request-property-min-length-increased POST /api/push/subscribe the `endpoint` request property's minLength was increased from `0` to `1`"
-reason: "Push endpoint may no longer be empty. An empty address was never a subscription: there is nothing to send a notification to. The frontend builds this request itself, in subscriptionBody, from the browser's own push subscription, which always carries its endpoint, and refuses to send one without. An open tab on an older build sends the same value, taken from the same browser object. Nothing a real browser sends is refused, so the silent background update is enough. No forced reload."
