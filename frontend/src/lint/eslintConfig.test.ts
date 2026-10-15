@@ -66,6 +66,39 @@ describe("plain JavaScript", () => {
   });
 });
 
+describe("type assertions", () => {
+  /** The rules reported when `filePath` holds `code`. */
+  async function rulesFor(code: string, filePath: string): Promise<string[]> {
+    const [result] = await eslint.lintText(code, { filePath });
+
+    return result.messages.map((m) => m.ruleId ?? "unparsed");
+  }
+
+  it("reports casting an object literal into a type", async () => {
+    const code = [
+      'import type { User } from "@/auth/AuthContext";',
+      'export const user = { id: "1" } as User;',
+      "",
+    ].join("\n");
+
+    expect(await rulesFor(code, "src/pages/Home.tsx")).toEqual([
+      "@typescript-eslint/consistent-type-assertions",
+    ]);
+  });
+
+  it("reports a type argument that only repeats its default", async () => {
+    const code = [
+      "type Box<T = string> = { value: T };",
+      'export const box: Box<string> = { value: "" };',
+      "",
+    ].join("\n");
+
+    expect(await rulesFor(code, "src/pages/Home.tsx")).toEqual([
+      "@typescript-eslint/no-unnecessary-type-arguments",
+    ]);
+  });
+});
+
 describe("restricted imports", () => {
   it("reports all four in ordinary app code", async () => {
     expect(await reportedAt("src/pages/Home.tsx")).toEqual([

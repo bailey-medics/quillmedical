@@ -33,7 +33,7 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import DataCard from "./DataCard";
+import DataCard, { DataCardSkeleton } from "./DataCard";
 import CellContent from "./CellContent";
 import { BodyText, BodyTextBold } from "@/components/typography";
 
@@ -110,13 +110,7 @@ function DataTableWithResultsView<T>({
     return (
       <Stack gap="md">
         {Array.from({ length: 3 }, (_, index) => (
-          <DataCard
-            key={index}
-            row={{} as T}
-            columns={columns}
-            onClick={() => {}}
-            loading
-          />
+          <DataCardSkeleton key={index} />
         ))}
       </Stack>
     );

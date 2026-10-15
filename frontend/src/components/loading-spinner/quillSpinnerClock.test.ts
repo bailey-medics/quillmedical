@@ -60,6 +60,9 @@ describe("quillSpinnerClock", () => {
   describe("started from a spinner that is already turning", () => {
     function turningSince(startTime: unknown): Element {
       const element = document.createElement("div");
+      // A stand-in for the browser's Animation, of which only startTime
+      // is read
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       element.getAnimations = () => [{ startTime } as Animation];
 
       return element;

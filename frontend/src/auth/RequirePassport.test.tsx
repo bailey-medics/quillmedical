@@ -14,7 +14,10 @@ import * as authContext from "./AuthContext";
 import type { User } from "./AuthContext";
 import { RequirePassport } from "./RequirePassport";
 
-function mockAuth(user: Partial<User> | null, status = "authenticated") {
+function mockAuth(
+  user: Partial<User> | null,
+  status: "authenticated" | "loading" | "unauthenticated" = "authenticated",
+) {
   vi.spyOn(authContext, "useAuth").mockReturnValue({
     state:
       status === "authenticated"
@@ -27,11 +30,11 @@ function mockAuth(user: Partial<User> | null, status = "authenticated") {
               ...user,
             },
           }
-        : ({ status } as never),
+        : { status, user: null },
     login: vi.fn(),
     logout: vi.fn(),
     reload: vi.fn(),
-  } as never);
+  });
 }
 
 function renderGuard() {

@@ -102,12 +102,12 @@ export interface FormProps<T extends FieldValues> {
  * Does NOT block during submission or after success (the onSubmit
  * handler may navigate before Form calls reset).
  */
-function FormNavigationBlocker({
+function FormNavigationBlocker<T extends FieldValues>({
   control,
   onProceed,
   formState,
 }: {
-  control: Control<FieldValues>;
+  control: Control<T>;
   onProceed: () => void;
   formState: FormState;
 }) {
@@ -132,8 +132,8 @@ function FormNavigationBlocker({
  * useBlocker requires a data router (createBrowserRouter/createMemoryRouter),
  * not just any router context (e.g. MemoryRouter).
  */
-function MaybeFormNavigationBlocker(props: {
-  control: Control<FieldValues>;
+function MaybeFormNavigationBlocker<T extends FieldValues>(props: {
+  control: Control<T>;
   onProceed: () => void;
   formState: FormState;
 }) {
@@ -295,7 +295,7 @@ export default function Form<T extends FieldValues>({
         </form>
         {blockNavigation && (
           <MaybeFormNavigationBlocker
-            control={methods.control as unknown as Control<FieldValues>}
+            control={methods.control}
             onProceed={() => methods.reset()}
             formState={formState}
           />

@@ -62,6 +62,9 @@ function everyPageNearTheScreen() {
       }
       observe() {
         this.callback(
+          // A stand-in for the browser's entry, of which only
+          // isIntersecting is read
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
           [{ isIntersecting: true } as IntersectionObserverEntry],
           this as unknown as IntersectionObserver,
         );

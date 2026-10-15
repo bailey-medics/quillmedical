@@ -170,21 +170,17 @@ function renderWithAuth(
         ? organisationsList(organisations)
         : null;
     if (answer !== null) {
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        statusText: "OK",
-        headers: new Headers({ "Content-Type": "application/json" }),
-        json: () => Promise.resolve(answer),
-      } as Response);
+      return Promise.resolve(
+        new Response(JSON.stringify(answer), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
     }
 
-    return Promise.resolve({
-      ok: false,
-      status: 404,
-      statusText: "Not Found",
-      json: () => Promise.resolve({}),
-    } as Response);
+    return Promise.resolve(
+      new Response("{}", { status: 404, statusText: "Not Found" }),
+    );
   });
 
   return renderWithRouter(<AuthProvider>{ui}</AuthProvider>, {
@@ -670,21 +666,17 @@ describe("SideNavContent Component", () => {
               : null;
 
         if (answer === null) {
-          return Promise.resolve({
-            ok: false,
-            status: 404,
-            statusText: "Not Found",
-            json: () => Promise.resolve({}),
-          } as Response);
+          return Promise.resolve(
+            new Response("{}", { status: 404, statusText: "Not Found" }),
+          );
         }
 
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          statusText: "OK",
-          headers: new Headers({ "Content-Type": "application/json" }),
-          json: () => Promise.resolve(answer),
-        } as Response);
+        return Promise.resolve(
+          new Response(JSON.stringify(answer), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
       });
 
       renderWithRouter(

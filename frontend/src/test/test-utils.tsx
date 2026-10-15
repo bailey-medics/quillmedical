@@ -158,27 +158,17 @@ export function renderWithRouter(
  */
 export function createMockResponse(
   data: unknown,
-  options: { status?: number; statusText?: string; ok?: boolean } = {},
+  options: { status?: number; statusText?: string } = {},
 ): Response {
-  const { status = 200, statusText = "OK", ok = true } = options;
+  const { status = 200, statusText = "OK" } = options;
 
-  return {
-    ok,
+  // A real Response, so every member a caller might read is there and
+  // `ok` follows the status as it does in a browser
+  return new Response(JSON.stringify(data), {
     status,
     statusText,
-    json: async () => data,
-    text: async () => JSON.stringify(data),
-    headers: new Headers(),
-    redirected: false,
-    type: "basic",
-    url: "",
-    clone: () => createMockResponse(data, options),
-    body: null,
-    bodyUsed: false,
-    arrayBuffer: async () => new ArrayBuffer(0),
-    blob: async () => new Blob(),
-    formData: async () => new FormData(),
-  } as Response;
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 /**

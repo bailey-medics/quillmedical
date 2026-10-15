@@ -31,9 +31,13 @@ const rankWithoutCompetency: User = {
   competencies: [],
 };
 
-function mockAuth(user: User | null, status = "authenticated") {
+/** Signed in as `user`, or, with no user, loading or signed out. */
+function mockAuth(
+  user: User | null,
+  status: "loading" | "unauthenticated" = "unauthenticated",
+) {
   vi.spyOn(authContext, "useAuth").mockReturnValue({
-    state: { status, user } as never,
+    state: user ? { status: "authenticated", user } : { status, user: null },
     login: vi.fn(),
     logout: vi.fn(),
     reload: vi.fn(),

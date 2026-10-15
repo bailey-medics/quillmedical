@@ -166,7 +166,7 @@ describe("API Tests", () => {
 
   it("handles errors", async () => {
     mockFetch.mockResolvedValueOnce(
-      createMockResponse({ detail: "Error" }, { status: 500, ok: false }),
+      createMockResponse({ detail: "Error" }, { status: 500 }),
     );
 
     // Test error handling

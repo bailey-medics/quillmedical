@@ -13,7 +13,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "@test/test-utils";
 import { Badge } from "@mantine/core";
-import DataCard from "./DataCard";
+import DataCard, { DataCardSkeleton } from "./DataCard";
 import type { Column } from "./DataTable";
 
 interface TestUser {
@@ -112,6 +112,16 @@ describe("DataCard", () => {
 
       const card = container.querySelector(".mantine-Card-root");
       expect(card).toHaveStyle({ cursor: "pointer" });
+    });
+  });
+
+  describe("DataCardSkeleton", () => {
+    it("stands in for a card with skeletons, and no row", () => {
+      const { container } = renderWithMantine(<DataCardSkeleton />);
+
+      expect(container.querySelectorAll(".mantine-Skeleton-root").length).toBe(
+        3,
+      );
     });
   });
 

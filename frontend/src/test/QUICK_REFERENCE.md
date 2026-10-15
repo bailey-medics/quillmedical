@@ -164,7 +164,7 @@ await waitFor(() => {
 
 ```typescript
 mockFetch.mockResolvedValueOnce(
-  createMockResponse({ detail: "Invalid input" }, { status: 400, ok: false }),
+  createMockResponse({ detail: "Invalid input" }, { status: 400 }),
 );
 
 await user.click(submitButton);

@@ -178,7 +178,7 @@ export default function Home() {
           // Extract avatar gradient index from FHIR extension
           const gradientIndex = extractAvatarGradientIndex(fhirPatient);
 
-          const patient = {
+          const patient: Patient = {
             id: fhirPatient.id,
             name: displayName,
             givenName: givenName,
@@ -190,7 +190,7 @@ export default function Home() {
             nationalNumberSystem: nationalNumberSystem,
             gradientIndex: gradientIndex,
             onQuill: true,
-          } as Patient;
+          };
 
           return patient;
         });

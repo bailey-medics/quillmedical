@@ -13,7 +13,12 @@ import {
 
 vi.mock("@/auth/AuthContext", () => ({ useAuth: vi.fn() }));
 
-const learner = { enabled_features: ["teaching", "passport"] } as User;
+const learner: User = {
+  id: "1",
+  username: "learner",
+  email: "learner@example.com",
+  enabled_features: ["teaching", "passport"],
+};
 
 function signIn(user: User | null): void {
   vi.mocked(useAuth).mockReturnValue(

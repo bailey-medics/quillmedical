@@ -40,7 +40,7 @@ import { StateMessage } from "@/components/message-cards";
 import { IconAlertCircle } from "@/components/icons/appIcons";
 import SortHeader, { type SortDirection } from "./SortHeader";
 import TablePagination from "./TablePagination";
-import DataCard from "./DataCard";
+import DataCard, { DataCardSkeleton } from "./DataCard";
 import CellContent from "./CellContent";
 import classes from "./DataTable.module.css";
 
@@ -324,13 +324,7 @@ function DataTableView<T>({
       return (
         <Stack gap="md" ref={measureRef}>
           {Array.from({ length: 3 }, (_, i) => (
-            <DataCard
-              key={i}
-              row={{} as T}
-              columns={columns}
-              onClick={() => {}}
-              loading
-            />
+            <DataCardSkeleton key={i} />
           ))}
         </Stack>
       );

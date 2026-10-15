@@ -4,17 +4,16 @@ import { renderWithMantine } from "@test/test-utils";
 import StatusStrip from "./StatusStrip";
 
 function mockMediaQuery(matches: boolean): void {
-  window.matchMedia = (query: string) =>
-    ({
-      matches: query.includes("max-width") ? matches : false,
-      media: query,
-      onchange: null,
-      addListener: () => {},
-      removeListener: () => {},
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      dispatchEvent: () => false,
-    }) as MediaQueryList;
+  window.matchMedia = (query: string): MediaQueryList => ({
+    matches: query.includes("max-width") ? matches : false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  });
 }
 
 describe("StatusStrip Component", () => {
