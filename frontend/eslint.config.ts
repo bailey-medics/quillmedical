@@ -246,8 +246,7 @@ export default defineConfig(
       },
     },
     // A story that supplies its own router, with initial state, bypasses
-    // the preview decorator and so must mount MantineProvider itself (see
-    // .claude/rules/components.md)
+    // the preview decorator and so must mount MantineProvider itself.
     {
       files: [
         "src/components/error-boundary/RouteErrorFallback.stories.tsx",
