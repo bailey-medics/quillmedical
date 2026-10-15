@@ -9,6 +9,10 @@
 # 2026, among them the whole public site. A JavaScript file is checked by
 # nothing either. So this lists every tracked source file and fails on any
 # that is JavaScript or that no project includes.
+#
+# There is no list of JavaScript files allowed to stay: a file that truly
+# had to would be a change to this script and its tests, which a review
+# cannot miss, rather than one more line in a list.
 set -euo pipefail
 
 # shellcheck source=../shared/logging.sh
@@ -17,10 +21,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/../shared/logging.sh" "check-typescript-c
 #: Fewer source files than this means the listing missed the folders,
 #: not that the repository shrank. Well under the real number.
 readonly MIN_SOURCE_FILES=500
-
-#: JavaScript files allowed to stay JavaScript, each with its reason.
-#: Empty: every one was converted in October 2026.
-readonly ALLOWED_JS=()
 
 # Every tracked source file, from the repository root, less what is
 # generated or only declares.
@@ -53,17 +53,6 @@ covered_files() {
     | sort -u
 }
 
-is_allowed_js() {
-  local file="$1"
-  local allowed=""
-
-  for allowed in ${ALLOWED_JS[@]+"${ALLOWED_JS[@]}"}; do
-    if [ "$file" = "$allowed" ]; then return 0; fi
-  done
-
-  return 1
-}
-
 main() {
   local root=""
   root="$(git rev-parse --show-toplevel)"
@@ -84,9 +73,7 @@ main() {
   local file=""
   while read -r file; do
     case "$file" in
-      *.js | *.jsx | *.cjs | *.mjs)
-        if ! is_allowed_js "$file"; then javascript+="  ${file}"$'\n'; fi
-        ;;
+      *.js | *.jsx | *.cjs | *.mjs) javascript+="  ${file}"$'\n' ;;
     esac
   done <<<"$sources"
 

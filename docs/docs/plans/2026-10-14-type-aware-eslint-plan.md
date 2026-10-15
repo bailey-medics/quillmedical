@@ -860,6 +860,23 @@ matches one way of writing the import:
       that `import("./Home")` is left alone. The config test now holds
       17 cases.
 
+## Phase 15: No list of JavaScript files allowed to stay
+
+Raised on 15 October 2026 against #2015: the guard kept an empty
+`ALLOWED_JS` list, which reads as a place to excuse a file, so one line
+added to it, by a person or a model, would let JavaScript through with
+little to show in review.
+
+- [x] Remove `ALLOWED_JS` and `is_allowed_js` from
+      `.github/scripts/ci/check-typescript-coverage.sh`, so any `.js`,
+      `.jsx`, `.cjs` or `.mjs` file fails, with no exceptions. The header
+      says why: a file that truly had to stay JavaScript would be a
+      change to the script and its tests, which a review cannot miss.
+      Done on 15 October 2026, as its own branch on top of the stack, at
+      Mark's request rather than folded into #2015, whose description
+      says so. The eleven bats cases pass unchanged, and the guard still
+      reports all 1,325 source files covered.
+
 ## Decisions
 
 - **Type-aware rules stay on in tests** - the question was whether to
