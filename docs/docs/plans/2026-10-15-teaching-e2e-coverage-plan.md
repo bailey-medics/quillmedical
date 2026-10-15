@@ -65,31 +65,50 @@ each new item becomes a step in the phase it belongs to.
       anyone before the stack starts, from `just e2e`, the CI job and the
       guide screenshots workflow alike.
 
-## Phase 2: Let a teaching admin remove a site from an organisation
+## Phase 2: Let a teaching admin delete a site from an organisation
 
-- [ ] Show the "Remove from organisation" action on the sites table in
-      `frontend/src/pages/admin/organisations/OrganisationAdminPage.tsx` to a
-      teaching admin. The action and its confirm modal already exist, but
-      the column is drawn only for `manage_users` holders
-      (`siteActionsColumn`), so a TA never sees it. That is why it looked
-      missing.
-
-- [ ] Check what removal does before widening it. `confirmRemoveSite`
+- [x] Check what removal does before widening it. `confirmRemoveSite`
       calls `orgUnits.remove`, which is `DELETE /api/org-units/{id}` in
       `backend/app/org_units/router.py`. That deletes the site, not just its
-      link to the organisation, and the route requires `manage_users`. Two
+      link to the organisation, and the route required `manage_users`. Two
       choices: let a scoped manager delete a site under an organisation they
-      belong to, or detach the site and leave it standing. Recommended:
-      delete, as now. A site belongs to one organisation in the tree, so a
+      belong to, or detach the site and leave it standing. Decided: delete,
+      as before. A site belongs to one organisation in the tree, so a
       detached one would belong nowhere, and the route already refuses a
-      site that still has anything inside it. Admit a scoped manager to the
-      route the way `require_editable` already does for updates. Never
-      name `manage_teaching` in the route.
+      site that still has anything inside it. The route now admits a
+      scoped manager and checks the caller through `require_editable`, the
+      check updates already use, which refuses an organisation to a scoped
+      manager and anybody else's site as not found. `manage_teaching` is
+      named nowhere in the route.
 
-- [ ] Make the confirm modal say the site is deleted, not just removed,
-      and name what goes with it (its staff memberships and practising
-      rows). Add the backend tests beside the router, and update the page's
-      `.test.tsx` and story.
+- [x] Keep teaching results out of a delete. Found while checking the
+      above: `Assessment.org_unit_id` is `ON DELETE CASCADE`, so deleting
+      an org_unit somebody sat an assessment at would delete their
+      results, which EoEETA keeps for three and a half years after an
+      account closes. The route now refuses, 409, any org_unit holding an
+      assessment, whoever asks, and says to mark it inactive instead.
+      Assessments are normally kept at the organisation rather than its
+      sites, so this rarely bites, but no route should be able to empty
+      the results table by accident.
+
+- [x] Show the action on the sites table in
+      `frontend/src/pages/admin/organisations/OrganisationAdminPage.tsx` to a
+      teaching admin. The action and its confirm modal already existed, but
+      the column was drawn only for `manage_users` holders
+      (`siteActionsColumn`), so a TA never saw it. That is why it looked
+      missing.
+
+- [x] Make the confirm modal say the site is deleted, not just removed,
+      and name what goes with it. The menu item is now "Delete site", and
+      the modal says the site's staff stop being members there, what they
+      may practise there is withdrawn, and that it cannot be undone. The
+      modal's "Removing\u2026" label, which showed those six characters
+      literally because JSX does not unescape an attribute string, is now
+      "Deleting…". Backend tests are in
+      `backend/tests/manage_teaching_org_unit_routes_test.py`
+      (`TestDeletingASite`), replacing the test that said a teaching admin
+      could not delete a site. The page has no story; its `.test.tsx`
+      covers the warning, cancelling, and a refused delete.
 
 ## Phase 3: Teaching admin journeys
 

@@ -1007,8 +1007,8 @@ describe("OrganisationAdminPage", () => {
 
   describe("A teaching admin", () => {
     // Reaches the page through `manage_teaching`. The backend sends them
-    // no patients or features; the page offers them the staff and nothing
-    // that leads to a route they would 404 on.
+    // no patients or features; the page offers them the staff and the
+    // sites, and nothing that leads to a route they would 404 on.
     const teachingOrg = {
       id: 3,
       name: "Teaching Trust",
@@ -1076,11 +1076,54 @@ describe("OrganisationAdminPage", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("sees the sites but may not remove them", async () => {
-      await screen.findByText("Ward B");
+    it("may delete a site, after a warning that says it is for good", async () => {
+      const user = userEvent.setup();
+      const delSpy = vi.spyOn(apiLib.api, "del").mockResolvedValue(undefined);
+
+      await user.click(await screen.findByLabelText("Actions for Ward B"));
+      await user.click(await screen.findByText("Delete site"));
+
+      const dialog = await screen.findByRole("dialog");
+      expect(dialog).toHaveTextContent("Delete site");
+      expect(dialog).toHaveTextContent("Its staff stop being members there");
+      expect(dialog).toHaveTextContent("This cannot be undone");
+      expect(delSpy).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole("button", { name: "Delete" }));
+
+      await waitFor(() => {
+        expect(delSpy).toHaveBeenCalledWith("/org-units/7");
+      });
+      expect(await screen.findByText("Site deleted")).toBeInTheDocument();
+    });
+
+    it("keeps the site when the warning is cancelled", async () => {
+      const user = userEvent.setup();
+      const delSpy = vi.spyOn(apiLib.api, "del").mockResolvedValue(undefined);
+
+      await user.click(await screen.findByLabelText("Actions for Ward B"));
+      await user.click(await screen.findByText("Delete site"));
+      await user.click(await screen.findByRole("button", { name: "Cancel" }));
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+      expect(delSpy).not.toHaveBeenCalled();
+    });
+
+    it("is told when a site cannot be deleted", async () => {
+      const user = userEvent.setup();
+      vi.spyOn(apiLib.api, "del").mockRejectedValue(
+        new Error("This site holds teaching results, so it cannot be deleted"),
+      );
+
+      await user.click(await screen.findByLabelText("Actions for Ward B"));
+      await user.click(await screen.findByText("Delete site"));
+      await user.click(await screen.findByRole("button", { name: "Delete" }));
+
       expect(
-        screen.queryByLabelText("Actions for Ward B"),
-      ).not.toBeInTheDocument();
+        await screen.findByText("Failed to delete site"),
+      ).toBeInTheDocument();
     });
   });
 
