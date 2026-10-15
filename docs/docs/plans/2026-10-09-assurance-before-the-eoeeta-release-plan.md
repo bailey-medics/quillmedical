@@ -717,7 +717,7 @@ before any feature.
 - [x] [`frontend/tsconfig.check.json`](../../../frontend/tsconfig.check.json).
 - [x] [`frontend/tsconfig.node.json`](../../../frontend/tsconfig.node.json).
 - [x] [`frontend/vite.config.ts`](../../../frontend/vite.config.ts).
-- [ ] [`frontend/eslint.config.js`](../../../frontend/eslint.config.js).
+- [x] [`frontend/eslint.config.ts`](../../../frontend/eslint.config.ts).
 - [ ] [`security.py`](../../../backend/app/security.py)
 
 - [ ] Audit [`infra/`](../../../infra/), the Terraform, for what is exposed: ingress and
