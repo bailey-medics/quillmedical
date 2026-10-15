@@ -231,10 +231,7 @@ export default defineConfig(
     // Phase 4 scaffolding, widened a folder at a time: the no-unsafe rules
     // are back on for these tests, which have been brought into line
     {
-      files: [
-        "src/pages/**/*.test.{ts,tsx}",
-        "src/features/**/*.test.{ts,tsx}",
-      ],
+      files: ["**/*.test.{ts,tsx}", "src/test/**/*.{ts,tsx}", "e2e/**/*.ts"],
       rules: {
         "@typescript-eslint/no-unsafe-argument": "error",
         "@typescript-eslint/no-unsafe-assignment": "error",

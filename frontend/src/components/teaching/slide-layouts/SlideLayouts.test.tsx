@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
+import type * as apiLib from "@/lib/api";
 import SlideLayoutSectionTitle from "./SlideLayoutSectionTitle";
 import SlideLayoutVideo from "./SlideLayoutVideo";
 import SlideLayoutTextWithFigure from "./SlideLayoutTextWithFigure";
@@ -25,11 +26,11 @@ vi.mock("@/components/teaching/video-player/activeVideoPlayer", () => ({
 
 // The hosted-video path asks the backend for an access grant before it
 // can build a URL, so that call is mocked per test below.
-const mockPost = vi.fn();
+const { mockPost } = vi.hoisted(() => ({
+  mockPost: vi.fn<typeof apiLib.api.post>(),
+}));
 vi.mock("@/lib/api", () => ({
-  api: {
-    post: (...args: unknown[]) => mockPost(...args),
-  },
+  api: { post: mockPost },
 }));
 
 describe("SlideLayoutSectionTitle", () => {

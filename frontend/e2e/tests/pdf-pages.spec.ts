@@ -58,7 +58,10 @@ async function openCertificate(page: Page, pdfPath: string): Promise<void> {
   // The signed-in user as they are, plus what the passport's gates ask.
   await page.route("**/api/auth/me", async (route) => {
     const response = await route.fetch();
-    const user = await response.json();
+    const user = (await response.json()) as {
+      enabled_features?: string[];
+      competencies?: string[];
+    };
     await route.fulfill({
       response,
       json: {

@@ -95,7 +95,7 @@ describe("Test Infrastructure", () => {
 
     it("response can be parsed as JSON", async () => {
       const response = createMockResponse({ data: "test" });
-      const json = await response.json();
+      const json: unknown = await response.json();
 
       expect(json).toEqual({ data: "test" });
     });

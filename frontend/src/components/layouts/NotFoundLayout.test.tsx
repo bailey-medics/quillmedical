@@ -1,15 +1,11 @@
-import { describe, expect, it, afterEach } from "vitest";
+import { describe, expect, it, afterEach, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithMantine } from "@test/test-utils";
 import NotFoundLayout from "./NotFoundLayout";
 
 describe("NotFoundLayout Component", () => {
-  const originalEnv = import.meta.env.BASE_URL;
-
   afterEach(() => {
-    // Restore original BASE_URL
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (import.meta.env as any).BASE_URL = originalEnv;
+    vi.unstubAllEnvs();
   });
 
   describe("Basic rendering", () => {
@@ -46,8 +42,7 @@ describe("NotFoundLayout Component", () => {
     });
 
     it("uses default base URL /", () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (import.meta.env as any).BASE_URL = "/";
+      vi.stubEnv("BASE_URL", "/");
       renderWithMantine(<NotFoundLayout />);
       // Component normalises BASE_URL and navigates via window.location.href
       expect(

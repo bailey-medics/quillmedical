@@ -143,10 +143,12 @@ describe("RequireAuth", () => {
     );
 
     expect(screen.getByText("Login Page")).toBeInTheDocument();
+    // `expect.objectContaining` comes back typed as `any`
+    const fromPatient: unknown = expect.objectContaining({
+      pathname: "/patients/123",
+    });
     expect(onState).toHaveBeenCalledWith(
-      expect.objectContaining({
-        from: expect.objectContaining({ pathname: "/patients/123" }),
-      }),
+      expect.objectContaining({ from: fromPatient }),
     );
   });
 

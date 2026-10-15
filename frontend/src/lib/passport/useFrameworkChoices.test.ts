@@ -2,12 +2,14 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { FRAMEWORK_OPTIONS } from "./frameworks";
 import { useFrameworkChoices } from "./useFrameworkChoices";
+import type * as apiLib from "./api";
 
-const fetchPassportFrameworks = vi.fn();
+const { fetchPassportFrameworks } = vi.hoisted(() => ({
+  fetchPassportFrameworks: vi.fn<typeof apiLib.fetchPassportFrameworks>(),
+}));
 
 vi.mock("./api", () => ({
-  fetchPassportFrameworks: (...args: unknown[]) =>
-    fetchPassportFrameworks(...args),
+  fetchPassportFrameworks,
 }));
 
 const LEAD_FIRST = [

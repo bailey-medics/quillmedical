@@ -12,11 +12,14 @@ import { screen, waitFor } from "@testing-library/react";
 import { renderWithMantine } from "@/test/test-utils";
 import CertificateUploader from "./CertificateUploader";
 import { ACCEPTED_EVIDENCE_TYPES } from "./evidenceFormat";
+import type * as passportLib from "@lib/passport";
 
-const uploadEvidence = vi.fn();
+const { uploadEvidence } = vi.hoisted(() => ({
+  uploadEvidence: vi.fn<typeof passportLib.uploadEvidence>(),
+}));
 
 vi.mock("@lib/passport", () => ({
-  uploadEvidence: (...args: unknown[]) => uploadEvidence(...args),
+  uploadEvidence,
 }));
 
 const stored = {

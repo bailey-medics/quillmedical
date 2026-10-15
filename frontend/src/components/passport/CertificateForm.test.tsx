@@ -86,13 +86,15 @@ describe("CertificateForm", () => {
       screen.getByRole("button", { name: "Record certificate" }),
     );
 
+    // The day comes from whichever month the calendar opened on, so
+    // the shape is what is pinned rather than the value. (The matcher
+    // comes back typed as `any`, so it is named first.)
+    const aDay: unknown = expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/);
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Advanced life support",
         issuer: "Resuscitation Council UK",
-        // The day comes from whichever month the calendar opened on, so
-        // the shape is what is pinned rather than the value.
-        awarded_on: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        awarded_on: aDay,
       }),
     );
   });

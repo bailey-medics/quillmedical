@@ -14,6 +14,7 @@ import {
   type RetentionReview,
 } from "@/lib/retention/retentionReviews";
 import RetentionDecisionList from "./RetentionDecisionList";
+import type { RetentionDecision } from "@/lib/retention/retentionReviews";
 
 function review(id: number, full_name: string): RetentionReview {
   return {
@@ -47,7 +48,9 @@ const bob = review(2, "Bob Example");
 function renderList(
   props: Partial<React.ComponentProps<typeof RetentionDecisionList>> = {},
 ) {
-  const onCarryOut = vi.fn().mockResolvedValue(undefined);
+  const onCarryOut = vi
+    .fn<(decisions: RetentionDecision[]) => Promise<void>>()
+    .mockResolvedValue(undefined);
   const onClear = vi.fn();
 
   renderWithMantine(
