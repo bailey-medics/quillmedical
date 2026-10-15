@@ -526,6 +526,100 @@ finished config: 28 findings, 21 in tests and 7 in app code.
       `methods.control as unknown as Control<FieldValues>` that fed them
       is gone. That double cast was the third finding.
 
+## Phase 11: The public site is type-checked, strictly, in CI
+
+Asked on 15 October 2026 whether TypeScript is enforced on every file, a
+count said no. Of 1,322 tracked source files in `frontend/`, 30 are in no
+tsconfig that CI runs: `yarn typecheck:all` reads `tsconfig.check.json`,
+`yarn build` runs `tsc -b` over the projects `tsconfig.json` references,
+and neither reaches them. Twenty-five are the public site; the other five
+are plain JavaScript, which Phase 12 deals with.
+
+The public site's files, everything in `public_pages/src/` plus its
+`vite.config.ts` and `scripts/generate-pages.test.ts`, belong only to
+`public_pages/tsconfig.json`. Nothing runs it, it is not `strict`, and
+run by hand it reports 660 errors. None of them is in a public page: all
+are in the `../src` it includes whole, whose `@lib/*` and `@test/*`
+aliases it does not map and whose test globals it does not load. Vite
+builds the site without type-checking it, so a type error in a public
+page reaches the live site unnoticed.
+
+- [ ] Rewrite `public_pages/tsconfig.json` to extend the app's strict
+      settings and include only `src`, `scripts` and `vite.config.ts`,
+      letting module resolution follow the imports into `../src` rather
+      than including that folder whole, so the shared code is checked as
+      the public site uses it and the app's tests are not dragged in. Map
+      every alias the shared code it imports uses. Then fix what strict
+      mode reports in the public pages themselves, and record the count.
+
+- [ ] Run it in CI. Add it to `typecheck:all`, and decide whether it also
+      joins the references in `frontend/tsconfig.json`: `tsc -b` there
+      runs in the app's Docker build, which has no need to wait on the
+      public site, so `typecheck:all` alone is the expectation; record
+      the choice here. Read `.github/workflows/public-site.yml`, which
+      builds and deploys the site, and make sure a type error fails CI
+      before that workflow can publish it.
+
+## Phase 12: No JavaScript files, and a guard that keeps it so
+
+The five plain JavaScript files in `frontend/` are type-checked by
+nothing: `public/colour-scheme.js`, `public_pages/scripts/generate-pages.cjs`,
+`eslint.config.js`, `postcss.config.cjs` and `test-runner-jest.config.js`.
+Agreed on 15 October 2026: convert them to TypeScript rather than check
+them in place with `checkJs`, because "there are no `.js` files" is a rule
+a guard can enforce and a reader can trust, where a JavaScript file with
+JSDoc types is one more thing to remember. Four need nothing converted
+back, because the tool that runs each reads TypeScript itself; only
+`colour-scheme` must be served as JavaScript and needs a build step.
+
+- [ ] `public_pages/scripts/generate-pages.cjs` becomes
+      `generate-pages.ts`, run by `tsx` in `pages:gen`, as
+      `generate:types` already is. Its test imports it directly rather
+      than through `createRequire`. Check `public-site.yml` and the dev
+      scripts still run it.
+
+- [ ] `eslint.config.js` becomes `eslint.config.ts`. Find out whether
+      ESLint 10 reads a TypeScript config on its own with the pinned
+      Node, or needs `jiti` as a dependency, and record which here. Type
+      the helper and the constants Phase 7 added.
+
+- [ ] `postcss.config.cjs` becomes `postcss.config.ts`, typed with
+      PostCSS's own config type. Check both the dev server and
+      `yarn build` pick it up, and Storybook, whose `main.ts` sets its
+      own PostCSS plugins.
+
+- [ ] `test-runner-jest.config.js` becomes `.ts` if the Storybook test
+      runner will load it; Jest reads a TypeScript config only through
+      `ts-node` or similar. If that means a new dependency or a fight,
+      keep it JavaScript and check it in place instead: `allowJs`,
+      `checkJs` and `strict` in a small tsconfig run from
+      `typecheck:all`, with the reason recorded here. It is the one
+      exception this phase allows.
+
+- [ ] `public/colour-scheme.js` becomes `src/colour-scheme.ts`. It must
+      stay a plain blocking `<script>` in the `<head>`, because a module
+      script may run after the first paint and bring back the white
+      flash it exists to prevent, so Vite's own handling of `index.html`
+      scripts will not do. Add a small plugin to `vite.config.ts`, as
+      `pdfjsDecoders` is, that compiles it with esbuild to a fixed-name
+      `colour-scheme.js`, serves it in dev and emits it in the build;
+      `index.html` loads `/colour-scheme.js` as now. Check the content
+      security policy in `caddy/prod/Caddyfile` still allows it, and
+      add a test that the built file exists and `index.html` loads it as
+      a classic script. `e2e/tests/colour-scheme.spec.ts` covers what it
+      does.
+
+- [ ] Add the guard. A script beside `run-frontend-lint.sh` lists every
+      tracked `.ts`, `.tsx`, `.js`, `.cjs` and `.mjs` file in `frontend/`
+      (less `src/generated/` and `.d.ts`), and fails on two counts: any
+      `.js`, `.cjs` or `.mjs` file not on its allow-list, which holds only
+      the Jest config if the step above kept it; and any file that no
+      project `typecheck:all` runs includes, asked of each project with
+      `tsc --listFilesOnly`. Run it in the `typecheck:all` leg of
+      `ci.yml`, give it a bats test with a planted `.js` file and a
+      planted file outside every project, and record the counts it
+      reports.
+
 ## Decisions
 
 - **Type-aware rules stay on in tests** - the question was whether to

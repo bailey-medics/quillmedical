@@ -514,6 +514,65 @@ A position is a slot a place has, in `models.py` as `Position` and
 
 ## Claude-specific
 
+### Change code only on `implement` or `i`
+
+**Make no code change until Mark types `implement` or `i`.** Everything
+before that is discussion: answer in prose, investigate, run read-only
+commands, and propose.
+
+The word counts only when it stands alone, in one of two ways:
+
+- **The whole message is the word**: `implement`, or `i`, and nothing
+  else.
+- **The word is on a line of its own with one blank line above it**, at
+  the end of a longer message:
+
+  ```text
+  Agreed on the plugin and the guard.
+
+  implement
+  ```
+
+Anything else is not the instruction, however much it sounds like one.
+"Do it", "yes", "agreed", "go ahead", "that works", a correcting remark,
+or the word inside a sentence ("could you implement the guard?") all
+leave the conversation a discussion.
+
+- **`/crpd` and `/f` are the instruction too.** Running either is the
+  go-ahead to change code for that run, because changing and landing code
+  is what each exists to do.
+- **Plan documents are the exception.** A plan under `docs/docs/plans/`
+  may be written or edited during a discussion, since that is where the
+  discussion's decisions are recorded.
+- **Code means any file that is not a plan document**: source, tests,
+  config, CI workflows, the Justfile, scripts, other docs, `CLAUDE.md`
+  itself, and git history - commits, branches and pushes.
+- **If it is unclear whether a message is the instruction, it is not.**
+  Ask in one line.
+
+Recorded on 15 October 2026, at Mark's request, after a plan phase was
+added in the middle of a discussion he had not finished.
+
+### Say what you are about to do, in one sentence, before doing it
+
+**Open every reply with one plain sentence saying what you are about to
+do**, before the first tool call: "Reading the three failing tests, then
+fixing the fixture they share." Not a plan, not a list, and not a
+restatement of the request: what you will actually do, so Mark can stop
+it at once if it is not what he meant.
+
+- **Then work quietly.** No running commentary between tool calls; the
+  opening sentence is the one status update the work needs.
+- **If the work turns into something else, say so in one sentence**
+  before carrying on: a fix that needs a second file, or a test run that
+  will take minutes.
+- **It does not replace the closing summary.** The reply still ends with
+  its `## TL;DR`.
+
+Recorded on 15 October 2026: twice in one session the work went
+somewhere Mark had not meant, quietly, for a long stretch, where one
+sentence up front would have caught it.
+
 ### End every response with a tldr
 
 **Close each response with a short bulleted summary.** User does not have time
