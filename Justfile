@@ -830,6 +830,61 @@ migrate message:
     echo "Review upgrade() and downgrade() before committing."
 
 
+alias mc := migrate-current
+# Print the revision a remote environment's core database is at (a read; changes nothing)
+migrate-current env:
+    #!/usr/bin/env bash
+    {{initialise}} "migrate-current ({{env}})"
+    set -euo pipefail
+
+    PROJECT=$(just _gcp_env_project "{{env}}")
+    REGION="europe-west2"
+
+    echo "Current migration on ${PROJECT}"
+    echo "─────────────────────────────────"
+
+    # The job's output goes to Cloud Logging, not back to this terminal, so
+    # read the execution's log once it has finished.
+    execution=$(gcloud run jobs execute "quill-admin-{{env}}" \
+        --project="$PROJECT" \
+        --region="$REGION" \
+        --update-env-vars "ADMIN_ACTION=show-migration" \
+        --wait \
+        --format="value(metadata.name)")
+
+    gcloud logging read \
+        "resource.type=cloud_run_job AND labels.\"run.googleapis.com/execution_name\"=\"${execution}\"" \
+        --project="$PROJECT" \
+        --order=asc \
+        --format="value(textPayload)"
+
+
+alias md := migrate-dump
+# Write the schema this worktree's migrations build to a file (throwaway database), for comparing one chain with another
+migrate-dump file:
+    #!/usr/bin/env bash
+    {{initialise}} "migrate-dump - {{file}}"
+    set -euo pipefail
+
+    # Upgrades a throwaway Postgres to head from THIS worktree's migrations
+    # and dumps its schema, so two chains can be compared by diffing two
+    # dumps: before and after a squash, say. pg_dump runs in the Postgres
+    # container, which has it; the backend image does not. The dump is
+    # normalised so a diff shows schema and nothing else: no owners or
+    # privileges, and none of the per-run \restrict keys pg_dump 18 writes.
+    compose="docker compose -p $(just _migrate-project) -f compose.migrate.yml"
+    trap '${compose} down --volumes --remove-orphans >/dev/null 2>&1' EXIT
+    ${compose} run --rm migrate alembic upgrade head
+
+    ${compose} exec -T postgres-core \
+        pg_dump --schema-only --no-owner --no-privileges -U core_user quill_core \
+        | grep -vE '^\\(un)?restrict ' \
+        > "{{file}}"
+
+    echo ""
+    echo "Schema written to {{file}}"
+
+
 alias ml := migrate-local
 # Apply pending migrations to this main checkout's dev database
 migrate-local:

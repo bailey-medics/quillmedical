@@ -1235,8 +1235,8 @@ safeguards.
 ### 17. Squash the migration history to a single baseline — separate plan
 
 - [x] Collapse all 35 core-DB migrations into one baseline migration, pre-launch,
-      while there is no live data. **Tracked in its own plan file:**
-      [Alembic migrations squash plan](2026-08-11-migrations-squash-plan.md).
+      while there is no live data. **Tracked in its own plan file**, since
+      deleted.
       _Implemented on `feature/squash-migrations`:_ the chain is now the single
       baseline `878bc9300d4f`, and `check_migrations.py`'s allow-list is empty.
 

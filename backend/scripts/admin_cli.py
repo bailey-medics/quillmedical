@@ -8,7 +8,7 @@ not available.
 
 Environment Variables:
     ADMIN_ACTION:     Required.  One of: create-superadmin, add-role,
-                      verify-email, run-migrations,
+                      verify-email, run-migrations, show-migration,
                       check-competency-seeding, delete-passport,
                       send-newsletter, accessibility-reminder,
                       apply-retention, send-teaching-reminders,
@@ -40,6 +40,8 @@ Environment Variables:
     head` against the standard CORE_DB_* connection settings, as a
     pre-deploy step run once against the shared database before the new
     app revision is created (see docs/docs/backend/alembic-migration-safety.md).
+    show-migration takes none either - it prints the revision the database
+    is at (`alembic current`) and changes nothing.
 
 Usage (Cloud Run Job):
     gcloud run jobs execute quill-admin-staging \\
@@ -284,6 +286,27 @@ def run_migrations() -> int:
         return 0
     except Exception as exc:
         print(f"✗ Migration failed: {exc}", file=sys.stderr)
+        return 1
+
+
+def show_migration() -> int:
+    """Print the revision the core database is at (`alembic current`).
+
+    A read, for checking what a deploy left behind, or what a squash must
+    reproduce, without changing anything.
+    """
+    from alembic.config import Config
+
+    from alembic import command
+
+    config_path = os.path.join(proj_root, "alembic.ini")
+    cfg = Config(config_path)
+
+    try:
+        command.current(cfg, verbose=True)
+        return 0
+    except Exception as exc:
+        print(f"✗ Could not read the revision: {exc}", file=sys.stderr)
         return 1
 
 
@@ -710,6 +733,10 @@ ACTIONS: dict[str, tuple[Callable[[], int], str]] = {
     "run-migrations": (
         run_migrations,
         "Apply all pending Alembic migrations (alembic upgrade head)",
+    ),
+    "show-migration": (
+        show_migration,
+        "Print the revision the core database is at (alembic current)",
     ),
     "delete-passport": (
         delete_passport,
