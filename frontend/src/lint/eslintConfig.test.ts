@@ -93,6 +93,65 @@ describe("type assertions", () => {
   });
 });
 
+describe("ways round the restricted imports", () => {
+  /** The rules reported when a page holds `code`. */
+  async function rulesInPage(code: string): Promise<string[]> {
+    const [result] = await eslint.lintText(`${code}\n`, {
+      filePath: "src/pages/Home.tsx",
+    });
+
+    return result.messages.map((m) => m.ruleId ?? "unparsed");
+  }
+
+  it.each([
+    [
+      "a stories helper by a relative path",
+      'import { VariantRow } from "../stories/variants"; export const x = VariantRow;',
+    ],
+    [
+      "a story file",
+      'import { meta } from "../components/button/IconButton.stories"; export const x = meta;',
+    ],
+    [
+      "a story file with its ending",
+      'import meta from "./Thing.stories.tsx"; export const x = meta;',
+    ],
+    [
+      "a Mantine name under another name",
+      'import { Loader as Spinner } from "@mantine/core"; export const x = Spinner;',
+    ],
+    [
+      "the whole of Mantine at once",
+      'import * as M from "@mantine/core"; export const x = M.Loader;',
+    ],
+    ["a Mantine name passed on", 'export { Loader } from "@mantine/core";'],
+  ])("reports importing %s", async (_, code) => {
+    expect(await rulesInPage(code)).toContain("no-restricted-imports");
+  });
+
+  it("reports loading Mantine at run time", async () => {
+    const code =
+      'export const x = import("@mantine/core").then((m) => m.Loader);';
+
+    expect(await rulesInPage(code)).toContain("no-restricted-syntax");
+  });
+
+  it("leaves loading a page at run time alone", async () => {
+    expect(await rulesInPage('export const x = import("./Home");')).toEqual([]);
+  });
+
+  it("lets a story import story code by any path", async () => {
+    const [result] = await eslint.lintText(
+      'import { VariantRow } from "../../stories/variants";\nexport const x = VariantRow;\n',
+      { filePath: "src/components/button/IconButton.stories.tsx" },
+    );
+
+    expect(
+      result.messages.filter((m) => m.ruleId === "no-restricted-imports"),
+    ).toEqual([]);
+  });
+});
+
 describe("restricted imports", () => {
   it("reports all four in ordinary app code", async () => {
     expect(await reportedAt("src/pages/Home.tsx")).toEqual([
