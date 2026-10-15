@@ -63,6 +63,9 @@ def seed() -> None:
                 email="admin@ci.local",
                 password_hash=hash_password("admin123"),
                 platform_role="superadmin",
+                # What an operator is given in a real deployment: the
+                # platform role alone opens no admin page.
+                base_profession="superadmin_profession",
                 is_active=True,
                 email_verified=True,
             )

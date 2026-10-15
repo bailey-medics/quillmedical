@@ -17,6 +17,7 @@
 
 import type { Page } from "@playwright/test";
 import { test, expect } from "../fixtures/axe";
+import { cardTitled, searchRow } from "../fixtures/tables";
 
 const ORGANISATION = "CI Teaching Hospital";
 const PROFESSION = "Teaching delegate";
@@ -105,7 +106,11 @@ test.describe("User form practice", () => {
     // having opened the staff table to switch it on.
     await page.goto("/admin/organisations");
     await page.getByText(ORGANISATION).click();
-    await page.getByRole("row", { name: new RegExp(username) }).click();
+    // Searched for, as the staff table pages at ten rows and other
+    // journeys add staff to this organisation.
+    await (
+      await searchRow(cardTitled(page, "Organisation staff members"), username)
+    ).click();
     await expect(page).toHaveURL(/\/admin\/organisations\/\d+\/members\/\d+$/);
     await expect(
       page.getByRole("switch", { name: `${COMPETENCY}: may practise here` }),
