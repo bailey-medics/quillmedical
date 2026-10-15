@@ -1,18 +1,22 @@
 #!/usr/bin/env bats
-# Tests for tools/review-marks/extension.js, the VS Code extension that
+# Tests for tools/review-marks/extension.ts, the VS Code extension that
 # shows the review ledger in the editor.
 #
 # Only the two parts with no editor in them: reading the ledger's output
 # into marks for files and folders, and reading a diff into the lines to
 # mark. The extension asks for the `vscode` module as it loads, which
 # exists only inside VS Code, so a stand-in with just enough in it is put
-# where node will find it. Every test is skipped where node is not
-# installed.
+# where node will find it. The tests run the JavaScript `install.sh`
+# makes from the TypeScript, so they test what VS Code loads. Every test
+# is skipped where node is not installed; CI installs it.
 
 setup() {
     command -v node >/dev/null 2>&1 || skip "node is not installed"
 
-    EXTENSION="${BATS_TEST_DIRNAME}/../../tools/review-marks/extension.js"
+    # shellcheck source=../../tools/review-marks/install.sh
+    source "${BATS_TEST_DIRNAME}/../../tools/review-marks/install.sh"
+    compile_extension "$BATS_TEST_TMPDIR"
+    EXTENSION="${BATS_TEST_TMPDIR}/extension.js"
     MODULES="${BATS_TEST_TMPDIR}/node_modules"
     mkdir -p "${MODULES}/vscode"
 
@@ -207,4 +211,14 @@ $(row audited 2026-10-10 def backend/app/db/core_db.py)"
     run lines ""
 
     [ "$output" = '{"changed":[],"removedBefore":[]}' ]
+}
+
+@test "the JavaScript made from the TypeScript is plain, loadable JavaScript" {
+    run node --check "$EXTENSION"
+
+    [ "$status" -eq 0 ]
+
+    run grep -E '^(import|export) |: typeof |^interface |^type ' "$EXTENSION"
+
+    [ "$status" -eq 1 ]
 }
