@@ -544,21 +544,40 @@ aliases it does not map and whose test globals it does not load. Vite
 builds the site without type-checking it, so a type error in a public
 page reaches the live site unnoticed.
 
-- [ ] Rewrite `public_pages/tsconfig.json` to extend the app's strict
+- [x] Rewrite `public_pages/tsconfig.json` to extend the app's strict
       settings and include only `src`, `scripts` and `vite.config.ts`,
       letting module resolution follow the imports into `../src` rather
       than including that folder whole, so the shared code is checked as
       the public site uses it and the app's tests are not dragged in. Map
       every alias the shared code it imports uses. Then fix what strict
       mode reports in the public pages themselves, and record the count.
+      Done on 15 October 2026. It extends `tsconfig.app.json`, which
+      brings `strict` and every alias from `tsconfig.json`, and includes
+      the site's own files plus `../src/**/*.d.ts` for the declarations
+      the shared code relies on. Strict mode reports nothing: none of the
+      660 was ever in a public page. `tsc --listFilesOnly` shows all 26
+      of the site's files and the 41 shared files they import, and a
+      planted type error in a public page is now reported. One thing
+      found on the way: the `postcss-preset-mantine` declaration Phase 5
+      added only takes effect when it is read before the package's own
+      bare `declare module`, so the declarations are listed first in
+      `include`, with the reason in the declaration file itself, since the pre-commit `check-json` hook refuses comments in a tsconfig.
 
-- [ ] Run it in CI. Add it to `typecheck:all`, and decide whether it also
+- [x] Run it in CI. Add it to `typecheck:all`, and decide whether it also
       joins the references in `frontend/tsconfig.json`: `tsc -b` there
       runs in the app's Docker build, which has no need to wait on the
       public site, so `typecheck:all` alone is the expectation; record
       the choice here. Read `.github/workflows/public-site.yml`, which
       builds and deploys the site, and make sure a type error fails CI
       before that workflow can publish it.
+      Done on 15 October 2026: `typecheck:all` runs it after
+      `tsconfig.check.json`, and it is not in `tsconfig.json`'s
+      references, so the app's Docker build does not wait on the public
+      site. `public-site.yml` publishes on a push to `main`, and nothing
+      reaches `main` without the merge queue re-running the
+      `typecheck:all` leg of `ci.yml`, so a type error in a public page
+      fails before it can be published. Phase 12's guard is what pins
+      the site's files as covered.
 
 ## Phase 12: No JavaScript files, and a guard that keeps it so
 
