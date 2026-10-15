@@ -45,7 +45,7 @@ const config: StorybookConfig = {
     name: "@storybook/react-vite",
     options: {},
   },
-  viteFinal: async (config) => {
+  viteFinal: (config) => {
     config.plugins = [...(config.plugins ?? []), tsconfigPaths()];
 
     // react-player v3 uses youtube-video-element (custom element) which

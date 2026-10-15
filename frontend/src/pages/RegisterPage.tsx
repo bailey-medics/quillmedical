@@ -254,7 +254,7 @@ function TeachingRegisterPage() {
     }
   }
 
-  async function chooseSite(data: { site: string }): Promise<FormSubmitResult> {
+  function chooseSite(data: { site: string }): FormSubmitResult {
     const chosen = checked?.sites.find(
       (candidate) => String(candidate.site_id) === data.site,
     );

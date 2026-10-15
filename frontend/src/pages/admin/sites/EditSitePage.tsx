@@ -185,7 +185,7 @@ export default function EditSitePage() {
     void fetchData();
   }, [id]);
 
-  async function handleToggleActive(active: boolean) {
+  function handleToggleActive(active: boolean) {
     setIsActive(active);
   }
 
