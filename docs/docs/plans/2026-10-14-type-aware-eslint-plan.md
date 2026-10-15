@@ -778,7 +778,7 @@ is the only file that needs a project of its own.
       is a choice to raise `engines.vscode` with it. The extension's
       tsconfig reads its types from `frontend/node_modules/@types`.
 
-- [ ] Widen the guard to the whole repository. Run
+- [x] Widen the guard to the whole repository. Run
       `check-typescript-coverage.sh` from the repository root rather than
       `frontend/`. The JavaScript check lists every tracked `.js`, `.jsx`,
       `.cjs` and `.mjs` file in the repository, with the allow-list still
@@ -790,6 +790,15 @@ is the only file that needs a project of its own.
       for a JavaScript file and an uncovered TypeScript file outside
       `frontend/`. Update the comment in the `typecheck:all` leg of
       `ci.yml` and record the counts the guard reports here.
+      Done on 15 October 2026. The script finds the repository root with
+      `git rev-parse --show-toplevel`, so it runs the same from anywhere,
+      and CI still calls it from `frontend/`. It reports all 1,325 source
+      files covered, the 1,324 in `frontend/` and the extension; the
+      allow-list is still empty. The floor stays at 500 rather than rising
+      to match: it exists to catch a listing that missed the folders, and
+      500 is still well under the real count. Four bats cases are added,
+      for a JavaScript file and a TypeScript file outside `frontend/`, one
+      that a project includes, and a run from the root, eleven in all.
 
 ## Decisions
 
