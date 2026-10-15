@@ -1,17 +1,9 @@
 {
-  "extends": "../tsconfig.json",
+  "extends": "../tsconfig.app.json",
   "compilerOptions": {
-    "jsx": "react-jsx",
-    "moduleResolution": "bundler",
-    "types": ["node"],
-    "resolveJsonModule": true,
-    "paths": {
-      "@/*": ["../src/*"],
-      "@components/*": ["../src/components/*"],
-      "@design/*": ["../src/design/*"],
-      "@domains/*": ["../src/domains/*"]
-    }
+    "tsBuildInfoFile": "../node_modules/.tmp/tsconfig.public-pages.tsbuildinfo",
+    "types": ["react", "react-dom", "node"]
   },
-  "include": ["src", "../src", "scripts", "vite.config.ts"],
-  "exclude": ["../src/**/*.stories.*"]
+  "include": ["../src/**/*.d.ts", "src", "scripts", "vite.config.ts"],
+  "exclude": []
 }
