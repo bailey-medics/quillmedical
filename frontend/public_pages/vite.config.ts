@@ -10,7 +10,7 @@ import breakpoints from "../src/breakpoints.json";
 
 /**
  * The `$mantine-breakpoint-*` variables for CSS modules, built from the
- * same file the Mantine theme reads. See postcss.config.cjs.
+ * same file the Mantine theme reads. See postcss.config.ts.
  */
 const breakpointVariables = Object.fromEntries(
   Object.entries(breakpoints).map(([name, width]) => [

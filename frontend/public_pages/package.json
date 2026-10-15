@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "pages:gen": "yarn workspace frontend generate:types && node scripts/generate-pages.cjs",
+    "pages:gen": "yarn workspace frontend generate:types && node scripts/generate-pages.ts",
     "dev": "yarn pages:gen && concurrently -k \"chokidar 'src/pages/*.tsx' -c 'yarn pages:gen'\" \"vite --open /\"",
     "dev:docker": "yarn pages:gen && concurrently -k \"chokidar 'src/pages/*.tsx' -c 'yarn pages:gen'\" \"vite --host 0.0.0.0 --open /\"",
     "build": "yarn pages:gen && vite build",

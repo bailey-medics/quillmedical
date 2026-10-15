@@ -2,9 +2,9 @@
 // reads too, so `$mantine-breakpoint-sm` in a CSS module and
 // `theme.breakpoints.sm` in a component are the same width. They were
 // separate lists once, and `sm` was 48em here and 40em in the theme.
-const breakpoints = require("./src/breakpoints.json");
+import breakpoints from "./src/breakpoints.json" with { type: "json" };
 
-module.exports = {
+export default {
   plugins: {
     "postcss-preset-mantine": {},
     "postcss-simple-vars": {

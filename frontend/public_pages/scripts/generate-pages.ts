@@ -1,15 +1,29 @@
-// CommonJS so it runs regardless of "type": "module"
-const fs = require("node:fs");
-const path = require("node:path");
+// TypeScript run directly by Node, which strips the types (Node 24 does
+// so by default), so it needs no build step and no tsx
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = path.resolve(__dirname, "..");
+/** One page's entry in page-meta.json. */
+export interface PageMeta {
+  title?: string;
+  description?: string;
+}
+
+/** What goes in a page's <title> and meta description, escaped. */
+export interface PageHead {
+  title: string;
+  description: string;
+}
+
+const root = path.resolve(import.meta.dirname, "..");
 const pagesDir = path.join(root, "src/pages");
 const templatePath = path.join(root, "templates/page.html");
 const metaPath = path.join(root, "page-meta.json");
 
 const SITE_TITLE = "Quill Medical";
 
-function escapeHtml(text) {
+function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -29,7 +43,10 @@ function escapeHtml(text) {
  * Medical", most specific part first, except on the home page, which is
  * the site name alone.
  */
-function headFor(name, meta) {
+export function headFor(
+  name: string,
+  meta: Record<string, PageMeta | undefined>,
+): PageHead {
   const entry = meta[name];
   if (!entry || !entry.title || !entry.description) {
     throw new Error(
@@ -44,11 +61,11 @@ function headFor(name, meta) {
   };
 }
 
-function ensureDir(p) {
+function ensureDir(p: string): void {
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
 }
 
-function walk(dir, acc = []) {
+function walk(dir: string, acc: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) walk(full, acc);
@@ -57,11 +74,11 @@ function walk(dir, acc = []) {
   return acc;
 }
 
-function relFromPages(abs) {
+function relFromPages(abs: string): string {
   return path.relative(pagesDir, abs).replace(/\\/g, "/"); // windows-safe
 }
 
-function buildOnce() {
+function buildOnce(): void {
   if (!fs.existsSync(pagesDir)) {
     console.error(`[pages:gen] ERROR: ${pagesDir} does not exist`);
     return;
@@ -72,7 +89,10 @@ function buildOnce() {
   }
 
   const tpl = fs.readFileSync(templatePath, "utf8");
-  const meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
+  const meta = JSON.parse(fs.readFileSync(metaPath, "utf8")) as Record<
+    string,
+    PageMeta | undefined
+  >;
   const files = walk(pagesDir);
   if (files.length === 0) {
     console.warn("[pages:gen] No *.tsx pages found in src/pages");
@@ -94,7 +114,7 @@ function buildOnce() {
         `<script type="module" src="/src/pages/${rel}"></script>`,
       );
 
-    let outPath;
+    let outPath: string;
     if (rel === "index.tsx") {
       outPath = path.join(root, "index.html");
     } else if (!subdir) {
@@ -109,12 +129,12 @@ function buildOnce() {
   }
 }
 
-module.exports = { headFor };
-
 // Only generate when run as a script, not when a test imports headFor.
-if (require.main === module && process.argv.includes("--watch")) {
+const runAsScript = process.argv[1] === fileURLToPath(import.meta.url);
+
+if (runAsScript && process.argv.includes("--watch")) {
   buildOnce();
-  fs.watch(pagesDir, { persistent: true }, (evt, filename) => {
+  fs.watch(pagesDir, { persistent: true }, (_event, filename) => {
     if (filename && filename.endsWith(".tsx")) {
       try {
         buildOnce();
@@ -125,6 +145,6 @@ if (require.main === module && process.argv.includes("--watch")) {
   });
   console.log(`[pages:gen] watching ${pagesDir} …`);
   process.stdin.resume();
-} else if (require.main === module) {
+} else if (runAsScript) {
   buildOnce();
 }

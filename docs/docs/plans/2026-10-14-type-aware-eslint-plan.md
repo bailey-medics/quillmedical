@@ -591,29 +591,62 @@ JSDoc types is one more thing to remember. Four need nothing converted
 back, because the tool that runs each reads TypeScript itself; only
 `colour-scheme` must be served as JavaScript and needs a build step.
 
-- [ ] `public_pages/scripts/generate-pages.cjs` becomes
+- [x] `public_pages/scripts/generate-pages.cjs` becomes
       `generate-pages.ts`, run by `tsx` in `pages:gen`, as
       `generate:types` already is. Its test imports it directly rather
       than through `createRequire`. Check `public-site.yml` and the dev
       scripts still run it.
+      Done on 15 October 2026, run by Node itself rather than `tsx`:
+      `tsx` is a dependency of the frontend workspace, not of
+      `public_pages`, so Yarn does not put it on that workspace's path,
+      and Node 24, which CI's `setup-frontend` installs, strips types by
+      default. The pages it writes are byte for byte the same.
 
-- [ ] `eslint.config.js` becomes `eslint.config.ts`. Find out whether
+- [x] `eslint.config.js` becomes `eslint.config.ts`. Find out whether
       ESLint 10 reads a TypeScript config on its own with the pinned
       Node, or needs `jiti` as a dependency, and record which here. Type
       the helper and the constants Phase 7 added.
+      Done on 15 October 2026. ESLint 10 needs `jiti` to load a
+      TypeScript config; its native loader is behind a flag named
+      `unstable_native_nodejs_ts_config`, which the editor's ESLint would
+      not pass, so `jiti` is a dev dependency. The config is in
+      `tsconfig.node.json`, which `typecheck:all` now runs as well, since
+      until now only `tsc -b` in `yarn build` did. Storybook's flat config
+      is cast to ESLint's `Linter.Config[]`: the plugin types its rules
+      on typescript-eslint's `RuleModule`, which ESLint's config type
+      does not accept though ESLint runs them.
 
-- [ ] `postcss.config.cjs` becomes `postcss.config.ts`, typed with
+- [x] `postcss.config.cjs` becomes `postcss.config.ts`, typed with
       PostCSS's own config type. Check both the dev server and
       `yarn build` pick it up, and Storybook, whose `main.ts` sets its
       own PostCSS plugins.
+      Done on 15 October 2026. Vite loads it; a production build before
+      and after gives the same eighteen CSS files with the same content
+      hashes, with every `$mantine-breakpoint` variable resolved, so the
+      TypeScript config was read and does what the old one did. Vitest
+      reads it through Vite, and Storybook's `main.ts` sets its own
+      plugins, so neither depends on the file's form.
+      Missed at first, and caught by CI: `src/breakpoints.test.ts` loaded
+      `postcss.config.cjs` by name through `createRequire`. It now
+      imports `postcss.config.ts`, typed, and three comments that named
+      the old file were corrected. The full unit suite was run after, as
+      `CLAUDE.md` allows when CI is red; it also showed the ESLint config
+      test could time out its first case on a busy machine, so the
+      project service is now loaded once in `beforeAll`.
 
-- [ ] `test-runner-jest.config.js` becomes `.ts` if the Storybook test
+- [x] `test-runner-jest.config.js` becomes `.ts` if the Storybook test
       runner will load it; Jest reads a TypeScript config only through
       `ts-node` or similar. If that means a new dependency or a fight,
       keep it JavaScript and check it in place instead: `allowJs`,
       `checkJs` and `strict` in a small tsconfig run from
       `typecheck:all`, with the reason recorded here. It is the one
       exception this phase allows.
+      Done on 15 October 2026, with no exception needed: Jest 30 loads a
+      TypeScript config through Node's own type stripping when Node
+      offers it, which Node 24 does, and the Storybook test runner finds
+      `test-runner-jest*` whatever its ending. Loaded through
+      `jest-config`, it reads back with the dark-mode accessibility setup
+      file in place. Typed with `satisfies Config.InitialOptions`.
 
 - [ ] `public/colour-scheme.js` becomes `src/colour-scheme.ts`. It must
       stay a plain blocking `<script>` in the `<head>`, because a module

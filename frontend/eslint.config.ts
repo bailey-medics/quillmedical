@@ -1,5 +1,6 @@
-// eslint.config.js (flat config)
+// eslint.config.ts (flat config), loaded through jiti
 import js from "@eslint/js";
+import type { Linter } from "eslint";
 import { defineConfig } from "eslint/config";
 import eslintConfigPrettier from "eslint-config-prettier";
 import reactHooks from "eslint-plugin-react-hooks";
@@ -12,28 +13,41 @@ import react from "eslint-plugin-react";
 import noSecrets from "eslint-plugin-no-secrets";
 import jsxA11y from "eslint-plugin-jsx-a11y";
 
+/** One import from a package that app code may not make. */
+interface RestrictedPath {
+  name: string;
+  importNames: string[];
+  message: string;
+}
+
+/** Imports matching a pattern that app code may not make. */
+interface RestrictedPattern {
+  group: string[];
+  message: string;
+}
+
 // The imports app code may not make, each named once so an exemption can
 // restate the rule with the entries that still apply there, rather than
 // turning the whole rule off.
-const MANTINE_PROVIDER = {
+const MANTINE_PROVIDER: RestrictedPath = {
   name: "@mantine/core",
   importNames: ["MantineProvider"],
   message:
     "Don't use MantineProvider directly. Tests: use renderWithMantine/renderWithRouter. Stories: use the preview decorator.",
 };
-const ACTION_ICON = {
+const ACTION_ICON: RestrictedPath = {
   name: "@mantine/core",
   importNames: ["ActionIcon"],
   message:
     "Use IconButton from @/components/button: it requires an aria-label, which an icon-only button needs to be announced as more than 'button'.",
 };
-const LOADER = {
+const LOADER: RestrictedPath = {
   name: "@mantine/core",
   importNames: ["Loader"],
   message:
     "Use QuillSpinner or PageSpinner from @/components/loading-spinner: a bare Loader has no text, so a screen reader user hears nothing while they wait.",
 };
-const STORIES_HELPERS = {
+const STORIES_HELPERS: RestrictedPattern = {
   group: ["@/stories/*"],
   message:
     "Storybook helpers (StoryNote, VariantRow, etc.) are for stories only - never import in app code.",
@@ -46,7 +60,10 @@ const STORIES_HELPERS = {
 function restrictImports({
   paths = [MANTINE_PROVIDER, ACTION_ICON, LOADER],
   patterns = [STORIES_HELPERS],
-} = {}) {
+}: {
+  paths?: RestrictedPath[];
+  patterns?: RestrictedPattern[];
+} = {}): Linter.RuleEntry {
   return ["error", { paths, patterns }];
 }
 
@@ -247,7 +264,7 @@ export default defineConfig(
     },
     // Build scripts use console.log for progress output
     {
-      files: ["scripts/**/*.ts"],
+      files: ["scripts/**/*.ts", "public_pages/scripts/**/*.ts"],
       rules: {
         "no-console": "off",
       },
@@ -274,6 +291,9 @@ export default defineConfig(
       languageOptions: { globals: globals.node },
     },
   ],
-  // Storybook’s flat config can stay as a sibling layer
-  storybook.configs["flat/recommended"],
+  // Storybook’s flat config can stay as a sibling layer. Its published
+  // types build its rules on typescript-eslint's RuleModule, which ESLint's
+  // own config type does not accept, though ESLint runs them; the cast says
+  // what the value is to ESLint
+  storybook.configs["flat/recommended"] as Linter.Config[],
 );

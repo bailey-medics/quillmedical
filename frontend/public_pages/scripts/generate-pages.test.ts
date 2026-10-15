@@ -1,16 +1,8 @@
 import { readdirSync } from "node:fs";
-import { createRequire } from "node:module";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import meta from "../page-meta.json";
-
-const require = createRequire(import.meta.url);
-const { headFor } = require("./generate-pages.cjs") as {
-  headFor: (
-    name: string,
-    meta: Record<string, { title: string; description: string }>,
-  ) => { title: string; description: string };
-};
+import { headFor } from "./generate-pages";
 
 const pagesDir = path.resolve(__dirname, "../src/pages");
 const pages = readdirSync(pagesDir)
