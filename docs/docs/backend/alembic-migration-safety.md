@@ -278,16 +278,6 @@ you see why:
 - **Renames and deletions fail.** The filename carries the revision id and the
   chain's ordering, so renaming rewrites the record as surely as editing does.
   Neither is compared - both are refused outright.
-- **A squash is the one deletion allowed.** A pull request may delete every
-  merged migration (two or more) if it adds exactly one in their place: a
-  baseline whose `revision` is the id the old head had and whose
-  `down_revision` is `None`. A database at the old head already records
-  that id, so the next `alembic upgrade head` finds nothing to do and the
-  data stays where it is. That shape describes a squash and nothing else:
-  deleting part of the chain, replacing it under a new id, or moving a lone
-  baseline to a new filename are all still refused. Renames are switched
-  off for this test, because git pairs a new baseline with whichever old
-  migration it happens to resemble.
 - **There is no approval path.** Unlike the destructive gate, this fails the
   build directly. There is no legitimate case to approve, so an approval step
   would add a rubber stamp and nothing else. This matches the decision files,
@@ -338,8 +328,15 @@ first used on 2026-10-15 and the one to use again:
 6. **Delete the tests whose only subject was a deleted migration**, and
    point any docs that quote an old revision id at the new one.
 
-The `DB migration immutability check` accepts exactly this shape (see
-Layer 4) and nothing narrower. The one way to see what a deployed database
+The `DB migration immutability check` refuses every deletion (see Layer
+4), so a squash also needs a temporary exception, opened in a pull request
+of its own before the squash and closed again in one after it. The
+2026-10-15 squash added `is_squash` to `check-migrations-unmodified.sh`,
+accepting only every migration (two or more) deleted and one baseline
+added under the old head's id with `down_revision` `None`, then took it
+out; the pull request that added it is the one to copy. Its diff ran with
+`--no-renames`, because git pairs a new baseline with whichever deleted
+migration it resembles. The one way to see what a deployed database
 is at is `just migrate-current <env>` (`just mc`), which runs the admin
 job's `show-migration` action and prints its log.
 

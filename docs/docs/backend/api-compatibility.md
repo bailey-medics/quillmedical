@@ -220,15 +220,14 @@ may be added; such an edit passes without the `api-breaking-change-review`
 gate, which fires only on an `oasdiff` finding. Deleting an existing file is never permitted;
 if a decision is superseded, record a new decision file instead.
 
-The one deletion `validate-compat-files.sh` accepts is a reset: a pull
-request that deletes every decision file and adds exactly one `init` file in
-their place, at the generation the deleted files required (the highest
-`generation` among those with `forces_reload: true`, or 1 when none had it),
-with `forces_reload: false` and `change: "none"`. The required client
-generation is then the same before and after, so no open browser is told to
-reload, and git keeps the old files. Done once, on 2026-10-15, to clear 173
-decisions made while nothing was live. Deleting some of the files, or adding
-anything but that one `init` file, is still refused.
+The record was reset once, on 2026-10-15, to clear 173 decisions made
+while nothing was live: every file deleted and one `init` file added at the
+generation they required (the highest `generation` among those with
+`forces_reload: true`, or 1 when none had it), with `forces_reload: false`
+and `change: "none"`, so no open browser was told to reload. Rule 5 of
+`validate-compat-files.sh` was given a temporary exception for that one pull
+request and closed again afterwards, so it refuses every deletion as
+before. A future reset opens and closes its own exception the same way.
 
 ## Client-side reassurance: the status strip and "Updating…" overlay
 

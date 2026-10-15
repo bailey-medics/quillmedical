@@ -346,13 +346,113 @@ decision files, so anything merged meanwhile may have added more.
       stand at the base. Bats tests cover the accepted reset, a reset
       at the generation a `forces_reload: true` file required, the
       wrong generation, a partial deletion, two added files, an `init`
-      that forces a reload or records a change, and the message. The
-      exception stays afterwards, for the same reason as the migration
-      one. The rule is written into the backend instructions, the
-      Claude rules and `docs/docs/backend/api-compatibility.md`.
+      that forces a reload or records a change, and the message. Like
+      the migration one, it is temporary and closed in Phase 10. The
+      rule is written into the backend instructions, the Claude rules
+      and `docs/docs/backend/api-compatibility.md` for as long as it is
+      open.
 
 - [ ] Merge (a human does this), then confirm the app loads in an open
       browser without being told to reload.
+
+## Phase 10: Close the exceptions
+
+Decided by Mark on 2026-10-15: both CI exceptions are temporary. Once
+the squash and the reset have merged, the immutability check and rule 5
+go back to refusing every deletion, so neither check stays looser than
+it was before this work for the sake of a squash nobody has planned.
+Its own pull request, at the top of the stack, merged last.
+
+- [x] Restore `check-migrations-unmodified.sh` and
+      `validate-compat-files.sh`, with their bats tests, to how they
+      stood before Phase 3. Nothing else in the stack changed them, so
+      this takes out `is_squash`, `head_revision_at`,
+      `revision_values`, `migrations_at`, `is_compat_reset`,
+      `required_generation_at_base` and `get_base_compat_files`, and
+      the failure messages that named the exceptions.
+
+- [x] Take the exception rules out of
+      `.github/instructions/backend.instructions.md` and
+      `.claude/rules/backend.md`. `docs/docs/backend/alembic-migration-safety.md`
+      and `docs/docs/backend/api-compatibility.md` keep a short record
+      instead: the squash and the reset each needed a temporary
+      exception, opened and closed in their own pull requests, and the
+      pull requests that opened them are the ones to copy next time.
+
+- [x] Let the `DB migration immutability check` compare a pull request
+      with the commit it was built on, not with `main`. Found when this
+      pull request failed it: comparing with `main` counted the squash
+      in #2005, still underneath, as this pull request's deletions, and
+      with the exception now closed it refused them. The job in
+      `.github/workflows/ci.yml` now resolves the base with
+      `resolve-pr-base-sha.sh`, as the destructive-migration gate in
+      `gate-breaking.yml` already does for the same reason. A merge
+      queue run still compares with `main`, so the stack is checked
+      whole before anything lands.
+
+- [ ] Merge after #2005 and #2006 have merged (a human does this). If
+      it merged first, the squash and reset pull requests would fail
+      their own checks.
+
+## Phase 11: Measure what the squash did to CI run times
+
+Asked for by Mark on 2026-10-15. CI speed was never the reason for the
+squash (see Decisions), so this records what it actually changed rather
+than justifying it. The before figures were taken on 2026-10-15, after
+the work was built but before any of it merged, so they describe the
+94-migration chain.
+
+The method, the same both times, so the two sets compare:
+
+- **Which runs** - the last 25 successful `ci.yml` runs triggered by
+  `merge_group`, from `gh run list --workflow=ci.yml --event
+  merge_group --status success --limit 25`. Merge queue runs carry
+  every job, heavy tier included, against the tip of `main`, which pull
+  request runs and `push` runs on `main` do not.
+- **Each job's time** - `completed_at` minus `started_at` from
+  `gh api repos/bailey-medics/quillmedical/actions/runs/<id>/jobs`,
+  successful jobs only, as the median across the 25 runs with its range.
+  Jobs under 20 seconds are left out: they are set-up and decision jobs
+  the squash cannot touch.
+- **The run's time** - the latest `completed_at` minus the earliest
+  `started_at` across the run's jobs, as the median. This is the wait,
+  which job times alone do not show, because the jobs run side by side.
+
+- [x] Record the before figures. 25 merge queue runs, 2026-10-14 13:54
+      to 2026-10-15 11:55 UTC. Whole run: median 361s, range 293 to
+      418s. Jobs, median:
+
+      - **E2E (Playwright)** - 224s (194 to 253s). Migrates a fresh
+        database from the chain before the tests start.
+      - **Alembic autogenerate drift check** - 104s (85 to 117s). Builds
+        a database from the chain and runs every `migration`-marked
+        test, the 15 deleted in Phase 4 among them.
+      - **Python unit** - 171s. SQLite from the models, so the chain
+        never runs here; included as a control.
+      - **E2E image build** - 131s. Copies `backend/alembic/` into the
+        image, so a much smaller folder is the only possible effect.
+      - **Unaffected, for reference** - frontend unit tests 150 to 183s
+        across three shards, Storybook interaction tests 167 to 177s
+        across three, Python pre-commit 175s, eslint 56s, Storybook
+        build 54s, SAST 34s, typecheck 27s, prettier 26s.
+
+      An early look at two pull request runs of #2005 put the drift
+      check at 78s, E2E at 218s and Python unit at 189s. Two runs is too
+      few to rely on, and pull request runs are not merge queue runs,
+      so the after figures below are the ones to compare.
+
+- [ ] Record the after figures once 25 merge queue runs have finished
+      with the squash on `main`, counting only runs created after #2005
+      merged, by the method above. Write them here in the same shape,
+      job by job beside the before figure, and say plainly which moved
+      by more than their own range. The expectation, to be confirmed or
+      corrected: the drift check about 25 seconds faster, E2E and the
+      image build within their ranges, Python unit unchanged, and the
+      whole run unchanged, because E2E and the frontend shards run
+      alongside the drift check and take longer.
+
+- [ ] Report the result to Mark: the whole run's time before and after,
+      each job that moved, and whether the expectation above held.
 
 ## Decisions
 
