@@ -427,7 +427,7 @@ block, `ecmaVersion: 2020` and `globals.browser`, does nothing there:
 makes that check, and the parser ignores `ecmaVersion`. It is what a
 JavaScript block would need.
 
-- [ ] Add a block for `**/*.{js,cjs,mjs}` extending
+- [x] Add a block for `**/*.{js,cjs,mjs}` extending
       `js.configs.recommended` and `eslintConfigPrettier`, with
       `globals.browser` for `public/**` and `globals.node` for
       `public_pages/scripts/**` and the config files at the root. Move
@@ -436,21 +436,28 @@ JavaScript block would need.
       glob in `package.json`. Then read what the two files report and
       fix it; `colour-scheme.js` is a few lines and
       `generate-pages.cjs` has a test beside it.
+      Done on 15 October 2026, in one branch with Phase 9, which is a
+      few words on its own. Neither file reported anything once checked,
+      so there was nothing to fix; the block also carries the three
+      `no-eval` family rules the TypeScript block has. The config test
+      gained a probe that puts an undefined name in
+      `public/colour-scheme.js` and expects `no-undef`, and nothing for
+      `document`.
 
 ## Phase 9: Say error where it means error
 
-- [ ] The `eslint` script runs with `--max-warnings=0`, so every `warn`
+- [x] The `eslint` script runs with `--max-warnings=0`, so every `warn`
       in the config already fails the hook and CI. Change
       `no-restricted-imports`, `no-secrets/no-secrets`, `react/no-danger`
       and the two `regexp` rules to `error`, so a reader does not take
-      `warn` for soft. One branch with the step below.
+      `warn` for soft. One branch with the step below. Done on 15 October 2026, in the Phase 8 branch.
 
-- [ ] Remove `eslint-plugin-prettier` from `devDependencies`. It is
+- [x] Remove `eslint-plugin-prettier` from `devDependencies`. It is
       installed and referenced nowhere: the config uses
       `eslint-config-prettier`, which turns rules off, not the plugin,
       which would run Prettier as a rule. `yarn remove` changes the
       lockfile, so run `just utr` before the unit tests, as `CLAUDE.md`
-      says for a `package.json` change.
+      says for a `package.json` change. Done on 15 October 2026; `yarn remove` took 40 lines out of the lockfile and nothing else changed.
 
 ## Decisions
 

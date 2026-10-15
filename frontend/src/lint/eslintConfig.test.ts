@@ -55,6 +55,17 @@ beforeAll(() => {
   eslint = new ESLint({ cwd: FRONTEND });
 });
 
+describe("plain JavaScript", () => {
+  it("is checked with the core rules and the browser's globals", async () => {
+    const [result] = await eslint.lintText(
+      "document.title = notDefinedAnywhere;\n",
+      { filePath: "public/colour-scheme.js" },
+    );
+
+    expect(result.messages.map((m) => m.ruleId)).toEqual(["no-undef"]);
+  });
+});
+
 describe("restricted imports", () => {
   it("reports all four in ordinary app code", async () => {
     expect(await reportedAt("src/pages/Home.tsx")).toEqual([
