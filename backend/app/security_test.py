@@ -21,6 +21,7 @@ from app.security import (
     generate_totp_secret,
     hash_password,
     make_csrf,
+    password_needs_rehash,
     totp_provisioning_uri,
     verify_csrf,
     verify_email_verify_token,
@@ -100,6 +101,19 @@ class TestProductionPasswordHasher:
 
         assert verify_password("TestPassword123!", hashed)
         assert not verify_password("WrongPassword123!", hashed)
+
+    def test_a_hash_under_other_parameters_needs_making_again(
+        self, production_password_hasher: PasswordHasher
+    ) -> None:
+        """The suite's cheap hasher stands in for a raised setting: a
+        hash made under different parameters reports it, and one made
+        under the current ones does not."""
+        assert password_needs_rehash(production_password_hasher.hash("pw"))
+        assert not password_needs_rehash(hash_password("pw"))
+
+    def test_an_empty_hash_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="cannot be empty"):
+            password_needs_rehash("")
 
     def test_the_suite_itself_hashes_cheaply(self) -> None:
         """The other half: without this the speed-up could quietly go."""

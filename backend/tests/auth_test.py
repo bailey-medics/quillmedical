@@ -190,6 +190,35 @@ class TestLogin:
         assert "refresh_token" in response.cookies
         assert "XSRF-TOKEN" in response.cookies
 
+    def test_login_makes_a_weaker_hash_again(
+        self, test_client: TestClient, test_user: User, db_session: Session
+    ):
+        """A hash made under other parameters than the hasher's is
+        replaced on a successful login, and the password still works.
+        The suite's cheap hasher plays today's setting; a full-strength
+        hash plays the one stored before a setting was raised."""
+        from argon2 import PasswordHasher
+
+        strong = PasswordHasher(time_cost=2, memory_cost=1024, parallelism=2)
+        test_user.password_hash = strong.hash("TestPassword123!")
+        db_session.commit()
+
+        response = test_client.post(
+            "/api/auth/login",
+            json={"username": "testuser", "password": "TestPassword123!"},
+        )
+
+        assert response.status_code == 200
+        db_session.refresh(test_user)
+        assert "m=8,t=1,p=1" in test_user.password_hash
+        assert (
+            test_client.post(
+                "/api/auth/login",
+                json={"username": "testuser", "password": "TestPassword123!"},
+            ).status_code
+            == 200
+        )
+
     def test_login_wrong_username(self, test_client: TestClient):
         """Test login with non-existent username."""
         response = test_client.post(
