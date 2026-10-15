@@ -47,9 +47,11 @@ const LOADER: RestrictedPath = {
     "Use QuillSpinner or PageSpinner from @/components/loading-spinner: a bare Loader has no text, so a screen reader user hears nothing while they wait.",
 };
 const STORIES_HELPERS: RestrictedPattern = {
-  group: ["@/stories/*"],
+  // Every way the import can be written: the alias, a relative path into a
+  // stories folder, and a story file itself, by any path
+  group: ["@/stories/*", "**/stories/*", "*.stories", "*.stories.*"],
   message:
-    "Storybook helpers (StoryNote, VariantRow, etc.) are for stories only - never import in app code.",
+    "Storybook helpers (StoryNote, VariantRow, etc.) and story files are for stories only - never import in app code.",
 };
 
 /**
@@ -139,7 +141,19 @@ export default defineConfig(
         // A type argument that only repeats its default says nothing
         "@typescript-eslint/no-unnecessary-type-arguments": "error",
 
-        // Core JS “don’t shoot your foot” (no extra deps)
+        // Loading Mantine at run time, `import("@mantine/core")`, would get
+        // past the restricted imports above, which read only import and
+        // export lines. Nothing needs to, so it is refused outright.
+        "no-restricted-syntax": [
+          "error",
+          {
+            selector: "ImportExpression[source.value='@mantine/core']",
+            message:
+              'Import @mantine/core the ordinary way, `import { ... } from "@mantine/core"`, so its restricted imports apply.',
+          },
+        ],
+
+        // Built-in ESLint rules, which check TypeScript as well (no extra deps)
         "no-eval": "error",
         "no-implied-eval": "error",
         "no-new-func": "error",
@@ -215,10 +229,10 @@ export default defineConfig(
         }),
       },
     },
-    // The two buttons that show a small ring while they work, and the
+    // The two buttons that show a small spinner while they work, and the
     // story that shows one. The button itself says what is happening, so
-    // the ring is hidden from assistive technology; every other wait is a
-    // QuillSpinner
+    // the spinner is hidden from assistive technology; every other wait is
+    // a QuillSpinner
     {
       files: [
         "src/components/button/ButtonPairRed.tsx",

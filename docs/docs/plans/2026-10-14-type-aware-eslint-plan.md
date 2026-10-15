@@ -800,6 +800,66 @@ is the only file that needs a project of its own.
       for a JavaScript file and a TypeScript file outside `frontend/`, one
       that a project includes, and a run from the root, eleven in all.
 
+## Phase 14: Story code stays in Storybook, whichever way it is imported
+
+`STORIES_HELPERS` in `frontend/eslint.config.ts` bans importing
+`@/stories/*` from anything but a `*.stories.tsx` file, and
+`src/lint/eslintConfig.test.ts` checks it. Asked on 15 October 2026 how
+that is stated and tested, two gaps came out, both because the rule
+matches one way of writing the import:
+
+- **A relative path gets past it.** `../../stories/variants` is the same
+  file as `@/stories/variants`, but only the alias is matched.
+- **A story file itself is not guarded.** The rule covers the shared
+  helpers in `src/stories/`, not `*.stories.tsx` files, so app code could
+  import sample data from inside one and pull story code into the app.
+
+- [x] Add two patterns to `STORIES_HELPERS`, so the one entry, and the
+      one exemption stories already have, cover all three ways: the
+      alias, a relative path into a `stories/` folder (`**/stories/*`),
+      and any `*.stories` module (`**/*.stories`, and with its `.tsx`
+      ending). Check the patterns do not catch `src/stories/` imports
+      made from inside `src/stories/` itself, if any are, nor anything
+      whose name merely contains "stories". Add two probe cases to
+      `src/lint/eslintConfig.test.ts`: a page importing a helper by a
+      relative path, and a page importing from a `.stories.tsx` file,
+      each reported, and the same two imports in a story, not reported.
+      Run `yarn eslint` to find anything the wider patterns now catch,
+      and fix it rather than widen an exemption. One branch, with the
+      step below.
+      Done on 15 October 2026: the group is `@/stories/*`,
+      `**/stories/*`, `*.stories` and `*.stories.*`. Nothing in the app
+      imported story code by either way, so the full lint found nothing
+      new to fix. Three probe cases cover the relative path and a story
+      file with and without its ending, and one that a story may still
+      import story code by a relative path.
+
+- [x] Close the one way round the three Mantine bans that is left.
+      Checked against the real config on 15 October 2026: renaming
+      (`import { Loader as Spinner }`), importing everything
+      (`import * as M`) and passing it on (`export { Loader } from`) are
+      all reported, but loading the package at run time,
+      `import("@mantine/core").then((m) => m.Loader)`, is not, because
+      `no-restricted-imports` reads only `import` and `export` lines.
+      Nobody loads Mantine that way today, and the reason to close it is
+      that a person or a model looking for a way past a rule may find
+      it. Ban `import("@mantine/core")` with `no-restricted-syntax`, a
+      selector on an `ImportExpression` whose source is that string, and
+      a message saying to import it the ordinary way so the bans apply.
+      Check first whether anything in the app imports Mantine at run time
+      on purpose, and do not ban `import()` in general: the app's routes
+      load their pages that way. Add a probe case to
+      `src/lint/eslintConfig.test.ts` that the run-time import is
+      reported in a page, and keep the three that already pass as cases
+      too, so a change to the rule cannot quietly reopen them.
+      Done on 15 October 2026 with
+      `ImportExpression[source.value='@mantine/core']`. Nothing in the
+      app imported Mantine at run time; the `typeof import(...)` in the
+      tests' mock factories is a type, not an `ImportExpression`, so it
+      is untouched. The four ways round are probe cases, with a fifth
+      that `import("./Home")` is left alone. The config test now holds
+      17 cases.
+
 ## Decisions
 
 - **Type-aware rules stay on in tests** - the question was whether to
