@@ -58,5 +58,6 @@ def setup_invite_for(db: Session, actor: User, user_id: int) -> SetupInvite:
     user = account_the_caller_may_act_on(db, actor, user_id)
 
     return SetupInvite(
-        user=user, token=create_password_reset_token(user.email)
+        user=user,
+        token=create_password_reset_token(user.email, user.token_version),
     )

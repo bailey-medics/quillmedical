@@ -121,7 +121,9 @@ class TestSettingAFirstPasswordFromAnInvite:
         return test_client.post(
             self.URL,
             json={
-                "token": create_password_reset_token(user.email),
+                "token": create_password_reset_token(
+                    user.email, user.token_version
+                ),
                 "new_password": "ANewPassword123!",
                 **extra,
             },

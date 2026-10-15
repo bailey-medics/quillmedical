@@ -95,7 +95,7 @@ scan at the end to see whether the rot found here is wider than this file.
 
 ## Phase 4: A reset link is spent when the password changes
 
-- [ ] Put the user's `token_version` in the password reset payload, in
+- [x] Put the user's `token_version` in the password reset payload, in
       `create_password_reset_token`, and have `verify_password_reset_token`
       return it alongside the email. The reset route in `main.py` (line
       963) already bumps `token_version` after a reset, so comparing the
@@ -105,12 +105,17 @@ scan at the end to see whether the rot found here is wider than this file.
       has been changed. The email-verify token stays as it is: verifying
       twice is harmless.
 
-- [ ] Change `create_password_reset_token`'s callers to pass the
+- [x] Change `create_password_reset_token`'s callers to pass the
       version, and the reset route to compare it, answering the same
       error as an expired link so the response does not say which
       failed. Test the second use of one link in
       `backend/tests/`, beside the existing reset tests. Run `just ub -k
-      "reset"`.
+      "reset"`. Done 15 October 2026: `verify_password_reset_token`
+      returns a `ResetClaims` named tuple (`email`, `token_version`)
+      rather than a bare email, so the route reads both from one call;
+      two test files outside the plan's list, `marketing_registration_test`
+      and `user_reach_and_activation_refusals_test`, also minted or read
+      the token and moved with it.
 
 ## Phase 5: Password hashes can be strengthened later
 
