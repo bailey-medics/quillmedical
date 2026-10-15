@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { defineConfig, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import tsconfigPaths from "vite-tsconfig-paths";
+import { colourSchemeScript } from "./scripts/colourSchemeScript";
 import { computeRequiredClientGeneration } from "./scripts/computeCompatGeneration";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -119,6 +120,7 @@ export default defineConfig({
     react(),
     tsconfigPaths(),
     pdfjsDecoders(),
+    colourSchemeScript(path.resolve(__dirname, "src/colour-scheme.ts")),
     VitePWA({
       strategies: "injectManifest",
       srcDir: "src",
