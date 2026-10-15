@@ -46,7 +46,7 @@ just review-marks-install
 ```
 
 Then run "Developer: Reload Window" in each VS Code window. Run it again
-after changing `extension.js` or `package.json`.
+after changing `extension.ts` or `package.json`.
 
 ## How it works
 

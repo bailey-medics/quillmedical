@@ -8,24 +8,68 @@
 // recipes cannot disagree, and a window on a branch without the script
 // simply shows no marks.
 //
-// Plain JavaScript with no build step and no packages of its own, so
-// `install.sh` only has to zip two files.
+// TypeScript, with no packages of its own. `install.sh` strips the types
+// with Node's own `stripTypeScriptTypes`, so the file VS Code loads is
+// this one less its types, and nothing needs compiling beyond that. The
+// source therefore uses only syntax that erasing the types leaves as
+// working JavaScript (`erasableSyntaxOnly` in tsconfig.json), and stays
+// CommonJS, which every VS Code still loads: the modules are reached with
+// `require`, and typed through `import type`.
 
-const vscode = require("vscode");
-const cp = require("child_process");
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
+import type * as VsCode from "vscode";
+import type * as ChildProcess from "node:child_process";
+import type * as Fs from "node:fs";
+import type * as Os from "node:os";
+import type * as Path from "node:path";
+
+const vscode: typeof VsCode = require("vscode");
+const cp: typeof ChildProcess = require("child_process");
+const fs: typeof Fs = require("fs");
+const os: typeof Os = require("os");
+const path: typeof Path = require("path");
+
+type State = "audited" | "changed" | "unaudited";
+
+/** What is known about one file, from the ledger. */
+interface FileMark {
+  state: State;
+  lines: number;
+  stampedOn: string;
+  fingerprint: string;
+  kind: string;
+  readers: string;
+  relative: string;
+  folder: false;
+}
+
+/** How many files beneath a folder are in each state. */
+type Tally = Record<State, number>;
+
+/** What is known about one folder, worked out from the files beneath it. */
+interface FolderMark {
+  state: State;
+  folder: true;
+  tally: Tally;
+  relative: string;
+}
+
+type Mark = FileMark | FolderMark;
+
+/** Lines to mark in a file: spans new or changed, and where lines went. */
+interface LinesToMark {
+  changed: { first: number; last: number }[];
+  removedBefore: number[];
+}
 
 const SCRIPT = path.join("scripts", "review-ledger.py");
-const AUDITED = "audited";
-const CHANGED = "changed";
-const UNAUDITED = "unaudited";
+const AUDITED: State = "audited";
+const CHANGED: State = "changed";
+const UNAUDITED: State = "unaudited";
 
 // Absolute path of a file or folder -> what is known about it.
-let marks = new Map();
-let watchers = [];
-let timer;
+let marks = new Map<string, Mark>();
+let watchers: Fs.FSWatcher[] = [];
+let timer: ReturnType<typeof setTimeout> | undefined;
 let running = false;
 let again = false;
 
@@ -34,8 +78,8 @@ let again = false;
 // colour that shows against their own background.
 const BAR_DARK = "#b4b4b4";
 const BAR_LIGHT = "#1f1f1f";
-let changedLineStyle;
-let removedLineStyle;
+let changedLineStyle: VsCode.TextEditorDecorationType;
+let removedLineStyle: VsCode.TextEditorDecorationType;
 // Counts editors asked about, so a slow answer for a file the editor has
 // since left does not paint over a newer one.
 let paintRound = 0;
@@ -48,7 +92,7 @@ let paintRound = 0;
  * its middle; `preserveAspectRatio="none"` lets it stretch to the full
  * height of a line whatever the font size.
  */
-function barPicture(colour) {
+function barPicture(colour: string): VsCode.Uri {
   const svg =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12" ' +
     'preserveAspectRatio="none">' +
@@ -68,9 +112,9 @@ function barPicture(colour) {
  *
  * Line numbers come back counted from 0, as the editor counts them.
  */
-function linesToMark(diff) {
-  const changed = [];
-  const removedBefore = [];
+function linesToMark(diff: string): LinesToMark {
+  const changed: LinesToMark["changed"] = [];
+  const removedBefore: number[] = [];
 
   for (const line of diff.split("\n")) {
     const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(line);
@@ -94,11 +138,11 @@ function linesToMark(diff) {
   return { changed, removedBefore };
 }
 
-const changedEmitter = new vscode.EventEmitter();
+const changedEmitter = new vscode.EventEmitter<VsCode.Uri[]>();
 const log = vscode.window.createOutputChannel("Review marks");
-let statusItem;
+let statusItem: VsCode.StatusBarItem;
 
-function run(command, args, cwd) {
+function run(command: string, args: string[], cwd: string): Promise<string> {
   return new Promise((resolve, reject) => {
     cp.execFile(
       command,
@@ -117,13 +161,13 @@ function run(command, args, cwd) {
 }
 
 // The folders open in this window that have the ledger script.
-function roots() {
+function roots(): string[] {
   return (vscode.workspace.workspaceFolders || [])
     .map((folder) => folder.uri.fsPath)
     .filter((root) => fs.existsSync(path.join(root, SCRIPT)));
 }
 
-function rootOf(file) {
+function rootOf(file: string): string | undefined {
   return roots().find(
     (root) => file === root || file.startsWith(root + path.sep)
   );
@@ -141,10 +185,10 @@ function rootOf(file) {
  * any of them has changed, audited if every one is audited, and unaudited
  * otherwise.
  */
-function marksFrom(output, root) {
-  const found = new Map();
+function marksFrom(output: string, root: string): Map<string, Mark> {
+  const found = new Map<string, Mark>();
   // Folder -> how many files beneath it are in each state.
-  const folders = new Map();
+  const folders = new Map<string, Tally>();
 
   for (const line of output.split("\n")) {
     if (!line) {
@@ -152,7 +196,8 @@ function marksFrom(output, root) {
     }
 
     const columns = line.split("\t");
-    const [state, lines, stampedOn, fingerprint, kind] = columns;
+    const [stateColumn, lines, stampedOn, fingerprint, kind] = columns;
+    const state = stateColumn as State;
     const readers = columns.length >= 7 ? columns[5] : "";
     const relative = columns[columns.length - 1];
     const full = path.join(root, relative);
@@ -171,7 +216,11 @@ function marksFrom(output, root) {
     let dir = path.dirname(full);
 
     while (dir.startsWith(root + path.sep)) {
-      const tally = folders.get(dir) || { audited: 0, changed: 0, unaudited: 0 };
+      const tally: Tally = folders.get(dir) || {
+        audited: 0,
+        changed: 0,
+        unaudited: 0,
+      };
       tally[state] += 1;
       folders.set(dir, tally);
       dir = path.dirname(dir);
@@ -179,7 +228,7 @@ function marksFrom(output, root) {
   }
 
   for (const [dir, tally] of folders) {
-    let state = UNAUDITED;
+    let state: State = UNAUDITED;
 
     if (tally.changed > 0) {
       state = CHANGED;
@@ -198,7 +247,7 @@ function marksFrom(output, root) {
   return found;
 }
 
-async function loadRoot(root, into) {
+async function loadRoot(root: string, into: Map<string, Mark>): Promise<void> {
   const output = await run("python3", [SCRIPT, "states"], root);
 
   for (const [key, mark] of marksFrom(output, root)) {
@@ -206,7 +255,7 @@ async function loadRoot(root, into) {
   }
 }
 
-async function refresh() {
+async function refresh(): Promise<void> {
   if (running) {
     again = true;
     return;
@@ -215,7 +264,7 @@ async function refresh() {
   running = true;
 
   try {
-    const next = new Map();
+    const next = new Map<string, Mark>();
 
     for (const root of roots()) {
       await loadRoot(root, next);
@@ -224,7 +273,7 @@ async function refresh() {
     const before = marks;
     marks = next;
 
-    const touched = [];
+    const touched: VsCode.Uri[] = [];
 
     for (const key of new Set([...before.keys(), ...next.keys()])) {
       const was = before.get(key);
@@ -248,29 +297,29 @@ async function refresh() {
 
     if (again) {
       again = false;
-      refresh();
+      void refresh();
     }
   }
 }
 
 // "by Ada Reader" for a mark that names who audited the file, or nothing.
-function byWhom(mark) {
-  return mark.readers ? ` by ${mark.readers}` : "";
+function byWhom(mark: Mark): string {
+  return !mark.folder && mark.readers ? ` by ${mark.readers}` : "";
 }
 
-function shown(mark) {
+function shown(mark: Mark | undefined): State | undefined {
   return mark && mark.state !== UNAUDITED ? mark.state : undefined;
 }
 
-function refreshSoon() {
+function refreshSoon(): void {
   clearTimeout(timer);
-  timer = setTimeout(refresh, 400);
+  timer = setTimeout(() => void refresh(), 400);
 }
 
-const decorations = {
+const decorations: VsCode.FileDecorationProvider = {
   onDidChangeFileDecorations: changedEmitter.event,
 
-  provideFileDecoration(uri) {
+  provideFileDecoration(uri: VsCode.Uri): VsCode.FileDecoration | undefined {
     const mark = marks.get(uri.fsPath);
 
     if (!mark) {
@@ -301,14 +350,17 @@ const decorations = {
   },
 };
 
-function clearBars(editor) {
+function clearBars(editor: VsCode.TextEditor): void {
   editor.setDecorations(changedLineStyle, []);
   editor.setDecorations(removedLineStyle, []);
 }
 
 // Paint the bars for one editor, or clear them when its file is not one
 // that has changed since it was audited.
-async function paintBars(editor, round) {
+async function paintBars(
+  editor: VsCode.TextEditor,
+  round: number
+): Promise<void> {
   const uri = editor.document.uri;
   const mark = uri.scheme === "file" ? marks.get(uri.fsPath) : undefined;
   const root = mark && rootOf(uri.fsPath);
@@ -318,7 +370,7 @@ async function paintBars(editor, round) {
     return;
   }
 
-  let diff;
+  let diff: string;
 
   try {
     // The file as it was stamped, against the file on disk now.
@@ -364,15 +416,15 @@ async function paintBars(editor, round) {
   );
 }
 
-function paintAllBars() {
+function paintAllBars(): void {
   paintRound += 1;
 
   for (const editor of vscode.window.visibleTextEditors) {
-    paintBars(editor, paintRound);
+    void paintBars(editor, paintRound);
   }
 }
 
-function activeFile() {
+function activeFile(): string | undefined {
   const editor = vscode.window.activeTextEditor;
 
   if (!editor || editor.document.uri.scheme !== "file") {
@@ -382,7 +434,7 @@ function activeFile() {
   return editor.document.uri.fsPath;
 }
 
-function updateStatus() {
+function updateStatus(): void {
   const file = activeFile();
   const mark = file && marks.get(file);
 
@@ -412,7 +464,7 @@ function updateStatus() {
 
 // The file or folder a command was asked about: the one clicked in the
 // explorer or on a tab, or else the file in the editor.
-function target(uri) {
+function target(uri?: VsCode.Uri): string | undefined {
   if (uri && uri.fsPath) {
     return uri.fsPath;
   }
@@ -420,7 +472,7 @@ function target(uri) {
   return activeFile();
 }
 
-async function ledger(command, file) {
+async function ledger(command: string, file: string | undefined): Promise<boolean> {
   const root = file && rootOf(file);
 
   if (!root) {
@@ -439,12 +491,14 @@ async function ledger(command, file) {
 
     return true;
   } catch (error) {
-    vscode.window.showWarningMessage(`Review marks: ${error.message}`);
+    vscode.window.showWarningMessage(
+      `Review marks: ${error instanceof Error ? error.message : String(error)}`
+    );
     return false;
   }
 }
 
-async function saveFirst(file) {
+async function saveFirst(file: string): Promise<void> {
   const open = vscode.workspace.textDocuments.find(
     (doc) => doc.uri.fsPath === file && doc.isDirty
   );
@@ -455,7 +509,7 @@ async function saveFirst(file) {
   }
 }
 
-async function stamp(uri) {
+async function stamp(uri?: VsCode.Uri): Promise<void> {
   const file = target(uri);
 
   if (!file) {
@@ -466,7 +520,7 @@ async function stamp(uri) {
   await ledger("mark", file);
 }
 
-async function removeStamp(uri) {
+async function removeStamp(uri?: VsCode.Uri): Promise<void> {
   const file = target(uri);
 
   if (file) {
@@ -474,7 +528,7 @@ async function removeStamp(uri) {
   }
 }
 
-async function showChange(uri) {
+async function showChange(uri?: VsCode.Uri): Promise<void> {
   const file = target(uri);
   const mark = file && marks.get(file);
   const root = file && rootOf(file);
@@ -513,11 +567,12 @@ async function showChange(uri) {
   }
 }
 
-async function statusClick() {
+async function statusClick(): Promise<void> {
   const file = activeFile();
   const mark = file && marks.get(file);
 
-  if (!mark) {
+  // The open file's own mark; a folder never has an editor of its own.
+  if (!mark || mark.folder) {
     return;
   }
 
@@ -548,7 +603,7 @@ async function statusClick() {
 
 // The card is replaced, not edited, each time it is written, so watch the
 // folder it sits in and not the file.
-async function watchCards(context) {
+async function watchCards(context: VsCode.ExtensionContext): Promise<void> {
   for (const watcher of watchers) {
     watcher.close();
   }
@@ -561,7 +616,7 @@ async function watchCards(context) {
       const shared = (await run("bash", [helper], root)).trim();
 
       watchers.push(
-        fs.watch(shared, (event, name) => {
+        fs.watch(shared, (_event, name) => {
           if (name === "review-ledger.tsv") {
             refreshSoon();
           }
@@ -577,7 +632,7 @@ async function watchCards(context) {
   });
 }
 
-function activate(context) {
+function activate(context: VsCode.ExtensionContext): void {
   statusItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
     50
@@ -633,8 +688,8 @@ function activate(context) {
     vscode.workspace.onDidDeleteFiles(refreshSoon),
     vscode.workspace.onDidRenameFiles(refreshSoon),
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
-      watchCards(context);
-      refresh();
+      void watchCards(context);
+      void refresh();
     }),
     vscode.window.onDidChangeWindowState((state) => {
       // A branch switch or a stamp from the terminal while away.
@@ -644,10 +699,10 @@ function activate(context) {
     })
   );
 
-  watchCards(context);
-  refresh();
+  void watchCards(context);
+  void refresh();
 }
 
-function deactivate() {}
+function deactivate(): void {}
 
 module.exports = { activate, deactivate, linesToMark, marksFrom };
