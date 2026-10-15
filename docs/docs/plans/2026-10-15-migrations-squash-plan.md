@@ -71,7 +71,12 @@ after go-live.
       signed in to `gcloud` to see it directly; if it says anything
       else, the last deploy's migrations did not run, and that needs
       finding out before going on, since the baseline would otherwise
-      claim schema the database lacks.
+      claim schema the database lacks. Confirmed twice more on
+      2026-10-15: the admin job's Cloud Logging record of the
+      2026-10-14 run shows `Running upgrade e606412a820c ->
+      ea2ae2e4854b` as the last upgrade, and once #2000 had deployed
+      `show-migration`, `just mc app` read `Rev: ea2ae2e4854b (head)`
+      from the database itself.
 
 - [x] Dump the schema the current chain builds, before deleting
       anything. App production was created empty at the first squash
@@ -300,17 +305,32 @@ is marked ready, and again immediately before it merges.
 
 ## Phase 8: Merge and deploy
 
-- [ ] Merge (a human does this). The deploy runs `alembic upgrade head`
+- [x] Merge (a human does this). The deploy runs `alembic upgrade head`
       through the `quill-admin-app` job
       (`.github/scripts/deploy/run-migrations.sh`), which should find
       nothing to do. App production stays up throughout: there is no
-      drop and no gap.
+      drop and no gap. The stack merged one pull request at a time on
+      2026-10-15, bottom first: #2000, #2002, #2005, #2006, #2009, each
+      checked before the next. #2005's deploy passed its migration
+      step and smoke test, and the admin job's run at 14:02 UTC logged
+      "Migrations applied successfully" with no `Running upgrade` line
+      before it: Alembic found nothing to do.
 
-- [ ] Confirm `/api/health` reports the core DB available, `just mc app`
+- [x] Confirm `/api/health` reports the core DB available, `just mc app`
       reports the baseline as head, and the data is still there (sign
-      in, open a question bank and a passport).
+      in, open a question bank and a passport). After #2005 deployed,
+      `just mc app` read `Rev: ea2ae2e4854b (head)`, `Parent: <base>`,
+      from `2026_10_15_1043-ea2ae2e4854b_initial_baseline_schema.py`;
+      `/api/health` reported the core DB available (FHIR and EHRbase
+      "Not provisioned", as App production always does); and Mark
+      signed in and confirmed the app and its data were all there.
 
-- [ ] Lift the migration freeze from Phase 1.
+- [x] Lift the migration freeze from Phase 1. Lifted when #2009 merged
+      on 2026-10-15. Phase 7's check ran before #2005 merged: nothing
+      on `main` since `af3cd5cb7` touched migrations, `models.py`,
+      `shared/` or `api-compatibility/`; worktree 2's ESLint stack and
+      #2013 had merged meanwhile, and the only conflict they caused in
+      this stack was a line each in the plans index.
 
 ## Phase 9: Reset the API compatibility record
 
@@ -352,8 +372,11 @@ decision files, so anything merged meanwhile may have added more.
       and `docs/docs/backend/api-compatibility.md` for as long as it is
       open.
 
-- [ ] Merge (a human does this), then confirm the app loads in an open
-      browser without being told to reload.
+- [x] Merge (a human does this), then confirm the app loads in an open
+      browser without being told to reload. #2006 merged and deployed
+      on 2026-10-15, and the API still sends `Compat-Generation: 1`,
+      the generation before the reset, so no open tab is told to
+      reload.
 
 ## Phase 10: Close the exceptions
 
@@ -390,9 +413,10 @@ Its own pull request, at the top of the stack, merged last.
       queue run still compares with `main`, so the stack is checked
       whole before anything lands.
 
-- [ ] Merge after #2005 and #2006 have merged (a human does this). If
+- [x] Merge after #2005 and #2006 have merged (a human does this). If
       it merged first, the squash and reset pull requests would fail
-      their own checks.
+      their own checks. #2009 merged last, on 2026-10-15, and neither
+      `is_squash` nor `is_compat_reset` is on `main` any more.
 
 ## Phase 11: Measure what the squash did to CI run times
 
