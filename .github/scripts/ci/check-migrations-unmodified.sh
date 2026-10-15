@@ -17,15 +17,6 @@
 # Deletions and renames are refused without comparing, because a migration's
 # filename carries its revision id and the chain's ordering.
 #
-# One shape of deletion is allowed: a squash. A PR may delete every merged
-# migration at once if it adds exactly one in their place, a baseline whose
-# `revision` is the id the deleted chain's head had and whose `down_revision`
-# is None. A database at the old head then already records the baseline's
-# id, so `alembic upgrade head` finds nothing to do and no data is touched.
-# Nothing narrower passes: deleting some of the chain, or replacing it under
-# a new id, is still refused. So is a chain of one, which has nothing to
-# squash: without that floor a rename of a lone baseline would read as one.
-#
 # Fails the build directly rather than routing to a gate - there is no
 # legitimate case to approve. Wrong code is corrected by a NEW migration.
 set -euo pipefail
@@ -69,78 +60,6 @@ is_comparable_status() {
   [[ "$1" == M* ]]
 }
 
-# The migrations under VERSIONS_DIR at a commit, one path per line, sorted.
-migrations_at() {
-  local commit="$1"
-
-  git ls-tree -r --name-only "$commit" -- "$VERSIONS_DIR" \
-    | grep -E '\.py$' | grep -v '/__init__\.py$' | sort
-}
-
-# The quoted values of every `<field> = "..."` line on stdin, one per line,
-# where field is `revision` or `down_revision`. A line set to None yields
-# nothing. Pure, so it can be tested.
-revision_values() {
-  local field="$1"
-
-  sed -nE "s/^${field}(: *[^=]+)? *= *\"([^\"]+)\".*/\2/p"
-}
-
-# The head of the chain at a commit: the one revision no migration there
-# names as its down_revision. Prints nothing if there is no single head.
-head_revision_at() {
-  local commit="$1"
-  local revisions
-  local downs
-  local heads
-
-  revisions="$(git grep -h -E '^revision' "$commit" -- "$VERSIONS_DIR" \
-    | revision_values revision | sort -u)"
-  downs="$(git grep -h -E '^down_revision' "$commit" -- "$VERSIONS_DIR" \
-    | revision_values down_revision | sort -u)"
-  heads="$(comm -23 <(echo "$revisions") <(echo "$downs"))"
-
-  if [ "$(echo "$heads" | grep -c .)" -eq 1 ]; then
-    echo "$heads"
-  fi
-}
-
-# Whether this PR is a squash of the whole chain at the merge base: every
-# migration there (two or more) deleted, and exactly one added whose
-# revision is the old head's id and whose down_revision is None. Renames are switched off so
-# the baseline is seen as the new file it is, even where git would pair it
-# with a deleted migration it happens to resemble. Echoes what it found.
-is_squash() {
-  local base_commit="$1"
-  local merged
-  local deleted
-  local added
-
-  merged="$(migrations_at "$base_commit")"
-  deleted="$(git diff --name-only --no-renames --diff-filter=D \
-    "${base_commit}...HEAD" -- "${VERSIONS_DIR}/*.py" | sort)"
-  added="$(git diff --name-only --no-renames --diff-filter=A \
-    "${base_commit}...HEAD" -- "${VERSIONS_DIR}/*.py")"
-
-  [ "$(echo "$merged" | grep -c .)" -ge 2 ] || return 1
-  [ "$deleted" = "$merged" ] || return 1
-  [ "$(echo "$added" | grep -c .)" -eq 1 ] || return 1
-
-  local old_head
-  local new_revision
-  local new_down
-
-  old_head="$(head_revision_at "$base_commit")"
-  new_revision="$(revision_values revision <"$added" | head -1)"
-  new_down="$(revision_values down_revision <"$added" | head -1)"
-
-  [ -n "$old_head" ] || return 1
-  [ "$new_revision" = "$old_head" ] || return 1
-  [ -z "$new_down" ] || return 1
-
-  echo "${added} replaces the whole chain under the old head's id ${old_head}"
-}
-
 # What changed in this migration beyond its comments, or nothing at all.
 # Echoes the comparer's explanation and returns non-zero when the code moved.
 code_difference() {
@@ -177,12 +96,6 @@ main() {
   # against - not the tip of main, which may have moved on since.
   local base_commit
   base_commit="$(git merge-base "$main_ref" HEAD)"
-
-  local squash
-  if squash="$(is_squash "$base_commit")"; then
-    log "Squash accepted: ${squash}"
-    return 0
-  fi
 
   local status path reason
   local failures=()
@@ -223,9 +136,7 @@ main() {
   error ""
   error "Comments may be edited, so a marker's rationale can be clarified"
   error "or corrected in place. Anything else is corrected by adding a NEW"
-  error "migration that supersedes this one. The one deletion allowed is a"
-  error "squash: every migration replaced by one baseline that carries the"
-  error "old head's revision id. See"
+  error "migration that supersedes this one. See"
   error "docs/docs/backend/alembic-migration-safety.md."
   exit 1
 }

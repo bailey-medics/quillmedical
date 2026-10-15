@@ -28,13 +28,7 @@
 #   2. Coverage: every flagged change has a matching file
 #   3. reason: non-empty
 #   4. change: single scalar string
-#   5. Immutability: generation/forces_reload/change frozen post-merge, and
-#      no deletions. The one deletion allowed is a reset: every decision
-#      file at the base deleted and exactly one init file added in their
-#      place, at the generation the deleted files required (1 when none of
-#      them forced a reload), with forces_reload false and change "none".
-#      That leaves compute_required_client_generation() where it was, so no
-#      open browser is told to reload. Nothing narrower passes.
+#   5. Immutability: generation/forces_reload/change frozen post-merge
 #   6. Filename regex match
 #   7. No duplicate generations for forces_reload:true files
 #   7a. Generation range for forces_reload:false files (1 to max)
@@ -202,17 +196,6 @@ get_deleted_compat_files() {
     eval "$GET_DELETED_COMPAT_FILES_OVERRIDE"
   else
     git diff --name-only --diff-filter=D "$COMPAT_BASE"...HEAD -- "$COMPAT_DIR" 2>/dev/null || true
-  fi
-}
-
-# Get every compat file as it stands at the base, one path per line, sorted.
-# Can be overridden in tests via GET_BASE_COMPAT_FILES_OVERRIDE.
-get_base_compat_files() {
-  if [ -n "${GET_BASE_COMPAT_FILES_OVERRIDE:-}" ]; then
-    eval "$GET_BASE_COMPAT_FILES_OVERRIDE"
-  else
-    git ls-tree -r --name-only "$COMPAT_BASE" -- "$COMPAT_DIR" 2>/dev/null \
-      | grep -E '\.yaml$' | sort || true
   fi
 }
 
@@ -391,69 +374,7 @@ validate_immutability() {
   [ ${#FAILURES[@]} -eq "$start_failures" ]
 }
 
-# The generation the files at the base required of a client: the highest
-# generation among those with forces_reload true, or 1 when none has it.
-# Args: the base files, one per line.
-required_generation_at_base() {
-  local base_files="$1"
-  local required=1
-
-  while IFS= read -r file; do
-    if [ -z "$file" ]; then
-      continue
-    fi
-
-    local content
-    local forces_reload
-    local generation
-
-    content=$(get_main_file_content "$file")
-    forces_reload=$(echo "$content" | read_yaml_field /dev/stdin "$FORCES_RELOAD" || echo "")
-    generation=$(echo "$content" | read_yaml_field /dev/stdin "$GENERATION" || echo "")
-
-    if [ "$forces_reload" = "true" ] && [[ "$generation" =~ ^[0-9]+$ ]] && [ "$generation" -gt "$required" ]; then
-      required="$generation"
-    fi
-  done <<< "$base_files"
-
-  echo "$required"
-}
-
-# Whether this PR resets the record: every decision file at the base is
-# deleted and exactly one init file is added in their place, at the
-# generation the base required, with forces_reload false and change "none".
-# Echoes what it found when it is one.
-is_compat_reset() {
-  local base_files
-  local deleted_files
-  local new_files
-
-  base_files=$(get_base_compat_files)
-  deleted_files=$(get_deleted_compat_files | sort)
-  new_files=$(get_new_compat_files)
-
-  [ -n "$base_files" ] || return 1
-  [ "$deleted_files" = "$base_files" ] || return 1
-  [ "$(echo "$new_files" | grep -c .)" -eq 1 ] || return 1
-
-  local required
-  local generation
-  local forces_reload
-  local change
-
-  required=$(required_generation_at_base "$base_files")
-  generation=$(read_yaml_field "$new_files" "$GENERATION")
-  forces_reload=$(read_yaml_field "$new_files" "$FORCES_RELOAD")
-  change=$(read_yaml_field "$new_files" "$CHANGE")
-
-  [ "$generation" = "$required" ] || return 1
-  [ "$forces_reload" = "false" ] || return 1
-  [ "$change" = "none" ] || return 1
-
-  echo "$new_files replaces every decision file at generation $required"
-}
-
-# Rule 5 (continued): No deleted files, unless the PR is a reset
+# Rule 5 (continued): No deleted files
 validate_no_deletions() {
   log "Checking for deleted files..."
 
@@ -461,15 +382,9 @@ validate_no_deletions() {
   local deleted_files
   deleted_files=$(get_deleted_compat_files)
 
-  local reset
-  if [ -n "$deleted_files" ] && reset=$(is_compat_reset); then
-    log "Reset accepted: $reset"
-    return 0
-  fi
-
   while IFS= read -r file; do
     if [ -n "$file" ]; then
-      fail "File deletion not permitted: $file. Superseded decisions get a new file, never deletion. The one deletion allowed is a reset: every file replaced by one init file at the generation they required."
+      fail "File deletion not permitted: $file. Superseded decisions get a new file, never deletion."
     fi
   done <<< "$deleted_files"
 

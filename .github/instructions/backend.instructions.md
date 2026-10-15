@@ -193,13 +193,6 @@ full standard below.
 - Renames and deletions are refused outright rather than compared: the
   filename carries the revision id and the chain's ordering, so renaming
   rewrites the record as surely as editing the body does.
-- The one deletion allowed is a squash: every merged migration (two or
-  more) deleted and exactly one added in their place, a baseline whose
-  `revision` is the id the old head had and whose `down_revision` is
-  `None`. A database at the old head then already records the
-  baseline's id, so `alembic upgrade head` finds nothing to do and no
-  data is touched. Deleting part of the chain, or replacing it under a
-  new id, is still refused.
 - Every migration needs a real docstring summary and a meaningful slug.
   Bare `<rev>_.py` files (no description) are rejected.
 - Keep the chain linear: exactly one base and one head, with no branches
@@ -448,10 +441,7 @@ depends on the current response/request shape for as long as it stays open.
   `change` fields are immutable - never edit them retroactively, and
   never delete a file. If a decision is superseded, add a new file
   instead. Only `reason` may be edited later, via the same
-  `api-breaking-change-review` gate. The one deletion CI accepts is a
-  reset: every file deleted and one `init` file added at the generation
-  they required, with `forces_reload: false` and `change: "none"`, so the
-  required client generation does not move.
+  `api-breaking-change-review` gate.
 - Full detail: `docs/docs/backend/api-compatibility.md` (why this exists,
   the client-side forced-reload mechanism, the `Compat-Generation`
   header).

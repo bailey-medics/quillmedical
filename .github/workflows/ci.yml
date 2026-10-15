@@ -940,6 +940,17 @@ jobs:
       - name: Fetch main branch ref (for the changed-migrations diff)
         run: git fetch origin main:refs/remotes/origin/main
 
+      # On a pull request, the commit it was built on rather than main: on a
+      # stacked pull request that is the branch below, and diffing against
+      # main would report the migrations of every branch underneath as this
+      # one's. The destructive-migration gate resolves its base the same
+      # way, for the same reason. A merge queue run has no branch below, so
+      # it compares against main as before, and checks the stack whole.
+      - name: Resolve the base commit the PR ref was merged onto
+        if: github.event_name == 'pull_request'
+        id: base
+        run: bash .github/scripts/ci/resolve-pr-base-sha.sh .
+
       # The comparer this calls needs nothing installed, but it is a file
       # in backend/, written and formatted for the repository's Python.
       - name: Set up Python
@@ -948,7 +959,7 @@ jobs:
           install-backend-deps: "false"
 
       - name: Check no merged migration was rewritten, deleted or renamed
-        run: bash .github/scripts/ci/check-migrations-unmodified.sh origin/main
+        run: bash .github/scripts/ci/check-migrations-unmodified.sh "${{ steps.base.outputs.base_sha || 'origin/main' }}"
 
   # ---------- Say why a merge queue run failed ----------
   # The queue removes a pull request when any check fails, and tells
