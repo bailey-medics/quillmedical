@@ -8,8 +8,6 @@
  * - Error handling and loading states
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, waitFor, fireEvent } from "@testing-library/react";
 import { renderWithRouter } from "@test/test-utils";
@@ -55,7 +53,7 @@ describe("ActivatePatientPage", () => {
         gender: "female",
       };
 
-      (apiLib.api.get as any).mockResolvedValueOnce(mockPatient);
+      vi.mocked(apiLib.api.get).mockResolvedValueOnce(mockPatient);
 
       renderWithRouter(<ActivatePatientPage />, {
         routePath: "/admin/patients/:patientId/activate",
@@ -78,7 +76,7 @@ describe("ActivatePatientPage", () => {
         gender: "female",
       };
 
-      (apiLib.api.get as any).mockResolvedValueOnce(mockPatient);
+      vi.mocked(apiLib.api.get).mockResolvedValueOnce(mockPatient);
 
       renderWithRouter(<ActivatePatientPage />, {
         routePath: "/admin/patients/:patientId/activate",
@@ -102,7 +100,7 @@ describe("ActivatePatientPage", () => {
         gender: "female",
       };
 
-      (apiLib.api.get as any).mockResolvedValueOnce(mockPatient);
+      vi.mocked(apiLib.api.get).mockResolvedValueOnce(mockPatient);
 
       vi.spyOn(apiLib.api, "post").mockResolvedValueOnce({});
 
@@ -139,7 +137,7 @@ describe("ActivatePatientPage", () => {
         gender: "female",
       };
 
-      (apiLib.api.get as any).mockResolvedValueOnce(mockPatient);
+      vi.mocked(apiLib.api.get).mockResolvedValueOnce(mockPatient);
 
       renderWithRouter(<ActivatePatientPage />, {
         routePath: "/admin/patients/:patientId/activate",
@@ -185,7 +183,7 @@ describe("ActivatePatientPage", () => {
         ],
       };
 
-      (apiLib.api.get as any).mockResolvedValueOnce(mockPatientsResponse);
+      vi.mocked(apiLib.api.get).mockResolvedValueOnce(mockPatientsResponse);
 
       renderWithRouter(<ActivatePatientPage />, {
         routePath: "/admin/patients/activate",
@@ -207,7 +205,7 @@ describe("ActivatePatientPage", () => {
         patients: [],
       };
 
-      (apiLib.api.get as any).mockResolvedValueOnce(mockPatientsResponse);
+      vi.mocked(apiLib.api.get).mockResolvedValueOnce(mockPatientsResponse);
 
       renderWithRouter(<ActivatePatientPage />, {
         routePath: "/admin/patients/activate",
@@ -234,7 +232,7 @@ describe("ActivatePatientPage", () => {
         ],
       };
 
-      (apiLib.api.get as any).mockResolvedValueOnce(mockPatientsResponse);
+      vi.mocked(apiLib.api.get).mockResolvedValueOnce(mockPatientsResponse);
 
       vi.spyOn(apiLib.api, "post").mockResolvedValueOnce({});
 
@@ -272,7 +270,7 @@ describe("ActivatePatientPage", () => {
 
   describe("Error handling", () => {
     it("displays error when patient fetch fails", async () => {
-      (apiLib.api.get as any).mockRejectedValueOnce(
+      vi.mocked(apiLib.api.get).mockRejectedValueOnce(
         new Error("Failed to fetch patient"),
       );
 
@@ -288,7 +286,7 @@ describe("ActivatePatientPage", () => {
     });
 
     it("displays error when patients list fetch fails", async () => {
-      (apiLib.api.get as any).mockRejectedValueOnce(
+      vi.mocked(apiLib.api.get).mockRejectedValueOnce(
         new Error("Failed to fetch patients"),
       );
 
@@ -308,7 +306,7 @@ describe("ActivatePatientPage", () => {
 
   describe("Loading state", () => {
     it("shows skeleton loaders while loading patient", async () => {
-      (apiLib.api.get as any).mockImplementationOnce(
+      vi.mocked(apiLib.api.get).mockImplementationOnce(
         () =>
           new Promise(() => {
             /* never resolves */
@@ -327,7 +325,7 @@ describe("ActivatePatientPage", () => {
     });
 
     it("shows skeleton loaders while loading patients list", async () => {
-      (apiLib.api.get as any).mockImplementationOnce(
+      vi.mocked(apiLib.api.get).mockImplementationOnce(
         () =>
           new Promise(() => {
             /* never resolves */

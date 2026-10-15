@@ -10,15 +10,18 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportAcceptInvitePage } from "./PassportAcceptInvitePage";
+import type * as passportLib from "@lib/passport";
 
-const previewAssessorInvite = vi.fn();
-const acceptAssessorInvite = vi.fn();
+const { previewAssessorInvite, acceptAssessorInvite } = vi.hoisted(() => ({
+  previewAssessorInvite: vi.fn<typeof passportLib.previewAssessorInvite>(),
+  acceptAssessorInvite: vi.fn<typeof passportLib.acceptAssessorInvite>(),
+}));
 
 vi.mock("@lib/passport", async (importOriginal) => ({
   // The real list of bodies: it is config, not a network call.
   ...(await importOriginal<typeof import("@lib/passport")>()),
-  previewAssessorInvite: (...args: unknown[]) => previewAssessorInvite(...args),
-  acceptAssessorInvite: (...args: unknown[]) => acceptAssessorInvite(...args),
+  previewAssessorInvite,
+  acceptAssessorInvite,
 }));
 
 const preview = {
@@ -173,7 +176,11 @@ describe("PassportAcceptInvitePage", () => {
       ...preview,
       needs_account: true,
     });
-    acceptAssessorInvite.mockResolvedValue({ status: "registered" });
+    acceptAssessorInvite.mockResolvedValue({
+      status: "registered",
+      user_id: 7,
+      org_unit_id: 3,
+    });
     renderWithToken();
 
     await user.type(
@@ -212,7 +219,11 @@ describe("PassportAcceptInvitePage", () => {
     // there directly says what happened and what to do next at once.
     const user = userEvent.setup();
     previewAssessorInvite.mockResolvedValue(preview);
-    acceptAssessorInvite.mockResolvedValue({ status: "linked" });
+    acceptAssessorInvite.mockResolvedValue({
+      status: "linked",
+      user_id: 7,
+      org_unit_id: 3,
+    });
     renderWithToken();
 
     await user.click(

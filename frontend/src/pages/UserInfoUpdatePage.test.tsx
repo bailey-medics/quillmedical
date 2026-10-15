@@ -747,14 +747,14 @@ describe("UserInfoUpdatePage", () => {
       });
       await user.click(screen.getByRole("button", { name: /create user/i }));
 
+      // `expect.objectContaining` comes back typed as `any`
+      const flash: unknown = expect.objectContaining({
+        variant: "success",
+        title: "User created",
+      });
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith("/admin/users", {
-          state: {
-            flash: expect.objectContaining({
-              variant: "success",
-              title: "User created",
-            }),
-          },
+          state: { flash },
         });
       });
     }, 30000);

@@ -14,9 +14,12 @@ import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportSignOffPage } from "./PassportSignOffPage";
 import { inboxItem } from "@/components/passport/fixtures";
 import { onInboxChanged } from "@/lib/inbox/inbox";
+import type * as passportLib from "@lib/passport";
 
-const fetchInbox = vi.fn();
-const signOff = vi.fn();
+const { fetchInbox, signOff } = vi.hoisted(() => ({
+  fetchInbox: vi.fn<typeof passportLib.fetchInbox>(),
+  signOff: vi.fn<typeof passportLib.signOff>(),
+}));
 const mockNavigate = vi.fn();
 
 vi.mock("react-router-dom", async () => {
@@ -28,8 +31,8 @@ vi.mock("react-router-dom", async () => {
 });
 
 vi.mock("@lib/passport", () => ({
-  fetchInbox: (...args: unknown[]) => fetchInbox(...args),
-  signOff: (...args: unknown[]) => signOff(...args),
+  fetchInbox,
+  signOff,
 }));
 
 function renderPage(signOffId = inboxItem.sign_off.id) {
@@ -70,7 +73,11 @@ describe("PassportSignOffPage", () => {
     // somebody else's record.
     const user = userEvent.setup();
     fetchInbox.mockResolvedValue([inboxItem]);
-    signOff.mockResolvedValue({ name: inboxItem.sign_off.name });
+    signOff.mockResolvedValue({
+      name: inboxItem.sign_off.name,
+      status: "signed_off",
+      commit: "abc",
+    });
     renderPage();
 
     // The form will not submit without a basis: SelectField renders as a
@@ -101,7 +108,11 @@ describe("PassportSignOffPage", () => {
     // queue page, which this used to return to, is gone.
     const user = userEvent.setup();
     fetchInbox.mockResolvedValue([inboxItem]);
-    signOff.mockResolvedValue({ name: inboxItem.sign_off.name });
+    signOff.mockResolvedValue({
+      name: inboxItem.sign_off.name,
+      status: "signed_off",
+      commit: "abc",
+    });
     const told = vi.fn();
     const stop = onInboxChanged(told);
     renderPage();

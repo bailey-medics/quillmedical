@@ -11,15 +11,19 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportCpdEntryPage } from "./PassportCpdEntryPage";
+import type * as passportLib from "@lib/passport";
 
-const fetchMyPassport = vi.fn();
-const fetchCpdYear = vi.fn();
-const amendCpdEntry = vi.fn();
+import type { CpdEntry } from "@lib/passport";
+const { fetchMyPassport, fetchCpdYear, amendCpdEntry } = vi.hoisted(() => ({
+  fetchMyPassport: vi.fn<typeof passportLib.fetchMyPassport>(),
+  fetchCpdYear: vi.fn<typeof passportLib.fetchCpdYear>(),
+  amendCpdEntry: vi.fn<typeof passportLib.amendCpdEntry>(),
+}));
 
 vi.mock("@lib/passport", () => ({
-  fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
-  fetchCpdYear: (...args: unknown[]) => fetchCpdYear(...args),
-  amendCpdEntry: (...args: unknown[]) => amendCpdEntry(...args),
+  fetchMyPassport,
+  fetchCpdYear,
+  amendCpdEntry,
 }));
 
 vi.mock("react-router-dom", async () => {
@@ -42,7 +46,7 @@ const detail = {
   competencies: [],
 };
 
-function entry(filename: string, title: string) {
+function entry(filename: string, title: string): CpdEntry {
   return {
     filename,
     year: 2026,

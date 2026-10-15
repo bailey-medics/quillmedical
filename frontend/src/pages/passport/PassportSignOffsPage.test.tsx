@@ -15,18 +15,22 @@ import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportSignOffsPage } from "./PassportSignOffsPage";
 import { requested as requestedFixture } from "@/components/passport/fixtures";
 import type { CompetencyState, SignOff, SignOffStatus } from "@lib/passport";
+import type * as passportLib from "@lib/passport";
 
-const fetchMyPassport = vi.fn();
-const fetchSignOffs = vi.fn();
+const { fetchMyPassport, fetchSignOffs, requestSignOff, searchAssessors } =
+  vi.hoisted(() => ({
+    fetchMyPassport: vi.fn<typeof passportLib.fetchMyPassport>(),
+    fetchSignOffs: vi.fn<typeof passportLib.fetchSignOffs>(),
+    requestSignOff: vi.fn<typeof passportLib.requestSignOff>(),
+    searchAssessors: vi.fn<typeof passportLib.searchAssessors>(),
+  }));
 const navigate = vi.fn();
-const requestSignOff = vi.fn();
-const searchAssessors = vi.fn();
 
 vi.mock("@lib/passport", () => ({
-  fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
-  fetchSignOffs: (...args: unknown[]) => fetchSignOffs(...args),
-  requestSignOff: (...args: unknown[]) => requestSignOff(...args),
-  searchAssessors: (...args: unknown[]) => searchAssessors(...args),
+  fetchMyPassport,
+  fetchSignOffs,
+  requestSignOff,
+  searchAssessors,
 }));
 
 vi.mock("react-router-dom", async () => {

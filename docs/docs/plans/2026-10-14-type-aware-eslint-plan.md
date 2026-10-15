@@ -246,12 +246,27 @@ suite stops meaning anything.
   type for the shape being read, or where the `any` is real, a one-line
   `eslint-disable-next-line` with the reason.
 
-- [ ] Turn `no-unsafe-return`, `no-unsafe-member-access`,
+- [x] Turn `no-unsafe-return`, `no-unsafe-member-access`,
       `no-unsafe-assignment`, `no-unsafe-call` and `no-unsafe-argument`
-      back on for test files only, by a `files: ["**/*.test.{ts,tsx}",
-      "src/test/**"]` block that overrides the scaffolding, and fix the
-      findings under `src/pages` and `src/features`. Run each test file
-      touched with `just uf`.
+      back on for test files only, by a `files:` block that overrides
+      the scaffolding, scoped to `src/pages/**/*.test.*` and
+      `src/features/**/*.test.*` until the next step widens it, and fix
+      the findings there. Run each test file touched with `just uf`.
+      Done on 14 October 2026: 96 findings in 26 files. The untyped
+      `vi.fn()` wrappers became `vi.hoisted` blocks of
+      `vi.fn<typeof passportLib.fetchMyPassport>()` and the like, typed
+      from the real module through `import type * as passportLib`, with
+      the `vi.mock` factory naming them directly, which is what
+      `vi.hoisted` is for. Typing them found 24 fixtures that did not
+      match the real shape: a `detail()` with a two-field `Passport`, a
+      `SignOffResult` with no `status` or `commit`, logbook entries with
+      three fields of eleven. Each is now the real type, built by a
+      small helper where the same partial was written five times. Two
+      `useAuth` stubs are typed as a `Partial<User>` under a status, the
+      shape those tests actually set. `(api.get as any).mock...` and
+      `(api.get as Mock)` became `vi.mocked(api.get)`. The three
+      `expect.objectContaining(...)` assigned into a literal, which come
+      back as `any`, are named once as `unknown` first.
 
 - [ ] The same for the rest of `src`: `src/components`, `src/auth`,
       `src/lib`, `src/__tests__` and `src/test`, and for `e2e/`, which

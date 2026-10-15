@@ -12,22 +12,25 @@ import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportCpdPage } from "./PassportCpdPage";
 import { cpdEntries } from "@/components/passport/fixtures";
+import type * as passportLib from "@lib/passport";
 
-const fetchMyPassport = vi.fn();
-const fetchAllCpd = vi.fn();
-const fetchAppraisalPeriods = vi.fn();
-const addCpdEntry = vi.fn();
+const { fetchMyPassport, fetchAllCpd, fetchAppraisalPeriods, addCpdEntry } =
+  vi.hoisted(() => ({
+    fetchMyPassport: vi.fn<typeof passportLib.fetchMyPassport>(),
+    fetchAllCpd: vi.fn<typeof passportLib.fetchAllCpd>(),
+    fetchAppraisalPeriods: vi.fn<typeof passportLib.fetchAppraisalPeriods>(),
+    addCpdEntry: vi.fn<typeof passportLib.addCpdEntry>(),
+  }));
 
 vi.mock("@lib/passport", async () => {
   const actual =
     await vi.importActual<typeof import("@lib/passport")>("@lib/passport");
   return {
     ...actual,
-    fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
-    fetchAllCpd: (...args: unknown[]) => fetchAllCpd(...args),
-    fetchAppraisalPeriods: (...args: unknown[]) =>
-      fetchAppraisalPeriods(...args),
-    addCpdEntry: (...args: unknown[]) => addCpdEntry(...args),
+    fetchMyPassport,
+    fetchAllCpd,
+    fetchAppraisalPeriods,
+    addCpdEntry,
   };
 });
 

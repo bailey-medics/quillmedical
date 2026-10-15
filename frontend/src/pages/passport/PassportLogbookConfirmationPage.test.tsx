@@ -9,9 +9,16 @@ import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportLogbookConfirmationPage } from "./PassportLogbookConfirmationPage";
 import { logbookConfirmation } from "@/components/passport/fixtures";
 import { onInboxChanged } from "@/lib/inbox/inbox";
+import type * as passportLib from "@lib/passport";
 
-const fetchLogbookConfirmation = vi.fn();
-const answerLogbookConfirmation = vi.fn();
+const { fetchLogbookConfirmation, answerLogbookConfirmation } = vi.hoisted(
+  () => ({
+    fetchLogbookConfirmation:
+      vi.fn<typeof passportLib.fetchLogbookConfirmation>(),
+    answerLogbookConfirmation:
+      vi.fn<typeof passportLib.answerLogbookConfirmation>(),
+  }),
+);
 const mockNavigate = vi.fn();
 
 vi.mock("react-router-dom", async () => {
@@ -23,10 +30,8 @@ vi.mock("react-router-dom", async () => {
 });
 
 vi.mock("@lib/passport", () => ({
-  fetchLogbookConfirmation: (...args: unknown[]) =>
-    fetchLogbookConfirmation(...args),
-  answerLogbookConfirmation: (...args: unknown[]) =>
-    answerLogbookConfirmation(...args),
+  fetchLogbookConfirmation,
+  answerLogbookConfirmation,
 }));
 
 function renderPage(requestId = "7") {

@@ -8,16 +8,20 @@ import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { requested, signedOff } from "@/components/passport/fixtures";
 import { Component as PassportSignOffDetailPage } from "./PassportSignOffDetailPage";
+import type * as passportLib from "@lib/passport";
 
-const fetchMyPassport = vi.fn();
-const fetchSignOff = vi.fn();
-const withdrawSignOff = vi.fn();
+import type { PassportDetail } from "@lib/passport";
+const { fetchMyPassport, fetchSignOff, withdrawSignOff } = vi.hoisted(() => ({
+  fetchMyPassport: vi.fn<typeof passportLib.fetchMyPassport>(),
+  fetchSignOff: vi.fn<typeof passportLib.fetchSignOff>(),
+  withdrawSignOff: vi.fn<typeof passportLib.withdrawSignOff>(),
+}));
 const navigate = vi.fn();
 
 vi.mock("@lib/passport", () => ({
-  fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
-  fetchSignOff: (...args: unknown[]) => fetchSignOff(...args),
-  withdrawSignOff: (...args: unknown[]) => withdrawSignOff(...args),
+  fetchMyPassport,
+  fetchSignOff,
+  withdrawSignOff,
 }));
 
 vi.mock("react-router-dom", async () => {
@@ -32,9 +36,16 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-function detail(canWrite = true) {
+function detail(canWrite = true): PassportDetail {
   return {
-    passport: { passport_id: "3f2a8c1e" },
+    passport: {
+      passport_id: "3f2a8c1e",
+      holder_user_id: "42",
+      holder_name: "Dr Mark Bailey",
+      registrations: [],
+      created_at: "2026-09-10",
+      head_commit: null,
+    },
     competencies: [],
     entitlement: { can_write: canWrite },
   };
@@ -74,7 +85,11 @@ describe("PassportSignOffDetailPage", () => {
   it("withdraws an open request after confirming, then returns to the list", async () => {
     const user = userEvent.setup();
     fetchSignOff.mockResolvedValue(requested);
-    withdrawSignOff.mockResolvedValue({ status: "declined" });
+    withdrawSignOff.mockResolvedValue({
+      name: requested.name,
+      status: "declined",
+      commit: "abc",
+    });
     renderWithRouter(<PassportSignOffDetailPage />);
 
     await user.click(

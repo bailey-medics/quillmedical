@@ -21,6 +21,7 @@ vi.mock("@/lib/api", () => ({
 
 // Mutable, so a test can give the user the passport feature. Everybody
 // else sees the page as a user with neither.
+import type * as frameworkChoicesLib from "@lib/passport/useFrameworkChoices";
 const authUser = vi.hoisted(() => ({
   username: "testuser",
   clinical_services_enabled: false,
@@ -47,9 +48,11 @@ vi.mock("@lib/pwa/useInstallRoute", () => ({
 
 // The framework order comes from the API through this hook; each test
 // sets what it returns.
-const frameworkChoices = vi.fn();
+const { frameworkChoices } = vi.hoisted(() => ({
+  frameworkChoices: vi.fn<typeof frameworkChoicesLib.useFrameworkChoices>(),
+}));
 vi.mock("@lib/passport/useFrameworkChoices", () => ({
-  useFrameworkChoices: (enabled: boolean) => frameworkChoices(enabled),
+  useFrameworkChoices: frameworkChoices,
 }));
 
 vi.mock("@lib/passport", () => ({

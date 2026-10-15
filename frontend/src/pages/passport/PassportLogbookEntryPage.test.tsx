@@ -12,15 +12,18 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportLogbookEntryPage } from "./PassportLogbookEntryPage";
+import type * as passportLib from "@lib/passport";
 
-const fetchMyPassport = vi.fn();
-const fetchLogbook = vi.fn();
-const amendLogbookEntry = vi.fn();
+const { fetchMyPassport, fetchLogbook, amendLogbookEntry } = vi.hoisted(() => ({
+  fetchMyPassport: vi.fn<typeof passportLib.fetchMyPassport>(),
+  fetchLogbook: vi.fn<typeof passportLib.fetchLogbook>(),
+  amendLogbookEntry: vi.fn<typeof passportLib.amendLogbookEntry>(),
+}));
 
 vi.mock("@lib/passport", () => ({
-  fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
-  fetchLogbook: (...args: unknown[]) => fetchLogbook(...args),
-  amendLogbookEntry: (...args: unknown[]) => amendLogbookEntry(...args),
+  fetchMyPassport,
+  fetchLogbook,
+  amendLogbookEntry,
 }));
 
 vi.mock("react-router-dom", async () => {

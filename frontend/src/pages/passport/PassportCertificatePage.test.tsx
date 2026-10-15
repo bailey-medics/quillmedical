@@ -13,15 +13,21 @@ import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { certificates } from "@/components/passport/fixtures";
 import { Component as PassportCertificatePage } from "./PassportCertificatePage";
+import type * as passportLib from "@lib/passport";
 
-const fetchMyPassport = vi.fn();
-const fetchCertificates = vi.fn();
-const amendCertificate = vi.fn();
+import type { PassportDetail } from "@lib/passport";
+const { fetchMyPassport, fetchCertificates, amendCertificate } = vi.hoisted(
+  () => ({
+    fetchMyPassport: vi.fn<typeof passportLib.fetchMyPassport>(),
+    fetchCertificates: vi.fn<typeof passportLib.fetchCertificates>(),
+    amendCertificate: vi.fn<typeof passportLib.amendCertificate>(),
+  }),
+);
 
 vi.mock("@lib/passport", () => ({
-  fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
-  fetchCertificates: (...args: unknown[]) => fetchCertificates(...args),
-  amendCertificate: (...args: unknown[]) => amendCertificate(...args),
+  fetchMyPassport,
+  fetchCertificates,
+  amendCertificate,
   uploadEvidence: vi.fn(),
   certificateAttachmentUrl: (passportId: string, name: string, hash: string) =>
     `/api/passport/${passportId}/certificates/${name}/attachments/${hash}`,
@@ -57,9 +63,16 @@ vi.mock("react-router-dom", async () => {
   return { ...actual, useParams: () => ({ name: opened.name }) };
 });
 
-function detail(canWrite = true) {
+function detail(canWrite = true): PassportDetail {
   return {
-    passport: { passport_id: "3f2a8c1e" },
+    passport: {
+      passport_id: "3f2a8c1e",
+      holder_user_id: "42",
+      holder_name: "Dr Mark Bailey",
+      registrations: [],
+      created_at: "2026-09-10",
+      head_commit: null,
+    },
     competencies: [],
     entitlement: { can_write: canWrite },
   };

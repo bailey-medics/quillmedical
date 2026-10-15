@@ -13,15 +13,21 @@ import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { reflections } from "@/components/passport/fixtures";
 import { Component as PassportReflectionPage } from "./PassportReflectionPage";
+import type * as passportLib from "@lib/passport";
 
-const fetchMyPassport = vi.fn();
-const fetchReflections = vi.fn();
-const amendReflection = vi.fn();
+import type { PassportDetail } from "@lib/passport";
+const { fetchMyPassport, fetchReflections, amendReflection } = vi.hoisted(
+  () => ({
+    fetchMyPassport: vi.fn<typeof passportLib.fetchMyPassport>(),
+    fetchReflections: vi.fn<typeof passportLib.fetchReflections>(),
+    amendReflection: vi.fn<typeof passportLib.amendReflection>(),
+  }),
+);
 
 vi.mock("@lib/passport", () => ({
-  fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
-  fetchReflections: (...args: unknown[]) => fetchReflections(...args),
-  amendReflection: (...args: unknown[]) => amendReflection(...args),
+  fetchMyPassport,
+  fetchReflections,
+  amendReflection,
 }));
 
 // The record the page is opened on: the second fixture, which carries a
@@ -36,9 +42,16 @@ vi.mock("react-router-dom", async () => {
   return { ...actual, useParams: () => ({ name: opened.name }) };
 });
 
-function detail(canWrite = true) {
+function detail(canWrite = true): PassportDetail {
   return {
-    passport: { passport_id: "3f2a8c1e" },
+    passport: {
+      passport_id: "3f2a8c1e",
+      holder_user_id: "42",
+      holder_name: "Dr Mark Bailey",
+      registrations: [],
+      created_at: "2026-09-10",
+      head_commit: null,
+    },
     competencies: [],
     entitlement: { can_write: canWrite },
   };

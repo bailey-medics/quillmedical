@@ -10,9 +10,12 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import AdminUsersPage from "./AdminUsersPage";
+import type * as apiLib from "@/lib/api";
 
 const navigate = vi.fn();
-const get = vi.fn();
+const { get } = vi.hoisted(() => ({
+  get: vi.fn<typeof apiLib.api.get>(),
+}));
 
 vi.mock("react-router-dom", async () => {
   const actual =
@@ -23,7 +26,7 @@ vi.mock("react-router-dom", async () => {
 });
 
 vi.mock("@/lib/api", () => ({
-  api: { get: (...args: unknown[]) => get(...args) },
+  api: { get },
 }));
 
 describe("AdminUsersPage", () => {

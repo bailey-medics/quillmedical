@@ -7,15 +7,18 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithRouter } from "@/test/test-utils";
 import { Component as PassportReflectionsPage } from "./PassportReflectionsPage";
+import type * as passportLib from "@lib/passport";
 
-const fetchMyPassport = vi.fn();
-const fetchReflections = vi.fn();
-const addReflection = vi.fn();
+const { fetchMyPassport, fetchReflections, addReflection } = vi.hoisted(() => ({
+  fetchMyPassport: vi.fn<typeof passportLib.fetchMyPassport>(),
+  fetchReflections: vi.fn<typeof passportLib.fetchReflections>(),
+  addReflection: vi.fn<typeof passportLib.addReflection>(),
+}));
 
 vi.mock("@lib/passport", () => ({
-  fetchMyPassport: (...args: unknown[]) => fetchMyPassport(...args),
-  fetchReflections: (...args: unknown[]) => fetchReflections(...args),
-  addReflection: (...args: unknown[]) => addReflection(...args),
+  fetchMyPassport,
+  fetchReflections,
+  addReflection,
 }));
 
 const navigate = vi.fn();

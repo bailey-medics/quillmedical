@@ -228,6 +228,21 @@ export default defineConfig(
         "@typescript-eslint/unbound-method": "off",
       },
     },
+    // Phase 4 scaffolding, widened a folder at a time: the no-unsafe rules
+    // are back on for these tests, which have been brought into line
+    {
+      files: [
+        "src/pages/**/*.test.{ts,tsx}",
+        "src/features/**/*.test.{ts,tsx}",
+      ],
+      rules: {
+        "@typescript-eslint/no-unsafe-argument": "error",
+        "@typescript-eslint/no-unsafe-assignment": "error",
+        "@typescript-eslint/no-unsafe-call": "error",
+        "@typescript-eslint/no-unsafe-member-access": "error",
+        "@typescript-eslint/no-unsafe-return": "error",
+      },
+    },
   ],
   // Storybook’s flat config can stay as a sibling layer
   storybook.configs["flat/recommended"],

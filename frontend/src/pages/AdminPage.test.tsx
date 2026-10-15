@@ -8,7 +8,7 @@
  * five seconds until it was closed.
  */
 
-import { describe, expect, it, vi, beforeEach, type Mock } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { waitFor } from "@testing-library/react";
 import { renderWithRouter } from "@test/test-utils";
 
@@ -49,7 +49,7 @@ describe("AdminPage patient fetching", () => {
     vi.clearAllMocks();
     vi.unstubAllEnvs();
     signedIn.competencies = ["manage_users"];
-    (api.get as Mock).mockResolvedValue({ fhir_ready: true, patients: [] });
+    vi.mocked(api.get).mockResolvedValue({ fhir_ready: true, patients: [] });
   });
 
   it("does not ask for patients where there is no FHIR", async () => {
@@ -61,7 +61,7 @@ describe("AdminPage patient fetching", () => {
     await waitFor(() => {
       expect(api.get).toHaveBeenCalled();
     });
-    const paths = (api.get as Mock).mock.calls.map((c) => c[0]);
+    const paths = vi.mocked(api.get).mock.calls.map((c) => c[0]);
     expect(paths).not.toContain("/patients");
   });
 
@@ -70,7 +70,7 @@ describe("AdminPage patient fetching", () => {
     renderWithRouter(<AdminPage />);
 
     await waitFor(() => {
-      const paths = (api.get as Mock).mock.calls.map((c) => c[0]);
+      const paths = vi.mocked(api.get).mock.calls.map((c) => c[0]);
       expect(paths).toContain("/patients");
     });
   });
@@ -85,7 +85,7 @@ describe("AdminPage patient fetching", () => {
     await waitFor(() => {
       expect(api.get).toHaveBeenCalled();
     });
-    const paths = (api.get as Mock).mock.calls.map((c) => c[0]);
+    const paths = vi.mocked(api.get).mock.calls.map((c) => c[0]);
     expect(paths).not.toContain("/patients");
   });
 });
