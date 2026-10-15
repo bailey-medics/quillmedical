@@ -805,7 +805,11 @@ migrate message:
     # it. The revision lands in this worktree's alembic/versions.
     compose="docker compose -p $(just _migrate-project) -f compose.migrate.yml"
     trap '${compose} down --volumes --remove-orphans >/dev/null 2>&1' EXIT
-    before=$(ls backend/alembic/versions/*.py)
+
+    # An empty chain is a squash in progress: the directory may have gone
+    # with its last file, and there is nothing to list before the baseline.
+    mkdir -p backend/alembic/versions
+    before=$(ls backend/alembic/versions/*.py 2>/dev/null || true)
     ${compose} run --rm -e AL_MSG='{{message}}' migrate sh -lc '
         set -e
         alembic upgrade head &&

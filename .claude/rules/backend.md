@@ -164,9 +164,10 @@ was introduced.
 These rules are enforced statically by
 `backend/scripts/check_migrations.py` (run in pre-commit and CI, or
 directly with `python backend/scripts/check_migrations.py --all`). The
-pre-launch history was squashed into a single compliant baseline
-(`878bc9300d4f`), so the allow-list is now empty and every migration -
-the baseline included - is held to the full standard below.
+pre-launch history has been squashed into a single compliant baseline
+twice, most recently as `ea2ae2e4854b` on 2026-10-15, so there is no
+allow-list and every migration - the baseline included - is held to the
+full standard below.
 
 ### Creating migrations
 
@@ -225,9 +226,8 @@ the baseline included - is held to the full standard below.
   `ix_old_col` in place, so autogenerate will forever flag it against the
   model's expected `ix_new_col`. When you rename a table, add a matching
   `op.execute("ALTER INDEX ix_old_col RENAME TO ix_new_col")` (reversible,
-  lock-light, no rebuild). The squashed baseline already creates the index
-  with its correct British-spelling name (`ix_organisations_name`) from the
-  start.
+  lock-light, no rebuild). The squashed baseline creates every index under
+  its current name from the start, so none of that history is carried.
 
 ### Partial and expression indexes in models
 
@@ -298,7 +298,7 @@ the baseline included - is held to the full standard below.
   pytest.mark.migration]`. The `alembic_drift_check` job runs
   `pytest -m migration`, so a new one is picked up without editing the
   workflow. Locally, run them with `compose.migrate.yml`, as
-  `backend/tests/user_competency_backfill_test.py` describes.
+  `backend/tests/alembic_check_test.py` describes.
 
 ### Renaming or retiring a column
 
