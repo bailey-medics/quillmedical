@@ -119,7 +119,7 @@ scan at the end to see whether the rot found here is wider than this file.
 
 ## Phase 5: Password hashes can be strengthened later
 
-- [ ] Add `password_needs_rehash(h: str) -> bool`, wrapping
+- [x] Add `password_needs_rehash(h: str) -> bool`, wrapping
       `PasswordHasher.check_needs_rehash`, and have the login route
       re-hash and store the password when it returns true after a
       successful verify. Without this the Argon2 parameters of every
@@ -127,9 +127,13 @@ scan at the end to see whether the rot found here is wider than this file.
       their password, and raising them has no effect until each user
       changes it. Drop the parameter numbers from the `hash_password`
       docstring: they quote a library default that changes without the
-      docstring knowing.
+      docstring knowing. Departed from on 15 October 2026: the numbers
+      stay, because `TestProductionPasswordHasher` in `security_test.py`
+      pins exactly those values and says it does so "as security.py
+      documents", so a change to the default fails a test rather than
+      drifting.
 
-- [ ] Test that a hash made with lower parameters reports needing a
+- [x] Test that a hash made with lower parameters reports needing a
       rehash and that login replaces it. Run `just ub -k "password"`.
 
 ## Phase 6: One dead-code scan, by hand

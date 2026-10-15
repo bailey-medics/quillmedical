@@ -141,6 +141,7 @@ from app.security import (
     generate_totp_secret,
     hash_password,
     make_csrf,
+    password_needs_rehash,
     totp_provisioning_uri,
     verify_email_verify_token,
     verify_password,
@@ -596,6 +597,13 @@ def login(
                     "error_code": "invalid_totp",
                 },
             )
+
+    # The password is in hand and has verified, so a hash made under
+    # weaker parameters than today's is made again now. The session
+    # dependency commits it with the login.
+    if password_needs_rehash(user.password_hash):
+        user.password_hash = hash_password(data.password)
+        db.add(user)
 
     roles = [r.name for r in user.roles]
     access = create_access_token(user.username, user.token_version)

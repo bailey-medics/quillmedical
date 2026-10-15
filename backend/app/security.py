@@ -91,6 +91,28 @@ def verify_password(p: str, h: str) -> bool:
         return False
 
 
+def password_needs_rehash(h: str) -> bool:
+    """Whether a stored hash was made with weaker parameters than now.
+
+    A hash carries the parameters it was made with, and verifying reads
+    them from the hash, so raising the hasher's parameters changes
+    nothing for a password already stored. This is how a stored hash
+    catches up: the login route asks it once the password has verified,
+    and hashes the password again if the answer is yes.
+
+    Args:
+        h: Argon2 hash from the database (PHC format).
+
+    Returns:
+        bool: True if the hash should be made again with the current
+            parameters.
+    """
+    if not h:
+        raise ValueError("Hash cannot be empty")
+
+    return _ph.check_needs_rehash(h)
+
+
 class TokenNotAcceptable(Exception):
     """A token that is not to be trusted, or is not the kind asked for.
 
