@@ -14,6 +14,7 @@ import { useSearch } from "@lib/search";
 import QuillName from "@components/images/QuillName";
 import ProfilePic from "@components/profile-pic/ProfilePic";
 import { Group, Skeleton, Text, UnstyledButton } from "@mantine/core";
+import type { CSSProperties } from "@mantine/core";
 import BurgerButton from "@/components/button/BurgerButton";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
@@ -52,10 +53,10 @@ type Props = {
  * Overrides Mantine's default ::before (body-colour base) and
  * ::after (grey shimmer) so the pulse is visible on dark navy.
  */
-const darkSkeletonVars = {
+const darkSkeletonVars: CSSProperties = {
   "--mantine-color-body": "rgba(255, 255, 255, 0.1)",
   "--mantine-color-gray-3": "rgba(255, 255, 255, 0.25)",
-} as React.CSSProperties;
+};
 
 function RibbonSkeleton({ isNarrow = false }: { isNarrow?: boolean }) {
   return (

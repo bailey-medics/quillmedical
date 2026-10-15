@@ -123,17 +123,16 @@ describe("PublicLayout", () => {
     it("opens the drawer when burger is clicked", async () => {
       const user = userEvent.setup();
       Object.defineProperty(window, "innerWidth", { value: 400 });
-      window.matchMedia = (query: string) =>
-        ({
-          matches: query.includes("max-width"),
-          media: query,
-          onchange: null,
-          addListener: () => {},
-          removeListener: () => {},
-          addEventListener: () => {},
-          removeEventListener: () => {},
-          dispatchEvent: () => false,
-        }) as MediaQueryList;
+      window.matchMedia = (query: string): MediaQueryList => ({
+        matches: query.includes("max-width"),
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      });
 
       renderWithMantine(
         <PublicLayout>

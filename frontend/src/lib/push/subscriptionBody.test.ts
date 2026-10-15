@@ -29,7 +29,7 @@ describe("subscriptionBody", () => {
       expirationTime: null,
       keys: { p256dh: "public-key", auth: "secret", somethingNew: "x" },
       options: { userVisibleOnly: true },
-    } as PushSubscriptionJSON;
+    };
 
     const body = subscriptionBody(subscription(described));
 

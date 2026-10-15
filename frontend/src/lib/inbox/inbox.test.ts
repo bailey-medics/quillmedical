@@ -7,6 +7,7 @@ import {
   inboxTotal,
   onInboxChanged,
   type InboxItem,
+  type InboxSummary,
 } from "./inbox";
 
 const item: InboxItem = {
@@ -42,10 +43,13 @@ describe("inboxTotal", () => {
 
   it("counts nothing for an answer that is not the expected shape", () => {
     // The envelope is on every page, so it must never be what breaks one.
-    expect(inboxTotal({} as never)).toBe(0);
-    expect(inboxTotal(null as never)).toBe(0);
-    expect(inboxTotal([] as never)).toBe(0);
-    expect(inboxTotal({ items: [null, {}] } as never)).toBe(0);
+    // An answer of the wrong shape is the point, so it is passed as one.
+    const malformed = (value: unknown) => value as InboxSummary;
+
+    expect(inboxTotal(malformed({}))).toBe(0);
+    expect(inboxTotal(malformed(null))).toBe(0);
+    expect(inboxTotal(malformed([]))).toBe(0);
+    expect(inboxTotal(malformed({ items: [null, {}] }))).toBe(0);
   });
 });
 

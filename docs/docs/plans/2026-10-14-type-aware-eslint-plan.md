@@ -459,6 +459,73 @@ JavaScript block would need.
       lockfile, so run `just utr` before the unit tests, as `CLAUDE.md`
       says for a `package.json` change. Done on 15 October 2026; `yarn remove` took 40 lines out of the lockfile and nothing else changed.
 
+## Phase 10: No casting an object literal into a type
+
+`{...} as User` tells TypeScript to trust that an object is a `User`
+whatever it holds, so a missing or misspelt field passes the type check.
+That is how the 24 test fixtures Phase 4 found got past `tsc`: each was
+cast, so nobody was told it had three fields of eleven.
+`@typescript-eslint/consistent-type-assertions` with
+`objectLiteralTypeAssertions: "never"` reports the cast and leaves the
+fix to a type annotation (`const user: User = {...}`) or `satisfies`,
+both of which do check the fields. Probed on 15 October 2026 against the
+finished config: 28 findings, 21 in tests and 7 in app code.
+
+- [x] Turn the rule on, `["error", { assertionStyle: "as",
+      objectLiteralTypeAssertions: "never" }]`, and fix the 28. A test
+      fixture becomes an annotated constant or `satisfies`; where a test
+      deliberately passes a partial object, it says so with `Partial<>`
+      and a helper that fills the rest, as Phase 4 did for logbook
+      entries. In app code, read each for why it was cast:
+      `cloneElement(icon, {...} as ...)` in `Icon.tsx` and
+      `ExtraButton.tsx` is a props object for an element whose props
+      type is unknown, so it may need `satisfies` or a narrower type on
+      `icon`; `row={{} as T}` in `DataTable.tsx` and
+      `DataTableWithResults.tsx` is an empty row for a skeleton, which is
+      a real lie about `T` and wants the prop to accept `T | undefined`
+      or a placeholder row type; `TopRibbon.tsx`, `Home.tsx` and
+      `test-utils.tsx` are to be read. Where a cast is genuinely the
+      only way, the rule is turned off for that line with the reason
+      beside it. Add a case to `src/lint/eslintConfig.test.ts` that the
+      rule reports `{} as User`. One branch with the step below.
+      Done on 15 October 2026, 28 of 28. The app code went as follows.
+      `Icon.tsx` and `ExtraButton.tsx` narrow the icon element once to
+      `ReactElement<TablerIconProps>`, with the reason (every icon in the
+      app is a Tabler one), so the props object needs no cast; typing the
+      prop itself that way would have rippled through ten callers that
+      pass a plain `ReactElement`. The two tables' `row={{} as T}` was a
+      `DataCard` with an empty row only so that it would draw its
+      skeleton: a new `DataCardSkeleton`, exported beside `DataCard`
+      with a story and a test, takes no row at all. `TopRibbon.tsx`
+      uses Mantine's own `CSSProperties`, which allows CSS variables,
+      instead of casting into React's. `Home.tsx` annotates its
+      `Patient`. In the tests: `createMockResponse` in `test-utils.tsx`
+      and the fetch stubs in `SideNavContent.test.tsx` build a real
+      `Response`, so `ok` follows the status; the `ok` option went from
+      `createMockResponse`, its one caller and its two README examples.
+      The auth stubs build a real signed-out state, `{ status, user: null }`,
+      instead of `{ status } as never`. Two `matchMedia` stubs annotate
+      a `MediaQueryList`, which they already supplied in full. Three
+      casts stay, each turned off for its line with the reason: two
+      stand-ins for browser objects of which one field is read (an
+      `IntersectionObserverEntry`, an `Animation`), and in
+      `inbox.test.ts` a `malformed()` helper, since an answer of the
+      wrong shape is what that test is for.
+
+- [x] Turn on `@typescript-eslint/no-unnecessary-type-arguments`, which
+      reports a type argument that only repeats its default. It catches
+      repetition rather than mistakes, and is in `strictTypeChecked`, not
+      `recommendedTypeChecked`, which is why Phase 1 did not bring it.
+      It is here because it costs almost nothing: probed on 15 October
+      2026, it found three, all in `src/components/form/Form/Form.tsx`.
+      It has an auto-fix; run it and read the diff. Add a case to
+      `src/lint/eslintConfig.test.ts` alongside the one above.
+      Done on 15 October 2026, by hand rather than the auto-fix: the two
+      navigation-blocker components in `Form.tsx` are now generic in the
+      form's values, so `control` is `Control<T>`, and the
+      `methods.control as unknown as Control<FieldValues>` that fed them
+      is gone. That double cast was the third finding.
+
 ## Decisions
 
 - **Type-aware rules stay on in tests** - the question was whether to

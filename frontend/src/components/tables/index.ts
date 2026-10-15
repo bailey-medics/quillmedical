@@ -1,4 +1,4 @@
-export { default as DataCard } from "./DataCard";
+export { default as DataCard, DataCardSkeleton } from "./DataCard";
 export { default as DataTable } from "./DataTable";
 export { default as DataTableWithResults } from "./DataTableWithResults";
 export { default as SortHeader } from "./SortHeader";

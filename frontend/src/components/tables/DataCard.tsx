@@ -55,6 +55,24 @@ export interface DataCardProps<T> {
 }
 
 /**
+ * A card's place while its row loads: three fields' worth of skeleton.
+ * Takes no row, because there is none yet.
+ */
+export function DataCardSkeleton() {
+  return (
+    <BaseCard>
+      <Stack gap="sm">
+        <Skeleton height={30} mt={1} mb={1} />
+        <Divider />
+        <Skeleton height={30} mt={1} mb={1} />
+        <Divider />
+        <Skeleton height={30} mt={1} mb={1} />
+      </Stack>
+    </BaseCard>
+  );
+}
+
+/**
  * DataCard renders a single data row as a bordered card with labelled fields.
  *
  * Each column is shown as a bold header label followed by the rendered content,
@@ -68,17 +86,7 @@ export default function DataCard<T>({
   footer,
 }: DataCardProps<T>) {
   if (loading) {
-    return (
-      <BaseCard>
-        <Stack gap="sm">
-          <Skeleton height={30} mt={1} mb={1} />
-          <Divider />
-          <Skeleton height={30} mt={1} mb={1} />
-          <Divider />
-          <Skeleton height={30} mt={1} mb={1} />
-        </Stack>
-      </BaseCard>
-    );
+    return <DataCardSkeleton />;
   }
 
   const last = columns[columns.length - 1];

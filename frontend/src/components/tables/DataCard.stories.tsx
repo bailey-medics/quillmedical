@@ -9,7 +9,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import { Container } from "@mantine/core";
 import { ActiveStatusBadge } from "@/components/badge";
-import DataCard from "./DataCard";
+import DataCard, { DataCardSkeleton } from "./DataCard";
 import EllipsisMenu from "@/components/ellipsis-menu/EllipsisMenu";
 import type { Column } from "./DataTable";
 
@@ -169,6 +169,11 @@ export const Loading: Story = {
     onClick: fn(),
     loading: true,
   },
+};
+
+/** The skeleton alone, as the tables show it while their rows load. */
+export const Skeleton: Story = {
+  render: () => <DataCardSkeleton />,
 };
 
 export const DarkMode: Story = {

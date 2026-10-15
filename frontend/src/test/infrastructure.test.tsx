@@ -86,7 +86,7 @@ describe("Test Infrastructure", () => {
     it("creates error response", () => {
       const response = createMockResponse(
         { error: "Not found" },
-        { status: 404, ok: false },
+        { status: 404 },
       );
 
       expect(response.ok).toBe(false);

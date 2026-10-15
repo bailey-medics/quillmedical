@@ -112,6 +112,17 @@ export default defineConfig(
           { checksVoidReturn: { attributes: false } },
         ],
 
+        // `{...} as User` makes TypeScript trust an object whatever it
+        // holds, so a missing field passes the type check. An annotation
+        // (`const user: User = {...}`) or `satisfies` checks the fields.
+        "@typescript-eslint/consistent-type-assertions": [
+          "error",
+          { assertionStyle: "as", objectLiteralTypeAssertions: "never" },
+        ],
+
+        // A type argument that only repeats its default says nothing
+        "@typescript-eslint/no-unnecessary-type-arguments": "error",
+
         // Core JS “don’t shoot your foot” (no extra deps)
         "no-eval": "error",
         "no-implied-eval": "error",

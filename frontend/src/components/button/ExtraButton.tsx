@@ -25,6 +25,7 @@
 import { cloneElement, type MouseEventHandler, type ReactElement } from "react";
 import { ActionIcon, useMantineTheme } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
+import type { IconProps as TablerIconProps } from "@tabler/icons-react";
 import { IconFilePlus } from "@/components/icons/appIcons";
 import AppTooltip from "@/components/tooltip/AppTooltip";
 
@@ -64,11 +65,11 @@ export default function ExtraButton({
   // same box, and at 2.5 it read as heavier than its neighbours; Tabler's
   // default of 2 makes the three look the same weight. Same size as the
   // other two.
-  // Type assertion as in `Icon`: cloneElement does not know Tabler's props.
-  const sized = cloneElement(icon, { size: 32, stroke: 2 } as Record<
-    string,
-    unknown
-  >);
+  // A Tabler icon, as in `Icon`, which says why the element is narrowed
+  const sized = cloneElement(icon as ReactElement<TablerIconProps>, {
+    size: 32,
+    stroke: 2,
+  });
 
   // The same words as the aria-label, so sighted users get the hint
   // a screen reader user already has.

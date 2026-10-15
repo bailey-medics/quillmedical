@@ -11,6 +11,7 @@ import { cloneElement } from "react";
 import { ThemeIcon, useMantineTheme } from "@mantine/core";
 import type { MantineColor } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
+import type { IconProps as TablerIconProps } from "@tabler/icons-react";
 
 /**
  * Icon size variants mapped to pixel values
@@ -120,22 +121,26 @@ export default function Icon({
   const sizeMap = isMobile && !fixed ? mobileSizeMap : desktopSizeMap;
   const pixelSize = sizeMap[size];
 
+  // Every icon in the app is a Tabler icon (see appIcons.ts), so it takes
+  // Tabler's props. Said once here, on the element, rather than by
+  // casting each props object handed to cloneElement.
+  const tablerIcon = icon as ReactElement<TablerIconProps>;
+
   // Clone the icon element and pass size, colour and className props
-  // Type assertion needed because cloneElement doesn't know about Tabler icon props
-  const clonedIcon = cloneElement(icon, {
+  const clonedIcon = cloneElement(tablerIcon, {
     size: pixelSize,
     ...(colour ? { color: colour } : {}),
     className,
-  } as Partial<typeof icon.props>);
+  });
 
   if (container) {
     const containerIconSize = Math.round(pixelSize * 1.3);
-    const containerIcon = cloneElement(icon, {
+    const containerIcon = cloneElement(tablerIcon, {
       size: containerIconSize,
       stroke: 2.5,
       ...(colour ? { color: colour } : {}),
       className,
-    } as Partial<typeof icon.props>);
+    });
 
     return (
       <ThemeIcon

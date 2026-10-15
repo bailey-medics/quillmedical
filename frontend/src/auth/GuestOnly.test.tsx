@@ -57,7 +57,10 @@ describe("GuestOnly", () => {
   it("sends somebody already signed in to the home page", () => {
     const assign = vi.fn();
     vi.stubGlobal("location", { ...window.location, assign });
-    mockAuth({ status: "authenticated", user: {} } as AuthState);
+    mockAuth({
+      status: "authenticated",
+      user: { id: "1", username: "someone", email: "someone@example.com" },
+    });
     renderGuestOnly();
 
     expect(assign).toHaveBeenCalledWith("/");
