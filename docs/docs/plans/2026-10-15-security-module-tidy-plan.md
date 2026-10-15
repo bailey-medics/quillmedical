@@ -68,25 +68,27 @@ scan at the end to see whether the rot found here is wider than this file.
 
 ## Phase 3: Verifiers refuse for named reasons
 
-- [ ] In `verify_csrf`, catch `BadSignature` rather than `Exception`.
+- [x] In `verify_csrf`, catch `BadSignature` rather than `Exception`.
       `itsdangerous` raises `BadSignature` (or a subclass) for every bad
       token; anything else is a bug in our code and should surface.
       Compare the subject with `hmac.compare_digest` so the compare takes
       the same time whichever character differs. The signature check
       already defeats forgery, so this is uniformity, not a fix.
 
-- [ ] In `verify_totp_code`, catch `ValueError` and `binascii.Error`,
+- [x] In `verify_totp_code`, catch `ValueError` and `binascii.Error`,
       which is what `pyotp` raises for a secret that is not valid Base32,
       rather than `Exception`.
 
-- [ ] In `verify_password_reset_token` and `verify_email_verify_token`,
+- [x] In `verify_password_reset_token` and `verify_email_verify_token`,
       replace `except SignatureExpired, BadSignature:` with `except
       BadSignature:`. `SignatureExpired` is a subclass of `BadSignature`,
-      so the single name says the same thing, and the bracket-free form,
-      valid since Python 3.14, reads like the Python 2 mistake that bound
-      the second name as a variable.
+      so the single name says the same thing. (First written as a wish
+      to avoid the bracket-free form, which reads like the Python 2
+      mistake that bound the second name as a variable. Black, targeting
+      3.14, strips the brackets from any `except (A, B):` here, so that
+      form is the house style and the only reason left is the subclass.)
 
-- [ ] Add a test to `security_test.py` for each narrowed catch: a bad
+- [x] Add a test to `security_test.py` for each narrowed catch: a bad
       signature returns `False` or `None`, a malformed TOTP secret
       returns `False`, and a `TypeError` from a non-string token is not
       swallowed. Run `just ub app/security_test.py`.

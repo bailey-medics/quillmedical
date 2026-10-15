@@ -1,6 +1,8 @@
 """Tests for security module (password hashing, JWT, CSRF, TOTP)."""
 
 from datetime import UTC, datetime, timedelta
+from typing import cast
+from unittest.mock import patch
 
 import jwt
 import pyotp
@@ -11,6 +13,8 @@ from app.config import settings
 from app.security import (
     TokenNotAcceptable,
     create_access_token,
+    create_email_verify_token,
+    create_password_reset_token,
     create_refresh_token,
     decode_refresh_token,
     decode_token,
@@ -19,7 +23,9 @@ from app.security import (
     make_csrf,
     totp_provisioning_uri,
     verify_csrf,
+    verify_email_verify_token,
     verify_password,
+    verify_password_reset_token,
     verify_totp_code,
 )
 
@@ -251,6 +257,49 @@ class TestCSRF:
         assert verify_csrf(token1, username) is True
         assert verify_csrf(token2, username) is True
 
+    def test_verify_csrf_accepts_a_non_ascii_username(self):
+        """The subjects are compared as bytes, so a name outside ASCII
+        is not a TypeError from ``hmac.compare_digest``."""
+        username = "zoë"
+        assert verify_csrf(make_csrf(username), username) is True
+
+    def test_verify_csrf_refuses_a_token_that_names_no_subject(self):
+        """A good signature over the wrong shape is still refused."""
+        from app.security import _csrf
+
+        assert verify_csrf(_csrf.dumps(["not", "a", "dict"]), "u") is False
+        assert verify_csrf(_csrf.dumps({"sub": 7}), "7") is False
+
+    def test_verify_csrf_does_not_swallow_a_fault_in_our_code(self):
+        """Only a bad signature reads as a wrong token. Anything else
+        raised in the check is a bug, and must surface."""
+        with pytest.raises(TypeError):
+            verify_csrf(cast(str, None), "testuser")
+
+
+class TestTimedTokens:
+    """Password reset and email verification tokens."""
+
+    def test_reset_token_tampered_is_refused(self):
+        token = create_password_reset_token("ada@example.com")
+        assert verify_password_reset_token(token + "x") is None
+
+    def test_reset_token_expired_is_refused(self):
+        """A lifetime below zero makes any token too old, which is the
+        same ``SignatureExpired`` an old one raises."""
+        token = create_password_reset_token("ada@example.com")
+        with patch.object(settings, "PASSWORD_RESET_TTL_MIN", -1):
+            assert verify_password_reset_token(token) is None
+
+    def test_verify_token_tampered_is_refused(self):
+        token = create_email_verify_token("ada@example.com")
+        assert verify_email_verify_token(token + "x") is None
+
+    def test_verify_token_expired_is_refused(self):
+        token = create_email_verify_token("ada@example.com")
+        with patch.object(settings, "EMAIL_VERIFY_TTL_MIN", -1):
+            assert verify_email_verify_token(token) is None
+
 
 class TestTOTP:
     """Test TOTP (Time-based One-Time Password) functions."""
@@ -308,9 +357,10 @@ class TestTOTP:
         assert verify_totp_code(secret, wrong_code) is False
 
     def test_verify_totp_code_invalid_secret(self):
-        """Test TOTP code verification with invalid secret."""
-        # Should return False, not raise exception
+        """A secret that is not Base32 is refused, not raised on. That
+        is the one error ``verify_totp_code`` catches."""
         assert verify_totp_code("invalid_secret", "123456") is False
+        assert verify_totp_code("not base32!", "123456") is False
 
     def test_verify_totp_code_exception_handling(self):
         """Test TOTP code verification handles exceptions gracefully."""

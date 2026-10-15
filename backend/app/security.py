@@ -9,6 +9,8 @@ This module provides cryptographic functions for:
 All functions use industry-standard algorithms and handle secrets securely.
 """
 
+import binascii
+import hmac
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -18,7 +20,6 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from itsdangerous import (
     BadSignature,
-    SignatureExpired,
     URLSafeSerializer,
     URLSafeTimedSerializer,
 )
@@ -288,7 +289,9 @@ def verify_csrf(token: str, sub: str) -> bool:
 
     Verifies a CSRF token matches the expected username. Used by the
     require_csrf dependency to protect state-changing operations. Returns
-    False for any verification failure (invalid signature, wrong subject).
+    False when the signature is bad or the subject is another user's.
+    Only a bad signature is caught: anything else raised here is a fault
+    in our code, and surfaces rather than reading as a wrong token.
 
     Args:
         token: CSRF token from X-CSRF-Token header.
@@ -299,9 +302,16 @@ def verify_csrf(token: str, sub: str) -> bool:
     """
     try:
         data = _csrf.loads(token)
-        return bool(data.get("sub") == sub)
-    except Exception:
+    except BadSignature:
         return False
+    if not isinstance(data, dict):
+        return False
+
+    signed_sub = data.get("sub")
+    if not isinstance(signed_sub, str):
+        return False
+
+    return hmac.compare_digest(signed_sub.encode(), sub.encode())
 
 
 def generate_totp_secret() -> str:
@@ -330,13 +340,16 @@ def verify_totp_code(secret: str, code: str) -> bool:
         secret: Base32-encoded TOTP secret from database.
         code: 6-digit TOTP code from authenticator app.
 
+    A secret that is not valid Base32 is refused rather than raised on:
+    that is what pyotp throws for one, and nothing else is caught.
+
     Returns:
         bool: True if code is valid for current time window, False otherwise.
     """
     try:
         totp = pyotp.TOTP(secret)
         return totp.verify(code)
-    except Exception:
+    except ValueError, binascii.Error:
         return False
 
 
@@ -552,7 +565,7 @@ def verify_password_reset_token(token: str) -> str | None:
             token, max_age=settings.PASSWORD_RESET_TTL_MIN * 60
         )
         return data.get("email")
-    except SignatureExpired, BadSignature:
+    except BadSignature:
         return None
 
 
@@ -594,7 +607,7 @@ def verify_email_verify_token(token: str) -> str | None:
             token, max_age=settings.EMAIL_VERIFY_TTL_MIN * 60
         )
         return data.get("email")
-    except SignatureExpired, BadSignature:
+    except BadSignature:
         return None
 
 
