@@ -32,6 +32,7 @@ from app.deps import (
 )
 from app.features.passport import cover
 from app.features.passport.models import OrgUnitPassportFramework
+from app.features.teaching.models import Assessment
 from app.models import (
     OrgUnit,
     OrgUnitFeature,
@@ -435,19 +436,24 @@ def set_org_unit_active(
 @router.delete(
     "/{unit_id}",
     response_model=OrgUnitStatusOut,
-    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS],
+    dependencies=[DEP_REQUIRE_CSRF, DEP_REQUIRE_MANAGE_USERS_OR_SCOPED],
 )
 def delete_org_unit(
     unit_id: int,
     current_user: User = DEP_CURRENT_USER,
     db: Session = _DEP_SESSION,
 ) -> OrgUnitStatusOut:
-    """Delete an org_unit. Requires ``manage_users``.
+    """Delete an org_unit.
+
+    Requires ``manage_users``, or a scoped manager such as
+    ``manage_teaching`` deleting a site in an organisation they belong
+    to: whoever signs up a member hospital may take it off again. An
+    organisation is not theirs to delete; ``require_editable`` refuses it.
 
     Deleting the top of a tree is an operator's job, matching what
     deleting an organisation has always required.
     """
-    unit = require_visible(db, current_user, unit_id)
+    unit = require_editable(db, current_user, unit_id)
 
     if _is_root(unit) and current_user.platform_role != "superadmin":
         raise HTTPException(
@@ -472,6 +478,24 @@ def delete_org_unit(
             detail=(
                 f"This place still has {children} inside it. Move them or "
                 "delete them first."
+            ),
+        )
+
+    # Teaching results are kept for years after an account closes, and
+    # the foreign key would delete them with the org_unit they were sat
+    # at. So an org_unit somebody has sat an assessment at stays.
+    attempts = db.scalar(
+        select(func.count())
+        .select_from(Assessment)
+        .where(Assessment.org_unit_id == unit_id)
+    )
+
+    if attempts:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Teaching results are kept for this place, so it cannot "
+                "be deleted. Mark it inactive instead."
             ),
         )
 
