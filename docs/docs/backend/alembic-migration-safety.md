@@ -377,7 +377,7 @@ revision's own health.
 - [Alembic review and migration safety plan](../plans/2026-08-09-alembic-review-and-revisions-plan.md) -
   the full review, decision log, and implementation tracker this page
   summarises.
-- [Alembic migrations squash plan](../plans/2026-08-11-migrations-squash-plan.md) -
-  the pre-launch history squash referenced above.
+- [Migrations squash plan](../plans/2026-10-15-migrations-squash-plan.md) -
+  the next pre-launch history squash.
 - `.github/instructions/backend.instructions.md` - the enforceable rules an
   AI coding agent (or human) sees automatically when touching `backend/**`.

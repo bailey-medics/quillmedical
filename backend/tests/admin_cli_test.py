@@ -334,6 +334,43 @@ class TestRunMigrations:
         assert result == 1
 
 
+class TestShowMigration:
+    """Tests for the show-migration action."""
+
+    def test_prints_current_revision(self) -> None:
+        env = {"ADMIN_ACTION": "show-migration"}
+
+        with (
+            patch.dict(os.environ, env, clear=False),
+            patch("alembic.command.current") as mock_current,
+            patch("alembic.command.upgrade") as mock_upgrade,
+        ):
+            from scripts.admin_cli import show_migration
+
+            result = show_migration()
+
+        assert result == 0
+        mock_current.assert_called_once()
+        # A read: nothing is upgraded on the way.
+        mock_upgrade.assert_not_called()
+
+    def test_read_failure_returns_error(self) -> None:
+        env = {"ADMIN_ACTION": "show-migration"}
+
+        with (
+            patch.dict(os.environ, env, clear=False),
+            patch(
+                "alembic.command.current",
+                side_effect=RuntimeError("connection refused"),
+            ),
+        ):
+            from scripts.admin_cli import show_migration
+
+            result = show_migration()
+
+        assert result == 1
+
+
 class TestMain:
     """Tests for the main dispatcher."""
 
