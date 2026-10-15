@@ -326,13 +326,39 @@ suite stops meaning anything.
 
 ## Phase 6: Remove the scaffolding
 
-- [ ] Delete the Phase 1 scaffolding block from `frontend/eslint.config.js`
+- [x] Delete the Phase 1 scaffolding block from `frontend/eslint.config.js`
       and check that `yarn eslint` passes with nothing turned off but the
       `no-misused-promises` attribute check. Delete the `// New: React XSS
       guard` comment's `New:` while there, since it is not new. Update the
       frontend conventions in `.github/copilot-instructions.md` with one
       line saying the lint is type-aware and a promise is awaited, caught
       or marked `void` with a reason, and run `/sync-copilot-config`.
+      Done on 15 October 2026. The Phase 4 block went with it, since the
+      `no-unsafe` rules are on for every file through the main config.
+      What stays turned off, each with its reason in the config: the
+      attribute check of `no-misused-promises`, `require-await` in tests
+      and stories, and `no-floating-promises` for a `navigate(...)` call.
+
+- [x] Found while landing Phase 5, folded into the Phase 2 pages branch:
+      `navCoverage.test.tsx` renders every page under a stand-in for
+      `RootLayout` that had no `PageMessageProvider`, so the two thread
+      pages, which ask for one since Phase 2, rendered nothing there and
+      the test failed. The stand-in now provides it, as `MainLayout`
+      does. The lesson for the next unit of this kind: a page that
+      starts using `usePageMessage` is covered by `navCoverage`, so run
+      that test too.
+
+- [x] Found when CI ran the Phase 4 branches, folded into the Phase 1
+      branch: the `eslint` script in `package.json` now runs
+      `yarn generate:types` first, as `typecheck:all` does.
+      `src/generated/*.json` is gitignored and CI's lint job never
+      produced it, so on CI every type built from it in
+      `src/types/cbac.ts` was the error type, and the `no-unsafe` rules
+      reported a `BaseProfessionId` spread as a spread of `any`. Locally
+      the files were there from the last type check, which is why the
+      lint passed here and failed there. Nothing fired while those rules
+      were scaffolded off, so the branch that turned them on for tests
+      was the first to show it.
 
 ## Decisions
 
