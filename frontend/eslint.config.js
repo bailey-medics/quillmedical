@@ -47,7 +47,7 @@ function restrictImports({
   paths = [MANTINE_PROVIDER, ACTION_ICON, LOADER],
   patterns = [STORIES_HELPERS],
 } = {}) {
-  return ["warn", { paths, patterns }];
+  return ["error", { paths, patterns }];
 }
 
 export default defineConfig(
@@ -69,8 +69,6 @@ export default defineConfig(
         eslintConfigPrettier,
       ],
       languageOptions: {
-        ecmaVersion: 2020,
-        globals: globals.browser,
         // Type-aware rules read each file's own tsconfig, found by the
         // project service, so a missed `await` on an API call is caught
         parserOptions: {
@@ -82,11 +80,11 @@ export default defineConfig(
       // Lint `<Image>` (ours and Mantine's) as an img, so alt-text sees it
       settings: { "jsx-a11y": { components: { Image: "img" } } },
       rules: {
-        "regexp/no-super-linear-backtracking": "warn",
-        "regexp/no-useless-quantifier": "warn",
+        "regexp/no-super-linear-backtracking": "error",
+        "regexp/no-useless-quantifier": "error",
 
         // React XSS guard
-        "react/no-danger": "warn",
+        "react/no-danger": "error",
 
         // navigate() from React Router returns a promise that settles when
         // the navigation does; nothing waits for that, and any error goes
@@ -120,7 +118,7 @@ export default defineConfig(
         "no-new-func": "error",
 
         "no-console": ["error", { allow: ["warn", "error"] }],
-        "no-secrets/no-secrets": ["warn", { tolerance: 4.5 }],
+        "no-secrets/no-secrets": ["error", { tolerance: 4.5 }],
         "no-restricted-imports": restrictImports(),
       },
     },
@@ -242,6 +240,27 @@ export default defineConfig(
       rules: {
         "no-console": "off",
       },
+    },
+
+    // Plain JavaScript, which TypeScript's own checks never reach, so the
+    // core rules do: one script that runs in the browser before the app
+    // loads, the public site's page generator, and this config
+    {
+      files: ["**/*.{js,cjs,mjs}"],
+      extends: [js.configs.recommended, eslintConfigPrettier],
+      rules: {
+        "no-eval": "error",
+        "no-implied-eval": "error",
+        "no-new-func": "error",
+      },
+    },
+    {
+      files: ["public/**/*.js"],
+      languageOptions: { globals: globals.browser },
+    },
+    {
+      files: ["public_pages/scripts/**/*.{js,cjs,mjs}", "*.{js,cjs,mjs}"],
+      languageOptions: { globals: globals.node },
     },
   ],
   // Storybook’s flat config can stay as a sibling layer
