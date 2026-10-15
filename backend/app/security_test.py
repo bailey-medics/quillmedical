@@ -127,6 +127,10 @@ class TestJWTTokens:
         exp_time = datetime.fromtimestamp(decoded["exp"], UTC)
         assert exp_time > datetime.now(UTC)
 
+    def test_create_refresh_token_refuses_an_empty_subject(self):
+        with pytest.raises(ValueError, match="cannot be empty"):
+            create_refresh_token("   ")
+
     def test_create_refresh_token(self):
         """Test refresh token creation."""
         username = "testuser"
@@ -212,6 +216,10 @@ class TestCSRF:
         token = make_csrf(username)
         assert token
         assert isinstance(token, str)
+
+    def test_make_csrf_refuses_an_empty_subject(self):
+        with pytest.raises(ValueError, match="cannot be empty"):
+            make_csrf("")
 
     def test_verify_csrf_success(self):
         """Test CSRF verification with correct token."""
