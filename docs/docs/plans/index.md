@@ -106,3 +106,4 @@
 - [One Python Version Everywhere](2026-10-13-one-python-version-everywhere-plan.md)
 - [Type-aware ESLint](2026-10-14-type-aware-eslint-plan.md)
 - [Migrations Squash](2026-10-15-migrations-squash-plan.md)
+- [Security Module Tidy](2026-10-15-security-module-tidy-plan.md)

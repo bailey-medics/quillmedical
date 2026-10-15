@@ -141,18 +141,22 @@ def _read(tok: str, kind: str, not_that_kind: str) -> dict[str, Any]:
     return data
 
 
-def create_access_token(
-    sub: str, roles: list[str], token_version: int = 0
-) -> str:
+def create_access_token(sub: str, token_version: int = 0) -> str:
     """Create JWT Access Token.
 
-    Creates a short-lived JWT access token containing the user's identity
-    and assigned roles. The token is signed with HS256 and expires after
-    ACCESS_TTL_MIN minutes (default: 15). Used for authenticating API requests.
+    Creates a short-lived JWT access token naming the user. The token is
+    signed with HS256 and expires after ACCESS_TTL_MIN minutes (default:
+    15). Used for authenticating API requests.
+
+    It carries who the user is and nothing about what they may do. Roles
+    and competencies are read from the database on every request, in
+    ``get_current_user``, so a grant or a removal takes effect at once
+    rather than at the next refresh; and a token that listed them would
+    grow with every competency granted, towards the browser's limit on
+    the size of a cookie.
 
     Args:
         sub: Subject (username) for the token.
-        roles: List of role names assigned to the user (e.g., ["Clinician"]).
         token_version: User's token version for session invalidation.
 
     Returns:
@@ -168,7 +172,6 @@ def create_access_token(
     payload: dict[str, Any] = {
         "sub": sub,
         "type": ACCESS_TYPE,
-        "roles": roles,
         "tv": token_version,
         "exp": _now() + timedelta(minutes=settings.ACCESS_TTL_MIN),
     }
@@ -219,7 +222,7 @@ def decode_token(tok: str) -> dict[str, Any]:
         tok: The token.
 
     Returns:
-        The claims: ``sub`` (the username), ``roles``, ``tv`` and ``exp``.
+        The claims: ``sub`` (the username), ``tv`` and ``exp``.
 
     Raises:
         TokenNotAcceptable: If the token is not valid, or is not an
@@ -382,70 +385,6 @@ def totp_provisioning_uri(
         return totp.provisioning_uri(name=username, issuer_name=issuer)
 
     return totp.provisioning_uri(name=username)
-
-
-def create_jwt_with_competencies(
-    sub: str,
-    roles: list[str],
-    competencies: list[str],
-    token_version: int = 0,
-) -> str:
-    """Create JWT Access Token with CBAC Competencies.
-
-    Creates a short-lived JWT access token containing the user's identity,
-    assigned roles, and resolved competencies. This extends create_access_token
-    to include CBAC (Competency-Based Access Control) information in the token.
-
-    Args:
-        sub: Subject (username) for the token.
-        roles: List of role names assigned to the user (e.g., ["Clinician"]).
-        competencies: List of competency IDs user has (resolved from base profession).
-        token_version: User's token version for session invalidation.
-
-    Returns:
-        str: Encoded JWT access token with competencies, valid for ACCESS_TTL_MIN minutes.
-
-    Raises:
-        ValueError: If subject is empty.
-    """
-    if not sub or not sub.strip():
-        raise ValueError("Subject (username) cannot be empty")
-
-    payload: dict[str, Any] = {
-        "sub": sub,
-        "type": ACCESS_TYPE,
-        "roles": roles,
-        "competencies": competencies,
-        "tv": token_version,
-        "exp": _now() + timedelta(minutes=settings.ACCESS_TTL_MIN),
-    }
-
-    return jwt.encode(
-        payload,
-        settings.JWT_SECRET.get_secret_value(),
-        algorithm=settings.JWT_ALG,
-    )
-
-
-def decode_jwt_with_competencies(tok: str) -> dict[str, Any]:
-    """Decode and Verify JWT Token with Competencies.
-
-    Decodes a JWT token and verifies its signature, extracting user identity,
-    roles, and competencies. This is a wrapper around decode_token that
-    documents the expected payload structure for CBAC tokens.
-
-    Args:
-        tok: JWT token string to decode.
-
-    Returns:
-        dict: Decoded token payload containing 'sub' (username), 'roles',
-            'competencies', 'exp' (expiration), and other claims.
-
-    Raises:
-        TokenNotAcceptable: If the token is not valid, or is not an
-            access token.
-    """
-    return decode_token(tok)
 
 
 def create_invite_token(

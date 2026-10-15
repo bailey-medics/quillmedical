@@ -106,14 +106,22 @@ class TestJWTTokens:
     def test_create_access_token(self):
         """Test access token creation."""
         username = "testuser"
-        roles = ["Clinician", "Admin"]
-        token = create_access_token(username, roles)
+        token = create_access_token(username, 3)
 
         # Decode and verify payload
         decoded = decode_token(token)
         assert decoded["sub"] == username
-        assert decoded["roles"] == roles
+        assert decoded["tv"] == 3
         assert "exp" in decoded
+
+    def test_access_token_names_the_user_and_nothing_more(self):
+        """Roles and competencies are read from the database on every
+        request, never from the cookie, so the token does not carry
+        them: a claim that crept back in would grow the cookie with
+        every competency granted."""
+        decoded = decode_token(create_access_token("testuser"))
+
+        assert set(decoded) == {"sub", "type", "tv", "exp"}
 
         # Verify expiration is in the future
         exp_time = datetime.fromtimestamp(decoded["exp"], UTC)
@@ -140,7 +148,6 @@ class TestJWTTokens:
         payload = {
             "sub": "testuser",
             "type": "access",
-            "roles": [],
             "exp": datetime.now(UTC) - timedelta(days=1),
         }
         token = jwt.encode(
@@ -159,7 +166,6 @@ class TestJWTTokens:
         payload = {
             "sub": "testuser",
             "type": "access",
-            "roles": [],
             "exp": datetime.now(UTC) + timedelta(minutes=15),
         }
         token = jwt.encode(
@@ -177,7 +183,7 @@ class TestJWTTokens:
         username = "testuser"
 
         # Access token should expire in ACCESS_TTL_MIN minutes
-        access_token = create_access_token(username, [])
+        access_token = create_access_token(username)
         decoded_access = decode_token(access_token)
         access_exp = datetime.fromtimestamp(decoded_access["exp"], UTC)
         expected_access_exp = datetime.now(UTC) + timedelta(

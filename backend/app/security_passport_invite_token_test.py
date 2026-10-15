@@ -100,9 +100,7 @@ class TestItRefusesTheWrongThing:
         from app.security import create_access_token
 
         with pytest.raises(TokenNotAcceptable, match="Not a passport"):
-            decode_passport_invite_token(
-                create_access_token("someone", ["Clinician"])
-            )
+            decode_passport_invite_token(create_access_token("someone"))
 
     def test_a_tampered_token_is_refused(self) -> None:
         token = create_passport_invite_token(INVITE_ID, EMAIL)

@@ -139,7 +139,7 @@ def _wrong_tokens() -> dict[str, str]:
                 algorithm=settings.JWT_ALG,
             )
         ),
-        "a sign-in token": create_access_token("invited", ["clinician"]),
+        "a sign-in token": create_access_token("invited"),
         "a passport assessor's invite": create_passport_invite_token(
             "invite-1", INVITED
         ),

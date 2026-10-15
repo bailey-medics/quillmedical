@@ -133,8 +133,8 @@ from app.schemas.patients import (
     AcceptInviteOut,
 )
 from app.security import (
+    create_access_token,
     create_email_verify_token,
-    create_jwt_with_competencies,
     create_password_reset_token,
     create_refresh_token,
     decode_refresh_token,
@@ -598,10 +598,7 @@ def login(
             )
 
     roles = [r.name for r in user.roles]
-    competencies = user.get_final_competencies()
-    access = create_jwt_with_competencies(
-        user.username, roles, competencies, user.token_version
-    )
+    access = create_access_token(user.username, user.token_version)
     refresh = create_refresh_token(user.username, user.token_version)
     xsrf = make_csrf(user.username)
     set_auth_cookies(response, access, refresh, xsrf)
@@ -1233,10 +1230,8 @@ def change_password(
     db.commit()
 
     # Re-issue cookies so the current session stays authenticated
-    roles = [r.name for r in current_user.roles]
-    competencies = current_user.get_final_competencies()
-    access = create_jwt_with_competencies(
-        current_user.username, roles, competencies, current_user.token_version
+    access = create_access_token(
+        current_user.username, current_user.token_version
     )
     refresh = create_refresh_token(
         current_user.username, current_user.token_version
@@ -1466,11 +1461,7 @@ def refresh(
     if payload.get("tv", 0) != user.token_version:
         raise HTTPException(401, "Session invalidated")
 
-    roles = [r.name for r in user.roles]
-    competencies = user.get_final_competencies()
-    new_access = create_jwt_with_competencies(
-        user.username, roles, competencies, user.token_version
-    )
+    new_access = create_access_token(user.username, user.token_version)
     new_refresh = create_refresh_token(
         user.username, user.token_version
     )  # rotate
