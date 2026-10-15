@@ -231,11 +231,12 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
     let errorCode: string | undefined = undefined;
     let extraEmail: string | undefined = undefined;
     try {
-      const data = await res.json();
+      const data: unknown = await res.json();
       // FastAPI often returns { detail: { message: ..., error_code: ... } }
       // Handle both cases where `detail` is a string or an object.
       if (data && typeof data === "object") {
-        const detail = (data as Record<string, unknown>)["detail"];
+        const body = data as Record<string, unknown>;
+        const detail = body["detail"];
         const refusedField = fieldErrorMessage(detail);
 
         if (refusedField !== null) {
@@ -251,9 +252,11 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
           if (typeof d["email"] === "string") extraEmail = d["email"];
         } else {
           // detail is likely a string
-          message = (data?.detail ?? data?.message ?? message) as string;
-          errorCode = (data as Record<string, unknown>)["error_code"] as
-            string | undefined;
+          if (typeof detail === "string") message = detail;
+          else if (typeof body["message"] === "string")
+            message = body["message"];
+          if (typeof body["error_code"] === "string")
+            errorCode = body["error_code"];
         }
       }
     } catch {

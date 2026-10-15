@@ -180,7 +180,7 @@ const LongContent = () => (
     <Stack gap="lg">
       <PageHeader title="An extremely long read" />
 
-      {[...Array(12)].map((_, i) => (
+      {Array.from({ length: 12 }, (_, i) => (
         <Stack key={i} gap="sm">
           <Heading>Section {i + 1}: Responsive layout considerations</Heading>
           <BodyText>

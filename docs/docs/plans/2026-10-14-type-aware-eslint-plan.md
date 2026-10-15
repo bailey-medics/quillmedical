@@ -290,7 +290,7 @@ suite stops meaning anything.
 
 ## Phase 5: The remaining findings in app code
 
-- [ ] Turn the rest back on and fix the findings in app code and stories:
+- [x] Turn the rest back on and fix the findings in app code and stories:
       `no-unsafe-assignment` (17 app, 2 stories), `no-unsafe-member-access`
       (12), `no-unsafe-call` (4, and 1 in `public_pages/vite.config.ts`),
       `no-unsafe-argument` (3),
@@ -301,7 +301,28 @@ suite stops meaning anything.
       fixed at the call that reads it, with the interface the page already
       has for the response. An `unbound-method` finding is a class method
       passed as a callback and losing `this`; the fix is an arrow function
-      at the call site. One branch.
+      at the call site. One branch. Done on 15 October 2026: 52
+      findings in 19 files, where each `any` traced to one of a few
+      springs. Two packages declare themselves as `any`:
+      `postcss-preset-mantine` ships `declare module` and nothing more,
+      so `src/types/postcss-preset-mantine.d.ts` now says what its
+      default export is, and `qrcode` was shimmed the same way in
+      `src/types/qrcode.d.ts`, which is deleted since `@types/qrcode`
+      has been installed all along. Three forms read their values
+      through an untyped `useFormContext()`, now given their values
+      type. `res.json()` in `api.ts` and `event.data.json()` in `sw.ts`
+      are read as `unknown` and as the payload shape. The Storybook
+      decorator in `.storybook/preview.tsx` was typed `(Story: any,
+      context: any)` and is now a `Decorator`, reading globals and
+      parameters as unknown and narrowing. The `unbound-method`
+      findings were `InstallPromptCapture` declaring its functions as
+      methods while every implementation is a closure; the interface
+      now says function-typed properties, which is what they are. A
+      `String(obj)` fallback in `LoginPage` for a body that will not
+      serialise, which could only ever say "[object Object]", returns
+      no message instead. `BaseProfessionId | ""` loses the `""`,
+      because the id type is `string` from JSON and the union said
+      nothing. The rest are the mechanical shapes of Phase 4.
 
 ## Phase 6: Remove the scaffolding
 

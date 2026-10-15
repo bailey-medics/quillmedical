@@ -21,8 +21,15 @@ precacheAndRoute(self.__WB_MANIFEST);
 const BASE = new URL(".", self.registration.scope).pathname;
 
 // Handle incoming push notifications
+/** What the backend puts in a push message, as far as this reads it. */
+interface PushPayload {
+  title?: string;
+  body?: string;
+  data?: unknown;
+}
+
 self.addEventListener("push", (event) => {
-  const data = event.data ? event.data.json() : {};
+  const data = (event.data ? event.data.json() : {}) as PushPayload;
   const title = data.title || "Notification";
   const options: NotificationOptions = {
     body: data.body || "",

@@ -87,7 +87,8 @@ export default function LoginPage() {
           try {
             return JSON.stringify(obj);
           } catch {
-            return String(obj);
+            // A body that cannot be serialised has no message to give
+            return null;
           }
         }
         return null;

@@ -162,7 +162,7 @@ function renderWithAuth(
 
   // Mock fetch to return the appropriate user
   global.fetch = vi.fn((url: string | URL | Request) => {
-    const urlString = typeof url === "string" ? url : url.toString();
+    const urlString = urlOf(url);
 
     const answer = urlString.includes("/auth/me")
       ? mockUser
@@ -190,6 +190,13 @@ function renderWithAuth(
   return renderWithRouter(<AuthProvider>{ui}</AuthProvider>, {
     initialRoute: options?.initialRoute,
   });
+}
+
+/** The address a fetch was made to, whichever form it was given in. */
+function urlOf(input: string | URL | Request): string {
+  if (typeof input === "string") return input;
+
+  return input instanceof URL ? input.href : input.url;
 }
 
 describe("SideNavContent Component", () => {
@@ -651,7 +658,7 @@ describe("SideNavContent Component", () => {
       const user = mockUsers.admin;
 
       global.fetch = vi.fn((url: string | URL | Request) => {
-        const urlString = typeof url === "string" ? url : url.toString();
+        const urlString = urlOf(url);
         asked.push(urlString);
 
         const answer = urlString.includes("/auth/me")
@@ -790,7 +797,7 @@ describe("SideNavContent Component", () => {
       expect(
         vi
           .mocked(global.fetch)
-          .mock.calls.some(([url]) => String(url).includes("roots=true")),
+          .mock.calls.some(([url]) => urlOf(url).includes("roots=true")),
       ).toBe(false);
     });
 

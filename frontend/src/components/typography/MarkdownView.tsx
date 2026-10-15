@@ -146,7 +146,7 @@ function inlineFormat(raw: string, imageBase?: string) {
   });
 
   // links: [text](url)
-  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, text, url) => {
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, text: string, url: string) => {
     const trimmedUrl = url.trim();
     const safe = isSafeUrl(trimmedUrl) ? trimmedUrl : "#";
     // text is already escaped by the initial escapeHtml

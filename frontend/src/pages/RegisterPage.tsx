@@ -92,7 +92,7 @@ function ChooseSiteFields({
   sites: LeadSite[];
   onBack: () => void;
 }) {
-  const { methods } = useFormContext();
+  const { methods } = useFormContext<{ site: string }>();
 
   return (
     <Stack gap="md">
@@ -113,7 +113,7 @@ function ChooseSiteFields({
               value: String(site.site_id),
               label: site.site_name,
             }))}
-            value={(field.value as string) || null}
+            value={field.value || null}
             onChange={field.onChange}
             error={fieldState.error?.message}
             required
@@ -130,7 +130,7 @@ function TeachingRegisterFields({
 }: {
   modules: { value: string; label: string }[];
 }) {
-  const { methods } = useFormContext();
+  const { methods } = useFormContext<TeachingRegisterFormValues>();
 
   return (
     <Stack gap="md">
