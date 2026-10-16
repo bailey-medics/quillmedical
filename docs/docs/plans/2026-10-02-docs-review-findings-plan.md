@@ -396,6 +396,10 @@ clinical services are on, and the live deployment has them off.
   for a person because it widens what logs somebody in, and a code would
   then stay valid for up to 90 seconds, so it wants a check that a used
   code cannot be replayed.
+  Decided by Mark on 2026-10-16: one step either side, now that a code
+  is used once only. Built in the
+  [teaching E2E coverage plan](2026-10-15-teaching-e2e-coverage-plan.md),
+  Phase 6.
 
 - **`scripts/run-github-actions-locally.sh` cannot run** - it points `act`
   at `non-main.yml` and `main.yml`, which no longer exist; the workflows

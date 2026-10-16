@@ -405,30 +405,63 @@ def generate_totp_secret() -> str:
     return pyotp.random_base32()
 
 
-def verify_totp_code(secret: str, code: str) -> bool:
-    """Verify TOTP Code.
+#: How many 30-second steps either side of now a code is accepted from.
+#: One, as RFC 6238 section 5.2 recommends for network delay and as
+#: django-otp's default tolerance is, so a code typed just before the
+#: step rolls over still works. Safe only because a code is used once:
+#: a window wider than the current step with no reuse check is the flaw
+#: behind CVE-2026-55370.
+TOTP_WINDOW = 1
 
-    Verifies a 6-digit TOTP code against the user's secret. Uses RFC 6238
-    time-based one-time password algorithm with 30-second time steps.
-    Only the current time step is accepted: ``verify`` is called without
-    ``valid_window``, and pyotp's default is 0, so a code from the step
-    before or after is refused.
 
-    Args:
-        secret: Base32-encoded TOTP secret from database.
-        code: 6-digit TOTP code from authenticator app.
+def totp_step_matched(
+    secret: str, code: str, at: datetime | None = None
+) -> int | None:
+    """The time step a TOTP code is right for, or None if it is wrong.
+
+    Checks a 6-digit code against the account's secret with RFC 6238's
+    30-second steps, from ``TOTP_WINDOW`` steps before the current one
+    to as many after. Each step's code is compared with
+    ``hmac.compare_digest``, so the time taken says nothing about how
+    close a wrong code came.
+
+    Returns the step rather than yes or no, because a code may be used
+    once only (RFC 6238 section 5.2). The caller records the step it
+    accepts and refuses that step again: the step, not the six digits,
+    since two steps can give the same code by chance. See
+    ``app.users.totp.use_totp_code``.
+
+    The latest step the code is right for is the one returned, so the
+    steps are tried from the highest down. Were two steps in the window
+    to give the same digits, returning the earlier would record too
+    early a step, and the same digits would pass again at the later one.
 
     A secret that is not valid Base32 is refused rather than raised on:
     that is what pyotp throws for one, and nothing else is caught.
 
+    Args:
+        secret: Base32-encoded TOTP secret from database.
+        code: 6-digit TOTP code from authenticator app.
+        at: The moment to check against. Now, unless a test says.
+
     Returns:
-        bool: True if code is valid for current time window, False otherwise.
+        The latest step the code is right for, or None if it is right
+        for none in the window.
     """
+    moment = at or datetime.now(UTC)
+    typed = code.encode()
+
     try:
         totp = pyotp.TOTP(secret)
-        return totp.verify(code)
+        now = int(totp.timecode(moment))
+
+        for step in range(now + TOTP_WINDOW, now - TOTP_WINDOW - 1, -1):
+            if hmac.compare_digest(totp.generate_otp(step).encode(), typed):
+                return step
     except ValueError, binascii.Error:
-        return False
+        return None
+
+    return None
 
 
 def totp_provisioning_uri(

@@ -410,7 +410,7 @@ results never mix: the dashboard counts in story 19 depend on it.
 The module is "Chest X-ray Interpretation" from `respiratory-teaching`,
 pinned by `.github/scripts/ci/fetch-e2e-teaching.sh`. It is public, so CI
 clones it with no token; the EoEETA module is private and would need a
-deploy key, which is Phase 10's question. Its assessment offers four of
+deploy key, which is Phase 11's question. Its assessment offers four of
 five questions, needs three right (75%) to pass, and each question's
 `question.yaml` names its answer in `correct_option_id`. So the tests need
 no made-up questions: a fixture reads the pinned module's answers, finds
@@ -445,18 +445,15 @@ a wrong one to fail. A new pin is then picked up with no test change.
       (`TestOneRefusedEmailStopsNoOther`), both tests checked to fail
       with the catch removed.
 
-- [ ] Found while building story 16, for Mark to decide: a pass emails
-      the clinical lead of **every** site under the organisation, not
-      just the delegate's own. `_maybe_enqueue_certificate_emails` takes
-      `descendant_ids` of the organisation and emails every lead found.
-      With EoEETA's member hospitals, a lead at one hospital would be
-      sent the certificates, names and scores of delegates at all the
-      others. The story as written, "my clinical lead and me", is what
-      the test checks, and it passes, because the delegate's own lead is
-      among everybody emailed. Recommended: email only the lead of the
-      site the delegate joined through, which registration already
-      records. Not changed in this run, because it changes who is told
-      about a pass.
+- [ ] Found while building story 16: a pass emails the clinical lead of
+      **every** site under the organisation, not just the delegate's own.
+      `_maybe_enqueue_certificate_emails` takes `descendant_ids` of the
+      organisation and emails every lead found, so with EoEETA's member
+      hospitals a lead at one would be sent the certificates, names and
+      scores of delegates at all the others. Decided by Mark on
+      2026-10-16: only the clinical lead of the site the delegate is at
+      is emailed. Built in Phase 10, where the leaks across sites and
+      organisations are tested.
 
 - [x] Give the module a video. The pinned module has none, so story 7
       cannot be tested against it. Add one short, licence-free clip to a
@@ -565,15 +562,59 @@ back.
       carries `aria-label="Dark mode"`, as the other switches on the page
       already did, with a test in `src/pages/Settings.test.tsx`.
 
-- [ ] Found while building story 27, for Mark to decide: a two-factor
-      code can be used twice. `verify_totp_code` in
-      `backend/app/security.py` accepts any code for the current 30-second
-      step and records none as used, so somebody who sees a code being
-      typed can sign in with it in the same half-minute. RFC 6238 section
-      5.2 says a code accepted once should be refused after. Recommended:
-      store the last step each account used and refuse that step again.
-      Not changed in this run, because it changes how everybody with
-      two-factor signs in.
+- [x] Found while building story 27: a two-factor code can be used
+      twice. `verify_totp_code` in `backend/app/security.py` accepts any
+      code for the current 30-second step and records none as used, so
+      somebody who sees a code being typed can sign in with it in the
+      same half-minute. Mark asked on 2026-10-16 for industry practice,
+      researched the same day:
+
+      - **RFC 6238 section 5.2** says the verifier must not accept the
+        second attempt of a code once the first has been validated, so
+        each code is used once.
+      - **The usual way to do it** is a high-water mark: store, per
+        account, the time step of the last code accepted, and refuse any
+        code whose step is at or below it. The step, not the six digits,
+        is what is recorded, since codes repeat by chance. otplib builds
+        this in as `afterTimeStep`; pyotp, which Quill uses, does not, so
+        the comparison is Quill's to make.
+      - **Real faults from leaving it out**: CVE-2026-55370 (Logto) and
+        CVE-2026-61630 (nginx ignition), both a stateless check that
+        accepted a used code again within its window.
+
+      Decided: a nullable integer column on `users`,
+      `totp_last_step`, written in the same transaction that accepts a
+      code, and a code refused when its step is at or below it.
+      The window is one 30-second step either side of now, decided by
+      Mark on 2026-10-16: RFC 6238 section 5.2 recommends at most one
+      step for network delay, and django-otp's default tolerance is 1.
+      With the current step only, a code typed just before the step
+      rolls over was refused. The reuse check is what makes the wider
+      window safe; without it, a window of one is the flaw behind
+      CVE-2026-55370. `totp_step_matched` tries the steps from the
+      highest down and returns the latest the code is right for, so
+      digits that two steps share cannot pass again at the later one,
+      and compares with `hmac.compare_digest`. Tests: a code used once and
+      then again is refused the second time, at login and at setup, and
+      story 27 checks a second sign-in with the same code is refused.
+      Sources:
+      [OneUptime, blocking TOTP reuse](https://oneuptime.com/blog/post/2026-08-29-how-to-block-reuse-of-a-totp-code-during-its-30-second-validity-window/view),
+      [otplib `afterTimeStep`](https://otplib.yeojz.dev/api/@otplib/totp/type-aliases/TOTPVerifyOptions.html),
+      [CVE-2026-55370](https://app.opencve.io/cve/CVE-2026-55370),
+      [CVE-2026-61630](https://corgea.com/advisories/vulnerabilities/CVE-2026-61630).
+
+      Built: `totp_step_matched` in `backend/app/security.py` says which
+      step a code is right for, replacing `verify_totp_code`, and
+      `use_totp_code` in `backend/app/users/totp.py` claims that step with
+      one conditional update, so two requests with the same code at once
+      cannot both win. Login and setup both go through it, turning
+      two-factor off clears the step, and emptying an account wipes it.
+      The migration adds `users.totp_last_step`, nullable, with nothing to
+      backfill. Story 27 now waits for the next step after setup before
+      signing in, and checks the same code is refused a second time. The
+      keyboard sign-in journey had both browsers sign in as one
+      `twofactor` user, which a single-use code now refuses, so each
+      browser has its own (`twofactor_chromium`, `twofactor_webkit`).
 
 - [x] 22. As a TA or a TD, I want to update my account details, so that
       they stay correct.
@@ -712,13 +753,11 @@ a TD unless it names one.
       away, so that I can retake it while the learning is fresh.
       The module sets `allow_immediate_retry`; the test checks a new
       attempt starts with new questions drawn.
-- [ ] 4. As a TA or a TD, I want to come back to the learning at the slide
-      I left, so that I do not have to find my place again.
-      Not built: "Start learning" always opens the first slide, and
-      nothing records the last slide read. The test is written and
-      marked `test.fail()`, so the suite says so the moment this is
-      built. Building it is a feature for Mark to ask for: it needs the
-      last slide stored per learner and module, which is a new table.
+- [ ] 4. ~~As a TA or a TD, I want to come back to the learning at the
+      slide I left.~~ Dropped on 2026-10-16: EoEETA asked Quill not to
+      remember which slide somebody visited last. The `test.fail()` test
+      for it in `tests/edges/assessment-rules.spec.ts` is to be deleted,
+      since there is nothing to wait for.
 - [x] 5. As a TD, I want to lose a module once a TA takes me off it, so
       that only people still enrolled can take it.
       Tested across two people: the TA unticks the module on the TD's
@@ -763,18 +802,34 @@ a TD unless it names one.
       test reopens the account afterwards and finds news off in settings.
       Stories 6, 8, 9 and 10 are in `tests/edges/account-edges.spec.ts`.
 
-- [ ] Found while building story 7, for Mark: on a phone, tapping the
-      menu entry for the page already open leaves the menu open over it.
-      The menu closes when the page changes, and tapping the current
-      page changes nothing, so the person has to find the close control.
-      Small, and worth fixing by closing the menu on any tap of an entry.
+- [ ] Found while building story 7: on a phone, tapping the menu entry
+      for the page already open leaves the menu open over it. The menu
+      closes when the page changes, and tapping the current page changes
+      nothing. Decided by Mark on 2026-10-16: it closes. Close the menu on
+      any tap of an entry, and add the case to the phone journey: tapping
+      "Teaching" while on `/teaching` closes the menu.
 
-- [ ] Found while running the journeys side by side, for Mark: two
-      requests making accounts with the same address at the same moment
-      get a 500, not a refusal. The users route checks the address is
-      free and then inserts, and the database's unique constraint is
-      what catches the second, as an unhandled `IntegrityError`. Nobody
-      meets this by hand; worth answering it as the duplicate it is.
+- [ ] Found while running the journeys side by side: two requests making
+      accounts with the same address at the same moment get a 500, not a
+      refusal. The route checks the username and address are free, then
+      inserts, and between the two the other request can insert first, so
+      the database's unique constraint (`users_email_key`,
+      `users_username_key`) catches the second as an unhandled
+      `IntegrityError`. A double click on "Create user", or two admins
+      adding the same person, is enough. Decided by Mark on 2026-10-16:
+      fix it.
+
+      Keep the checks, which give the right answer in the ordinary case,
+      and also catch `IntegrityError` where the account is flushed, in
+      `backend/app/users/create.py` for an admin making an account and
+      in `backend/app/users/register.py` for somebody registering. Roll
+      the insert back and answer as the check would have: `EmailTaken`
+      or `UsernameTaken` for an admin, read from the constraint named in
+      the error, and the one `UsernameOrEmailInUse` for registration,
+      which must not say which was taken. Any other integrity error is
+      raised as it was. Tests beside each module: a second insert made
+      to collide, by holding the check open, is refused with the right
+      answer and leaves one account.
 
 - [x] Found in CI: YouTube sends nothing to CI's data-centre runners, so
       the lecture's clock never moved there and story 7 of Phase 5 failed
@@ -785,7 +840,61 @@ a TD unless it names one.
       now mounts it read-only where `../.e2e-teaching` reaches from the
       container's `/work`.
 
-## Phase 10: Every module of teaching content
+## Phase 10: Two organisations, two sites each, and what leaks
+
+Decided by Mark on 2026-10-16, after a pass was found to email every
+clinical lead in the organisation. Every teaching journey runs in a world
+of two organisations with two sites each, so a test can see what reaches
+across a site or an organisation and what does not. Built in this order,
+so the leak tests are written before the fix they prove.
+
+- [ ] Seed the world in `backend/scripts/seed_ci.py`: "CI Teaching
+      Hospital" with "CI Teaching Centre" and a second site, and a second
+      teaching organisation with two sites of its own, the module open
+      at both organisations. Each of the four sites has its own clinical
+      lead, and each organisation its own teaching admin. The existing
+      "CI Other Hospital", which runs no teaching, stays as the place
+      nobody may move a delegate to.
+
+- [ ] Give the fixtures the world: `PLACES` names all four sites and both
+      organisations, and `makeLearner` takes the site to put somebody at,
+      rather than making a site of its own each time. A learner's lead is
+      then the seeded lead of their site, so the emails each lead
+      receives say who leaks.
+
+- [ ] Write the leak tests, before the fix, in `tests/leaks/`:
+      - a pass emails the delegate and their own site's lead, and no lead
+        at the other site of the organisation, nor at either site of the
+        other organisation (fails today, so written as `test.fail()`
+        until the next step, then the marker comes off);
+      - a teaching admin sees only their own organisation's delegates on
+        All delegates, its sites in the filters, and its people on the
+        users list;
+      - a teaching admin cannot open the other organisation, its sites,
+        or its people's pages, by the menu or by address, and the API
+        refuses each;
+      - a delegate sees only the modules their organisation serves, and
+        cannot open the other organisation's results;
+      - a clinical lead named at one site is not offered at registration
+        for the other organisation's module.
+
+- [ ] Email only the delegate's own site's lead on a pass, in
+      `_maybe_enqueue_certificate_emails`: the lead of the site the
+      delegate belongs to, under the organisation that served the
+      module. A delegate at no site, or at a site with no lead, emails
+      no lead, as a vacant post already does. Update
+      `backend/tests/certificate_email_recipients_test.py`, whose
+      "the lead of a linked site is emailed" cases describe today's
+      behaviour, and take the `test.fail()` off the leak test.
+
+- [ ] Move the existing teaching journeys onto the world, so each runs
+      against a named site rather than one made for it, and drop
+      `makeLearner`'s per-learner site and lead, which only worked
+      round the leak. The rate limit on emails to one address still
+      applies to a shared lead, so each journey's assertion on a lead's
+      email picks it out by learner, as `waitForEmailMatching` does.
+
+## Phase 11: Every module of teaching content
 
 - [ ] Settle the four open questions from the discussion on 2026-10-15
       before writing this phase's steps: 1. What "all the content" means: every module and every slide, with

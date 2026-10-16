@@ -84,6 +84,7 @@ COLUMN_RULES: dict[str, Rule] = {
     "password_hash": "wiped",  # nosec B105 - a column name, not a secret
     "totp_secret": "wiped",  # nosec B105 - a column name, not a secret
     "is_totp_enabled": "wiped",
+    "totp_last_step": "wiped",
     # Stays false. An emptied account is a closed one.
     "is_active": "kept",
     # When it was closed and when it was emptied: dates, not a person.
@@ -258,6 +259,7 @@ def _wipe_the_row(user: User, now: datetime) -> None:
     user.password_hash = hash_password(secrets.token_urlsafe(32))
     user.totp_secret = None
     user.is_totp_enabled = False
+    user.totp_last_step = None
     user.email_verified = False
     user.token_version += 1
     user.marketing_emails = False

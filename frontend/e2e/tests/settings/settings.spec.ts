@@ -22,6 +22,27 @@ async function flip(page: Page, name: string): Promise<void> {
   await page.locator(`label[for="${await toggle.getAttribute("id")}"]`).click();
 }
 
+/** How long until the 30-second step after the one *at* falls in. */
+function msUntilNextStep(at: number): number {
+  return 30_000 - (at % 30_000) + 250;
+}
+
+/** Sign in with a password, then answer the two-factor question. */
+async function signInWithCode(
+  page: Page,
+  username: string,
+  code: string,
+): Promise<void> {
+  await page.goto("/login");
+  await page.getByLabel("Username").fill(username);
+  await page.getByRole("textbox", { name: "Password" }).fill(`${username}123`);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  const field = page.getByLabel(/authenticator code/i);
+  await expect(field).toBeVisible({ timeout: 15_000 });
+  await field.fill(code);
+  await field.press("Enter");
+}
+
 /** The colour scheme the page is drawn in. */
 async function colourScheme(page: Page): Promise<string | null> {
   return page.locator("html").getAttribute("data-mantine-color-scheme");
@@ -176,25 +197,35 @@ for (const { who, kind, profession } of TEACHING_PEOPLE) {
       const secret = new URL(await link.innerText()).searchParams.get("secret");
       expect(secret).not.toBeNull();
 
-      await page.getByLabel("6-digit code").fill(totpCode(secret ?? ""));
+      const setUpWith = Date.now();
+      await page
+        .getByLabel("6-digit code")
+        .fill(totpCode(secret ?? "", setUpWith));
       await page.getByTestId("submit-button").click();
       await expect(page.getByText("Two-factor enabled")).toBeVisible();
 
-      // Signing in again now asks for a code. The server takes only the
-      // current 30-second step, so the code is worked out as it is typed.
-      await page.context().clearCookies();
-      await page.goto("/login");
-      await page.getByLabel("Username").fill(username);
-      await page
-        .getByRole("textbox", { name: "Password" })
-        .fill(`${username}123`);
-      await page.getByRole("button", { name: "Sign in" }).click();
-      const code = page.getByLabel(/authenticator code/i);
-      await expect(code).toBeVisible({ timeout: 15_000 });
-      await code.fill(totpCode(secret ?? ""));
-      await code.press("Enter");
+      // Each code is used once, so signing in waits for the next
+      // 30-second step: the setup code would be refused.
+      await page.waitForTimeout(msUntilNextStep(setUpWith));
+      const signInCode = totpCode(secret ?? "");
 
+      // Signing in again now asks for a code.
+      await page.context().clearCookies();
+      await signInWithCode(page, username, signInCode);
       await expect(page).not.toHaveURL(/\/login/, { timeout: 30_000 });
+
+      // The same code a second time is refused (RFC 6238 section 5.2),
+      // so somebody who saw it typed cannot use it too.
+      await page.context().clearCookies();
+      const refused = page.waitForResponse(
+        (response) =>
+          response.url().includes("/api/auth/login") &&
+          response.request().method() === "POST" &&
+          response.request().postData()?.includes("totp_code") === true,
+      );
+      await signInWithCode(page, username, signInCode);
+      expect((await refused).status()).toBe(400);
+      await expect(page).toHaveURL(/\/login/);
     });
 
     test("is shown no Clinician passport card", async ({

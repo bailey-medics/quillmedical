@@ -51,7 +51,14 @@ test.describe("Keyboard only", () => {
   test.describe("logging in with two-factor authentication", () => {
     test.use({ storageState: { cookies: [], origins: [] } });
 
-    test("works from the keyboard alone", async ({ page, browserName }) => {
+    test("works from the keyboard alone", async ({
+      page,
+      browserName,
+    }, testInfo) => {
+      // Their own per browser: each code is used once, so two browsers
+      // signing in as one person in the same 30 seconds would clash.
+      const who = `twofactor_${testInfo.project.name}`;
+
       // The login page has no layout, so no navigation to skip and no
       // skip link: the first stops are the form's own fields
       await page.goto("/login");
@@ -59,12 +66,12 @@ test.describe("Keyboard only", () => {
 
       const username = page.getByLabel("Username");
       await tabTo(page, username, nextKey(browserName));
-      await page.keyboard.type("twofactor");
+      await page.keyboard.type(who);
       await page.keyboard.press("Tab");
       await expect(
         page.getByRole("textbox", { name: "Password" }),
       ).toBeFocused();
-      await page.keyboard.type("twofactor123");
+      await page.keyboard.type(`${who}123`);
       await page.keyboard.press("Enter");
 
       // The server asks for a code; focus moves straight to the new field

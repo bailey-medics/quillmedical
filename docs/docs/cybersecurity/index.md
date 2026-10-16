@@ -67,7 +67,8 @@ The check is not left to each route to remember. `backend/tests/every_route_is_g
 
 2FA adds an extra layer of security beyond a password. TOTP generates a short-lived code (typically six digits) using an authenticator app on the user's phone.
 
-- **Standard**: RFC 6238 (TOTP), 30-second time steps, no clock drift tolerance (only the current step is accepted).
+- **Standard**: RFC 6238 (TOTP), 30-second time steps, one step either side accepted for network delay and clock drift, as section 5.2 recommends.
+- **Used once**: each code is accepted once only. The step of the last code accepted is kept on the account (`users.totp_last_step`), and that step or any before it is refused, so a code seen being typed cannot be used again while it is still in the window.
 - **Library**: `pyotp`.
 - **Secret**: 32-character Base32, generated per user via `pyotp.random_base32()`.
 - **Provisioning**: `otpauth://` URI for QR code scanning (Google Authenticator, Authy, etc.).

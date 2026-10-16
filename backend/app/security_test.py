@@ -25,11 +25,11 @@ from app.security import (
     make_csrf,
     password_needs_rehash,
     totp_provisioning_uri,
+    totp_step_matched,
     verify_csrf,
     verify_email_verify_token,
     verify_password,
     verify_password_reset_token,
-    verify_totp_code,
 )
 
 
@@ -384,49 +384,111 @@ class TestTOTP:
         assert username in uri
         assert secret in uri
 
-    def test_verify_totp_code_success(self):
+    def test_totp_step_matched_success(self):
         """Test TOTP code verification with correct code."""
         secret = generate_totp_secret()
         totp = pyotp.TOTP(secret)
         current_code = totp.now()
 
-        assert verify_totp_code(secret, current_code) is True
+        assert totp_step_matched(secret, current_code) is not None
 
-    def test_verify_totp_code_failure(self):
+    def test_totp_step_matched_failure(self):
         """Test TOTP code verification with incorrect code."""
         secret = generate_totp_secret()
         wrong_code = "000000"
 
-        assert verify_totp_code(secret, wrong_code) is False
+        assert totp_step_matched(secret, wrong_code) is None
 
-    def test_verify_totp_code_invalid_secret(self):
+    def test_totp_step_matched_invalid_secret(self):
         """A secret that is not Base32 is refused, not raised on. That
-        is the one error ``verify_totp_code`` catches."""
-        assert verify_totp_code("invalid_secret", "123456") is False
-        assert verify_totp_code("not base32!", "123456") is False
+        is the one error ``totp_step_matched`` catches."""
+        assert totp_step_matched("invalid_secret", "123456") is None
+        assert totp_step_matched("not base32!", "123456") is None
 
-    def test_verify_totp_code_exception_handling(self):
+    def test_totp_step_matched_exception_handling(self):
         """Test TOTP code verification handles exceptions gracefully."""
         # Empty secret should trigger exception path
-        assert verify_totp_code("", "123456") is False
+        assert totp_step_matched("", "123456") is None
 
-    def test_verify_totp_code_invalid_input(self):
+    def test_totp_step_matched_invalid_input(self):
         """Test TOTP code verification with invalid input."""
         secret = generate_totp_secret()
         # Non-numeric code
-        assert verify_totp_code(secret, "abcdef") is False
+        assert totp_step_matched(secret, "abcdef") is None
         # Too short
-        assert verify_totp_code(secret, "123") is False
+        assert totp_step_matched(secret, "123") is None
 
     def test_totp_code_expires(self):
         """Test that TOTP codes are time-based."""
         secret = generate_totp_secret()
         totp = pyotp.TOTP(secret)
+        moment = datetime(2026, 10, 16, 12, 0, 15, tzinfo=UTC)
 
-        # Get code for a past time (more than 30 seconds ago)
-        past_code = totp.at(datetime.now(UTC) - timedelta(seconds=60))
+        # Two steps back, a minute ago, is outside the window of one step
+        # either side, so it is refused.
+        past_code = totp.at(moment - timedelta(seconds=60))
 
-        # Old code should not verify (outside valid_window)
-        # Note: valid_window=1 in verify_totp_code allows ±30 seconds
-        # So we need to go further back
-        assert verify_totp_code(secret, past_code) is False
+        assert totp_step_matched(secret, past_code, at=moment) is None
+
+    @pytest.mark.parametrize("steps_away", [-1, 1], ids=["before", "after"])
+    def test_a_code_one_step_either_side_is_accepted(
+        self, steps_away: int
+    ) -> None:
+        """RFC 6238 section 5.2: one step for network delay, so a code
+        typed just before the step rolls over still works."""
+        secret = generate_totp_secret()
+        moment = datetime(2026, 10, 16, 12, 0, 15, tzinfo=UTC)
+        now = int(moment.timestamp() // 30)
+        code = pyotp.TOTP(secret).generate_otp(now + steps_away)
+
+        assert totp_step_matched(secret, code, at=moment) == now + steps_away
+
+    @pytest.mark.parametrize("steps_away", [-2, 2], ids=["before", "after"])
+    def test_a_code_two_steps_away_is_refused(self, steps_away: int) -> None:
+        # A fixed secret and moment, so the digits are the same every
+        # run: two steps can give the same six by chance, and these are
+        # checked not to.
+        secret = "JBSWY3DPEHPK3PXP"  # nosec B105 - a test's own secret
+        moment = datetime(2026, 10, 16, 12, 0, 15, tzinfo=UTC)
+        now = int(moment.timestamp() // 30)
+        totp = pyotp.TOTP(secret)
+        code = totp.generate_otp(now + steps_away)
+        in_window = {totp.generate_otp(now + step) for step in (-1, 0, 1)}
+
+        assert code not in in_window
+        assert totp_step_matched(secret, code, at=moment) is None
+
+    @pytest.mark.parametrize(
+        ("matching", "returned"),
+        [((-1, 0), 0), ((0, 1), 1), ((-1, 1), 1), ((-1, 0, 1), 1)],
+        ids=["before and now", "now and after", "both ends", "all three"],
+    )
+    def test_the_latest_step_the_digits_match_is_returned(
+        self, matching: tuple[int, ...], returned: int
+    ) -> None:
+        """The step returned is the one recorded as used. Were it the
+        earlier of two that give the same digits, the same digits would
+        pass again at the later one."""
+        moment = datetime(2026, 10, 16, 12, 0, 15, tzinfo=UTC)
+        now = int(moment.timestamp() // 30)
+
+        def digits(_totp: pyotp.TOTP, step: int) -> str:
+            return "123456" if step - now in matching else "999999"
+
+        with patch.object(pyotp.TOTP, "generate_otp", digits):
+            matched = totp_step_matched(
+                generate_totp_secret(), "123456", at=moment
+            )
+
+        assert matched == now + returned
+
+    def test_the_step_matched_is_the_step_of_the_moment(self):
+        """The step is what is recorded as used, so it must be the one
+        the code belongs to."""
+        secret = generate_totp_secret()
+        moment = datetime(2026, 10, 16, 12, 0, 15, tzinfo=UTC)
+        code = pyotp.TOTP(secret).at(moment)
+
+        assert totp_step_matched(secret, code, at=moment) == int(
+            moment.timestamp() // 30
+        )
