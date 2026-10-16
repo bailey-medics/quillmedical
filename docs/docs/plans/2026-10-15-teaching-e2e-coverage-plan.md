@@ -149,23 +149,42 @@ the request behind it still succeeds.
       (`e2e/fixtures/api.ts`), so each tests its own action rather than
       the user form again. Tables are paged at ten rows, and each run adds
       accounts, so rows are found by searching (`e2e/fixtures/tables.ts`).
-- [ ] 10. A teaching admin cannot add a new organisation.
-- [ ] 11. A teaching admin can add a new site.
-- [ ] 12. A teaching admin cannot change the details of their
-      organisation on its page (`/admin/organisations/{id}`).
-- [ ] 13. A teaching admin can add staff on the organisation page.
-- [ ] 14. A teaching admin can remove staff on the organisation page.
-- [ ] 15. A teaching admin can add a site on the organisation page.
-- [ ] 16. A teaching admin can remove a site on the organisation page,
-      through the warning modal (needs Phase 2).
-- [ ] 17. A teaching admin can edit a site on its page
-      (`/admin/sites/{id}`).
-- [ ] 18. A teaching admin can add staff on the site page.
-- [ ] 19. A teaching admin can remove staff on the site page.
-- [ ] 20. Clicking a user on the site page opens that user and you can enable and disable competencies at that `practice`
-- [ ] 21. Clicking a user on the site page opens that user and you can enable and disable reaching at that `practice`
-- [ ] 22. as a TA, on this page https://app.quill-medical.com/admin/teaching, I can only see the`All delegates` card
-- [ ] 23. as a TA, I should be able to see this page https://app.quill-medical.com/admin/teaching/all-delegates and see the total number of delegates,number passed,1st pass success rate, and a table of users with best assessment scores with dates.
+- [x] 10. A teaching admin cannot add a new organisation: no button,
+      a 404 at `/admin/organisations/new`, and `POST /api/org-units` for
+      an organisation answered 403. Items 10 to 23 are in
+      `teaching-admin/places.spec.ts`.
+- [x] 11. A teaching admin can add a new site, from the list of sites.
+- [x] 12. A teaching admin cannot change the details of their
+      organisation: no edit button on its page, a 404 at its edit page,
+      and `PUT /api/org-units/{id}` answered 403.
+- [x] 13. A teaching admin can add staff on the organisation page.
+- [x] 14. A teaching admin can remove staff on the organisation page.
+- [x] 15. A teaching admin can add a site on the organisation page.
+- [x] 16. A teaching admin can delete a site on the organisation page,
+      through the warning modal from Phase 2, and the site is gone from
+      the API afterwards.
+- [x] 17. A teaching admin can edit a site's name and location.
+- [x] 18. A teaching admin can add staff on the site page, as staff
+      rather than the first role offered, which names them clinical lead.
+- [x] 19. A teaching admin can remove staff on the site page.
+- [x] 20. Clicking a user on the site page opens their page there, and
+      taking modules is switched on, saved, then switched off and saved.
+- [x] 21. Clicking a user on the site page opens their page there, and
+      they are enrolled on the module and taken off it again. Assumed:
+      "reaching" meant the Teaching panel on that page, the one control
+      there besides the practice switches. The panel's own comment says
+      the separate control for somebody's place at a centre was built and
+      removed, so enrolment is what is left to switch.
+- [x] 22. On `/admin/teaching` a teaching admin sees one card, "All
+      delegates".
+- [x] 23. On `/admin/teaching/all-delegates` a teaching admin sees the
+      total, passed and first-pass-rate figures, and a row per delegate
+      with their result and its date. `seed_ci.py` now seeds
+      `results_delegate` with a pass yesterday
+      (`seed_delegate_result`), so the table has a row before any test
+      sits an assessment. The table shows each delegate's latest result
+      rather than a best score: that is deliberate, since delegates
+      re-pass every three years, so the test checks what is there.
 
 ## Phase 4: Teaching delegate journeys
 
