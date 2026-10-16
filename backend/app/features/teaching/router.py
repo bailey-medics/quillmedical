@@ -163,6 +163,7 @@ from app.features.teaching.video_access import (
 )
 from app.models import (
     User,
+    org_unit_member,
 )
 from app.organisations import (
     get_member_org_unit_ids,
@@ -1181,10 +1182,13 @@ def _maybe_enqueue_certificate_emails(
         if coord_template:
             from app.org_units.tree import descendant_ids
 
-            # Whoever holds the clinical lead post at an org_unit beneath this
-            # organisation. Read from the post rather than a role on a
-            # staff row: a post can be vacant, and a vacancy must mean
-            # nobody is emailed rather than the wrong person.
+            # Whoever holds the clinical lead post at the site the
+            # candidate is at, beneath the organisation that served the
+            # module. Not every lead beneath it: a lead is told about
+            # their own site's delegates, and nobody else's. Read from
+            # the post rather than a role on a staff row: a post can be
+            # vacant, and a vacancy must mean nobody is emailed rather
+            # than the wrong person.
             #
             # An exact match on one org_unit, with no walk up the tree: a
             # ward does not inherit its hospital's lead, and implying it
@@ -1195,7 +1199,15 @@ def _maybe_enqueue_certificate_emails(
                 if org_org_unit_id is not None
                 else []
             )
-            lead_ids = set(clinical_leads_of(db, org_site_ids).values())
+            their_site_ids: list[int] = sorted(
+                db.scalars(
+                    select(org_unit_member.c.org_unit_id).where(
+                        org_unit_member.c.user_id == user.id,
+                        org_unit_member.c.org_unit_id.in_(org_site_ids),
+                    )
+                ).all()
+            )
+            lead_ids = set(clinical_leads_of(db, their_site_ids).values())
             clinical_leads = (
                 list(
                     db.execute(select(User).where(User.id.in_(lead_ids)))

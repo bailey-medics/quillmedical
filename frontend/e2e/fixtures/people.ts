@@ -57,10 +57,11 @@ export async function makePerson(
  * Make a learner able to take the module, as the teaching admin, at a
  * site of their own with a clinical lead of its own.
  *
- * A lead of their own, because a pass emails the clinical leads, and
- * `send_email` allows ten emails an hour to one address: a lead shared by
- * every journey would run past that, and the email a test checks would
- * not be sent. Their password is their username followed by `123`.
+ * A lead of their own, because a pass emails the lead of the learner's
+ * site, and `send_email` allows ten emails an hour to one address: a lead
+ * shared by every journey would run past that, and the email a test
+ * checks would not be sent. Their password is their username followed by
+ * `123`.
  *
  * Returns the id of the site made for them.
  */
