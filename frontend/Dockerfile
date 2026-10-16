@@ -71,6 +71,30 @@ ENV VITE_APP_VERSION=${VITE_APP_VERSION}
 RUN yarn build
 
 # ============================================================
+# Stage: public-build - the public site, quill-medical.com
+# ============================================================
+# For the end-to-end stack only. In production the public site is built
+# by public-site.yml and served from Cloud Storage, not from an image.
+# Its own stage beside `build`, so the app's image is unchanged.
+FROM deps AS public-build
+COPY frontend/ .
+COPY shared/ /shared/
+RUN yarn workspace public-pages build
+
+# ============================================================
+# Stage: public-ci - Caddy serving the public site to the tests
+# ============================================================
+# Kept above `prod` so that `prod` stays the last stage, the one a build
+# with no target would make.
+FROM ${CADDY_IMAGE} AS public-ci
+COPY caddy/public-ci/Caddyfile /etc/caddy/Caddyfile
+COPY --from=public-build /app/dist/public_pages /srv/public
+USER nobody
+EXPOSE 8081
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8081/ || exit 1
+
+# ============================================================
 # Stage: prod - tiny Caddy image serving static files
 # ============================================================
 # Pin by digest for reproducible builds. To update, run:

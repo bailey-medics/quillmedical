@@ -1,7 +1,7 @@
 # Warm the Docker layer cache for the E2E images on main, so every pull request
 # can read it.
 #
-# heavy_e2e_images in ci.yml builds both images with a `type=gha` layer cache.
+# heavy_e2e_images in ci.yml builds the three images with a `type=gha` layer cache.
 # A run can only read a cache saved on its own ref or on the base branch, and
 # that job runs only on pull requests and the merge queue, never on main. So a
 # pull request's first heavy run, and every merge queue run, found nothing it
@@ -48,6 +48,7 @@ on:
       - "shared/**"
       - "api-compatibility/**"
       - "caddy/prod/**"
+      - "caddy/public-ci/**"
       - ".github/workflows/e2e-image-cache.yml"
   # A cache nobody reads for seven days is evicted. Pull requests read these
   # constantly, but a quiet week would lose them; this puts them back.
@@ -119,3 +120,14 @@ jobs:
             ${{ steps.base_frontend.outputs.build_args }}
           cache-from: type=gha,scope=ci-frontend
           cache-to: type=gha,mode=max,scope=ci-frontend
+
+      - name: Build public site image
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: ./frontend/Dockerfile
+          target: public-ci
+          push: false
+          build-args: ${{ steps.base_frontend.outputs.build_args }}
+          cache-from: type=gha,scope=ci-public
+          cache-to: type=gha,mode=max,scope=ci-public
