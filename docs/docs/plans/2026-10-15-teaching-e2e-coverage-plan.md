@@ -687,7 +687,7 @@ Specs under `frontend/e2e/tests/edges/`. Added on 2026-10-16, when Mark
 asked what the earlier phases left out. Each is tested for both a TA and
 a TD unless it names one.
 
-- [ ] 1. As a TA or a TD, I want an assessment I run out of time on to be
+- [x] 1. As a TA or a TD, I want an assessment I run out of time on to be
       submitted and marked with what I answered, so that the time limit
       is fair and I am not left on a page that no longer counts.
       The module allows ten minutes, and waiting that long would stretch
@@ -696,16 +696,30 @@ a TD unless it names one.
       started eleven minutes ago, and the test opens it. Check first
       whether the limit is enforced by the server, the browser or both,
       and test each side that enforces it.
-- [ ] 2. As a TA or a TD, I want to leave an assessment part way through
+
+      Checked: the server enforces it. `finish_if_out_of_time` in
+      `backend/app/features/teaching/attempts.py` finishes an attempt as
+      at its deadline the next time anything touches it.
+      `seed_out_of_time_attempts` begins one for `out_of_time_chromium`
+      and `out_of_time_webkit`, answers its first question right, and
+      dates it eleven minutes back; the test finds it marked "Fail", with
+      one answer right and three not answered. Stories 1 to 5 are in
+      `tests/edges/assessment-rules.spec.ts`.
+- [x] 2. As a TA or a TD, I want to leave an assessment part way through
       and come back to the same attempt, with my answers kept, so that a
       dropped connection or a closed tab does not cost me the attempt.
-- [ ] 3. As a TA or a TD who has failed, I want to try again straight
+- [x] 3. As a TA or a TD who has failed, I want to try again straight
       away, so that I can retake it while the learning is fresh.
       The module sets `allow_immediate_retry`; the test checks a new
       attempt starts with new questions drawn.
 - [ ] 4. As a TA or a TD, I want to come back to the learning at the slide
       I left, so that I do not have to find my place again.
-- [ ] 5. As a TD, I want to lose a module once a TA takes me off it, so
+      Not built: "Start learning" always opens the first slide, and
+      nothing records the last slide read. The test is written and
+      marked `test.fail()`, so the suite says so the moment this is
+      built. Building it is a feature for Mark to ask for: it needs the
+      last slide stored per learner and module, which is a new table.
+- [x] 5. As a TD, I want to lose a module once a TA takes me off it, so
       that only people still enrolled can take it.
       Tested across two people: the TA unticks the module on the TD's
       member page, and the TD's dashboard no longer shows it and its

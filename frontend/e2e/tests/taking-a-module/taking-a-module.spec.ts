@@ -14,151 +14,17 @@
  * (`fixtures/answers.ts`), so a pass and a fail are both on purpose.
  */
 
-import type { Browser, Page } from "@playwright/test";
 import { test, expect } from "../../fixtures/axe";
-import { createAccount, emailOf, orgUnitId, send } from "../../fixtures/api";
-import { MODULE_ID, questionShown } from "../../fixtures/answers";
-import { waitForEmail } from "../../fixtures/mail";
-import { PLACES, freshUsername, signIn } from "../../fixtures/signIn";
-
-/** The seeded teaching admin's saved sign-in, from `auth.setup.ts`. */
-const TEACHING_ADMIN_STATE = "e2e/.auth/user.json";
-
-/**
- * Make a learner able to take the module, as the teaching admin, at a
- * site of their own with a clinical lead of its own.
- *
- * A lead of their own, because the lead is emailed on every pass and
- * `send_email` allows ten emails an hour to one address: a shared lead,
- * hearing of both browsers' learners and any retries, would run past
- * that and the email this checks would not be sent.
- */
-async function makeLearner(
-  browser: Browser,
-  username: string,
-  profession: string,
-): Promise<void> {
-  const context = await browser.newContext({
-    storageState: TEACHING_ADMIN_STATE,
-  });
-  const page = await context.newPage();
-  const organisationId = await orgUnitId(page, PLACES.organisation);
-
-  const site = await send(page, "POST", "/org-units", {
-    name: `Site of ${username}`,
-    type: "site",
-    parent_id: organisationId,
-  });
-  expect(site.status(), await site.text()).toBe(200);
-  const siteId = ((await site.json()) as { id: number }).id;
-
-  const leadId = await createAccount(page, {
-    username: leadOf(username),
-    name: `Lead of ${username}`,
-    profession: "teaching_clinical_lead",
-    orgUnitIds: [siteId],
-  });
-  const named = await send(page, "PUT", `/org-units/${siteId}/clinical-lead`, {
-    user_id: leadId,
-  });
-  expect(named.status(), await named.text()).toBe(200);
-
-  await createAccount(page, {
-    username,
-    name: `Learner ${username}`,
-    profession,
-    password: `${username}123`,
-    orgUnitIds: [siteId],
-    takesModule: { siteId, organisationId, moduleId: MODULE_ID },
-  });
-  await context.close();
-}
-
-/** The username of a learner's own clinical lead. */
-function leadOf(username: string): string {
-  return `${username}_lead`;
-}
-
-/**
- * Sit the assessment from the module page, answering every question
- * right or every question wrong, and arrive on the result page.
- *
- * Returns the labels chosen, in order, for results by question.
- */
-async function sitTheAssessment(
-  page: Page,
-  answer: "right" | "wrong",
-): Promise<string[]> {
-  const chosen: string[] = [];
-
-  await page.goto(`/teaching/${MODULE_ID}`);
-  await page.getByRole("button", { name: "Start assessment" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Before you begin" }),
-  ).toBeVisible({ timeout: 10_000 });
-  await page.getByRole("button", { name: "Begin" }).click();
-
-  for (let question = 1; question <= 4; question += 1) {
-    await expect(
-      page.getByRole("heading", { name: `Question ${question}` }),
-    ).toBeVisible({ timeout: 10_000 });
-
-    const known = questionShown(await page.getByRole("main").innerText());
-    const label = answer === "right" ? known.right : known.wrong;
-    await page.getByRole("radio", { name: label, exact: true }).check();
-    chosen.push(label);
-
-    await page
-      .getByRole("button", {
-        name: question === 4 ? "Submit & finish" : "Next",
-        exact: true,
-      })
-      .click();
-  }
-
-  await page.getByRole("button", { name: "View results" }).click();
-  await expect(page).toHaveURL(/\/teaching\/assessment\/\d+\/result$/);
-
-  return chosen;
-}
-
-/**
- * Press Next until the slide moves on to *slide*.
- *
- * The recorded lecture's slide embeds a YouTube player, which goes on
- * laying itself out after the slide appears and moves the Next button
- * below it. A click aimed just before that lands on nothing, so the
- * click is tried again until the address moves, never pressed twice once
- * it has.
- */
-async function nextSlide(page: Page, slide: number): Promise<void> {
-  const url = new RegExp(`/slide/${slide}$`);
-  const next = page.getByRole("button", { name: "Next", exact: true });
-
-  await expect(async () => {
-    if (!url.test(page.url())) await next.click();
-    await expect(page).toHaveURL(url, { timeout: 1_000 });
-  }).toPass({ timeout: 15_000 });
-}
-
-/** Check results by question shows each answer given, and its outcome. */
-async function checkResultsByQuestion(
-  page: Page,
-  chosen: string[],
-  outcome: "Pass" | "Fail",
-): Promise<void> {
-  await page.getByRole("link", { name: "View results by question" }).click();
-  await expect(page).toHaveURL(/\/question-results$/);
-
-  const rows = page.getByRole("row").filter({ hasNotText: "Answer given" });
-  await expect(rows).toHaveCount(chosen.length);
-
-  for (const label of chosen) {
-    const row = rows.filter({ hasText: label });
-    await expect(row).toHaveCount(1);
-    await expect(row).toContainText(outcome);
-  }
-}
+import { emailOf } from "../../fixtures/api";
+import { MODULE_ID } from "../../fixtures/answers";
+import {
+  checkResultsByQuestion,
+  nextSlide,
+  sitTheAssessment,
+} from "../../fixtures/assessment";
+import { waitForEmail, waitForEmailMatching } from "../../fixtures/mail";
+import { leadOf, makeLearner } from "../../fixtures/people";
+import { freshUsername, signIn } from "../../fixtures/signIn";
 
 const LEARNERS = [
   { who: "a TA", kind: "ta", profession: "teaching_admin" },
@@ -280,9 +146,14 @@ for (const { who, kind, profession } of LEARNERS) {
       // The learner and their clinical lead are each sent the certificate.
       const theirs = await waitForEmail(emailOf(username));
       expect(theirs.subject).toMatch(/^Certificate: /);
-      const leads = await waitForEmail(emailOf(leadOf(username)));
+      // Picked out by name: today every lead in the organisation is told
+      // of every pass (a finding in the plan), so the newest email to
+      // this lead may be about another learner.
+      const leads = await waitForEmailMatching(
+        emailOf(leadOf(username)),
+        (email) => email.html.includes(`Learner ${username}`),
+      );
       expect(leads.subject).toMatch(/^Certificate issued: /);
-      expect(leads.html).toContain(`Learner ${username}`);
 
       await checkResultsByQuestion(page, chosen, "Pass");
     });

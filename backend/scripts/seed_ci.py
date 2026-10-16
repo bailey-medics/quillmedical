@@ -196,6 +196,7 @@ def seed() -> None:
         # e2e/tests/teaching-admin/.
         seed_teaching_admin_places(db, org.id, educator)
         seed_clinical_lead(db, admin)
+        seed_out_of_time_learners(db)
 
         db.commit()
 
@@ -205,6 +206,9 @@ def seed() -> None:
         # 7. A delegate with a result, for the teaching admin's list of
         # delegates in e2e/tests/teaching-admin/
         seed_delegate_result(db, org.id)
+
+        # 8. An attempt whose time has run out, for e2e/tests/edges/
+        seed_out_of_time_attempts(db, org.id)
 
         print("CI seed complete")
     except Exception as exc:
@@ -347,6 +351,83 @@ def seed_clinical_lead(db: Session, appointed_by: User) -> None:
     set_clinical_lead(db, site, lead, appointed_by=appointed_by)
     db.flush()
     print("Seeded the clinical lead of CI Teaching Centre")
+
+
+#: The learners whose attempt has run out of time, one per browser project,
+#: so neither browser finishes the other's.
+OUT_OF_TIME = ("out_of_time_chromium", "out_of_time_webkit")
+
+
+def seed_out_of_time_learners(db: Session) -> None:
+    """Seed the learners ``seed_out_of_time_attempts`` gives an attempt.
+
+    Made before the modules are opened, so ``seed_teaching`` enrols them
+    with everybody else who has a place.
+    """
+    site = db.query(OrgUnit).filter(OrgUnit.name == "CI Teaching Centre").one()
+
+    for username in OUT_OF_TIME:
+        learner = _ensure_user(db, username, "teaching_delegate")
+        add_org_unit_member(db, site.id, learner.id, "staff")
+        # Their place is the site they belong to: a place is counted
+        # only where somebody is a member.
+        give_place(db, learner, site.id)
+    db.flush()
+
+
+def seed_out_of_time_attempts(db: Session, org_unit_id: int) -> None:
+    """Give each out-of-time learner an attempt whose time has run out.
+
+    Begun as a learner would begin it, with the first question answered
+    right, then dated eleven minutes back, past the module's ten-minute
+    limit. Waiting that long in a test would stretch the run, and moving
+    the browser's clock would not move the server's, which is the clock
+    that counts. Left alone when they already have an attempt: a re-run
+    of the seed must not add another.
+    """
+    from app.features.teaching.attempts import (
+        bank_to_sit,
+        begin_attempt,
+        record_answer,
+    )
+
+    status = db.scalar(
+        select(QuestionBankOrgStatus)
+        .where(
+            QuestionBankOrgStatus.org_unit_id == org_unit_id,
+            QuestionBankOrgStatus.is_live.is_(True),
+        )
+        .order_by(QuestionBankOrgStatus.question_bank_id)
+    )
+
+    if status is None:
+        print("No module open; no out-of-time attempt seeded")
+        return
+
+    for username in OUT_OF_TIME:
+        learner = db.query(User).filter(User.username == username).one()
+        already = db.scalar(
+            select(Assessment.id).where(Assessment.user_id == learner.id)
+        )
+        if already is not None:
+            continue
+
+        bank = bank_to_sit(
+            db,
+            learner.id,
+            organisation_ids=[org_unit_id],
+            bank_id=status.question_bank_id,
+        )
+        begun = begin_attempt(db, learner.id, bank)
+        first = begun.first_answer
+        if first is not None and first.item.correct_option_id is not None:
+            record_answer(db, begun.assessment, first.item.correct_option_id)
+
+        begun.assessment.started_at = datetime.now(UTC) - timedelta(minutes=11)
+        db.flush()
+
+    db.commit()
+    print("Seeded an out-of-time attempt for each browser")
 
 
 def seed_teaching(db: Session, org_unit_id: int, admin_id: int) -> None:
